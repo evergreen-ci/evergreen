@@ -24,9 +24,9 @@ require (
 	github.com/evergreen-ci/gimlet v0.0.0-20240426164856-8c2db742f7b0
 	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa
 	github.com/evergreen-ci/pail v0.0.0-20240503141904-b600c21b5f20
-	github.com/evergreen-ci/poplar v0.0.0-20240129220701-28919e26f3a3
+	github.com/evergreen-ci/poplar v0.0.0-20240509153623-2de75d6eb493
 	github.com/evergreen-ci/shrub v0.0.0-20231121224157-600e066f9de6
-	github.com/evergreen-ci/timber v0.0.0-20230905184025-88c53a14c47b
+	github.com/evergreen-ci/timber v0.0.0-20240509150854-9d66df03b40e
 	github.com/evergreen-ci/utility v0.0.0-20240223193433-e2121cffbdfa
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-github/v52 v52.0.0
@@ -112,7 +112,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
-	github.com/evergreen-ci/aviation v0.0.0-20220405151811-ff4a78a4297c // indirect
+	github.com/evergreen-ci/aviation v0.0.0-20240509141021-0e3a1c91cc79 // indirect
 	github.com/evergreen-ci/baobab v1.0.1-0.20220107150152-03b522479f52 // indirect
 	github.com/evergreen-ci/bond v0.0.0-20220411194221-3710ea2ac361 // indirect
 	github.com/evergreen-ci/lru v0.0.0-20220404184951-eb0842380798 // indirect
