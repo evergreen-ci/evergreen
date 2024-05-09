@@ -1140,7 +1140,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 		// expand, validate that tasks defined in a group are listed in the project tasks
 		var taskNames []string
 		for _, taskName := range ptg.Tasks {
-			names, _, err := tse.evalSelector(ParseSelector(taskName), false)
+			names, _, err := tse.evalSelector(ParseSelector(taskName))
 			if err != nil {
 				evalErrs = append(evalErrs, err)
 			}
@@ -1194,7 +1194,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 				prunedTasks := []BuildVariantTaskUnit{}
 				toRemove := []string{}
 				for _, t := range r.RemoveTasks {
-					removed, _, err := tse.evalSelector(ParseSelector(t), false)
+					removed, _, err := tse.evalSelector(ParseSelector(t))
 					if err != nil {
 						evalErrs = append(evalErrs, errors.Wrap(err, "remove rule"))
 						continue
@@ -1334,7 +1334,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		} else {
 			var err1, err2 error
 			if tse != nil {
-				temp, unmatched, err1 = tse.evalSelector(ParseSelector(pbvt.Name), true)
+				temp, unmatched, err1 = tse.evalSelector(ParseSelector(pbvt.Name))
 				names = append(names, temp...)
 			}
 			if tgse != nil {

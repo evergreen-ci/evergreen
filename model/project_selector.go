@@ -130,9 +130,6 @@ type tagSelectorEvaluator struct {
 	items  []tagged
 	byName map[string]tagged
 	byTag  map[string][]tagged
-
-	ignoreUnmatchedTags bool
-	unmatchedTagNames   []string
 }
 
 // newTagSelectorEvaluator returns a new taskSelectorEvaluator.
@@ -270,7 +267,7 @@ func NewParserTaskSelectorEvaluator(tasks []parserTask) *taskSelectorEvaluator {
 }
 
 // evalSelector returns all tasks selected by a selector.
-func (t *taskSelectorEvaluator) evalSelector(s Selector, ignoreUnmatchedTags bool) ([]string, []string, error) {
+func (t *taskSelectorEvaluator) evalSelector(s Selector) ([]string, []string, error) {
 	results, unmatched, err := t.tagEval.evalSelector(s)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "evaluating task selector")
