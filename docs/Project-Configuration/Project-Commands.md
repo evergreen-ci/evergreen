@@ -1189,6 +1189,7 @@ Parameters:
     aws_session_token: ${aws_session_token}
     remote_file: ${mongo_binaries}
     bucket: mciuploads
+    region: us-east-1
     local_file: src/mongo-binaries.tgz
 ```
 
@@ -1202,6 +1203,7 @@ Parameters:
     `local_file`
 -   `remote_file`: the S3 path to get the file from
 -   `bucket`: the S3 bucket to use.
+-   `region`: AWS region of the bucket, defaults to us-east-1.
 -   `build_variants`: list of buildvariants to run the command for, if
     missing/empty will run for all
 -   `optional`: boolean: if set, won't error if the file isn't found or there's an error with downloading.
@@ -1220,6 +1222,7 @@ distribution. **Files uploaded with this command will also be viewable within th
     local_file: src/mongodb-binaries.tgz
     remote_file: mongodb-mongo-master/${build_variant}/${revision}/binaries/mongo-${build_id}.${ext|tgz}
     bucket: mciuploads
+    region: us-east-1
     permissions: public-read
     content_type: ${content_type|application/x-gzip}
     display_name: Binaries
