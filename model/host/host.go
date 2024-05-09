@@ -3745,12 +3745,19 @@ func (h *Host) SetTemporaryExemption(ctx context.Context, exemptUntil time.Time)
 	})
 
 	temporarilyExemptUntilKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
+	sleepScheduleStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
+	sleepScheduleStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
 	update := bson.M{}
+	unset := bson.M{
+		sleepScheduleStartKey: 1,
+		sleepScheduleStopKey:  1,
+	}
 	if utility.IsZeroTime(exemptUntil) {
-		update["$unset"] = bson.M{temporarilyExemptUntilKey: 1}
+		unset[temporarilyExemptUntilKey] = 1
 	} else {
 		update["$set"] = bson.M{temporarilyExemptUntilKey: exemptUntil}
 	}
+	update["$unset"] = unset
 
 	if err := UpdateOne(ctx, bson.M{IdKey: h.Id}, update); err != nil {
 		return err
@@ -3762,7 +3769,8 @@ func (h *Host) SetTemporaryExemption(ctx context.Context, exemptUntil time.Time)
 }
 
 // IsSleepScheduleEnabled returns whether or not a sleep schedule is enabled
-// for the host.
+// for the host, taking into account that some hosts are not subject to the
+// sleep schedule (e.g. expirable hosts).
 func (h *Host) IsSleepScheduleEnabled() bool {
 	if !h.NoExpiration {
 		return false
@@ -3770,19 +3778,21 @@ func (h *Host) IsSleepScheduleEnabled() bool {
 	if !utility.StringSliceContains(evergreen.SleepScheduleStatuses, h.Status) {
 		return false
 	}
-	if h.SleepSchedule.PermanentlyExempt || h.SleepSchedule.ShouldKeepOff {
-		return false
-	}
-	if h.SleepSchedule.TemporarilyExemptUntil.After(time.Now()) {
+	if h.SleepSchedule.IsExempt(time.Now()) {
 		return false
 	}
 	return true
 }
 
+// IsExempt returns whether or not the sleep schedule has an exemption.
+func (s *SleepScheduleInfo) IsExempt(now time.Time) bool {
+	return s.PermanentlyExempt || s.ShouldKeepOff || s.TemporarilyExemptUntil.After(now)
+}
+
 // GetNextScheduledStopTime returns the next time a host should be
 // stopped according to its sleep schedule.
 func (s *SleepScheduleInfo) GetNextScheduledStopTime(now time.Time) (time.Time, error) {
-	if s.PermanentlyExempt || s.ShouldKeepOff {
+	if s.IsExempt(now) {
 		return time.Time{}, nil
 	}
 
@@ -3792,14 +3802,12 @@ func (s *SleepScheduleInfo) GetNextScheduledStopTime(now time.Time) (time.Time, 
 	}
 
 	var calculateTimeAfter time.Time
-	if !utility.IsZeroTime(s.TemporarilyExemptUntil) {
-		calculateTimeAfter = s.TemporarilyExemptUntil
-	} else if !utility.IsZeroTime(s.NextStartTime) {
-		// If the next start time is known, do not try to stop the host again
-		// until after it's scheduled to start back up. This is a necessary
-		// safeguard against a rare edge case where the host is stopped for the
-		// sleep schedule but the user manually starts the host back up again in
-		// between a daily stop time and a whole weekday off.
+	if s.NextStartTime.After(now) {
+		// If the next start time is known and is in the future, do not try to
+		// stop the host again until after it's scheduled to start back up. This
+		// is a necessary safeguard against a rare edge case where the host is
+		// stopped for the sleep schedule but the user manually starts the host
+		// back up again in between a daily stop time and a whole weekday off.
 		//
 		// As an illustrative example, say the user sets a schedule to stop
 		// every day from 10 pm to 6 am, and also has Saturday and Sunday off.
@@ -3889,7 +3897,7 @@ func (s *SleepScheduleInfo) GetNextScheduledStopTime(now time.Time) (time.Time, 
 // GetNextScheduledStartTime returns the next time a host should be
 // started according to its sleep schedule.
 func (s *SleepScheduleInfo) GetNextScheduledStartTime(now time.Time) (time.Time, error) {
-	if s.PermanentlyExempt || s.ShouldKeepOff {
+	if s.IsExempt(now) {
 		return time.Time{}, nil
 	}
 
@@ -3898,12 +3906,7 @@ func (s *SleepScheduleInfo) GetNextScheduledStartTime(now time.Time) (time.Time,
 		return time.Time{}, errors.Wrapf(err, "loading user time zone '%s'", s.TimeZone)
 	}
 
-	var calculateTimeAfter time.Time
-	if !utility.IsZeroTime(s.TemporarilyExemptUntil) {
-		calculateTimeAfter = s.TemporarilyExemptUntil
-	} else {
-		calculateTimeAfter = now
-	}
+	calculateTimeAfter := now
 	// It's critical to do all the time calculations in the user's time zone and
 	// not in UTC. If the time calculations were all in UTC, they wouldn't
 	// account for timezone-specific quirks like daylight savings time changes.
