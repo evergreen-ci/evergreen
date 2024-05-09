@@ -171,6 +171,9 @@ type ApiTaskEndDetail struct {
 	Description *string `json:"desc"`
 	// PostErrored is true when the post command errored.
 	PostErrored bool `json:"post_errored"`
+	// FailingCommandMetadataTags contains the metadata tags of the failing
+	// command.
+	FailingCommandMetadataTags []string `json:"failure_metadata_tags"`
 	// Whether this task ended in a timeout.
 	TimedOut    bool              `json:"timed_out"`
 	TimeoutType *string           `json:"timeout_type"`
@@ -186,6 +189,7 @@ func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
 	at.PostErrored = t.PostErrored
 	at.TimedOut = t.TimedOut
 	at.TimeoutType = utility.ToStringPtr(t.TimeoutType)
+	at.FailingCommandMetadataTags = t.FailingCommandMetadataTags
 
 	apiOomTracker := APIOomTrackerInfo{}
 	apiOomTracker.BuildFromService(t.OOMTracker)
@@ -198,15 +202,16 @@ func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
 
 func (ad *ApiTaskEndDetail) ToService() apimodels.TaskEndDetail {
 	return apimodels.TaskEndDetail{
-		Status:      utility.FromStringPtr(ad.Status),
-		Type:        utility.FromStringPtr(ad.Type),
-		Description: utility.FromStringPtr(ad.Description),
-		PostErrored: ad.PostErrored,
-		TimedOut:    ad.TimedOut,
-		TimeoutType: utility.FromStringPtr(ad.TimeoutType),
-		OOMTracker:  ad.OOMTracker.ToService(),
-		TraceID:     utility.FromStringPtr(ad.TraceID),
-		DiskDevices: ad.DiskDevices,
+		Status:                     utility.FromStringPtr(ad.Status),
+		Type:                       utility.FromStringPtr(ad.Type),
+		Description:                utility.FromStringPtr(ad.Description),
+		PostErrored:                ad.PostErrored,
+		FailingCommandMetadataTags: ad.FailingCommandMetadataTags,
+		TimedOut:                   ad.TimedOut,
+		TimeoutType:                utility.FromStringPtr(ad.TimeoutType),
+		OOMTracker:                 ad.OOMTracker.ToService(),
+		TraceID:                    utility.FromStringPtr(ad.TraceID),
+		DiskDevices:                ad.DiskDevices,
 	}
 }
 
