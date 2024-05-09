@@ -1140,7 +1140,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 		// expand, validate that tasks defined in a group are listed in the project tasks
 		var taskNames []string
 		for _, taskName := range ptg.Tasks {
-			names, err := tse.evalSelector(ParseSelector(taskName), false)
+			names, _, err := tse.evalSelector(ParseSelector(taskName), false)
 			if err != nil {
 				evalErrs = append(evalErrs, err)
 			}
@@ -1194,7 +1194,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 				prunedTasks := []BuildVariantTaskUnit{}
 				toRemove := []string{}
 				for _, t := range r.RemoveTasks {
-					removed, err := tse.evalSelector(ParseSelector(t), false)
+					removed, _, err := tse.evalSelector(ParseSelector(t), false)
 					if err != nil {
 						evalErrs = append(evalErrs, errors.Wrap(err, "remove rule"))
 						continue
@@ -1266,9 +1266,12 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			//resolve tags for display tasks
 			tasks := []string{}
 			for _, et := range dt.ExecutionTasks {
-				results, err := dtse.evalSelector(ParseSelector(et))
+				results, unmatched, err := dtse.evalSelector(ParseSelector(et))
 				if err != nil {
 					errs = append(errs, err)
+				}
+				if len(unmatched) > 0 {
+					errs = append(errs, errors.Errorf("display task '%s' contains unmatched tags: '%s'", dt.Name, strings.Join(unmatched, "', '")))
 				}
 				tasks = append(tasks, results...)
 			}
@@ -1323,7 +1326,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		// only error if both selectors error because each task should only be found
 		// in one or the other.  Skip selector checking if task group is defined
 		// directly on the build variant task.
-		var names, temp []string
+		var names, unmatched, temp []string
 		isGroup := false
 		if pbvt.TaskGroup != nil {
 			names = append(names, pbvt.Name)
@@ -1331,11 +1334,13 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		} else {
 			var err1, err2 error
 			if tse != nil {
-				temp, err1 = tse.evalSelector(ParseSelector(pbvt.Name), true)
+				temp, unmatched, err1 = tse.evalSelector(ParseSelector(pbvt.Name), true)
 				names = append(names, temp...)
 			}
 			if tgse != nil {
-				temp, err2 = tgse.evalSelector(ParseSelector(pbvt.Name))
+				var unmatchedTaskgroup []string
+				temp, unmatchedTaskgroup, err2 = tgse.evalSelector(ParseSelector(pbvt.Name))
+				unmatched = append(unmatched, unmatchedTaskgroup...)
 				if len(temp) > 0 {
 					names = append(names, temp...)
 					isGroup = true
@@ -1350,12 +1355,11 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		if len(names) == 0 {
 			emptySelectors = append(emptySelectors, pbvt.Name)
 		}
-		for _, tag := range tse.tagEval.unmatchedTagNames {
+		for _, tag := range unmatched {
 			if !utility.StringSliceContains(names, tag) {
 				unmatchedTagNames = append(unmatchedTagNames, tag)
 			}
 		}
-		tse.tagEval.unmatchedTagNames = []string{}
 		// create new task definitions--duplicates must have the same status requirements
 		for _, name := range names {
 			parserTask := tasksByName[name]
@@ -1519,7 +1523,7 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 	newDeps := []TaskUnitDependency{}
 	newDepsByNameAndVariant := map[TVPair]TaskUnitDependency{}
 	for _, d := range deps {
-		var names []string
+		var names, unmatched []string
 
 		if d.TaskSelector.Name == AllDependencies {
 			// * is a special case for dependencies, so don't eval it
@@ -1528,12 +1532,18 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 			var temp []string
 			var err1, err2 error
 			if tse != nil {
-				temp, err1 = tse.evalSelector(ParseSelector(d.TaskSelector.Name))
+				temp, unmatched, err1 = tse.evalSelector(ParseSelector(d.TaskSelector.Name))
 				names = append(names, temp...)
+				if err1 == nil && len(unmatched) > 0 {
+					err1 = errors.Errorf("unmatched tags: %s", strings.Join(unmatched, ", "))
+				}
 			}
 			if tgse != nil {
-				temp, err2 = tgse.evalSelector(ParseSelector(d.TaskSelector.Name))
+				temp, unmatched, err2 = tgse.evalSelector(ParseSelector(d.TaskSelector.Name))
 				names = append(names, temp...)
+				if err2 == nil && len(unmatched) > 0 {
+					err2 = errors.Errorf("unmatched tags: %s", strings.Join(unmatched, ", "))
+				}
 			}
 			if err1 != nil && err2 != nil {
 				evalErrs = append(evalErrs, err1, err2)
