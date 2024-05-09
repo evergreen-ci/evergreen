@@ -1155,8 +1155,12 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 	if status != evergreen.TaskSucceeded {
 		detail.Type = failureType
 		detail.Description = description
+		// kim: TODO: add tests for failure in task and post.
+		detail.FailingCommandMetadataTags = tc.getCurrentCommand().FailureMetadataTags()
 	}
 	if !isDefaultDescription {
+		// If there's an explicit user-defined description, always set that
+		// description.
 		detail.Description = description
 	}
 
