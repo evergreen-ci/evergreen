@@ -185,9 +185,9 @@ func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Su
 		//   running.
 		return nil, nil
 	}
-	if t.data.Successful && t.data.Source == string(evergreen.ModifySpawnHostSleepSchedule) || t.data.Source == string(evergreen.ModifySpawnHostSleepScript) {
-		// Skip notifying for host modifications due to the sleep schedule or
-		// sleep script since they can be noisy if users regularly receive them.
+	if t.data.Successful && t.data.Source == string(evergreen.ModifySpawnHostSleepSchedule) {
+		// Skip notifying for host modifications due to the sleep schedule they
+		// can be noisy if users regularly receive them.
 		return nil, nil
 	}
 
