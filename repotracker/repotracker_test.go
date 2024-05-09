@@ -280,7 +280,7 @@ buildvariants:
 - name: bv1
   display_name: "bv_display"
   run_on: d1
-  batchtime: 10
+  batchtime: 20
   tasks:
   - name: t1
     batchtime: 30
@@ -309,6 +309,20 @@ tasks:
 				BatchTimeTasks: []model.BatchTimeTaskStatus{
 					{
 						TaskName: "t1",
+						ActivationStatus: model.ActivationStatus{
+							Activated:  true,
+							ActivateAt: time.Now().Add(-11 * time.Minute),
+						},
+					},
+					{
+						TaskName: "t2",
+						ActivationStatus: model.ActivationStatus{
+							Activated:  true,
+							ActivateAt: time.Now().Add(-11 * time.Minute),
+						},
+					},
+					{
+						TaskName: "t3",
 						ActivationStatus: model.ActivationStatus{
 							Activated:  true,
 							ActivateAt: time.Now().Add(-11 * time.Minute),
@@ -364,8 +378,10 @@ tasks:
 	assert.False(t, v.BuildVariants[0].Activated)
 	assert.False(t, v.BuildVariants[1].Activated)
 	bv, _ := findStatus(v, "bv1")
-	assert.Len(t, bv.BatchTimeTasks, 1)
-	assert.False(t, bv.BatchTimeTasks[0].Activated)
+	assert.Len(t, bv.BatchTimeTasks, 3)
+	for _, bvt := range bv.BatchTimeTasks {
+		assert.False(t, bvt.Activated)
+	}
 
 	// should activate build variants and tasks except for the batchtime task and the task with a negative priority
 	ok, err := model.ActivateElapsedBuildsAndTasks(ctx, v)
@@ -373,10 +389,12 @@ tasks:
 	assert.True(t, ok)
 	assert.Len(t, v.BuildVariants, 2)
 	assert.True(t, v.BuildVariants[0].Activated)
-	assert.True(t, v.BuildVariants[1].Activated)
+	assert.False(t, v.BuildVariants[1].Activated)
 	bv, _ = findStatus(v, "bv1")
-	assert.Len(t, bv.BatchTimeTasks, 1)
-	assert.False(t, bv.BatchTimeTasks[0].Activated)
+	assert.Len(t, bv.BatchTimeTasks, 3)
+	for _, bvt := range bv.BatchTimeTasks {
+		assert.False(t, bvt.Activated)
+	}
 
 	build1, err := build.FindOneId(bv.BuildId)
 	assert.NoError(t, err)
@@ -386,15 +404,7 @@ tasks:
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 3)
 	for _, tsk := range tasks {
-		if tsk.DisplayName == "t1" {
-			assert.False(t, tsk.Activated)
-		}
-		if tsk.DisplayName == "t2" {
-			assert.False(t, tsk.Activated)
-		}
-		if tsk.DisplayName == "t3" {
-			assert.True(t, tsk.Activated)
-		}
+		assert.False(t, tsk.Activated)
 	}
 
 	// now we should update just the task even though the build is activated already
@@ -403,19 +413,30 @@ tasks:
 			// Set the activation time before the current timestamp to ensure
 			// that it is already elapsed.
 			v.BuildVariants[i].BatchTimeTasks[0].ActivateAt = time.Now().Add(-time.Millisecond)
+			v.BuildVariants[i].ActivateAt = time.Now().Add(-time.Millisecond)
 		}
 	}
 	ok, err = model.ActivateElapsedBuildsAndTasks(ctx, v)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	bv, _ = findStatus(v, "bv1")
-	assert.Len(t, bv.BatchTimeTasks, 1)
-	assert.True(t, bv.BatchTimeTasks[0].Activated)
+	assert.Len(t, bv.BatchTimeTasks, 3)
+	for _, bvt := range bv.BatchTimeTasks {
+		if bvt.TaskName == "t1" {
+			assert.True(t, bvt.Activated)
+		}
+		if bvt.TaskName == "t2" {
+			assert.False(t, bvt.Activated)
+		}
+		if bvt.TaskName == "t3" {
+			assert.False(t, bvt.Activated)
+		}
+	}
 
 	// validate that the activation time of the entire build was not changed
 	build2, err := build.FindOneId(bv.BuildId)
 	assert.NoError(t, err)
-	assert.Equal(t, build1.ActivatedTime, build2.ActivatedTime)
+	assert.True(t, build2.Activated)
 }
 
 func TestBatchTimes(t *testing.T) {
@@ -435,12 +456,30 @@ func TestBatchTimes(t *testing.T) {
 						Activated:  true,
 						ActivateAt: time.Now(),
 					},
+					BatchTimeTasks: []model.BatchTimeTaskStatus{
+						{
+							TaskName: "t1",
+							ActivationStatus: model.ActivationStatus{
+								Activated:  true,
+								ActivateAt: time.Now(),
+							},
+						},
+					},
 				},
 				{
 					BuildVariant: "bv2",
 					ActivationStatus: model.ActivationStatus{
 						Activated:  true,
 						ActivateAt: time.Now(),
+					},
+					BatchTimeTasks: []model.BatchTimeTaskStatus{
+						{
+							TaskName: "t1",
+							ActivationStatus: model.ActivationStatus{
+								Activated:  true,
+								ActivateAt: time.Now(),
+							},
+						},
 					},
 				},
 			},
@@ -1098,7 +1137,7 @@ tasks:
 		}
 		if bv.BuildVariant == "bv2" {
 			s.False(bv.Activated)
-			s.Len(bv.BatchTimeTasks, 0)
+			s.Len(bv.BatchTimeTasks, 1)
 		}
 	}
 }
