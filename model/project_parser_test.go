@@ -757,6 +757,7 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEva
 			for _, t := range taskUnit {
 				if t.Name == e.Name && t.Priority == e.Priority && len(t.DependsOn) == len(e.DependsOn) {
 					exists = true
+					break
 				}
 				So(t.Variant, ShouldEqual, pbv.Name)
 			}
@@ -768,6 +769,7 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEva
 			for _, emptySelector := range emptySelectors {
 				if emptySelector == expectedEmptySelector {
 					exists = true
+					break
 				}
 			}
 			So(exists, ShouldBeTrue)
@@ -778,6 +780,7 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEva
 			for _, unmatchedTag := range unmatchedTags {
 				if unmatchedTag == expectedUnmatchedTag {
 					exists = true
+					break
 				}
 			}
 			So(exists, ShouldBeTrue)
