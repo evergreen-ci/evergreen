@@ -14,7 +14,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.restartPurple = true;
     $scope.restartLavender = true;
     $scope.ValidThemes = ["announcement", "information", "warning", "important"];
-    $scope.validAuthKinds = ["ldap", "okta", "naive", "only_api", "allow_service_users", "github"];
+    $scope.validAuthKinds = ["okta", "naive", "only_api", "allow_service_users", "github"];
     $scope.validECSOSes = ["linux", "windows"];
     $scope.validECSArches = ["amd64", "arm64"];
     $scope.validECSWindowsVersions = {
