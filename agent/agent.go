@@ -1110,9 +1110,9 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 			tc.logger.Task().Errorf("'%s' is not a valid task status, defaulting to system failure.", userEndTaskResp.Status)
 			status = evergreen.TaskFailed
 			userDefinedFailureType = evergreen.CommandTypeSystem
-			userDefinedFailureMetadataTags = userEndTaskResp.AddFailureMetadataTags
 		} else {
 			status = userEndTaskResp.Status
+			userDefinedFailureMetadataTags = userEndTaskResp.AddFailureMetadataTags
 
 			if len(userEndTaskResp.Description) > globals.EndTaskMessageLimit {
 				tc.logger.Task().Warningf("Description from endpoint is too long to set (%d character limit), using default description.", globals.EndTaskMessageLimit)
