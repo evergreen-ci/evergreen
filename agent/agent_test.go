@@ -1227,9 +1227,9 @@ func (s *AgentSuite) TestOOMTracker() {
 	projYml := `
 buildvariants:
  - name: mock_build_variant
-tasks: 
+tasks:
  - name: this_is_a_task_name
-   commands: 
+   commands:
     - command: shell.exec
       params:
         script: exit 1
@@ -1672,6 +1672,7 @@ tasks:
   - name: this_is_a_task_name
     commands:
       - command: shell.exec
+        failure_metadata_tags: ["failure_tag0", "failure_tag1"]
         params:
           script: exit 0
       - command: shell.exec
@@ -1681,9 +1682,10 @@ tasks:
 	s.setupRunTask(projYml)
 
 	resp := &triggerEndTaskResp{
-		Status:      evergreen.TaskFailed,
-		Type:        evergreen.CommandTypeSetup,
-		Description: "task failed",
+		Status:                 evergreen.TaskFailed,
+		Type:                   evergreen.CommandTypeSetup,
+		Description:            "task failed",
+		AddFailureMetadataTags: []string{"failure_tag0", "failure_tag1", "failure_tag2"},
 	}
 	s.tc.setUserEndTaskResponse(resp)
 
@@ -1697,6 +1699,7 @@ tasks:
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
 	s.Equal(resp.Type, s.mockCommunicator.EndTaskResult.Detail.Type, "should set user-defined command failure type")
 	s.Equal(resp.Description, s.mockCommunicator.EndTaskResult.Detail.Description, "should set user-defined task description")
+	s.ElementsMatch([]string{"failure_tag0", "failure_tag1", "failure_tag2"}, s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "should set the failing command's metadata tags along with the additional tags")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
