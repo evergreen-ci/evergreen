@@ -406,6 +406,7 @@ func (e *envState) createRemoteQueues(ctx context.Context, tracer trace.Tracer) 
 
 	opts := options.Client().
 		ApplyURI(url).
+		SetTimeout(10 * time.Second).
 		SetConnectTimeout(5 * time.Second).
 		SetReadPreference(readpref.Primary()).
 		SetReadConcern(e.settings.Database.ReadConcernSettings.Resolve()).
