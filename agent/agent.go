@@ -642,11 +642,6 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		defer shutdown(ctx)
 	}
 
-	defer func() {
-		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(tskCtx, tc.taskConfig.WorkDir), "uploading traces"))
-		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(tskCtx), "ingesting task output"))
-	}()
-
 	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	preAndMainCtx, preAndMainCancel := context.WithCancel(tskCtx)
 	go a.startHeartbeat(tskCtx, preAndMainCancel, tc)
@@ -1002,6 +997,13 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		if detail.Description == "" {
 			detail.Description = "task has invalid status"
 		}
+	}
+
+	// Attempt automatic task output ingestion if the task output directory
+	// was setup, regardless of the task status.
+	if tc.taskConfig != nil && tc.taskConfig.TaskOutputDir != nil {
+		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(ctx, tc.taskConfig.WorkDir), "uploading traces"))
+		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(ctx), "ingesting task output"))
 	}
 
 	a.killProcs(ctx, tc, false, "task is ending")
