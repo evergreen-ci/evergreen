@@ -107,10 +107,14 @@ func (a *Agent) statusHandler() http.HandlerFunc {
 }
 
 type triggerEndTaskResp struct {
-	Description    string `json:"desc,omitempty"`
-	Status         string `json:"status,omitempty"`
-	Type           string `json:"type,omitempty"`
-	ShouldContinue bool   `json:"should_continue"`
+	Description string `json:"desc,omitempty"`
+	Status      string `json:"status,omitempty"`
+	Type        string `json:"type,omitempty"`
+	// kim: TODO: add documentation
+	// kim: TODO: add test for user-defined metadata set via task status
+	// endpoint
+	AddFailureMetadataTags []string `json:"add_failure_metadata_tags,omitempty"`
+	ShouldContinue         bool     `json:"should_continue"`
 }
 
 func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {

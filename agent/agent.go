@@ -1103,12 +1103,14 @@ func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOut
 func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) *apimodels.TaskEndDetail {
 	highestPriorityDescription := systemFailureDescription
 	var userDefinedFailureType string
+	var userDefinedFailureMetadataTags []string
 	if userEndTaskResp := tc.getUserEndTaskResponse(); userEndTaskResp != nil {
 		tc.logger.Task().Infof("Task status set to '%s' with HTTP endpoint.", userEndTaskResp.Status)
 		if !evergreen.IsValidTaskEndStatus(userEndTaskResp.Status) {
 			tc.logger.Task().Errorf("'%s' is not a valid task status, defaulting to system failure.", userEndTaskResp.Status)
 			status = evergreen.TaskFailed
 			userDefinedFailureType = evergreen.CommandTypeSystem
+			userDefinedFailureMetadataTags = userEndTaskResp.AddFailureMetadataTags
 		} else {
 			status = userEndTaskResp.Status
 
@@ -1130,14 +1132,14 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 		TraceID:     tc.traceID,
 		DiskDevices: tc.diskDevices,
 	}
-	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType)
+	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType, userDefinedFailureMetadataTags)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
 	}
 	return detail
 }
 
-func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, status, description, failureType string) {
+func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, status, description, failureType string, failureMetadataTagsToAdd []string) {
 	var isDefaultDescription bool
 	if tc.getCurrentCommand() != nil {
 		// If there is no explicit user-defined description or failure type,
@@ -1156,7 +1158,7 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 		detail.Type = failureType
 		detail.Description = description
 		// kim: TODO: add tests for failure in task and post.
-		detail.FailingCommandMetadataTags = tc.getCurrentCommand().FailureMetadataTags()
+		detail.FailingCommandMetadataTags = utility.UniqueStrings(append(tc.getCurrentCommand().FailureMetadataTags(), failureMetadataTagsToAdd...))
 	}
 	if !isDefaultDescription {
 		// If there's an explicit user-defined description, always set that
