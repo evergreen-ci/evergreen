@@ -963,7 +963,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		tc.logger.Task().Info("Task completed - SUCCESS.")
 		if err := a.runPostOrTeardownTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Info("Post task completed - FAILURE. Overall task status changed to FAILED.")
-			setEndTaskFailureDetails(tc, detail, evergreen.TaskFailed, "", "")
+			setEndTaskFailureDetails(tc, detail, evergreen.TaskFailed, "", "", nil)
 		}
 		detail.PostErrored = tc.getPostErrored()
 		a.runEndTaskSync(ctx, tc, detail)
@@ -1157,8 +1157,7 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 	if status != evergreen.TaskSucceeded {
 		detail.Type = failureType
 		detail.Description = description
-		// kim: TODO: add tests for failure in task and post.
-		detail.FailingCommandMetadataTags = utility.UniqueStrings(append(tc.getCurrentCommand().FailureMetadataTags(), failureMetadataTagsToAdd...))
+		detail.FailureMetadataTags = utility.UniqueStrings(append(tc.getCurrentCommand().FailureMetadataTags(), failureMetadataTagsToAdd...))
 	}
 	if !isDefaultDescription {
 		// If there's an explicit user-defined description, always set that

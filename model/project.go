@@ -553,9 +553,8 @@ type PluginCommandConf struct {
 	// FailureMetadataTags are user-defined tags which are not used directly by
 	// Evergreen but can be used to allow users to set additional metadata about
 	// the command/function if it fails.
-	// kim: TODO: add docs
-	// kim: NOTE: If set for a function, all commands in that function inherit
-	// the tags.
+	// TODO (DEVPROD-5122): add documentation once the additional features for
+	// failing commands (which don't fail the task) are complete.
 	FailureMetadataTags []string `yaml:"failure_metadata_tags,omitempty" bson:"failure_metadata_tags,omitempty"`
 
 	Loggers *LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`

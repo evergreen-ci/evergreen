@@ -168,8 +168,6 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 				c.DisplayName = GetFullDisplayName(c.Command, c.DisplayName, blockInfo, funcInfo)
 				// kim: TODO: test that this merges unique strings from func
 				// level and cmd level.
-				// kim: TODO: manually test how this is stored in the parser
-				// project, either as combined or separate.
 				c.FailureMetadataTags = utility.UniqueStrings(append(c.FailureMetadataTags, commandInfo.FailureMetadataTags...))
 
 				parsed = append(parsed, c)

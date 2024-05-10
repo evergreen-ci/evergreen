@@ -110,9 +110,8 @@ type triggerEndTaskResp struct {
 	Description string `json:"desc,omitempty"`
 	Status      string `json:"status,omitempty"`
 	Type        string `json:"type,omitempty"`
-	// kim: TODO: add documentation
-	// kim: TODO: add test for user-defined metadata set via task status
-	// endpoint
+	// TODO (DEVPROD-5122): add documentation once the additional features for
+	// failing commands (which don't fail the task) are complete.
 	AddFailureMetadataTags []string `json:"add_failure_metadata_tags,omitempty"`
 	ShouldContinue         bool     `json:"should_continue"`
 }
