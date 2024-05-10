@@ -23,7 +23,8 @@ func TestLoadUserManager(t *testing.T) {
 		UserGroup:    "user_group",
 	}
 	multi := evergreen.MultiAuthConfig{
-		ReadOnly: []string{evergreen.AuthNaiveKey},
+		ReadWrite: []string{evergreen.AuthOktaKey},
+		ReadOnly:  []string{evergreen.AuthNaiveKey},
 	}
 	multiNoInfo := evergreen.MultiAuthConfig{
 		ReadWrite: []string{evergreen.AuthGithubKey},
@@ -64,7 +65,7 @@ func TestLoadUserManager(t *testing.T) {
 	assert.False(t, info.CanReauthorize)
 	assert.NotNil(t, um, "a UserManager should be created if one AuthConfig type is OnlyAPI")
 
-	a = evergreen.AuthConfig{PreferredType: evergreen.AuthMultiKey, Multi: &multi, Naive: &naive}
+	a = evergreen.AuthConfig{PreferredType: evergreen.AuthMultiKey, Multi: &multi, Okta: &okta, Naive: &naive}
 	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
 	assert.NoError(t, err, "a UserManager should be created if one AuthConfig type is Multi")
 	assert.True(t, info.CanClearTokens, "should be able to clear tokens if the underlying manager is able")

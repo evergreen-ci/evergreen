@@ -151,7 +151,8 @@ func MockConfig() *evergreen.Settings {
 				Organization: "ghorg",
 			},
 			Multi: &evergreen.MultiAuthConfig{
-				ReadOnly: []string{evergreen.AuthNaiveKey},
+				ReadOnly:  []string{evergreen.AuthNaiveKey},
+				ReadWrite: []string{evergreen.AuthOktaKey},
 			},
 			BackgroundReauthMinutes: 60,
 		},
