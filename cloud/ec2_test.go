@@ -69,7 +69,7 @@ func (s *EC2Suite) SetupTest() {
 	}
 	s.env = mockEnv
 
-	s.Require().NoError(db.ClearCollections(host.Collection, host.VolumesCollection, task.Collection, model.ProjectVarsCollection))
+	s.Require().NoError(db.ClearCollections(host.Collection, host.VolumesCollection, task.Collection, model.ProjectVarsCollection, user.Collection))
 	s.onDemandOpts = &EC2ManagerOptions{
 		client: &awsClientMock{},
 	}
@@ -609,6 +609,45 @@ func (s *EC2Suite) TestModifyHost() {
 	s.Require().NoError(s.h.Remove(ctx))
 }
 
+func (s *EC2Suite) TestModifyHostWithNewTemporaryExemption() {
+	s.h.Status = evergreen.HostRunning
+	s.Require().NoError(s.h.Insert(s.ctx))
+	const hours = 5
+	s.NoError(s.onDemandManager.ModifyHost(s.ctx, s.h, host.HostModifyOptions{AddTemporaryExemptionHours: hours}))
+
+	dbHost, err := host.FindOneId(s.ctx, s.h.Id)
+	s.Require().NoError(err)
+	s.Require().NotZero(dbHost)
+	s.WithinDuration(time.Now().Add(hours*time.Hour), dbHost.SleepSchedule.TemporarilyExemptUntil, time.Minute, "should create new temporary exemption")
+}
+
+func (s *EC2Suite) TestModifyHostWithExistingTemporaryExemption() {
+	s.h.Status = evergreen.HostRunning
+	s.h.SleepSchedule.TemporarilyExemptUntil = utility.BSONTime(time.Now().Add(time.Hour))
+	const hours = 5
+	extendedExemption := s.h.SleepSchedule.TemporarilyExemptUntil.Add(hours * time.Hour)
+	s.Require().NoError(s.h.Insert(s.ctx))
+	s.NoError(s.onDemandManager.ModifyHost(s.ctx, s.h, host.HostModifyOptions{AddTemporaryExemptionHours: hours}))
+
+	dbHost, err := host.FindOneId(s.ctx, s.h.Id)
+	s.Require().NoError(err)
+	s.Require().NotZero(dbHost)
+	s.True(extendedExemption.Equal(dbHost.SleepSchedule.TemporarilyExemptUntil), "should extend existing temporary exemption")
+}
+
+func (s *EC2Suite) TestModifyHostWithExpiredTemporaryExemption() {
+	s.h.Status = evergreen.HostRunning
+	s.h.SleepSchedule.TemporarilyExemptUntil = utility.BSONTime(time.Now().Add(-time.Hour))
+	s.Require().NoError(s.h.Insert(s.ctx))
+	const hours = 5
+	s.NoError(s.onDemandManager.ModifyHost(s.ctx, s.h, host.HostModifyOptions{AddTemporaryExemptionHours: hours}))
+
+	dbHost, err := host.FindOneId(s.ctx, s.h.Id)
+	s.Require().NoError(err)
+	s.Require().NotZero(dbHost)
+	s.WithinDuration(time.Now().Add(hours*time.Hour), dbHost.SleepSchedule.TemporarilyExemptUntil, time.Minute, "should create new temporary exemption rather than extend the expired one")
+}
+
 func (s *EC2Suite) TestGetInstanceStatus() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
@@ -641,11 +680,6 @@ func (s *EC2Suite) TestTerminateInstance() {
 func (s *EC2Suite) TestTerminateInstanceWithUserDataBootstrappedHost() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
-
-	s.Require().NoError(db.ClearCollections(host.Collection, user.Collection))
-	defer func() {
-		s.NoError(db.ClearCollections(host.Collection, user.Collection))
-	}()
 
 	s.h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
 	s.NoError(s.h.Insert(ctx))

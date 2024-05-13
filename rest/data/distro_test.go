@@ -206,6 +206,75 @@ func TestCopyDistro(t *testing.T) {
 	}
 }
 
+func TestUpdateDistro(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, old, new *distro.Distro){
+		"Successfully updates distro": func(t *testing.T, ctx context.Context, old, new *distro.Distro) {
+			assert.NoError(t, UpdateDistro(ctx, old, new))
+
+			dbDistro, err := distro.FindOneId(ctx, old.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, dbDistro)
+			assert.Equal(t, *dbDistro, *new)
+
+			dbQueue, err := model.LoadTaskQueue("distro")
+			assert.NoError(t, err)
+			assert.NotEmpty(t, dbQueue.Queue)
+		},
+		"Clears task queue when distro gets disabled": func(t *testing.T, ctx context.Context, old, new *distro.Distro) {
+			new.Disabled = true
+			assert.NoError(t, UpdateDistro(ctx, old, new))
+
+			dbDistro, err := distro.FindOneId(ctx, old.Id)
+			assert.NoError(t, err)
+			assert.NotNil(t, dbDistro)
+			assert.Equal(t, *dbDistro, *new)
+
+			dbQueue, err := model.LoadTaskQueue("distro")
+			assert.NoError(t, err)
+			assert.Empty(t, dbQueue.Queue)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			tctx, tcancel := context.WithCancel(ctx)
+			defer tcancel()
+
+			assert.NoError(t, db.ClearCollections(distro.Collection, event.EventCollection, user.Collection, model.TaskQueuesCollection))
+
+			d := distro.Distro{
+				Id: "distro",
+				PlannerSettings: distro.PlannerSettings{
+					Version: evergreen.PlannerVersionTunable,
+				},
+				Provider: evergreen.ProviderNameStatic,
+				WorkDir:  "/tmp",
+				User:     "admin",
+			}
+			assert.NoError(t, d.Insert(tctx))
+
+			updatedDistro := distro.Distro{
+				Id: "distro",
+				PlannerSettings: distro.PlannerSettings{
+					Version: evergreen.PlannerVersionLegacy,
+				},
+				Provider: evergreen.ProviderNameEc2OnDemand,
+				WorkDir:  "/tmp2",
+				User:     "admin2",
+			}
+
+			queue := model.TaskQueue{
+				Distro: d.Id,
+				Queue:  []model.TaskQueueItem{{Id: "task"}},
+			}
+			assert.NoError(t, queue.Save())
+
+			tCase(t, tctx, &d, &updatedDistro)
+		})
+	}
+}
+
 func TestCreateDistro(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

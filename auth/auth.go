@@ -33,9 +33,6 @@ func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, evergree
 	if authConfig.Multi != nil && !authConfig.Multi.IsZero() {
 		return makeMultiManager(settings, authConfig)
 	}
-	if authConfig.LDAP != nil {
-		return makeLDAPManager(authConfig.LDAP)
-	}
 	if authConfig.Okta != nil {
 		return makeOktaManager(settings, authConfig.Okta)
 	}
@@ -49,17 +46,6 @@ func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, evergree
 		return makeOnlyAPIManager()
 	}
 	return nil, evergreen.UserManagerInfo{}, errors.New("Must have at least one form of authentication, currently there are none")
-}
-
-func makeLDAPManager(config *evergreen.LDAPConfig) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
-	manager, err := NewLDAPUserManager(config)
-	if err != nil {
-		return nil, evergreen.UserManagerInfo{}, errors.Wrap(err, "problem setting up ldap authentication")
-	}
-	return manager, evergreen.UserManagerInfo{
-		CanClearTokens: true,
-		CanReauthorize: true,
-	}, nil
 }
 
 func makeOktaManager(settings *evergreen.Settings, config *evergreen.OktaConfig) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
@@ -139,10 +125,6 @@ func makeMultiManager(settings *evergreen.Settings, config evergreen.AuthConfig)
 
 func makeSingleManager(kind string, settings *evergreen.Settings, config evergreen.AuthConfig) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
 	switch kind {
-	case evergreen.AuthLDAPKey:
-		if config.LDAP != nil {
-			return makeLDAPManager(config.LDAP)
-		}
 	case evergreen.AuthOktaKey:
 		if config.Okta != nil {
 			return makeOktaManager(settings, config.Okta)

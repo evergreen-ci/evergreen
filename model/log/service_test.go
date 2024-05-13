@@ -65,18 +65,35 @@ func TestLogService(t *testing.T) {
 				foundLines := readLogLines(t, svc, ctx, GetOptions{LogNames: []string{logName}})
 				require.Len(t, foundLines, len(lines))
 
+				ts := time.Now().UnixNano()
 				offset := len(lines)
 				lines = append(
 					lines,
 					LogLine{
 						Priority:  level.Warning,
-						Timestamp: time.Now().UnixNano(),
+						Timestamp: ts,
 						Data:      "Appending a warning line to an already existing log.",
 					},
 					LogLine{
 						Priority:  level.Error,
-						Timestamp: time.Now().UnixNano(),
+						Timestamp: ts,
 						Data:      "Appending an error line to an already existing log.",
+					},
+				)
+				require.NoError(t, svc.Append(ctx, logName, lines[offset:]))
+
+				offset = len(lines)
+				lines = append(
+					lines,
+					LogLine{
+						Priority:  level.Warning,
+						Timestamp: ts,
+						Data:      "Appending another chunk of logs with the same time range as the previous chunk.",
+					},
+					LogLine{
+						Priority:  level.Error,
+						Timestamp: ts,
+						Data:      "If two chunks have the same time range, the order of lines should appear in the order they were uploaded.",
 					},
 				)
 				require.NoError(t, svc.Append(ctx, logName, lines[offset:]))

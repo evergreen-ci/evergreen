@@ -1,0 +1,38 @@
+{
+    "tests": [
+        {
+            "query_file": "terminate_host.graphql",
+            "result": {
+              "errors": [
+                  {
+                      "message": "You are not authorized to modify this host",
+                      "path": [
+                          "updateSpawnHostStatus"
+                      ],
+                      "extensions": {
+                          "code": "FORBIDDEN"
+                      }
+                  }
+              ],
+              "data": null
+            }
+        },
+        {
+            "query_file": "stop_host.graphql",
+            "result": {
+              "errors": [
+                  {
+                      "message": "You are not authorized to modify this host",
+                      "path": [
+                          "updateSpawnHostStatus"
+                      ],
+                      "extensions": {
+                          "code": "FORBIDDEN"
+                      }
+                  }
+              ],
+              "data": null
+            }
+        }
+    ]
+}

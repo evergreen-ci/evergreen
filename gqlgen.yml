@@ -140,10 +140,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIssueLink
   JiraConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIJiraConfig
-  JiraField:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIJiraField
-  JiraFieldInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIJiraField
   JiraIssueSubscriber:
     model: github.com/evergreen-ci/evergreen/rest/model.APIJIRAIssueSubscriber
   JiraIssueSubscriberInput:

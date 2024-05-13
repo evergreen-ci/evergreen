@@ -301,7 +301,8 @@ func fixProvisioningIntentHost(ctx context.Context, h *host.Host, instanceID str
 		return nil
 	}
 	if cloud.IsEC2InstanceID(h.Id) {
-		// If the host already has an instance ID, it's not an intent host.
+		// If the host already has an instance ID, it's not an intent host, so
+		// the host does not need to be fixed.
 		return nil
 	}
 	if instanceID == "" {
@@ -321,7 +322,7 @@ func fixProvisioningIntentHost(ctx context.Context, h *host.Host, instanceID str
 		// route. All intent hosts should be sending their EC2 instance ID. If
 		// they don't, it should fail provisioning and should not start the
 		// agent.
-		return nil
+		return errors.New(msg)
 	}
 
 	env := evergreen.GetEnvironment()
@@ -356,7 +357,7 @@ func transitionIntentHostToStarting(ctx context.Context, env evergreen.Environme
 		return errors.Wrap(err, "replacing intent host with real host")
 	}
 
-	event.LogHostStartSucceeded(hostToStart.Id)
+	event.LogHostStartSucceeded(hostToStart.Id, evergreen.User)
 
 	return nil
 }

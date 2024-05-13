@@ -81,6 +81,19 @@ type Options struct {
 	SendTaskLogsToGlobalSender bool
 }
 
+// AddLoggableInfo is a helper to add relevant information about the agent
+// runtime to the log message. This is typically to make high priority error
+// logs more informative.
+func (o *Options) AddLoggableInfo(msg message.Fields) message.Fields {
+	if o.HostID != "" {
+		msg["host_id"] = o.HostID
+	}
+	if o.PodID != "" {
+		msg["pod_id"] = o.PodID
+	}
+	return msg
+}
+
 type timeoutInfo struct {
 	// idleTimeoutDuration maintains the current idle timeout in the task context;
 	// the exec timeout is maintained in the project data structure
@@ -126,7 +139,12 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 	}
 
 	setupData, err := comm.GetAgentSetupData(ctx)
-	grip.Alert(errors.Wrap(err, "getting agent setup data"))
+	if err != nil {
+		msg := opts.AddLoggableInfo(message.Fields{
+			"message": "error getting agent setup data",
+		})
+		grip.Alert(message.WrapError(err, msg))
+	}
 	if setupData != nil {
 		opts.SetupData = *setupData
 		opts.TraceCollectorEndpoint = setupData.TraceCollectorEndpoint
@@ -620,11 +638,6 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		defer shutdown(ctx)
 	}
 
-	defer func() {
-		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(tskCtx, tc.taskConfig.WorkDir), "uploading traces"))
-		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(tskCtx), "ingesting task output"))
-	}()
-
 	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	preAndMainCtx, preAndMainCancel := context.WithCancel(tskCtx)
 	go a.startHeartbeat(tskCtx, preAndMainCancel, tc)
@@ -982,6 +995,13 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		}
 	}
 
+	// Attempt automatic task output ingestion if the task output directory
+	// was setup, regardless of the task status.
+	if tc.taskConfig != nil && tc.taskConfig.TaskOutputDir != nil {
+		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(ctx, tc.taskConfig.WorkDir), "uploading traces"))
+		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(ctx), "ingesting task output"))
+	}
+
 	a.killProcs(ctx, tc, false, "task is ending")
 
 	if tc.logger != nil {
@@ -1215,17 +1235,11 @@ func (a *Agent) logPanic(tc *taskContext, pErr, originalErr error, op string) er
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(originalErr)
 	catcher.Add(pErr)
-	logMsg := message.Fields{
+	logMsg := a.opts.AddLoggableInfo(message.Fields{
 		"message":   "programmatic error: Evergreen agent hit panic",
 		"operation": op,
-	}
+	})
 	if tc.logger != nil && !tc.logger.Closed() {
-		if a.opts.HostID != "" {
-			logMsg["host_id"] = a.opts.HostID
-		}
-		if a.opts.PodID != "" {
-			logMsg["pod_id"] = a.opts.PodID
-		}
 		tc.logger.Task().Error(logMsg)
 	}
 	logMsg["task_id"] = tc.task.ID

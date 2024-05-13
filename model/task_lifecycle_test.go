@@ -796,7 +796,7 @@ func TestSetActiveState(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(dtFromDb.Activated, ShouldBeTrue)
 
-			So(SetActiveState(ctx, "test", false, *t1), ShouldBeNil)
+			So(SetActiveState(ctx, "test", false, *t1FromDb), ShouldBeNil)
 			t1FromDb, err = task.FindOne(db.Query(task.ById(t1.Id)))
 			So(err, ShouldBeNil)
 			So(t1FromDb.Activated, ShouldBeFalse)
@@ -5962,7 +5962,7 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 	assert.Equal(evergreen.TaskStarted, dbTask.Status)
 
 	// end the final task so that it restarts
-	assert.NoError(checkResetDisplayTask(ctx, settings, &dt))
+	assert.NoError(checkResetDisplayTask(ctx, settings, "", "", &dt))
 	dbTask, err = task.FindOne(db.Query(task.ById(dt.Id)))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
