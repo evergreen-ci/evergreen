@@ -20,8 +20,3 @@ func (s generatedJSONDBStorage) Find(_ context.Context, t *Task) (GeneratedJSONF
 func (s generatedJSONDBStorage) Insert(_ context.Context, t *Task, files GeneratedJSONFiles) error {
 	return t.SetGeneratedJSON(files)
 }
-
-// Close is a no-op.
-func (s generatedJSONDBStorage) Close(context.Context) error {
-	return nil
-}

@@ -57,45 +57,74 @@
   ],
   "hosts": [
     {
-      "host_id": "host1",
+      "host_id": "running-host-1",
       "user": "mci-exec",
       "distro": {
-          "_id": "osx-108",
-          "aliases": ["os-x-108-64-nossl"],
-          "work_dir": "/data/mci"
+        "_id": "osx-108",
+        "aliases": ["os-x-108-64-nossl"],
+        "work_dir": "/data/mci"
       },
       "zone": "us-east-1e",
       "provisioned": true,
       "status": "running",
-      "started_by": "mci",
-      "user_host": false
+      "started_by": "mci"
     },
     {
-      "host_id": "host2",
+      "host_id": "running-host-2",
       "user": "mci-exec",
       "distro": {
-          "_id": "osx-108",
-          "aliases": ["os-x-108-64-nossl"],
-          "work_dir": "/data/mci"
+        "_id": "osx-108",
+        "aliases": ["os-x-108-64-nossl"],
+        "work_dir": "/data/mci"
       },
       "zone": "us-east-1e",
       "provisioned": true,
       "status": "running",
-      "started_by": "mci",
-      "user_host": false
+      "started_by": "mci"
     },
     {
-      "host_id": "host3",
+      "host_id": "personal-spawn-host",
       "user": "mci-exec",
       "distro": {
-          "_id": "debian71-test",
-          "work_dir": "/data/mci"
+        "_id": "osx-108",
+        "aliases": ["os-x-108-64-nossl"],
+        "work_dir": "/data/mci"
+      },
+      "zone": "us-east-1e",
+      "provisioned": true,
+      "status": "running",
+      "started_by": "testuser"
+    },
+    {
+      "host_id": "host-is-not-running",
+      "user": "mci-exec",
+      "distro": {
+        "_id": "osx-108",
+        "aliases": ["os-x-108-64-nossl"],
+        "work_dir": "/data/mci",
+        "bootstrap_settings": {
+          "method": "user-data"
+        }
       },
       "zone": "us-east-1e",
       "provisioned": true,
       "status": "provisioning",
-      "started_by": "mci",
-      "user_host": false
+      "started_by": "mci"
+    },
+    {
+      "host_id": "host-is-running-with-user-data",
+      "user": "mci-exec",
+      "distro": {
+        "_id": "debian71-test",
+        "work_dir": "/data/mci",
+        "bootstrap_settings": {
+          "method": "user-data"
+        }
+      },
+      "zone": "us-east-1e",
+      "provisioned": true,
+      "status": "starting",
+      "started_by": "mci"
     }
   ]
 }

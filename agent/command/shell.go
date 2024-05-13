@@ -42,6 +42,9 @@ type shellExec struct {
 	// included in the environment, if they are defined. It is not an error to
 	// specify expansions that are not defined in include_expansions_in_env.
 	IncludeExpansionsInEnv []string `mapstructure:"include_expansions_in_env"`
+	// AddToPath allows additional paths to be prepended to the PATH environment
+	// variable.
+	AddToPath []string `mapstructure:"add_to_path"`
 
 	// Background, if set to true, prevents shell code/output from
 	// waiting for the script to complete and immediately returns
@@ -152,6 +155,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		expansions:             conf.Expansions,
 		includeExpansionsInEnv: c.IncludeExpansionsInEnv,
 		addExpansionsToEnv:     c.AddExpansionsToEnv,
+		addToPath:              c.AddToPath,
 	})
 
 	logger.Execution().Debug(message.Fields{
@@ -260,6 +264,11 @@ func (c *shellExec) doExpansions(exp *util.Expansions) error {
 	for k, v := range c.Env {
 		c.Env[k], err = exp.ExpandString(v)
 		catcher.Wrapf(err, "expanding environment variable '%s'", k)
+	}
+
+	for idx := range c.AddToPath {
+		c.AddToPath[idx], err = exp.ExpandString(c.AddToPath[idx])
+		catcher.Wrapf(err, "expanding element %d to add to path", idx)
 	}
 
 	return catcher.Resolve()

@@ -26,11 +26,13 @@ import (
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
-	patchIntentJobName   = "patch-intent-processor"
-	githubDependabotUser = "dependabot[bot]"
+	patchIntentJobName    = "patch-intent-processor"
+	githubDependabotUser  = "dependabot[bot]"
+	maxPatchIntentJobTime = 10 * time.Minute
 )
 
 func init() {
@@ -64,6 +66,9 @@ func NewPatchIntentProcessor(env evergreen.Environment, patchID mgobson.ObjectId
 	j.env = env
 
 	j.SetID(fmt.Sprintf("%s-%s-%s", patchIntentJobName, j.IntentType, j.IntentID))
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		MaxTime: maxPatchIntentJobTime,
+	})
 	return j
 }
 
@@ -407,7 +412,15 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	patchDoc.ProjectStorageMethod = ppStorageMethod
 
 	if err = patchDoc.Insert(); err != nil {
-		return errors.Wrapf(err, "inserting patch '%s'", patchDoc.Id.Hex())
+		// If this is a duplicate key error, we already inserted the patch
+		// in to the DB but it failed later in the patch intent job (i.e.
+		// context cancelling early from deploy). To reduce stuck patches,
+		// we continue on duplicate key errors. Since the workaround is a new
+		// patch, GH merge queue patches getting stuck do not have an
+		// easy workaround.
+		if !mongo.IsDuplicateKeyError(err) {
+			return errors.Wrapf(err, "inserting patch '%s'", patchDoc.Id.Hex())
+		}
 	}
 
 	if err = ProcessTriggerAliases(ctx, patchDoc, pref, j.env, patchDoc.Triggers.Aliases); err != nil {

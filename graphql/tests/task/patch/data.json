@@ -4,6 +4,7 @@
       "_id": {
         "$oid": "5e4ff3abe3c3317e352062e4"
       },
+      "branch": "spruce",
       "patch_number": 1234,
       "author": "arjun",
       "githash": "ca82a6dff817ec66f44342007202690a93763949"

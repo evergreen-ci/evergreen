@@ -48,7 +48,6 @@ func NewVersionActivationJob(ts string) amboy.Job {
 	j := makeVersionActivationCatchupJob()
 	j.TimeStamp = ts
 	j.SetID(fmt.Sprintf("%s.%s", versionActivationCatchupJobName, ts))
-	j.SetPriority(-1)
 	return j
 }
 

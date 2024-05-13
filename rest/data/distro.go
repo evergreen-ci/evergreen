@@ -33,6 +33,16 @@ func UpdateDistro(ctx context.Context, old, new *distro.Distro) error {
 			}
 		}
 	}
+
+	if !old.Disabled && new.Disabled {
+		if err := model.ClearTaskQueue(new.Id); err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrapf(err, "clearing task queues for distro '%s'", new.Id).Error(),
+			}
+		}
+	}
+
 	if err := new.ReplaceOne(ctx); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

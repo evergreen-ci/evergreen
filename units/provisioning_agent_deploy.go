@@ -54,7 +54,6 @@ func NewAgentDeployJob(env evergreen.Environment, h host.Host, id string) amboy.
 	j.host = &h
 	j.HostID = h.Id
 	j.env = env
-	j.SetPriority(1)
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", agentDeployJobName, j.HostID)})
 	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{

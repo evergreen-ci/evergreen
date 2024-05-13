@@ -175,12 +175,6 @@
                 "ticketCreateIssueType": "Incident"
               },
               "taskAnnotationSettings": {
-                "jiraCustomFields": [
-                  {
-                    "displayText": "display text",
-                    "field": "a field"
-                  }
-                ],
                 "fileTicketWebhook": {
                   "endpoint": "",
                   "secret": ""

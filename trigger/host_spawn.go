@@ -185,6 +185,12 @@ func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Su
 		//   running.
 		return nil, nil
 	}
+	if t.data.Successful && t.data.Source == string(evergreen.ModifySpawnHostSleepSchedule) {
+		// Skip notifying for host modifications due to the sleep schedule they
+		// can be noisy if users regularly receive them.
+		return nil, nil
+	}
+
 	payload, err := t.makePayload(sub)
 	if err != nil {
 		return nil, errors.Wrap(err, "making payload")

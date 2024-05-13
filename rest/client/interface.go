@@ -42,7 +42,6 @@ type Communicator interface {
 	UpdateSettings(context.Context, *restmodel.APIAdminSettings) (*restmodel.APIAdminSettings, error)
 	GetEvents(context.Context, time.Time, int) ([]interface{}, error)
 	RevertSettings(context.Context, string) error
-	ExecuteOnDistro(ctx context.Context, distro string, opts restmodel.APIDistroScriptOptions) (hostIDs []string, err error)
 	GetServiceUsers(ctx context.Context) ([]restmodel.APIDBUser, error)
 	UpdateServiceUser(context.Context, string, string, []string) error
 	DeleteServiceUser(context.Context, string) error

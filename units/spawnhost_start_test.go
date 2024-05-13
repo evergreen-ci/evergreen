@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -137,6 +138,9 @@ func TestSpawnhostStartJob(t *testing.T) {
 
 			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
 			j := NewSpawnhostStartJob(&h, evergreen.ModifySpawnHostManual, "user", ts)
+			// Simulate the job running out of retry attempts, which should
+			// cause an event to be logged.
+			j.UpdateRetryInfo(amboy.JobRetryOptions{CurrentAttempt: utility.ToIntPtr(j.RetryInfo().GetMaxAttempts())})
 
 			j.Run(ctx)
 			assert.Error(t, j.Error())

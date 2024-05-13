@@ -200,7 +200,7 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 		ID:        evergreen.UnrestrictedProjectsScope,
 		Name:      "unrestricted projects",
 		Type:      evergreen.ProjectResourceType,
-		Resources: []string{"mci"},
+		Resources: []string{"mci", "ui"},
 	}
 	err = roleManager.AddScope(unrestrictedProjectScope)
 	require.NoError(t, err)

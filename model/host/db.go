@@ -234,13 +234,23 @@ func runningHostsQuery(distroID string) bson.M {
 	return query
 }
 
-// byRunningStatusQuery produces a query that returns all hosts
-// with the running status that belong to the given distro.
-func byRunningStatusQuery(distroID string) bson.M {
+// hostsCanRunTasksQuery produces a query that returns all hosts
+// that are capable of accepting and running tasks.
+func hostsCanRunTasksQuery(distroID string) bson.M {
 	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return bson.M{
-		distroIDKey: distroID,
-		StatusKey:   evergreen.HostRunning,
+		distroIDKey:  distroID,
+		StartedByKey: evergreen.User,
+		"$or": []bson.M{
+			{
+				StatusKey: evergreen.HostRunning,
+			},
+			{
+				StatusKey:    evergreen.HostStarting,
+				bootstrapKey: distro.BootstrapMethodUserData,
+			},
+		},
 	}
 }
 
@@ -275,9 +285,12 @@ func CountRunningHosts(ctx context.Context, distroID string) (int, error) {
 	return num, errors.Wrap(err, "counting running hosts")
 }
 
-func CountRunningStatusHosts(ctx context.Context, distroID string) (int, error) {
-	num, err := Count(ctx, byRunningStatusQuery(distroID))
-	return num, errors.Wrap(err, "counting running status hosts")
+// CountHostsCanRunTasks returns the number of hosts that can accept
+// and run tasks for a given distro. This number is surfaced on the
+// task queue.
+func CountHostsCanRunTasks(ctx context.Context, distroID string) (int, error) {
+	num, err := Count(ctx, hostsCanRunTasksQuery(distroID))
+	return num, errors.Wrap(err, "counting hosts that can run tasks")
 }
 
 func CountAllRunningDynamicHosts(ctx context.Context) (int, error) {
@@ -1648,6 +1661,30 @@ func FindExceedsSleepScheduleTimeout(ctx context.Context) ([]Host, error) {
 		},
 	}, now)
 	return Find(ctx, q)
+}
+
+// ClearExpiredTemporaryExemptions clears all temporary exemptions from the
+// sleep schedule that have expired.
+func ClearExpiredTemporaryExemptions(ctx context.Context) error {
+	sleepScheduleTemporarilyExemptUntilKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
+
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx, isSleepScheduleApplicable(bson.M{
+		sleepScheduleTemporarilyExemptUntilKey: bson.M{"$lte": time.Now()},
+	}), bson.M{
+		"$unset": bson.M{
+			sleepScheduleTemporarilyExemptUntilKey: 1,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	grip.InfoWhen(res.ModifiedCount > 0, message.Fields{
+		"message":   "cleared expired temporary exemptions from hosts",
+		"num_hosts": res.ModifiedCount,
+	})
+
+	return nil
 }
 
 // SyncPermanentExemptions finds two sets of unexpirable hosts based

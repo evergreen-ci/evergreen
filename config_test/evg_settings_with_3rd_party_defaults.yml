@@ -144,3 +144,7 @@ expansions:
   api_httpscert_path: "/data/api_httpscert_path.pem"
 
 github_pr_creator_org: "10gen"
+
+task_limits:
+  max_hourly_patch_tasks: 100
+

@@ -68,7 +68,6 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('ui')">UI Config</li>
 						<div>Authentication</div>
 						<li class="link" ng-click="scrollTo('auth')">Global Config</li>
-						<li class="link" ng-click="scrollTo('ldap')">LDAP</li>
 						<li class="link" ng-click="scrollTo('okta')">Okta</li>
 						<li class="link" ng-click="scrollTo('naive')">Naive</li>
 						<li class="link" ng-click="scrollTo('github')">Github</li>
@@ -611,6 +610,7 @@ Admin Settings
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
 										<label>Max Tasks per Version</label>
+										<div class="muted small" style="height:25px;">This includes both selected and unselected tasks</div>
 										<input type="number" ng-model="Settings.task_limits.max_tasks_per_version">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
@@ -620,6 +620,10 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>Max Pending Generated Tasks</label>
 										<input type="number" ng-model="Settings.task_limits.max_pending_generated_tasks">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Max Hourly Patch Tasks Per User</label>
+										<input type="number" ng-model="Settings.task_limits.max_hourly_patch_tasks">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Generate Task JSON Limit (MB)</label>
@@ -959,7 +963,6 @@ Admin Settings
 								<md-card-content>
 									<label>Preferred Auth Type</label>
 									<md-radio-group data-ng-model="Settings.auth.preferred_type" layout="row">
-										<md-radio-button value="ldap">LDAP</md-radio-button>
 										<md-radio-button value="okta">Okta</md-radio-button>
 										<md-radio-button value="naive">Naive</md-radio-button>
 										<md-radio-button value="github">Github</md-radio-button>
@@ -982,53 +985,6 @@ Admin Settings
 						</section>
 
 						<section layout="row" flex>
-							<md-card flex=50 id="ldap" style="max-width:49%">
-								<md-card-title>
-									<md-card-title-text>
-										<span>LDAP Authentication</span>
-									</md-card-title-text>
-									<md-button ng-click="clearSection('auth','ldap')">
-										<i class="fa fa-trash"></i>
-									</md-button>
-								</md-card-title>
-								<md-card-content>
-									<md-input-container class="control" style="width:45%;">
-										<label>URL</label>
-										<input type="text" ng-model="Settings.auth.ldap.url">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Port</label>
-										<input type="text" ng-model="Settings.auth.ldap.port">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>User Path</label>
-										<input type="text" ng-model="Settings.auth.ldap.path">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Service Path</label>
-										<input type="text" ng-model="Settings.auth.ldap.service_path">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>User Group</label>
-										<input type="text" ng-model="Settings.auth.ldap.group">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Service Group</label>
-										<input type="text" ng-model="Settings.auth.ldap.service_group">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Expire After Minutes</label>
-										<input type="text" ng-model="Settings.auth.ldap.expire_after_minutes">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Group OU Name</label>
-										<input type="text" ng-model="Settings.auth.ldap.group_ou">
-									</md-input-container>
-									<div><button ng-show="can_clear_tokens" ng-click="clearAllUserTokens()"
-											class="btn btn-primary">Logout Everyone</button></div>
-								</md-card-content>
-							</md-card>
-
 							<md-card flex=50 id="okta" style="max-width:49%">
 								<md-card-title>
 									<md-card-title-text>

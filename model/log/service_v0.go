@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/pail"
 	"github.com/jpillora/longestcommon"
@@ -136,6 +137,9 @@ func (s *logServiceV0) getLogChunks(ctx context.Context, logNames []string) ([]c
 		// Sort each set of chunks by start order for log iterating and
 		// find the first specified log's time range.
 		sort.Slice(chunks, func(i, j int) bool {
+			if chunks[i].start == chunks[j].start {
+				return chunks[i].upload < chunks[j].upload
+			}
 			return chunks[i].start < chunks[j].start
 		})
 		if strings.HasPrefix(name, logNames[0]) {
@@ -167,13 +171,13 @@ func (s *logServiceV0) getLogChunks(ctx context.Context, logNames []string) ([]c
 // The chunk key is encoded with the chunk info metadata to optimize storage
 // and lookup performance.
 func (s *logServiceV0) createChunkKey(start, end int64, numLines int) string {
-	return fmt.Sprintf("%d_%d_%d", start, end, numLines)
+	return fmt.Sprintf("%d_%d_%d_%d", start, end, numLines, time.Now().UnixNano())
 }
 
 // parseChunkKey returns the chunk info encoded in the given key.
 func (s *logServiceV0) parseChunkKey(prefix, key string) (chunkInfo, error) {
 	parsedKey := strings.Split(key, "_")
-	if len(parsedKey) != 3 {
+	if len(parsedKey) != 3 && len(parsedKey) != 4 {
 		return chunkInfo{}, errors.New("invalid key format")
 	}
 
@@ -189,12 +193,20 @@ func (s *logServiceV0) parseChunkKey(prefix, key string) (chunkInfo, error) {
 	if err != nil {
 		return chunkInfo{}, errors.Wrap(err, "parsing num lines")
 	}
+	var upload int64
+	if len(parsedKey) == 4 {
+		upload, err = strconv.ParseInt(parsedKey[3], 10, 64)
+		if err != nil {
+			return chunkInfo{}, errors.Wrap(err, "parsing upload time")
+		}
+	}
 
 	return chunkInfo{
 		key:      prefix + "/" + key,
-		numLines: numLines,
 		start:    start,
 		end:      end,
+		numLines: numLines,
+		upload:   upload,
 	}, nil
 }
 

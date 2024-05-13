@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -20,11 +21,14 @@ type spawnHostTriggersSuite struct {
 	h             host.Host
 	tProvisioning *spawnHostProvisioningTriggers
 	tStateChange  *spawnHostStateChangeTriggers
+	ctx           context.Context
+	cancel        context.CancelFunc
 
 	suite.Suite
 }
 
 func (s *spawnHostTriggersSuite) SetupTest() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.Require().NoError(db.ClearCollections(host.Collection))
 	s.h = host.Host{
 		Id:          "t0",
@@ -49,13 +53,14 @@ func (s *spawnHostTriggersSuite) SetupTest() {
 	})
 }
 
-func (s *spawnHostTriggersSuite) TestSuccessfulSpawn() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func (s *spawnHostTriggersSuite) TearDownTest() {
+	s.cancel()
+}
 
+func (s *spawnHostTriggersSuite) TestSuccessfulSpawn() {
 	s.e.EventType = event.EventHostProvisioned
-	s.NoError(s.h.Insert(ctx))
-	s.NoError(s.tProvisioning.Fetch(ctx, &s.e))
+	s.NoError(s.h.Insert(s.ctx))
+	s.NoError(s.tProvisioning.Fetch(s.ctx, &s.e))
 
 	sub := event.Subscription{
 		Trigger:    event.TriggerOutcome,
@@ -97,13 +102,10 @@ func (s *spawnHostTriggersSuite) TestSuccessfulSpawn() {
 }
 
 func (s *spawnHostTriggersSuite) TestFailedSpawn() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	s.e.EventType = event.EventHostProvisioned
-	s.NoError(s.h.Insert(ctx))
+	s.NoError(s.h.Insert(s.ctx))
 	s.e.EventType = event.EventHostProvisionError
-	s.NoError(s.tProvisioning.Fetch(ctx, &s.e))
+	s.NoError(s.tProvisioning.Fetch(s.ctx, &s.e))
 
 	sub := event.Subscription{
 		Trigger:    event.TriggerOutcome,
@@ -145,12 +147,9 @@ func (s *spawnHostTriggersSuite) TestFailedSpawn() {
 }
 
 func (s *spawnHostTriggersSuite) TestSpawnHostStateChange() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	s.e.EventType = event.EventHostStarted
-	s.NoError(s.h.Insert(ctx))
-	s.NoError(s.tStateChange.Fetch(ctx, &s.e))
+	s.NoError(s.h.Insert(s.ctx))
+	s.NoError(s.tStateChange.Fetch(s.ctx, &s.e))
 
 	sub := event.Subscription{
 		Trigger:    event.TriggerOutcome,
@@ -185,4 +184,52 @@ func (s *spawnHostTriggersSuite) TestSpawnHostStateChange() {
 	n, err = s.tStateChange.Process(&sub)
 	s.Nil(n)
 	s.Error(err)
+}
+
+func (s *spawnHostTriggersSuite) TestSpawnHostSuccessfulStopForSleepScheduleDoesNotCreateNotification() {
+	s.e.EventType = event.EventHostStarted
+	data, ok := s.e.Data.(*event.HostEventData)
+	s.Require().True(ok)
+	data.Successful = true
+	data.Source = string(evergreen.ModifySpawnHostSleepSchedule)
+	s.NoError(s.h.Insert(s.ctx))
+	s.NoError(s.tStateChange.Fetch(s.ctx, &s.e))
+
+	sub := event.Subscription{
+		Trigger:    event.TriggerOutcome,
+		Subscriber: event.NewSlackSubscriber("@test.user"),
+	}
+
+	n, err := s.tStateChange.Process(&sub)
+	s.Nil(n)
+	s.NoError(err, "should suppress notification for successfully stopping spawn host")
+
+	sub.Subscriber = event.NewEmailSubscriber("example@domain.invalid")
+	n, err = s.tStateChange.Process(&sub)
+	s.Nil(n, "should suppress notification for successfully stopping spawn host")
+	s.NoError(err)
+}
+
+func (s *spawnHostTriggersSuite) TestSpawnHostUnsuccessfulStopForSleepScheduleCreatesNotification() {
+	s.e.EventType = event.EventHostStopped
+	data, ok := s.e.Data.(*event.HostEventData)
+	s.Require().True(ok)
+	data.Successful = false
+	data.Source = string(evergreen.ModifySpawnHostSleepSchedule)
+	s.NoError(s.h.Insert(s.ctx))
+	s.NoError(s.tStateChange.Fetch(s.ctx, &s.e))
+
+	sub := event.Subscription{
+		Trigger:    event.TriggerOutcome,
+		Subscriber: event.NewSlackSubscriber("@test.user"),
+	}
+
+	n, err := s.tStateChange.Process(&sub)
+	s.NotNil(n, "should create notification for error trying to stop spawn host")
+	s.NoError(err)
+
+	sub.Subscriber = event.NewEmailSubscriber("example@domain.invalid")
+	n, err = s.tStateChange.Process(&sub)
+	s.NotNil(n, "should create notification for error trying to stop spawn host")
+	s.NoError(err)
 }
