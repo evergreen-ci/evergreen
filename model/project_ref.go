@@ -2293,14 +2293,15 @@ func getCronParserSchedule(cronStr string) (cron.Schedule, error) {
 	return sched, nil
 }
 
-func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Time, error) {
-	defaultRes := time.Now()
+// GetActivationTimeForVariant returns the time at which this variant should next be activated.
+// Accepts a default time to ensure consistency across variants.
+func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, defaultTime time.Time) (time.Time, error) {
 	// if we don't want to activate the build, set batchtime to the zero time
 	if !utility.FromBoolTPtr(variant.Activate) {
 		return utility.ZeroTime, nil
 	}
 	if variant.CronBatchTime != "" {
-		return GetNextCronTime(time.Now(), variant.CronBatchTime)
+		return GetNextCronTime(defaultTime, variant.CronBatchTime)
 	}
 	// if activated explicitly set to true and we don't have batchtime, then we want to just activate now
 	if utility.FromBoolPtr(variant.Activate) && variant.BatchTime == nil {
@@ -2313,7 +2314,7 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Ti
 	}
 
 	if lastActivated == nil {
-		return defaultRes, nil
+		return defaultTime, nil
 	}
 
 	// find matching activated build variant
@@ -2326,19 +2327,18 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Ti
 		}
 	}
 
-	return defaultRes, nil
+	return defaultTime, nil
 }
 
 // GetActivationTimeForTask returns the time at which this task should next be activated.
-// Temporarily takes in the task ID that prompted this query, for logging.
-func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Time, error) {
-	defaultRes := time.Now()
+// Accepts a default time to ensure consistency across tasks.
+func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, defaultTime time.Time) (time.Time, error) {
 	// if we don't want to activate the task, set batchtime to the zero time
 	if !utility.FromBoolTPtr(t.Activate) || t.IsDisabled() {
 		return utility.ZeroTime, nil
 	}
 	if t.CronBatchTime != "" {
-		return GetNextCronTime(time.Now(), t.CronBatchTime)
+		return GetNextCronTime(defaultTime, t.CronBatchTime)
 	}
 	// If activated explicitly set to true and we don't have batchtime, then we want to just activate now
 	if utility.FromBoolPtr(t.Activate) && t.BatchTime == nil {
@@ -2347,10 +2347,10 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Tim
 
 	lastActivated, err := VersionFindOne(VersionByLastTaskActivation(p.Id, t.Variant, t.Name).WithFields(VersionBuildVariantsKey))
 	if err != nil {
-		return defaultRes, errors.Wrap(err, "finding version")
+		return defaultTime, errors.Wrap(err, "finding version")
 	}
 	if lastActivated == nil {
-		return defaultRes, nil
+		return defaultTime, nil
 	}
 
 	for _, buildStatus := range lastActivated.BuildVariants {
@@ -2365,7 +2365,7 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Tim
 			return taskStatus.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTimeForTask(t))), nil
 		}
 	}
-	return defaultRes, nil
+	return defaultTime, nil
 }
 
 // GetGithubProjectConflicts returns any potential conflicts; i.e. regardless of whether or not
