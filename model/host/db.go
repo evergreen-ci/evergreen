@@ -1669,6 +1669,7 @@ func ClearExpiredTemporaryExemptions(ctx context.Context) error {
 	sleepScheduleTemporarilyExemptUntilKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
 
 	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx, isSleepScheduleApplicable(bson.M{
+		StatusKey:                              bson.M{"$in": evergreen.SleepScheduleStatuses},
 		sleepScheduleTemporarilyExemptUntilKey: bson.M{"$lte": time.Now()},
 	}), bson.M{
 		"$unset": bson.M{
