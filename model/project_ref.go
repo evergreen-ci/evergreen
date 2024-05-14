@@ -2806,7 +2806,10 @@ func (p *ProjectRef) CommitQueueIsOn() error {
 func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
-		return nil, errors.Wrap(err, "finding task")
+		return nil, errors.Wrapf(err, "finding task '%s'", taskId)
+	}
+	if t == nil {
+		return nil, errors.Errorf("task '%s' not found", taskId)
 	}
 	pRef, err := FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
