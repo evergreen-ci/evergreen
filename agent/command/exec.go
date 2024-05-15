@@ -25,11 +25,11 @@ import (
 )
 
 type subprocessExec struct {
-	Binary  string            `mapstructure:"binary"`
-	Args    []string          `mapstructure:"args"`
-	Env     map[string]string `mapstructure:"env"`
-	Command string            `mapstructure:"command"`
-	Path    []string          `mapstructure:"add_to_path"`
+	Binary    string            `mapstructure:"binary"`
+	Args      []string          `mapstructure:"args"`
+	Env       map[string]string `mapstructure:"env"`
+	Command   string            `mapstructure:"command"`
+	AddToPath []string          `mapstructure:"add_to_path"`
 
 	// Add defined expansions to the environment of the process
 	// that's launched.
@@ -144,8 +144,8 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 		catcher.Wrap(err, "expanding environment variables")
 	}
 
-	for idx := range c.Path {
-		c.Path[idx], err = exp.ExpandString(c.Path[idx])
+	for idx := range c.AddToPath {
+		c.AddToPath[idx], err = exp.ExpandString(c.AddToPath[idx])
 		catcher.Wrap(err, "expanding path to add")
 	}
 
@@ -357,7 +357,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		expansions:             conf.Expansions,
 		includeExpansionsInEnv: c.IncludeExpansionsInEnv,
 		addExpansionsToEnv:     c.AddExpansionsToEnv,
-		addToPath:              c.Path,
+		addToPath:              c.AddToPath,
 	})
 
 	if !c.KeepEmptyArgs {

@@ -1,0 +1,5 @@
+{
+  version(versionId: "no_permissions") {
+    id
+  }
+}

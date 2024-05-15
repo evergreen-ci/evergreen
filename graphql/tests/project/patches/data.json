@@ -1,85 +1,23 @@
 {
-  "repo_ref": [
-    {
-      "_id": "animals",
-      "identifier": "animals",
-      "display_name": "animals_display"
-    }
-  ],
   "project_ref": [
     {
+      "_id": "spruce",
+      "identifier": "spruce",
+      "owner_name": "evergreen-ci",
+      "repo_name": "spruce",
+      "enabled": true
+    },
+    {
       "_id": "evergreen",
       "identifier": "evergreen",
       "owner_name": "evergreen-ci",
       "repo_name": "evergreen",
-      "enabled": true,
-      "repoRefId": "something"
-    },
-    {
-      "_id": "evergreen_2",
-      "identifier": "evergreen",
-      "owner_name": "evergreen-ci",
-      "repo_name": "evergreen",
-      "enabled": true,
-      "repoRefId": "something"
-    },
-    {
-      "_id": "logkeeper",
-      "identifier": "keeperOfLogs"
-    },
-    {
-      "_id": "grumpyCat",
-      "identifier": "catVideos",
-      "display_name": "",
-      "private": true,
-      "owner_name": "theCat",
-      "repo_name": "catGenerator",
-      "branch_name": "main",
-      "remote_path": "",
-      "batch_time": 0,
-      "triggers": null,
-      "patch_trigger_aliases": null,
-      "github_trigger_aliases": null,
-      "periodic_builds": null,
-      "commit_queue": {
-        "enabled": null,
-        "merge_method": ""
-      },
-      "admins": null,
-      "repo_ref_id": "animals"
-    },
-    {
-      "_id": "happyAbyssinian",
-      "identifier": "abyssinianVideos",
-      "display_name": "",
-      "private": true,
-      "owner_name": "theCat",
-      "repo_name": "catGenerator",
-      "branch_name": "main",
-      "remote_path": "",
-      "batch_time": 0,
-      "triggers": null,
-      "patch_trigger_aliases": null,
-      "github_trigger_aliases": null,
-      "periodic_builds": null,
-      "commit_queue": {
-        "enabled": null,
-        "merge_method": ""
-      },
-      "admins": null,
-      "repo_ref_id": "animals"
-    }
-  ],
-  "project_vars": [
-    {
-      "_id": "evergreen",
-      "vars": {"hello": "world", "foo":  "bar"},
-      "private_vars": {"hello":  true, "foo":  false}
+      "enabled": true
     }
   ],
   "patches": [
     {
-      "branch": "evergreen",
+      "branch": "spruce",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e4" },
       "author": "testuser",
       "create_time": { "$date": "2020-01-01T00:00:01Z" },
@@ -88,7 +26,7 @@
       "alias": "__commit_queue"
     },
     {
-      "branch": "evergreen",
+      "branch": "spruce",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e5" },
       "author": "testuser",
       "create_time": { "$date": "2020-01-01T00:00:02Z" },
@@ -97,7 +35,7 @@
       "alias": "__commit_queue"
     },
     {
-      "branch": "evergreen",
+      "branch": "spruce",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e6" },
       "author": "testuser",
       "create_time": { "$date": "2020-01-01T00:00:03Z" },
@@ -106,7 +44,7 @@
       "alias": "__commit_queue"
     },
     {
-      "branch": "evergreen",
+      "branch": "spruce",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e7" },
       "author": "testuser",
       "create_time": { "$date": "2020-01-01T00:00:04Z" },
@@ -115,7 +53,7 @@
       "alias": "__github"
     },
     {
-      "branch": "evergreen",
+      "branch": "spruce",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e8" },
       "author": "testuser",
       "create_time": { "$date": "2020-01-01T00:00:05Z" },
@@ -124,17 +62,9 @@
       "alias": "__github"
     },
     {
-      "branch": "evergreen",
+      "branch": "spruce",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e9" },
       "author": "testuser",
-      "create_time": { "$date": "2019-01-01T00:00:06Z" },
-      "desc": "222",
-      "status": "failed",
-      "alias": "__github"
-    },
-    {
-      "_id": { "$oid": "6e4ff3abe3c3317e352062e9" },
-      "author": "user1",
       "create_time": { "$date": "2019-01-01T00:00:06Z" },
       "desc": "222",
       "status": "failed",

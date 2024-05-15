@@ -483,6 +483,12 @@ type UpdateParsleySettingsPayload struct {
 	ParsleySettings *model.APIParsleySettings `json:"parsleySettings,omitempty"`
 }
 
+type UpdateSpawnHostStatusInput struct {
+	Action        SpawnHostStatusActions `json:"action"`
+	HostID        string                 `json:"hostId"`
+	ShouldKeepOff *bool                  `json:"shouldKeepOff,omitempty"`
+}
+
 // UpdateVolumeInput is the input to the updateVolume mutation.
 // Its fields determine how a given volume will be modified.
 type UpdateVolumeInput struct {

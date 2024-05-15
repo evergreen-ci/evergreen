@@ -170,6 +170,125 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.Len(t, mergedProject.ParsleyFilters, 1)
 }
 
+func TestFindMergedEnabledProjectRefsByIds(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ParserProjectCollection, ProjectConfigCollection))
+
+	projectConfig := &ProjectConfig{
+		Id: "ident",
+		ProjectConfigFields: ProjectConfigFields{
+			TaskAnnotationSettings: &evergreen.AnnotationsSettings{
+				FileTicketWebhook: evergreen.WebHook{
+					Endpoint: "random2",
+				},
+			},
+		},
+	}
+	assert.NoError(t, projectConfig.Insert())
+
+	projectConfig = &ProjectConfig{
+		Id: "ident2",
+		ProjectConfigFields: ProjectConfigFields{
+			TaskAnnotationSettings: &evergreen.AnnotationsSettings{
+				FileTicketWebhook: evergreen.WebHook{
+					Endpoint: "random2",
+				},
+			},
+		},
+	}
+	assert.NoError(t, projectConfig.Insert())
+	projectRef := &ProjectRef{
+		Owner:                 "mongodb",
+		RepoRefId:             "mongodb_mci",
+		BatchTime:             10,
+		Id:                    "ident",
+		Admins:                []string{"john.smith", "john.doe"},
+		Enabled:               false,
+		PatchingDisabled:      utility.FalsePtr(),
+		RepotrackerDisabled:   utility.TruePtr(),
+		DeactivatePrevious:    utility.TruePtr(),
+		VersionControlEnabled: utility.TruePtr(),
+		PRTestingEnabled:      nil,
+		GitTagVersionsEnabled: nil,
+		GitTagAuthorizedTeams: []string{},
+		PatchTriggerAliases: []patch.PatchTriggerDefinition{
+			{ChildProject: "a different branch"},
+		},
+		CommitQueue:       CommitQueueParams{Enabled: nil, Message: "using repo commit queue"},
+		WorkstationConfig: WorkstationConfig{GitClone: utility.TruePtr()},
+		TaskSync:          TaskSyncOptions{ConfigEnabled: utility.FalsePtr()},
+		ParsleyFilters: []parsley.Filter{
+			{
+				Expression:    "project-filter",
+				CaseSensitive: true,
+				ExactMatch:    false,
+			},
+		},
+	}
+	assert.NoError(t, projectRef.Insert())
+
+	projectRef = &ProjectRef{
+		Owner:                 "mongodb",
+		RepoRefId:             "mongodb_mci",
+		BatchTime:             10,
+		Id:                    "ident_enabled",
+		Admins:                []string{"john.smith", "john.doe"},
+		Enabled:               true,
+		PatchingDisabled:      utility.FalsePtr(),
+		RepotrackerDisabled:   utility.TruePtr(),
+		DeactivatePrevious:    utility.TruePtr(),
+		VersionControlEnabled: utility.TruePtr(),
+		PRTestingEnabled:      nil,
+		GitTagVersionsEnabled: nil,
+		GitTagAuthorizedTeams: []string{},
+		PatchTriggerAliases: []patch.PatchTriggerDefinition{
+			{ChildProject: "a different branch"},
+		},
+		CommitQueue:       CommitQueueParams{Enabled: nil, Message: "using repo commit queue"},
+		WorkstationConfig: WorkstationConfig{GitClone: utility.TruePtr()},
+		TaskSync:          TaskSyncOptions{ConfigEnabled: utility.FalsePtr()},
+		ParsleyFilters: []parsley.Filter{
+			{
+				Expression:    "project-filter",
+				CaseSensitive: true,
+				ExactMatch:    false,
+			},
+		},
+	}
+	assert.NoError(t, projectRef.Insert())
+
+	repoRef := &RepoRef{ProjectRef{
+		Id:                    "mongodb_mci",
+		Repo:                  "mci",
+		Branch:                "main",
+		SpawnHostScriptPath:   "my-path",
+		Admins:                []string{"john.liu"},
+		PatchingDisabled:      nil,
+		GitTagVersionsEnabled: utility.FalsePtr(),
+		PRTestingEnabled:      utility.TruePtr(),
+		GitTagAuthorizedTeams: []string{"my team"},
+		GitTagAuthorizedUsers: []string{"my user"},
+		PatchTriggerAliases: []patch.PatchTriggerDefinition{
+			{Alias: "global patch trigger"},
+		},
+		TaskSync:          TaskSyncOptions{ConfigEnabled: utility.TruePtr(), PatchEnabled: utility.TruePtr()},
+		CommitQueue:       CommitQueueParams{Enabled: utility.TruePtr()},
+		WorkstationConfig: WorkstationConfig{SetupCommands: []WorkstationSetupCommand{{Command: "my-command"}}},
+		ParsleyFilters: []parsley.Filter{
+			{
+				Expression:    "repo-filter",
+				CaseSensitive: false,
+				ExactMatch:    true,
+			},
+		},
+	}}
+	assert.NoError(t, repoRef.Upsert())
+
+	mergedProjects, err := FindMergedEnabledProjectRefsByIds("ident", "ident_enabled")
+	assert.NoError(t, err)
+	require.NotNil(t, mergedProjects)
+	assert.Len(t, mergedProjects, 1)
+	assert.Equal(t, "ident_enabled", mergedProjects[0].Id)
+}
 func TestGetNumberOfEnabledProjects(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 
@@ -1948,7 +2067,8 @@ func TestFindProjectRefIdsWithCommitQueueEnabled(t *testing.T) {
 	repoRef := RepoRef{ProjectRef{
 		Id: "my_repo",
 		CommitQueue: CommitQueueParams{
-			Enabled: utility.TruePtr(),
+			Enabled:    utility.TruePtr(),
+			MergeQueue: MergeQueueEvergreen,
 		},
 	}}
 	assert.NoError(repoRef.Upsert())
@@ -1961,13 +2081,15 @@ func TestFindProjectRefIdsWithCommitQueueEnabled(t *testing.T) {
 		Id:         "mci1",
 		RepoRefId:  repoRef.Id,
 		CommitQueue: CommitQueueParams{
-			Enabled: utility.TruePtr(),
+			Enabled:    utility.TruePtr(),
+			MergeQueue: MergeQueueEvergreen,
 		},
 	}
 	require.NoError(doc.Insert())
 
 	doc.Branch = "fix"
 	doc.Id = "mci2"
+	doc.CommitQueue.MergeQueue = "" // legacy behavior is unpopulated
 	require.NoError(doc.Insert())
 
 	doc.Identifier = "grip"
@@ -1976,12 +2098,21 @@ func TestFindProjectRefIdsWithCommitQueueEnabled(t *testing.T) {
 	doc.CommitQueue.Enabled = utility.FalsePtr()
 	require.NoError(doc.Insert())
 
+	doc.Identifier = "merge"
+	doc.Repo = "merge"
+	doc.Id = "mci4"
+	doc.CommitQueue.Enabled = utility.TruePtr()
+	doc.CommitQueue.MergeQueue = MergeQueueGitHub
+	require.NoError(doc.Insert())
+
+	// Should find two projects, both enabled at the branch level.
 	res, err = FindProjectRefIdsWithCommitQueueEnabled()
 	assert.NoError(err)
 	require.Len(res, 2)
 	assert.Equal("mci1", res[0])
 	assert.Equal("mci2", res[1])
 
+	// Should find three projects, because this new project defaults to repo.
 	doc.Id = "commit_queue_setting_from_repo"
 	doc.CommitQueue.Enabled = nil
 	assert.NoError(doc.Insert())
@@ -1989,6 +2120,7 @@ func TestFindProjectRefIdsWithCommitQueueEnabled(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(res, 3)
 
+	// Should find two projects again now that the repo isn't enabled.
 	repoRef.CommitQueue.Enabled = utility.FalsePtr()
 	assert.NoError(repoRef.Upsert())
 	res, err = FindProjectRefIdsWithCommitQueueEnabled()

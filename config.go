@@ -34,11 +34,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2024-04-19"
+	ClientVersion = "2024-05-13"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2024-04-19"
+	AgentVersion = "2024-05-09"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -85,7 +85,6 @@ type Settings struct {
 	Jira                JiraConfig              `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
 	JIRANotifications   JIRANotificationsConfig `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
 	KanopySSHKeyPath    string                  `yaml:"kanopy_ssh_key_path" bson:"kanopy_ssh_key_path" json:"kanopy_ssh_key_path"`
-	LDAPRoleMap         LDAPRoleMap             `yaml:"ldap_role_map" bson:"ldap_role_map" json:"ldap_role_map"`
 	LoggerConfig        LoggerConfig            `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
 	LogPath             string                  `yaml:"log_path" bson:"log_path" json:"log_path"`
 	NewRelic            NewRelicConfig          `yaml:"newrelic" bson:"newrelic" json:"newrelic" id:"newrelic"`
@@ -152,7 +151,6 @@ func (c *Settings) Set(ctx context.Context) error {
 			githubOrgsKey:         c.GithubOrgs,
 			disabledGQLQueriesKey: c.DisabledGQLQueries,
 			kanopySSHKeyPathKey:   c.KanopySSHKeyPath,
-			ldapRoleMapKey:        c.LDAPRoleMap,
 			logPathKey:            c.LogPath,
 			pprofPortKey:          c.PprofPort,
 			pluginsKey:            c.Plugins,
@@ -201,15 +199,6 @@ func (c *Settings) ValidateAndDefault() error {
 			}
 		}
 	}
-
-	keys := map[string]bool{}
-	for _, mapping := range c.LDAPRoleMap {
-		if keys[mapping.LDAPGroup] {
-			catcher.Errorf("duplicate LDAP group value %s found in LDAP-role mappings", mapping.LDAPGroup)
-		}
-		keys[mapping.LDAPGroup] = true
-	}
-
 	if len(c.SSHKeyPairs) != 0 && c.SSHKeyDirectory == "" {
 		catcher.New("cannot use SSH key pairs without setting a directory for them")
 	}
@@ -506,7 +495,7 @@ func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender,
 	}
 
 	// the slack logging service is only for logging very high level alerts.
-	if s.Slack.Token != "" {
+	if s.Slack.Token != "" && level.FromString(s.Slack.Level).IsValid() {
 		sender, err = send.NewSlackLogger(s.Slack.Options, s.Slack.Token,
 			send.LevelInfo{Default: level.Critical, Threshold: level.FromString(s.Slack.Level)})
 		if err == nil {
@@ -707,6 +696,9 @@ type DBSettings struct {
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 	ReadConcernSettings  ReadConcern  `yaml:"read_concern"`
 	AWSAuthEnabled       bool         `yaml:"aws_auth_enabled"`
+	// TODO (DEVPROD-6951): remove static auth once IRSA auth is reliable again.
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
 }
 
 // supported banner themes in Evergreen

@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/tarjan"
@@ -1388,45 +1389,14 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	return nil
 }
 
-// findMidwayTask gets the task between two task given that they are
-// from the same project, requester, build variant, and display name. The
-// order of the ID's does not matter and if the task passed cannot have a
-// middle (i.e. it is sequential tasks or the same task) it will return the
-// the first task given.
-func findMidwayTask(t1, t2 Task) (*Task, error) {
-	// The tasks should be the same build variant, display name, project, and requester.
-	catcher := grip.NewBasicCatcher() // Makes an error accumulator
-	catcher.ErrorfWhen(t1.BuildVariant != t2.BuildVariant, "given tasks have differing build variants '%s' and '%s'", t1.BuildVariant, t2.BuildVariant)
-	catcher.ErrorfWhen(t1.DisplayName != t2.DisplayName, "given tasks have differing display name '%s' and '%s'", t1.DisplayName, t2.DisplayName)
-	catcher.ErrorfWhen(t1.Project != t2.Project, "given tasks have differing project '%s' and '%s'", t1.Project, t2.Project)
-	catcher.ErrorfWhen(t1.Requester != t2.Requester, "given tasks have differing requester '%s' and '%s'", t1.Requester, t2.Requester)
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
-	}
-	// If the tasks are sequential or the same order number, return the
-	// lowest revision order number task (this keeps behavior consistent,
-	// since the mid value below is always truncated and leans towards the
-	// lower revision order number).
-	d := t1.RevisionOrderNumber - t2.RevisionOrderNumber
-	if d == -1 || d == 0 || d == 1 {
-		if t1.RevisionOrderNumber < t2.RevisionOrderNumber {
-			return &t1, nil
-		}
-		return &t2, nil
-	}
-
-	mid := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2
-	return FindOne(db.Query(ByRevisionOrderNumber(t1.BuildVariant, t1.DisplayName, t1.Project, t1.Requester, mid)))
-}
-
-// FindMidwayTaskFromIds gets the task between two tasks given that they are
-// from the same project, requester, build variant, and display name. If the tasks
-// passed cannot have a middle (i.e. it is sequential tasks or the same task)
-// it will return the first task given.
-func FindMidwayTaskFromIds(t1Id, t2Id string) (*Task, error) {
-	if t1Id == "" || t2Id == "" {
-		return nil, nil
-	}
+// ByBeforeMidwayTaskFromIds tries to get the midway task between two tasks
+// but if it does not find it (i.e. periodic builds), it gets the closest task
+// (with lower order number). If there are no matching tasks, or the task it
+// gets is out of bounds, it returns the given lower order revision task.
+//
+// It verifies that the tasks are from the same project, requester,
+// build variant, and display name.
+func ByBeforeMidwayTaskFromIds(t1Id, t2Id string) (*Task, error) {
 	t1, err := FindOneId(t1Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task id '%s'", t1Id)
@@ -1436,12 +1406,57 @@ func FindMidwayTaskFromIds(t1Id, t2Id string) (*Task, error) {
 	}
 	t2, err := FindOneId(t2Id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding task id %s", t2Id)
+		return nil, errors.Wrapf(err, "finding task id '%s'", t2Id)
 	}
 	if t2 == nil {
 		return nil, errors.Errorf("could not find task id '%s'", t2Id)
 	}
-	return findMidwayTask(*t1, *t2)
+
+	// The tasks should be the same build variant, display name, project, and requester.
+	catcher := grip.NewBasicCatcher() // Makes an error accumulator
+	catcher.ErrorfWhen(t1.BuildVariant != t2.BuildVariant, "given tasks have differing build variants '%s' and '%s'", t1.BuildVariant, t2.BuildVariant)
+	catcher.ErrorfWhen(t1.DisplayName != t2.DisplayName, "given tasks have differing display name '%s' and '%s'", t1.DisplayName, t2.DisplayName)
+	catcher.ErrorfWhen(t1.Project != t2.Project, "given tasks have differing project '%s' and '%s'", t1.Project, t2.Project)
+	catcher.ErrorfWhen(t1.Requester != t2.Requester, "given tasks have differing requester '%s' and '%s'", t1.Requester, t2.Requester)
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+
+	middleOrderNumber := (t1.RevisionOrderNumber + t2.RevisionOrderNumber) / 2
+	filter, sort := ByBeforeRevision(middleOrderNumber+1, t1.BuildVariant, t1.DisplayName, t1.Project, t1.Requester)
+	query := db.Query(filter).Sort(sort)
+
+	task, err := FindOne(query)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding task between '%s' and '%s'", t1Id, t2Id)
+	}
+	if task == nil {
+		return nil, errors.Errorf("could not find task between '%s' and '%s'", t1Id, t2Id)
+	}
+
+	lowerBoundTask := t1
+	upperBoundTask := t2
+	// If t1 is after t2, t1 is our upper bound and t2 is our lower bound.
+	if t1.RevisionOrderNumber > t2.RevisionOrderNumber {
+		upperBoundTask = t1
+		lowerBoundTask = t2
+	}
+	if task.RevisionOrderNumber >= upperBoundTask.RevisionOrderNumber ||
+		task.RevisionOrderNumber <= lowerBoundTask.RevisionOrderNumber {
+		grip.Info(message.Fields{
+			"message":                 "found midway task is out of bounds",
+			"t1_id":                   t1Id,
+			"t1_order_number":         t1.RevisionOrderNumber,
+			"t2_id":                   t2Id,
+			"t2_order_number":         t2.RevisionOrderNumber,
+			"found_task":              task.Id,
+			"found_task_order_number": task.RevisionOrderNumber,
+		})
+		// We return the lower bound task if the found task is out of bounds.
+		return lowerBoundTask, nil
+	}
+
+	return task, nil
 }
 
 // UnscheduleStaleUnderwaterHostTasks Removes host tasks older than the unscheduable threshold (e.g. one week) from
@@ -1484,7 +1499,7 @@ func DeactivateStepbackTask(projectId, buildVariantName, taskName, caller string
 		return errors.Errorf("no stepback task '%s' for variant '%s' found", taskName, buildVariantName)
 	}
 
-	if err = t.DeactivateTask(caller); err != nil {
+	if err = DeactivateTasks([]Task{*t}, true, caller); err != nil {
 		return errors.Wrap(err, "deactivating stepback task")
 	}
 	if t.IsAbortable() {
@@ -1817,18 +1832,11 @@ func (t *Task) HasResults() bool {
 	return t.ResultsService != "" || t.HasCedarResults
 }
 
-// ActivateTask will set the ActivatedBy field to the caller and set the active state to be true.
-// Also activates dependencies of the task.
-func (t *Task) ActivateTask(caller string) error {
-	t.ActivatedBy = caller
-	t.Activated = true
-	t.ActivatedTime = time.Now()
-
-	return ActivateTasks([]Task{*t}, t.ActivatedTime, true, caller)
-}
-
 // ActivateTasks sets all given tasks to active, logs them as activated, and proceeds to activate any dependencies that were deactivated.
 func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bool, caller string) error {
+	if len(tasks) == 0 {
+		return nil
+	}
 	tasksToActivate := make([]Task, 0, len(tasks))
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
@@ -1839,7 +1847,16 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 		tasksToActivate = append(tasksToActivate, t)
 		taskIDs = append(taskIDs, t.Id)
 	}
-	err := activateTasks(taskIDs, caller, activationTime)
+	depTasksToUpdate, depTaskIDsToUpdate, err := getDependencyTaskIdsToActivate(taskIDs, updateDependencies)
+	if err != nil {
+		return errors.Wrap(err, "getting dependency tasks to activate")
+	}
+	// Tasks passed into this function will all be from the same version or build, so we can assume
+	// all tasks also share the same requester field.
+	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, len(taskIDs)+len(depTaskIDsToUpdate), true); err != nil {
+		return err
+	}
+	err = activateTasks(taskIDs, caller, activationTime)
 	if err != nil {
 		return errors.Wrap(err, "activating tasks")
 	}
@@ -1853,8 +1870,29 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 		"caller":   caller,
 	}))
 
-	if updateDependencies {
-		return ActivateDeactivatedDependencies(taskIDs, caller)
+	if len(depTaskIDsToUpdate) > 0 {
+		return activateDeactivatedDependencies(depTasksToUpdate, depTaskIDsToUpdate, caller)
+	}
+	return nil
+}
+
+// UpdateSchedulingLimit retrieves a user from the DB and updates their hourly scheduling limit info
+// if they are not a service user.
+func UpdateSchedulingLimit(username, requester string, numTasksModified int, activated bool) error {
+	if evergreen.IsSystemActivator(username) || !evergreen.IsPatchRequester(requester) {
+		return nil
+	}
+	s := evergreen.GetEnvironment().Settings()
+	maxScheduledTasks := s.TaskLimits.MaxHourlyPatchTasks
+	if maxScheduledTasks == 0 {
+		return nil
+	}
+	u, err := user.FindOneById(username)
+	if err != nil {
+		return errors.Wrap(err, "getting user")
+	}
+	if u != nil && !u.OnlyAPI {
+		return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, numTasksModified, activated), "checking task scheduling limit for user '%s'", u.Id)
 	}
 	return nil
 }
@@ -1881,9 +1919,10 @@ func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
 	return nil
 }
 
-// ActivateDeactivatedDependencies activates tasks that depend on these tasks which were deactivated because a task
-// they depended on was deactivated. Only activate when all their dependencies are activated or are being activated
-func ActivateDeactivatedDependencies(tasks []string, caller string) error {
+func getDependencyTaskIdsToActivate(tasks []string, updateDependencies bool) (map[string]Task, []string, error) {
+	if !updateDependencies {
+		return nil, nil, nil
+	}
 	taskMap := make(map[string]bool)
 	for _, t := range tasks {
 		taskMap[t] = true
@@ -1891,14 +1930,14 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 
 	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
 	if err != nil {
-		return errors.Wrap(err, "getting recursive dependencies down")
+		return nil, nil, errors.Wrap(err, "getting recursive dependencies down")
 	}
 
 	// do a topological sort so we've dealt with
 	// all a task's dependencies by the time we get up to it
 	sortedDependencies, err := topologicalSort(tasksDependingOnTheseTasks)
 	if err != nil {
-		return errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
 
 	// get dependencies we don't have yet and add them to a map
@@ -1923,7 +1962,7 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 		var missingTasks []Task
 		missingTasks, err = FindAll(db.Query(bson.M{IdKey: bson.M{"$in": tasksToGet}}).WithFields(ActivatedKey))
 		if err != nil {
-			return errors.Wrap(err, "getting missing tasks")
+			return nil, nil, errors.Wrap(err, "getting missing tasks")
 		}
 		for _, t := range missingTasks {
 			missingTaskMap[t.Id] = t
@@ -1951,16 +1990,21 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 			tasksToActivate[t.Id] = t
 		}
 	}
-
 	if len(tasksToActivate) == 0 {
-		return nil
+		return nil, nil, nil
 	}
 
 	taskIDsToActivate := make([]string, 0, len(tasksToActivate))
 	for _, t := range tasksToActivate {
 		taskIDsToActivate = append(taskIDsToActivate, t.Id)
 	}
-	_, err = UpdateAll(
+	return tasksToActivate, taskIDsToActivate, nil
+}
+
+// activateDeactivatedDependencies activates tasks that depend on these tasks which were deactivated because a task
+// they depended on was deactivated. Only activate when all their dependencies are activated or are being activated
+func activateDeactivatedDependencies(tasksToActivate map[string]Task, taskIDsToActivate []string, caller string) error {
+	_, err := UpdateAll(
 		bson.M{IdKey: bson.M{"$in": taskIDsToActivate}},
 		[]bson.M{
 			{
@@ -2048,25 +2092,34 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 	return sortedTasks, nil
 }
 
-// DeactivateTask will set the ActivatedBy field to the caller and set the active state to be false and deschedule the task
-func (t *Task) DeactivateTask(caller string) error {
-	t.ActivatedBy = caller
-	t.Activated = false
-	t.ScheduledTime = utility.ZeroTime
-
-	return DeactivateTasks([]Task{*t}, true, caller)
-}
-
 func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error {
+	if len(tasks) == 0 {
+		return nil
+	}
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
+		// Deactivating a deactivated task is a noop.
+		if !t.Activated {
+			continue
+		}
 		if t.DisplayOnly {
 			taskIDs = append(taskIDs, t.ExecutionTasks...)
 		}
 		taskIDs = append(taskIDs, t.Id)
 	}
 
-	_, err := UpdateAll(
+	depTasksToUpdate, depTaskIDsToUpdate, err := getDependencyTasksToUpdate(taskIDs, updateDependencies)
+	if err != nil {
+		return errors.Wrap(err, "retrieving dependency tasks to deactivate")
+	}
+
+	// Tasks passed into this function will all be from the same version or build, so we can assume
+	// all tasks also share the same requester field.
+	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, len(taskIDs)+len(depTaskIDsToUpdate), false); err != nil {
+		return err
+	}
+
+	_, err = UpdateAll(
 		bson.M{
 			IdKey: bson.M{"$in": taskIDs},
 		},
@@ -2092,18 +2145,19 @@ func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error
 		"caller":   caller,
 	}))
 
-	if updateDependencies {
-		return DeactivateDependencies(taskIDs, caller)
+	if len(depTaskIDsToUpdate) > 0 {
+		return deactivateDependencies(depTasksToUpdate, depTaskIDsToUpdate, caller)
 	}
 	return nil
 }
 
-// DeactivateDependencies gets all tasks that are blocked by the given tasks (this could be 1st level
-// or recursive) and deactivates them. Then it sends out the event logs for the deactivation.
-func DeactivateDependencies(tasks []string, caller string) error {
+func getDependencyTasksToUpdate(tasks []string, updateDependencies bool) ([]Task, []string, error) {
+	if !updateDependencies {
+		return nil, nil, nil
+	}
 	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
 	if err != nil {
-		return errors.Wrap(err, "getting recursive dependencies down")
+		return nil, nil, errors.Wrap(err, "getting recursive dependencies down")
 	}
 
 	tasksToUpdate := make([]Task, 0, len(tasksDependingOnTheseTasks))
@@ -2114,12 +2168,14 @@ func DeactivateDependencies(tasks []string, caller string) error {
 			taskIDsToUpdate = append(taskIDsToUpdate, t.Id)
 		}
 	}
+	return tasksToUpdate, taskIDsToUpdate, nil
+}
 
+func deactivateDependencies(tasksToUpdate []Task, taskIDsToUpdate []string, caller string) error {
 	if len(tasksToUpdate) == 0 {
 		return nil
 	}
-
-	_, err = UpdateAll(
+	_, err := UpdateAll(
 		bson.M{
 			IdKey: bson.M{"$in": taskIDsToUpdate},
 		},
@@ -2144,6 +2200,16 @@ func DeactivateDependencies(tasks []string, caller string) error {
 	}))
 
 	return nil
+}
+
+// DeactivateDependencies gets all tasks that are blocked by the given tasks (this could be 1st level
+// or recursive) and deactivates them. Then it sends out the event logs for the deactivation.
+func DeactivateDependencies(tasks []string, caller string) error {
+	tasksToUpdate, taskIDsToUpdate, err := getDependencyTasksToUpdate(tasks, true)
+	if err != nil {
+		return errors.Wrap(err, "retrieving dependency tasks to deactivate")
+	}
+	return errors.Wrap(deactivateDependencies(tasksToUpdate, taskIDsToUpdate, caller), "marking dependencies deactivated")
 }
 
 // MarkEnd handles the Task updates associated with ending a task. If the task's start time is zero
@@ -2351,6 +2417,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 		t.NumNextTaskDispatches = 0
 		t.CanReset = false
 		t.IsAutomaticRestart = false
+		t.HasAnnotations = false
 	}
 	update := []bson.M{
 		{
@@ -2393,6 +2460,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 				HostCreateDetailsKey,
 				OverrideDependenciesKey,
 				CanResetKey,
+				HasAnnotationsKey,
 			},
 		},
 	}

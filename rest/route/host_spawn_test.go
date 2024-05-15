@@ -284,6 +284,19 @@ func TestHostModifyHandlers(t *testing.T) {
 
 			checkSpawnHostModifyQueueGroup(ctx, t, env, 1)
 		},
+		"ModifyHandlerFailsWithVeryLongTemporaryExemption": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
+			rh := &hostModifyHandler{
+				env: env,
+				options: &host.HostModifyOptions{
+					AddTemporaryExemptionHours: 1000000,
+				},
+				hostID: hosts[0].Id,
+			}
+
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusBadRequest, resp.Status())
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, event.SubscriptionsCollection))

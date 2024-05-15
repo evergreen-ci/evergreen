@@ -364,6 +364,7 @@ type APIDistro struct {
 	WarningNote           *string                  `json:"warning_note"`
 	ValidProjects         []*string                `json:"valid_projects"`
 	Mountpoints           []string                 `json:"mountpoints"`
+	ImageID               *string                  `json:"image_id"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -388,6 +389,8 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.WarningNote = utility.ToStringPtr(d.WarningNote)
 	apiDistro.ValidProjects = utility.ToStringPtrSlice(d.ValidProjects)
 	apiDistro.Mountpoints = d.Mountpoints
+	apiDistro.ImageID = utility.ToStringPtr(d.ImageID)
+
 	if d.Expansions != nil {
 		apiDistro.Expansions = []APIExpansion{}
 		for _, e := range d.Expansions {
@@ -451,6 +454,7 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 	}
 	d.Disabled = apiDistro.Disabled
 	d.ContainerPool = utility.FromStringPtr(apiDistro.ContainerPool)
+	d.ImageID = utility.FromStringPtr(apiDistro.ImageID)
 
 	d.FinderSettings = apiDistro.FinderSettings.ToService()
 	d.PlannerSettings = apiDistro.PlannerSettings.ToService()
@@ -490,14 +494,4 @@ func (e *APIExpansion) ToService() distro.Expansion {
 	}
 
 	return d
-}
-
-// APIDistroScriptOptions provides a model to execute scripts on hosts in a
-// distro.
-type APIDistroScriptOptions struct {
-	Script            string `json:"script"`
-	IncludeTaskHosts  bool   `json:"include_task_hosts"`
-	IncludeSpawnHosts bool   `json:"include_spawn_hosts"`
-	Sudo              bool   `json:"sudo"`
-	SudoUser          string `json:"sudo_user"`
 }

@@ -10,3 +10,14 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "CHORE: "
+    groups:
+      otel-dependencies:
+        applies-to: version-updates
+        patterns:
+          - go.opentelemetry.io/*
+      aws-dependencies:
+        applies-to: version-updates
+        patterns:
+          - github.com/aws/aws-sdk-go-v2*
+    ignore:
+      - dependency-name: "gonum" # TODO: (DEVPROD-6962) Remove this ignore once we upgrade to minimum golang version 1.21

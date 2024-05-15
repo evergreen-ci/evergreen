@@ -797,7 +797,7 @@ type renameUserHandler struct {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Rename user
-//	@Description	.
+//	@Description	Migrate a user to a new username. Note that this may overwrite settings on the new user if it already exists.
 //	@Tags			users
 //	@Router			/users/rename_user [post]
 //	@Security		Api-User || Api-Key
@@ -810,9 +810,10 @@ func (h renameUserHandler) Factory() gimlet.RouteHandler {
 }
 
 type renameUserInfo struct {
-	// the email of the user
+	// The old email of the user
 	Email string `json:"email" bson:"email" validate:"required"`
 
+	// The new email of the user
 	NewEmail string `json:"new_email" bson:"new_email" validate:"required"`
 }
 

@@ -66,6 +66,14 @@ func NewSpawnhostStartJob(h *host.Host, source evergreen.ModifySpawnHostSource, 
 func (j *spawnhostStartJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
+	defer func() {
+		if j.HasErrors() && (!j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0) {
+			// Only log an error if the final job attempt errors. Otherwise, it
+			// may retry and succeed on the next attempt.
+			event.LogHostStartError(j.HostID, string(j.Source), j.Error().Error())
+		}
+	}()
+
 	startCloudHost := func(ctx context.Context, mgr cloud.Manager, h *host.Host, user string) error {
 		if j.Source == evergreen.ModifySpawnHostSleepSchedule && !h.IsSleepScheduleEnabled() {
 			grip.Info(message.Fields{
@@ -89,7 +97,6 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 		}
 
 		if err := mgr.StartInstance(ctx, h, user); err != nil {
-			event.LogHostStartError(h.Id, err.Error())
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "error starting spawn host",
 				"host_id":  h.Id,
@@ -100,13 +107,15 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 			return errors.Wrap(err, "starting spawn host")
 		}
 
-		event.LogHostStartSucceeded(h.Id)
+		event.LogHostStartSucceeded(h.Id, string(j.Source))
 		grip.Info(message.Fields{
-			"message":  "started spawn host",
-			"host_id":  h.Id,
-			"host_tag": h.Tag,
-			"distro":   h.Distro.Id,
-			"job":      j.ID(),
+			"message":    "started spawn host",
+			"host_id":    h.Id,
+			"started_by": h.StartedBy,
+			"host_tag":   h.Tag,
+			"distro":     h.Distro.Id,
+			"source":     j.Source,
+			"job":        j.ID(),
 		})
 
 		if j.Source == evergreen.ModifySpawnHostSleepSchedule {

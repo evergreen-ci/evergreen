@@ -185,11 +185,6 @@ func GetTaskActivatedEvent(taskId string, execution int, userId string) EventLog
 	return getTaskEvent(taskId, TaskActivated, TaskEventData{Execution: execution, UserId: userId})
 }
 
-// LogTaskDeactivated updates the DB with a task deactivated event.
-func LogTaskDeactivated(taskId string, execution int, userId string) {
-	logTaskEvent(taskId, TaskDeactivated, TaskEventData{Execution: execution, UserId: userId})
-}
-
 // GetTaskDeactivatedEvent retrieves the task deactivated event.
 func GetTaskDeactivatedEvent(taskId string, execution int, userId string) EventLogEntry {
 	return getTaskEvent(taskId, TaskDeactivated, TaskEventData{Execution: execution, UserId: userId})

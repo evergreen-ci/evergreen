@@ -24,6 +24,12 @@ input SleepScheduleInput {
   wholeWeekdaysOff: [Int!]!
 }
 
+input UpdateSpawnHostStatusInput {
+  action: SpawnHostStatusActions!
+  hostId: String!
+  shouldKeepOff: Boolean
+}
+
 """
 SpawnHostInput is the input to the spawnHost mutation.
 Its fields determine the properties of the host that will be spawned.

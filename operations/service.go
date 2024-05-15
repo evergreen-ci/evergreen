@@ -32,8 +32,6 @@ func deploy() cli.Command {
 		Name:  "deploy",
 		Usage: "deployment helpers for Evergreen site administration",
 		Subcommands: []cli.Command{
-			deployMigration(),
-			deployDataTransforms(),
 			smokeStartEvergreen(),
 			startLocalEvergreen(),
 		},
@@ -46,10 +44,16 @@ func parseDB(c *cli.Context) *evergreen.DBSettings {
 	}
 	url := c.String(dbUrlFlagName)
 	awsAuthEnabled := c.Bool(dbAWSAuthFlagName)
+
+	// TODO (DEVPROD-6951): remove static auth once IRSA auth is reliable again.
+	username := os.Getenv(evergreen.MongoUsername)
+	password := os.Getenv(evergreen.MongoPassword)
+
 	envUrl := os.Getenv(evergreen.MongodbUrl)
 	if url == evergreen.DefaultDatabaseURL && envUrl != "" {
 		url = envUrl
 	}
+
 	return &evergreen.DBSettings{
 		Url: url,
 		DB:  c.String(dbNameFlagName),
@@ -61,6 +65,8 @@ func parseDB(c *cli.Context) *evergreen.DBSettings {
 			Level: c.String(dbRmodeFlagName),
 		},
 		AWSAuthEnabled: awsAuthEnabled,
+		Username:       username,
+		Password:       password,
 	}
 }
 

@@ -37,10 +37,18 @@
       "_id": {
         "$oid": "5e4ff3abe3c3317e352062e4"
       },
-      "branch": "evergreen",
+      "branch": "spruce",
       "version": "5e4ff3abe3c3317e352062e4",
       "activated": true,
       "githash": "5e823e1f28baeaa22ae00823d83e03082cd148ab"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce",
+      "owner_name": "evergreen-ci",
+      "repo_name": "spruce"
     }
   ]
 }

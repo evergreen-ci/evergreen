@@ -11,9 +11,6 @@ mutation {
           ticketSearchProjects: []
           ticketCreateIssueType: "Incident"
         }
-        taskAnnotationSettings: {
-          jiraCustomFields: [{ field: "a field", displayText: "display text" }]
-        }
         externalLinks: [
           {
             requesters: ["github_pull_request"]
@@ -30,10 +27,6 @@ mutation {
         ticketCreateIssueType
       }
       taskAnnotationSettings {
-        jiraCustomFields {
-          displayText
-          field
-        }
         fileTicketWebhook {
           endpoint
           secret

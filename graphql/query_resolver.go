@@ -343,7 +343,7 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 	distros := []*TaskQueueDistro{}
 
 	for _, distro := range queues {
-		numHosts, err := host.CountRunningStatusHosts(ctx, distro.Distro)
+		numHosts, err := host.CountHostsCanRunTasks(ctx, distro.Distro)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting associated hosts: %s", err.Error()))
 		}
@@ -380,14 +380,14 @@ func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.A
 	}
 
 	if evergreen.IsFinishedVersionStatus(*patch.Status) {
-		statuses, err := task.GetTaskStatusesByVersion(ctx, patchID, false)
+		statuses, err := task.GetTaskStatusesByVersion(ctx, patchID)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task statuses for patch: %s", err.Error()))
 		}
 
 		if len(patch.ChildPatches) > 0 {
 			for _, cp := range patch.ChildPatches {
-				childPatchStatuses, err := task.GetTaskStatusesByVersion(ctx, *cp.Id, false)
+				childPatchStatuses, err := task.GetTaskStatusesByVersion(ctx, *cp.Id)
 				if err != nil {
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task statuses for child patch: %s", err.Error()))
 				}
@@ -443,7 +443,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
 	}
-	allProjects, err := model.FindMergedProjectRefsByIds(viewableProjectIds...)
+	allProjects, err := model.FindMergedEnabledProjectRefsByIds(viewableProjectIds...)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}

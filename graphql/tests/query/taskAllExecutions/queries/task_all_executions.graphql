@@ -1,0 +1,6 @@
+query {
+  taskAllExecutions(taskId: "multi_exec_task") {
+    id
+    execution
+  }
+}

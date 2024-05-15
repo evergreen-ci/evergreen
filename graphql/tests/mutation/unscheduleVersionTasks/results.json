@@ -1,0 +1,45 @@
+{
+  "tests": [
+    {
+      "query_file": "unschedule_patch_tasks.graphql",
+      "result": {
+        "data": {
+          "unscheduleVersionTasks": "evg_5e4ff3abe3c3317e352062e4"
+        }
+      }
+    },
+    {
+      "query_file": "abort_unschedule_patch_tasks.graphql",
+      "result": {
+        "data": {
+          "unscheduleVersionTasks": "evg_5e4ff3abe3c3317e352062e4"
+        }
+      }
+    },
+    {
+      "query_file": "commit_queue_dequeue.graphql",
+      "result": {
+        "data": {
+          "unscheduleVersionTasks": "5dd2e89cd1fe07048e43bb9c"
+        }
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": {
+          "unscheduleVersionTasks": null
+        },
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "path": ["unscheduleVersionTasks", "versionId"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -14,6 +14,12 @@
       "pod_id": "localhost"
     }
   ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ],
   "pods": [
     {
       "_id": "localhost",

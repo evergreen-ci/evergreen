@@ -93,19 +93,6 @@ var (
 		return nil
 	}
 
-	addPositionalMigrationIds = func(c *cli.Context) error {
-		if c.NArg() == 0 {
-			return nil
-		}
-
-		catcher := grip.NewSimpleCatcher()
-		for _, arg := range c.Args() {
-			catcher.Add(c.Set(anserMigrationIDFlagName, arg))
-		}
-
-		return catcher.Resolve()
-	}
-
 	// autoUpdateCLI is to be run before commonly used command line functions and will automatically update and install a newer
 	// CLI version if one is found, and then run the command on that new CLI version.
 	// Some functions that one would expect to return quickly have been omitted from having this as a 'before' function since downloading and installing

@@ -178,7 +178,7 @@ func TestGetVersionAuthorID(t *testing.T) {
 	}
 }
 
-func TestFindLatestRevisionForProject(t *testing.T) {
+func TestFindLatestRevisionAndAuthorForProject(t *testing.T) {
 	for name, test := range map[string]func(*testing.T){
 		"wrongProject": func(t *testing.T) {
 			assert.NoError(t, (&Version{
@@ -187,9 +187,10 @@ func TestFindLatestRevisionForProject(t *testing.T) {
 				Requester:  evergreen.RepotrackerVersionRequester,
 				Revision:   "abc",
 			}).Insert())
-			revision, err := FindLatestRevisionForProject("project2")
+			revision, author, err := FindLatestRevisionAndAuthorForProject("project2")
 			assert.Error(t, err)
-			assert.Equal(t, "", revision)
+			assert.Empty(t, revision)
+			assert.Empty(t, author)
 		},
 		"rightProject": func(t *testing.T) {
 			assert.NoError(t, (&Version{
@@ -197,6 +198,8 @@ func TestFindLatestRevisionForProject(t *testing.T) {
 				Identifier:          "project1",
 				Requester:           evergreen.RepotrackerVersionRequester,
 				Revision:            "abc",
+				Author:              "anna",
+				AuthorID:            "banana",
 				RevisionOrderNumber: 12,
 			}).Insert())
 			assert.NoError(t, (&Version{
@@ -206,9 +209,10 @@ func TestFindLatestRevisionForProject(t *testing.T) {
 				Revision:            "def",
 				RevisionOrderNumber: 10,
 			}).Insert())
-			revision, err := FindLatestRevisionForProject("project1")
+			revision, author, err := FindLatestRevisionAndAuthorForProject("project1")
 			assert.NoError(t, err)
 			assert.Equal(t, "abc", revision)
+			assert.Equal(t, "banana", author)
 		},
 		"wrongRequester": func(t *testing.T) {
 			assert.NoError(t, (&Version{
@@ -225,9 +229,10 @@ func TestFindLatestRevisionForProject(t *testing.T) {
 				Revision:            "def",
 				RevisionOrderNumber: 10,
 			}).Insert())
-			revision, err := FindLatestRevisionForProject("project1")
+			revision, author, err := FindLatestRevisionAndAuthorForProject("project1")
 			assert.Error(t, err)
-			assert.Equal(t, "", revision)
+			assert.Empty(t, revision)
+			assert.Empty(t, author)
 		},
 		"emptyRevision": func(t *testing.T) {
 			assert.NoError(t, (&Version{
@@ -236,10 +241,23 @@ func TestFindLatestRevisionForProject(t *testing.T) {
 				Requester:  evergreen.RepotrackerVersionRequester,
 				Revision:   "",
 			}).Insert())
-			revision, err := FindLatestRevisionForProject("project1")
+			revision, author, err := FindLatestRevisionAndAuthorForProject("project1")
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "has no revision")
-			assert.Equal(t, "", revision)
+			assert.Empty(t, revision)
+			assert.Empty(t, author)
+		},
+		"emptyAuthor": func(t *testing.T) {
+			assert.NoError(t, (&Version{
+				Id:         "v0",
+				Identifier: "project1",
+				Requester:  evergreen.RepotrackerVersionRequester,
+				Revision:   "mystery",
+			}).Insert())
+			revision, author, err := FindLatestRevisionAndAuthorForProject("project1")
+			require.NoError(t, err)
+			assert.Equal(t, "mystery", revision)
+			assert.Empty(t, author)
 		},
 	} {
 		assert.NoError(t, db.ClearCollections(VersionCollection))

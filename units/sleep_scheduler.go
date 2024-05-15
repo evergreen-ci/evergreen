@@ -34,7 +34,8 @@ type sleepSchedulerJob struct {
 func NewSleepSchedulerJob(env evergreen.Environment, ts string) amboy.Job {
 	j := makeSleepSchedulerJob()
 	j.SetID(fmt.Sprintf("%s.%s", sleepSchedulerJobName, ts))
-	j.SetEnqueueScopes(sleepSchedulerJobName)
+	j.SetScopes([]string{sleepSchedulerJobName})
+	j.SetEnqueueAllScopes(true)
 	j.env = env
 	return j
 }
@@ -58,6 +59,7 @@ func (j *sleepSchedulerJob) Run(ctx context.Context) {
 		return
 	}
 
+	j.AddError(errors.Wrap(host.ClearExpiredTemporaryExemptions(ctx), "clearing expired temporary exemptions from hosts"))
 	j.AddError(errors.Wrap(j.syncPermanentlyExemptHosts(ctx), "syncing permanently exempt hosts"))
 	j.AddError(errors.Wrap(j.fixMissingNextScheduleTimes(ctx), "fixing hosts that are missing next scheduled start/stop times"))
 	j.AddError(errors.Wrap(j.fixHostsExceedingTimeout(ctx), "fixing hosts that are exceeding the scheduled stop/start timeout"))

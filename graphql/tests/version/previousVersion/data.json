@@ -50,7 +50,9 @@
         "$date": "2020-12-23T01:46:43.817Z"
       },
       "gitspec": "a7906eed65f88ae436ddb5c19096969f198a9efe",
-      "errors": ["tasks section in 'send email' function: function 'send email' not found in project functions"],
+      "errors": [
+        "tasks section in 'send email' function: function 'send email' not found in project functions"
+      ],
       "author": "Arjun Patel",
       "author_email": "arjun.patel@mongodb.com",
       "message": "EVG-13229: Project Patches Page (#555)",
@@ -69,7 +71,15 @@
       "activated": true,
       "trigger_id": "1",
       "trigger_type": "task",
-      "warnings": ["no exec_timeout_secs defined at the top-level or on one or more tasks; these tasks will default to a timeout of 6 hours"]
+      "warnings": [
+        "no exec_timeout_secs defined at the top-level or on one or more tasks; these tasks will default to a timeout of 6 hours"
+      ]
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

@@ -259,7 +259,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					Errors:   projErr.Errors,
 				}
 				if len(versionErrs.Errors) > 0 {
-					stubVersion, dbErr := ShellVersionFromRevision(ctx, ref, model.VersionMetadata{Revision: revisions[i]})
+					stubVersion, dbErr := ShellVersionFromRevision(ref, model.VersionMetadata{Revision: revisions[i]})
 					if dbErr != nil {
 						grip.Error(message.WrapError(dbErr, message.Fields{
 							"message":            "error creating shell version",
@@ -602,7 +602,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 
 	// create a version document
-	v, err := ShellVersionFromRevision(ctx, projectInfo.Ref, metadata)
+	v, err := ShellVersionFromRevision(projectInfo.Ref, metadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create shell version")
 	}
@@ -680,14 +680,15 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 
 // ShellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
-func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
-	var u *user.DBUser
-	var err error
+func ShellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
 	if metadata.Revision.AuthorGithubUID != 0 {
-		u, err = user.FindByGithubUID(metadata.Revision.AuthorGithubUID)
+		u, err := user.FindByGithubUID(metadata.Revision.AuthorGithubUID)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": fmt.Sprintf("failed to fetch Evergreen user with GitHub UID %d", metadata.Revision.AuthorGithubUID),
 		}))
+		if err == nil {
+			metadata.User = u
+		}
 	}
 
 	number, err := model.GetNewRevisionOrderNumber(ref.Id)
@@ -752,10 +753,10 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 	} else {
 		v.Id = makeVersionId(ref.Identifier, metadata.Revision.Revision)
 	}
-	if u != nil {
-		v.AuthorID = u.Id
-		v.Author = u.DisplayName()
-		v.AuthorEmail = u.Email()
+	if metadata.User != nil {
+		v.AuthorID = metadata.User.Id
+		v.Author = metadata.User.DisplayName()
+		v.AuthorEmail = metadata.User.Email()
 	}
 	return v, nil
 }

@@ -120,6 +120,7 @@ var (
 	SleepSchedulePermanentlyExemptKey      = bsonutil.MustHaveTag(SleepScheduleInfo{}, "PermanentlyExempt")
 	SleepScheduleTemporarilyExemptUntilKey = bsonutil.MustHaveTag(SleepScheduleInfo{}, "TemporarilyExemptUntil")
 	SleepScheduleShouldKeepOffKey          = bsonutil.MustHaveTag(SleepScheduleInfo{}, "ShouldKeepOff")
+	SleepScheduleIsBetaTesterKey           = bsonutil.MustHaveTag(SleepScheduleInfo{}, "IsBetaTester")
 )
 
 var (
@@ -233,13 +234,23 @@ func runningHostsQuery(distroID string) bson.M {
 	return query
 }
 
-// byRunningStatusQuery produces a query that returns all hosts
-// with the running status that belong to the given distro.
-func byRunningStatusQuery(distroID string) bson.M {
+// hostsCanRunTasksQuery produces a query that returns all hosts
+// that are capable of accepting and running tasks.
+func hostsCanRunTasksQuery(distroID string) bson.M {
 	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return bson.M{
-		distroIDKey: distroID,
-		StatusKey:   evergreen.HostRunning,
+		distroIDKey:  distroID,
+		StartedByKey: evergreen.User,
+		"$or": []bson.M{
+			{
+				StatusKey: evergreen.HostRunning,
+			},
+			{
+				StatusKey:    evergreen.HostStarting,
+				bootstrapKey: distro.BootstrapMethodUserData,
+			},
+		},
 	}
 }
 
@@ -274,9 +285,12 @@ func CountRunningHosts(ctx context.Context, distroID string) (int, error) {
 	return num, errors.Wrap(err, "counting running hosts")
 }
 
-func CountRunningStatusHosts(ctx context.Context, distroID string) (int, error) {
-	num, err := Count(ctx, byRunningStatusQuery(distroID))
-	return num, errors.Wrap(err, "counting running status hosts")
+// CountHostsCanRunTasks returns the number of hosts that can accept
+// and run tasks for a given distro. This number is surfaced on the
+// task queue.
+func CountHostsCanRunTasks(ctx context.Context, distroID string) (int, error) {
+	num, err := Count(ctx, hostsCanRunTasksQuery(distroID))
+	return num, errors.Wrap(err, "counting hosts that can run tasks")
 }
 
 func CountAllRunningDynamicHosts(ctx context.Context) (int, error) {
@@ -1406,12 +1420,12 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 	}
 
 	grip.Info(message.Fields{
-		"message":              "successfully replaced host document",
-		"host_id":              toInsert.Id,
-		"host_tag":             toInsert.Tag,
-		"distro":               toInsert.Distro.Id,
-		"old_host_id":          idToRemove,
-		"transaction_duration": time.Since(txnStart),
+		"message":                   "successfully replaced host document",
+		"host_id":                   toInsert.Id,
+		"host_tag":                  toInsert.Tag,
+		"distro":                    toInsert.Distro.Id,
+		"old_host_id":               idToRemove,
+		"transaction_duration_secs": time.Since(txnStart).Seconds(),
 	})
 
 	return nil
@@ -1518,6 +1532,7 @@ func isSleepScheduleEnabledQuery(q bson.M, now time.Time) bson.M {
 	sleepSchedulePermanentlyExemptKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepSchedulePermanentlyExemptKey)
 	sleepScheduleTemporarilyExemptUntil := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
 	sleepScheduleShouldKeepOff := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleShouldKeepOffKey)
+	sleepScheduleIsBetaTesterKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleIsBetaTesterKey)
 
 	if _, ok := q[StatusKey]; !ok {
 		// Use all sleep schedule statuses if the query hasn't already specified
@@ -1527,6 +1542,18 @@ func isSleepScheduleEnabledQuery(q bson.M, now time.Time) bson.M {
 
 	q[sleepSchedulePermanentlyExemptKey] = bson.M{"$ne": true}
 	q[sleepScheduleShouldKeepOff] = bson.M{"$ne": true}
+
+	serviceFlagCtx, serviceFlagCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer serviceFlagCancel()
+	flags, err := evergreen.GetServiceFlags(serviceFlagCtx)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "unable to check if sleep schedule beta test is enabled, falling back to assuming the beta test is enabled",
+		}))
+	}
+	if flags == nil || !flags.SleepScheduleBetaTestDisabled {
+		q[sleepScheduleIsBetaTesterKey] = true
+	}
 
 	notTemporarilyExempt := []bson.M{
 		{
@@ -1636,6 +1663,31 @@ func FindExceedsSleepScheduleTimeout(ctx context.Context) ([]Host, error) {
 	return Find(ctx, q)
 }
 
+// ClearExpiredTemporaryExemptions clears all temporary exemptions from the
+// sleep schedule that have expired.
+func ClearExpiredTemporaryExemptions(ctx context.Context) error {
+	sleepScheduleTemporarilyExemptUntilKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
+
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx, isSleepScheduleApplicable(bson.M{
+		StatusKey:                              bson.M{"$in": evergreen.SleepScheduleStatuses},
+		sleepScheduleTemporarilyExemptUntilKey: bson.M{"$lte": time.Now()},
+	}), bson.M{
+		"$unset": bson.M{
+			sleepScheduleTemporarilyExemptUntilKey: 1,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	grip.InfoWhen(res.ModifiedCount > 0, message.Fields{
+		"message":   "cleared expired temporary exemptions from hosts",
+		"num_hosts": res.ModifiedCount,
+	})
+
+	return nil
+}
+
 // SyncPermanentExemptions finds two sets of unexpirable hosts based
 // on the authoritative list of permanently exempt hosts. The function returns:
 //  1. Hosts that are on the list of permanent exemptions but are not marked as
@@ -1657,6 +1709,7 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 	if len(permanentlyExempt) > 0 {
 		res, err := coll.UpdateMany(ctx, isSleepScheduleApplicable(bson.M{
 			IdKey:                             bson.M{"$in": permanentlyExempt},
+			StatusKey:                         bson.M{"$in": evergreen.SleepScheduleStatuses},
 			sleepSchedulePermanentlyExemptKey: bson.M{"$ne": true},
 		}), bson.M{
 			"$set": bson.M{
@@ -1676,6 +1729,7 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 
 	res, err := coll.UpdateMany(ctx, isSleepScheduleApplicable(bson.M{
 		IdKey:                             bson.M{"$nin": permanentlyExempt},
+		StatusKey:                         bson.M{"$in": evergreen.SleepScheduleStatuses},
 		sleepSchedulePermanentlyExemptKey: true,
 	}), bson.M{
 		"$set": bson.M{

@@ -205,25 +205,42 @@ func getInstallationIDFromCache(ctx context.Context, app int64, owner, repo stri
 	return installation.InstallationID, nil
 }
 
+// GitHubClient adds a Close method to the GitHub client that
+// puts the underlying HTTP client back into the pool.
+type GitHubClient struct {
+	*github.Client
+}
+
+// Close puts the underlying HTTP client back into the pool.
+func (g *GitHubClient) Close() {
+	if g == nil {
+		return
+	}
+	if client := g.Client.Client(); client != nil {
+		utility.PutHTTPClient(client)
+	}
+}
+
 // getGitHubClientForAuth returns a GitHub client with the GitHub app's private key.
 // This function cannot be moved to thirdparty because it is needed to set up the environment.
-func getGitHubClientForAuth(authFields *githubAppAuth) (*github.Client, error) {
+// Couple this with a defered call with Close() to clean up the client.
+func getGitHubClientForAuth(authFields *githubAppAuth) (*GitHubClient, error) {
 	retryConf := utility.NewDefaultHTTPRetryConf()
 	retryConf.MaxDelay = GitHubRetryMaxDelay
 	retryConf.BaseDelay = GitHubRetryMinDelay
 	retryConf.MaxRetries = GitHubMaxRetries
-
-	httpClient := utility.GetHTTPRetryableClient(retryConf)
 
 	key, err := jwt.ParseRSAPrivateKeyFromPEM(authFields.privateKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing private key")
 	}
 
+	httpClient := utility.GetHTTPRetryableClient(retryConf)
 	itr := ghinstallation.NewAppsTransportFromPrivateKey(httpClient.Transport, authFields.appId, key)
 	httpClient.Transport = itr
 	client := github.NewClient(httpClient)
-	return client, nil
+	wrappedClient := GitHubClient{Client: client}
+	return &wrappedClient, nil
 }
 
 // getInstallationIDFromGitHub returns an installation ID from GitHub given an owner and a repo.
@@ -233,6 +250,7 @@ func getInstallationIDFromGitHub(ctx context.Context, authFields *githubAppAuth,
 	if err != nil {
 		return 0, errors.Wrap(err, "getting GitHub client to get the installation ID")
 	}
+	defer client.Close()
 
 	installation, resp, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
 	if err != nil {
@@ -260,6 +278,7 @@ func createInstallationToken(ctx context.Context, authFields *githubAppAuth, ins
 	if err != nil {
 		return "", errors.Wrap(err, "getting GitHub client for token creation")
 	}
+	defer client.Close()
 
 	token, resp, err := client.Apps.CreateInstallationToken(ctx, installationID, opts)
 	if resp != nil {

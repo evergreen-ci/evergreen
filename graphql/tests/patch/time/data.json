@@ -4,6 +4,7 @@
       "_id": {
         "$oid": "5e1f8ab8834b87d7b5d251a5"
       },
+      "branch": "spruce",
       "create_time": {
         "$date": "2018-01-11T00:01:36.796Z"
       }
@@ -12,6 +13,7 @@
       "_id": {
         "$oid": "9e1f8ab8834b87d7b5d251a5"
       },
+      "branch": "spruce",
       "create_time": {
         "$date": "2020-02-12T16:58:19Z"
       },
@@ -21,6 +23,12 @@
       "finish_time": {
         "$date": "2020-02-14T18:03:19Z"
       }
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

@@ -2,35 +2,35 @@
 type Mutation {
   # annotations
   bbCreateTicket(
-    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT), 
+    taskId: String! # Permissions are checked in the resolver.
     execution: Int
   ): Boolean!
   addAnnotationIssue(
-    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT)
+    taskId: String! # Permissions are checked in the resolver.
     execution: Int!
     apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
   editAnnotationNote(
-    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT)
+    taskId: String! # Permissions are checked in the resolver.
     execution: Int!
     originalMessage: String!
     newMessage: String!
   ): Boolean!
   moveAnnotationIssue(
-    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT)
+    taskId: String! # Permissions are checked in the resolver.
     execution: Int!
     apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
   removeAnnotationIssue(
-    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT)
+    taskId: String! # Permissions are checked in the resolver.
     execution: Int!
     apiIssue: IssueLinkInput!
     isIssue: Boolean!
   ): Boolean!
   setAnnotationMetadataLinks(
-    taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: EDIT)
+    taskId: String! # Permissions are checked in the resolver.
     execution: Int!
     metadataLinks: [MetadataLinkInput!]!
   ): Boolean!
@@ -57,10 +57,6 @@ type Mutation {
   """
   setPatchVisibility(patchIds: [String!]!, hidden: Boolean!): [Patch!]! # Permissions are checked in the resolver.
   schedulePatch(patchId: String! @requireProjectAccess(permission: PATCHES, access: EDIT), configure: PatchConfigure!): Patch!
-  schedulePatchTasks(patchId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): String
-  scheduleUndispatchedBaseTasks(patchId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): [Task!]
-  setPatchPriority(patchId: String! @requireProjectAccess(permission: TASKS, access: EDIT), priority: Int!): String
-  unschedulePatchTasks(patchId: String! @requireProjectAccess(permission: TASKS, access: EDIT), abort: Boolean!): String
 
   # project
   attachProjectToNewRepo(project: MoveProjectInput!): Project!
@@ -85,7 +81,7 @@ type Mutation {
   spawnHost(spawnHostInput: SpawnHostInput): Host!
   spawnVolume(spawnVolumeInput: SpawnVolumeInput!): Boolean!
   removeVolume(volumeId: String!): Boolean!
-  updateSpawnHostStatus(hostId: String!, action: SpawnHostStatusActions!): Host!
+  updateSpawnHostStatus(hostId: String @deprecated(reason: "use updateSpawnHostStatusInput instead"), action: SpawnHostStatusActions @deprecated(reason: "use updateSpawnHostStatusInput instead"), updateSpawnHostStatusInput: UpdateSpawnHostStatusInput): Host!
   updateVolume(updateVolumeInput: UpdateVolumeInput!): Boolean!
 
   # task
@@ -116,4 +112,7 @@ type Mutation {
 
   # version
   restartVersions(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
+  scheduleUndispatchedBaseTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): [Task!]
+  setVersionPriority(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), priority: Int!): String
+  unscheduleVersionTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), abort: Boolean!): String
 }

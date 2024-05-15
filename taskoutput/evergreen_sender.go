@@ -216,21 +216,23 @@ func (s *evergreenSender) Close() error {
 }
 
 func (s *evergreenSender) timedFlush() {
-	ticker := time.NewTicker(s.opts.FlushInterval)
-	defer ticker.Stop()
+	timer := time.NewTimer(s.opts.FlushInterval)
+	defer timer.Stop()
 
 	for {
 		select {
 		case <-s.ctx.Done():
 			return
-		case <-ticker.C:
+		case <-timer.C:
 			s.mu.Lock()
 			if len(s.buffer) > 0 && time.Since(s.lastFlush) >= s.opts.FlushInterval {
 				if err := s.flush(s.ctx); err != nil {
 					s.opts.Local.Send(message.NewErrorMessage(level.Error, err))
 				}
 			}
+			_ = timer.Reset(s.opts.FlushInterval)
 			s.mu.Unlock()
+
 		}
 	}
 }
