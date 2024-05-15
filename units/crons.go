@@ -239,7 +239,6 @@ func hostTerminationJobs(ctx context.Context, env evergreen.Environment, _ time.
 			// kim: NOTE: likely should not terminate if busy. It should
 			// gracefully refuse to terminate when the host is assigned a task
 			// to avoid interrupting it.
-			TerminateIfBusy:   true,
 			TerminationReason: "host is expired, decommissioned, or failed to provision",
 		}))
 	}
