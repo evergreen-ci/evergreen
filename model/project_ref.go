@@ -2331,7 +2331,8 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, defaultT
 }
 
 // GetActivationTimeForTask returns the time at which this task should next be activated.
-// Accepts a default time to ensure consistency across tasks.
+// Accepts a default time to ensure consistency across tasks. It's recommended to use the version
+// create time here rather than the task ingest time, since this can differ by task.
 func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, defaultTime time.Time) (time.Time, error) {
 	// if we don't want to activate the task, set batchtime to the zero time
 	if !utility.FromBoolTPtr(t.Activate) || t.IsDisabled() {
