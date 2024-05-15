@@ -34,7 +34,8 @@ type sleepSchedulerJob struct {
 func NewSleepSchedulerJob(env evergreen.Environment, ts string) amboy.Job {
 	j := makeSleepSchedulerJob()
 	j.SetID(fmt.Sprintf("%s.%s", sleepSchedulerJobName, ts))
-	j.SetEnqueueScopes(sleepSchedulerJobName)
+	j.SetScopes([]string{sleepSchedulerJobName})
+	j.SetEnqueueAllScopes(true)
 	j.env = env
 	return j
 }
