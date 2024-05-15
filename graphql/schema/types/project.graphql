@@ -162,7 +162,7 @@ input WorkstationSetupCommandInput {
 DeactivateStepbackTaskInput is the input to the deactivateStepbackTask mutation.
 """
 input DeactivateStepbackTaskInput {
-  projectIdentifier: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
+  projectId: String!
   buildVariantName: String!
   taskName: String!
 }
@@ -179,7 +179,7 @@ input DefaultSectionToRepoInput {
 PromoteVarsToRepoInput is the input to the promoteVarsToRepo mutation.
 """
 input PromoteVarsToRepoInput {
-  projectIdentifier: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
+  projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
   varNames: [String!]!
 }
 

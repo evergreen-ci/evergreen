@@ -429,17 +429,14 @@ func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, project M
 }
 
 // AttachProjectToRepo is the resolver for the attachProjectToRepo field.
-func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID *string, projectIdentifier *string) (*restModel.APIProjectRef, error) {
-	if projectIdentifier == nil {
-		projectIdentifier = projectID
-	}
+func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
 	usr := mustHaveUser(ctx)
-	pRef, err := data.FindProjectById(utility.FromStringPtr(projectIdentifier), false, false)
+	pRef, err := data.FindProjectById(projectID, false, false)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", utility.FromStringPtr(projectIdentifier), err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectID, err.Error()))
 	}
 	if pRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", utility.FromStringPtr(projectIdentifier)))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", projectID))
 	}
 	if err = pRef.AttachToRepo(ctx, usr); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error attaching to repo: %s", err.Error()))
@@ -526,13 +523,13 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID *string, buildVariantName *string, taskName *string, opts *DeactivateStepbackTaskInput) (bool, error) {
 	if opts == nil {
 		opts = &DeactivateStepbackTaskInput{
-			ProjectIdentifier: utility.FromStringPtr(projectID),
-			BuildVariantName:  utility.FromStringPtr(buildVariantName),
-			TaskName:          utility.FromStringPtr(taskName),
+			ProjectID:        utility.FromStringPtr(projectID),
+			BuildVariantName: utility.FromStringPtr(buildVariantName),
+			TaskName:         utility.FromStringPtr(taskName),
 		}
 	}
 	usr := mustHaveUser(ctx)
-	if err := task.DeactivateStepbackTask(opts.ProjectIdentifier, opts.BuildVariantName, opts.TaskName, usr.Username()); err != nil {
+	if err := task.DeactivateStepbackTask(opts.ProjectID, opts.BuildVariantName, opts.TaskName, usr.Username()); err != nil {
 		return false, InternalServerError.Send(ctx, err.Error())
 	}
 	return true, nil
@@ -554,32 +551,26 @@ func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID *
 }
 
 // DeleteProject is the resolver for the deleteProject field.
-func (r *mutationResolver) DeleteProject(ctx context.Context, projectID *string, projectIdentifier *string) (bool, error) {
-	if projectIdentifier == nil {
-		projectIdentifier = projectID
-	}
-	if err := data.HideBranch(utility.FromStringPtr(projectIdentifier)); err != nil {
+func (r *mutationResolver) DeleteProject(ctx context.Context, projectID string) (bool, error) {
+	if err := data.HideBranch(projectID); err != nil {
 		gimletErr, ok := err.(gimlet.ErrorResponse)
 		if ok {
 			return false, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
 		}
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("deleting project '%s': %s", utility.FromStringPtr(projectIdentifier), err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("deleting project '%s': %s", projectID, err.Error()))
 	}
 	return true, nil
 }
 
 // DetachProjectFromRepo is the resolver for the detachProjectFromRepo field.
-func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID *string, projectIdentifier *string) (*restModel.APIProjectRef, error) {
+func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
 	usr := mustHaveUser(ctx)
-	if projectIdentifier == nil {
-		projectIdentifier = projectID
-	}
-	pRef, err := data.FindProjectById(utility.FromStringPtr(projectIdentifier), false, false)
+	pRef, err := data.FindProjectById(projectID, false, false)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", utility.FromStringPtr(projectIdentifier), err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectID, err.Error()))
 	}
 	if pRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", utility.FromStringPtr(projectIdentifier)))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", projectID))
 	}
 	if err = pRef.DetachFromRepo(usr); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error detaching from repo: %s", err.Error()))
@@ -593,9 +584,9 @@ func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID 
 }
 
 // ForceRepotrackerRun is the resolver for the forceRepotrackerRun field.
-func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID *string, projectIdentifier *string) (bool, error) {
+func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID string) (bool, error) {
 	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
-	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), utility.FromStringPtr(projectID))
+	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectID)
 	if err := amboy.EnqueueUniqueJob(ctx, evergreen.GetEnvironment().RemoteQueue(), j); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("error creating Repotracker job: %s", err.Error()))
 	}
@@ -606,13 +597,13 @@ func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID *s
 func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, projectID *string, varNames []string, opts *PromoteVarsToRepoInput) (bool, error) {
 	if opts == nil {
 		opts = &PromoteVarsToRepoInput{
-			ProjectIdentifier: utility.FromStringPtr(projectID),
-			VarNames:          varNames,
+			ProjectID: utility.FromStringPtr(projectID),
+			VarNames:  varNames,
 		}
 	}
 	usr := mustHaveUser(ctx)
-	if err := data.PromoteVarsToRepo(opts.ProjectIdentifier, opts.VarNames, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", opts.ProjectIdentifier, err.Error()))
+	if err := data.PromoteVarsToRepo(opts.ProjectID, opts.VarNames, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", opts.ProjectID, err.Error()))
 
 	}
 	return true, nil

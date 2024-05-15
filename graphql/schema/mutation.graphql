@@ -59,18 +59,18 @@ type Mutation {
   schedulePatch(patchId: String! @requireProjectAccess(permission: PATCHES, access: EDIT), configure: PatchConfigure!): Patch!
 
   # project
-  attachProjectToNewRepo(project: MoveProjectInput!): Project!
-  attachProjectToRepo(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
+  attachProjectToNewRepo(project: MoveProjectInput!): Project! # Has directive on MoveProjectInput.
+  attachProjectToRepo(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
   createProject(project: CreateProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
   copyProject(project: CopyProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
-  deactivateStepbackTask(projectId: String @deprecated(reason: "use opts.projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), buildVariantName: String @deprecated(reason: "use opts.buildVariantName instead"), taskName: String @deprecated(reason: "use opts.taskName instead"), opts: DeactivateStepbackTaskInput): Boolean!
-  defaultSectionToRepo(projectId: String @deprecated(reason: "use opts.projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), section: ProjectSettingsSection @deprecated(reason: "use opts.section instead"), opts: DefaultSectionToRepoInput): String
-  deleteProject(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAdmin, projectIdentifier: String @requireProjectAdmin): Boolean!
-  detachProjectFromRepo(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT) ): Project!
-  forceRepotrackerRun(projectId: String @deprecated(reason: "use projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: EDIT)): Boolean!
-  promoteVarsToRepo(projectId: String @deprecated(reason: "use opts.projectIdentifier instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), varNames: [String!] @deprecated(reason: "use opts.varNames instead"), opts: PromoteVarsToRepoInput): Boolean!
-  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings!
-  saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings!
+  deactivateStepbackTask(projectId: String @deprecated(reason: "use opts.projectId instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), buildVariantName: String @deprecated(reason: "use opts.buildVariantName instead"), taskName: String @deprecated(reason: "use opts.taskName instead"), opts: DeactivateStepbackTaskInput): Boolean!
+  defaultSectionToRepo(projectId: String @deprecated(reason: "use opts.projectId instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), section: ProjectSettingsSection @deprecated(reason: "use opts.section instead"), opts: DefaultSectionToRepoInput): String
+  deleteProject(projectId: String! @requireProjectAdmin): Boolean!
+  detachProjectFromRepo(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
+  forceRepotrackerRun(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Boolean!
+  promoteVarsToRepo(projectId: String @deprecated(reason: "use opts.projectId instead") @requireProjectAccess(permission: SETTINGS, access: EDIT), varNames: [String!] @deprecated(reason: "use opts.varNames instead"), opts: PromoteVarsToRepoInput): Boolean!
+  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings! # Has directive on ProjectSettingsInput.
+  saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings! # Has directive on RepoSettingsInput.
   setLastRevision(opts: SetLastRevisionInput! @requireProjectAdmin): SetLastRevisionPayload!
 
   # spawn

@@ -48,9 +48,9 @@ type CreateDistroInput struct {
 
 // DeactivateStepbackTaskInput is the input to the deactivateStepbackTask mutation.
 type DeactivateStepbackTaskInput struct {
-	ProjectIdentifier string `json:"projectIdentifier"`
-	BuildVariantName  string `json:"buildVariantName"`
-	TaskName          string `json:"taskName"`
+	ProjectID        string `json:"projectId"`
+	BuildVariantName string `json:"buildVariantName"`
+	TaskName         string `json:"taskName"`
 }
 
 // DefaultSectionToRepoInput is the input to the defaultSectionToRepo mutation.
@@ -306,8 +306,8 @@ type ProjectPermissionsOptions struct {
 
 // PromoteVarsToRepoInput is the input to the promoteVarsToRepo mutation.
 type PromoteVarsToRepoInput struct {
-	ProjectIdentifier string   `json:"projectIdentifier"`
-	VarNames          []string `json:"varNames"`
+	ProjectID string   `json:"projectId"`
+	VarNames  []string `json:"varNames"`
 }
 
 // PublicKeyInput is an input to the createPublicKey and updatePublicKey mutations.
