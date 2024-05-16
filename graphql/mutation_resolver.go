@@ -539,15 +539,15 @@ func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID
 func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID *string, section *ProjectSettingsSection, opts *DefaultSectionToRepoInput) (*string, error) {
 	if opts == nil {
 		opts = &DefaultSectionToRepoInput{
-			ProjectIdentifier: utility.FromStringPtr(projectID),
-			Section:           *section,
+			ProjectID: utility.FromStringPtr(projectID),
+			Section:   *section,
 		}
 	}
 	usr := mustHaveUser(ctx)
-	if err := model.DefaultSectionToRepo(opts.ProjectIdentifier, model.ProjectPageSection(opts.Section), usr.Username()); err != nil {
+	if err := model.DefaultSectionToRepo(opts.ProjectID, model.ProjectPageSection(opts.Section), usr.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error defaulting to repo for section: %s", err.Error()))
 	}
-	return &opts.ProjectIdentifier, nil
+	return &opts.ProjectID, nil
 }
 
 // DeleteProject is the resolver for the deleteProject field.

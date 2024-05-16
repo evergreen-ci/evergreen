@@ -55,8 +55,8 @@ type DeactivateStepbackTaskInput struct {
 
 // DefaultSectionToRepoInput is the input to the defaultSectionToRepo mutation.
 type DefaultSectionToRepoInput struct {
-	ProjectIdentifier string                 `json:"projectIdentifier"`
-	Section           ProjectSettingsSection `json:"section"`
+	ProjectID string                 `json:"projectId"`
+	Section   ProjectSettingsSection `json:"section"`
 }
 
 // DeleteDistroInput is the input to the deleteDistro mutation.
