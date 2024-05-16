@@ -2268,6 +2268,18 @@ var StartedByStatusIndex = bson.D{
 	},
 }
 
+// DistroIdStatusIndex is the distro_id_1_status_1 index.
+var DistroIdStatusIndex = bson.D{
+	{
+		Key:   bsonutil.GetDottedKeyName(DistroKey, distro.IdKey),
+		Value: 1,
+	},
+	{
+		Key:   StatusKey,
+		Value: 1,
+	},
+}
+
 func CountInactiveHostsByProvider(ctx context.Context) ([]InactiveHostCounts, error) {
 	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, inactiveHostCountPipeline())
 	if err != nil {
@@ -2407,7 +2419,7 @@ func (h *Host) IsIdleParent(ctx context.Context) (bool, error) {
 		ParentIDKey: h.Id,
 		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
 	}
-	num, err := Count(ctx, query)
+	num, err := Count(ctx, query, nil)
 	if err != nil {
 		return false, errors.Wrap(err, "counting non-terminated containers")
 	}
@@ -2564,7 +2576,7 @@ func (hosts HostGroup) CountContainersOnParents(ctx context.Context) (int, error
 		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
 		ParentIDKey: bson.M{"$in": ids},
 	}
-	return Count(ctx, query)
+	return Count(ctx, query, nil)
 }
 
 // FindUphostContainersOnParents returns the containers that are children of the given hosts
@@ -2790,7 +2802,7 @@ func (h *Host) CountContainersRunningAtTime(ctx context.Context, timestamp time.
 			{TerminationTimeKey: time.Time{}},
 		},
 	}
-	return Count(ctx, query)
+	return Count(ctx, query, nil)
 }
 
 func (h *Host) addTag(new Tag, hasPermissions bool) {
@@ -3020,7 +3032,7 @@ func CountSpawnhostsWithNoExpirationByUser(ctx context.Context, user string) (in
 		NoExpirationKey: true,
 		StatusKey:       bson.M{"$in": evergreen.UpHostStatus},
 	}
-	return Count(ctx, query)
+	return Count(ctx, query, nil)
 }
 
 // FindSpawnhostsWithNoExpirationToExtend returns all hosts that are set to never

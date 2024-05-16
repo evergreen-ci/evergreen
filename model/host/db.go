@@ -281,7 +281,7 @@ func idleHostsQuery(distroID string) bson.M {
 }
 
 func CountRunningHosts(ctx context.Context, distroID string) (int, error) {
-	num, err := Count(ctx, runningHostsQuery(distroID))
+	num, err := Count(ctx, runningHostsQuery(distroID), nil)
 	return num, errors.Wrap(err, "counting running hosts")
 }
 
@@ -289,21 +289,24 @@ func CountRunningHosts(ctx context.Context, distroID string) (int, error) {
 // and run tasks for a given distro. This number is surfaced on the
 // task queue.
 func CountHostsCanRunTasks(ctx context.Context, distroID string) (int, error) {
-	num, err := Count(ctx, hostsCanRunTasksQuery(distroID))
+	opts := &options.CountOptions{
+		Hint: DistroIdStatusIndex,
+	}
+	num, err := Count(ctx, hostsCanRunTasksQuery(distroID), opts)
 	return num, errors.Wrap(err, "counting hosts that can run tasks")
 }
 
 func CountAllRunningDynamicHosts(ctx context.Context) (int, error) {
 	query := IsLive()
 	query[ProviderKey] = bson.M{"$in": evergreen.ProviderSpawnable}
-	num, err := Count(ctx, query)
+	num, err := Count(ctx, query, nil)
 	return num, errors.Wrap(err, "counting running dynamic hosts")
 }
 
 // CountIdleStartedTaskHosts returns the count of task hosts that are starting
 // and not currently running a task.
 func CountIdleStartedTaskHosts(ctx context.Context) (int, error) {
-	num, err := Count(ctx, idleStartedTaskHostsQuery(""))
+	num, err := Count(ctx, idleStartedTaskHostsQuery(""), nil)
 	return num, errors.Wrap(err, "counting starting hosts")
 }
 
@@ -462,7 +465,7 @@ func NumHostsByTaskSpec(ctx context.Context, group, buildVariant, project, versi
 			"project is '%s' and version is '%s')", group, buildVariant, project, version)
 	}
 
-	numHosts, err := Count(ctx, ByTaskSpec(group, buildVariant, project, version))
+	numHosts, err := Count(ctx, ByTaskSpec(group, buildVariant, project, version), nil)
 	if err != nil {
 		return 0, errors.Wrap(err, "counting hosts by task spec")
 	}
@@ -913,8 +916,8 @@ func Aggregate(ctx context.Context, pipeline []bson.M, options ...*options.Aggre
 }
 
 // Count returns the number of hosts that satisfy the given query.
-func Count(ctx context.Context, query bson.M) (int, error) {
-	res, err := evergreen.GetEnvironment().DB().Collection(Collection).CountDocuments(ctx, query)
+func Count(ctx context.Context, query bson.M, opts *options.CountOptions) (int, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).CountDocuments(ctx, query, opts)
 	return int(res), errors.Wrap(err, "getting host count")
 }
 
