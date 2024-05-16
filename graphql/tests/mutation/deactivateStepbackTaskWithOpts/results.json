@@ -7,7 +7,7 @@
         "errors": [
           {
             "message": "user 'testuser' does not have permission to access 'settings' for the project 'evergreen_id'",
-            "path": ["deactivateStepbackTask", "opts", "projectIdentifier"],
+            "path": ["deactivateStepbackTask", "opts", "projectId"],
             "extensions": {
               "code": "FORBIDDEN"
             }
