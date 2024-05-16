@@ -388,7 +388,7 @@ func resetTask(ctx context.Context, taskId, caller string) error {
 	if t.IsPartOfDisplay() {
 		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
 	}
-	if err = task.CheckUsersPatchTaskLimit(t.Requester, caller, *t); err != nil {
+	if err = task.CheckUsersPatchTaskLimit(t.Requester, caller, false, *t); err != nil {
 		return errors.Wrap(err, "updating patch task limit for user")
 	}
 	if err = t.Archive(ctx); err != nil {

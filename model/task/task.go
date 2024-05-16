@@ -1879,7 +1879,7 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 // UpdateSchedulingLimit retrieves a user from the DB and updates their hourly scheduling limit info
 // if they are not a service user.
 func UpdateSchedulingLimit(username, requester string, numTasksModified int, activated bool) error {
-	if evergreen.IsSystemActivator(username) || !evergreen.IsPatchRequester(requester) {
+	if evergreen.IsSystemActivator(username) || !evergreen.IsPatchRequester(requester) || numTasksModified == 0 {
 		return nil
 	}
 	s := evergreen.GetEnvironment().Settings()
@@ -3114,13 +3114,14 @@ func updateSchedulingLimitForResetWhenFinished(t *Task, caller string) error {
 	if len(tasks) == 0 {
 		return nil
 	}
-	return errors.Wrap(CheckUsersPatchTaskLimit(t.Requester, caller, tasks...), "updating patch task limit for user")
+	return errors.Wrap(CheckUsersPatchTaskLimit(t.Requester, caller, true, tasks...), "updating patch task limit for user")
 }
 
 // CheckUsersPatchTaskLimit takes in an input list of tasks that is set to get activated, and checks if they're
 // non commit-queue patch tasks, and that the request has been submitted by a user. If so, the maximum hourly patch tasks counter
-// will be incremented accordingly.
-func CheckUsersPatchTaskLimit(requester, username string, tasks ...Task) error {
+// will be incremented accordingly. The includeDisplayAndTaskGroups parameter indicates that execution tasks and single host task
+// group tasks are to be counted as part of the limit update, otherwise they will be ignored.
+func CheckUsersPatchTaskLimit(requester, username string, includeDisplayAndTaskGroups bool, tasks ...Task) error {
 	// we only care about patch tasks that are to be activated by an actual user
 	if !(requester == evergreen.PatchVersionRequester || requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(username) {
 		return nil
@@ -3131,7 +3132,7 @@ func CheckUsersPatchTaskLimit(requester, username string, tasks ...Task) error {
 	}
 	numTasksToActivate := 0
 	for _, t := range tasks {
-		if t.DisplayOnly || t.IsPartOfDisplay() || t.IsPartOfSingleHostTaskGroup() {
+		if !includeDisplayAndTaskGroups && (t.DisplayOnly || t.IsPartOfDisplay() || t.IsPartOfSingleHostTaskGroup()) {
 			continue
 		}
 		if t.Activated {

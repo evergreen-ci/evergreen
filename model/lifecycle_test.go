@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
@@ -2264,6 +2265,11 @@ func TestDisplayTaskRestart(t *testing.T) {
 			assert.Equal(evergreen.TaskSucceeded, dbTask.Status, dbTask.Id)
 		}
 	}
+	// Confirm that resetting a display task does not affect the user's scheduling limit
+	dbUser, err := user.FindOneById("caller")
+	assert.NoError(err)
+	require.NotNil(t, dbUser)
+	assert.Equal(dbUser.NumScheduledPatchTasks, 50)
 
 	// test that execution tasks cannot be restarted
 	assert.NoError(resetTaskData())
@@ -2293,7 +2299,7 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 	require.NotNil(t, et)
 
 	// restarting execution tasks should restart display task
-	assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, et, "me", evergreen.StepbackTaskActivator, false, nil))
+	assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, et, "caller", evergreen.StepbackTaskActivator, false, nil))
 	dt, err := task.FindOneId("displayTask")
 	assert.NoError(t, err)
 	require.NotNil(t, dt)
@@ -2301,25 +2307,42 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 	assert.Equal(t, dt.Execution, 1)
 	assert.False(t, dt.ResetWhenFinished)
 
+	dbUser, err := user.FindOneById("caller")
+	assert.NoError(t, err)
+	require.NotNil(t, dbUser)
+	assert.Equal(t, dbUser.NumScheduledPatchTasks, 2)
+
 	// restarting display task should mark the display task for restart if it's not complete
 	// ResetFailedWhenFinished should be set to true if failedOnly is passed in
-	assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, dt, "me", evergreen.StepbackTaskActivator, true, nil))
+	assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, dt, "caller", evergreen.StepbackTaskActivator, true, nil))
 	dt, err = task.FindOneId("displayTask")
 	assert.NoError(t, err)
 	require.NotNil(t, dt)
 	assert.Equal(t, dt.Status, evergreen.TaskUndispatched)
 	assert.Equal(t, dt.Execution, 1)
 	assert.True(t, dt.ResetFailedWhenFinished)
+
+	dbUser, err = user.FindOneById("caller")
+	assert.NoError(t, err)
+	require.NotNil(t, dbUser)
+	assert.Equal(t, dbUser.NumScheduledPatchTasks, 4)
 }
 
 func resetTaskData() error {
-	if err := db.ClearCollections(build.Collection, task.Collection, VersionCollection, task.OldCollection); err != nil {
+	if err := db.ClearCollections(build.Collection, task.Collection, VersionCollection, task.OldCollection, user.Collection); err != nil {
 		return err
 	}
 	v := &Version{
 		Id: "version",
 	}
 	if err := v.Insert(); err != nil {
+		return err
+	}
+	u := user.DBUser{
+		Id:                     "caller",
+		NumScheduledPatchTasks: 50,
+	}
+	if err := u.Insert(); err != nil {
 		return err
 	}
 	build1 := &build.Build{
@@ -2350,6 +2373,7 @@ func resetTaskData() error {
 		Version:       v.Id,
 		DisplayTaskId: utility.ToStringPtr(""),
 		Status:        evergreen.TaskSucceeded,
+		Activated:     true,
 	}
 	if err := task1.Insert(); err != nil {
 		return err
@@ -2361,6 +2385,7 @@ func resetTaskData() error {
 		Version:       v.Id,
 		DisplayTaskId: utility.ToStringPtr(""),
 		Status:        evergreen.TaskDispatched,
+		Activated:     true,
 	}
 	if err := task2.Insert(); err != nil {
 		return err
@@ -2372,6 +2397,7 @@ func resetTaskData() error {
 		Version:       v.Id,
 		DisplayTaskId: utility.ToStringPtr(""),
 		Status:        evergreen.TaskSucceeded,
+		Activated:     true,
 		DependsOn: []task.Dependency{
 			{
 				TaskId:   task1.Id,
@@ -2389,6 +2415,7 @@ func resetTaskData() error {
 		Version:       v.Id,
 		DisplayTaskId: utility.ToStringPtr(""),
 		Status:        evergreen.TaskFailed,
+		Activated:     true,
 	}
 	if err := task4.Insert(); err != nil {
 		return err
@@ -2400,6 +2427,7 @@ func resetTaskData() error {
 		Version:       v.Id,
 		DisplayTaskId: utility.ToStringPtr("displayTask"),
 		Status:        evergreen.TaskSucceeded,
+		Activated:     true,
 		DispatchTime:  time.Now(),
 		DependsOn: []task.Dependency{
 			{
@@ -2418,6 +2446,7 @@ func resetTaskData() error {
 		Version:       v.Id,
 		DisplayTaskId: utility.ToStringPtr("displayTask"),
 		Status:        evergreen.TaskFailed,
+		Activated:     true,
 		DispatchTime:  time.Now(),
 	}
 	if err := task6.Insert(); err != nil {
@@ -2426,12 +2455,14 @@ func resetTaskData() error {
 	displayTask := &task.Task{
 		Id:             "displayTask",
 		DisplayName:    "displayTask",
+		Requester:      evergreen.PatchVersionRequester,
 		BuildId:        build3.Id,
 		Version:        v.Id,
 		DisplayTaskId:  utility.ToStringPtr(""),
 		DisplayOnly:    true,
 		ExecutionTasks: []string{task5.Id, task6.Id},
 		Status:         evergreen.TaskFailed,
+		Activated:      true,
 		DispatchTime:   time.Now(),
 	}
 	if err := displayTask.Insert(); err != nil {

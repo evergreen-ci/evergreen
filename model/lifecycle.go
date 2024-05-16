@@ -362,7 +362,7 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 			toArchive = append(toArchive, t)
 		}
 	}
-	if err := task.CheckUsersPatchTaskLimit(allFinishedTasks[0].Requester, caller, toArchive...); err != nil {
+	if err := task.CheckUsersPatchTaskLimit(allFinishedTasks[0].Requester, caller, false, toArchive...); err != nil {
 		return errors.Wrap(err, "updating patch task limit for user")
 	}
 	if err := task.ArchiveMany(ctx, toArchive); err != nil {
@@ -1733,7 +1733,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 			buildIdsToActivate = append(buildIdsToActivate, b.Id)
 		}
 	}
-	if err = task.CheckUsersPatchTaskLimit(creationInfo.Version.Requester, creationInfo.Version.Author, activatedTasks...); err != nil {
+	if err = task.CheckUsersPatchTaskLimit(creationInfo.Version.Requester, creationInfo.Version.Author, false, activatedTasks...); err != nil {
 		return nil, errors.Wrap(err, "updating patch task limit for user")
 	}
 	if len(buildIdsToActivate) > 0 {
