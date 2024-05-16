@@ -281,7 +281,7 @@ func idleHostsQuery(distroID string) bson.M {
 }
 
 func CountRunningHosts(ctx context.Context, distroID string) (int, error) {
-	num, err := Count(ctx, runningHostsQuery(distroID), nil)
+	num, err := Count(ctx, runningHostsQuery(distroID))
 	return num, errors.Wrap(err, "counting running hosts")
 }
 
@@ -299,14 +299,14 @@ func CountHostsCanRunTasks(ctx context.Context, distroID string) (int, error) {
 func CountAllRunningDynamicHosts(ctx context.Context) (int, error) {
 	query := IsLive()
 	query[ProviderKey] = bson.M{"$in": evergreen.ProviderSpawnable}
-	num, err := Count(ctx, query, nil)
+	num, err := Count(ctx, query)
 	return num, errors.Wrap(err, "counting running dynamic hosts")
 }
 
 // CountIdleStartedTaskHosts returns the count of task hosts that are starting
 // and not currently running a task.
 func CountIdleStartedTaskHosts(ctx context.Context) (int, error) {
-	num, err := Count(ctx, idleStartedTaskHostsQuery(""), nil)
+	num, err := Count(ctx, idleStartedTaskHostsQuery(""))
 	return num, errors.Wrap(err, "counting starting hosts")
 }
 
@@ -465,7 +465,7 @@ func NumHostsByTaskSpec(ctx context.Context, group, buildVariant, project, versi
 			"project is '%s' and version is '%s')", group, buildVariant, project, version)
 	}
 
-	numHosts, err := Count(ctx, ByTaskSpec(group, buildVariant, project, version), nil)
+	numHosts, err := Count(ctx, ByTaskSpec(group, buildVariant, project, version))
 	if err != nil {
 		return 0, errors.Wrap(err, "counting hosts by task spec")
 	}
@@ -916,8 +916,8 @@ func Aggregate(ctx context.Context, pipeline []bson.M, options ...*options.Aggre
 }
 
 // Count returns the number of hosts that satisfy the given query.
-func Count(ctx context.Context, query bson.M, opts *options.CountOptions) (int, error) {
-	res, err := evergreen.GetEnvironment().DB().Collection(Collection).CountDocuments(ctx, query, opts)
+func Count(ctx context.Context, query bson.M, opts ...*options.CountOptions) (int, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).CountDocuments(ctx, query, opts...)
 	return int(res), errors.Wrap(err, "getting host count")
 }
 

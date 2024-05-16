@@ -2419,7 +2419,7 @@ func (h *Host) IsIdleParent(ctx context.Context) (bool, error) {
 		ParentIDKey: h.Id,
 		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
 	}
-	num, err := Count(ctx, query, nil)
+	num, err := Count(ctx, query)
 	if err != nil {
 		return false, errors.Wrap(err, "counting non-terminated containers")
 	}
@@ -2576,7 +2576,7 @@ func (hosts HostGroup) CountContainersOnParents(ctx context.Context) (int, error
 		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
 		ParentIDKey: bson.M{"$in": ids},
 	}
-	return Count(ctx, query, nil)
+	return Count(ctx, query)
 }
 
 // FindUphostContainersOnParents returns the containers that are children of the given hosts
@@ -2802,7 +2802,7 @@ func (h *Host) CountContainersRunningAtTime(ctx context.Context, timestamp time.
 			{TerminationTimeKey: time.Time{}},
 		},
 	}
-	return Count(ctx, query, nil)
+	return Count(ctx, query)
 }
 
 func (h *Host) addTag(new Tag, hasPermissions bool) {
@@ -3032,7 +3032,7 @@ func CountSpawnhostsWithNoExpirationByUser(ctx context.Context, user string) (in
 		NoExpirationKey: true,
 		StatusKey:       bson.M{"$in": evergreen.UpHostStatus},
 	}
-	return Count(ctx, query, nil)
+	return Count(ctx, query)
 }
 
 // FindSpawnhostsWithNoExpirationToExtend returns all hosts that are set to never
