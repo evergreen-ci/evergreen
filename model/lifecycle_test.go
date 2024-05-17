@@ -2254,22 +2254,29 @@ func TestDisplayTaskRestart(t *testing.T) {
 	dt, err := task.FindOneId("displayTask")
 	assert.NoError(err)
 	assert.NoError(dt.SetResetFailedWhenFinished("caller"))
+
+	// Confirm that marking a display task to reset when finished increments the user's scheduling limit
+	dbUser, err := user.FindOneById("caller")
+	assert.NoError(err)
+	require.NotNil(t, dbUser)
+	assert.Equal(dbUser.NumScheduledPatchTasks, 2)
+
 	assert.NoError(resetTask(ctx, dt.Id, "caller"))
 	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
-		if dbTask.Activated {
-			assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
-		} else {
+		if dbTask.Id == "task5" {
 			assert.Equal(evergreen.TaskSucceeded, dbTask.Status, dbTask.Id)
+		} else {
+			assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		}
 	}
 	// Confirm that resetting a display task does not affect the user's scheduling limit
-	dbUser, err := user.FindOneById("caller")
+	dbUser, err = user.FindOneById("caller")
 	assert.NoError(err)
 	require.NotNil(t, dbUser)
-	assert.Equal(dbUser.NumScheduledPatchTasks, 50)
+	assert.Equal(dbUser.NumScheduledPatchTasks, 2)
 
 	// test that execution tasks cannot be restarted
 	assert.NoError(resetTaskData())
