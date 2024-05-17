@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	productionPapertrailAddress = "https://papertrail.devprod-infra.prod.corp.mongodb.com"
+	productionPapertrailAddress = "https://papertrail.prod.corp.mongodb.com"
 )
 
 // PapertrailSpan represents a span in json form from Papertrail.
