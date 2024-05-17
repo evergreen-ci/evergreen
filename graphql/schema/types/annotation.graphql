@@ -1,15 +1,15 @@
 ###### TYPES ######
-""" 
+"""
 Annotation models the metadata that a user can add to a task.
 It is used as a field within the Task type.
 """
 type Annotation {
   id: String!
-  createdIssues: [IssueLink]
-  issues: [IssueLink]
+  createdIssues: [IssueLink!]
+  issues: [IssueLink!]
   note: Note
-  suspectedIssues: [IssueLink]
-  metadataLinks: [MetadataLink]
+  suspectedIssues: [IssueLink!]
+  metadataLinks: [MetadataLink!]
   taskId: String!
   taskExecution: Int!
   webhookConfigured: Boolean!
@@ -26,7 +26,7 @@ type Source {
   time: Time!
 }
 
-""" 
+"""
 Build Baron is a service that can be integrated into a project (see Confluence Wiki for more details).
 This type is returned from the buildBaron query, and contains information about Build Baron configurations and suggested
 tickets from JIRA for a given task on a given execution.
@@ -48,4 +48,3 @@ type JiraTicket {
   fields: TicketFields!
   key: String!
 }
-

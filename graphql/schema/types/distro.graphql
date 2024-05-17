@@ -145,7 +145,7 @@ input DistroInput {
   userSpawnAllowed: Boolean!
   validProjects: [String!]!
   workDir: String!
-  mountpoints: [String]
+  mountpoints: [String!]
 }
 
 input BootstrapSettingsInput {
@@ -293,9 +293,9 @@ type Distro {
   sshOptions: [String!]!
   user: String!
   userSpawnAllowed: Boolean!
-  validProjects: [String]!
+  validProjects: [String!]!
   workDir: String!
-  mountpoints: [String]
+  mountpoints: [String!]
 }
 
 type BootstrapSettings {

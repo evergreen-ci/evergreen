@@ -38,7 +38,7 @@ type GithubCheckSubscriber {
 }
 
 type WebhookSubscriber {
-  headers: [WebhookHeader]!
+  headers: [WebhookHeader!]!
   secret: String!
   url: String!
   retries: Int!
@@ -57,7 +57,7 @@ type JiraIssueSubscriber {
 }
 
 input WebhookSubscriberInput {
-  headers: [WebhookHeaderInput]!
+  headers: [WebhookHeaderInput!]!
   secret: String! @redactSecrets
   url: String!
   retries: Int = 0
