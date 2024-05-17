@@ -189,7 +189,7 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 
 	require.NoError(t, usr.UpdateAPIKey(apiKey))
 
-	require.NoError(t, setupDBIndexes(ctx, env))
+	require.NoError(t, setupDBIndexes())
 	require.NoError(t, setupDBData(ctx, env, state.DBData, *state))
 	require.NoError(t, setupTaskOutputData(ctx, env, state))
 	roleManager := env.RoleManager()
