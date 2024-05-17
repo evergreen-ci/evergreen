@@ -974,10 +974,10 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer t
 	spanLimits.AttributeValueLengthLimit = OtelAttributeMaxLength
 
 	// Set up propagators. This allows traces from Spruce to connect to traces from Evergreen.
-	p := b3.New(b3.WithInjectEncoding(b3.B3MultipleHeader | b3.B3SingleHeader))
+	propagatorB3 := b3.New(b3.WithInjectEncoding(b3.B3MultipleHeader | b3.B3SingleHeader))
 	otel.SetTextMapPropagator(
 		propagation.NewCompositeTextMapPropagator(
-			p,
+			propagatorB3,
 			propagation.TraceContext{},
 			propagation.Baggage{}),
 	)
