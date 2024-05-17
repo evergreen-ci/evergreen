@@ -1737,10 +1737,12 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 		},
 	})
 	catcher.Wrap(err, "marking newly-removed hosts as no longer permanently exempt")
-	grip.InfoWhen(res.ModifiedCount > 0, message.Fields{
-		"message":   "marked newly-removed hosts as no longer permanently exempt",
-		"num_hosts": res.ModifiedCount,
-	})
+	if res != nil && res.ModifiedCount > 0 {
+		grip.Info(message.Fields{
+			"message":   "marked newly-removed hosts as no longer permanently exempt",
+			"num_hosts": res.ModifiedCount,
+		})
+	}
 
 	return catcher.Resolve()
 }
