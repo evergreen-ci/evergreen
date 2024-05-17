@@ -201,6 +201,7 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/mongodb/jasper v0.0.0-20240424195530-4a5968d6fc0f
 	github.com/shirou/gopsutil/v3 v3.24.3
+	go.opentelemetry.io/contrib/propagators/b3 v1.21.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

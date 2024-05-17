@@ -36,9 +36,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
+	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
@@ -970,6 +972,15 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer t
 
 	spanLimits := sdktrace.NewSpanLimits()
 	spanLimits.AttributeValueLengthLimit = OtelAttributeMaxLength
+
+	// Set up propagators. This allows traces from Spruce to connect to traces from Evergreen.
+	p := b3.New(b3.WithInjectEncoding(b3.B3MultipleHeader | b3.B3SingleHeader))
+	otel.SetTextMapPropagator(
+		propagation.NewCompositeTextMapPropagator(
+			p,
+			propagation.TraceContext{},
+			propagation.Baggage{}),
+	)
 
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exp),
