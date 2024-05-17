@@ -1979,7 +1979,7 @@ type PlannerSettingsInputResolver interface {
 	Version(ctx context.Context, obj *model.APIPlannerSettings, data PlannerVersion) error
 }
 type ProjectSettingsInputResolver interface {
-	ProjectID(ctx context.Context, obj *model.APIProjectSettings, data *string) error
+	ProjectID(ctx context.Context, obj *model.APIProjectSettings, data string) error
 }
 type RepoSettingsInputResolver interface {
 	RepoID(ctx context.Context, obj *model.APIProjectSettings, data string) error
@@ -68363,7 +68363,7 @@ func (ec *executionContext) unmarshalInputCreateProjectInput(ctx context.Context
 			it.Id = data
 		case "identifier":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("identifier"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -70760,7 +70760,7 @@ func (ec *executionContext) unmarshalInputProjectSettingsInput(ctx context.Conte
 		switch k {
 		case "projectId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
-			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, v) }
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
 			directive1 := func(ctx context.Context) (interface{}, error) {
 				permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
 				if err != nil {
@@ -70780,12 +70780,12 @@ func (ec *executionContext) unmarshalInputProjectSettingsInput(ctx context.Conte
 			if err != nil {
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
-			if data, ok := tmp.(*string); ok {
+			if data, ok := tmp.(string); ok {
 				if err = ec.resolvers.ProjectSettingsInput().ProjectID(ctx, &it, data); err != nil {
 					return it, err
 				}
 			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 		case "aliases":
