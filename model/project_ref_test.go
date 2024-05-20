@@ -1689,6 +1689,10 @@ func TestGitHubDynamicTokenPermissions(t *testing.T) {
 			},
 		}
 		require.NoError(t, perms.Add(perm))
+
+		permission := perms.Get(evergreen.GithubPRRequester)
+		require.NotNil(t, permission)
+		assert.Equal(t, "read", permission.Permissions["checks"])
 	})
 
 	t.Run("Fails at adding permissions for an existing requester", func(t *testing.T) {

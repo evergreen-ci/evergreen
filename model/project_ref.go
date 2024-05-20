@@ -156,10 +156,6 @@ type GitHubDynamicTokenPermission struct {
 }
 
 func (p *GitHubDynamicTokenPermissions) Add(permission GitHubDynamicTokenPermission) error {
-	if p == nil {
-		fmt.Println("Testing")
-		p = &GitHubDynamicTokenPermissions{}
-	}
 	for _, r := range permission.Requesters {
 		if !utility.StringSliceContains(evergreen.AllRequesterTypes, r) {
 			return errors.Errorf("requester '%s' is not a valid requester", r)
