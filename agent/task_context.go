@@ -24,6 +24,8 @@ import (
 
 type taskContext struct {
 	currentCommand command.Command
+	// failingCommand keeps track of the command that caused the task to fail.
+	failingCommand command.Command
 	// otherFailingCommands keeps track of commands that have run and failed but
 	// have not caused the task to fail (e.g. a post command that fails without
 	// post_error_fails_task).
@@ -55,16 +57,34 @@ func (tc *taskContext) setPostErrored(errored bool) {
 	tc.postErrored = errored
 }
 
-func (tc *taskContext) addOtherFailingCommand(cmd command.Command) {
+func (tc *taskContext) setFailingCommand(cmd command.Command) {
+	tc.Lock()
+	defer tc.Unlock()
+	tc.failingCommand = cmd
+}
+
+func (tc *taskContext) addFailingCommand(cmd command.Command) {
 	tc.Lock()
 	defer tc.Unlock()
 	tc.otherFailingCommands = append(tc.otherFailingCommands, cmd)
 }
 
-func (tc *taskContext) getOtherFailingCommands() []command.Command {
+func (tc *taskContext) getOtherFailingCommands() []apimodels.FailingCommand {
 	tc.RLock()
 	defer tc.RUnlock()
-	return tc.otherFailingCommands
+	var otherFailingCmds []apimodels.FailingCommand
+	for _, failingCmd := range tc.otherFailingCommands {
+		if tc.failingCommand != nil && failingCmd.FullDisplayName() == tc.failingCommand.FullDisplayName() {
+			// Do not include the command that failed the task in the other
+			// failing commands.
+			continue
+		}
+		otherFailingCmds = append(otherFailingCmds, apimodels.FailingCommand{
+			FullDisplayName:     failingCmd.FullDisplayName(),
+			FailureMetadataTags: utility.UniqueStrings(failingCmd.FailureMetadataTags()),
+		})
+	}
+	return otherFailingCmds
 }
 
 func (tc *taskContext) setCurrentCommand(command command.Command) {

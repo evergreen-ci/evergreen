@@ -303,11 +303,9 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	case err := <-cmdChan:
 		if err != nil {
 			tc.logger.Task().Errorf("Command %s failed: %s.", cmd.FullDisplayName(), err)
+			tc.addFailingCommand(cmd)
 			if options.block == command.PostBlock {
 				tc.setPostErrored(true)
-			}
-			if !options.canFailTask {
-				tc.addOtherFailingCommand(cmd)
 			}
 			if options.canFailTask ||
 				(cmd.Name() == "git.get_project" && tc.taskConfig.Task.Requester == evergreen.MergeTestRequester) {
@@ -326,9 +324,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		case <-cmdChan:
 		}
 
-		if !options.canFailTask {
-			tc.addOtherFailingCommand(cmd)
-		}
+		tc.addFailingCommand(cmd)
 
 		tc.logger.Task().Errorf("Command %s stopped early: %s.", cmd.FullDisplayName(), ctx.Err())
 		return errors.Wrap(ctx.Err(), "command stopped early")

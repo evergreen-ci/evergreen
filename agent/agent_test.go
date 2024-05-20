@@ -797,6 +797,7 @@ post:
 	s.EqualValues(globals.PostTimeout, s.mockCommunicator.EndTaskResult.Detail.TimeoutType)
 	s.Equal(time.Second, s.mockCommunicator.EndTaskResult.Detail.TimeoutDuration)
 	s.ElementsMatch([]string{"failure_tag1"}, s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "failure tags should be set for failing post command")
+	s.Empty(s.mockCommunicator.EndTaskResult.Detail.OtherFailingCommands, "should not set other failing commands when task command succeeds and post fails task")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -825,6 +826,7 @@ buildvariants:
 
 tasks:
   - name: this_is_a_task_name
+    failure_metadata_tags: ["failure_tag0"]
     commands:
       - command: shell.exec
         params:
@@ -832,6 +834,7 @@ tasks:
 
 post:
   - command: shell.exec
+    failure_metadata_tags: ["failure_tag1"]
     params:
       script: exit 1
 `
@@ -848,6 +851,9 @@ post:
 	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Description, "should not include command failure description for a successful task")
 	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Type, "should not include command failure type for a successful task")
 	s.Empty(s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "failure metadata tags should not be set for post command that fails but does not fail the task")
+	s.Require().Len(s.mockCommunicator.EndTaskResult.Detail.OtherFailingCommands, 1)
+	s.Contains("'shell.exec' (step 1 of 1) in block 'post'", s.mockCommunicator.EndTaskResult.Detail.OtherFailingCommands[0].FullDisplayName)
+	s.ElementsMatch([]string{"failure_tag1"}, s.mockCommunicator.EndTaskResult.Detail.OtherFailingCommands[0].FailureMetadataTags, "should set failure metadata tags for failing post command that does not fail the task")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -901,6 +907,7 @@ post:
 	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Description, "should not include command failure description for a successful task")
 	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Type, "should not include command failure type for a successful task")
 	s.Empty(s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "failure metadata tags should not be set for all successful commands")
+	s.Empty(s.mockCommunicator.EndTaskResult.Detail.OtherFailingCommands, "should not include other failing commands for a successful task")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -955,6 +962,9 @@ post:
 	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description, "should show main block command as the failing command if both main and post block commands fail")
 	s.True(s.mockCommunicator.EndTaskResult.Detail.TimedOut, "should show main block command hitting timeout")
 	s.ElementsMatch([]string{"failure_tag0"}, s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "failure tags should be set for failing main task command")
+	s.Require().Len(s.mockCommunicator.EndTaskResult.Detail.OtherFailingCommands, 1)
+	s.Equal("'shell.exec' (step 1 of 1) in block 'post'", s.mockCommunicator.EndTaskResult.Detail.OtherFailingCommands[0].FullDisplayName)
+	s.ElementsMatch([]string{"failure_tag1"}, s.mockCommunicator.EndTaskResult.Detail.OtherFailingCommands[0].FailureMetadataTags, "failure tags should be set for failing post command")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -1005,6 +1015,7 @@ post:
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
 	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description)
 	s.ElementsMatch([]string{"failure_tag0"}, s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "failure tags should be set for failing main task command")
+	s.Empty(s.mockCommunicator.EndTaskResult.Detail.OtherFailingCommands, "should not include other failing commands when post command succeeds")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
