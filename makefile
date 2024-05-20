@@ -94,8 +94,7 @@ clientBinaries := $(macOSBinaries) $(linuxBinaries) $(windowsBinaries)
 clientSource := cmd/evergreen/evergreen.go
 uiFiles := $(shell find public/static -not -path "./public/static/app" -name "*.js" -o -name "*.css" -o -name "*.html")
 
-distArtifacts :=  ./public ./service/templates
-distContents := $(clientBinaries) $(distArtifacts)
+staticArtifacts :=  ./public ./service/templates
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 currentHash := $(shell git rev-parse HEAD)
@@ -128,15 +127,15 @@ $(clientBuildDir)/%/$(unixBinaryBasename) $(clientBuildDir)/%/$(windowsBinaryBas
 
 build-linux_%: $(clientBuildDir)/linux_%/$(unixBinaryBasename);
 build-windows_%: $(clientBuildDir)/windows_%/$(windowsBinaryBasename);
-build-darwin_%: $(clientBuildDir)/darwin_%/$(unixBinaryBasename) $(if $(SIGN_MACOS),$(clientBuildDir)/darwin_%/.signed);
+build-darwin_%: $(clientBuildDir)/darwin_%/$(unixBinaryBasename) $(clientBuildDir)/darwin_%/.signed;
 
-sign-macos:$(foreach platform,$(macOSPlatforms),$(clientBuildDir)/$(platform)/.signed)
-# Targets to upload the CLI binaries to S3.
-$(buildDir)/upload-s3:cmd/upload-s3/upload-s3.go
-	@$(gobin) build -o $@ $<
-upload-clis:$(buildDir)/upload-s3 clis
-	$(buildDir)/upload-s3 -bucket="${BUCKET_NAME}" -local="${LOCAL_PATH}" -remote="${REMOTE_PATH}" -exclude="${EXCLUDE_PATTERN}"
-phony += cli clis upload-clis sign-macos
+build-linux-staging_%: $(clientBuildDir)/linux_%/$(unixBinaryBasename);
+build-windows-staging_%: $(clientBuildDir)/windows_%/$(windowsBinaryBasename);
+build-darwin-staging_%: $(clientBuildDir)/darwin_%/$(unixBinaryBasename) $(clientBuildDir)/darwin_%/.signed;
+
+build-darwin-unsigned_%: $(clientBuildDir)/darwin_%/$(unixBinaryBasename);
+
+phony += cli clis
 # end client build directives
 
 
@@ -180,13 +179,13 @@ local-evergreen:$(localClientBinary) load-local-data
 
 ######################################################################
 ##
-## Build, Test, and Dist targets and mechisms.
+## Build and Test targets and mechisms.
 ##
 ######################################################################
 
 # most of the targets and variables in this section are generic
 # instructions for go programs of all kinds, and are not particularly
-# specific to evergreen; though the dist targets are more specific than the rest.
+# specific to evergreen; though the build targets are more specific than the rest.
 
 # start output files
 testOutput := $(foreach target,$(packages) $(testOnlyPackages),$(buildDir)/output.$(target).test)
@@ -244,16 +243,8 @@ $(buildDir)/macnotary:$(buildDir)/sign-executable
 $(clientBuildDir)/%/.signed:$(buildDir)/sign-executable $(clientBuildDir)/%/$(unixBinaryBasename) $(buildDir)/macnotary
 	./$< sign --client $(buildDir)/macnotary --executable $(@D)/$(unixBinaryBasename) --server-url $(NOTARY_SERVER_URL) --bundle-id $(EVERGREEN_BUNDLE_ID)
 	touch $@
-
-dist-staging:
-	STAGING_ONLY=1 DEBUG_ENABLED=1 SIGN_MACOS= $(MAKE) dist
-dist-unsigned:
-	SIGN_MACOS= $(MAKE) dist
-dist:$(buildDir)/dist.tar.gz
-$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles) $(if $(SIGN_MACOS),sign-macos)
-	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
 $(buildDir)/static_assets.tgz:$(buildDir)/make-tarball $(uiFiles)
-	./$< --name $@ --prefix static_assets $(foreach item,$(distArtifacts),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
+	./$< --name $@ --prefix static_assets $(foreach item,$(staticArtifacts),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
 local: $(buildDir)/static_assets.tgz $(clientBinaries)
 # end main build
 
