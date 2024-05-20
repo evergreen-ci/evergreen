@@ -149,7 +149,7 @@ type GitHubDynamicTokenPermissions []GitHubDynamicTokenPermission
 // GitHubDynamicTokenPermission is used to specify an individiual group of permissions and requesters
 // for GitHub dynamic access tokens.
 type GitHubDynamicTokenPermission struct {
-	// Requesters is a list of the Evergreen requester from globals.go.
+	// Requesters is a list of the Evergreen requester that these permissions apply to (corresponds to requesters in  globals.go.)
 	Requesters []string `bson:"requesters,omitempty" json:"requesters,omitempty" yaml:"requesters,omitempty"`
 	// Permissions are a key-value pair of GitHub token permissions to their permission level
 	Permissions map[string]string `bson:"permissions,omitempty" json:"permissions,omitempty" yaml:"permissions,omitempty"`
