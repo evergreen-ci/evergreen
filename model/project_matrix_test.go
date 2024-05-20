@@ -697,12 +697,14 @@ func TestRulesEvaluation(t *testing.T) {
 				},
 				MatrixRules: []ruleAction{
 					{RemoveTasks: []string{".amazing"}}, //remove blue
-					{RemoveTasks: []string{"rainbow"}},
+					{RemoveTasks: []string{"blue"}},
 				},
 			}}
-			_, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs, nil)
-			So(errs, ShouldNotBeNil)
-			So(len(errs), ShouldEqual, 2)
+			evaluated, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs, nil)
+			So(errs, ShouldBeNil)
+			v1 := evaluated[0]
+			So(v1.Name, ShouldEqual, "test")
+			So(len(v1.Tasks), ShouldEqual, 3) // Brown, black, and white left
 		})
 	})
 }
