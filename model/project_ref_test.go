@@ -1659,7 +1659,7 @@ func TestGitHubDynamicTokenPermissions(t *testing.T) {
 		},
 	}
 
-	t.Run("Invalid requester specified", func(t *testing.T) {
+	t.Run("Nonexistent requester specified", func(t *testing.T) {
 		assert.Nil(t, perms.Get("requester0"))
 	})
 
@@ -1691,7 +1691,7 @@ func TestGitHubDynamicTokenPermission(t *testing.T) {
 			},
 		}
 
-		githubPerms, err := perm.AsGitHubInstallationPermissions()
+		githubPerms, err := perm.ToGitHubInstallationPermissions()
 		require.NoError(t, err)
 		require.NotNil(t, githubPerms.Checks)
 		assert.Equal(t, "write", *githubPerms.Checks)
@@ -1708,7 +1708,7 @@ func TestGitHubDynamicTokenPermission(t *testing.T) {
 			},
 		}
 
-		githubPerms, err := perm.AsGitHubInstallationPermissions()
+		githubPerms, err := perm.ToGitHubInstallationPermissions()
 		require.NoError(t, err)
 		require.NotNil(t, githubPerms.Contents)
 		assert.Equal(t, "read", *githubPerms.Contents)
@@ -3370,7 +3370,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, projectRef)
 	assert.Len(projectRef.GitHubTokenPermissionByRequester, 1)
-	perms, err := projectRef.GitHubTokenPermissionByRequester.Get(evergreen.PatchVersionRequester).AsGitHubInstallationPermissions()
+	perms, err := projectRef.GitHubTokenPermissionByRequester.Get(evergreen.PatchVersionRequester).ToGitHubInstallationPermissions()
 	require.NoError(t, err)
 	require.NotNil(t, perms.Contents)
 	assert.Equal("read", *perms.Contents)
