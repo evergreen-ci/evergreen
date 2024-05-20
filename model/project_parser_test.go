@@ -1043,7 +1043,7 @@ tasks:
 	proj = &Project{}
 	_, err = LoadProjectInto(ctx, []byte(nonexistentTaskYml), nil, "id", proj)
 	assert.NotNil(proj)
-	assert.Contains(err.Error(), "notHere: nothing named 'notHere'")
+	assert.Contains(err.Error(), "contains unmatched criteria: 'notHere'")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
 	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecTasks, 2)
 	assert.Len(proj.BuildVariants[1].DisplayTasks, 0)
