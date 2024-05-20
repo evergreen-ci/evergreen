@@ -156,14 +156,14 @@ type GitHubDynamicTokenPermission struct {
 }
 
 // Get returns the GitHubDynamicTokenPermission for the given requester.
-func (g *GitHubDynamicTokenPermissions) Get(requester string) *GitHubDynamicTokenPermission {
-	if g == nil {
+func (p *GitHubDynamicTokenPermissions) Get(requester string) *GitHubDynamicTokenPermission {
+	if p == nil {
 		return nil
 	}
-	for _, p := range *g {
-		for _, r := range p.Requesters {
+	for _, permission := range *p {
+		for _, r := range permission.Requesters {
 			if r == requester {
-				return &p
+				return &permission
 			}
 		}
 	}
@@ -172,7 +172,7 @@ func (g *GitHubDynamicTokenPermissions) Get(requester string) *GitHubDynamicToke
 
 // AsGitHubPermissions returns the github.InstallationPermissions for the GitHubDynamicTokenPermission.
 // These are used in the requests to GitHub for what permissions to use.
-func (g *GitHubDynamicTokenPermission) AsGitHubInstallationPermissions() (github.InstallationPermissions, error) {
+func (g *GitHubDynamicTokenPermission) ToGitHubInstallationPermissions() (github.InstallationPermissions, error) {
 	perms := github.InstallationPermissions{}
 	if g == nil || g.Permissions == nil {
 		return perms, nil
