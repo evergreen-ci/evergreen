@@ -23,6 +23,10 @@ type AbortInfo struct {
 	User                    string `json:"user"`
 }
 
+type AddFavoriteProjectInput struct {
+	ProjectIdentifier string `json:"projectIdentifier"`
+}
+
 // Build Baron is a service that can be integrated into a project (see Confluence Wiki for more details).
 // This type is returned from the buildBaron query, and contains information about Build Baron configurations and suggested
 // tickets from JIRA for a given task on a given execution.
@@ -317,6 +321,10 @@ type PublicKeyInput struct {
 }
 
 type Query struct {
+}
+
+type RemoveFavoriteProjectInput struct {
+	ProjectIdentifier string `json:"projectIdentifier"`
 }
 
 // SaveDistroInput is the input to the saveDistro mutation.

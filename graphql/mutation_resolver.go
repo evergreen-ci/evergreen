@@ -1116,17 +1116,19 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 }
 
 // AddFavoriteProject is the resolver for the addFavoriteProject field.
-func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier *string, projectIdentifier *string) (*restModel.APIProjectRef, error) {
-	if projectIdentifier == nil {
-		projectIdentifier = identifier
+func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier *string, opts *AddFavoriteProjectInput) (*restModel.APIProjectRef, error) {
+	if opts == nil {
+		opts = &AddFavoriteProjectInput{
+			ProjectIdentifier: utility.FromStringPtr(identifier),
+		}
 	}
-	p, err := model.FindBranchProjectRef(utility.FromStringPtr(projectIdentifier))
+	p, err := model.FindBranchProjectRef(opts.ProjectIdentifier)
 	if err != nil || p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", utility.FromStringPtr(projectIdentifier)))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", opts.ProjectIdentifier))
 	}
 
 	usr := mustHaveUser(ctx)
-	err = usr.AddFavoritedProject(utility.FromStringPtr(projectIdentifier))
+	err = usr.AddFavoritedProject(opts.ProjectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -1176,19 +1178,21 @@ func (r *mutationResolver) DeleteSubscriptions(ctx context.Context, subscription
 }
 
 // RemoveFavoriteProject is the resolver for the removeFavoriteProject field.
-func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier *string, projectIdentifier *string) (*restModel.APIProjectRef, error) {
-	if projectIdentifier == nil {
-		projectIdentifier = identifier
+func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier *string, opts *RemoveFavoriteProjectInput) (*restModel.APIProjectRef, error) {
+	if opts == nil {
+		opts = &RemoveFavoriteProjectInput{
+			ProjectIdentifier: utility.FromStringPtr(identifier),
+		}
 	}
-	p, err := model.FindBranchProjectRef(utility.FromStringPtr(projectIdentifier))
+	p, err := model.FindBranchProjectRef(opts.ProjectIdentifier)
 	if err != nil || p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s", utility.FromStringPtr(projectIdentifier)))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s", opts.ProjectIdentifier))
 	}
 
 	usr := mustHaveUser(ctx)
-	err = usr.RemoveFavoriteProject(utility.FromStringPtr(projectIdentifier))
+	err = usr.RemoveFavoriteProject(opts.ProjectIdentifier)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error removing project : %s : %s", utility.FromStringPtr(projectIdentifier), err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error removing project : %s : %s", opts.ProjectIdentifier, err))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	err = apiProjectRef.BuildFromService(*p)

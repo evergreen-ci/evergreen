@@ -619,7 +619,7 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AbortTask                     func(childComplexity int, taskID string) int
 		AddAnnotationIssue            func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
-		AddFavoriteProject            func(childComplexity int, identifier *string, projectIdentifier *string) int
+		AddFavoriteProject            func(childComplexity int, identifier *string, opts *AddFavoriteProjectInput) int
 		AttachProjectToNewRepo        func(childComplexity int, project MoveProjectInput) int
 		AttachProjectToRepo           func(childComplexity int, projectID string) int
 		AttachVolumeToHost            func(childComplexity int, volumeAndHost VolumeHost) int
@@ -646,7 +646,7 @@ type ComplexityRoot struct {
 		OverrideTaskDependencies      func(childComplexity int, taskID string) int
 		PromoteVarsToRepo             func(childComplexity int, projectID *string, varNames []string, opts *PromoteVarsToRepoInput) int
 		RemoveAnnotationIssue         func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
-		RemoveFavoriteProject         func(childComplexity int, identifier *string, projectIdentifier *string) int
+		RemoveFavoriteProject         func(childComplexity int, identifier *string, opts *RemoveFavoriteProjectInput) int
 		RemoveItemFromCommitQueue     func(childComplexity int, commitQueueID string, issue string) int
 		RemovePublicKey               func(childComplexity int, keyName string) int
 		RemoveVolume                  func(childComplexity int, volumeID string) int
@@ -1696,11 +1696,11 @@ type MutationResolver interface {
 	ScheduleTasks(ctx context.Context, versionID string, taskIds []string) ([]*model.APITask, error)
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
-	AddFavoriteProject(ctx context.Context, identifier *string, projectIdentifier *string) (*model.APIProjectRef, error)
+	AddFavoriteProject(ctx context.Context, identifier *string, opts *AddFavoriteProjectInput) (*model.APIProjectRef, error)
 	ClearMySubscriptions(ctx context.Context) (int, error)
 	CreatePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) ([]*model.APIPubKey, error)
 	DeleteSubscriptions(ctx context.Context, subscriptionIds []string) (int, error)
-	RemoveFavoriteProject(ctx context.Context, identifier *string, projectIdentifier *string) (*model.APIProjectRef, error)
+	RemoveFavoriteProject(ctx context.Context, identifier *string, opts *RemoveFavoriteProjectInput) (*model.APIProjectRef, error)
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
 	UpdateParsleySettings(ctx context.Context, opts UpdateParsleySettingsInput) (*UpdateParsleySettingsPayload, error)
@@ -4214,7 +4214,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AddFavoriteProject(childComplexity, args["identifier"].(*string), args["projectIdentifier"].(*string)), true
+		return e.complexity.Mutation.AddFavoriteProject(childComplexity, args["identifier"].(*string), args["opts"].(*AddFavoriteProjectInput)), true
 
 	case "Mutation.attachProjectToNewRepo":
 		if e.complexity.Mutation.AttachProjectToNewRepo == nil {
@@ -4533,7 +4533,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RemoveFavoriteProject(childComplexity, args["identifier"].(*string), args["projectIdentifier"].(*string)), true
+		return e.complexity.Mutation.RemoveFavoriteProject(childComplexity, args["identifier"].(*string), args["opts"].(*RemoveFavoriteProjectInput)), true
 
 	case "Mutation.removeItemFromCommitQueue":
 		if e.complexity.Mutation.RemoveItemFromCommitQueue == nil {
@@ -9617,6 +9617,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	rc := graphql.GetOperationContext(ctx)
 	ec := executionContext{rc, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputAddFavoriteProjectInput,
 		ec.unmarshalInputBootstrapSettingsInput,
 		ec.unmarshalInputBuildBaronSettingsInput,
 		ec.unmarshalInputBuildVariantOptions,
@@ -9667,6 +9668,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputProjectVarsInput,
 		ec.unmarshalInputPromoteVarsToRepoInput,
 		ec.unmarshalInputPublicKeyInput,
+		ec.unmarshalInputRemoveFavoriteProjectInput,
 		ec.unmarshalInputRepoRefInput,
 		ec.unmarshalInputRepoSettingsInput,
 		ec.unmarshalInputResourceLimitsInput,
@@ -9974,15 +9976,15 @@ func (ec *executionContext) field_Mutation_addFavoriteProject_args(ctx context.C
 		}
 	}
 	args["identifier"] = arg0
-	var arg1 *string
-	if tmp, ok := rawArgs["projectIdentifier"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
-		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+	var arg1 *AddFavoriteProjectInput
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+		arg1, err = ec.unmarshalOAddFavoriteProjectInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAddFavoriteProjectInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["projectIdentifier"] = arg1
+	args["opts"] = arg1
 	return args, nil
 }
 
@@ -10817,15 +10819,15 @@ func (ec *executionContext) field_Mutation_removeFavoriteProject_args(ctx contex
 		}
 	}
 	args["identifier"] = arg0
-	var arg1 *string
-	if tmp, ok := rawArgs["projectIdentifier"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
-		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+	var arg1 *RemoveFavoriteProjectInput
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+		arg1, err = ec.unmarshalORemoveFavoriteProjectInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRemoveFavoriteProjectInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["projectIdentifier"] = arg1
+	args["opts"] = arg1
 	return args, nil
 }
 
@@ -31772,7 +31774,7 @@ func (ec *executionContext) _Mutation_addFavoriteProject(ctx context.Context, fi
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AddFavoriteProject(rctx, fc.Args["identifier"].(*string), fc.Args["projectIdentifier"].(*string))
+		return ec.resolvers.Mutation().AddFavoriteProject(rctx, fc.Args["identifier"].(*string), fc.Args["opts"].(*AddFavoriteProjectInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -32089,7 +32091,7 @@ func (ec *executionContext) _Mutation_removeFavoriteProject(ctx context.Context,
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RemoveFavoriteProject(rctx, fc.Args["identifier"].(*string), fc.Args["projectIdentifier"].(*string))
+		return ec.resolvers.Mutation().RemoveFavoriteProject(rctx, fc.Args["identifier"].(*string), fc.Args["opts"].(*RemoveFavoriteProjectInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -67924,6 +67926,33 @@ func (ec *executionContext) fieldContext___Type_specifiedByURL(ctx context.Conte
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputAddFavoriteProjectInput(ctx context.Context, obj interface{}) (AddFavoriteProjectInput, error) {
+	var it AddFavoriteProjectInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"projectIdentifier"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "projectIdentifier":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProjectIdentifier = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputBootstrapSettingsInput(ctx context.Context, obj interface{}) (model.APIBootstrapSettings, error) {
 	var it model.APIBootstrapSettings
 	asMap := map[string]interface{}{}
@@ -70968,6 +70997,33 @@ func (ec *executionContext) unmarshalInputPublicKeyInput(ctx context.Context, ob
 				return it, err
 			}
 			it.Name = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputRemoveFavoriteProjectInput(ctx context.Context, obj interface{}) (RemoveFavoriteProjectInput, error) {
+	var it RemoveFavoriteProjectInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"projectIdentifier"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "projectIdentifier":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProjectIdentifier = data
 		}
 	}
 
@@ -91989,6 +92045,14 @@ func (ec *executionContext) marshalOAbortInfo2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._AbortInfo(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOAddFavoriteProjectInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAddFavoriteProjectInput(ctx context.Context, v interface{}) (*AddFavoriteProjectInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputAddFavoriteProjectInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOAnnotation2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotation(ctx context.Context, sel ast.SelectionSet, v *model.APITaskAnnotation) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -93755,6 +93819,14 @@ func (ec *executionContext) unmarshalOPublicKeyInput2ᚖgithubᚗcomᚋevergreen
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputPublicKeyInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalORemoveFavoriteProjectInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRemoveFavoriteProjectInput(ctx context.Context, v interface{}) (*RemoveFavoriteProjectInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputRemoveFavoriteProjectInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

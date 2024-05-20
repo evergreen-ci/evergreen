@@ -80,6 +80,14 @@ input SubscriberInput {
   jiraIssueSubscriber: JiraIssueSubscriberInput
 }
 
+input AddFavoriteProjectInput {
+  projectIdentifier: String!
+}
+
+input RemoveFavoriteProjectInput {
+  projectIdentifier: String!
+}
+
 ###### TYPES ######
 """
 User is returned by the user query.

@@ -93,11 +93,11 @@ type Mutation {
   unscheduleTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): Task!
 
   # user
-  addFavoriteProject(identifier: String @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String): Project!
+  addFavoriteProject(identifier: String @deprecated(reason: "use projectIdentifier instead"), opts: AddFavoriteProjectInput): Project!
   clearMySubscriptions: Int!
   createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
   deleteSubscriptions(subscriptionIds: [String!]!): Int!
-  removeFavoriteProject(identifier: String @deprecated(reason: "use projectIdentifier instead"), projectIdentifier: String): Project!
+  removeFavoriteProject(identifier: String @deprecated(reason: "use projectIdentifier instead"), opts: RemoveFavoriteProjectInput): Project!
   removePublicKey(keyName: String!): [PublicKey!]!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
   updateParsleySettings(opts: UpdateParsleySettingsInput!): UpdateParsleySettingsPayload
