@@ -1708,10 +1708,8 @@ func TestGitHubDynamicTokenPermission(t *testing.T) {
 			},
 		}
 
-		githubPerms, err := perm.ToGitHubInstallationPermissions()
-		require.NoError(t, err)
-		require.NotNil(t, githubPerms.Contents)
-		assert.Equal(t, "read", *githubPerms.Contents)
+		_, err := perm.ToGitHubInstallationPermissions()
+		require.Error(t, err, "Decoding GitHub permissions")
 	})
 }
 

@@ -180,7 +180,7 @@ func (g *GitHubDynamicTokenPermission) ToGitHubInstallationPermissions() (github
 
 	// The github.InstallationPermissions struct has json struct tags that we can
 	// latch on to for decoding the permissions.
-	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{TagName: "json", Result: &perms})
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{TagName: "json", Result: &perms, ErrorUnused: true})
 	if err != nil {
 		return perms, errors.Wrap(err, "creating decoder for GitHub permissions")
 	}
