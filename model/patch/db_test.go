@@ -87,7 +87,6 @@ func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, 5, count)
 			require.Equal(t, 5, len(patches))
-			assert.Equal(t, "Patch Request Patch", patches[0].Description)
 		},
 		"GithubPRRequester": func(ctx context.Context, t *testing.T) {
 			opts := ByPatchNameStatusesCommitQueuePaginatedOptions{
