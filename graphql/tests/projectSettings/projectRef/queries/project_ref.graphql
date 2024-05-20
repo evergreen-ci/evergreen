@@ -61,10 +61,6 @@
         memoryMb
       }
       taskAnnotationSettings {
-        jiraCustomFields {
-          displayText
-          field
-        }
         fileTicketWebhook {
           endpoint
           secret

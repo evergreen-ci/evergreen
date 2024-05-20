@@ -6,7 +6,7 @@ Project Commands are the fundamental units of functionality in an Evergreen task
 
 ```yaml
 - command: shell.exec
-  display_name: run my cool script ## optional 
+  display_name: run my cool script ## optional
   type: system ## optional
   timeout_secs: 10 ## optional
   retry_on_failure: true ## optional
@@ -17,11 +17,11 @@ Explanation:
 
 -   `command`: a command name from the predefined set of commands documented below.
 -   `display_name`: an optional user defined display name for the command. This will show up in logs and in the UI
-     with more details, for example:`'shell.exec' ('run my cool script') (step 1 of 1)` 
+     with more details, for example:`'shell.exec' ('run my cool script') (step 1 of 1)`
 -   `type`: an optional command type. This will affect the [failure colors](Project-Configuration-Files#command-failure-colors)
--   `timeout_secs`: an optional timeout that will force the command to fail if it stays "idle" for more than a specified number of 
+-   `timeout_secs`: an optional timeout that will force the command to fail if it stays "idle" for more than a specified number of
     seconds.
--   `retry_on_failure`: an optional field. If set to true, it will automatically restart the task upon failure. The 
+-   `retry_on_failure`: an optional field. If set to true, it will automatically restart the task upon failure. The
      automatic restart will process after the command has failed and the task has completed its subsequent post task commands.
 -   `params`: values for the pre defined set of parameters the command can take. Available parameters vary per command.
 
@@ -222,7 +222,7 @@ page.
     indicates to treat the files array as a list of exact filenames to
     match, rather than an array of gitignore file globs.
 
-#### Lifecycle Policy 
+#### Lifecycle Policy
 
 These artifacts are stored in an S3 bucket which has the following lifecycle policy:
 
@@ -367,7 +367,7 @@ This command will also send an external ID in the form
 
 ## expansions.update
 
-`expansions.update` updates the task's expansions at runtime. 
+`expansions.update` updates the task's expansions at runtime.
 Any updates to the expansions made with this command will only persist for the duration of the task.
 
 ``` yaml
@@ -513,7 +513,7 @@ by a patch submission.
 ```
 
 ``` yaml
-- modules: 
+modules:
   - name: example
     owner: 10gen
     repo: mongo-example-modules
@@ -526,13 +526,14 @@ Parameters:
 
 -   `dir`: the directory to clone into
 -   `revisions`: For commit builds, each module should be passed as
-    `<module_name> : ${<module_name>_rev}` (these are loaded from the [manifest](../API/REST-V2-Usage#manifest) 
-    at the beginning of the command). 
+    `<module_name> : ${<module_name>_rev}` (these are loaded from the [manifest](../API/REST-V2-Usage#manifest)
+    at the beginning of the command).
     For patch builds, the hash
     must be passed directly as `<module_name> : <hash>`. Note that this
     means that for patch builds, editing the
     ["modules"](Project-Configuration-Files#modules)
     section of the project config will not change the checked out hash.
+    If you do not specify any revisions, all of them will be cloned.
 -   `token`: Use a token to clone instead of the ssh key on the host.
     Since this is a secret, it should be provided as a project
     expansion. For example, you could provide an expansion called
@@ -545,10 +546,6 @@ Parameters:
 -   `shallow_clone`: Sets `clone_depth` to 100, if not already set.
 -   `recurse_submodules`: automatically initialize and update each
     submodule in the repository, including any nested submodules.
--   `full_clone`: This option only affects for GitHub merge queue,
-    pull requests tasks, and mainline commits. By default (false), it
-    will only clone the head branch and git metadata (tags, etc). If
-    set to true, it will always clone the entire repository and all branches.
 
 The parameters for each module are:
 
@@ -567,7 +564,7 @@ The hash used for a module during cloning is determined by the following hierarc
 * For commit queue and GitHub merge queue patches, Evergreen always uses the module branch name, to ensure accurate testing.
 * For other patches, the initial default is to the githash in set-module, if specified.
 * For both commits and patches, the next default is to the `<module_name>` set in revisions for the command.
-* For commits, if this is not available, the next default is to ref, and then to branch. *Note that this 
+* For commits, if this is not available, the next default is to ref, and then to branch. *Note that this
 doesn't work for patches -- hashes will need to be specified in the revisions section of the command.*
 
 ## gotest.parse_files
@@ -608,7 +605,7 @@ Parse From A File:
 ``` yaml
 - command: host.create
   params:
-    file: src/host_params.yml 
+    file: src/host_params.yml
 ```
 
 Agent Parameters:
@@ -871,7 +868,7 @@ host.list in this form:
             ]
          }
     }
-] 
+]
 ```
 
 ## json.send
@@ -927,6 +924,7 @@ by the Release Infrastructure team, and you may receive assistance with it in
 
 Parameters:
 
+-   `work_dir`: The directory used to search for filenames
 -   `key_id`: your Papertrail key ID (use private variables to keep this a
     secret).
 -   `secret_key`: your Papertrail secret key (use private variables to keep this
@@ -1167,7 +1165,7 @@ and contains these fields:
 downstream_expansions.set is used by parent patches to pass key-value
 pairs to child patches. The command takes the key-value pairs written in
 the file and makes them available to the child patches. Note: these
-parameters will be public and viewable on the patch page.
+parameters will be public and viewable on the child patch's page.
 
 ``` yaml
 - command: downstream_expansions.set
@@ -1191,6 +1189,7 @@ Parameters:
     aws_session_token: ${aws_session_token}
     remote_file: ${mongo_binaries}
     bucket: mciuploads
+    region: us-east-1
     local_file: src/mongo-binaries.tgz
 ```
 
@@ -1204,6 +1203,7 @@ Parameters:
     `local_file`
 -   `remote_file`: the S3 path to get the file from
 -   `bucket`: the S3 bucket to use.
+-   `region`: AWS region of the bucket, defaults to us-east-1.
 -   `build_variants`: list of buildvariants to run the command for, if
     missing/empty will run for all
 -   `optional`: boolean: if set, won't error if the file isn't found or there's an error with downloading.
@@ -1222,6 +1222,7 @@ distribution. **Files uploaded with this command will also be viewable within th
     local_file: src/mongodb-binaries.tgz
     remote_file: mongodb-mongo-master/${build_variant}/${revision}/binaries/mongo-${build_id}.${ext|tgz}
     bucket: mciuploads
+    region: us-east-1
     permissions: public-read
     content_type: ${content_type|application/x-gzip}
     display_name: Binaries
@@ -1242,7 +1243,7 @@ Parameters:
 -   `content_type`: the MIME type of the file. Note it is important that this value accurately reflects the mime type of the file or else the behavior will be unpredictable.
 -   `optional`: boolean to indicate if failure to find or upload this
     file will result in a task failure. This is intended to be used
-    with `local_file`. `local_files_include_filter` be default is 
+    with `local_file`. `local_files_include_filter` be default is
     optional and will not work with this parameter.
 -   `skip_existing`: boolean to indicate that files that already exist
     in s3 should be skipped.
@@ -1268,7 +1269,7 @@ Parameters:
     no-op for patches (i.e. continue without performing the s3 put).
 -   `patch_only`: defaults to false. If set to true, the command will
     no-op for non-patches (i.e. continue without performing the s3 put).
--   `preserve_path`: defaults to false. If set to true, causes multi part uploads uploaded with 
+-   `preserve_path`: defaults to false. If set to true, causes multi part uploads uploaded with
     `LocalFilesIncludeFilter` to preserve the original folder structure instead
      of putting all the files into the same folder
 
@@ -1296,12 +1297,12 @@ Using the s3.put command in this uploads multiple files to an s3 bucket.
 Each file is displayed in evergreen as the file's name prefixed with the
 `display_name` field. Each file is uploaded to a path made of the local
 file's name, in this case whatever matches the `*.tgz`, prefixed with
-what is set as the `remote_file` field (or, to preserve the original folder 
+what is set as the `remote_file` field (or, to preserve the original folder
 structure, use the `preserve_path` field). The filter uses the same
 specification as gitignore when matching files. In this way, all files
 that would be marked to be ignored in a gitignore containing the lines
 `slow_tests/coverage/*.tgz` and `fast_tests/coverage/*.tgz` are uploaded
-to the s3 bucket. 
+to the s3 bucket.
 
 ## s3.push
 
@@ -1438,13 +1439,19 @@ Parameters:
     not exist, it is ignored. In case of conflicting environment
     variables defined by `env` or `add_expansions_to_env`, this has
     highest priority.
+-   `add_to_path`: specify one or more paths to prepend to the command `PATH`,
+    which has the following effects:
+    - If `PATH` is explicitly set in `env`, that `PATH` is ignored.
+    - The command automatically inherits the runtime environment's `PATH`
+      environment variable. Then, any paths specified in `add_to_path` are
+      prepended in the given order.
 -   `background`: if set to true, the script runs in the background
     instead of the foreground. `shell.exec` starts the script but
-    does not wait for the script to exit before running the next command. 
+    does not wait for the script to exit before running the next command.
     If the background script exits with an error while the
     task is still running, the task will continue running.
 -   `silent`: if set to true, does not log any shell output during
-    execution; useful to avoid leaking sensitive info. Note that you should 
+    execution; useful to avoid leaking sensitive info. Note that you should
     not pass secrets as command-line arguments but instead as environment
     variables or from a file, as Evergreen runs `ps` periodically, which
     will log command-line arguments.
@@ -1508,7 +1515,7 @@ Parameters:
       string as desired (e.g. for Windows paths containing `\`).
 -   `background`: if set to true, the process runs in the background
     instead of the foreground. `subprocess.exec` starts the process but
-    does not wait for the process to exit before running the next command. 
+    does not wait for the process to exit before running the next command.
     If the background process exits with an error while the
     task is still running, the task will continue running.
 -   `silent`: do not log output of command. Note that you should

@@ -153,15 +153,9 @@ func (s *StatUnitsSuite) TestSysInfoCollector() {
 	s.False(j.HasErrors())
 	s.True(s.sender.HasMessage())
 
-	m1, ok1 := s.sender.GetMessageSafe()
-	if s.True(ok1) {
-		s.True(m1.Logged)
-		s.True(strings.Contains(m1.Message.String(), "cpu"), m1.Message.String())
-	}
-
-	m2, ok2 := s.sender.GetMessageSafe()
-	if s.True(ok2) {
-		s.True(m2.Logged)
-		s.True(strings.Contains(m2.Message.String(), "cgo.calls"), m2.Message.String())
+	m, ok := s.sender.GetMessageSafe()
+	if s.True(ok) {
+		s.True(m.Logged)
+		s.True(strings.Contains(m.Message.String(), "cgo.calls"), m.Message.String())
 	}
 }

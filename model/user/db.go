@@ -30,6 +30,7 @@ var (
 	EmailAddressKey           = bsonutil.MustHaveTag(DBUser{}, "EmailAddress")
 	PatchNumberKey            = bsonutil.MustHaveTag(DBUser{}, "PatchNumber")
 	CreatedAtKey              = bsonutil.MustHaveTag(DBUser{}, "CreatedAt")
+	LastScheduledTasksAtKey   = bsonutil.MustHaveTag(DBUser{}, "LastScheduledTasksAt")
 	SettingsKey               = bsonutil.MustHaveTag(DBUser{}, "Settings")
 	APIKeyKey                 = bsonutil.MustHaveTag(DBUser{}, "APIKey")
 	OnlyAPIKey                = bsonutil.MustHaveTag(DBUser{}, "OnlyAPI")
@@ -46,6 +47,7 @@ var (
 	FavoriteProjectsKey       = bsonutil.MustHaveTag(DBUser{}, "FavoriteProjects")
 	ParsleyFiltersKey         = bsonutil.MustHaveTag(DBUser{}, "ParsleyFilters")
 	ParsleySettingsKey        = bsonutil.MustHaveTag(DBUser{}, "ParsleySettings")
+	NumScheduledPatchTasksKey = bsonutil.MustHaveTag(DBUser{}, "NumScheduledPatchTasks")
 )
 
 //nolint:megacheck,unused
@@ -280,6 +282,23 @@ func GetPatchUser(gitHubUID int) (*DBUser, error) {
 	}
 
 	return u, nil
+}
+
+// GetPeriodicBuild returns the matching user if applicable, and otherwise returns the default periodic build user.
+func GetPeriodicBuildUser(user string) (*DBUser, error) {
+	if user != "" {
+		usr, err := FindOneById(user)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding user '%s'", user)
+		}
+		return usr, nil
+	}
+
+	usr, err := FindOneById(evergreen.PeriodicBuildUser)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting periodic build user")
+	}
+	return usr, nil
 }
 
 // DeleteServiceUser deletes a service user by ID.

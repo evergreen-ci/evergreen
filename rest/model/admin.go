@@ -25,7 +25,6 @@ func NewConfigModel() *APIAdminSettings {
 		HostJasper:        &APIHostJasperConfig{},
 		Jira:              &APIJiraConfig{},
 		JIRANotifications: &APIJIRANotificationsConfig{},
-		LDAPRoleMap:       &APILDAPRoleMap{},
 		LoggerConfig:      &APILoggerConfig{},
 		NewRelic:          &APINewRelicConfig{},
 		Notify:            &APINotifyConfig{},
@@ -74,7 +73,6 @@ type APIAdminSettings struct {
 	Jira                *APIJiraConfig                    `json:"jira,omitempty"`
 	JIRANotifications   *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
 	KanopySSHKeyPath    *string                           `json:"kanopy_ssh_key_path,omitempty"`
-	LDAPRoleMap         *APILDAPRoleMap                   `json:"ldap_role_map,omitempty"`
 	LoggerConfig        *APILoggerConfig                  `json:"logger_config,omitempty"`
 	LogPath             *string                           `json:"log_path,omitempty"`
 	NewRelic            *APINewRelicConfig                `json:"newrelic,omitempty"`
@@ -516,7 +514,6 @@ func (a *APIapiConfig) ToService() (interface{}, error) {
 }
 
 type APIAuthConfig struct {
-	LDAP                    *APILDAPConfig       `json:"ldap"`
 	Okta                    *APIOktaConfig       `json:"okta"`
 	Naive                   *APINaiveAuthConfig  `json:"naive"`
 	Github                  *APIGithubAuthConfig `json:"github"`
@@ -529,12 +526,6 @@ type APIAuthConfig struct {
 func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AuthConfig:
-		if v.LDAP != nil {
-			a.LDAP = &APILDAPConfig{}
-			if err := a.LDAP.BuildFromService(v.LDAP); err != nil {
-				return errors.Wrap(err, "converting LDAP auth settings to API model")
-			}
-		}
 		if v.Okta != nil {
 			a.Okta = &APIOktaConfig{}
 			if err := a.Okta.BuildFromService(v.Okta); err != nil {
@@ -569,24 +560,13 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APIAuthConfig) ToService() (interface{}, error) {
-	var ldap *evergreen.LDAPConfig
 	var okta *evergreen.OktaConfig
 	var naive *evergreen.NaiveAuthConfig
 	var github *evergreen.GithubAuthConfig
 	var multi *evergreen.MultiAuthConfig
 	var ok bool
-	i, err := a.LDAP.ToService()
-	if err != nil {
-		return nil, errors.Wrap(err, "converting LDAP auth config to service model")
-	}
-	if i != nil {
-		ldap, ok = i.(*evergreen.LDAPConfig)
-		if !ok {
-			return nil, errors.Errorf("programmatic error: expected LDAP auth config but got type %T", i)
-		}
-	}
 
-	i, err = a.Okta.ToService()
+	i, err := a.Okta.ToService()
 	if err != nil {
 		return nil, errors.Wrap(err, "converting Okta auth config to service model")
 	}
@@ -631,7 +611,6 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 	}
 
 	return evergreen.AuthConfig{
-		LDAP:                    ldap,
 		Okta:                    okta,
 		Naive:                   naive,
 		Github:                  github,
@@ -703,53 +682,6 @@ func (a *APICedarConfig) ToService() (interface{}, error) {
 		RPCPort:     utility.FromStringPtr(a.RPCPort),
 		User:        utility.FromStringPtr(a.User),
 		APIKey:      utility.FromStringPtr(a.APIKey),
-	}, nil
-}
-
-type APILDAPConfig struct {
-	URL                *string `json:"url"`
-	Port               *string `json:"port"`
-	UserPath           *string `json:"path"`
-	ServicePath        *string `json:"service_path"`
-	Group              *string `json:"group"`
-	ServiceGroup       *string `json:"service_group"`
-	ExpireAfterMinutes *string `json:"expire_after_minutes"`
-	GroupOU            *string `json:"group_ou"`
-}
-
-func (a *APILDAPConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case *evergreen.LDAPConfig:
-		if v == nil {
-			return nil
-		}
-		a.URL = utility.ToStringPtr(v.URL)
-		a.Port = utility.ToStringPtr(v.Port)
-		a.UserPath = utility.ToStringPtr(v.UserPath)
-		a.ServicePath = utility.ToStringPtr(v.ServicePath)
-		a.Group = utility.ToStringPtr(v.Group)
-		a.ServiceGroup = utility.ToStringPtr(v.ServiceGroup)
-		a.ExpireAfterMinutes = utility.ToStringPtr(v.ExpireAfterMinutes)
-		a.GroupOU = utility.ToStringPtr(v.GroupOU)
-	default:
-		return errors.Errorf("programmatic error: expected LDAP config but got type %T", h)
-	}
-	return nil
-}
-
-func (a *APILDAPConfig) ToService() (interface{}, error) {
-	if a == nil {
-		return nil, nil
-	}
-	return &evergreen.LDAPConfig{
-		URL:                utility.FromStringPtr(a.URL),
-		Port:               utility.FromStringPtr(a.Port),
-		UserPath:           utility.FromStringPtr(a.UserPath),
-		ServicePath:        utility.FromStringPtr(a.ServicePath),
-		Group:              utility.FromStringPtr(a.Group),
-		ServiceGroup:       utility.FromStringPtr(a.ServiceGroup),
-		ExpireAfterMinutes: utility.FromStringPtr(a.ExpireAfterMinutes),
-		GroupOU:            utility.FromStringPtr(a.Group),
 	}, nil
 }
 
@@ -1092,65 +1024,6 @@ func (a *APIJiraOAuth1) ToService() evergreen.JiraOAuth1Config {
 		TokenSecret: utility.FromStringPtr(a.TokenSecret),
 		ConsumerKey: utility.FromStringPtr(a.ConsumerKey),
 	}
-}
-
-type APILDAPRoleMapping struct {
-	LDAPGroup *string `json:"ldap_group"`
-	RoleID    *string ` json:"role_id"`
-}
-
-func (a *APILDAPRoleMapping) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.LDAPRoleMapping:
-		a.LDAPGroup = utility.ToStringPtr(v.LDAPGroup)
-		a.RoleID = utility.ToStringPtr(v.RoleID)
-	}
-
-	return nil
-}
-
-func (a *APILDAPRoleMapping) ToService() (interface{}, error) {
-	mapping := evergreen.LDAPRoleMapping{
-		LDAPGroup: utility.FromStringPtr(a.LDAPGroup),
-		RoleID:    utility.FromStringPtr(a.RoleID),
-	}
-
-	return mapping, nil
-}
-
-type APILDAPRoleMap []APILDAPRoleMapping
-
-func (a *APILDAPRoleMap) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.LDAPRoleMap:
-		m := make(APILDAPRoleMap, len(v))
-		for i := range v {
-			if err := m[i].BuildFromService(v[i]); err != nil {
-				return errors.Wrapf(err, "converting LDAP role at index %d to API model", i)
-			}
-		}
-	default:
-		return errors.Errorf("programmatic error: expected LDAP role map but got type %T", h)
-	}
-
-	return nil
-}
-
-func (a *APILDAPRoleMap) ToService() (interface{}, error) {
-	serviceMap := make(evergreen.LDAPRoleMap, len(*a))
-	for i := range *a {
-		v, err := (*a)[i].ToService()
-		if err != nil {
-			return nil, errors.Wrapf(err, "converting LDAP role mapping at index %d to service model", i)
-		}
-		roleMapping, ok := v.(evergreen.LDAPRoleMapping)
-		if !ok {
-			return nil, errors.Errorf("programmatic error: expected LDAP role mapping at index %d but got type %T", i, v)
-		}
-		serviceMap[i] = roleMapping
-	}
-
-	return serviceMap, nil
 }
 
 type APILoggerConfig struct {
@@ -2172,6 +2045,7 @@ type APIServiceFlags struct {
 	LegacyUIPublicAccessDisabled    bool `json:"legacy_ui_public_access_disabled"`
 	GlobalGitHubTokenDisabled       bool `json:"global_github_token_disabled"`
 	SleepScheduleDisabled           bool `json:"sleep_schedule_disabled"`
+	SleepScheduleBetaTestDisabled   bool `json:"sleep_schedule_beta_test_disabled"`
 	SystemFailedTaskRestartDisabled bool `json:"system_failed_task_restart_disabled"`
 
 	// Notifications Flags
@@ -2489,6 +2363,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.LegacyUIPublicAccessDisabled = v.LegacyUIPublicAccessDisabled
 		as.GlobalGitHubTokenDisabled = v.GlobalGitHubTokenDisabled
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
+		as.SleepScheduleBetaTestDisabled = v.SleepScheduleBetaTestDisabled
 		as.SystemFailedTaskRestartDisabled = v.SystemFailedTaskRestartDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
@@ -2533,6 +2408,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		LegacyUIPublicAccessDisabled:    as.LegacyUIPublicAccessDisabled,
 		GlobalGitHubTokenDisabled:       as.GlobalGitHubTokenDisabled,
 		SleepScheduleDisabled:           as.SleepScheduleDisabled,
+		SleepScheduleBetaTestDisabled:   as.SleepScheduleBetaTestDisabled,
 		SystemFailedTaskRestartDisabled: as.SystemFailedTaskRestartDisabled,
 	}, nil
 }
@@ -2819,6 +2695,7 @@ func (c *APIGitHubCheckRunConfig) ToService() (interface{}, error) {
 type APITaskLimitsConfig struct {
 	MaxTasksPerVersion       *int `json:"max_tasks_per_version"`
 	MaxIncludesPerVersion    *int `json:"max_includes_per_version"`
+	MaxHourlyPatchTasks      *int `json:"max_hourly_patch_tasks"`
 	MaxPendingGeneratedTasks *int `json:"max_pending_generated_tasks"`
 	MaxGenerateTaskJSONSize  *int `json:"max_generate_task_json_size"`
 }
@@ -2829,6 +2706,7 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 		c.MaxTasksPerVersion = utility.ToIntPtr(v.MaxTasksPerVersion)
 		c.MaxIncludesPerVersion = utility.ToIntPtr(v.MaxIncludesPerVersion)
 		c.MaxPendingGeneratedTasks = utility.ToIntPtr(v.MaxPendingGeneratedTasks)
+		c.MaxHourlyPatchTasks = utility.ToIntPtr(v.MaxHourlyPatchTasks)
 		c.MaxGenerateTaskJSONSize = utility.ToIntPtr(v.MaxGenerateTaskJSONSize)
 		return nil
 	default:
@@ -2840,6 +2718,7 @@ func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 	return evergreen.TaskLimitsConfig{
 		MaxTasksPerVersion:       utility.FromIntPtr(c.MaxTasksPerVersion),
 		MaxIncludesPerVersion:    utility.FromIntPtr(c.MaxIncludesPerVersion),
+		MaxHourlyPatchTasks:      utility.FromIntPtr(c.MaxHourlyPatchTasks),
 		MaxPendingGeneratedTasks: utility.FromIntPtr(c.MaxPendingGeneratedTasks),
 		MaxGenerateTaskJSONSize:  utility.FromIntPtr(c.MaxGenerateTaskJSONSize),
 	}, nil

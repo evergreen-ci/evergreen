@@ -73,6 +73,7 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database) erro
 		if _, err = collection.Indexes().CreateMany(ctx, []mongo.IndexModel{
 			{Keys: host.StatusIndex},
 			{Keys: host.StartedByStatusIndex},
+			{Keys: host.DistroIdStatusIndex},
 		}); err != nil {
 			return errors.Wrap(err, "creating host index")
 		}

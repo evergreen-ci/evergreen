@@ -69,12 +69,30 @@ func (j *unexpirableSpawnHostStatsJob) Run(ctx context.Context) {
 	stats := j.getStats(hosts)
 
 	grip.Info(message.Fields{
-		"message":                      "unexpirable spawn host stats",
-		"job_id":                       j.ID(),
-		"total_uptime_secs":            stats.totalUptime.Seconds(),
-		"uptime_secs_by_distro":        stats.uptimeSecsByDistro,
-		"uptime_secs_by_instance_type": stats.uptimeSecsByInstanceType,
+		"message":           "unexpirable spawn host stats",
+		"job_id":            j.ID(),
+		"total_uptime_secs": stats.totalUptime.Seconds(),
+		"dashboard":         "evergreen sleep schedule health",
 	})
+
+	for distroID, uptimeSecs := range stats.uptimeSecsByDistro {
+		grip.Info(message.Fields{
+			"message":     "unexpirable spawn host stats by distro",
+			"job_id":      j.ID(),
+			"distro":      distroID,
+			"uptime_secs": uptimeSecs,
+			"dashboard":   "evergreen sleep schedule health",
+		})
+	}
+	for instanceType, uptimeSecs := range stats.uptimeSecsByInstanceType {
+		grip.Info(message.Fields{
+			"message":       "unexpirable spawn host stats by instance type",
+			"job_id":        j.ID(),
+			"instance_type": instanceType,
+			"uptime_secs":   uptimeSecs,
+			"dashboard":     "evergreen sleep schedule health",
+		})
+	}
 }
 
 type unexpirableSpawnHostStats struct {

@@ -37,8 +37,8 @@ func TestTaskAbortSuite(t *testing.T) {
 func (s *TaskAbortSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(task.Collection, user.Collection, build.Collection, serviceModel.VersionCollection))
 	tasks := []task.Task{
-		{Id: "task1", Status: evergreen.TaskStarted, BuildId: "b1", Version: "v1"},
-		{Id: "task2", Status: evergreen.TaskStarted, BuildId: "b1", Version: "v1"},
+		{Id: "task1", Status: evergreen.TaskStarted, Activated: true, BuildId: "b1", Version: "v1"},
+		{Id: "task2", Status: evergreen.TaskStarted, Activated: true, BuildId: "b1", Version: "v1"},
 	}
 	s.NoError((&build.Build{Id: "b1"}).Insert())
 	s.NoError((&serviceModel.Version{Id: "v1"}).Insert())

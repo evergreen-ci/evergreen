@@ -63,13 +63,7 @@
         "web_hook": {
           "endpoint": "endpoint",
           "secret": "shh"
-        },
-        "jira_custom_fields": [
-          {
-            "display_text": "description",
-            "field": "sample_field"
-          }
-        ]
+        }
       },
       "container_size_definitions": [
         {

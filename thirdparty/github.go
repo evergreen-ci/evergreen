@@ -152,7 +152,6 @@ type GithubPatch struct {
 	HeadOwner      string `bson:"head_owner"`
 	HeadRepo       string `bson:"head_repo"`
 	HeadHash       string `bson:"head_hash"`
-	HeadBranch     string `bson:"head_branch"`
 	Author         string `bson:"author"`
 	AuthorUID      int    `bson:"author_uid"`
 	MergeCommitSHA string `bson:"merge_commit_sha"`
@@ -290,7 +289,8 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 
 // getGithubClient returns a client that provides the given token, retries requests,
 // caches responses, and creates a span for each request.
-func getGithubClient(token, caller string, config retryConfig) *github.Client {
+// Couple this with a deferred call with Close() to clean up the client.
+func getGithubClient(token, caller string, config retryConfig) *evergreen.GitHubClient {
 	grip.Info(message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "called getGithubClient",
@@ -306,6 +306,9 @@ func getGithubClient(token, caller string, config retryConfig) *github.Client {
 		cacheTransport.Cache = httpcache.NewMemoryCache()
 	}
 
+	httpClient := utility.GetHTTPClient()
+	httpClient.Transport = githubTransport
+
 	client := utility.SetupOauth2CustomHTTPRetryableClient(
 		token,
 		githubShouldRetry(caller, config),
@@ -313,10 +316,11 @@ func getGithubClient(token, caller string, config retryConfig) *github.Client {
 			MaxAttempts: evergreen.GitHubMaxRetries,
 			MinDelay:    evergreen.GitHubRetryMinDelay,
 		}),
-		utility.DefaultHttpClient(githubTransport),
+		httpClient,
 	)
 
-	return github.NewClient(client)
+	githubClient := evergreen.GitHubClient{Client: github.NewClient(client)}
+	return &githubClient
 }
 
 // getInstallationToken creates an installation token using Github app auth.
@@ -354,6 +358,7 @@ func RevokeInstallationToken(ctx context.Context, token string) error {
 	defer span.End()
 
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 	resp, err := githubClient.Apps.RevokeInstallationToken(ctx)
 	if resp != nil {
 		defer resp.Body.Close()
@@ -426,6 +431,7 @@ func getCommits(ctx context.Context, token, owner, repo, ref string, until time.
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 
 	options := github.CommitsListOptions{
 		SHA: ref,
@@ -510,6 +516,7 @@ func getFile(ctx context.Context, token, owner, repo, path, ref string) (*github
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 
 	var opt *github.RepositoryContentGetOptions
 	if len(ref) != 0 {
@@ -671,6 +678,7 @@ func getCommitComparison(ctx context.Context, token, owner, repo, baseRevision, 
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 
 	compare, resp, err := githubClient.Repositories.CompareCommits(ctx,
 		owner, repo, baseRevision, currentCommitHash, nil)
@@ -734,6 +742,7 @@ func commitEvent(ctx context.Context, token, owner, repo, githash string) (*gith
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 
 	grip.Info(message.Fields{
 		"message": "requesting commit from github",
@@ -815,6 +824,7 @@ func commitDiff(ctx context.Context, token, owner, repo, sha string) (string, er
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 
 	commit, resp, err := githubClient.Repositories.GetCommitRaw(ctx, owner, repo, sha, github.RawOptions{Type: github.Diff})
 	if resp != nil {
@@ -875,6 +885,7 @@ func branchEvent(ctx context.Context, token, owner, repo, branch string) (*githu
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 
 	grip.Debugf("requesting github commit for '%s/%s': branch: %s\n", owner, repo, branch)
 
@@ -1071,6 +1082,7 @@ func taggedCommit(ctx context.Context, token, owner, repo, tag string) (string, 
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 	ref, resp, err := githubClient.Git.GetRef(ctx, owner, repo, tag)
 	if resp != nil {
 		defer resp.Body.Close()
@@ -1125,6 +1137,7 @@ func getObjectTag(ctx context.Context, token, owner, repo, sha string) (*github.
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 
 	tag, resp, err := githubClient.Git.GetTag(ctx, owner, repo, sha)
 	if resp != nil {
@@ -1178,6 +1191,7 @@ func userInTeam(ctx context.Context, token string, teams []string, org, user, ow
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 
 	grip.Info(message.Fields{
 		"ticket":  GithubInvestigation,
@@ -1215,6 +1229,7 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 	defer span.End()
 
 	githubClient := getGithubClient(fmt.Sprintf("token %s", token), caller, retryConfig{retry: true})
+	defer githubClient.Close()
 
 	user, resp, err := githubClient.Users.Get(ctx, "")
 	if resp != nil {
@@ -1287,6 +1302,7 @@ func apiLimit(ctx context.Context, token string) (int64, error) {
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 
 	limits, resp, err := githubClient.RateLimits(ctx)
 	if resp != nil {
@@ -1341,6 +1357,7 @@ func getUser(ctx context.Context, token, loginName string) (*github.User, error)
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 
 	user, resp, err := githubClient.Users.Get(ctx, loginName)
 	if resp != nil {
@@ -1394,6 +1411,7 @@ func userInOrganization(ctx context.Context, token, requiredOrganization, userna
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 
 	isMember, resp, err := githubClient.Organizations.IsMember(context.Background(), requiredOrganization, username)
 	if resp != nil {
@@ -1439,6 +1457,7 @@ func authorizedForOrg(ctx context.Context, token, requiredOrganization, name str
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 
 	// GitHub often appends [bot] to GitHub App usage, but this doesn't match the App slug, so we should check without this.
 	nameWithoutBotSuffix := strings.TrimSuffix(name, botSuffix)
@@ -1510,6 +1529,7 @@ func userHasWritePermission(ctx context.Context, token, owner, repo, username st
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
+	defer githubClient.Close()
 
 	permissionLevel, resp, err := githubClient.Repositories.GetPermissionLevel(ctx, owner, repo, username)
 	if resp != nil {
@@ -1565,6 +1585,7 @@ func getPRMergeBase(ctx context.Context, token string, data GithubPatch) (string
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
+	defer githubClient.Close()
 
 	commits, resp, err := githubClient.PullRequests.ListCommits(ctx, data.BaseOwner, data.BaseRepo, data.PRNumber, nil)
 	if resp != nil {
@@ -1615,6 +1636,7 @@ func getCommit(ctx context.Context, token, owner, repo, sha string) (*github.Rep
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
+	defer githubClient.Close()
 
 	commit, resp, err := githubClient.Repositories.GetCommit(ctx, owner, repo, sha, nil)
 	if resp != nil {
@@ -1668,6 +1690,7 @@ func getPullRequest(ctx context.Context, token, baseOwner, baseRepo string, prNu
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
+	defer githubClient.Close()
 
 	pr, resp, err := githubClient.PullRequests.Get(ctx, baseOwner, baseRepo, prNumber)
 	if resp != nil {
@@ -1718,6 +1741,7 @@ func pullRequestDiff(ctx context.Context, token string, gh GithubPatch) (string,
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
+	defer githubClient.Close()
 
 	diff, resp, err := githubClient.PullRequests.GetRaw(ctx, gh.BaseOwner, gh.BaseRepo, gh.PRNumber, github.RawOptions{Type: github.Diff})
 	if resp != nil {
@@ -1894,6 +1918,7 @@ func mergePR(ctx context.Context, token, owner, repo, commitMessage string, prNu
 	defer span.End()
 
 	githubClient := getGithubClient(token, caller, retryConfig{})
+	defer githubClient.Close()
 	res, resp, err := githubClient.PullRequests.Merge(ctx, owner, repo,
 		prNum, commitMessage, mergeOpts)
 	if resp != nil {
@@ -1946,6 +1971,7 @@ func postComment(ctx context.Context, token, owner, repo string, prNum int, comm
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{})
+	defer githubClient.Close()
 
 	githubComment := &github.IssueComment{
 		Body: &comment,
@@ -2003,6 +2029,7 @@ func GetBranchProtectionRules(ctx context.Context, token, owner, repo, branch st
 		defer func() { _ = RevokeInstallationToken(ctx, token) }()
 	}
 	githubClient := getGithubClient(token, caller, retryConfig{})
+	defer githubClient.Close()
 
 	protection, resp, err := githubClient.Repositories.GetBranchProtection(ctx, owner, repo, branch)
 	if resp != nil {
@@ -2062,6 +2089,7 @@ func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, ta
 	defer func() { _ = RevokeInstallationToken(ctx, token) }()
 
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 
 	opts := github.CreateCheckRunOptions{
 		Name:        makeCheckRunName(task),
@@ -2120,6 +2148,7 @@ func UpdateCheckRun(ctx context.Context, owner, repo, uiBase string, checkRunID 
 	defer func() { _ = RevokeInstallationToken(ctx, token) }()
 
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 	checkRun, resp, err := githubClient.Checks.UpdateCheckRun(ctx, owner, repo, checkRunID, updateOpts)
 
 	if resp != nil {
@@ -2186,6 +2215,7 @@ func ListCheckRunCheckSuite(ctx context.Context, owner, repo string, checkSuiteI
 	defer func() { _ = RevokeInstallationToken(ctx, token) }()
 
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 	listCheckRunsResult, resp, err := githubClient.Checks.ListCheckRunsCheckSuite(ctx, owner, repo, checkSuiteID, nil)
 	if resp != nil {
 		defer resp.Body.Close()
@@ -2218,6 +2248,7 @@ func GetCheckRun(ctx context.Context, owner, repo string, checkRunID int64) (*gi
 	defer func() { _ = RevokeInstallationToken(ctx, token) }()
 
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
 	checkRun, resp, err := githubClient.Checks.GetCheckRun(ctx, owner, repo, checkRunID)
 	if resp != nil {
 		defer resp.Body.Close()

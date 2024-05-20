@@ -5,12 +5,10 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/http"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -18,38 +16,25 @@ import (
 // access generated JSON files stored in S3.
 type generatedJSONS3Storage struct {
 	bucket pail.Bucket
-	client *http.Client
-	closed bool
 }
 
 // newGeneratedJSONS3Storage sets up access to generated JSON files stored in
 // S3. If this returns a non-nil GeneratedJSONFileStorage, callers are expected
 // to call Close when they are finished with it.
 func newGeneratedJSONS3Storage(ppConf evergreen.ParserProjectS3Config) (*generatedJSONS3Storage, error) {
-	c := utility.GetHTTPClient()
-
-	b, err := pail.NewS3MultiPartBucketWithHTTPClient(c, pail.S3Options{
+	b, err := pail.NewS3MultiPartBucket(pail.S3Options{
 		Name:   ppConf.Bucket,
 		Prefix: ppConf.GeneratedJSONPrefix,
 		Region: endpoints.UsEast1RegionID,
 	})
 	if err != nil {
-		utility.PutHTTPClient(c)
 		return nil, errors.Wrap(err, "setting up S3 multipart bucket")
 	}
-	s := generatedJSONS3Storage{
-		bucket: b,
-		client: c,
-	}
-	return &s, nil
+	return &generatedJSONS3Storage{bucket: b}, nil
 }
 
 // Find finds the generated JSON files from S3 for the given task.
 func (s *generatedJSONS3Storage) Find(ctx context.Context, t *Task) (GeneratedJSONFiles, error) {
-	if s.closed {
-		return nil, errors.New("cannot access generated JSON file S3 storage when it is closed")
-	}
-
 	it, err := s.bucket.List(ctx, t.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting generated JSON files for task '%s'", t.Id)
@@ -90,10 +75,6 @@ func (s *generatedJSONS3Storage) downloadFile(ctx context.Context, item pail.Buc
 // task's generated JSON storage method to S3. If the files are already
 // persisted, this will no-op.
 func (s *generatedJSONS3Storage) Insert(ctx context.Context, t *Task, files GeneratedJSONFiles) error {
-	if s.closed {
-		return errors.New("cannot access generated JSON file S3 storage when it is closed")
-	}
-
 	if t.GeneratedJSONStorageMethod != "" {
 		return nil
 	}
@@ -108,18 +89,6 @@ func (s *generatedJSONS3Storage) Insert(ctx context.Context, t *Task, files Gene
 	if err := t.SetGeneratedJSONStorageMethod(evergreen.ProjectStorageMethodS3); err != nil {
 		return errors.Wrapf(err, "settings generated JSON storage method to S3 for task '%s'", t.Id)
 	}
-
-	return nil
-}
-
-// Close returns the HTTP client that is being used back to the client pool.
-func (s *generatedJSONS3Storage) Close(ctx context.Context) error {
-	if s.closed {
-		return nil
-	}
-
-	utility.PutHTTPClient(s.client)
-	s.closed = true
 
 	return nil
 }

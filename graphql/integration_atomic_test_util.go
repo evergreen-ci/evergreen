@@ -43,6 +43,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type AtomicGraphQLState struct {
@@ -188,6 +189,7 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 
 	require.NoError(t, usr.UpdateAPIKey(apiKey))
 
+	require.NoError(t, setupDBIndexes())
 	require.NoError(t, setupDBData(ctx, env, state.DBData, *state))
 	require.NoError(t, setupTaskOutputData(ctx, env, state))
 	roleManager := env.RoleManager()
@@ -200,7 +202,7 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 		ID:        evergreen.UnrestrictedProjectsScope,
 		Name:      "unrestricted projects",
 		Type:      evergreen.ProjectResourceType,
-		Resources: []string{"mci"},
+		Resources: []string{"mci", "ui"},
 	}
 	err = roleManager.AddScope(unrestrictedProjectScope)
 	require.NoError(t, err)
@@ -383,6 +385,13 @@ type test struct {
 // escapeGQLQuery replaces literal newlines with '\n' and literal double quotes with '\"'
 func escapeGQLQuery(in string) string {
 	return strings.Replace(strings.Replace(in, "\n", "\\n", -1), "\"", "\\\"", -1)
+}
+
+// setupDBIndexes ensures that the indexes required for the tests are created.
+func setupDBIndexes() error {
+	return db.EnsureIndex(host.Collection, mongo.IndexModel{
+		Keys: host.DistroIdStatusIndex,
+	})
 }
 
 func setupDBData(ctx context.Context, env evergreen.Environment, data map[string]json.RawMessage, state AtomicGraphQLState) error {

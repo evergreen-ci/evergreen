@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type StatusChanges struct {
@@ -387,18 +388,16 @@ func resetTask(ctx context.Context, taskId, caller string) error {
 	if t.IsPartOfDisplay() {
 		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
 	}
+	if err = checkUsersPatchTaskLimit(t.Requester, caller, true, *t); err != nil {
+		return errors.Wrap(err, "updating patch task limit for user")
+	}
 	if err = t.Archive(ctx); err != nil {
 		return errors.Wrap(err, "can't restart task because it can't be archived")
 	}
-
 	if err = MarkOneTaskReset(ctx, t, caller); err != nil {
 		return errors.WithStack(err)
 	}
 	event.LogTaskRestarted(t.Id, t.Execution, caller)
-
-	if err := t.ActivateTask(caller); err != nil {
-		return errors.WithStack(err)
-	}
 
 	return errors.WithStack(UpdateBuildAndVersionStatusForTask(ctx, t))
 }
@@ -851,9 +850,9 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		"pod_id":             t.PodID,
 		"execution_platform": t.ExecutionPlatform,
 	})
-
+	origin := evergreen.APIServerTaskActivator
 	if t.IsPartOfDisplay() {
-		catcher.Add(markEndDisplayTask(ctx, settings, t))
+		catcher.Add(markEndDisplayTask(ctx, settings, t, caller, origin))
 	} else if t.IsPartOfSingleHostTaskGroup() {
 		catcher.Wrap(checkResetSingleHostTaskGroup(ctx, t, caller), "resetting single host task group")
 	}
@@ -873,17 +872,16 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	catcher.Wrap(logTaskEndStats(ctx, t), "logging task end stats")
 
 	if (t.ResetWhenFinished || t.ResetFailedWhenFinished) && !t.IsPartOfDisplay() && !t.IsPartOfSingleHostTaskGroup() {
-		requester := evergreen.APIServerTaskActivator
 		if t.IsAutomaticRestart {
-			requester = evergreen.AutoRestartActivator
+			caller = evergreen.AutoRestartActivator
 		}
-		catcher.Wrap(TryResetTask(ctx, settings, t.Id, requester, "", detail), "automatically resetting task")
+		return TryResetTask(ctx, settings, t.Id, caller, "", detail)
 	}
 
-	return errors.Wrapf(catcher.Resolve(), "marking task '%s' as finished", t.Id)
+	return nil
 }
 
-func markEndDisplayTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) error {
+func markEndDisplayTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, caller, origin string) error {
 	if err := UpdateDisplayTaskForTask(t); err != nil {
 		return errors.Wrap(err, "updating display task")
 	}
@@ -891,7 +889,7 @@ func markEndDisplayTask(ctx context.Context, settings *evergreen.Settings, t *ta
 	if err != nil {
 		return errors.Wrap(err, "getting display task")
 	}
-	return errors.Wrap(checkResetDisplayTask(ctx, settings, dt), "checking display task reset")
+	return errors.Wrap(checkResetDisplayTask(ctx, settings, caller, origin, dt), "checking display task reset")
 }
 
 func attemptStepback(ctx context.Context, t *task.Task, status string) {
@@ -1015,6 +1013,7 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (c
 		attribute.String(evergreen.VersionIDOtelAttribute, v.Id),
 		attribute.String(evergreen.VersionRequesterOtelAttribute, v.Requester),
 		attribute.String(evergreen.ProjectIDOtelAttribute, project),
+		attribute.String(evergreen.ProjectIdentifierOtelAttribute, v.Identifier),
 		attribute.String(evergreen.VersionStatusOtelAttribute, v.Status),
 		attribute.String(evergreen.VersionCreateTimeOtelAttribute, v.CreateTime.String()),
 		attribute.String(evergreen.VersionStartTimeOtelAttribute, v.StartTime.String()),
@@ -1912,7 +1911,8 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			if err != nil {
 				return errors.Wrap(err, "getting context for tracing")
 			}
-			_, span := tracer.Start(traceContext, "version-completion")
+			// use a new root span so that it logs it every time instead of only logging a small sample set as an http call span
+			_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
 			defer span.End()
 
 			return nil
@@ -1952,7 +1952,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			if err != nil {
 				return errors.Wrap(err, "getting context for tracing")
 			}
-			_, span := tracer.Start(traceContext, "version-completion")
+			_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
 			defer span.End()
 		}
 
@@ -2072,22 +2072,12 @@ func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
 
 func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 	if t.DisplayOnly {
-		if !t.ResetFailedWhenFinished {
-			if err := MarkTasksReset(ctx, t.ExecutionTasks, caller); err != nil {
-				return errors.Wrap(err, "resetting execution tasks")
-			}
-		} else {
-			failedExecTasks, err := task.FindWithFields(task.FailedTasksByIds(t.ExecutionTasks), task.IdKey)
-			if err != nil {
-				return errors.Wrap(err, "retrieving failed execution tasks")
-			}
-			failedExecTaskIds := []string{}
-			for _, et := range failedExecTasks {
-				failedExecTaskIds = append(failedExecTaskIds, et.Id)
-			}
-			if err := MarkTasksReset(ctx, failedExecTaskIds, caller); err != nil {
-				return errors.Wrap(err, "resetting failed execution tasks")
-			}
+		execTaskIdsToRestart, err := findExecTasksToReset(t)
+		if err != nil {
+			return errors.Wrap(err, "finding execution tasks to restart")
+		}
+		if err = MarkTasksReset(ctx, execTaskIdsToRestart, caller); err != nil {
+			return errors.Wrap(err, "resetting failed execution tasks")
 		}
 	}
 
@@ -2104,6 +2094,21 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 	}
 
 	return nil
+}
+
+func findExecTasksToReset(t *task.Task) ([]string, error) {
+	if !t.ResetFailedWhenFinished {
+		return t.ExecutionTasks, nil
+	}
+	failedExecTasks, err := task.FindWithFields(task.FailedTasksByIds(t.ExecutionTasks), task.IdKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "retrieving failed execution tasks")
+	}
+	failedExecTaskIds := []string{}
+	for _, et := range failedExecTasks {
+		failedExecTaskIds = append(failedExecTaskIds, et.Id)
+	}
+	return failedExecTaskIds, nil
 }
 
 // MarkTasksReset resets many tasks by their IDs. For execution tasks, this also
@@ -2445,7 +2450,7 @@ func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t
 				return errors.Wrap(err, "marking display task for reset")
 			}
 		}
-		return errors.Wrap(checkResetDisplayTask(ctx, settings, &taskToReset), "checking display task reset")
+		return errors.Wrap(checkResetDisplayTask(ctx, settings, user, origin, &taskToReset), "checking display task reset")
 	}
 
 	return errors.Wrap(TryResetTask(ctx, settings, t.Id, user, origin, detail), "resetting task")
@@ -2670,7 +2675,7 @@ func checkResetSingleHostTaskGroup(ctx context.Context, t *task.Task, caller str
 // checkResetDisplayTask attempts to reset all tasks that are under the same
 // parent display task as t once all tasks under the display task are finished
 // running.
-func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, t *task.Task) error {
+func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, user, origin string, t *task.Task) error {
 	if !t.ResetWhenFinished && !t.ResetFailedWhenFinished {
 		return nil
 	}
@@ -2691,11 +2696,10 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, t *
 			Status: evergreen.TaskFailed,
 		}
 	}
-	requester := evergreen.User
 	if t.IsAutomaticRestart {
-		requester = evergreen.AutoRestartActivator
+		user = evergreen.AutoRestartActivator
 	}
-	return errors.Wrap(TryResetTask(ctx, setting, t.Id, requester, requester, details), "resetting display task")
+	return errors.Wrap(TryResetTask(ctx, setting, t.Id, user, origin, details), "resetting display task")
 }
 
 // MarkUnallocatableContainerTasksSystemFailed marks any container task within

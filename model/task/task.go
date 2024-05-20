@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/tarjan"
@@ -1498,7 +1499,7 @@ func DeactivateStepbackTask(projectId, buildVariantName, taskName, caller string
 		return errors.Errorf("no stepback task '%s' for variant '%s' found", taskName, buildVariantName)
 	}
 
-	if err = t.DeactivateTask(caller); err != nil {
+	if err = DeactivateTasks([]Task{*t}, true, caller); err != nil {
 		return errors.Wrap(err, "deactivating stepback task")
 	}
 	if t.IsAbortable() {
@@ -1831,18 +1832,11 @@ func (t *Task) HasResults() bool {
 	return t.ResultsService != "" || t.HasCedarResults
 }
 
-// ActivateTask will set the ActivatedBy field to the caller and set the active state to be true.
-// Also activates dependencies of the task.
-func (t *Task) ActivateTask(caller string) error {
-	t.ActivatedBy = caller
-	t.Activated = true
-	t.ActivatedTime = time.Now()
-
-	return ActivateTasks([]Task{*t}, t.ActivatedTime, true, caller)
-}
-
 // ActivateTasks sets all given tasks to active, logs them as activated, and proceeds to activate any dependencies that were deactivated.
 func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bool, caller string) error {
+	if len(tasks) == 0 {
+		return nil
+	}
 	tasksToActivate := make([]Task, 0, len(tasks))
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
@@ -1853,7 +1847,16 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 		tasksToActivate = append(tasksToActivate, t)
 		taskIDs = append(taskIDs, t.Id)
 	}
-	err := activateTasks(taskIDs, caller, activationTime)
+	depTasksToUpdate, depTaskIDsToUpdate, err := getDependencyTaskIdsToActivate(taskIDs, updateDependencies)
+	if err != nil {
+		return errors.Wrap(err, "getting dependency tasks to activate")
+	}
+	// Tasks passed into this function will all be from the same version or build, so we can assume
+	// all tasks also share the same requester field.
+	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, len(taskIDs)+len(depTaskIDsToUpdate), true); err != nil {
+		return err
+	}
+	err = activateTasks(taskIDs, caller, activationTime)
 	if err != nil {
 		return errors.Wrap(err, "activating tasks")
 	}
@@ -1867,8 +1870,29 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 		"caller":   caller,
 	}))
 
-	if updateDependencies {
-		return ActivateDeactivatedDependencies(taskIDs, caller)
+	if len(depTaskIDsToUpdate) > 0 {
+		return activateDeactivatedDependencies(depTasksToUpdate, depTaskIDsToUpdate, caller)
+	}
+	return nil
+}
+
+// UpdateSchedulingLimit retrieves a user from the DB and updates their hourly scheduling limit info
+// if they are not a service user.
+func UpdateSchedulingLimit(username, requester string, numTasksModified int, activated bool) error {
+	if evergreen.IsSystemActivator(username) || !evergreen.IsPatchRequester(requester) {
+		return nil
+	}
+	s := evergreen.GetEnvironment().Settings()
+	maxScheduledTasks := s.TaskLimits.MaxHourlyPatchTasks
+	if maxScheduledTasks == 0 {
+		return nil
+	}
+	u, err := user.FindOneById(username)
+	if err != nil {
+		return errors.Wrap(err, "getting user")
+	}
+	if u != nil && !u.OnlyAPI {
+		return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, numTasksModified, activated), "checking task scheduling limit for user '%s'", u.Id)
 	}
 	return nil
 }
@@ -1895,9 +1919,10 @@ func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
 	return nil
 }
 
-// ActivateDeactivatedDependencies activates tasks that depend on these tasks which were deactivated because a task
-// they depended on was deactivated. Only activate when all their dependencies are activated or are being activated
-func ActivateDeactivatedDependencies(tasks []string, caller string) error {
+func getDependencyTaskIdsToActivate(tasks []string, updateDependencies bool) (map[string]Task, []string, error) {
+	if !updateDependencies {
+		return nil, nil, nil
+	}
 	taskMap := make(map[string]bool)
 	for _, t := range tasks {
 		taskMap[t] = true
@@ -1905,14 +1930,14 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 
 	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
 	if err != nil {
-		return errors.Wrap(err, "getting recursive dependencies down")
+		return nil, nil, errors.Wrap(err, "getting recursive dependencies down")
 	}
 
 	// do a topological sort so we've dealt with
 	// all a task's dependencies by the time we get up to it
 	sortedDependencies, err := topologicalSort(tasksDependingOnTheseTasks)
 	if err != nil {
-		return errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
 
 	// get dependencies we don't have yet and add them to a map
@@ -1937,7 +1962,7 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 		var missingTasks []Task
 		missingTasks, err = FindAll(db.Query(bson.M{IdKey: bson.M{"$in": tasksToGet}}).WithFields(ActivatedKey))
 		if err != nil {
-			return errors.Wrap(err, "getting missing tasks")
+			return nil, nil, errors.Wrap(err, "getting missing tasks")
 		}
 		for _, t := range missingTasks {
 			missingTaskMap[t.Id] = t
@@ -1965,16 +1990,21 @@ func ActivateDeactivatedDependencies(tasks []string, caller string) error {
 			tasksToActivate[t.Id] = t
 		}
 	}
-
 	if len(tasksToActivate) == 0 {
-		return nil
+		return nil, nil, nil
 	}
 
 	taskIDsToActivate := make([]string, 0, len(tasksToActivate))
 	for _, t := range tasksToActivate {
 		taskIDsToActivate = append(taskIDsToActivate, t.Id)
 	}
-	_, err = UpdateAll(
+	return tasksToActivate, taskIDsToActivate, nil
+}
+
+// activateDeactivatedDependencies activates tasks that depend on these tasks which were deactivated because a task
+// they depended on was deactivated. Only activate when all their dependencies are activated or are being activated
+func activateDeactivatedDependencies(tasksToActivate map[string]Task, taskIDsToActivate []string, caller string) error {
+	_, err := UpdateAll(
 		bson.M{IdKey: bson.M{"$in": taskIDsToActivate}},
 		[]bson.M{
 			{
@@ -2062,25 +2092,34 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 	return sortedTasks, nil
 }
 
-// DeactivateTask will set the ActivatedBy field to the caller and set the active state to be false and deschedule the task
-func (t *Task) DeactivateTask(caller string) error {
-	t.ActivatedBy = caller
-	t.Activated = false
-	t.ScheduledTime = utility.ZeroTime
-
-	return DeactivateTasks([]Task{*t}, true, caller)
-}
-
 func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error {
+	if len(tasks) == 0 {
+		return nil
+	}
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
+		// Deactivating a deactivated task is a noop.
+		if !t.Activated {
+			continue
+		}
 		if t.DisplayOnly {
 			taskIDs = append(taskIDs, t.ExecutionTasks...)
 		}
 		taskIDs = append(taskIDs, t.Id)
 	}
 
-	_, err := UpdateAll(
+	depTasksToUpdate, depTaskIDsToUpdate, err := getDependencyTasksToUpdate(taskIDs, updateDependencies)
+	if err != nil {
+		return errors.Wrap(err, "retrieving dependency tasks to deactivate")
+	}
+
+	// Tasks passed into this function will all be from the same version or build, so we can assume
+	// all tasks also share the same requester field.
+	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, len(taskIDs)+len(depTaskIDsToUpdate), false); err != nil {
+		return err
+	}
+
+	_, err = UpdateAll(
 		bson.M{
 			IdKey: bson.M{"$in": taskIDs},
 		},
@@ -2106,18 +2145,19 @@ func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error
 		"caller":   caller,
 	}))
 
-	if updateDependencies {
-		return DeactivateDependencies(taskIDs, caller)
+	if len(depTaskIDsToUpdate) > 0 {
+		return deactivateDependencies(depTasksToUpdate, depTaskIDsToUpdate, caller)
 	}
 	return nil
 }
 
-// DeactivateDependencies gets all tasks that are blocked by the given tasks (this could be 1st level
-// or recursive) and deactivates them. Then it sends out the event logs for the deactivation.
-func DeactivateDependencies(tasks []string, caller string) error {
+func getDependencyTasksToUpdate(tasks []string, updateDependencies bool) ([]Task, []string, error) {
+	if !updateDependencies {
+		return nil, nil, nil
+	}
 	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
 	if err != nil {
-		return errors.Wrap(err, "getting recursive dependencies down")
+		return nil, nil, errors.Wrap(err, "getting recursive dependencies down")
 	}
 
 	tasksToUpdate := make([]Task, 0, len(tasksDependingOnTheseTasks))
@@ -2128,12 +2168,14 @@ func DeactivateDependencies(tasks []string, caller string) error {
 			taskIDsToUpdate = append(taskIDsToUpdate, t.Id)
 		}
 	}
+	return tasksToUpdate, taskIDsToUpdate, nil
+}
 
+func deactivateDependencies(tasksToUpdate []Task, taskIDsToUpdate []string, caller string) error {
 	if len(tasksToUpdate) == 0 {
 		return nil
 	}
-
-	_, err = UpdateAll(
+	_, err := UpdateAll(
 		bson.M{
 			IdKey: bson.M{"$in": taskIDsToUpdate},
 		},
@@ -2158,6 +2200,16 @@ func DeactivateDependencies(tasks []string, caller string) error {
 	}))
 
 	return nil
+}
+
+// DeactivateDependencies gets all tasks that are blocked by the given tasks (this could be 1st level
+// or recursive) and deactivates them. Then it sends out the event logs for the deactivation.
+func DeactivateDependencies(tasks []string, caller string) error {
+	tasksToUpdate, taskIDsToUpdate, err := getDependencyTasksToUpdate(tasks, true)
+	if err != nil {
+		return errors.Wrap(err, "retrieving dependency tasks to deactivate")
+	}
+	return errors.Wrap(deactivateDependencies(tasksToUpdate, taskIDsToUpdate, caller), "marking dependencies deactivated")
 }
 
 // MarkEnd handles the Task updates associated with ending a task. If the task's start time is zero
@@ -2365,6 +2417,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 		t.NumNextTaskDispatches = 0
 		t.CanReset = false
 		t.IsAutomaticRestart = false
+		t.HasAnnotations = false
 	}
 	update := []bson.M{
 		{
@@ -2407,6 +2460,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 				HostCreateDetailsKey,
 				OverrideDependenciesKey,
 				CanResetKey,
+				HasAnnotationsKey,
 			},
 		},
 	}

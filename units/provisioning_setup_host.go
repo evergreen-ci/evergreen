@@ -68,7 +68,6 @@ func NewSetupHostJob(env evergreen.Environment, h *host.Host, id string) amboy.J
 	j.host = h
 	j.HostID = h.Id
 	j.env = env
-	j.SetPriority(1)
 	j.SetID(fmt.Sprintf("%s.%s.%s", setupHostJobName, j.HostID, id))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", setupHostJobName, j.HostID)})
 	j.SetEnqueueAllScopes(true)

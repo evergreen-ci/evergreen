@@ -2020,7 +2020,6 @@ func TestParserProjectStorage(t *testing.T) {
 				"FindOneByIDReturnsNilErrorAndResultForNonexistentParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 					require.NoError(t, err)
-					defer ppStorage.Close(ctx)
 
 					pp, err := ppStorage.FindOneByID(ctx, "nonexistent")
 					assert.NoError(t, err)
@@ -2029,7 +2028,6 @@ func TestParserProjectStorage(t *testing.T) {
 				"FindOneByIDWithFieldsReturnsNilErrorAndResultForNonexistentParserProject": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 					require.NoError(t, err)
-					defer ppStorage.Close(ctx)
 
 					pp, err := ppStorage.FindOneByIDWithFields(ctx, "nonexistent", ParserProjectBuildVariantsKey)
 					assert.NoError(t, err)
@@ -2042,7 +2040,6 @@ func TestParserProjectStorage(t *testing.T) {
 					}
 					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 					require.NoError(t, err)
-					defer ppStorage.Close(ctx)
 
 					assert.NoError(t, ppStorage.UpsertOne(ctx, pp))
 
@@ -2058,7 +2055,6 @@ func TestParserProjectStorage(t *testing.T) {
 					}
 					ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 					require.NoError(t, err)
-					defer ppStorage.Close(ctx)
 
 					assert.NoError(t, ppStorage.UpsertOne(ctx, pp))
 					pp.Owner = utility.ToStringPtr("you")
@@ -2144,7 +2140,6 @@ func checkProjectPersists(ctx context.Context, t *testing.T, env evergreen.Envir
 
 	ppStorage, err := GetParserProjectStorage(ctx, env.Settings(), ppStorageMethod)
 	require.NoError(t, err)
-	defer ppStorage.Close(ctx)
 
 	yamlToCompare, err := yaml.Marshal(pp)
 	assert.NoError(t, err)

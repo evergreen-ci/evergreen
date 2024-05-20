@@ -1,7 +1,7 @@
 query {
-    githubProjectConflicts(projectId: "wrong-repo") {
-        commitQueueIdentifiers
-        prTestingIdentifiers
-        commitCheckIdentifiers
-    }
+  githubProjectConflicts(projectId: "sandbox_project_id") {
+    commitQueueIdentifiers
+    prTestingIdentifiers
+    commitCheckIdentifiers
+  }
 }

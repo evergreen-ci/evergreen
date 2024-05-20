@@ -28,9 +28,7 @@
       "distro": "macos-1014",
       "execution": 1,
       "host_id": "host2",
-      "execution_tasks": [
-        "execution_task"
-      ]
+      "execution_tasks": ["execution_task"]
     },
     {
       "_id": "running_task",
@@ -90,6 +88,12 @@
       "distro": "macos-1014",
       "execution": 1,
       "host_id": "host2"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ]
 }

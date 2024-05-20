@@ -1,0 +1,20 @@
+{
+  "tasks": [
+    {
+      "_id": "no_permissions",
+      "r": "github_pull_request",
+      "branch": "evergreen",
+      "gitspec": "678910",
+      "build_variant": "ubuntu1604",
+      "status": "success",
+      "display_name": "no_permissions",
+      "execution": 0
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    }
+  ]
+}

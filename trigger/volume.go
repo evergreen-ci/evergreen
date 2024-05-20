@@ -81,9 +81,9 @@ func (t *volumeTriggers) generate(sub *event.Subscription) (*notification.Notifi
 	var err error
 	switch sub.Subscriber.Type {
 	case event.EmailSubscriberType:
-		payload, err = t.templateData.hostExpirationEmailPayload(expiringVolumeEmailSubject, expiringVolumeEmailBody, t.Attributes())
+		payload, err = t.templateData.hostEmailPayload(expiringVolumeEmailSubject, expiringVolumeEmailBody, t.Attributes())
 	case event.SlackSubscriberType:
-		payload, err = t.templateData.hostExpirationSlackPayload(expiringVolumeSlackBody, expiringVolumeSlackAttachmentTitle)
+		payload, err = t.templateData.hostSlackPayload(expiringVolumeSlackBody, expiringVolumeSlackAttachmentTitle)
 	default:
 		return nil, nil
 	}

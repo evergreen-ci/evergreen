@@ -12,9 +12,10 @@ package log
 // storage.
 type chunkInfo struct {
 	key      string
-	numLines int
 	start    int64
 	end      int64
+	numLines int
+	upload   int64
 }
 
 // chunkGroup represents a set of chunks belonging to a single log.

@@ -1,13 +1,32 @@
 {
-    "tests": [
-      {
-          "query_file": "build_variants_for_task_name.graphql",
-          "result": {
-            "data": {"buildVariantsForTaskName":[
-               {"displayName": "OSX", "buildVariant": "osx" },
-               {"displayName": "Ubuntu 16.04","buildVariant": "ubuntu1604"}
-               ]}
-          }
+  "tests": [
+    {
+      "query_file": "build_variants_for_task_name.graphql",
+      "result": {
+        "data": {
+          "buildVariantsForTaskName": [
+            { "displayName": "OSX", "buildVariant": "osx" },
+            { "displayName": "Ubuntu 16.04", "buildVariant": "ubuntu1604" }
+          ]
         }
-    ]
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "result": {
+        "data": {
+          "buildVariantsForTaskName": null
+        },
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "path": ["buildVariantsForTaskName", "projectIdentifier"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
 }

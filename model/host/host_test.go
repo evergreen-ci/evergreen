@@ -6282,6 +6282,7 @@ func TestUpdateSleepSchedule(t *testing.T) {
 	}
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, h *Host){
 		"UpdatesSleepScheduleAndNextScheduledTimes": func(ctx context.Context, t *testing.T, h *Host) {
+			now := utility.BSONTime(time.Now())
 			require.NoError(t, h.Insert(ctx))
 			s := SleepScheduleInfo{
 				DailyStartTime: "18:00",
@@ -6291,7 +6292,6 @@ func TestUpdateSleepSchedule(t *testing.T) {
 
 			require.NoError(t, h.UpdateSleepSchedule(ctx, s))
 
-			now := utility.BSONTime(time.Now())
 			dbHost, err := FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
@@ -6307,10 +6307,46 @@ func TestUpdateSleepSchedule(t *testing.T) {
 			assert.Equal(t, 0, dbHost.SleepSchedule.NextStopTime.In(userTZ).Minute(), "next stop time should be at 06:00 local time")
 			assert.Equal(t, 0, dbHost.SleepSchedule.NextStopTime.In(userTZ).Second(), "next stop time should be at 06:00 local time")
 			assert.False(t, dbHost.SleepSchedule.PermanentlyExempt)
-			assert.Zero(t, dbHost.SleepSchedule.TemporarilyExemptUntil)
+			assert.True(t, utility.IsZeroTime(dbHost.SleepSchedule.TemporarilyExemptUntil))
 			assert.False(t, dbHost.SleepSchedule.ShouldKeepOff)
 		},
 		"OverwritesExistingSleepScheduleAndNextScheduledTimes": func(ctx context.Context, t *testing.T, h *Host) {
+			now := utility.BSONTime(time.Now())
+			h.SleepSchedule = SleepScheduleInfo{
+				WholeWeekdaysOff: []time.Weekday{time.Sunday},
+				NextStartTime:    now.Add(-time.Minute),
+				NextStopTime:     now.Add(-time.Minute),
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			s := SleepScheduleInfo{
+				DailyStartTime: "18:00",
+				DailyStopTime:  "06:00",
+				TimeZone:       userTZ.String(),
+			}
+
+			require.NoError(t, h.UpdateSleepSchedule(ctx, s))
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			checkRecurringSleepScheduleMatches(t, s, dbHost.SleepSchedule)
+
+			assert.True(t, dbHost.SleepSchedule.NextStartTime.After(now), "next start time should be in the future")
+			assert.Equal(t, 18, dbHost.SleepSchedule.NextStartTime.In(userTZ).Hour(), "next start time should be at 18:00 local time")
+			assert.Equal(t, 0, dbHost.SleepSchedule.NextStartTime.In(userTZ).Minute(), "next start time should be at 18:00 local time")
+			assert.Equal(t, 0, dbHost.SleepSchedule.NextStartTime.In(userTZ).Second(), "next start time should be at 18:00 local time")
+
+			assert.True(t, dbHost.SleepSchedule.NextStopTime.After(now), "next stop time should be in the future")
+			assert.Equal(t, 6, dbHost.SleepSchedule.NextStopTime.In(userTZ).Hour(), "next stop time should be at 06:00 local time")
+			assert.Equal(t, 0, dbHost.SleepSchedule.NextStopTime.In(userTZ).Minute(), "next stop time should be at 06:00 local time")
+			assert.Equal(t, 0, dbHost.SleepSchedule.NextStopTime.In(userTZ).Second(), "next stop time should be at 06:00 local time")
+
+			assert.False(t, dbHost.SleepSchedule.PermanentlyExempt)
+			assert.Zero(t, dbHost.SleepSchedule.TemporarilyExemptUntil)
+			assert.False(t, dbHost.SleepSchedule.ShouldKeepOff)
+		},
+		"OverwritesExistingSleepScheduleAndNextScheduledTimesForTemporaryExemption": func(ctx context.Context, t *testing.T, h *Host) {
 			now := utility.BSONTime(time.Now())
 			temporarilyExemptUntil := utility.BSONTime(now.Add(utility.Day))
 			h.SleepSchedule = SleepScheduleInfo{
@@ -6330,23 +6366,13 @@ func TestUpdateSleepSchedule(t *testing.T) {
 
 			require.NoError(t, h.UpdateSleepSchedule(ctx, s))
 
-			now = time.Now()
 			dbHost, err := FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			checkRecurringSleepScheduleMatches(t, s, dbHost.SleepSchedule)
 
-			assert.True(t, dbHost.SleepSchedule.NextStartTime.After(now), "next start time should be in the future")
-			assert.True(t, dbHost.SleepSchedule.NextStartTime.After(temporarilyExemptUntil), "next start time should be after temporary exemption ends")
-			assert.Equal(t, 18, dbHost.SleepSchedule.NextStartTime.In(userTZ).Hour(), "next start time should be at 18:00 local time")
-			assert.Equal(t, 0, dbHost.SleepSchedule.NextStartTime.In(userTZ).Minute(), "next start time should be at 18:00 local time")
-			assert.Equal(t, 0, dbHost.SleepSchedule.NextStartTime.In(userTZ).Second(), "next start time should be at 18:00 local time")
-
-			assert.True(t, dbHost.SleepSchedule.NextStopTime.After(now), "next stop time should be in the future")
-			assert.True(t, dbHost.SleepSchedule.NextStopTime.After(temporarilyExemptUntil), "next stop time should be after temporary exemption ends")
-			assert.Equal(t, 6, dbHost.SleepSchedule.NextStopTime.In(userTZ).Hour(), "next stop time should be at 06:00 local time")
-			assert.Equal(t, 0, dbHost.SleepSchedule.NextStopTime.In(userTZ).Minute(), "next stop time should be at 06:00 local time")
-			assert.Equal(t, 0, dbHost.SleepSchedule.NextStopTime.In(userTZ).Second(), "next stop time should be at 06:00 local time")
+			assert.Zero(t, dbHost.SleepSchedule.NextStartTime, "next start time should be unset during temporary exemption")
+			assert.Zero(t, dbHost.SleepSchedule.NextStopTime, "next stop time should be unset during temporary exemption")
 
 			assert.False(t, dbHost.SleepSchedule.PermanentlyExempt)
 			assert.True(t, temporarilyExemptUntil.Equal(dbHost.SleepSchedule.TemporarilyExemptUntil))
@@ -6369,7 +6395,74 @@ func TestUpdateSleepSchedule(t *testing.T) {
 
 			require.NoError(t, db.ClearCollections(Collection))
 
-			tCase(ctx, t, &Host{Id: "host_id"})
+			tCase(ctx, t, &Host{
+				Id:           "host_id",
+				NoExpiration: true,
+				StartedBy:    "me",
+				Status:       evergreen.HostRunning,
+			})
+		})
+	}
+}
+
+func TestSetTemporaryExemption(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, h *Host){
+		"SetsTemporaryExemptionAndClearsNextScheduledTimes": func(ctx context.Context, t *testing.T, h *Host) {
+			require.NoError(t, h.Insert(ctx))
+
+			now := utility.BSONTime(time.Now())
+			exemptUntil := utility.BSONTime(now.Add(2 * utility.Day))
+			require.NoError(t, h.SetTemporaryExemption(ctx, exemptUntil))
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.True(t, dbHost.SleepSchedule.TemporarilyExemptUntil.Equal(exemptUntil), "should set temporary exemption time to '%s'", exemptUntil)
+			assert.Zero(t, dbHost.SleepSchedule.NextStartTime, "should clear next start time")
+			assert.Zero(t, dbHost.SleepSchedule.NextStopTime, "should clear next stop time")
+		},
+		"FailsWithVeryLongTemporaryExemption": func(ctx context.Context, t *testing.T, h *Host) {
+			require.NoError(t, h.Insert(ctx))
+
+			now := utility.BSONTime(time.Now())
+			exemptUntil := utility.BSONTime(now.Add(1000 * utility.Day))
+			assert.Error(t, h.SetTemporaryExemption(ctx, exemptUntil))
+		},
+		"OverwritesExistingTemporaryExemption": func(ctx context.Context, t *testing.T, h *Host) {
+			now := utility.BSONTime(time.Now())
+			h.SleepSchedule.TemporarilyExemptUntil = utility.BSONTime(now.Add(time.Hour))
+			require.NoError(t, h.Insert(ctx))
+
+			exemptUntil := utility.BSONTime(now.Add(2 * utility.Day))
+			require.NoError(t, h.SetTemporaryExemption(ctx, exemptUntil))
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.True(t, dbHost.SleepSchedule.TemporarilyExemptUntil.Equal(exemptUntil), "should update temporary exemption time to '%s'", exemptUntil)
+			assert.Zero(t, dbHost.SleepSchedule.NextStartTime, "should clear next start time")
+			assert.Zero(t, dbHost.SleepSchedule.NextStopTime, "should clear next stop time")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			require.NoError(t, db.ClearCollections(Collection))
+			h := &Host{
+				Id:           "host_id",
+				NoExpiration: true,
+				StartedBy:    "me",
+				SleepSchedule: SleepScheduleInfo{
+					TimeZone:       time.Local.String(),
+					DailyStartTime: "10:00",
+					DailyStopTime:  "18:00",
+				},
+			}
+			tCase(ctx, t, h)
 		})
 	}
 }
@@ -6619,6 +6712,15 @@ func TestGetNextScheduledStopTime(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Zero(t, nextStop)
 		},
+		"ReturnsZeroTimeForTemporarilyExemptHost": func(t *testing.T) {
+			s := SleepScheduleInfo{
+				WholeWeekdaysOff:       []time.Weekday{time.Sunday},
+				TemporarilyExemptUntil: time.Now().Add(utility.Day),
+			}
+			nextStop, err := s.GetNextScheduledStopTime(time.Now())
+			assert.NoError(t, err)
+			assert.Zero(t, nextStop)
+		},
 		"ReturnsErrorForZeroSleepSchedule": func(t *testing.T) {
 			s := SleepScheduleInfo{}
 			_, err := s.GetNextScheduledStopTime(time.Now())
@@ -6642,8 +6744,8 @@ func TestGetNextScheduledStartTime(t *testing.T) {
 	easternTZLoc, err := time.LoadLocation(easternTZ)
 	require.NoError(t, err)
 
-	for tName, tCase := range map[string]func(t *testing.T, h *Host){
-		"ReturnsNextStartTimeForWholeDayOff": func(t *testing.T, h *Host) {
+	for tName, tCase := range map[string]func(t *testing.T){
+		"ReturnsNextStartTimeForWholeDayOff": func(t *testing.T) {
 			s := SleepScheduleInfo{
 				WholeWeekdaysOff: []time.Weekday{time.Sunday},
 				TimeZone:         easternTZ,
@@ -6661,7 +6763,7 @@ func TestGetNextScheduledStartTime(t *testing.T) {
 			assert.Zero(t, nextStart.Second(), "next start time should be at midnight")
 			assert.Equal(t, s.TimeZone, nextStart.Location().String(), "next start time should be specified in the user's time zone")
 		},
-		"ReturnsNextStartTimeBasedOnCurrentTimestamp": func(t *testing.T, h *Host) {
+		"ReturnsNextStartTimeBasedOnCurrentTimestamp": func(t *testing.T) {
 			s := SleepScheduleInfo{
 				WholeWeekdaysOff: []time.Weekday{time.Sunday, time.Tuesday, time.Thursday},
 				TimeZone:         easternTZ,
@@ -6688,7 +6790,7 @@ func TestGetNextScheduledStartTime(t *testing.T) {
 			require.NoError(t, err)
 			assert.WithinDuration(t, expectedNextStartUTC, nextStart, 0)
 		},
-		"ReturnsNextStartTimeCorrectlyWithTimeZoneDifferenceBetweenUserTimeAndEvergreenTime": func(t *testing.T, h *Host) {
+		"ReturnsNextStartTimeCorrectlyWithTimeZoneDifferenceBetweenUserTimeAndEvergreenTime": func(t *testing.T) {
 			s := SleepScheduleInfo{
 				WholeWeekdaysOff: []time.Weekday{time.Wednesday},
 				TimeZone:         easternTZ,
@@ -6714,7 +6816,7 @@ func TestGetNextScheduledStartTime(t *testing.T) {
 			assert.WithinDuration(t, expectedNextStart, nextStart, 0)
 			assert.Equal(t, s.TimeZone, nextStart.Location().String(), "next start time should be specified in the user's time zone")
 		},
-		"ReturnsNextStartTimeForDailySchedule": func(t *testing.T, h *Host) {
+		"ReturnsNextStartTimeForDailySchedule": func(t *testing.T) {
 			s := SleepScheduleInfo{
 				DailyStartTime: "06:00",
 				DailyStopTime:  "17:00",
@@ -6736,7 +6838,7 @@ func TestGetNextScheduledStartTime(t *testing.T) {
 			assert.WithinDuration(t, expectedNextStart, nextStart, 0)
 			assert.Equal(t, s.TimeZone, nextStart.Location().String(), "next start time should be specified in the user's time zone")
 		},
-		"ReturnsNextStartTimeForDailyScheduleAfterStartTime": func(t *testing.T, h *Host) {
+		"ReturnsNextStartTimeForDailyScheduleAfterStartTime": func(t *testing.T) {
 			s := SleepScheduleInfo{
 				DailyStartTime: "06:00",
 				DailyStopTime:  "17:00",
@@ -6758,7 +6860,7 @@ func TestGetNextScheduledStartTime(t *testing.T) {
 			assert.WithinDuration(t, expectedNextStart, nextStart, 0)
 			assert.Equal(t, s.TimeZone, nextStart.Location().String(), "next start time should be specified in the user's time zone")
 		},
-		"ReturnsNextStartTimeAsMidnightAfterWholeWeekdayOffAfterDailyStart": func(t *testing.T, h *Host) {
+		"ReturnsNextStartTimeAsMidnightAfterWholeWeekdayOffAfterDailyStart": func(t *testing.T) {
 			s := SleepScheduleInfo{
 				WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
 				DailyStartTime:   "06:00",
@@ -6781,7 +6883,7 @@ func TestGetNextScheduledStartTime(t *testing.T) {
 			assert.WithinDuration(t, expectedNextStart, nextStart, 0)
 			assert.Equal(t, s.TimeZone, nextStart.Location().String(), "next start time should be specified in the user's time zone")
 		},
-		"ReturnsNextStartTimeAsDailyStartTimeForWholeWeekdaysOffLeadingIntoOvernightDailySchedule": func(t *testing.T, h *Host) {
+		"ReturnsNextStartTimeAsDailyStartTimeForWholeWeekdaysOffLeadingIntoOvernightDailySchedule": func(t *testing.T) {
 			s := SleepScheduleInfo{
 				WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
 				DailyStartTime:   "06:00",
@@ -6804,7 +6906,7 @@ func TestGetNextScheduledStartTime(t *testing.T) {
 			assert.WithinDuration(t, expectedNextStart, nextStart, 0)
 			assert.Equal(t, s.TimeZone, nextStart.Location().String(), "next start time should be specified in the user's time zone")
 		},
-		"ReturnsNextStartTimeWithAccountingForDaylightSavingsTime": func(t *testing.T, h *Host) {
+		"ReturnsNextStartTimeWithAccountingForDaylightSavingsTime": func(t *testing.T) {
 			s := SleepScheduleInfo{
 				DailyStartTime: "06:00",
 				DailyStopTime:  "22:00",
@@ -6836,7 +6938,7 @@ func TestGetNextScheduledStartTime(t *testing.T) {
 			assert.Equal(t, expectedOffsetSecs, tzOffset, "next start time should be in EDT rather than EST")
 			assert.Equal(t, s.TimeZone, nextStart.Location().String(), "next start time should be specified in the user's time zone")
 		},
-		"ReturnsZeroTimeForPermanentlyExemptHost": func(t *testing.T, h *Host) {
+		"ReturnsZeroTimeForPermanentlyExemptHost": func(t *testing.T) {
 			s := SleepScheduleInfo{
 				WholeWeekdaysOff:  []time.Weekday{time.Sunday},
 				PermanentlyExempt: true,
@@ -6845,7 +6947,7 @@ func TestGetNextScheduledStartTime(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Zero(t, nextStop)
 		},
-		"ReturnsZeroTimeForIndefinitelyOffHost": func(t *testing.T, h *Host) {
+		"ReturnsZeroTimeForIndefinitelyOffHost": func(t *testing.T) {
 			s := SleepScheduleInfo{
 				WholeWeekdaysOff: []time.Weekday{time.Sunday},
 				ShouldKeepOff:    true,
@@ -6854,12 +6956,21 @@ func TestGetNextScheduledStartTime(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Zero(t, nextStop)
 		},
-		"ReturnsErrorForZeroSleepSchedule": func(t *testing.T, h *Host) {
+		"ReturnsZeroTimeForTemporarilyExemptHost": func(t *testing.T) {
+			s := SleepScheduleInfo{
+				WholeWeekdaysOff:       []time.Weekday{time.Sunday},
+				TemporarilyExemptUntil: time.Now().Add(utility.Day),
+			}
+			nextStart, err := s.GetNextScheduledStartTime(time.Now())
+			assert.NoError(t, err)
+			assert.Zero(t, nextStart)
+		},
+		"ReturnsErrorForZeroSleepSchedule": func(t *testing.T) {
 			s := SleepScheduleInfo{}
 			_, err := s.GetNextScheduledStartTime(time.Now())
 			assert.Error(t, err)
 		},
-		"ReturnsErrorForInvalidTimeZone": func(t *testing.T, h *Host) {
+		"ReturnsErrorForInvalidTimeZone": func(t *testing.T) {
 			s := SleepScheduleInfo{
 				WholeWeekdaysOff: []time.Weekday{time.Sunday},
 				TimeZone:         "foobar",
@@ -6868,8 +6979,6 @@ func TestGetNextScheduledStartTime(t *testing.T) {
 			assert.Error(t, err)
 		},
 	} {
-		t.Run(tName, func(t *testing.T) {
-			tCase(t, &Host{Id: "host_id"})
-		})
+		t.Run(tName, tCase)
 	}
 }

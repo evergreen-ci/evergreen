@@ -12,7 +12,7 @@ Exceptions can be requested on a case-by-case which will be granted based on [ou
 
 ## Task Limits
 
-Evergreen limits tasks per version to 40,000.
+Evergreen limits tasks per version to 40,000. This includes both selected and unselected tasks. 
 
 ## Task Timeout Max
 

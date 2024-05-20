@@ -1,0 +1,13 @@
+query {
+  project(projectIdentifier: "evergreen") {
+    id
+    identifier
+    branch
+    parsleyFilters {
+      expression
+    }
+    repotrackerError {
+      invalidRevision
+    }
+  }
+}

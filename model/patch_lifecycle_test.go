@@ -770,15 +770,21 @@ func TestVariantTasksToTVPairs(t *testing.T) {
 func TestAddNewPatch(t *testing.T) {
 	assert := assert.New(t)
 
-	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
+	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection, user.Collection))
 	p := &patch.Patch{
 		Activated: true,
+	}
+	u := &user.DBUser{
+		Id:                     "test.user",
+		NumScheduledPatchTasks: 0,
+		LastScheduledTasksAt:   time.Now().Add(-10 * time.Minute),
 	}
 	v := &Version{
 		Id:         "version",
 		Revision:   "1234",
 		Requester:  evergreen.PatchVersionRequester,
 		CreateTime: time.Now(),
+		Author:     "test.user",
 	}
 	baseCommitTime := time.Date(2018, time.July, 15, 16, 45, 0, 0, time.UTC)
 	baseVersion := &Version{
@@ -788,6 +794,7 @@ func TestAddNewPatch(t *testing.T) {
 		Identifier: "project",
 		CreateTime: baseCommitTime,
 	}
+	assert.NoError(u.Insert())
 	assert.NoError(p.Insert())
 	assert.NoError(v.Insert())
 	assert.NoError(baseVersion.Insert())
@@ -842,15 +849,19 @@ func TestAddNewPatch(t *testing.T) {
 	assert.NoError(err)
 	dbBuild, err := build.FindOne(db.Q{})
 	assert.NoError(err)
-	assert.NotNil(dbBuild)
+	require.NotNil(t, dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
 	_, err = addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)
+	dbUser, err := user.FindOneById(u.Id)
+	assert.NoError(err)
+	require.NotNil(t, dbUser)
+	assert.Equal(dbUser.NumScheduledPatchTasks, 4)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
-	assert.Len(dbTasks, 4)
+	require.Len(t, dbTasks, 4)
 	assert.Equal(dbTasks[0].DisplayName, "displaytask1")
 	assert.Equal(dbTasks[1].DisplayName, "task1")
 	assert.Equal(dbTasks[2].DisplayName, "task2")

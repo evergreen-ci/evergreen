@@ -18,10 +18,6 @@ type GeneratedJSONFileStorage interface {
 	// Insert inserts all the generated JSON files for the given task. If any
 	// of the files already exist, they are replaced.
 	Insert(ctx context.Context, t *Task, files GeneratedJSONFiles) error
-	// Close cleans up the accessor to the generated JSON file storage. Users of
-	// GeneratedJSONFileStorage implementations must call Close once they are
-	// finished using it.
-	Close(ctx context.Context) error
 }
 
 // GetGeneratedJSONFileStorage returns the generated JSON file storage mechanism
@@ -45,7 +41,6 @@ func GeneratedJSONFind(ctx context.Context, settings *evergreen.Settings, t *Tas
 	if err != nil {
 		return nil, errors.Wrap(err, "getting generated JSON file storage")
 	}
-	defer fileStorage.Close(ctx)
 	return fileStorage.Find(ctx, t)
 }
 
@@ -56,7 +51,6 @@ func GeneratedJSONInsert(ctx context.Context, settings *evergreen.Settings, t *T
 	if err != nil {
 		return errors.Wrap(err, "getting generated JSON file storage")
 	}
-	defer fileStorage.Close(ctx)
 	return fileStorage.Insert(ctx, t, files)
 }
 

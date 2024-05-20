@@ -56,7 +56,6 @@ func NewReauthorizeUserJob(env evergreen.Environment, u *user.DBUser, id string)
 	j.UserID = u.Username()
 	j.env = env
 	j.user = u
-	j.SetPriority(1)
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", reauthorizeUserJobName, u.Username())})
 	j.SetEnqueueAllScopes(true)
 	j.UpdateRetryInfo(amboy.JobRetryOptions{

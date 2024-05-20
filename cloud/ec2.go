@@ -435,7 +435,6 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	ec2Settings := &EC2ProviderSettings{}
 	err := ec2Settings.FromDistroSettings(h.Distro, m.region)
@@ -559,7 +558,6 @@ func (m *ec2Manager) CheckInstanceType(ctx context.Context, instanceType string)
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 	output, err := m.client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{})
 	if err != nil {
 		return errors.Wrapf(err, "describing instance types offered for region '%s'", m.region)
@@ -634,7 +632,6 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	// Validate modify options for user errors that should prevent all modifications
 	if err := validateEC2HostModifyOptions(h, opts); err != nil {
@@ -660,6 +657,14 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 			catcher.Add(err)
 		} else {
 			catcher.Add(m.extendExpiration(ctx, h, opts.AddHours))
+		}
+	}
+	if opts.AddTemporaryExemptionHours > 0 {
+		extendBy := time.Duration(opts.AddTemporaryExemptionHours) * time.Hour
+		exemptUntil, err := h.GetTemporaryExemption(extendBy)
+		catcher.Wrap(err, "getting temporary exemption")
+		if err == nil {
+			catcher.Wrap(h.SetTemporaryExemption(ctx, exemptUntil), "setting temporary exemption")
 		}
 	}
 	if opts.NewName != "" {
@@ -703,7 +708,6 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	instanceIdToHostMap := map[string]*host.Host{}
 	hostsToCheck := []string{}
@@ -770,7 +774,6 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return status, errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	instance, err := m.client.GetInstanceInfo(ctx, h.Id)
 	if err != nil {
@@ -817,7 +820,6 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	if !IsEC2InstanceID(h.Id) {
 		return errors.Wrap(h.Terminate(ctx, user, fmt.Sprintf("detected invalid instance ID '%s'", h.Id)), "terminating instance in DB")
@@ -902,7 +904,6 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, shouldKeepO
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	out, err := m.client.StopInstances(ctx, &ec2.StopInstancesInput{
 		InstanceIds: []string{h.Id},
@@ -986,7 +987,6 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	_, err := m.client.StartInstances(ctx, &ec2.StartInstancesInput{
 		InstanceIds: []string{h.Id},
@@ -1033,7 +1033,6 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	opts := generateDeviceNameOptions{
 		isWindows:           h.Distro.IsWindows(),
@@ -1074,7 +1073,6 @@ func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID st
 	if err = m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	_, err = m.client.DetachVolume(ctx, &ec2.DetachVolumeInput{
 		InstanceId: aws.String(h.Id),
@@ -1097,7 +1095,6 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	volume.Expiration = time.Now().Add(evergreen.DefaultSpawnHostExpiration)
 	volumeTags := []types.Tag{
@@ -1144,7 +1141,6 @@ func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) erro
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	_, err := m.client.DeleteVolume(ctx, &ec2.DeleteVolumeInput{
 		VolumeId: aws.String(volume.ID),
@@ -1160,7 +1156,6 @@ func (m *ec2Manager) GetVolumeAttachment(ctx context.Context, volumeID string) (
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	volumeInfo, err := m.client.DescribeVolumes(ctx, &ec2.DescribeVolumesInput{
 		VolumeIds: []string{volumeID},
@@ -1216,7 +1211,6 @@ func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	if !utility.IsZeroTime(opts.Expiration) {
 		if err := m.modifyVolumeExpiration(ctx, volume, opts.Expiration); err != nil {
@@ -1272,7 +1266,6 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return "", errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	return m.client.GetPublicDNSName(ctx, h)
 }
@@ -1291,7 +1284,6 @@ func (m *ec2Manager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) e
 	if err := m.client.Create(ctx, m.region); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
-	defer m.client.Close()
 
 	return errors.Wrap(addSSHKey(ctx, m.client, pair), "adding public SSH key")
 }

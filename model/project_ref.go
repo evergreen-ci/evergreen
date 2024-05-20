@@ -1419,6 +1419,20 @@ func FindMergedProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
 	}, true)
 }
 
+// FindMergedEnabledProjectRefsByIds returns all project refs for the provided ids
+// that are currently enabled.
+func FindMergedEnabledProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	return findProjectRefsQ(bson.M{
+		ProjectRefIdKey: bson.M{
+			"$in": ids,
+		},
+		ProjectRefEnabledKey: true,
+	}, true)
+}
+
 func FindProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
 	if len(ids) == 0 {
 		return nil, nil
@@ -2792,7 +2806,10 @@ func (p *ProjectRef) CommitQueueIsOn() error {
 func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 	t, err := task.FindOneId(taskId)
 	if err != nil {
-		return nil, errors.Wrap(err, "finding task")
+		return nil, errors.Wrapf(err, "finding task '%s'", taskId)
+	}
+	if t == nil {
+		return nil, errors.Errorf("task '%s' not found", taskId)
 	}
 	pRef, err := FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
@@ -3161,12 +3178,12 @@ func projectRefPipelineForCommitQueueEnabled() []bson.M {
 				{"$or": []bson.M{
 					{
 						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueEnabledKey):    true,
-						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueMergeQueueKey): MergeQueueEvergreen,
+						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueMergeQueueKey): bson.M{"$ne": MergeQueueGitHub},
 					},
 					{
 						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueEnabledKey):             nil,
 						bsonutil.GetDottedKeyName("repo_ref", RepoRefCommitQueueKey, commitQueueEnabledKey):    true,
-						bsonutil.GetDottedKeyName("repo_ref", RepoRefCommitQueueKey, commitQueueMergeQueueKey): MergeQueueEvergreen,
+						bsonutil.GetDottedKeyName("repo_ref", RepoRefCommitQueueKey, commitQueueMergeQueueKey): bson.M{"$ne": MergeQueueGitHub},
 					},
 				}},
 			}},

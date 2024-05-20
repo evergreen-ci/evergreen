@@ -14,6 +14,7 @@ func init() {
 	registry.AddType(ResourceTypeHost, func() interface{} { return &HostEventData{} })
 	registry.AllowSubscription(ResourceTypeHost, EventHostExpirationWarningSent)
 	registry.AllowSubscription(ResourceTypeHost, EventVolumeExpirationWarningSent)
+	registry.AllowSubscription(ResourceTypeHost, EventSpawnHostIdleNotification)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisioned)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisionFailed)
 	registry.AllowSubscription(ResourceTypeHost, EventHostCreatedError)
@@ -49,10 +50,10 @@ const (
 	EventHostProvisioned                 = "HOST_PROVISIONED"
 	EventHostRunningTaskSet              = "HOST_RUNNING_TASK_SET"
 	EventHostRunningTaskCleared          = "HOST_RUNNING_TASK_CLEARED"
-	EventHostMonitorFlag                 = "HOST_MONITOR_FLAG"
 	EventHostTaskFinished                = "HOST_TASK_FINISHED"
 	EventHostTerminatedExternally        = "HOST_TERMINATED_EXTERNALLY"
 	EventHostExpirationWarningSent       = "HOST_EXPIRATION_WARNING_SENT"
+	EventSpawnHostIdleNotification       = "HOST_IDLE_NOTIFICATION"
 	EventHostScriptExecuted              = "HOST_SCRIPT_EXECUTED"
 	EventHostScriptExecuteFailed         = "HOST_SCRIPT_EXECUTE_FAILED"
 	EventVolumeExpirationWarningSent     = "VOLUME_EXPIRATION_WARNING_SENT"
@@ -77,6 +78,10 @@ type HostEventData struct {
 	User               string        `bson:"usr" json:"user,omitempty"`
 	Successful         bool          `bson:"successful,omitempty" json:"successful"`
 	Duration           time.Duration `bson:"duration,omitempty" json:"duration"`
+	// Source is the source of a host modification. Only set in specific
+	// conditions where a notification may need to know the cause of a host
+	// being modified.
+	Source string `bson:"source,omitempty" json:"source,omitempty"`
 }
 
 var (
@@ -136,37 +141,37 @@ func LogHostCreatedError(hostID, logs string) {
 
 // LogHostStartSucceeded logs an event indicating that the host was successfully
 // started.
-func LogHostStartSucceeded(hostID string) {
-	LogHostEvent(hostID, EventHostStarted, HostEventData{Successful: true})
+func LogHostStartSucceeded(hostID string, source string) {
+	LogHostEvent(hostID, EventHostStarted, HostEventData{Successful: true, Source: source})
 }
 
 // LogHostStartError logs an event indicating that the host errored while
 // starting.
-func LogHostStartError(hostID, logs string) {
-	LogHostEvent(hostID, EventHostStarted, HostEventData{Successful: false, Logs: logs})
+func LogHostStartError(hostID, source, logs string) {
+	LogHostEvent(hostID, EventHostStarted, HostEventData{Successful: false, Source: source, Logs: logs})
 }
 
 // LogHostStopSucceeded logs an event indicating that the host was successfully
 // stopped.
-func LogHostStopSucceeded(hostID string) {
-	LogHostEvent(hostID, EventHostStopped, HostEventData{Successful: true})
+func LogHostStopSucceeded(hostID, source string) {
+	LogHostEvent(hostID, EventHostStopped, HostEventData{Successful: true, Source: source})
 }
 
 // LogHostStopError logs an event indicating that the host errored while
 // stopping.
-func LogHostStopError(hostID, logs string) {
-	LogHostEvent(hostID, EventHostStopped, HostEventData{Successful: false, Logs: logs})
+func LogHostStopError(hostID, source, logs string) {
+	LogHostEvent(hostID, EventHostStopped, HostEventData{Successful: false, Source: source, Logs: logs})
 }
 
 // LogHostModifySucceeded logs an event indicating that the host was
 // successfully modified.
-func LogHostModifySucceeded(hostID string) {
-	LogHostEvent(hostID, EventHostModified, HostEventData{Successful: true})
+func LogHostModifySucceeded(hostID, source string) {
+	LogHostEvent(hostID, EventHostModified, HostEventData{Successful: true, Source: source})
 }
 
 // LogHostModifyError logs an event indicating that the host errored while being
 // modified.
-func LogHostModifyError(hostID, logs string) {
+func LogHostModifyError(hostID, source, logs string) {
 	LogHostEvent(hostID, EventHostModified, HostEventData{Successful: false, Logs: logs})
 }
 
@@ -274,6 +279,11 @@ func LogSpawnhostExpirationWarningSent(hostID string) {
 
 func LogVolumeExpirationWarningSent(volumeID string) {
 	LogHostEvent(volumeID, EventVolumeExpirationWarningSent, HostEventData{})
+}
+
+// LogSpawnHostIdleNotification logs a notification for the spawn host being idle.
+func LogSpawnHostIdleNotification(hostID string) {
+	LogHostEvent(hostID, EventSpawnHostIdleNotification, HostEventData{})
 }
 
 func LogHostScriptExecuted(hostID string, logs string) {

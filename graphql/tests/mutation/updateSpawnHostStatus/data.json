@@ -1,0 +1,250 @@
+{
+  "hosts": [
+    {
+      "_id": "i-085085e236d598a60",
+      "host_id": "ec2-52-90-140-75.compute-1.amazonaws.com",
+      "user": "ubuntu",
+      "secret": "297977476dbb81467929a2356882dc42",
+      "tag": "evg-ubuntu2204-workstation-x86_64-20240429202743-8655336120192407044",
+      "distro": {
+        "_id": "ubuntu2204-workstation-x86_64",
+        "arch": "linux_amd64",
+        "work_dir": "/home/ubuntu",
+        "provider": "ec2-ondemand",
+        "provider_settings": [
+          {
+            "region": "us-east-1",
+            "ami": "ami-079722c3acbb6086e",
+            "instance_type": "m6i.2xlarge",
+            "key_name": "mci",
+            "mount_points": [],
+            "security_group_ids": [
+              "sg-0af0dbcb6157b0620",
+              "sg-026695ab074d5d6fc",
+              "sg-0eb5ef43d72ec51ef"
+            ],
+            "iam_instance_profile_arn": "arn:aws:iam::557821124784:instance-profile/workstations_instance_profile_production",
+            "subnet_id": "subnet-0f4450edabc415946",
+            "vpc_name": "production_dynamic_vpc",
+            "is_vpc": true,
+            "fleet_options": {}
+          }
+        ],
+        "setup_as_sudo": true,
+        "setup": "\necho \"\nssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCuPuH5ehICo0pazPxeqhtJ/nKrToC2ceh/ql1Rfo2cYr+5fHq2axipqYiw6+4qIC9mw0Pfkgj/KrcHye+M20voibLwMnyPBBRuBqNxqa8PScCLw5I0VIf89lGRiExcT6BRC2KYXQBKefoJxroIQxUtWEnGzTBWZGkfhvKQNWbk+HEVi3l3iC3TPlwRCzMg/SW5nphwPdmZOUp2kqqRIwZpkfcbvDowpGualsLzSGevAeGTq8l7B6oCWWPZa4c85iR1+ggFJ+4IbVtNBqAz8UQD9IL0Brj1AxfscSgltDKWvyNRhn0ORpdhNfzmoe33H4sHisoxsGUePH5sH9bhBhx3ZbVFn0KSzYQVmrHHL9zxFImtZTEYbjRGNmriWUBoR5CFv1RU8OLeZpfMp9l31MY3O5XNCIzm7MC6vbLLkDiVJtzSV2CH+3RS57z9H1LIPveYegyFH22fw/UBNVb+JFnlTwi6gDkyubqt1vg4mgdOsIl/qePSi25/M8w3W59TdV4zZA/4xNaY96nuCSnf+yHHdFRdoaTgMhYKCYWBdAxk/paCJd+7kCV/hHat2D9GJlLVYoiWlZaqQSKsn8aCvKVzgCVcE7V5S9mRTuGqrcpI8CYffcA3bYznoYQYrFME8kFFP20KUiyWDxsUT/5xv5c6zD6dciJdSU7bDInkeZf+qQ== srs2231@columbia.edu\" >> /home/ubuntu/.ssh/authorized_keys\n",
+        "user": "ubuntu",
+        "bootstrap_settings": {
+          "method": "user-data",
+          "communication": "rpc",
+          "resource_limits": {
+            "num_files": 64000,
+            "num_processes": -1,
+            "num_tasks": -1,
+            "locked_memory": -1,
+            "virtual_memory": -1
+          },
+          "client_dir": "/opt/evergreen",
+          "jasper_binary_dir": "/opt/evergreen",
+          "jasper_credentials_path": "/opt/evergreen/jasper_credentials.json",
+          "shell_path": "/bin/bash"
+        },
+        "ssh_options": [
+          "StrictHostKeyChecking=no",
+          "BatchMode=yes",
+          "ConnectTimeout=10"
+        ],
+        "spawn_allowed": true,
+        "expansions": [],
+        "disabled": true,
+        "finder_settings": {
+          "version": "legacy"
+        },
+        "planner_settings": {
+          "version": "tunable",
+          "target_time": {
+            "$numberLong": "0"
+          },
+          "group_versions": false,
+          "patch_zipper_factor": {
+            "$numberLong": "0"
+          },
+          "patch_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "commit_queue_factor": {
+            "$numberLong": "0"
+          },
+          "mainline_time_in_queue_factor": {
+            "$numberLong": "0"
+          },
+          "expected_runtime_factor": {
+            "$numberLong": "0"
+          },
+          "generate_task_factor": {
+            "$numberLong": "0"
+          },
+          "stepback_task_factor": {
+            "$numberLong": "0"
+          }
+        },
+        "dispatcher_settings": {
+          "version": "revised-with-dependencies"
+        },
+        "host_allocator_settings": {
+          "version": "utilization",
+          "minimum_hosts": 0,
+          "maximum_hosts": 0,
+          "rounding_rule": "",
+          "feedback_rule": "",
+          "hosts_overallocated_rule": "",
+          "acceptable_host_idle_time": {
+            "$numberLong": "0"
+          },
+          "future_host_fraction": 0
+        },
+        "disable_shallow_clone": false,
+        "note": "",
+        "is_virtual_workstation": true,
+        "is_cluster": false,
+        "home_volume_settings": {
+          "format_command": "/sbin/mkfs.xfs"
+        },
+        "icecream_settings": {
+          "scheduler_host": "iceccd.production.build.10gen.cc",
+          "config_path": "/etc/icecc/icecc.conf"
+        }
+      },
+      "host_type": "ec2-ondemand",
+      "ip_address": "2600:1f18:ae9:dd06:9b7e:3d5a:e690:c65c",
+      "ipv4_address": "10.128.4.94",
+      "ext_identifier": "",
+      "display_name": "",
+      "zone": "us-east-1a",
+      "provisioned": true,
+      "provision_options": {
+        "task_id": "",
+        "task_sync": false,
+        "owner_id": "sophie.stadler",
+        "setup_script": ""
+      },
+      "running_task_execution": 0,
+      "expiration_time": {
+        "$date": "2024-05-06T20:27:43.024Z"
+      },
+      "no_expiration": true,
+      "creation_time": {
+        "$date": "2024-04-29T20:27:43.024Z"
+      },
+      "start_time": {
+        "$date": "2024-05-02T11:55:04.000Z"
+      },
+      "billing_start_time": {
+        "$date": "2024-05-02T11:55:08.000Z"
+      },
+      "agent_start_time": {
+        "$date": {
+          "$numberLong": "-62135596800000"
+        }
+      },
+      "termination_time": {
+        "$date": "1970-01-01T00:00:00.000Z"
+      },
+      "task_count": 0,
+      "last_communication": {
+        "$date": "2024-04-29T20:29:02.001Z"
+      },
+      "status": "running",
+      "started_by": "sophie.stadler",
+      "user_host": true,
+      "agent_revision": "",
+      "needs_agent": false,
+      "needs_agent_monitor": false,
+      "num_agent_cleanup_failures": 0,
+      "jasper_credentials_id": "i-085085e236d598a60",
+      "instance_type": "m6i.2xlarge",
+      "container_build_attempt": 0,
+      "spawn_options": {
+        "task_execution_number": 0
+      },
+      "docker_options": {},
+      "instance_tags": [
+        {
+          "key": "name",
+          "value": "evg-ubuntu2204-workstation-x86_64-20240429202743-8655336120192407044",
+          "can_be_modified": false
+        },
+        {
+          "key": "distro",
+          "value": "ubuntu2204-workstation-x86_64",
+          "can_be_modified": false
+        },
+        {
+          "key": "evergreen-service",
+          "value": "evergreen-web-app-74655b56b6-f8bpm",
+          "can_be_modified": false
+        },
+        {
+          "key": "username",
+          "value": "evergreen application server user",
+          "can_be_modified": false
+        },
+        {
+          "key": "owner",
+          "value": "sophie.stadler",
+          "can_be_modified": false
+        },
+        {
+          "key": "mode",
+          "value": "production",
+          "can_be_modified": false
+        },
+        {
+          "key": "start-time",
+          "value": "20240429202743",
+          "can_be_modified": false
+        },
+        {
+          "key": "expire-on",
+          "value": "2024-05-29",
+          "can_be_modified": false
+        }
+      ],
+      "is_virtual_workstation": true,
+      "home_volume_size": 0,
+      "home_volume_id": "vol-099ff03decd523cec",
+      "sleep_schedule": {
+        "whole_weekdays_off": [
+          0,
+          6
+        ],
+        "daily_start_time": "08:00",
+        "daily_stop_time": "20:00",
+        "time_zone": "America/New_York",
+        "permanently_exempt": false,
+        "next_stop_time": {
+          "$date": "2024-05-03T00:00:00.000Z"
+        },
+        "next_start_time": {
+          "$date": "2024-05-03T12:00:00.000Z"
+        }
+      },
+      "persistent_dns_name": "sophie-stadler-cca.workstations.build.10gen.cc",
+      "public_ipv4_address": "52.90.140.75",
+      "volumes": [
+        {
+          "volume_id": "vol-00caee7766728bef4",
+          "device_name": "/dev/sda1",
+          "is_home": false
+        },
+        {
+          "volume_id": "vol-099ff03decd523cec",
+          "device_name": "/dev/sdf",
+          "is_home": false
+        }
+      ],
+      "prov_time": {
+        "$date": "2024-04-29T20:28:05.287Z"
+      }
+    }
+  ]
+}

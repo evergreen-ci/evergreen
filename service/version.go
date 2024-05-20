@@ -176,12 +176,6 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		for _, taskCache := range build.Tasks {
 			t, ok := taskMap[taskCache.Id]
 			if !ok {
-				grip.Error(message.Fields{
-					"task_id": taskCache.Id,
-					"version": projCtx.Version.Id,
-					"request": gimlet.GetRequestID(ctx),
-					"message": "build references task that does not exist",
-				})
 				continue
 			}
 
@@ -303,12 +297,6 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		for _, taskCache := range build.Tasks {
 			t, ok := taskMap[taskCache.Id]
 			if !ok {
-				grip.Error(message.Fields{
-					"task_id": taskCache.Id,
-					"version": projCtx.Version.Id,
-					"request": gimlet.GetRequestID(r.Context()),
-					"message": "build references task that does not exist",
-				})
 				continue
 			}
 			uiTasks = append(uiTasks,
@@ -408,12 +396,6 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 			for _, taskCache := range b.Tasks {
 				t, ok := taskMap[taskCache.Id]
 				if !ok {
-					grip.Error(message.Fields{
-						"task_id": taskCache.Id,
-						"version": projCtx.Version.Id,
-						"request": gimlet.GetRequestID(r.Context()),
-						"message": "build references task that does not exist",
-					})
 					continue
 				}
 				uiTasks = append(uiTasks,

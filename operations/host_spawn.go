@@ -171,15 +171,16 @@ func hostCreate() cli.Command {
 
 func hostModify() cli.Command {
 	const (
-		addTagFlagName       = "tag"
-		deleteTagFlagName    = "delete-tag"
-		instanceTypeFlagName = "type"
-		displayNameFlagName  = "name"
-		noExpireFlagName     = "no-expire"
-		expireFlagName       = "expire"
-		extendFlagName       = "extend"
-		addSSHKeyFlag        = "add-ssh-key"
-		addSSHKeyNameFlag    = "add-ssh-key-name"
+		addTagFlagName             = "tag"
+		deleteTagFlagName          = "delete-tag"
+		instanceTypeFlagName       = "type"
+		displayNameFlagName        = "name"
+		noExpireFlagName           = "no-expire"
+		expireFlagName             = "expire"
+		extendFlagName             = "extend"
+		temporaryExemptionFlagName = "extend-temporary-exemption"
+		addSSHKeyFlag              = "add-ssh-key"
+		addSSHKeyNameFlag          = "add-ssh-key-name"
 	)
 
 	return cli.Command{
@@ -206,6 +207,10 @@ func hostModify() cli.Command {
 				Name:  extendFlagName,
 				Usage: "extend the expiration of a spawn host by `HOURS`",
 			},
+			cli.IntFlag{
+				Name:  temporaryExemptionFlagName,
+				Usage: "create or extend a temporary exemption from the host's sleep schedule by `HOURS`",
+			},
 			cli.BoolFlag{
 				Name:  noExpireFlagName,
 				Usage: "make host never expire",
@@ -226,7 +231,7 @@ func hostModify() cli.Command {
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
 			requireHostFlag,
-			requireAtLeastOneFlag(addTagFlagName, deleteTagFlagName, instanceTypeFlagName, expireFlagName, noExpireFlagName, extendFlagName, addSSHKeyFlag, addSSHKeyNameFlag),
+			requireAtLeastOneFlag(addTagFlagName, deleteTagFlagName, instanceTypeFlagName, expireFlagName, noExpireFlagName, extendFlagName, temporaryExemptionFlagName, addSSHKeyFlag, addSSHKeyNameFlag),
 			mutuallyExclusiveArgs(false, noExpireFlagName, extendFlagName),
 			mutuallyExclusiveArgs(false, noExpireFlagName, expireFlagName),
 			mutuallyExclusiveArgs(false, addSSHKeyFlag, addSSHKeyNameFlag),
@@ -241,6 +246,7 @@ func hostModify() cli.Command {
 			displayName := c.String(displayNameFlagName)
 			expire := c.Bool(expireFlagName)
 			extension := c.Int(extendFlagName)
+			temporaryExemptionHours := c.Int(temporaryExemptionFlagName)
 			subscriptionType := c.String(subscriptionTypeFlag)
 			publicKeyFile := c.String(addSSHKeyFlag)
 			publicKeyName := c.String(addSSHKeyNameFlag)
@@ -269,13 +275,14 @@ func hostModify() cli.Command {
 			}
 
 			hostChanges := host.HostModifyOptions{
-				AddInstanceTags:    addTags,
-				DeleteInstanceTags: deleteTagSlice,
-				InstanceType:       instanceType,
-				AddHours:           time.Duration(extension) * time.Hour,
-				SubscriptionType:   subscriptionType,
-				NewName:            displayName,
-				AddKey:             publicKey,
+				AddInstanceTags:            addTags,
+				DeleteInstanceTags:         deleteTagSlice,
+				InstanceType:               instanceType,
+				AddHours:                   time.Duration(extension) * time.Hour,
+				AddTemporaryExemptionHours: temporaryExemptionHours,
+				SubscriptionType:           subscriptionType,
+				NewName:                    displayName,
+				AddKey:                     publicKey,
 			}
 
 			if noExpire {
@@ -635,7 +642,7 @@ Examples:
 				return errors.New("host is not running")
 			}
 			user := utility.FromStringPtr(h.User)
-			url := utility.FromStringPtr(h.HostURL)
+			url := getHostname(h)
 			if user == "" || url == "" {
 				return errors.New("unable to ssh into host without user or DNS name")
 			}
@@ -1087,12 +1094,13 @@ func hostList() cli.Command {
 
 func printHosts(hosts []*restModel.APIHost) {
 	for _, h := range hosts {
+		hostname := getHostname(h)
 		grip.Infof("ID: %s; Name: %s; Distro: %s; Status: %s; Host name: %s; User: %s; Availability Zone: %s",
 			utility.FromStringPtr(h.Id),
 			utility.FromStringPtr(h.DisplayName),
 			utility.FromStringPtr(h.Distro.Id),
 			utility.FromStringPtr(h.Status),
-			utility.FromStringPtr(h.HostURL),
+			hostname,
 			utility.FromStringPtr(h.User),
 			utility.FromStringPtr(h.AvailabilityZone))
 	}
@@ -1110,12 +1118,13 @@ func printHostsJSON(hosts []*restModel.APIHost) {
 	}
 	hostResults := []hostResult{}
 	for _, h := range hosts {
+		hostname := getHostname(h)
 		hostResults = append(hostResults, hostResult{
 			Id:               utility.FromStringPtr(h.Id),
 			Name:             utility.FromStringPtr(h.DisplayName),
 			Distro:           utility.FromStringPtr(h.Distro.Id),
 			Status:           utility.FromStringPtr(h.Status),
-			HostName:         utility.FromStringPtr(h.HostURL),
+			HostName:         hostname,
 			User:             utility.FromStringPtr(h.User),
 			AvailabilityZone: utility.FromStringPtr(h.AvailabilityZone),
 		})
@@ -1662,12 +1671,21 @@ func getUserAndHostname(ctx context.Context, hostID, confPath string) (user, hos
 			catcher := grip.NewBasicCatcher()
 			user = utility.FromStringPtr(h.User)
 			catcher.ErrorfWhen(user == "", "could not find login user for host '%s'", hostID)
-			hostname = utility.FromStringPtr(h.HostURL)
+			hostname = getHostname(h)
 			catcher.ErrorfWhen(hostname == "", "could not find hostname for host '%s'", hostID)
 			return user, hostname, catcher.Resolve()
 		}
 	}
 	return "", "", errors.Errorf("could not find host '%s' in user's spawn hosts", hostID)
+}
+
+// getHostname returns the primary hostname for the host. If it has a persistent
+// DNS name, that one is preferred.
+func getHostname(h *restModel.APIHost) string {
+	if persistentDNSName := utility.FromStringPtr(h.PersistentDNSName); persistentDNSName != "" {
+		return persistentDNSName
+	}
+	return utility.FromStringPtr(h.HostURL)
 }
 
 // verifyRsync performs some basic validation for the common case in

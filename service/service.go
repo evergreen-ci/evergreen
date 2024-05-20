@@ -120,6 +120,9 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	//	@tag.name					projects
 	//	@tag.description			A project tracks a GitHub repository.
 	//
+	//	@tag.name					select
+	//	@tag.description			The select endpoints return a subset of tests to run for a given task.
+	//
 	//	@tag.name					tasks
 	//	@tag.description			The fundamental unit of execution is the task. A task corresponds to a box on the waterfall page.
 	//
