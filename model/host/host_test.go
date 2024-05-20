@@ -925,8 +925,13 @@ func TestUpdateHostRunningTask(t *testing.T) {
 				},
 			},
 		}
+		h3 := Host{
+			Id:     "test3",
+			Status: evergreen.HostDecommissioned,
+		}
 		So(h.Insert(ctx), ShouldBeNil)
 		So(h2.Insert(ctx), ShouldBeNil)
+		So(h3.Insert(ctx), ShouldBeNil)
 		Convey("updating the running task id should set proper fields", func() {
 			So(h.UpdateRunningTaskWithContext(ctx, env, &task.Task{Id: newTaskId}), ShouldBeNil)
 			found, err := FindOne(ctx, ById(h.Id))
@@ -947,6 +952,9 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			runningTaskHosts, err := Find(ctx, IsRunningTask)
 			So(err, ShouldBeNil)
 			So(len(runningTaskHosts), ShouldEqual, 1)
+		})
+		Convey("updating a running task on a decommissioned host should error", func() {
+			So(h3.UpdateRunningTaskWithContext(ctx, env, &task.Task{Id: newTaskId}), ShouldNotBeNil)
 		})
 	})
 }
