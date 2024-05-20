@@ -726,13 +726,17 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{{Name: ".warm .doesnt-exist"}, {Name: "white"}},
 					taskDefs,
-					[]BuildVariantTaskUnit{{Name: "white"}}, []string{".warm .doesnt-exist"}, []string{"doesnt-exist"})
+					[]BuildVariantTaskUnit{{Name: "white"}}, []string{".warm .doesnt-exist"}, []string{".doesnt-exist"})
+				parserTaskSelectorTaskEval(tse, tgse,
+					parserBVTaskUnits{{Name: ".warm !.doesnt-exist"}, {Name: "white"}},
+					taskDefs,
+					[]BuildVariantTaskUnit{{Name: "red"}, {Name: "orange"}, {Name: "yellow"}, {Name: "white"}}, nil, []string{"!.doesnt-exist"})
 			})
 		})
 	})
 }
 
-func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEvaluator, tasks parserBVTaskUnits, taskDefs []parserTask, expected []BuildVariantTaskUnit, expectedEmptySelectors, expectedUnmatchedTags []string) {
+func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEvaluator, tasks parserBVTaskUnits, taskDefs []parserTask, expected []BuildVariantTaskUnit, expectedEmptySelectors, expectedUnmatchedCriteria []string) {
 	names := []string{}
 	exp := []string{}
 	for _, t := range tasks {
@@ -745,7 +749,7 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEva
 	Convey(fmt.Sprintf("tasks [%v] should evaluate to [%v]",
 		strings.Join(names, ", "), strings.Join(exp, ", ")), func() {
 		pbv := parserBV{Name: "build-variant-wow", Tasks: tasks}
-		taskUnit, emptySelectors, unmatchedTags, errs := evaluateBVTasks(tse, tsge, vse, pbv, taskDefs)
+		taskUnit, unmatchedSelectors, unmatchedCriteria, errs := evaluateBVTasks(tse, tsge, vse, pbv, taskDefs)
 		if expected != nil {
 			So(errs, ShouldBeNil)
 		} else {
@@ -763,10 +767,10 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEva
 			}
 			So(exists, ShouldBeTrue)
 		}
-		So(len(emptySelectors), ShouldEqual, len(expectedEmptySelectors))
+		So(len(unmatchedSelectors), ShouldEqual, len(expectedEmptySelectors))
 		for _, expectedEmptySelector := range expectedEmptySelectors {
 			exists := false
-			for _, emptySelector := range emptySelectors {
+			for _, emptySelector := range unmatchedSelectors {
 				if emptySelector == expectedEmptySelector {
 					exists = true
 					break
@@ -774,10 +778,10 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEva
 			}
 			So(exists, ShouldBeTrue)
 		}
-		So(len(unmatchedTags), ShouldEqual, len(expectedUnmatchedTags))
-		for _, expectedUnmatchedTag := range expectedUnmatchedTags {
+		So(len(unmatchedCriteria), ShouldEqual, len(expectedUnmatchedCriteria))
+		for _, expectedUnmatchedTag := range expectedUnmatchedCriteria {
 			exists := false
-			for _, unmatchedTag := range unmatchedTags {
+			for _, unmatchedTag := range unmatchedCriteria {
 				if unmatchedTag == expectedUnmatchedTag {
 					exists = true
 					break

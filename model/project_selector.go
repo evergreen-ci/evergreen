@@ -168,7 +168,10 @@ func (tse *tagSelectorEvaluator) evalSelector(s Selector) ([]string, []string, e
 		}
 		if len(names) == 0 {
 			unmatchedCriteria = append(unmatchedCriteria, sc.String())
-			continue
+			// If this is a negated criteria, we do not want to intersect it with the rest
+			if sc.negated {
+				continue
+			}
 		}
 		if i == 0 {
 			results = names

@@ -1314,8 +1314,8 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 	pbv parserBV, tasks []parserTask) ([]BuildVariantTaskUnit, []string, []string, []error) {
 	var evalErrs, errs []error
 	ts := []BuildVariantTaskUnit{}
-	unmatchedSelectorLines := []string{}
 	unmatchedSelectors := []string{}
+	unmatchedCriteria := []string{}
 	taskUnitsByName := map[string]BuildVariantTaskUnit{}
 	tasksByName := map[string]parserTask{}
 	for _, t := range tasks {
@@ -1326,7 +1326,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		// only error if both selectors error because each task should only be found
 		// in one or the other.  Skip selector checking if task group is defined
 		// directly on the build variant task.
-		var names, unmatched, temp []string
+		var names, unmatchedCriteriaFromTasks, unmatchedCriteriaFromTaskGroups, temp []string
 		isGroup := false
 		if pbvt.TaskGroup != nil {
 			names = append(names, pbvt.Name)
@@ -1334,13 +1334,11 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		} else {
 			var taskSelectorErr, taskGroupSelectorErr error
 			if tse != nil {
-				temp, unmatched, taskSelectorErr = tse.evalSelector(ParseSelector(pbvt.Name))
+				temp, unmatchedCriteriaFromTasks, taskSelectorErr = tse.evalSelector(ParseSelector(pbvt.Name))
 				names = append(names, temp...)
 			}
 			if tgse != nil {
-				var unmatchedTaskgroup []string
-				temp, unmatchedTaskgroup, taskGroupSelectorErr = tgse.evalSelector(ParseSelector(pbvt.Name))
-				unmatched = append(unmatched, unmatchedTaskgroup...)
+				temp, unmatchedCriteriaFromTaskGroups, taskGroupSelectorErr = tgse.evalSelector(ParseSelector(pbvt.Name))
 				if len(temp) > 0 {
 					names = append(names, temp...)
 					isGroup = true
@@ -1348,19 +1346,23 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 			}
 			if taskSelectorErr != nil && taskGroupSelectorErr != nil {
 				evalErrs = append(evalErrs, taskSelectorErr, taskGroupSelectorErr)
-				unmatchedSelectorLines = append(unmatchedSelectorLines, pbvt.Name)
+				unmatchedSelectors = append(unmatchedSelectors, pbvt.Name)
 				continue
 			}
 		}
-		if len(names) == 0 {
-			unmatchedSelectorLines = append(unmatchedSelectorLines, pbvt.Name)
-		}
-		for _, tag := range unmatched {
-			// This makes sure it is not counted as unmatched if it was matched by with a task/task group.
-			// As matched tasks/task groups are appended to the names slice.
-			if !utility.StringSliceContains(names, tag) {
-				unmatchedSelectors = append(unmatchedSelectors, tag)
+		initialUnmatchedCriteriaLen := len(unmatchedCriteriaFromTasks)
+		for _, unmatchedTask := range unmatchedCriteriaFromTasks {
+			if utility.StringSliceContains(unmatchedCriteriaFromTaskGroups, unmatchedTask) {
+				unmatchedCriteria = append(unmatchedCriteria, unmatchedTask)
 			}
+		}
+		if len(names) == 0 {
+			unmatchedSelectors = append(unmatchedSelectors, pbvt.Name)
+			continue
+		}
+		// If any were unmatched, do not add any matched tasks to the list.
+		if len(unmatchedCriteriaFromTasks) > initialUnmatchedCriteriaLen {
+			continue
 		}
 		// create new task definitions--duplicates must have the same status requirements
 		for _, name := range names {
@@ -1404,7 +1406,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		evalErrs = append(evalErrs, errors.Errorf("task selectors for build variant '%s' did not match any tasks", pbv.Name))
 
 	}
-	return ts, unmatchedSelectorLines, unmatchedSelectors, evalErrs
+	return ts, unmatchedSelectors, unmatchedCriteria, evalErrs
 }
 
 // getParserBuildVariantTaskUnit combines the parser project's build variant
