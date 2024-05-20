@@ -30,8 +30,9 @@ import (
 )
 
 const (
-	patchIntentJobName   = "patch-intent-processor"
-	githubDependabotUser = "dependabot[bot]"
+	patchIntentJobName    = "patch-intent-processor"
+	githubDependabotUser  = "dependabot[bot]"
+	maxPatchIntentJobTime = 10 * time.Minute
 )
 
 func init() {
@@ -65,6 +66,9 @@ func NewPatchIntentProcessor(env evergreen.Environment, patchID mgobson.ObjectId
 	j.env = env
 
 	j.SetID(fmt.Sprintf("%s-%s-%s", patchIntentJobName, j.IntentType, j.IntentID))
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		MaxTime: maxPatchIntentJobTime,
+	})
 	return j
 }
 

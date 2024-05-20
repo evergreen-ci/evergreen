@@ -68,6 +68,14 @@ func NewSpawnhostStopJob(h *host.Host, shouldKeepOff bool, source evergreen.Modi
 func (j *spawnhostStopJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
+	defer func() {
+		if j.HasErrors() && (!j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0) {
+			// Only log an error if the final job attempt errors. Otherwise, it
+			// may retry and succeed on the next attempt.
+			event.LogHostStopError(j.HostID, string(j.Source), j.Error().Error())
+		}
+	}()
+
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		j.AddRetryableError(errors.Wrap(err, "getting service flags"))
@@ -106,7 +114,6 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 		}
 
 		if err := mgr.StopInstance(ctx, h, j.ShouldKeepOff, user); err != nil {
-			event.LogHostStopError(h.Id, err.Error())
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "error stopping spawn host",
 				"host_id":  h.Id,
@@ -117,7 +124,7 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 			return errors.Wrap(err, "stopping spawn host")
 		}
 
-		event.LogHostStopSucceeded(h.Id)
+		event.LogHostStopSucceeded(h.Id, string(j.Source))
 		grip.Info(message.Fields{
 			"message":    "stopped spawn host",
 			"host_id":    h.Id,

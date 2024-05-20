@@ -21,7 +21,6 @@ type AuthUser struct {
 }
 
 var (
-	AuthLDAPKey                    = bsonutil.MustHaveTag(AuthConfig{}, "LDAP")
 	AuthOktaKey                    = bsonutil.MustHaveTag(AuthConfig{}, "Okta")
 	AuthGithubKey                  = bsonutil.MustHaveTag(AuthConfig{}, "Github")
 	AuthNaiveKey                   = bsonutil.MustHaveTag(AuthConfig{}, "Naive")
@@ -34,18 +33,6 @@ var (
 // NaiveAuthConfig contains a list of AuthUsers from the settings file.
 type NaiveAuthConfig struct {
 	Users []AuthUser `bson:"users" json:"users" yaml:"users"`
-}
-
-// LDAPConfig contains settings for interacting with an LDAP server.
-type LDAPConfig struct {
-	URL                string `bson:"url" json:"url" yaml:"url"`
-	Port               string `bson:"port" json:"port" yaml:"port"`
-	UserPath           string `bson:"path" json:"path" yaml:"path"`
-	ServicePath        string `bson:"service_path" json:"service_path" yaml:"service_path"`
-	Group              string `bson:"group" json:"group" yaml:"group"`
-	ServiceGroup       string `bson:"service_group" json:"service_group" yaml:"service_group"`
-	ExpireAfterMinutes string `bson:"expire_after_minutes" json:"expire_after_minutes" yaml:"expire_after_minutes"`
-	GroupOU            string `bson:"group_ou" json:"group_ou" yaml:"group_ou"`
 }
 
 type OktaConfig struct {
@@ -84,7 +71,6 @@ func (c *MultiAuthConfig) IsZero() bool {
 
 // AuthConfig contains the settings for the various auth managers.
 type AuthConfig struct {
-	LDAP                    *LDAPConfig       `bson:"ldap,omitempty" json:"ldap" yaml:"ldap"`
 	Okta                    *OktaConfig       `bson:"okta,omitempty" json:"okta" yaml:"okta"`
 	Naive                   *NaiveAuthConfig  `bson:"naive,omitempty" json:"naive" yaml:"naive"`
 	Github                  *GithubAuthConfig `bson:"github,omitempty" json:"github" yaml:"github"`
@@ -116,7 +102,6 @@ func (c *AuthConfig) Get(ctx context.Context) error {
 func (c *AuthConfig) Set(ctx context.Context) error {
 	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			AuthLDAPKey:                    c.LDAP,
 			AuthOktaKey:                    c.Okta,
 			AuthNaiveKey:                   c.Naive,
 			AuthGithubKey:                  c.Github,
@@ -149,13 +134,12 @@ func (c *AuthConfig) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
 	catcher.ErrorfWhen(!utility.StringSliceContains([]string{
 		"",
-		AuthLDAPKey,
 		AuthOktaKey,
 		AuthNaiveKey,
 		AuthGithubKey,
 		AuthMultiKey}, c.PreferredType), "invalid auth type '%s'", c.PreferredType)
 
-	if c.LDAP == nil && c.Naive == nil && c.Github == nil && c.Okta == nil && c.Multi == nil {
+	if c.Naive == nil && c.Github == nil && c.Okta == nil && c.Multi == nil {
 		catcher.Add(errors.New("must specify one form of authentication"))
 	}
 
@@ -168,8 +152,6 @@ func (c *AuthConfig) ValidateAndDefault() error {
 		for _, kind := range kinds {
 			// Check that settings exist for the user manager.
 			switch kind {
-			case AuthLDAPKey:
-				catcher.NewWhen(c.LDAP == nil, "LDAP settings cannot be empty if using in multi auth")
 			case AuthOktaKey:
 				catcher.NewWhen(c.Okta == nil, "Okta settings cannot be empty if using in multi auth")
 			case AuthGithubKey:

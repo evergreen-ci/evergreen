@@ -5,14 +5,14 @@ go 1.20
 require (
 	github.com/99designs/gqlgen v0.17.45
 	github.com/PuerkitoBio/rehttp v1.4.0
-	github.com/aws/aws-sdk-go v1.52.2
+	github.com/aws/aws-sdk-go v1.53.1
 	github.com/aws/aws-sdk-go-v2 v1.26.1
-	github.com/aws/aws-sdk-go-v2/config v1.27.9
-	github.com/aws/aws-sdk-go-v2/credentials v1.17.9 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.157.0
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.36.0
-	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.21.4
-	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.28.6
+	github.com/aws/aws-sdk-go-v2/config v1.27.13
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.13 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.161.1
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.41.8
+	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.21.5
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.28.7
 	github.com/aws/smithy-go v1.20.2
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/docker/docker v24.0.9+incompatible
@@ -50,7 +50,7 @@ require (
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/smartystreets/goconvey v1.8.1
 	github.com/stretchr/testify v1.9.0
-	github.com/urfave/cli v1.22.13
+	github.com/urfave/cli v1.22.15
 	github.com/vektah/gqlparser/v2 v2.5.11
 	go.mongodb.org/mongo-driver v1.15.0
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.21.1
@@ -73,19 +73,18 @@ require (
 	golang.org/x/tools v0.19.0 // indirect
 	gonum.org/v1/gonum v0.14.0
 	google.golang.org/grpc v1.63.2
-	google.golang.org/protobuf v1.34.0
+	google.golang.org/protobuf v1.34.1
 	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
-	github.com/Azure/go-ntlmssp v0.0.0-20220621081337-cb9428e4ac1e // indirect
 	github.com/Microsoft/go-winio v0.4.17 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230923063757-afb1ddc0824c // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/andybalholm/brotli v1.0.3 // indirect
 	github.com/andygrunwald/go-jira v1.16.0 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.0 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.1 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.5 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.5 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.0 // indirect
@@ -95,9 +94,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ses v1.19.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.29.7 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.20.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.23.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.28.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.20.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.24.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.28.7 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/brunoscheufler/aws-ecs-metadata-go v0.0.0-20220812150832-b6b31c6eeeaf // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
@@ -105,7 +104,7 @@ require (
 	github.com/containerd/cgroups v1.0.4 // indirect
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.0-20210816181553-5444fa50b93d // indirect
 	github.com/dghubble/oauth1 v0.7.2 // indirect
@@ -122,8 +121,6 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/fuyufjh/splunk-hec-go v0.4.0 // indirect
-	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
-	github.com/go-ldap/ldap/v3 v3.4.4 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
@@ -196,7 +193,7 @@ require (
 )
 
 require (
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.40.4
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.40.5
 	github.com/bradleyfalzon/ghinstallation v1.1.1
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1

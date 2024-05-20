@@ -2268,6 +2268,18 @@ var StartedByStatusIndex = bson.D{
 	},
 }
 
+// DistroIdStatusIndex is the distro_id_1_status_1 index.
+var DistroIdStatusIndex = bson.D{
+	{
+		Key:   bsonutil.GetDottedKeyName(DistroKey, distro.IdKey),
+		Value: 1,
+	},
+	{
+		Key:   StatusKey,
+		Value: 1,
+	},
+}
+
 func CountInactiveHostsByProvider(ctx context.Context) ([]InactiveHostCounts, error) {
 	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, inactiveHostCountPipeline())
 	if err != nil {

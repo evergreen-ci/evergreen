@@ -289,7 +289,10 @@ func CountRunningHosts(ctx context.Context, distroID string) (int, error) {
 // and run tasks for a given distro. This number is surfaced on the
 // task queue.
 func CountHostsCanRunTasks(ctx context.Context, distroID string) (int, error) {
-	num, err := Count(ctx, hostsCanRunTasksQuery(distroID))
+	opts := &options.CountOptions{
+		Hint: DistroIdStatusIndex,
+	}
+	num, err := Count(ctx, hostsCanRunTasksQuery(distroID), opts)
 	return num, errors.Wrap(err, "counting hosts that can run tasks")
 }
 
@@ -913,8 +916,8 @@ func Aggregate(ctx context.Context, pipeline []bson.M, options ...*options.Aggre
 }
 
 // Count returns the number of hosts that satisfy the given query.
-func Count(ctx context.Context, query bson.M) (int, error) {
-	res, err := evergreen.GetEnvironment().DB().Collection(Collection).CountDocuments(ctx, query)
+func Count(ctx context.Context, query bson.M, opts ...*options.CountOptions) (int, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).CountDocuments(ctx, query, opts...)
 	return int(res), errors.Wrap(err, "getting host count")
 }
 
@@ -1669,6 +1672,7 @@ func ClearExpiredTemporaryExemptions(ctx context.Context) error {
 	sleepScheduleTemporarilyExemptUntilKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
 
 	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx, isSleepScheduleApplicable(bson.M{
+		StatusKey:                              bson.M{"$in": evergreen.SleepScheduleStatuses},
 		sleepScheduleTemporarilyExemptUntilKey: bson.M{"$lte": time.Now()},
 	}), bson.M{
 		"$unset": bson.M{
