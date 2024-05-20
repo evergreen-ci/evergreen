@@ -1271,7 +1271,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 					errs = append(errs, err)
 				}
 				if len(unmatched) > 0 {
-					errs = append(errs, errors.Errorf("display task '%s' contains unmatched selector: '%s'", dt.Name, strings.Join(unmatched, "', '")))
+					errs = append(errs, errors.Errorf("display task '%s' contains unmatched criteria: '%s'", dt.Name, strings.Join(unmatched, "', '")))
 				}
 				tasks = append(tasks, results...)
 			}
