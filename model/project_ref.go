@@ -155,6 +155,30 @@ type GitHubDynamicTokenPermission struct {
 	Permissions map[string]string `bson:"permissions,omitempty" json:"permissions,omitempty" yaml:"permissions,omitempty"`
 }
 
+func (p *GitHubDynamicTokenPermissions) Add(permission GitHubDynamicTokenPermission) error {
+	if p == nil {
+		fmt.Println("Testing")
+		p = &GitHubDynamicTokenPermissions{}
+	}
+	for _, r := range permission.Requesters {
+		if !utility.StringSliceContains(evergreen.AllRequesterTypes, r) {
+			return errors.Errorf("requester '%s' is not a valid requester", r)
+		}
+	}
+	for _, existing := range *p {
+		for _, r := range existing.Requesters {
+			for _, newR := range permission.Requesters {
+				if r == newR {
+					return errors.Errorf("requester '%s' already has permissions set", r)
+				}
+			}
+		}
+	}
+
+	*p = append(*p, permission)
+	return nil
+}
+
 // Get returns the GitHubDynamicTokenPermission for the given requester.
 func (p *GitHubDynamicTokenPermissions) Get(requester string) *GitHubDynamicTokenPermission {
 	if p == nil {
@@ -172,9 +196,9 @@ func (p *GitHubDynamicTokenPermissions) Get(requester string) *GitHubDynamicToke
 
 // AsGitHubPermissions returns the github.InstallationPermissions for the GitHubDynamicTokenPermission.
 // These are used in the requests to GitHub for what permissions to use.
-func (g *GitHubDynamicTokenPermission) ToGitHubInstallationPermissions() (github.InstallationPermissions, error) {
+func (p *GitHubDynamicTokenPermission) ToGitHubInstallationPermissions() (github.InstallationPermissions, error) {
 	perms := github.InstallationPermissions{}
-	if g == nil || g.Permissions == nil {
+	if p == nil || p.Permissions == nil {
 		return perms, nil
 	}
 
@@ -184,7 +208,7 @@ func (g *GitHubDynamicTokenPermission) ToGitHubInstallationPermissions() (github
 	if err != nil {
 		return perms, errors.Wrap(err, "creating decoder for GitHub permissions")
 	}
-	err = decoder.Decode(g.Permissions)
+	err = decoder.Decode(p.Permissions)
 
 	return perms, errors.Wrap(err, "decoding GitHub permissions")
 }

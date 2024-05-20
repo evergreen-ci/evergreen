@@ -1659,7 +1659,7 @@ func TestGitHubDynamicTokenPermissions(t *testing.T) {
 		},
 	}
 
-	t.Run("Nonexistent requester specified", func(t *testing.T) {
+	t.Run("Getting nonexistent requester specified", func(t *testing.T) {
 		assert.Nil(t, perms.Get("requester0"))
 	})
 
@@ -1678,6 +1678,39 @@ func TestGitHubDynamicTokenPermissions(t *testing.T) {
 		require.NotNil(t, perm)
 		assert.Equal(t, "read", perm.Permissions["content"])
 		assert.Equal(t, "write", perm.Permissions["fake"])
+	})
+
+	t.Run("Adding new permissions", func(t *testing.T) {
+		perm := GitHubDynamicTokenPermission{
+			Requesters: []string{evergreen.GithubPRRequester},
+			Permissions: map[string]string{
+				"checks": "read",
+				"issues": "write",
+			},
+		}
+		require.NoError(t, perms.Add(perm))
+	})
+
+	t.Run("Fails at adding permissions for an existing requester", func(t *testing.T) {
+		perm := GitHubDynamicTokenPermission{
+			Requesters: []string{evergreen.GithubPRRequester},
+			Permissions: map[string]string{
+				"checks": "read",
+				"issues": "write",
+			},
+		}
+		require.Error(t, perms.Add(perm), fmt.Sprintf("requester '%s' already has permissions set", evergreen.GithubPRRequester))
+	})
+
+	t.Run("Fails at adding permissions for an invalid requester", func(t *testing.T) {
+		perm := GitHubDynamicTokenPermission{
+			Requesters: []string{"requester4"},
+			Permissions: map[string]string{
+				"checks": "read",
+				"issues": "write",
+			},
+		}
+		require.Error(t, perms.Add(perm), "requester 'requester4' is not a valid requester")
 	})
 }
 
