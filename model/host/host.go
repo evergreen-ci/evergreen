@@ -1788,7 +1788,6 @@ func (h *Host) UpdateRunningTaskWithContext(ctx context.Context, env evergreen.E
 		},
 	}
 
-	// kim: TODO: add test
 	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
 	if err != nil {
 		grip.DebugWhen(db.IsDuplicateKey(err), message.WrapError(err, message.Fields{
