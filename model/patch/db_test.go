@@ -80,13 +80,13 @@ func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
 		"EmptyRequestersList": func(ctx context.Context, t *testing.T) {
 			opts := ByPatchNameStatusesCommitQueuePaginatedOptions{
 				Project:    utility.ToStringPtr("evergreen"),
-				Requesters: []string{evergreen.PatchVersionRequester},
+				Requesters: []string{},
 			}
 
 			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 			assert.NoError(t, err)
-			assert.Equal(t, 1, count)
-			require.Equal(t, 1, len(patches))
+			assert.Equal(t, 5, count)
+			require.Equal(t, 5, len(patches))
 			assert.Equal(t, "Patch Request Patch", patches[0].Description)
 		},
 		"GithubPRRequester": func(ctx context.Context, t *testing.T) {
