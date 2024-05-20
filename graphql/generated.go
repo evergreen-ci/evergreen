@@ -69767,7 +69767,7 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 		asMap["statuses"] = []interface{}{}
 	}
 
-	fieldsInOrder := [...]string{"includeCommitQueue", "limit", "onlyCommitQueue", "includeHidden", "page", "patchName", "statuses"}
+	fieldsInOrder := [...]string{"includeCommitQueue", "limit", "onlyCommitQueue", "includeHidden", "page", "patchName", "statuses", "requesters"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -69823,6 +69823,13 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.Statuses = data
+		case "requesters":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requesters"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Requesters = data
 		}
 	}
 

@@ -48,6 +48,7 @@ var (
 	ProjectStorageMethodKey = bsonutil.MustHaveTag(Patch{}, "ProjectStorageMethod")
 	PatchedProjectConfigKey = bsonutil.MustHaveTag(Patch{}, "PatchedProjectConfig")
 	AliasKey                = bsonutil.MustHaveTag(Patch{}, "Alias")
+	githubMergeDataKey      = bsonutil.MustHaveTag(Patch{}, "GithubMergeData")
 	githubPatchDataKey      = bsonutil.MustHaveTag(Patch{}, "GithubPatchData")
 	MergePatchKey           = bsonutil.MustHaveTag(Patch{}, "MergePatch")
 	TriggersKey             = bsonutil.MustHaveTag(Patch{}, "Triggers")
@@ -74,6 +75,13 @@ var (
 	TriggerInfoParentPatchKey          = bsonutil.MustHaveTag(TriggerInfo{}, "ParentPatch")
 	TriggerInfoChildPatchesKey         = bsonutil.MustHaveTag(TriggerInfo{}, "ChildPatches")
 	TriggerInfoDownstreamParametersKey = bsonutil.MustHaveTag(TriggerInfo{}, "DownstreamParameters")
+
+	// BSON fields for thirdparty.Github
+	githubPatchHeadOwnerKey       = bsonutil.MustHaveTag(thirdparty.GithubPatch{}, "HeadOwner")
+	githubPatchMergeCommitSHAHKey = bsonutil.MustHaveTag(thirdparty.GithubPatch{}, "MergeCommitSHA")
+
+	// BSON fields for thirdparty.GithubMergeGroup
+	githubMergeGroupHeadSHAKey = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "HeadSHA")
 )
 
 // Query Validation
@@ -139,14 +147,57 @@ func ByGithash(githash string) db.Q {
 
 type ByPatchNameStatusesCommitQueuePaginatedOptions struct {
 	Author             *string
-	Project            *string
-	PatchName          string
-	Statuses           []string
-	Page               int
-	Limit              int
 	IncludeCommitQueue *bool
 	IncludeHidden      *bool
+	Limit              int
 	OnlyCommitQueue    *bool
+	Page               int
+	PatchName          string
+	Project            *string
+	Requesters         []string
+	Statuses           []string
+}
+
+// Based off of the implementation for Patch.GetRequester.
+var requesterExpression = bson.M{
+	"$switch": bson.M{
+		"branches": []bson.M{
+			{
+				"case": bson.M{
+					"$and": []bson.M{
+						{"$ifNull": []interface{}{"$" + githubPatchDataKey, false}},
+						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchHeadOwnerKey), ""}},
+					},
+				},
+				"then": evergreen.GithubPRRequester,
+			},
+			{
+				"case": bson.M{
+					"$and": []bson.M{
+						{"$ifNull": []interface{}{"$" + githubMergeDataKey, false}},
+						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey), ""}},
+					},
+				},
+				"then": evergreen.GithubMergeRequester,
+			},
+			{
+				"case": bson.M{
+					"$and": []bson.M{
+						{"$ifNull": []interface{}{"$" + githubPatchDataKey, false}},
+						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchMergeCommitSHAHKey), ""}},
+					},
+				},
+				"then": evergreen.MergeTestRequester,
+			},
+			{
+				"case": bson.M{
+					"$eq": []string{"$" + AliasKey, evergreen.CommitQueueAlias},
+				},
+				"then": evergreen.MergeTestRequester,
+			},
+		},
+		"default": evergreen.PatchVersionRequester,
+	},
 }
 
 func ByPatchNameStatusesCommitQueuePaginated(ctx context.Context, opts ByPatchNameStatusesCommitQueuePaginatedOptions) ([]Patch, int, error) {
@@ -158,6 +209,10 @@ func ByPatchNameStatusesCommitQueuePaginated(ctx context.Context, opts ByPatchNa
 	}
 	pipeline := []bson.M{}
 	match := bson.M{}
+	if len(opts.Requesters) > 0 {
+		pipeline = append(pipeline, bson.M{"$addFields": bson.M{"requester": requesterExpression}})
+		match["requester"] = bson.M{"$in": opts.Requesters}
+	}
 	// Conditionally add the commit queue filter if the user is explicitly filtering on it.
 	// This is only used on the project patches page when we want to conditionally only show the commit queue patches.
 	if utility.FromBoolPtr(opts.OnlyCommitQueue) {
@@ -176,6 +231,7 @@ func ByPatchNameStatusesCommitQueuePaginated(ctx context.Context, opts ByPatchNa
 	if opts.PatchName != "" {
 		match[DescriptionKey] = bson.M{"$regex": opts.PatchName, "$options": "i"}
 	}
+
 	if len(opts.Statuses) > 0 {
 		// Verify that we're considering the legacy patch status as well; we'll remove this logic in EVG-20032.
 		if len(utility.StringSliceIntersection(opts.Statuses, evergreen.VersionSucceededStatuses)) > 0 {

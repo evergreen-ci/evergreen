@@ -19,6 +19,7 @@ input PatchesInput {
   page: Int! = 0
   patchName: String! = ""
   statuses: [String!]! = []
+  requesters: [String!]
 }
 
 """

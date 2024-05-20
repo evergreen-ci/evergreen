@@ -1,0 +1,14 @@
+{
+  user {
+    patches(
+      patchesInput: {
+        requesters: ["patch_request"]
+      }
+    ) {
+      filteredPatchCount
+      patches {
+        id
+      }
+    }
+  }
+}
