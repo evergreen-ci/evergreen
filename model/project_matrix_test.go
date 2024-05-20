@@ -690,14 +690,14 @@ func TestRulesEvaluation(t *testing.T) {
 		Convey("a 'remove' rule for an unknown task should fail", func() {
 			bvs := []parserBV{{
 				Name: "test",
-				Tasks: parserBVTaskUnits{
+				Tasks: parserBVTaskUnits{ // This starts with blue, brown, black, and white.
 					{Name: "blue"},
 					{Name: ".special"},
 					{Name: ".tertiary"},
 				},
 				MatrixRules: []ruleAction{
-					{RemoveTasks: []string{".amazing"}}, //remove blue
-					{RemoveTasks: []string{"blue"}},
+					{RemoveTasks: []string{".amazing"}}, // Nothing is tagged with amazing, so this step should not remove any and should not fail.
+					{RemoveTasks: []string{"blue"}},     // This should remove blue.
 				},
 			}}
 			evaluated, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs, nil)
