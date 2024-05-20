@@ -1158,7 +1158,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 	pbvs []parserBV, tasks []parserTask, tgs []TaskGroup) ([]BuildVariant, []error) {
 	bvs := []BuildVariant{}
 	var unmatchedSelectors []string
-	var unmatchedSelectorLines []string
+	var unmatchedCriteria []string
 	var evalErrs, errs []error
 	for _, pbv := range pbvs {
 		bv := BuildVariant{
@@ -1179,12 +1179,12 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			Tags:           pbv.Tags,
 		}
 		bv.AllowedRequesters = pbv.AllowedRequesters
-		bv.Tasks, unmatchedSelectorLines, unmatchedSelectors, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
-		if len(unmatchedSelectorLines) > 0 {
-			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' has task tag line that do not match any tasks: '%s'", pbv.Name, strings.Join(unmatchedSelectorLines, "', '")))
-		}
+		bv.Tasks, unmatchedSelectors, unmatchedCriteria, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
 		if len(unmatchedSelectors) > 0 {
-			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' uses tags/tasks that do not match any tasks: '%s'", pbv.Name, strings.Join(unmatchedSelectors, "', '")))
+			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' has unmatched selector: '%s'", pbv.Name, strings.Join(unmatchedSelectors, "', '")))
+		}
+		if len(unmatchedCriteria) > 0 {
+			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' has unmatched criteria: '%s'", pbv.Name, strings.Join(unmatchedCriteria, "', '")))
 		}
 
 		// evaluate any rules passed in during matrix construction
@@ -1271,7 +1271,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 					errs = append(errs, err)
 				}
 				if len(unmatched) > 0 {
-					errs = append(errs, errors.Errorf("display task '%s' contains unmatched tags: '%s'", dt.Name, strings.Join(unmatched, "', '")))
+					errs = append(errs, errors.Errorf("display task '%s' contains unmatched selector: '%s'", dt.Name, strings.Join(unmatched, "', '")))
 				}
 				tasks = append(tasks, results...)
 			}
@@ -1308,7 +1308,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 // For task units that represent task groups, the resulting BuildVariantTaskUnit
 // represents the task group itself, not the individual tasks in the task group.
 // Returns the list of BuildVariantTaskUnits, the list of selectors that did not
-// match anything, the list of task names/tags that did not match any tasks, and
+// match anything, the list of criteria that did not match any tasks, and
 // any errors encountered during evaluation.
 func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
 	pbv parserBV, tasks []parserTask) ([]BuildVariantTaskUnit, []string, []string, []error) {
@@ -1332,22 +1332,22 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 			names = append(names, pbvt.Name)
 			isGroup = true
 		} else {
-			var err1, err2 error
+			var taskSelectorErr, taskGroupSelectorErr error
 			if tse != nil {
-				temp, unmatched, err1 = tse.evalSelector(ParseSelector(pbvt.Name))
+				temp, unmatched, taskSelectorErr = tse.evalSelector(ParseSelector(pbvt.Name))
 				names = append(names, temp...)
 			}
 			if tgse != nil {
 				var unmatchedTaskgroup []string
-				temp, unmatchedTaskgroup, err2 = tgse.evalSelector(ParseSelector(pbvt.Name))
+				temp, unmatchedTaskgroup, taskGroupSelectorErr = tgse.evalSelector(ParseSelector(pbvt.Name))
 				unmatched = append(unmatched, unmatchedTaskgroup...)
 				if len(temp) > 0 {
 					names = append(names, temp...)
 					isGroup = true
 				}
 			}
-			if err1 != nil && err2 != nil {
-				evalErrs = append(evalErrs, err1, err2)
+			if taskSelectorErr != nil && taskGroupSelectorErr != nil {
+				evalErrs = append(evalErrs, taskSelectorErr, taskGroupSelectorErr)
 				unmatchedSelectorLines = append(unmatchedSelectorLines, pbvt.Name)
 				continue
 			}
@@ -1356,6 +1356,8 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 			unmatchedSelectorLines = append(unmatchedSelectorLines, pbvt.Name)
 		}
 		for _, tag := range unmatched {
+			// This makes sure it is not counted as unmatched if it was matched by with a task/task group.
+			// As matched tasks/task groups are appended to the names slice.
 			if !utility.StringSliceContains(names, tag) {
 				unmatchedSelectors = append(unmatchedSelectors, tag)
 			}
@@ -1535,14 +1537,14 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 				temp, unmatched, err1 = tse.evalSelector(ParseSelector(d.TaskSelector.Name))
 				names = append(names, temp...)
 				if err1 == nil && len(unmatched) > 0 {
-					err1 = errors.Errorf("unmatched tags: %s", strings.Join(unmatched, ", "))
+					err1 = errors.Errorf("unmatched criteria: '%s' from selector '%s'", strings.Join(unmatched, ", "), d.TaskSelector.Name)
 				}
 			}
 			if tgse != nil {
 				temp, unmatched, err2 = tgse.evalSelector(ParseSelector(d.TaskSelector.Name))
 				names = append(names, temp...)
 				if err2 == nil && len(unmatched) > 0 {
-					err2 = errors.Errorf("unmatched tags: %s", strings.Join(unmatched, ", "))
+					err2 = errors.Errorf("unmatched criteria: '%s' from selector '%s'", strings.Join(unmatched, ", "), d.TaskSelector.Name)
 				}
 			}
 			if err1 != nil && err2 != nil {

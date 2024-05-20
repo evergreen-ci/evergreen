@@ -152,12 +152,12 @@ func newTagSelectorEvaluator(selectees []tagged) *tagSelectorEvaluator {
 	}
 }
 
-// evalSelector returns all names that fulfill a selector and all unmatched items.
+// evalSelector returns all names that fulfill a selector and all unmatched criterion.
 // This is done by evaluating each criterion individually and taking the intersection.
 func (tse *tagSelectorEvaluator) evalSelector(s Selector) ([]string, []string, error) {
 	// keep a slice of results per criterion
 	results := []string{}
-	unmatchedItems := []string{}
+	unmatchedCriteria := []string{}
 	if len(s) == 0 {
 		return nil, nil, errors.New("cannot evaluate selector with no criteria")
 	}
@@ -167,7 +167,7 @@ func (tse *tagSelectorEvaluator) evalSelector(s Selector) ([]string, []string, e
 			return nil, nil, errors.Wrapf(err, "%v", s)
 		}
 		if len(names) == 0 {
-			unmatchedItems = append(unmatchedItems, sc.String())
+			unmatchedCriteria = append(unmatchedCriteria, sc.String())
 			continue
 		}
 		if i == 0 {
@@ -177,7 +177,7 @@ func (tse *tagSelectorEvaluator) evalSelector(s Selector) ([]string, []string, e
 			results = utility.StringSliceIntersection(results, names)
 		}
 	}
-	return results, unmatchedItems, nil
+	return results, unmatchedCriteria, nil
 }
 
 // evalCriterion returns all names that fulfill a single selection criterion.
@@ -394,10 +394,10 @@ func (v *variantSelectorEvaluator) evalSelector(vs *variantSelector) ([]string, 
 	}
 	results, unmatched, err := v.tagEval.evalSelector(ParseSelector(vs.StringSelector))
 	if err != nil {
-		return nil, errors.Wrap(err, "variant tag selector")
+		return nil, errors.Wrap(err, "variant selector")
 	}
 	if len(unmatched) > 0 {
-		return nil, errors.Errorf("variant tag selector contains unmatched criteria: %v", unmatched)
+		return nil, errors.Errorf("variant selector contains unmatched criteria: %v", unmatched)
 	}
 	return results, nil
 }
