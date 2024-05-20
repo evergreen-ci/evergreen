@@ -227,18 +227,18 @@ func (ad *ApiTaskEndDetail) ToService() apimodels.TaskEndDetail {
 }
 
 type APIFailingCommand struct {
-	Name                *string  `json:"name"`
+	FullDisplayName     *string  `json:"name"`
 	FailureMetadataTags []string `json:"failure_metadata_tags"`
 }
 
 func (afc *APIFailingCommand) BuildFromService(fc apimodels.FailingCommand) {
-	afc.Name = utility.ToStringPtr(fc.Name)
+	afc.FullDisplayName = utility.ToStringPtr(fc.FullDisplayName)
 	afc.FailureMetadataTags = fc.FailureMetadataTags
 }
 
 func (afc *APIFailingCommand) ToService() apimodels.FailingCommand {
 	return apimodels.FailingCommand{
-		Name:                utility.FromStringPtr(afc.Name),
+		FullDisplayName:     utility.FromStringPtr(afc.FullDisplayName),
 		FailureMetadataTags: afc.FailureMetadataTags,
 	}
 }

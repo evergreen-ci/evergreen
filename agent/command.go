@@ -306,6 +306,9 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 			if options.block == command.PostBlock {
 				tc.setPostErrored(true)
 			}
+			if !options.canFailTask {
+				tc.addOtherFailingCommand(cmd)
+			}
 			if options.canFailTask ||
 				(cmd.Name() == "git.get_project" && tc.taskConfig.Task.Requester == evergreen.MergeTestRequester) {
 				// any git.get_project in the commit queue should fail
@@ -321,6 +324,10 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		select {
 		case <-timer.C:
 		case <-cmdChan:
+		}
+
+		if !options.canFailTask {
+			tc.addOtherFailingCommand(cmd)
 		}
 
 		tc.logger.Task().Errorf("Command %s stopped early: %s.", cmd.FullDisplayName(), ctx.Err())

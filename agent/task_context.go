@@ -24,15 +24,19 @@ import (
 
 type taskContext struct {
 	currentCommand command.Command
-	postErrored    bool
-	logger         client.LoggerProducer
-	task           client.TaskData
-	ranSetupGroup  bool
-	taskConfig     *internal.TaskConfig
-	timeout        timeoutInfo
-	oomTracker     jasper.OOMTracker
-	traceID        string
-	diskDevices    []string
+	// otherFailingCommands keeps track of commands that have run and failed but
+	// have not caused the task to fail (e.g. a post command that fails without
+	// post_error_fails_task).
+	otherFailingCommands []command.Command
+	postErrored          bool
+	logger               client.LoggerProducer
+	task                 client.TaskData
+	ranSetupGroup        bool
+	taskConfig           *internal.TaskConfig
+	timeout              timeoutInfo
+	oomTracker           jasper.OOMTracker
+	traceID              string
+	diskDevices          []string
 	// userEndTaskResp is the end task response that the user can define, which
 	// will overwrite the default end task response.
 	userEndTaskResp *triggerEndTaskResp
@@ -49,6 +53,18 @@ func (tc *taskContext) setPostErrored(errored bool) {
 	tc.Lock()
 	defer tc.Unlock()
 	tc.postErrored = errored
+}
+
+func (tc *taskContext) addOtherFailingCommand(cmd command.Command) {
+	tc.Lock()
+	defer tc.Unlock()
+	tc.otherFailingCommands = append(tc.otherFailingCommands, cmd)
+}
+
+func (tc *taskContext) getOtherFailingCommands() []command.Command {
+	tc.RLock()
+	defer tc.RUnlock()
+	return tc.otherFailingCommands
 }
 
 func (tc *taskContext) setCurrentCommand(command command.Command) {

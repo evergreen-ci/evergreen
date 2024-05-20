@@ -79,7 +79,7 @@ type TaskEndDetail struct {
 
 // FailingCommand represents a command that failed in a task.
 type FailingCommand struct {
-	Name                string   `bson:"name,omitempty" json:"name,omitempty"`
+	FullDisplayName     string   `bson:"full_display_name,omitempty" json:"full_display_name,omitempty"`
 	FailureMetadataTags []string `bson:"failure_metadata_tags,omitempty" json:"failure_metadata_tags,omitempty"`
 }
 

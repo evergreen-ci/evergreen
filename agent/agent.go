@@ -1165,6 +1165,16 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 		detail.Description = description
 	}
 
+	var otherFailingCmds []apimodels.FailingCommand
+	for _, otherFailingCmd := range tc.getOtherFailingCommands() {
+		// kim: TODO: add agent suite test
+		otherFailingCmds = append(otherFailingCmds, apimodels.FailingCommand{
+			FullDisplayName:     otherFailingCmd.FullDisplayName(),
+			FailureMetadataTags: utility.UniqueStrings(append(otherFailingCmd.FailureMetadataTags(), failureMetadataTagsToAdd...)),
+		})
+	}
+	detail.OtherFailingCommands = otherFailingCmds
+
 	if !detail.TimedOut {
 		// Only set timeout details if a prior command in the task hasn't
 		// already recorded a timeout. For example, if a command times out in
@@ -1174,7 +1184,6 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 		detail.TimeoutType = string(tc.getTimeoutType())
 		detail.TimeoutDuration = tc.getTimeoutDuration()
 	}
-
 }
 
 func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool, reason string) {
