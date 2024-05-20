@@ -1463,7 +1463,7 @@ buildvariants:
 		_, err := LoadProjectInto(ctx, []byte(wrongTaskYml), nil, "id", proj)
 		assert.NotNil(t, proj)
 		require.NotNil(t, err)
-		assert.Contains(t, err.Error(), `nothing named 'example_task_3'`)
+		assert.Contains(t, err.Error(), `'example_task_group' has unmatched selector: 'example_task_3'`)
 	})
 
 	t.Run("MaintainsTaskGroupTaskOrdering", func(t *testing.T) {

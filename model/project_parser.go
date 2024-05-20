@@ -1140,9 +1140,12 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 		// expand, validate that tasks defined in a group are listed in the project tasks
 		var taskNames []string
 		for _, taskName := range ptg.Tasks {
-			names, _, err := tse.evalSelector(ParseSelector(taskName))
+			names, unmatched, err := tse.evalSelector(ParseSelector(taskName))
 			if err != nil {
 				evalErrs = append(evalErrs, err)
+			}
+			if len(unmatched) > 0 {
+				evalErrs = append(evalErrs, errors.Errorf("task group '%s' has unmatched selector: '%s'", ptg.Name, strings.Join(unmatched, "', '")))
 			}
 			taskNames = append(taskNames, names...)
 		}
