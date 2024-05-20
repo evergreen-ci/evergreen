@@ -137,8 +137,8 @@ type ProjectRef struct {
 	ParsleyFilters    []parsley.Filter  `bson:"parsley_filters,omitempty" json:"parsley_filters,omitempty"`
 
 	// GitHubTokenPermissionByRequester contains what permissions each requester has for each token.
-	// By default, requesters have inherit all of the GitHub app permissions. Once a single permission
-	// is specified for a requester, it will only have those permissions.
+	// By default, requesters inherit all of the GitHub app permissions. Once a permissions
+	// are specified for a requester, it will only have those permissions.
 	GitHubTokenPermissionByRequester GitHubDynamicTokenPermissions `bson:"github_token_permission_by_requester,omitempty" json:"github_token_permission_by_requester,omitempty" yaml:"github_token_permission_by_requester,omitempty"`
 }
 
