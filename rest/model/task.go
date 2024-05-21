@@ -172,9 +172,12 @@ type ApiTaskEndDetail struct {
 	// PostErrored is true when the post command errored.
 	PostErrored bool `json:"post_errored"`
 	// FailureMetadataTags contains the metadata tags associated with the
-	// failing command.
-	FailureMetadataTags  []string            `json:"failing_command_metadata_tags"`
-	OtherFailingCommands []APIFailingCommand `json:"other_failing_commands"`
+	// command that caused the task to fail. These are not set if the task
+	// succeeded.
+	FailureMetadataTags []string `json:"failure_metadata_tags"`
+	// OtherFailingCommands contain information about commands that failed but
+	// did not cause the task to fail.
+	OtherFailingCommands []APIFailingCommand `json:"other_failing_commands,omitempty"`
 	// Whether this task ended in a timeout.
 	TimedOut    bool              `json:"timed_out"`
 	TimeoutType *string           `json:"timeout_type"`
@@ -226,9 +229,13 @@ func (ad *ApiTaskEndDetail) ToService() apimodels.TaskEndDetail {
 	}
 }
 
+// APIFailingCommand represents information about a command that failed in a
+// task.
 type APIFailingCommand struct {
-	FullDisplayName     *string  `json:"name"`
-	FailureMetadataTags []string `json:"failure_metadata_tags"`
+	// FullDisplayName is the full display name of the failing command.
+	FullDisplayName *string `json:"full_display_name,omitempty"`
+	// FailureMetadataTags are tags associated with the failing command.
+	FailureMetadataTags []string `json:"failure_metadata_tags,omitempty"`
 }
 
 func (afc *APIFailingCommand) BuildFromService(fc apimodels.FailingCommand) {
