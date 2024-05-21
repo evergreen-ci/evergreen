@@ -719,28 +719,22 @@ tasks:
   - <<: *build-and-push-client
     name: build-linux-staging_amd64
     tags: ["build-staging"]
-    activate: false
   - <<: *build-and-push-client
     name: build-windows-staging_amd64
     tags: ["build-staging"]
-    activate: false
   - <<: *build-and-push-client
     name: build-darwin-staging_amd64
     tags: ["build-staging"]
-    activate: false
   - <<: *tar-and-push-static-assets
     name: tar-and-push-static-assets-staging
     tags: ["build-staging"]
-    activate: false
 
   - <<: *build-and-push-client
     name: build-darwin-unsigned_amd64
     tags: ["build-unsigned"]
-    activate: false
   - <<: *build-and-push-client
     name: build-darwin-unsigned_arm64
     tags: ["build-unsigned"]
-    activate: false
 
 #######################################
 #            Buildvariants            #
@@ -864,7 +858,9 @@ buildvariants:
     tasks:
       - name: ".build"
       - name: ".build-staging"
+        activate: false
       - name: ".build-unsigned"
+        activate: false
     expansions:
       GOROOT: /opt/golang/go1.20
       notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
