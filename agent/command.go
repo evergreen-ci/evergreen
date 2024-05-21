@@ -325,6 +325,9 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 		}
 
 		tc.addFailingCommand(cmd)
+		if options.block == command.PostBlock {
+			tc.setPostErrored(true)
+		}
 
 		tc.logger.Task().Errorf("Command %s stopped early: %s.", cmd.FullDisplayName(), ctx.Err())
 		return errors.Wrap(ctx.Err(), "command stopped early")
