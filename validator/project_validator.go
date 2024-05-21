@@ -2337,13 +2337,8 @@ func checkBuildVariants(project *model.Project) ValidationErrors {
 			)
 		}
 
-		if len(buildVariant.EmptyTaskSelectors) > 0 {
-			errs = append(errs,
-				ValidationError{
-					Message: fmt.Sprintf("buildvariant '%s' has task names/tags that do not match any tasks: '%s'", buildVariant.Name, strings.Join(buildVariant.EmptyTaskSelectors, "', '")),
-					Level:   Warning,
-				},
-			)
+		for _, warning := range buildVariant.TranslationWarnings {
+			errs = append(errs, ValidationError{Message: warning, Level: Warning})
 		}
 
 		errs = append(errs, checkBVNames(&buildVariant)...)

@@ -771,6 +771,7 @@ tasks:
   - name: this_is_a_task_name
     commands:
       - command: shell.exec
+        failure_metadata_tags: ["failure_tag0"]
         params:
           script: exit 0
 
@@ -778,6 +779,7 @@ post_error_fails_task: true
 post_timeout_secs: 1
 post:
   - command: shell.exec
+    failure_metadata_tags: ["failure_tag1"]
     params:
       script: sleep 5
 `
@@ -794,6 +796,7 @@ post:
 	s.True(s.mockCommunicator.EndTaskResult.Detail.TimedOut)
 	s.EqualValues(globals.PostTimeout, s.mockCommunicator.EndTaskResult.Detail.TimeoutType)
 	s.Equal(time.Second, s.mockCommunicator.EndTaskResult.Detail.TimeoutDuration)
+	s.ElementsMatch([]string{"failure_tag1"}, s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "failure tags should be set for failing post command")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -812,6 +815,243 @@ post:
 	}, []string{
 		panicLog,
 		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post'",
+	})
+}
+
+func (s *AgentSuite) TestFailingPostDoesNotChangeEndTaskResults() {
+	projYml := `
+buildvariants:
+  - name: mock_build_variant
+
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+
+post:
+  - command: shell.exec
+    params:
+      script: exit 1
+`
+	s.setupRunTask(projYml)
+
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Description, "should not include command failure description for a successful task")
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Type, "should not include command failure type for a successful task")
+	s.Empty(s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "failure metadata tags should not be set for post command that fails but does not fail the task")
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
+		"Finished running task commands",
+		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
+		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
+		"Finished running post-task commands",
+	}, []string{
+		panicLog,
+		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post'",
+		"Running post-task commands failed",
+	})
+}
+
+func (s *AgentSuite) TestSucceedingPostShowsCorrectEndTaskResults() {
+	projYml := `
+buildvariants:
+  - name: mock_build_variant
+
+post_error_fails_task: true
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        failure_metadata_tags: ["failure_tag0"]
+        params:
+          script: exit 0
+
+post:
+  - command: shell.exec
+    failure_metadata_tags: ["failure_tag1"]
+    params:
+      script: exit 0
+`
+	s.setupRunTask(projYml)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Description, "should not include command failure description for a successful task")
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Type, "should not include command failure type for a successful task")
+	s.Empty(s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "failure metadata tags should not be set for all successful commands")
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
+		"Finished running task commands",
+		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
+		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
+		"Finished running post-task commands",
+	}, []string{
+		panicLog,
+		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post'",
+		"Running post-task commands failed",
+	})
+}
+
+func (s *AgentSuite) TestTimedOutMainAndFailingPostShowsMainInEndTaskResults() {
+	projYml := `
+buildvariants:
+  - name: mock_build_variant
+
+post_error_fails_task: true
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        failure_metadata_tags: ["failure_tag0"]
+        timeout_secs: 1
+        params:
+          script: sleep 5
+
+post:
+  - command: shell.exec
+    failure_metadata_tags: ["failure_tag1"]
+    params:
+       script: exit 1
+`
+	s.setupRunTask(projYml)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description, "should show main block command as the failing command if both main and post block commands fail")
+	s.True(s.mockCommunicator.EndTaskResult.Detail.TimedOut, "should show main block command hitting timeout")
+	s.ElementsMatch([]string{"failure_tag0"}, s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "failure tags should be set for failing main task command")
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 1s.",
+		"Hit idle timeout",
+		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
+		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
+		"Running post-task commands failed",
+		"Finished running post-task commands",
+	}, []string{
+		panicLog,
+		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post'",
+	})
+}
+
+func (s *AgentSuite) TestSucceedingPostAfterMainDoesNotChangeEndTaskResults() {
+	projYml := `
+buildvariants:
+  - name: mock_build_variant
+
+post_error_fails_task: true
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        failure_metadata_tags: ["failure_tag0"]
+        params:
+          script: exit 1
+
+post:
+  - command: shell.exec
+    failure_metadata_tags: ["failure_tag1"]
+    params:
+      script: exit 0
+`
+	s.setupRunTask(projYml)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.ElementsMatch([]string{"failure_tag0"}, s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "failure tags should be set for failing main task command")
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
+		"Finished running task commands",
+		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
+		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
+		"Finished running post-task commands",
+	}, []string{
+		panicLog,
+		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post'",
+		"Running post-task commands failed",
+	})
+}
+
+func (s *AgentSuite) TestPostContinuesOnError() {
+	projYml := `
+post:
+  - command: shell.exec
+    params:
+      script: exit 1
+  - command: shell.exec
+    params:
+      script: exit 0
+`
+	s.setupRunTask(projYml)
+
+	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running post-task commands",
+		"Setting heartbeat timeout to type 'post'",
+		"Running command 'shell.exec' (step 1 of 2) in block 'post'",
+		"Finished command 'shell.exec' (step 1 of 2) in block 'post'",
+		"Running command 'shell.exec' (step 2 of 2) in block 'post'",
+		"Finished command 'shell.exec' (step 2 of 2) in block 'post'",
+		"Resetting heartbeat timeout from type 'post' back to default",
+		"Finished running post-task commands",
+	}, []string{
+		panicLog,
 	})
 }
 
@@ -925,233 +1165,6 @@ tasks:
 	})
 }
 
-func (s *AgentSuite) TestFailingPostDoesNotChangeEndTaskResults() {
-	projYml := `
-buildvariants:
-  - name: mock_build_variant
-
-tasks:
-  - name: this_is_a_task_name
-    commands:
-      - command: shell.exec
-        params:
-          script: exit 0
-
-post:
-  - command: shell.exec
-    params:
-      script: exit 1
-`
-	s.setupRunTask(projYml)
-
-	nextTask := &apimodels.NextTaskResponse{
-		TaskId:     s.tc.task.ID,
-		TaskSecret: s.tc.task.Secret,
-	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
-
-	s.NoError(err)
-	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
-	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Description, "should not include command failure description for a successful task")
-	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Type, "should not include command failure type for a successful task")
-
-	s.NoError(s.tc.logger.Close())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
-		"Running task commands",
-		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
-		"Running command 'shell.exec' (step 1 of 1)",
-		"Finished command 'shell.exec' (step 1 of 1)",
-		"Finished running task commands",
-		"Running post-task commands",
-		"Setting heartbeat timeout to type 'post'",
-		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
-		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
-		"Resetting heartbeat timeout from type 'post' back to default",
-		"Finished running post-task commands",
-	}, []string{
-		panicLog,
-		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post'",
-		"Running post-task commands failed",
-	})
-}
-
-func (s *AgentSuite) TestSucceedingPostShowsCorrectEndTaskResults() {
-	projYml := `
-buildvariants:
-  - name: mock_build_variant
-
-post_error_fails_task: true
-tasks:
-  - name: this_is_a_task_name
-    commands:
-      - command: shell.exec
-        params:
-          script: exit 0
-
-post:
-  - command: shell.exec
-    params:
-      script: exit 0
-`
-	s.setupRunTask(projYml)
-	nextTask := &apimodels.NextTaskResponse{
-		TaskId:     s.tc.task.ID,
-		TaskSecret: s.tc.task.Secret,
-	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
-
-	s.NoError(err)
-	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
-	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Description, "should not include command failure description for a successful task")
-	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Type, "should not include command failure type for a successful task")
-
-	s.NoError(s.tc.logger.Close())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
-		"Running task commands",
-		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
-		"Running command 'shell.exec' (step 1 of 1)",
-		"Finished command 'shell.exec' (step 1 of 1)",
-		"Finished running task commands",
-		"Running post-task commands",
-		"Setting heartbeat timeout to type 'post'",
-		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
-		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
-		"Resetting heartbeat timeout from type 'post' back to default",
-		"Finished running post-task commands",
-	}, []string{
-		panicLog,
-		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post'",
-		"Running post-task commands failed",
-	})
-}
-
-func (s *AgentSuite) TestTimedOutMainAndFailingPostShowsMainInEndTaskResults() {
-	projYml := `
-buildvariants:
-  - name: mock_build_variant
-
-post_error_fails_task: true
-tasks:
-  - name: this_is_a_task_name
-    commands:
-      - command: shell.exec
-        timeout_secs: 1
-        params:
-          script: sleep 5
-
-post:
-  - command: shell.exec
-    params:
-       script: exit 1
-`
-	s.setupRunTask(projYml)
-	nextTask := &apimodels.NextTaskResponse{
-		TaskId:     s.tc.task.ID,
-		TaskSecret: s.tc.task.Secret,
-	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
-
-	s.NoError(err)
-	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
-	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description, "should show main block command as the failing command if both main and post block commands fail")
-	s.True(s.mockCommunicator.EndTaskResult.Detail.TimedOut, "should show main block command hitting timeout")
-
-	s.NoError(s.tc.logger.Close())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
-		"Running command 'shell.exec' (step 1 of 1)",
-		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 1s.",
-		"Hit idle timeout",
-		"Running post-task commands",
-		"Setting heartbeat timeout to type 'post'",
-		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
-		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
-		"Resetting heartbeat timeout from type 'post' back to default",
-		"Running post-task commands failed",
-		"Finished running post-task commands",
-	}, []string{
-		panicLog,
-		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post'",
-	})
-}
-
-func (s *AgentSuite) TestSucceedingPostAfterMainDoesNotChangeEndTaskResults() {
-	projYml := `
-buildvariants:
-  - name: mock_build_variant
-
-post_error_fails_task: true
-tasks:
-  - name: this_is_a_task_name
-    commands:
-      - command: shell.exec
-        params:
-          script: exit 1
-
-post:
-  - command: shell.exec
-    params:
-      script: exit 0
-`
-	s.setupRunTask(projYml)
-	nextTask := &apimodels.NextTaskResponse{
-		TaskId:     s.tc.task.ID,
-		TaskSecret: s.tc.task.Secret,
-	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
-
-	s.NoError(err)
-	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
-	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description)
-
-	s.NoError(s.tc.logger.Close())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
-		"Running task commands",
-		"Set idle timeout for 'shell.exec' (step 1 of 1) (test) to 2h0m0s.",
-		"Running command 'shell.exec' (step 1 of 1)",
-		"Finished command 'shell.exec' (step 1 of 1)",
-		"Finished running task commands",
-		"Running post-task commands",
-		"Setting heartbeat timeout to type 'post'",
-		"Running command 'shell.exec' (step 1 of 1) in block 'post'",
-		"Finished command 'shell.exec' (step 1 of 1) in block 'post'",
-		"Resetting heartbeat timeout from type 'post' back to default",
-		"Finished running post-task commands",
-	}, []string{
-		panicLog,
-		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'post'",
-		"Running post-task commands failed",
-	})
-}
-
-func (s *AgentSuite) TestPostContinuesOnError() {
-	projYml := `
-post:
-  - command: shell.exec
-    params:
-      script: exit 1
-  - command: shell.exec
-    params:
-      script: exit 0
-`
-	s.setupRunTask(projYml)
-
-	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
-
-	s.NoError(s.tc.logger.Close())
-	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
-		"Running post-task commands",
-		"Setting heartbeat timeout to type 'post'",
-		"Running command 'shell.exec' (step 1 of 2) in block 'post'",
-		"Finished command 'shell.exec' (step 1 of 2) in block 'post'",
-		"Running command 'shell.exec' (step 2 of 2) in block 'post'",
-		"Finished command 'shell.exec' (step 2 of 2) in block 'post'",
-		"Resetting heartbeat timeout from type 'post' back to default",
-		"Finished running post-task commands",
-	}, []string{
-		panicLog,
-	})
-}
-
 func (s *AgentSuite) TestEndTaskResponse() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.Require().True(ok)
@@ -1227,9 +1240,9 @@ func (s *AgentSuite) TestOOMTracker() {
 	projYml := `
 buildvariants:
  - name: mock_build_variant
-tasks: 
+tasks:
  - name: this_is_a_task_name
-   commands: 
+   commands:
     - command: shell.exec
       params:
         script: exit 1
@@ -1672,6 +1685,7 @@ tasks:
   - name: this_is_a_task_name
     commands:
       - command: shell.exec
+        failure_metadata_tags: ["failure_tag0", "failure_tag1"]
         params:
           script: exit 0
       - command: shell.exec
@@ -1681,9 +1695,10 @@ tasks:
 	s.setupRunTask(projYml)
 
 	resp := &triggerEndTaskResp{
-		Status:      evergreen.TaskFailed,
-		Type:        evergreen.CommandTypeSetup,
-		Description: "task failed",
+		Status:                 evergreen.TaskFailed,
+		Type:                   evergreen.CommandTypeSetup,
+		Description:            "task failed",
+		AddFailureMetadataTags: []string{"failure_tag0", "failure_tag1", "failure_tag2"},
 	}
 	s.tc.setUserEndTaskResponse(resp)
 
@@ -1697,6 +1712,7 @@ tasks:
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
 	s.Equal(resp.Type, s.mockCommunicator.EndTaskResult.Detail.Type, "should set user-defined command failure type")
 	s.Equal(resp.Description, s.mockCommunicator.EndTaskResult.Detail.Description, "should set user-defined task description")
+	s.ElementsMatch([]string{"failure_tag0", "failure_tag1", "failure_tag2"}, s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "should set the failing command's metadata tags along with the additional tags")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{

@@ -44,9 +44,9 @@ type Version {
   baseTaskStatuses: [String!]!
   baseVersion: Version
   branch: String!
-  buildVariants(options: BuildVariantOptions!): [GroupedBuildVariant]
+  buildVariants(options: BuildVariantOptions!): [GroupedBuildVariant!]
   buildVariantStats(options: BuildVariantOptions!): [GroupedTaskStatusCount!]
-  childVersions: [Version]
+  childVersions: [Version!]
   createTime: Time!
   errors: [String!]!
   externalLinksForMetadata: [ExternalLinkForMetadata!]!
@@ -94,7 +94,7 @@ type StatusCount {
 
 type GroupedBuildVariant {
   displayName: String!
-  tasks: [Task]
+  tasks: [Task!]
   variant: String!
 }
 

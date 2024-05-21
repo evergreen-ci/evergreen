@@ -332,18 +332,21 @@ func PatchFile() cli.Command {
 			}
 			confPath := c.Parent().String(confFlagName)
 			params := &patchParams{
-				Project:         c.String(projectFlagName),
-				Variants:        utility.SplitCommas(c.StringSlice(variantsFlagName)),
-				Tasks:           utility.SplitCommas(c.StringSlice(tasksFlagName)),
-				Alias:           c.String(patchAliasFlagName),
-				SkipConfirm:     c.Bool(skipConfirmFlagName),
-				Description:     c.String(patchDescriptionFlagName),
-				AutoDescription: c.Bool(autoDescriptionFlag),
-				Finalize:        c.Bool(patchFinalizeFlagName),
-				ShowSummary:     c.Bool(patchVerboseFlagName),
-				Large:           c.Bool(largeFlagName),
-				SyncTasks:       utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
-				PatchAuthor:     c.String(patchAuthorFlag),
+				Project:          c.String(projectFlagName),
+				Variants:         utility.SplitCommas(c.StringSlice(variantsFlagName)),
+				Tasks:            utility.SplitCommas(c.StringSlice(tasksFlagName)),
+				Alias:            c.String(patchAliasFlagName),
+				SkipConfirm:      c.Bool(skipConfirmFlagName),
+				Description:      c.String(patchDescriptionFlagName),
+				AutoDescription:  c.Bool(autoDescriptionFlag),
+				Finalize:         c.Bool(patchFinalizeFlagName),
+				ShowSummary:      c.Bool(patchVerboseFlagName),
+				Large:            c.Bool(largeFlagName),
+				SyncTasks:        utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
+				PatchAuthor:      c.String(patchAuthorFlag),
+				RepeatPatchId:    c.String(repeatPatchIdFlag),
+				RepeatDefinition: c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
+				RepeatFailed:     c.Bool(repeatFailedDefinitionFlag),
 			}
 			var err error
 			diffPath := c.String(diffPathFlagName)

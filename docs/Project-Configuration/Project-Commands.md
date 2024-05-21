@@ -334,6 +334,25 @@ Parameters:
 -   `files`: a list .xml files to parse and upload. Filepath globs can
     also be supplied to collect results from multiple files.
 
+## downstream_expansions.set
+
+downstream_expansions.set is used by parent patches to pass key-value
+pairs to child patches. This command only has an effect in manual patches,
+GitHub merge queue/legacy commit queue, and PRs. For all other versions, 
+it will no-op. The command takes the key-value pairs written in
+the file and makes them available to the child patches. Note: these
+parameters will be public and viewable on the child patch's page.
+
+``` yaml
+- command: downstream_expansions.set
+  params:
+    file: downstream_expansions.yaml
+```
+
+Parameters:
+
+-   `file`: filename to read the expansions from
+
 ## ec2.assume_role
 
 This command calls the aws assumeRole API and returns credentials as
@@ -1159,23 +1178,6 @@ and contains these fields:
 | `type`    | string    | The metric's type. Valid types are: `SUM`, `MEAN`, `MEDIAN`, `MAX`, `MIN`, `STANDARD_DEVIATION`, `THROUGHPUT`, `LATENCY`, `PERCENTILE_99TH`, `PERCENTILE_95TH`, `PERCENTILE_90TH`, `PERCENTILE_80TH`, `PERCENTILE_50TH`. This is represented by the [`RollupType` enum](https://github.com/evergreen-ci/cedar/blob/bf4b115ab032fca375e6a86c40f9f8944e55a483/perf.proto#L103-L117). |
 | `value`   | int/float | The metric's value.                                                                                                                                                                                                                                                                                                                                                                |
 | `version` | int       | (Optional) The metric's version.                                                                                                                                                                                                                                                                                                                                                   |
-
-## downstream_expansions.set
-
-downstream_expansions.set is used by parent patches to pass key-value
-pairs to child patches. The command takes the key-value pairs written in
-the file and makes them available to the child patches. Note: these
-parameters will be public and viewable on the child patch's page.
-
-``` yaml
-- command: downstream_expansions.set
-  params:
-    file: downstream_expansions.yaml
-```
-
-Parameters:
-
--   `file`: filename to read the expansions from
 
 ## s3.get
 

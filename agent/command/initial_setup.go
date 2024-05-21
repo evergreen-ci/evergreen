@@ -28,6 +28,8 @@ func (*initialSetup) JasperManager() jasper.Manager                   { return n
 func (*initialSetup) SetJasperManager(_ jasper.Manager)               {}
 func (*initialSetup) RetryOnFailure() bool                            { return false }
 func (*initialSetup) SetRetryOnFailure(bool)                          {}
+func (*initialSetup) FailureMetadataTags() []string                   { return nil }
+func (*initialSetup) SetFailureMetadataTags([]string)                 {}
 func (*initialSetup) Execute(ctx context.Context,
 	client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 

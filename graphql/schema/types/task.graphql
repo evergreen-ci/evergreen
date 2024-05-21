@@ -167,7 +167,7 @@ type TaskEndDetail {
 
 type OomTrackerInfo {
   detected: Boolean!
-  pids: [Int]
+  pids: [Int!]
 }
 
 type TaskLogLinks {
