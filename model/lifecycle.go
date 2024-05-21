@@ -1560,10 +1560,9 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		}
 
 		grip.Info(message.Fields{
-			"op":        "creating build for version",
-			"variant":   pair.Variant,
-			"activated": true,
-			"version":   creationInfo.Version.Id,
+			"op":      "creating build for version",
+			"variant": pair.Variant,
+			"version": creationInfo.Version.Id,
 		})
 		build, tasks, err := CreateBuildFromVersionNoInsert(buildCreationArgs)
 		if err != nil {
@@ -1571,10 +1570,9 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		}
 		if len(tasks) == 0 {
 			grip.Info(message.Fields{
-				"op":        "skipping empty build for version",
-				"variant":   pair.Variant,
-				"activated": true,
-				"version":   creationInfo.Version.Id,
+				"op":      "skipping empty build for version",
+				"variant": pair.Variant,
+				"version": creationInfo.Version.Id,
 			})
 			continue
 		}

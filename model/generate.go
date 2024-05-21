@@ -356,7 +356,7 @@ func (g *GeneratedProject) GetNewTasksAndActivationInfo(ctx context.Context, v *
 	if g.NewTVPairs != nil && g.ActivationInfo != nil {
 		return g.NewTVPairs, g.ActivationInfo
 	}
-	activationInfo := g.findTasksAndVariantsWithSpecificActivations(p, v.Requester)
+	activationInfo := g.findTasksWithSpecificActivations(p, v.Requester)
 	newTasks := g.getNewTasksWithDependencies(ctx, v, p, &activationInfo)
 	g.NewTVPairs = &newTasks
 	g.ActivationInfo = &activationInfo
@@ -553,7 +553,7 @@ func (b *specificActivationInfo) taskHasSpecificActivation(variant, task string)
 	return utility.StringSliceContains(b.activationTasks[variant], task)
 }
 
-func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(p *Project, requester string) specificActivationInfo {
+func (g *GeneratedProject) findTasksWithSpecificActivations(p *Project, requester string) specificActivationInfo {
 	res := newSpecificActivationInfo()
 	for _, bv := range p.BuildVariants {
 		// Only consider batchtime for mainline builds. A task/BV will have
