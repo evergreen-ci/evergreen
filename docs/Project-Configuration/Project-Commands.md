@@ -337,9 +337,9 @@ Parameters:
 ## downstream_expansions.set
 
 downstream_expansions.set is used by parent patches to pass key-value
-pairs to child patches. This command no-ops for any requesters that are
-not patch, GitHub merge queue/pull request, or Evergreen legacy commit
-queue. The command takes the key-value pairs written in
+pairs to child patches. This command only has an effect in manual patches,
+GitHub merge queue/legacy commit queue, and PRs. For all other versions, 
+it will no-op. The command takes the key-value pairs written in
 the file and makes them available to the child patches. Note: these
 parameters will be public and viewable on the child patch's page.
 
@@ -352,7 +352,6 @@ parameters will be public and viewable on the child patch's page.
 Parameters:
 
 -   `file`: filename to read the expansions from
-
 
 ## ec2.assume_role
 
