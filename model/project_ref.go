@@ -29,7 +29,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v52/github"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -136,77 +135,70 @@ type ProjectRef struct {
 	ProjectHealthView ProjectHealthView `bson:"project_health_view" json:"project_health_view" yaml:"project_health_view"`
 	ParsleyFilters    []parsley.Filter  `bson:"parsley_filters,omitempty" json:"parsley_filters,omitempty"`
 
-	// GitHubTokenPermissionByRequester contains what permissions each requester has for each token.
-	// By default, requesters inherit all of the GitHub app permissions. Once a permissions
-	// are specified for a requester, it will only have those permissions.
-	GitHubTokenPermissionByRequester GitHubDynamicTokenPermissions `bson:"github_token_permission_by_requester,omitempty" json:"github_token_permission_by_requester,omitempty" yaml:"github_token_permission_by_requester,omitempty"`
+	// GitHubDynamicTokenPermissionGroups is a list of permission groups for GitHub dynamic access tokens.
+	GitHubDynamicTokenPermissionGroups GitHubDynamicTokenPermissionGroups `bson:"github_dynamic_token_permission_groups,omitempty" json:"github_dynamic_token_permission_groups,omitempty" yaml:"github_dynamic_token_permission_groups,omitempty"`
+
+	// GitHubPermissionGroupByRequester is a mapping of requester type to the user defined GitHub permission groups above.
+	GitHubPermissionGroupByRequester map[string]string `bson:"github_token_permission_by_requester,omitempty" json:"github_token_permission_by_requester,omitempty" yaml:"github_token_permission_by_requester,omitempty"`
 }
 
-// GitHubDynamicTokenPermissions is used to specify groups of permissions and requesters for
-// GitHub dynamic access tokens.
-type GitHubDynamicTokenPermissions []GitHubDynamicTokenPermission
-
-// GitHubDynamicTokenPermission is used to specify an individiual group of permissions and requesters
-// for GitHub dynamic access tokens.
-type GitHubDynamicTokenPermission struct {
-	// Requesters is a list of the Evergreen requester that these permissions apply to (corresponds to requesters in  globals.go.)
-	Requesters []string `bson:"requesters,omitempty" json:"requesters,omitempty" yaml:"requesters,omitempty"`
+// GitHubDynamicTokenPermissionGroup is a permission group for GitHub dynamic access tokens.
+type GitHubDynamicTokenPermissionGroup struct {
+	Name string `bson:"name,omitempty" json:"name,omitempty" yaml:"name,omitempty"`
 	// Permissions are a key-value pair of GitHub token permissions to their permission level
-	Permissions map[string]string `bson:"permissions,omitempty" json:"permissions,omitempty" yaml:"permissions,omitempty"`
+	Permissions github.InstallationPermissions `bson:"permissions,omitempty" json:"permissions,omitempty" yaml:"permissions,omitempty"`
 }
 
-func (p *GitHubDynamicTokenPermissions) Add(permission GitHubDynamicTokenPermission) error {
-	for _, r := range permission.Requesters {
-		if !utility.StringSliceContains(evergreen.AllRequesterTypes, r) {
-			return errors.Errorf("requester '%s' is not a valid requester", r)
-		}
+// GitHubDynamicTokenPermissionGroups is used to specify groups of permissions and requesters for
+// GitHub dynamic access tokens.
+type GitHubDynamicTokenPermissionGroups []GitHubDynamicTokenPermissionGroup
+
+var defaultGitHubTokenPermissionGroup = GitHubDynamicTokenPermissionGroup{}
+
+// GetGitHubPermissionGroup returns the GitHubDynamicTokenPermissionGroup for the given requester.
+// If the requester is not found, it returns the default.
+func (p *ProjectRef) GetGitHubPermissionGroup(requester string) GitHubDynamicTokenPermissionGroup {
+	if p.GitHubPermissionGroupByRequester == nil {
+		return defaultGitHubTokenPermissionGroup
 	}
-	for _, existing := range *p {
-		for _, r := range existing.Requesters {
-			for _, newR := range permission.Requesters {
-				if r == newR {
-					return errors.Errorf("requester '%s' already has permissions set", r)
-				}
+	if groupName, ok := p.GitHubPermissionGroupByRequester[requester]; ok {
+		for _, group := range p.GitHubDynamicTokenPermissionGroups {
+			if group.Name == groupName {
+				return group
 			}
 		}
 	}
-
-	*p = append(*p, permission)
-	return nil
+	return defaultGitHubTokenPermissionGroup
 }
 
-// Get returns the GitHubDynamicTokenPermission for the given requester.
-func (p *GitHubDynamicTokenPermissions) Get(requester string) *GitHubDynamicTokenPermission {
-	if p == nil {
+func (p *ProjectRef) ValidateGitHubPermissionGroups() error {
+	if p.GitHubDynamicTokenPermissionGroups == nil {
 		return nil
 	}
-	for _, permission := range *p {
-		for _, r := range permission.Requesters {
-			if r == requester {
-				return &permission
-			}
+	catcher := grip.NewBasicCatcher()
+	// Group validation
+	for _, group := range p.GitHubDynamicTokenPermissionGroups {
+		if group.Name == "" {
+			catcher.Add(errors.New("group name is unset"))
 		}
 	}
-	return nil
-}
-
-// AsGitHubPermissions returns the github.InstallationPermissions for the GitHubDynamicTokenPermission.
-// These are used in the requests to GitHub for what permissions to use.
-func (p *GitHubDynamicTokenPermission) ToGitHubInstallationPermissions() (github.InstallationPermissions, error) {
-	perms := github.InstallationPermissions{}
-	if p == nil || p.Permissions == nil {
-		return perms, nil
+	// Requester validation
+	for requester, groupName := range p.GitHubPermissionGroupByRequester {
+		if !utility.StringSliceContains(evergreen.AllRequesterTypes, requester) {
+			catcher.Add(errors.Errorf("requester '%s' is not a valid requester", requester))
+		}
+		foundGroup := false
+		for _, group := range p.GitHubDynamicTokenPermissionGroups {
+			if groupName == group.Name {
+				foundGroup = true
+				break
+			}
+		}
+		if !foundGroup {
+			catcher.Add(errors.Errorf("group '%s' for requester '%s' not found", groupName, requester))
+		}
 	}
-
-	// The github.InstallationPermissions struct has json struct tags that we can
-	// latch on to for decoding the permissions.
-	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{TagName: "json", Result: &perms, ErrorUnused: true})
-	if err != nil {
-		return perms, errors.Wrap(err, "creating decoder for GitHub permissions")
-	}
-	err = decoder.Decode(p.Permissions)
-
-	return perms, errors.Wrap(err, "decoding GitHub permissions")
+	return errors.Wrap(catcher.Resolve(), "invalid GitHub dynamic token permission groups")
 }
 
 type ProjectHealthView string
@@ -358,56 +350,57 @@ type EmailAlertData struct {
 
 var (
 	// bson fields for the ProjectRef struct
-	ProjectRefIdKey                            = bsonutil.MustHaveTag(ProjectRef{}, "Id")
-	ProjectRefOwnerKey                         = bsonutil.MustHaveTag(ProjectRef{}, "Owner")
-	ProjectRefRepoKey                          = bsonutil.MustHaveTag(ProjectRef{}, "Repo")
-	ProjectRefBranchKey                        = bsonutil.MustHaveTag(ProjectRef{}, "Branch")
-	ProjectRefEnabledKey                       = bsonutil.MustHaveTag(ProjectRef{}, "Enabled")
-	ProjectRefPrivateKey                       = bsonutil.MustHaveTag(ProjectRef{}, "Private")
-	ProjectRefRestrictedKey                    = bsonutil.MustHaveTag(ProjectRef{}, "Restricted")
-	ProjectRefBatchTimeKey                     = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
-	ProjectRefIdentifierKey                    = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
-	ProjectRefRepoRefIdKey                     = bsonutil.MustHaveTag(ProjectRef{}, "RepoRefId")
-	ProjectRefDisplayNameKey                   = bsonutil.MustHaveTag(ProjectRef{}, "DisplayName")
-	ProjectRefDeactivatePreviousKey            = bsonutil.MustHaveTag(ProjectRef{}, "DeactivatePrevious")
-	ProjectRefRemotePathKey                    = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
-	ProjectRefHiddenKey                        = bsonutil.MustHaveTag(ProjectRef{}, "Hidden")
-	ProjectRefRepotrackerErrorKey              = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
-	ProjectRefDisabledStatsCacheKey            = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
-	ProjectRefAdminsKey                        = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
-	ProjectRefGitTagAuthorizedUsersKey         = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
-	ProjectRefGitTagAuthorizedTeamsKey         = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedTeams")
-	ProjectRefTracksPushEventsKey              = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
-	projectRefPRTestingEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
-	projectRefManualPRTestingEnabledKey        = bsonutil.MustHaveTag(ProjectRef{}, "ManualPRTestingEnabled")
-	projectRefGithubChecksEnabledKey           = bsonutil.MustHaveTag(ProjectRef{}, "GithubChecksEnabled")
-	projectRefGitTagVersionsEnabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "GitTagVersionsEnabled")
-	projectRefRepotrackerDisabledKey           = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
-	projectRefCommitQueueKey                   = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
-	projectRefTaskSyncKey                      = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
-	projectRefPatchingDisabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
-	projectRefDispatchingDisabledKey           = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
-	projectRefStepbackDisabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "StepbackDisabled")
-	projectRefStepbackBisectKey                = bsonutil.MustHaveTag(ProjectRef{}, "StepbackBisect")
-	projectRefVersionControlEnabledKey         = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
-	projectRefNotifyOnFailureKey               = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
-	projectRefSpawnHostScriptPathKey           = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
-	projectRefTriggersKey                      = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
-	projectRefPatchTriggerAliasesKey           = bsonutil.MustHaveTag(ProjectRef{}, "PatchTriggerAliases")
-	projectRefGithubTriggerAliasesKey          = bsonutil.MustHaveTag(ProjectRef{}, "GithubTriggerAliases")
-	projectRefPeriodicBuildsKey                = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
-	projectRefOldestAllowedMergeBaseKey        = bsonutil.MustHaveTag(ProjectRef{}, "OldestAllowedMergeBase")
-	projectRefWorkstationConfigKey             = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
-	projectRefTaskAnnotationSettingsKey        = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
-	projectRefBuildBaronSettingsKey            = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
-	projectRefPerfEnabledKey                   = bsonutil.MustHaveTag(ProjectRef{}, "PerfEnabled")
-	projectRefContainerSecretsKey              = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSecrets")
-	projectRefContainerSizeDefinitionsKey      = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSizeDefinitions")
-	projectRefExternalLinksKey                 = bsonutil.MustHaveTag(ProjectRef{}, "ExternalLinks")
-	projectRefBannerKey                        = bsonutil.MustHaveTag(ProjectRef{}, "Banner")
-	projectRefParsleyFiltersKey                = bsonutil.MustHaveTag(ProjectRef{}, "ParsleyFilters")
-	projectRefProjectHealthViewKey             = bsonutil.MustHaveTag(ProjectRef{}, "ProjectHealthView")
-	projectRefGitHubTokenPermissionByRequester = bsonutil.MustHaveTag(ProjectRef{}, "GitHubTokenPermissionByRequester")
+	ProjectRefIdKey                              = bsonutil.MustHaveTag(ProjectRef{}, "Id")
+	ProjectRefOwnerKey                           = bsonutil.MustHaveTag(ProjectRef{}, "Owner")
+	ProjectRefRepoKey                            = bsonutil.MustHaveTag(ProjectRef{}, "Repo")
+	ProjectRefBranchKey                          = bsonutil.MustHaveTag(ProjectRef{}, "Branch")
+	ProjectRefEnabledKey                         = bsonutil.MustHaveTag(ProjectRef{}, "Enabled")
+	ProjectRefPrivateKey                         = bsonutil.MustHaveTag(ProjectRef{}, "Private")
+	ProjectRefRestrictedKey                      = bsonutil.MustHaveTag(ProjectRef{}, "Restricted")
+	ProjectRefBatchTimeKey                       = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
+	ProjectRefIdentifierKey                      = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
+	ProjectRefRepoRefIdKey                       = bsonutil.MustHaveTag(ProjectRef{}, "RepoRefId")
+	ProjectRefDisplayNameKey                     = bsonutil.MustHaveTag(ProjectRef{}, "DisplayName")
+	ProjectRefDeactivatePreviousKey              = bsonutil.MustHaveTag(ProjectRef{}, "DeactivatePrevious")
+	ProjectRefRemotePathKey                      = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
+	ProjectRefHiddenKey                          = bsonutil.MustHaveTag(ProjectRef{}, "Hidden")
+	ProjectRefRepotrackerErrorKey                = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
+	ProjectRefDisabledStatsCacheKey              = bsonutil.MustHaveTag(ProjectRef{}, "DisabledStatsCache")
+	ProjectRefAdminsKey                          = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
+	ProjectRefGitTagAuthorizedUsersKey           = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedUsers")
+	ProjectRefGitTagAuthorizedTeamsKey           = bsonutil.MustHaveTag(ProjectRef{}, "GitTagAuthorizedTeams")
+	ProjectRefTracksPushEventsKey                = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
+	projectRefPRTestingEnabledKey                = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
+	projectRefManualPRTestingEnabledKey          = bsonutil.MustHaveTag(ProjectRef{}, "ManualPRTestingEnabled")
+	projectRefGithubChecksEnabledKey             = bsonutil.MustHaveTag(ProjectRef{}, "GithubChecksEnabled")
+	projectRefGitTagVersionsEnabledKey           = bsonutil.MustHaveTag(ProjectRef{}, "GitTagVersionsEnabled")
+	projectRefRepotrackerDisabledKey             = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
+	projectRefCommitQueueKey                     = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
+	projectRefTaskSyncKey                        = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
+	projectRefPatchingDisabledKey                = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
+	projectRefDispatchingDisabledKey             = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
+	projectRefStepbackDisabledKey                = bsonutil.MustHaveTag(ProjectRef{}, "StepbackDisabled")
+	projectRefStepbackBisectKey                  = bsonutil.MustHaveTag(ProjectRef{}, "StepbackBisect")
+	projectRefVersionControlEnabledKey           = bsonutil.MustHaveTag(ProjectRef{}, "VersionControlEnabled")
+	projectRefNotifyOnFailureKey                 = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
+	projectRefSpawnHostScriptPathKey             = bsonutil.MustHaveTag(ProjectRef{}, "SpawnHostScriptPath")
+	projectRefTriggersKey                        = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
+	projectRefPatchTriggerAliasesKey             = bsonutil.MustHaveTag(ProjectRef{}, "PatchTriggerAliases")
+	projectRefGithubTriggerAliasesKey            = bsonutil.MustHaveTag(ProjectRef{}, "GithubTriggerAliases")
+	projectRefPeriodicBuildsKey                  = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
+	projectRefOldestAllowedMergeBaseKey          = bsonutil.MustHaveTag(ProjectRef{}, "OldestAllowedMergeBase")
+	projectRefWorkstationConfigKey               = bsonutil.MustHaveTag(ProjectRef{}, "WorkstationConfig")
+	projectRefTaskAnnotationSettingsKey          = bsonutil.MustHaveTag(ProjectRef{}, "TaskAnnotationSettings")
+	projectRefBuildBaronSettingsKey              = bsonutil.MustHaveTag(ProjectRef{}, "BuildBaronSettings")
+	projectRefPerfEnabledKey                     = bsonutil.MustHaveTag(ProjectRef{}, "PerfEnabled")
+	projectRefContainerSecretsKey                = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSecrets")
+	projectRefContainerSizeDefinitionsKey        = bsonutil.MustHaveTag(ProjectRef{}, "ContainerSizeDefinitions")
+	projectRefExternalLinksKey                   = bsonutil.MustHaveTag(ProjectRef{}, "ExternalLinks")
+	projectRefBannerKey                          = bsonutil.MustHaveTag(ProjectRef{}, "Banner")
+	projectRefParsleyFiltersKey                  = bsonutil.MustHaveTag(ProjectRef{}, "ParsleyFilters")
+	projectRefProjectHealthViewKey               = bsonutil.MustHaveTag(ProjectRef{}, "ProjectHealthView")
+	projectRefGitHubDynamicTokenPermissionGroups = bsonutil.MustHaveTag(ProjectRef{}, "GitHubDynamicTokenPermissionGroups")
+	projectRefGitHubTokenPermissionByRequester   = bsonutil.MustHaveTag(ProjectRef{}, "GitHubTokenPermissionByRequester")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	commitQueueMergeQueueKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "MergeQueue")
@@ -2143,15 +2136,16 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
-					projectRefPRTestingEnabledKey:              p.PRTestingEnabled,
-					projectRefManualPRTestingEnabledKey:        p.ManualPRTestingEnabled,
-					projectRefGithubChecksEnabledKey:           p.GithubChecksEnabled,
-					projectRefGitTagVersionsEnabledKey:         p.GitTagVersionsEnabled,
-					ProjectRefGitTagAuthorizedUsersKey:         p.GitTagAuthorizedUsers,
-					ProjectRefGitTagAuthorizedTeamsKey:         p.GitTagAuthorizedTeams,
-					projectRefCommitQueueKey:                   p.CommitQueue,
-					projectRefOldestAllowedMergeBaseKey:        p.OldestAllowedMergeBase,
-					projectRefGitHubTokenPermissionByRequester: p.GitHubTokenPermissionByRequester,
+					projectRefPRTestingEnabledKey:                p.PRTestingEnabled,
+					projectRefManualPRTestingEnabledKey:          p.ManualPRTestingEnabled,
+					projectRefGithubChecksEnabledKey:             p.GithubChecksEnabled,
+					projectRefGitTagVersionsEnabledKey:           p.GitTagVersionsEnabled,
+					ProjectRefGitTagAuthorizedUsersKey:           p.GitTagAuthorizedUsers,
+					ProjectRefGitTagAuthorizedTeamsKey:           p.GitTagAuthorizedTeams,
+					projectRefCommitQueueKey:                     p.CommitQueue,
+					projectRefOldestAllowedMergeBaseKey:          p.OldestAllowedMergeBase,
+					projectRefGitHubDynamicTokenPermissionGroups: p.GitHubDynamicTokenPermissionGroups,
+					projectRefGitHubTokenPermissionByRequester:   p.GitHubPermissionGroupByRequester,
 				},
 			})
 	case ProjectPageNotificationsSection:
