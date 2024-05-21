@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
-	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -195,7 +194,7 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 
 		cmd.SetJasperManager(a.jasper)
 
-		if err := a.runCommand(ctx, tc, tc.logger, commandInfo, cmd, options); err != nil {
+		if err := a.runCommand(ctx, tc, commandInfo, cmd, options); err != nil {
 			commandSpan.SetStatus(codes.Error, "running command")
 			commandSpan.RecordError(err, trace.WithAttributes(tc.taskConfig.TaskAttributes()...))
 			commandSpan.End()
@@ -214,7 +213,7 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 
 // runCommand runs a single command, which is either a standalone command or a
 // single sub-command within a function.
-func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.LoggerProducer, commandInfo model.PluginCommandConf,
+func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo model.PluginCommandConf,
 	cmd command.Command, options runCommandsOptions) error {
 	prevExp := map[string]string{}
 	for key, val := range commandInfo.Vars {
@@ -278,7 +277,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 			cmdChan <- pErr
 		}()
 
-		cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
+		cmdChan <- cmd.Execute(ctx, a.comm, tc.logger, tc.taskConfig)
 	}()
 
 	select {
