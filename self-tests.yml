@@ -712,6 +712,9 @@ tasks:
   - <<: *build-and-push-client
     name: build-darwin_arm64
     tags: ["build"]
+  - <<: *tar-and-push-static-assets
+    name: tar-and-push-static-assets
+    tags: ["build"]
 
   - <<: *build-and-push-client
     name: build-linux-staging_amd64
@@ -725,6 +728,10 @@ tasks:
     name: build-darwin-staging_amd64
     tags: ["build-staging"]
     activate: false
+  - <<: *tar-and-push-static-assets
+    name: tar-and-push-static-assets-staging
+    tags: ["build-staging"]
+    activate: false
 
   - <<: *build-and-push-client
     name: build-darwin-unsigned_amd64
@@ -734,14 +741,6 @@ tasks:
     name: build-darwin-unsigned_arm64
     tags: ["build-unsigned"]
     activate: false
-
-  - <<: *tar-and-push-static-assets
-    name: tar-and-push-static-assets
-    tags: ["build"]
-
-  - <<: *tar-and-push-static-assets
-    name: tar-and-push-static-assets-staging
-    tags: ["build-staging"]
 
 #######################################
 #            Buildvariants            #
