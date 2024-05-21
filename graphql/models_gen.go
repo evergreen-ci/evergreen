@@ -23,6 +23,10 @@ type AbortInfo struct {
 	User                    string `json:"user"`
 }
 
+type AddFavoriteProjectInput struct {
+	ProjectIdentifier string `json:"projectIdentifier"`
+}
+
 // Build Baron is a service that can be integrated into a project (see Confluence Wiki for more details).
 // This type is returned from the buildBaron query, and contains information about Build Baron configurations and suggested
 // tickets from JIRA for a given task on a given execution.
@@ -44,6 +48,19 @@ type BuildVariantOptions struct {
 // CreateDistroInput is the input to the createDistro mutation.
 type CreateDistroInput struct {
 	NewDistroID string `json:"newDistroId"`
+}
+
+// DeactivateStepbackTaskInput is the input to the deactivateStepbackTask mutation.
+type DeactivateStepbackTaskInput struct {
+	ProjectID        string `json:"projectId"`
+	BuildVariantName string `json:"buildVariantName"`
+	TaskName         string `json:"taskName"`
+}
+
+// DefaultSectionToRepoInput is the input to the defaultSectionToRepo mutation.
+type DefaultSectionToRepoInput struct {
+	ProjectID string                 `json:"projectId"`
+	Section   ProjectSettingsSection `json:"section"`
 }
 
 // DeleteDistroInput is the input to the deleteDistro mutation.
@@ -292,6 +309,12 @@ type ProjectPermissionsOptions struct {
 	ProjectIdentifier string `json:"projectIdentifier"`
 }
 
+// PromoteVarsToRepoInput is the input to the promoteVarsToRepo mutation.
+type PromoteVarsToRepoInput struct {
+	ProjectID string   `json:"projectId"`
+	VarNames  []string `json:"varNames"`
+}
+
 // PublicKeyInput is an input to the createPublicKey and updatePublicKey mutations.
 type PublicKeyInput struct {
 	Key  string `json:"key"`
@@ -299,6 +322,10 @@ type PublicKeyInput struct {
 }
 
 type Query struct {
+}
+
+type RemoveFavoriteProjectInput struct {
+	ProjectIdentifier string `json:"projectIdentifier"`
 }
 
 // SaveDistroInput is the input to the saveDistro mutation.

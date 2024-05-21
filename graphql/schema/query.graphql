@@ -51,11 +51,12 @@ type Query {
   project(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)): Project!
   projects: [GroupedProjects]!
   projectEvents(
-    identifier: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)
+    identifier: String @requireProjectAccess(permission: SETTINGS, access: VIEW)
+    projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: VIEW)
     limit: Int = 0
     before: Time
   ): ProjectEvents!
-  projectSettings(identifier: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)): ProjectSettings!
+  projectSettings(identifier: String @requireProjectAccess(permission: SETTINGS, access: VIEW), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access:VIEW)): ProjectSettings!
   repoEvents(repoId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW), limit: Int = 0, before: Time): ProjectEvents!
   repoSettings(repoId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)): RepoSettings!
   viewableProjectRefs: [GroupedProjects]!
