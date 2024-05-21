@@ -179,7 +179,7 @@ func (p *ProjectRef) ValidateGitHubPermissionGroups() error {
 	// Group validation
 	for _, group := range p.GitHubDynamicTokenPermissionGroups {
 		if group.Name == "" {
-			catcher.Add(errors.New("group name is unset"))
+			catcher.Add(errors.New("group name cannot be empty"))
 		}
 	}
 	// Requester validation
@@ -400,7 +400,7 @@ var (
 	projectRefParsleyFiltersKey                  = bsonutil.MustHaveTag(ProjectRef{}, "ParsleyFilters")
 	projectRefProjectHealthViewKey               = bsonutil.MustHaveTag(ProjectRef{}, "ProjectHealthView")
 	projectRefGitHubDynamicTokenPermissionGroups = bsonutil.MustHaveTag(ProjectRef{}, "GitHubDynamicTokenPermissionGroups")
-	projectRefGitHubTokenPermissionByRequester   = bsonutil.MustHaveTag(ProjectRef{}, "GitHubTokenPermissionByRequester")
+	projectRefGithubPermissionGroupByRequester   = bsonutil.MustHaveTag(ProjectRef{}, "GitHubPermissionGroupByRequester")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	commitQueueMergeQueueKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "MergeQueue")
@@ -2145,7 +2145,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 					projectRefCommitQueueKey:                     p.CommitQueue,
 					projectRefOldestAllowedMergeBaseKey:          p.OldestAllowedMergeBase,
 					projectRefGitHubDynamicTokenPermissionGroups: p.GitHubDynamicTokenPermissionGroups,
-					projectRefGitHubTokenPermissionByRequester:   p.GitHubPermissionGroupByRequester,
+					projectRefGithubPermissionGroupByRequester:   p.GitHubPermissionGroupByRequester,
 				},
 			})
 	case ProjectPageNotificationsSection:
