@@ -28,7 +28,7 @@ It contains information about how a user has configured their patch (e.g. name, 
 """
 input PatchConfigure {
   description: String!
-  parameters: [ParameterInput]
+  parameters: [ParameterInput!]
   patchTriggerAliases: [String!]
   variantsTasks: [VariantTasks!]!
 }
@@ -84,7 +84,7 @@ type Patch {
   taskStatuses: [String!]!
   time: PatchTime
   variants: [String!]!
-  variantsTasks: [VariantTask]!
+  variantsTasks: [VariantTask!]!
   versionFull: Version
 }
 

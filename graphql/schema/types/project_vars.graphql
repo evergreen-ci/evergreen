@@ -1,7 +1,7 @@
 ###### INPUTS ######
 input ProjectVarsInput {
-  adminOnlyVarsList: [String]
-  privateVarsList: [String]
+  adminOnlyVarsList: [String!]
+  privateVarsList: [String!]
   vars: StringMap
 }
 
