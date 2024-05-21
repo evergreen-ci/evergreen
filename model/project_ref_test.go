@@ -3342,28 +3342,31 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.True(utility.FromBoolPtr(projectRef.Restricted))
 	assert.True(utility.FromBoolPtr(projectRef.Private))
 
-	// Test GitHub token permissions by requester being set
-	// update = &ProjectRef{
-	// 	GitHubDynamicTokenPermissionGroups: GitHubDynamicTokenPermissionGroups{
-	// 		GitHubDynamicTokenPermissionGroup{
-	// 			Requesters: []string{evergreen.PatchVersionRequester},
-	// 			Permissions: map[string]string{
-	// 				"contents": "read",
-	// 			},
-	// 		},
-	// 	},
-	// }
-	// _, err = SaveProjectPageForSection("iden_", update, ProjectPageGithubAndCQSection, false)
-	// assert.NoError(err)
+	// Test GitHub dynamic token permission groups
+	update = &ProjectRef{
+		GitHubDynamicTokenPermissionGroups: GitHubDynamicTokenPermissionGroups{
+			GitHubDynamicTokenPermissionGroup{
+				Name: "some-group",
+				Permissions: github.InstallationPermissions{
+					Actions: utility.ToStringPtr("read"),
+				},
+			},
+		},
+		GitHubPermissionGroupByRequester: map[string]string{
+			evergreen.GithubMergeRequester: "some-group",
+		},
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGithubAndCQSection, false)
+	assert.NoError(err)
 
-	// projectRef, err = FindBranchProjectRef("iden_")
-	// require.NoError(t, err)
-	// assert.NotNil(t, projectRef)
-	// assert.Len(projectRef.GitHubDynamicTokenPermissionGroups, 1)
-	// perms, err := projectRef.GitHubDynamicTokenPermissionGroups.Get(evergreen.PatchVersionRequester).ToGitHubInstallationPermissions()
-	// require.NoError(t, err)
-	// require.NotNil(t, perms.Contents)
-	// assert.Equal("read", *perms.Contents)
+	projectRef, err = FindBranchProjectRef("iden_")
+	require.NoError(t, err)
+	assert.NotNil(t, projectRef)
+	assert.Len(projectRef.GitHubDynamicTokenPermissionGroups, 1)
+
+	perms := projectRef.GetGitHubPermissionGroup(evergreen.GithubMergeRequester)
+	assert.Equal("some-group", perms.Name)
+	assert.Equal("read", utility.FromStringPtr(perms.Permissions.Actions))
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {
