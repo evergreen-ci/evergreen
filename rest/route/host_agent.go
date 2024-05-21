@@ -228,9 +228,6 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	if nextTask == nil {
 		// we found a task, but it's not part of the task group so we didn't assign it
 		if shouldRunTeardown {
-			// kim: NOTE: this logged after the 4th task in the TG
-			// (integration_tests_replset), so assignNextAvailableTask thought
-			// it was the end of the task group and that teardown should run.
 			grip.Info(message.Fields{
 				"op":         "next_task",
 				"message":    "host task group finished, not assigning task and instead requesting host to run teardown group",
@@ -354,8 +351,6 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 
 	var amiUpdatedTime time.Time
 	if d.GetDefaultAMI() != currentHost.GetAMI() {
-		// kim: NOTE: AMI did not change during this time, so this is
-		// irrelevant to the bug.
 		amiEvent, err := event.FindLatestAMIModifiedDistroEvent(d.Id)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "problem getting AMI event log",
@@ -510,9 +505,6 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 
 		// If the current task group is finished we leave the task on the queue, and indicate the current group needs to be torn down.
 		if details.TaskGroup != "" && details.TaskGroup != nextTask.TaskGroup {
-			// kim: NOTE: this debug did not log, which suggests that this did
-			// not run. If it did, the 5th TG task would have triggered this
-			// debug log because the task doc has a task group.
 			grip.Debug(message.Fields{
 				"message":              "next task is a standalone task or part of a different task group; not updating running task group task, because current task group needs to be torn down",
 				"current_task_group":   details.TaskGroup,
@@ -524,8 +516,6 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				"task_project":         nextTask.Project,
 				"task_group_max_hosts": nextTask.TaskGroupMaxHosts,
 			})
-			// kim: NOTE: this is a case that returns nil, true to indicate that
-			// there's no next task and it should start teardown group.
 			return nil, true, nil
 		}
 
@@ -609,8 +599,6 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		})
 		// If we have reached the end of the queue and the previous task was part of a task group,
 		// the current task group is finished and needs to be torn down.
-		// kim: NOTE: this is a case that returns nil, true to indicate that
-		// there's no next task and it should start teardown group.
 		return nil, true, nil
 	}
 
