@@ -129,6 +129,7 @@ input DistroInput {
   homeVolumeSettings: HomeVolumeSettingsInput!
   hostAllocatorSettings: HostAllocatorSettingsInput!
   iceCreamSettings: IceCreamSettingsInput!
+  imageId: String
   isCluster: Boolean!
   isVirtualWorkStation: Boolean!
   name: String! @requireDistroAccess(access: EDIT)
@@ -144,7 +145,7 @@ input DistroInput {
   userSpawnAllowed: Boolean!
   validProjects: [String!]!
   workDir: String!
-  mountpoints: [String]
+  mountpoints: [String!]
 }
 
 input BootstrapSettingsInput {
@@ -278,6 +279,7 @@ type Distro {
   homeVolumeSettings: HomeVolumeSettings!
   hostAllocatorSettings: HostAllocatorSettings!
   iceCreamSettings: IceCreamSettings!
+  imageId: String
   isCluster: Boolean!
   isVirtualWorkStation: Boolean!
   name: String!
@@ -291,9 +293,9 @@ type Distro {
   sshOptions: [String!]!
   user: String!
   userSpawnAllowed: Boolean!
-  validProjects: [String]!
+  validProjects: [String!]!
   workDir: String!
-  mountpoints: [String]
+  mountpoints: [String!]
 }
 
 type BootstrapSettings {

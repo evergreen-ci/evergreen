@@ -80,7 +80,7 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 			q[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 		}
 
-		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.ExecutionKey, task.BuildIdKey))
+		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.ExecutionKey, task.BuildIdKey, task.ActivatedKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
@@ -164,7 +164,7 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 			query[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 		}
 
-		tasks, err := task.FindAll(db.Query(query).WithFields(task.IdKey, task.ExecutionKey))
+		tasks, err := task.FindAll(db.Query(query).WithFields(task.IdKey, task.ExecutionKey, task.ActivatedKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
@@ -313,10 +313,6 @@ func RestartVersion(ctx context.Context, versionID string, taskIDs []string, abo
 	if err != nil {
 		return errors.Wrap(err, "finding completed tasks for version")
 	}
-	if len(completedTasks) == 0 {
-		return nil
-	}
-
 	return restartTasks(ctx, completedTasks, caller, versionID)
 }
 
@@ -348,16 +344,15 @@ func RestartBuild(ctx context.Context, b *build.Build, taskIDs []string, abortIn
 	if err != nil {
 		return errors.Wrap(err, "finding completed tasks for build")
 	}
-	if len(completedTasks) == 0 {
-		return nil
-	}
-
 	return restartTasks(ctx, completedTasks, caller, b.Version)
 }
 
 // restartTasks restarts all finished tasks in the given list that are not part of
 // a single host task group.
 func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, versionId string) error {
+	if len(allFinishedTasks) == 0 {
+		return nil
+	}
 	toArchive := []task.Task{}
 	for _, t := range allFinishedTasks {
 		if !t.IsPartOfSingleHostTaskGroup() {
@@ -366,6 +361,9 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 			// archive them all at once.
 			toArchive = append(toArchive, t)
 		}
+	}
+	if err := checkUsersPatchTaskLimit(allFinishedTasks[0].Requester, caller, true, toArchive...); err != nil {
+		return errors.Wrap(err, "updating patch task limit for user")
 	}
 	if err := task.ArchiveMany(ctx, toArchive); err != nil {
 		return errors.Wrap(err, "archiving tasks")
@@ -875,6 +873,35 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 
 	// return all of the tasks created
 	return tasks, nil
+}
+
+// checkUsersPatchTaskLimit takes in an input list of tasks that is set to get activated, and checks if they're
+// non commit-queue patch tasks, and that the request has been submitted by a user. If so, the maximum hourly patch tasks counter
+// will be incremented accordingly. The addExecutionTasks parameter indicates that execution tasks are included
+// as part of the input tasks param, otherwise we need to account for them.
+func checkUsersPatchTaskLimit(requester, username string, addExecutionTasks bool, tasks ...task.Task) error {
+	// we only care about patch tasks that are to be activated by an actual user
+	if !(requester == evergreen.PatchVersionRequester || requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(username) {
+		return nil
+	}
+	s := evergreen.GetEnvironment().Settings()
+	if s.TaskLimits.MaxHourlyPatchTasks == 0 {
+		return nil
+	}
+	numTasksToActivate := 0
+	for _, t := range tasks {
+		if t.Activated {
+			if addExecutionTasks && t.DisplayOnly {
+				execTaskIdsToRestart, err := findExecTasksToReset(&t)
+				if err != nil {
+					return errors.Wrap(err, "finding execution tasks to restart")
+				}
+				numTasksToActivate += len(execTaskIdsToRestart)
+			}
+			numTasksToActivate++
+		}
+	}
+	return task.UpdateSchedulingLimit(username, requester, numTasksToActivate, true)
 }
 
 // addSingleHostTaskGroupDependencies adds dependencies to any tasks in a single-host task group
@@ -1619,7 +1646,9 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			},
 		)
 	}
-
+	if err = task.UpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, len(newActivatedTaskIds), true); err != nil {
+		return nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
+	}
 	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
 		"message": "unable to get all activation times",
 		"runner":  "addNewBuilds",
@@ -1723,6 +1752,9 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		if !wasActivated && b.Activated {
 			buildIdsToActivate = append(buildIdsToActivate, b.Id)
 		}
+	}
+	if err = checkUsersPatchTaskLimit(creationInfo.Version.Requester, creationInfo.Version.Author, false, activatedTasks...); err != nil {
+		return nil, errors.Wrap(err, "updating patch task limit for user")
 	}
 	if len(buildIdsToActivate) > 0 {
 		if err := build.UpdateActivation(buildIdsToActivate, true, caller); err != nil {

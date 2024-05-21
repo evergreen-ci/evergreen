@@ -26,6 +26,7 @@ import (
 const (
 	hostAllocatorJobName         = "host-allocator"
 	hostAllocatorAttributePrefix = "evergreen.host_allocator"
+	maxHostAllocatorJobTime      = 10 * time.Minute
 )
 
 func init() {
@@ -60,6 +61,9 @@ func NewHostAllocatorJob(env evergreen.Environment, distroID string, timestamp t
 	j.SetID(fmt.Sprintf("%s.%s.%s", hostAllocatorJobName, distroID, timestamp.Format(TSFormat)))
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", hostAllocatorJobName, distroID)})
 	j.SetEnqueueAllScopes(true)
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		MaxTime: maxHostAllocatorJobTime,
+	})
 
 	return j
 }

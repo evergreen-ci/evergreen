@@ -414,9 +414,10 @@ type BuildVariant struct {
 	Tasks        []BuildVariantTaskUnit `yaml:"tasks,omitempty" bson:"tasks"`
 	DisplayTasks []patch.DisplayTask    `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
 
-	// EmptyTaskSelectors stores task selectors that don't target any tasks for this build variant.
-	// This is only for validation purposes.
-	EmptyTaskSelectors []string `yaml:"-" bson:"-"`
+	// TranslationWarnings are validation warnings that are only detectable during project translation.
+	// e.g. task selectors that don't target any tasks in a build variant but the build
+	// variant still has tasks.
+	TranslationWarnings []string `yaml:"-" bson:"-"`
 }
 
 // CheckRun is used to provide information about a github check run.
@@ -550,6 +551,13 @@ type PluginCommandConf struct {
 	// RetryOnFailure indicates whether the task should be retried if this command fails.
 	RetryOnFailure bool `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
 
+	// FailureMetadataTags are user-defined tags which are not used directly by
+	// Evergreen but can be used to allow users to set additional metadata about
+	// the command/function if it fails.
+	// TODO (DEVPROD-5122): add documentation once the additional features for
+	// failing commands (which don't fail the task) are complete.
+	FailureMetadataTags []string `yaml:"failure_metadata_tags,omitempty" bson:"failure_metadata_tags,omitempty"`
+
 	Loggers *LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 }
 
@@ -569,17 +577,18 @@ func (c *PluginCommandConf) resolveParams() error {
 
 func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	temp := struct {
-		Function       string                 `yaml:"func,omitempty" bson:"func,omitempty"`
-		Type           string                 `yaml:"type,omitempty" bson:"type,omitempty"`
-		DisplayName    string                 `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-		Command        string                 `yaml:"command,omitempty" bson:"command,omitempty"`
-		Variants       []string               `yaml:"variants,omitempty" bson:"variants,omitempty"`
-		TimeoutSecs    int                    `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
-		Params         map[string]interface{} `yaml:"params,omitempty" bson:"params,omitempty"`
-		ParamsYAML     string                 `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
-		Vars           map[string]string      `yaml:"vars,omitempty" bson:"vars,omitempty"`
-		RetryOnFailure bool                   `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
-		Loggers        *LoggerConfig          `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+		Function            string                 `yaml:"func,omitempty" bson:"func,omitempty"`
+		Type                string                 `yaml:"type,omitempty" bson:"type,omitempty"`
+		DisplayName         string                 `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+		Command             string                 `yaml:"command,omitempty" bson:"command,omitempty"`
+		Variants            []string               `yaml:"variants,omitempty" bson:"variants,omitempty"`
+		TimeoutSecs         int                    `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
+		Params              map[string]interface{} `yaml:"params,omitempty" bson:"params,omitempty"`
+		ParamsYAML          string                 `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
+		Vars                map[string]string      `yaml:"vars,omitempty" bson:"vars,omitempty"`
+		RetryOnFailure      bool                   `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
+		FailureMetadataTags []string               `yaml:"failure_metadata_tags,omitempty" bson:"failure_metadata_tags,omitempty"`
+		Loggers             *LoggerConfig          `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	}{}
 
 	if err := unmarshal(&temp); err != nil {
@@ -596,6 +605,7 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 	c.ParamsYAML = temp.ParamsYAML
 	c.Params = temp.Params
 	c.RetryOnFailure = temp.RetryOnFailure
+	c.FailureMetadataTags = temp.FailureMetadataTags
 	return c.unmarshalParams()
 }
 

@@ -502,7 +502,7 @@ const (
 	ModifySpawnHostSleepSchedule ModifySpawnHostSource = "sleep_schedule"
 	// ModifySpawnHostManual means the spawn host is being modified by a
 	// user-owned sleep script.
-	ModifySpawnHostScript ModifySpawnHostSource = "script"
+	ModifySpawnHostSleepScript ModifySpawnHostSource = "script"
 )
 
 // Common OTEL constants and attribute keys

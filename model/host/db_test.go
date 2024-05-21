@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func TestConsolidateHostsForUser(t *testing.T) {
@@ -800,8 +801,14 @@ func TestFindHostsScheduledToStart(t *testing.T) {
 	}
 }
 
+func setupDistroIdStatusIndex(t *testing.T) {
+	assert.NoError(t, db.EnsureIndex(Collection, mongo.IndexModel{
+		Keys: DistroIdStatusIndex,
+	}))
+}
 func TestCountHostsCanRunTasks(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
+	setupDistroIdStatusIndex(t)
 	d1 := distro.Distro{
 		Id: "d1",
 	}

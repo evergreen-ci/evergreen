@@ -339,7 +339,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	}
 
 	if hostReplaced {
-		event.LogHostStartSucceeded(j.host.Id)
+		event.LogHostStartSucceeded(j.host.Id, evergreen.User)
 	}
 
 	grip.Info(message.Fields{

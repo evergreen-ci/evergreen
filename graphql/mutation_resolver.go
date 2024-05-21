@@ -520,21 +520,34 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 }
 
 // DeactivateStepbackTask is the resolver for the deactivateStepbackTask field.
-func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID string, buildVariantName string, taskName string) (bool, error) {
+func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID *string, buildVariantName *string, taskName *string, opts *DeactivateStepbackTaskInput) (bool, error) {
+	if opts == nil {
+		opts = &DeactivateStepbackTaskInput{
+			ProjectID:        utility.FromStringPtr(projectID),
+			BuildVariantName: utility.FromStringPtr(buildVariantName),
+			TaskName:         utility.FromStringPtr(taskName),
+		}
+	}
 	usr := mustHaveUser(ctx)
-	if err := task.DeactivateStepbackTask(projectID, buildVariantName, taskName, usr.Username()); err != nil {
+	if err := task.DeactivateStepbackTask(opts.ProjectID, opts.BuildVariantName, opts.TaskName, usr.Username()); err != nil {
 		return false, InternalServerError.Send(ctx, err.Error())
 	}
 	return true, nil
 }
 
 // DefaultSectionToRepo is the resolver for the defaultSectionToRepo field.
-func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID string, section ProjectSettingsSection) (*string, error) {
+func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID *string, section *ProjectSettingsSection, opts *DefaultSectionToRepoInput) (*string, error) {
+	if opts == nil {
+		opts = &DefaultSectionToRepoInput{
+			ProjectID: utility.FromStringPtr(projectID),
+			Section:   *section,
+		}
+	}
 	usr := mustHaveUser(ctx)
-	if err := model.DefaultSectionToRepo(projectID, model.ProjectPageSection(section), usr.Username()); err != nil {
+	if err := model.DefaultSectionToRepo(opts.ProjectID, model.ProjectPageSection(opts.Section), usr.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error defaulting to repo for section: %s", err.Error()))
 	}
-	return &projectID, nil
+	return &opts.ProjectID, nil
 }
 
 // DeleteProject is the resolver for the deleteProject field.
@@ -581,10 +594,16 @@ func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID st
 }
 
 // PromoteVarsToRepo is the resolver for the promoteVarsToRepo field.
-func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, projectID string, varNames []string) (bool, error) {
+func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, projectID *string, varNames []string, opts *PromoteVarsToRepoInput) (bool, error) {
+	if opts == nil {
+		opts = &PromoteVarsToRepoInput{
+			ProjectID: utility.FromStringPtr(projectID),
+			VarNames:  varNames,
+		}
+	}
 	usr := mustHaveUser(ctx)
-	if err := data.PromoteVarsToRepo(projectID, varNames, usr.Username()); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", projectID, err.Error()))
+	if err := data.PromoteVarsToRepo(opts.ProjectID, opts.VarNames, usr.Username()); err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", opts.ProjectID, err.Error()))
 
 	}
 	return true, nil
@@ -969,7 +988,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	user := gimlet.GetUser(ctx).DisplayName()
+	user := gimlet.GetUser(ctx).Username()
 	err = model.AbortTask(ctx, taskID, user)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %s", taskID, err.Error()))
@@ -1097,14 +1116,19 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 }
 
 // AddFavoriteProject is the resolver for the addFavoriteProject field.
-func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
-	p, err := model.FindBranchProjectRef(identifier)
+func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier *string, opts *AddFavoriteProjectInput) (*restModel.APIProjectRef, error) {
+	if opts == nil {
+		opts = &AddFavoriteProjectInput{
+			ProjectIdentifier: utility.FromStringPtr(identifier),
+		}
+	}
+	p, err := model.FindBranchProjectRef(opts.ProjectIdentifier)
 	if err != nil || p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", identifier))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", opts.ProjectIdentifier))
 	}
 
 	usr := mustHaveUser(ctx)
-	err = usr.AddFavoritedProject(identifier)
+	err = usr.AddFavoritedProject(opts.ProjectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -1154,16 +1178,21 @@ func (r *mutationResolver) DeleteSubscriptions(ctx context.Context, subscription
 }
 
 // RemoveFavoriteProject is the resolver for the removeFavoriteProject field.
-func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier string) (*restModel.APIProjectRef, error) {
-	p, err := model.FindBranchProjectRef(identifier)
+func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier *string, opts *RemoveFavoriteProjectInput) (*restModel.APIProjectRef, error) {
+	if opts == nil {
+		opts = &RemoveFavoriteProjectInput{
+			ProjectIdentifier: utility.FromStringPtr(identifier),
+		}
+	}
+	p, err := model.FindBranchProjectRef(opts.ProjectIdentifier)
 	if err != nil || p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s", identifier))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s", opts.ProjectIdentifier))
 	}
 
 	usr := mustHaveUser(ctx)
-	err = usr.RemoveFavoriteProject(identifier)
+	err = usr.RemoveFavoriteProject(opts.ProjectIdentifier)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error removing project : %s : %s", identifier, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error removing project : %s : %s", opts.ProjectIdentifier, err))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	err = apiProjectRef.BuildFromService(*p)

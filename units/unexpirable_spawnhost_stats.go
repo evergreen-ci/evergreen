@@ -72,6 +72,7 @@ func (j *unexpirableSpawnHostStatsJob) Run(ctx context.Context) {
 		"message":           "unexpirable spawn host stats",
 		"job_id":            j.ID(),
 		"total_uptime_secs": stats.totalUptime.Seconds(),
+		"dashboard":         "evergreen sleep schedule health",
 	})
 
 	for distroID, uptimeSecs := range stats.uptimeSecsByDistro {
@@ -80,6 +81,7 @@ func (j *unexpirableSpawnHostStatsJob) Run(ctx context.Context) {
 			"job_id":      j.ID(),
 			"distro":      distroID,
 			"uptime_secs": uptimeSecs,
+			"dashboard":   "evergreen sleep schedule health",
 		})
 	}
 	for instanceType, uptimeSecs := range stats.uptimeSecsByInstanceType {
@@ -88,6 +90,7 @@ func (j *unexpirableSpawnHostStatsJob) Run(ctx context.Context) {
 			"job_id":        j.ID(),
 			"instance_type": instanceType,
 			"uptime_secs":   uptimeSecs,
+			"dashboard":     "evergreen sleep schedule health",
 		})
 	}
 }

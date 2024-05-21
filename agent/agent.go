@@ -642,11 +642,6 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 		defer shutdown(ctx)
 	}
 
-	defer func() {
-		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(tskCtx, tc.taskConfig.WorkDir), "uploading traces"))
-		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(tskCtx), "ingesting task output"))
-	}()
-
 	tc.setHeartbeatTimeout(heartbeatTimeoutOptions{})
 	preAndMainCtx, preAndMainCancel := context.WithCancel(tskCtx)
 	go a.startHeartbeat(tskCtx, preAndMainCancel, tc)
@@ -968,7 +963,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		tc.logger.Task().Info("Task completed - SUCCESS.")
 		if err := a.runPostOrTeardownTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Info("Post task completed - FAILURE. Overall task status changed to FAILED.")
-			setEndTaskFailureDetails(tc, detail, evergreen.TaskFailed, "", "")
+			setEndTaskFailureDetails(tc, detail, evergreen.TaskFailed, "", "", nil)
 		}
 		detail.PostErrored = tc.getPostErrored()
 		a.runEndTaskSync(ctx, tc, detail)
@@ -1002,6 +997,13 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		if detail.Description == "" {
 			detail.Description = "task has invalid status"
 		}
+	}
+
+	// Attempt automatic task output ingestion if the task output directory
+	// was setup, regardless of the task status.
+	if tc.taskConfig != nil && tc.taskConfig.TaskOutputDir != nil {
+		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(ctx, tc.taskConfig.WorkDir), "uploading traces"))
+		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(ctx), "ingesting task output"))
 	}
 
 	a.killProcs(ctx, tc, false, "task is ending")
@@ -1101,6 +1103,7 @@ func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOut
 func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) *apimodels.TaskEndDetail {
 	highestPriorityDescription := systemFailureDescription
 	var userDefinedFailureType string
+	var userDefinedFailureMetadataTags []string
 	if userEndTaskResp := tc.getUserEndTaskResponse(); userEndTaskResp != nil {
 		tc.logger.Task().Infof("Task status set to '%s' with HTTP endpoint.", userEndTaskResp.Status)
 		if !evergreen.IsValidTaskEndStatus(userEndTaskResp.Status) {
@@ -1109,6 +1112,7 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 			userDefinedFailureType = evergreen.CommandTypeSystem
 		} else {
 			status = userEndTaskResp.Status
+			userDefinedFailureMetadataTags = userEndTaskResp.AddFailureMetadataTags
 
 			if len(userEndTaskResp.Description) > globals.EndTaskMessageLimit {
 				tc.logger.Task().Warningf("Description from endpoint is too long to set (%d character limit), using default description.", globals.EndTaskMessageLimit)
@@ -1128,14 +1132,14 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 		TraceID:     tc.traceID,
 		DiskDevices: tc.diskDevices,
 	}
-	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType)
+	setEndTaskFailureDetails(tc, detail, status, highestPriorityDescription, userDefinedFailureType, userDefinedFailureMetadataTags)
 	if tc.taskConfig != nil {
 		detail.Modules.Prefixes = tc.taskConfig.ModulePaths
 	}
 	return detail
 }
 
-func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, status, description, failureType string) {
+func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, status, description, failureType string, failureMetadataTagsToAdd []string) {
 	var isDefaultDescription bool
 	if tc.getCurrentCommand() != nil {
 		// If there is no explicit user-defined description or failure type,
@@ -1153,8 +1157,11 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 	if status != evergreen.TaskSucceeded {
 		detail.Type = failureType
 		detail.Description = description
+		detail.FailureMetadataTags = utility.UniqueStrings(append(tc.getCurrentCommand().FailureMetadataTags(), failureMetadataTagsToAdd...))
 	}
 	if !isDefaultDescription {
+		// If there's an explicit user-defined description, always set that
+		// description.
 		detail.Description = description
 	}
 

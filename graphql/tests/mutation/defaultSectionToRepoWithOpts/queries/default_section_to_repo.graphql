@@ -1,0 +1,6 @@
+mutation {
+    defaultSectionToRepo(opts: {
+        projectId: "sandbox_project_id",
+        section: GENERAL
+    })
+}

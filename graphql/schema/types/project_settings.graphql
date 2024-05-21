@@ -44,7 +44,7 @@ input ProjectInput {
   enabled: Boolean
   externalLinks: [ExternalLinkInput!]
   githubChecksEnabled: Boolean
-  githubTriggerAliases: [String]
+  githubTriggerAliases: [String!]
   gitTagAuthorizedTeams: [String!]
   gitTagAuthorizedUsers: [String!]
   gitTagVersionsEnabled: Boolean
