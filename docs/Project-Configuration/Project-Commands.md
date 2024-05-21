@@ -24,8 +24,8 @@ Explanation:
     seconds.
 -   `retry_on_failure`: an optional field. If set to true, it will automatically restart the task upon failure. The
      automatic restart will process after the command has failed and the task has completed its subsequent post task commands.
--   `failure_metadata_tags`: an optional set of tags to attribute to the command if it fails. if set, these tags will
-    appear in the task end data for failed tasks that are returned from the REST API.
+-   `failure_metadata_tags`: an optional set of tags to attribute to the command if it fails. If these are set and the
+    command fails, the tags will appear in the task details returned from the REST API.
 -   `params`: values for the pre defined set of parameters the command can take. Available parameters vary per command.
 
 

@@ -24,11 +24,13 @@ import (
 
 type taskContext struct {
 	currentCommand command.Command
-	// failingCommand keeps track of the command that caused the task to fail.
+	// failingCommand keeps track of the command that caused the task to fail,
+	// if any.
 	failingCommand command.Command
 	// otherFailingCommands keeps track of commands that have run and failed but
 	// have not caused the task to fail (e.g. a post command that fails without
-	// post_error_fails_task).
+	// post_error_fails_task). Does not include commands that suppress errors,
+	// such as s3.put with optional: true.
 	otherFailingCommands []command.Command
 	postErrored          bool
 	logger               client.LoggerProducer
