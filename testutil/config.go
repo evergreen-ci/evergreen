@@ -197,7 +197,6 @@ func MockConfig() *evergreen.Settings {
 			ProvisioningThrottle: 100,
 			CloudStatusBatchSize: 10,
 			MaxTotalDynamicHosts: 500,
-			S3BaseURL:            "s3_base_url",
 		},
 		HostJasper: evergreen.HostJasperConfig{
 			BinaryName:       "binary",

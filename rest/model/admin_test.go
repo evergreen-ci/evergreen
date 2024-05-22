@@ -135,7 +135,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.HostInit.ProvisioningThrottle, apiSettings.HostInit.ProvisioningThrottle)
 	assert.EqualValues(testSettings.HostInit.CloudStatusBatchSize, apiSettings.HostInit.CloudStatusBatchSize)
 	assert.EqualValues(testSettings.HostInit.MaxTotalDynamicHosts, apiSettings.HostInit.MaxTotalDynamicHosts)
-	assert.EqualValues(testSettings.HostInit.S3BaseURL, utility.FromStringPtr(apiSettings.HostInit.S3BaseURL))
 	assert.EqualValues(testSettings.Jira.BasicAuthConfig.Username, utility.FromStringPtr(apiSettings.Jira.BasicAuthConfig.Username))
 	assert.EqualValues(testSettings.LoggerConfig.DefaultLevel, utility.FromStringPtr(apiSettings.LoggerConfig.DefaultLevel))
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.Count, apiSettings.LoggerConfig.Buffer.Count)

@@ -477,9 +477,7 @@ func TestJasperCommands(t *testing.T) {
 				User:      "user",
 			}
 			settings := &evergreen.Settings{
-				HostInit: evergreen.HostInitConfig{
-					S3BaseURL: "https://foo.com",
-				},
+				HostInit: evergreen.HostInitConfig{},
 				HostJasper: evergreen.HostJasperConfig{
 					BinaryName:       "jasper_cli",
 					DownloadFileName: "download_file",

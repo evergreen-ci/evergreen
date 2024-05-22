@@ -2,11 +2,8 @@ package evergreen
 
 import (
 	"context"
-	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/mongodb/grip"
@@ -144,89 +141,4 @@ func (s *EnvironmentSuite) TestInitSenders() {
 	for _, sender := range s.env.senders {
 		s.NotZero(sender.ErrorHandler(), "fallback error handler should be set")
 	}
-}
-
-func (s *EnvironmentSuite) TestPopulateLocalClientConfig() {
-	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
-	if err := os.Mkdir(root, os.ModeDir|os.ModePerm); err != nil {
-		s.True(os.IsExist(err))
-	}
-
-	folders := []string{
-		"darwin_amd64_obviouslynottherealone",
-		"linux_z80_obviouslynottherealone",
-	}
-	for _, folder := range folders {
-		path := root + "/" + folder
-		s.NoError(os.Mkdir(path, os.ModeDir|os.ModePerm))
-
-		file := path + "/evergreen"
-		_, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
-		s.NoError(err)
-		defer func() { //nolint: evg-lint
-			_ = os.Remove(file)
-			_ = os.Remove(path)
-		}()
-	}
-
-	e := envState{
-		settings: &Settings{
-			HostInit: HostInitConfig{S3BaseURL: "https://another-example.com"},
-			Ui:       UIConfig{Url: "https://example.com"},
-		},
-	}
-	s.Require().NoError(e.populateLocalClientConfig())
-	s.Require().NotNil(e.clientConfig)
-
-	s.Equal(ClientVersion, e.clientConfig.LatestRevision)
-
-	cb := []ClientBinary{}
-	for _, b := range e.clientConfig.ClientBinaries {
-		if strings.Contains(b.URL, "_obviouslynottherealone/") {
-			cb = append(cb, b)
-		}
-	}
-
-	s.Require().Len(cb, 2)
-	s.Equal("amd64", cb[0].Arch)
-	s.Equal("darwin", cb[0].OS)
-	s.Equal("https://example.com/clients/darwin_amd64_obviouslynottherealone/evergreen", cb[0].URL)
-	s.Equal("z80", cb[1].Arch)
-	s.Equal("linux", cb[1].OS)
-	s.Equal("https://example.com/clients/linux_z80_obviouslynottherealone/evergreen", cb[1].URL)
-
-	s.Require().NoError(e.populateLocalClientConfig())
-	s.Require().NotNil(e.clientConfig)
-
-	s.Equal(ClientVersion, e.clientConfig.LatestRevision)
-
-	var binaries []ClientBinary
-	for _, b := range e.clientConfig.ClientBinaries {
-		if strings.Contains(b.URL, "_obviouslynottherealone/") {
-			binaries = append(binaries, b)
-		}
-	}
-
-	s.Require().Len(binaries, 2)
-	s.Equal("amd64", binaries[0].Arch)
-	s.Equal("darwin", binaries[0].OS)
-	s.Equal("https://example.com/clients/darwin_amd64_obviouslynottherealone/evergreen", binaries[0].URL)
-	s.Equal("z80", binaries[1].Arch)
-	s.Equal("linux", binaries[1].OS)
-	s.Equal("https://example.com/clients/linux_z80_obviouslynottherealone/evergreen", binaries[1].URL)
-
-	var s3Binaries []ClientBinary
-	for _, b := range e.clientConfig.S3ClientBinaries {
-		if strings.Contains(b.URL, "_obviouslynottherealone/") {
-			s3Binaries = append(s3Binaries, b)
-		}
-	}
-
-	s.Require().Len(s3Binaries, 2)
-	s.Equal("amd64", s3Binaries[0].Arch)
-	s.Equal("darwin", s3Binaries[0].OS)
-	s.Equal(fmt.Sprintf("https://another-example.com/%s/darwin_amd64_obviouslynottherealone/evergreen", BuildRevision), s3Binaries[0].URL)
-	s.Equal("z80", s3Binaries[1].Arch)
-	s.Equal("linux", s3Binaries[1].OS)
-	s.Equal(fmt.Sprintf("https://another-example.com/%s/linux_z80_obviouslynottherealone/evergreen", BuildRevision), s3Binaries[1].URL)
 }
