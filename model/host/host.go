@@ -3640,20 +3640,30 @@ func (h *Host) UpdateSleepSchedule(ctx context.Context, schedule SleepScheduleIn
 
 	now := time.Now()
 	var err error
-	schedule.NextStartTime, err = schedule.GetNextScheduledStartTime(now)
+	nextStart, err := schedule.GetNextScheduledStartTime(now)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "determining next sleep schedule start time").Error(),
 		}
 	}
-	schedule.NextStopTime, err = schedule.GetNextScheduledStopTime(now)
+	nextStop, err := schedule.GetNextScheduledStopTime(now)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "determining next sleep schedule stop time").Error(),
 		}
 	}
+
+	// Intentionally set these fields on the sleep schedule only after
+	// calculating both the next start and next stop times. If the next start
+	// time is set first on the schedule, the next stop time can be pushed
+	// further into the future than necessary.
+	// kim: TODO: add test for next stop set based on now rather than next
+	// start.
+	schedule.NextStartTime = nextStart
+	schedule.NextStopTime = nextStop
+
 	if err = setSleepSchedule(ctx, h.Id, schedule); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
