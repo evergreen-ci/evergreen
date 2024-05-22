@@ -168,6 +168,8 @@ func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) er
 		}
 		// Projects that use the GitHub merge queue cannot enqueue to the commit queue.
 		apiPatch.CanEnqueueToCommitQueue = (p.HasValidGitInfo() || p.IsGithubPRPatch()) && proj.CommitQueue.MergeQueue != model.MergeQueueGitHub
+	} else {
+		apiPatch.CanEnqueueToCommitQueue = p.HasValidGitInfo() || p.IsGithubPRPatch()
 	}
 
 	if args != nil {
