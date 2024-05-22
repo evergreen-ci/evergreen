@@ -183,26 +183,30 @@ func TestSend(t *testing.T) {
 
 		data := utility.RandomString()
 		mock.sender.buffer = []log.LogLine{{Data: data}}
-		prevFlush := time.Now().Add(-mock.sender.opts.FlushInterval)
+		prevFlush := time.Now()
 		mock.sender.lastFlush = prevFlush
 		go mock.sender.timedFlush()
-		time.Sleep(3 * mock.sender.opts.FlushInterval / 2)
+		// Sleep for an extra second to avoid a race condition when
+		// verifying the flush.
+		time.Sleep(mock.sender.opts.FlushInterval + time.Second)
 		mock.sender.mu.Lock()
 		require.Empty(t, mock.sender.buffer)
-		assert.WithinDuration(t, prevFlush.Add(mock.sender.opts.FlushInterval), mock.sender.lastFlush, 3*mock.sender.opts.FlushInterval/2)
+		assert.Equal(t, mock.sender.opts.FlushInterval, mock.sender.lastFlush.Sub(prevFlush).Round(time.Second))
 		mock.sender.mu.Unlock()
 		require.Len(t, mock.service.lines, 1)
 		assert.Equal(t, data, mock.service.lines[0].Data)
 		assert.Empty(t, mock.local.lastMessage)
 
-		// Should reset the flush interval and flush again after 2
-		// seconds.
+		// Should reset the ticker and flush again after the specified
+		// flush interval.
 		data = utility.RandomString()
 		mock.sender.buffer = []log.LogLine{{Data: data}}
 		mock.sender.mu.Lock()
 		require.NotEmpty(t, mock.sender.buffer)
 		mock.sender.mu.Unlock()
-		time.Sleep(3 * mock.sender.opts.FlushInterval / 2)
+		// Sleep for an extra second to avoid a race condition when
+		// verifying the flush.
+		time.Sleep(mock.sender.opts.FlushInterval + time.Second)
 		mock.sender.mu.Lock()
 		require.Empty(t, mock.sender.buffer)
 		mock.sender.mu.Unlock()
