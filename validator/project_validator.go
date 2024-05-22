@@ -352,7 +352,6 @@ func CheckProjectConfigErrors(projectConfig *model.ProjectConfig) ValidationErro
 			projectConfigErrorValidator(projectConfig)...)
 	}
 
-	// TODO definitely check here
 	return validationErrs
 }
 
