@@ -593,13 +593,16 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 	}
 
 	if noExpiration {
+		// kim: TODO: set default sleep schedule if the host sleep schedule is
+		// zero and is not permanently exempt. Make sure this has no effect on a
+		// host until they opt into the beta/wait for full rollout.
 		if err := h.MarkShouldNotExpire(ctx, expireOnValue); err != nil {
 			return errors.Wrapf(err, "marking host should not expire in DB for host '%s'", h.Id)
 		}
 
 		// Use GetInstanceStatus to add/update the cached host data (including
 		// unexpirable host information like persistent DNS names and IP
-		// addrseses) if the unexpirable host is running.
+		// addresses) if the unexpirable host is running.
 		_, err := m.GetInstanceState(ctx, h)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "could not get instance info to assign persistent DNS name",
