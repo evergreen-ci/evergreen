@@ -619,7 +619,7 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AbortTask                     func(childComplexity int, taskID string) int
 		AddAnnotationIssue            func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
-		AddFavoriteProject            func(childComplexity int, identifier *string, opts *AddFavoriteProjectInput) int
+		AddFavoriteProject            func(childComplexity int, opts AddFavoriteProjectInput) int
 		AttachProjectToNewRepo        func(childComplexity int, project MoveProjectInput) int
 		AttachProjectToRepo           func(childComplexity int, projectID string) int
 		AttachVolumeToHost            func(childComplexity int, volumeAndHost VolumeHost) int
@@ -630,8 +630,8 @@ type ComplexityRoot struct {
 		CreateDistro                  func(childComplexity int, opts CreateDistroInput) int
 		CreateProject                 func(childComplexity int, project model.APIProjectRef, requestS3Creds *bool) int
 		CreatePublicKey               func(childComplexity int, publicKeyInput PublicKeyInput) int
-		DeactivateStepbackTask        func(childComplexity int, projectID *string, buildVariantName *string, taskName *string, opts *DeactivateStepbackTaskInput) int
-		DefaultSectionToRepo          func(childComplexity int, projectID *string, section *ProjectSettingsSection, opts *DefaultSectionToRepoInput) int
+		DeactivateStepbackTask        func(childComplexity int, opts DeactivateStepbackTaskInput) int
+		DefaultSectionToRepo          func(childComplexity int, opts DefaultSectionToRepoInput) int
 		DeleteDistro                  func(childComplexity int, opts DeleteDistroInput) int
 		DeleteProject                 func(childComplexity int, projectID string) int
 		DeleteSubscriptions           func(childComplexity int, subscriptionIds []string) int
@@ -644,9 +644,9 @@ type ComplexityRoot struct {
 		MigrateVolume                 func(childComplexity int, volumeID string, spawnHostInput *SpawnHostInput) int
 		MoveAnnotationIssue           func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
 		OverrideTaskDependencies      func(childComplexity int, taskID string) int
-		PromoteVarsToRepo             func(childComplexity int, projectID *string, varNames []string, opts *PromoteVarsToRepoInput) int
+		PromoteVarsToRepo             func(childComplexity int, opts PromoteVarsToRepoInput) int
 		RemoveAnnotationIssue         func(childComplexity int, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) int
-		RemoveFavoriteProject         func(childComplexity int, identifier *string, opts *RemoveFavoriteProjectInput) int
+		RemoveFavoriteProject         func(childComplexity int, opts RemoveFavoriteProjectInput) int
 		RemoveItemFromCommitQueue     func(childComplexity int, commitQueueID string, issue string) int
 		RemovePublicKey               func(childComplexity int, keyName string) int
 		RemoveVolume                  func(childComplexity int, volumeID string) int
@@ -1672,12 +1672,12 @@ type MutationResolver interface {
 	AttachProjectToRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	CreateProject(ctx context.Context, project model.APIProjectRef, requestS3Creds *bool) (*model.APIProjectRef, error)
 	CopyProject(ctx context.Context, project data.CopyProjectOpts, requestS3Creds *bool) (*model.APIProjectRef, error)
-	DeactivateStepbackTask(ctx context.Context, projectID *string, buildVariantName *string, taskName *string, opts *DeactivateStepbackTaskInput) (bool, error)
-	DefaultSectionToRepo(ctx context.Context, projectID *string, section *ProjectSettingsSection, opts *DefaultSectionToRepoInput) (*string, error)
+	DeactivateStepbackTask(ctx context.Context, opts DeactivateStepbackTaskInput) (bool, error)
+	DefaultSectionToRepo(ctx context.Context, opts DefaultSectionToRepoInput) (*string, error)
 	DeleteProject(ctx context.Context, projectID string) (bool, error)
 	DetachProjectFromRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	ForceRepotrackerRun(ctx context.Context, projectID string) (bool, error)
-	PromoteVarsToRepo(ctx context.Context, projectID *string, varNames []string, opts *PromoteVarsToRepoInput) (bool, error)
+	PromoteVarsToRepo(ctx context.Context, opts PromoteVarsToRepoInput) (bool, error)
 	SaveProjectSettingsForSection(ctx context.Context, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
 	SaveRepoSettingsForSection(ctx context.Context, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) (*model.APIProjectSettings, error)
 	SetLastRevision(ctx context.Context, opts SetLastRevisionInput) (*SetLastRevisionPayload, error)
@@ -1696,11 +1696,11 @@ type MutationResolver interface {
 	ScheduleTasks(ctx context.Context, versionID string, taskIds []string) ([]*model.APITask, error)
 	SetTaskPriority(ctx context.Context, taskID string, priority int) (*model.APITask, error)
 	UnscheduleTask(ctx context.Context, taskID string) (*model.APITask, error)
-	AddFavoriteProject(ctx context.Context, identifier *string, opts *AddFavoriteProjectInput) (*model.APIProjectRef, error)
+	AddFavoriteProject(ctx context.Context, opts AddFavoriteProjectInput) (*model.APIProjectRef, error)
 	ClearMySubscriptions(ctx context.Context) (int, error)
 	CreatePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) ([]*model.APIPubKey, error)
 	DeleteSubscriptions(ctx context.Context, subscriptionIds []string) (int, error)
-	RemoveFavoriteProject(ctx context.Context, identifier *string, opts *RemoveFavoriteProjectInput) (*model.APIProjectRef, error)
+	RemoveFavoriteProject(ctx context.Context, opts RemoveFavoriteProjectInput) (*model.APIProjectRef, error)
 	RemovePublicKey(ctx context.Context, keyName string) ([]*model.APIPubKey, error)
 	SaveSubscription(ctx context.Context, subscription model.APISubscription) (bool, error)
 	UpdateParsleySettings(ctx context.Context, opts UpdateParsleySettingsInput) (*UpdateParsleySettingsPayload, error)
@@ -4214,7 +4214,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AddFavoriteProject(childComplexity, args["identifier"].(*string), args["opts"].(*AddFavoriteProjectInput)), true
+		return e.complexity.Mutation.AddFavoriteProject(childComplexity, args["opts"].(AddFavoriteProjectInput)), true
 
 	case "Mutation.attachProjectToNewRepo":
 		if e.complexity.Mutation.AttachProjectToNewRepo == nil {
@@ -4341,7 +4341,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DeactivateStepbackTask(childComplexity, args["projectId"].(*string), args["buildVariantName"].(*string), args["taskName"].(*string), args["opts"].(*DeactivateStepbackTaskInput)), true
+		return e.complexity.Mutation.DeactivateStepbackTask(childComplexity, args["opts"].(DeactivateStepbackTaskInput)), true
 
 	case "Mutation.defaultSectionToRepo":
 		if e.complexity.Mutation.DefaultSectionToRepo == nil {
@@ -4353,7 +4353,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DefaultSectionToRepo(childComplexity, args["projectId"].(*string), args["section"].(*ProjectSettingsSection), args["opts"].(*DefaultSectionToRepoInput)), true
+		return e.complexity.Mutation.DefaultSectionToRepo(childComplexity, args["opts"].(DefaultSectionToRepoInput)), true
 
 	case "Mutation.deleteDistro":
 		if e.complexity.Mutation.DeleteDistro == nil {
@@ -4509,7 +4509,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.PromoteVarsToRepo(childComplexity, args["projectId"].(*string), args["varNames"].([]string), args["opts"].(*PromoteVarsToRepoInput)), true
+		return e.complexity.Mutation.PromoteVarsToRepo(childComplexity, args["opts"].(PromoteVarsToRepoInput)), true
 
 	case "Mutation.removeAnnotationIssue":
 		if e.complexity.Mutation.RemoveAnnotationIssue == nil {
@@ -4533,7 +4533,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RemoveFavoriteProject(childComplexity, args["identifier"].(*string), args["opts"].(*RemoveFavoriteProjectInput)), true
+		return e.complexity.Mutation.RemoveFavoriteProject(childComplexity, args["opts"].(RemoveFavoriteProjectInput)), true
 
 	case "Mutation.removeItemFromCommitQueue":
 		if e.complexity.Mutation.RemoveItemFromCommitQueue == nil {
@@ -9967,24 +9967,15 @@ func (ec *executionContext) field_Mutation_addAnnotationIssue_args(ctx context.C
 func (ec *executionContext) field_Mutation_addFavoriteProject_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *string
-	if tmp, ok := rawArgs["identifier"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("identifier"))
-		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["identifier"] = arg0
-	var arg1 *AddFavoriteProjectInput
+	var arg0 AddFavoriteProjectInput
 	if tmp, ok := rawArgs["opts"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
-		arg1, err = ec.unmarshalOAddFavoriteProjectInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAddFavoriteProjectInput(ctx, tmp)
+		arg0, err = ec.unmarshalNAddFavoriteProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAddFavoriteProjectInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["opts"] = arg1
+	args["opts"] = arg0
 	return args, nil
 }
 
@@ -10242,121 +10233,30 @@ func (ec *executionContext) field_Mutation_createPublicKey_args(ctx context.Cont
 func (ec *executionContext) field_Mutation_deactivateStepbackTask_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *string
-	if tmp, ok := rawArgs["projectId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
-			if err != nil {
-				return nil, err
-			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireProjectAccess == nil {
-				return nil, errors.New("directive requireProjectAccess is not implemented")
-			}
-			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
-		}
-
-		tmp, err = directive1(ctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(*string); ok {
-			arg0 = data
-		} else if tmp == nil {
-			arg0 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp))
-		}
-	}
-	args["projectId"] = arg0
-	var arg1 *string
-	if tmp, ok := rawArgs["buildVariantName"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("buildVariantName"))
-		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["buildVariantName"] = arg1
-	var arg2 *string
-	if tmp, ok := rawArgs["taskName"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskName"))
-		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["taskName"] = arg2
-	var arg3 *DeactivateStepbackTaskInput
+	var arg0 DeactivateStepbackTaskInput
 	if tmp, ok := rawArgs["opts"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
-		arg3, err = ec.unmarshalODeactivateStepbackTaskInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeactivateStepbackTaskInput(ctx, tmp)
+		arg0, err = ec.unmarshalNDeactivateStepbackTaskInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeactivateStepbackTaskInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["opts"] = arg3
+	args["opts"] = arg0
 	return args, nil
 }
 
 func (ec *executionContext) field_Mutation_defaultSectionToRepo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *string
-	if tmp, ok := rawArgs["projectId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
-			if err != nil {
-				return nil, err
-			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireProjectAccess == nil {
-				return nil, errors.New("directive requireProjectAccess is not implemented")
-			}
-			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
-		}
-
-		tmp, err = directive1(ctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(*string); ok {
-			arg0 = data
-		} else if tmp == nil {
-			arg0 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp))
-		}
-	}
-	args["projectId"] = arg0
-	var arg1 *ProjectSettingsSection
-	if tmp, ok := rawArgs["section"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("section"))
-		arg1, err = ec.unmarshalOProjectSettingsSection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["section"] = arg1
-	var arg2 *DefaultSectionToRepoInput
+	var arg0 DefaultSectionToRepoInput
 	if tmp, ok := rawArgs["opts"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
-		arg2, err = ec.unmarshalODefaultSectionToRepoInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDefaultSectionToRepoInput(ctx, tmp)
+		arg0, err = ec.unmarshalNDefaultSectionToRepoInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDefaultSectionToRepoInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["opts"] = arg2
+	args["opts"] = arg0
 	return args, nil
 }
 
@@ -10712,56 +10612,15 @@ func (ec *executionContext) field_Mutation_overrideTaskDependencies_args(ctx con
 func (ec *executionContext) field_Mutation_promoteVarsToRepo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *string
-	if tmp, ok := rawArgs["projectId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
-			if err != nil {
-				return nil, err
-			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireProjectAccess == nil {
-				return nil, errors.New("directive requireProjectAccess is not implemented")
-			}
-			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
-		}
-
-		tmp, err = directive1(ctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(*string); ok {
-			arg0 = data
-		} else if tmp == nil {
-			arg0 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp))
-		}
-	}
-	args["projectId"] = arg0
-	var arg1 []string
-	if tmp, ok := rawArgs["varNames"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("varNames"))
-		arg1, err = ec.unmarshalOString2ᚕstringᚄ(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["varNames"] = arg1
-	var arg2 *PromoteVarsToRepoInput
+	var arg0 PromoteVarsToRepoInput
 	if tmp, ok := rawArgs["opts"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
-		arg2, err = ec.unmarshalOPromoteVarsToRepoInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPromoteVarsToRepoInput(ctx, tmp)
+		arg0, err = ec.unmarshalNPromoteVarsToRepoInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPromoteVarsToRepoInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["opts"] = arg2
+	args["opts"] = arg0
 	return args, nil
 }
 
@@ -10810,24 +10669,15 @@ func (ec *executionContext) field_Mutation_removeAnnotationIssue_args(ctx contex
 func (ec *executionContext) field_Mutation_removeFavoriteProject_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *string
-	if tmp, ok := rawArgs["identifier"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("identifier"))
-		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["identifier"] = arg0
-	var arg1 *RemoveFavoriteProjectInput
+	var arg0 RemoveFavoriteProjectInput
 	if tmp, ok := rawArgs["opts"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
-		arg1, err = ec.unmarshalORemoveFavoriteProjectInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRemoveFavoriteProjectInput(ctx, tmp)
+		arg0, err = ec.unmarshalNRemoveFavoriteProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRemoveFavoriteProjectInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["opts"] = arg1
+	args["opts"] = arg0
 	return args, nil
 }
 
@@ -29253,7 +29103,7 @@ func (ec *executionContext) _Mutation_deactivateStepbackTask(ctx context.Context
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DeactivateStepbackTask(rctx, fc.Args["projectId"].(*string), fc.Args["buildVariantName"].(*string), fc.Args["taskName"].(*string), fc.Args["opts"].(*DeactivateStepbackTaskInput))
+		return ec.resolvers.Mutation().DeactivateStepbackTask(rctx, fc.Args["opts"].(DeactivateStepbackTaskInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -29308,7 +29158,7 @@ func (ec *executionContext) _Mutation_defaultSectionToRepo(ctx context.Context, 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DefaultSectionToRepo(rctx, fc.Args["projectId"].(*string), fc.Args["section"].(*ProjectSettingsSection), fc.Args["opts"].(*DefaultSectionToRepoInput))
+		return ec.resolvers.Mutation().DefaultSectionToRepo(rctx, fc.Args["opts"].(DefaultSectionToRepoInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -29627,7 +29477,7 @@ func (ec *executionContext) _Mutation_promoteVarsToRepo(ctx context.Context, fie
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().PromoteVarsToRepo(rctx, fc.Args["projectId"].(*string), fc.Args["varNames"].([]string), fc.Args["opts"].(*PromoteVarsToRepoInput))
+		return ec.resolvers.Mutation().PromoteVarsToRepo(rctx, fc.Args["opts"].(PromoteVarsToRepoInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -31774,7 +31624,7 @@ func (ec *executionContext) _Mutation_addFavoriteProject(ctx context.Context, fi
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AddFavoriteProject(rctx, fc.Args["identifier"].(*string), fc.Args["opts"].(*AddFavoriteProjectInput))
+		return ec.resolvers.Mutation().AddFavoriteProject(rctx, fc.Args["opts"].(AddFavoriteProjectInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -32091,7 +31941,7 @@ func (ec *executionContext) _Mutation_removeFavoriteProject(ctx context.Context,
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RemoveFavoriteProject(rctx, fc.Args["identifier"].(*string), fc.Args["opts"].(*RemoveFavoriteProjectInput))
+		return ec.resolvers.Mutation().RemoveFavoriteProject(rctx, fc.Args["opts"].(RemoveFavoriteProjectInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -87789,6 +87639,11 @@ func (ec *executionContext) marshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋ
 	return v
 }
 
+func (ec *executionContext) unmarshalNAddFavoriteProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAddFavoriteProjectInput(ctx context.Context, v interface{}) (AddFavoriteProjectInput, error) {
+	res, err := ec.unmarshalInputAddFavoriteProjectInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNArch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐArch(ctx context.Context, v interface{}) (Arch, error) {
 	var res Arch
 	err := res.UnmarshalGQL(v)
@@ -88071,6 +87926,16 @@ func (ec *executionContext) unmarshalNCreateDistroInput2githubᚗcomᚋevergreen
 
 func (ec *executionContext) unmarshalNCreateProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectRef(ctx context.Context, v interface{}) (model.APIProjectRef, error) {
 	res, err := ec.unmarshalInputCreateProjectInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNDeactivateStepbackTaskInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeactivateStepbackTaskInput(ctx context.Context, v interface{}) (DeactivateStepbackTaskInput, error) {
+	res, err := ec.unmarshalInputDeactivateStepbackTaskInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNDefaultSectionToRepoInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDefaultSectionToRepoInput(ctx context.Context, v interface{}) (DefaultSectionToRepoInput, error) {
+	res, err := ec.unmarshalInputDefaultSectionToRepoInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -90446,6 +90311,11 @@ func (ec *executionContext) marshalNProjectSettingsSection2githubᚗcomᚋevergr
 	return v
 }
 
+func (ec *executionContext) unmarshalNPromoteVarsToRepoInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPromoteVarsToRepoInput(ctx context.Context, v interface{}) (PromoteVarsToRepoInput, error) {
+	res, err := ec.unmarshalInputPromoteVarsToRepoInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNProvider2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProvider(ctx context.Context, v interface{}) (Provider, error) {
 	var res Provider
 	err := res.UnmarshalGQL(v)
@@ -90518,6 +90388,11 @@ func (ec *executionContext) unmarshalNPublicKeyInput2githubᚗcomᚋevergreenᚑ
 func (ec *executionContext) unmarshalNPublicKeyInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPublicKeyInput(ctx context.Context, v interface{}) (*PublicKeyInput, error) {
 	res, err := ec.unmarshalInputPublicKeyInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNRemoveFavoriteProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRemoveFavoriteProjectInput(ctx context.Context, v interface{}) (RemoveFavoriteProjectInput, error) {
+	res, err := ec.unmarshalInputRemoveFavoriteProjectInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNRepoCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueueParams) graphql.Marshaler {
@@ -92043,14 +91918,6 @@ func (ec *executionContext) marshalOAbortInfo2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._AbortInfo(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOAddFavoriteProjectInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAddFavoriteProjectInput(ctx context.Context, v interface{}) (*AddFavoriteProjectInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputAddFavoriteProjectInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) marshalOAnnotation2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotation(ctx context.Context, sel ast.SelectionSet, v *model.APITaskAnnotation) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -92376,22 +92243,6 @@ func (ec *executionContext) unmarshalOContainerResourcesInput2ᚕgithubᚗcomᚋ
 		}
 	}
 	return res, nil
-}
-
-func (ec *executionContext) unmarshalODeactivateStepbackTaskInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeactivateStepbackTaskInput(ctx context.Context, v interface{}) (*DeactivateStepbackTaskInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputDeactivateStepbackTaskInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalODefaultSectionToRepoInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDefaultSectionToRepoInput(ctx context.Context, v interface{}) (*DefaultSectionToRepoInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputDefaultSectionToRepoInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalODependency2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependencyᚄ(ctx context.Context, sel ast.SelectionSet, v []*Dependency) graphql.Marshaler {
@@ -93745,22 +93596,6 @@ func (ec *executionContext) unmarshalOProjectSettingsInput2ᚖgithubᚗcomᚋeve
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalOProjectSettingsSection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx context.Context, v interface{}) (*ProjectSettingsSection, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var res = new(ProjectSettingsSection)
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOProjectSettingsSection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx context.Context, sel ast.SelectionSet, v *ProjectSettingsSection) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return v
-}
-
 func (ec *executionContext) marshalOProjectVars2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectVars(ctx context.Context, sel ast.SelectionSet, v model.APIProjectVars) graphql.Marshaler {
 	return ec._ProjectVars(ctx, sel, &v)
 }
@@ -93777,27 +93612,11 @@ func (ec *executionContext) unmarshalOProjectVarsInput2githubᚗcomᚋevergreen�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalOPromoteVarsToRepoInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPromoteVarsToRepoInput(ctx context.Context, v interface{}) (*PromoteVarsToRepoInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputPromoteVarsToRepoInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) unmarshalOPublicKeyInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPublicKeyInput(ctx context.Context, v interface{}) (*PublicKeyInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputPublicKeyInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalORemoveFavoriteProjectInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRemoveFavoriteProjectInput(ctx context.Context, v interface{}) (*RemoveFavoriteProjectInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputRemoveFavoriteProjectInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

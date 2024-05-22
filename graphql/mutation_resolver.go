@@ -520,14 +520,7 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 }
 
 // DeactivateStepbackTask is the resolver for the deactivateStepbackTask field.
-func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID *string, buildVariantName *string, taskName *string, opts *DeactivateStepbackTaskInput) (bool, error) {
-	if opts == nil {
-		opts = &DeactivateStepbackTaskInput{
-			ProjectID:        utility.FromStringPtr(projectID),
-			BuildVariantName: utility.FromStringPtr(buildVariantName),
-			TaskName:         utility.FromStringPtr(taskName),
-		}
-	}
+func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, opts DeactivateStepbackTaskInput) (bool, error) {
 	usr := mustHaveUser(ctx)
 	if err := task.DeactivateStepbackTask(opts.ProjectID, opts.BuildVariantName, opts.TaskName, usr.Username()); err != nil {
 		return false, InternalServerError.Send(ctx, err.Error())
@@ -536,13 +529,7 @@ func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, projectID
 }
 
 // DefaultSectionToRepo is the resolver for the defaultSectionToRepo field.
-func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, projectID *string, section *ProjectSettingsSection, opts *DefaultSectionToRepoInput) (*string, error) {
-	if opts == nil {
-		opts = &DefaultSectionToRepoInput{
-			ProjectID: utility.FromStringPtr(projectID),
-			Section:   *section,
-		}
-	}
+func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, opts DefaultSectionToRepoInput) (*string, error) {
 	usr := mustHaveUser(ctx)
 	if err := model.DefaultSectionToRepo(opts.ProjectID, model.ProjectPageSection(opts.Section), usr.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error defaulting to repo for section: %s", err.Error()))
@@ -594,13 +581,7 @@ func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID st
 }
 
 // PromoteVarsToRepo is the resolver for the promoteVarsToRepo field.
-func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, projectID *string, varNames []string, opts *PromoteVarsToRepoInput) (bool, error) {
-	if opts == nil {
-		opts = &PromoteVarsToRepoInput{
-			ProjectID: utility.FromStringPtr(projectID),
-			VarNames:  varNames,
-		}
-	}
+func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, opts PromoteVarsToRepoInput) (bool, error) {
 	usr := mustHaveUser(ctx)
 	if err := data.PromoteVarsToRepo(opts.ProjectID, opts.VarNames, usr.Username()); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", opts.ProjectID, err.Error()))
@@ -1116,12 +1097,7 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 }
 
 // AddFavoriteProject is the resolver for the addFavoriteProject field.
-func (r *mutationResolver) AddFavoriteProject(ctx context.Context, identifier *string, opts *AddFavoriteProjectInput) (*restModel.APIProjectRef, error) {
-	if opts == nil {
-		opts = &AddFavoriteProjectInput{
-			ProjectIdentifier: utility.FromStringPtr(identifier),
-		}
-	}
+func (r *mutationResolver) AddFavoriteProject(ctx context.Context, opts AddFavoriteProjectInput) (*restModel.APIProjectRef, error) {
 	p, err := model.FindBranchProjectRef(opts.ProjectIdentifier)
 	if err != nil || p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find project '%s'", opts.ProjectIdentifier))
@@ -1178,12 +1154,7 @@ func (r *mutationResolver) DeleteSubscriptions(ctx context.Context, subscription
 }
 
 // RemoveFavoriteProject is the resolver for the removeFavoriteProject field.
-func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, identifier *string, opts *RemoveFavoriteProjectInput) (*restModel.APIProjectRef, error) {
-	if opts == nil {
-		opts = &RemoveFavoriteProjectInput{
-			ProjectIdentifier: utility.FromStringPtr(identifier),
-		}
-	}
+func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, opts RemoveFavoriteProjectInput) (*restModel.APIProjectRef, error) {
 	p, err := model.FindBranchProjectRef(opts.ProjectIdentifier)
 	if err != nil || p == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s", opts.ProjectIdentifier))
