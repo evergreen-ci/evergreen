@@ -586,11 +586,7 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	}
 	taskLogDir := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
 	grip.Error(errors.Wrapf(os.RemoveAll(taskLogDir), "removing task log directory '%s'", taskLogDir))
-	if tc.taskConfig.Project.Loggers != nil {
-		tc.logger, err = a.makeLoggerProducer(ctx, tc, tc.taskConfig.Project.Loggers, "")
-	} else {
-		tc.logger, err = a.makeLoggerProducer(ctx, tc, &model.LoggerConfig{}, "")
-	}
+	tc.logger, err = a.makeLoggerProducer(ctx, tc, "")
 	if err != nil {
 		return errors.Wrap(err, "making the logger producer")
 	}

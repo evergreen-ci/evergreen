@@ -4015,52 +4015,6 @@ func TestDuplicateTaskInBV(t *testing.T) {
 	assert.Contains(errs[0].Message, "task 't1' in 'bv' is listed more than once")
 }
 
-func TestLoggerConfig(t *testing.T) {
-	assert := assert.New(t)
-	yml := `
-loggers:
-  agent:
-  - type: splunk
-    splunk_token: idk
-  task:
-  - type: somethingElse
-tasks:
-- name: task_1
-  commands:
-  - command: myCommand
-    display_name: foo
-    loggers:
-      system:
-      - type: commandLogger
-`
-	project := &model.Project{}
-	ctx := context.Background()
-	pp, err := model.LoadProjectInto(ctx, []byte(yml), nil, "", project)
-	assert.NoError(err)
-	assert.NotNil(pp)
-	errs := checkTasks(project)
-	assert.Contains(errs.String(), "error in project-level logger config: invalid agent logger config: Splunk logger requires a server URL")
-	assert.Contains(errs.String(), "invalid task logger config: 'somethingElse' is not a valid log sender")
-	assert.Contains(errs.String(), "error in logger config for command foo in task task_1: invalid system logger config: 'commandLogger' is not a valid log sender")
-
-	// no loggers specified should not error
-	yml = `
-repo: asdf
-tasks:
-- name: task_1
-  commands:
-  - command: myCommand
-  display_name: foo
-    `
-
-	project = &model.Project{}
-	pp, err = model.LoadProjectInto(ctx, []byte(yml), nil, "", project)
-	assert.NoError(err)
-	assert.NotNil(pp)
-	errs = checkLoggerConfig(&project.Tasks[0])
-	assert.Len(errs, 0)
-}
-
 func TestCheckProjectConfigurationIsValid(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -35,14 +35,6 @@ var (
 	ParserProjectModulesKey           = bsonutil.MustHaveTag(ParserProject{}, "Modules")
 	ParserProjectContainersKey        = bsonutil.MustHaveTag(ParserProject{}, "Containers")
 	ParserProjectBuildVariantsKey     = bsonutil.MustHaveTag(ParserProject{}, "BuildVariants")
-	ParserProjectFunctionsKey         = bsonutil.MustHaveTag(ParserProject{}, "Functions")
-	ParserProjectTaskGroupsKey        = bsonutil.MustHaveTag(ParserProject{}, "TaskGroups")
-	ParserProjectTasksKey             = bsonutil.MustHaveTag(ParserProject{}, "Tasks")
-	ParserProjectExecTimeoutSecsKey   = bsonutil.MustHaveTag(ParserProject{}, "ExecTimeoutSecs")
-	ParserProjectTimeoutSecsKey       = bsonutil.MustHaveTag(ParserProject{}, "TimeoutSecs")
-	ParserProjectLoggersKey           = bsonutil.MustHaveTag(ParserProject{}, "Loggers")
-	ParserProjectAxesKey              = bsonutil.MustHaveTag(ParserProject{}, "Axes")
-	ParserProjectCreateTimeKey        = bsonutil.MustHaveTag(ParserProject{}, "CreateTime")
 )
 
 // ParserProjectFindOneById returns the parser project from the DB for the

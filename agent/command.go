@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
-	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -165,24 +164,6 @@ func (a *Agent) blockToLegacyName(block command.BlockType) string {
 func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandInfo model.PluginCommandConf,
 	cmds []command.Command, options runCommandsOptions) error {
 
-	var err error
-	var logger client.LoggerProducer
-	// if there is a command-specific logger, make it here otherwise use the task-level logger
-	if commandInfo.Loggers == nil {
-		logger = tc.logger
-	} else {
-		logger, err = a.makeLoggerProducer(ctx, tc, commandInfo.Loggers, getCommandNameForFileLogger(commandInfo))
-		if err != nil {
-			return errors.Wrap(err, "making command logger")
-		}
-		defer func() {
-			// If the logger is a command-specific logger, when the command
-			// finishes, the loggers should have no more logs to send. Closing
-			// it ensure that the command logger flushes all logs and cleans up.
-			grip.Error(errors.Wrap(logger.Close(), "closing command logger"))
-		}()
-	}
-
 	if commandInfo.Function != "" {
 		var commandSetSpan trace.Span
 		ctx, commandSetSpan = a.tracer.Start(ctx, "function", trace.WithAttributes(
@@ -213,14 +194,14 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 
 		cmd.SetJasperManager(a.jasper)
 
-		if err := a.runCommand(ctx, tc, logger, commandInfo, cmd, options); err != nil {
+		if err := a.runCommand(ctx, tc, commandInfo, cmd, options); err != nil {
 			commandSpan.SetStatus(codes.Error, "running command")
 			commandSpan.RecordError(err, trace.WithAttributes(tc.taskConfig.TaskAttributes()...))
 			commandSpan.End()
 			if cmd.RetryOnFailure() {
-				logger.Task().Infof("Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts)
+				tc.logger.Task().Infof("Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts)
 				if restartErr := a.comm.MarkFailedTaskToRestart(ctx, tc.task); restartErr != nil {
-					logger.Task().Errorf("Encountered error marking task to restart upon completion: %s", restartErr)
+					tc.logger.Task().Errorf("Encountered error marking task to restart upon completion: %s", restartErr)
 				}
 			}
 			return errors.Wrap(err, "running command")
@@ -232,7 +213,7 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 
 // runCommand runs a single command, which is either a standalone command or a
 // single sub-command within a function.
-func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.LoggerProducer, commandInfo model.PluginCommandConf,
+func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo model.PluginCommandConf,
 	cmd command.Command, options runCommandsOptions) error {
 	prevExp := map[string]string{}
 	for key, val := range commandInfo.Vars {
@@ -296,7 +277,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 			cmdChan <- pErr
 		}()
 
-		cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
+		cmdChan <- cmd.Execute(ctx, a.comm, tc.logger, tc.taskConfig)
 	}()
 
 	select {
@@ -334,21 +315,6 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, logger client.L
 	}
 
 	return nil
-}
-
-// getCommandNameForFileLogger gets the name of the command that should be used
-// when the file logger is being used.
-func getCommandNameForFileLogger(commandInfo model.PluginCommandConf) string {
-	if commandInfo.DisplayName != "" {
-		return commandInfo.DisplayName
-	}
-	if commandInfo.Function != "" {
-		return commandInfo.Function
-	}
-	if commandInfo.Command != "" {
-		return commandInfo.Command
-	}
-	return "unknown function"
 }
 
 // endTaskSyncCommands returns the commands to sync the task to S3 if it was

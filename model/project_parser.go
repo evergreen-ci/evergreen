@@ -105,7 +105,6 @@ type ParserProject struct {
 	Tasks              []parserTask               `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
 	ExecTimeoutSecs    *int                       `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
 	TimeoutSecs        *int                       `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
-	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	CreateTime         time.Time                  `yaml:"create_time,omitempty" bson:"create_time,omitempty"`
 
 	// Matrix code
@@ -1011,7 +1010,6 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		Functions:          pp.Functions,
 		ExecTimeoutSecs:    utility.FromIntPtr(pp.ExecTimeoutSecs),
 		TimeoutSecs:        utility.FromIntPtr(pp.TimeoutSecs),
-		Loggers:            pp.Loggers,
 		NumIncludes:        len(pp.Include),
 	}
 	catcher := grip.NewBasicCatcher()

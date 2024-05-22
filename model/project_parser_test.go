@@ -1938,34 +1938,6 @@ buildvariants:
 	assert.Nil(t, proj.BuildVariants[2].Tasks[0].GitTagOnly)
 }
 
-func TestLoggerConfig(t *testing.T) {
-	assert := assert.New(t)
-	yml := `
-loggers:
-  agent:
-    - type: something
-      splunk_token: idk
-    - type: somethingElse
-tasks:
-- name: task_1
-  commands:
-  - command: myCommand
-    loggers:
-      system:
-        - type: commandLogger
-`
-
-	proj := &Project{}
-	ctx := context.Background()
-	_, err := LoadProjectInto(ctx, []byte(yml), nil, "id", proj)
-	assert.NotNil(proj)
-	assert.Nil(err)
-	assert.Equal("something", proj.Loggers.Agent[0].Type)
-	assert.Equal("idk", proj.Loggers.Agent[0].SplunkToken)
-	assert.Equal("somethingElse", proj.Loggers.Agent[1].Type)
-	assert.Equal("commandLogger", proj.Tasks[0].Commands[0].Loggers.System[0].Type)
-}
-
 func TestParseOomTracker(t *testing.T) {
 	yml := `
 tasks:
@@ -2441,28 +2413,15 @@ func TestMergeUnordered(t *testing.T) {
 		Ignore: parserStringSlice{
 			"a",
 		},
-		Loggers: &LoggerConfig{
-			Agent:  []LogOpts{{Type: EvergreenLogSender}},
-			System: []LogOpts{{Type: EvergreenLogSender}},
-			Task:   []LogOpts{{Type: EvergreenLogSender}},
-		},
 	}
 
 	add := &ParserProject{
 		Ignore: parserStringSlice{
 			"b",
 		},
-		Loggers: &LoggerConfig{
-			Agent:  []LogOpts{{LogDirectory: "a"}},
-			System: []LogOpts{{LogDirectory: "a"}},
-			Task:   []LogOpts{{LogDirectory: "a"}},
-		},
 	}
 	main.mergeUnordered(add)
 	assert.Equal(t, len(main.Ignore), 2)
-	assert.Equal(t, len(main.Loggers.Agent), 2)
-	assert.Equal(t, len(main.Loggers.System), 2)
-	assert.Equal(t, len(main.Loggers.Task), 2)
 }
 
 func TestMergeOrderedUnique(t *testing.T) {
