@@ -1,5 +1,5 @@
 mutation {
-  removeFavoriteProject(identifier: "buildhost-test") {
+  removeFavoriteProject(opts: { projectIdentifier : "buildhost-test" }) {
     identifier
     repo
     owner

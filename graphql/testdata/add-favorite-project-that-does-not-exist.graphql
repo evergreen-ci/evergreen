@@ -1,5 +1,5 @@
 mutation {
-  addFavoriteProject(identifier: "i-dont-exist") {
+  addFavoriteProject(opts: { projectIdentifier: "i-dont-exist" }) {
     identifier
     repo
     owner
