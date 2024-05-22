@@ -410,7 +410,6 @@ type TaskFiles struct {
 // TaskFilterOptions defines the parameters that are used when fetching tasks from a Version.
 type TaskFilterOptions struct {
 	BaseStatuses               []string     `json:"baseStatuses,omitempty"`
-	IncludeEmptyActivation     *bool        `json:"includeEmptyActivation,omitempty"`
 	IncludeNeverActivatedTasks *bool        `json:"includeNeverActivatedTasks,omitempty"`
 	Limit                      *int         `json:"limit,omitempty"`
 	Page                       *int         `json:"page,omitempty"`
