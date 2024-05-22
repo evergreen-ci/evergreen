@@ -657,7 +657,7 @@ func (j *patchIntentProcessor) buildTasksAndVariants(patchDoc *patch.Patch, proj
 // setToFilteredTasks sets the tasks/variants to a previous patch's activated tasks (filtered on failures if requested)
 // and adds dependencies and task group tasks as needed.
 func setToFilteredTasks(patchDoc, reusePatch *patch.Patch, project *model.Project, failedOnly bool) error {
-	activatedTasks, err := filterToActiveForReuse(reusePatch, project)
+	activatedTasks, err := filterToActiveForReuse(reusePatch)
 	if err != nil {
 		return errors.Wrap(err, "filtering to activated tasks")
 	}
@@ -673,11 +673,11 @@ func setToFilteredTasks(patchDoc, reusePatch *patch.Patch, project *model.Projec
 		}
 	}
 	filteredTasks := activatedTasksDisplayNames
-
-	patchDoc.Tasks = filteredTasks
+	if failedOnly {
+		filteredTasks = failedTaskDisplayNames
+	}
 
 	filteredVariantTasks := []patch.VariantTasks{}
-	allFailedPlusNeededTasks := failedTaskDisplayNames
 	for _, vt := range reusePatch.VariantsTasks {
 		// Limit it to tasks that are failed or who have failed tasks depending on them.
 		// we only need to add dependencies and task group tasks for failed tasks because otherwise
@@ -687,8 +687,7 @@ func setToFilteredTasks(patchDoc, reusePatch *patch.Patch, project *model.Projec
 			if err != nil {
 				return errors.Wrap(err, "getting dependencies for activated tasks")
 			}
-			allFailedPlusNeededTasks = append(allFailedPlusNeededTasks, failedPlusNeeded...)
-			filteredTasks = allFailedPlusNeededTasks
+			filteredTasks = append(filteredTasks, failedPlusNeeded...)
 		}
 
 		variantTask := vt
@@ -702,22 +701,17 @@ func setToFilteredTasks(patchDoc, reusePatch *patch.Patch, project *model.Projec
 
 	}
 
-	if failedOnly {
-		patchDoc.Tasks = allFailedPlusNeededTasks
-	}
+	patchDoc.Tasks = filteredTasks
 	patchDoc.VariantsTasks = filteredVariantTasks
 
 	return nil
 }
 
-func filterToActiveForReuse(reusePatch *patch.Patch, project *model.Project) ([]task.Task, error) {
-	reuseTasks, reuseVariants := getReuseTasksAndVariants(reusePatch, project)
+func filterToActiveForReuse(reusePatch *patch.Patch) ([]task.Task, error) {
 	query := db.Query(bson.M{
-		task.VersionKey:      reusePatch.Version,
-		task.DisplayNameKey:  bson.M{"$in": reuseTasks},
-		task.ActivatedKey:    true,
-		task.DisplayOnlyKey:  bson.M{"$ne": true},
-		task.BuildVariantKey: bson.M{"$in": reuseVariants},
+		task.VersionKey:     reusePatch.Version,
+		task.ActivatedKey:   true,
+		task.DisplayOnlyKey: bson.M{"$ne": true},
 	})
 	activatedTasks, err := task.FindAll(query)
 	if err != nil {
@@ -725,33 +719,6 @@ func filterToActiveForReuse(reusePatch *patch.Patch, project *model.Project) ([]
 	}
 
 	return activatedTasks, nil
-
-}
-
-// getReuseTasksAndVariants returns the tasks and variants from VariantsTasks instead of patch.Tasks and patch.BuildVariants
-// Those are used because they already include regex tasks and variants as well as dependencies and task group tasks.
-func getReuseTasksAndVariants(reusePatch *patch.Patch, project *model.Project) ([]string, []string) {
-	reuseTasks := []string{}
-	reuseVariants := []string{}
-
-	for _, vt := range reusePatch.VariantsTasks {
-		tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
-		for _, t := range vt.Tasks {
-			if utility.StringSliceContains(tasksInProjectVariant, t) {
-				reuseTasks = append(reuseTasks, t)
-			}
-		}
-		reuseVariants = append(reuseVariants, vt.Variant)
-		for _, displayTask := range vt.DisplayTasks {
-			for _, t := range displayTask.ExecTasks {
-				if utility.StringSliceContains(tasksInProjectVariant, t) {
-					reuseTasks = append(reuseTasks, t)
-				}
-			}
-		}
-	}
-
-	return reuseTasks, reuseVariants
 
 }
 
@@ -819,8 +786,7 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 		return nil
 	}
 
-	err = setToFilteredTasks(patchDoc, reusePatch, project, failedOnly)
-	if err != nil {
+	if err = setToFilteredTasks(patchDoc, reusePatch, project, failedOnly); err != nil {
 		return errors.Wrapf(err, "filtering tasks for '%s'", patchId)
 	}
 
