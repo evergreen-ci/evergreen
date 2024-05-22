@@ -350,7 +350,6 @@ func MockConfig() *evergreen.Settings {
 			LargeParserProjectsDisabled:     true,
 			HostInitDisabled:                true,
 			PodInitDisabled:                 true,
-			S3BinaryDownloadsDisabled:       true,
 			MonitorDisabled:                 true,
 			AlertsDisabled:                  true,
 			AgentStartDisabled:              true,

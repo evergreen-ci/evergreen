@@ -67,12 +67,7 @@ func (h *podProvisioningScript) Run(ctx context.Context) gimlet.Responder {
 		"secs_since_pod_creation":   time.Since(p.TimeInfo.Starting).Seconds(),
 	})
 
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return gimlet.NewTextInternalErrorResponse(errors.Wrap(err, "getting service flags"))
-	}
-
-	script := h.agentScript(p, !flags.S3BinaryDownloadsDisabled)
+	script := h.agentScript(p)
 
 	return gimlet.NewTextResponse(script)
 }
@@ -80,8 +75,8 @@ func (h *podProvisioningScript) Run(ctx context.Context) gimlet.Responder {
 // agentScript returns the script to provision and run the agent in the pod's
 // container. On Linux, this is a shell script. On Windows, this is a cmd.exe
 // batch script.
-func (h *podProvisioningScript) agentScript(p *pod.Pod, downloadFromS3 bool) string {
-	scriptCmds := []string{h.downloadAgentCommands(p, downloadFromS3)}
+func (h *podProvisioningScript) agentScript(p *pod.Pod) string {
+	scriptCmds := []string{h.downloadAgentCommands(p)}
 	if p.TaskContainerCreationOpts.OS == pod.OSLinux {
 		scriptCmds = append(scriptCmds, fmt.Sprintf("chmod +x %s", h.clientName(p)))
 	}
@@ -124,7 +119,7 @@ func (h *podProvisioningScript) agentCommand(p *pod.Pod) []string {
 
 // downloadAgentCommands returns the commands to download the agent in the pod's
 // container.
-func (h *podProvisioningScript) downloadAgentCommands(p *pod.Pod, downloadFromS3 bool) string {
+func (h *podProvisioningScript) downloadAgentCommands(p *pod.Pod) string {
 	const (
 		curlDefaultNumRetries = 10
 		curlDefaultMaxSecs    = 100
@@ -136,7 +131,7 @@ func (h *podProvisioningScript) downloadAgentCommands(p *pod.Pod, downloadFromS3
 		curlExecutable = curlExecutable + ".exe"
 	}
 
-	if downloadFromS3 && h.env.ClientConfig().S3URLPrefix != "" {
+	if h.env.ClientConfig().S3URLPrefix != "" {
 		// Attempt to download the agent from S3, but fall back to downloading
 		// from the app server if it fails.
 		// Include -f to return an error code from curl if the HTTP request

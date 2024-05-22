@@ -2017,7 +2017,6 @@ type APIServiceFlags struct {
 	TaskDispatchDisabled            bool `json:"task_dispatch_disabled"`
 	HostInitDisabled                bool `json:"host_init_disabled"`
 	PodInitDisabled                 bool `json:"pod_init_disabled"`
-	S3BinaryDownloadsDisabled       bool `json:"s3_binary_downloads_disabled"`
 	LargeParserProjectsDisabled     bool `json:"large_parser_projects_disabled"`
 	MonitorDisabled                 bool `json:"monitor_disabled"`
 	AlertsDisabled                  bool `json:"alerts_disabled"`
@@ -2329,7 +2328,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.TaskDispatchDisabled = v.TaskDispatchDisabled
 		as.HostInitDisabled = v.HostInitDisabled
 		as.PodInitDisabled = v.PodInitDisabled
-		as.S3BinaryDownloadsDisabled = v.S3BinaryDownloadsDisabled
 		as.LargeParserProjectsDisabled = v.LargeParserProjectsDisabled
 		as.MonitorDisabled = v.MonitorDisabled
 		as.AlertsDisabled = v.AlertsDisabled
@@ -2374,7 +2372,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		TaskDispatchDisabled:            as.TaskDispatchDisabled,
 		HostInitDisabled:                as.HostInitDisabled,
 		PodInitDisabled:                 as.PodInitDisabled,
-		S3BinaryDownloadsDisabled:       as.S3BinaryDownloadsDisabled,
 		LargeParserProjectsDisabled:     as.LargeParserProjectsDisabled,
 		MonitorDisabled:                 as.MonitorDisabled,
 		AlertsDisabled:                  as.AlertsDisabled,

@@ -50,16 +50,13 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	app.AddMiddleware(gimlet.NewStatic("", http.Dir(filepath.Join(uis.Home, "public"))))
 
 	clients := gimlet.NewApp()
-	if !uis.env.Settings().ServiceFlags.S3BinaryDownloadsDisabled && uis.env.ClientConfig().S3URLPrefix != "" {
+	if uis.env.ClientConfig().S3URLPrefix != "" {
 		clients.NoVersions = true
 		clients.AddPrefixRoute("/clients").Get().Head().Handler(func(w http.ResponseWriter, r *http.Request) {
 			path := strings.TrimPrefix(r.URL.Path, "/clients")
 			path = uis.env.ClientConfig().S3URLPrefix + path
 			http.Redirect(w, r, path, http.StatusTemporaryRedirect)
 		})
-	} else {
-		clients.AddMiddleware(gimlet.NewGzipDefault())
-		clients.AddMiddleware(gimlet.NewStatic("/clients", http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory))))
 	}
 
 	// in the future, we'll make the gimlet app here, but we

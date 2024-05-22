@@ -31,19 +31,6 @@ func TestPodProvisioningScript(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Since the tests depend on the global service flags, reset it to its
-	// initial state afterwards.
-	originalFlags, err := evergreen.GetServiceFlags(ctx)
-	require.NoError(t, err)
-	if originalFlags.S3BinaryDownloadsDisabled {
-		defer func() {
-			assert.NoError(t, originalFlags.Set(ctx))
-		}()
-		s3ClientDownloadsEnabled := *originalFlags
-		s3ClientDownloadsEnabled.S3BinaryDownloadsDisabled = false
-		require.NoError(t, s3ClientDownloadsEnabled.Set(ctx))
-	}
-
 	getRoute := func(t *testing.T, env evergreen.Environment, podID string) *podProvisioningScript {
 		rh := makePodProvisioningScript(env)
 		r, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
