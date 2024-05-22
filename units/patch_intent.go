@@ -654,36 +654,36 @@ func (j *patchIntentProcessor) buildTasksAndVariants(patchDoc *patch.Patch, proj
 	return nil
 }
 
-// setToFilteredTasks sets the tasks/variants based on a previous patch filters them to activated tasks and
-// based on the failedOnly flag. It adds dependencies and task group tasks as needed.
+// setToFilteredTasks sets the tasks/variants to a previous patch's activated tasks (filtered on failures if requested)
+// and adds dependencies and task group tasks as needed.
 func setToFilteredTasks(patchDoc, reusePatch *patch.Patch, project *model.Project, failedOnly bool) error {
 	activatedTasks, err := filterToActiveForReuse(reusePatch, project)
 	if err != nil {
-		return errors.Wrap(err, "getting dependencies for activated tasks")
+		return errors.Wrap(err, "filtering to activated tasks")
 	}
 
-	activatedTasksDispNames := []string{}
+	activatedTasksDisplayNames := []string{}
 	failedTaskDisplayNames := []string{}
 	failedTasks := []task.Task{}
 	for _, t := range activatedTasks {
-		activatedTasksDispNames = append(activatedTasksDispNames, t.DisplayName)
+		activatedTasksDisplayNames = append(activatedTasksDisplayNames, t.DisplayName)
 		if failedOnly && evergreen.IsFailedTaskStatus(t.Status) {
 			failedTasks = append(failedTasks, t)
 			failedTaskDisplayNames = append(failedTaskDisplayNames, t.DisplayName)
 		}
 	}
-	filteredTasks := activatedTasksDispNames
+	filteredTasks := activatedTasksDisplayNames
 
 	patchDoc.Tasks = filteredTasks
 
 	filteredVariantTasks := []patch.VariantTasks{}
 	allFailedPlusNeededTasks := failedTaskDisplayNames
 	for _, vt := range reusePatch.VariantsTasks {
-		// limit it to tasks that are failed or who have failed tasks depending on them.
+		// Limit it to tasks that are failed or who have failed tasks depending on them.
 		// we only need to add dependencies and task group tasks for failed tasks because otherwise
 		// we can rely on them being there from the previous patch.
 		if failedOnly {
-			failedPlusNeeded, err := AddTasksNeededByFailedForReuse(failedTasks, failedTaskDisplayNames, project, vt)
+			failedPlusNeeded, err := addTasksNeededByFailedForReuse(failedTasks, failedTaskDisplayNames, project, vt)
 			if err != nil {
 				return errors.Wrap(err, "getting dependencies for activated tasks")
 			}
@@ -694,6 +694,7 @@ func setToFilteredTasks(patchDoc, reusePatch *patch.Patch, project *model.Projec
 		variantTask := vt
 		variantTask.Tasks = utility.StringSliceIntersection(filteredTasks, vt.Tasks)
 
+		// only add build variants and variant tasks if there are tasks in them that are being reused
 		if len(variantTask.Tasks) != 0 || len(variantTask.DisplayTasks) != 0 {
 			filteredVariantTasks = append(filteredVariantTasks, variantTask)
 			patchDoc.BuildVariants = append(patchDoc.BuildVariants, vt.Variant)
@@ -754,8 +755,8 @@ func getReuseTasksAndVariants(reusePatch *patch.Patch, project *model.Project) (
 
 }
 
-// AddTasksNeededByFailedForReuse add tasks that failed tasks need to run including dependencies and tasks from single host task groups.
-func AddTasksNeededByFailedForReuse(failedTasks []task.Task, failedTaskDisplayNames []string, project *model.Project, vt patch.VariantTasks) ([]string, error) {
+// addTasksNeededByFailedForReuse add tasks that failed tasks need to run including dependencies and tasks from single host task groups.
+func addTasksNeededByFailedForReuse(failedTasks []task.Task, failedTaskDisplayNames []string, project *model.Project, vt patch.VariantTasks) ([]string, error) {
 	// only add tasks if they are in the current project definition
 	tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
 	tasksToAdd := []string{}
