@@ -470,7 +470,6 @@ func (r *queryResolver) ProjectEvents(ctx context.Context, projectIdentifier str
 
 // ProjectSettings is the resolver for the projectSettings field.
 func (r *queryResolver) ProjectSettings(ctx context.Context, projectIdentifier string) (*restModel.APIProjectSettings, error) {
-
 	projectRef, err := model.FindBranchProjectRef(projectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
