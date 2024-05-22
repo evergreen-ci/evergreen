@@ -468,6 +468,21 @@ func (i SleepScheduleInfo) IsZero() bool {
 		!i.IsBetaTester
 }
 
+// makeDefaultSleepSchedule creates a default sleep schedule for a host in the
+// given timezone. This is the sleep schedule used if the user does not
+// explicitly set one.
+func makeDefaultSleepSchedule(tz string) SleepScheduleInfo {
+	if tz == "" {
+		tz = evergreen.DefaultUserTimeZone
+	}
+	return SleepScheduleInfo{
+		WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
+		DailyStartTime:   "08:00",
+		DailyStopTime:    "20:00",
+		TimeZone:         tz,
+	}
+}
+
 type newParentsNeededParams struct {
 	numExistingParents, numContainersNeeded, numExistingContainers, maxContainers int
 }
@@ -3159,7 +3174,25 @@ func makeExpireOnTag(expireOn string) Tag {
 
 // MarkShouldNotExpire marks a host as one that should not expire
 // and updates its expiration time to avoid early reaping.
-func (h *Host) MarkShouldNotExpire(ctx context.Context, expireOnValue string) error {
+func (h *Host) MarkShouldNotExpire(ctx context.Context, expireOnValue, userTimeZone string) error {
+	if h.SleepSchedule.Validate() != nil {
+		// If the host doesn't have a sleep schedule or has an invalid one, set
+		// it to the default sleep schedule. This is a safety measure to ensure
+		// that it's impossible for a host to be made unexpirable without having
+		// some kind of sleep schedule in place.
+		// kim: TODO: add test
+		schedule := makeDefaultSleepSchedule(userTimeZone)
+		grip.Info(message.Fields{
+			"message":            "host is being marked unexpirable but has an invalid sleep schedule, setting it to the default sleep schedule",
+			"host_id":            h.Id,
+			"started_by":         h.StartedBy,
+			"old_sleep_schedule": h.SleepSchedule,
+			"new_sleep_schedule": schedule,
+		})
+		if err := h.UpdateSleepSchedule(ctx, schedule); err != nil {
+			return errors.Wrap(err, "setting default sleep schedule for host being marked unexpirable")
+		}
+	}
 	h.NoExpiration = true
 	h.ExpirationTime = time.Now().Add(evergreen.SpawnHostNoExpirationDuration)
 	h.addTag(makeExpireOnTag(expireOnValue), true)

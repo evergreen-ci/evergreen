@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -593,10 +594,14 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 	}
 
 	if noExpiration {
-		// kim: TODO: set default sleep schedule if the host sleep schedule is
-		// zero and is not permanently exempt. Make sure this has no effect on a
-		// host until they opt into the beta/wait for full rollout.
-		if err := h.MarkShouldNotExpire(ctx, expireOnValue); err != nil {
+		u, err := user.FindOneById(h.StartedBy)
+		if err != nil {
+			return errors.Wrapf(err, "finding host's user '%s'", h.StartedBy)
+		}
+		if u == nil {
+			return errors.Errorf("user '%s' not found", h.StartedBy)
+		}
+		if err := h.MarkShouldNotExpire(ctx, expireOnValue, u.Settings.Timezone); err != nil {
 			return errors.Wrapf(err, "marking host should not expire in DB for host '%s'", h.Id)
 		}
 
