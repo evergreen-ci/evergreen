@@ -1005,8 +1005,8 @@ type ComplexityRoot struct {
 		Patch                    func(childComplexity int, patchID string) int
 		Pod                      func(childComplexity int, podID string) int
 		Project                  func(childComplexity int, projectIdentifier string) int
-		ProjectEvents            func(childComplexity int, identifier *string, projectIdentifier *string, limit *int, before *time.Time) int
-		ProjectSettings          func(childComplexity int, identifier *string, projectIdentifier *string) int
+		ProjectEvents            func(childComplexity int, projectIdentifier string, limit *int, before *time.Time) int
+		ProjectSettings          func(childComplexity int, projectIdentifier string) int
 		Projects                 func(childComplexity int) int
 		RepoEvents               func(childComplexity int, repoID string, limit *int, before *time.Time) int
 		RepoSettings             func(childComplexity int, repoID string) int
@@ -1792,8 +1792,8 @@ type QueryResolver interface {
 	GithubProjectConflicts(ctx context.Context, projectID string) (*model1.GithubProjectConflicts, error)
 	Project(ctx context.Context, projectIdentifier string) (*model.APIProjectRef, error)
 	Projects(ctx context.Context) ([]*GroupedProjects, error)
-	ProjectEvents(ctx context.Context, identifier *string, projectIdentifier *string, limit *int, before *time.Time) (*ProjectEvents, error)
-	ProjectSettings(ctx context.Context, identifier *string, projectIdentifier *string) (*model.APIProjectSettings, error)
+	ProjectEvents(ctx context.Context, projectIdentifier string, limit *int, before *time.Time) (*ProjectEvents, error)
+	ProjectSettings(ctx context.Context, projectIdentifier string) (*model.APIProjectSettings, error)
 	RepoEvents(ctx context.Context, repoID string, limit *int, before *time.Time) (*ProjectEvents, error)
 	RepoSettings(ctx context.Context, repoID string) (*model.APIProjectSettings, error)
 	ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error)
@@ -6613,7 +6613,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.ProjectEvents(childComplexity, args["identifier"].(*string), args["projectIdentifier"].(*string), args["limit"].(*int), args["before"].(*time.Time)), true
+		return e.complexity.Query.ProjectEvents(childComplexity, args["projectIdentifier"].(string), args["limit"].(*int), args["before"].(*time.Time)), true
 
 	case "Query.projectSettings":
 		if e.complexity.Query.ProjectSettings == nil {
@@ -6625,7 +6625,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.ProjectSettings(childComplexity, args["identifier"].(*string), args["projectIdentifier"].(*string)), true
+		return e.complexity.Query.ProjectSettings(childComplexity, args["projectIdentifier"].(string)), true
 
 	case "Query.projects":
 		if e.complexity.Query.Projects == nil {
@@ -12115,42 +12115,10 @@ func (ec *executionContext) field_Query_pod_args(ctx context.Context, rawArgs ma
 func (ec *executionContext) field_Query_projectEvents_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *string
-	if tmp, ok := rawArgs["identifier"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("identifier"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
-			if err != nil {
-				return nil, err
-			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "VIEW")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireProjectAccess == nil {
-				return nil, errors.New("directive requireProjectAccess is not implemented")
-			}
-			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
-		}
-
-		tmp, err = directive1(ctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(*string); ok {
-			arg0 = data
-		} else if tmp == nil {
-			arg0 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp))
-		}
-	}
-	args["identifier"] = arg0
-	var arg1 *string
+	var arg0 string
 	if tmp, ok := rawArgs["projectIdentifier"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, tmp) }
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
 			if err != nil {
@@ -12170,75 +12138,41 @@ func (ec *executionContext) field_Query_projectEvents_args(ctx context.Context, 
 		if err != nil {
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
-		if data, ok := tmp.(*string); ok {
-			arg1 = data
-		} else if tmp == nil {
-			arg1 = nil
+		if data, ok := tmp.(string); ok {
+			arg0 = data
 		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp))
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
-	args["projectIdentifier"] = arg1
-	var arg2 *int
+	args["projectIdentifier"] = arg0
+	var arg1 *int
 	if tmp, ok := rawArgs["limit"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
-		arg2, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["limit"] = arg2
-	var arg3 *time.Time
+	args["limit"] = arg1
+	var arg2 *time.Time
 	if tmp, ok := rawArgs["before"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
-		arg3, err = ec.unmarshalOTime2ᚖtimeᚐTime(ctx, tmp)
+		arg2, err = ec.unmarshalOTime2ᚖtimeᚐTime(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["before"] = arg3
+	args["before"] = arg2
 	return args, nil
 }
 
 func (ec *executionContext) field_Query_projectSettings_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *string
-	if tmp, ok := rawArgs["identifier"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("identifier"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
-			if err != nil {
-				return nil, err
-			}
-			access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "VIEW")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireProjectAccess == nil {
-				return nil, errors.New("directive requireProjectAccess is not implemented")
-			}
-			return ec.directives.RequireProjectAccess(ctx, rawArgs, directive0, permission, access)
-		}
-
-		tmp, err = directive1(ctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(*string); ok {
-			arg0 = data
-		} else if tmp == nil {
-			arg0 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp))
-		}
-	}
-	args["identifier"] = arg0
-	var arg1 *string
+	var arg0 string
 	if tmp, ok := rawArgs["projectIdentifier"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalOString2ᚖstring(ctx, tmp) }
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
 			if err != nil {
@@ -12258,15 +12192,13 @@ func (ec *executionContext) field_Query_projectSettings_args(ctx context.Context
 		if err != nil {
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
-		if data, ok := tmp.(*string); ok {
-			arg1 = data
-		} else if tmp == nil {
-			arg1 = nil
+		if data, ok := tmp.(string); ok {
+			arg0 = data
 		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp))
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
-	args["projectIdentifier"] = arg1
+	args["projectIdentifier"] = arg0
 	return args, nil
 }
 
@@ -44505,7 +44437,7 @@ func (ec *executionContext) _Query_projectEvents(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().ProjectEvents(rctx, fc.Args["identifier"].(*string), fc.Args["projectIdentifier"].(*string), fc.Args["limit"].(*int), fc.Args["before"].(*time.Time))
+		return ec.resolvers.Query().ProjectEvents(rctx, fc.Args["projectIdentifier"].(string), fc.Args["limit"].(*int), fc.Args["before"].(*time.Time))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -44566,7 +44498,7 @@ func (ec *executionContext) _Query_projectSettings(ctx context.Context, field gr
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().ProjectSettings(rctx, fc.Args["identifier"].(*string), fc.Args["projectIdentifier"].(*string))
+		return ec.resolvers.Query().ProjectSettings(rctx, fc.Args["projectIdentifier"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
