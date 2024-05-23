@@ -956,21 +956,29 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
 		a.handleTimeoutAndOOM(ctx, tc, detail, status)
+
 		tc.logger.Task().Info("Task completed - SUCCESS.")
 		if err := a.runPostOrTeardownTaskCommands(ctx, tc); err != nil {
 			tc.logger.Task().Info("Post task completed - FAILURE. Overall task status changed to FAILED.")
 			setEndTaskFailureDetails(tc, detail, evergreen.TaskFailed, "", "", nil)
 		}
+
 		detail.PostErrored = tc.getPostErrored()
+		detail.OtherFailingCommands = tc.getOtherFailingCommands()
+
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
 		a.handleTimeoutAndOOM(ctx, tc, detail, status)
+
 		tc.logger.Task().Info("Task completed - FAILURE.")
 		// If the post commands error, ignore the error. runCommandsInBlock
 		// already logged the error, and the post commands cannot cause the
 		// task to fail since the task already failed.
 		_ = a.runPostOrTeardownTaskCommands(ctx, tc)
+
 		detail.PostErrored = tc.getPostErrored()
+		detail.OtherFailingCommands = tc.getOtherFailingCommands()
+
 		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskSystemFailed:
 		// This is a special status indicating that the agent failed for reasons
@@ -1137,15 +1145,16 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 
 func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, status, description, failureType string, failureMetadataTagsToAdd []string) {
 	var isDefaultDescription bool
-	if tc.getCurrentCommand() != nil {
+	currCmd := tc.getCurrentCommand()
+	if currCmd != nil {
 		// If there is no explicit user-defined description or failure type,
 		// infer that information from the last command that ran.
 		if description == "" {
-			description = tc.getCurrentCommand().FullDisplayName()
+			description = currCmd.FullDisplayName()
 			isDefaultDescription = true
 		}
 		if failureType == "" {
-			failureType = tc.getCurrentCommand().Type()
+			failureType = currCmd.Type()
 		}
 	}
 
@@ -1153,13 +1162,16 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 	if status != evergreen.TaskSucceeded {
 		detail.Type = failureType
 		detail.Description = description
-		detail.FailureMetadataTags = utility.UniqueStrings(append(tc.getCurrentCommand().FailureMetadataTags(), failureMetadataTagsToAdd...))
+		detail.FailureMetadataTags = utility.UniqueStrings(append(currCmd.FailureMetadataTags(), failureMetadataTagsToAdd...))
+		tc.setFailingCommand(currCmd)
 	}
 	if !isDefaultDescription {
 		// If there's an explicit user-defined description, always set that
 		// description.
 		detail.Description = description
 	}
+
+	detail.OtherFailingCommands = tc.getOtherFailingCommands()
 
 	if !detail.TimedOut {
 		// Only set timeout details if a prior command in the task hasn't
@@ -1170,7 +1182,6 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 		detail.TimeoutType = string(tc.getTimeoutType())
 		detail.TimeoutDuration = tc.getTimeoutDuration()
 	}
-
 }
 
 func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupCheck bool, reason string) {

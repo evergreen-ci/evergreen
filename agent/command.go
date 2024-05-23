@@ -284,6 +284,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 	case err := <-cmdChan:
 		if err != nil {
 			tc.logger.Task().Errorf("Command %s failed: %s.", cmd.FullDisplayName(), err)
+			tc.addFailingCommand(cmd)
 			if options.block == command.PostBlock {
 				tc.setPostErrored(true)
 			}
@@ -302,6 +303,11 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 		select {
 		case <-timer.C:
 		case <-cmdChan:
+		}
+
+		tc.addFailingCommand(cmd)
+		if options.block == command.PostBlock {
+			tc.setPostErrored(true)
 		}
 
 		tc.logger.Task().Errorf("Command %s stopped early: %s.", cmd.FullDisplayName(), ctx.Err())
