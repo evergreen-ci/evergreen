@@ -201,9 +201,6 @@ func Patch() cli.Command {
 			if hasVariants && !hasTasks {
 				grip.Warningf("warning - you specified variants without specifying tasks")
 			}
-			if hasVariants && hasTasks {
-				grip.Infof("Submitting patch with locally defined tasks and variants")
-			}
 
 			isReusing := params.RepeatDefinition || params.RepeatFailed
 			hasTasksOrVariants := len(params.Tasks) > 0 || len(params.Variants) > 0
