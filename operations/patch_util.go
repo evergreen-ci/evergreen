@@ -454,8 +454,16 @@ func (p *patchParams) loadTasks(conf *ClientSettings) error {
 				return errors.Wrap(err, "setting default tasks")
 			}
 		}
+		if len(defaultTasks) > 0 {
+			grip.Info("Using default tasks set in local config")
+		}
 	} else if p.Alias == "" && !p.isUsingLocalAlias {
-		p.Tasks = conf.FindDefaultTasks(p.Project)
+		defaultTasks := conf.FindDefaultTasks(p.Project)
+		p.Tasks = defaultTasks
+		if len(defaultTasks) > 0 {
+			grip.Info("Using default tasks set in local config")
+		}
+
 	}
 
 	return nil
