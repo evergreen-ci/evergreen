@@ -580,17 +580,28 @@ func (p *APIGitHubDynamicTokenPermissionGroup) ToService() (model.GitHubDynamicT
 	group := model.GitHubDynamicTokenPermissionGroup{
 		Name: utility.FromStringPtr(p.Name),
 	}
+	metadata := mapstructure.Metadata{}
 	// The github.InstallationPermissions struct has json struct tags that we can
 	// latch on to for decoding the permissions.
-	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{TagName: "json", Result: &group.Permissions, ErrorUnused: true})
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		TagName:     "json",
+		Result:      &group.Permissions,
+		ErrorUnused: true,
+		Metadata:    &metadata,
+	})
 	if err != nil {
 		return group, errors.Wrap(err, "creating decoder for GitHub permissions")
 	}
-	return group, errors.Wrap(decoder.Decode(p.Permissions), "decoding GitHub permissions")
+	err = decoder.Decode(p.Permissions)
+	if err != nil {
+		return group, errors.Wrap(err, "decoding GitHub permissions")
+	}
+	group.NoPermissions = len(metadata.Keys) == 0
+	return group, nil
 }
 
-func (p *APIGitHubDynamicTokenPermissionGroups) ToService() (model.GitHubDynamicTokenPermissionGroups, error) {
-	groups := model.GitHubDynamicTokenPermissionGroups{}
+func (p *APIGitHubDynamicTokenPermissionGroups) ToService() ([]model.GitHubDynamicTokenPermissionGroup, error) {
+	groups := []model.GitHubDynamicTokenPermissionGroup{}
 	for _, group := range *p {
 		serviceGroup, err := group.ToService()
 		if err != nil {

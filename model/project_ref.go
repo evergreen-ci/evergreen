@@ -136,7 +136,7 @@ type ProjectRef struct {
 	ParsleyFilters    []parsley.Filter  `bson:"parsley_filters,omitempty" json:"parsley_filters,omitempty"`
 
 	// GitHubDynamicTokenPermissionGroups is a list of permission groups for GitHub dynamic access tokens.
-	GitHubDynamicTokenPermissionGroups GitHubDynamicTokenPermissionGroups `bson:"github_dynamic_token_permission_groups,omitempty" json:"github_dynamic_token_permission_groups,omitempty" yaml:"github_dynamic_token_permission_groups,omitempty"`
+	GitHubDynamicTokenPermissionGroups []GitHubDynamicTokenPermissionGroup `bson:"github_dynamic_token_permission_groups,omitempty" json:"github_dynamic_token_permission_groups,omitempty" yaml:"github_dynamic_token_permission_groups,omitempty"`
 
 	// GitHubPermissionGroupByRequester is a mapping of requester type to the user defined GitHub permission groups above.
 	GitHubPermissionGroupByRequester map[string]string `bson:"github_token_permission_by_requester,omitempty" json:"github_token_permission_by_requester,omitempty" yaml:"github_token_permission_by_requester,omitempty"`
@@ -144,14 +144,15 @@ type ProjectRef struct {
 
 // GitHubDynamicTokenPermissionGroup is a permission group for GitHub dynamic access tokens.
 type GitHubDynamicTokenPermissionGroup struct {
+	// Name is the name of the group.
 	Name string `bson:"name,omitempty" json:"name,omitempty" yaml:"name,omitempty"`
 	// Permissions are a key-value pair of GitHub token permissions to their permission level
 	Permissions github.InstallationPermissions `bson:"permissions,omitempty" json:"permissions,omitempty" yaml:"permissions,omitempty"`
+	// NoPermissions is a boolean that indiciates if the group has no permissions. If true, we
+	// should not even send a request to GitHub as an empty permissions object would result in
+	// all permissions.
+	NoPermissions bool `bson:"no_permissions,omitempty" json:"no_permissions,omitempty" yaml:"no_permissions,omitempty"`
 }
-
-// GitHubDynamicTokenPermissionGroups is used to specify groups of permissions and requesters for
-// GitHub dynamic access tokens.
-type GitHubDynamicTokenPermissionGroups []GitHubDynamicTokenPermissionGroup
 
 var defaultGitHubTokenPermissionGroup = GitHubDynamicTokenPermissionGroup{}
 
@@ -172,9 +173,6 @@ func (p *ProjectRef) GetGitHubPermissionGroup(requester string) GitHubDynamicTok
 }
 
 func (p *ProjectRef) ValidateGitHubPermissionGroups() error {
-	if p.GitHubDynamicTokenPermissionGroups == nil {
-		return nil
-	}
 	catcher := grip.NewBasicCatcher()
 	// Group validation
 	for _, group := range p.GitHubDynamicTokenPermissionGroups {

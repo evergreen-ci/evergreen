@@ -1649,8 +1649,8 @@ func TestGithubPermissionGroups(t *testing.T) {
 	require.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	require.NoError(db.CreateCollections(evergreen.ScopeCollection))
 
-	orgGroup := GitHubDynamicTokenPermissionGroups{
-		GitHubDynamicTokenPermissionGroup{
+	orgGroup := []GitHubDynamicTokenPermissionGroup{
+		{
 			Name: "some-group",
 			Permissions: github.InstallationPermissions{
 				Actions: utility.ToStringPtr("read"),
@@ -3344,8 +3344,8 @@ func TestSaveProjectPageForSection(t *testing.T) {
 
 	// Test GitHub dynamic token permission groups
 	update = &ProjectRef{
-		GitHubDynamicTokenPermissionGroups: GitHubDynamicTokenPermissionGroups{
-			GitHubDynamicTokenPermissionGroup{
+		GitHubDynamicTokenPermissionGroups: []GitHubDynamicTokenPermissionGroup{
+			{
 				Name: "some-group",
 				Permissions: github.InstallationPermissions{
 					Actions: utility.ToStringPtr("read"),
