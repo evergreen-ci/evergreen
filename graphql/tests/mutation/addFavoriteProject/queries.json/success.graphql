@@ -1,0 +1,8 @@
+mutation {
+  addFavoriteProject(opts: { projectIdentifier: "buildhost-test" }) {
+    identifier
+    repo
+    owner
+    displayName
+  }
+}
