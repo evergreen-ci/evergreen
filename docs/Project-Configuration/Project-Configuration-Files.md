@@ -807,6 +807,8 @@ inter-project dependency:
     initiated this trigger
 -   `${trigger_event_type}` will be "task" or "build," identifying
     what type of ID `${trigger_event_identifier}` is
+-   `${trigger_version}` is the version ID for the task or build that 
+    initiated this trigger
 -   `${trigger_status}` is the task or build status of whatever
     initiated this trigger
 -   `${trigger_revision}` is the githash of whatever commit initiated
