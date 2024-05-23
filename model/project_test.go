@@ -503,6 +503,7 @@ func TestPopulateExpansions(t *testing.T) {
 		Status:   evergreen.TaskFailed,
 		Revision: "abc",
 		Project:  "upstreamProject",
+		Version:  "upstreamVersion",
 	}
 	assert.NoError(upstreamTask.Insert())
 	upstreamProject := ProjectRef{
@@ -519,6 +520,7 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Equal(taskDoc.TriggerType, expansions.Get("trigger_event_type"))
 	assert.Equal(upstreamTask.Revision, expansions.Get("trigger_revision"))
 	assert.Equal(upstreamTask.Status, expansions.Get("trigger_status"))
+	assert.Equal(upstreamTask.Version, expansions.Get("trigger_version"))
 	assert.Equal(upstreamProject.Branch, expansions.Get("trigger_branch"))
 }
 

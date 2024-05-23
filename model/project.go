@@ -1150,6 +1150,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken, knownH
 			}
 			expansions.Put("trigger_status", upstreamTask.Status)
 			expansions.Put("trigger_revision", upstreamTask.Revision)
+			expansions.Put("trigger_version", upstreamTask.Version)
 			upstreamProjectID = upstreamTask.Project
 		} else if t.TriggerType == ProjectTriggerLevelBuild {
 			var upstreamBuild *build.Build
@@ -1162,6 +1163,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken, knownH
 			}
 			expansions.Put("trigger_status", upstreamBuild.Status)
 			expansions.Put("trigger_revision", upstreamBuild.Revision)
+			expansions.Put("trigger_version", upstreamBuild.Version)
 			upstreamProjectID = upstreamBuild.Project
 		}
 		var upstreamProject *ProjectRef
