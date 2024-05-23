@@ -72,10 +72,6 @@ func NewPodAllocatorJob(taskID, ts string) amboy.Job {
 func (j *podAllocatorJob) Run(ctx context.Context) {
 	defer func() {
 		j.MarkComplete()
-
-		if j.smClient != nil {
-			j.AddError(errors.Wrap(j.smClient.Close(ctx), "closing Secrets Manager client"))
-		}
 	}()
 
 	canAllocate, err := j.systemCanAllocate(ctx)

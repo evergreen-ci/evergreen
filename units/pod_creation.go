@@ -75,10 +75,6 @@ func (j *podCreationJob) Run(ctx context.Context) {
 	defer func() {
 		j.MarkComplete()
 
-		if j.ecsClient != nil {
-			j.AddError(errors.Wrap(j.ecsClient.Close(ctx), "closing ECS client"))
-		}
-
 		if j.pod != nil && j.pod.Status == pod.StatusInitializing && (j.RetryInfo().GetRemainingAttempts() == 0 || !j.RetryInfo().ShouldRetry()) {
 			j.AddError(errors.Wrap(j.pod.UpdateStatus(pod.StatusDecommissioned, "pod failed to start and will not retry"), "updating pod status to decommissioned after pod failed to start"))
 
