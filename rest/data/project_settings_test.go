@@ -433,6 +433,10 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 								"actions": "read",
 							},
 						},
+						restModel.APIGitHubDynamicTokenPermissionGroup{
+							Name:        utility.ToStringPtr("other-group"),
+							Permissions: map[string]string{}, // Should have NoPermissions set on the translated struct
+						},
 					},
 					PRTestingEnabled: utility.FalsePtr(),
 				},
@@ -445,11 +449,15 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, pRefFromDB)
 			require.NotNil(t, pRefFromDB.GitHubDynamicTokenPermissionGroups)
-			require.Len(t, pRefFromDB.GitHubDynamicTokenPermissionGroups, 1)
+			require.Len(t, pRefFromDB.GitHubDynamicTokenPermissionGroups, 2)
 
 			assert.Equal(t, "some-group", pRefFromDB.GitHubDynamicTokenPermissionGroups[0].Name)
 			require.NotNil(t, pRefFromDB.GitHubDynamicTokenPermissionGroups[0].Permissions)
 			assert.Equal(t, "read", utility.FromStringPtr(pRefFromDB.GitHubDynamicTokenPermissionGroups[0].Permissions.Actions))
+
+			assert.Equal(t, "other-group", pRefFromDB.GitHubDynamicTokenPermissionGroups[1].Name)
+			require.NotNil(t, pRefFromDB.GitHubDynamicTokenPermissionGroups[1].Permissions)
+			assert.Equal(t, pRefFromDB.GitHubDynamicTokenPermissionGroups[1].NoPermissions, true)
 		},
 		"a commit queue document exists after the feature is turned on": func(t *testing.T, ref model.ProjectRef) {
 			oldRef := model.ProjectRef{
