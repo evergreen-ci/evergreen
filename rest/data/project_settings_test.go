@@ -423,6 +423,42 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NotContains(t, err.Error(), "the commit queue")
 			assert.NotContains(t, err.Error(), "commit checks")
 		},
+		model.ProjectPageGithubAndCQSection: func(t *testing.T, ref model.ProjectRef) {
+			apiChanges := &restModel.APIProjectSettings{
+				ProjectRef: restModel.APIProjectRef{
+					GitHubDynamicTokenPermissionGroups: restModel.APIGitHubDynamicTokenPermissionGroups{
+						restModel.APIGitHubDynamicTokenPermissionGroup{
+							Name: utility.ToStringPtr("some-group"),
+							Permissions: map[string]string{
+								"actions": "read",
+							},
+						},
+						restModel.APIGitHubDynamicTokenPermissionGroup{
+							Name:        utility.ToStringPtr("other-group"),
+							Permissions: map[string]string{}, // Should have NoPermissions set on the translated struct
+						},
+					},
+					PRTestingEnabled: utility.FalsePtr(),
+				},
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGithubAndCQSection, false, "me")
+			require.NoError(t, err)
+			require.NotNil(t, settings)
+
+			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
+			require.NoError(t, err)
+			require.NotNil(t, pRefFromDB)
+			require.NotNil(t, pRefFromDB.GitHubDynamicTokenPermissionGroups)
+			require.Len(t, pRefFromDB.GitHubDynamicTokenPermissionGroups, 2)
+
+			assert.Equal(t, "some-group", pRefFromDB.GitHubDynamicTokenPermissionGroups[0].Name)
+			require.NotNil(t, pRefFromDB.GitHubDynamicTokenPermissionGroups[0].Permissions)
+			assert.Equal(t, "read", utility.FromStringPtr(pRefFromDB.GitHubDynamicTokenPermissionGroups[0].Permissions.Actions))
+
+			assert.Equal(t, "other-group", pRefFromDB.GitHubDynamicTokenPermissionGroups[1].Name)
+			require.NotNil(t, pRefFromDB.GitHubDynamicTokenPermissionGroups[1].Permissions)
+			assert.Equal(t, pRefFromDB.GitHubDynamicTokenPermissionGroups[1].NoPermissions, true)
+		},
 		"a commit queue document exists after the feature is turned on": func(t *testing.T, ref model.ProjectRef) {
 			oldRef := model.ProjectRef{
 				Owner:   ref.Owner,
