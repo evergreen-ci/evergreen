@@ -148,9 +148,8 @@ type GitHubDynamicTokenPermissionGroup struct {
 	Name string `bson:"name,omitempty" json:"name,omitempty" yaml:"name,omitempty"`
 	// Permissions are a key-value pair of GitHub token permissions to their permission level
 	Permissions github.InstallationPermissions `bson:"permissions,omitempty" json:"permissions,omitempty" yaml:"permissions,omitempty"`
-	// NoPermissions is a boolean that indiciates if the group has no permissions. If true, we
-	// should not even send a request to GitHub as an empty permissions object would result in
-	// all permissions.
+	// NoPermissions is a boolean indicating that tokens should be fully restricted with no permissions at all. 
+	// An empty permissions object is not enough to indicate that as it would result in all permissions.
 	NoPermissions bool `bson:"no_permissions,omitempty" json:"no_permissions,omitempty" yaml:"no_permissions,omitempty"`
 }
 
