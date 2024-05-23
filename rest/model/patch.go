@@ -147,7 +147,6 @@ type APIPatchArgs struct {
 	IncludeProjectIdentifier   bool
 	IncludeCommitQueuePosition bool
 	IncludeChildPatches        bool
-	FromCLI                    bool
 }
 
 // BuildFromService converts from service level structs to an APIPatch.
@@ -156,21 +155,7 @@ func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) er
 	apiPatch.buildBasePatch(p)
 
 	projectIdentifier := p.Project
-	apiPatch.CanEnqueueToCommitQueue = p.HasValidGitInfo() || p.IsGithubPRPatch()
 	if args != nil {
-		// CLI cannot access DB information.
-		if !args.FromCLI {
-			proj, err := model.FindMergedProjectRef(projectIdentifier, p.Version, false)
-			if err != nil {
-				return errors.Wrapf(err, "finding project ref '%s'", projectIdentifier)
-			}
-			if proj == nil {
-				return errors.Errorf("project ref '%s' not found", projectIdentifier)
-			}
-			// Projects that use the GitHub merge queue cannot enqueue to the commit queue.
-			apiPatch.CanEnqueueToCommitQueue = (p.HasValidGitInfo() || p.IsGithubPRPatch()) && proj.CommitQueue.MergeQueue != model.MergeQueueGitHub
-		}
-
 		if args.IncludeProjectIdentifier && p.Project != "" {
 			apiPatch.GetIdentifier()
 			if apiPatch.ProjectIdentifier != nil {
