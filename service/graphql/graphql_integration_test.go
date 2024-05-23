@@ -14,8 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const apiKey = "testapikey"
-const apiUser = "testuser"
 const pathToTests = "../../graphql"
 
 func TestAtomicGQLQueries(t *testing.T) {
