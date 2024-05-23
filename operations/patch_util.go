@@ -395,6 +395,7 @@ func (p *patchParams) loadAlias(conf *ClientSettings) error {
 	} else if len(p.Variants) == 0 || len(p.Tasks) == 0 {
 		// No --alias or variant/task pair was passed, use the default
 		p.Alias = conf.FindDefaultAlias(p.Project)
+		grip.InfoWhen(p.Alias != "", "Using default alias set in local config")
 	}
 
 	return nil
@@ -413,6 +414,7 @@ func (p *patchParams) loadVariants(conf *ClientSettings) error {
 		}
 	} else if p.Alias == "" && !p.isUsingLocalAlias {
 		p.Variants = conf.FindDefaultVariants(p.Project)
+		grip.InfoWhen(len(p.Variants) > 0, "Using default variants set in local config")
 	}
 
 	return nil
@@ -454,15 +456,9 @@ func (p *patchParams) loadTasks(conf *ClientSettings) error {
 				return errors.Wrap(err, "setting default tasks")
 			}
 		}
-		if len(defaultTasks) > 0 {
-			grip.Info("Using default tasks set in local config")
-		}
 	} else if p.Alias == "" && !p.isUsingLocalAlias {
-		defaultTasks := conf.FindDefaultTasks(p.Project)
-		p.Tasks = defaultTasks
-		if len(defaultTasks) > 0 {
-			grip.Info("Using default tasks set in local config")
-		}
+		p.Tasks = conf.FindDefaultTasks(p.Project)
+		grip.InfoWhen(len(p.Tasks) > 0, "Using default tasks set in local config")
 
 	}
 
