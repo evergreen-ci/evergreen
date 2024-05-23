@@ -515,7 +515,7 @@ func TestPopulateExpansions(t *testing.T) {
 	taskDoc.TriggerType = ProjectTriggerLevelTask
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken, "", "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 37)
+	assert.Len(map[string]string(expansions), 38)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))
 	assert.Equal(taskDoc.TriggerType, expansions.Get("trigger_event_type"))
 	assert.Equal(upstreamTask.Revision, expansions.Get("trigger_revision"))
