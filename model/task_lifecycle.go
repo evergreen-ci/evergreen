@@ -369,7 +369,7 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 		caller = user
 	}
 	if t.IsPartOfSingleHostTaskGroup() {
-		if err = t.SetResetWhenFinished(); err != nil {
+		if err = t.SetResetWhenFinished(user); err != nil {
 			return errors.Wrap(err, "marking task group for reset")
 		}
 		return errors.Wrap(checkResetSingleHostTaskGroup(ctx, t, caller), "resetting single host task group")
@@ -388,7 +388,7 @@ func resetTask(ctx context.Context, taskId, caller string) error {
 	if t.IsPartOfDisplay() {
 		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
 	}
-	if err = checkUsersPatchTaskLimit(t.Requester, caller, true, *t); err != nil {
+	if err = task.CheckUsersPatchTaskLimit(t.Requester, caller, false, *t); err != nil {
 		return errors.Wrap(err, "updating patch task limit for user")
 	}
 	if err = t.Archive(ctx); err != nil {
@@ -2072,7 +2072,7 @@ func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
 
 func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 	if t.DisplayOnly {
-		execTaskIdsToRestart, err := findExecTasksToReset(t)
+		execTaskIdsToRestart, err := task.FindExecTasksToReset(t)
 		if err != nil {
 			return errors.Wrap(err, "finding execution tasks to restart")
 		}
@@ -2094,21 +2094,6 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 	}
 
 	return nil
-}
-
-func findExecTasksToReset(t *task.Task) ([]string, error) {
-	if !t.ResetFailedWhenFinished {
-		return t.ExecutionTasks, nil
-	}
-	failedExecTasks, err := task.FindWithFields(task.FailedTasksByIds(t.ExecutionTasks), task.IdKey)
-	if err != nil {
-		return nil, errors.Wrap(err, "retrieving failed execution tasks")
-	}
-	failedExecTaskIds := []string{}
-	for _, et := range failedExecTasks {
-		failedExecTaskIds = append(failedExecTaskIds, et.Id)
-	}
-	return failedExecTaskIds, nil
 }
 
 // MarkTasksReset resets many tasks by their IDs. For execution tasks, this also
@@ -2199,7 +2184,7 @@ func RestartFailedTasks(ctx context.Context, opts RestartOptions) (RestartResult
 		if dt.IsFinished() {
 			idsToRestart = append(idsToRestart, id)
 		} else {
-			if err = dt.SetResetWhenFinished(); err != nil {
+			if err = dt.SetResetWhenFinished(opts.User); err != nil {
 				return results, errors.Wrapf(err, "marking display task '%s' for reset", id)
 			}
 		}
@@ -2442,11 +2427,11 @@ func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t
 	}
 	if taskToReset.DisplayOnly {
 		if failedOnly {
-			if err := taskToReset.SetResetFailedWhenFinished(); err != nil {
+			if err := taskToReset.SetResetFailedWhenFinished(user); err != nil {
 				return errors.Wrap(err, "marking display task for reset")
 			}
 		} else {
-			if err := taskToReset.SetResetWhenFinished(); err != nil {
+			if err := taskToReset.SetResetWhenFinished(user); err != nil {
 				return errors.Wrap(err, "marking display task for reset")
 			}
 		}
