@@ -380,9 +380,6 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NoError(t, env.Configure(tctx))
 			j.env = env
 			j.ecsClient = &cocoaMock.ECSClient{}
-			defer func() {
-				assert.NoError(t, j.ecsClient.Close(tctx))
-			}()
 			j.ecsPod = generateTestingECSPod(tctx, t, j.ecsClient, cluster, p.TaskContainerCreationOpts)
 			j.pod.Resources = cloud.ImportECSPodResources(j.ecsPod.Resources())
 

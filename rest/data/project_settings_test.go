@@ -1066,9 +1066,6 @@ func TestCopyProject(t *testing.T) {
 	defer cocoaMock.ResetGlobalSecretCache()
 
 	smClient := &cocoaMock.SecretsManagerClient{}
-	defer func() {
-		assert.NoError(t, smClient.Close(ctx))
-	}()
 
 	for name, test := range map[string]func(t *testing.T, ref model.ProjectRef){
 		"SuccessfullyCopiesProject": func(t *testing.T, ref model.ProjectRef) {

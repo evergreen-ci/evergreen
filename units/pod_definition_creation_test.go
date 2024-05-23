@@ -216,9 +216,6 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			require.NoError(t, evergreen.UpdateConfig(ctx, env.Settings()))
 
 			j.ecsClient = &cocoaMock.ECSClient{}
-			defer func() {
-				assert.NoError(t, j.ecsClient.Close(tctx))
-			}()
 
 			pdm, err := cloud.MakeECSPodDefinitionManager(j.ecsClient, nil)
 			require.NoError(t, err)

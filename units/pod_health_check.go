@@ -84,12 +84,6 @@ func (j *podHealthCheckJob) Run(ctx context.Context) {
 		return
 	}
 
-	defer func() {
-		if j.ecsClient != nil {
-			j.AddError(errors.Wrap(j.ecsClient.Close(ctx), "closing ECS client"))
-		}
-	}()
-
 	if err := j.populateIfUnset(ctx); err != nil {
 		j.AddError(err)
 		return

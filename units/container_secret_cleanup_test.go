@@ -111,13 +111,7 @@ func TestContainerSecretCleanupJob(t *testing.T) {
 			j, ok := NewContainerSecretCleanupJob(utility.RoundPartOfHour(0).Format(TSFormat)).(*containerSecretCleanupJob)
 			require.True(t, ok)
 			j.tagClient = &cocoaMock.TagClient{}
-			defer func() {
-				assert.NoError(t, j.tagClient.Close(tctx))
-			}()
 			j.smClient = &cocoaMock.SecretsManagerClient{}
-			defer func() {
-				assert.NoError(t, j.smClient.Close(tctx))
-			}()
 			v, err := secret.NewBasicSecretsManager(*secret.NewBasicSecretsManagerOptions().
 				SetClient(j.smClient).
 				SetCache(&cloud.NoopSecretCache{Tag: model.ContainerSecretTag}))

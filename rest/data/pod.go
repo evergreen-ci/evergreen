@@ -26,7 +26,6 @@ func CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "getting Secrets Manager client")
 		}
-		defer smClient.Close(ctx)
 
 		v, err := cloud.MakeSecretsManagerVault(smClient)
 		if err != nil {

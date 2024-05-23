@@ -173,7 +173,6 @@ func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Setting
 	if err != nil {
 		return errors.Wrap(err, "setting up Secrets Manager client to store newly-created project's container secrets")
 	}
-	defer smClient.Close(ctx)
 
 	vault, err := cloud.MakeSecretsManagerVault(smClient)
 	if err != nil {
