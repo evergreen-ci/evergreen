@@ -3625,7 +3625,7 @@ func (h *Host) UnsetPersistentDNSInfo(ctx context.Context) error {
 // contain all the unmodified fields. For example, if this host is on a
 // temporary exemption when their daily schedule is updated, the new schedule
 // must still have the temporary exemption populated.
-func (h *Host) UpdateSleepSchedule(ctx context.Context, schedule SleepScheduleInfo) error {
+func (h *Host) UpdateSleepSchedule(ctx context.Context, schedule SleepScheduleInfo, now time.Time) error {
 	if err := schedule.Validate(); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -3638,8 +3638,6 @@ func (h *Host) UpdateSleepSchedule(ctx context.Context, schedule SleepScheduleIn
 	schedule.NextStartTime = time.Time{}
 	schedule.NextStopTime = time.Time{}
 
-	now := time.Now()
-	var err error
 	nextStart, err := schedule.GetNextScheduledStartTime(now)
 	if err != nil {
 		return gimlet.ErrorResponse{

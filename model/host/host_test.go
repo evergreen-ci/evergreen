@@ -6298,7 +6298,7 @@ func TestUpdateSleepSchedule(t *testing.T) {
 				TimeZone:       userTZ.String(),
 			}
 
-			require.NoError(t, h.UpdateSleepSchedule(ctx, s))
+			require.NoError(t, h.UpdateSleepSchedule(ctx, s, now))
 
 			dbHost, err := FindOneId(ctx, h.Id)
 			require.NoError(t, err)
@@ -6333,7 +6333,7 @@ func TestUpdateSleepSchedule(t *testing.T) {
 				TimeZone:       userTZ.String(),
 			}
 
-			require.NoError(t, h.UpdateSleepSchedule(ctx, s))
+			require.NoError(t, h.UpdateSleepSchedule(ctx, s, now))
 
 			dbHost, err := FindOneId(ctx, h.Id)
 			require.NoError(t, err)
@@ -6372,7 +6372,7 @@ func TestUpdateSleepSchedule(t *testing.T) {
 				TemporarilyExemptUntil: temporarilyExemptUntil,
 			}
 
-			require.NoError(t, h.UpdateSleepSchedule(ctx, s))
+			require.NoError(t, h.UpdateSleepSchedule(ctx, s, now))
 
 			dbHost, err := FindOneId(ctx, h.Id)
 			require.NoError(t, err)
@@ -6386,15 +6386,49 @@ func TestUpdateSleepSchedule(t *testing.T) {
 			assert.True(t, temporarilyExemptUntil.Equal(dbHost.SleepSchedule.TemporarilyExemptUntil))
 			assert.False(t, dbHost.SleepSchedule.ShouldKeepOff)
 		},
+		"NextStartAndStopTimesIsBasedOnCurrentTime": func(ctx context.Context, t *testing.T, h *Host) {
+			require.NoError(t, h.Insert(ctx))
+
+			const easternTZ = "America/New_York"
+			easternTZLoc, err := time.LoadLocation(easternTZ)
+			require.NoError(t, err)
+
+			// Simulate the current time, which is:
+			// Wednesday February 21, 2024 at 15:00 EST
+			now, err := time.ParseInLocation(time.DateTime, "2024-02-21 15:00:00", easternTZLoc)
+			require.NoError(t, err)
+			now = utility.BSONTime(now.UTC())
+
+			s := SleepScheduleInfo{
+				DailyStartTime: "10:00",
+				DailyStopTime:  "18:00",
+				TimeZone:       userTZ.String(),
+			}
+
+			require.NoError(t, h.UpdateSleepSchedule(ctx, s, now))
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			checkRecurringSleepScheduleMatches(t, s, dbHost.SleepSchedule)
+
+			expectedNextStartTime, err := time.ParseInLocation(time.DateTime, "2024-02-22 10:00:00", easternTZLoc)
+			require.NoError(t, err)
+			assert.WithinDuration(t, expectedNextStartTime, dbHost.SleepSchedule.NextStartTime, 0, "next start time should be at 10:00 local time on the next day")
+
+			expectedNextStopTime, err := time.ParseInLocation(time.DateTime, "2024-02-21 18:00:00", easternTZLoc)
+			require.NoError(t, err)
+			assert.WithinDuration(t, expectedNextStopTime, dbHost.SleepSchedule.NextStopTime, 0, "next stop time should be at 18:00 local time on the same day")
+		},
 		"FailsWithZeroSleepSchedule": func(ctx context.Context, t *testing.T, h *Host) {
 			require.NoError(t, h.Insert(ctx))
-			assert.Error(t, h.UpdateSleepSchedule(ctx, SleepScheduleInfo{}))
+			assert.Error(t, h.UpdateSleepSchedule(ctx, SleepScheduleInfo{}, time.Now()))
 		},
 		"FailsWithInvalidSleepSchedule": func(ctx context.Context, t *testing.T, h *Host) {
 			require.NoError(t, h.Insert(ctx))
 			assert.Error(t, h.UpdateSleepSchedule(ctx, SleepScheduleInfo{
 				DailyStartTime: "10:00",
-			}))
+			}, time.Now()))
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

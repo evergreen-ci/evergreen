@@ -765,7 +765,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 
 	if spawnHost.SleepSchedule != nil {
 
-		if err = h.UpdateSleepSchedule(ctx, *spawnHost.SleepSchedule); err != nil {
+		if err = h.UpdateSleepSchedule(ctx, *spawnHost.SleepSchedule, time.Now()); err != nil {
 			gimletErr, ok := err.(gimlet.ErrorResponse)
 			if ok {
 				return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
@@ -815,7 +815,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, InternalServerError.Send(ctx, "An error occurred Spawn host is nil")
 	}
 	if spawnHostInput.SleepSchedule != nil {
-		if err = spawnHost.UpdateSleepSchedule(ctx, *spawnHostInput.SleepSchedule); err != nil {
+		if err = spawnHost.UpdateSleepSchedule(ctx, *spawnHostInput.SleepSchedule, time.Now()); err != nil {
 			gimletErr, ok := err.(gimlet.ErrorResponse)
 			if ok {
 				return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
