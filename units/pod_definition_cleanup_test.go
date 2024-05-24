@@ -239,13 +239,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 			j.env = env
 
 			j.ecsClient = &cocoaMock.ECSClient{}
-			defer func() {
-				assert.NoError(t, j.ecsClient.Close(tctx))
-			}()
 			j.tagClient = &cocoaMock.TagClient{}
-			defer func() {
-				assert.NoError(t, j.tagClient.Close(tctx))
-			}()
 
 			pdm, err := cloud.MakeECSPodDefinitionManager(j.ecsClient, nil)
 			require.NoError(t, err)

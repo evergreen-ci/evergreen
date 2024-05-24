@@ -28,7 +28,6 @@ func TestMakeECSClient(t *testing.T) {
 		c, err := MakeECSClient(ctx, validPodClientSettings())
 		assert.NoError(t, err)
 		assert.NotZero(t, c)
-		assert.NoError(t, c.Close(ctx))
 	})
 }
 
@@ -40,7 +39,6 @@ func TestMakeSecretsManagerClient(t *testing.T) {
 		c, err := MakeSecretsManagerClient(ctx, validPodClientSettings())
 		assert.NoError(t, err)
 		assert.NotZero(t, c)
-		assert.NoError(t, c.Close(ctx))
 	})
 }
 
@@ -129,14 +127,8 @@ func TestExportECSPod(t *testing.T) {
 			}
 			ecsClient, err := MakeECSClient(ctx, validPodClientSettings())
 			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, ecsClient.Close(ctx))
-			}()
 			smClient, err := MakeSecretsManagerClient(ctx, validPodClientSettings())
 			require.NoError(t, err)
-			defer func() {
-				assert.NoError(t, smClient.Close(ctx))
-			}()
 			vault, err := MakeSecretsManagerVault(smClient)
 			require.NoError(t, err)
 
@@ -567,16 +559,10 @@ func TestGetFilteredResourceIDs(t *testing.T) {
 	defer cocoaMock.ResetGlobalSecretCache()
 
 	tagClient := &cocoaMock.TagClient{}
-	defer func() {
-		tagClient.Close(ctx)
-	}()
 
 	sc := &NoopSecretCache{Tag: "cache-tag"}
 
 	smClient := &cocoaMock.SecretsManagerClient{}
-	defer func() {
-		smClient.Close(ctx)
-	}()
 	v, err := secret.NewBasicSecretsManager(*secret.NewBasicSecretsManagerOptions().
 		SetClient(smClient).
 		SetCache(sc))

@@ -2278,7 +2278,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 			assert.Equal(t, evergreen.TaskFailed, runningTaskDB.Status)
 		},
 		"ResetWhenFinished": func(t *testing.T) {
-			assert.NoError(t, runningTask.SetResetWhenFinished())
+			assert.NoError(t, runningTask.SetResetWhenFinished("test"))
 			assert.NoError(t, MarkEnd(ctx, settings, runningTask, "test", time.Now(), detail, false))
 
 			runningTaskDB, err := task.FindOneId(runningTask.Id)
@@ -5955,7 +5955,7 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 	settings := testutil.TestConfig()
 
 	// request that the task restarts when it's done
-	assert.NoError(dt.SetResetWhenFinished())
+	assert.NoError(dt.SetResetWhenFinished("caller"))
 	dbTask, err := task.FindOne(db.Query(task.ById(dt.Id)))
 	assert.NoError(err)
 	assert.True(dbTask.ResetWhenFinished)

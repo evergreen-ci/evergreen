@@ -73,12 +73,6 @@ func NewPodTerminationJob(podID, reason string, ts time.Time) amboy.Job {
 
 func (j *podTerminationJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
-
-	defer func() {
-		if j.ecsClient != nil {
-			j.AddError(errors.Wrap(j.ecsClient.Close(ctx), "closing ECS client"))
-		}
-	}()
 	if err := j.populateIfUnset(ctx); err != nil {
 		j.AddError(err)
 		return

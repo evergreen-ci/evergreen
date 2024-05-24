@@ -10,6 +10,7 @@ Project Commands are the fundamental units of functionality in an Evergreen task
   type: system ## optional
   timeout_secs: 10 ## optional
   retry_on_failure: true ## optional
+  failure_metadata_tags: ["tag0", "tag1"] ## optional
   params:
     script: echo "my script"
 ```
@@ -23,6 +24,8 @@ Explanation:
     seconds.
 -   `retry_on_failure`: an optional field. If set to true, it will automatically restart the task upon failure. The
      automatic restart will process after the command has failed and the task has completed its subsequent post task commands.
+-   `failure_metadata_tags`: an optional set of tags to attribute to the command if it fails. If these are set and the
+    command fails, the tags will appear in the task details returned from the REST API.
 -   `params`: values for the pre defined set of parameters the command can take. Available parameters vary per command.
 
 
@@ -333,6 +336,25 @@ Parameters:
     supplied to collect results from multiple files.
 -   `files`: a list .xml files to parse and upload. Filepath globs can
     also be supplied to collect results from multiple files.
+
+## downstream_expansions.set
+
+downstream_expansions.set is used by parent patches to pass key-value
+pairs to child patches. This command only has an effect in manual patches,
+GitHub merge queue/legacy commit queue, and PRs. For all other versions, 
+it will no-op. The command takes the key-value pairs written in
+the file and makes them available to the child patches. Note: these
+parameters will be public and viewable on the child patch's page.
+
+``` yaml
+- command: downstream_expansions.set
+  params:
+    file: downstream_expansions.yaml
+```
+
+Parameters:
+
+-   `file`: filename to read the expansions from
 
 ## ec2.assume_role
 
@@ -1159,23 +1181,6 @@ and contains these fields:
 | `type`    | string    | The metric's type. Valid types are: `SUM`, `MEAN`, `MEDIAN`, `MAX`, `MIN`, `STANDARD_DEVIATION`, `THROUGHPUT`, `LATENCY`, `PERCENTILE_99TH`, `PERCENTILE_95TH`, `PERCENTILE_90TH`, `PERCENTILE_80TH`, `PERCENTILE_50TH`. This is represented by the [`RollupType` enum](https://github.com/evergreen-ci/cedar/blob/bf4b115ab032fca375e6a86c40f9f8944e55a483/perf.proto#L103-L117). |
 | `value`   | int/float | The metric's value.                                                                                                                                                                                                                                                                                                                                                                |
 | `version` | int       | (Optional) The metric's version.                                                                                                                                                                                                                                                                                                                                                   |
-
-## downstream_expansions.set
-
-downstream_expansions.set is used by parent patches to pass key-value
-pairs to child patches. The command takes the key-value pairs written in
-the file and makes them available to the child patches. Note: these
-parameters will be public and viewable on the child patch's page.
-
-``` yaml
-- command: downstream_expansions.set
-  params:
-    file: downstream_expansions.yaml
-```
-
-Parameters:
-
--   `file`: filename to read the expansions from
 
 ## s3.get
 

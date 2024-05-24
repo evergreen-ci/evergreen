@@ -572,7 +572,6 @@ func (sns *ecsSNS) cleanupUnrecognizedPod(ctx context.Context, detail ecsTaskEve
 	if err != nil {
 		return errors.Wrap(err, "getting ECS client")
 	}
-	defer c.Close(ctx)
 
 	resources := cocoa.NewECSPodResources().
 		SetCluster(detail.ClusterARN).
@@ -626,7 +625,6 @@ func (sns *ecsSNS) listECSTasks(ctx context.Context, details ecsContainerInstanc
 	if err != nil {
 		return nil, errors.Wrap(err, "getting ECS client")
 	}
-	defer c.Close(ctx)
 
 	var token *string
 	var taskARNs []string

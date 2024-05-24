@@ -1179,21 +1179,6 @@ func checkBVNames(buildVariant *model.BuildVariant) ValidationErrors {
 	return errs
 }
 
-func checkLoggerConfig(task *model.ProjectTask) ValidationErrors {
-	errs := ValidationErrors{}
-
-	for _, command := range task.Commands {
-		if err := command.Loggers.IsValid(); err != nil {
-			errs = append(errs, ValidationError{
-				Message: errors.Wrapf(err, "error in logger config for command %s in task %s", command.DisplayName, task.Name).Error(),
-				Level:   Warning,
-			})
-		}
-	}
-
-	return errs
-}
-
 // Ensures there aren't any duplicate task names specified for any buildvariant
 // in this project
 func validateBVTaskNames(project *model.Project) ValidationErrors {
@@ -2329,16 +2314,7 @@ func checkTasks(project *model.Project) ValidationErrors {
 			)
 			execTimeoutWarningAdded = true
 		}
-		errs = append(errs, checkLoggerConfig(&task)...)
 		errs = append(errs, checkTaskNames(project, &task)...)
-	}
-	if project.Loggers != nil {
-		if err := project.Loggers.IsValid(); err != nil {
-			errs = append(errs, ValidationError{
-				Message: errors.Wrap(err, "error in project-level logger config").Error(),
-				Level:   Warning,
-			})
-		}
 	}
 	return errs
 }
@@ -2361,13 +2337,8 @@ func checkBuildVariants(project *model.Project) ValidationErrors {
 			)
 		}
 
-		if len(buildVariant.EmptyTaskSelectors) > 0 {
-			errs = append(errs,
-				ValidationError{
-					Message: fmt.Sprintf("buildvariant '%s' has task names/tags that do not match any tasks: '%s'", buildVariant.Name, strings.Join(buildVariant.EmptyTaskSelectors, "', '")),
-					Level:   Warning,
-				},
-			)
+		for _, warning := range buildVariant.TranslationWarnings {
+			errs = append(errs, ValidationError{Message: warning, Level: Warning})
 		}
 
 		errs = append(errs, checkBVNames(&buildVariant)...)

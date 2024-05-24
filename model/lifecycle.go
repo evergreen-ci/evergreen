@@ -362,7 +362,7 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 			toArchive = append(toArchive, t)
 		}
 	}
-	if err := checkUsersPatchTaskLimit(allFinishedTasks[0].Requester, caller, true, toArchive...); err != nil {
+	if err := task.CheckUsersPatchTaskLimit(allFinishedTasks[0].Requester, caller, false, toArchive...); err != nil {
 		return errors.Wrap(err, "updating patch task limit for user")
 	}
 	if err := task.ArchiveMany(ctx, toArchive); err != nil {
@@ -379,7 +379,7 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 	restartIds := []string{}
 	for _, t := range allFinishedTasks {
 		if t.IsPartOfSingleHostTaskGroup() {
-			if err := t.SetResetWhenFinished(); err != nil {
+			if err := t.SetResetWhenFinished(caller); err != nil {
 				return errors.Wrapf(err, "marking '%s' for restart when finished", t.Id)
 			}
 			taskGroupsToCheck[taskGroupAndBuild{
@@ -873,35 +873,6 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 
 	// return all of the tasks created
 	return tasks, nil
-}
-
-// checkUsersPatchTaskLimit takes in an input list of tasks that is set to get activated, and checks if they're
-// non commit-queue patch tasks, and that the request has been submitted by a user. If so, the maximum hourly patch tasks counter
-// will be incremented accordingly. The addExecutionTasks parameter indicates that execution tasks are included
-// as part of the input tasks param, otherwise we need to account for them.
-func checkUsersPatchTaskLimit(requester, username string, addExecutionTasks bool, tasks ...task.Task) error {
-	// we only care about patch tasks that are to be activated by an actual user
-	if !(requester == evergreen.PatchVersionRequester || requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(username) {
-		return nil
-	}
-	s := evergreen.GetEnvironment().Settings()
-	if s.TaskLimits.MaxHourlyPatchTasks == 0 {
-		return nil
-	}
-	numTasksToActivate := 0
-	for _, t := range tasks {
-		if t.Activated {
-			if addExecutionTasks && t.DisplayOnly {
-				execTaskIdsToRestart, err := findExecTasksToReset(&t)
-				if err != nil {
-					return errors.Wrap(err, "finding execution tasks to restart")
-				}
-				numTasksToActivate += len(execTaskIdsToRestart)
-			}
-			numTasksToActivate++
-		}
-	}
-	return task.UpdateSchedulingLimit(username, requester, numTasksToActivate, true)
 }
 
 // addSingleHostTaskGroupDependencies adds dependencies to any tasks in a single-host task group
@@ -1762,7 +1733,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 			buildIdsToActivate = append(buildIdsToActivate, b.Id)
 		}
 	}
-	if err = checkUsersPatchTaskLimit(creationInfo.Version.Requester, creationInfo.Version.Author, false, activatedTasks...); err != nil {
+	if err = task.CheckUsersPatchTaskLimit(creationInfo.Version.Requester, creationInfo.Version.Author, false, activatedTasks...); err != nil {
 		return nil, errors.Wrap(err, "updating patch task limit for user")
 	}
 	if len(buildIdsToActivate) > 0 {

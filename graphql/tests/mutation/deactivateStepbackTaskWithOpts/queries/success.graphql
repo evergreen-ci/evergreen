@@ -1,0 +1,9 @@
+mutation {
+  deactivateStepbackTask(
+    opts: {
+      projectId: "sandbox_project_id",
+      buildVariantName: "ubuntu1604",
+      taskName: "js-test"
+    }
+  )
+}

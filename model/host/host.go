@@ -1788,13 +1788,17 @@ func (h *Host) UpdateRunningTaskWithContext(ctx context.Context, env evergreen.E
 		},
 	}
 
-	if _, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update); err != nil {
+	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, update)
+	if err != nil {
 		grip.DebugWhen(db.IsDuplicateKey(err), message.WrapError(err, message.Fields{
 			"message": "found duplicate running task",
 			"task":    t.Id,
 			"host_id": h.Id,
 		}))
 		return err
+	}
+	if res.ModifiedCount != 1 {
+		return errors.Errorf("expected to update 1 host to set running task information, but actually updated %d", res.ModifiedCount)
 	}
 
 	h.RunningTask = t.Id
@@ -2260,6 +2264,18 @@ var StatusIndex = bson.D{
 var StartedByStatusIndex = bson.D{
 	{
 		Key:   StartedByKey,
+		Value: 1,
+	},
+	{
+		Key:   StatusKey,
+		Value: 1,
+	},
+}
+
+// DistroIdStatusIndex is the distro_id_1_status_1 index.
+var DistroIdStatusIndex = bson.D{
+	{
+		Key:   bsonutil.GetDottedKeyName(DistroKey, distro.IdKey),
 		Value: 1,
 	},
 	{

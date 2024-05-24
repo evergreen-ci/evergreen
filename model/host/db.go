@@ -289,7 +289,10 @@ func CountRunningHosts(ctx context.Context, distroID string) (int, error) {
 // and run tasks for a given distro. This number is surfaced on the
 // task queue.
 func CountHostsCanRunTasks(ctx context.Context, distroID string) (int, error) {
-	num, err := Count(ctx, hostsCanRunTasksQuery(distroID))
+	opts := &options.CountOptions{
+		Hint: DistroIdStatusIndex,
+	}
+	num, err := Count(ctx, hostsCanRunTasksQuery(distroID), opts)
 	return num, errors.Wrap(err, "counting hosts that can run tasks")
 }
 
@@ -913,8 +916,8 @@ func Aggregate(ctx context.Context, pipeline []bson.M, options ...*options.Aggre
 }
 
 // Count returns the number of hosts that satisfy the given query.
-func Count(ctx context.Context, query bson.M) (int, error) {
-	res, err := evergreen.GetEnvironment().DB().Collection(Collection).CountDocuments(ctx, query)
+func Count(ctx context.Context, query bson.M, opts ...*options.CountOptions) (int, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).CountDocuments(ctx, query, opts...)
 	return int(res), errors.Wrap(err, "getting host count")
 }
 
@@ -1737,10 +1740,12 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 		},
 	})
 	catcher.Wrap(err, "marking newly-removed hosts as no longer permanently exempt")
-	grip.InfoWhen(res.ModifiedCount > 0, message.Fields{
-		"message":   "marked newly-removed hosts as no longer permanently exempt",
-		"num_hosts": res.ModifiedCount,
-	})
+	if res != nil && res.ModifiedCount > 0 {
+		grip.Info(message.Fields{
+			"message":   "marked newly-removed hosts as no longer permanently exempt",
+			"num_hosts": res.ModifiedCount,
+		})
+	}
 
 	return catcher.Resolve()
 }

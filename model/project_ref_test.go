@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1760,9 +1761,72 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.NotContains(t, scope.Resources, doc1.Id)
 }
 
+func TestGithubPermissionGroups(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	require.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
+	require.NoError(db.CreateCollections(evergreen.ScopeCollection))
+
+	orgGroup := []GitHubDynamicTokenPermissionGroup{
+		{
+			Name: "some-group",
+			Permissions: github.InstallationPermissions{
+				Actions: utility.ToStringPtr("read"),
+			},
+		},
+	}
+	orgRequesters := map[string]string{
+		evergreen.PatchVersionRequester: "some-group",
+	}
+	p := &ProjectRef{
+		GitHubDynamicTokenPermissionGroups: orgGroup,
+		GitHubPermissionGroupByRequester:   orgRequesters,
+	}
+	require.NoError(p.Insert())
+
+	t.Run("Not found requester should return default permissions", func(t *testing.T) {
+		group := p.GetGitHubPermissionGroup("requester")
+		assert.Equal(defaultGitHubTokenPermissionGroup, group)
+	})
+
+	t.Run("Found requester should return correct group", func(t *testing.T) {
+		group := p.GetGitHubPermissionGroup(evergreen.PatchVersionRequester)
+		assert.Equal("some-group", group.Name)
+		assert.Equal("read", utility.FromStringPtr(group.Permissions.Actions))
+	})
+
+	t.Run("Valid group passes validation", func(t *testing.T) {
+		assert.NoError(p.ValidateGitHubPermissionGroups())
+	})
+
+	t.Run("Invalid name in group fails validation", func(t *testing.T) {
+		p.GitHubDynamicTokenPermissionGroups = append(orgGroup,
+			GitHubDynamicTokenPermissionGroup{
+				Name: "",
+			},
+		)
+		assert.ErrorContains(p.ValidateGitHubPermissionGroups(), "group name cannot be empty")
+	})
+
+	t.Run("Invalid requester in group fails validation", func(t *testing.T) {
+		p.GitHubPermissionGroupByRequester = map[string]string{
+			"second-requester": "some-group",
+		}
+		assert.ErrorContains(p.ValidateGitHubPermissionGroups(), "requester 'second-requester' is not a valid requester")
+	})
+
+	t.Run("Valid requester pointing to not found group fails validation", func(t *testing.T) {
+		p.GitHubPermissionGroupByRequester = map[string]string{
+			evergreen.GithubPRRequester: "second-group",
+		}
+		assert.ErrorContains(p.ValidateGitHubPermissionGroups(), fmt.Sprintf("group 'second-group' for requester '%s' not found", evergreen.GithubPRRequester))
+	})
+}
+
 func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
-	assert := assert.New(t)   //nolint
-	require := require.New(t) //nolint
+	assert := assert.New(t)
+	require := require.New(t)
 
 	require.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	require.NoError(db.CreateCollections(evergreen.ScopeCollection))
@@ -3396,6 +3460,32 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.Equal(projectRef.ProjectHealthView, ProjectHealthViewAll)
 	assert.True(utility.FromBoolPtr(projectRef.Restricted))
 	assert.True(utility.FromBoolPtr(projectRef.Private))
+
+	// Test GitHub dynamic token permission groups
+	update = &ProjectRef{
+		GitHubDynamicTokenPermissionGroups: []GitHubDynamicTokenPermissionGroup{
+			{
+				Name: "some-group",
+				Permissions: github.InstallationPermissions{
+					Actions: utility.ToStringPtr("read"),
+				},
+			},
+		},
+		GitHubPermissionGroupByRequester: map[string]string{
+			evergreen.GithubMergeRequester: "some-group",
+		},
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGithubAndCQSection, false)
+	assert.NoError(err)
+
+	projectRef, err = FindBranchProjectRef("iden_")
+	require.NoError(t, err)
+	assert.NotNil(t, projectRef)
+	assert.Len(projectRef.GitHubDynamicTokenPermissionGroups, 1)
+
+	perms := projectRef.GetGitHubPermissionGroup(evergreen.GithubMergeRequester)
+	assert.Equal("some-group", perms.Name)
+	assert.Equal("read", utility.FromStringPtr(perms.Permissions.Actions))
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {

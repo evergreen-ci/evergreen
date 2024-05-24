@@ -97,7 +97,6 @@ func (pp *ParserProject) mergeUnorderedUnique(toMerge *ParserProject) error {
 // These fields include: [ignore, loggers]
 func (pp *ParserProject) mergeUnordered(toMerge *ParserProject) {
 	pp.Ignore = append(pp.Ignore, toMerge.Ignore...)
-	pp.Loggers = mergeAllLogs(pp.Loggers, toMerge.Loggers)
 }
 
 // mergeOrderedUnique merges fields that are lists where the order does matter.

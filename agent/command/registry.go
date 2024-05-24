@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -165,6 +166,7 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 					TotalSubCmds: len(cmdsInFunc),
 				}
 				c.DisplayName = GetFullDisplayName(c.Command, c.DisplayName, blockInfo, funcInfo)
+				c.FailureMetadataTags = utility.UniqueStrings(append(c.FailureMetadataTags, commandInfo.FailureMetadataTags...))
 
 				parsed = append(parsed, c)
 			}
@@ -193,6 +195,7 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 		cmd.SetFullDisplayName(c.DisplayName)
 		cmd.SetIdleTimeout(time.Duration(c.TimeoutSecs) * time.Second)
 		cmd.SetRetryOnFailure(c.RetryOnFailure)
+		cmd.SetFailureMetadataTags(c.FailureMetadataTags)
 
 		out = append(out, cmd)
 	}

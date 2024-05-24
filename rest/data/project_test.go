@@ -413,9 +413,6 @@ func TestCreateProject(t *testing.T) {
 	}()
 
 	smClient := &cocoaMock.SecretsManagerClient{}
-	defer func() {
-		assert.NoError(t, smClient.Close(ctx))
-	}()
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser){
 		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
