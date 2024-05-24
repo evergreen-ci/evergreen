@@ -722,28 +722,28 @@ func filterToActiveForReuse(reusePatch *patch.Patch) ([]task.Task, error) {
 
 }
 
-// addTasksNeededByFailedForReuse adds tasks that failed tasks need to run including dependencies and tasks from single host task groups.
-func addTasksNeededByFailedForReuse(failedTasks []task.Task, failedTaskDisplayNames []string, project *model.Project, vt patch.VariantTasks) ([]string, error) {
+// addDependenciesAndTaskGroups adds dependencies and tasks from single host task groups for the given tasks.
+func addDependenciesAndTaskGroups(tasks []task.Task, taskDisplayNames []string, project *model.Project, vt patch.VariantTasks) ([]string, error) {
 	// only add tasks if they are in the current project definition
 	tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
 	tasksToAdd := []string{}
 	// add dependencies of failed tasks
-	failedTaskDependencies, err := task.GetRecursiveDependenciesUp(failedTasks, nil)
+	taskDependencies, err := task.GetRecursiveDependenciesUp(tasks, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies for activated tasks")
 	}
-	for _, t := range failedTaskDependencies {
-		if utility.StringSliceContains(tasksInProjectVariant, t.DisplayName) && !utility.StringSliceContains(failedTaskDisplayNames, t.DisplayName) {
+	for _, t := range taskDependencies {
+		if utility.StringSliceContains(tasksInProjectVariant, t.DisplayName) && !utility.StringSliceContains(taskDisplayNames, t.DisplayName) {
 			tasksToAdd = append(tasksToAdd, t.DisplayName)
 		}
 	}
 
-	for _, failedTask := range failedTasks {
+	for _, t := range tasks {
 		// Schedule all tasks in a single host task group because they may need to execute together to order to succeed.
-		if utility.StringSliceContains(tasksInProjectVariant, failedTask.TaskGroup) && failedTask.TaskGroup != "" && failedTask.IsPartOfSingleHostTaskGroup() {
-			taskGroup := project.FindTaskGroup(failedTask.TaskGroup)
+		if utility.StringSliceContains(tasksInProjectVariant, t.TaskGroup) && t.TaskGroup != "" && t.IsPartOfSingleHostTaskGroup() {
+			taskGroup := project.FindTaskGroup(t.TaskGroup)
 			for _, t := range taskGroup.Tasks {
-				if !utility.StringSliceContains(failedTaskDisplayNames, t) {
+				if !utility.StringSliceContains(taskDisplayNames, t) {
 					tasksToAdd = append(tasksToAdd, t)
 				}
 			}
