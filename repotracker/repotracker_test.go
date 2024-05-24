@@ -1150,7 +1150,7 @@ tasks:
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 
-	s.NoError(createVersionItems(context.TODO(), v, metadata, projectInfo, nil))
+	s.NoError(createVersionItems(s.ctx, v, metadata, projectInfo, nil))
 	tasks, err := task.FindAllTaskIDsFromVersion(v.Id)
 	s.NoError(err)
 	s.Len(tasks, 4)

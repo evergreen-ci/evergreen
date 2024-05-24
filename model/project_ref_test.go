@@ -548,9 +548,10 @@ func TestGetActivationTimeForTask(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, activationTime.Equal(prevTime.Add(time.Hour)))
 
+	// Activation time should be the zero time, because this variant is disabled.
 	activationTime, err = projectRef.GetActivationTimeForTask(bvt2, currentTime)
 	assert.NoError(t, err)
-	assert.Equal(t, activationTime, currentTime)
+	assert.True(t, utility.IsZeroTime(activationTime))
 }
 
 func TestGetActivationTimeWithCron(t *testing.T) {
