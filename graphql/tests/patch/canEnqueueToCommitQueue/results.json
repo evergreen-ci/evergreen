@@ -7,8 +7,21 @@
           "patch": {
             "canEnqueueToCommitQueue": [
               {
-                "canEnqueueToCommitQueue": true,
-                "patchId": "5e4ff3abe3c3317e352062e4"
+                "canEnqueueToCommitQueue": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "cannot_enqueue_to_commit_queue.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "canEnqueueToCommitQueue": [
+              {
+                "canEnqueueToCommitQueue": false
               }
             ]
           }
