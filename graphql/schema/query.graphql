@@ -14,7 +14,7 @@ type Query {
   # distros
   distro(distroId: String! @requireDistroAccess(access: VIEW)): Distro
   distroEvents(opts: DistroEventsInput!): DistroEventsPayload! # Has directive on DistroEventsInput.
-  distros(onlySpawnable: Boolean!): [Distro]!
+  distros(onlySpawnable: Boolean!): [Distro!]!
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
 
   # hosts
@@ -49,16 +49,17 @@ type Query {
   ### The project query must use TASKS permission because we surface many key fields (e.g. patches and banners) from it.
   ### Can be updated after completion of DEVPROD-6882.
   project(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)): Project!
-  projects: [GroupedProjects]!
+  projects: [GroupedProjects!]!
   projectEvents(
-    identifier: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)
+    identifier: String @requireProjectAccess(permission: SETTINGS, access: VIEW)
+    projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access: VIEW)
     limit: Int = 0
     before: Time
   ): ProjectEvents!
-  projectSettings(identifier: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)): ProjectSettings!
+  projectSettings(identifier: String @requireProjectAccess(permission: SETTINGS, access: VIEW), projectIdentifier: String @requireProjectAccess(permission: SETTINGS, access:VIEW)): ProjectSettings!
   repoEvents(repoId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW), limit: Int = 0, before: Time): ProjectEvents!
   repoSettings(repoId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)): RepoSettings!
-  viewableProjectRefs: [GroupedProjects]!
+  viewableProjectRefs: [GroupedProjects!]!
 
   # spawn
   myHosts: [Host!]!
@@ -86,7 +87,7 @@ type Query {
   commitQueue(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)): CommitQueue!
 
   # mainline commits
-  buildVariantsForTaskName(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW), taskName: String!): [BuildVariantTuple]
+  buildVariantsForTaskName(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW), taskName: String!): [BuildVariantTuple!]
   mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits # Has directive on MainlineCommitsOptions.
   taskNamesForBuildVariant(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW), buildVariant: String!): [String!]
 

@@ -503,6 +503,7 @@ func TestPopulateExpansions(t *testing.T) {
 		Status:   evergreen.TaskFailed,
 		Revision: "abc",
 		Project:  "upstreamProject",
+		Version:  "upstreamVersion",
 	}
 	assert.NoError(upstreamTask.Insert())
 	upstreamProject := ProjectRef{
@@ -514,11 +515,12 @@ func TestPopulateExpansions(t *testing.T) {
 	taskDoc.TriggerType = ProjectTriggerLevelTask
 	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken, "", "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 37)
+	assert.Len(map[string]string(expansions), 38)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))
 	assert.Equal(taskDoc.TriggerType, expansions.Get("trigger_event_type"))
 	assert.Equal(upstreamTask.Revision, expansions.Get("trigger_revision"))
 	assert.Equal(upstreamTask.Status, expansions.Get("trigger_status"))
+	assert.Equal(upstreamTask.Version, expansions.Get("trigger_version"))
 	assert.Equal(upstreamProject.Branch, expansions.Get("trigger_branch"))
 }
 
@@ -1767,64 +1769,6 @@ func TestModuleList(t *testing.T) {
 		},
 	}
 	assert.False(projModules.IsIdentical(manifest4))
-}
-
-func TestLoggerConfigValidate(t *testing.T) {
-	assert := assert.New(t)
-
-	var config *LoggerConfig
-	assert.NotPanics(func() {
-		assert.NoError(config.IsValid())
-	})
-	config = &LoggerConfig{}
-	assert.NoError(config.IsValid())
-
-	config = &LoggerConfig{
-		Agent: []LogOpts{{Type: "foo"}},
-	}
-	assert.EqualError(config.IsValid(), "invalid agent logger config: 'foo' is not a valid log sender")
-
-	config = &LoggerConfig{
-		System: []LogOpts{{Type: SplunkLogSender}},
-	}
-	assert.EqualError(config.IsValid(), "invalid system logger config: Splunk logger requires a server URL\nSplunk logger requires a token")
-}
-
-func TestLoggerMerge(t *testing.T) {
-	assert := assert.New(t)
-
-	var config1 *LoggerConfig
-	config2 := &LoggerConfig{
-		Agent:  []LogOpts{{Type: EvergreenLogSender}},
-		System: []LogOpts{{Type: EvergreenLogSender}},
-		Task:   []LogOpts{{Type: EvergreenLogSender}},
-	}
-
-	assert.Nil(mergeAllLogs(config1, config1))
-
-	merged := mergeAllLogs(config1, config2)
-	assert.NotNil(merged)
-	assert.Equal(len(merged.Agent), 1)
-	assert.Equal(len(merged.System), 1)
-	assert.Equal(len(merged.Task), 1)
-
-	merged = mergeAllLogs(config2, config1)
-	assert.NotNil(merged)
-	assert.Equal(len(merged.Agent), 1)
-	assert.Equal(len(merged.System), 1)
-	assert.Equal(len(merged.Task), 1)
-
-	config1 = &LoggerConfig{
-		Agent:  []LogOpts{{LogDirectory: "a"}},
-		System: []LogOpts{{LogDirectory: "a"}},
-		Task:   []LogOpts{{LogDirectory: "a"}},
-	}
-
-	merged = mergeAllLogs(config2, config1)
-	assert.NotNil(merged)
-	assert.Equal(len(merged.Agent), 2)
-	assert.Equal(len(merged.System), 2)
-	assert.Equal(len(merged.Task), 2)
 }
 
 func TestInjectTaskGroupInfo(t *testing.T) {

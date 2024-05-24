@@ -75,20 +75,11 @@ func (j *podDefinitionCreationJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	defer func() {
-		if j.ecsClient != nil {
-			j.AddError(errors.Wrap(j.ecsClient.Close(ctx), "closing ECS client"))
-		}
-
 		if j.HasErrors() && (!j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0) {
 			j.AddError(errors.Wrap(j.decommissionDependentIntentPods(), "decommissioning intent pods after pod definition creation failed"))
 		}
 	}()
 
-	defer func() {
-		if j.ecsClient != nil {
-			j.AddError(j.ecsClient.Close(ctx))
-		}
-	}()
 	if err := j.populateIfUnset(ctx); err != nil {
 		j.AddRetryableError(err)
 		return

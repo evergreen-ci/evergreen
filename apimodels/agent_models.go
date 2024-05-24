@@ -58,17 +58,29 @@ type TaskTestResultsInfo struct {
 // TaskEndDetail contains data sent from the agent to the API server after each task run.
 // This should be used to store data relating to what happened when the task ran
 type TaskEndDetail struct {
-	Status          string          `bson:"status,omitempty" json:"status,omitempty"`
-	Type            string          `bson:"type,omitempty" json:"type,omitempty"`
-	PostErrored     bool            `bson:"post_errored,omitempty" json:"post_errored,omitempty"`
-	Description     string          `bson:"desc,omitempty" json:"desc,omitempty"`
-	TimedOut        bool            `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
-	TimeoutType     string          `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
-	TimeoutDuration time.Duration   `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty" swaggertype:"primitive,integer"`
-	OOMTracker      *OOMTrackerInfo `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
-	Modules         ModuleCloneInfo `bson:"modules,omitempty" json:"modules,omitempty"`
-	TraceID         string          `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
-	DiskDevices     []string        `bson:"disk_devices,omitempty" json:"disk_devices,omitempty"`
+	Status      string `bson:"status,omitempty" json:"status,omitempty"`
+	Type        string `bson:"type,omitempty" json:"type,omitempty"`
+	PostErrored bool   `bson:"post_errored,omitempty" json:"post_errored,omitempty"`
+	Description string `bson:"desc,omitempty" json:"desc,omitempty"`
+	// FailureMetadataTags are user metadata tags associated with the
+	// command that caused the task to fail.
+	FailureMetadataTags []string `bson:"failure_metadata_tags,omitempty" json:"failure_metadata_tags,omitempty"`
+	// OtherFailingCommands contains information about commands that failed
+	// while the task was running but did not cause the task to fail.
+	OtherFailingCommands []FailingCommand `bson:"other_failing_commands,omitempty" json:"other_failing_commands,omitempty"`
+	TimedOut             bool             `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
+	TimeoutType          string           `bson:"timeout_type,omitempty" json:"timeout_type,omitempty"`
+	TimeoutDuration      time.Duration    `bson:"timeout_duration,omitempty" json:"timeout_duration,omitempty" swaggertype:"primitive,integer"`
+	OOMTracker           *OOMTrackerInfo  `bson:"oom_killer,omitempty" json:"oom_killer,omitempty"`
+	Modules              ModuleCloneInfo  `bson:"modules,omitempty" json:"modules,omitempty"`
+	TraceID              string           `bson:"trace_id,omitempty" json:"trace_id,omitempty"`
+	DiskDevices          []string         `bson:"disk_devices,omitempty" json:"disk_devices,omitempty"`
+}
+
+// FailingCommand represents a command that failed in a task.
+type FailingCommand struct {
+	FullDisplayName     string   `bson:"full_display_name,omitempty" json:"full_display_name,omitempty"`
+	FailureMetadataTags []string `bson:"failure_metadata_tags,omitempty" json:"failure_metadata_tags,omitempty"`
 }
 
 type OOMTrackerInfo struct {

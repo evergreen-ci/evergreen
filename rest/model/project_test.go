@@ -11,7 +11,6 @@ import (
 )
 
 func TestRepoBuildFromService(t *testing.T) {
-
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 		Id:                  "project",
 		Owner:               "my_owner",
@@ -65,5 +64,52 @@ func TestRecursivelyDefaultBooleans(t *testing.T) {
 	require.NotNil(t, myStruct.Strct.InsideBool)
 	assert.False(t, *myStruct.EmptyBool)
 	assert.Nil(t, myStruct.PtrStruct) // shouldn't be affected
+}
 
+func TestGitHubDynamicTokenPermissionGroupToService(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	t.Run("Empty permissions should result in no permissions", func(t *testing.T) {
+		req := APIGitHubDynamicTokenPermissionGroups{
+			APIGitHubDynamicTokenPermissionGroup{
+				Name:        utility.ToStringPtr("some-group"),
+				Permissions: map[string]string{},
+			},
+		}
+		models, err := req.ToService()
+		require.NoError(err)
+		require.Len(models, 1)
+
+		assert.Equal("some-group", models[0].Name)
+		assert.Equal(true, models[0].NoPermissions)
+	})
+
+	t.Run("Invalid permissions should result in an error", func(t *testing.T) {
+		req := APIGitHubDynamicTokenPermissionGroups{
+			APIGitHubDynamicTokenPermissionGroup{
+				Name:        utility.ToStringPtr("some-group"),
+				Permissions: map[string]string{"invalid": "invalid"},
+			},
+		}
+		_, err := req.ToService()
+		require.ErrorContains(err, "decoding GitHub permissions")
+	})
+
+	t.Run("Valid permissions should be converted", func(t *testing.T) {
+		req := APIGitHubDynamicTokenPermissionGroups{
+			APIGitHubDynamicTokenPermissionGroup{
+				Name:        utility.ToStringPtr("some-group"),
+				Permissions: map[string]string{"contents": "read", "pull_requests": "write"},
+			},
+		}
+		models, err := req.ToService()
+		require.NoError(err)
+		require.Len(models, 1)
+
+		assert.Equal("some-group", models[0].Name)
+		assert.Equal(false, models[0].NoPermissions)
+		assert.Equal("read", utility.FromStringPtr(models[0].Permissions.Contents))
+		assert.Equal("write", utility.FromStringPtr(models[0].Permissions.PullRequests))
+	})
 }

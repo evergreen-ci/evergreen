@@ -105,9 +105,6 @@ func TestPodHealthCheckJob(t *testing.T) {
 			require.True(t, ok)
 			j.env = env
 			j.ecsClient = &cocoaMock.ECSClient{}
-			defer func() {
-				assert.NoError(t, j.ecsClient.Close(tctx))
-			}()
 			j.pod = &p
 
 			j.ecsPod = generateTestingECSPod(tctx, t, j.ecsClient, cluster, p.TaskContainerCreationOpts)

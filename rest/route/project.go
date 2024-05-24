@@ -503,7 +503,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager client"))
 		}
-		defer smClient.Close(ctx)
 		v, err := cloud.MakeSecretsManagerVault(smClient)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "initializing Secrets Manager vault"))

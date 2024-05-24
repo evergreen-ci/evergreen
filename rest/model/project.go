@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
@@ -545,6 +546,51 @@ func (t *APIRepositoryErrorDetails) BuildFromService(h model.RepositoryErrorDeta
 	t.MergeBaseRevision = utility.ToStringPtr(h.MergeBaseRevision)
 }
 
+type APIGitHubDynamicTokenPermissionGroup struct {
+	// Name of the GitHub permission group.
+	Name *string `json:"name"`
+	// Permissions for the GitHub permission group.
+	Permissions map[string]string `json:"permissions"`
+}
+
+type APIGitHubDynamicTokenPermissionGroups []APIGitHubDynamicTokenPermissionGroup
+
+func (p *APIGitHubDynamicTokenPermissionGroup) ToService() (model.GitHubDynamicTokenPermissionGroup, error) {
+	group := model.GitHubDynamicTokenPermissionGroup{
+		Name: utility.FromStringPtr(p.Name),
+	}
+	metadata := mapstructure.Metadata{}
+	// The github.InstallationPermissions struct has json struct tags that we can
+	// latch on to for decoding the permissions.
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		TagName:     "json",
+		Result:      &group.Permissions,
+		ErrorUnused: true,
+		Metadata:    &metadata,
+	})
+	if err != nil {
+		return group, errors.Wrap(err, "creating decoder for GitHub permissions")
+	}
+	err = decoder.Decode(p.Permissions)
+	if err != nil {
+		return group, errors.Wrap(err, "decoding GitHub permissions")
+	}
+	group.NoPermissions = len(metadata.Keys) == 0
+	return group, nil
+}
+
+func (p *APIGitHubDynamicTokenPermissionGroups) ToService() ([]model.GitHubDynamicTokenPermissionGroup, error) {
+	groups := []model.GitHubDynamicTokenPermissionGroup{}
+	for _, group := range *p {
+		serviceGroup, err := group.ToService()
+		if err != nil {
+			return groups, errors.Wrapf(err, "converting GitHub permission group '%s'", utility.FromStringPtr(group.Name))
+		}
+		groups = append(groups, serviceGroup)
+	}
+	return groups, nil
+}
+
 type APIProjectRef struct {
 	Id *string `json:"id"`
 	// Owner of project repository.
@@ -666,6 +712,10 @@ type APIProjectRef struct {
 	ParsleyFilters []APIParsleyFilter `json:"parsley_filters"`
 	// Default project health view.
 	ProjectHealthView model.ProjectHealthView `json:"project_health_view"`
+	// List of GitHub permission groups.
+	GitHubDynamicTokenPermissionGroups APIGitHubDynamicTokenPermissionGroups `json:"github_dynamic_token_permission_groups,omitempty"`
+	// GitHub permission group by requester.
+	GitHubPermissionGroupByRequester map[string]string `json:"github_permission_group_by_requester,omitempty"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef
@@ -760,6 +810,14 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 			patchTriggers = append(patchTriggers, a.ToService())
 		}
 		projectRef.PatchTriggerAliases = patchTriggers
+	}
+
+	if p.GitHubDynamicTokenPermissionGroups != nil {
+		groups, err := p.GitHubDynamicTokenPermissionGroups.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "converting GitHub permission groups")
+		}
+		projectRef.GitHubDynamicTokenPermissionGroups = groups
 	}
 
 	for _, size := range p.ContainerSizeDefinitions {

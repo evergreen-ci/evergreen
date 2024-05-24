@@ -146,12 +146,8 @@ type LoggerConfig struct {
 }
 
 type LogOpts struct {
-	Sender          string
-	SplunkServerURL string
-	SplunkToken     string
-	Filepath        string
-	BufferDuration  time.Duration
-	BufferSize      int
+	Sender   string
+	Filepath string
 }
 
 // LoggerProducer provides a mechanism for agents (and command plugins) to access the

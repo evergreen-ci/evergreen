@@ -96,8 +96,8 @@ func (a *Agent) SetDefaultLogger(sender send.Sender) {
 	a.defaultLogger = sender
 }
 
-func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *model.LoggerConfig, commandName string) (client.LoggerProducer, error) {
-	config := a.prepLogger(tc, c, commandName)
+func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, commandName string) (client.LoggerProducer, error) {
+	config := a.prepLogger(tc, commandName)
 
 	logger, err := a.comm.GetLoggerProducer(ctx, &tc.taskConfig.Task, &config)
 	if err != nil {
@@ -106,7 +106,7 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *mode
 	return logger, nil
 }
 
-func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName string) client.LoggerConfig {
+func (a *Agent) prepLogger(tc *taskContext, commandName string) client.LoggerConfig {
 	logDir := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
 	grip.Error(errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "making log directory '%s'", logDir))
 	// if this is a command-specific logger, create a dir for the command's logs separate from the overall task
@@ -125,48 +125,20 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 			Redacted:   tc.taskConfig.Redacted,
 		},
 	}
-
-	defaultLogger := model.EvergreenLogSender
-	if len(c.Agent) == 0 {
-		c.Agent = []model.LogOpts{{Type: defaultLogger}}
+	agentLog := client.LogOpts{
+		Sender:   model.EvergreenLogSender,
+		Filepath: filepath.Join(logDir, agentLogFileName),
 	}
-	if len(c.System) == 0 {
-		c.System = []model.LogOpts{{Type: defaultLogger}}
+	systemLog := client.LogOpts{
+		Sender:   model.EvergreenLogSender,
+		Filepath: filepath.Join(logDir, systemLogFileName),
 	}
-	if len(c.Task) == 0 {
-		c.Task = []model.LogOpts{{Type: defaultLogger}}
+	taskLog := client.LogOpts{
+		Sender:   model.EvergreenLogSender,
+		Filepath: filepath.Join(logDir, taskLogFileName),
 	}
-
-	for _, agentConfig := range c.Agent {
-		config.Agent = append(config.Agent, a.prepSingleLogger(tc, agentConfig, logDir, agentLogFileName))
-	}
-	for _, systemConfig := range c.System {
-		config.System = append(config.System, a.prepSingleLogger(tc, systemConfig, logDir, systemLogFileName))
-	}
-	for _, taskConfig := range c.Task {
-		config.Task = append(config.Task, a.prepSingleLogger(tc, taskConfig, logDir, taskLogFileName))
-	}
-
+	config.Agent = append(config.Agent, agentLog)
+	config.System = append(config.System, systemLog)
+	config.Task = append(config.Task, taskLog)
 	return config
-}
-
-func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, fileName string) client.LogOpts {
-	splunkServer, err := tc.taskConfig.Expansions.ExpandString(in.SplunkServer)
-	if err != nil {
-		grip.Error(errors.Wrap(err, "expanding Splunk server"))
-	}
-	splunkToken, err := tc.taskConfig.Expansions.ExpandString(in.SplunkToken)
-	if err != nil {
-		grip.Error(errors.Wrap(err, "expanding Splunk token"))
-	}
-	if in.LogDirectory != "" {
-		grip.Error(errors.Wrapf(os.MkdirAll(in.LogDirectory, os.ModeDir|os.ModePerm), "making log directory '%s'", in.LogDirectory))
-		logDir = in.LogDirectory
-	}
-	return client.LogOpts{
-		Sender:          in.Type,
-		SplunkServerURL: splunkServer,
-		SplunkToken:     splunkToken,
-		Filepath:        filepath.Join(logDir, fileName),
-	}
 }

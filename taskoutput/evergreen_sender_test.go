@@ -179,33 +179,39 @@ func TestSend(t *testing.T) {
 	})
 	t.Run("FlushesAtInterval", func(t *testing.T) {
 		mock := newSenderTestMock(ctx)
-		mock.sender.opts.FlushInterval = 2 * time.Second
+		mock.sender.opts.FlushInterval = 4 * time.Second
 
-		m := message.ConvertToComposer(level.Debug, utility.RandomString())
-		mock.sender.Send(m)
-		require.NotEmpty(t, mock.sender.buffer)
+		data := utility.RandomString()
+		mock.sender.buffer = []log.LogLine{{Data: data}}
+		prevFlush := time.Now()
+		mock.sender.lastFlush = prevFlush
 		go mock.sender.timedFlush()
-		time.Sleep(2 * time.Second)
+		// Sleep for an extra second to avoid a race condition when
+		// verifying the flush.
+		time.Sleep(mock.sender.opts.FlushInterval + time.Second)
 		mock.sender.mu.Lock()
 		require.Empty(t, mock.sender.buffer)
+		assert.Equal(t, mock.sender.opts.FlushInterval, mock.sender.lastFlush.Sub(prevFlush).Round(time.Second))
 		mock.sender.mu.Unlock()
 		require.Len(t, mock.service.lines, 1)
-		assert.Equal(t, m.String(), mock.service.lines[0].Data)
+		assert.Equal(t, data, mock.service.lines[0].Data)
 		assert.Empty(t, mock.local.lastMessage)
 
-		// Should reset the flush interval and flush again after 2
-		// seconds.
-		m = message.ConvertToComposer(level.Debug, utility.RandomString())
-		mock.sender.Send(m)
+		// Should reset the ticker and flush again after the specified
+		// flush interval.
+		data = utility.RandomString()
+		mock.sender.buffer = []log.LogLine{{Data: data}}
 		mock.sender.mu.Lock()
 		require.NotEmpty(t, mock.sender.buffer)
 		mock.sender.mu.Unlock()
-		time.Sleep(3 * time.Second)
+		// Sleep for an extra second to avoid a race condition when
+		// verifying the flush.
+		time.Sleep(mock.sender.opts.FlushInterval + time.Second)
 		mock.sender.mu.Lock()
 		require.Empty(t, mock.sender.buffer)
 		mock.sender.mu.Unlock()
 		require.Len(t, mock.service.lines, 2)
-		assert.Equal(t, m.String(), mock.service.lines[1].Data)
+		assert.Equal(t, data, mock.service.lines[1].Data)
 		assert.Empty(t, mock.local.lastMessage)
 	})
 }

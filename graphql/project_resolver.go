@@ -33,6 +33,7 @@ func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProject
 		Limit:           patchesInput.Limit,
 		OnlyCommitQueue: patchesInput.OnlyCommitQueue,
 		IncludeHidden:   patchesInput.IncludeHidden,
+		Requesters:      patchesInput.Requesters,
 	}
 
 	patches, count, err := patch.ByPatchNameStatusesCommitQueuePaginated(ctx, opts)

@@ -64,7 +64,6 @@ type Project struct {
 	Tasks              []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
 	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 	TimeoutSecs        int                        `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
-	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`
@@ -414,9 +413,10 @@ type BuildVariant struct {
 	Tasks        []BuildVariantTaskUnit `yaml:"tasks,omitempty" bson:"tasks"`
 	DisplayTasks []patch.DisplayTask    `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
 
-	// EmptyTaskSelectors stores task selectors that don't target any tasks for this build variant.
-	// This is only for validation purposes.
-	EmptyTaskSelectors []string `yaml:"-" bson:"-"`
+	// TranslationWarnings are validation warnings that are only detectable during project translation.
+	// e.g. task selectors that don't target any tasks in a build variant but the build
+	// variant still has tasks.
+	TranslationWarnings []string `yaml:"-" bson:"-"`
 }
 
 // CheckRun is used to provide information about a github check run.
@@ -550,7 +550,12 @@ type PluginCommandConf struct {
 	// RetryOnFailure indicates whether the task should be retried if this command fails.
 	RetryOnFailure bool `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
 
-	Loggers *LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	// FailureMetadataTags are user-defined tags which are not used directly by
+	// Evergreen but can be used to allow users to set additional metadata about
+	// the command/function if it fails.
+	// TODO (DEVPROD-5122): add documentation once the additional features for
+	// failing commands (which don't fail the task) are complete.
+	FailureMetadataTags []string `yaml:"failure_metadata_tags,omitempty" bson:"failure_metadata_tags,omitempty"`
 }
 
 func (c *PluginCommandConf) resolveParams() error {
@@ -569,17 +574,17 @@ func (c *PluginCommandConf) resolveParams() error {
 
 func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	temp := struct {
-		Function       string                 `yaml:"func,omitempty" bson:"func,omitempty"`
-		Type           string                 `yaml:"type,omitempty" bson:"type,omitempty"`
-		DisplayName    string                 `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-		Command        string                 `yaml:"command,omitempty" bson:"command,omitempty"`
-		Variants       []string               `yaml:"variants,omitempty" bson:"variants,omitempty"`
-		TimeoutSecs    int                    `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
-		Params         map[string]interface{} `yaml:"params,omitempty" bson:"params,omitempty"`
-		ParamsYAML     string                 `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
-		Vars           map[string]string      `yaml:"vars,omitempty" bson:"vars,omitempty"`
-		RetryOnFailure bool                   `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
-		Loggers        *LoggerConfig          `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+		Function            string                 `yaml:"func,omitempty" bson:"func,omitempty"`
+		Type                string                 `yaml:"type,omitempty" bson:"type,omitempty"`
+		DisplayName         string                 `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+		Command             string                 `yaml:"command,omitempty" bson:"command,omitempty"`
+		Variants            []string               `yaml:"variants,omitempty" bson:"variants,omitempty"`
+		TimeoutSecs         int                    `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
+		Params              map[string]interface{} `yaml:"params,omitempty" bson:"params,omitempty"`
+		ParamsYAML          string                 `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
+		Vars                map[string]string      `yaml:"vars,omitempty" bson:"vars,omitempty"`
+		RetryOnFailure      bool                   `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
+		FailureMetadataTags []string               `yaml:"failure_metadata_tags,omitempty" bson:"failure_metadata_tags,omitempty"`
 	}{}
 
 	if err := unmarshal(&temp); err != nil {
@@ -592,10 +597,10 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 	c.Variants = temp.Variants
 	c.TimeoutSecs = temp.TimeoutSecs
 	c.Vars = temp.Vars
-	c.Loggers = temp.Loggers
 	c.ParamsYAML = temp.ParamsYAML
 	c.Params = temp.Params
 	c.RetryOnFailure = temp.RetryOnFailure
+	c.FailureMetadataTags = temp.FailureMetadataTags
 	return c.unmarshalParams()
 }
 
@@ -748,79 +753,9 @@ type ProjectTask struct {
 	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
 }
 
-type LoggerConfig struct {
-	Agent  []LogOpts `yaml:"agent,omitempty" bson:"agent,omitempty"`
-	System []LogOpts `yaml:"system,omitempty" bson:"system,omitempty"`
-	Task   []LogOpts `yaml:"task,omitempty" bson:"task,omitempty"`
-}
-
-type LogOpts struct {
-	Type         string `yaml:"type,omitempty" bson:"type,omitempty"`
-	SplunkServer string `yaml:"splunk_server,omitempty" bson:"splunk_server,omitempty"`
-	SplunkToken  string `yaml:"splunk_token,omitempty" bson:"splunk_token,omitempty"`
-	LogDirectory string `yaml:"log_directory,omitempty" bson:"log_directory,omitempty"`
-}
-
-func (c *LoggerConfig) IsValid() error {
-	if c == nil {
-		return nil
-	}
-	catcher := grip.NewBasicCatcher()
-	for _, opts := range c.Agent {
-		catcher.Wrap(opts.IsValid(), "invalid agent logger config")
-	}
-	for _, opts := range c.System {
-		catcher.Wrap(opts.IsValid(), "invalid system logger config")
-		if opts.Type == FileLogSender {
-			catcher.New("file logger is disallowed for system logs; will use Evergreen logger")
-		}
-	}
-	for _, opts := range c.Task {
-		catcher.Wrap(opts.IsValid(), "invalid task logger config")
-	}
-
-	return catcher.Resolve()
-}
-
-func (o *LogOpts) IsValid() error {
-	catcher := grip.NewBasicCatcher()
-	if !utility.StringSliceContains(ValidLogSenders, o.Type) {
-		catcher.Errorf("'%s' is not a valid log sender", o.Type)
-	}
-	if o.Type == SplunkLogSender && o.SplunkServer == "" {
-		catcher.New("Splunk logger requires a server URL")
-	}
-	if o.Type == SplunkLogSender && o.SplunkToken == "" {
-		catcher.New("Splunk logger requires a token")
-	}
-
-	return catcher.Resolve()
-}
-
-func mergeAllLogs(main, add *LoggerConfig) *LoggerConfig {
-	if main == nil {
-		return add
-	} else if add == nil {
-		return main
-	} else {
-		main.Agent = append(main.Agent, add.Agent...)
-		main.System = append(main.System, add.System...)
-		main.Task = append(main.Task, add.Task...)
-	}
-	return main
-}
-
 const (
 	EvergreenLogSender = "evergreen"
-	FileLogSender      = "file"
-	SplunkLogSender    = "splunk"
 )
-
-var ValidLogSenders = []string{
-	EvergreenLogSender,
-	FileLogSender,
-	SplunkLogSender,
-}
 
 // TaskIdTable is a map of [variant, task display name]->[task id].
 type TaskIdTable map[TVPair]string
@@ -1140,6 +1075,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken, knownH
 			}
 			expansions.Put("trigger_status", upstreamTask.Status)
 			expansions.Put("trigger_revision", upstreamTask.Revision)
+			expansions.Put("trigger_version", upstreamTask.Version)
 			upstreamProjectID = upstreamTask.Project
 		} else if t.TriggerType == ProjectTriggerLevelBuild {
 			var upstreamBuild *build.Build
@@ -1152,6 +1088,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken, knownH
 			}
 			expansions.Put("trigger_status", upstreamBuild.Status)
 			expansions.Put("trigger_revision", upstreamBuild.Revision)
+			expansions.Put("trigger_version", upstreamBuild.Version)
 			upstreamProjectID = upstreamBuild.Project
 		}
 		var upstreamProject *ProjectRef

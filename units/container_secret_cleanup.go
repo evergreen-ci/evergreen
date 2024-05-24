@@ -58,13 +58,6 @@ func NewContainerSecretCleanupJob(id string) amboy.Job {
 func (j *containerSecretCleanupJob) Run(ctx context.Context) {
 	defer func() {
 		j.MarkComplete()
-
-		if j.smClient != nil {
-			j.AddError(errors.Wrap(j.smClient.Close(ctx), "closing Secrets Manager client"))
-		}
-		if j.tagClient != nil {
-			j.AddError(errors.Wrap(j.tagClient.Close(ctx), "closing tag client"))
-		}
 	}()
 	if err := j.populate(ctx); err != nil {
 		j.AddError(err)

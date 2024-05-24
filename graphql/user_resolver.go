@@ -55,6 +55,7 @@ func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, pa
 		Limit:              patchesInput.Limit,
 		IncludeCommitQueue: patchesInput.IncludeCommitQueue,
 		IncludeHidden:      patchesInput.IncludeHidden,
+		Requesters:         patchesInput.Requesters,
 	}
 	patches, count, err := patch.ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	if err != nil {

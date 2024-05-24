@@ -60,9 +60,12 @@ func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (
 
 // SleepSchedule is the resolver for the sleepSchedule field.
 func (r *hostResolver) SleepSchedule(ctx context.Context, obj *restModel.APIHost) (*host.SleepScheduleInfo, error) {
-	h, err := host.FindOne(ctx, host.ById(*obj.Id))
+	h, err := host.FindOne(ctx, host.ById(utility.FromStringPtr(obj.Id)))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting host %s", *obj.Id))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting host %s", utility.FromStringPtr(obj.Id)))
+	}
+	if h == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find host %s", utility.FromStringPtr(obj.Id)))
 	}
 	return &h.SleepSchedule, nil
 }

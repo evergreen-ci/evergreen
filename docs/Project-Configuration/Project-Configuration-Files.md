@@ -807,6 +807,8 @@ inter-project dependency:
     initiated this trigger
 -   `${trigger_event_type}` will be "task" or "build," identifying
     what type of ID `${trigger_event_identifier}` is
+-   `${trigger_version}` is the version ID for the task or build that 
+    initiated this trigger
 -   `${trigger_status}` is the task or build status of whatever
     initiated this trigger
 -   `${trigger_revision}` is the githash of whatever commit initiated
@@ -1669,60 +1671,6 @@ tasks:
   - name: task2
     commands:
     - func: my_function
-```
-
-### Customizing Logging
-
-By default, tasks will log all output to Cedar buildlogger. You can
-override this behavior at the project or command level by log type
-(task, agent, system). The available loggers are:
-
--   `file` - Output is sent to a local file on the agent, which will be
-    uploaded to S3 at the end of the task. Links to the files will be
-    available on the task page. This option is not available to system
-    logs for security reasons. The `log_directory` parameter may be
-    specified to override the default storage directory for log files.
--   `splunk` - Output is sent to Splunk. No links will be provided on
-    the task page, but the logs can be searched using
-    `metadata.context.task_id=<task_id>` as a Splunk query. Choosing
-    this logger requires that the `splunk_server` parameter be set to
-    the Splunk server URL and the `splunk_token` set to the API token
-    used to authenticate.
-
-Multiple loggers can be specified. An example config file that wants to
-send task logs to S3 in addition to the Cedar buildlogger is:
-
-``` yaml
-command_type: test
-loggers:
-  task:
-    - type: buildlogger
-    - type: file
-  agent:
-    - type: buildlogger
-  system:
-    - type: buildlogger
-tasks:
-  [...]
-```
-
-All of this can be specified for a specific command as well, which will
-only apply the settings to that command. An example is:
-
-``` yaml
-- command: subprocess.exec
-  type: setup
-  loggers:
-    task:
-      - type: splunk
-        splunk_server: ${splunk_server}
-        splunk_token: ${splunk_token}
-    agent:
-      - type: buildlogger
-    system:
-      - type: buildlogger
-  params:
-    [...]
 ```
 
 ### The Power of YAML

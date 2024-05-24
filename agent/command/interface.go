@@ -55,17 +55,24 @@ type Command interface {
 	// RetryOnFailure indicates whether the entire task should be retried if this command fails.
 	RetryOnFailure() bool
 	SetRetryOnFailure(bool)
+
+	// FailureMetadataTags are user-defined tags which are not used directly by
+	// Evergreen but can be used to allow users to set additional metadata about
+	// the command/function if it fails.
+	FailureMetadataTags() []string
+	SetFailureMetadataTags([]string)
 }
 
 // base contains a basic implementation of functionality that is
 // common to all command implementations.
 type base struct {
-	idleTimeout     time.Duration
-	typeName        string
-	fullDisplayName string
-	retryOnFailure  bool
-	jasper          jasper.Manager
-	mu              sync.RWMutex
+	idleTimeout         time.Duration
+	typeName            string
+	fullDisplayName     string
+	retryOnFailure      bool
+	failureMetadataTags []string
+	jasper              jasper.Manager
+	mu                  sync.RWMutex
 }
 
 func (b *base) Type() string {
@@ -136,4 +143,18 @@ func (b *base) RetryOnFailure() bool {
 	defer b.mu.RUnlock()
 
 	return b.retryOnFailure
+}
+
+func (b *base) SetFailureMetadataTags(tags []string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.failureMetadataTags = tags
+}
+
+func (b *base) FailureMetadataTags() []string {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	return b.failureMetadataTags
 }

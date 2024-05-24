@@ -3,7 +3,6 @@ package operations
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/urfave/cli"
@@ -50,13 +49,6 @@ const (
 	preserveCommitsFlag       = "preserve-commits"
 	subscriptionTypeFlag      = "subscription-type"
 	errorOnWarningsFlagName   = "error-on-warnings"
-
-	anserDryRunFlagName      = "dry-run"
-	anserLimitFlagName       = "limit"
-	anserTargetFlagName      = "target"
-	anserWorkersFlagName     = "workers"
-	anserPeriodFlagName      = "period"
-	anserMigrationIDFlagName = "id"
 
 	dbUrlFlagName      = "url"
 	dbAWSAuthFlagName  = "mongo-aws-auth"
@@ -217,38 +209,6 @@ func addLimitFlag(flags ...cli.Flag) []cli.Flag {
 		Usage: "return a maximum of this number of results",
 		Value: 10,
 	})
-}
-
-func addMigrationRuntimeFlags(flags ...cli.Flag) []cli.Flag {
-	return append(flags,
-		cli.BoolFlag{
-			Name:  joinFlagNames(anserDryRunFlagName, "n"),
-			Usage: "run migration in a dry-run mode",
-		},
-		cli.IntFlag{
-			Name:  joinFlagNames(anserLimitFlagName, "l"),
-			Usage: "limit the number of migration jobs to process",
-		},
-		cli.IntFlag{
-			Name:  joinFlagNames(anserTargetFlagName, "t"),
-			Usage: "target number of migrations",
-			Value: 60,
-		},
-		cli.StringSliceFlag{
-			Name:  joinFlagNames(anserMigrationIDFlagName, "i"),
-			Usage: "Specify one or more times to limit to a specific (named) subset of migrations",
-		},
-		cli.IntFlag{
-			Name:  joinFlagNames(anserWorkersFlagName, "j"),
-			Usage: "total number of parallel migration workers",
-			Value: 4,
-		},
-		cli.DurationFlag{
-			Name:  joinFlagNames(anserPeriodFlagName, "p"),
-			Usage: "length of scheduling window",
-			Value: time.Minute,
-		})
-
 }
 
 func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
