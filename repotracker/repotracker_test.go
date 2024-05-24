@@ -1084,7 +1084,7 @@ tasks:
 			s.InDelta(bv.ActivateAt.Unix(), now.Unix(), 1)
 			s.Require().Len(bv.BatchTimeTasks, 2)
 			for _, t := range bv.BatchTimeTasks {
-				if t.TaskName == "task1" { // activate time is now because their isn't a previous task
+				if t.TaskName == "task1" { // activate time is now because there isn't a previous task
 					s.InDelta(t.ActivateAt.Unix(), now.Unix(), 1)
 				} else {
 					// ensure that "daily" cron is set for the next day
@@ -1094,6 +1094,84 @@ tasks:
 					s.Equal(d, td)
 				}
 
+			}
+		}
+		if bv.BuildVariant == "bv2" {
+			s.False(bv.Activated)
+			s.Len(bv.BatchTimeTasks, 0)
+		}
+	}
+}
+
+func (s *CreateVersionFromConfigSuite) TestCreateVersionItemsBatchtime() {
+	// Test that we correctly use the version create time to determine task batchtimes, rather than the task create time.
+	configYml := `
+buildvariants:
+- name: bv
+  display_name: "bv_display"
+  run_on: d
+  tasks:
+  - name: task1
+    batchtime: 30
+  - name: task2
+    cron: "@daily"
+  - name: task3
+- name: bv2
+  batchtime: 15
+  display_name: bv2_display
+  run_on: d
+  tasks:
+  - name: task1
+tasks:
+- name: task1
+- name: task2
+- name: task3
+`
+	p := &model.Project{}
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
+	s.NoError(err)
+	projectInfo := &model.ProjectInfo{
+		Ref:                 s.ref,
+		IntermediateProject: pp,
+		Project:             p,
+	}
+	metadata := model.VersionMetadata{Revision: *s.rev}
+	versionCreateTime := time.Now().Add(time.Minute * -10)
+
+	v := &model.Version{
+		Id:                  "_abc",
+		CreateTime:          versionCreateTime,
+		Revision:            "abc",
+		Author:              "me",
+		RevisionOrderNumber: 12,
+		Owner:               "evergreen-ci",
+		Repo:                "evergreen",
+		Branch:              "main",
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+
+	s.NoError(createVersionItems(s.ctx, v, metadata, projectInfo, nil))
+	tasks, err := task.FindAllTaskIDsFromVersion(v.Id)
+	s.NoError(err)
+	s.Len(tasks, 4)
+	tomorrow := versionCreateTime.Add(time.Hour * 24) // next day
+	y, m, d := tomorrow.Date()
+
+	s.Len(v.BuildVariants, 2)
+	for _, bv := range v.BuildVariants {
+		if bv.BuildVariant == "bv" {
+			s.Equal(versionCreateTime, bv.ActivateAt) // Build variant activate time should use the version create time
+			s.Require().Len(bv.BatchTimeTasks, 2)
+			for _, t := range bv.BatchTimeTasks {
+				if t.TaskName == "task1" { // activate time is the version create time because there isn't a previous task
+					s.Equal(versionCreateTime, t.ActivateAt)
+				} else {
+					// ensure that "daily" cron is set for the next day
+					ty, tm, td := t.ActivateAt.Date()
+					s.Equal(y, ty)
+					s.Equal(m, tm)
+					s.Equal(d, td)
+				}
 			}
 		}
 		if bv.BuildVariant == "bv2" {

@@ -544,13 +544,15 @@ func TestGetActivationTimeForTask(t *testing.T) {
 	assert.NoError(t, versionWithoutTask.Insert())
 	assert.NoError(t, versionWithTask.Insert())
 
-	activationTime, err := projectRef.GetActivationTimeForTask(bvt)
+	currentTime := time.Now()
+	activationTime, err := projectRef.GetActivationTimeForTask(bvt, currentTime)
 	assert.NoError(t, err)
 	assert.True(t, activationTime.Equal(prevTime.Add(time.Hour)))
 
-	activationTime, err = projectRef.GetActivationTimeForTask(bvt2)
+	// Activation time should be the zero time, because this variant is disabled.
+	activationTime, err = projectRef.GetActivationTimeForTask(bvt2, currentTime)
 	assert.NoError(t, err)
-	assert.True(t, activationTime.Equal(utility.ZeroTime))
+	assert.True(t, utility.IsZeroTime(activationTime))
 }
 
 func TestGetActivationTimeWithCron(t *testing.T) {
@@ -3700,10 +3702,11 @@ func TestGetActivationTimeForVariant(t *testing.T) {
 	}
 	assert.Nil(projectRef.Insert())
 
-	// set based on last activation time when no version is found
-	activationTime, err := projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"})
+	// Set based on last activation time when no version is found
+	currentTime := time.Now().Add(-1 * time.Minute)
+	activationTime, err := projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"}, currentTime)
 	assert.NoError(err)
-	assert.NotZero(activationTime)
+	assert.Equal(activationTime, currentTime)
 
 	// set based on last activation time with a version
 	version := &Version{
@@ -3723,7 +3726,8 @@ func TestGetActivationTimeForVariant(t *testing.T) {
 	}
 	assert.Nil(version.Insert())
 
-	activationTime, err = projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"})
+	activationTime, err = projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"}, currentTime)
 	assert.NoError(err)
 	assert.NotZero(activationTime)
+	assert.Equal(activationTime, currentTime)
 }
