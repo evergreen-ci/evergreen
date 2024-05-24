@@ -27,6 +27,27 @@ func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.AP
 	return usr.DisplayName(), nil
 }
 
+func (r *patchResolver) CanEnqueueToCommitQueue(ctx context.Context, obj *restModel.APIPatch) (bool, error) {
+	patchID := utility.FromStringPtr(obj.Id)
+	p, err := patch.FindOneId(patchID)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding patch '%s': %s", patchID, err.Error()))
+	}
+	if p == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
+	}
+
+	proj, err := model.FindMergedProjectRef(p.Project, p.Version, false)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error getting project '%s': %s", p.Project, err.Error()))
+	}
+	if proj == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", p.Project))
+	}
+	// Projects that use the GitHub merge queue cannot enqueue to the commit queue.
+	return (p.HasValidGitInfo() || p.IsGithubPRPatch()) && proj.CommitQueue.MergeQueue != model.MergeQueueGitHub, nil
+}
+
 // BaseTaskStatuses is the resolver for the baseTaskStatuses field.
 func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
 	baseVersion, err := model.FindBaseVersionForVersion(*obj.Id)
