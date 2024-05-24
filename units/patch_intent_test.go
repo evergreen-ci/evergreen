@@ -350,17 +350,18 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 				Tasks:   []string{"t1", "t2", "tgt1", "tgt2", "tgt3", "tgt4", "not_activated"},
 			},
 			{
-				Variant: "bv_only_dt",
-				Tasks:   []string{"dt1", "et1"},
+				Variant:      "bv2",
+				DisplayTasks: []patch.DisplayTask{{Name: "dt1", ExecTasks: []string{"et1"}}},
+				Tasks:        []string{"et1"},
 			},
 			{
-				Variant:      "bv_different_dt",
+				Variant:      "bv3",
 				DisplayTasks: []patch.DisplayTask{{Name: "dt2", ExecTasks: []string{"et2"}}},
 				Tasks:        []string{"et2"},
 			},
 		},
 		Tasks:         []string{"t1", "t2", "tgt1", "tgt2", "tgt3", "tgt4", "dt1", "et1", "dt2", "et2", "not_activated"},
-		BuildVariants: []string{"bv_only_dt", "bv_different_dt", "bv1"},
+		BuildVariants: []string{"bv1", "bv2", "bv3"},
 		RegexTasks:    []string{"1$"},
 	}
 	s.NoError((previousPatchDoc).Insert())
@@ -398,14 +399,14 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			},
 		},
 		{
-			Name:         "bv_only_dt",
+			Name:         "bv2",
 			DisplayTasks: []patch.DisplayTask{{Name: "dt1", ExecTasks: []string{"et1"}}},
 			Tasks: []model.BuildVariantTaskUnit{
-				{Name: "et1", Variant: "bv_only_dt"},
+				{Name: "et1", Variant: "bv2"},
 			},
 		},
 		{
-			Name:         "bv_different_dt",
+			Name:         "bv3",
 			DisplayTasks: []patch.DisplayTask{{Name: "dt2", ExecTasks: []string{"et2"}}},
 		},
 	},
@@ -525,7 +526,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			Id:             "dt1",
 			DisplayName:    "dt1",
 			Version:        "v1",
-			BuildVariant:   "bv_only_dt",
+			BuildVariant:   "bv2",
 			DisplayOnly:    true,
 			ExecutionTasks: []string{"et1"},
 			Status:         evergreen.TaskFailed,
@@ -535,7 +536,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			Id:            "et1",
 			DisplayName:   "et1",
 			Version:       "v1",
-			BuildVariant:  "bv_only_dt",
+			BuildVariant:  "bv2",
 			DisplayTaskId: utility.ToStringPtr("dt1"),
 			Status:        evergreen.TaskFailed,
 			Activated:     true,
@@ -544,7 +545,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			Id:             "dt2",
 			DisplayName:    "dt2",
 			Version:        "v1",
-			BuildVariant:   "bv_different_dt",
+			BuildVariant:   "bv3",
 			DisplayOnly:    true,
 			ExecutionTasks: []string{"et2"},
 			Status:         evergreen.TaskSucceeded,
@@ -554,7 +555,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			Id:            "et2",
 			DisplayName:   "et2",
 			Version:       "v1",
-			BuildVariant:  "bv_different_dt",
+			BuildVariant:  "bv3",
 			DisplayTaskId: utility.ToStringPtr("dt2"),
 			Status:        evergreen.TaskSucceeded,
 			Activated:     false,
@@ -895,7 +896,6 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReuse() {
 
 func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 	earlierPatchId := mgobson.NewObjectId().Hex()
-	// prevPatchId := mgobson.NewObjectId().Hex()
 	tasks := []task.Task{
 		{
 			Id:           "t1",
@@ -944,6 +944,28 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 	for _, t := range tasks {
 		s.NoError(t.Insert())
 	}
+
+	// Add a more recent patch to ensure that it uses the passed
+	// in patchId and not just the latest.
+	prevPatchId := mgobson.NewObjectId().Hex()
+	previousPatchDoc := &patch.Patch{
+		Id:            patch.NewId(prevPatchId),
+		Activated:     true,
+		Status:        evergreen.VersionFailed,
+		Project:       s.project,
+		CreateTime:    time.Now(),
+		Author:        s.user,
+		Version:       prevPatchId,
+		Tasks:         []string{"t1", "t2"},
+		BuildVariants: []string{"bv1"},
+		VariantsTasks: []patch.VariantTasks{
+			{
+				Variant: "bv1",
+				Tasks:   []string{"prevPatchTask"},
+			},
+		},
+	}
+	s.NoError((previousPatchDoc).Insert())
 
 	earlierPatchDoc := &patch.Patch{
 		Id:            patch.NewId(earlierPatchId),
