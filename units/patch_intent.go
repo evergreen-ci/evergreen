@@ -680,7 +680,7 @@ func setToFilteredTasks(patchDoc, reusePatch *patch.Patch, project *model.Projec
 	filteredVariantTasks := []patch.VariantTasks{}
 	for _, vt := range reusePatch.VariantsTasks {
 		// Limit it to tasks that are failed or who have failed tasks depending on them.
-		// we only need to add dependencies and task group tasks for failed tasks because otherwise
+		// We only need to add dependencies and task group tasks for failed tasks because otherwise
 		// we can rely on them being there from the previous patch.
 		if failedOnly {
 			failedPlusNeeded, err := addTasksNeededByFailedForReuse(failedTasks, failedTaskDisplayNames, project, vt)
@@ -722,7 +722,7 @@ func filterToActiveForReuse(reusePatch *patch.Patch) ([]task.Task, error) {
 
 }
 
-// addTasksNeededByFailedForReuse add tasks that failed tasks need to run including dependencies and tasks from single host task groups.
+// addTasksNeededByFailedForReuse adds tasks that failed tasks need to run including dependencies and tasks from single host task groups.
 func addTasksNeededByFailedForReuse(failedTasks []task.Task, failedTaskDisplayNames []string, project *model.Project, vt patch.VariantTasks) ([]string, error) {
 	// only add tasks if they are in the current project definition
 	tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
