@@ -153,7 +153,17 @@ type GitHubDynamicTokenPermissionGroup struct {
 	NoPermissions bool `bson:"no_permissions,omitempty" json:"no_permissions,omitempty" yaml:"no_permissions,omitempty"`
 }
 
+// defaultGitHubTokenPermissionGroup is an empty, all permissions, group.
 var defaultGitHubTokenPermissionGroup = GitHubDynamicTokenPermissionGroup{}
+
+// githubPermissionLevels is a map of GitHub permission values
+// to their level of access. A lower level of access is more restrictive
+// and should be prioritized.
+var githubPermissionLevels = map[string]int{
+	"read":  1,
+	"write": 2,
+	"admin": 3,
+}
 
 // GetGitHubPermissionGroup returns the GitHubDynamicTokenPermissionGroup for the given requester.
 // If the requester is not found, it returns the default.
@@ -196,6 +206,73 @@ func (p *ProjectRef) ValidateGitHubPermissionGroups() error {
 		}
 	}
 	return errors.Wrap(catcher.Resolve(), "invalid GitHub dynamic token permission groups")
+}
+
+// Intersection returns the most restrictive intersection of the two permission groups.
+// The name carries over from the calling group. If either permission is no permissions,
+// it will return a group with no permissions.
+func (p *GitHubDynamicTokenPermissionGroup) Intersection(other GitHubDynamicTokenPermissionGroup) GitHubDynamicTokenPermissionGroup {
+	intersectionGroup := GitHubDynamicTokenPermissionGroup{Name: p.Name}
+	if p.NoPermissions || other.NoPermissions {
+		intersectionGroup.NoPermissions = true
+		return intersectionGroup
+	}
+
+	// To keep up to date with GitHub's different permissions,
+	// we use reflection to iterate over the fields of the struct.
+
+	// The two permissions to intersect.
+	perms1 := reflect.ValueOf(&p.Permissions).Elem()
+	perms2 := reflect.ValueOf(&other.Permissions).Elem()
+
+	// The most restrictive intersection of the above permissions.
+	intersection := reflect.ValueOf(&intersectionGroup.Permissions).Elem()
+
+	// Iterate through all of their fields.
+	for i := 0; i < perms1.NumField(); i++ {
+		perm1, ok := perms1.Field(i).Interface().(*string)
+		// This currently should not get triggered, but if GitHub
+		// introduces a field that isn't a pointer to a string-
+		// this will stop a wide spread panic.
+		if !ok {
+			continue
+		}
+		perm2, ok := perms2.Field(i).Interface().(*string)
+		if !ok {
+			continue
+		}
+
+		// If either are nil, that counts as the most restrictive
+		// permission (no permission).
+		if perm1 == nil || perm2 == nil {
+			intersection.Field(i).Set(reflect.ValueOf((*string)(nil)))
+			continue
+		}
+
+		mostRestrictive := perm1
+		level1, ok1 := githubPermissionLevels[*perm1]
+		level2, ok2 := githubPermissionLevels[*perm2]
+		if !ok1 && ok2 {
+			// If the first permission is invalid but the second isn't, use the
+			// second.
+			mostRestrictive = perm2
+		} else if !ok1 && !ok2 {
+			// If both are invalid, skip this permission.
+			// In general, this should not happen, but if GitHub introduces a new
+			// permission level that we don't know about this could get triggered.
+			continue
+		} else if ok1 && ok2 {
+			// If the second permission is a lower level (more restrictive),
+			// use it instead. If not, we are already set to the first permission.
+			if level2 < level1 {
+				mostRestrictive = perm2
+			}
+		}
+
+		intersection.Field(i).Set(reflect.ValueOf(mostRestrictive))
+	}
+
+	return intersectionGroup
 }
 
 type ProjectHealthView string

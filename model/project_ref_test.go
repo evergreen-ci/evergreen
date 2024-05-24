@@ -1772,8 +1772,31 @@ func TestGithubPermissionGroups(t *testing.T) {
 		{
 			Name: "some-group",
 			Permissions: github.InstallationPermissions{
-				Actions: utility.ToStringPtr("read"),
+				Administration:             utility.ToStringPtr("admin"),
+				Actions:                    utility.ToStringPtr("read"),
+				Contents:                   utility.ToStringPtr("write"),
+				Checks:                     utility.ToStringPtr("write"),
+				Environments:               utility.ToStringPtr("nope"),
+				Followers:                  utility.ToStringPtr("nope1"),
+				Metadata:                   utility.ToStringPtr("write"),
+				OrganizationAdministration: utility.ToStringPtr("admin"),
 			},
+		},
+		{
+			Name: "other-group",
+			Permissions: github.InstallationPermissions{
+				Administration:             utility.ToStringPtr("write"),
+				Actions:                    utility.ToStringPtr("write"),
+				Checks:                     utility.ToStringPtr("read"),
+				Environments:               utility.ToStringPtr("read"),
+				Followers:                  utility.ToStringPtr("nope2"),
+				Metadata:                   utility.ToStringPtr("write"),
+				OrganizationAdministration: utility.ToStringPtr("admin"),
+			},
+		},
+		{
+			Name:          "no-permissions",
+			NoPermissions: true,
 		},
 	}
 	orgRequesters := map[string]string{
@@ -1821,6 +1844,26 @@ func TestGithubPermissionGroups(t *testing.T) {
 			evergreen.GithubPRRequester: "second-group",
 		}
 		assert.ErrorContains(p.ValidateGitHubPermissionGroups(), fmt.Sprintf("group 'second-group' for requester '%s' not found", evergreen.GithubPRRequester))
+	})
+
+	t.Run("Intersection of permissions should return most restrictive", func(t *testing.T) {
+		intersection := orgGroup[0].Intersection(orgGroup[1])
+		assert.Equal(orgGroup[0].Name, intersection.Name)
+		assert.False(intersection.NoPermissions)
+
+		assert.Equal("write", utility.FromStringPtr(intersection.Permissions.Administration), "write and admin should restrict to write")
+		assert.Equal("read", utility.FromStringPtr(intersection.Permissions.Actions), "read and write should restrict to read")
+		assert.Nil(intersection.Permissions.Contents, "nil and write should restrict to nil")
+		assert.Equal("read", utility.FromStringPtr(intersection.Permissions.Environments), "nope and read should ignore nope and restrict to read")
+		assert.Nil(intersection.Permissions.Followers, "nope1 and nope2 should be ignored and restrict to nil")
+		assert.Equal("read", utility.FromStringPtr(intersection.Permissions.Checks), "write and read should restrict to read when reversed")
+		assert.Equal("write", utility.FromStringPtr(intersection.Permissions.Metadata), "both write should restrict to write")
+	})
+
+	t.Run("Intersection of permissions with no permissions should return no permissions", func(t *testing.T) {
+		intersection := orgGroup[0].Intersection(orgGroup[2])
+		assert.Equal(orgGroup[0].Name, intersection.Name)
+		assert.True(intersection.NoPermissions)
 	})
 }
 
