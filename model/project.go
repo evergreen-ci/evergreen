@@ -1515,12 +1515,21 @@ func (p *Project) GetModuleByName(name string) (*Module, error) {
 	return nil, errors.New("no such module on this project")
 }
 
+// FindTasksForVariant returns all tasks in a variant, including tasks in task groups.
 func (p *Project) FindTasksForVariant(build string) []string {
 	for _, b := range p.BuildVariants {
 		if b.Name == build {
-			tasks := make([]string, 0, len(b.Tasks))
+			tasks := []string{}
 			for _, task := range b.Tasks {
 				tasks = append(tasks, task.Name)
+				// add tasks in task groups
+				if task.IsGroup {
+					tg := p.FindTaskGroup(task.Name)
+					if tg != nil {
+						tasks = append(tasks, tg.Tasks...)
+					}
+				}
+
 			}
 			return tasks
 		}
