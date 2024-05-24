@@ -394,6 +394,9 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if err = validateFeaturesHaveAliases(mergedBeforeRef, mergedSection, changes.Aliases); err != nil {
 			return nil, err
 		}
+		if err = mergedSection.ValidateGitHubPermissionGroups(); err != nil {
+			return nil, err
+		}
 		modified, err = updateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPagePatchAliasSection:

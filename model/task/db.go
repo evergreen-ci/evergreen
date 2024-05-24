@@ -1805,6 +1805,21 @@ func FindProjectForTask(taskID string) (string, error) {
 	return t.Project, nil
 }
 
+func FindActivatedByVersionWithoutDisplay(versionId string) ([]Task, error) {
+	query := db.Query(bson.M{
+		VersionKey:     versionId,
+		ActivatedKey:   true,
+		DisplayOnlyKey: bson.M{"$ne": true},
+	})
+	activatedTasks, err := FindAll(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting previous patch tasks")
+	}
+
+	return activatedTasks, nil
+
+}
+
 func (t *Task) updateAllMatchingDependenciesForTask(ctx context.Context, dependencyID string, unattainable bool) error {
 	// Update the matching dependencies in the DependsOn array and the UnattainableDependency field that caches
 	// whether any of the dependencies are blocked. Combining both these updates in a single update operation makes it

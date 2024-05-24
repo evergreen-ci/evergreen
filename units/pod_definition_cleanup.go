@@ -61,10 +61,6 @@ func NewPodDefinitionCleanupJob(id string) amboy.Job {
 func (j *podDefinitionCleanupJob) Run(ctx context.Context) {
 	defer func() {
 		j.MarkComplete()
-
-		if j.ecsClient != nil {
-			j.AddError(errors.Wrap(j.ecsClient.Close(ctx), "closing ECS client"))
-		}
 	}()
 	if err := j.populate(ctx); err != nil {
 		j.AddError(err)

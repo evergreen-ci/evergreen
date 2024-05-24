@@ -64,7 +64,6 @@ type Project struct {
 	Tasks              []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
 	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 	TimeoutSecs        int                        `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
-	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`
@@ -557,8 +556,6 @@ type PluginCommandConf struct {
 	// TODO (DEVPROD-5122): add documentation once the additional features for
 	// failing commands (which don't fail the task) are complete.
 	FailureMetadataTags []string `yaml:"failure_metadata_tags,omitempty" bson:"failure_metadata_tags,omitempty"`
-
-	Loggers *LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 }
 
 func (c *PluginCommandConf) resolveParams() error {
@@ -588,7 +585,6 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 		Vars                map[string]string      `yaml:"vars,omitempty" bson:"vars,omitempty"`
 		RetryOnFailure      bool                   `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
 		FailureMetadataTags []string               `yaml:"failure_metadata_tags,omitempty" bson:"failure_metadata_tags,omitempty"`
-		Loggers             *LoggerConfig          `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	}{}
 
 	if err := unmarshal(&temp); err != nil {
@@ -601,7 +597,6 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 	c.Variants = temp.Variants
 	c.TimeoutSecs = temp.TimeoutSecs
 	c.Vars = temp.Vars
-	c.Loggers = temp.Loggers
 	c.ParamsYAML = temp.ParamsYAML
 	c.Params = temp.Params
 	c.RetryOnFailure = temp.RetryOnFailure
@@ -758,79 +753,9 @@ type ProjectTask struct {
 	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
 }
 
-type LoggerConfig struct {
-	Agent  []LogOpts `yaml:"agent,omitempty" bson:"agent,omitempty"`
-	System []LogOpts `yaml:"system,omitempty" bson:"system,omitempty"`
-	Task   []LogOpts `yaml:"task,omitempty" bson:"task,omitempty"`
-}
-
-type LogOpts struct {
-	Type         string `yaml:"type,omitempty" bson:"type,omitempty"`
-	SplunkServer string `yaml:"splunk_server,omitempty" bson:"splunk_server,omitempty"`
-	SplunkToken  string `yaml:"splunk_token,omitempty" bson:"splunk_token,omitempty"`
-	LogDirectory string `yaml:"log_directory,omitempty" bson:"log_directory,omitempty"`
-}
-
-func (c *LoggerConfig) IsValid() error {
-	if c == nil {
-		return nil
-	}
-	catcher := grip.NewBasicCatcher()
-	for _, opts := range c.Agent {
-		catcher.Wrap(opts.IsValid(), "invalid agent logger config")
-	}
-	for _, opts := range c.System {
-		catcher.Wrap(opts.IsValid(), "invalid system logger config")
-		if opts.Type == FileLogSender {
-			catcher.New("file logger is disallowed for system logs; will use Evergreen logger")
-		}
-	}
-	for _, opts := range c.Task {
-		catcher.Wrap(opts.IsValid(), "invalid task logger config")
-	}
-
-	return catcher.Resolve()
-}
-
-func (o *LogOpts) IsValid() error {
-	catcher := grip.NewBasicCatcher()
-	if !utility.StringSliceContains(ValidLogSenders, o.Type) {
-		catcher.Errorf("'%s' is not a valid log sender", o.Type)
-	}
-	if o.Type == SplunkLogSender && o.SplunkServer == "" {
-		catcher.New("Splunk logger requires a server URL")
-	}
-	if o.Type == SplunkLogSender && o.SplunkToken == "" {
-		catcher.New("Splunk logger requires a token")
-	}
-
-	return catcher.Resolve()
-}
-
-func mergeAllLogs(main, add *LoggerConfig) *LoggerConfig {
-	if main == nil {
-		return add
-	} else if add == nil {
-		return main
-	} else {
-		main.Agent = append(main.Agent, add.Agent...)
-		main.System = append(main.System, add.System...)
-		main.Task = append(main.Task, add.Task...)
-	}
-	return main
-}
-
 const (
 	EvergreenLogSender = "evergreen"
-	FileLogSender      = "file"
-	SplunkLogSender    = "splunk"
 )
-
-var ValidLogSenders = []string{
-	EvergreenLogSender,
-	FileLogSender,
-	SplunkLogSender,
-}
 
 // TaskIdTable is a map of [variant, task display name]->[task id].
 type TaskIdTable map[TVPair]string
@@ -1150,6 +1075,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken, knownH
 			}
 			expansions.Put("trigger_status", upstreamTask.Status)
 			expansions.Put("trigger_revision", upstreamTask.Revision)
+			expansions.Put("trigger_version", upstreamTask.Version)
 			upstreamProjectID = upstreamTask.Project
 		} else if t.TriggerType == ProjectTriggerLevelBuild {
 			var upstreamBuild *build.Build
@@ -1162,6 +1088,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken, knownH
 			}
 			expansions.Put("trigger_status", upstreamBuild.Status)
 			expansions.Put("trigger_revision", upstreamBuild.Revision)
+			expansions.Put("trigger_version", upstreamBuild.Version)
 			upstreamProjectID = upstreamBuild.Project
 		}
 		var upstreamProject *ProjectRef
@@ -1588,12 +1515,21 @@ func (p *Project) GetModuleByName(name string) (*Module, error) {
 	return nil, errors.New("no such module on this project")
 }
 
+// FindTasksForVariant returns all tasks in a variant, including tasks in task groups.
 func (p *Project) FindTasksForVariant(build string) []string {
 	for _, b := range p.BuildVariants {
 		if b.Name == build {
-			tasks := make([]string, 0, len(b.Tasks))
+			tasks := []string{}
 			for _, task := range b.Tasks {
 				tasks = append(tasks, task.Name)
+				// add tasks in task groups
+				if task.IsGroup {
+					tg := p.FindTaskGroup(task.Name)
+					if tg != nil {
+						tasks = append(tasks, tg.Tasks...)
+					}
+				}
+
 			}
 			return tasks
 		}
