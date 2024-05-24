@@ -685,7 +685,7 @@ func setToFilteredTasks(patchDoc, reusePatch *patch.Patch, project *model.Projec
 		if failedOnly {
 			failedPlusNeeded, err := addTasksNeededByFailedForReuse(failedTasks, failedTaskDisplayNames, project, vt)
 			if err != nil {
-				return errors.Wrap(err, "getting dependencies for activated tasks")
+				return errors.Wrap(err, "getting dependencies and task groups for activated tasks")
 			}
 			filteredTasks = append(filteredTasks, failedPlusNeeded...)
 		}
