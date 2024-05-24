@@ -1858,6 +1858,8 @@ func TestGithubPermissionGroups(t *testing.T) {
 		assert.Nil(intersection.Permissions.Followers, "nope1 and nope2 should be ignored and restrict to nil")
 		assert.Equal("read", utility.FromStringPtr(intersection.Permissions.Checks), "write and read should restrict to read when reversed")
 		assert.Equal("write", utility.FromStringPtr(intersection.Permissions.Metadata), "both write should restrict to write")
+
+		assert.Nil(intersection.Permissions.Emails, "an unspecified field should restrict to nil")
 	})
 
 	t.Run("Intersection of permissions with no permissions should return no permissions", func(t *testing.T) {
