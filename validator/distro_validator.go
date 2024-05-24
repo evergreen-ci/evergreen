@@ -47,7 +47,7 @@ func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, n
 	var allDistroIDs, allDistroAliases []string
 	var err error
 	if newDistro || len(d.Aliases) > 0 {
-		allDistroIDs, allDistroAliases, err = getDistros(ctx)
+		allDistroIDs, allDistroAliases, _, err = getDistros(ctx)
 		if err != nil {
 			return nil, err
 		}
