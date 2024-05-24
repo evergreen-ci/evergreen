@@ -235,7 +235,7 @@ func addDistroWarning(distroWarnings map[string]string, distroName, warningNote 
 		distroWarnings[distroName] = warningNote
 		return
 	}
-	distroWarnings[distroName] = fmt.Sprintf("%s; %s", distroWarnings[distroName], warningNote)
+	distroWarnings[distroName] = fmt.Sprintf("\t%s\n\t%s", distroWarnings[distroName], warningNote)
 }
 
 // CheckProject calls the validating logic for a Project's configuration.
@@ -928,7 +928,7 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 					errs = append(errs,
 						ValidationError{
 							Message: fmt.Sprintf("task '%s' in buildvariant '%s' "+
-								"references distro '%s' with the following warning(s): %s",
+								"references distro '%s' with the following admin-defined warning(s): %s",
 								task.Name, buildVariant.Name, name, warning),
 							Level: Warning,
 						},
@@ -969,7 +969,7 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 				errs = append(errs,
 					ValidationError{
 						Message: fmt.Sprintf("buildvariant '%s' "+
-							"references distro '%s' with the following warning: %s",
+							"references distro '%s' with the following admin-defined warning: %s",
 							buildVariant.Name, name, warning),
 						Level: Warning,
 					},
