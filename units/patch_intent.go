@@ -683,7 +683,7 @@ func setToFilteredTasks(patchDoc, reusePatch *patch.Patch, project *model.Projec
 		// We only need to add dependencies and task group tasks for failed tasks because otherwise
 		// we can rely on them being there from the previous patch.
 		if failedOnly {
-			failedPlusNeeded, err := addTasksNeededByFailedForReuse(failedTasks, failedTaskDisplayNames, project, vt)
+			failedPlusNeeded, err := addDependenciesAndTaskGroups(failedTasks, failedTaskDisplayNames, project, vt)
 			if err != nil {
 				return errors.Wrap(err, "getting dependencies and task groups for activated tasks")
 			}
