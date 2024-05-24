@@ -13,6 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // AuthorDisplayName is the resolver for the authorDisplayName field.
@@ -25,27 +27,6 @@ func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.AP
 		return "", ResourceNotFound.Send(ctx, "Could not find user from user ID")
 	}
 	return usr.DisplayName(), nil
-}
-
-func (r *patchResolver) CanEnqueueToCommitQueue(ctx context.Context, obj *restModel.APIPatch) (bool, error) {
-	patchID := utility.FromStringPtr(obj.Id)
-	p, err := patch.FindOneId(patchID)
-	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding patch '%s': %s", patchID, err.Error()))
-	}
-	if p == nil {
-		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
-	}
-
-	proj, err := model.FindMergedProjectRef(p.Project, p.Version, false)
-	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("error getting project '%s': %s", p.Project, err.Error()))
-	}
-	if proj == nil {
-		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", p.Project))
-	}
-	// Projects that use the GitHub merge queue cannot enqueue to the commit queue.
-	return (p.HasValidGitInfo() || p.IsGithubPRPatch()) && proj.CommitQueue.MergeQueue != model.MergeQueueGitHub, nil
 }
 
 // BaseTaskStatuses is the resolver for the baseTaskStatuses field.
@@ -77,6 +58,34 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 		apiBuilds = append(apiBuilds, &apiBuild)
 	}
 	return apiBuilds, nil
+}
+
+// CanEnqueueToCommitQueue is the resolver for the canEnqueueToCommitQueue field.
+func (r *patchResolver) CanEnqueueToCommitQueue(ctx context.Context, obj *restModel.APIPatch) (bool, error) {
+	patchID := utility.FromStringPtr(obj.Id)
+	p, err := patch.FindOneId(patchID)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding patch '%s': %s", patchID, err.Error()))
+	}
+	if p == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
+	}
+
+	proj, err := model.FindMergedProjectRef(p.Project, p.Version, false)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("error getting project '%s': %s", p.Project, err.Error()))
+	}
+	if proj == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", p.Project))
+	}
+	// Projects that use the GitHub merge queue cannot enqueue to the commit queue.
+	grip.Info(message.Fields{
+		"bynnbynn": "checking if patch can be enqueued to the commit queue",
+		"patch":    p.Id,
+		"project":  proj.Identifier,
+		"queue":    proj.CommitQueue.MergeQueue,
+	})
+	return (p.HasValidGitInfo() || p.IsGithubPRPatch()) && proj.CommitQueue.MergeQueue != model.MergeQueueGitHub, nil
 }
 
 // CommitQueuePosition is the resolver for the commitQueuePosition field.

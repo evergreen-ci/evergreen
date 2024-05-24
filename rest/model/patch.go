@@ -52,17 +52,16 @@ type APIPatch struct {
 	// List of documents of available tasks and associated build variant
 	VariantsTasks []VariantTask `json:"variants_tasks"`
 	// Whether the patch has been finalized and activated
-	Activated               bool                 `json:"activated"`
-	Alias                   *string              `json:"alias,omitempty"`
-	GithubPatchData         githubPatch          `json:"github_patch_data,omitempty"`
-	ModuleCodeChanges       []APIModulePatch     `json:"module_code_changes"`
-	Parameters              []APIParameter       `json:"parameters"`
-	ProjectStorageMethod    *string              `json:"project_storage_method,omitempty"`
-	CanEnqueueToCommitQueue bool                 `json:"can_enqueue_to_commit_queue"`
-	ChildPatches            []APIPatch           `json:"child_patches"`
-	ChildPatchAliases       []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
-	Requester               *string              `json:"requester"`
-	MergedFrom              *string              `json:"merged_from"`
+	Activated            bool                 `json:"activated"`
+	Alias                *string              `json:"alias,omitempty"`
+	GithubPatchData      githubPatch          `json:"github_patch_data,omitempty"`
+	ModuleCodeChanges    []APIModulePatch     `json:"module_code_changes"`
+	Parameters           []APIParameter       `json:"parameters"`
+	ProjectStorageMethod *string              `json:"project_storage_method,omitempty"`
+	ChildPatches         []APIPatch           `json:"child_patches"`
+	ChildPatchAliases    []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
+	Requester            *string              `json:"requester"`
+	MergedFrom           *string              `json:"merged_from"`
 	// Only populated for commit queue patches: returns the 0-indexed position of the patch on the queue, or -1 if not on the queue anymore
 	CommitQueuePosition *int `json:"commit_queue_position,omitempty"`
 }

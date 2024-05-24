@@ -37,7 +37,7 @@
         "username": "bob.smith",
         "email": "bob.smith@gmail.com"
       },
-    "github_patch_data": {
+      "github_patch_data": {
         "pr_number": 27,
         "base_owner": "evergreen-ci",
         "base_repo": "spruce",
@@ -50,23 +50,22 @@
         "merge_commit_sha": ""
       }
     }
-
   ],
   "project_ref": [
     {
       "_id": "spruce",
       "identifier": "spruce",
-      "commitqueue": {
+      "commit_queue": {
         "enabled": true,
-        "mergeQueue": "EVERGREEN"
+        "merge_queue": "EVERGREEN"
       }
     },
     {
       "_id": "mci",
       "identifier": "mci",
-      "commitqueue": {
+      "commit_queue": {
         "enabled": true,
-        "mergeQueue": "GITHUB"
+        "merge_queue": "GITHUB"
       }
     }
   ]

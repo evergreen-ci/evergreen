@@ -5,11 +5,7 @@
       "result": {
         "data": {
           "patch": {
-            "canEnqueueToCommitQueue": [
-              {
-                "canEnqueueToCommitQueue": true
-              }
-            ]
+            "canEnqueueToCommitQueue": true
           }
         }
       }
@@ -19,11 +15,7 @@
       "result": {
         "data": {
           "patch": {
-            "canEnqueueToCommitQueue": [
-              {
-                "canEnqueueToCommitQueue": false
-              }
-            ]
+            "canEnqueueToCommitQueue": false
           }
         }
       }
