@@ -25,7 +25,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -657,7 +656,7 @@ func (j *patchIntentProcessor) buildTasksAndVariants(patchDoc *patch.Patch, proj
 // setToFilteredTasks sets the tasks/variants to a previous patch's activated tasks (filtered on failures if requested)
 // and adds dependencies and task group tasks as needed.
 func setToFilteredTasks(patchDoc, reusePatch *patch.Patch, project *model.Project, failedOnly bool) error {
-	activatedTasks, err := filterToActiveForReuse(reusePatch)
+	activatedTasks, err := task.FindActivatedByVersionWithoutDisplay(reusePatch.Version)
 	if err != nil {
 		return errors.Wrap(err, "filtering to activated tasks")
 	}
@@ -705,21 +704,6 @@ func setToFilteredTasks(patchDoc, reusePatch *patch.Patch, project *model.Projec
 	patchDoc.VariantsTasks = filteredVariantTasks
 
 	return nil
-}
-
-func filterToActiveForReuse(reusePatch *patch.Patch) ([]task.Task, error) {
-	query := db.Query(bson.M{
-		task.VersionKey:     reusePatch.Version,
-		task.ActivatedKey:   true,
-		task.DisplayOnlyKey: bson.M{"$ne": true},
-	})
-	activatedTasks, err := task.FindAll(query)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting previous patch tasks")
-	}
-
-	return activatedTasks, nil
-
 }
 
 // addDependenciesAndTaskGroups adds dependencies and tasks from single host task groups for the given tasks.
