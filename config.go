@@ -34,7 +34,7 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2024-05-23"
+	ClientVersion = "2024-05-24"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
@@ -696,9 +696,6 @@ type DBSettings struct {
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 	ReadConcernSettings  ReadConcern  `yaml:"read_concern"`
 	AWSAuthEnabled       bool         `yaml:"aws_auth_enabled"`
-	// TODO (DEVPROD-6951): remove static auth once IRSA auth is reliable again.
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
 }
 
 // supported banner themes in Evergreen

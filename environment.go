@@ -373,13 +373,7 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 		SetConnectTimeout(5 * time.Second).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 
-	// TODO (DEVPROD-6951): remove static auth once IRSA auth is reliable again.
-	if settings.Username != "" && settings.Password != "" {
-		opts.SetAuth(options.Credential{
-			Username: settings.Username,
-			Password: settings.Password,
-		})
-	} else if settings.AWSAuthEnabled {
+	if settings.AWSAuthEnabled {
 		opts.SetAuth(options.Credential{
 			AuthMechanism: awsAuthMechanism,
 			AuthSource:    mongoExternalAuthSource,
@@ -413,13 +407,7 @@ func (e *envState) createRemoteQueues(ctx context.Context, tracer trace.Tracer) 
 		SetWriteConcern(e.settings.Database.WriteConcernSettings.Resolve()).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false)))
 
-	// TODO (DEVPROD-6951): remove static auth once IRSA auth is reliable again.
-	if e.settings.Database.Username != "" && e.settings.Database.Password != "" {
-		opts.SetAuth(options.Credential{
-			Username: e.settings.Database.Username,
-			Password: e.settings.Database.Password,
-		})
-	} else if e.settings.Database.AWSAuthEnabled {
+	if e.settings.Database.AWSAuthEnabled {
 		opts.SetAuth(options.Credential{
 			AuthMechanism: awsAuthMechanism,
 			AuthSource:    mongoExternalAuthSource,
