@@ -13,8 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 )
 
 // AuthorDisplayName is the resolver for the authorDisplayName field.
@@ -79,12 +77,6 @@ func (r *patchResolver) CanEnqueueToCommitQueue(ctx context.Context, obj *restMo
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", p.Project))
 	}
 	// Projects that use the GitHub merge queue cannot enqueue to the commit queue.
-	grip.Info(message.Fields{
-		"bynnbynn": "checking if patch can be enqueued to the commit queue",
-		"patch":    p.Id,
-		"project":  proj.Identifier,
-		"queue":    proj.CommitQueue.MergeQueue,
-	})
 	return (p.HasValidGitInfo() || p.IsGithubPRPatch()) && proj.CommitQueue.MergeQueue != model.MergeQueueGitHub, nil
 }
 
