@@ -396,6 +396,7 @@ func (i *SleepScheduleInfo) Validate() error {
 
 	catcher := grip.NewBasicCatcher()
 
+	catcher.NewWhen(len(i.WholeWeekdaysOff) == 7, "cannot create a sleep schedule where the host is off 24/7 since the host could never turn on")
 	catcher.NewWhen(len(i.WholeWeekdaysOff) == 0 && i.DailyStartTime == "" && i.DailyStopTime == "", "cannot specify an empty sleep schedule that's missing both daily stop/start time and whole days off")
 	catcher.NewWhen(i.TimeZone == "", "sleep schedule time zone must be set")
 	catcher.ErrorfWhen(i.DailyStopTime != "" && i.DailyStartTime == "", "cannot specify a daily stop time without a daily start time")
