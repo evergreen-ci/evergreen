@@ -406,24 +406,6 @@ func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.A
 		}
 	}
 
-	p, err := patch.FindOneId(patchID)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding patch '%s': %s", patchID, err.Error()))
-	}
-	if p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
-	}
-
-	proj, err := model.FindMergedProjectRef(p.Project, p.Version, false)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting project '%s': %s", p.Project, err.Error()))
-	}
-	if proj == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", p.Project))
-	}
-	// Projects that use the GitHub merge queue cannot enqueue to the commit queue.
-	apiPatch.CanEnqueueToCommitQueue = (p.HasValidGitInfo() || p.IsGithubPRPatch()) && proj.CommitQueue.MergeQueue != model.MergeQueueGitHub
-
 	return apiPatch, nil
 }
 
