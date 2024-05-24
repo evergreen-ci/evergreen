@@ -245,7 +245,6 @@ func (p *GitHubDynamicTokenPermissionGroup) Intersection(other GitHubDynamicToke
 		// If either are nil, that counts as the most restrictive
 		// permission (no permission).
 		if perm1 == nil || perm2 == nil {
-			intersection.Field(i).Set(reflect.ValueOf((*string)(nil)))
 			continue
 		}
 
