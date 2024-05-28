@@ -664,10 +664,10 @@ func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) bson.M {
 // specified times.
 // kim: TODO: test
 func FindByTemporaryExemptionsExpiringBetween(ctx context.Context, lowerBound time.Time, upperBound time.Time) ([]Host, error) {
-	temporarilyExemptUntilKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
+	sleepScheduleTemporarilyExemptUntilKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
 	return Find(ctx, isSleepScheduleApplicable(bson.M{
-		StatusKey:                 evergreen.SleepScheduleStatuses,
-		temporarilyExemptUntilKey: bson.M{"$gte": lowerBound, "$lte": upperBound},
+		StatusKey:                              bson.M{"$in": evergreen.SleepScheduleStatuses},
+		sleepScheduleTemporarilyExemptUntilKey: bson.M{"$gte": lowerBound, "$lte": upperBound},
 	}))
 }
 
