@@ -3657,8 +3657,6 @@ func (h *Host) UpdateSleepSchedule(ctx context.Context, schedule SleepScheduleIn
 	// calculating both the next start and next stop times. If the next start
 	// time is set first on the schedule, the next stop time can be pushed
 	// further into the future than necessary.
-	// kim: TODO: add test for next stop set based on now rather than next
-	// start.
 	schedule.NextStartTime = nextStart
 	schedule.NextStopTime = nextStop
 
