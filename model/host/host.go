@@ -3626,7 +3626,7 @@ func (h *Host) UnsetPersistentDNSInfo(ctx context.Context) error {
 // contain all the unmodified fields. For example, if this host is on a
 // temporary exemption when their daily schedule is updated, the new schedule
 // must still have the temporary exemption populated.
-func (h *Host) UpdateSleepSchedule(ctx context.Context, schedule SleepScheduleInfo) error {
+func (h *Host) UpdateSleepSchedule(ctx context.Context, schedule SleepScheduleInfo, now time.Time) error {
 	if err := schedule.Validate(); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -3639,22 +3639,28 @@ func (h *Host) UpdateSleepSchedule(ctx context.Context, schedule SleepScheduleIn
 	schedule.NextStartTime = time.Time{}
 	schedule.NextStopTime = time.Time{}
 
-	now := time.Now()
-	var err error
-	schedule.NextStartTime, err = schedule.GetNextScheduledStartTime(now)
+	nextStart, err := schedule.GetNextScheduledStartTime(now)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "determining next sleep schedule start time").Error(),
 		}
 	}
-	schedule.NextStopTime, err = schedule.GetNextScheduledStopTime(now)
+	nextStop, err := schedule.GetNextScheduledStopTime(now)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "determining next sleep schedule stop time").Error(),
 		}
 	}
+
+	// Intentionally set these fields on the sleep schedule only after
+	// calculating both the next start and next stop times. If the next start
+	// time is set first on the schedule, the next stop time can be pushed
+	// further into the future than necessary.
+	schedule.NextStartTime = nextStart
+	schedule.NextStopTime = nextStop
+
 	if err = setSleepSchedule(ctx, h.Id, schedule); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
