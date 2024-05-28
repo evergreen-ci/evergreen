@@ -133,8 +133,6 @@ func shouldNotifyForHostTemporaryExemptionExpiration(h *host.Host, numHours int)
 	if utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) || h.SleepSchedule.TemporarilyExemptUntil.Sub(time.Now()) > time.Duration(numHours)*time.Hour {
 		return false, nil
 	}
-	// kim: TODO: need to build index in staging and prod for this to be
-	// efficient.
 	rec, err := alertrecord.FindMostRecentByTemporaryExemptionExpirationWithHours(h.Id, numHours)
 	if err != nil {
 		return false, err
