@@ -662,7 +662,6 @@ func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) bson.M {
 // FindByTemporaryExemptionsExpiringBetween finds all spawn hosts with a
 // temporary exemption from the sleep schedule that will expire between the
 // specified times.
-// kim: TODO: test
 func FindByTemporaryExemptionsExpiringBetween(ctx context.Context, lowerBound time.Time, upperBound time.Time) ([]Host, error) {
 	sleepScheduleTemporarilyExemptUntilKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
 	return Find(ctx, isSleepScheduleApplicable(bson.M{

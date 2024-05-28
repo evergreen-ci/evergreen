@@ -220,8 +220,6 @@ func (t *hostTemplateData) hostSlackPayload(messageString string, linkTitle stri
 func (t *hostTriggers) hostExpiration(sub *event.Subscription) (*notification.Notification, error) {
 	switch t.event.EventType {
 	case event.EventHostExpirationWarningSent:
-		// kim: TODO: manually test that this still works for spawn host
-		// expiration warning.
 		if t.host.NoExpiration {
 			return nil, nil
 		}
@@ -243,8 +241,6 @@ func (t *hostTriggers) hostExpiration(sub *event.Subscription) (*notification.No
 		t.templateData.ExpirationTime = t.host.ExpirationTime.In(timeZone).Format(time.RFC1123)
 		return t.generateExpiration(sub)
 	case event.EventHostTemporaryExemptionExpirationWarningSent:
-		// kim: TODO: add test
-		// kim: TODO: manually test
 		timeZone := time.Local
 		if sub.OwnerType == event.OwnerTypePerson {
 			userTimeZone, err := getUserTimeZone(sub.Owner)

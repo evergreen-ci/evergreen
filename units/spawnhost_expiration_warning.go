@@ -96,7 +96,6 @@ func (j *spawnhostExpirationWarningsJob) Run(ctx context.Context) {
 		}
 	}
 
-	// kim: TODO: test
 	// Notify for spawn host temporary exemptions expiring in the next 12 hours.
 	temporaryExemptionExpiringSoonHosts, err := host.FindByTemporaryExemptionsExpiringBetween(ctx, now, thresholdTime)
 	if err != nil {
@@ -126,16 +125,25 @@ func shouldNotifyForSpawnhostExpiration(h *host.Host, numHours int) (bool, error
 	return rec == nil, nil
 }
 
+// temporaryExemptionRenotificationInterval is how frequently a notification can
+// be re-sent for a temporary exemption that's expring.
+const temporaryExemptionRenotificationInterval = utility.Day
+
 func shouldNotifyForHostTemporaryExemptionExpiration(h *host.Host, numHours int) (bool, error) {
-	if utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) || h.SleepSchedule.TemporarilyExemptUntil.Sub(time.Now()) > (time.Duration(numHours)*time.Hour) {
+	if utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) || h.SleepSchedule.TemporarilyExemptUntil.Sub(time.Now()) > time.Duration(numHours)*time.Hour {
 		return false, nil
 	}
-	rec, err := alertrecord.FindByTemporaryExemptionExpirationWithHours(h.Id, numHours)
+	// kim: TODO: need to build index in staging and prod for this to be
+	// efficient.
+	rec, err := alertrecord.FindMostRecentByTemporaryExemptionExpirationWithHours(h.Id, numHours)
 	if err != nil {
 		return false, err
 	}
+	if rec == nil {
+		return true, nil
+	}
 
-	return rec == nil, nil
+	return time.Since(rec.AlertTime) > temporaryExemptionRenotificationInterval, nil
 }
 
 func trySpawnHostExpirationNotification(h *host.Host, numHours int) error {

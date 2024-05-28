@@ -184,15 +184,14 @@ func FindBySpawnHostExpirationWithHours(hostID string, hours int) (*AlertRecord,
 	return FindOne(db.Query(q).Limit(1))
 }
 
-// FindByTemporaryExemptionExpirationWithHours finds a matching alert record for
-// a spawn host's temporary exemption that is about to expire.
-// kim: TODO: test
-func FindByTemporaryExemptionExpirationWithHours(hostID string, hours int) (*AlertRecord, error) {
+// FindByTemporaryExemptionExpirationWithHours finds the most recent alert
+// record for a spawn host's temporary exemption that is about to expire.
+func FindMostRecentByTemporaryExemptionExpirationWithHours(hostID string, hours int) (*AlertRecord, error) {
 	alertType := fmt.Sprintf(temporaryExemptionWarningTemplate, hours)
 	q := subscriptionIDQuery(legacyAlertsSubscription)
 	q[TypeKey] = alertType
 	q[HostIdKey] = hostID
-	return FindOne(db.Query(q).Limit(1))
+	return FindOne(db.Query(q).Sort([]string{"-" + AlertTimeKey}).Limit(1))
 }
 
 func FindByVolumeExpirationWithHours(volumeID string, hours int) (*AlertRecord, error) {

@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type spawnHostExpirationSuite struct {
@@ -133,7 +134,7 @@ func (s *spawnHostExpirationSuite) TestEventsAreLogged() {
 	}
 }
 
-func (s *spawnHostExpirationSuite) TestDuplicateEventsAreNotLogged() {
+func (s *spawnHostExpirationSuite) TestDuplicateEventsAreNotLoggedWithinRenotificationInterval() {
 	s.j.Run(s.ctx)
 	events, err := event.FindUnprocessedEvents(-1)
 	s.NoError(err)
@@ -145,7 +146,34 @@ func (s *spawnHostExpirationSuite) TestDuplicateEventsAreNotLogged() {
 	s.Len(eventsAfterRerun, len(events), "should not log duplicate events on second run")
 }
 
-// kim: TODO: add test for alertrecord suppressing repeated events.
+func (s *spawnHostExpirationSuite) TestDuplicateEventsAreLoggedAfterRenotificationIntervalElapses() {
+	s.j.Run(s.ctx)
+	events, err := event.FindUnprocessedEvents(-1)
+	s.NoError(err)
+	s.Len(events, 6, "should log expected events on first run")
+
+	// Update the alert records so that the temporary exemption events were
+	// logged a long time ago, meaning they're eligible to log again.
+	var temporaryExemptionExpirationEventIDs []string
+	for _, e := range events {
+		if e.EventType == event.EventHostTemporaryExemptionExpirationWarningSent {
+			temporaryExemptionExpirationEventIDs = append(temporaryExemptionExpirationEventIDs, e.ResourceId)
+		}
+	}
+	res, err := db.UpdateAll(alertrecord.Collection, bson.M{
+		alertrecord.HostIdKey: bson.M{"$in": []string{"h4", "h5"}}}, bson.M{
+		"$set": bson.M{
+			alertrecord.AlertTimeKey: time.Now().Add(-7 * utility.Day),
+		},
+	})
+	s.Require().NoError(err)
+	s.Equal(len(temporaryExemptionExpirationEventIDs), res.Updated, "should have updated the alert records for temporary exemption expiration warnings so that they are old")
+
+	s.j.Run(s.ctx)
+	eventsAfterRerun, err := event.FindUnprocessedEvents(-1)
+	s.NoError(err)
+	s.Len(eventsAfterRerun, len(events)+len(temporaryExemptionExpirationEventIDs), "should log duplicate events when renotification interval has passed")
+}
 
 func (s *spawnHostExpirationSuite) TestCanceledJob() {
 	ctx, cancel := context.WithCancel(s.ctx)
