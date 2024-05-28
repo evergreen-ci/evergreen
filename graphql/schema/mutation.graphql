@@ -81,7 +81,7 @@ type Mutation {
   spawnHost(spawnHostInput: SpawnHostInput): Host!
   spawnVolume(spawnVolumeInput: SpawnVolumeInput!): Boolean!
   removeVolume(volumeId: String!): Boolean!
-  updateSpawnHostStatus(hostId: String @deprecated(reason: "use updateSpawnHostStatusInput instead"), action: SpawnHostStatusActions @deprecated(reason: "use updateSpawnHostStatusInput instead"), updateSpawnHostStatusInput: UpdateSpawnHostStatusInput): Host!
+  updateSpawnHostStatus(updateSpawnHostStatusInput: UpdateSpawnHostStatusInput!): Host!
   updateVolume(updateVolumeInput: UpdateVolumeInput!): Boolean!
 
   # task
