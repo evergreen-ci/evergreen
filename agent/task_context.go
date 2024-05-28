@@ -24,15 +24,23 @@ import (
 
 type taskContext struct {
 	currentCommand command.Command
-	postErrored    bool
-	logger         client.LoggerProducer
-	task           client.TaskData
-	ranSetupGroup  bool
-	taskConfig     *internal.TaskConfig
-	timeout        timeoutInfo
-	oomTracker     jasper.OOMTracker
-	traceID        string
-	diskDevices    []string
+	// failingCommand keeps track of the command that caused the task to fail,
+	// if any.
+	failingCommand command.Command
+	// otherFailingCommands keeps track of commands that have run and failed but
+	// have not caused the task to fail (e.g. a post command that fails without
+	// post_error_fails_task). Does not include commands that suppress errors,
+	// such as s3.put with optional: true.
+	otherFailingCommands []command.Command
+	postErrored          bool
+	logger               client.LoggerProducer
+	task                 client.TaskData
+	ranSetupGroup        bool
+	taskConfig           *internal.TaskConfig
+	timeout              timeoutInfo
+	oomTracker           jasper.OOMTracker
+	traceID              string
+	diskDevices          []string
 	// userEndTaskResp is the end task response that the user can define, which
 	// will overwrite the default end task response.
 	userEndTaskResp *triggerEndTaskResp
@@ -49,6 +57,36 @@ func (tc *taskContext) setPostErrored(errored bool) {
 	tc.Lock()
 	defer tc.Unlock()
 	tc.postErrored = errored
+}
+
+func (tc *taskContext) setFailingCommand(cmd command.Command) {
+	tc.Lock()
+	defer tc.Unlock()
+	tc.failingCommand = cmd
+}
+
+func (tc *taskContext) addFailingCommand(cmd command.Command) {
+	tc.Lock()
+	defer tc.Unlock()
+	tc.otherFailingCommands = append(tc.otherFailingCommands, cmd)
+}
+
+func (tc *taskContext) getOtherFailingCommands() []apimodels.FailingCommand {
+	tc.RLock()
+	defer tc.RUnlock()
+	var otherFailingCmds []apimodels.FailingCommand
+	for _, failingCmd := range tc.otherFailingCommands {
+		if tc.failingCommand != nil && failingCmd.FullDisplayName() == tc.failingCommand.FullDisplayName() {
+			// Do not include the command that failed the task in the other
+			// failing commands.
+			continue
+		}
+		otherFailingCmds = append(otherFailingCmds, apimodels.FailingCommand{
+			FullDisplayName:     failingCmd.FullDisplayName(),
+			FailureMetadataTags: utility.UniqueStrings(failingCmd.FailureMetadataTags()),
+		})
+	}
+	return otherFailingCmds
 }
 
 func (tc *taskContext) setCurrentCommand(command command.Command) {

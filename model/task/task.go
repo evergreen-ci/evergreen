@@ -1879,7 +1879,7 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 // UpdateSchedulingLimit retrieves a user from the DB and updates their hourly scheduling limit info
 // if they are not a service user.
 func UpdateSchedulingLimit(username, requester string, numTasksModified int, activated bool) error {
-	if evergreen.IsSystemActivator(username) || !evergreen.IsPatchRequester(requester) {
+	if evergreen.IsSystemActivator(username) || !evergreen.IsPatchRequester(requester) || numTasksModified == 0 {
 		return nil
 	}
 	s := evergreen.GetEnvironment().Settings()
@@ -2548,7 +2548,7 @@ func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task,
 		return nil, nil
 	}
 
-	deps, err := FindWithFields(ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey, ActivatedKey)
+	deps, err := FindWithFields(ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey, ActivatedKey, DisplayNameKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies")
 	}
@@ -3022,9 +3022,12 @@ func (t *Task) CreateTestResultsTaskOptions() ([]testresult.TaskOptions, error) 
 
 // SetResetWhenFinished requests that a display task or single-host task group
 // reset itself when finished. Will mark itself as system failed.
-func (t *Task) SetResetWhenFinished() error {
+func (t *Task) SetResetWhenFinished(caller string) error {
 	if t.ResetWhenFinished {
 		return nil
+	}
+	if err := updateSchedulingLimitForResetWhenFinished(t, caller); err != nil {
+		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetWhenFinished = true
 	return UpdateOne(
@@ -3071,9 +3074,12 @@ func (t *Task) SetResetWhenFinishedWithInc() error {
 
 // SetResetFailedWhenFinished requests that a display task
 // only restarts failed tasks.
-func (t *Task) SetResetFailedWhenFinished() error {
+func (t *Task) SetResetFailedWhenFinished(caller string) error {
 	if t.ResetFailedWhenFinished {
 		return nil
+	}
+	if err := updateSchedulingLimitForResetWhenFinished(t, caller); err != nil {
+		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetFailedWhenFinished = true
 	return UpdateOne(
@@ -3086,6 +3092,69 @@ func (t *Task) SetResetFailedWhenFinished() error {
 			},
 		},
 	)
+}
+
+func updateSchedulingLimitForResetWhenFinished(t *Task, caller string) error {
+	if !(t.Requester == evergreen.PatchVersionRequester || t.Requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(caller) {
+		return nil
+	}
+	var tasks []Task
+	var err error
+	if t.DisplayOnly {
+		tasks, err = Find(ByIds(t.ExecutionTasks))
+		if err != nil {
+			return errors.Wrapf(err, "finding execution tasks for '%s'", t.Id)
+		}
+	} else if t.IsPartOfSingleHostTaskGroup() {
+		tasks, err = FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+		if err != nil {
+			return errors.Wrapf(err, "finding task group '%s'", t.TaskGroup)
+		}
+	}
+	if len(tasks) == 0 {
+		return nil
+	}
+	return errors.Wrap(CheckUsersPatchTaskLimit(t.Requester, caller, true, tasks...), "updating patch task limit for user")
+}
+
+// CheckUsersPatchTaskLimit takes in an input list of tasks that is set to get activated, and checks if they're
+// non commit-queue patch tasks, and that the request has been submitted by a user. If so, the maximum hourly patch tasks counter
+// will be incremented accordingly. The includeDisplayAndTaskGroups parameter indicates that execution tasks and single host task
+// group tasks are to be counted as part of the limit update, otherwise they will be ignored.
+func CheckUsersPatchTaskLimit(requester, username string, includeDisplayAndTaskGroups bool, tasks ...Task) error {
+	// we only care about patch tasks that are to be activated by an actual user
+	if !(requester == evergreen.PatchVersionRequester || requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(username) {
+		return nil
+	}
+	s := evergreen.GetEnvironment().Settings()
+	if s.TaskLimits.MaxHourlyPatchTasks == 0 {
+		return nil
+	}
+	numTasksToActivate := 0
+	for _, t := range tasks {
+		if !includeDisplayAndTaskGroups && (t.DisplayOnly || t.IsPartOfDisplay() || t.IsPartOfSingleHostTaskGroup()) {
+			continue
+		}
+		if t.Activated {
+			numTasksToActivate++
+		}
+	}
+	return UpdateSchedulingLimit(username, requester, numTasksToActivate, true)
+}
+
+func FindExecTasksToReset(t *Task) ([]string, error) {
+	if !t.ResetFailedWhenFinished {
+		return t.ExecutionTasks, nil
+	}
+	failedExecTasks, err := FindWithFields(FailedTasksByIds(t.ExecutionTasks), IdKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "retrieving failed execution tasks")
+	}
+	failedExecTaskIds := []string{}
+	for _, et := range failedExecTasks {
+		failedExecTaskIds = append(failedExecTaskIds, et.Id)
+	}
+	return failedExecTaskIds, nil
 }
 
 // FindHostSchedulable finds all tasks that can be scheduled for a distro

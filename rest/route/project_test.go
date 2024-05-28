@@ -442,9 +442,6 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 
 	smClient, err := cloud.MakeSecretsManagerClient(ctx, s.env.Settings())
 	s.Require().NoError(err)
-	defer func() {
-		s.Require().NoError(smClient.Close(ctx))
-	}()
 	vault, err := cloud.MakeSecretsManagerVault(smClient)
 	s.Require().NoError(err)
 

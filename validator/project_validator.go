@@ -195,39 +195,47 @@ func ValidationErrorsToString(ves ValidationErrors) string {
 }
 
 // getDistros creates a slice of all distro IDs and aliases.
-func getDistros(ctx context.Context) (ids []string, aliases []string, err error) {
+func getDistros(ctx context.Context) (ids []string, aliases []string, distroWarnings map[string]string, err error) {
 	return getDistrosForProject(ctx, "")
 }
 
 // getDistrosForProject creates a slice of all valid distro IDs and a slice of
-// all valid aliases for a project. If projectID is empty, it returns all distro
+// all valid aliases for a project, as well as any distro warnings. If projectID is empty, it returns all distro
 // IDs and all aliases.
-func getDistrosForProject(ctx context.Context, projectID string) (ids []string, aliases []string, err error) {
+func getDistrosForProject(ctx context.Context, projectID string) (ids []string, aliases []string, distroWarnings map[string]string, err error) {
+	distroWarnings = map[string]string{}
 	// create a slice of all known distros
 	distros, err := distro.AllDistros(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	for _, d := range distros {
-		if projectID != "" && len(d.ValidProjects) > 0 {
-			if utility.StringSliceContains(d.ValidProjects, projectID) {
-				ids = append(ids, d.Id)
-				for _, alias := range d.Aliases {
-					if !utility.StringSliceContains(aliases, alias) {
-						aliases = append(aliases, alias)
-					}
-				}
-			}
-		} else {
+		if projectID == "" || len(d.ValidProjects) == 0 || utility.StringSliceContains(d.ValidProjects, projectID) {
 			ids = append(ids, d.Id)
 			for _, alias := range d.Aliases {
 				if !utility.StringSliceContains(aliases, alias) {
 					aliases = append(aliases, alias)
 				}
 			}
+			if d.WarningNote != "" {
+				addDistroWarning(distroWarnings, d.Id, d.WarningNote)
+				distroWarnings[d.Id] = d.WarningNote
+				for _, alias := range d.Aliases {
+					addDistroWarning(distroWarnings, alias, d.WarningNote)
+
+				}
+			}
 		}
 	}
-	return ids, aliases, nil
+	return ids, utility.UniqueStrings(aliases), distroWarnings, nil
+}
+
+func addDistroWarning(distroWarnings map[string]string, distroName, warningNote string) {
+	if distroWarnings[distroName] == "" {
+		distroWarnings[distroName] = warningNote
+		return
+	}
+	distroWarnings[distroName] = fmt.Sprintf("\t%s\n\t%s", distroWarnings[distroName], warningNote)
 }
 
 // CheckProject calls the validating logic for a Project's configuration.
@@ -303,7 +311,7 @@ func CheckProjectErrors(ctx context.Context, project *model.Project, includeLong
 	}
 
 	// get distro IDs and aliases for ensureReferentialIntegrity validation
-	distroIDs, distroAliases, err := getDistrosForProject(ctx, project.Identifier)
+	distroIDs, distroAliases, distroWarnings, err := getDistrosForProject(ctx, project.Identifier)
 	if err != nil {
 		validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
 	}
@@ -314,7 +322,7 @@ func CheckProjectErrors(ctx context.Context, project *model.Project, includeLong
 		}
 		containerNameMap[container.Name] = true
 	}
-	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, containerNameMap, distroIDs, distroAliases)...)
+	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, containerNameMap, distroIDs, distroAliases, distroWarnings)...)
 	return validationErrs
 }
 
@@ -333,7 +341,7 @@ func CheckPatchedProjectConfigErrors(patchedProjectConfig string) ValidationErro
 	return CheckProjectConfigErrors(projectConfig)
 }
 
-// verify that the project configuration syntax is valid
+// CheckProjectConfigErrors verifies that the project configuration syntax is valid
 func CheckProjectConfigErrors(projectConfig *model.ProjectConfig) ValidationErrors {
 	validationErrs := ValidationErrors{}
 	if projectConfig == nil {
@@ -343,6 +351,7 @@ func CheckProjectConfigErrors(projectConfig *model.ProjectConfig) ValidationErro
 		validationErrs = append(validationErrs,
 			projectConfigErrorValidator(projectConfig)...)
 	}
+
 	return validationErrs
 }
 
@@ -859,8 +868,8 @@ func validateBuildVariantTaskNames(task string, variant string, allTaskNames map
 	return errs
 }
 
-// ensureReferentialIntegrity checks all fields that reference other entities defined in the YAML and ensure that they are referring to valid names.
-func ensureReferentialIntegrity(project *model.Project, containerNameMap map[string]bool, distroIDs []string, distroAliases []string) ValidationErrors {
+// ensureReferentialIntegrity checks all fields that reference other entities defined in the YAML and ensure that they are referring to valid names, and returns any relevant distro warnings.
+func ensureReferentialIntegrity(project *model.Project, containerNameMap map[string]bool, distroIDs []string, distroAliases []string, distroWarnings map[string]string) ValidationErrors {
 	errs := ValidationErrors{}
 	// create a set of all the task names
 	allTaskNames := map[string]bool{}
@@ -915,6 +924,16 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 						},
 					)
 				}
+				if warning, ok := distroWarnings[name]; ok {
+					errs = append(errs,
+						ValidationError{
+							Message: fmt.Sprintf("task '%s' in buildvariant '%s' "+
+								"references distro '%s' with the following admin-defined warning(s): %s",
+								task.Name, buildVariant.Name, name, warning),
+							Level: Warning,
+						},
+					)
+				}
 				if utility.StringSliceContains(distroIDs, name) {
 					runOnHasDistro = true
 				}
@@ -942,6 +961,16 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 							"references a container name overlapping with an existing distro '%s', the container "+
 							"configuration will override the distro",
 							buildVariant.Name, name),
+						Level: Warning,
+					},
+				)
+			}
+			if warning, ok := distroWarnings[name]; ok {
+				errs = append(errs,
+					ValidationError{
+						Message: fmt.Sprintf("buildvariant '%s' "+
+							"references distro '%s' with the following admin-defined warning: %s",
+							buildVariant.Name, name, warning),
 						Level: Warning,
 					},
 				)
@@ -1174,21 +1203,6 @@ func checkBVNames(buildVariant *model.BuildVariant) ValidationErrors {
 			Level:   Warning,
 			Message: "buildvariant should not be named 'all' because it is ambiguous in buildvariant specifications for patches",
 		})
-	}
-
-	return errs
-}
-
-func checkLoggerConfig(task *model.ProjectTask) ValidationErrors {
-	errs := ValidationErrors{}
-
-	for _, command := range task.Commands {
-		if err := command.Loggers.IsValid(); err != nil {
-			errs = append(errs, ValidationError{
-				Message: errors.Wrapf(err, "error in logger config for command %s in task %s", command.DisplayName, task.Name).Error(),
-				Level:   Warning,
-			})
-		}
 	}
 
 	return errs
@@ -2329,16 +2343,7 @@ func checkTasks(project *model.Project) ValidationErrors {
 			)
 			execTimeoutWarningAdded = true
 		}
-		errs = append(errs, checkLoggerConfig(&task)...)
 		errs = append(errs, checkTaskNames(project, &task)...)
-	}
-	if project.Loggers != nil {
-		if err := project.Loggers.IsValid(); err != nil {
-			errs = append(errs, ValidationError{
-				Message: errors.Wrap(err, "error in project-level logger config").Error(),
-				Level:   Warning,
-			})
-		}
 	}
 	return errs
 }

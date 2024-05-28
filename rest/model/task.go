@@ -172,8 +172,12 @@ type ApiTaskEndDetail struct {
 	// PostErrored is true when the post command errored.
 	PostErrored bool `json:"post_errored"`
 	// FailureMetadataTags contains the metadata tags associated with the
-	// failing command.
-	FailureMetadataTags []string `json:"failing_command_metadata_tags"`
+	// command that caused the task to fail. These are not set if the task
+	// succeeded.
+	FailureMetadataTags []string `json:"failure_metadata_tags"`
+	// OtherFailingCommands contain information about commands that failed but
+	// did not cause the task to fail.
+	OtherFailingCommands []APIFailingCommand `json:"other_failing_commands,omitempty"`
 	// Whether this task ended in a timeout.
 	TimedOut    bool              `json:"timed_out"`
 	TimeoutType *string           `json:"timeout_type"`
@@ -190,6 +194,11 @@ func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
 	at.TimedOut = t.TimedOut
 	at.TimeoutType = utility.ToStringPtr(t.TimeoutType)
 	at.FailureMetadataTags = t.FailureMetadataTags
+	for _, failingCmd := range t.OtherFailingCommands {
+		var apiFailingCmd APIFailingCommand
+		apiFailingCmd.BuildFromService(failingCmd)
+		at.OtherFailingCommands = append(at.OtherFailingCommands, apiFailingCmd)
+	}
 
 	apiOomTracker := APIOomTrackerInfo{}
 	apiOomTracker.BuildFromService(t.OOMTracker)
@@ -201,17 +210,43 @@ func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
 }
 
 func (ad *ApiTaskEndDetail) ToService() apimodels.TaskEndDetail {
+	failingCmds := make([]apimodels.FailingCommand, 0, len(ad.OtherFailingCommands))
+	for _, failingCmd := range ad.OtherFailingCommands {
+		failingCmds = append(failingCmds, failingCmd.ToService())
+	}
 	return apimodels.TaskEndDetail{
-		Status:              utility.FromStringPtr(ad.Status),
-		Type:                utility.FromStringPtr(ad.Type),
-		Description:         utility.FromStringPtr(ad.Description),
-		PostErrored:         ad.PostErrored,
-		FailureMetadataTags: ad.FailureMetadataTags,
-		TimedOut:            ad.TimedOut,
-		TimeoutType:         utility.FromStringPtr(ad.TimeoutType),
-		OOMTracker:          ad.OOMTracker.ToService(),
-		TraceID:             utility.FromStringPtr(ad.TraceID),
-		DiskDevices:         ad.DiskDevices,
+		Status:               utility.FromStringPtr(ad.Status),
+		Type:                 utility.FromStringPtr(ad.Type),
+		Description:          utility.FromStringPtr(ad.Description),
+		PostErrored:          ad.PostErrored,
+		FailureMetadataTags:  ad.FailureMetadataTags,
+		OtherFailingCommands: failingCmds,
+		TimedOut:             ad.TimedOut,
+		TimeoutType:          utility.FromStringPtr(ad.TimeoutType),
+		OOMTracker:           ad.OOMTracker.ToService(),
+		TraceID:              utility.FromStringPtr(ad.TraceID),
+		DiskDevices:          ad.DiskDevices,
+	}
+}
+
+// APIFailingCommand represents information about a command that failed in a
+// task.
+type APIFailingCommand struct {
+	// FullDisplayName is the full display name of the failing command.
+	FullDisplayName *string `json:"full_display_name,omitempty"`
+	// FailureMetadataTags are tags associated with the failing command.
+	FailureMetadataTags []string `json:"failure_metadata_tags,omitempty"`
+}
+
+func (afc *APIFailingCommand) BuildFromService(fc apimodels.FailingCommand) {
+	afc.FullDisplayName = utility.ToStringPtr(fc.FullDisplayName)
+	afc.FailureMetadataTags = fc.FailureMetadataTags
+}
+
+func (afc *APIFailingCommand) ToService() apimodels.FailingCommand {
+	return apimodels.FailingCommand{
+		FullDisplayName:     utility.FromStringPtr(afc.FullDisplayName),
+		FailureMetadataTags: afc.FailureMetadataTags,
 	}
 }
 

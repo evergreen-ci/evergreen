@@ -25,7 +25,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -606,7 +605,6 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context
 }
 
 func (j *patchIntentProcessor) buildTasksAndVariants(patchDoc *patch.Patch, project *model.Project) error {
-	var previousPatchStatus string
 	var err error
 	var reuseDef bool
 	reusePatchId, failedOnly := j.intent.RepeatFailedTasksAndVariants()
@@ -615,13 +613,14 @@ func (j *patchIntentProcessor) buildTasksAndVariants(patchDoc *patch.Patch, proj
 	}
 
 	if reuseDef || failedOnly {
-		previousPatchStatus, err = j.setToPreviousPatchDefinition(patchDoc, project, reusePatchId, failedOnly)
+		err = j.setToPreviousPatchDefinition(patchDoc, project, reusePatchId, failedOnly)
 		if err != nil {
 			return err
 		}
 		if j.IntentType == patch.GithubIntentType {
 			patchDoc.GithubPatchData.RepeatPatchIdNextPatch = reusePatchId
 		}
+		return nil
 	}
 
 	// Verify that all variants exists
@@ -648,109 +647,134 @@ func (j *patchIntentProcessor) buildTasksAndVariants(patchDoc *patch.Patch, proj
 		}
 	}
 
-	// If the user only wants failed tasks but the previous patch has no failed tasks, there is nothing to build
-	skipForFailed := failedOnly && previousPatchStatus != evergreen.VersionFailed
-
-	if len(patchDoc.VariantsTasks) == 0 && !skipForFailed {
+	if len(patchDoc.VariantsTasks) == 0 {
 		project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
 	}
 	return nil
 }
 
-func setTasksToPreviousFailed(patchDoc, previousPatch *patch.Patch, project *model.Project) error {
-	var failedTasks []string
-	for _, vt := range previousPatch.VariantsTasks {
-		tasks, err := getPreviousFailedTasksAndDisplayTasks(project, vt, previousPatch.Version)
-		if err != nil {
-			return err
-		}
-		failedTasks = append(failedTasks, tasks...)
+// setToFilteredTasks sets the tasks/variants to a previous patch's activated tasks (filtered on failures if requested)
+// and adds dependencies and task group tasks as needed.
+func setToFilteredTasks(patchDoc, reusePatch *patch.Patch, project *model.Project, failedOnly bool) error {
+	activatedTasks, err := task.FindActivatedByVersionWithoutDisplay(reusePatch.Version)
+	if err != nil {
+		return errors.Wrap(err, "filtering to activated tasks")
 	}
 
-	patchDoc.Tasks = failedTasks
+	activatedTasksDisplayNames := []string{}
+	failedTaskDisplayNames := []string{}
+	failedTasks := []task.Task{}
+	for _, t := range activatedTasks {
+		activatedTasksDisplayNames = append(activatedTasksDisplayNames, t.DisplayName)
+		if failedOnly && evergreen.IsFailedTaskStatus(t.Status) {
+			failedTasks = append(failedTasks, t)
+			failedTaskDisplayNames = append(failedTaskDisplayNames, t.DisplayName)
+		}
+	}
+	filteredTasks := activatedTasksDisplayNames
+	if failedOnly {
+		filteredTasks = failedTaskDisplayNames
+	}
+
+	filteredVariantTasks := []patch.VariantTasks{}
+	for _, vt := range reusePatch.VariantsTasks {
+		// Limit it to tasks that are failed or who have failed tasks depending on them.
+		// We only need to add dependencies and task group tasks for failed tasks because otherwise
+		// we can rely on them being there from the previous patch.
+		if failedOnly {
+			failedPlusNeeded, err := addDependenciesAndTaskGroups(failedTasks, failedTaskDisplayNames, project, vt)
+			if err != nil {
+				return errors.Wrap(err, "getting dependencies and task groups for activated tasks")
+			}
+			filteredTasks = append(filteredTasks, failedPlusNeeded...)
+		}
+
+		variantTask := vt
+		variantTask.Tasks = utility.StringSliceIntersection(filteredTasks, vt.Tasks)
+
+		// only add build variants and variant tasks if there are tasks in them that are being reused
+		if len(variantTask.Tasks) != 0 || len(variantTask.DisplayTasks) != 0 {
+			filteredVariantTasks = append(filteredVariantTasks, variantTask)
+			patchDoc.BuildVariants = append(patchDoc.BuildVariants, vt.Variant)
+		}
+
+	}
+
+	patchDoc.Tasks = filteredTasks
+	patchDoc.VariantsTasks = filteredVariantTasks
+
 	return nil
+}
+
+// addDependenciesAndTaskGroups adds dependencies and tasks from single host task groups for the given tasks.
+func addDependenciesAndTaskGroups(tasks []task.Task, taskDisplayNames []string, project *model.Project, vt patch.VariantTasks) ([]string, error) {
+	// only add tasks if they are in the current project definition
+	tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
+	tasksToAdd := []string{}
+	// add dependencies of failed tasks
+	taskDependencies, err := task.GetRecursiveDependenciesUp(tasks, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting dependencies for activated tasks")
+	}
+	for _, t := range taskDependencies {
+		if utility.StringSliceContains(tasksInProjectVariant, t.DisplayName) && !utility.StringSliceContains(taskDisplayNames, t.DisplayName) {
+			tasksToAdd = append(tasksToAdd, t.DisplayName)
+		}
+	}
+
+	for _, t := range tasks {
+		// Schedule all tasks in a single host task group because they may need to execute together to order to succeed.
+		if utility.StringSliceContains(tasksInProjectVariant, t.TaskGroup) && t.TaskGroup != "" && t.IsPartOfSingleHostTaskGroup() {
+			taskGroup := project.FindTaskGroup(t.TaskGroup)
+			for _, t := range taskGroup.Tasks {
+				if !utility.StringSliceContains(taskDisplayNames, t) {
+					tasksToAdd = append(tasksToAdd, t)
+				}
+			}
+		}
+	}
+
+	return tasksToAdd, nil
+
 }
 
 // setToPreviousPatchDefinition sets the tasks/variants based on a previous patch.
 // If failedOnly is set, we only use the tasks/variants that failed.
 // If patchId isn't set, we just use the most recent patch for the project.
 func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patch,
-	project *model.Project, patchId string, failedOnly bool) (string, error) {
+	project *model.Project, patchId string, failedOnly bool) error {
 	var reusePatch *patch.Patch
 	var err error
 	if patchId == "" {
 		reusePatch, err = patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
 		if err != nil {
-			return "", errors.Wrap(err, "querying for most recent patch")
+			return errors.Wrap(err, "querying for most recent patch")
 		}
 		if reusePatch == nil {
-			return "", errors.Errorf("no previous patch available")
+			return errors.Errorf("no previous patch available")
 		}
 	} else {
 		reusePatch, err = patch.FindOneId(patchId)
 		if err != nil {
-			return "", errors.Wrapf(err, "querying for patch '%s'", patchId)
+			return errors.Wrapf(err, "querying for patch '%s'", patchId)
 		}
 		if reusePatch == nil {
-			return "", errors.Errorf("patch '%s' not found", patchId)
+			return errors.Errorf("patch '%s' not found", patchId)
 		}
 	}
 
-	patchDoc.BuildVariants = reusePatch.BuildVariants
-	if failedOnly {
-		if err = setTasksToPreviousFailed(patchDoc, reusePatch, project); err != nil {
-			return "", errors.Wrap(err, "settings tasks to previous failed")
-		}
-	} else if j.IntentType == patch.GithubIntentType {
+	if j.IntentType == patch.GithubIntentType {
 		patchDoc.Tasks = reusePatch.Tasks
-	} else {
-		// Only add activated tasks from previous patch
-		query := db.Query(bson.M{
-			task.VersionKey:     reusePatch.Version,
-			task.DisplayNameKey: bson.M{"$in": reusePatch.Tasks},
-			task.ActivatedKey:   true,
-			task.DisplayOnlyKey: bson.M{"$ne": true},
-		}).WithFields(task.DisplayNameKey)
-		allActivatedTasks, err := task.FindAll(query)
-		if err != nil {
-			return "", errors.Wrap(err, "getting previous patch tasks")
-		}
-		activatedTasks := []string{}
-		for _, t := range allActivatedTasks {
-			activatedTasks = append(activatedTasks, t.DisplayName)
-		}
-		patchDoc.Tasks = utility.StringSliceIntersection(activatedTasks, reusePatch.Tasks)
+		patchDoc.BuildVariants = reusePatch.BuildVariants
+		patchDoc.VariantsTasks = reusePatch.VariantsTasks
+		return nil
 	}
 
-	return reusePatch.Status, nil
-}
+	if err = setToFilteredTasks(patchDoc, reusePatch, project, failedOnly); err != nil {
+		return errors.Wrapf(err, "filtering tasks for '%s'", patchId)
+	}
 
-func getPreviousFailedTasksAndDisplayTasks(project *model.Project, vt patch.VariantTasks, version string) ([]string, error) {
-	tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
-	failedTasks, err := task.FindAll(db.Query(task.FailedTasksByVersionAndBV(version, vt.Variant)))
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding failed tasks in build variant '%s' from previous patch '%s'", vt.Variant, version)
-	}
-	// Verify that the task group or task is in the current project definition and in the previous run.
-	allFailedTasks := []string{}
-	for _, failedTask := range failedTasks {
-		if utility.StringSliceContains(vt.Tasks, failedTask.DisplayName) {
-			if failedTask.TaskGroup != "" &&
-				utility.StringSliceContains(tasksInProjectVariant, failedTask.TaskGroup) {
-				// Schedule all tasks in a single host task group because they may need to execute together to order to succeed.
-				if failedTask.IsPartOfSingleHostTaskGroup() {
-					taskGroup := project.FindTaskGroup(failedTask.TaskGroup)
-					allFailedTasks = append(allFailedTasks, taskGroup.Tasks...)
-				} else {
-					allFailedTasks = append(allFailedTasks, failedTask.DisplayName)
-				}
-			} else if !failedTask.DisplayOnly &&
-				utility.StringSliceContains(tasksInProjectVariant, failedTask.DisplayName) {
-				allFailedTasks = append(allFailedTasks, failedTask.DisplayName)
-			}
-		}
-	}
-	return allFailedTasks, nil
+	return nil
 }
 
 func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *model.ProjectRef, env evergreen.Environment, aliasNames []string) error {

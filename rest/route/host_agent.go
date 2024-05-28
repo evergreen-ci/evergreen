@@ -229,9 +229,10 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		// we found a task, but it's not part of the task group so we didn't assign it
 		if shouldRunTeardown {
 			grip.Info(message.Fields{
-				"op":      "next_task",
-				"message": "host task group finished, not assigning task",
-				"host_id": h.host.Id,
+				"op":         "next_task",
+				"message":    "host task group finished, not assigning task and instead requesting host to run teardown group",
+				"host_id":    h.host.Id,
+				"task_group": h.details.TaskGroup,
 			})
 			err = h.host.SetTaskGroupTeardownStartTime(ctx)
 			if err != nil {
@@ -445,6 +446,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			"message":            "could not find project ref for next task, skipping",
 			"project":            nextTask.Project,
 			"host_id":            currentHost.Id,
+			"distro_id":          d.Id,
 			"task_group":         nextTask.TaskGroup,
 			"task_build_variant": nextTask.BuildVariant,
 			"task_version":       nextTask.Version,
@@ -503,11 +505,12 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 
 		// If the current task group is finished we leave the task on the queue, and indicate the current group needs to be torn down.
 		if details.TaskGroup != "" && details.TaskGroup != nextTask.TaskGroup {
-			grip.DebugWhen(nextTask.TaskGroup != "", message.Fields{
-				"message":              "not updating running task group task, because current group needs to be torn down",
+			grip.Debug(message.Fields{
+				"message":              "next task is a standalone task or part of a different task group; not updating running task group task, because current task group needs to be torn down",
+				"current_task_group":   details.TaskGroup,
 				"task_distro_id":       nextTask.DistroId,
 				"task_id":              nextTask.Id,
-				"task_group":           nextTask.TaskGroup,
+				"next_task_group":      nextTask.TaskGroup,
 				"task_build_variant":   nextTask.BuildVariant,
 				"task_version":         nextTask.Version,
 				"task_project":         nextTask.Project,
@@ -579,16 +582,24 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			"task_id":        nextTask.Id,
 			"task_execution": nextTask.Execution,
 			"host_id":        currentHost.Id,
+			"distro_id":      d.Id,
 		}))
 
 		return nextTask, false, nil
 	}
 
 	if taskQueue.Length() == 0 && details.TaskGroup != "" {
-		// if we have reached the end of the queue and the previous task was part of a task group,
+		grip.Debug(message.Fields{
+			"message":           "task queue is empty while task group is running, meaning there are no task group tasks remaining and the host should run teardown group",
+			"task_group":        details.TaskGroup,
+			"host_id":           currentHost.Id,
+			"distro_id":         d.Id,
+			"task_queue_is_nil": taskQueue == nil,
+			"task_queue":        fmt.Sprintf("%#v", taskQueue),
+		})
+		// If we have reached the end of the queue and the previous task was part of a task group,
 		// the current task group is finished and needs to be torn down.
 		return nil, true, nil
-
 	}
 
 	return nil, false, nil
