@@ -212,10 +212,6 @@ const (
 	EvergreenVersionID  = "EVG_VERSION_ID"
 	TraceEndpoint       = "TRACE_ENDPOINT"
 
-	// TODO (DEVPROD-6951): remove static auth once IRSA auth is reliable again.
-	MongoUsername = "MONGO_USERNAME"
-	MongoPassword = "MONGO_PASSWORD"
-
 	// localLoggingOverride is a special log path indicating that the app server
 	// should attempt to log to systemd if available, and otherwise fall back to
 	// logging to stdout.
