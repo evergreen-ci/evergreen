@@ -145,6 +145,10 @@ variables:
       - func: get-project-and-modules
       - func: run-make
         vars: { target: "${task_name}" }
+        # kim: NOTE: this should overwrite the existing AWS vars from pre.
+      - func: assume-role
+        vars:
+          assume_role_arn: ${client_assume_role_arn}
       - command: s3.put
         params:
           aws_key: ${AWS_ACCESS_KEY_ID}
@@ -154,7 +158,7 @@ variables:
           local_files_include_filter: "*_*/evergreen*"
           remote_file: evergreen/clients/${version_id}/
           content_type: binary/octet-stream
-          bucket: mciuploads
+          bucket: evg-bucket-evergreen
           permissions: public-read
           preserve_path: true
 
@@ -163,6 +167,10 @@ variables:
       - func: get-project-and-modules
       - func: run-make
         vars: { target: "bin/static_assets.tgz" }
+        # kim: NOTE: this should overwrite the existing AWS vars from pre.
+      - func: assume-role
+        vars:
+          assume_role_arn: ${client_assume_role_arn}
       - command: s3.put
         params:
           aws_key: ${AWS_ACCESS_KEY_ID}
@@ -171,7 +179,7 @@ variables:
           local_file: evergreen/bin/static_assets.tgz
           remote_file: evergreen/clients/${version_id}/static_assets.tgz
           content_type: application/gzip
-          bucket: mciuploads
+          bucket: evg-bucket-evergreen
           permissions: public-read
 #######################################
 #              Functions              #
@@ -199,11 +207,11 @@ functions:
             [[ $? -eq 0 ]] && break;
           done
 
-  assume-role:
-    - command: ec2.assume_role
-      type: setup
-      params:
-        role_arn: ${assume_role_arn}
+  assume-role: &assume-role
+    command: ec2.assume_role
+    type: setup
+    params:
+      role_arn: ${assume_role_arn}
 
   run-make:
     command: subprocess.exec
@@ -256,10 +264,6 @@ functions:
         EVG_VERSION_ID: ${version_id}
 
   setup-credentials:
-    - command: ec2.assume_role
-      type: setup
-      params:
-        role_arn: ${assume_role_arn}
     - command: subprocess.exec
       type: setup
       params:
@@ -347,7 +351,7 @@ functions:
         args: ["scripts/verify-agent-version-update.sh"]
         env:
           BRANCH_NAME: ${branch_name}
-  
+
   verify-swaggo-fmt:
     - command: subprocess.exec
       params:
@@ -356,7 +360,7 @@ functions:
         args: ["scripts/verify-swaggo-fmt.sh"]
         env:
           GOPATH: ${workdir}/gopath
-  
+
   check-go-vulnerabilities:
     - command: subprocess.exec
       params:
@@ -647,7 +651,7 @@ tasks:
       - func: get-project-and-modules
       - func: verify-merge-function-update
   - name: generate-api-docs
-    commands: 
+    commands:
       - func: get-project-and-modules
       - command: subprocess.exec
         params:
