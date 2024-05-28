@@ -71,6 +71,5 @@ You can add tests to the `tests/` directory. The folder is structured as the fol
 
 The tests run via the test runner defined in `integration_atomic_test_util.go`. If you see some behavior in your tests that can't be explained by what you've added, it's a good idea to check the setup functions defined in this file.
 
-Note: Do not add anything to the `testdata/` directory. These tests will eventually be deprecated. They run via the test runner defined in `integration_test_util.go`.
 
 Note: Tests for directives are located in `directive_test.go`.
