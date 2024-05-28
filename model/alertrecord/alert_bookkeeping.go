@@ -28,8 +28,9 @@ const (
 
 // Host triggers
 const (
-	spawnHostWarningTemplate = "spawn_%dhour"
-	volumeWarningTemplate    = "volume_%dhour"
+	spawnHostWarningTemplate          = "spawn_%dhour"
+	temporaryExemptionWarningTemplate = "temporary_exemption_%dhour"
+	volumeWarningTemplate             = "volume_%dhour"
 )
 
 const legacyAlertsSubscription = "legacy-alerts"
@@ -183,6 +184,17 @@ func FindBySpawnHostExpirationWithHours(hostID string, hours int) (*AlertRecord,
 	return FindOne(db.Query(q).Limit(1))
 }
 
+// FindByTemporaryExemptionExpirationWithHours finds a matching alert record for
+// a spawn host's temporary exemption that is about to expire.
+// kim: TODO: test
+func FindByTemporaryExemptionExpirationWithHours(hostID string, hours int) (*AlertRecord, error) {
+	alertType := fmt.Sprintf(temporaryExemptionWarningTemplate, hours)
+	q := subscriptionIDQuery(legacyAlertsSubscription)
+	q[TypeKey] = alertType
+	q[HostIdKey] = hostID
+	return FindOne(db.Query(q).Limit(1))
+}
+
 func FindByVolumeExpirationWithHours(volumeID string, hours int) (*AlertRecord, error) {
 	alertType := fmt.Sprintf(volumeWarningTemplate, hours)
 	q := subscriptionIDQuery(legacyAlertsSubscription)
@@ -210,6 +222,21 @@ func InsertNewTaskRegressionByTestRecord(subscriptionID, taskID, testName, taskD
 
 func InsertNewSpawnHostExpirationRecord(hostID string, hours int) error {
 	alertType := fmt.Sprintf(spawnHostWarningTemplate, hours)
+	record := AlertRecord{
+		Id:             mgobson.NewObjectId(),
+		SubscriptionID: legacyAlertsSubscription,
+		Type:           alertType,
+		HostId:         hostID,
+		AlertTime:      time.Now(),
+	}
+
+	return errors.Wrapf(record.Insert(), "inserting alert record '%s'", alertType)
+}
+
+// InsertNewTemporaryExemptionExpirationRecord inserts a new alert record for a
+// temporary exemption that is about to exipre.
+func InsertNewHostTemporaryExemptionExpirationRecord(hostID string, hours int) error {
+	alertType := fmt.Sprintf(temporaryExemptionWarningTemplate, hours)
 	record := AlertRecord{
 		Id:             mgobson.NewObjectId(),
 		SubscriptionID: legacyAlertsSubscription,

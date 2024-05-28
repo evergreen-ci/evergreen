@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -84,14 +85,31 @@ func (j *spawnhostExpirationWarningsJob) Run(ctx context.Context) {
 			j.AddError(errors.Wrap(ctx.Err(), "spawnhost expiration warning run canceled"))
 			return
 		}
-		if err = runSpawnWarningTriggers(&h); err != nil {
-			j.AddError(err)
+		if err = runSpawnHostExpirationWarningTriggers(&h); err != nil {
+			j.AddError(errors.Wrap(err, "logging events for spawn host expiration"))
 			grip.Error(message.WrapError(err, message.Fields{
 				"runner":  "monitor",
 				"id":      j.ID(),
 				"message": "Error queuing alert",
 				"host_id": h.Id,
 			}))
+		}
+	}
+
+	// kim: TODO: test
+	// Notify for spawn host temporary exemptions expiring in the next 12 hours.
+	temporaryExemptionExpiringSoonHosts, err := host.FindByTemporaryExemptionsExpiringBetween(ctx, now, thresholdTime)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "finding hosts with temporary exemptions expiring soon"))
+		return
+	}
+	for _, h := range temporaryExemptionExpiringSoonHosts {
+		if ctx.Err() != nil {
+			j.AddError(errors.Wrap(ctx.Err(), "temporary exemption expiration warning run canceled"))
+			return
+		}
+		if err = runHostTemporaryExemptionExpirationWarningTriggers(&h); err != nil {
+			j.AddError(errors.Wrap(err, "logging events for temporary exemption expiration"))
 		}
 	}
 }
@@ -108,7 +126,19 @@ func shouldNotifyForSpawnhostExpiration(h *host.Host, numHours int) (bool, error
 	return rec == nil, nil
 }
 
-func tryHostNotification(h *host.Host, numHours int) error {
+func shouldNotifyForHostTemporaryExemptionExpiration(h *host.Host, numHours int) (bool, error) {
+	if utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) || h.SleepSchedule.TemporarilyExemptUntil.Sub(time.Now()) > (time.Duration(numHours)*time.Hour) {
+		return false, nil
+	}
+	rec, err := alertrecord.FindByTemporaryExemptionExpirationWithHours(h.Id, numHours)
+	if err != nil {
+		return false, err
+	}
+
+	return rec == nil, nil
+}
+
+func trySpawnHostExpirationNotification(h *host.Host, numHours int) error {
 	shouldExec, err := shouldNotifyForSpawnhostExpiration(h, numHours)
 	if err != nil {
 		return err
@@ -128,9 +158,36 @@ func tryHostNotification(h *host.Host, numHours int) error {
 	return nil
 }
 
-func runSpawnWarningTriggers(h *host.Host) error {
+func tryHostTemporaryExemptionExpirationNotification(h *host.Host, numHours int) error {
+	shouldExec, err := shouldNotifyForHostTemporaryExemptionExpiration(h, numHours)
+	if err != nil {
+		return err
+	}
+	if shouldExec {
+		event.LogHostTemporaryExemptionExpirationWarningSent(h.Id)
+		grip.Info(message.Fields{
+			"message": "sent temporary exemption expiration warning",
+			"host_id": h.Id,
+			"owner":   h.StartedBy,
+			"until":   h.SleepSchedule.TemporarilyExemptUntil,
+		})
+		if err = alertrecord.InsertNewHostTemporaryExemptionExpirationRecord(h.Id, numHours); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func runSpawnHostExpirationWarningTriggers(h *host.Host) error {
 	catcher := grip.NewSimpleCatcher()
-	catcher.Add(tryHostNotification(h, 2))
-	catcher.Add(tryHostNotification(h, 12))
+	catcher.Add(trySpawnHostExpirationNotification(h, 2))
+	catcher.Add(trySpawnHostExpirationNotification(h, 12))
+	return catcher.Resolve()
+}
+
+func runHostTemporaryExemptionExpirationWarningTriggers(h *host.Host) error {
+	catcher := grip.NewSimpleCatcher()
+	catcher.Add(tryHostTemporaryExemptionExpirationNotification(h, 2))
+	catcher.Add(tryHostTemporaryExemptionExpirationNotification(h, 12))
 	return catcher.Resolve()
 }

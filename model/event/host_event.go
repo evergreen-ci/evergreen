@@ -28,36 +28,37 @@ const (
 	ResourceTypeHost = "HOST"
 
 	// event types
-	EventHostCreated                     = "HOST_CREATED"
-	EventHostCreatedError                = "HOST_CREATED_ERROR"
-	EventHostStarted                     = "HOST_STARTED"
-	EventHostStopped                     = "HOST_STOPPED"
-	EventHostModified                    = "HOST_MODIFIED"
-	EventHostAgentDeployed               = "HOST_AGENT_DEPLOYED"
-	EventHostAgentDeployFailed           = "HOST_AGENT_DEPLOY_FAILED"
-	EventHostAgentMonitorDeployed        = "HOST_AGENT_MONITOR_DEPLOYED"
-	EventHostAgentMonitorDeployFailed    = "HOST_AGENT_MONITOR_DEPLOY_FAILED"
-	EventHostJasperRestarting            = "HOST_JASPER_RESTARTING"
-	EventHostJasperRestarted             = "HOST_JASPER_RESTARTED"
-	EventHostJasperRestartError          = "HOST_JASPER_RESTART_ERROR"
-	EventHostConvertingProvisioning      = "HOST_CONVERTING_PROVISIONING"
-	EventHostConvertedProvisioning       = "HOST_CONVERTED_PROVISIONING"
-	EventHostConvertingProvisioningError = "HOST_CONVERTING_PROVISIONING_ERROR"
-	EventHostStatusChanged               = "HOST_STATUS_CHANGED"
-	EventHostDNSNameSet                  = "HOST_DNS_NAME_SET"
-	EventHostProvisionError              = "HOST_PROVISION_ERROR"
-	EventHostProvisionFailed             = "HOST_PROVISION_FAILED"
-	EventHostProvisioned                 = "HOST_PROVISIONED"
-	EventHostRunningTaskSet              = "HOST_RUNNING_TASK_SET"
-	EventHostRunningTaskCleared          = "HOST_RUNNING_TASK_CLEARED"
-	EventHostTaskFinished                = "HOST_TASK_FINISHED"
-	EventHostTerminatedExternally        = "HOST_TERMINATED_EXTERNALLY"
-	EventHostExpirationWarningSent       = "HOST_EXPIRATION_WARNING_SENT"
-	EventSpawnHostIdleNotification       = "HOST_IDLE_NOTIFICATION"
-	EventHostScriptExecuted              = "HOST_SCRIPT_EXECUTED"
-	EventHostScriptExecuteFailed         = "HOST_SCRIPT_EXECUTE_FAILED"
-	EventVolumeExpirationWarningSent     = "VOLUME_EXPIRATION_WARNING_SENT"
-	EventVolumeMigrationFailed           = "VOLUME_MIGRATION_FAILED"
+	EventHostCreated                       = "HOST_CREATED"
+	EventHostCreatedError                  = "HOST_CREATED_ERROR"
+	EventHostStarted                       = "HOST_STARTED"
+	EventHostStopped                       = "HOST_STOPPED"
+	EventHostModified                      = "HOST_MODIFIED"
+	EventHostAgentDeployed                 = "HOST_AGENT_DEPLOYED"
+	EventHostAgentDeployFailed             = "HOST_AGENT_DEPLOY_FAILED"
+	EventHostAgentMonitorDeployed          = "HOST_AGENT_MONITOR_DEPLOYED"
+	EventHostAgentMonitorDeployFailed      = "HOST_AGENT_MONITOR_DEPLOY_FAILED"
+	EventHostJasperRestarting              = "HOST_JASPER_RESTARTING"
+	EventHostJasperRestarted               = "HOST_JASPER_RESTARTED"
+	EventHostJasperRestartError            = "HOST_JASPER_RESTART_ERROR"
+	EventHostConvertingProvisioning        = "HOST_CONVERTING_PROVISIONING"
+	EventHostConvertedProvisioning         = "HOST_CONVERTED_PROVISIONING"
+	EventHostConvertingProvisioningError   = "HOST_CONVERTING_PROVISIONING_ERROR"
+	EventHostStatusChanged                 = "HOST_STATUS_CHANGED"
+	EventHostDNSNameSet                    = "HOST_DNS_NAME_SET"
+	EventHostProvisionError                = "HOST_PROVISION_ERROR"
+	EventHostProvisionFailed               = "HOST_PROVISION_FAILED"
+	EventHostProvisioned                   = "HOST_PROVISIONED"
+	EventHostRunningTaskSet                = "HOST_RUNNING_TASK_SET"
+	EventHostRunningTaskCleared            = "HOST_RUNNING_TASK_CLEARED"
+	EventHostTaskFinished                  = "HOST_TASK_FINISHED"
+	EventHostTerminatedExternally          = "HOST_TERMINATED_EXTERNALLY"
+	EventHostExpirationWarningSent         = "HOST_EXPIRATION_WARNING_SENT"
+	EventHostTemporaryExemptionWarningSent = "HOST_TEMPORARY_EXEMPTION_WARNING_SENT"
+	EventSpawnHostIdleNotification         = "HOST_IDLE_NOTIFICATION"
+	EventHostScriptExecuted                = "HOST_SCRIPT_EXECUTED"
+	EventHostScriptExecuteFailed           = "HOST_SCRIPT_EXECUTE_FAILED"
+	EventVolumeExpirationWarningSent       = "VOLUME_EXPIRATION_WARNING_SENT"
+	EventVolumeMigrationFailed             = "VOLUME_MIGRATION_FAILED"
 )
 
 // implements EventData
@@ -277,11 +278,17 @@ func LogSpawnhostExpirationWarningSent(hostID string) {
 	LogHostEvent(hostID, EventHostExpirationWarningSent, HostEventData{})
 }
 
+// LogHostTemporaryExemptionExpirationWarningSent logs an event warning about
+// the host's temporary exemption, which is about to expire.
+func LogHostTemporaryExemptionExpirationWarningSent(hostID string) {
+	LogHostEvent(hostID, EventHostTemporaryExemptionWarningSent, HostEventData{})
+}
+
 func LogVolumeExpirationWarningSent(volumeID string) {
 	LogHostEvent(volumeID, EventVolumeExpirationWarningSent, HostEventData{})
 }
 
-// LogSpawnHostIdleNotification logs a notification for the spawn host being idle.
+// LogSpawnHostIdleNotification logs an event for the spawn host being idle.
 func LogSpawnHostIdleNotification(hostID string) {
 	LogHostEvent(hostID, EventSpawnHostIdleNotification, HostEventData{})
 }
