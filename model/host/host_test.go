@@ -6272,6 +6272,12 @@ func TestSleepScheduleInfoValidate(t *testing.T) {
 			TimeZone:         "America/New_York",
 		}).Validate())
 	})
+	t.Run("FailsWithAllWeekdaysOff", func(t *testing.T) {
+		assert.Error(t, (&SleepScheduleInfo{
+			WholeWeekdaysOff: []time.Weekday{time.Sunday, time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday, time.Saturday},
+			TimeZone:         "America/New_York",
+		}).Validate())
+	})
 }
 
 func TestUpdateSleepSchedule(t *testing.T) {
