@@ -1,7 +1,7 @@
 {
   "tests": [
     {
-      "query_file": "can_enqueue_to_commit_queue.graphql",
+      "query_file": "can_enqueue_pr_patch.graphql",
       "result": {
         "data": {
           "patch": {
@@ -11,7 +11,7 @@
       }
     },
     {
-      "query_file": "cannot_enqueue_to_commit_queue.graphql",
+      "query_file": "cannot_enqueue_using_github_queue.graphql",
       "result": {
         "data": {
           "patch": {
