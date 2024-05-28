@@ -65,6 +65,8 @@ providers:
     pod:
       ecs:
         allowed_images: ["fake_smoke_test_image"]
+    binary_client:
+      bucket: mciuploads
 
 keys:
   test: "/dev/null"

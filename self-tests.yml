@@ -253,6 +253,7 @@ functions:
         OTEL_COLLECTOR_ENDPOINT: ${otel_collector_endpoint}
         OTEL_TRACE_ID: ${otel_trace_id}
         OTEL_PARENT_ID: ${otel_parent_id}
+        EVG_VERSION_ID: ${version_id}
 
   setup-credentials:
     - command: ec2.assume_role
@@ -422,7 +423,6 @@ tasks:
     tags: ["smoke"]
   - <<: *run-smoke-test
     name: test-smoke-internal-agentmonitor
-    tags: ["smoke"]
   - <<: *run-generate-lint
   - <<: *run-go-test-suite
     name: js-test
@@ -761,6 +761,10 @@ buildvariants:
       - name: test-cloud
       - name: "js-test"
       - name: generate-api-docs
+      - name: "test-smoke-internal-agentmonitor"
+        depends_on:
+          - name: build-linux_amd64
+            variant: build-and-push
 
   - name: race-detector
     display_name: Race Detector
@@ -794,6 +798,10 @@ buildvariants:
       - name: ".test"
       - name: "js-test"
       - name: ".linter !.skip-container"
+      - name: "test-smoke-internal-agentmonitor"
+        depends_on:
+          - name: build-linux_amd64
+            variant: build-and-push
 
   - name: lint
     display_name: Lint
