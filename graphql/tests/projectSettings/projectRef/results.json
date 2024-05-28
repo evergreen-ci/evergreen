@@ -116,7 +116,7 @@
         "errors": [
           {
             "message": "project 'evergreen' not found",
-            "path": ["projectSettings", "identifier"],
+            "path": ["projectSettings", "projectIdentifier"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }

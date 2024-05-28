@@ -1,0 +1,8 @@
+mutation {
+  addFavoriteProject(opts: { projectIdentifier: "i-dont-exist" }) {
+    identifier
+    repo
+    owner
+    displayName
+  }
+}

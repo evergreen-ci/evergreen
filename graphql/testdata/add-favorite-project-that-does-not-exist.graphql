@@ -1,8 +1,0 @@
-mutation {
-  addFavoriteProject(identifier: "i-dont-exist") {
-    identifier
-    repo
-    owner
-    displayName
-  }
-}

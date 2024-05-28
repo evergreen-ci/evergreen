@@ -1,5 +1,5 @@
 {
-    projectSettings(identifier: "evergreen") {
+    projectSettings(projectIdentifier: "evergreen") {
         projectRef {
             id
             identifier

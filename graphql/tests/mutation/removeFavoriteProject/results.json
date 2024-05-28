@@ -1,0 +1,13 @@
+    {
+        "query_file": "success.graphql",
+        "result": {
+            "data": {
+                "removeFavoriteProject": {
+                    "identifier": "buildhost-test",
+                    "repo": "buildhost-configuration",
+                    "owner": "annie.black",
+                    "displayName": "buildhost-test"
+                }
+            }
+        }
+    }

@@ -315,7 +315,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 		Limit:        limitParam,
 		Sorts:        taskSorts,
 		// If the version is a patch, we want to exclude inactive tasks by default.
-		IncludeNeverActivatedTasks: !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) || utility.FromBoolPtr(options.IncludeEmptyActivation) || utility.FromBoolPtr(options.IncludeNeverActivatedTasks),
+		IncludeNeverActivatedTasks: !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) || utility.FromBoolPtr(options.IncludeNeverActivatedTasks),
 		BaseVersionID:              baseVersionID,
 	}
 	tasks, count, err := task.GetTasksByVersion(ctx, versionId, opts)

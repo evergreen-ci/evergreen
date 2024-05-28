@@ -455,15 +455,12 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 }
 
 // ProjectEvents is the resolver for the projectEvents field.
-func (r *queryResolver) ProjectEvents(ctx context.Context, identifier *string, projectIdentifier *string, limit *int, before *time.Time) (*ProjectEvents, error) {
-	if projectIdentifier == nil {
-		projectIdentifier = identifier
-	}
+func (r *queryResolver) ProjectEvents(ctx context.Context, projectIdentifier string, limit *int, before *time.Time) (*ProjectEvents, error) {
 	timestamp := time.Now()
 	if before != nil {
 		timestamp = *before
 	}
-	events, err := data.GetProjectEventLog(utility.FromStringPtr(projectIdentifier), timestamp, utility.FromIntPtr(limit))
+	events, err := data.GetProjectEventLog(projectIdentifier, timestamp, utility.FromIntPtr(limit))
 	res := &ProjectEvents{
 		EventLogEntries: getPointerEventList(events),
 		Count:           len(events),
@@ -472,11 +469,8 @@ func (r *queryResolver) ProjectEvents(ctx context.Context, identifier *string, p
 }
 
 // ProjectSettings is the resolver for the projectSettings field.
-func (r *queryResolver) ProjectSettings(ctx context.Context, identifier *string, projectIdentifier *string) (*restModel.APIProjectSettings, error) {
-	if projectIdentifier == nil {
-		projectIdentifier = identifier
-	}
-	projectRef, err := model.FindBranchProjectRef(utility.FromStringPtr(projectIdentifier))
+func (r *queryResolver) ProjectSettings(ctx context.Context, projectIdentifier string) (*restModel.APIProjectSettings, error) {
+	projectRef, err := model.FindBranchProjectRef(projectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
 	}

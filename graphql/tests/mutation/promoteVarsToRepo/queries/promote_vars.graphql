@@ -1,3 +1,6 @@
 mutation {
-  promoteVarsToRepo(projectId: "sandbox", varNames: ["hello", "foo"])
+  promoteVarsToRepo(opts: {
+    projectId: "sandbox",
+    varNames: ["hello", "foo"]
+  })
 }
