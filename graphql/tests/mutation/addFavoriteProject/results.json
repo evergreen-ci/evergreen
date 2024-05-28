@@ -14,7 +14,7 @@
             }
         },
         {
-            "query_file": "non-existent.graphql",
+            "query_file": "nonexistent.graphql",
             "result": {
                 "errors": [
                     {
