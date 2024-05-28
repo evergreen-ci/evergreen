@@ -1384,7 +1384,7 @@ func (s *distroClientURLsGetSuite) SetupTest() {
 	s.NoError(err)
 
 	env := &mock.Environment{}
-	env.Configure(ctx)
+	s.NoError(env.Configure(ctx))
 	s.env = env
 
 	h := makeGetDistroClientURLs(s.env)
