@@ -24,7 +24,6 @@ var (
 	apiUrlKey             = bsonutil.MustHaveTag(Settings{}, "ApiUrl")
 	awsInstanceRoleKey    = bsonutil.MustHaveTag(Settings{}, "AWSInstanceRole")
 	cedarKey              = bsonutil.MustHaveTag(Settings{}, "Cedar")
-	clientBinariesDirKey  = bsonutil.MustHaveTag(Settings{}, "ClientBinariesDir")
 	hostJasperKey         = bsonutil.MustHaveTag(Settings{}, "HostJasper")
 	domainNameKey         = bsonutil.MustHaveTag(Settings{}, "DomainName")
 	jiraKey               = bsonutil.MustHaveTag(Settings{}, "Jira")

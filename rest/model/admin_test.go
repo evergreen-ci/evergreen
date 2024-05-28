@@ -57,7 +57,6 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.AWSInstanceRole, *apiSettings.AWSInstanceRole)
 	assert.Equal(testSettings.Banner, *apiSettings.Banner)
 	assert.EqualValues(testSettings.BannerTheme, *apiSettings.BannerTheme)
-	assert.Equal(testSettings.ClientBinariesDir, *apiSettings.ClientBinariesDir)
 	assert.Equal(testSettings.ConfigDir, *apiSettings.ConfigDir)
 	assert.Equal(testSettings.GithubPRCreatorOrg, *apiSettings.GithubPRCreatorOrg)
 	assert.Equal(testSettings.LogPath, *apiSettings.LogPath)

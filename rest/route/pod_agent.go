@@ -67,7 +67,10 @@ func (h *podProvisioningScript) Run(ctx context.Context) gimlet.Responder {
 		"secs_since_pod_creation":   time.Since(p.TimeInfo.Starting).Seconds(),
 	})
 
-	script := h.agentScript(p)
+	script, err := h.agentScript(p)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting agent provisioning script"))
+	}
 
 	return gimlet.NewTextResponse(script)
 }
@@ -75,8 +78,12 @@ func (h *podProvisioningScript) Run(ctx context.Context) gimlet.Responder {
 // agentScript returns the script to provision and run the agent in the pod's
 // container. On Linux, this is a shell script. On Windows, this is a cmd.exe
 // batch script.
-func (h *podProvisioningScript) agentScript(p *pod.Pod) string {
-	scriptCmds := []string{h.downloadAgentCommands(p)}
+func (h *podProvisioningScript) agentScript(p *pod.Pod) (string, error) {
+	downloadCommand, err := h.downloadAgentCommands(p)
+	if err != nil {
+		return "", errors.Wrap(err, "constructing download commands")
+	}
+	scriptCmds := []string{downloadCommand}
 	if p.TaskContainerCreationOpts.OS == pod.OSLinux {
 		scriptCmds = append(scriptCmds, fmt.Sprintf("chmod +x %s", h.clientName(p)))
 	}
@@ -84,7 +91,7 @@ func (h *podProvisioningScript) agentScript(p *pod.Pod) string {
 	scriptCmds = append(scriptCmds, agentCmd)
 
 	if p.TaskContainerCreationOpts.OS == pod.OSLinux {
-		return strings.Join(scriptCmds, " && ")
+		return strings.Join(scriptCmds, " && "), nil
 	}
 
 	// This chains together the PowerShell commands so that they run in order,
@@ -94,7 +101,7 @@ func (h *podProvisioningScript) agentScript(p *pod.Pod) string {
 	// introduced until PowerShell 7. Users may not provide a sufficiently
 	// up-to-date version of PowerShell on their images to use these operators.
 	// Docs: https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_pipeline_chain_operators
-	return strings.Join(scriptCmds, "; ")
+	return strings.Join(scriptCmds, "; "), nil
 }
 
 // agentCommand returns the arguments to start the agent in the pod's container.
@@ -119,7 +126,7 @@ func (h *podProvisioningScript) agentCommand(p *pod.Pod) []string {
 
 // downloadAgentCommands returns the commands to download the agent in the pod's
 // container.
-func (h *podProvisioningScript) downloadAgentCommands(p *pod.Pod) string {
+func (h *podProvisioningScript) downloadAgentCommands(p *pod.Pod) (string, error) {
 	const (
 		curlDefaultNumRetries = 10
 		curlDefaultMaxSecs    = 100
@@ -131,37 +138,13 @@ func (h *podProvisioningScript) downloadAgentCommands(p *pod.Pod) string {
 		curlExecutable = curlExecutable + ".exe"
 	}
 
-	if h.env.ClientConfig().S3URLPrefix != "" {
-		// Attempt to download the agent from S3, but fall back to downloading
-		// from the app server if it fails.
-		// Include -f to return an error code from curl if the HTTP request
-		// fails (e.g. it receives 403 Forbidden or 404 Not Found).
-
-		if p.TaskContainerCreationOpts.OS == pod.OSWindows {
-			// PowerShell supports pipeline chaining operators (like bash's ||
-			// operator) as of PowerShell 7. However, users may not provide a
-			// sufficiently up-to-date version of PowerShell on their images to
-			// use these operators. Therefore, use a PowerShell if-else
-			// statement to produce the equivalent functionality.
-			// Docs: https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_pipeline_chain_operators
-			return fmt.Sprintf("if (%s -fLO %s %s) {} else { %s -fLO %s %s }", curlExecutable, h.s3ClientURL(p), retryArgs, curlExecutable, h.evergreenClientURL(p), retryArgs)
-		}
-
-		return fmt.Sprintf("(%s -fLO %s %s || %s -fLO %s %s)", curlExecutable, h.s3ClientURL(p), retryArgs, curlExecutable, h.evergreenClientURL(p), retryArgs)
-
+	if h.env.ClientConfig().S3URLPrefix == "" {
+		return "", errors.New("S3 downloads are not configured")
 	}
 
-	return fmt.Sprintf("%s -fLO %s %s", curlExecutable, h.evergreenClientURL(p), retryArgs)
-}
-
-// evergreenClientURL returns the URL used to get the latest Evergreen client
-// version directly from the Evergreen server.
-func (h *podProvisioningScript) evergreenClientURL(p *pod.Pod) string {
-	return strings.Join([]string{
-		strings.TrimSuffix(h.env.Settings().ApiUrl, "/"),
-		strings.TrimSuffix(h.env.Settings().ClientBinariesDir, "/"),
-		h.clientURLSubpath(p),
-	}, "/")
+	// Attempt to download the agent from S3. Include -f to return an error code from curl if the HTTP request
+	// fails (e.g. it receives 403 Forbidden or 404 Not Found).
+	return fmt.Sprintf("%s -fLO %s %s", curlExecutable, h.s3ClientURL(p), retryArgs), nil
 }
 
 // s3ClientURL returns the URL in S3 where the Evergreen client version can be

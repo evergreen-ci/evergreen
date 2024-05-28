@@ -34,143 +34,43 @@ import (
 
 func TestCurlCommand(t *testing.T) {
 	assert := assert.New(t)
-	t.Run("WithoutS3", func(t *testing.T) {
-		env := &mock.Environment{EvergreenSettings: &evergreen.Settings{
-			ApiUrl:            "www.example.com",
-			ClientBinariesDir: "clients",
-		}}
-		t.Run("Windows", func(t *testing.T) {
-			h := &Host{
-				Distro: distro.Distro{
-					Arch: evergreen.ArchWindowsAmd64,
-					User: "user",
-				},
-				User: "user",
-			}
-			expected := "cd /home/user && curl -fLO www.example.com/clients/windows_amd64/evergreen.exe && chmod +x evergreen.exe"
-			cmd, err := h.CurlCommand(env)
-			require.NoError(t, err)
-			assert.Equal(expected, cmd)
-		})
-		t.Run("Linux", func(t *testing.T) {
-			h := &Host{
-				Distro: distro.Distro{
-					Arch: evergreen.ArchLinuxAmd64,
-					User: "user",
-				},
-				User: "user",
-			}
-			expected := "cd /home/user && curl -fLO www.example.com/clients/linux_amd64/evergreen && chmod +x evergreen"
-			cmd, err := h.CurlCommand(env)
-			require.NoError(t, err)
-			assert.Equal(expected, cmd)
-		})
-	})
-	t.Run("WithS3", func(t *testing.T) {
-		env := &mock.Environment{
-			EvergreenSettings: &evergreen.Settings{
-				ApiUrl:            "www.example.com",
-				ClientBinariesDir: "clients",
-			},
-			Clients: evergreen.ClientConfig{S3URLPrefix: "https://foo.com"},
-		}
-		t.Run("Windows", func(t *testing.T) {
-			h := &Host{
-				Distro: distro.Distro{
-					Arch: evergreen.ArchWindowsAmd64,
-					User: "user",
-				},
-				User: "user",
-			}
-			expected := "cd /home/user && (curl -fLO https://foo.com/windows_amd64/evergreen.exe || curl -fLO www.example.com/clients/windows_amd64/evergreen.exe) && chmod +x evergreen.exe"
-			cmd, err := h.CurlCommand(env)
-			require.NoError(t, err)
-			assert.Equal(expected, cmd)
-		})
-		t.Run("Linux", func(t *testing.T) {
-			h := &Host{
-				Distro: distro.Distro{
-					Arch: evergreen.ArchLinuxAmd64,
-					User: "user",
-				},
-				User: "user",
-			}
-			expected := "cd /home/user && (curl -fLO https://foo.com/linux_amd64/evergreen || curl -fLO www.example.com/clients/linux_amd64/evergreen) && chmod +x evergreen"
-			cmd, err := h.CurlCommand(env)
-			require.NoError(t, err)
-			assert.Equal(expected, cmd)
-		})
-	})
+	env := &mock.Environment{
+		EvergreenSettings: &evergreen.Settings{
+			ApiUrl: "www.example.com",
+		},
+		Clients: evergreen.ClientConfig{S3URLPrefix: "https://foo.com"},
+	}
+	h := &Host{
+		Distro: distro.Distro{
+			Arch: evergreen.ArchLinuxAmd64,
+			User: "user",
+		},
+		User: "user",
+	}
+	expected := "cd /home/user && curl -fLO https://foo.com/linux_amd64/evergreen && chmod +x evergreen"
+	cmd, err := h.CurlCommand(env)
+	require.NoError(t, err)
+	assert.Equal(expected, cmd)
 }
 
 func TestCurlCommandWithRetry(t *testing.T) {
-	t.Run("WithoutS3", func(t *testing.T) {
-		env := &mock.Environment{EvergreenSettings: &evergreen.Settings{
-			ApiUrl:            "www.example.com",
-			ClientBinariesDir: "clients",
-		}}
-		t.Run("Windows", func(t *testing.T) {
-			h := &Host{
-				Distro: distro.Distro{
-					Arch: evergreen.ArchWindowsAmd64,
-					User: "user",
-				},
-				User: "user",
-			}
-			expected := "cd /home/user && curl -fLO www.example.com/clients/windows_amd64/evergreen.exe --retry 5 --retry-max-time 10 && chmod +x evergreen.exe"
-			cmd, err := h.CurlCommandWithRetry(env, 5, 10)
-			require.NoError(t, err)
-			assert.Equal(t, expected, cmd)
-		})
-		t.Run("Linux", func(t *testing.T) {
-			h := &Host{
-				Distro: distro.Distro{
-					Arch: evergreen.ArchLinuxAmd64,
-					User: "user",
-				},
-				User: "user",
-			}
-			expected := "cd /home/user && curl -fLO www.example.com/clients/linux_amd64/evergreen --retry 5 --retry-max-time 10 && chmod +x evergreen"
-			cmd, err := h.CurlCommandWithRetry(env, 5, 10)
-			require.NoError(t, err)
-			assert.Equal(t, expected, cmd)
-		})
-	})
-	t.Run("WithS3", func(t *testing.T) {
-		env := &mock.Environment{
-			EvergreenSettings: &evergreen.Settings{
-				ApiUrl:            "www.example.com",
-				ClientBinariesDir: "clients",
-			},
-			Clients: evergreen.ClientConfig{S3URLPrefix: "https://foo.com"},
-		}
-		t.Run("Windows", func(t *testing.T) {
-			h := &Host{
-				Distro: distro.Distro{
-					Arch: evergreen.ArchWindowsAmd64,
-					User: "user",
-				},
-				User: "user",
-			}
-			expected := "cd /home/user && (curl -fLO https://foo.com/windows_amd64/evergreen.exe --retry 5 --retry-max-time 10 || curl -fLO www.example.com/clients/windows_amd64/evergreen.exe --retry 5 --retry-max-time 10) && chmod +x evergreen.exe"
-			cmd, err := h.CurlCommandWithRetry(env, 5, 10)
-			require.NoError(t, err)
-			assert.Equal(t, expected, cmd)
-		})
-		t.Run("Linux", func(t *testing.T) {
-			h := &Host{
-				Distro: distro.Distro{
-					Arch: evergreen.ArchLinuxAmd64,
-					User: "user",
-				},
-				User: "user",
-			}
-			expected := "cd /home/user && (curl -fLO https://foo.com/linux_amd64/evergreen --retry 5 --retry-max-time 10 || curl -fLO www.example.com/clients/linux_amd64/evergreen --retry 5 --retry-max-time 10) && chmod +x evergreen"
-			cmd, err := h.CurlCommandWithRetry(env, 5, 10)
-			require.NoError(t, err)
-			assert.Equal(t, expected, cmd)
-		})
-	})
+	env := &mock.Environment{
+		EvergreenSettings: &evergreen.Settings{
+			ApiUrl: "www.example.com",
+		},
+		Clients: evergreen.ClientConfig{S3URLPrefix: "https://foo.com"},
+	}
+	h := &Host{
+		Distro: distro.Distro{
+			Arch: evergreen.ArchLinuxAmd64,
+			User: "user",
+		},
+		User: "user",
+	}
+	expected := "cd /home/user && curl -fLO https://foo.com/linux_amd64/evergreen --retry 5 --retry-max-time 10 && chmod +x evergreen"
+	cmd, err := h.CurlCommandWithRetry(env, 5, 10)
+	require.NoError(t, err)
+	assert.Equal(t, expected, cmd)
 }
 
 func TestGetSSHOptions(t *testing.T) {
@@ -960,8 +860,7 @@ func TestStartAgentMonitorRequest(t *testing.T) {
 	require.NoError(t, h.Insert(ctx))
 
 	settings := &evergreen.Settings{
-		ApiUrl:            "www.example0.com",
-		ClientBinariesDir: "dir",
+		ApiUrl: "www.example0.com",
 		LoggerConfig: evergreen.LoggerConfig{
 			LogkeeperURL: "www.example1.com",
 		},
@@ -1387,8 +1286,7 @@ func TestGenerateFetchProvisioningScriptUserData(t *testing.T) {
 
 	env := &mock.Environment{
 		EvergreenSettings: &evergreen.Settings{
-			ApiUrl:            "https://example.com",
-			ClientBinariesDir: "clients",
+			ApiUrl: "https://example.com",
 		},
 		Clients: evergreen.ClientConfig{S3URLPrefix: "https://foo.com"},
 	}

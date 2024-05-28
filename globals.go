@@ -680,9 +680,6 @@ const (
 
 	DefaultAmboyDatabaseURL = "mongodb://localhost:27017"
 
-	// database and config directory, set to the testing version by default for safety
-	ClientDirectory = "clients"
-
 	// version requester types
 	PatchVersionRequester       = "patch_request"
 	GithubPRRequester           = "github_pull_request"

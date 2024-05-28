@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -22,10 +20,6 @@ func init() { testutil.Setup() }
 // GETs the passed int endpoint, and returns
 // the response.
 func getEndPoint(url string, t *testing.T) *httptest.ResponseRecorder {
-	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
-		t.Fatal("could not create client directory required to start the API server:", err.Error())
-	}
-
 	env := evergreen.GetEnvironment()
 	queue := env.LocalQueue()
 
