@@ -225,12 +225,13 @@ is set.
 
     POST localhost:2285/task_status
 
-| Name            | Type    | Description                                                                                                                                                                                                                                                       |
-|-----------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| status          | string  | Required. The overall task status. This can be "success" or "failed". If this is configured incorrectly, the task will system fail.                                                                                                                               |
-| type            | string  | The failure type. This can be "setup", "system", or "test" (see [project configuration files](Project-Configuration-Files#command-failure-colors) for corresponding colors). If not specified, will default to the failure type of the last command that runs. |
-| desc            | string  | Provide details on the task failure. This is limited to 500 characters. If not specified or the message is too long, it will default to the display name of the last command that runs.                                                                           |
-| should_continue | boolean | If set, the task will continue running commands, but the final status will be the one explicitly set. Defaults to false.                                                                                                                                          |
+| Name                  | Type     | Description                                                                                                                                                                                                                                                    |
+|-----------------------|----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| status                | string   | Required. The overall task status. This can be "success" or "failed". If this is configured incorrectly, the task will system fail.                                                                                                                            |
+| type                  | string   | The failure type. This can be "setup", "system", or "test" (see [project configuration files](Project-Configuration-Files#command-failure-colors) for corresponding colors). If not specified, will default to the failure type of the last command that runs. |
+| desc                  | string   | Provide details on the task failure. This is limited to 500 characters. If not specified or the message is too long, it will default to the display name of the last command that runs.                                                                        |
+| should_continue       | boolean  | If set, the task will continue running commands, but the final status will be the one explicitly set. Defaults to false.                                                                                                                                       |
+| failure_metadata_tags | []string | If set and the task status is set to "failed", then additional metadata tags will be associated with the failing command. See [here](Project-Commands#basic-command-structure) for more details on `failure_metadata_tags`.                                       |
 
 Example in a command:
 
