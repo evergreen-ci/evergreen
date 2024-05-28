@@ -18,6 +18,7 @@ import (
 
 func init() {
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostExpirationWarningSent, makeHostTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostTemporaryExemptionExpirationWarningSent, makeHostTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventSpawnHostIdleNotification, makeHostTriggers)
 
 }
@@ -28,6 +29,11 @@ const (
 	expiringHostEmailBody            = `Your {{.Distro}} host '{{.Name}}' will be terminated at {{.ExpirationTime}}. Visit the <a href={{.URL}}>spawnhost page</a> to extend its lifetime.`
 	expiringHostSlackBody            = `Your {{.Distro}} host '{{.Name}}' will be terminated at {{.ExpirationTime}}. Visit the <{{.URL}}|spawnhost page> to extend its lifetime.`
 	expiringHostSlackAttachmentTitle = "Spawn Host Page"
+
+	expiringHostTemporaryExemptionEmailSubject         = `{{.Distro}} host temporary exemption reminder`
+	expiringHostTemporaryExemptionEmailBody            = `Your {{.Distro}} host '{{.Name}}' has a temporary exemption that will end at {{.ExpirationTime}}. Visit the <a href={{.URL}}>spawnhost page</a> to extend its temporary exemption if needed.`
+	expiringHostTemporaryExemptionSlackAttachmentTitle = "Spawn Host Page"
+	expiringHostTemporaryExemptionSlackBody            = `Your {{.Distro}} host '{{.Name}}' has a temporary exemption that will end at {{.ExpirationTime}}. Visit the <{{.URL}}|spawnhost page> to extend its temporary exemption if needed.`
 
 	idleHostEmailSubject     = `{{.Distro}} idle stopped host notice`
 	idleStoppedHostEmailBody = `Your stopped {{.Distro}} host '{{.Name}}' has been idle for at least three months.
@@ -137,6 +143,24 @@ func (t *hostTriggers) generateExpiration(sub *event.Subscription) (*notificatio
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
+func (t *hostTriggers) generateTemporaryExemptionExpiration(sub *event.Subscription) (*notification.Notification, error) {
+	var payload interface{}
+	var err error
+	switch sub.Subscriber.Type {
+	case event.EmailSubscriberType:
+		payload, err = t.templateData.hostEmailPayload(expiringHostTemporaryExemptionEmailSubject, expiringHostEmailBody, t.Attributes())
+	case event.SlackSubscriberType:
+		payload, err = t.templateData.hostSlackPayload(expiringHostTemporaryExemptionSlackBody, expiringHostTemporaryExemptionSlackAttachmentTitle)
+	default:
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrapf(err, "creating template for event type '%s'", sub.Subscriber.Type)
+	}
+
+	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
+}
+
 func (t *hostTriggers) generateIdleSpawnHost(sub *event.Subscription, body string) (*notification.Notification, error) {
 	payload, err := t.templateData.hostEmailPayload(idleHostEmailSubject, body, t.Attributes())
 	if err != nil {
@@ -194,24 +218,52 @@ func (t *hostTemplateData) hostSlackPayload(messageString string, linkTitle stri
 }
 
 func (t *hostTriggers) hostExpiration(sub *event.Subscription) (*notification.Notification, error) {
-	if t.host.NoExpiration {
+	switch t.event.EventType {
+	case event.EventHostExpirationWarningSent:
+		// kim: TODO: manually test that this still works for spawn host
+		// expiration warning.
+		if t.host.NoExpiration {
+			return nil, nil
+		}
+
+		timeZone := time.Local
+		if sub.OwnerType == event.OwnerTypePerson {
+			userTimeZone, err := getUserTimeZone(sub.Owner)
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":    "problem getting time zone",
+					"user":       sub.Owner,
+					"event_type": t.event.EventType,
+					"trigger":    "hostExpiration",
+				}))
+			} else {
+				timeZone = userTimeZone
+			}
+		}
+		t.templateData.ExpirationTime = t.host.ExpirationTime.In(timeZone).Format(time.RFC1123)
+		return t.generateExpiration(sub)
+	case event.EventHostTemporaryExemptionExpirationWarningSent:
+		// kim: TODO: add test
+		// kim: TODO: manually test
+		timeZone := time.Local
+		if sub.OwnerType == event.OwnerTypePerson {
+			userTimeZone, err := getUserTimeZone(sub.Owner)
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":    "problem getting time zone",
+					"user":       sub.Owner,
+					"event_type": t.event.EventType,
+					"trigger":    "hostExpiration",
+				}))
+			} else {
+				timeZone = userTimeZone
+			}
+		}
+		t.templateData.ExpirationTime = t.host.SleepSchedule.TemporarilyExemptUntil.In(timeZone).Format(time.RFC1123)
+		return t.generateTemporaryExemptionExpiration(sub)
+	default:
 		return nil, nil
 	}
-	timeZone := time.Local
-	if sub.OwnerType == event.OwnerTypePerson {
-		userTimeZone, err := getUserTimeZone(sub.Owner)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem getting time zone",
-				"user":    sub.Owner,
-				"trigger": "hostExpiration",
-			}))
-		} else {
-			timeZone = userTimeZone
-		}
-	}
-	t.templateData.ExpirationTime = t.host.ExpirationTime.In(timeZone).Format(time.RFC1123)
-	return t.generateExpiration(sub)
 }
 
 func (t *hostTriggers) spawnHostIdle(sub *event.Subscription) (*notification.Notification, error) {
