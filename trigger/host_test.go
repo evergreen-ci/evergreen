@@ -203,7 +203,22 @@ func (s *hostSuite) TestAllTriggers() {
 }
 
 func (s *hostSuite) TestHostExpiration() {
-	s.t.host.NoExpiration = false
+	n, err := s.t.hostExpiration(&s.subs[0])
+	s.NoError(err)
+	s.NotNil(n)
+}
+
+func (s *hostSuite) TestHostTemporaryExemptionExpiration() {
+	s.t.event = &event.EventLogEntry{
+		ResourceType: event.ResourceTypeHost,
+		EventType:    event.EventHostTemporaryExemptionExpirationWarningSent,
+		ResourceId:   s.t.host.Id,
+		Data:         &event.HostEventData{},
+	}
+	s.t.host.NoExpiration = true
+	s.t.host.ExpirationTime = time.Now().Add(evergreen.SpawnHostExpireDays * evergreen.SpawnHostNoExpirationDuration)
+	s.t.host.SleepSchedule.TemporarilyExemptUntil = time.Now().Add(time.Hour)
+
 	n, err := s.t.hostExpiration(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
