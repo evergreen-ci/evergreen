@@ -2349,6 +2349,7 @@ func checkTasks(project *model.Project) ValidationErrors {
 	return errs
 }
 
+// checkTaskUsage returns a warning for each task that is defined but unused by any (un-disabled) variant.
 func checkTaskUsage(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	usedTasks := map[string]bool{}
