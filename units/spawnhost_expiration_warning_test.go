@@ -152,8 +152,9 @@ func (s *spawnHostExpirationSuite) TestDuplicateEventsAreLoggedAfterRenotificati
 	s.NoError(err)
 	s.Len(events, 6, "should log expected events on first run")
 
-	// Update the alert records so that the temporary exemption events were
-	// logged a long time ago, meaning they're eligible to log again.
+	// Update the alert records to simulate a condition where the temporary
+	// exemption events were logged a long time ago, meaning they're eligible to
+	// log again.
 	var temporaryExemptionExpirationEventIDs []string
 	for _, e := range events {
 		if e.EventType == event.EventHostTemporaryExemptionExpirationWarningSent {
