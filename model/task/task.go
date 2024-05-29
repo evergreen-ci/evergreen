@@ -290,8 +290,12 @@ type Task struct {
 	GeneratedTasksToActivate map[string][]string `bson:"generated_tasks_to_stepback,omitempty" json:"generated_tasks_to_stepback,omitempty"`
 	// NumGeneratedTasks is the number of tasks that this task has generated.
 	NumGeneratedTasks int `bson:"num_generated_tasks,omitempty" json:"num_generated_tasks,omitempty"`
+	// EstimatedNumGeneratedTasks is the estimated number of tasks that this task will generate.
+	EstimatedNumGeneratedTasks *int `bson:"estimated_num_generated_tasks,omitempty" json:"estimated_num_generated_tasks,omitempty"`
 	// NumActivatedGeneratedTasks is the number of tasks that this task has generated and activated.
 	NumActivatedGeneratedTasks int `bson:"num_activated_generated_tasks,omitempty" json:"num_activated_generated_tasks,omitempty"`
+	// EstimatedNumActivatedGeneratedTasks is the estimated number of tasks that this task will generate and activate.
+	EstimatedNumActivatedGeneratedTasks *int `bson:"estimated_num_activated_generated_tasks,omitempty" json:"estimated_num_activated_generated_tasks,omitempty"`
 
 	// Fields set if triggered by an upstream build
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`

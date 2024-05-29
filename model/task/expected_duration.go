@@ -31,7 +31,7 @@ func getExpectedDurationsForWindow(name, project, buildVariant string, start, en
 		BuildVariantKey: buildVariant,
 		ProjectKey:      project,
 		StatusKey: bson.M{
-			"$in": []string{evergreen.TaskSucceeded, evergreen.TaskFailed},
+			"$in": evergreen.TaskCompletedStatuses,
 		},
 		bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut): bson.M{
 			"$ne": true,
