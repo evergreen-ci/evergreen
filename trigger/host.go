@@ -227,35 +227,35 @@ func (t *hostTriggers) hostExpiration(sub *event.Subscription) (*notification.No
 		timeZone := time.Local
 		if sub.OwnerType == event.OwnerTypePerson {
 			userTimeZone, err := getUserTimeZone(sub.Owner)
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message":    "problem getting time zone",
-					"user":       sub.Owner,
-					"event_type": t.event.EventType,
-					"trigger":    "hostExpiration",
-				}))
-			} else {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":    "problem getting user's time zone",
+				"user":       sub.Owner,
+				"event_type": t.event.EventType,
+				"trigger":    "host temporary exemption expiration",
+			}))
+			if userTimeZone != nil {
 				timeZone = userTimeZone
 			}
 		}
 		t.templateData.ExpirationTime = t.host.ExpirationTime.In(timeZone).Format(time.RFC1123)
+
 		return t.generateExpiration(sub)
 	case event.EventHostTemporaryExemptionExpirationWarningSent:
 		timeZone := time.Local
 		if sub.OwnerType == event.OwnerTypePerson {
 			userTimeZone, err := getUserTimeZone(sub.Owner)
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message":    "problem getting time zone",
-					"user":       sub.Owner,
-					"event_type": t.event.EventType,
-					"trigger":    "hostExpiration",
-				}))
-			} else {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":    "problem getting user time zone",
+				"user":       sub.Owner,
+				"event_type": t.event.EventType,
+				"trigger":    " host expiration",
+			}))
+			if userTimeZone != nil {
 				timeZone = userTimeZone
 			}
 		}
 		t.templateData.ExpirationTime = t.host.SleepSchedule.TemporarilyExemptUntil.In(timeZone).Format(time.RFC1123)
+
 		return t.generateTemporaryExemptionExpiration(sub)
 	default:
 		return nil, nil
