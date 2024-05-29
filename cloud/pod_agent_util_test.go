@@ -13,8 +13,7 @@ func TestBootstrapContainerCommand(t *testing.T) {
 	const workingDir = "/data/mci"
 
 	settings := evergreen.Settings{
-		ApiUrl:            "https://example.com",
-		ClientBinariesDir: "clients",
+		ApiUrl: "https://example.com",
 	}
 
 	t.Run("Linux", func(t *testing.T) {

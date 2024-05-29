@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
@@ -47,9 +45,6 @@ func (s *TestServer) Close() {
 func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config, loadUserManager bool) (*TestServer, error) {
 	home := evergreen.FindEvergreenHome()
 	port := testutil.NextPort()
-	if err := os.MkdirAll(filepath.Join(home, evergreen.ClientDirectory), 0644); err != nil {
-		return nil, err
-	}
 
 	env := evergreen.GetEnvironment()
 	if loadUserManager {

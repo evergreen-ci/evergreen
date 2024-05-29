@@ -13,11 +13,11 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -1382,7 +1382,11 @@ func (s *distroClientURLsGetSuite) SetupTest() {
 	s.NoError(db.ClearCollections(distro.Collection))
 	err := d.Insert(ctx)
 	s.NoError(err)
-	s.env = testutil.NewEnvironment(ctx, s.T())
+
+	env := &mock.Environment{}
+	s.NoError(env.Configure(ctx))
+	s.env = env
+
 	h := makeGetDistroClientURLs(s.env)
 	rh, ok := h.(*distroClientURLsGetHandler)
 	s.Require().True(ok)

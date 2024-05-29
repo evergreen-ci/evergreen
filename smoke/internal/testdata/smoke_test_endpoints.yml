@@ -39,7 +39,7 @@ api:
     - "client_binaries"
     - '"arch": "amd64",'
     - '"os": "linux",'
-    - '"url": "http://localhost:9090/clients/linux_amd64/evergreen"'
+    - "/linux_amd64/evergreen"
   "/update":
     - "404"
   "/ref/evergreen":

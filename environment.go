@@ -4,10 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"os"
-	"path/filepath"
 	"regexp"
-	"strings"
 	"sync"
 	"time"
 
@@ -738,14 +735,28 @@ func (e *envState) initClientConfig(ctx context.Context, versionID string, trace
 	ctx, span := tracer.Start(ctx, "InitClientConfig")
 	defer span.End()
 
-	// In k8s the versionID will be set to a versionID corresponding to a version in the Evergreen project
-	// that pushed clients to S3 under a versionID prefix. There will be no local clients on the images.
+	e.clientConfig = &ClientConfig{LatestRevision: ClientVersion}
+
 	if versionID != "" {
-		return e.populateS3ClientConfig(ctx, versionID)
+		bucket, err := pail.NewS3Bucket(pail.S3Options{
+			Name:   e.settings.Providers.AWS.BinaryClient.Bucket,
+			Region: DefaultEC2Region,
+		})
+		if err != nil {
+			return errors.Wrap(err, "constructing pail bucket")
+		}
+
+		prefix := fmt.Sprintf("%s/%s", s3ClientsPrefix, versionID)
+		e.clientConfig.S3URLPrefix = fmt.Sprintf("https://%s.s3.amazonaws.com/%s",
+			e.settings.Providers.AWS.BinaryClient.Bucket,
+			prefix,
+		)
+		if err = e.clientConfig.populateClientBinaries(ctx, bucket, prefix); err != nil {
+			return errors.Wrap(err, "populating client binaries")
+		}
 	}
-	// Outside of k8s versionID won't be set. We enumerate the local clients and their corresponding S3 copies
-	// under a prefix corresponding to the BuildRevision.
-	return e.populateLocalClientConfig()
+
+	return nil
 }
 
 // initThirdPartySenders initializes the senders that are used to send payloads
@@ -1237,83 +1248,6 @@ func (e *envState) Close(ctx context.Context) error {
 
 	wg.Wait()
 	return catcher.Resolve()
-}
-
-func (e *envState) populateS3ClientConfig(ctx context.Context, versionID string) error {
-	bucket, err := pail.NewS3Bucket(pail.S3Options{
-		Name:   e.settings.Providers.AWS.BinaryClient.Bucket,
-		Region: DefaultEC2Region,
-	})
-	if err != nil {
-		return errors.Wrap(err, "constructing pail bucket")
-	}
-
-	prefix := fmt.Sprintf("%s/%s", s3ClientsPrefix, versionID)
-	c := &ClientConfig{
-		LatestRevision: ClientVersion,
-		S3URLPrefix: fmt.Sprintf("https://%s.s3.amazonaws.com/%s",
-			e.settings.Providers.AWS.BinaryClient.Bucket,
-			prefix,
-		),
-	}
-	if err = c.populateClientBinaries(ctx, bucket, prefix); err != nil {
-		return errors.Wrap(err, "populating client binaries")
-	}
-
-	e.clientConfig = c
-	return nil
-}
-
-func (e *envState) populateLocalClientConfig() error {
-	c := &ClientConfig{LatestRevision: ClientVersion}
-	if e.settings.HostInit.S3BaseURL != "" {
-		c.S3URLPrefix = fmt.Sprintf("%s/%s", e.settings.HostInit.S3BaseURL, BuildRevision)
-	}
-
-	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
-
-	if _, err := os.Stat(root); os.IsNotExist(err) {
-		grip.Warningf("client directory '%s' does not exist, creating empty "+
-			"directory and continuing with caution", root)
-		grip.Error(os.MkdirAll(root, 0755))
-	}
-
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if info.IsDir() || !strings.Contains(info.Name(), "evergreen") {
-			return nil
-		}
-
-		parts := strings.Split(path, string(filepath.Separator))
-		buildInfo := strings.Split(parts[len(parts)-2], "_")
-		displayName := ValidArchDisplayNames[fmt.Sprintf("%s_%s", buildInfo[0], buildInfo[1])]
-		archPath := strings.Join(parts[len(parts)-2:], "/")
-		c.ClientBinaries = append(c.ClientBinaries, ClientBinary{
-			URL:         fmt.Sprintf("%s/%s/%s", e.settings.Ui.Url, ClientDirectory, archPath),
-			OS:          buildInfo[0],
-			Arch:        buildInfo[1],
-			DisplayName: displayName,
-		})
-		if c.S3URLPrefix != "" {
-			c.S3ClientBinaries = append(c.S3ClientBinaries, ClientBinary{
-				URL:         fmt.Sprintf("%s/%s", c.S3URLPrefix, archPath),
-				OS:          buildInfo[0],
-				Arch:        buildInfo[1],
-				DisplayName: displayName,
-			})
-		}
-
-		return nil
-	})
-	if err != nil {
-		return errors.Wrap(err, "finding client binaries")
-	}
-
-	e.clientConfig = c
-	return nil
 }
 
 func (e *envState) JasperManager() jasper.Manager {
