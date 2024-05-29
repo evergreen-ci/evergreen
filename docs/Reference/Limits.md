@@ -14,6 +14,11 @@ Exceptions can be requested on a case-by-case which will be granted based on [ou
 
 Evergreen limits tasks per version to 40,000. This includes both selected and unselected tasks. 
 
+## Task Scheduling Limits
+
+Evergreen limits the number of tasks a single user can schedule in patches per hour to 10,000. If a user has scheduled that many tasks in a given hour-long timeframe,
+they will either need to wait until that timeframe has ended to continue scheduling tasks, or unschedule tasks to free up space in their scheduling quota.
+
 ## Task Timeout Max
 
 Evergreen does not have a limit on how large task timeouts can be. For different default timeouts that evergreen has in place, see [pre and post](../Project-Configuration/Project-Configuration-Files/#pre-and-post) and [timout handler](../Project-Configuration/Project-Configuration-Files/#timeout-handler).
