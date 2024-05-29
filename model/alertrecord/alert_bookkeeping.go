@@ -28,9 +28,9 @@ const (
 
 // Host triggers
 const (
-	spawnHostWarningTemplate          = "spawn_%dhour"
-	temporaryExemptionWarningTemplate = "temporary_exemption_%dhour"
-	volumeWarningTemplate             = "volume_%dhour"
+	spawnHostWarningTemplate              = "spawn_%dhour"
+	hostTemporaryExemptionWarningTemplate = "temporary_exemption_%dhour"
+	volumeWarningTemplate                 = "volume_%dhour"
 )
 
 const legacyAlertsSubscription = "legacy-alerts"
@@ -187,7 +187,7 @@ func FindBySpawnHostExpirationWithHours(hostID string, hours int) (*AlertRecord,
 // FindByTemporaryExemptionExpirationWithHours finds the most recent alert
 // record for a spawn host's temporary exemption that is about to expire.
 func FindMostRecentByTemporaryExemptionExpirationWithHours(hostID string, hours int) (*AlertRecord, error) {
-	alertType := fmt.Sprintf(temporaryExemptionWarningTemplate, hours)
+	alertType := fmt.Sprintf(hostTemporaryExemptionWarningTemplate, hours)
 	q := subscriptionIDQuery(legacyAlertsSubscription)
 	q[TypeKey] = alertType
 	q[HostIdKey] = hostID
