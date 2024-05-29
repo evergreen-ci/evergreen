@@ -114,7 +114,7 @@ func (j *spawnhostExpirationWarningsJob) Run(ctx context.Context) {
 }
 
 func shouldNotifyForSpawnhostExpiration(h *host.Host, numHours int) (bool, error) {
-	if h == nil || h.ExpirationTime.IsZero() || h.ExpirationTime.Sub(time.Now()) > (time.Duration(numHours)*time.Hour) { //nolint:all
+	if h == nil || h.ExpirationTime.IsZero() || time.Until(h.ExpirationTime) > (time.Duration(numHours)*time.Hour) {
 		return false, nil
 	}
 	rec, err := alertrecord.FindBySpawnHostExpirationWithHours(h.Id, numHours)
@@ -130,7 +130,7 @@ func shouldNotifyForSpawnhostExpiration(h *host.Host, numHours int) (bool, error
 const temporaryExemptionRenotificationInterval = utility.Day
 
 func shouldNotifyForHostTemporaryExemptionExpiration(h *host.Host, numHours int) (bool, error) {
-	if utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) || h.SleepSchedule.TemporarilyExemptUntil.Sub(time.Now()) > time.Duration(numHours)*time.Hour {
+	if utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) || time.Until(h.SleepSchedule.TemporarilyExemptUntil) > time.Duration(numHours)*time.Hour {
 		return false, nil
 	}
 	rec, err := alertrecord.FindMostRecentByTemporaryExemptionExpirationWithHours(h.Id, numHours)
