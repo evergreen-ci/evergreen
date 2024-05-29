@@ -96,7 +96,7 @@ func (j *spawnhostExpirationWarningsJob) Run(ctx context.Context) {
 		}
 	}
 
-	// Notify for spawn host temporary exemptions expiring in the next 12 hours.
+	// Notify for spawn host temporary exemptions expiring soon.
 	temporaryExemptionExpiringSoonHosts, err := host.FindByTemporaryExemptionsExpiringBetween(ctx, now, thresholdTime)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding hosts with temporary exemptions expiring soon"))

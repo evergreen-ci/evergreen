@@ -155,10 +155,10 @@ func (s *spawnHostExpirationSuite) TestDuplicateEventsAreLoggedAfterRenotificati
 	// Update the alert records to simulate a condition where the temporary
 	// exemption events were logged a long time ago, meaning they're eligible to
 	// log again.
-	var temporaryExemptionExpirationEventIDs []string
+	numHostsToRenotify := 0
 	for _, e := range events {
 		if e.EventType == event.EventHostTemporaryExemptionExpirationWarningSent {
-			temporaryExemptionExpirationEventIDs = append(temporaryExemptionExpirationEventIDs, e.ResourceId)
+			numHostsToRenotify++
 		}
 	}
 	res, err := db.UpdateAll(alertrecord.Collection, bson.M{
@@ -168,12 +168,12 @@ func (s *spawnHostExpirationSuite) TestDuplicateEventsAreLoggedAfterRenotificati
 		},
 	})
 	s.Require().NoError(err)
-	s.Equal(len(temporaryExemptionExpirationEventIDs), res.Updated, "should have updated the alert records for temporary exemption expiration warnings so that they are old")
+	s.Equal(numHostsToRenotify, res.Updated, "should have updated the alert records for temporary exemption expiration warnings so that they are old")
 
 	s.j.Run(s.ctx)
 	eventsAfterRerun, err := event.FindUnprocessedEvents(-1)
 	s.NoError(err)
-	s.Len(eventsAfterRerun, len(events)+len(temporaryExemptionExpirationEventIDs), "should log duplicate events when renotification interval has passed")
+	s.Len(eventsAfterRerun, len(events)+numHostsToRenotify, "should log new temporary exemption expiration warnings when renotification interval has passed")
 }
 
 func (s *spawnHostExpirationSuite) TestCanceledJob() {
