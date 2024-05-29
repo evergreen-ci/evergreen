@@ -82,7 +82,7 @@ func TestPodProvisioningScript(t *testing.T) {
 				script, ok := resp.Data().(string)
 				require.True(t, ok, "route should return plaintext response")
 
-				expected := "curl.exe -fLO https://foo.com/windows_amd64/evergreen.exe --retry 10 --retry-max-time 100" +
+				expected := "curl.exe -fLO https://foo.com/windows_amd64/evergreen.exe --retry 10 --retry-max-time 100; " +
 					".\\evergreen.exe agent --api_server=www.test.com --mode=pod --log_output=file --log_prefix=/working/dir/agent --working_directory=/working/dir"
 				assert.Equal(t, expected, script)
 			},
@@ -106,6 +106,7 @@ func TestPodProvisioningScript(t *testing.T) {
 					EvergreenSettings: &evergreen.Settings{
 						ApiUrl: "www.test.com",
 					},
+					Clients: evergreen.ClientConfig{S3URLPrefix: "https://foo.com"},
 				}
 				tCase(t, &env, p)
 			})
