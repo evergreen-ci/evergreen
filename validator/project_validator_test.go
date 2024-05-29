@@ -1521,6 +1521,146 @@ func TestValidateTaskNames(t *testing.T) {
 	})
 }
 
+func TestCheckTasksUsed(t *testing.T) {
+	t.Run("usedInTasksAndDisplay", func(t *testing.T) {
+		project := &model.Project{
+			Tasks: []model.ProjectTask{
+				{Name: "t1"},
+				{Name: "execTask"},
+			},
+			BuildVariants: model.BuildVariants{
+				{
+					Name: "v1",
+					Tasks: []model.BuildVariantTaskUnit{
+						{Name: "t1"},
+						{Name: "execTask"},
+					},
+					DisplayTasks: []patch.DisplayTask{
+						{Name: "dt", ExecTasks: []string{"execTask"}},
+					},
+				},
+			},
+		}
+		errs := checkTaskUsage(project)
+		assert.Len(t, errs, 0)
+	})
+	t.Run("execTaskNotListedWithTasks", func(t *testing.T) {
+		project := &model.Project{
+			Tasks: []model.ProjectTask{
+				{Name: "t1"},
+				{Name: "execTask"},
+			},
+			BuildVariants: model.BuildVariants{
+				{
+					Name: "v1",
+					Tasks: []model.BuildVariantTaskUnit{
+						{Name: "t1"},
+					},
+					DisplayTasks: []patch.DisplayTask{
+						{Name: "dt", ExecTasks: []string{"execTask"}},
+					},
+				},
+			},
+		}
+		errs := checkTaskUsage(project)
+		require.Len(t, errs, 1)
+		assert.Contains(t, errs[0].Message, "'execTask' defined but not used")
+		assert.Equal(t, errs[0].Level, Warning)
+	})
+	t.Run("disabledTask", func(t *testing.T) {
+		project := &model.Project{
+			Tasks: []model.ProjectTask{
+				{Name: "t1"},
+				{Name: "t2", Disable: utility.TruePtr()},
+			},
+			BuildVariants: model.BuildVariants{
+				{
+					Name: "v1",
+					Tasks: []model.BuildVariantTaskUnit{
+						{Name: "t1"},
+					},
+				},
+			},
+		}
+		errs := checkTaskUsage(project)
+		require.Len(t, errs, 0)
+	})
+	t.Run("unusedTaskInDisabledVariant", func(t *testing.T) {
+		project := &model.Project{
+			Tasks: []model.ProjectTask{
+				{Name: "t1"},
+			},
+			BuildVariants: model.BuildVariants{
+				{
+					Name: "v1",
+					Tasks: []model.BuildVariantTaskUnit{
+						{Name: "t1"},
+					},
+					Disable: utility.TruePtr(),
+				},
+			},
+		}
+		errs := checkTaskUsage(project)
+		require.Len(t, errs, 1)
+		assert.Contains(t, errs[0].Message, "'t1' defined but not used")
+		assert.Equal(t, errs[0].Level, Warning)
+	})
+	t.Run("unusedTaskDisabledForVariant", func(t *testing.T) {
+		project := &model.Project{
+			Tasks: []model.ProjectTask{
+				{Name: "t1"},
+			},
+			BuildVariants: model.BuildVariants{
+				{
+					Name: "v1",
+					Tasks: []model.BuildVariantTaskUnit{
+						{Name: "t1", Disable: utility.TruePtr()},
+					},
+				},
+			},
+		}
+		errs := checkTaskUsage(project)
+		require.Len(t, errs, 1)
+		assert.Contains(t, errs[0].Message, "'t1' defined but not used")
+		assert.Equal(t, errs[0].Level, Warning)
+	})
+	t.Run("multipleVariants", func(t *testing.T) {
+		project := &model.Project{
+			Tasks: []model.ProjectTask{
+				{Name: "t1"},
+				{Name: "t2"},
+				{Name: "t3"},
+				{Name: "t4"},
+			},
+			BuildVariants: model.BuildVariants{
+				{
+					Name: "v1",
+					Tasks: []model.BuildVariantTaskUnit{
+						{Name: "t1", Disable: utility.TruePtr()},
+					},
+				},
+				{
+					Name: "v2",
+					Tasks: []model.BuildVariantTaskUnit{
+						{Name: "t1"},
+						{Name: "t2"},
+					},
+				},
+				{
+					Name: "disabledVariant",
+					Tasks: []model.BuildVariantTaskUnit{
+						{Name: "t2"},
+						{Name: "t3"},
+					},
+					Disable: utility.TruePtr(),
+				},
+			},
+		}
+		errs := checkTaskUsage(project)
+		require.Len(t, errs, 2)
+	})
+}
+
 func TestCheckModules(t *testing.T) {
 	Convey("When validating a project's modules", t, func() {
 		Convey("An error should be returned when more than one module shares the same name or is empty", func() {

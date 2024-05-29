@@ -161,6 +161,7 @@ var projectWarningValidators = []projectValidator{
 	checkTasks,
 	checkRequestersForTaskDependencies,
 	checkBuildVariants,
+	checkTaskUsage,
 }
 
 // Functions used to validate a project configuration that requires additional
@@ -2344,6 +2345,30 @@ func checkTasks(project *model.Project) ValidationErrors {
 			execTimeoutWarningAdded = true
 		}
 		errs = append(errs, checkTaskNames(project, &task)...)
+	}
+	return errs
+}
+
+func checkTaskUsage(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
+	usedTasks := map[string]bool{}
+	for _, bvtu := range project.FindAllBuildVariantTasks() {
+		if !utility.FromBoolPtr(bvtu.Disable) {
+			usedTasks[bvtu.Name] = true
+		}
+	}
+
+	for _, pt := range project.Tasks {
+		if utility.FromBoolPtr(pt.Disable) {
+			continue
+		}
+		if _, ok := usedTasks[pt.Name]; !ok {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("task '%s' defined but not used by any variants",
+					pt.Name),
+				Level: Warning,
+			})
+		}
 	}
 	return errs
 }
