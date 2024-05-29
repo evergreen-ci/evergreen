@@ -235,7 +235,7 @@ func InsertNewSpawnHostExpirationRecord(hostID string, hours int) error {
 // InsertNewTemporaryExemptionExpirationRecord inserts a new alert record for a
 // temporary exemption that is about to exipre.
 func InsertNewHostTemporaryExemptionExpirationRecord(hostID string, hours int) error {
-	alertType := fmt.Sprintf(temporaryExemptionWarningTemplate, hours)
+	alertType := fmt.Sprintf(hostTemporaryExemptionWarningTemplate, hours)
 	record := AlertRecord{
 		Id:             mgobson.NewObjectId(),
 		SubscriptionID: legacyAlertsSubscription,
