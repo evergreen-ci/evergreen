@@ -110,7 +110,7 @@ func (t *hostTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error 
 		ID:     t.host.Id,
 		Name:   t.host.DisplayName,
 		Distro: t.host.Distro.Id,
-		URL:    fmt.Sprintf("%s/spawn/host", t.uiConfig.Url),
+		URL:    fmt.Sprintf("%s/spawn/host", t.uiConfig.UIv2Url),
 	}
 	if t.host.DisplayName == "" {
 		t.templateData.Name = t.host.Id
