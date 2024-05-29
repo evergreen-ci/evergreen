@@ -130,9 +130,10 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		if j.host.Status != evergreen.HostRunning {
 			return
 		}
-		if j.RetryInfo().GetRemainingAttempts() > 0 {
+		if !j.IsLastAttempt() {
 			return
 		}
+
 		var externallyTerminated bool
 		externallyTerminated, err = handleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
 		j.AddError(errors.Wrapf(err, "checking if host '%s' was externally terminated", j.HostID))

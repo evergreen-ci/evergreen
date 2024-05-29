@@ -124,7 +124,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		if j.host.Status != evergreen.HostRunning {
 			return
 		}
-		if j.RetryInfo().GetRemainingAttempts() > 0 {
+		if !j.IsLastAttempt() {
 			return
 		}
 

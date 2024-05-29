@@ -196,7 +196,7 @@ func (j *volumeMigrationJob) startNewHost(ctx context.Context) {
 
 // finishJob marks the job as completed and attempts some additional cleanup if this is the job's final attempt.
 func (j *volumeMigrationJob) finishJob(ctx context.Context) {
-	if !j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0 {
+	if j.IsLastAttempt() {
 		volumeHost, err := host.FindUpHostWithHomeVolume(ctx, j.VolumeID)
 		if err != nil {
 			j.AddRetryableError(errors.Wrapf(err, "finding host with volume '%s'", j.VolumeID))
