@@ -26,7 +26,6 @@ buckets:
 
 domain_name: "evergreen.local"
 configdir: "config_test"
-client_binaries_dir: "clients"
 
 api_url: http://localhost:8080
 api:
