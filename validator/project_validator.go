@@ -2364,7 +2364,7 @@ func checkTaskUsage(project *model.Project) ValidationErrors {
 		}
 		if _, ok := usedTasks[pt.Name]; !ok {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("task '%s' defined but not used by any variants",
+				Message: fmt.Sprintf("task '%s' defined but not used by any variants; consider using or disabling",
 					pt.Name),
 				Level: Warning,
 			})
