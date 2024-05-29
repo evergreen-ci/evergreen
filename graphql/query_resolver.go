@@ -374,19 +374,22 @@ func (r *queryResolver) Pod(ctx context.Context, podID string) (*restModel.APIPo
 
 // Patch is the resolver for the patch field.
 func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
-	patch, err := data.FindPatchById(patchID)
+	apiPatch, err := data.FindPatchById(patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
+	if apiPatch == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
+	}
 
-	if evergreen.IsFinishedVersionStatus(*patch.Status) {
+	if evergreen.IsFinishedVersionStatus(*apiPatch.Status) {
 		statuses, err := task.GetTaskStatusesByVersion(ctx, patchID)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task statuses for patch: %s", err.Error()))
 		}
 
-		if len(patch.ChildPatches) > 0 {
-			for _, cp := range patch.ChildPatches {
+		if len(apiPatch.ChildPatches) > 0 {
+			for _, cp := range apiPatch.ChildPatches {
 				childPatchStatuses, err := task.GetTaskStatusesByVersion(ctx, *cp.Id)
 				if err != nil {
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task statuses for child patch: %s", err.Error()))
@@ -398,11 +401,12 @@ func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.A
 		// If theres an aborted task we should set the patch status to aborted if there are no other failures
 		if utility.StringSliceContains(statuses, evergreen.TaskAborted) {
 			if len(utility.StringSliceIntersection(statuses, evergreen.TaskFailureStatuses)) == 0 {
-				patch.Status = utility.ToStringPtr(evergreen.VersionAborted)
+				apiPatch.Status = utility.ToStringPtr(evergreen.VersionAborted)
 			}
 		}
 	}
-	return patch, nil
+
+	return apiPatch, nil
 }
 
 // GithubProjectConflicts is the resolver for the githubProjectConflicts field.

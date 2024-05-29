@@ -1,0 +1,24 @@
+{
+  "tests": [
+    {
+      "query_file": "can_enqueue_pr_patch.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "canEnqueueToCommitQueue": true
+          }
+        }
+      }
+    },
+    {
+      "query_file": "cannot_enqueue_using_github_queue.graphql",
+      "result": {
+        "data": {
+          "patch": {
+            "canEnqueueToCommitQueue": false
+          }
+        }
+      }
+    }
+  ]
+}
