@@ -31,7 +31,7 @@ func (t *Task) setGenerateTasksEstimations() error {
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, query, &tasks)
 	if adb.ResultsNotFound(err) {
-		return nil
+		return errors.Errorf("Tasks '%s' in '%s' not found", t.DisplayName, t.Project)
 	}
 	if err != nil {
 		return errors.Wrapf(err, "finding tasks '%s' in '%s'", t.DisplayName, t.Project)

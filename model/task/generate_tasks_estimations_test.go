@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -12,9 +13,11 @@ func TestGenerateTasksEstimations(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection))
 	bv := "bv"
 	project := "proj"
+	displayName := "display_name"
 
 	t1 := Task{
 		Id:                         "t1",
+		DisplayName:                displayName,
 		BuildVariant:               bv,
 		Project:                    project,
 		NumGeneratedTasks:          1,
@@ -24,6 +27,7 @@ func TestGenerateTasksEstimations(t *testing.T) {
 	assert.NoError(t1.Insert())
 	t2 := Task{
 		Id:                         "t2",
+		DisplayName:                displayName,
 		BuildVariant:               bv,
 		Project:                    project,
 		NumGeneratedTasks:          2,
@@ -33,6 +37,7 @@ func TestGenerateTasksEstimations(t *testing.T) {
 	assert.NoError(t2.Insert())
 	t3 := Task{
 		Id:                         "t3",
+		DisplayName:                displayName,
 		BuildVariant:               bv,
 		Project:                    project,
 		NumGeneratedTasks:          3,
@@ -41,7 +46,9 @@ func TestGenerateTasksEstimations(t *testing.T) {
 	}
 	assert.NoError(t3.Insert())
 	t4 := Task{
+		GenerateTask:        true,
 		Id:                  "t4",
+		DisplayName:         displayName,
 		BuildVariant:        bv,
 		Project:             project,
 		RevisionOrderNumber: 4,
@@ -50,6 +57,6 @@ func TestGenerateTasksEstimations(t *testing.T) {
 
 	err := t4.setGenerateTasksEstimations()
 	assert.NoError(err)
-	assert.Equal(2, *t4.EstimatedNumGeneratedTasks)
-	assert.Equal(20, *t4.EstimatedNumActivatedGeneratedTasks)
+	assert.Equal(2, utility.FromIntPtr(t4.EstimatedNumGeneratedTasks))
+	assert.Equal(20, utility.FromIntPtr(t4.EstimatedNumActivatedGeneratedTasks))
 }
