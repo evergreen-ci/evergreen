@@ -24,7 +24,7 @@ Daily aggregated statistics for task executions run in Evergreen. Tasks are aggr
 #### Columns
 | Name                         | Type    | Description |
 |------------------------------|---------|-------------|
-| project_id                   | VARCHAR | Unique project identifier.
+| project\_id                  | VARCHAR | Unique project identifier.
 | variant                      | VARCHAR | Name of the build variant on which the tasks ran.
 | task\_name                   | VARCHAR | Display name of the tasks.
 | request\_type                | VARCHAR | Name of the trigger that requested the task executions. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `merge_test` (commit queue), or `ad_hoc` (periodic build).
@@ -181,7 +181,7 @@ Note that this is an estimated cost based solely on compute (`BoxUsage`) usage p
 | finish\_time                  | TIMESTAMP      | Time the task completed running.
 | time\_taken\_dispatch\_s      | DOUBLE         | Duration, in seconds, the task took to execute from dispatch time to finish time.
 | time\_taken\_s                | DOUBLE         | Duration, in seconds, the task took to execute from start time to finish time.
-| host\_net\_rate               | DOUBLE         | The per second rate, including discounts, charged by AWS for the task's host usage.
+| host\_net\_rate               | DOUBLE         | Per second rate, including discounts, charged by AWS for the task's host usage.
 | net\_cost\_dispatch           | DOUBLE         | Estimated host usage cost from the task's dispatch time to finish time.
 | net\_cost                     | DOUBLE         | Estimated host usage cost from the task's start time to finish time.
 | finish\_date                  | VARCHAR        | Date when the task finished, in ISO format.
