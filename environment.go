@@ -368,7 +368,7 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 	opts := options.Client().ApplyURI(settings.Url).SetWriteConcern(settings.WriteConcernSettings.Resolve()).
 		SetReadConcern(settings.ReadConcernSettings.Resolve()).
 		SetConnectTimeout(5 * time.Second).
-		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 
 	if settings.AWSAuthEnabled {
 		opts.SetAuth(options.Credential{
@@ -402,7 +402,7 @@ func (e *envState) createRemoteQueues(ctx context.Context, tracer trace.Tracer) 
 		SetReadPreference(readpref.Primary()).
 		SetReadConcern(e.settings.Database.ReadConcernSettings.Resolve()).
 		SetWriteConcern(e.settings.Database.WriteConcernSettings.Resolve()).
-		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false)))
+		SetMonitor(apm.NewMonitor())
 
 	if e.settings.Database.AWSAuthEnabled {
 		opts.SetAuth(options.Credential{
