@@ -86,6 +86,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 			"message": "task is not running, not generating tasks",
 			"task":    t.Id,
 			"version": t.Version,
+			"job":     j.ID(),
 		})
 		return nil
 	}
@@ -120,6 +121,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 			"message": "attempted to generate tasks after getting config, but generator already ran for this task",
 			"task":    t.Id,
 			"version": t.Version,
+			"job":     j.ID(),
 		})
 		return mongo.ErrNoDocuments
 	}
@@ -194,6 +196,7 @@ func (j *generateTasksJob) handleError(handledError error) error {
 			"message": "handleError encountered task that is already generating, nooping",
 			"task":    t.Id,
 			"version": t.Version,
+			"job":     j.ID(),
 		})
 		return mongo.ErrNoDocuments
 	}
