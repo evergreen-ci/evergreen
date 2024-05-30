@@ -29,7 +29,9 @@ const (
 	TSFormat = "2006-01-02.15-04-05"
 
 	// createHostQueueGroup is the queue group for the provisioning-create-host job.
-	createHostQueueGroup            = "service.host.create"
+	createHostQueueGroup = "service.host.create"
+	// terminateHostQueueGroup is the queue group for host-termination-jobs created by cron jobs.
+	terminateHostQueueGroup         = "service.host.termination"
 	commitQueueQueueGroup           = "service.commitqueue"
 	eventNotifierQueueGroup         = "service.event.notifier"
 	podAllocationQueueGroup         = "service.pod.allocate"
