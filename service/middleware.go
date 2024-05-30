@@ -20,15 +20,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Key used for storing variables in request context with type safety.
-type reqCtxKey int
-
 const (
 	ProjectCookieName string = "mci-project-cookie"
 
 	// Key values used to map user and project data to request context.
 	// These are private custom types to avoid key collisions.
-	RequestTask reqCtxKey = iota
 	RequestProjectContext
 )
 

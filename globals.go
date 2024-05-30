@@ -200,10 +200,6 @@ const (
 	// if a patch has NumTasksForLargePatch number of tasks or greater, we log to splunk for investigation
 	NumTasksForLargePatch = 10000
 
-	// LogMessage struct versions
-	LogmessageFormatTimestamp = 1
-	LogmessageCurrentVersion  = LogmessageFormatTimestamp
-
 	DefaultEvergreenConfig = ".evergreen.yml"
 
 	EvergreenHome       = "EVGHOME"
@@ -274,8 +270,6 @@ const (
 	TempSetupScriptName           = "setup-temp.sh"
 	PowerShellSetupScriptName     = "setup.ps1"
 	PowerShellTempSetupScriptName = "setup-temp.ps1"
-
-	RoutePaginatorNextPageHeaderKey = "Link"
 
 	PlannerVersionLegacy  = "legacy"
 	PlannerVersionTunable = "tunable"
@@ -1420,13 +1414,6 @@ var GeneralAccessRoles = []string{
 	SuperUserProjectAccessRole,
 	SuperUserDistroAccessRole,
 }
-
-// Constants for Evergreen log types.
-const (
-	LogTypeAgent  = "agent_log"
-	LogTypeTask   = "task_log"
-	LogTypeSystem = "system_log"
-)
 
 // LogViewer represents recognized viewers for rendering logs.
 type LogViewer string
