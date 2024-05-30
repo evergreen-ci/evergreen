@@ -16,8 +16,8 @@ Evergreen limits tasks per version to 40,000. This includes both selected and un
 
 ## Task Scheduling Limits
 
-Evergreen limits the number of tasks a single user can schedule in patches per hour to 10,000. If a user has scheduled that many tasks in a given hour-long timeframe,
-they will either need to wait until that timeframe has ended to continue scheduling tasks, or unschedule tasks to free up space in their scheduling quota.
+Evergreen limits the number of tasks a single user can schedule in patches per hour to 10,000. If a user has scheduled that many tasks in a given hour-long time frame,
+they will either need to wait until that time frame has ended to continue scheduling tasks, or unschedule tasks to free up space in their scheduling quota.
 
 ## Task Timeout Max
 
