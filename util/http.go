@@ -2,11 +2,12 @@ package util
 
 import (
 	"encoding/json"
-	"github.com/evergreen-ci/gimlet"
-	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"strconv"
+
+	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
 )
 
 // GetIntValue returns a form value as an integer
