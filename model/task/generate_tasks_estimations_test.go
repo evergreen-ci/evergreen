@@ -3,6 +3,7 @@ package task
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -20,6 +21,7 @@ func TestGenerateTasksEstimations(t *testing.T) {
 		DisplayName:                displayName,
 		BuildVariant:               bv,
 		Project:                    project,
+		Requester:                  evergreen.RepotrackerVersionRequester,
 		NumGeneratedTasks:          1,
 		NumActivatedGeneratedTasks: 10,
 		RevisionOrderNumber:        1,
@@ -30,6 +32,7 @@ func TestGenerateTasksEstimations(t *testing.T) {
 		DisplayName:                displayName,
 		BuildVariant:               bv,
 		Project:                    project,
+		Requester:                  evergreen.RepotrackerVersionRequester,
 		NumGeneratedTasks:          2,
 		NumActivatedGeneratedTasks: 20,
 		RevisionOrderNumber:        2,
@@ -40,6 +43,7 @@ func TestGenerateTasksEstimations(t *testing.T) {
 		DisplayName:                displayName,
 		BuildVariant:               bv,
 		Project:                    project,
+		Requester:                  evergreen.RepotrackerVersionRequester,
 		NumGeneratedTasks:          3,
 		NumActivatedGeneratedTasks: 30,
 		RevisionOrderNumber:        3,
@@ -49,6 +53,7 @@ func TestGenerateTasksEstimations(t *testing.T) {
 		GenerateTask:        true,
 		Id:                  "t4",
 		DisplayName:         displayName,
+		Requester:           evergreen.RepotrackerVersionRequester,
 		BuildVariant:        bv,
 		Project:             project,
 		RevisionOrderNumber: 4,

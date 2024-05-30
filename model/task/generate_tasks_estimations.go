@@ -14,7 +14,7 @@ const (
 )
 
 func (t *Task) setGenerateTasksEstimations() error {
-	if !t.GenerateTask || (t.EstimatedNumGeneratedTasks == nil && t.EstimatedNumActivatedGeneratedTasks == nil) {
+	if !t.GenerateTask || (t.EstimatedNumGeneratedTasks != nil && t.EstimatedNumActivatedGeneratedTasks != nil) {
 		return nil
 	}
 
@@ -35,6 +35,9 @@ func (t *Task) setGenerateTasksEstimations() error {
 	}
 	if err != nil {
 		return errors.Wrapf(err, "finding tasks '%s' in '%s'", t.DisplayName, t.Project)
+	}
+	if len(tasks) == 0 {
+		return errors.Errorf("No tasks found for '%s' in '%s'", t.DisplayName, t.Project)
 	}
 
 	generatedTotal := 0
