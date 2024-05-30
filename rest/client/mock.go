@@ -20,7 +20,6 @@ type Mock struct {
 	maxAttempts  int
 	timeoutStart time.Duration
 	timeoutMax   time.Duration
-	serverURL    string
 
 	// these fields have setters
 	apiUser string
