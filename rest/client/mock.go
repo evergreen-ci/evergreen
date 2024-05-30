@@ -20,7 +20,6 @@ type Mock struct {
 	maxAttempts  int
 	timeoutStart time.Duration
 	timeoutMax   time.Duration
-	serverURL    string
 
 	// these fields have setters
 	apiUser string
@@ -28,16 +27,6 @@ type Mock struct {
 
 	// mock behavior
 	GetSubscriptionsFail bool
-}
-
-// NewMock returns a Communicator for testing.
-func NewMock(serverURL string) *Mock {
-	return &Mock{
-		maxAttempts:  defaultMaxAttempts,
-		timeoutStart: defaultTimeoutStart,
-		timeoutMax:   defaultTimeoutMax,
-		serverURL:    serverURL,
-	}
 }
 
 func (c *Mock) Close() {}

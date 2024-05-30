@@ -65,10 +65,6 @@ func TestConfig() *evergreen.Settings {
 	return loadConfig(TestDir, TestSettings)
 }
 
-func TestConfigWithDefaultAuthTokens() *evergreen.Settings {
-	return loadConfig(TestDir, testSettingsWithAuthTokens)
-}
-
 func loadConfig(path ...string) *evergreen.Settings {
 	paths := []string{evergreen.FindEvergreenHome()}
 	paths = append(paths, path...)

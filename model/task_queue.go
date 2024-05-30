@@ -396,38 +396,6 @@ func FindMinimumQueuePositionForTask(taskId string) (int, error) {
 	return results[0].Index + 1, err
 }
 
-// FindEnqueuedTaskIDs finds all tasks IDs that are already in a task queue for
-// a given collection.
-func FindEnqueuedTaskIDs(taskIDs []string, coll string) ([]string, error) {
-	var results []struct {
-		ID string `bson:"task_id"`
-	}
-	queueItemIdKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey)
-	pipeline := []bson.M{
-		{"$match": bson.M{
-			queueItemIdKey: bson.M{"$in": taskIDs}}},
-		{"$unwind": bson.M{
-			"path": "$" + taskQueueQueueKey}},
-		{"$match": bson.M{
-			queueItemIdKey: bson.M{"$in": taskIDs},
-		}},
-		{"$project": bson.M{
-			"task_id": "$" + queueItemIdKey,
-		}},
-	}
-
-	err := db.Aggregate(coll, pipeline, &results)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	ids := []string{}
-	for _, res := range results {
-		ids = append(ids, res.ID)
-	}
-	return ids, nil
-}
-
 func FindAllTaskQueues() ([]TaskQueue, error) {
 	taskQueues := []TaskQueue{}
 	err := db.FindAllQ(TaskQueuesCollection, db.Query(bson.M{}), &taskQueues)

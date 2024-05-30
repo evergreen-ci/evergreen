@@ -204,16 +204,3 @@ func APIVariantTasksBuildFromService(v patch.VariantTasks) APIVariantTasks {
 	}
 	return out
 }
-
-func APIVariantTasksToService(v APIVariantTasks) patch.VariantTasks {
-	out := patch.VariantTasks{}
-	if v.Variant != nil {
-		out.Variant = *v.Variant
-	}
-	out.Tasks = v.Tasks
-	for _, e := range v.DisplayTasks {
-		n := APIDisplayTaskToService(e)
-		out.DisplayTasks = append(out.DisplayTasks, *n)
-	}
-	return out
-}
