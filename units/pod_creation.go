@@ -75,7 +75,7 @@ func (j *podCreationJob) Run(ctx context.Context) {
 	defer func() {
 		j.MarkComplete()
 
-		if j.pod != nil && j.pod.Status == pod.StatusInitializing && (j.RetryInfo().GetRemainingAttempts() == 0 || !j.RetryInfo().ShouldRetry()) {
+		if j.pod != nil && j.pod.Status == pod.StatusInitializing && j.IsLastAttempt() {
 			j.AddError(errors.Wrap(j.pod.UpdateStatus(pod.StatusDecommissioned, "pod failed to start and will not retry"), "updating pod status to decommissioned after pod failed to start"))
 
 			terminationJob := NewPodTerminationJob(j.PodID, fmt.Sprintf("pod creation job hit max attempts %d", j.RetryInfo().MaxAttempts), time.Now())

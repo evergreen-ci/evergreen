@@ -216,7 +216,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	}
 
 	defer func() {
-		if j.RetryInfo().GetRemainingAttempts() == 0 && j.HasErrors() && (j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) && j.host.SpawnOptions.SpawnedByTask {
+		if j.IsLastAttempt() && j.HasErrors() && (j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) && j.host.SpawnOptions.SpawnedByTask {
 			if err := task.AddHostCreateDetails(j.host.StartedBy, j.host.Id, j.host.SpawnOptions.TaskExecutionNumber, j.Error()); err != nil {
 				j.AddError(errors.Wrapf(err, "adding host create error details"))
 			}

@@ -75,7 +75,7 @@ func (j *podDefinitionCreationJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	defer func() {
-		if j.HasErrors() && (!j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0) {
+		if j.HasErrors() && j.IsLastAttempt() {
 			j.AddError(errors.Wrap(j.decommissionDependentIntentPods(), "decommissioning intent pods after pod definition creation failed"))
 		}
 	}()
