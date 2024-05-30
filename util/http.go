@@ -2,13 +2,11 @@ package util
 
 import (
 	"encoding/json"
+	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
-
-	"github.com/evergreen-ci/gimlet"
-	"github.com/pkg/errors"
 )
 
 // GetIntValue returns a form value as an integer
@@ -22,28 +20,6 @@ func GetIntValue(r *http.Request, valueKey string, defaultValue int) (int, error
 		return 0, errors.Wrapf(err, "'%s': cannot convert value '%s' to integer", valueKey, val)
 	}
 	return intVal, nil
-}
-
-// GetBoolValue returns a form value as an integer
-func GetBoolValue(r *http.Request, valueKey string, defaultValue bool) (bool, error) {
-	val := r.FormValue(valueKey)
-	if val == "" {
-		return defaultValue, nil
-	}
-	boolVal, err := strconv.ParseBool(val)
-	if err != nil {
-		return defaultValue, errors.Wrapf(err, "'%s': cannot convert '%s' to boolean", valueKey, val)
-	}
-	return boolVal, nil
-}
-
-// GetStringArrayValue returns a form value as a string array
-func GetStringArrayValue(r *http.Request, valueKey string, defaultValue []string) []string {
-	val := r.FormValue(valueKey)
-	if val == "" {
-		return defaultValue
-	}
-	return strings.Split(val, ",")
 }
 
 // RespErrorf attempts to read a gimlet.ErrorResponse from the response body

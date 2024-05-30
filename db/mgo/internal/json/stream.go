@@ -177,11 +177,6 @@ type Encoder struct {
 	ext Extension
 }
 
-// NewEncoder returns a new encoder that writes to w.
-func NewEncoder(w io.Writer) *Encoder {
-	return &Encoder{w: w, escapeHTML: true}
-}
-
 // Encode writes the JSON encoding of v to the stream,
 // followed by a newline character.
 //

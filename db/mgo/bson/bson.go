@@ -248,17 +248,6 @@ func NewObjectId() ObjectId {
 	return ObjectId(b[:])
 }
 
-// NewObjectIdWithTime returns a dummy ObjectId with the timestamp part filled
-// with the provided number of seconds from epoch UTC, and all other parts
-// filled with zeroes. It's not safe to insert a document with an id generated
-// by this method, it is useful only for queries to find documents with ids
-// generated before or after the specified timestamp.
-func NewObjectIdWithTime(t time.Time) ObjectId {
-	var b [12]byte
-	binary.BigEndian.PutUint32(b[:4], uint32(t.Unix()))
-	return ObjectId(string(b[:]))
-}
-
 // String returns a hex string representation of the id.
 // Example: ObjectIdHex("4d88e15b60f486e428412dc9").
 func (id ObjectId) String() string {
@@ -379,15 +368,6 @@ func (id ObjectId) Counter() int32 {
 // The Symbol type is similar to a string and is used in languages with a
 // distinct symbol type.
 type Symbol string
-
-// Now returns the current time with millisecond precision. MongoDB stores
-// timestamps with the same precision, so a Time returned from this method
-// will not change after a roundtrip to the database. That's the only reason
-// why this function exists. Using the time.Now function also works fine
-// otherwise.
-func Now() time.Time {
-	return time.Unix(0, time.Now().UnixNano()/1e6*1e6)
-}
 
 // MongoTimestamp is a special internal type used by MongoDB that for some
 // strange reason has its own datatype defined in BSON.

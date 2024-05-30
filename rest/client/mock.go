@@ -30,16 +30,6 @@ type Mock struct {
 	GetSubscriptionsFail bool
 }
 
-// NewMock returns a Communicator for testing.
-func NewMock(serverURL string) *Mock {
-	return &Mock{
-		maxAttempts:  defaultMaxAttempts,
-		timeoutStart: defaultTimeoutStart,
-		timeoutMax:   defaultTimeoutMax,
-		serverURL:    serverURL,
-	}
-}
-
 func (c *Mock) Close() {}
 
 func (c *Mock) SetTimeoutStart(timeoutStart time.Duration) { c.timeoutStart = timeoutStart }

@@ -23,16 +23,6 @@ type CachedIntValue struct {
 	refresher   CachedIntValueRefresher
 }
 
-// NewCachedIntValue constructs a CachedIntValue object.
-func NewCachedIntValue(start int, ttl time.Duration, refresh CachedIntValueRefresher) *CachedIntValue {
-	return &CachedIntValue{
-		Value:       start,
-		TTL:         ttl,
-		CollectedAt: time.Now(),
-		refresher:   refresh,
-	}
-}
-
 // String implements fmt.Stringer reporting how stale the value is in
 // the stale case.
 func (v *CachedIntValue) String() string {
@@ -102,16 +92,6 @@ type CachedDurationValue struct {
 	TTL         time.Duration `bson:"ttl"`
 	CollectedAt time.Time     `bson:"collected_at"`
 	refresher   CachedDurationValueRefresher
-}
-
-// NewCachedDurationValue constructs a CachedDurationValue object.
-func NewCachedDurationValue(start, ttl time.Duration, refresh CachedDurationValueRefresher) *CachedDurationValue {
-	return &CachedDurationValue{
-		Value:       start,
-		TTL:         ttl,
-		CollectedAt: time.Now(),
-		refresher:   refresh,
-	}
 }
 
 // String implements fmt.Stringer reporting how stale the value is in
