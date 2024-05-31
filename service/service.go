@@ -18,8 +18,6 @@ import (
 const (
 	WebRootPath  = "service"
 	Templates    = "templates"
-	Static       = "static"
-	DefaultSkip  = 0
 	DefaultLimit = 10
 )
 

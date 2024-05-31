@@ -28,8 +28,7 @@ const (
 
 	// Key values used to map user and project data to request context.
 	// These are private custom types to avoid key collisions.
-	RequestTask reqCtxKey = iota
-	RequestProjectContext
+	RequestProjectContext reqCtxKey = iota
 )
 
 // projectContext defines the set of common fields required across most UI requests.

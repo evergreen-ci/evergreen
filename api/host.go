@@ -30,7 +30,6 @@ const (
 	HostStatusWriteConfirm         = "Successfully updated host status"
 	HostRestartJasperConfirm       = "Successfully marked host as needing Jasper service restarted"
 	HostReprovisionConfirm         = "Successfully marked host as needing to reprovision"
-	UnrecognizedAction             = "Unrecognized action: %v"
 )
 
 var (

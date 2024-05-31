@@ -1,8 +1,6 @@
 package plugin
 
 import (
-	"time"
-
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -13,17 +11,7 @@ func init() {
 	Publish(&AttachPlugin{})
 }
 
-const (
-	AttachPluginName      = "attach"
-	AttachResultsCmd      = "results"
-	AttachXunitResultsCmd = "xunit_results"
-
-	AttachResultsAPIEndpoint = "results"
-	AttachLogsAPIEndpoint    = "test_logs"
-
-	AttachResultsPostRetries   = 5
-	AttachResultsRetrySleepSec = 10 * time.Second
-)
+const AttachPluginName = "attach"
 
 // AttachPlugin has commands for uploading task results and links to files,
 // for display and easy access in the UI.

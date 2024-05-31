@@ -12,10 +12,9 @@ import (
 )
 
 const (
-	SystemLogPrefix  = "S"
-	AgentLogPrefix   = "E"
-	TaskLogPrefix    = "T"
-	AllTaskLevelLogs = "ALL"
+	SystemLogPrefix = "S"
+	AgentLogPrefix  = "E"
+	TaskLogPrefix   = "T"
 
 	LogErrorPrefix = "E"
 	LogWarnPrefix  = "W"
