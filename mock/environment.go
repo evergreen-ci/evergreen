@@ -92,7 +92,8 @@ func (e *Environment) Configure(ctx context.Context) error {
 		ApplyURI(e.EvergreenSettings.Database.Url).
 		SetWriteConcern(e.EvergreenSettings.Database.WriteConcernSettings.Resolve()).
 		SetReadConcern(e.EvergreenSettings.Database.ReadConcernSettings.Resolve()).
-		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false))))
+		// Removing WithCommandAttributeDisabled(false) to disable db command monitoring.
+		SetMonitor(apm.NewMonitor()))
 
 	if err != nil {
 		return errors.WithStack(err)
