@@ -30,14 +30,6 @@ func NewSuccessFlash(message string) flashMessage {
 	return flashMessage{Severity: FlashSeveritySuccess, Message: message}
 }
 
-func NewInfoFlash(message string) flashMessage {
-	return flashMessage{Severity: FlashSeverityInfo, Message: message}
-}
-
-func NewWarningFlash(message string) flashMessage {
-	return flashMessage{Severity: FlashSeverityWarning, Message: message}
-}
-
 func NewErrorFlash(message string) flashMessage {
 	return flashMessage{Severity: FlashSeverityError, Message: message}
 }

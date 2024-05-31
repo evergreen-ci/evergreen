@@ -148,22 +148,6 @@ func ByFinishedAfter(finishTime time.Time, project string, requester string) db.
 	return db.Query(query)
 }
 
-// ByBetweenBuilds returns all builds that happened between
-// the current and previous build.
-func ByBetweenBuilds(current, previous *Build) db.Q {
-	intermediateRevisions := bson.M{
-		"$lt": current.RevisionOrderNumber,
-		"$gt": previous.RevisionOrderNumber,
-	}
-	q := db.Query(bson.M{
-		BuildVariantKey:        current.BuildVariant,
-		RequesterKey:           current.Requester,
-		RevisionOrderNumberKey: intermediateRevisions,
-		ProjectKey:             current.Project,
-	}).Sort([]string{RevisionOrderNumberKey})
-	return q
-}
-
 // ByBeforeRevision builds a query that returns all builds
 // that happened before the given revision for the project/variant.
 // Results are sorted by revision order, descending.
@@ -242,14 +226,6 @@ func UpdateAllBuilds(query interface{}, update interface{}) error {
 		update,
 	)
 	return err
-}
-
-// Remove deletes the build of the given id from the database
-func Remove(id string) error {
-	return db.Remove(
-		Collection,
-		bson.M{IdKey: id},
-	)
 }
 
 func FindProjectForBuild(buildID string) (string, error) {

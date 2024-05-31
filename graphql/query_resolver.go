@@ -374,19 +374,22 @@ func (r *queryResolver) Pod(ctx context.Context, podID string) (*restModel.APIPo
 
 // Patch is the resolver for the patch field.
 func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
-	patch, err := data.FindPatchById(patchID)
+	apiPatch, err := data.FindPatchById(patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
+	if apiPatch == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
+	}
 
-	if evergreen.IsFinishedVersionStatus(*patch.Status) {
+	if evergreen.IsFinishedVersionStatus(*apiPatch.Status) {
 		statuses, err := task.GetTaskStatusesByVersion(ctx, patchID)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task statuses for patch: %s", err.Error()))
 		}
 
-		if len(patch.ChildPatches) > 0 {
-			for _, cp := range patch.ChildPatches {
+		if len(apiPatch.ChildPatches) > 0 {
+			for _, cp := range apiPatch.ChildPatches {
 				childPatchStatuses, err := task.GetTaskStatusesByVersion(ctx, *cp.Id)
 				if err != nil {
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task statuses for child patch: %s", err.Error()))
@@ -398,11 +401,12 @@ func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.A
 		// If theres an aborted task we should set the patch status to aborted if there are no other failures
 		if utility.StringSliceContains(statuses, evergreen.TaskAborted) {
 			if len(utility.StringSliceIntersection(statuses, evergreen.TaskFailureStatuses)) == 0 {
-				patch.Status = utility.ToStringPtr(evergreen.VersionAborted)
+				apiPatch.Status = utility.ToStringPtr(evergreen.VersionAborted)
 			}
 		}
 	}
-	return patch, nil
+
+	return apiPatch, nil
 }
 
 // GithubProjectConflicts is the resolver for the githubProjectConflicts field.
@@ -455,15 +459,12 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 }
 
 // ProjectEvents is the resolver for the projectEvents field.
-func (r *queryResolver) ProjectEvents(ctx context.Context, identifier *string, projectIdentifier *string, limit *int, before *time.Time) (*ProjectEvents, error) {
-	if projectIdentifier == nil {
-		projectIdentifier = identifier
-	}
+func (r *queryResolver) ProjectEvents(ctx context.Context, projectIdentifier string, limit *int, before *time.Time) (*ProjectEvents, error) {
 	timestamp := time.Now()
 	if before != nil {
 		timestamp = *before
 	}
-	events, err := data.GetProjectEventLog(utility.FromStringPtr(projectIdentifier), timestamp, utility.FromIntPtr(limit))
+	events, err := data.GetProjectEventLog(projectIdentifier, timestamp, utility.FromIntPtr(limit))
 	res := &ProjectEvents{
 		EventLogEntries: getPointerEventList(events),
 		Count:           len(events),
@@ -472,11 +473,8 @@ func (r *queryResolver) ProjectEvents(ctx context.Context, identifier *string, p
 }
 
 // ProjectSettings is the resolver for the projectSettings field.
-func (r *queryResolver) ProjectSettings(ctx context.Context, identifier *string, projectIdentifier *string) (*restModel.APIProjectSettings, error) {
-	if projectIdentifier == nil {
-		projectIdentifier = identifier
-	}
-	projectRef, err := model.FindBranchProjectRef(utility.FromStringPtr(projectIdentifier))
+func (r *queryResolver) ProjectSettings(ctx context.Context, projectIdentifier string) (*restModel.APIProjectSettings, error) {
+	projectRef, err := model.FindBranchProjectRef(projectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
 	}

@@ -14,7 +14,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/x/mongo/driver"
 )
 
 var (
@@ -173,49 +172,6 @@ func EnsureIndex(collection string, index mongo.IndexModel) error {
 	_, err := env.DB().Collection(collection).Indexes().CreateOne(ctx, index)
 
 	return errors.WithStack(err)
-}
-
-const errorCodeNamespaceNotFound = 26
-
-// DropAllIndexes drops all indexes in the specified collections, returning an
-// error immediately if dropping the indexes in any one of them fails.
-func DropAllIndexes(collections ...string) error {
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	for _, coll := range collections {
-		if _, err := env.DB().Collection(coll).Indexes().DropAll(ctx); err != nil {
-			// DropAll errors if the collection does not exist, so make this
-			// idempotent by ignoring the error for the case of a nonexistent
-			// collection.
-			if mongoErr, ok := err.(driver.Error); ok && mongoErr.NamespaceNotFound() {
-				continue
-			}
-			if cmdErr, ok := err.(mongo.CommandError); ok && cmdErr.HasErrorCode(errorCodeNamespaceNotFound) {
-				continue
-			}
-			return errors.Wrapf(err, "dropping indexes in collection '%s'", coll)
-		}
-	}
-	return nil
-}
-
-// DropDatabases drops all of the given databases, returning an error immediately
-// if dropping any of the databases fails.
-func DropDatabases(dbs ...string) error {
-	session, _, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	for _, db := range dbs {
-		if err := session.DB(db).DropDatabase(); err != nil {
-			return errors.Wrapf(err, "dropping database '%s'", db)
-		}
-	}
-
-	return nil
 }
 
 // Remove removes one item matching the query from the specified collection.
@@ -390,25 +346,6 @@ func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 	// operations had a 90s timeout, which is no longer specified)
 
 	pipe := db.C(collection).Pipe(pipeline)
-
-	return errors.WithStack(pipe.All(out))
-}
-
-// AggregateWithHint runs aggregate and takes in a hint (example structure: {key: 1, key2: 1})
-func AggregateWithHint(collection string, pipeline interface{}, hint interface{}, out interface{}) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		err = errors.Wrap(err, "establishing db connection")
-		grip.Error(err)
-		return err
-	}
-	defer session.Close()
-
-	// NOTE: with the legacy driver, this function unset the
-	// socket timeout, which isn't really an option here. (other
-	// operations had a 90s timeout, which is no longer specified)
-
-	pipe := db.C(collection).Pipe(pipeline).Hint(hint)
 
 	return errors.WithStack(pipe.All(out))
 }

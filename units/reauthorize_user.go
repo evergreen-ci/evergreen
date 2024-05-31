@@ -136,7 +136,7 @@ func (j *reauthorizeUserJob) Run(ctx context.Context) {
 
 	j.AddRetryableError(errors.Wrap(err, "reauthorizing user"))
 
-	if err != nil && j.RetryInfo().GetRemainingAttempts() == 0 {
+	if err != nil && j.IsLastAttempt() {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "user has no more background reauth attempts, logging them out",
 			"user":    j.UserID,

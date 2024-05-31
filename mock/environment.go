@@ -134,6 +134,7 @@ func (e *Environment) Configure(ctx context.Context) error {
 
 	e.Clients = evergreen.ClientConfig{
 		LatestRevision: evergreen.ClientVersion,
+		S3URLPrefix:    "https://foo.com",
 	}
 
 	return nil

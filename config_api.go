@@ -20,10 +20,9 @@ type ClientBinary struct {
 }
 
 type ClientConfig struct {
-	ClientBinaries   []ClientBinary
-	S3ClientBinaries []ClientBinary
-	LatestRevision   string
-	S3URLPrefix      string
+	ClientBinaries []ClientBinary
+	LatestRevision string
+	S3URLPrefix    string
 }
 
 func (c *ClientConfig) populateClientBinaries(ctx context.Context, bucket pail.Bucket, prefix string) error {

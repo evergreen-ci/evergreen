@@ -24,7 +24,6 @@ var (
 	apiUrlKey             = bsonutil.MustHaveTag(Settings{}, "ApiUrl")
 	awsInstanceRoleKey    = bsonutil.MustHaveTag(Settings{}, "AWSInstanceRole")
 	cedarKey              = bsonutil.MustHaveTag(Settings{}, "Cedar")
-	clientBinariesDirKey  = bsonutil.MustHaveTag(Settings{}, "ClientBinariesDir")
 	hostJasperKey         = bsonutil.MustHaveTag(Settings{}, "HostJasper")
 	domainNameKey         = bsonutil.MustHaveTag(Settings{}, "DomainName")
 	jiraKey               = bsonutil.MustHaveTag(Settings{}, "Jira")
@@ -66,7 +65,6 @@ var (
 	taskDispatchKey                    = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
 	hostInitKey                        = bsonutil.MustHaveTag(ServiceFlags{}, "HostInitDisabled")
 	podInitDisabledKey                 = bsonutil.MustHaveTag(ServiceFlags{}, "PodInitDisabled")
-	s3BinaryDownloadsDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "S3BinaryDownloadsDisabled")
 	largeParserProjectsDisabledKey     = bsonutil.MustHaveTag(ServiceFlags{}, "LargeParserProjectsDisabled")
 	monitorKey                         = bsonutil.MustHaveTag(ServiceFlags{}, "MonitorDisabled")
 	alertsKey                          = bsonutil.MustHaveTag(ServiceFlags{}, "AlertsDisabled")
@@ -109,7 +107,6 @@ var (
 	hostInitProvisioningThrottleKey = bsonutil.MustHaveTag(HostInitConfig{}, "ProvisioningThrottle")
 	hostInitCloudStatusBatchSizeKey = bsonutil.MustHaveTag(HostInitConfig{}, "CloudStatusBatchSize")
 	hostInitMaxTotalDynamicHostsKey = bsonutil.MustHaveTag(HostInitConfig{}, "MaxTotalDynamicHosts")
-	hostInitS3BaseURLKey            = bsonutil.MustHaveTag(HostInitConfig{}, "S3BaseURL")
 
 	// Spawnhost keys
 	unexpirableHostsPerUserKey   = bsonutil.MustHaveTag(SpawnHostConfig{}, "UnexpirableHostsPerUser")

@@ -1,3 +1,6 @@
 mutation {
-    defaultSectionToRepo(projectId: "repo_id", section: GENERAL)
+    defaultSectionToRepo(opts: {
+        projectId: "repo_id",
+        section: GENERAL
+    })
 }

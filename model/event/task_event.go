@@ -130,12 +130,6 @@ func LogHostTaskUndispatched(taskId string, execution int, hostId string) {
 	logTaskEvent(taskId, TaskUndispatched, TaskEventData{Execution: execution, HostId: hostId})
 }
 
-// LogContainerTaskDispatched logs an event for a container task being marked
-// unallocated.
-func LogContainerTaskUnallocated(taskID string, execution int, podID string) {
-	logTaskEvent(taskID, TaskUndispatched, TaskEventData{Execution: execution, PodID: podID})
-}
-
 func LogTaskStarted(taskId string, execution int) {
 	logTaskEvent(taskId, TaskStarted, TaskEventData{Execution: execution, Status: evergreen.TaskStarted})
 }

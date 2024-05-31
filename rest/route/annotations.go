@@ -319,7 +319,7 @@ func makePutAnnotationsByTask() gimlet.RouteHandler {
 //	@Summary		Create or update a new task annotation
 //	@Description	Creates a task annotation, or updates an existing task annotation, overwriting any existing fields that are included in the update. The annotation is created based on the annotation specified in the request body. Task execution must be provided for this endpoint, either in the request body or set as a url parameter. If no task_execution is specified in the request body or in the url, a bad status error will be returned. Note that usage of this endpoint requires that the requesting user have security to modify task annotations. The user does not need to specify the source, it will be added automatically.
 //	@Tags			annotations
-//	@Router			/tasks/{task_id}/annotations [put]
+//	@Router			/tasks/{task_id}/annotation [put]
 //	@Security		Api-User || Api-Key
 //	@Param			task_id		path	string					true	"task ID"
 //	@Param			execution	query	int						false	"Can be set in lieu of specifying task_execution in the request body."
@@ -376,7 +376,7 @@ func (h *annotationByTaskPatchHandler) Factory() gimlet.RouteHandler {
 //	@Summary		Create or update a new task annotation by appending
 //	@Description	Creates a task annotation, or updates an existing task annotation, appending issues and suspected issues that are included in the update. A new annotation is created based if the annotation exists and if upsert is true. Task execution must be provided for this endpoint, either in the request body or set as a url parameter. If no task_execution is specified in the request body or in the url, a bad status error will be returned. Note that usage of this endpoint requires that the requesting user have security to modify task annotations. The user does not need to specify the source, it will be added automatically.
 //	@Tags			annotations
-//	@Router			/tasks/{task_id}/annotations [patch]
+//	@Router			/tasks/{task_id}/annotation [patch]
 //	@Security		Api-User || Api-Key
 //	@Param			task_id		path	string					true	"task ID"
 //	@Param			execution	query	int						false	"Can be set in lieu of specifying task_execution in the request body."

@@ -364,11 +364,6 @@ func Find(query db.Q) ([]Patch, error) {
 	return patches, err
 }
 
-// Count returns the number of patches that satisfy the given query.
-func Count(query db.Q) (int, error) {
-	return db.CountQ(Collection, query)
-}
-
 // Remove removes all patch documents that satisfy the query.
 func Remove(query db.Q) error {
 	return db.RemoveAllQ(Collection, query)

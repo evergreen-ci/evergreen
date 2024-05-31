@@ -58,7 +58,6 @@ type APIAdminSettings struct {
 	BannerTheme         *string                           `json:"banner_theme,omitempty"`
 	Buckets             *APIBucketsConfig                 `json:"buckets,omitempty"`
 	Cedar               *APICedarConfig                   `json:"cedar,omitempty"`
-	ClientBinariesDir   *string                           `json:"client_binaries_dir,omitempty"`
 	CommitQueue         *APICommitQueueConfig             `json:"commit_queue,omitempty"`
 	ConfigDir           *string                           `json:"configdir,omitempty"`
 	ContainerPools      *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
@@ -133,7 +132,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.Banner = &v.Banner
 		tmp := string(v.BannerTheme)
 		as.BannerTheme = &tmp
-		as.ClientBinariesDir = &v.ClientBinariesDir
 		as.ConfigDir = &v.ConfigDir
 		as.DomainName = utility.ToStringPtr(v.DomainName)
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
@@ -216,9 +214,6 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	}
 	if as.BannerTheme != nil {
 		settings.BannerTheme = evergreen.BannerTheme(*as.BannerTheme)
-	}
-	if as.ClientBinariesDir != nil {
-		settings.ClientBinariesDir = *as.ClientBinariesDir
 	}
 	if as.ConfigDir != nil {
 		settings.ConfigDir = *as.ConfigDir
@@ -890,11 +885,10 @@ type APIUiV2URL struct {
 }
 
 type APIHostInitConfig struct {
-	HostThrottle         int     `json:"host_throttle"`
-	ProvisioningThrottle int     `json:"provisioning_throttle"`
-	CloudStatusBatchSize int     `json:"cloud_batch_size"`
-	MaxTotalDynamicHosts int     `json:"max_total_dynamic_hosts"`
-	S3BaseURL            *string `json:"s3_base_url"`
+	HostThrottle         int `json:"host_throttle"`
+	ProvisioningThrottle int `json:"provisioning_throttle"`
+	CloudStatusBatchSize int `json:"cloud_batch_size"`
+	MaxTotalDynamicHosts int `json:"max_total_dynamic_hosts"`
 }
 
 func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
@@ -904,7 +898,6 @@ func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
 		a.ProvisioningThrottle = v.ProvisioningThrottle
 		a.CloudStatusBatchSize = v.CloudStatusBatchSize
 		a.MaxTotalDynamicHosts = v.MaxTotalDynamicHosts
-		a.S3BaseURL = utility.ToStringPtr(v.S3BaseURL)
 	default:
 		return errors.Errorf("programmatic error: expected host init config but got type %T", h)
 	}
@@ -917,7 +910,6 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 		ProvisioningThrottle: a.ProvisioningThrottle,
 		CloudStatusBatchSize: a.CloudStatusBatchSize,
 		MaxTotalDynamicHosts: a.MaxTotalDynamicHosts,
-		S3BaseURL:            utility.FromStringPtr(a.S3BaseURL),
 	}, nil
 }
 
@@ -2020,7 +2012,6 @@ type APIServiceFlags struct {
 	TaskDispatchDisabled            bool `json:"task_dispatch_disabled"`
 	HostInitDisabled                bool `json:"host_init_disabled"`
 	PodInitDisabled                 bool `json:"pod_init_disabled"`
-	S3BinaryDownloadsDisabled       bool `json:"s3_binary_downloads_disabled"`
 	LargeParserProjectsDisabled     bool `json:"large_parser_projects_disabled"`
 	MonitorDisabled                 bool `json:"monitor_disabled"`
 	AlertsDisabled                  bool `json:"alerts_disabled"`
@@ -2332,7 +2323,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.TaskDispatchDisabled = v.TaskDispatchDisabled
 		as.HostInitDisabled = v.HostInitDisabled
 		as.PodInitDisabled = v.PodInitDisabled
-		as.S3BinaryDownloadsDisabled = v.S3BinaryDownloadsDisabled
 		as.LargeParserProjectsDisabled = v.LargeParserProjectsDisabled
 		as.MonitorDisabled = v.MonitorDisabled
 		as.AlertsDisabled = v.AlertsDisabled
@@ -2377,7 +2367,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		TaskDispatchDisabled:            as.TaskDispatchDisabled,
 		HostInitDisabled:                as.HostInitDisabled,
 		PodInitDisabled:                 as.PodInitDisabled,
-		S3BinaryDownloadsDisabled:       as.S3BinaryDownloadsDisabled,
 		LargeParserProjectsDisabled:     as.LargeParserProjectsDisabled,
 		MonitorDisabled:                 as.MonitorDisabled,
 		AlertsDisabled:                  as.AlertsDisabled,

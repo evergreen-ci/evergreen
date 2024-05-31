@@ -6,12 +6,6 @@ package json
 
 import "bytes"
 
-// Compact appends to dst the JSON-encoded src with
-// insignificant space characters elided.
-func Compact(dst *bytes.Buffer, src []byte) error {
-	return compact(dst, src, false)
-}
-
 func compact(dst *bytes.Buffer, src []byte, escape bool) error {
 	origLen := dst.Len()
 	var scan scanner

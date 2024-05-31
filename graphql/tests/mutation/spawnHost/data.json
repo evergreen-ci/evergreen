@@ -7,7 +7,6 @@
             "domain_name": "localhost",
             "banner": "This is an important notification",
             "banner_theme": "important",
-            "client_binaries_dir": "clients",
             "commit_queue": {
                 "merge_task_distro": "",
                 "committer_name": "",

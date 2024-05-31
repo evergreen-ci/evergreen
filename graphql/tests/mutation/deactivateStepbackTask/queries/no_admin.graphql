@@ -1,7 +1,9 @@
 mutation {
   deactivateStepbackTask(
-    projectId: "evergreen_id",
-    buildVariantName: "ubuntu1604",
-    taskName: "js-test"
+    opts: {
+      projectId: "evergreen_id",
+      buildVariantName: "ubuntu1604",
+      taskName: "js-test"
+    }
   )
 }

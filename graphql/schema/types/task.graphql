@@ -110,7 +110,6 @@ type Task {
   startTime: Time
   status: String!
   tags: [String!]!
-  taskFiles: TaskFiles! @deprecated(reason: "Use files instead")
   taskGroup: String
   taskGroupMaxHosts: Int
   """

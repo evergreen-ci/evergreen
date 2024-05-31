@@ -82,7 +82,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 		if j.HasErrors() {
 			// Static hosts should be quarantined if they've run out of attempts
 			// to reprovision.
-			if j.RetryInfo().GetRemainingAttempts() == 0 && j.host.Provider == evergreen.ProviderNameStatic {
+			if j.IsLastAttempt() && j.host.Provider == evergreen.ProviderNameStatic {
 				if err := j.host.SetStatusAtomically(ctx, evergreen.HostQuarantined, evergreen.User, "static host has run out of attempts to reprovision"); err != nil {
 					j.AddError(errors.Wrap(err, "quarantining static host that could not reprovision"))
 				}

@@ -1,5 +1,5 @@
 {
-    projectSettings(identifier: "sandbox") {
+    projectSettings(projectIdentifier: "sandbox") {
         aliases {
             id
             alias

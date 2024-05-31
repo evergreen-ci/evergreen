@@ -1,5 +1,5 @@
 query {
-    projectEvents(identifier: "sandbox") {
+    projectEvents(projectIdentifier: "sandbox") {
         eventLogEntries {
             user
             timestamp

@@ -1,0 +1,37 @@
+{
+    "project_ref": [
+        {
+            "_id": {
+                "$oid": "5ca4dad4bedb55a6ed6e1321"
+            },
+            "owner_name": "annie.black",
+            "repo_name": "buildhost-configuration",
+            "branch_name": "main",
+            "repo_kind": "github",
+            "enabled": false,
+            "private": false,
+            "batch_time": 0,
+            "remote_path": "self-tests.yml",
+            "identifier": "buildhost-test",
+            "display_name": "buildhost-test",
+            "local_config": "",
+            "deactivate_previous": false,
+            "tracks_push_events": false,
+            "pr_testing_enabled": false,
+            "commit_queue": {
+                "enabled": false,
+                "merge_method": "squash",
+                "merge_action": "github",
+                "status_action": "github"
+            },
+            "hidden": false,
+            "patching_disabled": false,
+            "admins": [],
+            "notify_on_failure": false,
+            "repotracker_error": null,
+            "disabled_stats_cache": false,
+            "files_ignored_from_cache": [],
+            "triggers": []
+        }
+    ]
+}
