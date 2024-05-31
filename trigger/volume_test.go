@@ -42,7 +42,8 @@ func TestVolumeExpiration(t *testing.T) {
 	}
 
 	uiConfig := &evergreen.UIConfig{
-		Url: "https://evergreen.mongodb.com",
+		Url:     "https://evergreen.mongodb.com",
+		UIv2Url: "https://spruce.mongodb.com",
 	}
 	require.NoError(t, uiConfig.Set(ctx))
 
@@ -61,7 +62,7 @@ func TestVolumeExpiration(t *testing.T) {
 			triggers := volumeTriggers{}
 			assert.NoError(t, triggers.Fetch(ctx, &event.EventLogEntry{ResourceId: "v0"}))
 			assert.Equal(t, "v0", triggers.templateData.ID)
-			assert.Equal(t, fmt.Sprintf("%s/spawn#?resourcetype=volumes&id=v0", uiConfig.Url), triggers.templateData.URL)
+			assert.Equal(t, fmt.Sprintf("%s/spawn/volume", uiConfig.UIv2Url), triggers.templateData.URL)
 		},
 		"NotificationsFromEvent": func(*testing.T) {
 			require.NoError(t, db.Clear(event.SubscriptionsCollection))
