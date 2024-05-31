@@ -155,10 +155,6 @@ func getMinNumHostsToEvaluate(info host.IdleHostsByDistroID, minimumHosts int) i
 }
 
 func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, schedulerConfig evergreen.SchedulerConfig, h *host.Host, d distro.Distro) error {
-	queue, err := j.env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
-	if err != nil {
-		return errors.Wrap(err, "getting host termination queue")
-	}
 	exitEarly, err := checkTerminationExemptions(ctx, h, j.env, j.Type().Name, j.ID())
 	if exitEarly {
 		return err
@@ -189,7 +185,7 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, schedulerConfig
 		j.Terminated++
 		j.TerminatedHosts = append(j.TerminatedHosts, h.Id)
 		terminationJob := NewHostTerminationJob(j.env, h, HostTerminationOptions{TerminationReason: terminateReason})
-		return amboy.EnqueueUniqueJob(ctx, queue, terminationJob)
+		return enqueueTerminateHostJob(ctx, j.env, terminationJob)
 	}
 
 	return nil

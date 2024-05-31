@@ -306,10 +306,6 @@ func (j *cloudHostReadyJob) logHostStatusMessage(h *host.Host, cloudStatus cloud
 // marking it for termination and handling any other cleanup necessary for a
 // host that fails to start up.
 func (j *cloudHostReadyJob) prepareToTerminateHost(ctx context.Context, h *host.Host, terminationReason string, skipCloudHostTermination bool) error {
-	queue, err := j.env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
-	if err != nil {
-		return errors.Wrap(err, "getting host termination queue")
-	}
 	event.LogHostTerminatedExternally(h.Id, h.Status)
 
 	catcher := grip.NewBasicCatcher()
@@ -321,7 +317,7 @@ func (j *cloudHostReadyJob) prepareToTerminateHost(ctx context.Context, h *host.
 		SkipCloudHostTermination: skipCloudHostTermination,
 	})
 
-	catcher.Wrap(amboy.EnqueueUniqueJob(ctx, queue, terminationJob), "enqueueing job to terminate host")
+	catcher.Wrap(enqueueTerminateHostJob(ctx, j.env, terminationJob), "enqueueing job to terminate host")
 
 	return catcher.Resolve()
 }

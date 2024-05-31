@@ -190,7 +190,10 @@ func TestSetCloudHostStatus(t *testing.T) {
 			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, cloud.StatusNonExistent))
 
-			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
+			queue, err := env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
+			assert.NoError(t, err)
+			require.True(t, amboy.WaitInterval(ctx, queue, 100*time.Millisecond),
+				"failed while waiting for host termination job to complete")
 
 			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
@@ -201,7 +204,10 @@ func TestSetCloudHostStatus(t *testing.T) {
 			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, cloud.StatusFailed))
 
-			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
+			queue, err := env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
+			assert.NoError(t, err)
+			require.True(t, amboy.WaitInterval(ctx, queue, 100*time.Millisecond),
+				"failed while waiting for host termination job to complete")
 
 			assert.Equal(t, cloud.StatusTerminated, cloud.GetMockProvider().Get(h.Id).Status)
 
@@ -219,7 +225,10 @@ func TestSetCloudHostStatus(t *testing.T) {
 			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, cloud.StatusStopped))
 
-			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
+			queue, err := env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
+			assert.NoError(t, err)
+			require.True(t, amboy.WaitInterval(ctx, queue, 100*time.Millisecond),
+				"failed while waiting for host termination job to complete")
 
 			assert.Equal(t, cloud.StatusTerminated, cloud.GetMockProvider().Get(h.Id).Status)
 

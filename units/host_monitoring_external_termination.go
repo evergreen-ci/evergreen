@@ -101,10 +101,6 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 // so, clean up the host. Returns true if the host has been externally terminated
 // or stopped.
 func handleExternallyTerminatedHost(ctx context.Context, id string, env evergreen.Environment, h *host.Host) (bool, error) {
-	queue, err := env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
-	if err != nil {
-		return false, errors.Wrap(err, "getting host termination queue")
-	}
 	if h.Provider == evergreen.ProviderNameStatic {
 		return false, nil
 	}
@@ -166,7 +162,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 			"cloud_status": cloudStatus.String(),
 		})
 
-		err = amboy.EnqueueUniqueJob(ctx, queue, NewHostTerminationJob(env, h, HostTerminationOptions{
+		err = enqueueTerminateHostJob(ctx, env, NewHostTerminationJob(env, h, HostTerminationOptions{
 			TerminateIfBusy:          true,
 			TerminationReason:        fmt.Sprintf("host was found in state '%s'", cloudStatus.String()),
 			SkipCloudHostTermination: isTerminated,

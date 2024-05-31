@@ -133,12 +133,8 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 				TerminateIfBusy:   true,
 				TerminationReason: "failed to mount volume",
 			})
-			queue, err := j.env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
-			if err != nil {
-				j.AddError(errors.Wrap(err, "getting host termination queue"))
-				return
-			}
-			j.AddError(amboy.EnqueueUniqueJob(ctx, queue, terminateJob))
+
+			j.AddError(enqueueTerminateHostJob(ctx, j.env, terminateJob))
 
 			return
 		}

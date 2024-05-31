@@ -60,7 +60,9 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 	assert.NoError(j.Error())
 	assert.True(j.Status().Completed)
 
-	require.True(amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond))
+	queue, err := env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
+	assert.NoError(err)
+	require.True(amboy.WaitInterval(ctx, queue, 100*time.Millisecond))
 
 	dbHost, err := host.FindOneId(ctx, h.Id)
 	require.NoError(err)
@@ -124,7 +126,10 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 				require.NoError(t, err)
 				assert.True(t, terminated)
 
-				require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond), "failed while waiting for host termination job to complete")
+				queue, err := env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
+				assert.NoError(t, err)
+				require.True(t, amboy.WaitInterval(ctx, queue, 100*time.Millisecond),
+					"failed while waiting for host termination job to complete")
 
 				dbHost, err := host.FindOneId(ctx, h.Id)
 				require.NoError(t, err)
@@ -154,7 +159,10 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, terminated)
 
-		require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond), "failed while waiting for host termination job to complete")
+		queue, err := env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
+		assert.NoError(t, err)
+		require.True(t, amboy.WaitInterval(ctx, queue, 100*time.Millisecond),
+			"failed while waiting for host termination job to complete")
 
 		dbHost, err := host.FindOneId(ctx, h.Id)
 		require.NoError(t, err)
@@ -182,7 +190,10 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 			require.NoError(t, err)
 			assert.True(t, terminated)
 
-			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 100*time.Millisecond), "failed while waiting for host termination job to complete")
+			queue, err := env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
+			assert.NoError(t, err)
+			require.True(t, amboy.WaitInterval(ctx, queue, 100*time.Millisecond),
+				"failed while waiting for host termination job to complete")
 
 			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
