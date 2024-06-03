@@ -4039,6 +4039,7 @@ buildvariants:
 
 	proj.BuildVariants[0].DisplayTasks[0].ExecTasks = append(proj.BuildVariants[0].DisplayTasks[0].ExecTasks,
 		"display_three")
+	proj.BuildVariants[0].Tasks = append(proj.BuildVariants[0].Tasks, model.BuildVariantTaskUnit{Name: "display_three"})
 
 	errors := CheckProjectErrors(ctx, &proj, false)
 	require.Len(errors, 1)
