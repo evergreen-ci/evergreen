@@ -35,9 +35,9 @@ type DrawdownInfo struct {
 }
 
 type hostDrawdownJob struct {
-	job.Base        `bson:"metadata" json:"metadata" yaml:"metadata"`
-	Terminated      int      `bson:"terminated" json:"terminated" yaml:"terminated"`
-	TerminatedHosts []string `bson:"terminated_hosts" json:"terminated_hosts" yaml:"terminated_hosts"`
+	job.Base            `bson:"metadata" json:"metadata" yaml:"metadata"`
+	Decommissioned      int      `bson:"decommissioned" json:"decommissioned" yaml:"decommissioned"`
+	DecommissionedHosts []string `bson:"decommissioned_hosts" json:"decommissioned_hosts" yaml:"decommissioned_hosts"`
 
 	env evergreen.Environment
 
@@ -90,30 +90,28 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 		if drawdownTarget <= 0 {
 			break
 		}
-		err = j.checkAndTerminateHost(ctx, &idleHost, &drawdownTarget)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"id":             j.ID(),
-				"distro_id":      j.DrawdownInfo.DistroID,
-				"idle_host_list": idleHosts,
-				"message":        "terminate host drawdown error",
-			}))
-		}
+		err = j.checkAndDecommission(ctx, &idleHost, &drawdownTarget)
+		grip.Error(message.WrapError(err, message.Fields{
+			"id":        j.ID(),
+			"distro_id": j.DrawdownInfo.DistroID,
+			"host":      idleHost.Id,
+			"message":   "decommission host drawdown error",
+		}))
 	}
 
 	grip.Info(message.Fields{
-		"id":                   j.ID(),
-		"job_type":             hostDrawdownJobName,
-		"distro_id":            j.DrawdownInfo.DistroID,
-		"new_cap_target":       j.DrawdownInfo.NewCapTarget,
-		"existing_host_count":  existingHostCount,
-		"num_idle_hosts":       len(idleHosts),
-		"num_terminated_hosts": j.Terminated,
-		"terminated_hosts":     j.TerminatedHosts,
+		"id":                       j.ID(),
+		"job_type":                 hostDrawdownJobName,
+		"distro_id":                j.DrawdownInfo.DistroID,
+		"new_cap_target":           j.DrawdownInfo.NewCapTarget,
+		"existing_host_count":      existingHostCount,
+		"num_idle_hosts":           len(idleHosts),
+		"num_decommissioned_hosts": j.Decommissioned,
+		"decommissioned_hosts":     j.DecommissionedHosts,
 	})
 }
 
-func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Host, drawdownTarget *int) error {
+func (j *hostDrawdownJob) checkAndDecommission(ctx context.Context, h *host.Host, drawdownTarget *int) error {
 	exitEarly, err := checkTerminationExemptions(ctx, h, j.env, j.Type().Name, j.ID())
 	if exitEarly || err != nil {
 		return err
@@ -142,8 +140,8 @@ func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Hos
 
 	if idleTime > idleThreshold {
 		(*drawdownTarget)--
-		j.Terminated++
-		j.TerminatedHosts = append(j.TerminatedHosts, h.Id)
+		j.Decommissioned++
+		j.DecommissionedHosts = append(j.DecommissionedHosts, h.Id)
 		if err = h.SetDecommissioned(ctx, evergreen.User, false, "host decommissioned due to overallocation"); err != nil {
 			return errors.Wrapf(err, "decommissioning host '%s'", h.Id)
 		}

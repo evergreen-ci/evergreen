@@ -23,28 +23,18 @@ func numHostsDecommissionedForDrawdown(ctx context.Context, t *testing.T, env ev
 	j.Run(ctx)
 	assert.NoError(t, j.Error())
 
-	assert.Equal(t, len(j.TerminatedHosts), j.Terminated)
+	assert.Equal(t, len(j.DecommissionedHosts), j.Decommissioned)
 
-	return j.Terminated, j.TerminatedHosts
+	return j.Decommissioned, j.DecommissionedHosts
 }
 
 func TestHostDrawdown(t *testing.T) {
-
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment){
-		"DecommissionsHostsDownToCap": func(ctx context.Context, t *testing.T, env *mock.Environment) {
-			distro1 := distro.Distro{
-				Id:       "distro1",
-				Provider: evergreen.ProviderNameMock,
-				HostAllocatorSettings: distro.HostAllocatorSettings{
-					MinimumHosts: 2,
-				},
-			}
-			require.NoError(t, distro1.Insert(ctx))
-
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro){
+		"DecommissionsHostsDownToCap": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
 			// insert a gaggle of hosts, some of which reference a host.Distro that doesn't exist in the distro collection
 			host1 := host.Host{
 				Id:           "h1",
-				Distro:       distro1,
+				Distro:       d,
 				Provider:     evergreen.ProviderNameMock,
 				CreationTime: time.Now().Add(-10 * time.Minute),
 				Status:       evergreen.HostRunning,
@@ -53,7 +43,7 @@ func TestHostDrawdown(t *testing.T) {
 			}
 			host2 := host.Host{
 				Id:           "h2",
-				Distro:       distro1,
+				Distro:       d,
 				Provider:     evergreen.ProviderNameMock,
 				CreationTime: time.Now().Add(-20 * time.Minute),
 				Status:       evergreen.HostRunning,
@@ -62,7 +52,7 @@ func TestHostDrawdown(t *testing.T) {
 			}
 			host3 := host.Host{
 				Id:           "h3",
-				Distro:       distro1,
+				Distro:       d,
 				Provider:     evergreen.ProviderNameMock,
 				CreationTime: time.Now().Add(-30 * time.Minute),
 				Status:       evergreen.HostRunning,
@@ -70,7 +60,7 @@ func TestHostDrawdown(t *testing.T) {
 			}
 			host4 := host.Host{
 				Id:           "h4",
-				Distro:       distro1,
+				Distro:       d,
 				Provider:     evergreen.ProviderNameMock,
 				CreationTime: time.Now().Add(-30 * time.Minute),
 				Status:       evergreen.HostRunning,
@@ -78,7 +68,7 @@ func TestHostDrawdown(t *testing.T) {
 			}
 			host5 := host.Host{
 				Id:           "h5",
-				Distro:       distro1,
+				Distro:       d,
 				Provider:     evergreen.ProviderNameMock,
 				CreationTime: time.Now().Add(-20 * time.Minute),
 				Status:       evergreen.HostRunning,
@@ -102,29 +92,20 @@ func TestHostDrawdown(t *testing.T) {
 			// distros.
 
 			drawdownInfo := DrawdownInfo{
-				DistroID:     distro1.Id,
+				DistroID:     d.Id,
 				NewCapTarget: 3,
 			}
-			// 3 idle hosts, 2 need to be terminated to reach NewCapTarget
+			// 3 idle hosts, 2 need to be decommissioned to reach NewCapTarget
 			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
 			assert.Equal(t, 2, num)
 
 			assert.Contains(t, hosts, host3.Id)
 			assert.Contains(t, hosts, host4.Id)
 		},
-		"IgnoresSingleHostTaskGroupHosts": func(ctx context.Context, t *testing.T, env *mock.Environment) {
-			distro1 := distro.Distro{
-				Id:       "distro1",
-				Provider: evergreen.ProviderNameMock,
-				HostAllocatorSettings: distro.HostAllocatorSettings{
-					MinimumHosts: 0,
-				},
-			}
-			require.NoError(t, distro1.Insert(ctx))
-
+		"IgnoresSingleHostTaskGroupHosts": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
 			host1 := host.Host{
 				Id:               "h1",
-				Distro:           distro1,
+				Distro:           d,
 				Provider:         evergreen.ProviderNameMock,
 				CreationTime:     time.Now().Add(-30 * time.Minute),
 				Status:           evergreen.HostRunning,
@@ -134,7 +115,7 @@ func TestHostDrawdown(t *testing.T) {
 			}
 			host2 := host.Host{
 				Id:           "h2",
-				Distro:       distro1,
+				Distro:       d,
 				Provider:     evergreen.ProviderNameMock,
 				CreationTime: time.Now().Add(-30 * time.Minute),
 				Status:       evergreen.HostRunning,
@@ -159,25 +140,16 @@ func TestHostDrawdown(t *testing.T) {
 			require.NoError(t, tsk2.Insert())
 
 			drawdownInfo := DrawdownInfo{
-				DistroID:     distro1.Id,
+				DistroID:     d.Id,
 				NewCapTarget: 0,
 			}
 			num, _ := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
 			assert.Zero(t, num, "should not draw down any hosts running single host task groups")
 		},
-		"IgnoresHostRunningTask": func(ctx context.Context, t *testing.T, env *mock.Environment) {
-			distro1 := distro.Distro{
-				Id:       "distro1",
-				Provider: evergreen.ProviderNameMock,
-				HostAllocatorSettings: distro.HostAllocatorSettings{
-					MinimumHosts: 0,
-				},
-			}
-			require.NoError(t, distro1.Insert(ctx))
-
+		"IgnoresHostRunningTask": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
 			host1 := host.Host{
 				Id:           "h1",
-				Distro:       distro1,
+				Distro:       d,
 				Provider:     evergreen.ProviderNameMock,
 				CreationTime: time.Now().Add(-30 * time.Minute),
 				Status:       evergreen.HostRunning,
@@ -191,26 +163,17 @@ func TestHostDrawdown(t *testing.T) {
 			require.NoError(t, tsk1.Insert())
 
 			drawdownInfo := DrawdownInfo{
-				DistroID:     distro1.Id,
+				DistroID:     d.Id,
 				NewCapTarget: 0,
 			}
 			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
 			assert.Zero(t, num, "should not draw down host running task")
 			assert.Empty(t, hosts)
 		},
-		"IgnoresHostThatRecentlyRanTaskGroup": func(ctx context.Context, t *testing.T, env *mock.Environment) {
-			distro1 := distro.Distro{
-				Id:       "distro1",
-				Provider: evergreen.ProviderNameMock,
-				HostAllocatorSettings: distro.HostAllocatorSettings{
-					MinimumHosts: 0,
-				},
-			}
-			require.NoError(t, distro1.Insert(ctx))
-
+		"IgnoresHostThatRecentlyRanTaskGroup": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
 			host1 := host.Host{
 				Id:                    "h1",
-				Distro:                distro1,
+				Distro:                d,
 				Provider:              evergreen.ProviderNameMock,
 				CreationTime:          time.Now().Add(-30 * time.Minute),
 				Status:                evergreen.HostRunning,
@@ -228,26 +191,18 @@ func TestHostDrawdown(t *testing.T) {
 			require.NoError(t, tsk1.Insert())
 
 			drawdownInfo := DrawdownInfo{
-				DistroID:     distro1.Id,
+				DistroID:     d.Id,
 				NewCapTarget: 0,
 			}
 			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
 			assert.Zero(t, 0, num, "should not draw down host that was recently running task group")
 			assert.Empty(t, hosts)
 		},
-		"DecommissionsIdleMultiHostTaskGroupHost": func(ctx context.Context, t *testing.T, env *mock.Environment) {
-			distro1 := distro.Distro{
-				Id:       "distro1",
-				Provider: evergreen.ProviderNameMock,
-				HostAllocatorSettings: distro.HostAllocatorSettings{
-					MinimumHosts: 0,
-				},
-			}
-			require.NoError(t, distro1.Insert(ctx))
+		"DecommissionsIdleMultiHostTaskGroupHost": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
 
 			host1 := host.Host{
 				Id:                    "h1",
-				Distro:                distro1,
+				Distro:                d,
 				Provider:              evergreen.ProviderNameMock,
 				CreationTime:          time.Now().Add(-30 * time.Minute),
 				Status:                evergreen.HostRunning,
@@ -262,7 +217,7 @@ func TestHostDrawdown(t *testing.T) {
 			require.NoError(t, tsk1.Insert())
 
 			drawdownInfo := DrawdownInfo{
-				DistroID:     distro1.Id,
+				DistroID:     d.Id,
 				NewCapTarget: 0,
 			}
 			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
@@ -276,10 +231,19 @@ func TestHostDrawdown(t *testing.T) {
 			ctx = testutil.TestSpan(ctx, t)
 			testFlaggingIdleHostsSetupTest(t)
 
+			d := distro.Distro{
+				Id:       "d",
+				Provider: evergreen.ProviderNameMock,
+				HostAllocatorSettings: distro.HostAllocatorSettings{
+					MinimumHosts: 0,
+				},
+			}
+			require.NoError(t, d.Insert(ctx))
+
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			tCase(ctx, t, env)
+			tCase(ctx, t, env, d)
 		})
 	}
 }
