@@ -238,12 +238,12 @@ func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSetti
 	catcher.Add(e.initJasper(ctx, tracer))
 	catcher.Add(e.initDepot(ctx, tracer))
 	catcher.Add(e.initThirdPartySenders(ctx, tracer))
+	catcher.Add(e.initClientConfig(ctx, versionID, tracer))
 	catcher.Add(e.createLocalQueue(ctx, tracer))
 	catcher.Add(e.createRemoteQueues(ctx, tracer))
 	catcher.Add(e.createNotificationQueue(ctx, tracer))
 	catcher.Add(e.setupRoleManager(ctx, tracer))
 	catcher.Add(e.initTracer(ctx, versionID != "", tracer))
-	catcher.Add(e.initClientConfig(ctx, versionID, tracer))
 	catcher.Extend(e.initQueues(ctx, tracer))
 
 	if catcher.HasErrors() {
