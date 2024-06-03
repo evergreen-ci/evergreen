@@ -1776,8 +1776,6 @@ func TestGithubPermissionGroups(t *testing.T) {
 				Actions:                    utility.ToStringPtr("read"),
 				Contents:                   utility.ToStringPtr("write"),
 				Checks:                     utility.ToStringPtr("write"),
-				Environments:               utility.ToStringPtr("nope"),
-				Followers:                  utility.ToStringPtr("nope1"),
 				Metadata:                   utility.ToStringPtr("write"),
 				OrganizationAdministration: utility.ToStringPtr("admin"),
 			},
@@ -1788,15 +1786,26 @@ func TestGithubPermissionGroups(t *testing.T) {
 				Administration:             utility.ToStringPtr("write"),
 				Actions:                    utility.ToStringPtr("write"),
 				Checks:                     utility.ToStringPtr("read"),
-				Environments:               utility.ToStringPtr("read"),
-				Followers:                  utility.ToStringPtr("nope2"),
 				Metadata:                   utility.ToStringPtr("write"),
 				OrganizationAdministration: utility.ToStringPtr("admin"),
 			},
 		},
 		{
-			Name:          "no-permissions",
-			NoPermissions: true,
+			Name: "no-permissions",
+		},
+		{
+			Name: "fake-permissions",
+			Permissions: github.InstallationPermissions{
+				Administration: utility.ToStringPtr("not-a-permission"),
+			},
+		},
+		{
+			Name:           "all-permissions-1",
+			AllPermissions: true,
+		},
+		{
+			Name:           "all-permissions-2",
+			AllPermissions: true,
 		},
 	}
 	orgRequesters := map[string]string{
@@ -1847,25 +1856,65 @@ func TestGithubPermissionGroups(t *testing.T) {
 	})
 
 	t.Run("Intersection of permissions should return most restrictive", func(t *testing.T) {
-		intersection := orgGroup[0].Intersection(orgGroup[1])
+		intersection, err := orgGroup[0].Intersection(orgGroup[1])
+		require.NoError(err)
 		assert.Equal(orgGroup[0].Name, intersection.Name)
-		assert.False(intersection.NoPermissions)
+		assert.False(intersection.AllPermissions)
 
 		assert.Equal("write", utility.FromStringPtr(intersection.Permissions.Administration), "write and admin should restrict to write")
 		assert.Equal("read", utility.FromStringPtr(intersection.Permissions.Actions), "read and write should restrict to read")
 		assert.Nil(intersection.Permissions.Contents, "nil and write should restrict to nil")
-		assert.Equal("read", utility.FromStringPtr(intersection.Permissions.Environments), "nope and read should ignore nope and restrict to read")
-		assert.Nil(intersection.Permissions.Followers, "nope1 and nope2 should be ignored and restrict to nil")
-		assert.Equal("read", utility.FromStringPtr(intersection.Permissions.Checks), "write and read should restrict to read when reversed")
+		assert.Nil(intersection.Permissions.Followers, "both nil should restrict to nil")
+		assert.Equal("read", utility.FromStringPtr(intersection.Permissions.Checks), "write and read should restrict to read")
 		assert.Equal("write", utility.FromStringPtr(intersection.Permissions.Metadata), "both write should restrict to write")
+		assert.Equal("admin", utility.FromStringPtr(intersection.Permissions.OrganizationAdministration), "both admin should restrict to admin")
 
 		assert.Nil(intersection.Permissions.Emails, "an unspecified field should restrict to nil")
 	})
 
 	t.Run("Intersection of permissions with no permissions should return no permissions", func(t *testing.T) {
-		intersection := orgGroup[0].Intersection(orgGroup[2])
+		intersection, err := orgGroup[0].Intersection(orgGroup[2])
+		require.NoError(err)
 		assert.Equal(orgGroup[0].Name, intersection.Name)
-		assert.True(intersection.NoPermissions)
+
+		// Fields that were set on orgGroup[0].
+		assert.Nil(intersection.Permissions.Administration)
+		assert.Nil(intersection.Permissions.Actions)
+		assert.Nil(intersection.Permissions.Contents)
+		assert.Nil(intersection.Permissions.Followers)
+		assert.Nil(intersection.Permissions.Checks)
+		assert.Nil(intersection.Permissions.Metadata)
+		assert.Nil(intersection.Permissions.OrganizationAdministration)
+
+		// An unspecified field.
+		assert.Nil(intersection.Permissions.Emails)
+	})
+
+	t.Run("Intersection of permissions with invalid permissions should return an error", func(t *testing.T) {
+		_, err := orgGroup[0].Intersection(orgGroup[3])
+		assert.ErrorContains(err, "not-a-permission")
+	})
+
+	t.Run("Intersection of permissions with all permissions should return the same values as the permissions", func(t *testing.T) {
+		intersection, err := orgGroup[0].Intersection(orgGroup[4])
+		require.NoError(err)
+
+		// Fields that were set on orgGroup[0].
+		assert.Equal("admin", utility.FromStringPtr(intersection.Permissions.Administration))
+		assert.Equal("read", utility.FromStringPtr(intersection.Permissions.Actions))
+		assert.Equal("write", utility.FromStringPtr(intersection.Permissions.Contents))
+		assert.Equal("write", utility.FromStringPtr(intersection.Permissions.Checks))
+		assert.Equal("write", utility.FromStringPtr(intersection.Permissions.Metadata))
+		assert.Equal("admin", utility.FromStringPtr(intersection.Permissions.OrganizationAdministration))
+
+		// An unspecified field.
+		assert.Nil(intersection.Permissions.Emails)
+	})
+
+	t.Run("Intersection of two all permissions should result in all permissions", func(t *testing.T) {
+		intersection, err := orgGroup[4].Intersection(orgGroup[5])
+		require.NoError(err)
+		assert.True(intersection.AllPermissions)
 	})
 }
 

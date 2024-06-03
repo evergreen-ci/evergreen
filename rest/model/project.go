@@ -551,6 +551,9 @@ type APIGitHubDynamicTokenPermissionGroup struct {
 	Name *string `json:"name"`
 	// Permissions for the GitHub permission group.
 	Permissions map[string]string `json:"permissions"`
+	// AllPermissions is true if the group has all permissions.
+	// This would appear as an empty 'Permissions' map.
+	AllPermissions *bool `json:"all_permissions"`
 }
 
 type APIGitHubDynamicTokenPermissionGroups []APIGitHubDynamicTokenPermissionGroup
@@ -575,7 +578,12 @@ func (p *APIGitHubDynamicTokenPermissionGroup) ToService() (model.GitHubDynamicT
 	if err != nil {
 		return group, errors.Wrap(err, "decoding GitHub permissions")
 	}
-	group.NoPermissions = len(metadata.Keys) == 0
+	// If the 'Permissions' map is empty and 'AllPermissions' is true, the group
+	// has all permissions.
+	group.AllPermissions = utility.FromBoolPtr(p.AllPermissions)
+	if group.AllPermissions && len(metadata.Keys) > 0 {
+		return group, errors.New("a group will all permissions must have no permissions set")
+	}
 	return group, nil
 }
 

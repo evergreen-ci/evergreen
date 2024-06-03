@@ -66,6 +66,15 @@ var githubWritePermissions = []string{
 	"write",
 }
 
+// AllGithubPermissions is an ascending slice of GitHub
+// permissions where the first element is the lowest
+// permission and the last element is the highest.
+var AllGitHubPermissions = []string{
+	"read",
+	"write",
+	"admin",
+}
+
 const (
 	GithubPRBlocked = "blocked"
 
