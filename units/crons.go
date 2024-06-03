@@ -250,14 +250,17 @@ func hostTerminationJobs(ctx context.Context, env evergreen.Environment, _ time.
 		"impact":    "hosts termination interrupted",
 	}))
 	catcher.Wrap(err, "finding hosts spawned by tasks to terminate")
-
 	for _, h := range hosts {
 		jobs = append(jobs, NewHostTerminationJob(env, &h, HostTerminationOptions{
 			TerminateIfBusy:   true,
 			TerminationReason: "host spawned by task has gone out of scope",
 		}))
 	}
-
+	grip.Info(message.Fields{
+		"message": "unprocessed termination job count",
+		"pending": len(jobs),
+		"cron":    HostTerminationJobName,
+	})
 	return jobs, catcher.Resolve()
 }
 
