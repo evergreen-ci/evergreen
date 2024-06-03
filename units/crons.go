@@ -30,7 +30,7 @@ const (
 
 	// createHostQueueGroup is the queue group for the provisioning-create-host job.
 	createHostQueueGroup = "service.host.create"
-	// terminateHostQueueGroup is the queue group for host-termination-jobs created by cron jobs.
+	// terminateHostQueueGroup is the queue group for host-termination-jobs.
 	terminateHostQueueGroup         = "service.host.termination"
 	commitQueueQueueGroup           = "service.commitqueue"
 	eventNotifierQueueGroup         = "service.event.notifier"

@@ -134,7 +134,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 				TerminationReason: "failed to mount volume",
 			})
 
-			j.AddError(enqueueTerminateHostJob(ctx, j.env, terminateJob))
+			j.AddError(EnqueueTerminateHostJob(ctx, j.env, terminateJob))
 
 			return
 		}

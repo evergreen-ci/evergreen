@@ -317,7 +317,7 @@ func (j *cloudHostReadyJob) prepareToTerminateHost(ctx context.Context, h *host.
 		SkipCloudHostTermination: skipCloudHostTermination,
 	})
 
-	catcher.Wrap(enqueueTerminateHostJob(ctx, j.env, terminationJob), "enqueueing job to terminate host")
+	catcher.Wrap(EnqueueTerminateHostJob(ctx, j.env, terminationJob), "enqueueing job to terminate host")
 
 	return catcher.Resolve()
 }

@@ -94,8 +94,8 @@ func EnqueueSpawnHostModificationJob(ctx context.Context, env evergreen.Environm
 	return amboy.EnqueueUniqueJob(ctx, q, j)
 }
 
-// enqueueTerminateHostJob enqueues a job to terminate a host.
-func enqueueTerminateHostJob(ctx context.Context, env evergreen.Environment, j amboy.Job) error {
+// EnqueueTerminateHostJob enqueues a job to terminate a host.
+func EnqueueTerminateHostJob(ctx context.Context, env evergreen.Environment, j amboy.Job) error {
 	queueCtx, _ := env.Context()
 	q, err := env.RemoteQueueGroup().Get(queueCtx, terminateHostQueueGroup)
 	if err != nil {

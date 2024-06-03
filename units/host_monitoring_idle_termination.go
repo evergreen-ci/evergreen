@@ -185,7 +185,7 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, schedulerConfig
 		j.Terminated++
 		j.TerminatedHosts = append(j.TerminatedHosts, h.Id)
 		terminationJob := NewHostTerminationJob(j.env, h, HostTerminationOptions{TerminationReason: terminateReason})
-		return enqueueTerminateHostJob(ctx, j.env, terminationJob)
+		return EnqueueTerminateHostJob(ctx, j.env, terminationJob)
 	}
 
 	return nil
