@@ -230,7 +230,7 @@ functions:
             [[ $? -eq 0 ]] && break;
           done
 
-  assume-role: &assume-role
+  assume-role:
     command: ec2.assume_role
     type: setup
     params:
