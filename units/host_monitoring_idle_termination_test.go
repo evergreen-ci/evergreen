@@ -376,47 +376,6 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		assert.Empty(t, hosts)
 	})
 
-	t.Run("HostInBetweenSingleHostTaskGroupTasksButIsLongIdleShouldBeConsideredIdle", func(t *testing.T) {
-		tctx := testutil.TestSpan(ctx, t)
-		testFlaggingIdleHostsSetupTest(t)
-		defer testFlaggingIdleHostsTeardownTest(t)
-
-		// insert a reference distro.Distro
-		distro1 := distro.Distro{
-			Id:       "distro1",
-			Provider: evergreen.ProviderNameMock,
-			HostAllocatorSettings: distro.HostAllocatorSettings{
-				AcceptableHostIdleTime: 4 * time.Minute,
-			},
-		}
-		require.NoError(t, distro1.Insert(tctx))
-		// insert a host that recently ran a single host task group task but
-		// has not moved onto the next task group task in a long time.
-		host1 := host.Host{
-			Id:                    "h1",
-			Distro:                distro1,
-			Provider:              evergreen.ProviderNameMock,
-			CreationTime:          time.Now().Add(-30 * time.Minute),
-			LastCommunicationTime: time.Now(),
-			Status:                evergreen.HostRunning,
-			LastTask:              "t1",
-			LastGroup:             "tg1",
-			LastTaskCompletedTime: time.Now().Add(-20 * time.Minute),
-			StartedBy:             evergreen.User,
-		}
-		require.NoError(t, host1.Insert(tctx))
-		tsk := task.Task{
-			Id:                "t1",
-			TaskGroup:         "tg1",
-			TaskGroupMaxHosts: 1,
-		}
-		require.NoError(t, tsk.Insert())
-
-		num, hosts := numIdleHostsFound(tctx, env, t)
-		assert.Equal(t, 1, num, "should consider long idle host in between single host task group tasks idle")
-		assert.Contains(t, hosts, host1.Id)
-	})
-
 	t.Run("HostsNotRunningTasksShouldBeFlaggedIfTheyHaveBeenIdleLongerThanIdleThreshold", func(t *testing.T) {
 		tctx := testutil.TestSpan(ctx, t)
 		testFlaggingIdleHostsSetupTest(t)
@@ -455,20 +414,12 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		}
 		require.NoError(t, host1.Insert(tctx))
 		require.NoError(t, host2.Insert(tctx))
-		tsk1 := task.Task{
-			Id: "t1",
-		}
-		tsk2 := task.Task{
-			Id: "t2",
-		}
-		require.NoError(t, tsk1.Insert())
-		require.NoError(t, tsk2.Insert())
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		require.Equal(t, 1, num)
 		assert.Equal(t, hosts[0], "h1")
 	})
-	t.Run("HostsRunningTaskShouldBeFlaggedIfTheyHaveBeenIdleLongerThanIdleThreshold", func(t *testing.T) {
+	t.Run("HostsThatRecentlyRanTaskShouldBeFlaggedIfTheyHaveBeenIdleLongerThanIdleThreshold", func(t *testing.T) {
 		tctx := testutil.TestSpan(ctx, t)
 		testFlaggingIdleHostsSetupTest(t)
 		defer testFlaggingIdleHostsTeardownTest(t)
@@ -506,14 +457,6 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		}
 		require.NoError(t, host1.Insert(tctx))
 		require.NoError(t, host2.Insert(tctx))
-		tsk1 := task.Task{
-			Id: "t1",
-		}
-		tsk2 := task.Task{
-			Id: "t2",
-		}
-		require.NoError(t, tsk1.Insert())
-		require.NoError(t, tsk2.Insert())
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		require.Equal(t, 1, num)
@@ -829,10 +772,6 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 		require.NoError(t, host1.Insert(tctx))
 		require.NoError(t, host2.Insert(tctx))
 		require.NoError(t, host3.Insert(tctx))
-		tsk := task.Task{
-			Id: "t1",
-		}
-		require.NoError(t, tsk.Insert())
 
 		// Only the oldest host not running a task should be flagged as idle.
 		num, hosts := numIdleHostsFound(tctx, env, t)
@@ -859,9 +798,9 @@ func TestTearingDownIsNotConsideredIdle(t *testing.T) {
 			// TODO (DEVPROD-7795): this test doesn't pass currently unless you
 			// set the acceptable host idle time to be non-zero. However, it
 			// should pass even if it's acceptable idle time is 0 since the host
-			// should be considered non-idle while running the teardown group.
-			// Once DEVPROD-7795 is fixed, this distro setting can/should be
-			// removed and the test should pass.
+			// should be busy running the teardown group. Once DEVPROD-7795 is
+			// fixed, this distro setting can/should be modified/removed and the
+			// test should still pass.
 			AcceptableHostIdleTime: time.Minute,
 		},
 	}
@@ -999,10 +938,6 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	assert.NoError(host4.Insert(ctx))
 	assert.NoError(host5.Insert(ctx))
 	assert.NoError(host6.Insert(ctx))
-	tsk := task.Task{
-		Id: "t1",
-	}
-	require.NoError(t, tsk.Insert())
 
 	distroHosts, err := host.IdleEphemeralGroupedByDistroID(ctx, &env)
 	assert.NoError(err)
