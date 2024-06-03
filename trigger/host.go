@@ -220,46 +220,47 @@ func (t *hostTemplateData) hostSlackPayload(messageString string, linkTitle stri
 func (t *hostTriggers) hostExpiration(sub *event.Subscription) (*notification.Notification, error) {
 	switch t.event.EventType {
 	case event.EventHostExpirationWarningSent:
-		if t.host.NoExpiration {
-			return nil, nil
-		}
-
-		timeZone := time.Local
-		if sub.OwnerType == event.OwnerTypePerson {
-			userTimeZone, err := getUserTimeZone(sub.Owner)
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":    "problem getting user's time zone",
-				"user":       sub.Owner,
-				"event_type": t.event.EventType,
-				"trigger":    "host temporary exemption expiration",
-			}))
-			if userTimeZone != nil {
-				timeZone = userTimeZone
-			}
-		}
-		t.templateData.ExpirationTime = t.host.ExpirationTime.In(timeZone).Format(time.RFC1123)
-
-		return t.generateExpiration(sub)
+		return t.makeHostExpirationNotification(sub)
 	case event.EventHostTemporaryExemptionExpirationWarningSent:
-		timeZone := time.Local
-		if sub.OwnerType == event.OwnerTypePerson {
-			userTimeZone, err := getUserTimeZone(sub.Owner)
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":    "problem getting user time zone",
-				"user":       sub.Owner,
-				"event_type": t.event.EventType,
-				"trigger":    " host expiration",
-			}))
-			if userTimeZone != nil {
-				timeZone = userTimeZone
-			}
-		}
-		t.templateData.ExpirationTime = t.host.SleepSchedule.TemporarilyExemptUntil.In(timeZone).Format(time.RFC1123)
-
-		return t.generateTemporaryExemptionExpiration(sub)
+		return t.makeHostTemporaryExemptionNotification(sub)
 	default:
 		return nil, nil
 	}
+}
+
+func (t *hostTriggers) makeHostExpirationNotification(sub *event.Subscription) (*notification.Notification, error) {
+	if t.host.NoExpiration {
+		return nil, nil
+	}
+
+	timeZone := t.getTimeZone(sub, "host expiration")
+	t.templateData.ExpirationTime = t.host.ExpirationTime.In(timeZone).Format(time.RFC1123)
+
+	return t.generateExpiration(sub)
+}
+
+func (t *hostTriggers) makeHostTemporaryExemptionNotification(sub *event.Subscription) (*notification.Notification, error) {
+	timeZone := t.getTimeZone(sub, "host temporary exemption expiration")
+	t.templateData.ExpirationTime = t.host.SleepSchedule.TemporarilyExemptUntil.In(timeZone).Format(time.RFC1123)
+
+	return t.generateTemporaryExemptionExpiration(sub)
+}
+
+func (t *hostTriggers) getTimeZone(sub *event.Subscription, trigger string) *time.Location {
+	if sub.OwnerType == event.OwnerTypePerson {
+		userTimeZone, err := getUserTimeZone(sub.Owner)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":    "problem getting user time zone",
+			"user":       sub.Owner,
+			"event_type": t.event.EventType,
+			"trigger":    trigger,
+		}))
+		if userTimeZone != nil {
+			return userTimeZone
+		}
+	}
+
+	return time.Local
 }
 
 func (t *hostTriggers) spawnHostIdle(sub *event.Subscription) (*notification.Notification, error) {
