@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -160,9 +161,33 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, schedulerConfig
 		return err
 	}
 
-	idleTime := h.IdleTime()
-	communicationTime := h.GetElapsedCommunicationTime()
+	idleInfo, err := j.getIdleInfo(h, &d, schedulerConfig)
+	if err != nil {
+		return errors.Wrap(err, "getting information on idle host")
+	}
 
+	if terminateReason := j.getTerminationReason(idleInfo); terminateReason != "" {
+		j.Terminated++
+		j.TerminatedHosts = append(j.TerminatedHosts, h.Id)
+		terminationJob := NewHostTerminationJob(j.env, h, HostTerminationOptions{TerminationReason: terminateReason})
+		return amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob)
+	}
+
+	return nil
+}
+
+type hostIdleInfo struct {
+	timeSinceLastCommunication   time.Duration
+	idleTime                     time.Duration
+	idleThreshold                time.Duration
+	isRunningSingleHostTaskGroup bool
+	hasOutdatedAMI               bool
+}
+
+// getIdleInfo returns information about how long the host has been idle,
+// how long it is allowed to be idle, and other special considerations for
+// whether the host should be considered idle.
+func (j *idleHostJob) getIdleInfo(h *host.Host, d *distro.Distro, schedulerConfig evergreen.SchedulerConfig) (hostIdleInfo, error) {
 	idleThreshold := d.HostAllocatorSettings.AcceptableHostIdleTime
 	if idleThreshold == 0 {
 		idleThreshold = time.Duration(schedulerConfig.AcceptableHostIdleTimeSeconds) * time.Second
@@ -171,24 +196,59 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, schedulerConfig
 		idleThreshold = idleThreshold * 2
 	}
 
-	var terminateReason string
-	if hostHasOutdatedAMI(*h, d) {
-		// Since tasks created after the AMI is updated will only run on new hosts,
-		// we want to terminate outdated hosts aggressively to ensure we're respecting task priorities.
-		terminateReason = "host has an outdated AMI"
-	} else if communicationTime >= idleThreshold {
-		terminateReason = fmt.Sprintf("host is idle or unreachable, communication time %s is over threshold time %s", communicationTime, idleThreshold)
-	} else if idleTime >= idleThreshold {
-		terminateReason = fmt.Sprintf("host is idle or unreachable, idle time %s is over threshold time %s", idleTime, idleThreshold)
-	}
-	if terminateReason != "" {
-		j.Terminated++
-		j.TerminatedHosts = append(j.TerminatedHosts, h.Id)
-		terminationJob := NewHostTerminationJob(j.env, h, HostTerminationOptions{TerminationReason: terminateReason})
-		return amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob)
+	// Allow additional idle time for single host task groups in case it is
+	// slightly slow getting to the next task in the task group. Disrupting a
+	// single host task group breaks continuity and the requires restarting the
+	// entire task group from the start.
+	var isRunningSingleHostTaskGroup bool
+	if h.RunningTask == "" {
+		runningTask, err := task.FindByIdExecution(h.RunningTask, &h.RunningTaskExecution)
+		if err != nil {
+			return hostIdleInfo{}, errors.Wrapf(err, "finding host's running task '%s'", h.RunningTask)
+		}
+		if runningTask == nil {
+			return hostIdleInfo{}, errors.Errorf("host's running task '%s' not found", h.RunningTask)
+		}
+		isRunningSingleHostTaskGroup = runningTask.IsPartOfSingleHostTaskGroup()
+		if isRunningSingleHostTaskGroup {
+			const singleHostTaskGroupExtraIdleTime = 5 * time.Minute
+			idleThreshold = idleThreshold + singleHostTaskGroupExtraIdleTime
+		}
 	}
 
-	return nil
+	return hostIdleInfo{
+		idleTime:                     h.IdleTime(),
+		timeSinceLastCommunication:   h.GetElapsedCommunicationTime(),
+		idleThreshold:                idleThreshold,
+		isRunningSingleHostTaskGroup: isRunningSingleHostTaskGroup,
+		hasOutdatedAMI:               hostHasOutdatedAMI(*h, *d),
+	}, nil
+}
+
+// getTerminationReason determines the reason why a host should be termianted.
+// It returns a non-empty string if the host should be terminated for idleness
+// or other reasons.
+func (j *idleHostJob) getTerminationReason(idleInfo hostIdleInfo) string {
+	// kim: TODO: add test for outdated AMI and running single host task group
+	if idleInfo.hasOutdatedAMI && !idleInfo.isRunningSingleHostTaskGroup {
+		// Since tasks created after the AMI is updated will only run on new
+		// hosts, terminate outdated hosts to ensure we're respecting the desire
+		// that tasks run on the latest possible AMI. At the same time,
+		// Evergreen should still allow hosts running single host task groups
+		// since decommissioning the host  will break continuity of the task
+		// group, which is undesirable.
+		return "host has an outdated AMI"
+	}
+	if idleInfo.timeSinceLastCommunication >= idleInfo.idleThreshold {
+		// kim: TODO: add test for idle for a few minutes and running single host
+		// task group
+		return fmt.Sprintf("host is idle or unreachable, communication time %s is over threshold time %s", idleInfo.timeSinceLastCommunication, idleInfo.idleThreshold)
+	}
+	if idleInfo.idleTime >= idleInfo.idleThreshold {
+		return fmt.Sprintf("host is idle or unreachable, idle time %s is over threshold time %s", idleInfo.timeSinceLastCommunication, idleInfo.idleThreshold)
+	}
+
+	return ""
 }
 
 // checkTerminationExemptions checks if some conditions apply where we shouldn't terminate an idle host,
