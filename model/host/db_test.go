@@ -890,3 +890,71 @@ func TestCountHostsCanRunTasks(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 2, count)
 }
+
+func TestFindByTemporaryExemptionsExpiringBetween(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, h *Host){
+		"ReturnsHostWithExpiringTemporaryExemption": func(ctx context.Context, t *testing.T, h *Host) {
+			now := time.Now()
+			h.SleepSchedule.TemporarilyExemptUntil = now
+			require.NoError(t, h.Insert(ctx))
+
+			hosts, err := FindByTemporaryExemptionsExpiringBetween(ctx, now.Add(-time.Minute), now.Add(time.Minute))
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+		"ReturnsMultipleHostsWithExpiringTemporaryExemptions": func(ctx context.Context, t *testing.T, h *Host) {
+			now := time.Now()
+			h.SleepSchedule.TemporarilyExemptUntil = now
+			require.NoError(t, h.Insert(ctx))
+			h2 := *h
+			h2.Id = "h2"
+			require.NoError(t, h2.Insert(ctx))
+
+			hosts, err := FindByTemporaryExemptionsExpiringBetween(ctx, now.Add(-time.Minute), now.Add(time.Minute))
+			require.NoError(t, err)
+			require.Len(t, hosts, 2)
+		},
+		"ExcludesHostNotWithinExpirationBounds": func(ctx context.Context, t *testing.T, h *Host) {
+			now := time.Now()
+			h.SleepSchedule.TemporarilyExemptUntil = now
+			require.NoError(t, h.Insert(ctx))
+
+			hosts, err := FindByTemporaryExemptionsExpiringBetween(ctx, now.Add(-2*time.Minute), now.Add(-time.Minute))
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+		"ExcludesTerminatedHosts": func(ctx context.Context, t *testing.T, h *Host) {
+			now := time.Now()
+			h.Status = evergreen.HostTerminated
+			h.SleepSchedule.TemporarilyExemptUntil = now
+			require.NoError(t, h.Insert(ctx))
+
+			hosts, err := FindByTemporaryExemptionsExpiringBetween(ctx, now.Add(-time.Minute), now.Add(time.Minute))
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			require.NoError(t, db.ClearCollections(Collection))
+
+			h := Host{
+				Id:           "host_id",
+				NoExpiration: true,
+				StartedBy:    "user",
+				Status:       evergreen.HostRunning,
+				SleepSchedule: SleepScheduleInfo{
+					WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
+					TimeZone:         "America/New_York",
+				},
+			}
+			tCase(ctx, t, &h)
+		})
+	}
+}
