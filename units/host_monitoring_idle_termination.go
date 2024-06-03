@@ -197,15 +197,14 @@ func (j *idleHostJob) getIdleInfo(h *host.Host, d *distro.Distro, schedulerConfi
 	// slightly slow getting to the next task in the task group. Disrupting a
 	// single host task group breaks continuity and the requires restarting the
 	// entire task group from the start.
-	var isRunningSingleHostTaskGroup bool
-	const singleHostTaskGroupIdleTime = 5 * time.Minute
-	isRunningSingleHostTaskGroup, err := hasSingleHostTaskGroupLock(h)
+	const singleHostTaskGroupIdleCutoff = 5 * time.Minute
+	isRunningSingleHostTaskGroup, err := isAssignedSingleHostTaskGroup(h)
 	if err != nil {
 		return hostIdleInfo{}, errors.Wrap(err, "checking if host is running single host task group")
 	}
 
 	if isRunningSingleHostTaskGroup {
-		idleThreshold = singleHostTaskGroupIdleTime
+		idleThreshold = singleHostTaskGroupIdleCutoff
 	} else if h.RunningTaskGroup != "" {
 		idleThreshold = idleThreshold * 2
 	}
@@ -219,7 +218,9 @@ func (j *idleHostJob) getIdleInfo(h *host.Host, d *distro.Distro, schedulerConfi
 	}, nil
 }
 
-func hasSingleHostTaskGroupLock(h *host.Host) (bool, error) {
+// isAssignedSingleHostTaskGroup returns whether the host is assigned to run a
+// single host task group.
+func isAssignedSingleHostTaskGroup(h *host.Host) (bool, error) {
 	if h.RunningTaskGroup != "" && h.RunningTask != "" {
 		runningTask, err := task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
 		if err != nil {
@@ -232,6 +233,9 @@ func hasSingleHostTaskGroupLock(h *host.Host) (bool, error) {
 	}
 
 	if h.LastGroup != "" && h.RunningTask == "" {
+		// Check if the host just finished a successful single host task group
+		// task but hasn't gotten to the next one yet (if any). Assume that it
+		// will continue onto the next task group task ASAP.
 		prevTask, err := task.FindOneId(h.LastTask)
 		if err != nil {
 			return false, errors.Wrapf(err, "finding host's last task group task '%s'", h.LastTask)
