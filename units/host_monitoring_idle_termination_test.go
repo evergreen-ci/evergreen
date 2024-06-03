@@ -34,6 +34,7 @@ func numIdleHostsFound(ctx context.Context, env evergreen.Environment, t *testin
 	num := 0
 	for j := range queue.Results(ctx) {
 		if ij, ok := j.(*idleHostJob); ok {
+			assert.NoError(t, ij.Error())
 			num += ij.Terminated
 			out = append(out, ij.TerminatedHosts...)
 		}
@@ -139,6 +140,126 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		assert.Equal(t, 0, num)
 		assert.Empty(t, hosts)
+	})
+
+	t.Run("HostInBetweenSingleHostTaskGroupTasksShouldHaveExtraIdleTime", func(t *testing.T) {
+		tctx := testutil.TestSpan(ctx, t)
+		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
+
+		// insert a reference distro.Distro
+		distro1 := distro.Distro{
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
+			HostAllocatorSettings: distro.HostAllocatorSettings{
+				AcceptableHostIdleTime: 4 * time.Minute,
+			},
+		}
+		require.NoError(t, distro1.Insert(tctx))
+		// insert a host that recently ran a single host task group task - but
+		// whose creation time would otherwise indicate it has been idle a while
+		host1 := host.Host{
+			Id:                    "h1",
+			Distro:                distro1,
+			Provider:              evergreen.ProviderNameMock,
+			CreationTime:          time.Now().Add(-30 * time.Minute),
+			Status:                evergreen.HostRunning,
+			LastTask:              "t1",
+			LastGroup:             "tg1",
+			LastTaskCompletedTime: time.Now().Add(-3 * time.Minute),
+			StartedBy:             evergreen.User,
+		}
+		require.NoError(t, host1.Insert(tctx))
+		tsk := task.Task{
+			Id:                "t1",
+			TaskGroup:         "tg1",
+			TaskGroupMaxHosts: 1,
+		}
+		require.NoError(t, tsk.Insert())
+
+		// finding idle hosts should not return the host
+		num, hosts := numIdleHostsFound(tctx, env, t)
+		assert.Equal(t, 0, num)
+		assert.Empty(t, hosts)
+	})
+	t.Run("HostInBetweenSingleHostTaskGroupTasksButIsLongIdleShouldBeConsideredIdle", func(t *testing.T) {
+		tctx := testutil.TestSpan(ctx, t)
+		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
+
+		// insert a reference distro.Distro
+		distro1 := distro.Distro{
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
+			HostAllocatorSettings: distro.HostAllocatorSettings{
+				AcceptableHostIdleTime: 4 * time.Minute,
+			},
+		}
+		require.NoError(t, distro1.Insert(tctx))
+		// insert a host that recently ran a single host task group task but
+		// has not moved onto the next task group task in a long time.
+		host1 := host.Host{
+			Id:                    "h1",
+			Distro:                distro1,
+			Provider:              evergreen.ProviderNameMock,
+			CreationTime:          time.Now().Add(-30 * time.Minute),
+			Status:                evergreen.HostRunning,
+			LastTask:              "t1",
+			LastGroup:             "tg1",
+			LastTaskCompletedTime: time.Now().Add(-20 * time.Minute),
+			StartedBy:             evergreen.User,
+		}
+		require.NoError(t, host1.Insert(tctx))
+		tsk := task.Task{
+			Id:                "t1",
+			TaskGroup:         "tg1",
+			TaskGroupMaxHosts: 1,
+		}
+		require.NoError(t, tsk.Insert())
+
+		num, hosts := numIdleHostsFound(tctx, env, t)
+		assert.Equal(t, 1, num, "should consider long idle host in between single host task group tasks idle")
+		assert.Contains(t, hosts, host1.Id)
+	})
+
+	t.Run("HostInBetweenSingleHostTaskGroupTasksButIsLongIdleShouldBeConsideredIdle", func(t *testing.T) {
+		tctx := testutil.TestSpan(ctx, t)
+		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
+
+		// insert a reference distro.Distro
+		distro1 := distro.Distro{
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
+			HostAllocatorSettings: distro.HostAllocatorSettings{
+				AcceptableHostIdleTime: 4 * time.Minute,
+			},
+		}
+		require.NoError(t, distro1.Insert(tctx))
+		// insert a host that recently ran a single host task group task but
+		// has not moved onto the next task group task in a long time.
+		host1 := host.Host{
+			Id:                    "h1",
+			Distro:                distro1,
+			Provider:              evergreen.ProviderNameMock,
+			CreationTime:          time.Now().Add(-30 * time.Minute),
+			Status:                evergreen.HostRunning,
+			LastTask:              "t1",
+			LastGroup:             "tg1",
+			LastTaskCompletedTime: time.Now().Add(-20 * time.Minute),
+			StartedBy:             evergreen.User,
+		}
+		require.NoError(t, host1.Insert(tctx))
+		tsk := task.Task{
+			Id:                "t1",
+			TaskGroup:         "tg1",
+			TaskGroupMaxHosts: 1,
+		}
+		require.NoError(t, tsk.Insert())
+
+		num, hosts := numIdleHostsFound(tctx, env, t)
+		assert.Equal(t, 1, num, "should consider long idle host in between single host task group tasks idle")
+		assert.Contains(t, hosts, host1.Id)
 	})
 
 	t.Run("HostsNotRunningTasksShouldBeFlaggedIfTheyHaveBeenIdleLongerThanIdleThreshold", func(t *testing.T) {

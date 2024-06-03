@@ -235,7 +235,8 @@ func isAssignedSingleHostTaskGroup(h *host.Host) (bool, error) {
 	if h.LastGroup != "" && h.RunningTask == "" {
 		// Check if the host just finished a successful single host task group
 		// task but hasn't gotten to the next one yet (if any). Assume that it
-		// will continue onto the next task group task ASAP.
+		// will continue onto the next task group task ASAP, so it's still
+		// assigned the task group.
 		prevTask, err := task.FindOneId(h.LastTask)
 		if err != nil {
 			return false, errors.Wrapf(err, "finding host's last task group task '%s'", h.LastTask)
@@ -264,8 +265,6 @@ func (j *idleHostJob) getTerminationReason(idleInfo hostIdleInfo) string {
 		return "host has an outdated AMI"
 	}
 	if idleInfo.timeSinceLastCommunication >= idleInfo.idleThreshold {
-		// kim: TODO: add test for idle for a few minutes and running single host
-		// task group
 		return fmt.Sprintf("host is idle or unreachable, communication time %s is over threshold time %s", idleInfo.timeSinceLastCommunication, idleInfo.idleThreshold)
 	}
 	if idleInfo.idleTime >= idleInfo.idleThreshold {
