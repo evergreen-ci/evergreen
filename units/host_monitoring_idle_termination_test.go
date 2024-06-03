@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -126,9 +127,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-30 * time.Minute),
+			LastCommunicationTime: time.Now().Add(-30 * time.Minute),
 			RunningTask:           "t3",
 			Status:                evergreen.HostRunning,
-			LastCommunicationTime: time.Now().Add(-30 * time.Minute),
 			StartedBy:             evergreen.User,
 		}
 		tsk := task.Task{
@@ -156,13 +157,15 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			},
 		}
 		require.NoError(t, distro1.Insert(tctx))
-		// insert a host that recently ran a single host task group task - but
-		// whose creation time would otherwise indicate it has been idle a while
+
+		// Insert a host that recently ran a single host task group task but is
+		// currently idle.
 		host1 := host.Host{
 			Id:                    "h1",
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-30 * time.Minute),
+			LastCommunicationTime: time.Now(),
 			Status:                evergreen.HostRunning,
 			LastTask:              "t1",
 			LastGroup:             "tg1",
@@ -170,8 +173,10 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			StartedBy:             evergreen.User,
 		}
 		require.NoError(t, host1.Insert(tctx))
+
 		tsk := task.Task{
 			Id:                "t1",
+			Status:            evergreen.TaskSucceeded,
 			TaskGroup:         "tg1",
 			TaskGroupMaxHosts: 1,
 		}
@@ -182,7 +187,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		assert.Equal(t, 0, num)
 		assert.Empty(t, hosts)
 	})
-	t.Run("HostInBetweenSingleHostTaskGroupTasksButIsLongIdleShouldBeConsideredIdle", func(t *testing.T) {
+	t.Run("HostInBetweenSingleHostTaskGroupTasksButIsLongIdleShouldBeIdleTerminated", func(t *testing.T) {
 		tctx := testutil.TestSpan(ctx, t)
 		testFlaggingIdleHostsSetupTest(t)
 		defer testFlaggingIdleHostsTeardownTest(t)
@@ -196,13 +201,15 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			},
 		}
 		require.NoError(t, distro1.Insert(tctx))
-		// insert a host that recently ran a single host task group task but
+
+		// Insert a host that recently ran a single host task group task but
 		// has not moved onto the next task group task in a long time.
 		host1 := host.Host{
 			Id:                    "h1",
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-30 * time.Minute),
+			LastCommunicationTime: time.Now(),
 			Status:                evergreen.HostRunning,
 			LastTask:              "t1",
 			LastGroup:             "tg1",
@@ -210,16 +217,163 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			StartedBy:             evergreen.User,
 		}
 		require.NoError(t, host1.Insert(tctx))
+
 		tsk := task.Task{
 			Id:                "t1",
+			Status:            evergreen.TaskSucceeded,
 			TaskGroup:         "tg1",
 			TaskGroupMaxHosts: 1,
 		}
 		require.NoError(t, tsk.Insert())
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
-		assert.Equal(t, 1, num, "should consider long idle host in between single host task group tasks idle")
+		assert.Equal(t, 1, num, "should idle terminate host in between single host task group tasks that has been idle for a long time")
 		assert.Contains(t, hosts, host1.Id)
+	})
+	t.Run("HostRunningTaskWithOutdatedAMIShouldNotBeIdleTerminated", func(t *testing.T) {
+		tctx := testutil.TestSpan(ctx, t)
+		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
+
+		providerSettingsWithNewAMI := []*birch.Document{birch.NewDocument(
+			birch.EC.String("ami", "ami-newer"),
+			birch.EC.String("region", evergreen.DefaultEC2Region),
+		)}
+		distro1 := distro.Distro{
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
+			HostAllocatorSettings: distro.HostAllocatorSettings{
+				AcceptableHostIdleTime: 4 * time.Minute,
+			},
+			ProviderSettingsList: providerSettingsWithNewAMI,
+		}
+		require.NoError(t, distro1.Insert(tctx))
+
+		// Insert a host is running a task but has an outdated AMI.
+		host1 := host.Host{
+			Id:                    "h1",
+			Distro:                distro1,
+			Provider:              evergreen.ProviderNameMock,
+			CreationTime:          time.Now().Add(-30 * time.Minute),
+			LastCommunicationTime: time.Now(),
+			Status:                evergreen.HostRunning,
+			StartedBy:             evergreen.User,
+			RunningTask:           "t1",
+		}
+		providerSettingsWithOldAMI := []*birch.Document{birch.NewDocument(
+			birch.EC.String("ami", "ami-older"),
+			birch.EC.String("region", evergreen.DefaultEC2Region),
+		)}
+		host1.Distro.ProviderSettingsList = providerSettingsWithOldAMI
+		require.NoError(t, host1.Insert(tctx))
+
+		tsk1 := task.Task{
+			Id: "t1",
+		}
+		require.NoError(t, tsk1.Insert())
+
+		num, hosts := numIdleHostsFound(tctx, env, t)
+		assert.Equal(t, 0, num, "should not idle terminate host with outdated AMI if host is actively running a task")
+		assert.Empty(t, hosts)
+	})
+	t.Run("RecentlyActiveButCurrentlyIdleHostWithOutdatedAMIShouldBeIdleTerminated", func(t *testing.T) {
+		tctx := testutil.TestSpan(ctx, t)
+		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
+
+		providerSettingsWithNewAMI := []*birch.Document{birch.NewDocument(
+			birch.EC.String("ami", "ami-newer"),
+			birch.EC.String("region", evergreen.DefaultEC2Region),
+		)}
+		distro1 := distro.Distro{
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
+			HostAllocatorSettings: distro.HostAllocatorSettings{
+				AcceptableHostIdleTime: 4 * time.Minute,
+			},
+			ProviderSettingsList: providerSettingsWithNewAMI,
+		}
+		require.NoError(t, distro1.Insert(tctx))
+
+		// Insert a host that recently ran a task but is currently idle with an
+		// outdated AMI.
+		host1 := host.Host{
+			Id:                    "h1",
+			Distro:                distro1,
+			Provider:              evergreen.ProviderNameMock,
+			CreationTime:          time.Now().Add(-30 * time.Minute),
+			LastCommunicationTime: time.Now(),
+			Status:                evergreen.HostRunning,
+			StartedBy:             evergreen.User,
+			LastTask:              "t1",
+			LastTaskCompletedTime: time.Now().Add(-time.Second),
+		}
+		providerSettingsWithOldAMI := []*birch.Document{birch.NewDocument(
+			birch.EC.String("ami", "ami-older"),
+			birch.EC.String("region", evergreen.DefaultEC2Region),
+		)}
+		host1.Distro.ProviderSettingsList = providerSettingsWithOldAMI
+		require.NoError(t, host1.Insert(tctx))
+
+		tsk1 := task.Task{
+			Id: "t1",
+		}
+		require.NoError(t, tsk1.Insert())
+
+		num, hosts := numIdleHostsFound(tctx, env, t)
+		assert.Equal(t, 1, num, "should idle terminate host with outdated AMI that is not actively running a task")
+		assert.Contains(t, hosts, "h1")
+	})
+	t.Run("HostWithOutdatedAMIInBetweenSingleHostTaskGroupTasksShouldNotBeIdleTerminated", func(t *testing.T) {
+		tctx := testutil.TestSpan(ctx, t)
+		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
+
+		providerSettingsWithNewAMI := []*birch.Document{birch.NewDocument(
+			birch.EC.String("ami", "ami-newer"),
+			birch.EC.String("region", evergreen.DefaultEC2Region),
+		)}
+		distro1 := distro.Distro{
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
+			HostAllocatorSettings: distro.HostAllocatorSettings{
+				AcceptableHostIdleTime: 4 * time.Minute,
+			},
+			ProviderSettingsList: providerSettingsWithNewAMI,
+		}
+		require.NoError(t, distro1.Insert(tctx))
+		// Insert a host that recently ran a single host task group task but has
+		// an outdated AMI.
+		host1 := host.Host{
+			Id:                    "h1",
+			Distro:                distro1,
+			Provider:              evergreen.ProviderNameMock,
+			CreationTime:          time.Now().Add(-30 * time.Minute),
+			LastCommunicationTime: time.Now(),
+			Status:                evergreen.HostRunning,
+			LastTask:              "t1",
+			LastGroup:             "tg1",
+			LastTaskCompletedTime: time.Now().Add(-3 * time.Minute),
+			StartedBy:             evergreen.User,
+		}
+		providerSettingsWithOldAMI := []*birch.Document{birch.NewDocument(
+			birch.EC.String("ami", "ami-older"),
+			birch.EC.String("region", evergreen.DefaultEC2Region),
+		)}
+		host1.Distro.ProviderSettingsList = providerSettingsWithOldAMI
+		require.NoError(t, host1.Insert(tctx))
+		tsk := task.Task{
+			Id:                "t1",
+			Status:            evergreen.TaskSucceeded,
+			TaskGroup:         "tg1",
+			TaskGroupMaxHosts: 1,
+		}
+		require.NoError(t, tsk.Insert())
+
+		// finding idle hosts should not return the host
+		num, hosts := numIdleHostsFound(tctx, env, t)
+		assert.Equal(t, 0, num)
+		assert.Empty(t, hosts)
 	})
 
 	t.Run("HostInBetweenSingleHostTaskGroupTasksButIsLongIdleShouldBeConsideredIdle", func(t *testing.T) {
@@ -243,6 +397,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-30 * time.Minute),
+			LastCommunicationTime: time.Now(),
 			Status:                evergreen.HostRunning,
 			LastTask:              "t1",
 			LastGroup:             "tg1",
@@ -424,7 +579,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			Provider:              evergreen.ProviderNameMock,
 			Status:                evergreen.HostRunning,
 			CreationTime:          time.Now().Add(-30 * time.Minute),
-			LastCommunicationTime: time.Now(),
+			LastCommunicationTime: time.Now().Add(-5 * time.Minute),
 			StartedBy:             evergreen.User,
 			NeedsNewAgentMonitor:  true,
 		}
@@ -459,7 +614,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			Provider:              evergreen.ProviderNameMock,
 			Status:                evergreen.HostRunning,
 			CreationTime:          time.Now().Add(-24 * time.Hour),
-			LastCommunicationTime: time.Now(),
+			LastCommunicationTime: time.Now().Add(-5 * time.Minute),
 			StartedBy:             evergreen.User,
 			NeedsNewAgent:         true,
 		}
@@ -507,20 +662,22 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 		require.NoError(t, distro2.Insert(tctx))
 
 		host1 := host.Host{
-			Id:           "h1",
-			Distro:       distro2,
-			Provider:     evergreen.ProviderNameMock,
-			CreationTime: time.Now().Add(-10 * time.Minute),
-			Status:       evergreen.HostRunning,
-			StartedBy:    evergreen.User,
+			Id:                    "h1",
+			Distro:                distro2,
+			Provider:              evergreen.ProviderNameMock,
+			CreationTime:          time.Now().Add(-10 * time.Minute),
+			LastCommunicationTime: time.Now(),
+			Status:                evergreen.HostRunning,
+			StartedBy:             evergreen.User,
 		}
 		host2 := host.Host{
-			Id:           "h2",
-			Distro:       distro1,
-			Provider:     evergreen.ProviderNameMock,
-			CreationTime: time.Now().Add(-20 * time.Minute),
-			Status:       evergreen.HostRunning,
-			StartedBy:    evergreen.User,
+			Id:                    "h2",
+			Distro:                distro1,
+			Provider:              evergreen.ProviderNameMock,
+			CreationTime:          time.Now().Add(-20 * time.Minute),
+			LastCommunicationTime: time.Now(),
+			Status:                evergreen.HostRunning,
+			StartedBy:             evergreen.User,
 		}
 		host3 := host.Host{
 			Id: "h3",
@@ -528,10 +685,11 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 				Id:       "distroZ",
 				Provider: evergreen.ProviderNameMock,
 			},
-			Provider:     evergreen.ProviderNameMock,
-			CreationTime: time.Now().Add(-30 * time.Minute),
-			Status:       evergreen.HostRunning,
-			StartedBy:    evergreen.User,
+			Provider:              evergreen.ProviderNameMock,
+			CreationTime:          time.Now().Add(-30 * time.Minute),
+			LastCommunicationTime: time.Now(),
+			Status:                evergreen.HostRunning,
+			StartedBy:             evergreen.User,
 		}
 		host4 := host.Host{
 			Id: "h4",
@@ -539,10 +697,11 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 				Id:       "distroA",
 				Provider: evergreen.ProviderNameMock,
 			},
-			Provider:     evergreen.ProviderNameMock,
-			CreationTime: time.Now().Add(-30 * time.Minute),
-			Status:       evergreen.HostRunning,
-			StartedBy:    evergreen.User,
+			Provider:              evergreen.ProviderNameMock,
+			CreationTime:          time.Now().Add(-30 * time.Minute),
+			LastCommunicationTime: time.Now(),
+			Status:                evergreen.HostRunning,
+			StartedBy:             evergreen.User,
 		}
 		host5 := host.Host{
 			Id: "h5",
@@ -550,10 +709,11 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 				Id:       "distroC",
 				Provider: evergreen.ProviderNameMock,
 			},
-			Provider:     evergreen.ProviderNameMock,
-			CreationTime: time.Now().Add(-20 * time.Minute),
-			Status:       evergreen.HostRunning,
-			StartedBy:    evergreen.User,
+			Provider:              evergreen.ProviderNameMock,
+			CreationTime:          time.Now().Add(-20 * time.Minute),
+			LastCommunicationTime: time.Now(),
+			Status:                evergreen.HostRunning,
+			StartedBy:             evergreen.User,
 		}
 		require.NoError(t, host1.Insert(tctx))
 		require.NoError(t, host2.Insert(tctx))
@@ -599,20 +759,22 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 		require.NoError(t, distro1.Insert(tctx))
 
 		host1 := host.Host{
-			Id:           "h1",
-			Distro:       distro1,
-			Provider:     evergreen.ProviderNameMock,
-			CreationTime: time.Now().Add(-30 * time.Minute),
-			Status:       evergreen.HostRunning,
-			StartedBy:    evergreen.User,
+			Id:                    "h1",
+			Distro:                distro1,
+			Provider:              evergreen.ProviderNameMock,
+			CreationTime:          time.Now().Add(-30 * time.Minute),
+			LastCommunicationTime: time.Now(),
+			Status:                evergreen.HostRunning,
+			StartedBy:             evergreen.User,
 		}
 		host2 := host.Host{
-			Id:           "h2",
-			Distro:       distro1,
-			Provider:     evergreen.ProviderNameMock,
-			CreationTime: time.Now().Add(-20 * time.Minute),
-			Status:       evergreen.HostRunning,
-			StartedBy:    evergreen.User,
+			Id:                    "h2",
+			Distro:                distro1,
+			Provider:              evergreen.ProviderNameMock,
+			CreationTime:          time.Now().Add(-20 * time.Minute),
+			LastCommunicationTime: time.Now(),
+			Status:                evergreen.HostRunning,
+			StartedBy:             evergreen.User,
 		}
 		require.NoError(t, host1.Insert(tctx))
 		require.NoError(t, host2.Insert(tctx))
@@ -637,29 +799,32 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 		require.NoError(t, distro1.Insert(tctx))
 
 		host1 := host.Host{
-			Id:           "h1",
-			Distro:       distro1,
-			Provider:     evergreen.ProviderNameMock,
-			CreationTime: time.Now().Add(-30 * time.Minute),
-			Status:       evergreen.HostRunning,
-			StartedBy:    evergreen.User,
+			Id:                    "h1",
+			Distro:                distro1,
+			Provider:              evergreen.ProviderNameMock,
+			CreationTime:          time.Now().Add(-30 * time.Minute),
+			LastCommunicationTime: time.Now(),
+			Status:                evergreen.HostRunning,
+			StartedBy:             evergreen.User,
 		}
 		host2 := host.Host{
-			Id:           "h2",
-			Distro:       distro1,
-			Provider:     evergreen.ProviderNameMock,
-			CreationTime: time.Now().Add(-20 * time.Minute),
-			Status:       evergreen.HostRunning,
-			StartedBy:    evergreen.User,
+			Id:                    "h2",
+			Distro:                distro1,
+			Provider:              evergreen.ProviderNameMock,
+			CreationTime:          time.Now().Add(-20 * time.Minute),
+			LastCommunicationTime: time.Now(),
+			Status:                evergreen.HostRunning,
+			StartedBy:             evergreen.User,
 		}
 		host3 := host.Host{
-			Id:           "h3",
-			Distro:       distro1,
-			Provider:     evergreen.ProviderNameMock,
-			CreationTime: time.Now().Add(-10 * time.Minute),
-			Status:       evergreen.HostRunning,
-			StartedBy:    evergreen.User,
-			RunningTask:  "t1",
+			Id:                    "h3",
+			Distro:                distro1,
+			Provider:              evergreen.ProviderNameMock,
+			CreationTime:          time.Now().Add(-10 * time.Minute),
+			LastCommunicationTime: time.Now(),
+			Status:                evergreen.HostRunning,
+			StartedBy:             evergreen.User,
+			RunningTask:           "t1",
 		}
 		require.NoError(t, host1.Insert(tctx))
 		require.NoError(t, host2.Insert(tctx))
@@ -688,25 +853,35 @@ func TestTearingDownIsNotConsideredIdle(t *testing.T) {
 	defer testFlaggingIdleHostsTeardownTest(t)
 
 	distro1 := distro.Distro{
-		Id:                    "distro1",
-		Provider:              evergreen.ProviderNameMock,
-		HostAllocatorSettings: distro.HostAllocatorSettings{},
+		Id:       "distro1",
+		Provider: evergreen.ProviderNameMock,
+		HostAllocatorSettings: distro.HostAllocatorSettings{
+			// TODO (DEVPROD-7795): this test doesn't pass currently unless you
+			// set the acceptable host idle time to be non-zero. However, it
+			// should pass even if it's acceptable idle time is 0 since the host
+			// should be considered non-idle while running the teardown group.
+			// Once DEVPROD-7795 is fixed, this distro setting can/should be
+			// removed and the test should pass.
+			AcceptableHostIdleTime: time.Minute,
+		},
 	}
 	require.NoError(t, distro1.Insert(tctx))
 
 	host1 := host.Host{
-		Id:           "h1",
-		Distro:       distro1,
-		Provider:     evergreen.ProviderNameMock,
-		CreationTime: time.Now().Add(-30 * time.Minute),
-		Status:       evergreen.HostRunning,
-		StartedBy:    evergreen.User,
+		Id:                    "h1",
+		Distro:                distro1,
+		Provider:              evergreen.ProviderNameMock,
+		CreationTime:          time.Now().Add(-30 * time.Minute),
+		LastCommunicationTime: time.Now(),
+		Status:                evergreen.HostRunning,
+		StartedBy:             evergreen.User,
 	}
 	host2 := host.Host{
 		Id:                         "h2",
 		Distro:                     distro1,
 		Provider:                   evergreen.ProviderNameMock,
 		CreationTime:               time.Now().Add(-30 * time.Minute),
+		LastCommunicationTime:      time.Now(),
 		Status:                     evergreen.HostRunning,
 		StartedBy:                  evergreen.User,
 		TaskGroupTeardownStartTime: time.Now(),
@@ -757,60 +932,66 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	assert.NoError(distro2.Insert(ctx))
 
 	host1 := &host.Host{
-		Id:            "host1",
-		Distro:        distro1,
-		Status:        evergreen.HostRunning,
-		StartedBy:     evergreen.User,
-		Provider:      evergreen.ProviderNameMock,
-		HasContainers: false,
-		CreationTime:  time.Now().Add(-20 * time.Minute),
+		Id:                    "host1",
+		Distro:                distro1,
+		Status:                evergreen.HostRunning,
+		StartedBy:             evergreen.User,
+		Provider:              evergreen.ProviderNameMock,
+		HasContainers:         false,
+		CreationTime:          time.Now().Add(-20 * time.Minute),
+		LastCommunicationTime: time.Now(),
 	}
 	host2 := &host.Host{
-		Id:            "host2",
-		Distro:        distro1,
-		Status:        evergreen.HostRunning,
-		StartedBy:     evergreen.User,
-		Provider:      evergreen.ProviderNameMock,
-		HasContainers: false,
-		CreationTime:  time.Now().Add(-10 * time.Minute),
+		Id:                    "host2",
+		Distro:                distro1,
+		Status:                evergreen.HostRunning,
+		StartedBy:             evergreen.User,
+		Provider:              evergreen.ProviderNameMock,
+		HasContainers:         false,
+		CreationTime:          time.Now().Add(-10 * time.Minute),
+		LastCommunicationTime: time.Now(),
 	}
 	host3 := &host.Host{
-		Id:            "host3",
-		Distro:        distro2,
-		Status:        evergreen.HostRunning,
-		StartedBy:     evergreen.User,
-		Provider:      evergreen.ProviderNameMock,
-		HasContainers: false,
-		CreationTime:  time.Now().Add(-30 * time.Minute),
+		Id:                    "host3",
+		Distro:                distro2,
+		Status:                evergreen.HostRunning,
+		StartedBy:             evergreen.User,
+		Provider:              evergreen.ProviderNameMock,
+		HasContainers:         false,
+		CreationTime:          time.Now().Add(-30 * time.Minute),
+		LastCommunicationTime: time.Now(),
 	}
 	host4 := &host.Host{
 		Id: "host4",
 
-		Distro:        distro1,
-		Status:        evergreen.HostRunning,
-		StartedBy:     evergreen.User,
-		Provider:      evergreen.ProviderNameMock,
-		HasContainers: false,
-		CreationTime:  time.Now().Add(-40 * time.Minute),
+		Distro:                distro1,
+		Status:                evergreen.HostRunning,
+		StartedBy:             evergreen.User,
+		Provider:              evergreen.ProviderNameMock,
+		HasContainers:         false,
+		CreationTime:          time.Now().Add(-40 * time.Minute),
+		LastCommunicationTime: time.Now(),
 	}
 	host5 := &host.Host{
-		Id:            "host5",
-		Distro:        distro2,
-		Status:        evergreen.HostRunning,
-		StartedBy:     evergreen.User,
-		Provider:      evergreen.ProviderNameMock,
-		HasContainers: false,
-		CreationTime:  time.Now().Add(-50 * time.Minute),
+		Id:                    "host5",
+		Distro:                distro2,
+		Status:                evergreen.HostRunning,
+		StartedBy:             evergreen.User,
+		Provider:              evergreen.ProviderNameMock,
+		HasContainers:         false,
+		CreationTime:          time.Now().Add(-50 * time.Minute),
+		LastCommunicationTime: time.Now(),
 	}
 	host6 := &host.Host{
-		Id:            "host6",
-		Distro:        distro1,
-		RunningTask:   "t1",
-		Status:        evergreen.HostRunning,
-		StartedBy:     evergreen.User,
-		Provider:      evergreen.ProviderNameMock,
-		HasContainers: false,
-		CreationTime:  time.Now().Add(-60 * time.Minute),
+		Id:                    "host6",
+		Distro:                distro1,
+		RunningTask:           "t1",
+		Status:                evergreen.HostRunning,
+		StartedBy:             evergreen.User,
+		Provider:              evergreen.ProviderNameMock,
+		HasContainers:         false,
+		CreationTime:          time.Now().Add(-60 * time.Minute),
+		LastCommunicationTime: time.Now(),
 	}
 	assert.NoError(host1.Insert(ctx))
 	assert.NoError(host2.Insert(ctx))
