@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -115,41 +114,51 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 }
 
 func (j *hostDrawdownJob) checkAndTerminateHost(ctx context.Context, h *host.Host, drawdownTarget *int) error {
-
 	exitEarly, err := checkTerminationExemptions(ctx, h, j.env, j.Type().Name, j.ID())
 	if exitEarly || err != nil {
 		return err
 	}
 
 	// don't drawdown hosts that are currently in the middle of tearing down a task group
+	// kim: TODO: file ticket for idle host termination while running teardown
+	// group.
 	if h.IsTearingDown() && h.TeardownTimeExceededMax() {
 		return nil
 	}
 
 	// don't drawdown hosts that are running task groups
-	if h.RunningTaskGroup != "" {
-		t, err := task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
-		if err != nil {
-			return errors.Wrapf(err, "finding task '%s' execution '%d' running on host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
-		}
-		if t == nil {
-			return errors.Errorf("task '%s' running on host '%s' execution '%d' not found", h.RunningTask, h.Id, h.RunningTaskExecution)
-		}
-		if t.IsPartOfSingleHostTaskGroup() {
-			return nil
-		}
-	} else if h.LastGroup != "" && h.RunningTask == "" { // if we're currently running a task not in a group, then we already know the group is finished running.
-		t, err := task.FindOneId(h.LastTask)
-		if err != nil {
-			return errors.Wrapf(err, "finding last run task '%s' on host '%s'", h.LastTask, h.Id)
-		}
-		if t == nil {
-			return errors.Errorf("last run task '%s' on host '%s' not found", h.LastTask, h.Id)
-		}
-		if t.IsPartOfSingleHostTaskGroup() && t.Status == evergreen.TaskSucceeded {
-			return nil
-		}
+	// kim: TODO: test that this is equ ivalent
+	isRunningSingleHostTaskGroup, err := hasSingleHostTaskGroupLock(h)
+	if err != nil {
+		return errors.Wrap(err, "checking if host is running single host task group")
 	}
+	if isRunningSingleHostTaskGroup {
+		return nil
+	}
+	// kim: TODO: remove
+	// if h.RunningTaskGroup != "" {
+	//     t, err := task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
+	//     if err != nil {
+	//         return errors.Wrapf(err, "finding task '%s' execution '%d' running on host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
+	//     }
+	//     if t == nil {
+	//         return errors.Errorf("task '%s' running on host '%s' execution '%d' not found", h.RunningTask, h.Id, h.RunningTaskExecution)
+	//     }
+	//     if t.IsPartOfSingleHostTaskGroup() {
+	//         return nil
+	//     }
+	// } else if h.LastGroup != "" && h.RunningTask == "" { // if we're currently running a task not in a group, then we already know the group is finished running.
+	//     t, err := task.FindOneId(h.LastTask)
+	//     if err != nil {
+	//         return errors.Wrapf(err, "finding last run task '%s' on host '%s'", h.LastTask, h.Id)
+	//     }
+	//     if t == nil {
+	//         return errors.Errorf("last run task '%s' on host '%s' not found", h.LastTask, h.Id)
+	//     }
+	//     if t.IsPartOfSingleHostTaskGroup() && t.Status == evergreen.TaskSucceeded {
+	//         return nil
+	//     }
+	// }
 
 	idleTime := h.IdleTime()
 

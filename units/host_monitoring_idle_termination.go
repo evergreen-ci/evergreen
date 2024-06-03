@@ -192,28 +192,22 @@ func (j *idleHostJob) getIdleInfo(h *host.Host, d *distro.Distro, schedulerConfi
 	if idleThreshold == 0 {
 		idleThreshold = time.Duration(schedulerConfig.AcceptableHostIdleTimeSeconds) * time.Second
 	}
-	if h.RunningTaskGroup != "" {
-		idleThreshold = idleThreshold * 2
-	}
 
 	// Allow additional idle time for single host task groups in case it is
 	// slightly slow getting to the next task in the task group. Disrupting a
 	// single host task group breaks continuity and the requires restarting the
 	// entire task group from the start.
 	var isRunningSingleHostTaskGroup bool
-	if h.RunningTask != "" {
-		runningTask, err := task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
-		if err != nil {
-			return hostIdleInfo{}, errors.Wrapf(err, "finding host's running task '%s'", h.RunningTask)
-		}
-		if runningTask == nil {
-			return hostIdleInfo{}, errors.Errorf("host's running task '%s' not found", h.RunningTask)
-		}
-		isRunningSingleHostTaskGroup = runningTask.IsPartOfSingleHostTaskGroup()
-		if isRunningSingleHostTaskGroup {
-			const singleHostTaskGroupExtraIdleTime = 5 * time.Minute
-			idleThreshold = idleThreshold + singleHostTaskGroupExtraIdleTime
-		}
+	const singleHostTaskGroupIdleTime = 5 * time.Minute
+	isRunningSingleHostTaskGroup, err := hasSingleHostTaskGroupLock(h)
+	if err != nil {
+		return hostIdleInfo{}, errors.Wrap(err, "checking if host is running single host task group")
+	}
+
+	if isRunningSingleHostTaskGroup {
+		idleThreshold = singleHostTaskGroupIdleTime
+	} else if h.RunningTaskGroup != "" {
+		idleThreshold = idleThreshold * 2
 	}
 
 	return hostIdleInfo{
@@ -223,6 +217,32 @@ func (j *idleHostJob) getIdleInfo(h *host.Host, d *distro.Distro, schedulerConfi
 		isRunningSingleHostTaskGroup: isRunningSingleHostTaskGroup,
 		hasOutdatedAMI:               hostHasOutdatedAMI(*h, *d),
 	}, nil
+}
+
+func hasSingleHostTaskGroupLock(h *host.Host) (bool, error) {
+	if h.RunningTaskGroup != "" && h.RunningTask != "" {
+		runningTask, err := task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
+		if err != nil {
+			return false, errors.Wrapf(err, "finding host's running task '%s' execution %d", h.RunningTask, h.RunningTaskExecution)
+		}
+		if runningTask == nil {
+			return false, errors.Errorf("host's running task '%s' execution %d not found", h.RunningTask, h.RunningTaskExecution)
+		}
+		return runningTask.IsPartOfSingleHostTaskGroup(), nil
+	}
+
+	if h.LastGroup != "" && h.RunningTask == "" {
+		prevTask, err := task.FindOneId(h.LastTask)
+		if err != nil {
+			return false, errors.Wrapf(err, "finding host's last task group task '%s'", h.LastTask)
+		}
+		if prevTask == nil {
+			return false, errors.Errorf("host's last task group task '%s' not found", h.LastTask)
+		}
+		return prevTask.IsPartOfSingleHostTaskGroup() && prevTask.Status == evergreen.TaskSucceeded, nil
+	}
+
+	return false, nil
 }
 
 // getTerminationReason determines the reason why a host should be termianted.

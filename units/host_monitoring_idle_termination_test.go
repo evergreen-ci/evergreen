@@ -192,6 +192,57 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		require.Equal(t, 1, num)
 		assert.Equal(t, hosts[0], "h1")
 	})
+	t.Run("HostsRunningTaskShouldBeFlaggedIfTheyHaveBeenIdleLongerThanIdleThreshold", func(t *testing.T) {
+		tctx := testutil.TestSpan(ctx, t)
+		testFlaggingIdleHostsSetupTest(t)
+		defer testFlaggingIdleHostsTeardownTest(t)
+
+		distro1 := distro.Distro{
+			Id:       "distro1",
+			Provider: evergreen.ProviderNameMock,
+			HostAllocatorSettings: distro.HostAllocatorSettings{
+				AcceptableHostIdleTime: 4 * time.Minute,
+			},
+		}
+		require.NoError(t, distro1.Insert(tctx))
+
+		host1 := host.Host{
+			Id:                    "h1",
+			Distro:                distro1,
+			Provider:              evergreen.ProviderNameMock,
+			LastTask:              "t1",
+			LastTaskCompletedTime: time.Now().Add(-time.Minute * 20),
+			LastCommunicationTime: time.Now(),
+			Status:                evergreen.HostRunning,
+			StartedBy:             evergreen.User,
+			Provisioned:           true,
+		}
+		host2 := host.Host{
+			Id:                    "h2",
+			Distro:                distro1,
+			Provider:              evergreen.ProviderNameMock,
+			LastTask:              "t2",
+			LastTaskCompletedTime: time.Now().Add(-time.Minute * 2),
+			LastCommunicationTime: time.Now(),
+			Status:                evergreen.HostRunning,
+			StartedBy:             evergreen.User,
+			Provisioned:           true,
+		}
+		require.NoError(t, host1.Insert(tctx))
+		require.NoError(t, host2.Insert(tctx))
+		tsk1 := task.Task{
+			Id: "t1",
+		}
+		tsk2 := task.Task{
+			Id: "t2",
+		}
+		require.NoError(t, tsk1.Insert())
+		require.NoError(t, tsk2.Insert())
+
+		num, hosts := numIdleHostsFound(tctx, env, t)
+		require.Equal(t, 1, num)
+		assert.Equal(t, hosts[0], "h1")
+	})
 
 	t.Run("LegacyHostsThatNeedNewAgentsShouldNotBeMarkedIdle", func(t *testing.T) {
 		tctx := testutil.TestSpan(ctx, t)
