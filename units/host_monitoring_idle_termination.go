@@ -201,8 +201,8 @@ func (j *idleHostJob) getIdleInfo(h *host.Host, d *distro.Distro, schedulerConfi
 	// single host task group breaks continuity and the requires restarting the
 	// entire task group from the start.
 	var isRunningSingleHostTaskGroup bool
-	if h.RunningTask == "" {
-		runningTask, err := task.FindByIdExecution(h.RunningTask, &h.RunningTaskExecution)
+	if h.RunningTask != "" {
+		runningTask, err := task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
 		if err != nil {
 			return hostIdleInfo{}, errors.Wrapf(err, "finding host's running task '%s'", h.RunningTask)
 		}

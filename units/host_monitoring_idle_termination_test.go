@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/amboy"
@@ -28,7 +29,7 @@ func numIdleHostsFound(ctx context.Context, env evergreen.Environment, t *testin
 	require.NoError(t, err)
 	require.NoError(t, queue.PutMany(ctx, jobs))
 
-	amboy.WaitInterval(ctx, queue, 50*time.Millisecond)
+	require.True(t, amboy.WaitInterval(ctx, queue, 50*time.Millisecond))
 	out := []string{}
 	num := 0
 	for j := range queue.Results(ctx) {
@@ -46,7 +47,7 @@ func numIdleHostsFound(ctx context.Context, env evergreen.Environment, t *testin
 // testFlaggingIdleHostsSetupTest resets the relevant db collections prior to a
 // test.
 func testFlaggingIdleHostsSetupTest(t *testing.T) {
-	require.NoError(t, db.DropCollections(host.Collection, distro.Collection), "dropping collections")
+	require.NoError(t, db.DropCollections(host.Collection, distro.Collection, task.Collection), "dropping collections")
 	require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey), "adding running_task_1 index")
 	require.NoError(t, modelUtil.AddTestIndexes(host.Collection, false, false, host.StartedByKey, host.StatusKey), "adding started_by_1_status_1 index")
 }
@@ -54,7 +55,7 @@ func testFlaggingIdleHostsSetupTest(t *testing.T) {
 // testFlaggingIdleHostsTeardownTest resets the relevant DB collections after a
 // test.
 func testFlaggingIdleHostsTeardownTest(t *testing.T) {
-	assert.NoError(t, db.DropCollections(host.Collection, distro.Collection), "dropping collections")
+	assert.NoError(t, db.DropCollections(host.Collection, distro.Collection, task.Collection), "dropping collections")
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -94,6 +95,10 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			StartedBy:    evergreen.User,
 		}
 		require.NoError(t, host1.Insert(tctx))
+		tsk := task.Task{
+			Id: "t1",
+		}
+		require.NoError(t, tsk.Insert())
 
 		// finding idle hosts should not return the host
 		num, hosts := numIdleHostsFound(tctx, env, t)
@@ -125,6 +130,10 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			LastCommunicationTime: time.Now().Add(-30 * time.Minute),
 			StartedBy:             evergreen.User,
 		}
+		tsk := task.Task{
+			Id: "t3",
+		}
+		require.NoError(t, tsk.Insert())
 		require.NoError(t, host1.Insert(tctx))
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
@@ -170,9 +179,17 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		}
 		require.NoError(t, host1.Insert(tctx))
 		require.NoError(t, host2.Insert(tctx))
+		tsk1 := task.Task{
+			Id: "t1",
+		}
+		tsk2 := task.Task{
+			Id: "t2",
+		}
+		require.NoError(t, tsk1.Insert())
+		require.NoError(t, tsk2.Insert())
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
-		assert.Equal(t, 1, num)
+		require.Equal(t, 1, num)
 		assert.Equal(t, hosts[0], "h1")
 	})
 
@@ -278,7 +295,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 		// finding idle hosts should not return the host
 		num, hosts := numIdleHostsFound(tctx, env, t)
-		assert.Equal(t, 1, num)
+		require.Equal(t, 1, num)
 		assert.Equal(t, hosts[0], "host1")
 	})
 }
@@ -475,10 +492,14 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 		require.NoError(t, host1.Insert(tctx))
 		require.NoError(t, host2.Insert(tctx))
 		require.NoError(t, host3.Insert(tctx))
+		tsk := task.Task{
+			Id: "t1",
+		}
+		require.NoError(t, tsk.Insert())
 
 		// Only the oldest host not running a task should be flagged as idle.
 		num, hosts := numIdleHostsFound(tctx, env, t)
-		assert.Equal(t, 1, num)
+		require.Equal(t, 1, num)
 		assert.Equal(t, "h1", hosts[0])
 	})
 }
@@ -524,7 +545,7 @@ func TestTearingDownIsNotConsideredIdle(t *testing.T) {
 
 	// The host tearing down should not be flagged as idle.
 	num, hosts := numIdleHostsFound(tctx, env, t)
-	assert.Equal(t, 1, num)
+	require.Equal(t, 1, num)
 	assert.Equal(t, "h1", hosts[0])
 
 }
@@ -534,9 +555,9 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	ctx = testutil.TestSpan(ctx, t)
 
 	assert := assert.New(t)
-	assert.NoError(db.DropCollections(host.Collection, distro.Collection))
+	assert.NoError(db.DropCollections(host.Collection, distro.Collection, task.Collection))
 	defer func() {
-		assert.NoError(db.DropCollections(host.Collection, distro.Collection))
+		assert.NoError(db.DropCollections(host.Collection, distro.Collection, task.Collection))
 	}()
 	env := mock.Environment{}
 	assert.NoError(env.Configure(ctx))
@@ -612,7 +633,7 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	host6 := &host.Host{
 		Id:            "host6",
 		Distro:        distro1,
-		RunningTask:   "I'm running a task so I'm certainly not idle!",
+		RunningTask:   "t1",
 		Status:        evergreen.HostRunning,
 		StartedBy:     evergreen.User,
 		Provider:      evergreen.ProviderNameMock,
@@ -625,6 +646,10 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	assert.NoError(host4.Insert(ctx))
 	assert.NoError(host5.Insert(ctx))
 	assert.NoError(host6.Insert(ctx))
+	tsk := task.Task{
+		Id: "t1",
+	}
+	require.NoError(t, tsk.Insert())
 
 	distroHosts, err := host.IdleEphemeralGroupedByDistroID(ctx, &env)
 	assert.NoError(err)
