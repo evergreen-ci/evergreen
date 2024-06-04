@@ -258,9 +258,8 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 		}
 	}
 
-	// add the task that we're actually stepping back so that we know to activate it
-	// If this task is a generator task, and we were originally stepping back a generated task,
-	// we want to add it to the list of tasks to activate once the generator is finished.
+	// If this is a generator task and we originally were stepping back a generated task, activate the generated task
+	// once the generator finishes.
 	if prevTask.GenerateTask && originalStepbackTask != nil {
 		if err = prevTask.SetGeneratedTasksToActivate(originalStepbackTask.BuildVariant, originalStepbackTask.DisplayName); err != nil {
 			return errors.Wrap(err, "setting generated tasks to activate")
