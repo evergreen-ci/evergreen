@@ -303,14 +303,14 @@ Fields:
     to project commit activity. To run something on a regular schedule
     regardless of commit activity, consider using [periodic builds](Project-and-Distro-Settings#periodic-builds)
     instead.
--   `task_group`: a [task
-    group](#task-groups)
+-   `task_group`: a [task group](#task-groups)
     may be defined directly inline or using YAML aliases on a build
     variant task. This is an alternative to referencing a task group
     defined in `task_groups` under the tasks of a given build variant.
 -   `tags`: optional list of tags to group the build variant for alias definitions (explained [here](#task-and-variant-tags))
--   Build variants support [all options that limit when a task will run](#limiting-when-a-task-will-run). If set for the
-    build variant, it will apply to all tasks under the build variant.
+-   Build variants support [all options that limit when a task will run](#limiting-when-a-task-will-run)
+    (`allowed_requesters`, `patch_only`, `patchable`, `disable`, etc.). If set for the
+    build variant, it will apply to all tasks under the build variant. 
 
 Additionally, an item in the `tasks` list can be of the form
 
@@ -626,6 +626,7 @@ tasks:
   allowed_requesters: ["patch", "github_tag"]
 ```
 
+
 The valid requester values are:
 - `patch`: manual patches.
 - `github_pr`: GitHub PR patches.
@@ -649,6 +650,21 @@ project settings configure a [GitHub PR patch
 definition](Project-and-Distro-Settings#github-pull-request-testing) to run
 tasks A and B but task A has `allowed_requesters: ["commit"]`, then GitHub PR
 patches will only run task B.
+
+This can also be set for build variants as a whole:
+```yaml
+buildvariants:
+- name: github_pr_only
+allowed_requesters: ["github_pr"]
+```
+or for particular tasks under a build variant:
+```yaml
+buildvariants:
+  - name: anything
+    tasks: 
+      - name: only_commit_queue
+        allowed_requesters: ["github_pr"]
+```
 
 ### Expansions
 
