@@ -4160,7 +4160,7 @@ func TestStepback(t *testing.T) {
 	assert.True(dbTask.Activated)
 }
 
-func TestStepbackWithGeneratorsTwo(t *testing.T) {
+func TestLinearStepbackWithGenerators(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, data map[string]*task.Task){
 		"ExistingUndispatchedGeneratorTask": func(t *testing.T, ctx context.Context, data map[string]*task.Task) {
 			// Generator should be inactive and have no generated tasks to activate.
