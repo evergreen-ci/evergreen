@@ -1,11 +1,11 @@
 package operations
 
 import (
-	"os"
-	"testing"
-
+	"context"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/stretchr/testify/suite"
+	"os"
+	"testing"
 )
 
 type PatchUtilTestSuite struct {
@@ -279,4 +279,31 @@ func (s *PatchUtilTestSuite) TestGetRemoteFromOutput() {
 	repo, err = getRemoteFromOutput(out, "Evergreen-CI", "evergreen")
 	s.Require().NoError(err)
 	s.Equal("upstream", repo)
+}
+
+func (s *PatchUtilTestSuite) TestCountNumTasksToFinalize() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	yml := `
+tasks:
+- name: "t1"
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+`
+	ref := &model.ProjectRef{
+		RemotePath: "test.yml",
+	}
+	content := []byte(yml)
+	err := os.WriteFile(ref.RemotePath, content, 0644)
+	s.Require().NoError(err)
+	defer os.Remove(ref.RemotePath)
+	params := &patchParams{
+		Variants: []string{"all"},
+		Tasks:    []string{"all"},
+	}
+	numTasks, err := countNumTasksToFinalize(ctx, ref, params)
+	s.Require().NoError(err)
+	s.Equal(numTasks, 1)
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -191,6 +192,17 @@ func Patch() cli.Command {
 			if err != nil {
 				return err
 			}
+			if params.Finalize {
+				numTasks, err := countNumTasksToFinalize(ctx, ref, params)
+				if err != nil {
+					return errors.Wrap(err, "counting the number of tasks to be finalized by this patch")
+				}
+				if numTasks > largeNumFinalizedTasksThreshold {
+					if !confirm(fmt.Sprintf("This is a large patch build, expected to schedule %d tasks. Continue?", numTasks), true) {
+						return errors.New("patch aborted")
+					}
+				}
+			}
 			params.Description = params.getDescription()
 
 			hasTasks := len(params.Tasks) > 0 || len(params.RegexTasks) > 0
@@ -270,6 +282,41 @@ func Patch() cli.Command {
 			return nil
 		},
 	}
+}
+
+func countNumTasksToFinalize(ctx context.Context, ref *model.ProjectRef, params *patchParams) (int, error) {
+	var configBytes []byte
+	configBytes, err := os.ReadFile(ref.RemotePath)
+	if err != nil {
+		return 0, errors.Wrap(err, "reading project config")
+	}
+	p := &model.Project{}
+	opts := &model.GetProjectOpts{
+		ReadFileFrom: model.ReadFromLocal,
+	}
+	_, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)
+	if err != nil {
+		return 0, errors.Wrap(err, "loading project")
+	}
+	// This is only used to provide the minumum required fields to
+	// compute the number of tasks to be added, and this is not a
+	// real patch which will be inserted into the DB.
+	patchInfo := &patch.Patch{
+		BuildVariants:        params.Variants,
+		Tasks:                params.Tasks,
+		RegexTasks:           params.RegexTasks,
+		RegexBuildVariants:   params.RegexVariants,
+		PatchedProjectConfig: string(configBytes),
+	}
+	_, _, variantTasks := p.ResolvePatchVTs(patchInfo, evergreen.PatchVersionRequester, params.Alias, true)
+	numTasksToFinalize := 0
+	for _, vt := range variantTasks {
+		numTasksToFinalize += len(vt.Tasks)
+		for _, dt := range vt.DisplayTasks {
+			numTasksToFinalize += len(dt.ExecTasks)
+		}
+	}
+	return numTasksToFinalize, nil
 }
 
 func getParametersFromInput(params []string) ([]patch.Parameter, error) {
