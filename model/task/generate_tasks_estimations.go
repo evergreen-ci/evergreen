@@ -2,6 +2,7 @@ package task
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -16,9 +17,9 @@ const (
 )
 
 type generateTasksEstimationsResults struct {
-	DisplayName        string `bson:"_id"`
-	EstimatedCreated   int    `bson:"est_created"`
-	EstimatedActivated int    `bson:"est_activated"`
+	DisplayName        string  `bson:"_id"`
+	EstimatedCreated   float64 `bson:"est_created"`
+	EstimatedActivated float64 `bson:"est_activated"`
 }
 
 func (t *Task) setGenerateTasksEstimations() error {
@@ -91,8 +92,8 @@ func (t *Task) setGenerateTasksEstimations() error {
 			return errors.New("unexpected number of results from generate tasks estimations aggregation")
 		}
 	} else {
-		t.EstimatedNumGeneratedTasks = utility.ToIntPtr(results[0].EstimatedCreated)
-		t.EstimatedNumActivatedGeneratedTasks = utility.ToIntPtr(results[0].EstimatedActivated)
+		t.EstimatedNumGeneratedTasks = utility.ToIntPtr(int(math.Round(results[0].EstimatedCreated)))
+		t.EstimatedNumActivatedGeneratedTasks = utility.ToIntPtr(int(math.Round(results[0].EstimatedActivated)))
 	}
 
 	if err = t.cacheGenerateTasksEstimations(); err != nil {

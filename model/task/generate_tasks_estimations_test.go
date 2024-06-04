@@ -25,7 +25,7 @@ func TestGenerateTasksEstimations(t *testing.T) {
 		Status:                     evergreen.TaskFailed,
 		Requester:                  evergreen.RepotrackerVersionRequester,
 		NumGeneratedTasks:          1,
-		NumActivatedGeneratedTasks: 10,
+		NumActivatedGeneratedTasks: 11,
 		StartTime:                  time.Now().Add(-1 * 10 * time.Hour),
 		FinishTime:                 time.Now().Add(-1 * 9 * time.Hour),
 		GeneratedTasks:             true,
