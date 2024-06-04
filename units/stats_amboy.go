@@ -93,14 +93,15 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 		}
 
 		for _, queueGroupName := range j.env.RemoteQueueGroup().Queues(ctx) {
+			queueStatsByQueue := map[string]amboy.QueueStats{}
 			queueGroup, _ := j.env.RemoteQueueGroup().Get(ctx, queueGroupName)
 			if queueGroup != nil && queueGroup.Info().Started {
-				j.logger.Info(message.Fields{
-					"message":     "amboy queue group stats",
-					"queue_group": queueGroupName,
-					"stats":       queueGroup.Stats(ctx),
-				})
+				queueStatsByQueue[queueGroupName] = queueGroup.Stats(ctx)
 			}
+			j.logger.InfoWhen(len(queueStatsByQueue) > 0, message.Fields{
+				"message":        "pending amboy queue group stats",
+				"stats_by_queue": queueStatsByQueue,
+			})
 		}
 	}
 
