@@ -150,7 +150,7 @@ type GitHubDynamicTokenPermissionGroup struct {
 	Permissions github.InstallationPermissions `bson:"permissions,omitempty" json:"permissions,omitempty" yaml:"permissions,omitempty"`
 	// AllPermissions is a flag that indicates that the group has all permissions.
 	// If this is set to true, the Permissions field is ignored.
-	// If this is set to false, the Permissions field is used (and may be all
+	// If this is set to false, the Permissions field is used (and may be
 	// nil, representing no permissions).
 	AllPermissions bool `bson:"no_permissions,omitempty" json:"no_permissions,omitempty" yaml:"no_permissions,omitempty"`
 }
