@@ -146,6 +146,7 @@ variables:
       - func: run-make
         vars: { target: "${task_name}" }
       - command: s3.put
+        # TODO (DEVPROD-3138): remove duplicate upload once app servers are switched to using new bucket.
         params:
           aws_key: ${AWS_ACCESS_KEY_ID}
           aws_secret: ${AWS_SECRET_ACCESS_KEY}
@@ -157,6 +158,21 @@ variables:
           bucket: mciuploads
           permissions: public-read
           preserve_path: true
+      - func: assume-role
+        vars:
+          assume_role_arn: ${client_assume_role_arn}
+      - command: s3.put
+        params:
+          aws_key: ${AWS_ACCESS_KEY_ID}
+          aws_secret: ${AWS_SECRET_ACCESS_KEY}
+          aws_session_token: ${AWS_SESSION_TOKEN}
+          local_files_include_filter_prefix: evergreen/clients
+          local_files_include_filter: "*_*/evergreen*"
+          remote_file: evergreen/clients/${version_id}/
+          content_type: binary/octet-stream
+          bucket: evg-bucket-evergreen
+          permissions: public-read
+          preserve_path: true
 
   - &tar-and-push-static-assets
     commands:
@@ -164,6 +180,7 @@ variables:
       - func: run-make
         vars: { target: "bin/static_assets.tgz" }
       - command: s3.put
+        # TODO (DEVPROD-3138): remove duplicate upload once app servers are switched to using new bucket.
         params:
           aws_key: ${AWS_ACCESS_KEY_ID}
           aws_secret: ${AWS_SECRET_ACCESS_KEY}
@@ -173,6 +190,20 @@ variables:
           content_type: application/gzip
           bucket: mciuploads
           permissions: public-read
+      - func: assume-role
+        vars:
+          assume_role_arn: ${client_assume_role_arn}
+      - command: s3.put
+        params:
+          aws_key: ${AWS_ACCESS_KEY_ID}
+          aws_secret: ${AWS_SECRET_ACCESS_KEY}
+          aws_session_token: ${AWS_SESSION_TOKEN}
+          local_file: evergreen/bin/static_assets.tgz
+          remote_file: evergreen/clients/${version_id}/static_assets.tgz
+          content_type: application/gzip
+          bucket: evg-bucket-evergreen
+          permissions: public-read
+
 #######################################
 #              Functions              #
 #######################################
@@ -200,10 +231,10 @@ functions:
           done
 
   assume-role:
-    - command: ec2.assume_role
-      type: setup
-      params:
-        role_arn: ${assume_role_arn}
+    command: ec2.assume_role
+    type: setup
+    params:
+      role_arn: ${assume_role_arn}
 
   run-make:
     command: subprocess.exec
@@ -256,10 +287,6 @@ functions:
         EVG_VERSION_ID: ${version_id}
 
   setup-credentials:
-    - command: ec2.assume_role
-      type: setup
-      params:
-        role_arn: ${assume_role_arn}
     - command: subprocess.exec
       type: setup
       params:
@@ -347,7 +374,7 @@ functions:
         args: ["scripts/verify-agent-version-update.sh"]
         env:
           BRANCH_NAME: ${branch_name}
-  
+
   verify-swaggo-fmt:
     - command: subprocess.exec
       params:
@@ -356,7 +383,7 @@ functions:
         args: ["scripts/verify-swaggo-fmt.sh"]
         env:
           GOPATH: ${workdir}/gopath
-  
+
   check-go-vulnerabilities:
     - command: subprocess.exec
       params:
@@ -647,7 +674,7 @@ tasks:
       - func: get-project-and-modules
       - func: verify-merge-function-update
   - name: generate-api-docs
-    commands: 
+    commands:
       - func: get-project-and-modules
       - command: subprocess.exec
         params:
