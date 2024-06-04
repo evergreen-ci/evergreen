@@ -285,6 +285,7 @@ functions:
         OTEL_TRACE_ID: ${otel_trace_id}
         OTEL_PARENT_ID: ${otel_parent_id}
         EVG_VERSION_ID: ${version_id}
+        EVG_CLIENT_S3_BUCKET: evg-bucket-evergreen
 
   setup-credentials:
     - command: subprocess.exec
