@@ -210,6 +210,14 @@ func (p *GitHubDynamicTokenPermissionGroup) Intersection(other GitHubDynamicToke
 		intersectionGroup.AllPermissions = true
 		return intersectionGroup, nil
 	}
+	if p.AllPermissions {
+		intersectionGroup.Permissions = other.Permissions
+		return intersectionGroup, nil
+	}
+	if other.AllPermissions {
+		intersectionGroup.Permissions = p.Permissions
+		return intersectionGroup, nil
+	}
 
 	// To keep up to date with GitHub's different permissions,
 	// we use reflection to iterate over the fields of the struct.
@@ -243,17 +251,6 @@ func (p *GitHubDynamicTokenPermissionGroup) Intersection(other GitHubDynamicToke
 		catcher.Add(thirdparty.ValidateGitHubPermission(perm2))
 		if catcher.HasErrors() {
 			return GitHubDynamicTokenPermissionGroup{}, catcher.Resolve()
-		}
-
-		// If the first group is all permissions, set it to the second group to
-		// ensure that the intersection is just the second group.
-		if p.AllPermissions {
-			perm1 = perm2
-		}
-
-		// Same as above
-		if other.AllPermissions {
-			perm2 = perm1
 		}
 
 		mostRestrictivePermission := thirdparty.MostRestrictiveGitHubPermission(perm1, perm2)
