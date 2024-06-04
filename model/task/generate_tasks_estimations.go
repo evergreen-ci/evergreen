@@ -102,47 +102,6 @@ func (t *Task) setGenerateTasksEstimations() error {
 	return nil
 }
 
-// func (t *Task) setGenerateTasksEstimations() error {
-// 	if !t.GenerateTask || (t.EstimatedNumGeneratedTasks != nil && t.EstimatedNumActivatedGeneratedTasks != nil) {
-// 		return nil
-// 	}
-
-// 	query := db.Query(
-// 		ByPreviousCommit(
-// 			t.BuildVariant,
-// 			t.DisplayName,
-// 			t.Project,
-// 			evergreen.RepotrackerVersionRequester,
-// 			t.RevisionOrderNumber,
-// 		),
-// 	).Sort([]string{"-" + RevisionOrderNumberKey}).Limit(numRevisionsToSearch)
-
-// 	tasks := []Task{}
-// 	err := db.FindAllQ(Collection, query, &tasks)
-// 	if err != nil {
-// 		return errors.Wrapf(err, "finding tasks named '%s' in '%s'", t.DisplayName, t.Project)
-// 	}
-// 	if len(tasks) == 0 {
-// 		return nil
-// 	}
-
-// 	generatedTotal := 0
-// 	activatedTotal := 0
-// 	for _, task := range tasks {
-// 		generatedTotal += task.NumGeneratedTasks
-// 		activatedTotal += task.NumActivatedGeneratedTasks
-// 	}
-
-// 	t.EstimatedNumGeneratedTasks = utility.ToIntPtr(generatedTotal / len(tasks))
-// 	t.EstimatedNumActivatedGeneratedTasks = utility.ToIntPtr(activatedTotal / len(tasks))
-
-// 	if err = t.cacheGenerateTasksEstimations(); err != nil {
-// 		return errors.Wrap(err, "caching generate tasks estimations")
-// 	}
-
-// 	return nil
-// }
-
 func (t *Task) cacheGenerateTasksEstimations() error {
 	return UpdateOne(
 		bson.M{
