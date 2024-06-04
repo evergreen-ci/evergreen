@@ -1,6 +1,7 @@
 package task
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -8,11 +9,15 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func TestGenerateTasksEstimations(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(context.Background(), mongo.IndexModel{Keys: DurationIndex})
+	assert.NoError(err)
+
 	bv := "bv"
 	project := "proj"
 	displayName := "display_name"
@@ -69,7 +74,7 @@ func TestGenerateTasksEstimations(t *testing.T) {
 	}
 	assert.NoError(t4.Insert())
 
-	err := t4.setGenerateTasksEstimations()
+	err = t4.setGenerateTasksEstimations()
 	assert.NoError(err)
 	assert.Equal(2, utility.FromIntPtr(t4.EstimatedNumGeneratedTasks))
 	assert.Equal(20, utility.FromIntPtr(t4.EstimatedNumActivatedGeneratedTasks))
