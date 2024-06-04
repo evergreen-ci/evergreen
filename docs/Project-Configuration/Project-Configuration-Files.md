@@ -582,7 +582,7 @@ tasks:
           sleep 1000
 ```
 
-### Limiting When a Task Will Run
+### Limiting When a Task/Variant Will Run
 
 To limit the conditions when a task will run, the following settings can be
 added to a task definition, to a build variant definition, or to a specific task
