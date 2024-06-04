@@ -448,8 +448,17 @@ tasks:
   - <<: *run-smoke-test
     name: test-smoke-internal-endpoint
     tags: ["smoke"]
+    # The endpoint smoke test needs to check that the Evergreen CLI can be downloaded.
+    depends_on:
+      - name: build-linux_amd64
+        variant: build-and-push
   - <<: *run-smoke-test
     name: test-smoke-internal-agentmonitor
+    tags: ["smoke"]
+    # The agent monitor smoke test needs to download the Evergreen CLI for this OS/arch.
+    depends_on:
+      - name: build-linux_amd64
+        variant: build-and-push
   - <<: *run-generate-lint
   - <<: *run-go-test-suite
     name: js-test
@@ -788,10 +797,6 @@ buildvariants:
       - name: test-cloud
       - name: "js-test"
       - name: generate-api-docs
-      - name: "test-smoke-internal-agentmonitor"
-        depends_on:
-          - name: build-linux_amd64
-            variant: build-and-push
 
   - name: race-detector
     display_name: Race Detector
@@ -825,10 +830,6 @@ buildvariants:
       - name: ".test"
       - name: "js-test"
       - name: ".linter !.skip-container"
-      - name: "test-smoke-internal-agentmonitor"
-        depends_on:
-          - name: build-linux_amd64
-            variant: build-and-push
 
   - name: lint
     display_name: Lint

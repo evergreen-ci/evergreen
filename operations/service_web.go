@@ -62,8 +62,9 @@ func startWebService() cli.Command {
 
 			confPath := c.String(confFlagName)
 			versionID := c.String(versionIDFlagName)
+			clientS3Bucket := c.String(clientS3BucketFlagName)
 			db := parseDB(c)
-			env, err := evergreen.NewEnvironment(ctx, confPath, versionID, db, tp)
+			env, err := evergreen.NewEnvironment(ctx, confPath, versionID, clientS3Bucket, db, tp)
 			grip.EmergencyFatal(errors.Wrap(err, "configuring application environment"))
 			evergreen.SetEnvironment(env)
 			if c.Bool(overwriteConfFlagName) {
