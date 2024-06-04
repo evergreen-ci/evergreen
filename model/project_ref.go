@@ -152,7 +152,7 @@ type GitHubDynamicTokenPermissionGroup struct {
 	// If this is set to true, the Permissions field is ignored.
 	// If this is set to false, the Permissions field is used (and may be
 	// nil, representing no permissions).
-	AllPermissions bool `bson:"no_permissions,omitempty" json:"no_permissions,omitempty" yaml:"no_permissions,omitempty"`
+	AllPermissions bool `bson:"all_permissions,omitempty" json:"all_permissions,omitempty" yaml:"all_permissions,omitempty"`
 }
 
 // defaultGitHubTokenPermissionGroup is an empty, all permissions, group.

@@ -551,8 +551,10 @@ type APIGitHubDynamicTokenPermissionGroup struct {
 	Name *string `json:"name"`
 	// Permissions for the GitHub permission group.
 	Permissions map[string]string `json:"permissions"`
-	// AllPermissions is true if the group has all permissions.
-	// The 'Permissions' map must be empty if 'AllPermissions' is true.
+	// AllPermissions is a flag that indicates that the group has all permissions.
+	// If this is set to true, the Permissions field is ignored.
+	// If this is set to false, the Permissions field is used (and may be
+	// nil, representing no permissions).
 	AllPermissions *bool `json:"all_permissions"`
 }
 
