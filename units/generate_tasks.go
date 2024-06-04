@@ -229,9 +229,8 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	shouldNoop := adb.ResultsNotFound(err) || db.IsDuplicateKey(err)
 	if err != nil && len(err.Error()) > maxGenerateTasksErrMsgLength {
 		// If the error is excessively long (e.g. due to lots of validation
-		// errors), truncate it to avoid hitting the 16 MB limit when setting the
-		// error message.
-		// kim: TODO: manually test truncation.
+		// errors), truncate it to avoid hitting the 16 MB limit when saving
+		// the generate.tasks error message back to the DB.
 		err = errors.New(err.Error()[:maxGenerateTasksErrMsgLength] + "(truncated due to excessively long errors)")
 	}
 
@@ -265,9 +264,6 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 
 	if err != nil && !shouldNoop {
 		j.AddError(err)
-		errMsg := err.Error()
-		if len(errMsg) > maxGenerateTasksErrMsgLength {
-		}
 		j.AddError(task.MarkGeneratedTasksErr(j.TaskID, err))
 		return
 	}
