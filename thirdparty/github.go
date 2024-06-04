@@ -1558,7 +1558,7 @@ func userHasWritePermission(ctx context.Context, token, owner, repo, username st
 
 // ValidateGitHubPermission checks if the given permission is a valid GitHub permission.
 func ValidateGitHubPermission(permission string) error {
-	if !utility.StringSliceContains(allGitHubPermissions, permission) {
+	if !utility.StringSliceContains(allGitHubPermissions, permission) && permission != "" {
 		return errors.Errorf("invalid GitHub permission '%s'", permission)
 	}
 	return nil
