@@ -254,6 +254,10 @@ func (p *GitHubDynamicTokenPermissionGroup) Intersection(other GitHubDynamicToke
 		}
 
 		mostRestrictivePermission := thirdparty.MostRestrictiveGitHubPermission(perm1, perm2)
+
+		if mostRestrictivePermission == "" {
+			continue
+		}
 		intersection.Field(i).Set(reflect.ValueOf(&mostRestrictivePermission))
 	}
 
