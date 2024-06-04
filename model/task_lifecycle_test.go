@@ -85,7 +85,6 @@ func TestDisableStaleContainerTasks(t *testing.T) {
 			dbTask, err := task.FindOneId(tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
-
 			checkDisabled(t, dbTask)
 		},
 		"DisablesStaleAllocatedContainerTask": func(t *testing.T, tsk task.Task) {
