@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	dbModel "github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/parsley"
@@ -1435,7 +1434,7 @@ type projectVarsPutInput struct {
 	ToReplace   string `json:"to_replace"`
 	Replacement string `json:"replacement"`
 	DryRun      bool   `json:"dry_run"`
-	RotateFiles bool   `json:"rotate_files"`
+	EnabledOnly bool   `json:"enabled_only"`
 }
 
 type projectVarsPutHandler struct {
@@ -1454,10 +1453,11 @@ func makeProjectVarsPut() gimlet.RouteHandler {
 //	@Tags			projects
 //	@Router			/projects/variables/rotate [put]
 //	@Security		Api-User || Api-Key
-//	@Param			to_replace	query		string				true	"Variable value to search and replace."
-//	@Param			replacement	query		string				true	"Value to replace the variables that match to_replace."
-//	@Param			dry_run		query		bool				false	"If set to true, we don't complete the update"
-//	@Success		200			{object}	map[string][]string	"If dry_run is set, a map of projectId to a list of keys that would be replaced. Otherwise, a map of projectId to a list of keys that were replaced."
+//	@Param			to_replace		query		string				true	"Variable value to search and replace."
+//	@Param			replacement		query		string				true	"Value to replace the variables that match to_replace."
+//	@Param			dry_run			query		bool				false	"If set to true, we don't complete the update"
+//	@Param			enabled_only	query		bool				false	"If set to true, we only return enabled projects"
+//	@Success		200				{object}	map[string][]string	"If dry_run is set, a map of projectId to a list of keys that would be replaced. Otherwise, a map of projectId to a list of keys that were replaced."
 func (h *projectVarsPutHandler) Factory() gimlet.RouteHandler {
 	return &projectVarsPutHandler{}
 }
@@ -1480,15 +1480,10 @@ func (h *projectVarsPutHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 func (h *projectVarsPutHandler) Run(ctx context.Context) gimlet.Responder {
-	res, err := dbModel.UpdateProjectVarsByValue(h.replaceVars.ToReplace, h.replaceVars.Replacement, h.user.Username(), h.replaceVars.DryRun)
+	res, err := dbModel.UpdateProjectVarsByValue(h.replaceVars.ToReplace, h.replaceVars.Replacement,
+		h.user.Username(), h.replaceVars.DryRun, h.replaceVars.EnabledOnly)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "updating projects vars"))
-	}
-	if h.replaceVars.RotateFiles {
-		_, err = artifact.RotateSecrets(h.replaceVars.ToReplace, h.replaceVars.Replacement, h.replaceVars.DryRun)
-		if err != nil {
-			return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "updating artifact files"))
-		}
 	}
 	return gimlet.NewJSONResponse(res)
 }
