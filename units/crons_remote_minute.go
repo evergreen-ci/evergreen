@@ -77,7 +77,6 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 	catcher.Wrap(amboy.EnqueueManyUniqueJobs(ctx, j.env.RemoteQueue(), allJobs), "populating main queue")
 	catcher.Add(enqueueHostSetupJobs(ctx, j.env, j.env.RemoteQueue(), ts))
 
-	// Create dedicated queues for host creation, host termination, event notifier, and commit queue jobs.
 	catcher.Add(populateQueueGroup(ctx, j.env, createHostQueueGroup, hostCreationJobs, ts))
 	catcher.Add(populateQueueGroup(ctx, j.env, commitQueueQueueGroup, commitQueueJobs, ts))
 	catcher.Add(populateQueueGroup(ctx, j.env, eventNotifierQueueGroup, eventNotifierJobs, ts))

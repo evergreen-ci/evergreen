@@ -256,11 +256,6 @@ func hostTerminationJobs(ctx context.Context, env evergreen.Environment, _ time.
 			TerminationReason: "host spawned by task has gone out of scope",
 		}))
 	}
-	grip.Info(message.Fields{
-		"message": "unprocessed termination job count",
-		"pending": len(jobs),
-		"cron":    HostTerminationJobName,
-	})
 	return jobs, catcher.Resolve()
 }
 
