@@ -1556,6 +1556,27 @@ func userHasWritePermission(ctx context.Context, token, owner, repo, username st
 	return utility.StringSliceContains(githubWritePermissions, permissionLevel.GetPermission()), nil
 }
 
+func ValidateGitHubPermission(permission string) error {
+	if !utility.StringSliceContains(AllGitHubPermissions, permission) {
+		return errors.Errorf("invalid GitHub permission '%s'", permission)
+	}
+	return nil
+}
+
+func MostRestrictiveGitHubPermission(perm1, perm2 string) string {
+	// Most restrictive permission is no permissions.
+	if perm1 == "" || perm2 == "" {
+		return ""
+	}
+	// AllGitHubPermissions is ordered from most to least restrictive.
+	for _, perm := range AllGitHubPermissions {
+		if perm1 == perm || perm2 == perm {
+			return perm
+		}
+	}
+	return ""
+}
+
 // GetPullRequestMergeBase returns the merge base hash for the given PR.
 // This function will retry up to 5 times, regardless of error response (unless
 // error is the result of hitting an api limit)

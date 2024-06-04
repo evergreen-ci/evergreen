@@ -235,45 +235,28 @@ func (p *GitHubDynamicTokenPermissionGroup) Intersection(other GitHubDynamicToke
 			continue
 		}
 
-		mostRestrictivePermission := "invalid"
 		perm1 := utility.FromStringPtr(perm1Ptr)
 		perm2 := utility.FromStringPtr(perm2Ptr)
-		foundPerm1 := false
-		foundPerm2 := false
-		// AllGithubPermissions is a slice that goes from
-		// least to most permissive permission.
 
-		for _, perms := range thirdparty.AllGitHubPermissions {
-			if perm1 == perms {
-				if mostRestrictivePermission == "invalid" {
-					mostRestrictivePermission = perms
-				}
-				foundPerm1 = true
-			}
-			if perm2 == perms {
-				if mostRestrictivePermission == "invalid" {
-					mostRestrictivePermission = perms
-				}
-				foundPerm2 = true
-			}
-		}
 		catcher := grip.NewBasicCatcher()
-		catcher.AddWhen(!foundPerm1 && perm1Ptr != nil, errors.Errorf("github permission '%s' not found", perm1))
-		catcher.AddWhen(!foundPerm2 && perm2Ptr != nil, errors.Errorf("github permission '%s' not found", perm2))
-
+		catcher.Add(thirdparty.ValidateGitHubPermission(perm1))
+		catcher.Add(thirdparty.ValidateGitHubPermission(perm2))
 		if catcher.HasErrors() {
 			return GitHubDynamicTokenPermissionGroup{}, catcher.Resolve()
 		}
 
-		// If either are nil and that group is not all permissions,
-		// that counts as the most restrictive permission (no
-		// permission).
-		// We do this after the other validation to report any
-		// invalid permissions the user may have set.
-		if (perm1Ptr == nil && !p.AllPermissions) || (perm2Ptr == nil && !other.AllPermissions) {
-			continue
+		// If the first group is all permissions, set it to the second group to
+		// ensure that the intersection is just the second group.
+		if p.AllPermissions {
+			perm1 = perm2
 		}
 
+		// Same as above
+		if other.AllPermissions {
+			perm2 = perm1
+		}
+
+		mostRestrictivePermission := thirdparty.MostRestrictiveGitHubPermission(perm1, perm2)
 		intersection.Field(i).Set(reflect.ValueOf(&mostRestrictivePermission))
 	}
 
