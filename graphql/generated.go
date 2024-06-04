@@ -1135,6 +1135,9 @@ type ComplexityRoot struct {
 	SleepSchedule struct {
 		DailyStartTime         func(childComplexity int) int
 		DailyStopTime          func(childComplexity int) int
+		IsBetaTester           func(childComplexity int) int
+		NextStartTime          func(childComplexity int) int
+		NextStopTime           func(childComplexity int) int
 		PermanentlyExempt      func(childComplexity int) int
 		ShouldKeepOff          func(childComplexity int) int
 		TemporarilyExemptUntil func(childComplexity int) int
@@ -7287,6 +7290,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SleepSchedule.DailyStopTime(childComplexity), true
+
+	case "SleepSchedule.isBetaTester":
+		if e.complexity.SleepSchedule.IsBetaTester == nil {
+			break
+		}
+
+		return e.complexity.SleepSchedule.IsBetaTester(childComplexity), true
+
+	case "SleepSchedule.nextStartTime":
+		if e.complexity.SleepSchedule.NextStartTime == nil {
+			break
+		}
+
+		return e.complexity.SleepSchedule.NextStartTime(childComplexity), true
+
+	case "SleepSchedule.nextStopTime":
+		if e.complexity.SleepSchedule.NextStopTime == nil {
+			break
+		}
+
+		return e.complexity.SleepSchedule.NextStopTime(childComplexity), true
 
 	case "SleepSchedule.permanentlyExempt":
 		if e.complexity.SleepSchedule.PermanentlyExempt == nil {
@@ -22374,6 +22398,12 @@ func (ec *executionContext) fieldContext_Host_sleepSchedule(ctx context.Context,
 				return ec.fieldContext_SleepSchedule_dailyStartTime(ctx, field)
 			case "dailyStopTime":
 				return ec.fieldContext_SleepSchedule_dailyStopTime(ctx, field)
+			case "isBetaTester":
+				return ec.fieldContext_SleepSchedule_isBetaTester(ctx, field)
+			case "nextStartTime":
+				return ec.fieldContext_SleepSchedule_nextStartTime(ctx, field)
+			case "nextStopTime":
+				return ec.fieldContext_SleepSchedule_nextStopTime(ctx, field)
 			case "permanentlyExempt":
 				return ec.fieldContext_SleepSchedule_permanentlyExempt(ctx, field)
 			case "shouldKeepOff":
@@ -49737,6 +49767,132 @@ func (ec *executionContext) fieldContext_SleepSchedule_dailyStopTime(ctx context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SleepSchedule_isBetaTester(ctx context.Context, field graphql.CollectedField, obj *host.SleepScheduleInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SleepSchedule_isBetaTester(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsBetaTester, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SleepSchedule_isBetaTester(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SleepSchedule",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SleepSchedule_nextStartTime(ctx context.Context, field graphql.CollectedField, obj *host.SleepScheduleInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SleepSchedule_nextStartTime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NextStartTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalOTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SleepSchedule_nextStartTime(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SleepSchedule",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SleepSchedule_nextStopTime(ctx context.Context, field graphql.CollectedField, obj *host.SleepScheduleInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SleepSchedule_nextStopTime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NextStopTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalOTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SleepSchedule_nextStopTime(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SleepSchedule",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -82072,6 +82228,15 @@ func (ec *executionContext) _SleepSchedule(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "isBetaTester":
+			out.Values[i] = ec._SleepSchedule_isBetaTester(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "nextStartTime":
+			out.Values[i] = ec._SleepSchedule_nextStartTime(ctx, field, obj)
+		case "nextStopTime":
+			out.Values[i] = ec._SleepSchedule_nextStopTime(ctx, field, obj)
 		case "permanentlyExempt":
 			out.Values[i] = ec._SleepSchedule_permanentlyExempt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
