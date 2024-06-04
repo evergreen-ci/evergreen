@@ -69,7 +69,7 @@ var githubWritePermissions = []string{
 // AllGithubPermissions is an ascending slice of GitHub
 // permissions where the first element is the lowest
 // permission and the last element is the highest.
-var AllGitHubPermissions = []string{
+var allGitHubPermissions = []string{
 	"read",
 	"write",
 	"admin",
@@ -1557,7 +1557,7 @@ func userHasWritePermission(ctx context.Context, token, owner, repo, username st
 }
 
 func ValidateGitHubPermission(permission string) error {
-	if !utility.StringSliceContains(AllGitHubPermissions, permission) {
+	if !utility.StringSliceContains(allGitHubPermissions, permission) {
 		return errors.Errorf("invalid GitHub permission '%s'", permission)
 	}
 	return nil
@@ -1569,7 +1569,7 @@ func MostRestrictiveGitHubPermission(perm1, perm2 string) string {
 		return ""
 	}
 	// AllGitHubPermissions is ordered from most to least restrictive.
-	for _, perm := range AllGitHubPermissions {
+	for _, perm := range allGitHubPermissions {
 		if perm1 == perm || perm2 == perm {
 			return perm
 		}
