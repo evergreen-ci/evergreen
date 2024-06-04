@@ -1556,6 +1556,7 @@ func userHasWritePermission(ctx context.Context, token, owner, repo, username st
 	return utility.StringSliceContains(githubWritePermissions, permissionLevel.GetPermission()), nil
 }
 
+// ValidateGitHubPermission checks if the given permission is a valid GitHub permission.
 func ValidateGitHubPermission(permission string) error {
 	if !utility.StringSliceContains(allGitHubPermissions, permission) {
 		return errors.Errorf("invalid GitHub permission '%s'", permission)
@@ -1563,6 +1564,9 @@ func ValidateGitHubPermission(permission string) error {
 	return nil
 }
 
+// MostRestrictiveGitHubPermission returns the permission from the two given permissions that is the most restrictive.
+// This function assumes that the given permissions are valid GitHub permissions or empty strings (which is no
+// permissions).
 func MostRestrictiveGitHubPermission(perm1, perm2 string) string {
 	// Most restrictive permission is no permissions.
 	if perm1 == "" || perm2 == "" {
