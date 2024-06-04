@@ -2,6 +2,7 @@ package task
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -21,10 +22,13 @@ func TestGenerateTasksEstimations(t *testing.T) {
 		DisplayName:                displayName,
 		BuildVariant:               bv,
 		Project:                    project,
+		Status:                     evergreen.TaskFailed,
 		Requester:                  evergreen.RepotrackerVersionRequester,
 		NumGeneratedTasks:          1,
 		NumActivatedGeneratedTasks: 10,
-		RevisionOrderNumber:        1,
+		StartTime:                  time.Now().Add(-1 * 10 * time.Hour),
+		FinishTime:                 time.Now().Add(-1 * 9 * time.Hour),
+		GeneratedTasks:             true,
 	}
 	assert.NoError(t1.Insert())
 	t2 := Task{
@@ -32,10 +36,13 @@ func TestGenerateTasksEstimations(t *testing.T) {
 		DisplayName:                displayName,
 		BuildVariant:               bv,
 		Project:                    project,
-		Requester:                  evergreen.RepotrackerVersionRequester,
+		Status:                     evergreen.TaskSucceeded,
+		Requester:                  evergreen.GithubPRRequester,
 		NumGeneratedTasks:          2,
 		NumActivatedGeneratedTasks: 20,
-		RevisionOrderNumber:        2,
+		StartTime:                  time.Now().Add(-1 * 20 * time.Hour),
+		FinishTime:                 time.Now().Add(-1 * 19 * time.Hour),
+		GeneratedTasks:             true,
 	}
 	assert.NoError(t2.Insert())
 	t3 := Task{
@@ -43,17 +50,19 @@ func TestGenerateTasksEstimations(t *testing.T) {
 		DisplayName:                displayName,
 		BuildVariant:               bv,
 		Project:                    project,
-		Requester:                  evergreen.RepotrackerVersionRequester,
+		Status:                     evergreen.TaskFailed,
+		Requester:                  evergreen.PatchVersionRequester,
 		NumGeneratedTasks:          3,
 		NumActivatedGeneratedTasks: 30,
-		RevisionOrderNumber:        3,
+		StartTime:                  time.Now().Add(-1 * 30 * time.Hour),
+		FinishTime:                 time.Now().Add(-1 * 29 * time.Hour),
+		GeneratedTasks:             true,
 	}
 	assert.NoError(t3.Insert())
 	t4 := Task{
 		GenerateTask:        true,
 		Id:                  "t4",
 		DisplayName:         displayName,
-		Requester:           evergreen.RepotrackerVersionRequester,
 		BuildVariant:        bv,
 		Project:             project,
 		RevisionOrderNumber: 4,
@@ -64,4 +73,17 @@ func TestGenerateTasksEstimations(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(2, utility.FromIntPtr(t4.EstimatedNumGeneratedTasks))
 	assert.Equal(20, utility.FromIntPtr(t4.EstimatedNumActivatedGeneratedTasks))
+
+	t5 := Task{
+		Id:           "t5",
+		DisplayName:  "new task with no history",
+		BuildVariant: bv,
+		Project:      project,
+	}
+	assert.NoError(t5.Insert())
+
+	err = t5.setGenerateTasksEstimations()
+	assert.NoError(err)
+	assert.Equal(0, utility.FromIntPtr(t5.EstimatedNumGeneratedTasks))
+	assert.Equal(0, utility.FromIntPtr(t5.EstimatedNumActivatedGeneratedTasks))
 }
