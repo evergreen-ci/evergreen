@@ -17,6 +17,7 @@ input VolumeHost {
 input SleepScheduleInput {
   dailyStartTime: String!
   dailyStopTime: String!
+  isBetaTester: Boolean
   permanentlyExempt: Boolean!
   shouldKeepOff: Boolean!
   timeZone: String!
