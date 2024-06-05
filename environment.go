@@ -736,7 +736,7 @@ func (e *envState) initClientConfig(ctx context.Context, versionID, clientS3Buck
 
 	e.clientConfig = &ClientConfig{LatestRevision: ClientVersion}
 
-	if versionID != "" {
+	if versionID != "" && clientS3Bucket != "" {
 		prefix := fmt.Sprintf("%s/%s", s3ClientsPrefix, versionID)
 		e.clientConfig.S3URLPrefix = fmt.Sprintf("https://%s.s3.amazonaws.com/%s",
 			clientS3Bucket,

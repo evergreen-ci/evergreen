@@ -3,6 +3,7 @@ package evergreen
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/evergreen-ci/utility"
@@ -51,14 +52,19 @@ func (c *ClientConfig) populateClientBinaries(ctx context.Context, s3URLPrefix s
 			DisplayName: displayName,
 		}
 
-		// Check that the client exists and is accessible.
-		resp, err := client.Head(clientBinary.URL)
 		checkFailedMsg := message.Fields{
 			"message": "could not check for existence of Evergreen client binary for this OS/arch, skipping it and continuing app startup",
 			"os":      clientBinary.OS,
 			"arch":    clientBinary.Arch,
 			"url":     clientBinary.URL,
 		}
+		// Check that the client exists and is accessible.
+		req, err := http.NewRequestWithContext(ctx, http.MethodHead, clientBinary.URL, nil)
+		if err != nil {
+			grip.Notice(message.WrapError(err, checkFailedMsg))
+			continue
+		}
+		resp, err := client.Do(req)
 		if err != nil {
 			grip.Notice(message.WrapError(err, checkFailedMsg))
 			continue
