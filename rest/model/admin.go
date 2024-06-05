@@ -1476,18 +1476,18 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 	var err error
 	var ok bool
 
-	i, err = a.LogBucket.ToService()
+	i, err = a.TaskOutput.ToService()
 	if err != nil {
 		return nil, errors.Wrap(err, "converting log bucket S3 config to service model")
 	}
-	var logBucket evergreen.S3Credentials
+	var taskOutput evergreen.S3Credentials
 	if i != nil {
-		logBucket, ok = i.(evergreen.S3Credentials)
+		taskOutput, ok = i.(evergreen.S3Credentials)
 		if !ok {
 			return nil, errors.Errorf("expecting log bucket S3 config but got type %T", i)
 		}
 	}
-	config.LogBucket = logBucket
+	config.TaskOutput = taskOutput
 
 	i, err = a.BinaryClient.ToService()
 	if err != nil {
