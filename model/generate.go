@@ -525,7 +525,15 @@ type specificActivationInfo struct {
 }
 
 type specificStepbackInfo struct {
-	task string
+	task     string
+	activate bool
+}
+
+func (s *specificStepbackInfo) shouldActivate() bool {
+	if s == nil {
+		return false
+	}
+	return s.activate
 }
 
 func newSpecificActivationInfo() specificActivationInfo {
@@ -548,13 +556,13 @@ func (b *specificActivationInfo) hasActivationTasks() bool {
 	return len(b.activationTasks) > 0
 }
 
-func (b *specificActivationInfo) isStepbackTask(variant, task string) bool {
+func (b *specificActivationInfo) getStepbackTask(variant, task string) *specificStepbackInfo {
 	for _, stepbackInfo := range b.stepbackTasks[variant] {
 		if stepbackInfo.task == task {
-			return true
+			return &stepbackInfo
 		}
 	}
-	return false
+	return nil
 }
 
 func (b *specificActivationInfo) taskHasSpecificActivation(variant, task string) bool {
@@ -582,18 +590,15 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 		// Regardless of whether the build variant has batchtime, there may be tasks with different batchtime
 		batchTimeTasks := []string{}
 		for _, bvt := range bv.Tasks {
-			if isStepbackTask(g.Task, bv.Name, bvt.Name) {
+			if g.Task.ActivatedBy == evergreen.StepbackTaskActivator {
+				info := specificStepbackInfo{task: bvt.Name}
+				if utility.FromBoolPtr(bvt.Activate) {
+					info.activate = true
+				} else if isStepbackTask(g.Task, bv.Name, bvt.Name) {
+					info.activate = true
+				}
 				res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], specificStepbackInfo{task: bvt.Name})
 				continue // Don't consider batchtime/activation if we're stepping back this generated task
-			}
-			// If this has generated tasks to activate and activated by stepback, don't consider batchtime/activation.
-			if len(g.Task.GeneratedTasksToActivate) > 0 && g.Task.ActivatedBy == evergreen.StepbackTaskActivator {
-				// If the user has specified that this task should be activated, we should activate for stepback
-				// as well because the user might expect it to always be activated.
-				if !utility.FromBoolPtr(bvt.Activate) {
-					res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], specificStepbackInfo{task: bvt.Name})
-				}
-				continue
 			}
 			if evergreen.ShouldConsiderBatchtime(requester) && bvt.hasSpecificActivation() {
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)
