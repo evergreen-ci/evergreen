@@ -598,7 +598,7 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 					info.activate = true
 				}
 				res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], info)
-				continue // Don't consider batchtime/activation if we're stepping back this generated task
+				continue // Don't consider batchtime/activation if we're stepping generated tasks.
 			}
 			if evergreen.ShouldConsiderBatchtime(requester) && bvt.hasSpecificActivation() {
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)
