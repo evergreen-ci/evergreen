@@ -2,10 +2,11 @@ package operations
 
 import (
 	"context"
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/stretchr/testify/suite"
 	"os"
 	"testing"
+
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/stretchr/testify/suite"
 )
 
 type PatchUtilTestSuite struct {
