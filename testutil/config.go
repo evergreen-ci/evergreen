@@ -43,7 +43,7 @@ func Setup() {
 		ctx := context.Background()
 
 		path := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)
-		env, err := evergreen.NewEnvironment(ctx, path, "", nil, noop.NewTracerProvider())
+		env, err := evergreen.NewEnvironment(ctx, path, "", "", nil, noop.NewTracerProvider())
 
 		grip.EmergencyPanic(message.WrapError(err, message.Fields{
 			"message": "could not initialize test environment",
@@ -55,7 +55,7 @@ func Setup() {
 }
 
 func NewEnvironment(ctx context.Context, t *testing.T) evergreen.Environment {
-	env, err := evergreen.NewEnvironment(ctx, filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings), "", nil, noop.NewTracerProvider())
+	env, err := evergreen.NewEnvironment(ctx, filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings), "", "", nil, noop.NewTracerProvider())
 	require.NoError(t, err)
 	return env
 }

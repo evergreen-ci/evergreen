@@ -78,6 +78,8 @@ type AWSConfig struct {
 	Subnets []Subnet `bson:"subnets" json:"subnets" yaml:"subnets"`
 
 	// BinaryClient stores credentials for listing the evergreen client binaries uploaded to S3.
+	// TODO (DEVPROD-3138): remove this once all app servers are using new logic
+	// after deploy.
 	BinaryClient S3Credentials `bson:"binary_client" json:"binary_client" yaml:"binary_client"`
 
 	// TaskSync stores credentials for storing task data in S3.
