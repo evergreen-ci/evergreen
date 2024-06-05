@@ -245,7 +245,10 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			require.True(t, amboy.WaitInterval(ctx, j.env.RemoteQueue(), 100*time.Millisecond))
+			queue, err := j.env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
+			require.NoError(t, err)
+			require.True(t, amboy.WaitInterval(ctx, queue, 100*time.Millisecond),
+				"failed while waiting for host termination job to complete")
 
 			dbHost, err := host.FindOneId(ctx, hostID)
 			require.NoError(t, err)
