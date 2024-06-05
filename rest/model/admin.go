@@ -1415,7 +1415,7 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 
 		taskOutput := &APIS3Credentials{}
 		if err := taskOutput.BuildFromService(v.TaskOutput); err != nil {
-			return errors.Wrap(err, "converting log bucket S3 config to API model")
+			return errors.Wrap(err, "converting task output S3 config to API model")
 		}
 		a.TaskOutput = taskOutput
 
@@ -1478,13 +1478,13 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 
 	i, err = a.TaskOutput.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "converting log bucket S3 config to service model")
+		return nil, errors.Wrap(err, "converting task output S3 config to service model")
 	}
 	var taskOutput evergreen.S3Credentials
 	if i != nil {
 		taskOutput, ok = i.(evergreen.S3Credentials)
 		if !ok {
-			return nil, errors.Errorf("expecting log bucket S3 config but got type %T", i)
+			return nil, errors.Errorf("expecting task output S3 config but got type %T", i)
 		}
 	}
 	config.TaskOutput = taskOutput
