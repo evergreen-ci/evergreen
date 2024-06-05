@@ -1381,6 +1381,7 @@ func (a *APISubnet) ToService() (interface{}, error) {
 type APIAWSConfig struct {
 	EC2Keys              []APIEC2Key               `json:"ec2_keys"`
 	Subnets              []APISubnet               `json:"subnets"`
+	TaskOutput           *APIS3Credentials         `json:"task_output"`
 	BinaryClient         *APIS3Credentials         `json:"binary_client"`
 	TaskSync             *APIS3Credentials         `json:"task_sync"`
 	TaskSyncRead         *APIS3Credentials         `json:"task_sync_read"`
@@ -1411,6 +1412,12 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 			}
 			a.Subnets = append(a.Subnets, apiSubnet)
 		}
+
+		taskOutput := &APIS3Credentials{}
+		if err := taskOutput.BuildFromService(v.TaskOutput); err != nil {
+			return errors.Wrap(err, "converting log bucket S3 config to API model")
+		}
+		a.TaskOutput = taskOutput
 
 		clients := &APIS3Credentials{}
 		if err := clients.BuildFromService(v.BinaryClient); err != nil {
@@ -1468,6 +1475,19 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 	var i interface{}
 	var err error
 	var ok bool
+
+	i, err = a.LogBucket.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting log bucket S3 config to service model")
+	}
+	var logBucket evergreen.S3Credentials
+	if i != nil {
+		logBucket, ok = i.(evergreen.S3Credentials)
+		if !ok {
+			return nil, errors.Errorf("expecting log bucket S3 config but got type %T", i)
+		}
+	}
+	config.LogBucket = logBucket
 
 	i, err = a.BinaryClient.ToService()
 	if err != nil {

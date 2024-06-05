@@ -77,6 +77,9 @@ type AWSConfig struct {
 	EC2Keys []EC2Key `bson:"ec2_keys" json:"ec2_keys" yaml:"ec2_keys"`
 	Subnets []Subnet `bson:"subnets" json:"subnets" yaml:"subnets"`
 
+	// TaskOutput stores credentials for the task output S3 buckets.
+	TaskOutput S3Credentials `bson:"task_output" json:"task_output" yaml:"task_output"`
+
 	// BinaryClient stores credentials for listing the evergreen client binaries uploaded to S3.
 	// TODO (DEVPROD-3138): remove this once all app servers are using new logic
 	// after deploy.
