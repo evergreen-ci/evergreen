@@ -106,6 +106,7 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 // UpdateProjectVarsByValue searches all projects who have a variable set to the toReplace input parameter, and replaces all
 // matching project variables with the replacement input parameter. If dryRun is set to true, the update is not performed.
 // We return a list of keys that were replaced (or, the list of keys that would be replaced in the case that dryRun is true).
+// If enabledOnly is set to true, we update only projects that are enabled, and repos.
 func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun, enabledOnly bool) (map[string][]string, error) {
 	catcher := grip.NewBasicCatcher()
 	matchingProjectVars, err := getVarsByValue(toReplace)

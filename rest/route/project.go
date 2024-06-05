@@ -1455,9 +1455,9 @@ func makeProjectVarsPut() gimlet.RouteHandler {
 //	@Security		Api-User || Api-Key
 //	@Param			to_replace		query		string				true	"Variable value to search and replace."
 //	@Param			replacement		query		string				true	"Value to replace the variables that match to_replace."
-//	@Param			dry_run			query		bool				false	"If set to true, we don't complete the update"
-//	@Param			enabled_only	query		bool				false	"If set to true, we only return enabled projects"
-//	@Success		200				{object}	map[string][]string	"If dry_run is set, a map of projectId to a list of keys that would be replaced. Otherwise, a map of projectId to a list of keys that were replaced."
+//	@Param			dry_run			query		bool				false	"If set to true, we don't complete the update, but we return the projects we would've updated"
+//	@Param			enabled_only	query		bool				false	"If set to true, we only update variables for enabled projects and repos."
+//	@Success		200				{object}	map[string][]string	"A map of project identifiers to a list of keys that are replaced (or would have been, in the case of dry_run).
 func (h *projectVarsPutHandler) Factory() gimlet.RouteHandler {
 	return &projectVarsPutHandler{}
 }
