@@ -6,125 +6,244 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func numHostsTerminated(ctx context.Context, env evergreen.Environment, drawdownInfo DrawdownInfo, t *testing.T) (int, []string) {
-	queue := queue.NewLocalLimitedSize(3, 1024)
-	require.NoError(t, queue.Start(ctx))
-	defer queue.Runner().Close(ctx)
+func numHostsDecommissionedForDrawdown(ctx context.Context, t *testing.T, env evergreen.Environment, drawdownInfo DrawdownInfo) (int, []string) {
+	j, ok := NewHostDrawdownJob(env, drawdownInfo, utility.RoundPartOfHour(1).Format(TSFormat)).(*hostDrawdownJob)
+	require.True(t, ok)
 
-	require.NoError(t, queue.Put(ctx, NewHostDrawdownJob(env, drawdownInfo, utility.RoundPartOfHour(1).Format(TSFormat))))
+	j.Run(ctx)
+	assert.NoError(t, j.Error())
 
-	assert.True(t, amboy.WaitInterval(ctx, queue, 50*time.Millisecond))
-	out := []string{}
-	num := 0
-	for j := range queue.Results(ctx) {
-		if ij, ok := j.(*hostDrawdownJob); ok {
-			num += ij.Terminated
-			out = append(out, ij.TerminatedHosts...)
-		}
-	}
+	assert.Equal(t, len(j.DecommissionedHosts), j.Decommissioned)
 
-	assert.Equal(t, num, len(out))
-
-	return num, out
+	return j.Decommissioned, j.DecommissionedHosts
 }
 
-////////////////////////////////////////////////////////////////////////
-// Testing with reference distro ids that are not present in the 'distro' collection in the database
-//
+func TestHostDrawdown(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro){
+		"DecommissionsHostsDownToCap": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
+			// insert a gaggle of hosts, some of which reference a host.Distro that doesn't exist in the distro collection
+			host1 := host.Host{
+				Id:           "h1",
+				Distro:       d,
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-10 * time.Minute),
+				Status:       evergreen.HostRunning,
+				RunningTask:  "dummy_task_name1",
+				StartedBy:    evergreen.User,
+			}
+			host2 := host.Host{
+				Id:           "h2",
+				Distro:       d,
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-20 * time.Minute),
+				Status:       evergreen.HostRunning,
+				RunningTask:  "dummy_task_name2",
+				StartedBy:    evergreen.User,
+			}
+			host3 := host.Host{
+				Id:           "h3",
+				Distro:       d,
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-30 * time.Minute),
+				Status:       evergreen.HostRunning,
+				StartedBy:    evergreen.User,
+			}
+			host4 := host.Host{
+				Id:           "h4",
+				Distro:       d,
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-30 * time.Minute),
+				Status:       evergreen.HostRunning,
+				StartedBy:    evergreen.User,
+			}
+			host5 := host.Host{
+				Id:           "h5",
+				Distro:       d,
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-20 * time.Minute),
+				Status:       evergreen.HostRunning,
+				StartedBy:    evergreen.User,
+			}
+			require.NoError(t, host1.Insert(ctx))
+			require.NoError(t, host2.Insert(ctx))
+			require.NoError(t, host3.Insert(ctx))
+			require.NoError(t, host4.Insert(ctx))
+			require.NoError(t, host5.Insert(ctx))
+			tsk1 := task.Task{
+				Id: "dummy_task_name1",
+			}
+			tsk2 := task.Task{
+				Id: "dummy_task_name2",
+			}
+			require.NoError(t, tsk1.Insert())
+			require.NoError(t, tsk2.Insert())
 
-func TestTerminatingHosts(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	ctx = testutil.TestSpan(ctx, t)
+			// If we encounter missing distros, we decommission hosts from those
+			// distros.
 
-	env := evergreen.GetEnvironment()
+			drawdownInfo := DrawdownInfo{
+				DistroID:     d.Id,
+				NewCapTarget: 3,
+			}
+			// 3 idle hosts, 2 need to be decommissioned to reach NewCapTarget
+			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
+			assert.Equal(t, 2, num)
 
-	t.Run("SimpleTerminationTest", func(t *testing.T) {
-		tctx := testutil.TestSpan(ctx, t)
-		// clear the distro and hosts collections; add an index on the host collection
-		testFlaggingIdleHostsSetupTest(t)
-		// insert two reference distro.Distro
+			assert.Contains(t, hosts, host3.Id)
+			assert.Contains(t, hosts, host4.Id)
+		},
+		"IgnoresSingleHostTaskGroupHosts": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
+			host1 := host.Host{
+				Id:               "h1",
+				Distro:           d,
+				Provider:         evergreen.ProviderNameMock,
+				CreationTime:     time.Now().Add(-30 * time.Minute),
+				Status:           evergreen.HostRunning,
+				StartedBy:        evergreen.User,
+				RunningTaskGroup: "dummy_task_group1",
+				RunningTask:      "dummy_task_name1",
+			}
+			host2 := host.Host{
+				Id:           "h2",
+				Distro:       d,
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-30 * time.Minute),
+				Status:       evergreen.HostRunning,
+				StartedBy:    evergreen.User,
+				LastGroup:    "dummy_task_group2",
+				LastTask:     "dummy_task_name2",
+			}
+			require.NoError(t, host1.Insert(ctx))
+			require.NoError(t, host2.Insert(ctx))
+			tsk1 := task.Task{
+				Id:                "dummy_task_name1",
+				TaskGroup:         "dummy_task_group1",
+				TaskGroupMaxHosts: 1,
+			}
+			tsk2 := task.Task{
+				Id:                "dummy_task_name2",
+				Status:            evergreen.TaskSucceeded,
+				TaskGroup:         "dummy_task_group2",
+				TaskGroupMaxHosts: 1,
+			}
+			require.NoError(t, tsk1.Insert())
+			require.NoError(t, tsk2.Insert())
 
-		distro1 := distro.Distro{
-			Id:       "distro1",
-			Provider: evergreen.ProviderNameMock,
-			HostAllocatorSettings: distro.HostAllocatorSettings{
-				MinimumHosts: 2,
-			},
-		}
-		require.NoError(t, distro1.Insert(tctx))
+			drawdownInfo := DrawdownInfo{
+				DistroID:     d.Id,
+				NewCapTarget: 0,
+			}
+			num, _ := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
+			assert.Zero(t, num, "should not draw down any hosts running single host task groups")
+		},
+		"IgnoresHostRunningTask": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
+			host1 := host.Host{
+				Id:           "h1",
+				Distro:       d,
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-30 * time.Minute),
+				Status:       evergreen.HostRunning,
+				StartedBy:    evergreen.User,
+				RunningTask:  "dummy_task_name1",
+			}
+			require.NoError(t, host1.Insert(ctx))
+			tsk1 := task.Task{
+				Id: "dummy_task_name1",
+			}
+			require.NoError(t, tsk1.Insert())
 
-		// insert a gaggle of hosts, some of which reference a host.Distro that doesn't exist in the distro collection
-		host1 := host.Host{
-			Id:           "h1",
-			Distro:       distro1,
-			Provider:     evergreen.ProviderNameMock,
-			CreationTime: time.Now().Add(-10 * time.Minute),
-			Status:       evergreen.HostRunning,
-			RunningTask:  "dummy_task_name",
-			StartedBy:    evergreen.User,
-		}
-		host2 := host.Host{
-			Id:           "h2",
-			Distro:       distro1,
-			Provider:     evergreen.ProviderNameMock,
-			CreationTime: time.Now().Add(-20 * time.Minute),
-			Status:       evergreen.HostRunning,
-			RunningTask:  "dummy_task_name2",
-			StartedBy:    evergreen.User,
-		}
-		host3 := host.Host{
-			Id:           "h3",
-			Distro:       distro1,
-			Provider:     evergreen.ProviderNameMock,
-			CreationTime: time.Now().Add(-30 * time.Minute),
-			Status:       evergreen.HostRunning,
-			StartedBy:    evergreen.User,
-		}
-		host4 := host.Host{
-			Id:           "h4",
-			Distro:       distro1,
-			Provider:     evergreen.ProviderNameMock,
-			CreationTime: time.Now().Add(-30 * time.Minute),
-			Status:       evergreen.HostRunning,
-			StartedBy:    evergreen.User,
-		}
-		host5 := host.Host{
-			Id:           "h5",
-			Distro:       distro1,
-			Provider:     evergreen.ProviderNameMock,
-			CreationTime: time.Now().Add(-20 * time.Minute),
-			Status:       evergreen.HostRunning,
-			StartedBy:    evergreen.User,
-		}
-		require.NoError(t, host1.Insert(tctx))
-		require.NoError(t, host2.Insert(tctx))
-		require.NoError(t, host3.Insert(tctx))
-		require.NoError(t, host4.Insert(tctx))
-		require.NoError(t, host5.Insert(tctx))
+			drawdownInfo := DrawdownInfo{
+				DistroID:     d.Id,
+				NewCapTarget: 0,
+			}
+			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
+			assert.Zero(t, num, "should not draw down host running task")
+			assert.Empty(t, hosts)
+		},
+		"IgnoresHostThatRecentlyRanTaskGroup": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
+			host1 := host.Host{
+				Id:                    "h1",
+				Distro:                d,
+				Provider:              evergreen.ProviderNameMock,
+				CreationTime:          time.Now().Add(-30 * time.Minute),
+				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.User,
+				LastTask:              "dummy_task_group1",
+				LastGroup:             "dummy_task_group1",
+				LastTaskCompletedTime: time.Now().Add(-time.Minute),
+			}
+			require.NoError(t, host1.Insert(ctx))
+			tsk1 := task.Task{
+				Id:                "dummy_task_name1",
+				TaskGroup:         "dummy_task_group1",
+				TaskGroupMaxHosts: 5,
+			}
+			require.NoError(t, tsk1.Insert())
 
-		// If we encounter missing distros, we decommission hosts from those
-		// distros.
+			drawdownInfo := DrawdownInfo{
+				DistroID:     d.Id,
+				NewCapTarget: 0,
+			}
+			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
+			assert.Zero(t, 0, num, "should not draw down host that was recently running task group")
+			assert.Empty(t, hosts)
+		},
+		"DecommissionsIdleMultiHostTaskGroupHost": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
 
-		drawdownInfo := DrawdownInfo{
-			DistroID:     "distro1",
-			NewCapTarget: 3,
-		}
-		// 3 idle hosts, 2 need to be terminated to reach NewCapTarget
-		num, hosts := numHostsTerminated(tctx, env, drawdownInfo, t)
-		assert.Equal(t, 2, num)
+			host1 := host.Host{
+				Id:                    "h1",
+				Distro:                d,
+				Provider:              evergreen.ProviderNameMock,
+				CreationTime:          time.Now().Add(-30 * time.Minute),
+				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.User,
+				LastTask:              "dummy_task_name1",
+				LastTaskCompletedTime: time.Now().Add(-20 * time.Minute),
+			}
+			require.NoError(t, host1.Insert(ctx))
+			tsk1 := task.Task{
+				Id: "dummy_task_name1",
+			}
+			require.NoError(t, tsk1.Insert())
 
-		assert.Contains(t, hosts, "h3")
-		assert.Contains(t, hosts, "h4")
-	})
+			drawdownInfo := DrawdownInfo{
+				DistroID:     d.Id,
+				NewCapTarget: 0,
+			}
+			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
+			assert.Equal(t, 1, num, "should draw down long idle hosts")
+			assert.Contains(t, hosts, host1.Id)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			ctx = testutil.TestSpan(ctx, t)
+			testFlaggingIdleHostsSetupTest(t)
+
+			d := distro.Distro{
+				Id:       "d",
+				Provider: evergreen.ProviderNameMock,
+				HostAllocatorSettings: distro.HostAllocatorSettings{
+					MinimumHosts: 0,
+				},
+			}
+			require.NoError(t, d.Insert(ctx))
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
+			tCase(ctx, t, env, d)
+		})
+	}
 }
