@@ -9,14 +9,14 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func TestGenerateTasksEstimations(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(context.Background(), mongo.IndexModel{Keys: DurationIndex})
-	assert.NoError(err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	bv := "bv"
 	project := "proj"
@@ -74,21 +74,39 @@ func TestGenerateTasksEstimations(t *testing.T) {
 	}
 	assert.NoError(t4.Insert())
 
-	err = t4.setGenerateTasksEstimations()
+	err := t4.setGenerateTasksEstimations(ctx)
 	assert.NoError(err)
 	assert.Equal(2, utility.FromIntPtr(t4.EstimatedNumGeneratedTasks))
 	assert.Equal(20, utility.FromIntPtr(t4.EstimatedNumActivatedGeneratedTasks))
 
-	t5 := Task{
-		Id:           "t5",
-		DisplayName:  "new task with no history",
-		BuildVariant: bv,
-		Project:      project,
-	}
-	assert.NoError(t5.Insert())
-
-	err = t5.setGenerateTasksEstimations()
+	dbTask, err := FindOneId(t4.Id)
 	assert.NoError(err)
-	assert.Equal(0, utility.FromIntPtr(t5.EstimatedNumGeneratedTasks))
-	assert.Equal(0, utility.FromIntPtr(t5.EstimatedNumActivatedGeneratedTasks))
+	assert.Equal(2, utility.FromIntPtr(dbTask.EstimatedNumGeneratedTasks))
+	assert.Equal(20, utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks))
+}
+
+func TestGenerateTasksEstimationsNoPreviousTasks(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	t1 := Task{
+		Id:           "t1",
+		DisplayName:  "new task with no history",
+		BuildVariant: "bv",
+		Project:      "project",
+	}
+	assert.NoError(t1.Insert())
+
+	err := t1.setGenerateTasksEstimations(ctx)
+	assert.NoError(err)
+	assert.Equal(0, utility.FromIntPtr(t1.EstimatedNumGeneratedTasks))
+	assert.Equal(0, utility.FromIntPtr(t1.EstimatedNumActivatedGeneratedTasks))
+
+	dbTask, err := FindOneId(t1.Id)
+	assert.NoError(err)
+	assert.Equal(0, utility.FromIntPtr(dbTask.EstimatedNumGeneratedTasks))
+	assert.Equal(0, utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks))
 }

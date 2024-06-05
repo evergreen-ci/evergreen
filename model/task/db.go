@@ -2923,3 +2923,68 @@ func FindGeneratedTasksFromID(generatorID string) ([]GeneratedTaskInfo, error) {
 
 	return out, nil
 }
+
+type generateTasksEstimationsResults struct {
+	DisplayName        string  `bson:"_id"`
+	EstimatedCreated   float64 `bson:"est_created"`
+	EstimatedActivated float64 `bson:"est_activated"`
+}
+
+func getGenerateTasksEstimation(ctx context.Context, project, buildVariant, displayName string, lookBackTime time.Duration) ([]generateTasksEstimationsResults, error) {
+	match := bson.M{
+		ProjectKey:        project,
+		BuildVariantKey:   buildVariant,
+		DisplayNameKey:    displayName,
+		GeneratedTasksKey: true,
+		StatusKey: bson.M{
+			"$in": evergreen.TaskCompletedStatuses,
+		},
+		StartTimeKey: bson.M{
+			"$gt": time.Now().Add(-1 * lookBackTime),
+		},
+		FinishTimeKey: bson.M{
+			"$lte": time.Now(),
+		},
+	}
+
+	pipeline := []bson.M{
+		{
+			"$match": match,
+		},
+		{
+			"$project": bson.M{
+				DisplayNameKey:                1,
+				NumGeneratedTasksKey:          1,
+				NumActivatedGeneratedTasksKey: 1,
+				IdKey:                         0,
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": fmt.Sprintf("$%s", DisplayNameKey),
+				"est_created": bson.M{
+					"$avg": fmt.Sprintf("$%s", NumGeneratedTasksKey),
+				},
+				"est_activated": bson.M{
+					"$avg": fmt.Sprintf("$%s", NumActivatedGeneratedTasksKey),
+				},
+			},
+		},
+	}
+
+	results := []generateTasksEstimationsResults{}
+
+	coll := evergreen.GetEnvironment().DB().Collection(Collection)
+	dbCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	cursor, err := coll.Aggregate(dbCtx, pipeline, &options.AggregateOptions{})
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating generate tasks estimations")
+	}
+	err = cursor.All(dbCtx, &results)
+	if err != nil {
+		return nil, errors.Wrap(err, "iterating and decoding generate tasks estimations")
+	}
+
+	return results, nil
+}
