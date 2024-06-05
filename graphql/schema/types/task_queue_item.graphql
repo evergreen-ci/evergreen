@@ -10,6 +10,7 @@ type TaskQueueItem {
   expectedDuration: Duration!
   priority: Int!
   project: String!
+  projectIdentifier: String!
   requester: TaskQueueItemType!
   activatedBy: String!
   revision: String!
@@ -25,4 +26,3 @@ type TaskQueueDistro {
   hostCount: Int!
   taskCount: Int!
 }
-

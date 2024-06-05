@@ -13,6 +13,7 @@ type APITaskQueueItem struct {
 	Requester           *string     `json:"requester"`
 	Revision            *string     `json:"gitspec"`
 	Project             *string     `json:"project"`
+	ProjectIdentifier   *string     `json:"project_identifier"`
 	Version             *string     `json:"version"`
 	Build               *string     `json:"build"`
 	ExpectedDuration    APIDuration `json:"exp_dur"`

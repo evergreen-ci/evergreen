@@ -184,17 +184,30 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([]*restModel.APITaskQueueItem, error) {
 	distroQueue, err := model.LoadTaskQueue(distroID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting task queue for distro %v: %v", distroID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task queue for distro '%v': %v", distroID, err.Error()))
 	}
 	if distroQueue == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find queue with distro ID `%s`", distroID))
 	}
 
+	idToIdentifierMap := map[string]string{}
 	taskQueue := []*restModel.APITaskQueueItem{}
 
 	for _, taskQueueItem := range distroQueue.Queue {
 		apiTaskQueueItem := restModel.APITaskQueueItem{}
+
+		projectID := taskQueueItem.Project
+
+		if _, ok := idToIdentifierMap[projectID]; !ok {
+			identifier, err := model.GetIdentifierForProject(projectID)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting identifier for project '%v': %v", projectID, err.Error()))
+			}
+			idToIdentifierMap[projectID] = identifier
+		}
+
 		apiTaskQueueItem.BuildFromService(taskQueueItem)
+		apiTaskQueueItem.ProjectIdentifier = utility.ToStringPtr(idToIdentifierMap[projectID])
 		taskQueue = append(taskQueue, &apiTaskQueueItem)
 	}
 
