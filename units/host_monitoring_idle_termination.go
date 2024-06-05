@@ -195,7 +195,7 @@ func (j *idleHostJob) getIdleInfo(h *host.Host, d *distro.Distro, schedulerConfi
 
 	// Allow additional idle time for single host task groups in case it is
 	// slightly slow getting to the next task in the task group. Disrupting a
-	// single host task group breaks continuity and the requires restarting the
+	// single host task group breaks continuity and requires restarting the
 	// entire task group from the start, which is undesirable.
 	const singleHostTaskGroupIdleCutoff = 5 * time.Minute
 	isRunningSingleHostTaskGroup, err := isAssignedSingleHostTaskGroup(h)

@@ -140,11 +140,11 @@ func (j *hostDrawdownJob) checkAndDecommission(ctx context.Context, h *host.Host
 
 	if idleTime > idleThreshold {
 		(*drawdownTarget)--
-		j.Decommissioned++
-		j.DecommissionedHosts = append(j.DecommissionedHosts, h.Id)
 		if err = h.SetDecommissioned(ctx, evergreen.User, false, "host decommissioned due to overallocation"); err != nil {
 			return errors.Wrapf(err, "decommissioning host '%s'", h.Id)
 		}
+		j.Decommissioned++
+		j.DecommissionedHosts = append(j.DecommissionedHosts, h.Id)
 		return nil
 	}
 	return nil

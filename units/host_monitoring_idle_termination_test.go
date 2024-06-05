@@ -249,7 +249,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		}
 		require.NoError(t, distro1.Insert(tctx))
 
-		// Insert a host is running a task but has an outdated AMI.
+		// Insert a host that is running a task but has an outdated AMI.
 		host1 := host.Host{
 			Id:                    "h1",
 			Distro:                distro1,
