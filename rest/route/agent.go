@@ -1579,7 +1579,7 @@ func (g *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Requ
 
 	err := utility.ReadJSON(r.Body, &g.permissions)
 
-	errorMessage := fmt.Sprintf("reading permissions for task '%s'", g.taskID)
+	errorMessage := fmt.Sprintf("reading permissions body for task '%s'", g.taskID)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": errorMessage,
 		"task_id": g.taskID,
