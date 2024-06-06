@@ -1738,6 +1738,14 @@ Admin Settings
 										<input type="text" ng-model="Settings.providers.aws.ec2_keys[0].secret">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
+										<label>Task Output S3 Key</label>
+										<input type="text" ng-model="Settings.providers.aws.task_output.key">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Task Output S3 Secret</label>
+										<input type="text" ng-model="Settings.providers.aws.task_output.secret">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<label>Client Binaries S3 Key</label>
 										<input type="text" ng-model="Settings.providers.aws.binary_client.key">
 									</md-input-container>

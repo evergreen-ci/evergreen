@@ -119,7 +119,7 @@ func (a *Agent) prepLogger(tc *taskContext, commandName string) client.LoggerCon
 	redactorExpansions.Put(globals.HostSecret, a.opts.HostSecret)
 	config := client.LoggerConfig{
 		SendToGlobalSender: a.opts.SendTaskLogsToGlobalSender,
-		AWSCredentials:     pail.CreateAWSCredentials(tc.taskConfig.TaskSync.Key, tc.taskConfig.TaskSync.Secret, ""),
+		AWSCredentials:     pail.CreateAWSCredentials(tc.taskConfig.TaskOutput.Key, tc.taskConfig.TaskOutput.Secret, ""),
 		RedactorOpts: redactor.RedactionOptions{
 			Expansions: redactorExpansions,
 			Redacted:   tc.taskConfig.Redacted,
