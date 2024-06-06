@@ -786,7 +786,7 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 			request = gimlet.SetURLVars(request, options)
 
 			require.NoError(t, handler.Parse(ctx, request))
-			assert.NotNil(t, handler.permissions)
+			require.NotNil(t, handler.permissions)
 			assert.Equal(t, utility.FromStringPtr(handler.permissions.Checks), "read")
 			assert.Equal(t, utility.FromStringPtr(handler.permissions.Actions), "write")
 		},
