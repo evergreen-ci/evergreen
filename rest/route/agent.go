@@ -1367,6 +1367,9 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 // GET /rest/v2/task/{task_id}/installation_token/{owner}/{repo}
+// This route is used to clone the source and modules when using git.get_project
+// and only meant for internal use.
+// It returns an installation token that's attached to Evergreen's GitHub app.
 type createInstallationToken struct {
 	owner string
 	repo  string
@@ -1546,6 +1549,10 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 // GET /rest/v2/task/{task_id}/github_dynamic_access_token/{owner}/{repo}
+// This route is used to create user-used GitHub access token for a task.
+// It returns an installation token using the task's project's GitHub app and
+// gets the intersecting permissions from the requester's permission group and the
+// permissions requested.
 type createGitHubDynamicAccessToken struct {
 	owner  string
 	repo   string
@@ -1557,13 +1564,11 @@ type createGitHubDynamicAccessToken struct {
 }
 
 func makeCreateGitHubDynamicAccessToken(env evergreen.Environment) gimlet.RouteHandler {
-	return &createGitHubDynamicAccessToken{
-		env: env,
-	}
+	return &createGitHubDynamicAccessToken{env: env}
 }
 
 func (g *createGitHubDynamicAccessToken) Factory() gimlet.RouteHandler {
-	return makeCreateGitHubDynamicAccessToken(g.env)
+	return &createGitHubDynamicAccessToken{env: g.env}
 }
 
 func (g *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Request) error {
