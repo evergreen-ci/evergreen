@@ -196,18 +196,16 @@ func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([
 	for _, taskQueueItem := range distroQueue.Queue {
 		apiTaskQueueItem := restModel.APITaskQueueItem{}
 
-		projectID := taskQueueItem.Project
-
-		if _, ok := idToIdentifierMap[projectID]; !ok {
-			identifier, err := model.GetIdentifierForProject(projectID)
+		if _, ok := idToIdentifierMap[taskQueueItem.Project]; !ok {
+			identifier, err := model.GetIdentifierForProject(taskQueueItem.Project)
 			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting identifier for project '%v': %v", projectID, err.Error()))
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting identifier for project '%v': %v", taskQueueItem.Project, err.Error()))
 			}
-			idToIdentifierMap[projectID] = identifier
+			idToIdentifierMap[taskQueueItem.Project] = identifier
 		}
 
 		apiTaskQueueItem.BuildFromService(taskQueueItem)
-		apiTaskQueueItem.ProjectIdentifier = utility.ToStringPtr(idToIdentifierMap[projectID])
+		apiTaskQueueItem.ProjectIdentifier = utility.ToStringPtr(idToIdentifierMap[taskQueueItem.Project])
 		taskQueue = append(taskQueue, &apiTaskQueueItem)
 	}
 
