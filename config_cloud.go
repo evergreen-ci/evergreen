@@ -80,11 +80,6 @@ type AWSConfig struct {
 	// TaskOutput stores credentials for the task output S3 buckets.
 	TaskOutput S3Credentials `bson:"task_output" json:"task_output" yaml:"task_output"`
 
-	// BinaryClient stores credentials for listing the evergreen client binaries uploaded to S3.
-	// TODO (DEVPROD-3138): remove this once all app servers are using new logic
-	// after deploy.
-	BinaryClient S3Credentials `bson:"binary_client" json:"binary_client" yaml:"binary_client"`
-
 	// TaskSync stores credentials for storing task data in S3.
 	TaskSync S3Credentials `bson:"task_sync" json:"task_sync" yaml:"task_sync"`
 	// TaskSyncRead stores credentials for reading task data in S3.

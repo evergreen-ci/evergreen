@@ -264,9 +264,6 @@ func MockConfig() *evergreen.Settings {
 					Key:    "aws_key",
 					Secret: "aws_secret",
 				},
-				BinaryClient: evergreen.S3Credentials{
-					Bucket: "client_bucket",
-				},
 				ParserProject: evergreen.ParserProjectS3Config{
 					S3Credentials: evergreen.S3Credentials{
 						Bucket: "parser_project_bucket",

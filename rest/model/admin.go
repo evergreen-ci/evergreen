@@ -1419,12 +1419,6 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		}
 		a.TaskOutput = taskOutput
 
-		clients := &APIS3Credentials{}
-		if err := clients.BuildFromService(v.BinaryClient); err != nil {
-			return errors.Wrap(err, "converting binary client S3 config to API model")
-		}
-		a.BinaryClient = clients
-
 		taskSync := &APIS3Credentials{}
 		if err := taskSync.BuildFromService(v.TaskSync); err != nil {
 			return errors.Wrap(err, "converting S3 credentials to API model")
@@ -1488,19 +1482,6 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		}
 	}
 	config.TaskOutput = taskOutput
-
-	i, err = a.BinaryClient.ToService()
-	if err != nil {
-		return nil, errors.Wrap(err, "converting binary client S3 config to service model")
-	}
-	var client evergreen.S3Credentials
-	if i != nil {
-		client, ok = i.(evergreen.S3Credentials)
-		if !ok {
-			return nil, errors.Errorf("expecting binary client S3 config but got type %T", i)
-		}
-	}
-	config.BinaryClient = client
 
 	i, err = a.TaskSync.ToService()
 	if err != nil {
