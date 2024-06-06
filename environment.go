@@ -176,6 +176,9 @@ type Environment interface {
 	// ShutdownSequenceStarted is true iff the shutdown sequence has been started
 	ShutdownSequenceStarted() bool
 	SetShutdown()
+	// BuildVersion returns the ID of the Evergreen version that built the binary.
+	// Returns an empty string if the version ID isn't provided on startup.
+	BuildVersion() string
 }
 
 // NewEnvironment constructs an Environment instance, establishing a
@@ -202,6 +205,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 		ctx:                     cachedEnvCtx,
 		senders:                 map[SenderKey]send.Sender{},
 		shutdownSequenceStarted: false,
+		versionID:               versionID,
 	}
 	defer func() {
 		e.RegisterCloser("root-context", false, func(_ context.Context) error {
@@ -272,6 +276,7 @@ type envState struct {
 	userManager             gimlet.UserManager
 	userManagerInfo         UserManagerInfo
 	shutdownSequenceStarted bool
+	versionID               string
 }
 
 // UserManagerInfo lists properties of the UserManager regarding its support for
@@ -1258,4 +1263,13 @@ func (e *envState) RoleManager() gimlet.RoleManager {
 	defer e.mu.RUnlock()
 
 	return e.roleManager
+}
+
+// BuildVersion returns the ID of the Evergreen version that built the binary.
+// Returns an empty string if the version ID isn't provided on startup.
+func (e *envState) BuildVersion() string {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.versionID
 }
