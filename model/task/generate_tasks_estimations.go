@@ -15,8 +15,8 @@ const (
 )
 
 func (t *Task) setGenerateTasksEstimations(ctx context.Context) error {
-	// Do not run if estimations have already been cached.
-	if t.EstimatedNumGeneratedTasks != nil && t.EstimatedNumActivatedGeneratedTasks != nil {
+	// Do not run if the task is not a generator or estimations have already been cached.
+	if !t.GenerateTask || (t.EstimatedNumGeneratedTasks != nil && t.EstimatedNumActivatedGeneratedTasks != nil) {
 		return nil
 	}
 
