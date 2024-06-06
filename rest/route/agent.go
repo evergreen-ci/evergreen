@@ -1370,6 +1370,7 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 // This route is used to clone the source and modules when using git.get_project
 // and only meant for internal use.
 // It returns an installation token that's attached to Evergreen's GitHub app.
+// See createGitHubDynamicAccessToken for tokens intended for user usage.
 type createInstallationToken struct {
 	owner string
 	repo  string
@@ -1553,6 +1554,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 // It returns an installation token using the task's project's GitHub app and
 // gets the intersecting permissions from the requester's permission group and the
 // permissions requested.
+// See createInstallationToken for tokens intended for cloning source and modules.
 type createGitHubDynamicAccessToken struct {
 	owner  string
 	repo   string
