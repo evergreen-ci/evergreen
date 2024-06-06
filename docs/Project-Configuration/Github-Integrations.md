@@ -62,6 +62,13 @@ evergreen patch
 
 If your project is configured for manual testing, then Evergreen will only add GitHub checks to the PR when prompted, as opposed to for every commit. Commenting `evergreen patch` will trigger this.
 
+
+```
+evergreen patch --alias <alias>
+```
+
+Override the default GitHub PR patch definition with a custom alias.
+
 #### Refresh GitHub checks
 
 ```
