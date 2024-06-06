@@ -1526,7 +1526,6 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 		errorMessage := fmt.Sprintf("created checkRun not return for task: '%s'", t.Id)
 		grip.Error(message.Fields{
 			"message": errorMessage,
-			"error":   err.Error(),
 			"task_id": t.Id,
 		})
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating check run"))
@@ -1579,16 +1578,14 @@ func (g *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Requ
 	}
 
 	err := utility.ReadJSON(r.Body, &g.permissions)
-	if err != nil {
-		errorMessage := fmt.Sprintf("reading checkRun for task '%s'", g.taskID)
-		grip.Error(message.Fields{
-			"message": errorMessage,
-			"task_id": g.taskID,
-		})
-		return errors.Wrapf(err, errorMessage)
-	}
 
-	return nil
+	errorMessage := fmt.Sprintf("reading permissions for task '%s'", g.taskID)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message": errorMessage,
+		"task_id": g.taskID,
+	}))
+
+	return errors.Wrapf(err, errorMessage)
 }
 
 func (g *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Responder {

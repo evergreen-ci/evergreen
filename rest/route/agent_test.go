@@ -631,7 +631,7 @@ func TestCreateInstallationToken(t *testing.T) {
 			options := map[string]string{"owner": "", "repo": validRepo}
 			request = gimlet.SetURLVars(request, options)
 
-			assert.Error(t, handler.Parse(ctx, request))
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing owner")
 		},
 		"ParseErrorsOnEmptyRepo": func(ctx context.Context, t *testing.T, handler *createInstallationToken, env *mock.Environment) {
 			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", validOwner, "")
@@ -641,7 +641,7 @@ func TestCreateInstallationToken(t *testing.T) {
 			options := map[string]string{"owner": validOwner, "repo": ""}
 			request = gimlet.SetURLVars(request, options)
 
-			assert.Error(t, handler.Parse(ctx, request))
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing repo")
 		},
 		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createInstallationToken, env *mock.Environment) {
 			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", validOwner, validRepo)
@@ -727,4 +727,67 @@ func TestUpsertCheckRunParse(t *testing.T) {
 
 	assert.Equal(t, utility.FromStringPtr(r.checkRunOutput.Title), "This is my report")
 	assert.Equal(t, len(r.checkRunOutput.Annotations), 1)
+}
+
+func TestCreateGitHubDynamicAccessToken(t *testing.T) {
+	route := "/task/{task_id}/github_dynamic_access_token/%s/%s"
+	validOwner := "owner"
+	validRepo := "repo"
+	validTaskID := "taskID"
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *createGitHubDynamicAccessToken, env *mock.Environment){
+		"ParseErrorsOnEmptyOwner": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken, env *mock.Environment) {
+			url := fmt.Sprintf(route, "", validRepo)
+			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+			assert.NoError(t, err)
+
+			options := map[string]string{"owner": "", "repo": validRepo, "taskID": validTaskID}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing owner")
+		},
+		"ParseErrorsOnEmptyRepo": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken, env *mock.Environment) {
+			url := fmt.Sprintf(route, validOwner, "")
+			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+			assert.NoError(t, err)
+
+			options := map[string]string{"owner": validOwner, "repo": "", "taskID": validTaskID}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing repo")
+		},
+		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken, env *mock.Environment) {
+			url := fmt.Sprintf(route, validOwner, validRepo)
+			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+			assert.NoError(t, err)
+
+			options := map[string]string{"owner": validOwner, "repo": validRepo, "taskID": ""}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing taskID")
+		},
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken, env *mock.Environment) {
+			url := fmt.Sprintf(route, validOwner, validRepo)
+			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+			assert.NoError(t, err)
+
+			options := map[string]string{"owner": validOwner, "repo": validRepo, "taskID": validTaskID}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.NoError(t, handler.Parse(ctx, request))
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
+			r, ok := makeCreateGitHubDynamicAccessToken(env).(*createGitHubDynamicAccessToken)
+			require.True(t, ok)
+
+			tCase(ctx, t, r, env)
+		})
+	}
 }
