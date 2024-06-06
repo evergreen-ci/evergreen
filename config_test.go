@@ -135,7 +135,7 @@ func TestAdminSuite(t *testing.T) {
 	originalSettings, err := GetConfig(ctx)
 	require.NoError(t, err)
 
-	env, err := NewEnvironment(ctx, configFile, "", nil, noop.NewTracerProvider())
+	env, err := NewEnvironment(ctx, configFile, "", "", nil, noop.NewTracerProvider())
 	require.NoError(t, err)
 
 	s := new(AdminSuite)
