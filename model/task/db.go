@@ -2937,7 +2937,7 @@ func getGenerateTasksEstimation(ctx context.Context, project, buildVariant, disp
 		DisplayNameKey:    displayName,
 		GeneratedTasksKey: true,
 		StatusKey: bson.M{
-			"$in": evergreen.TaskCompletedStatuses,
+			"$in": evergreen.TaskSucceeded,
 		},
 		StartTimeKey: bson.M{
 			"$gt": time.Now().Add(-1 * lookBackTime),
@@ -2977,7 +2977,7 @@ func getGenerateTasksEstimation(ctx context.Context, project, buildVariant, disp
 	coll := evergreen.GetEnvironment().DB().Collection(Collection)
 	dbCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	cursor, err := coll.Aggregate(dbCtx, pipeline, &options.AggregateOptions{})
+	cursor, err := coll.Aggregate(dbCtx, pipeline, &options.AggregateOptions{Hint: DurationIndex})
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating generate tasks estimations")
 	}
