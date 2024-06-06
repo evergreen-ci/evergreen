@@ -1121,7 +1121,7 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 	// If githubSender does not exist or has expired, create one, add it to the cache, then return it.
 
 	tokenCreatedAt := time.Now()
-	token, err := e.settings.CreateInstallationToken(e.ctx, owner, repo, nil)
+	token, err := CreateInstallationToken(e.ctx, e.settings, owner, repo, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting installation token")
 	}
