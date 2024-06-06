@@ -2936,9 +2936,7 @@ func getGenerateTasksEstimation(ctx context.Context, project, buildVariant, disp
 		BuildVariantKey:   buildVariant,
 		DisplayNameKey:    displayName,
 		GeneratedTasksKey: true,
-		StatusKey: bson.M{
-			"$in": evergreen.TaskSucceeded,
-		},
+		StatusKey:         evergreen.TaskSucceeded,
 		StartTimeKey: bson.M{
 			"$gt": time.Now().Add(-1 * lookBackTime),
 		},
