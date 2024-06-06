@@ -1567,41 +1567,41 @@ func makeCreateGitHubDynamicAccessToken(env evergreen.Environment) gimlet.RouteH
 	return &createGitHubDynamicAccessToken{env: env}
 }
 
-func (g *createGitHubDynamicAccessToken) Factory() gimlet.RouteHandler {
-	return &createGitHubDynamicAccessToken{env: g.env}
+func (h *createGitHubDynamicAccessToken) Factory() gimlet.RouteHandler {
+	return &createGitHubDynamicAccessToken{env: h.env}
 }
 
-func (g *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Request) error {
-	if g.owner = gimlet.GetVars(r)["owner"]; g.owner == "" {
+func (h *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Request) error {
+	if h.owner = gimlet.GetVars(r)["owner"]; h.owner == "" {
 		return errors.New("missing owner")
 	}
-	if g.repo = gimlet.GetVars(r)["repo"]; g.repo == "" {
+	if h.repo = gimlet.GetVars(r)["repo"]; h.repo == "" {
 		return errors.New("missing repo")
 	}
-	if g.taskID = gimlet.GetVars(r)["taskID"]; g.taskID == "" {
+	if h.taskID = gimlet.GetVars(r)["taskID"]; h.taskID == "" {
 		return errors.New("missing taskID")
 	}
 
-	err := utility.ReadJSON(r.Body, &g.permissions)
+	err := utility.ReadJSON(r.Body, &h.permissions)
 
-	errorMessage := fmt.Sprintf("reading permissions body for task '%s'", g.taskID)
+	errorMessage := fmt.Sprintf("reading permissions body for task '%s'", h.taskID)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": errorMessage,
-		"task_id": g.taskID,
+		"task_id": h.taskID,
 	}))
 
 	return errors.Wrapf(err, errorMessage)
 }
 
-func (g *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Responder {
-	t, err := task.FindOneId(g.taskID)
+func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(h.taskID)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", g.taskID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
 	}
 	if t == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", g.taskID),
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
 
@@ -1617,7 +1617,7 @@ func (g *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	}
 	requesterPermissionGroup := p.GetGitHubPermissionGroup(t.Requester)
 	intersection, err := requesterPermissionGroup.Intersection(model.GitHubDynamicTokenPermissionGroup{
-		Permissions: g.permissions,
+		Permissions: h.permissions,
 	})
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
@@ -1636,14 +1636,14 @@ func (g *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 
 	// TODO DEVPROD-5991: Use the modified CreateInstallationToken/HasGitHubApp methods to create the token.
 	// Currently, it's going to use the global Evergreen GitHub app to create the token (from g.env.Settings()).
-	token, err := g.env.Settings().CreateInstallationToken(ctx, g.owner, g.repo, &github.InstallationTokenOptions{
+	token, err := h.env.Settings().CreateInstallationToken(ctx, h.owner, h.repo, &github.InstallationTokenOptions{
 		Permissions: &intersection.Permissions,
 	})
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", g.owner, g.repo))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", h.owner, h.repo))
 	}
 	if token == "" {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("no installation token returned for '%s/%s'", g.owner, g.repo))
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("no installation token returned for '%s/%s'", h.owner, h.repo))
 	}
 
 	return gimlet.NewJSONResponse(&apimodels.InstallationToken{
