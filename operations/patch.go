@@ -298,7 +298,7 @@ func countNumTasksToFinalize(ctx context.Context, ref *model.ProjectRef, params 
 	if err != nil {
 		return 0, errors.Wrap(err, "loading project")
 	}
-	// This is only used to provide the minumum required fields to
+	// This is only used to provide the minimum required fields to
 	// compute the number of tasks to be added, and this is not a
 	// real patch which will be inserted into the DB.
 	patchInfo := &patch.Patch{
