@@ -202,11 +202,13 @@ const (
 
 	DefaultEvergreenConfig = ".evergreen.yml"
 
-	EvergreenHome       = "EVGHOME"
-	MongodbUrl          = "MONGO_URL"
-	MongoAWSAuthEnabled = "MONGO_AWS_AUTH"
-	EvergreenVersionID  = "EVG_VERSION_ID"
-	TraceEndpoint       = "TRACE_ENDPOINT"
+	// Env vars
+	EvergreenHome           = "EVGHOME"
+	MongodbUrl              = "MONGO_URL"
+	MongoAWSAuthEnabled     = "MONGO_AWS_AUTH"
+	EvergreenVersionID      = "EVG_VERSION_ID"
+	EvergreenClientS3Bucket = "EVG_CLIENT_S3_BUCKET"
+	TraceEndpoint           = "TRACE_ENDPOINT"
 
 	// localLoggingOverride is a special log path indicating that the app server
 	// should attempt to log to systemd if available, and otherwise fall back to
@@ -1080,7 +1082,7 @@ var (
 
 	ValidCommandTypes = []string{CommandTypeSetup, CommandTypeSystem, CommandTypeTest}
 
-	// Map from valid architectures to display names
+	// Map from valid OS/architecture combinations to display names
 	ValidArchDisplayNames = map[string]string{
 		ArchWindowsAmd64: "Windows 64-bit",
 		ArchLinuxPpc64le: "Linux PowerPC 64-bit",

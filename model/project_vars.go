@@ -106,7 +106,8 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 // UpdateProjectVarsByValue searches all projects who have a variable set to the toReplace input parameter, and replaces all
 // matching project variables with the replacement input parameter. If dryRun is set to true, the update is not performed.
 // We return a list of keys that were replaced (or, the list of keys that would be replaced in the case that dryRun is true).
-func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bool) (map[string][]string, error) {
+// If enabledOnly is set to true, we update only projects that are enabled, and repos.
+func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun, enabledOnly bool) (map[string][]string, error) {
 	catcher := grip.NewBasicCatcher()
 	matchingProjectVars, err := getVarsByValue(toReplace)
 	if err != nil {
@@ -119,6 +120,17 @@ func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bo
 	for _, projectVars := range matchingProjectVars {
 		for key, val := range projectVars.Vars {
 			if val == toReplace {
+				identifier := projectVars.Id
+				// Don't error if this doesn't work, since we can just use the ID instead, and this may be a repo project.
+				pRef, _ := FindBranchProjectRef(projectVars.Id)
+				if pRef != nil {
+					if enabledOnly && !pRef.Enabled {
+						continue
+					}
+					if pRef.Identifier != "" {
+						identifier = pRef.Identifier
+					}
+				}
 				if !dryRun {
 					var beforeVars ProjectVars
 					err = util.DeepCopy(*projectVars, &beforeVars)
@@ -145,7 +157,7 @@ func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun bo
 						catcher.Wrapf(err, "logging project modification for project '%s'", projectVars.Id)
 					}
 				}
-				changes[projectVars.Id] = append(changes[projectVars.Id], key)
+				changes[identifier] = append(changes[identifier], key)
 			}
 		}
 	}

@@ -150,7 +150,6 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 	env := uis.env
-	queue := env.RemoteQueue()
 	u := MustHaveUser(r)
 	id := gimlet.GetVars(r)["host_id"]
 
@@ -178,7 +177,7 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 			msg        string
 			statusCode int
 		)
-		msg, statusCode, err = api.ModifyHostStatus(r.Context(), env, queue, h, opts.Status, opts.Notes, u)
+		msg, statusCode, err = api.ModifyHostStatus(r.Context(), env, h, opts.Status, opts.Notes, u)
 		if err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(gimlet.ErrorResponse{
 				StatusCode: statusCode,
@@ -240,9 +239,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch opts.Action {
 	case "updateStatus":
-		rq := env.RemoteQueue()
-
-		hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetUpdateHostStatusCallback(r.Context(), env, rq, opts.Status, opts.Notes, user))
+		hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetUpdateHostStatusCallback(r.Context(), env, opts.Status, opts.Notes, user))
 		if err != nil {
 			http.Error(w, fmt.Sprintf("error updating status on selected hosts: %s", err.Error()), httpStatus)
 			return

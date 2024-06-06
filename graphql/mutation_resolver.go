@@ -284,8 +284,7 @@ func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []strin
 		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 
-	rq := evergreen.GetEnvironment().RemoteQueue()
-	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetUpdateHostStatusCallback(ctx, evergreen.GetEnvironment(), rq, status, *notes, user))
+	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetUpdateHostStatusCallback(ctx, evergreen.GetEnvironment(), status, *notes, user))
 	if err != nil {
 		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}

@@ -3,9 +3,12 @@ package evergreen
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
-	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -25,41 +28,62 @@ type ClientConfig struct {
 	S3URLPrefix    string
 }
 
-func (c *ClientConfig) populateClientBinaries(ctx context.Context, bucket pail.Bucket, prefix string) error {
-	if !strings.HasSuffix(prefix, "/") {
-		prefix += "/"
-	}
+func (c *ClientConfig) populateClientBinaries(ctx context.Context, s3URLPrefix string) {
+	client := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(client)
 
-	iter, err := bucket.List(ctx, prefix)
-	if err != nil {
-		return errors.Wrap(err, "listing client bucket")
-	}
-	for iter.Next(ctx) {
-		item := strings.TrimPrefix(iter.Item().Name(), prefix)
-		// The item is expected to be of the form <os>_<arch>/evergreen{.exe}
-		name := strings.Split(item, "/")
-		// Skip files that either don't conform to the expected form or aren't the evergreen executable (e.g. .signed).
-		if len(name) != 2 || !strings.Contains(name[1], "evergreen") {
+	// We assume that all valid OS/arch combinations listed in Evergreen
+	// constants are supported platforms.
+	for platform, displayName := range ValidArchDisplayNames {
+		osAndArch := strings.Split(platform, "_")
+		if len(osAndArch) != 2 {
 			continue
 		}
-		// Skip files for invalid platforms.
-		displayName, ok := ValidArchDisplayNames[name[0]]
-		if !ok {
-			continue
+		binary := "evergreen"
+		if strings.Contains(platform, "windows") {
+			binary += ".exe"
 		}
-		osArchParts := strings.Split(name[0], "_")
-		c.ClientBinaries = append(c.ClientBinaries, ClientBinary{
-			URL:         fmt.Sprintf("%s/%s", c.S3URLPrefix, item),
-			OS:          osArchParts[0],
-			Arch:        osArchParts[1],
+
+		clientBinary := ClientBinary{
+			// The items in S3 are expected to be of the form <s3_prefix>/<os>_<arch>/evergreen{.exe}
+			URL:         fmt.Sprintf("%s/%s/%s", s3URLPrefix, platform, binary),
+			OS:          osAndArch[0],
+			Arch:        osAndArch[1],
 			DisplayName: displayName,
-		})
-	}
-	if err = iter.Err(); err != nil {
-		return errors.Wrap(err, "iterating client bucket contents")
+		}
+
+		checkFailedMsg := message.Fields{
+			"message": "could not check for existence of Evergreen client binary for this OS/arch, skipping it and continuing app startup",
+			"os":      clientBinary.OS,
+			"arch":    clientBinary.Arch,
+			"url":     clientBinary.URL,
+		}
+		// Check that the client exists and is accessible.
+		req, err := http.NewRequestWithContext(ctx, http.MethodHead, clientBinary.URL, nil)
+		if err != nil {
+			grip.Notice(message.WrapError(err, checkFailedMsg))
+			continue
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			grip.Notice(message.WrapError(err, checkFailedMsg))
+			continue
+		}
+
+		_ = resp.Body.Close()
+		if resp.StatusCode >= 400 {
+			checkFailedMsg["status_code"] = resp.StatusCode
+			grip.Notice(checkFailedMsg)
+			continue
+		}
+
+		c.ClientBinaries = append(c.ClientBinaries, clientBinary)
 	}
 
-	return nil
+	grip.AlertWhen(len(c.ClientBinaries) == 0, message.Fields{
+		"message":       "could not find any valid Evergreen client binaries during app startup, the API server will not be able to distribute Evergreen clients",
+		"s3_url_prefix": s3URLPrefix,
+	})
 }
 
 // APIConfig holds relevant log and listener settings for the API server.

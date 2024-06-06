@@ -26,7 +26,7 @@ func init() {
 		ctx := context.Background()
 
 		path := testConfigFile()
-		env, err := NewEnvironment(ctx, path, "", nil, noop.NewTracerProvider())
+		env, err := NewEnvironment(ctx, path, "", "", nil, noop.NewTracerProvider())
 		grip.EmergencyFatal(message.WrapError(err, message.Fields{
 			"message": "could not initialize test environment",
 			"path":    path,
@@ -86,7 +86,7 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 
 	originalEnv := GetEnvironment()
 	// first test loading config from a file
-	env, err := NewEnvironment(ctx, s.path, "", nil, noop.NewTracerProvider())
+	env, err := NewEnvironment(ctx, s.path, "", "", nil, noop.NewTracerProvider())
 	SetEnvironment(env)
 	defer func() {
 		SetEnvironment(originalEnv)
@@ -104,7 +104,7 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 	s.NoError(err)
 	db := settings.Database
 
-	env, err = NewEnvironment(ctx, "", "", &db, noop.NewTracerProvider())
+	env, err = NewEnvironment(ctx, "", "", "", &db, noop.NewTracerProvider())
 	s.Require().NoError(err)
 	SetEnvironment(env)
 

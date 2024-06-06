@@ -116,6 +116,7 @@ type AgentSetupData struct {
 	SplunkClientToken      string                  `json:"splunk_client_token"`
 	SplunkChannel          string                  `json:"splunk_channel"`
 	TaskSync               evergreen.S3Credentials `json:"task_sync"`
+	TaskOutput             evergreen.S3Credentials `json:"task_output"`
 	EC2Keys                []evergreen.EC2Key      `json:"ec2_keys"`
 	TraceCollectorEndpoint string                  `json:"trace_collector_endpoint"`
 }

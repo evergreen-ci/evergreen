@@ -462,6 +462,8 @@ Notes:
     it may appear that your generate.tasks is hanging until timeout.
     There may be details of this in the task logs; please ask
     if you aren't sure what to do with a hanging generate.tasks.
+-   If generate.tasks produces many errors, you may not be able to see the full
+    error output.
 
 ``` yaml
 - command: generate.tasks
