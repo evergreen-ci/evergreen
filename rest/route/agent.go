@@ -1621,9 +1621,15 @@ func (g *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
-	_, err = model.FindOneGithubAppAuth(t.Project)
+	githubAppAuth, err := model.FindOneGithubAppAuth(t.Project)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+	if githubAppAuth == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("github app auth not found for project '%s'", t.Project),
+		})
 	}
 
 	// TODO DEVPROD-5991: Use the modified CreateInstallationToken/HasGitHubApp methods to create the token.
