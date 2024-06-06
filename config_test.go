@@ -90,20 +90,23 @@ func TestGetGithubSettings(t *testing.T) {
 	}
 	settings.Expansions[GithubAppPrivateKey] = ""
 
-	authFields := getGithubAppAuth(settings)
+	authFields, err := settings.GetGitHubAppAuth()
+	require.NoError(t, err)
 	assert.Nil(authFields)
 
 	settings.AuthConfig.Github = &GithubAuthConfig{
 		AppId: 1234,
 	}
-	authFields = getGithubAppAuth(settings)
+	authFields, err = settings.GetGitHubAppAuth()
+	require.NoError(t, err)
 	assert.Nil(authFields)
 
 	settings.Expansions[GithubAppPrivateKey] = "key"
-	authFields = getGithubAppAuth(settings)
+	authFields, err = settings.GetGitHubAppAuth()
+	require.NoError(t, err)
 	assert.NotNil(authFields)
-	assert.Equal(int64(1234), authFields.appId)
-	assert.Equal([]byte("key"), authFields.privateKey)
+	assert.Equal(int64(1234), authFields.AppID)
+	assert.Equal([]byte("key"), authFields.PrivateKey)
 
 	assert.NotPanics(func() {
 		settings := &Settings{}
