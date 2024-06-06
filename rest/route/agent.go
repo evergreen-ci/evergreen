@@ -1621,14 +1621,13 @@ func (g *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
-	githubAppAuth, err := model.FindOneGithubAppAuth(t.Project)
+	_, err = model.FindOneGithubAppAuth(t.Project)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
-	fmt.Println(githubAppAuth) // Prevent linter from erroring
-	// TODO: Use the githubAppAuth to create an installation token rather than grabbing it from the
-	// g.env.Settings() object.
+	// TODO DEVPROD-5991: Use the modified CreateInstallationToken/HasGitHubApp methods to create the token.
+	// Currently, it's going to use the global Evergreen GitHub app to create the token (from g.env.Settings()).
 	token, err := g.env.Settings().CreateInstallationToken(ctx, g.owner, g.repo, &github.InstallationTokenOptions{
 		Permissions: &intersection.Permissions,
 	})
