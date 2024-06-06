@@ -412,10 +412,13 @@ func backport() cli.Command {
 			}
 			defer client.Close()
 
-			if _, err = patchParams.validatePatchCommand(ctx, conf, ac, client); err != nil {
+			ref, err := patchParams.validatePatchCommand(ctx, conf, ac, client)
+			if err != nil {
 				return err
 			}
-
+			if err = checkForLargeNumFinalizedTasks(ctx, ref, patchParams); err != nil {
+				return err
+			}
 			if len(patchParams.BackportOf.PatchID) > 0 {
 				var existingPatch *patch.Patch
 				existingPatch, err = ac.GetPatch(patchParams.BackportOf.PatchID)

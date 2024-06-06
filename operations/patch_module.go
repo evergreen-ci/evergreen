@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -48,10 +49,20 @@ func PatchSetModule() cli.Command {
 			patchID := c.String(patchIDFlagName)
 			args := c.Args()
 
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
+
+			comm, err := conf.setupRestCommunicator(ctx, true)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
+			defer comm.Close()
+
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
@@ -82,6 +93,13 @@ func PatchSetModule() cli.Command {
 				return err
 			}
 			if err := addModuleToPatch(params, args, conf, existingPatch, module, ""); err != nil {
+				return err
+			}
+			ref, err := params.validatePatchCommand(ctx, conf, ac, comm)
+			if err != nil {
+				return err
+			}
+			if err = checkForLargeNumFinalizedTasks(ctx, ref, params); err != nil {
 				return err
 			}
 			if params.Finalize {

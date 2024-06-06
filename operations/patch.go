@@ -192,16 +192,8 @@ func Patch() cli.Command {
 			if err != nil {
 				return err
 			}
-			if params.Finalize {
-				numTasks, err := countNumTasksToFinalize(ctx, ref, params)
-				if err != nil {
-					return errors.Wrap(err, "counting the number of tasks to be finalized by this patch")
-				}
-				if numTasks > largeNumFinalizedTasksThreshold {
-					if !confirm(fmt.Sprintf("This is a large patch build, expected to schedule %d tasks. Continue?", numTasks), true) {
-						return errors.New("patch aborted")
-					}
-				}
+			if err = checkForLargeNumFinalizedTasks(ctx, ref, params); err != nil {
+				return err
 			}
 			params.Description = params.getDescription()
 
@@ -284,20 +276,23 @@ func Patch() cli.Command {
 	}
 }
 
-func countNumTasksToFinalize(ctx context.Context, ref *model.ProjectRef, params *patchParams) (int, error) {
-	var configBytes []byte
-	configBytes, err := os.ReadFile(ref.RemotePath)
+func checkForLargeNumFinalizedTasks(ctx context.Context, ref *model.ProjectRef, params *patchParams) error {
+	if !params.Finalize {
+		return nil
+	}
+	numTasks, err := fetchProjectAndCountFinalizedTasks(ctx, ref, params)
 	if err != nil {
-		return 0, errors.Wrap(err, "reading project config")
+		return errors.Wrap(err, "counting the number of tasks to be finalized by this patch")
 	}
-	p := &model.Project{}
-	opts := &model.GetProjectOpts{
-		ReadFileFrom: model.ReadFromLocal,
+	if numTasks > largeNumFinalizedTasksThreshold {
+		if !confirm(fmt.Sprintf("This is a large patch build, expected to schedule %d tasks. Continue?", numTasks), true) {
+			return errors.New("patch aborted")
+		}
 	}
-	_, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)
-	if err != nil {
-		return 0, errors.Wrap(err, "loading project")
-	}
+	return nil
+}
+
+func countNumTasksToFinalize(p *model.Project, params *patchParams, configBytes []byte) (int, error) {
 	// This is only used to provide the minimum required fields to
 	// compute the number of tasks to be added, and this is not a
 	// real patch which will be inserted into the DB.
@@ -317,6 +312,22 @@ func countNumTasksToFinalize(ctx context.Context, ref *model.ProjectRef, params 
 		}
 	}
 	return numTasksToFinalize, nil
+}
+
+func fetchProjectAndCountFinalizedTasks(ctx context.Context, ref *model.ProjectRef, params *patchParams) (int, error) {
+	configBytes, err := os.ReadFile(ref.RemotePath)
+	if err != nil {
+		return 0, errors.Wrap(err, "reading project config")
+	}
+	p := &model.Project{}
+	opts := &model.GetProjectOpts{
+		ReadFileFrom: model.ReadFromLocal,
+	}
+	_, err = model.LoadProjectInto(ctx, configBytes, opts, "", p)
+	if err != nil {
+		return 0, errors.Wrap(err, "loading project")
+	}
+	return countNumTasksToFinalize(p, params, configBytes)
 }
 
 func getParametersFromInput(params []string) ([]patch.Parameter, error) {
@@ -428,6 +439,14 @@ func PatchFile() cli.Command {
 				return err
 			}
 			params.Description = params.getDescription()
+
+			ref, err := params.validatePatchCommand(ctx, conf, ac, comm)
+			if err != nil {
+				return err
+			}
+			if err = checkForLargeNumFinalizedTasks(ctx, ref, params); err != nil {
+				return err
+			}
 
 			var diffData localDiff
 			var rp *restmodel.APIRawPatch

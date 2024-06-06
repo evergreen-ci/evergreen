@@ -5,7 +5,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/utility"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -282,29 +286,188 @@ func (s *PatchUtilTestSuite) TestGetRemoteFromOutput() {
 	s.Equal("upstream", repo)
 }
 
-func (s *PatchUtilTestSuite) TestCountNumTasksToFinalize() {
+func TestCountNumTasksToFinalize(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	yml := `
+
+	defer func() {
+		assert.NoError(t, db.Clear(model.ProjectRefCollection))
+	}()
+
+	require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+	pRef := &model.ProjectRef{
+		Id:                    "testproject",
+		VersionControlEnabled: utility.TruePtr(),
+	}
+	require.NoError(t, pRef.Insert())
+
+	for tName, tCase := range map[string]func(t *testing.T, p *model.Project){
+		"SucceedsWithAllTasks": func(t *testing.T, p *model.Project) {
+			yml := `
 tasks:
 - name: "t1"
+- name: "t2"
+- name: "t3"
 buildvariants:
 - name: "v1"
   tasks:
   - name: "t1"
+- name: "v2"
+  tasks:
+  - name: "t1"
+  - name: "t2"
 `
-	ref := &model.ProjectRef{
-		RemotePath: "test.yml",
+			content := []byte(yml)
+			_, err := model.LoadProjectInto(ctx, content, nil, "", p)
+			require.NoError(t, err)
+			params := &patchParams{
+				Variants: []string{"all"},
+				Tasks:    []string{"all"},
+			}
+			numTasks, err := countNumTasksToFinalize(p, params, content)
+			require.NoError(t, err)
+			assert.Equal(t, numTasks, 3)
+		},
+		"SucceedsWithSingleSelectedVariant": func(t *testing.T, p *model.Project) {
+			yml := `
+tasks:
+- name: "t1"
+- name: "t2"
+- name: "t3"
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+- name: "v2"
+  tasks:
+  - name: "t1"
+  - name: "t2"
+`
+			content := []byte(yml)
+			_, err := model.LoadProjectInto(ctx, content, nil, "", p)
+			require.NoError(t, err)
+			params := &patchParams{
+				Variants: []string{"v2"},
+				Tasks:    []string{"all"},
+			}
+			numTasks, err := countNumTasksToFinalize(p, params, content)
+			require.NoError(t, err)
+			assert.Equal(t, numTasks, 2)
+		},
+		"SkipsDisabledTask": func(t *testing.T, p *model.Project) {
+			yml := `
+tasks:
+- name: "t1"
+- name: "t2"
+- name: "t3"
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+- name: "v2"
+  tasks:
+  - name: "t1"
+    disable: true
+  - name: "t2"
+`
+			content := []byte(yml)
+			_, err := model.LoadProjectInto(ctx, content, nil, "", p)
+			require.NoError(t, err)
+			params := &patchParams{
+				Variants: []string{"all"},
+				Tasks:    []string{"all"},
+			}
+			numTasks, err := countNumTasksToFinalize(p, params, content)
+			require.NoError(t, err)
+			assert.Equal(t, numTasks, 2)
+		},
+		"SkipsTaskNotInAllowedRequesters": func(t *testing.T, p *model.Project) {
+			yml := `
+tasks:
+- name: "t1"
+- name: "t2"
+- name: "t3"
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+    allowed_requesters: ["github_tag"]
+- name: "v2"
+  tasks:
+  - name: "t1"
+  - name: "t2"
+`
+			content := []byte(yml)
+			_, err := model.LoadProjectInto(ctx, content, nil, "", p)
+			require.NoError(t, err)
+			params := &patchParams{
+				Variants: []string{"all"},
+				Tasks:    []string{"all"},
+			}
+			numTasks, err := countNumTasksToFinalize(p, params, content)
+			require.NoError(t, err)
+			assert.Equal(t, numTasks, 2)
+		},
+		"SucceedsWithAlias": func(t *testing.T, p *model.Project) {
+			yml := `
+tasks:
+- name: "t1"
+- name: "t2"
+- name: "t3"
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+- name: "v2"
+  tasks:
+  - name: "t1"
+  - name: "t2"
+
+patch_aliases:
+  - alias: alias1
+    variant: v2
+    task: ".*"
+`
+			content := []byte(yml)
+			_, err := model.LoadProjectInto(ctx, content, nil, "", p)
+			require.NoError(t, err)
+			params := &patchParams{
+				Alias: "alias1",
+			}
+			numTasks, err := countNumTasksToFinalize(p, params, content)
+			require.NoError(t, err)
+			assert.Equal(t, numTasks, 2)
+		},
+		"SucceedsWithRegexes": func(t *testing.T, p *model.Project) {
+			yml := `
+tasks:
+- name: "t1"
+- name: "t2"
+- name: "t3"
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+- name: "v2"
+  tasks:
+  - name: "t1"
+  - name: "t2"
+`
+			content := []byte(yml)
+			_, err := model.LoadProjectInto(ctx, content, nil, "", p)
+			require.NoError(t, err)
+			params := &patchParams{
+				RegexVariants: []string{".*"},
+				RegexTasks:    []string{"t1"},
+			}
+			numTasks, err := countNumTasksToFinalize(p, params, content)
+			require.NoError(t, err)
+			assert.Equal(t, numTasks, 2)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			p := &model.Project{Identifier: pRef.Id}
+			tCase(t, p)
+		})
 	}
-	content := []byte(yml)
-	err := os.WriteFile(ref.RemotePath, content, 0644)
-	s.Require().NoError(err)
-	defer os.Remove(ref.RemotePath)
-	params := &patchParams{
-		Variants: []string{"all"},
-		Tasks:    []string{"all"},
-	}
-	numTasks, err := countNumTasksToFinalize(ctx, ref, params)
-	s.Require().NoError(err)
-	s.Equal(numTasks, 1)
 }
