@@ -1370,7 +1370,7 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 // This route is used to clone the source and modules when using git.get_project
 // and only meant for internal use.
 // It returns an installation token that's attached to Evergreen's GitHub app.
-// See createGitHubDynamicAccessToken for tokens intended for user usage.
+// See createGitHubDynamicAccessToken or tokens created for users using their GitHub app.
 type createInstallationToken struct {
 	owner string
 	repo  string
@@ -1554,7 +1554,8 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 // It returns an installation token using the task's project's GitHub app and
 // gets the intersecting permissions from the requester's permission group and the
 // permissions requested.
-// See createInstallationToken for tokens intended for cloning source and modules.
+// See createInstallationToken for tokens created with our own GitHub app,
+// for example to use for cloning sources and modules.
 type createGitHubDynamicAccessToken struct {
 	owner  string
 	repo   string
@@ -1607,6 +1608,9 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		})
 	}
 
+	// When creating a token for a task, we want to consider the project's
+	// permission groups. These permission groups can restrict the permissions
+	// so that each requester only gets the permissions they have been set.
 	p, err := model.FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
@@ -1624,7 +1628,13 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
+	// If all permissions is true, we want to send an empty permissions object to the GitHub API.
+	permissions := &intersection.Permissions
+	if intersection.AllPermissions {
+		permissions = nil
+	}
 
+	// The token also should use the project's GitHub app.
 	githubAppAuth, err := model.FindOneGithubAppAuth(t.Project)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
@@ -1639,7 +1649,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	// TODO DEVPROD-5991: Use the modified CreateInstallationToken/HasGitHubApp methods to create the token.
 	// Currently, it's going to use the global Evergreen GitHub app to create the token (from g.env.Settings()).
 	token, err := h.env.Settings().CreateInstallationToken(ctx, h.owner, h.repo, &github.InstallationTokenOptions{
-		Permissions: &intersection.Permissions,
+		Permissions: permissions,
 	})
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", h.owner, h.repo))
