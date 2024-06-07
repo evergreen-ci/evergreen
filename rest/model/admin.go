@@ -1382,7 +1382,6 @@ type APIAWSConfig struct {
 	EC2Keys              []APIEC2Key               `json:"ec2_keys"`
 	Subnets              []APISubnet               `json:"subnets"`
 	TaskOutput           *APIS3Credentials         `json:"task_output"`
-	BinaryClient         *APIS3Credentials         `json:"binary_client"`
 	TaskSync             *APIS3Credentials         `json:"task_sync"`
 	TaskSyncRead         *APIS3Credentials         `json:"task_sync_read"`
 	ParserProject        *APIParserProjectS3Config `json:"parser_project"`
