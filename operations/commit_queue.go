@@ -388,7 +388,6 @@ func backport() cli.Command {
 				Tasks:    c.StringSlice(tasksFlagName),
 				Variants: c.StringSlice(variantsFlagName),
 				Alias:    c.String(patchAliasFlagName),
-				Finalize: c.Bool(patchFinalizeFlagName),
 				Project:  c.String(backportProjectFlag),
 				Browse:   c.Bool(patchBrowseFlagName),
 				BackportOf: patch.BackportInfo{
@@ -396,7 +395,7 @@ func backport() cli.Command {
 					SHA:     c.String(commitShaFlag),
 				},
 			}
-
+			shouldFinalize := c.Bool(patchFinalizeFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
@@ -412,13 +411,6 @@ func backport() cli.Command {
 			}
 			defer client.Close()
 
-			ref, err := patchParams.validatePatchCommand(ctx, conf, ac, client)
-			if err != nil {
-				return err
-			}
-			if err = checkForLargeNumFinalizedTasks(ctx, ref, patchParams); err != nil {
-				return err
-			}
 			if len(patchParams.BackportOf.PatchID) > 0 {
 				var existingPatch *patch.Patch
 				existingPatch, err = ac.GetPatch(patchParams.BackportOf.PatchID)
@@ -449,6 +441,15 @@ func backport() cli.Command {
 			backportPatch, err = patchParams.createPatch(ac, &localDiff{base: utility.FromStringPtr(latestVersions[0].Revision), gitMetadata: gitMetadata})
 			if err != nil {
 				return errors.Wrap(err, "uploading backport patch")
+			}
+			if shouldFinalize {
+				patchId := backportPatch.Id.Hex()
+				if err = checkForLargeNumFinalizedTasks(ac, patchParams, patchId); err != nil {
+					return err
+				}
+				if err = ac.FinalizePatch(patchId); err != nil {
+					return errors.Wrapf(err, "finalizing patch '%s'", patchId)
+				}
 			}
 
 			params := outputPatchParams{

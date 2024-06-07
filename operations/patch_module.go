@@ -95,14 +95,10 @@ func PatchSetModule() cli.Command {
 			if err := addModuleToPatch(params, args, conf, existingPatch, module, ""); err != nil {
 				return err
 			}
-			ref, err := params.validatePatchCommand(ctx, conf, ac, comm)
-			if err != nil {
-				return err
-			}
-			if err = checkForLargeNumFinalizedTasks(ctx, ref, params); err != nil {
-				return err
-			}
 			if params.Finalize {
+				if err = checkForLargeNumFinalizedTasks(ac, params, existingPatch.Id.Hex()); err != nil {
+					return err
+				}
 				if err = ac.FinalizePatch(patchID); err != nil {
 					return errors.Wrapf(err, "finalizing patch '%s'", patchID)
 				}
