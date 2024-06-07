@@ -590,11 +590,14 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 		// Regardless of whether the build variant has batchtime, there may be tasks with different batchtime
 		batchTimeTasks := []string{}
 		for _, bvt := range bv.Tasks {
+			// If we are doing stepback, we only want to activate specific tasks.
 			if g.Task.ActivatedBy == evergreen.StepbackTaskActivator {
 				info := specificStepbackInfo{task: bvt.Name}
 				if utility.FromBoolPtr(bvt.Activate) {
+					// If the generated task has "activate: true", we should activate it.
 					info.activate = true
 				} else if isStepbackTask(g.Task, bv.Name, bvt.Name) {
+					// If the generated task is one of the ones being stepped back, we should activate it.
 					info.activate = true
 				}
 				res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], info)

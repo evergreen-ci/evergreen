@@ -251,7 +251,7 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 		return activatePreviousTask(ctx, t.GeneratedBy, caller, t)
 	}
 
-	// If this is a valid, unfinished, positive/0 priority, and unactive task- we should activate it.
+	// If this is a valid, unfinished, non-disabled, and unactive task- we should activate it.
 	if prevTask != nil && !prevTask.IsFinished() && prevTask.Priority >= 0 && !prevTask.Activated {
 		if err = SetActiveState(ctx, caller, true, *prevTask); err != nil {
 			return errors.Wrapf(err, "setting task '%s' active", prevTask.Id)
