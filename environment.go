@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
-	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/logger"
@@ -177,6 +176,9 @@ type Environment interface {
 	// ShutdownSequenceStarted is true iff the shutdown sequence has been started
 	ShutdownSequenceStarted() bool
 	SetShutdown()
+	// BuildVersion returns the ID of the Evergreen version that built the binary.
+	// Returns an empty string if the version ID isn't provided on startup.
+	BuildVersion() string
 }
 
 // NewEnvironment constructs an Environment instance, establishing a
@@ -190,7 +192,7 @@ type Environment interface {
 //
 // NewEnvironment requires that either the path or DB is sent so that
 // if both are specified, the settings are read from the file.
-func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSettings, tp trace.TracerProvider) (Environment, error) {
+func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket string, db *DBSettings, tp trace.TracerProvider) (Environment, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	tracer := tp.Tracer("github.com/evergreen-ci/evergreen/evergreen")
 	ctx, span := tracer.Start(ctx, "NewEnvironment")
@@ -203,6 +205,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSetti
 		ctx:                     cachedEnvCtx,
 		senders:                 map[SenderKey]send.Sender{},
 		shutdownSequenceStarted: false,
+		versionID:               versionID,
 	}
 	defer func() {
 		e.RegisterCloser("root-context", false, func(_ context.Context) error {
@@ -238,7 +241,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID string, db *DBSetti
 	catcher.Add(e.initJasper(ctx, tracer))
 	catcher.Add(e.initDepot(ctx, tracer))
 	catcher.Add(e.initThirdPartySenders(ctx, tracer))
-	catcher.Add(e.initClientConfig(ctx, versionID, tracer))
+	catcher.Add(e.initClientConfig(ctx, versionID, clientS3Bucket, tracer))
 	catcher.Add(e.createLocalQueue(ctx, tracer))
 	catcher.Add(e.createRemoteQueues(ctx, tracer))
 	catcher.Add(e.createNotificationQueue(ctx, tracer))
@@ -273,6 +276,7 @@ type envState struct {
 	userManager             gimlet.UserManager
 	userManagerInfo         UserManagerInfo
 	shutdownSequenceStarted bool
+	versionID               string
 }
 
 // UserManagerInfo lists properties of the UserManager regarding its support for
@@ -731,29 +735,19 @@ func (e *envState) initQueues(ctx context.Context, tracer trace.Tracer) []error 
 // If versionID is non-empty the ClientConfig will contain links to
 // the version's S3 clients in place of local links. If there are no built clients, this returns an empty config
 // version, but does *not* error.
-func (e *envState) initClientConfig(ctx context.Context, versionID string, tracer trace.Tracer) error {
+func (e *envState) initClientConfig(ctx context.Context, versionID, clientS3Bucket string, tracer trace.Tracer) error {
 	ctx, span := tracer.Start(ctx, "InitClientConfig")
 	defer span.End()
 
 	e.clientConfig = &ClientConfig{LatestRevision: ClientVersion}
 
-	if versionID != "" {
-		bucket, err := pail.NewS3Bucket(pail.S3Options{
-			Name:   e.settings.Providers.AWS.BinaryClient.Bucket,
-			Region: DefaultEC2Region,
-		})
-		if err != nil {
-			return errors.Wrap(err, "constructing pail bucket")
-		}
-
+	if versionID != "" && clientS3Bucket != "" {
 		prefix := fmt.Sprintf("%s/%s", s3ClientsPrefix, versionID)
 		e.clientConfig.S3URLPrefix = fmt.Sprintf("https://%s.s3.amazonaws.com/%s",
-			e.settings.Providers.AWS.BinaryClient.Bucket,
+			clientS3Bucket,
 			prefix,
 		)
-		if err = e.clientConfig.populateClientBinaries(ctx, bucket, prefix); err != nil {
-			return errors.Wrap(err, "populating client binaries")
-		}
+		e.clientConfig.populateClientBinaries(ctx, e.clientConfig.S3URLPrefix)
 	}
 
 	return nil
@@ -1269,4 +1263,13 @@ func (e *envState) RoleManager() gimlet.RoleManager {
 	defer e.mu.RUnlock()
 
 	return e.roleManager
+}
+
+// BuildVersion returns the ID of the Evergreen version that built the binary.
+// Returns an empty string if the version ID isn't provided on startup.
+func (e *envState) BuildVersion() string {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.versionID
 }

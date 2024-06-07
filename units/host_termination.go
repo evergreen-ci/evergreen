@@ -383,12 +383,7 @@ func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context, old
 			return errors.Wrap(err, "checking cloud host status")
 		}
 
-		catcher := grip.NewBasicCatcher()
-		catcher.Add(errors.Wrap(err, "getting cloud host instance status"))
-		if !utility.StringSliceContains(evergreen.UpHostStatus, oldStatus) {
-			catcher.Wrap(j.host.Terminate(ctx, evergreen.User, j.TerminationReason), "marking host as terminated")
-		}
-		return catcher.Resolve()
+		return errors.Wrap(err, "getting cloud host instance status")
 	}
 	if cloudStatus == cloud.StatusNonExistent {
 		return errors.Wrap(j.host.Terminate(ctx, evergreen.User, j.TerminationReason), "marking nonexistent host as terminated")

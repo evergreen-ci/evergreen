@@ -15,8 +15,10 @@
                         "sleepSchedule": {
                           "dailyStartTime": "",
                           "dailyStopTime": "",
+                          "isBetaTester": false,
+                          "nextStartTime": null,
                           "permanentlyExempt": false,
-                          "shouldKeepOff": false,
+                          "shouldKeepOff": true,
                           "timeZone": "America/New_York",
                           "temporarilyExemptUntil": null,
                           "wholeWeekdaysOff": [0, 6]

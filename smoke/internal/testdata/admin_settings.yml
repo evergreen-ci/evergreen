@@ -65,7 +65,7 @@ providers:
       ecs:
         allowed_images: ["fake_smoke_test_image"]
     binary_client:
-      bucket: mciuploads
+      bucket: evg-bucket-evergreen
 
 keys:
   test: "/dev/null"

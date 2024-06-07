@@ -29,7 +29,9 @@ const (
 	TSFormat = "2006-01-02.15-04-05"
 
 	// createHostQueueGroup is the queue group for the provisioning-create-host job.
-	createHostQueueGroup            = "service.host.create"
+	createHostQueueGroup = "service.host.create"
+	// terminateHostQueueGroup is the queue group for host-termination-jobs.
+	terminateHostQueueGroup         = "service.host.termination"
 	commitQueueQueueGroup           = "service.commitqueue"
 	eventNotifierQueueGroup         = "service.event.notifier"
 	podAllocationQueueGroup         = "service.pod.allocate"
@@ -248,14 +250,12 @@ func hostTerminationJobs(ctx context.Context, env evergreen.Environment, _ time.
 		"impact":    "hosts termination interrupted",
 	}))
 	catcher.Wrap(err, "finding hosts spawned by tasks to terminate")
-
 	for _, h := range hosts {
 		jobs = append(jobs, NewHostTerminationJob(env, &h, HostTerminationOptions{
 			TerminateIfBusy:   true,
 			TerminationReason: "host spawned by task has gone out of scope",
 		}))
 	}
-
 	return jobs, catcher.Resolve()
 }
 

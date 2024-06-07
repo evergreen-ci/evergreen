@@ -38,6 +38,7 @@ type TaskConfig struct {
 	GithubPatchData    thirdparty.GithubPatch
 	GithubMergeData    thirdparty.GithubMergeGroup
 	Timeout            Timeout
+	TaskOutput         evergreen.S3Credentials
 	TaskSync           evergreen.S3Credentials
 	EC2Keys            []evergreen.EC2Key
 	ModulePaths        map[string]string

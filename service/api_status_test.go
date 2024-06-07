@@ -49,8 +49,12 @@ func TestServiceStatusEndPoints(t *testing.T) {
 			out := map[string]string{}
 
 			So(json.NewDecoder(resp.Body).Decode(&out), ShouldBeNil)
-			So(len(out), ShouldEqual, 2)
+			So(len(out), ShouldEqual, 3)
 			_, ok := out["build_revision"]
+			So(ok, ShouldBeTrue)
+			_, ok = out["build_version"]
+			So(ok, ShouldBeTrue)
+			_, ok = out["agent_version"]
 			So(ok, ShouldBeTrue)
 		})
 	})

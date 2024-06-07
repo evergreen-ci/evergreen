@@ -162,7 +162,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 			"cloud_status": cloudStatus.String(),
 		})
 
-		err = amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewHostTerminationJob(env, h, HostTerminationOptions{
+		err = EnqueueTerminateHostJob(ctx, env, NewHostTerminationJob(env, h, HostTerminationOptions{
 			TerminateIfBusy:          true,
 			TerminationReason:        fmt.Sprintf("host was found in state '%s'", cloudStatus.String()),
 			SkipCloudHostTermination: isTerminated,

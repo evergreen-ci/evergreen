@@ -48,6 +48,7 @@ type Environment struct {
 	userManagerInfo         evergreen.UserManagerInfo
 	Clients                 evergreen.ClientConfig
 	shutdownSequenceStarted bool
+	versionID               string
 }
 
 // Configure sets default values on the Environment, except for the user manager
@@ -338,4 +339,12 @@ func (e *Environment) SetUserManagerInfo(umi evergreen.UserManagerInfo) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.userManagerInfo = umi
+}
+
+// BuildVersion returns the ID of the Evergreen version that built the binary.
+// Returns an empty string if the version ID isn't set.
+func (e *Environment) BuildVersion() string {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.versionID
 }
