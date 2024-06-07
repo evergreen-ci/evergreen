@@ -85,11 +85,14 @@ func PatchSetModule() cli.Command {
 				return err
 			}
 			if params.Finalize {
-				if err = checkForLargeNumFinalizedTasks(ac, params, existingPatch.Id.Hex()); err != nil {
+				shouldContinue, err := checkForLargeNumFinalizedTasks(ac, params, patchID)
+				if err != nil {
 					return err
 				}
-				if err = ac.FinalizePatch(patchID); err != nil {
-					return errors.Wrapf(err, "finalizing patch '%s'", patchID)
+				if shouldContinue {
+					if err = ac.FinalizePatch(patchID); err != nil {
+						return errors.Wrapf(err, "finalizing patch '%s'", patchID)
+					}
 				}
 				grip.Info("Patch finalized.")
 			}

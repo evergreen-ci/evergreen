@@ -448,11 +448,14 @@ func backport() cli.Command {
 			}
 			if shouldFinalize {
 				patchId := backportPatch.Id.Hex()
-				if err = checkForLargeNumFinalizedTasks(ac, patchParams, patchId); err != nil {
+				shouldContinue, err := checkForLargeNumFinalizedTasks(ac, patchParams, patchId)
+				if err != nil {
 					return err
 				}
-				if err = ac.FinalizePatch(patchId); err != nil {
-					return errors.Wrapf(err, "finalizing patch '%s'", patchId)
+				if shouldContinue {
+					if err = ac.FinalizePatch(patchId); err != nil {
+						return errors.Wrapf(err, "finalizing patch '%s'", patchId)
+					}
 				}
 			}
 
