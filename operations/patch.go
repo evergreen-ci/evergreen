@@ -272,6 +272,9 @@ func Patch() cli.Command {
 	}
 }
 
+// checkForLargeNumFinalizedTasks retrieves an un-finalized patch document, counts the number of tasks it contains,
+// and prompts the user with a confirmation popup if the number of tasks is greater than the largeNumFinalizedTasksThreshold.
+// It returns true if the finalization process should go through, and false otherwise.
 func checkForLargeNumFinalizedTasks(ac *legacyClient, params *patchParams, patchId string) (bool, error) {
 	if params.SkipConfirm {
 		return false, nil
