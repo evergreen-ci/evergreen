@@ -2925,7 +2925,6 @@ func FindGeneratedTasksFromID(generatorID string) ([]GeneratedTaskInfo, error) {
 }
 
 type generateTasksEstimationsResults struct {
-	DisplayName        string  `bson:"_id"`
 	EstimatedCreated   float64 `bson:"est_created"`
 	EstimatedActivated float64 `bson:"est_activated"`
 }

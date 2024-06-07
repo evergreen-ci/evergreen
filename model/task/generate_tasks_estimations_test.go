@@ -9,17 +9,19 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func TestGenerateTasksEstimations(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(context.Background(), mongo.IndexModel{Keys: DurationIndex})
-	assert.NoError(err)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(ctx, mongo.IndexModel{Keys: DurationIndex})
+	assert.NoError(err)
 
 	bv := "bv"
 	project := "proj"
@@ -83,6 +85,7 @@ func TestGenerateTasksEstimations(t *testing.T) {
 
 	dbTask, err := FindOneId(t4.Id)
 	assert.NoError(err)
+	require.NotZero(t, dbTask)
 	assert.Equal(2, utility.FromIntPtr(dbTask.EstimatedNumGeneratedTasks))
 	assert.Equal(20, utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks))
 }
@@ -90,11 +93,12 @@ func TestGenerateTasksEstimations(t *testing.T) {
 func TestGenerateTasksEstimationsNoPreviousTasks(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(context.Background(), mongo.IndexModel{Keys: DurationIndex})
-	assert.NoError(err)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).Indexes().CreateOne(ctx, mongo.IndexModel{Keys: DurationIndex})
+	assert.NoError(err)
 
 	t1 := Task{
 		Id:           "t1",
@@ -112,6 +116,7 @@ func TestGenerateTasksEstimationsNoPreviousTasks(t *testing.T) {
 
 	dbTask, err := FindOneId(t1.Id)
 	assert.NoError(err)
+	require.NotZero(t, dbTask)
 	assert.Equal(0, utility.FromIntPtr(dbTask.EstimatedNumGeneratedTasks))
 	assert.Equal(0, utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks))
 }
@@ -139,6 +144,7 @@ func TestGenerateTasksEstimationsDoesNotRun(t *testing.T) {
 
 	dbTask, err := FindOneId(t1.Id)
 	assert.NoError(err)
+	require.NotZero(t, dbTask)
 	assert.Nil(dbTask.EstimatedNumGeneratedTasks)
 	assert.Nil(dbTask.EstimatedNumActivatedGeneratedTasks)
 
@@ -173,6 +179,7 @@ func TestGenerateTasksEstimationsDoesNotRun(t *testing.T) {
 
 	dbTask, err = FindOneId(t3.Id)
 	assert.NoError(err)
+	require.NotZero(t, dbTask)
 	assert.Equal(1, utility.FromIntPtr(dbTask.EstimatedNumGeneratedTasks))
 	assert.Equal(2, utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks))
 }
