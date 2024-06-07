@@ -58,12 +58,12 @@ type GithubAppAuthProvider interface {
 // GetGitHubAppAuth returns the app id and app private key if they exist.
 func (s *Settings) GetGitHubAppAuth() (*GithubAppAuth, error) {
 	if s.AuthConfig.Github == nil || s.AuthConfig.Github.AppId == 0 {
-		return nil, errors.New("GitHub app is not configured in admin settings")
+		return nil, errors.New("github app id is not configured in admin settings")
 	}
 
 	key := s.Expansions[GithubAppPrivateKey]
 	if key == "" {
-		return nil, errors.New("GitHub app private key is not configured in admin settings")
+		return nil, errors.New("github app private key is not configured in admin settings")
 	}
 
 	return &GithubAppAuth{

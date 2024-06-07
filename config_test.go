@@ -91,14 +91,14 @@ func TestGetGithubSettings(t *testing.T) {
 	settings.Expansions[GithubAppPrivateKey] = ""
 
 	authFields, err := settings.GetGitHubAppAuth()
-	require.NoError(t, err)
+	require.ErrorContains(t, err, "github app id")
 	assert.Nil(authFields)
 
 	settings.AuthConfig.Github = &GithubAuthConfig{
 		AppId: 1234,
 	}
 	authFields, err = settings.GetGitHubAppAuth()
-	require.NoError(t, err)
+	require.ErrorContains(t, err, "github app private key")
 	assert.Nil(authFields)
 
 	settings.Expansions[GithubAppPrivateKey] = "key"
