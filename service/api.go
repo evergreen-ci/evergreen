@@ -143,7 +143,6 @@ func (as *APIServer) fetchLimitedProjectRef(w http.ResponseWriter, r *http.Reque
 		Owner:             utility.ToStringPtr(p.Owner),
 		Repo:              utility.ToStringPtr(p.Repo),
 		Branch:            utility.ToStringPtr(p.Branch),
-		RemotePath:        utility.ToStringPtr(p.RemotePath),
 		WorkstationConfig: wc,
 		CommitQueue: restModel.APICommitQueueParams{
 			Message:    utility.ToStringPtr(p.CommitQueue.Message),
