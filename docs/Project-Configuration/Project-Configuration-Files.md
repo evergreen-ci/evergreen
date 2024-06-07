@@ -66,7 +66,7 @@ Notice that tasks contain:
 Another useful feature is [task tags](#task-and-variant-tags),
 which allows grouping tasks to limit whether [those tasks should run on
 patches/git
-tags/etc.](#limiting-when-a-task-will-run)
+tags/etc.](#limiting-when-a-task-or-variant-will-run)
 
 #### Commands
 
@@ -278,7 +278,7 @@ Fields:
 -   `tasks`: a list of tasks to run, referenced either by task name or by tags.
     Tasks listed here can also include other task-level fields, such as
     `batchtime`, `cron`, `activate`, `depends_on`, and `run_on`. We can also
-    [define when a task will run](#limiting-when-a-task-will-run). If there are
+    [define when a task will run](#limiting-when-a-task-or-variant-will-run). If there are
     conflicting settings definitions at different levels, the order of priority
     is defined [here](#task-fields-override-hierarchy).
 -   `activate`: by default, we'll activate if the whole version is
@@ -308,7 +308,7 @@ Fields:
     variant task. This is an alternative to referencing a task group
     defined in `task_groups` under the tasks of a given build variant.
 -   `tags`: optional list of tags to group the build variant for alias definitions (explained [here](#task-and-variant-tags))
--   Build variants support [all options that limit when a task will run](#limiting-when-a-task-will-run)
+-   Build variants support [all options that limit when a task will run](#limiting-when-a-task-or-variant-will-run)
     (`allowed_requesters`, `patch_only`, `patchable`, `disable`, etc.). If set for the
     build variant, it will apply to all tasks under the build variant. 
 
@@ -582,7 +582,7 @@ tasks:
           sleep 1000
 ```
 
-### Limiting When a Task/Variant Will Run
+### Limiting When a Task or Variant Will Run
 
 To limit the conditions when a task will run, the following settings can be
 added to a task definition, to a build variant definition, or to a specific task
@@ -626,7 +626,6 @@ tasks:
   allowed_requesters: ["patch", "github_tag"]
 ```
 
-
 The valid requester values are:
 - `patch`: manual patches.
 - `github_pr`: GitHub PR patches.
@@ -655,15 +654,15 @@ This can also be set for build variants as a whole:
 ```yaml
 buildvariants:
 - name: github_pr_only
-allowed_requesters: ["github_pr"]
+  allowed_requesters: ["github_pr"]
 ```
 or for particular tasks under a build variant:
 ```yaml
 buildvariants:
-  - name: anything
-    tasks: 
-      - name: only_commit_queue
-        allowed_requesters: ["github_pr"]
+- name: anything
+  tasks: 
+  - name: only_commit_queue
+    allowed_requesters: ["github_pr"]
 ```
 
 ### Expansions
