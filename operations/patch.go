@@ -277,7 +277,7 @@ func Patch() cli.Command {
 }
 
 func checkForLargeNumFinalizedTasks(ctx context.Context, ref *model.ProjectRef, params *patchParams) error {
-	if !params.Finalize {
+	if params.SkipConfirm || !params.Finalize {
 		return nil
 	}
 	numTasks, err := fetchProjectAndCountFinalizedTasks(ctx, ref, params)
@@ -307,9 +307,6 @@ func countNumTasksToFinalize(p *model.Project, params *patchParams, configBytes 
 	numTasksToFinalize := 0
 	for _, vt := range variantTasks {
 		numTasksToFinalize += len(vt.Tasks)
-		for _, dt := range vt.DisplayTasks {
-			numTasksToFinalize += len(dt.ExecTasks)
-		}
 	}
 	return numTasksToFinalize, nil
 }

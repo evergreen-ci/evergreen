@@ -47,9 +47,6 @@ func PatchFinalize() cli.Command {
 			numTasksToFinalize := 0
 			for _, vt := range existingPatch.VariantsTasks {
 				numTasksToFinalize += len(vt.Tasks)
-				for _, dt := range vt.DisplayTasks {
-					numTasksToFinalize += len(dt.ExecTasks)
-				}
 			}
 			if numTasksToFinalize > largeNumFinalizedTasksThreshold {
 				if !confirm(fmt.Sprintf("This is a large patch build, expected to schedule %d tasks. Continue?", numTasksToFinalize), true) {

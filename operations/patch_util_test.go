@@ -354,6 +354,39 @@ buildvariants:
 			require.NoError(t, err)
 			assert.Equal(t, numTasks, 2)
 		},
+		"SucceedsWithDisplayTask": func(t *testing.T, p *model.Project) {
+			yml := `
+tasks:
+- name: "t1"
+- name: "t2"
+- name: "t3"
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t1"
+  - name: "t2"
+  - name: "t3"
+  display_tasks:
+  - name: "displayTask"
+    execution_tasks:
+    - "t2"
+    - "t3"
+- name: "v2"
+  tasks:
+  - name: "t1"
+  - name: "t2"
+`
+			content := []byte(yml)
+			_, err := model.LoadProjectInto(ctx, content, nil, "", p)
+			require.NoError(t, err)
+			params := &patchParams{
+				Variants: []string{"all"},
+				Tasks:    []string{"all"},
+			}
+			numTasks, err := countNumTasksToFinalize(p, params, content)
+			require.NoError(t, err)
+			assert.Equal(t, numTasks, 5)
+		},
 		"SkipsDisabledTask": func(t *testing.T, p *model.Project) {
 			yml := `
 tasks:
