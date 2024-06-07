@@ -421,7 +421,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		})
 	}
 
-	appToken, err := evergreen.CreateInstallationToken(ctx, h.settings, pRef.Owner, pRef.Repo, nil)
+	appToken, err := evergreen.CreateInstallationToken(ctx, h.settings.CreateGitHubAppAuth(), pRef.Owner, pRef.Repo, nil)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "creating GitHub app token"))
 	}
@@ -1401,7 +1401,7 @@ func (g *createInstallationToken) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (g *createInstallationToken) Run(ctx context.Context) gimlet.Responder {
-	token, err := evergreen.CreateInstallationToken(ctx, g.env.Settings(), g.owner, g.repo, nil)
+	token, err := evergreen.CreateInstallationToken(ctx, g.env.Settings().CreateGitHubAppAuth(), g.owner, g.repo, nil)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", g.owner, g.repo))
 	}

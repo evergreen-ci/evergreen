@@ -340,7 +340,7 @@ func getInstallationToken(ctx context.Context, owner, repo string, opts *github.
 		return "", errors.Wrap(err, "getting config")
 	}
 
-	token, err := evergreen.CreateInstallationToken(ctx, settings, owner, repo, opts)
+	token, err := evergreen.CreateInstallationToken(ctx, settings.CreateGitHubAppAuth(), owner, repo, opts)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "error creating token",

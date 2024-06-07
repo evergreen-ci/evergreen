@@ -1,8 +1,6 @@
 package model
 
 import (
-	"errors"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
@@ -74,14 +72,14 @@ func (githubAppAuth *GithubAppAuth) Upsert() error {
 
 // GetGitHubAppAuth fulfills the GithubAppAuthProvider interface and returns the app auth
 // for the given project.
-func (githubAppAuth *GithubAppAuth) GetGitHubAppAuth() (evergreen.GithubAppAuth, error) {
+func (githubAppAuth *GithubAppAuth) GetGitHubAppAuth() *evergreen.GithubAppAuth {
 	if githubAppAuth == nil {
-		return evergreen.GithubAppAuth{}, errors.New("github app authentication not found")
+		return nil
 	}
-	return evergreen.GithubAppAuth{
+	return &evergreen.GithubAppAuth{
 		AppID:      githubAppAuth.AppId,
 		PrivateKey: githubAppAuth.PrivateKey,
-	}, nil
+	}
 }
 
 // RemoveGithubAppAuth deletes the app auth for the given project id from the database
