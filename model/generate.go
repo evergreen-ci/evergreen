@@ -508,6 +508,13 @@ func (g *GeneratedProject) filterInactiveTasks(ctx context.Context, tasks TVPair
 		}
 
 		for _, t := range tasks {
+			// If it is a stepback task, it should activate according to the stepback logic.
+			if st := activationInfo.getStepbackTask(bv, t); st != nil {
+				if st.shouldActivate() {
+					activatedTasks = append(activatedTasks, TVPair{Variant: bv, TaskName: t})
+				}
+				continue
+			}
 			// Tasks with specific activation are activated later by ActivateElapsedBuildsAndTasks and we do not add dependencies for them.
 			if !activationInfo.taskHasSpecificActivation(bv, t) {
 				activatedTasks = append(activatedTasks, TVPair{Variant: bv, TaskName: t})
