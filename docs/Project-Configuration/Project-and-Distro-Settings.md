@@ -127,7 +127,8 @@ file via an expansion.
 Options:
 
 -   Checking **private** makes the variable redacted so the value won't
-    be visible on the projects page or by API routes.
+    be visible on the projects page or by API routes. Per  
+    [Evergreen policy](https://mongodb.stackenterprise.co/questions/1232), private variables cannot be retrieved. 
 -   Checking **admin only** ensures that the variable can only be used
     by admins and mainline commits.
 
