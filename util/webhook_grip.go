@@ -177,7 +177,7 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 				"message":       "error sending webhook notification",
 				"webhook_url":   req.URL.String(),
 				"status_code":   resp.StatusCode,
-				"response_body": body,
+				"response_body": string(body),
 				"ctx_err":       utility.IsContextError(ctx.Err()),
 			})
 		}
@@ -187,7 +187,7 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 			"notification_id": raw.NotificationID,
 			"url":             raw.URL,
 			"response_code":   resp.StatusCode,
-			"response_body":   body,
+			"response_body":   string(body),
 		})
 
 		return false, nil
