@@ -277,7 +277,7 @@ func Patch() cli.Command {
 // It returns true if the finalization process should go through, and false otherwise.
 func checkForLargeNumFinalizedTasks(ac *legacyClient, params *patchParams, patchId string) (bool, error) {
 	if params.SkipConfirm {
-		return false, nil
+		return true, nil
 	}
 	existingPatch, err := ac.GetPatch(patchId)
 	if err != nil {
