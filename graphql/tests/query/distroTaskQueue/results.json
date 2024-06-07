@@ -23,7 +23,7 @@
               "requester": "COMMIT",
               "displayName": "compile",
               "project": "3d1b6a78a5bf2bd595e44fd5caf16aed41c89617ecc886d7deca821dbded94c6",
-              "projectIdentifier": "spruce",
+              "projectIdentifier": null,
               "buildVariant": "osx-108-ssl",
               "priority": 0,
               "revision": "336e39e76e7a65af1ec534f28e69f568ca97695c",

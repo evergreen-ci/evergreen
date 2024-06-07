@@ -205,7 +205,9 @@ func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([
 		}
 
 		apiTaskQueueItem.BuildFromService(taskQueueItem)
-		apiTaskQueueItem.ProjectIdentifier = utility.ToStringPtr(idToIdentifierMap[taskQueueItem.Project])
+		if idToIdentifierMap[taskQueueItem.Project] != "" {
+			apiTaskQueueItem.ProjectIdentifier = utility.ToStringPtr(idToIdentifierMap[taskQueueItem.Project])
+		}
 		taskQueue = append(taskQueue, &apiTaskQueueItem)
 	}
 
