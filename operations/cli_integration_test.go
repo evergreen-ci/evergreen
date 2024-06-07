@@ -29,8 +29,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func init() { testutil.Setup() }
-
 var testConfig = testutil.TestConfig()
 
 var testPatch = `diff --git a/README.md b/README.md
