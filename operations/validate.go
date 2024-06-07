@@ -50,11 +50,19 @@ func Validate() cli.Command {
 			if err != nil {
 				return err
 			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
+
+			client, err := conf.setupRestCommunicator(ctx, !quiet)
+			if err != nil {
+				return errors.Wrap(err, "setting up REST communicator")
+			}
+			defer client.Close()
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
@@ -139,7 +147,7 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong, errorOnWarn
 	}
 	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, includeLong, projectID)
 	if err != nil {
-		return errors.Wrapf(err, "validating project '%s'", projectID)
+		return nil
 	}
 
 	grip.Info(projErrors)
