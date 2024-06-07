@@ -104,23 +104,25 @@ var (
 	IsGithubCheckKey               = bsonutil.MustHaveTag(Task{}, "IsGithubCheck")
 	HostCreateDetailsKey           = bsonutil.MustHaveTag(Task{}, "HostCreateDetails")
 
-	GeneratedJSONAsStringKey      = bsonutil.MustHaveTag(Task{}, "GeneratedJSONAsString")
-	GeneratedJSONStorageMethodKey = bsonutil.MustHaveTag(Task{}, "GeneratedJSONStorageMethod")
-	GenerateTasksErrorKey         = bsonutil.MustHaveTag(Task{}, "GenerateTasksError")
-	GeneratedTasksToActivateKey   = bsonutil.MustHaveTag(Task{}, "GeneratedTasksToActivate")
-	NumGeneratedTasksKey          = bsonutil.MustHaveTag(Task{}, "NumGeneratedTasks")
-	NumActivatedGeneratedTasksKey = bsonutil.MustHaveTag(Task{}, "NumActivatedGeneratedTasks")
-	ResetWhenFinishedKey          = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
-	ResetFailedWhenFinishedKey    = bsonutil.MustHaveTag(Task{}, "ResetFailedWhenFinished")
-	NumAutomaticRestartsKey       = bsonutil.MustHaveTag(Task{}, "NumAutomaticRestarts")
-	IsAutomaticRestartKey         = bsonutil.MustHaveTag(Task{}, "IsAutomaticRestart")
-	CommitQueueMergeKey           = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
-	DisplayStatusKey              = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
-	BaseTaskKey                   = bsonutil.MustHaveTag(Task{}, "BaseTask")
-	BuildVariantDisplayNameKey    = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
-	IsEssentialToSucceedKey       = bsonutil.MustHaveTag(Task{}, "IsEssentialToSucceed")
-	HasAnnotationsKey             = bsonutil.MustHaveTag(Task{}, "HasAnnotations")
-	NumNextTaskDispatchesKey      = bsonutil.MustHaveTag(Task{}, "NumNextTaskDispatches")
+	GeneratedJSONAsStringKey               = bsonutil.MustHaveTag(Task{}, "GeneratedJSONAsString")
+	GeneratedJSONStorageMethodKey          = bsonutil.MustHaveTag(Task{}, "GeneratedJSONStorageMethod")
+	GenerateTasksErrorKey                  = bsonutil.MustHaveTag(Task{}, "GenerateTasksError")
+	GeneratedTasksToActivateKey            = bsonutil.MustHaveTag(Task{}, "GeneratedTasksToActivate")
+	NumGeneratedTasksKey                   = bsonutil.MustHaveTag(Task{}, "NumGeneratedTasks")
+	EstimatedNumGeneratedTasksKey          = bsonutil.MustHaveTag(Task{}, "EstimatedNumGeneratedTasks")
+	NumActivatedGeneratedTasksKey          = bsonutil.MustHaveTag(Task{}, "NumActivatedGeneratedTasks")
+	EstimatedNumActivatedGeneratedTasksKey = bsonutil.MustHaveTag(Task{}, "EstimatedNumActivatedGeneratedTasks")
+	ResetWhenFinishedKey                   = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
+	ResetFailedWhenFinishedKey             = bsonutil.MustHaveTag(Task{}, "ResetFailedWhenFinished")
+	NumAutomaticRestartsKey                = bsonutil.MustHaveTag(Task{}, "NumAutomaticRestarts")
+	IsAutomaticRestartKey                  = bsonutil.MustHaveTag(Task{}, "IsAutomaticRestart")
+	CommitQueueMergeKey                    = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
+	DisplayStatusKey                       = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
+	BaseTaskKey                            = bsonutil.MustHaveTag(Task{}, "BaseTask")
+	BuildVariantDisplayNameKey             = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
+	IsEssentialToSucceedKey                = bsonutil.MustHaveTag(Task{}, "IsEssentialToSucceed")
+	HasAnnotationsKey                      = bsonutil.MustHaveTag(Task{}, "HasAnnotations")
+	NumNextTaskDispatchesKey               = bsonutil.MustHaveTag(Task{}, "NumNextTaskDispatches")
 )
 
 var (
@@ -2899,4 +2901,66 @@ func FindGeneratedTasksFromID(generatorID string) ([]GeneratedTaskInfo, error) {
 	}
 
 	return out, nil
+}
+
+type generateTasksEstimationsResults struct {
+	EstimatedCreated   float64 `bson:"est_created"`
+	EstimatedActivated float64 `bson:"est_activated"`
+}
+
+func getGenerateTasksEstimation(ctx context.Context, project, buildVariant, displayName string, lookBackTime time.Duration) ([]generateTasksEstimationsResults, error) {
+	match := bson.M{
+		ProjectKey:        project,
+		BuildVariantKey:   buildVariant,
+		DisplayNameKey:    displayName,
+		GeneratedTasksKey: true,
+		StatusKey:         evergreen.TaskSucceeded,
+		StartTimeKey: bson.M{
+			"$gt": time.Now().Add(-1 * lookBackTime),
+		},
+		FinishTimeKey: bson.M{
+			"$lte": time.Now(),
+		},
+	}
+
+	pipeline := []bson.M{
+		{
+			"$match": match,
+		},
+		{
+			"$project": bson.M{
+				DisplayNameKey:                1,
+				NumGeneratedTasksKey:          1,
+				NumActivatedGeneratedTasksKey: 1,
+				IdKey:                         0,
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": fmt.Sprintf("$%s", DisplayNameKey),
+				"est_created": bson.M{
+					"$avg": fmt.Sprintf("$%s", NumGeneratedTasksKey),
+				},
+				"est_activated": bson.M{
+					"$avg": fmt.Sprintf("$%s", NumActivatedGeneratedTasksKey),
+				},
+			},
+		},
+	}
+
+	results := []generateTasksEstimationsResults{}
+
+	coll := evergreen.GetEnvironment().DB().Collection(Collection)
+	dbCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	cursor, err := coll.Aggregate(dbCtx, pipeline, &options.AggregateOptions{Hint: DurationIndex})
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating generate tasks estimations")
+	}
+	err = cursor.All(dbCtx, &results)
+	if err != nil {
+		return nil, errors.Wrap(err, "iterating and decoding generate tasks estimations")
+	}
+
+	return results, nil
 }
