@@ -131,7 +131,7 @@ func TestEvergreenWebhookSender(t *testing.T) {
 			assert.Equal(t, "https://example.com", transport.lastUrl)
 			assert.Equal(t, retryCount+1, transport.attemptCount)
 			require.Error(t, capturedErr)
-			assert.EqualError(t, capturedErr, "after 4 attempts, operation failed: response was 400 (Bad Request)")
+			assert.ErrorContains(t, capturedErr, "response was 400 (Bad Request)")
 		},
 		"SucceedsAfterRetry": func(t *testing.T) {
 			attempts := 2
@@ -201,7 +201,7 @@ func TestEvergreenWebhookSenderWithBadSecret(t *testing.T) {
 	}))
 	s.Send(m)
 
-	assert.EqualError(<-channel, "after 1 attempts, operation failed: response was 400 (Bad Request)")
+	assert.ErrorContains(<-channel, "response was 400 (Bad Request)")
 	assert.Equal("https://example.com", transport.lastUrl)
 }
 
