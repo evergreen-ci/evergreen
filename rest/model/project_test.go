@@ -82,7 +82,8 @@ func TestGitHubDynamicTokenPermissionGroupToService(t *testing.T) {
 		require.Len(models, 1)
 
 		assert.Equal("some-group", models[0].Name)
-		assert.Equal(true, models[0].NoPermissions)
+		assert.False(models[0].AllPermissions)
+		assert.Nil(models[0].Permissions.Contents)
 	})
 
 	t.Run("Invalid permissions should result in an error", func(t *testing.T) {
@@ -108,8 +109,35 @@ func TestGitHubDynamicTokenPermissionGroupToService(t *testing.T) {
 		require.Len(models, 1)
 
 		assert.Equal("some-group", models[0].Name)
-		assert.Equal(false, models[0].NoPermissions)
+		assert.False(models[0].AllPermissions)
 		assert.Equal("read", utility.FromStringPtr(models[0].Permissions.Contents))
 		assert.Equal("write", utility.FromStringPtr(models[0].Permissions.PullRequests))
+	})
+
+	t.Run("All permissions set should be kept", func(t *testing.T) {
+		req := APIGitHubDynamicTokenPermissionGroups{
+			APIGitHubDynamicTokenPermissionGroup{
+				Name:           utility.ToStringPtr("some-group"),
+				AllPermissions: utility.TruePtr(),
+			},
+		}
+		models, err := req.ToService()
+		require.NoError(err)
+		require.Len(models, 1)
+
+		assert.Equal("some-group", models[0].Name)
+		assert.True(models[0].AllPermissions)
+	})
+
+	t.Run("If permissions are set and all permissions is true, an error is returned", func(t *testing.T) {
+		req := APIGitHubDynamicTokenPermissionGroups{
+			APIGitHubDynamicTokenPermissionGroup{
+				Name:           utility.ToStringPtr("some-group"),
+				Permissions:    map[string]string{"contents": "read", "pull_requests": "write"},
+				AllPermissions: utility.TruePtr(),
+			},
+		}
+		_, err := req.ToService()
+		require.ErrorContains(err, "a group will all permissions must have no permissions set")
 	})
 }

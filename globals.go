@@ -200,17 +200,15 @@ const (
 	// if a patch has NumTasksForLargePatch number of tasks or greater, we log to splunk for investigation
 	NumTasksForLargePatch = 10000
 
-	// LogMessage struct versions
-	LogmessageFormatTimestamp = 1
-	LogmessageCurrentVersion  = LogmessageFormatTimestamp
-
 	DefaultEvergreenConfig = ".evergreen.yml"
 
-	EvergreenHome       = "EVGHOME"
-	MongodbUrl          = "MONGO_URL"
-	MongoAWSAuthEnabled = "MONGO_AWS_AUTH"
-	EvergreenVersionID  = "EVG_VERSION_ID"
-	TraceEndpoint       = "TRACE_ENDPOINT"
+	// Env vars
+	EvergreenHome           = "EVGHOME"
+	MongodbUrl              = "MONGO_URL"
+	MongoAWSAuthEnabled     = "MONGO_AWS_AUTH"
+	EvergreenVersionID      = "EVG_VERSION_ID"
+	EvergreenClientS3Bucket = "EVG_CLIENT_S3_BUCKET"
+	TraceEndpoint           = "TRACE_ENDPOINT"
 
 	// localLoggingOverride is a special log path indicating that the app server
 	// should attempt to log to systemd if available, and otherwise fall back to
@@ -274,8 +272,6 @@ const (
 	TempSetupScriptName           = "setup-temp.sh"
 	PowerShellSetupScriptName     = "setup.ps1"
 	PowerShellTempSetupScriptName = "setup-temp.ps1"
-
-	RoutePaginatorNextPageHeaderKey = "Link"
 
 	PlannerVersionLegacy  = "legacy"
 	PlannerVersionTunable = "tunable"
@@ -675,9 +671,6 @@ const (
 	DefaultDatabaseReadMode  = "majority"
 
 	DefaultAmboyDatabaseURL = "mongodb://localhost:27017"
-
-	// database and config directory, set to the testing version by default for safety
-	ClientDirectory = "clients"
 
 	// version requester types
 	PatchVersionRequester       = "patch_request"
@@ -1089,7 +1082,7 @@ var (
 
 	ValidCommandTypes = []string{CommandTypeSetup, CommandTypeSystem, CommandTypeTest}
 
-	// Map from valid architectures to display names
+	// Map from valid OS/architecture combinations to display names
 	ValidArchDisplayNames = map[string]string{
 		ArchWindowsAmd64: "Windows 64-bit",
 		ArchLinuxPpc64le: "Linux PowerPC 64-bit",
@@ -1423,13 +1416,6 @@ var GeneralAccessRoles = []string{
 	SuperUserProjectAccessRole,
 	SuperUserDistroAccessRole,
 }
-
-// Constants for Evergreen log types.
-const (
-	LogTypeAgent  = "agent_log"
-	LogTypeTask   = "task_log"
-	LogTypeSystem = "system_log"
-)
 
 // LogViewer represents recognized viewers for rendering logs.
 type LogViewer string

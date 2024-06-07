@@ -83,11 +83,22 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 		})
 	}
 
-	remoteQueue := j.env.RemoteQueue()
-	if !j.ExcludeRemote && (remoteQueue != nil && remoteQueue.Info().Started) {
-		j.logger.Info(message.Fields{
-			"message": "amboy remote queue stats",
-			"stats":   remoteQueue.Stats(ctx),
-		})
+	if !j.ExcludeRemote {
+		remoteQueue := j.env.RemoteQueue()
+		if remoteQueue != nil && remoteQueue.Info().Started {
+			j.logger.Info(message.Fields{
+				"message": "amboy remote queue stats",
+				"stats":   remoteQueue.Stats(ctx),
+			})
+		}
+
+		queueGroup, _ := j.env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
+		if queueGroup != nil && queueGroup.Info().Started {
+			j.logger.Info(message.Fields{
+				"message": fmt.Sprintf("amboy '%s' group stats", terminateHostQueueGroup),
+				"stats":   queueGroup.Stats(ctx),
+			})
+		}
 	}
+
 }

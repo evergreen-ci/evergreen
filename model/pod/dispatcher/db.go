@@ -45,11 +45,6 @@ func Find(q db.Q) ([]PodDispatcher, error) {
 	return pds, errors.WithStack(db.FindAllQ(Collection, q, &pds))
 }
 
-// UpdateOne updates one pod dispatcher.
-func UpdateOne(query bson.M, update interface{}) error {
-	return db.Update(Collection, query, update)
-}
-
 // UpsertOne updates an existing pod dispatcher if it exists based on the
 // query; otherwise, it inserts a new pod dispatcher.
 func UpsertOne(query, update interface{}) (*adb.ChangeInfo, error) {

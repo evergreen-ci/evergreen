@@ -72,7 +72,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	defer func() {
-		if j.HasErrors() && (!j.RetryInfo().ShouldRetry() || j.RetryInfo().GetRemainingAttempts() == 0) {
+		if j.HasErrors() && j.IsLastAttempt() {
 			event.LogHostProvisionFailed(j.HostID, j.Error().Error())
 			grip.Error(message.WrapError(j.Error(), message.Fields{
 				"message":         "provisioning failed",
@@ -133,7 +133,8 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 				TerminateIfBusy:   true,
 				TerminationReason: "failed to mount volume",
 			})
-			j.AddError(amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminateJob))
+
+			j.AddError(EnqueueTerminateHostJob(ctx, j.env, terminateJob))
 
 			return
 		}

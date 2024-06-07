@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -30,7 +29,6 @@ const (
 	HostStatusWriteConfirm         = "Successfully updated host status"
 	HostRestartJasperConfirm       = "Successfully marked host as needing Jasper service restarted"
 	HostReprovisionConfirm         = "Successfully marked host as needing to reprovision"
-	UnrecognizedAction             = "Unrecognized action: %v"
 )
 
 var (
@@ -90,7 +88,7 @@ func ModifyHostsWithPermissions(hosts []host.Host, perm map[string]gimlet.Permis
 	return updated, httpStatus, catcher.Resolve()
 }
 
-func ModifyHostStatus(ctx context.Context, env evergreen.Environment, queue amboy.Queue, h *host.Host, newStatus string, notes string, u *user.DBUser) (string, int, error) {
+func ModifyHostStatus(ctx context.Context, env evergreen.Environment, h *host.Host, newStatus string, notes string, u *user.DBUser) (string, int, error) {
 	currentStatus := h.Status
 
 	if !utility.StringSliceContains(validUpdateToStatuses, newStatus) {
@@ -102,15 +100,11 @@ func ModifyHostStatus(ctx context.Context, env evergreen.Environment, queue ambo
 	}
 
 	if newStatus == evergreen.HostTerminated {
-		if !queue.Info().Started {
-			return "", http.StatusInternalServerError, errors.New(HostTerminationQueueingError)
-		}
-
 		reason := notes
 		if reason == "" {
 			reason = fmt.Sprintf("terminated by user '%s'", u.Username())
 		}
-		if err := amboy.EnqueueUniqueJob(ctx, queue, units.NewHostTerminationJob(env, h, units.HostTerminationOptions{
+		if err := units.EnqueueTerminateHostJob(ctx, env, units.NewHostTerminationJob(env, h, units.HostTerminationOptions{
 			TerminateIfBusy:   true,
 			TerminationReason: reason,
 		})); err != nil {
@@ -189,9 +183,10 @@ func GetReprovisionToNewCallback(ctx context.Context, env evergreen.Environment,
 	}
 }
 
-func GetUpdateHostStatusCallback(ctx context.Context, env evergreen.Environment, rq amboy.Queue, status string, notes string, user *user.DBUser) func(h *host.Host) (httpStatus int, err error) {
+func GetUpdateHostStatusCallback(ctx context.Context, env evergreen.Environment,
+	status string, notes string, user *user.DBUser) func(h *host.Host) (httpStatus int, err error) {
 	return func(h *host.Host) (httpStatus int, err error) {
-		_, httpStatus, modifyErr := ModifyHostStatus(ctx, env, rq, h, status, notes, user)
+		_, httpStatus, modifyErr := ModifyHostStatus(ctx, env, h, status, notes, user)
 		return httpStatus, modifyErr
 	}
 }

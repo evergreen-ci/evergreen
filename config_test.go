@@ -135,7 +135,7 @@ func TestAdminSuite(t *testing.T) {
 	originalSettings, err := GetConfig(ctx)
 	require.NoError(t, err)
 
-	env, err := NewEnvironment(ctx, configFile, "", nil, noop.NewTracerProvider())
+	env, err := NewEnvironment(ctx, configFile, "", "", nil, noop.NewTracerProvider())
 	require.NoError(t, err)
 
 	s := new(AdminSuite)
@@ -189,7 +189,6 @@ func (s *AdminSuite) TestBaseConfig() {
 		AWSInstanceRole:     "role",
 		Banner:              "banner",
 		BannerTheme:         Important,
-		ClientBinariesDir:   "bin_dir",
 		ConfigDir:           "cfg_dir",
 		Credentials:         map[string]string{"k1": "v1"},
 		DomainName:          "example.com",
@@ -213,7 +212,6 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.AWSInstanceRole, settings.AWSInstanceRole)
 	s.Equal(config.Banner, settings.Banner)
 	s.Equal(config.BannerTheme, settings.BannerTheme)
-	s.Equal(config.ClientBinariesDir, settings.ClientBinariesDir)
 	s.Equal(config.ConfigDir, settings.ConfigDir)
 	s.Equal(config.Credentials, settings.Credentials)
 	s.Equal(config.DomainName, settings.DomainName)

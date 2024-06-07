@@ -77,7 +77,7 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	defer func() {
-		if j.HasErrors() && (j.RetryInfo().GetRemainingAttempts() == 0 || !j.RetryInfo().ShouldRetry()) {
+		if j.HasErrors() && j.IsLastAttempt() {
 			grip.Error(message.WrapError(j.Error(), message.Fields{
 				"message": "setup script failed during execution",
 				"host_id": j.host.Id,

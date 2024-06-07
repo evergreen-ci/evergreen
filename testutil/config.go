@@ -43,7 +43,7 @@ func Setup() {
 		ctx := context.Background()
 
 		path := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)
-		env, err := evergreen.NewEnvironment(ctx, path, "", nil, noop.NewTracerProvider())
+		env, err := evergreen.NewEnvironment(ctx, path, "", "", nil, noop.NewTracerProvider())
 
 		grip.EmergencyPanic(message.WrapError(err, message.Fields{
 			"message": "could not initialize test environment",
@@ -55,7 +55,7 @@ func Setup() {
 }
 
 func NewEnvironment(ctx context.Context, t *testing.T) evergreen.Environment {
-	env, err := evergreen.NewEnvironment(ctx, filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings), "", nil, noop.NewTracerProvider())
+	env, err := evergreen.NewEnvironment(ctx, filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings), "", "", nil, noop.NewTracerProvider())
 	require.NoError(t, err)
 	return env
 }
@@ -63,10 +63,6 @@ func NewEnvironment(ctx context.Context, t *testing.T) evergreen.Environment {
 // TestConfig creates test settings from a test config.
 func TestConfig() *evergreen.Settings {
 	return loadConfig(TestDir, TestSettings)
-}
-
-func TestConfigWithDefaultAuthTokens() *evergreen.Settings {
-	return loadConfig(TestDir, testSettingsWithAuthTokens)
 }
 
 func loadConfig(path ...string) *evergreen.Settings {
@@ -171,7 +167,6 @@ func MockConfig() *evergreen.Settings {
 			User:    "cedar-user",
 			APIKey:  "cedar-key",
 		},
-		ClientBinariesDir: "bin_dir",
 		CommitQueue: evergreen.CommitQueueConfig{
 			MergeTaskDistro: "distro",
 			CommitterName:   "Evergreen Commit Queue",
@@ -197,7 +192,6 @@ func MockConfig() *evergreen.Settings {
 			ProvisioningThrottle: 100,
 			CloudStatusBatchSize: 10,
 			MaxTotalDynamicHosts: 500,
-			S3BaseURL:            "s3_base_url",
 		},
 		HostJasper: evergreen.HostJasperConfig{
 			BinaryName:       "binary",
@@ -266,6 +260,10 @@ func MockConfig() *evergreen.Settings {
 				},
 				DefaultSecurityGroup: "test_security_group",
 				MaxVolumeSizePerUser: 200,
+				TaskOutput: evergreen.S3Credentials{
+					Key:    "aws_key",
+					Secret: "aws_secret",
+				},
 				BinaryClient: evergreen.S3Credentials{
 					Bucket: "client_bucket",
 				},
@@ -351,7 +349,6 @@ func MockConfig() *evergreen.Settings {
 			LargeParserProjectsDisabled:     true,
 			HostInitDisabled:                true,
 			PodInitDisabled:                 true,
-			S3BinaryDownloadsDisabled:       true,
 			MonitorDisabled:                 true,
 			AlertsDisabled:                  true,
 			AgentStartDisabled:              true,

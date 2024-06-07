@@ -7,11 +7,3 @@ const (
 	PowerShellScriptClosingTag ClosingTag = "</powershell>"
 	BatchScriptClosingTag      ClosingTag = "</script>"
 )
-
-// ClosingTags returns all cloud-init closing tags for directives.
-func ClosingTags() []ClosingTag {
-	return []ClosingTag{
-		PowerShellScriptClosingTag,
-		BatchScriptClosingTag,
-	}
-}

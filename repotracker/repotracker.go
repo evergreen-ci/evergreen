@@ -31,7 +31,6 @@ const (
 	// if not specified in configuration file
 	DefaultNumNewRepoRevisionsToFetch = 200
 	DefaultMaxRepoRevisionsToSearch   = 50
-	DefaultNumConcurrentRequests      = 10
 )
 
 // RepoTracker is used to manage polling repository changes and storing such

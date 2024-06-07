@@ -113,7 +113,7 @@ func (j *setupHostJob) Run(ctx context.Context) {
 
 func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settings) error {
 	defer func() {
-		if j.host.Status != evergreen.HostRunning && (j.RetryInfo().GetRemainingAttempts() == 0 || !j.RetryInfo().ShouldRetry()) {
+		if j.host.Status != evergreen.HostRunning && j.IsLastAttempt() {
 			event.LogHostProvisionFailed(j.host.Id, "host has used up all attempts to provision")
 			grip.Info(message.Fields{
 				"message":         "provisioning failed",

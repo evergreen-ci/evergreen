@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
 )
@@ -26,14 +25,6 @@ func GetTask(r *http.Request) *task.Task {
 		if t, ok := rv.(*task.Task); ok {
 			return t
 		}
-	}
-	return nil
-}
-
-// GetHost loads the host attached to a request
-func GetHost(r *http.Request) *host.Host {
-	if rv := r.Context().Value(model.ApiHostKey); rv != nil {
-		return rv.(*host.Host)
 	}
 	return nil
 }

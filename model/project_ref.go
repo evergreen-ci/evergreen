@@ -148,11 +148,14 @@ type GitHubDynamicTokenPermissionGroup struct {
 	Name string `bson:"name,omitempty" json:"name,omitempty" yaml:"name,omitempty"`
 	// Permissions are a key-value pair of GitHub token permissions to their permission level
 	Permissions github.InstallationPermissions `bson:"permissions,omitempty" json:"permissions,omitempty" yaml:"permissions,omitempty"`
-	// NoPermissions is a boolean indicating that tokens should be fully restricted with no permissions at all.
-	// An empty permissions object is not enough to indicate that as it would result in all permissions.
-	NoPermissions bool `bson:"no_permissions,omitempty" json:"no_permissions,omitempty" yaml:"no_permissions,omitempty"`
+	// AllPermissions is a flag that indicates that the group has all permissions.
+	// If this is set to true, the Permissions field is ignored.
+	// If this is set to false, the Permissions field is used (and may be
+	// nil, representing no permissions).
+	AllPermissions bool `bson:"all_permissions,omitempty" json:"all_permissions,omitempty" yaml:"all_permissions,omitempty"`
 }
 
+// defaultGitHubTokenPermissionGroup is an empty, all permissions, group.
 var defaultGitHubTokenPermissionGroup = GitHubDynamicTokenPermissionGroup{}
 
 // GetGitHubPermissionGroup returns the GitHubDynamicTokenPermissionGroup for the given requester.
@@ -196,6 +199,69 @@ func (p *ProjectRef) ValidateGitHubPermissionGroups() error {
 		}
 	}
 	return errors.Wrap(catcher.Resolve(), "invalid GitHub dynamic token permission groups")
+}
+
+// Intersection returns the most restrictive intersection of the two permission groups.
+// The name carries over from the calling group. If either permission is no permissions,
+// it will return a group with no permissions.
+func (p *GitHubDynamicTokenPermissionGroup) Intersection(other GitHubDynamicTokenPermissionGroup) (GitHubDynamicTokenPermissionGroup, error) {
+	intersectionGroup := GitHubDynamicTokenPermissionGroup{Name: p.Name}
+	if p.AllPermissions && other.AllPermissions {
+		intersectionGroup.AllPermissions = true
+		return intersectionGroup, nil
+	}
+	if p.AllPermissions {
+		intersectionGroup.Permissions = other.Permissions
+		return intersectionGroup, nil
+	}
+	if other.AllPermissions {
+		intersectionGroup.Permissions = p.Permissions
+		return intersectionGroup, nil
+	}
+
+	// To keep up to date with GitHub's different permissions,
+	// we use reflection to iterate over the fields of the struct.
+
+	// The two permissions to intersect.
+	perms1 := reflect.ValueOf(&p.Permissions).Elem()
+	perms2 := reflect.ValueOf(&other.Permissions).Elem()
+
+	// The most restrictive intersection of the above permissions.
+	intersection := reflect.ValueOf(&intersectionGroup.Permissions).Elem()
+
+	// Iterate through all of their fields.
+	for i := 0; i < perms1.NumField(); i++ {
+		perm1Ptr, ok := perms1.Field(i).Interface().(*string)
+		// This currently should not get triggered, but if GitHub
+		// introduces a field that isn't a pointer to a string-
+		// this will stop a wide spread panic.
+		if !ok {
+			continue
+		}
+		perm2Ptr, ok := perms2.Field(i).Interface().(*string)
+		if !ok {
+			continue
+		}
+
+		perm1 := utility.FromStringPtr(perm1Ptr)
+		perm2 := utility.FromStringPtr(perm2Ptr)
+
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(thirdparty.ValidateGitHubPermission(perm1))
+		catcher.Add(thirdparty.ValidateGitHubPermission(perm2))
+		if catcher.HasErrors() {
+			return GitHubDynamicTokenPermissionGroup{}, catcher.Resolve()
+		}
+
+		mostRestrictivePermission := thirdparty.MostRestrictiveGitHubPermission(perm1, perm2)
+
+		if mostRestrictivePermission == "" {
+			continue
+		}
+		intersection.Field(i).Set(reflect.ValueOf(&mostRestrictivePermission))
+	}
+
+	return intersectionGroup, nil
 }
 
 type ProjectHealthView string

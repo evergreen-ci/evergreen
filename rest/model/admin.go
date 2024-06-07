@@ -58,7 +58,6 @@ type APIAdminSettings struct {
 	BannerTheme         *string                           `json:"banner_theme,omitempty"`
 	Buckets             *APIBucketsConfig                 `json:"buckets,omitempty"`
 	Cedar               *APICedarConfig                   `json:"cedar,omitempty"`
-	ClientBinariesDir   *string                           `json:"client_binaries_dir,omitempty"`
 	CommitQueue         *APICommitQueueConfig             `json:"commit_queue,omitempty"`
 	ConfigDir           *string                           `json:"configdir,omitempty"`
 	ContainerPools      *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
@@ -133,7 +132,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.Banner = &v.Banner
 		tmp := string(v.BannerTheme)
 		as.BannerTheme = &tmp
-		as.ClientBinariesDir = &v.ClientBinariesDir
 		as.ConfigDir = &v.ConfigDir
 		as.DomainName = utility.ToStringPtr(v.DomainName)
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
@@ -216,9 +214,6 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	}
 	if as.BannerTheme != nil {
 		settings.BannerTheme = evergreen.BannerTheme(*as.BannerTheme)
-	}
-	if as.ClientBinariesDir != nil {
-		settings.ClientBinariesDir = *as.ClientBinariesDir
 	}
 	if as.ConfigDir != nil {
 		settings.ConfigDir = *as.ConfigDir
@@ -890,11 +885,10 @@ type APIUiV2URL struct {
 }
 
 type APIHostInitConfig struct {
-	HostThrottle         int     `json:"host_throttle"`
-	ProvisioningThrottle int     `json:"provisioning_throttle"`
-	CloudStatusBatchSize int     `json:"cloud_batch_size"`
-	MaxTotalDynamicHosts int     `json:"max_total_dynamic_hosts"`
-	S3BaseURL            *string `json:"s3_base_url"`
+	HostThrottle         int `json:"host_throttle"`
+	ProvisioningThrottle int `json:"provisioning_throttle"`
+	CloudStatusBatchSize int `json:"cloud_batch_size"`
+	MaxTotalDynamicHosts int `json:"max_total_dynamic_hosts"`
 }
 
 func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
@@ -904,7 +898,6 @@ func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
 		a.ProvisioningThrottle = v.ProvisioningThrottle
 		a.CloudStatusBatchSize = v.CloudStatusBatchSize
 		a.MaxTotalDynamicHosts = v.MaxTotalDynamicHosts
-		a.S3BaseURL = utility.ToStringPtr(v.S3BaseURL)
 	default:
 		return errors.Errorf("programmatic error: expected host init config but got type %T", h)
 	}
@@ -917,7 +910,6 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 		ProvisioningThrottle: a.ProvisioningThrottle,
 		CloudStatusBatchSize: a.CloudStatusBatchSize,
 		MaxTotalDynamicHosts: a.MaxTotalDynamicHosts,
-		S3BaseURL:            utility.FromStringPtr(a.S3BaseURL),
 	}, nil
 }
 
@@ -1389,6 +1381,7 @@ func (a *APISubnet) ToService() (interface{}, error) {
 type APIAWSConfig struct {
 	EC2Keys              []APIEC2Key               `json:"ec2_keys"`
 	Subnets              []APISubnet               `json:"subnets"`
+	TaskOutput           *APIS3Credentials         `json:"task_output"`
 	BinaryClient         *APIS3Credentials         `json:"binary_client"`
 	TaskSync             *APIS3Credentials         `json:"task_sync"`
 	TaskSyncRead         *APIS3Credentials         `json:"task_sync_read"`
@@ -1419,6 +1412,12 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 			}
 			a.Subnets = append(a.Subnets, apiSubnet)
 		}
+
+		taskOutput := &APIS3Credentials{}
+		if err := taskOutput.BuildFromService(v.TaskOutput); err != nil {
+			return errors.Wrap(err, "converting task output S3 config to API model")
+		}
+		a.TaskOutput = taskOutput
 
 		clients := &APIS3Credentials{}
 		if err := clients.BuildFromService(v.BinaryClient); err != nil {
@@ -1476,6 +1475,19 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 	var i interface{}
 	var err error
 	var ok bool
+
+	i, err = a.TaskOutput.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting task output S3 config to service model")
+	}
+	var taskOutput evergreen.S3Credentials
+	if i != nil {
+		taskOutput, ok = i.(evergreen.S3Credentials)
+		if !ok {
+			return nil, errors.Errorf("expecting task output S3 config but got type %T", i)
+		}
+	}
+	config.TaskOutput = taskOutput
 
 	i, err = a.BinaryClient.ToService()
 	if err != nil {
@@ -2020,7 +2032,6 @@ type APIServiceFlags struct {
 	TaskDispatchDisabled            bool `json:"task_dispatch_disabled"`
 	HostInitDisabled                bool `json:"host_init_disabled"`
 	PodInitDisabled                 bool `json:"pod_init_disabled"`
-	S3BinaryDownloadsDisabled       bool `json:"s3_binary_downloads_disabled"`
 	LargeParserProjectsDisabled     bool `json:"large_parser_projects_disabled"`
 	MonitorDisabled                 bool `json:"monitor_disabled"`
 	AlertsDisabled                  bool `json:"alerts_disabled"`
@@ -2332,7 +2343,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.TaskDispatchDisabled = v.TaskDispatchDisabled
 		as.HostInitDisabled = v.HostInitDisabled
 		as.PodInitDisabled = v.PodInitDisabled
-		as.S3BinaryDownloadsDisabled = v.S3BinaryDownloadsDisabled
 		as.LargeParserProjectsDisabled = v.LargeParserProjectsDisabled
 		as.MonitorDisabled = v.MonitorDisabled
 		as.AlertsDisabled = v.AlertsDisabled
@@ -2377,7 +2387,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		TaskDispatchDisabled:            as.TaskDispatchDisabled,
 		HostInitDisabled:                as.HostInitDisabled,
 		PodInitDisabled:                 as.PodInitDisabled,
-		S3BinaryDownloadsDisabled:       as.S3BinaryDownloadsDisabled,
 		LargeParserProjectsDisabled:     as.LargeParserProjectsDisabled,
 		MonitorDisabled:                 as.MonitorDisabled,
 		AlertsDisabled:                  as.AlertsDisabled,

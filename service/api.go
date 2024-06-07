@@ -11,7 +11,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/route"
@@ -66,16 +65,6 @@ func MustHaveTask(r *http.Request) *task.Task {
 		panic("no task attached to request")
 	}
 	return t
-}
-
-// MustHaveHost gets the host from the HTTP Request
-// Panics if the host is not in the request context
-func MustHaveHost(r *http.Request) *host.Host {
-	h := GetHost(r)
-	if h == nil {
-		panic("no host attached to request")
-	}
-	return h
 }
 
 // MustHaveProject gets the project from the HTTP request and panics

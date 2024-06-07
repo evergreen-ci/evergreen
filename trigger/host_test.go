@@ -71,7 +71,8 @@ func (s *hostSuite) SetupTest() {
 	}
 
 	s.uiConfig = &evergreen.UIConfig{
-		Url: "https://evergreen.mongodb.com",
+		Url:     "https://evergreen.mongodb.com",
+		UIv2Url: "https://spruce.mongodb.com",
 	}
 	s.NoError(s.uiConfig.Set(s.ctx))
 
@@ -109,7 +110,7 @@ func (s *hostSuite) TestFetch() {
 	triggers := hostTriggers{}
 	s.NoError(triggers.Fetch(s.ctx, s.t.event))
 	s.Equal(s.t.host.Id, triggers.templateData.ID)
-	s.Equal(fmt.Sprintf("%s/spawn#?resourcetype=hosts&id=%s", s.uiConfig.Url, s.t.host.Id), triggers.templateData.URL)
+	s.Equal(fmt.Sprintf("%s/spawn/host", s.uiConfig.UIv2Url), triggers.templateData.URL)
 
 	s.t.event = &event.EventLogEntry{
 		ResourceType: event.ResourceTypeHost,
@@ -119,7 +120,7 @@ func (s *hostSuite) TestFetch() {
 	}
 	s.NoError(triggers.Fetch(s.ctx, s.t.event))
 	s.Equal(s.t.host.Id, triggers.templateData.ID)
-	s.Equal(fmt.Sprintf("%s/spawn#?resourcetype=hosts&id=%s", s.uiConfig.Url, s.t.host.Id), triggers.templateData.URL)
+	s.Equal(fmt.Sprintf("%s/spawn/host", s.uiConfig.UIv2Url), triggers.templateData.URL)
 }
 
 func (s *hostSuite) TestAllTriggers() {
@@ -203,7 +204,22 @@ func (s *hostSuite) TestAllTriggers() {
 }
 
 func (s *hostSuite) TestHostExpiration() {
-	s.t.host.NoExpiration = false
+	n, err := s.t.hostExpiration(&s.subs[0])
+	s.NoError(err)
+	s.NotNil(n)
+}
+
+func (s *hostSuite) TestHostTemporaryExemptionExpiration() {
+	s.t.event = &event.EventLogEntry{
+		ResourceType: event.ResourceTypeHost,
+		EventType:    event.EventHostTemporaryExemptionExpirationWarningSent,
+		ResourceId:   s.t.host.Id,
+		Data:         &event.HostEventData{},
+	}
+	s.t.host.NoExpiration = true
+	s.t.host.ExpirationTime = time.Now().Add(evergreen.SpawnHostExpireDays * evergreen.SpawnHostNoExpirationDuration)
+	s.t.host.SleepSchedule.TemporarilyExemptUntil = time.Now().Add(time.Hour)
+
 	n, err := s.t.hostExpiration(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)

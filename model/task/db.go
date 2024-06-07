@@ -433,14 +433,6 @@ func FailedTasksByVersion(version string) bson.M {
 	}
 }
 
-func FailedTasksByVersionAndBV(version string, variant string) bson.M {
-	return bson.M{
-		VersionKey:      version,
-		BuildVariantKey: variant,
-		StatusKey:       bson.M{"$in": evergreen.TaskFailureStatuses},
-	}
-}
-
 // PotentiallyBlockedTasksByIds finds tasks with the given task ids
 // that have dependencies (these could be completed or not), do not have
 // override dependencies set to true, and the dependencies met time has not
@@ -1899,19 +1891,6 @@ func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError 
 			HostCreateDetailsKey: HostCreateDetail{HostId: hostId, Error: hostCreateError.Error()},
 		}})
 	return errors.Wrap(err, "adding details of host creation failure to task")
-}
-
-func FindActivatedStepbackTasks(projectId string) ([]Task, error) {
-	tasks, err := Find(bson.M{
-		ProjectKey:     projectId,
-		ActivatedKey:   true,
-		ActivatedByKey: evergreen.StepbackTaskActivator,
-		StatusKey:      bson.M{"$in": evergreen.TaskUncompletedStatuses},
-	})
-	if err != nil {
-		return nil, err
-	}
-	return tasks, nil
 }
 
 // FindActivatedStepbackTaskByName queries for running/scheduled stepback tasks with

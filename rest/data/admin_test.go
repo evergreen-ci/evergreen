@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/suite"
 )
@@ -131,7 +130,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.HostInit.ProvisioningThrottle, settingsFromConnector.HostInit.ProvisioningThrottle)
 	s.EqualValues(testSettings.HostInit.CloudStatusBatchSize, settingsFromConnector.HostInit.CloudStatusBatchSize)
 	s.EqualValues(testSettings.HostInit.MaxTotalDynamicHosts, settingsFromConnector.HostInit.MaxTotalDynamicHosts)
-	s.EqualValues(testSettings.HostInit.S3BaseURL, settingsFromConnector.HostInit.S3BaseURL)
 	s.EqualValues(testSettings.PodLifecycle.MaxParallelPodRequests, settingsFromConnector.PodLifecycle.MaxParallelPodRequests)
 	s.EqualValues(testSettings.PodLifecycle.MaxPodDefinitionCleanupRate, settingsFromConnector.PodLifecycle.MaxPodDefinitionCleanupRate)
 	s.EqualValues(testSettings.PodLifecycle.MaxSecretCleanupRate, settingsFromConnector.PodLifecycle.MaxSecretCleanupRate)
@@ -144,6 +142,8 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, settingsFromConnector.LoggerConfig.Buffer.UseAsync)
 	s.EqualValues(testSettings.Notify.SES.SenderAddress, settingsFromConnector.Notify.SES.SenderAddress)
 	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settingsFromConnector.Providers.AWS.EC2Keys))
+	s.Equal(testSettings.Providers.AWS.TaskOutput.Key, settingsFromConnector.Providers.AWS.TaskOutput.Key)
+	s.Equal(testSettings.Providers.AWS.TaskOutput.Secret, settingsFromConnector.Providers.AWS.TaskOutput.Secret)
 	s.Equal(testSettings.Providers.AWS.BinaryClient.Key, settingsFromConnector.Providers.AWS.BinaryClient.Key)
 	s.Equal(testSettings.Providers.AWS.BinaryClient.Secret, settingsFromConnector.Providers.AWS.BinaryClient.Secret)
 	s.Equal(testSettings.Providers.AWS.BinaryClient.Bucket, settingsFromConnector.Providers.AWS.BinaryClient.Bucket)
@@ -161,7 +161,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.PodInitDisabled, settingsFromConnector.ServiceFlags.PodInitDisabled)
 	s.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, settingsFromConnector.ServiceFlags.PodAllocatorDisabled)
 	s.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, settingsFromConnector.ServiceFlags.UnrecognizedPodCleanupDisabled)
-	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settingsFromConnector.ServiceFlags.S3BinaryDownloadsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.LargeParserProjectsDisabled, settingsFromConnector.ServiceFlags.LargeParserProjectsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, settingsFromConnector.ServiceFlags.SleepScheduleDisabled)
@@ -200,7 +199,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 			s.Equal(testSettings.Providers.AWS.EC2Keys[0].Key, v.AWS.EC2Keys[0].Key)
 		case *evergreen.Settings:
 			foundRootEvent = true
-			s.Equal(testSettings.ClientBinariesDir, v.ClientBinariesDir)
 			s.Equal(testSettings.Credentials, v.Credentials)
 		case *evergreen.UIConfig:
 			foundUiEvent = true
@@ -223,7 +221,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 		CloudStatusBatchSize: 1,
 		ProvisioningThrottle: 200,
 		MaxTotalDynamicHosts: 1000,
-		S3BaseURL:            utility.ToStringPtr("new_s3_base_url"),
 	}
 	updatedSettings := restModel.APIAdminSettings{
 		Banner:             &newBanner,
@@ -245,7 +242,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(newHostInit.ProvisioningThrottle, settingsFromConnector.HostInit.ProvisioningThrottle)
 	s.EqualValues(newHostInit.CloudStatusBatchSize, settingsFromConnector.HostInit.CloudStatusBatchSize)
 	s.EqualValues(newHostInit.MaxTotalDynamicHosts, settingsFromConnector.HostInit.MaxTotalDynamicHosts)
-	s.EqualValues(utility.FromStringPtr(newHostInit.S3BaseURL), settingsFromConnector.HostInit.S3BaseURL)
 	// old values should still be there
 	s.EqualValues(testSettings.ServiceFlags, settingsFromConnector.ServiceFlags)
 	s.EqualValues(evergreen.Important, testSettings.BannerTheme)
@@ -275,6 +271,8 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, settingsFromConnector.LoggerConfig.Buffer.UseAsync)
 	s.EqualValues(testSettings.Notify.SES.SenderAddress, settingsFromConnector.Notify.SES.SenderAddress)
 	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settingsFromConnector.Providers.AWS.EC2Keys))
+	s.Equal(testSettings.Providers.AWS.TaskOutput.Key, settingsFromConnector.Providers.AWS.TaskOutput.Key)
+	s.Equal(testSettings.Providers.AWS.TaskOutput.Secret, settingsFromConnector.Providers.AWS.TaskOutput.Secret)
 	s.Equal(testSettings.Providers.AWS.BinaryClient.Key, settingsFromConnector.Providers.AWS.BinaryClient.Key)
 	s.Equal(testSettings.Providers.AWS.BinaryClient.Secret, settingsFromConnector.Providers.AWS.BinaryClient.Secret)
 	s.Equal(testSettings.Providers.AWS.BinaryClient.Bucket, settingsFromConnector.Providers.AWS.BinaryClient.Bucket)
@@ -292,7 +290,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.PodInitDisabled, settingsFromConnector.ServiceFlags.PodInitDisabled)
 	s.EqualValues(testSettings.ServiceFlags.PodAllocatorDisabled, settingsFromConnector.ServiceFlags.PodAllocatorDisabled)
 	s.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, settingsFromConnector.ServiceFlags.UnrecognizedPodCleanupDisabled)
-	s.EqualValues(testSettings.ServiceFlags.S3BinaryDownloadsDisabled, settingsFromConnector.ServiceFlags.S3BinaryDownloadsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.LargeParserProjectsDisabled, settingsFromConnector.ServiceFlags.LargeParserProjectsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, settingsFromConnector.ServiceFlags.SleepScheduleDisabled)
