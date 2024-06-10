@@ -51,7 +51,7 @@ type GithubAppAuth struct {
 	PrivateKey []byte
 }
 
-// GetGitHubAppAuth returns the app id and app private key if they exist.
+// CreateGitHubAppAuth returns the app id and app private key if they exist.
 // If the either are not set, it will return nil.
 func (s *Settings) CreateGitHubAppAuth() *GithubAppAuth {
 	if s.AuthConfig.Github == nil || s.AuthConfig.Github.AppId == 0 {
