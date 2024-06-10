@@ -732,12 +732,12 @@ func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) err
 	if appID == 0 || len(privateKey) == 0 {
 		return errors.New("both app ID and private key must be provided")
 	}
-	auth := GithubAppAuth{
+	auth := evergreen.GithubAppAuth{
 		Id:         p.Id,
-		AppId:      appID,
+		AppID:      appID,
 		PrivateKey: privateKey,
 	}
-	return auth.Upsert()
+	return UpsertGithubAppAuth(&auth)
 }
 
 // AddToRepoScope validates that the branch can be attached to the matching repo,
