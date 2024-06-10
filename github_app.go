@@ -73,13 +73,13 @@ func (s *Settings) CreateGitHubAppAuth() *GithubAppAuth {
 	}
 }
 
-// HasGitHubApp returns true if the GitHub app is installed on given owner/repo.
-func HasGitHubApp(ctx context.Context, githubAppAuth *GithubAppAuth, owner, repo string) (bool, error) {
-	if githubAppAuth == nil || githubAppAuth.AppID == 0 || len(githubAppAuth.PrivateKey) == 0 {
+// IsGithubAppInstalledOnRepo returns true if the GitHub app is installed on given owner/repo.
+func (g *GithubAppAuth) IsGithubAppInstalledOnRepo(ctx context.Context, owner, repo string) (bool, error) {
+	if g == nil || g.AppID == 0 || len(g.PrivateKey) == 0 {
 		return false, errors.New("no github app auth provided")
 	}
 
-	installationID, err := getInstallationID(ctx, githubAppAuth, owner, repo)
+	installationID, err := getInstallationID(ctx, g, owner, repo)
 	if err != nil {
 		return false, errors.Wrapf(err, "getting installation id for '%s/%s'", owner, repo)
 	}
@@ -94,22 +94,22 @@ func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Conte
 	if s.AuthConfig.Github == nil || s.AuthConfig.Github.DefaultOwner == "" || s.AuthConfig.Github.DefaultRepo == "" {
 		return "", errors.Errorf("missing GitHub app configuration needed to create installation tokens")
 	}
-	return CreateInstallationToken(ctx, s.CreateGitHubAppAuth(), s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, opts)
+	return s.CreateGitHubAppAuth().CreateInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, opts)
 }
 
 // CreateInstallationToken uses the owner/repo information to request an github app installation id
 // and uses that id to create an installation token.
-func CreateInstallationToken(ctx context.Context, githubAppAuth *GithubAppAuth, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
-	if githubAppAuth == nil {
+func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
+	if g == nil {
 		return "", errors.New("GitHub app is not configured in admin settings")
 	}
 
-	installationID, err := getInstallationID(ctx, githubAppAuth, owner, repo)
+	installationID, err := getInstallationID(ctx, g, owner, repo)
 	if err != nil {
 		return "", errors.Wrapf(err, "getting installation id for '%s/%s'", owner, repo)
 	}
 
-	token, err := createInstallationToken(ctx, githubAppAuth, installationID, opts)
+	token, err := createInstallationTokenForID(ctx, g, installationID, opts)
 	if err != nil {
 		return "", errors.Wrapf(err, "creating installation token for '%s/%s'", owner, repo)
 	}
@@ -273,9 +273,9 @@ func getInstallationIDFromGitHub(ctx context.Context, authFields *GithubAppAuth,
 	return installation.GetID(), nil
 }
 
-// createInstallationToken returns an installation token from GitHub given an installation ID.
+// createInstallationTokenForID returns an installation token from GitHub given an installation ID.
 // This function cannot be moved to thirdparty because it is needed to set up the environment.
-func createInstallationToken(ctx context.Context, authFields *GithubAppAuth, installationID int64, opts *github.InstallationTokenOptions) (string, error) {
+func createInstallationTokenForID(ctx context.Context, authFields *GithubAppAuth, installationID int64, opts *github.InstallationTokenOptions) (string, error) {
 	client, err := getGitHubClientForAuth(authFields)
 	if err != nil {
 		return "", errors.Wrap(err, "getting GitHub client for token creation")

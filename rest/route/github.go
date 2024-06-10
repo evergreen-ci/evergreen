@@ -122,7 +122,7 @@ func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
 // shouldSkipWebhook returns true if the event is from a GitHub app and the app is available for the owner/repo or,
 // the event is from webhooks and the app is not available for the owner/repo.
 func (gh *githubHookApi) shouldSkipWebhook(ctx context.Context, owner, repo string, fromApp bool) bool {
-	hasApp, err := evergreen.HasGitHubApp(ctx, gh.settings.CreateGitHubAppAuth(), owner, repo)
+	hasApp, err := gh.settings.CreateGitHubAppAuth().IsGithubAppInstalledOnRepo(ctx, owner, repo)
 	if err != nil {
 		hasApp = false
 	}
