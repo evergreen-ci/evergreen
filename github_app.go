@@ -46,9 +46,16 @@ type GitHubAppInstallation struct {
 	AppID int64 `bson:"app_id"`
 }
 
+// GithubAppAuth hold the appId and privateKey for the github app associated with the project.
+// It will not be stored along with the project settings, instead it is fetched only when needed
+// Sometimes this struct is used as a way to pass around AppId and PrivateKey for Evergreen's
+// github app, in which the Id is set to empty.
 type GithubAppAuth struct {
-	AppID      int64
-	PrivateKey []byte
+	// Should match the identifier of the project it refers to
+	Id string `bson:"_id" json:"_id"`
+
+	AppID      int64  `bson:"app_id" json:"app_id"`
+	PrivateKey []byte `bson:"private_key" json:"private_key"`
 }
 
 // CreateGitHubAppAuth returns the app id and app private key if they exist.
