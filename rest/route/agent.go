@@ -463,9 +463,6 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	for _, param := range v.Parameters {
-		// TODO (EVG-19010): do not need to set res.Vars once agents are
-		// deployed since res.Parameters will take higher priority.
-		res.Vars[param.Key] = param.Value
 		res.Parameters[param.Key] = param.Value
 	}
 

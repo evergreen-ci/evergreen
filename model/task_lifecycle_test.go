@@ -5281,22 +5281,6 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			assert.Equal(t, evergreen.CommandTypeSystem, dbTask.Details.Type)
 			assert.Equal(t, evergreen.TaskDescriptionStranded, dbTask.Details.Description)
 			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
-
-			// TODO (EVG-17033): if a stranded task hits the unschedulable
-			// threshold, it should refuse to restart the task, but the build
-			// and version statuses should still be updated to reflect the
-			// stranded task. The portion of the test below this checking the
-			// updated build and version should pass.
-
-			// dbBuild, err := build.FindOneId(tsk.BuildId)
-			// require.NoError(t, err)
-			// require.NotZero(t, dbBuild)
-			// assert.Equal(t, evergreen.BuildFailed, dbBuild.Status, "build status should be updated for unrestartable stranded task")
-			//
-			// dbVersion, err := VersionFindOneId(tsk.Version)
-			// require.NoError(t, err)
-			// require.NotZero(t, dbVersion)
-			// assert.Equal(t, evergreen.VersionFailed, dbVersion.Status, "version status should be updated for unrestartable stranded task")
 		},
 		"FailsTaskThatHitsMaxExecutionRestartsWithoutRestartingIt": func(t *testing.T, p pod.Pod, tsk task.Task) {
 			const execNum = 1 // we only restart stranded tasks automatically once
