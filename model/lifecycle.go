@@ -1131,7 +1131,12 @@ func getTaskCreateTime(creationInfo TaskCreationInfo) (time.Time, error) {
 // createOneTask is a helper to create a single task.
 func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildVariantTaskUnit) (*task.Task, error) {
 	activateTask := creationInfo.Build.Activated && !creationInfo.ActivationInfo.taskHasSpecificActivation(creationInfo.Build.BuildVariant, buildVarTask.Name)
-	isStepback := creationInfo.ActivationInfo.isStepbackTask(creationInfo.Build.BuildVariant, buildVarTask.Name)
+
+	// If stepback is enabled, check if the task should be activated via stepback.
+	stepbackInfo := creationInfo.ActivationInfo.getStepbackTask(creationInfo.Build.BuildVariant, buildVarTask.Name)
+	if stepbackInfo != nil {
+		activateTask = stepbackInfo.shouldActivate()
+	}
 
 	buildVarTask.RunOn = creationInfo.DistroAliases.Expand(buildVarTask.RunOn)
 	creationInfo.BuildVariant.RunOn = creationInfo.DistroAliases.Expand(creationInfo.BuildVariant.RunOn)
@@ -1222,7 +1227,7 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		t.SecondaryDistros = secondaryDistros
 	}
 
-	if isStepback {
+	if stepbackInfo != nil {
 		t.ActivatedBy = evergreen.StepbackTaskActivator
 	} else if t.Activated {
 		t.ActivatedBy = creationInfo.Version.Author
@@ -1726,7 +1731,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 				activatedTasks = append(activatedTasks, *t)
 				b.Activated = true
 			}
-			if t.Activated && creationInfo.ActivationInfo.isStepbackTask(t.BuildVariant, t.DisplayName) {
+			if t.Activated && creationInfo.ActivationInfo.getStepbackTask(t.BuildVariant, t.DisplayName).shouldActivate() {
 				event.LogTaskActivated(t.Id, t.Execution, evergreen.StepbackTaskActivator)
 			}
 		}

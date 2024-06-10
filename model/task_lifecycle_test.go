@@ -64,6 +64,13 @@ func checkDisabled(t *testing.T, dbTask *task.Task) {
 	assert.True(t, loggedDeactivationEvent, "task '%s' did not log an event indicating it was deactivated", dbTask.Id)
 }
 
+func requireTaskFromDB(t *testing.T, id string) *task.Task {
+	dbTask, err := task.FindOneId(id)
+	require.NoError(t, err)
+	require.NotZero(t, dbTask)
+	return dbTask
+}
+
 func TestDisableStaleContainerTasks(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, event.EventCollection, build.Collection, VersionCollection))
@@ -4153,187 +4160,226 @@ func TestStepback(t *testing.T) {
 	assert.True(dbTask.Activated)
 }
 
-func TestStepbackWithGenerators(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func TestLinearStepbackWithGenerators(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, data map[string]*task.Task){
+		"ExistingUndispatchedGeneratorTask": func(t *testing.T, ctx context.Context, data map[string]*task.Task) {
+			// Generator should be inactive and have no generated tasks to activate.
+			generator := requireTaskFromDB(t, "t-generator-1-0") // 1st version, 0th generator
+			assert.False(t, generator.Activated)
+			assert.Nil(t, generator.GeneratedTasksToActivate["bv"])
 
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
-	v1 := &Version{
-		Id: "v1",
-	}
-	v2 := &Version{
-		Id: "v2",
-	}
-	b1 := &build.Build{
-		Id:        "build1",
-		Status:    evergreen.BuildStarted,
-		Version:   "v1",
-		Requester: evergreen.RepotrackerVersionRequester,
-	}
-	t1Success := &task.Task{
-		Id:                  "t1_success",
-		DistroId:            "test",
-		DisplayName:         "task",
-		Activated:           true,
-		BuildId:             b1.Id,
-		BuildVariant:        "bv1_name",
-		Execution:           1,
-		Project:             "sample",
-		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
-		Status:              evergreen.TaskSucceeded,
-		RevisionOrderNumber: 1,
-		Requester:           evergreen.RepotrackerVersionRequester,
-		Version:             "v1",
-	}
-	t2Success := &task.Task{
-		Id:                  "t2_success",
-		DistroId:            "test",
-		DisplayName:         "other_task",
-		Activated:           true,
-		BuildId:             b1.Id,
-		BuildVariant:        "bv1_name",
-		Execution:           1,
-		Project:             "sample",
-		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
-		Status:              evergreen.TaskSucceeded,
-		RevisionOrderNumber: 1,
-		Requester:           evergreen.RepotrackerVersionRequester,
-		Version:             "v1",
-	}
-	depTask := &task.Task{
-		Id:                  "my_dep",
-		DistroId:            "test",
-		DisplayName:         "task",
-		Activated:           false,
-		BuildId:             b1.Id,
-		BuildVariant:        "bv1_name",
-		Execution:           1,
-		Project:             "sample",
-		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
-		Status:              evergreen.TaskUndispatched,
-		RevisionOrderNumber: 2,
-		Requester:           evergreen.RepotrackerVersionRequester,
-		Version:             "v2",
-	}
+			// Doing stepback on "t-generated-0-1-0" should activate the existing undispatched generator task "t-generator-0-0"
+			// and set the generated task to activate on it.
+			require.NoError(t, doLinearStepback(ctx, data["t-generated-2-0-0"])) // 2nd version, 0th generator, 0th generated task
+			generator = requireTaskFromDB(t, "t-generator-1-0")                  // 1st version, 0th generator
+			assert.True(t, generator.Activated)
+			assert.Equal(t, []string{"generated-task-0-0"}, generator.GeneratedTasksToActivate["bv"]) // 0th generator, 0th generated task
 
-	genPrevious := &task.Task{
-		Id:                  "previous_gen",
-		DistroId:            "test",
-		DisplayName:         "other_task_gen",
-		Activated:           false,
-		BuildId:             b1.Id,
-		BuildVariant:        "bv1_name",
-		Execution:           1,
-		Project:             "sample",
-		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
-		Status:              evergreen.TaskUndispatched,
-		RevisionOrderNumber: 1,
-		Requester:           evergreen.RepotrackerVersionRequester,
-		Version:             "v2",
-		GenerateTask:        true,
-		DependsOn: []task.Dependency{
-			{
-				TaskId: "my_dep",
-				Status: evergreen.TaskSucceeded,
-			},
+			// Doing stepback on the 1st generated task should add it to the generator's list of generated tasks to activate.
+			require.NoError(t, doLinearStepback(ctx, data["t-generated-2-0-1"])) // 2nd version, 0th generator, 1st generated task
+			generator = requireTaskFromDB(t, "t-generator-1-0")                  // 1st version, 0th generator
+			assert.True(t, generator.Activated)
+			assert.Equal(t, []string{"generated-task-0-0", "generated-task-0-1"}, generator.GeneratedTasksToActivate["bv"]) // 0th generator, 0th generated task and 0th generator, 1st generated task
 		},
-	}
-	t1 := &task.Task{
-		Id:                  "t1",
-		DistroId:            "test",
-		DisplayName:         "task",
-		Activated:           false,
-		BuildId:             b1.Id,
-		BuildVariant:        "bv1_name",
-		Execution:           1,
-		Project:             "sample",
-		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
-		GeneratedBy:         "not-important",
-		Status:              evergreen.TaskUndispatched,
-		RevisionOrderNumber: 2,
-		Requester:           evergreen.RepotrackerVersionRequester,
-		Version:             "v2",
-	}
+		"ExistingUndispatchedGeneratedTask": func(t *testing.T, ctx context.Context, data map[string]*task.Task) {
+			generated := requireTaskFromDB(t, "t-generated-1-1-0") // 1st version, 1st generator, 0th generated task
+			assert.False(t, generated.Activated)
 
-	taskToStepback := &task.Task{
-		Id:                  "t3",
-		DistroId:            "test",
-		DisplayName:         "task",
-		Activated:           true,
-		BuildId:             b1.Id,
-		BuildVariant:        "bv1_name",
-		Execution:           1,
-		Project:             "sample",
-		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
-		GeneratedBy:         "not-important",
-		Status:              evergreen.TaskFailed,
-		RevisionOrderNumber: 3,
-		Requester:           evergreen.RepotrackerVersionRequester,
-		Version:             "v3",
-	}
-	genToStepback := &task.Task{
-		Id:                  "other_task_gen1",
-		DistroId:            "test",
-		DisplayName:         "other_task_gen",
-		Activated:           true,
-		BuildId:             b1.Id,
-		BuildVariant:        "bv1_name",
-		Execution:           1,
-		Project:             "sample",
-		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
-		Status:              evergreen.TaskSucceeded,
-		RevisionOrderNumber: 2,
-		Requester:           evergreen.RepotrackerVersionRequester,
-		Version:             "v2",
-		GenerateTask:        true,
-	}
-	taskToStepback2 := &task.Task{
-		Id:                  "t4",
-		DistroId:            "test",
-		DisplayName:         "other_task",
-		Activated:           true,
-		BuildId:             b1.Id,
-		BuildVariant:        "bv1_name",
-		Execution:           1,
-		Project:             "sample",
-		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
-		GeneratedBy:         "other_task_gen1",
-		Status:              evergreen.TaskFailed,
-		RevisionOrderNumber: 3,
-		Requester:           evergreen.RepotrackerVersionRequester,
-		Version:             "v3",
-	}
-	assert.NoError(t, b1.Insert())
-	assert.NoError(t, t1.Insert())
-	assert.NoError(t, genToStepback.Insert())
-	assert.NoError(t, taskToStepback.Insert())
-	assert.NoError(t, taskToStepback2.Insert())
-	assert.NoError(t, t1Success.Insert())
-	assert.NoError(t, t2Success.Insert())
-	assert.NoError(t, depTask.Insert())
-	assert.NoError(t, genPrevious.Insert())
-	assert.NoError(t, v1.Insert())
-	assert.NoError(t, v2.Insert())
+			// Doing stepback on "t-generated-2-1-0" should activate the existing undispatched generated task "t-generated-1-1-0".
+			require.NoError(t, doLinearStepback(ctx, data["t-generated-2-1-0"])) // 2nd version, 1st generator, 0th generated task
 
-	// test stepping back where an existing generated task needs to be activated
-	assert.NoError(t, doLinearStepback(ctx, taskToStepback))
-	dbTask, err := task.FindOne(db.Query(task.ById(t1.Id)))
-	assert.NoError(t, err)
-	require.NotZero(t, dbTask)
-	assert.True(t, dbTask.Activated)
+			generated = requireTaskFromDB(t, "t-generated-1-1-0") // 1st version, 1st generator, 0th generated task
+			assert.True(t, generated.Activated)
 
-	// test stepping back where the generator needs to be activated
-	assert.NoError(t, doLinearStepback(ctx, taskToStepback2))
-	dbTask, err = task.FindOne(db.Query(task.ById(genPrevious.Id)))
-	assert.NoError(t, err)
-	require.NotZero(t, dbTask)
-	assert.True(t, dbTask.Activated)
-	assert.Equal(t, dbTask.GeneratedTasksToActivate[taskToStepback2.BuildVariant], []string{taskToStepback2.DisplayName})
-	// verify dependency is activated as well
-	dbTask, err = task.FindOne(db.Query(task.ById(depTask.Id)))
-	assert.NoError(t, err)
-	require.NotZero(t, dbTask)
-	assert.True(t, dbTask.Activated)
+			// The generator should not be activated/affected.
+			generator := requireTaskFromDB(t, "t-generator-1-1") // 1st version, 1st generator
+			assert.False(t, generator.Activated)
+			assert.Nil(t, generator.GeneratedTasksToActivate["bv"])
+
+			// Other generated tasks should be unaffected.
+			generated = requireTaskFromDB(t, "t-generated-1-1-1") // 1st version, 1st generator, 1st generated task
+			assert.False(t, generated.Activated)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			// The test data is across three mainline versions.
+			// All have some background successful tasks. All have two generator tasks.
+			// v0 is just the all passing version so stepback can enable.
+
+			// "t-generator-0-(orderNumber)" is undispatched on v1 and succeeded on v2.
+			// It's generated tasks don't exist on v1 but failed for v2.
+
+			// "t-generator-1-(orderNumber)" succeeded on v1 and v2.
+			// It's generated tasks are undispatched on v1 and failed on v2.
+			data := map[string]*task.Task{}
+
+			project := "proj"
+			v0 := &Version{Id: "v0"}
+			require.NoError(t, v0.Insert())
+			v1 := &Version{Id: "v1"}
+			require.NoError(t, v1.Insert())
+			v2 := &Version{Id: "v2"}
+			require.NoError(t, v2.Insert())
+			b1 := &build.Build{
+				Id:          "build1",
+				DisplayName: "bv",
+				Status:      evergreen.BuildStarted,
+				Requester:   evergreen.RepotrackerVersionRequester,
+			}
+			require.NoError(t, b1.Insert())
+			for orderNumber, v := range []string{v0.Id, v1.Id, v2.Id} {
+				// 3 Background tasks that succeeded and should not be restarted
+				// across the two versions.
+				for i := 0; i < 3; i++ {
+					backgroundTask := &task.Task{
+						Id:                  fmt.Sprintf("t-success-%d-%d", orderNumber, i),
+						DisplayName:         fmt.Sprintf("background-task-%d", i),
+						Version:             v,
+						BuildId:             b1.Id,
+						BuildVariant:        b1.DisplayName,
+						Project:             project,
+						Status:              evergreen.TaskSucceeded,
+						Requester:           evergreen.RepotrackerVersionRequester,
+						Activated:           false,
+						RevisionOrderNumber: orderNumber + 1,
+					}
+					require.NoError(t, backgroundTask.Insert())
+					data[backgroundTask.Id] = backgroundTask
+				}
+
+				// Two generators.
+				// t-generator-(orderNumber)-0 is undispatched on v1 and succeeded on v2.
+				// t-generator-(orderNumber)-1 succeeded on v1 and v2.
+				for i := 0; i < 2; i++ {
+					status := evergreen.TaskSucceeded
+					if i == 0 && v == v1.Id {
+						// The first generator is undispatched on v1.
+						status = evergreen.TaskUndispatched
+					}
+					if v == v0.Id {
+						// Everything passes on v0.
+						status = evergreen.TaskSucceeded
+					}
+					generator := &task.Task{
+						Id:                  fmt.Sprintf("t-generator-%d-%d", orderNumber, i),
+						DisplayName:         fmt.Sprintf("generator-task-%d", i),
+						Version:             v,
+						BuildId:             b1.Id,
+						BuildVariant:        b1.DisplayName,
+						Project:             project,
+						Status:              status,
+						Requester:           evergreen.RepotrackerVersionRequester,
+						Activated:           false,
+						RevisionOrderNumber: orderNumber + 1,
+						GenerateTask:        true,
+					}
+					require.NoError(t, generator.Insert())
+					data[generator.Id] = generator
+				}
+
+				// 3 Generated tasks for generator "t-generator-(orderNumber)-0" that don't exist for version 1 but failed in version 2.
+				for i := 0; i < 3; i++ {
+					status := evergreen.TaskFailed
+					if v == v0.Id {
+						// Everything passes on v0.
+						status = evergreen.TaskSucceeded
+					}
+					if v == v1.Id {
+						// Does not exist on v1.
+						continue
+					}
+					generatedTask := &task.Task{
+						Id:                  fmt.Sprintf("t-generated-%d-0-%d", orderNumber, i),
+						DisplayName:         fmt.Sprintf("generated-task-0-%d", i),
+						Version:             v,
+						BuildId:             b1.Id,
+						BuildVariant:        b1.DisplayName,
+						Project:             project,
+						GeneratedBy:         fmt.Sprintf("t-generator-%d-0", orderNumber),
+						Status:              status,
+						Requester:           evergreen.RepotrackerVersionRequester,
+						Activated:           false,
+						RevisionOrderNumber: orderNumber + 1,
+					}
+					require.NoError(t, generatedTask.Insert())
+					data[generatedTask.Id] = generatedTask
+				}
+
+				// 3 Generated tasks for generator "t-generator-(ordernumber)-1" that are undispatched in version 1 and failed in version 2.
+				for i := 0; i < 3; i++ {
+					status := evergreen.TaskUndispatched
+					if v == v2.Id {
+						// Failed on v2.
+						status = evergreen.TaskFailed
+					}
+					if v == v0.Id {
+						// Everything passes on v0.
+						status = evergreen.TaskSucceeded
+					}
+					generatedTask := &task.Task{
+						Id:                  fmt.Sprintf("t-generated-%d-1-%d", orderNumber, i),
+						DisplayName:         fmt.Sprintf("generated-task-1-%d", i),
+						Version:             v,
+						BuildId:             b1.Id,
+						BuildVariant:        b1.DisplayName,
+						Project:             project,
+						GeneratedBy:         fmt.Sprintf("t-generator-%d-1", orderNumber),
+						Status:              status,
+						Requester:           evergreen.RepotrackerVersionRequester,
+						Activated:           false,
+						RevisionOrderNumber: orderNumber + 1,
+					}
+					require.NoError(t, generatedTask.Insert())
+					data[generatedTask.Id] = generatedTask
+				}
+
+				// An additional 2 for generator "t-generator-(orderNumber)-1" that passed in both versions that should not be restarted.
+				for i := 3; i < 5; i++ {
+					generatedTask := &task.Task{
+						Id:                  fmt.Sprintf("t-generated-%d-1-%d", orderNumber, i),
+						DisplayName:         fmt.Sprintf("generated-task-1-%d", i),
+						Version:             v,
+						BuildId:             b1.Id,
+						BuildVariant:        b1.DisplayName,
+						Project:             project,
+						GeneratedBy:         fmt.Sprintf("t-generator-%d-1", orderNumber),
+						Status:              evergreen.TaskSucceeded,
+						Requester:           evergreen.RepotrackerVersionRequester,
+						Activated:           false,
+						RevisionOrderNumber: orderNumber + 1,
+					}
+					require.NoError(t, generatedTask.Insert())
+					data[generatedTask.Id] = generatedTask
+				}
+			}
+
+			tCase(t, ctx, data)
+
+			t.Run("SuccessfulTasksAreUnmodified", func(t *testing.T) {
+				for orderNumber := 0; orderNumber < 3; orderNumber++ {
+					// Background tasks.
+					for i := 0; i < 3; i++ {
+						dbTask, err := task.FindOne(db.Query(task.ById(fmt.Sprintf("t-success-%d-%d", orderNumber, i))))
+						require.NoError(t, err)
+						require.NotNil(t, dbTask)
+						assert.False(t, dbTask.Activated)
+					}
+
+					// 1st Generator "t-generator-1-(orderNumber)" generated tasks that passed.
+					for i := 3; i < 5; i++ {
+						dbTask, err := task.FindOne(db.Query(task.ById(fmt.Sprintf("t-generated-%d-1-%d", orderNumber, i))))
+						require.NoError(t, err)
+						require.NotNil(t, dbTask)
+						assert.False(t, dbTask.Activated)
+					}
+				}
+			})
+		})
+	}
 }
 
 func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {

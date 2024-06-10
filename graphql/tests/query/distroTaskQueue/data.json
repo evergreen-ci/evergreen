@@ -42,5 +42,14 @@
       "_id": { "$oid": "55c230e1f9f1d47716d86fc2" },
       "distro": "osx-108"
     }
+  ],
+  "project_ref": [
+    {
+      "_id": "0955b4913748caeffd8c4bcc9f13fd955fed40e41409d5181eb32967ebf582aa",
+      "identifier": "evergreen"
+    },
+    {
+      "_id": "3d1b6a78a5bf2bd595e44fd5caf16aed41c89617ecc886d7deca821dbded94c6"
+    }
   ]
 }

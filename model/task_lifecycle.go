@@ -224,9 +224,10 @@ func DisableStaleContainerTasks(caller string) error {
 	return nil
 }
 
-// activatePreviousTask will set the Active state for the first task with a
+// activatePreviousTask will set the active state for the first task with a
 // revision order number less than the current task's revision order number.
-// originalStepbackTask is only specified if we're first activating the generator for a generated task.
+// originalStepbackTask is only specified while we're stepping back the generator
+// for a generated task.
 func activatePreviousTask(ctx context.Context, taskId, caller string, originalStepbackTask *task.Task) error {
 	// find the task first
 	t, err := task.FindOneId(taskId)
@@ -250,21 +251,21 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 		return activatePreviousTask(ctx, t.GeneratedBy, caller, t)
 	}
 
-	// if this is the first time we're running the task, or it's finished, has a negative priority, or already activated
-	if prevTask == nil || prevTask.IsFinished() || prevTask.Priority < 0 || prevTask.Activated {
-		return nil
+	// If this is a valid, unfinished, non-disabled, and unactive task- we should activate it.
+	if prevTask != nil && !prevTask.IsFinished() && prevTask.Priority >= 0 && !prevTask.Activated {
+		if err = SetActiveState(ctx, caller, true, *prevTask); err != nil {
+			return errors.Wrapf(err, "setting task '%s' active", prevTask.Id)
+		}
 	}
 
-	// activate the task
-	if err = SetActiveState(ctx, caller, true, *prevTask); err != nil {
-		return errors.Wrapf(err, "setting task '%s' active", prevTask.Id)
-	}
-	// add the task that we're actually stepping back so that we know to activate it
+	// If this is a generator task and we originally were stepping back a generated task, activate the generated task
+	// once the generator finishes.
 	if prevTask.GenerateTask && originalStepbackTask != nil {
 		if err = prevTask.SetGeneratedTasksToActivate(originalStepbackTask.BuildVariant, originalStepbackTask.DisplayName); err != nil {
 			return errors.Wrap(err, "setting generated tasks to activate")
 		}
 	}
+
 	return nil
 }
 

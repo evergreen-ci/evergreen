@@ -16,8 +16,6 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/urfave/cli"
-
-	_ "go.uber.org/automaxprocs"
 )
 
 func main() {
