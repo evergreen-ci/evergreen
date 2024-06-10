@@ -1009,7 +1009,7 @@ func logGitHubRateLimit(limit github.Rate) {
 			"error":   "can't parse rate limit",
 		})
 	} else if limit.Limit == 60 {
-		// TODO EVG-19966: remove manual log remover
+		// TODO DEVPROD-2923: remove manual log remover
 		return
 	} else {
 		grip.Info(message.Fields{
