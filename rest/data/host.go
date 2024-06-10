@@ -317,11 +317,6 @@ func fixProvisioningIntentHost(ctx context.Context, h *host.Host, instanceID str
 			"provider":    h.Distro.Provider,
 			"distro":      h.Distro.Id,
 		})
-		// TODO (DEVPROD-6752): should return an error once all hosts roll over
-		// from the deploy and are providing their EC2 instance ID to this
-		// route. All intent hosts should be sending their EC2 instance ID. If
-		// they don't, it should fail provisioning and should not start the
-		// agent.
 		return errors.New(msg)
 	}
 

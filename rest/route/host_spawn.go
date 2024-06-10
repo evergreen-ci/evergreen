@@ -1060,8 +1060,6 @@ func (h *hostTerminateHandler) Run(ctx context.Context) gimlet.Responder {
 // POST /rest/v2/hosts/{host_id}/change_password
 //
 
-// TODO (?) should this be a patch route?
-
 type hostChangeRDPPasswordHandler struct {
 	hostID      string
 	rdpPassword string
