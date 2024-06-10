@@ -380,7 +380,7 @@ func setHostPersistentDNSName(ctx context.Context, env evergreen.Environment, h 
 
 	settings := env.Settings()
 	if settings.Providers.AWS.PersistentDNS.Domain == "" || settings.Providers.AWS.PersistentDNS.HostedZoneID == "" {
-		return errors.New("should have persistent DNS name")
+		return errors.New("missing required domain and hosted zone ID in persistent DNS admin settings")
 	}
 
 	dnsName, err := h.GeneratePersistentDNSName(ctx, settings.Providers.AWS.PersistentDNS.Domain)
@@ -424,7 +424,7 @@ func deleteHostPersistentDNSName(ctx context.Context, env evergreen.Environment,
 
 	settings := env.Settings()
 	if settings.Providers.AWS.PersistentDNS.Domain == "" || settings.Providers.AWS.PersistentDNS.HostedZoneID == "" {
-		return errors.New("should have persistent DNS name")
+		return errors.New("missing required domain and hosted zone ID in persistent DNS admin settings")
 	}
 
 	in := route53.ChangeResourceRecordSetsInput{
