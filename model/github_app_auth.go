@@ -10,7 +10,7 @@ import (
 
 var (
 	githubAppAuthIdKey      = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "Id")
-	githubAppAuthAppId      = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "AppId")
+	githubAppAuthAppId      = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "AppID")
 	githubAppAuthPrivateKey = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "PrivateKey")
 )
 
