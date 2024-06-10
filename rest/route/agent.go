@@ -421,7 +421,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		})
 	}
 
-	appToken, err := h.settings.CreateInstallationToken(ctx, pRef.Owner, pRef.Repo, nil)
+	appToken, err := h.settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, pRef.Owner, pRef.Repo, nil)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "creating GitHub app token"))
 	}
@@ -1404,7 +1404,7 @@ func (g *createInstallationToken) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (g *createInstallationToken) Run(ctx context.Context) gimlet.Responder {
-	token, err := g.env.Settings().CreateInstallationToken(ctx, g.owner, g.repo, nil)
+	token, err := g.env.Settings().CreateGitHubAppAuth().CreateInstallationToken(ctx, g.owner, g.repo, nil)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", g.owner, g.repo))
 	}
