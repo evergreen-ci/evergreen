@@ -70,9 +70,8 @@ func (githubAppAuth *GithubAppAuth) Upsert() error {
 	return err
 }
 
-// GetGitHubAppAuth fulfills the GithubAppAuthProvider interface and returns the app auth
-// for the given project.
-func (githubAppAuth *GithubAppAuth) GetGitHubAppAuth() *evergreen.GithubAppAuth {
+// CreateEvergreenGitHubAppAuth creates an evergreen.GithubAppAuth object from the current struct.
+func (githubAppAuth *GithubAppAuth) CreateEvergreenGitHubAppAuth() *evergreen.GithubAppAuth {
 	if githubAppAuth == nil {
 		return nil
 	}

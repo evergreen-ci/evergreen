@@ -1649,7 +1649,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 
 	// TODO DEVPROD-5991: Use the modified CreateInstallationToken/HasGitHubApp methods to create the token.
 	// Currently, it's going to use the global Evergreen GitHub app to create the token (from g.env.Settings()).
-	token, err := githubAppAuth.GetGitHubAppAuth().CreateInstallationToken(ctx, h.owner, h.repo, &github.InstallationTokenOptions{
+	token, err := githubAppAuth.CreateEvergreenGitHubAppAuth().CreateInstallationToken(ctx, h.owner, h.repo, &github.InstallationTokenOptions{
 		Permissions: permissions,
 	})
 	if err != nil {
