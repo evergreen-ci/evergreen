@@ -8,24 +8,25 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGitHubGenerateTokenParseParams(t *testing.T) {
-	for tName, tCase := range map[string]func(t *testing.T, cmd Command){
-		"FailsWithNilParams": func(t *testing.T, cmd Command) {
+	for tName, tCase := range map[string]func(t *testing.T, cmd *githubGenerateToken){
+		"FailsWithNilParams": func(t *testing.T, cmd *githubGenerateToken) {
 			assert.Error(t, cmd.ParseParams(nil))
 		},
-		"FailsWithEmptyParams": func(t *testing.T, cmd Command) {
+		"FailsWithEmptyParams": func(t *testing.T, cmd *githubGenerateToken) {
 			assert.Error(t, cmd.ParseParams(map[string]interface{}{}))
 		},
-		"FailsWithInvalidParamTypes": func(t *testing.T, cmd Command) {
+		"FailsWithInvalidParamTypes": func(t *testing.T, cmd *githubGenerateToken) {
 			assert.Error(t, cmd.ParseParams(map[string]interface{}{
 				"owner": 1,
 			}))
 		},
-		"FailsWithInvalidPermissions": func(t *testing.T, cmd Command) {
+		"FailsWithInvalidPermissions": func(t *testing.T, cmd *githubGenerateToken) {
 			assert.Error(t, cmd.ParseParams(map[string]interface{}{
 				"expansion_name": "expansion_name",
 				"permissions": map[string]interface{}{
@@ -39,12 +40,24 @@ func TestGitHubGenerateTokenParseParams(t *testing.T) {
 				},
 			}))
 		},
-		"SucceedsWithValidParams": func(t *testing.T, cmd Command) {
+		"SucceedsWithValidParamsNoPermissions": func(t *testing.T, cmd *githubGenerateToken) {
 			assert.NoError(t, cmd.ParseParams(map[string]interface{}{
 				"owner":          "owner",
 				"repo":           "repo",
 				"expansion_name": "expansion_name",
 			}))
+			assert.Nil(t, cmd.Permissions)
+		},
+		"SucceedsWithValidParamsEmptyPermissions": func(t *testing.T, cmd *githubGenerateToken) {
+			assert.NoError(t, cmd.ParseParams(map[string]interface{}{
+				"owner":          "owner",
+				"repo":           "repo",
+				"expansion_name": "expansion_name",
+				"permissions":    map[string]interface{}{},
+			}))
+			assert.Nil(t, cmd.Permissions)
+		},
+		"SucceedsWithValidParamsSomePermissions": func(t *testing.T, cmd *githubGenerateToken) {
 			assert.NoError(t, cmd.ParseParams(map[string]interface{}{
 				"owner":          "owner",
 				"repo":           "repo",
@@ -54,14 +67,11 @@ func TestGitHubGenerateTokenParseParams(t *testing.T) {
 					"checks":  "checks",
 				},
 			}))
-			assert.NoError(t, cmd.ParseParams(map[string]interface{}{
-				"owner":          "owner",
-				"repo":           "repo",
-				"expansion_name": "expansion_name",
-				"permissions":    map[string]interface{}{},
-			}))
+			require.NotNil(t, cmd.Permissions)
+			assert.Equal(t, "actions", utility.FromStringPtr(cmd.Permissions.Actions))
+			assert.Equal(t, "checks", utility.FromStringPtr(cmd.Permissions.Checks))
 		},
-		"FailsWithoutExpansionName": func(t *testing.T, cmd Command) {
+		"FailsWithoutExpansionName": func(t *testing.T, cmd *githubGenerateToken) {
 			assert.Error(t, cmd.ParseParams(map[string]interface{}{
 				"owner": "owner",
 				"repo":  "repo",
@@ -69,7 +79,10 @@ func TestGitHubGenerateTokenParseParams(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			tCase(t, githubGenerateTokenFactory())
+			cmd, ok := githubGenerateTokenFactory().(*githubGenerateToken)
+			require.True(t, ok)
+
+			tCase(t, cmd)
 		})
 	}
 }
