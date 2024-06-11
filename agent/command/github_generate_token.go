@@ -61,9 +61,6 @@ func (r *githubGenerateToken) ParseParams(params map[string]interface{}) error {
 		if len(metadata.Keys) == 0 {
 			r.Permissions = nil
 		}
-	} else {
-		// If no permissions were provided, we assume all permissions should be granted.len(metadata.Keys) == 0
-		r.Permissions = nil
 	}
 
 	return r.validate()

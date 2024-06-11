@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -98,12 +99,20 @@ func TestGitHubGenerateTokenExecute(t *testing.T) {
 			require.NoError(t, cmd.Execute(ctx, client, logger, conf))
 			assert.Equal(t, conf.NewExpansions.Get(cmd.ExpansionName), "token!")
 		},
+		"SucceedsWithEmptyOwnerAndRepoAndCreatesToken": func(ctx context.Context, t *testing.T, cmd *githubGenerateToken, client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) {
+			cmd.Owner = "new_owner"
+			cmd.Repo = "new_repo"
+			require.NoError(t, cmd.Execute(ctx, client, logger, conf))
+			assert.Equal(t, "token!", conf.NewExpansions.Get(cmd.ExpansionName))
+			assert.Equal(t, "new_owner", cmd.Owner)
+			assert.Equal(t, "new_repo", cmd.Repo)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			conf := &internal.TaskConfig{NewExpansions: agentutil.NewDynamicExpansions(util.Expansions{})}
+			conf := &internal.TaskConfig{NewExpansions: agentutil.NewDynamicExpansions(util.Expansions{}), ProjectRef: model.ProjectRef{Owner: "new_owner"}}
 			comm := client.NewMock("url")
 			comm.CreateGitHubDynamicAccessTokenResult = "token!"
 			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
