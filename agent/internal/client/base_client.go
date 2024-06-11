@@ -953,7 +953,7 @@ func (c *baseCommunicator) CreateInstallationToken(ctx context.Context, td TaskD
 
 func (c *baseCommunicator) CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner, repo string, permissions *github.InstallationPermissions) (string, error) {
 	info := requestInfo{
-		method:   http.MethodGet,
+		method:   http.MethodPost,
 		path:     fmt.Sprintf("task/%s/github_dynamic_access_token/%s/%s", td.ID, owner, repo),
 		taskData: &td,
 	}
