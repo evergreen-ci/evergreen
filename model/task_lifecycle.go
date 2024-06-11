@@ -245,14 +245,17 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 	if err != nil {
 		return errors.Wrap(err, "finding previous task")
 	}
+	if prevTask == nil {
+		return errors.Errorf("previous task for '%s' not found", taskId)
+	}
 
 	// for generated tasks, try to activate the generator instead if the previous task we found isn't the actual last task
-	if t.GeneratedBy != "" && prevTask != nil && prevTask.RevisionOrderNumber+1 != t.RevisionOrderNumber {
+	if t.GeneratedBy != "" && prevTask.RevisionOrderNumber+1 != t.RevisionOrderNumber {
 		return activatePreviousTask(ctx, t.GeneratedBy, caller, t)
 	}
 
 	// If this is a valid, unfinished, non-disabled, and unactive task- we should activate it.
-	if prevTask != nil && !prevTask.IsFinished() && prevTask.Priority >= 0 && !prevTask.Activated {
+	if !prevTask.IsFinished() && prevTask.Priority >= 0 && !prevTask.Activated {
 		if err = SetActiveState(ctx, caller, true, *prevTask); err != nil {
 			return errors.Wrapf(err, "setting task '%s' active", prevTask.Id)
 		}
