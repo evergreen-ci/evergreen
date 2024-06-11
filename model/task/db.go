@@ -1814,26 +1814,36 @@ func FindActivatedByVersionWithoutDisplay(versionId string) ([]Task, error) {
 
 }
 
+// kim: NOTE: dependencyID is the task ID of the depended-on (i.e. parent) task.
 func (t *Task) updateAllMatchingDependenciesForTask(ctx context.Context, dependencyID string, unattainable bool) error {
 	// Update the matching dependencies in the DependsOn array and the UnattainableDependency field that caches
 	// whether any of the dependencies are blocked. Combining both these updates in a single update operation makes it
 	// impervious to races because updates to single documents are atomic.
 	res := evergreen.GetEnvironment().DB().Collection(Collection).FindOneAndUpdate(ctx,
 		bson.M{
+			// kim: NOTE: this is the task ID of the dependent (i.e. child)
+			// task.
 			IdKey: t.Id,
 		},
 		[]bson.M{
 			{
+				// kim: NOTE: this sets individual dependency's
+				// UnattainableDependency.
 				// Iterate over the DependsOn array and set unattainable for dependencies that
 				// match the dependencyID. Leave other dependencies untouched.
 				"$set": bson.M{DependsOnKey: bson.M{
 					"$map": bson.M{
+						// kim: NOTE: for each of the child's dependencies.
 						"input": "$" + DependsOnKey,
 						"as":    "dependency",
 						"in": bson.M{
 							"$cond": bson.M{
-								"if":   bson.M{"$eq": []string{bsonutil.GetDottedKeyName("$$dependency", DependencyTaskIdKey), dependencyID}},
+								// kim: NOTE: if dependency ID matches the
+								// parent task.
+								"if": bson.M{"$eq": []string{bsonutil.GetDottedKeyName("$$dependency", DependencyTaskIdKey), dependencyID}},
+								// kim: NOTE: then set unattainable.
 								"then": bson.M{"$mergeObjects": bson.A{"$$dependency", bson.M{DependencyUnattainableKey: unattainable}}},
+								// kim: NOTE: otherwise keep the dependency as-is.
 								"else": "$$dependency",
 							},
 						},
@@ -1841,14 +1851,26 @@ func (t *Task) updateAllMatchingDependenciesForTask(ctx context.Context, depende
 				},
 			},
 			{
+				// kim: NOTE: sets overall task's UnattainableDependency
 				// Cache whether any dependencies are unattainable.
 				"$set": bson.M{UnattainableDependencyKey: bson.M{"$cond": bson.M{
-					"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					"if": bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					// kim: NOTE: if any of the individual dependencies for the
+					// child are unattainable, set the child
+					// UnattainableDependency to true.
 					"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					// kim: NOTE: otherwise, no dependency has been marked
+					// unattainable, so set it to false.
 					"else": false,
 				}}},
 			},
 		},
+		// kim: NOTE: I believe returning the updated document isn't critical
+		// to ensure that the recursive UpdateBlockedDependencies call works as
+		// expected. The two fields that are set
+		// (DependsOn.UnattainableDependency and Task.UnattainableDependency)
+		// are not used in the rest of the UpdateUnblockedDependencies logic.
+		// However, it may be relevant to the event log.
 		options.FindOneAndUpdate().SetReturnDocument(options.After),
 	)
 	if res.Err() != nil {

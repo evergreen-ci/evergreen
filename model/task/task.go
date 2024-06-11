@@ -2654,6 +2654,13 @@ func (t *Task) MarkUnattainableDependency(ctx context.Context, dependencyId stri
 	}
 
 	// Only want to log the task as blocked if it wasn't already blocked, and if we're not overriding dependencies.
+	// kim: NOTE: while this seemingly does require t.Blocked() to be up-to-date
+	// in the later recursive calls, I believe we can work around this by making
+	// it a BFS with one bulk update of all dependent children at this depth.
+	// That way, we can still record t.Blocked() initially before the update,
+	// but later iterations on later tasks at the same depth won't happen since
+	// it's now one big update.
+	// kim: NOTE: should add a test for only one task blocked log.
 	if !wasBlocked && unattainable && !t.OverrideDependencies {
 		event.LogTaskBlocked(t.Id, t.Execution, dependencyId)
 	}
