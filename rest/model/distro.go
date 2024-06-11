@@ -386,7 +386,7 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.ContainerPool = utility.ToStringPtr(d.ContainerPool)
 	apiDistro.DisableShallowClone = d.DisableShallowClone
 	apiDistro.Note = utility.ToStringPtr(d.Note)
-	apiDistro.WarningNote = utility.ToStringPtr(d.WarningNote)
+	apiDistro.WarningNote = utility.ToStringPtr(d.InfoNote)
 	apiDistro.ValidProjects = utility.ToStringPtrSlice(d.ValidProjects)
 	apiDistro.Mountpoints = d.Mountpoints
 	apiDistro.ImageID = utility.ToStringPtr(d.ImageID)
@@ -465,7 +465,7 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 
 	d.DisableShallowClone = apiDistro.DisableShallowClone
 	d.Note = utility.FromStringPtr(apiDistro.Note)
-	d.WarningNote = utility.FromStringPtr(apiDistro.WarningNote)
+	d.InfoNote = utility.FromStringPtr(apiDistro.WarningNote)
 	d.ValidProjects = utility.FromStringPtrSlice(apiDistro.ValidProjects)
 
 	d.IsVirtualWorkstation = apiDistro.IsVirtualWorkstation

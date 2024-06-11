@@ -47,13 +47,14 @@ type Distro struct {
 	HostAllocatorSettings HostAllocatorSettings `bson:"host_allocator_settings" json:"host_allocator_settings" mapstructure:"host_allocator_settings"`
 	DisableShallowClone   bool                  `bson:"disable_shallow_clone" json:"disable_shallow_clone" mapstructure:"disable_shallow_clone"`
 	Note                  string                `bson:"note" json:"note" mapstructure:"note"`
-	WarningNote           string                `bson:"warning_note,omitempty" json:"warning_note,omitempty" mapstructure:"warning_note,omitempty"`
 	ValidProjects         []string              `bson:"valid_projects,omitempty" json:"valid_projects,omitempty" mapstructure:"valid_projects,omitempty"`
 	IsVirtualWorkstation  bool                  `bson:"is_virtual_workstation" json:"is_virtual_workstation" mapstructure:"is_virtual_workstation"`
 	IsCluster             bool                  `bson:"is_cluster" json:"is_cluster" mapstructure:"is_cluster"`
 	HomeVolumeSettings    HomeVolumeSettings    `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
 	IceCreamSettings      IceCreamSettings      `bson:"icecream_settings,omitempty" json:"icecream_settings,omitempty" mapstructure:"icecream_settings,omitempty"`
 	Mountpoints           []string              `bson:"mountpoints,omitempty" json:"mountpoints,omitempty" mapstructure:"mountpoints,omitempty"`
+	// InfoNote populates the info level during validation. This used to be called WarningNote.
+	InfoNote string `bson:"warning_note,omitempty" json:"warning_note,omitempty" mapstructure:"warning_note,omitempty"`
 	// ImageID is not equivalent to AMI. It is the identifier of the base image for the distro.
 	ImageID string `bson:"image_id,omitempty" json:"image_id,omitempty" mapstructure:"image_id,omitempty"`
 }

@@ -40,6 +40,7 @@ type ValidationErrorLevel int64
 const (
 	Error ValidationErrorLevel = iota
 	Warning
+	Info
 	EC2HostCreateTotalLimit                 = 1000
 	DockerHostCreateTotalLimit              = 200
 	HostCreateLimitPerTask                  = 3
@@ -57,6 +58,8 @@ func (vel ValidationErrorLevel) String() string {
 		return "ERROR"
 	case Warning:
 		return "WARNING"
+	case Info:
+		return "INFO"
 	}
 	return "?"
 }
@@ -195,15 +198,15 @@ func ValidationErrorsToString(ves ValidationErrors) string {
 }
 
 // getDistros creates a slice of all distro IDs and aliases.
-func getDistros(ctx context.Context) (ids []string, aliases []string, distroWarnings map[string]string, err error) {
+func getDistros(ctx context.Context) (ids []string, aliases []string, distroInfos map[string]string, err error) {
 	return getDistrosForProject(ctx, "")
 }
 
 // getDistrosForProject creates a slice of all valid distro IDs and a slice of
 // all valid aliases for a project, as well as any distro warnings. If projectID is empty, it returns all distro
 // IDs and all aliases.
-func getDistrosForProject(ctx context.Context, projectID string) (ids []string, aliases []string, distroWarnings map[string]string, err error) {
-	distroWarnings = map[string]string{}
+func getDistrosForProject(ctx context.Context, projectID string) (ids []string, aliases []string, distroInfos map[string]string, err error) {
+	distroInfos = map[string]string{}
 	// create a slice of all known distros
 	distros, err := distro.AllDistros(ctx)
 	if err != nil {
@@ -217,25 +220,24 @@ func getDistrosForProject(ctx context.Context, projectID string) (ids []string, 
 					aliases = append(aliases, alias)
 				}
 			}
-			if d.WarningNote != "" {
-				addDistroWarning(distroWarnings, d.Id, d.WarningNote)
-				distroWarnings[d.Id] = d.WarningNote
+			if d.InfoNote != "" {
+				addDistroInfo(distroInfos, d.Id, d.InfoNote)
+				distroInfos[d.Id] = d.InfoNote
 				for _, alias := range d.Aliases {
-					addDistroWarning(distroWarnings, alias, d.WarningNote)
-
+					addDistroInfo(distroInfos, alias, d.InfoNote)
 				}
 			}
 		}
 	}
-	return ids, utility.UniqueStrings(aliases), distroWarnings, nil
+	return ids, utility.UniqueStrings(aliases), distroInfos, nil
 }
 
-func addDistroWarning(distroWarnings map[string]string, distroName, warningNote string) {
-	if distroWarnings[distroName] == "" {
-		distroWarnings[distroName] = warningNote
+func addDistroInfo(distroInfos map[string]string, distroName, infoNote string) {
+	if distroInfos[distroName] == "" {
+		distroInfos[distroName] = infoNote
 		return
 	}
-	distroWarnings[distroName] = fmt.Sprintf("\t%s\n\t%s", distroWarnings[distroName], warningNote)
+	distroInfos[distroName] = fmt.Sprintf("\t%s\n\t%s", distroInfos[distroName], infoNote)
 }
 
 // CheckProject calls the validating logic for a Project's configuration.
@@ -868,8 +870,9 @@ func validateBuildVariantTaskNames(task string, variant string, allTaskNames map
 	return errs
 }
 
-// ensureReferentialIntegrity checks all fields that reference other entities defined in the YAML and ensure that they are referring to valid names, and returns any relevant distro warnings.
-func ensureReferentialIntegrity(project *model.Project, containerNameMap map[string]bool, distroIDs []string, distroAliases []string, distroWarnings map[string]string) ValidationErrors {
+// ensureReferentialIntegrity checks all fields that reference other entities defined in the YAML and ensure that they are referring to valid names,
+// and returns any relevant distro validation info.
+func ensureReferentialIntegrity(project *model.Project, containerNameMap map[string]bool, distroIDs []string, distroAliases []string, distroInfos map[string]string) ValidationErrors {
 	errs := ValidationErrors{}
 	// create a set of all the task names
 	allTaskNames := map[string]bool{}
@@ -924,13 +927,13 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 						},
 					)
 				}
-				if warning, ok := distroWarnings[name]; ok {
+				if warning, ok := distroInfos[name]; ok {
 					errs = append(errs,
 						ValidationError{
 							Message: fmt.Sprintf("task '%s' in buildvariant '%s' "+
 								"references distro '%s' with the following admin-defined warning(s): %s",
 								task.Name, buildVariant.Name, name, warning),
-							Level: Warning,
+							Level: Info,
 						},
 					)
 				}
@@ -965,13 +968,13 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 					},
 				)
 			}
-			if warning, ok := distroWarnings[name]; ok {
+			if warning, ok := distroInfos[name]; ok {
 				errs = append(errs,
 					ValidationError{
 						Message: fmt.Sprintf("buildvariant '%s' "+
 							"references distro '%s' with the following admin-defined warning: %s",
 							buildVariant.Name, name, warning),
-						Level: Warning,
+						Level: Info,
 					},
 				)
 			}

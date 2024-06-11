@@ -4131,13 +4131,13 @@ func TestGetDistrosForProject(t *testing.T) {
 		Id:            "distro1",
 		Aliases:       []string{"distro1-alias", "distro1and2-alias"},
 		ValidProjects: []string{"project1", "project2"},
-		WarningNote:   "this is a warning for the first distro",
+		InfoNote:      "this is a warning for the first distro",
 	}
 	require.NoError(d1.Insert(ctx))
 	d2 := distro.Distro{
-		Id:          "distro2",
-		Aliases:     []string{"distro2-alias", "distro1and2-alias"},
-		WarningNote: "this is the warning for another distro",
+		Id:       "distro2",
+		Aliases:  []string{"distro2-alias", "distro1and2-alias"},
+		InfoNote: "this is the warning for another distro",
 	}
 	require.NoError(d2.Insert(ctx))
 	d3 := distro.Distro{
@@ -4154,12 +4154,12 @@ func TestGetDistrosForProject(t *testing.T) {
 	assert.Contains(aliases, "distro1and2-alias")
 	assert.Contains(aliases, "distro1-alias")
 	assert.Contains(aliases, "distro2-alias")
-	assert.Equal(warnings[d1.Id], d1.WarningNote)
-	assert.Equal(warnings[d2.Id], d2.WarningNote)
-	assert.Equal(warnings["distro1-alias"], d1.WarningNote)
-	assert.Equal(warnings["distro2-alias"], d2.WarningNote)
-	assert.Contains(warnings["distro1and2-alias"], d1.WarningNote)
-	assert.Contains(warnings["distro1and2-alias"], d2.WarningNote)
+	assert.Equal(warnings[d1.Id], d1.InfoNote)
+	assert.Equal(warnings[d2.Id], d2.InfoNote)
+	assert.Equal(warnings["distro1-alias"], d1.InfoNote)
+	assert.Equal(warnings["distro2-alias"], d2.InfoNote)
+	assert.Contains(warnings["distro1and2-alias"], d1.InfoNote)
+	assert.Contains(warnings["distro1and2-alias"], d2.InfoNote)
 
 	ids, aliases, warnings, err = getDistrosForProject(ctx, "project1")
 	require.NoError(err)
@@ -4177,9 +4177,9 @@ func TestGetDistrosForProject(t *testing.T) {
 	assert.Contains(ids, "distro2")
 	assert.Contains(aliases, "distro2-alias")
 	assert.Contains(aliases, "distro1and2-alias")
-	assert.Equal(warnings[d2.Id], d2.WarningNote)
-	assert.Equal(warnings["distro2-alias"], d2.WarningNote)
-	assert.Equal(warnings["distro1and2-alias"], d2.WarningNote)
+	assert.Equal(warnings[d2.Id], d2.InfoNote)
+	assert.Equal(warnings["distro2-alias"], d2.InfoNote)
+	assert.Equal(warnings["distro1and2-alias"], d2.InfoNote)
 }
 
 func TestValidateTaskSyncCommands(t *testing.T) {
