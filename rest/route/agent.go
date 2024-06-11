@@ -2,7 +2,9 @@ package route
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -1559,7 +1561,8 @@ type createGitHubDynamicAccessToken struct {
 	repo   string
 	taskID string
 
-	permissions github.InstallationPermissions
+	permissions    github.InstallationPermissions
+	allPermissions bool
 
 	env evergreen.Environment
 }
@@ -1579,11 +1582,20 @@ func (h *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Requ
 	if h.repo = gimlet.GetVars(r)["repo"]; h.repo == "" {
 		return errors.New("missing repo")
 	}
-	if h.taskID = gimlet.GetVars(r)["taskID"]; h.taskID == "" {
-		return errors.New("missing taskID")
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task_id")
 	}
 
-	err := utility.ReadJSON(r.Body, &h.permissions)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return errors.Wrap(err, "reading body")
+	}
+	if len(body) == 0 || string(body) == "{}" {
+		h.allPermissions = true
+		return nil
+	}
+
+	err = json.Unmarshal(body, &h.permissions)
 
 	errorMessage := fmt.Sprintf("reading permissions body for task '%s'", h.taskID)
 	grip.Error(message.WrapError(err, message.Fields{
@@ -1621,7 +1633,8 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	}
 	requesterPermissionGroup := p.GetGitHubPermissionGroup(t.Requester)
 	intersection, err := requesterPermissionGroup.Intersection(model.GitHubDynamicTokenPermissionGroup{
-		Permissions: h.permissions,
+		Permissions:    h.permissions,
+		AllPermissions: h.allPermissions,
 	})
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
