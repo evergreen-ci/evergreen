@@ -36,7 +36,7 @@ func (r *githubGenerateToken) ParseParams(params map[string]interface{}) error {
 	permissions := params["permissions"]
 	delete(params, "permissions")
 
-	// Decode all paramters except permissions.
+	// Decode all parameters except permissions.
 	if err := mapstructure.Decode(params, r); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}
