@@ -40,6 +40,7 @@ const (
 	retryComment            = "evergreen retry"
 	refreshStatusComment    = "evergreen refresh"
 	patchComment            = "evergreen patch"
+	aliasArgument           = "--alias"
 	commitQueueMergeComment = "evergreen merge"
 	evergreenHelpComment    = "evergreen help"
 	keepDefinitionsComment  = "evergreen keep-definitions"
@@ -188,7 +189,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"user":      *event.Sender.Login,
 				"message":   "PR accepted, attempting to queue",
 			})
-			if err := gh.AddIntentForPR(ctx, event.PullRequest, event.Sender.GetLogin(), patch.AutomatedCaller, false); err != nil {
+			if err := gh.AddIntentForPR(ctx, event.PullRequest, event.Sender.GetLogin(), patch.AutomatedCaller, "", false); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":    "GitHub hook",
 					"msg_id":    gh.msgID,
@@ -542,10 +543,15 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 		return nil
 	}
 
-	if triggerPatch, callerType := triggersPatch(commentBody); triggerPatch {
+	if triggerPatch := triggersPatch(commentBody); triggerPatch {
+		callerType := parsePRCommentForCaller(commentBody)
+		var alias string
+		if isPatchComment(commentBody) {
+			alias = parsePRCommentForAlias(commentBody)
+		}
 		grip.Info(gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
 
-		err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), callerType, event.Issue.GetNumber())
+		err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), callerType, alias, event.Issue.GetNumber())
 		grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event,
 			fmt.Sprintf("can't create PR for '%s'", commentBody))))
 		return errors.Wrap(err, "creating patch")
@@ -673,8 +679,8 @@ func getHelpTextFromProjects(repoRef *model.RepoRef, projectRefs []model.Project
 			"this is useful when something went wrong with automatically creating PR patches")
 	}
 	if manualPRProjectEnabled {
-		res += fmt.Sprintf(formatStr, patchComment, "attempts to create a new PR patch; "+""+
-			"this is required to create a PR patch when only manual PR testing is enabled")
+		res += fmt.Sprintf(formatStr, patchComment, "attempts to create a new PR patch; "+
+			"this is required to create a PR patch when only manual PR testing is enabled (use `--alias` to specify a patch alias)")
 	}
 	if autoPRProjectEnabled || manualPRProjectEnabled {
 		res += fmt.Sprintf(formatStr, keepDefinitionsComment, "reuse the tasks from the previous patch in subsequent patches")
@@ -694,7 +700,7 @@ func getHelpTextFromProjects(repoRef *model.RepoRef, projectRefs []model.Project
 	return res
 }
 
-func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledBy string, prNumber int) error {
+func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledBy, alias string, prNumber int) error {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")
@@ -709,7 +715,7 @@ func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledB
 		return errors.Wrapf(err, "getting PR for repo '%s:%s', PR #%d", owner, repo, prNumber)
 	}
 
-	return gh.AddIntentForPR(ctx, pr, pr.User.GetLogin(), calledBy, true)
+	return gh.AddIntentForPR(ctx, pr, pr.User.GetLogin(), calledBy, alias, true)
 }
 
 // keepPRPatchDefinition looks for the most recent patch created for the pr number and updates the
@@ -761,7 +767,7 @@ func (gh *githubHookApi) refreshPatchStatus(ctx context.Context, owner, repo str
 // before creating a new one. For example, if multiple patches with the same head sha exist, the PR(s) will get
 // both updates from patches and be in a race condition for which one GitHub checks shows last- so we want
 // to avoid this state when possible.
-func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequest, owner, calledBy string, overrideExisting bool) error {
+func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequest, owner, calledBy, alias string, overrideExisting bool) error {
 	// Verify that the owner/repo uses PR testing before inserting the intent.
 	baseRepoName := pr.Base.Repo.GetFullName()
 	baseRepo := strings.Split(baseRepoName, "/")
@@ -786,7 +792,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 			return errors.Wrapf(err, "getting merge base between branches '%s' and '%s'", pr.Base.GetRef(), pr.Head.GetRef())
 		}
 	}
-	ghi, err := patch.NewGithubIntent(gh.msgID, owner, calledBy, mergeBase, pr)
+	ghi, err := patch.NewGithubIntent(gh.msgID, owner, calledBy, alias, mergeBase, pr)
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub patch intent")
 	}
@@ -1240,6 +1246,7 @@ func isItemOnCommitQueue(id, item string) (bool, error) {
 }
 
 func trimComment(comment string) string {
+	// strings.Join(strings.Fields()) is to handle multiple spaces between words
 	return strings.Join(strings.Fields(strings.ToLower(comment)), " ")
 }
 
@@ -1248,7 +1255,7 @@ func isRetryComment(comment string) bool {
 }
 
 func isPatchComment(comment string) bool {
-	return trimComment(comment) == patchComment
+	return strings.HasPrefix(trimComment(comment), patchComment)
 }
 
 // triggersCommitQueue checks if "evergreen merge" is present in the comment, as
@@ -1265,18 +1272,32 @@ func isResetDefinitionsComment(comment string) bool {
 	return trimComment(comment) == resetDefinitionsComment
 }
 
-// The bool value returns whether the patch should be created or not.
-// The string value returns the correct caller for the command.
-func triggersPatch(comment string) (bool, string) {
+// Return whether the patch should be created or not.
+func triggersPatch(comment string) bool {
+	return isPatchComment(comment) || isRetryComment(comment)
+}
+
+// Return the caller for the command.
+func parsePRCommentForCaller(comment string) string {
 	if isPatchComment(comment) {
-		return true, patch.ManualCaller
+		return patch.ManualCaller
 	}
 	if isRetryComment(comment) {
-		return true, patch.AllCallers
+		return patch.AllCallers
 	}
-
-	return false, ""
+	return ""
 }
+
+// Return the alias from a comment like `evergreen patch --alias <alias>`
+func parsePRCommentForAlias(comment string) string {
+	comment = strings.TrimSpace(comment)
+	expectedPrefix := strings.Join([]string{patchComment, aliasArgument}, " ")
+	if !strings.HasPrefix(comment, expectedPrefix) {
+		return ""
+	}
+	return strings.TrimSpace(strings.TrimPrefix(comment, expectedPrefix))
+}
+
 func triggersStatusRefresh(comment string) bool {
 	return trimComment(comment) == refreshStatusComment
 }
