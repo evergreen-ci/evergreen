@@ -97,7 +97,7 @@ func TestGitHubGenerateTokenExecute(t *testing.T) {
 		},
 		"SucceedsAndCreatesToken": func(ctx context.Context, t *testing.T, cmd *githubGenerateToken, client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			require.NoError(t, cmd.Execute(ctx, client, logger, conf))
-			assert.Equal(t, conf.NewExpansions.Get(cmd.ExpansionName), "token!")
+			assert.Equal(t, "token!", conf.NewExpansions.Get(cmd.ExpansionName))
 		},
 		"SucceedsWithEmptyOwnerAndRepoAndCreatesToken": func(ctx context.Context, t *testing.T, cmd *githubGenerateToken, client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			cmd.Owner = "new_owner"
