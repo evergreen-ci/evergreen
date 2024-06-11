@@ -70,6 +70,7 @@ func TestGitHubGenerateTokenParseParams(t *testing.T) {
 			require.NotNil(t, cmd.Permissions)
 			assert.Equal(t, "actions", utility.FromStringPtr(cmd.Permissions.Actions))
 			assert.Equal(t, "checks", utility.FromStringPtr(cmd.Permissions.Checks))
+			assert.Nil(t, cmd.Permissions.Administration)
 		},
 		"FailsWithoutExpansionName": func(t *testing.T, cmd *githubGenerateToken) {
 			assert.Error(t, cmd.ParseParams(map[string]interface{}{
