@@ -87,6 +87,12 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 	if err := r.validate(); err != nil {
 		return errors.WithStack(err)
 	}
+	if r.Owner == "" {
+		r.Owner = conf.ProjectRef.Owner
+	}
+	if r.Repo == "" {
+		r.Repo = conf.ProjectRef.Repo
+	}
 
 	token, err := comm.CreateGitHubDynamicAccessToken(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, r.Owner, r.Repo, r.Permissions)
 	if err != nil {
