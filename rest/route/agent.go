@@ -1409,7 +1409,7 @@ func (g *createInstallationToken) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("no installation token returned for '%s/%s'", g.owner, g.repo))
 	}
 
-	return gimlet.NewJSONResponse(&apimodels.InstallationToken{
+	return gimlet.NewJSONResponse(&apimodels.Token{
 		Token: token,
 	})
 }
@@ -1644,8 +1644,6 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		})
 	}
 
-	// TODO DEVPROD-5991: Use the modified CreateInstallationToken/HasGitHubApp methods to create the token.
-	// Currently, it's going to use the global Evergreen GitHub app to create the token (from g.env.Settings()).
 	token, err := githubAppAuth.CreateInstallationToken(ctx, h.owner, h.repo, &github.InstallationTokenOptions{
 		Permissions: permissions,
 	})
@@ -1656,7 +1654,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("no installation token returned for '%s/%s'", h.owner, h.repo))
 	}
 
-	return gimlet.NewJSONResponse(&apimodels.InstallationToken{
+	return gimlet.NewJSONResponse(&apimodels.Token{
 		Token: token,
 	})
 }

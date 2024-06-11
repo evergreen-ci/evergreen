@@ -194,7 +194,7 @@ type RegistrySettings struct {
 	Password string `mapstructure:"registry_password" json:"registry_password" yaml:"registry_password"`
 }
 
-type InstallationToken struct {
+type Token struct {
 	Token string `json:"token"`
 }
 

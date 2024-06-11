@@ -26,6 +26,7 @@ import (
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -41,32 +42,34 @@ type Mock struct {
 	serverURL    string
 
 	// mock behavior
-	NextTaskShouldFail            bool
-	GetPatchFileShouldFail        bool
-	TaskShouldRetryOnFail         bool
-	loggingShouldFail             bool
-	NextTaskResponse              *apimodels.NextTaskResponse
-	NextTaskIsNil                 bool
-	StartTaskShouldFail           bool
-	GetTaskResponse               *task.Task
-	GetProjectResponse            *serviceModel.Project
-	EndTaskResponse               *apimodels.EndTaskResponse
-	EndTaskShouldFail             bool
-	EndTaskResult                 EndTaskResult
-	ShellExecFilename             string
-	TimeoutFilename               string
-	GenerateTasksShouldFail       bool
-	HeartbeatShouldAbort          bool
-	HeartbeatShouldConflict       bool
-	HeartbeatShouldErr            bool
-	HeartbeatShouldSometimesErr   bool
-	HeartbeatCount                int
-	TaskExecution                 int
-	CreatedHost                   apimodels.CreateHost
-	GetTaskPatchResponse          *patchmodel.Patch
-	GetLoggerProducerShouldFail   bool
-	CreateInstallationTokenFail   bool
-	CreateInstallationTokenResult string
+	NextTaskShouldFail                   bool
+	GetPatchFileShouldFail               bool
+	TaskShouldRetryOnFail                bool
+	loggingShouldFail                    bool
+	NextTaskResponse                     *apimodels.NextTaskResponse
+	NextTaskIsNil                        bool
+	StartTaskShouldFail                  bool
+	GetTaskResponse                      *task.Task
+	GetProjectResponse                   *serviceModel.Project
+	EndTaskResponse                      *apimodels.EndTaskResponse
+	EndTaskShouldFail                    bool
+	EndTaskResult                        EndTaskResult
+	ShellExecFilename                    string
+	TimeoutFilename                      string
+	GenerateTasksShouldFail              bool
+	HeartbeatShouldAbort                 bool
+	HeartbeatShouldConflict              bool
+	HeartbeatShouldErr                   bool
+	HeartbeatShouldSometimesErr          bool
+	HeartbeatCount                       int
+	TaskExecution                        int
+	CreatedHost                          apimodels.CreateHost
+	GetTaskPatchResponse                 *patchmodel.Patch
+	GetLoggerProducerShouldFail          bool
+	CreateInstallationTokenFail          bool
+	CreateInstallationTokenResult        string
+	CreateGitHubDynamicAccessTokenFail   bool
+	CreateGitHubDynamicAccessTokenResult string
 
 	CedarGRPCConn *grpc.ClientConn
 
@@ -533,6 +536,13 @@ func (c *Mock) CreateInstallationToken(ctx context.Context, td TaskData, owner, 
 		return "", errors.New("failed to create token")
 	}
 	return c.CreateInstallationTokenResult, nil
+}
+
+func (c *Mock) CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner, repo string, permissions *github.InstallationPermissions) (string, error) {
+	if c.CreateGitHubDynamicAccessTokenFail {
+		return "", errors.New("failed to create token")
+	}
+	return c.CreateGitHubDynamicAccessTokenResult, nil
 }
 
 func (c *Mock) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {
