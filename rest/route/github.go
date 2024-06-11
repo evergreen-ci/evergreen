@@ -545,7 +545,10 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 
 	if triggerPatch := triggersPatch(commentBody); triggerPatch {
 		callerType := parsePRCommentForCaller(commentBody)
-		alias := parsePRcommentForAlias(commentBody)
+		var alias string
+		if isPatchComment(commentBody) {
+			alias = parsePRCommentForAlias(commentBody)
+		}
 		grip.Info(gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
 
 		err := gh.createPRPatch(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), callerType, alias, event.Issue.GetNumber())
@@ -1286,7 +1289,7 @@ func parsePRCommentForCaller(comment string) string {
 }
 
 // Return the alias from a comment like `evergreen patch --alias <alias>`
-func parsePRcommentForAlias(comment string) string {
+func parsePRCommentForAlias(comment string) string {
 	comment = strings.TrimSpace(comment)
 	expectedPrefix := strings.Join([]string{patchComment, aliasArgument}, " ")
 	if !strings.HasPrefix(comment, expectedPrefix) {
