@@ -25,12 +25,8 @@ Your tests can run on any machine that Evergreen can cross-compile its agent for
 
 on x86, amd64, and arm architectures.
 
-##### Precise, Actionable Feedback
-No more guessing about who broke what.
-By Default, Evergreen does not run every commit; however, in the event that something breaks, Evergreen will run failing tasks on previous commits to find the commit that caused the failure.
-Think of it like a built-in `git bisect`.
-
-Additionally, Evergreen provides multiple views of state of a build, so you can quickly determine what's breaking and when it started.
+##### Serial Execution
+Tasks (i.e. sets of tests) run serially on hosts, meaning you can have confidence that only your tests are running on a host at any given time.
 
 ##### Patch Builds
 You shouldn't have to wait until after you've committed to find out your changes break your tests.
