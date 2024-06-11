@@ -503,10 +503,11 @@ const (
 
 	OtelAttributeMaxLength = 10000
 	// task otel attributes
-	TaskIDOtelAttribute        = "evergreen.task.id"
-	TaskNameOtelAttribute      = "evergreen.task.name"
-	TaskExecutionOtelAttribute = "evergreen.task.execution"
-	TaskStatusOtelAttribute    = "evergreen.task.status"
+	TaskIDOtelAttribute          = "evergreen.task.id"
+	TaskNameOtelAttribute        = "evergreen.task.name"
+	TaskExecutionOtelAttribute   = "evergreen.task.execution"
+	TaskStatusOtelAttribute      = "evergreen.task.status"
+	TaskFailureTypeOtelAttribute = "evergreen.task.failure_type"
 
 	// version otel attributes
 	VersionIDOtelAttribute               = "evergreen.version.id"

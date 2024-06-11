@@ -10,6 +10,8 @@ type TaskQueueItem {
   expectedDuration: Duration!
   priority: Int!
   project: String!
+  # projectIdentifier can be null if the task is running on an untracked branch.
+  projectIdentifier: String
   requester: TaskQueueItemType!
   activatedBy: String!
   revision: String!
@@ -25,4 +27,3 @@ type TaskQueueDistro {
   hostCount: Int!
   taskCount: Int!
 }
-

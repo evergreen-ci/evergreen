@@ -68,8 +68,8 @@ func (s *installationSuite) TestGetInstallationID() {
 
 	s.NoError(installation.Upsert(s.ctx))
 
-	authFields := &githubAppAuth{
-		appId: 1234,
+	authFields := &GithubAppAuth{
+		AppID: 1234,
 	}
 
 	id, err := getInstallationID(s.ctx, authFields, "evergreen-ci", "evergreen")

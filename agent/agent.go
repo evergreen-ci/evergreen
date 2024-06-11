@@ -1037,6 +1037,9 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	if detail.Status != evergreen.TaskSucceeded {
 		span.SetStatus(codes.Error, fmt.Sprintf("failing status '%s'", detail.Status))
 	}
+	if detail.Type != "" {
+		span.SetAttributes(attribute.String(evergreen.TaskFailureTypeOtelAttribute, detail.Type))
+	}
 
 	return resp, nil
 }

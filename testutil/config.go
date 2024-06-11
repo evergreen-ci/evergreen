@@ -260,8 +260,9 @@ func MockConfig() *evergreen.Settings {
 				},
 				DefaultSecurityGroup: "test_security_group",
 				MaxVolumeSizePerUser: 200,
-				BinaryClient: evergreen.S3Credentials{
-					Bucket: "client_bucket",
+				TaskOutput: evergreen.S3Credentials{
+					Key:    "aws_key",
+					Secret: "aws_secret",
 				},
 				ParserProject: evergreen.ParserProjectS3Config{
 					S3Credentials: evergreen.S3Credentials{

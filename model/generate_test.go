@@ -2090,6 +2090,40 @@ func TestFilterInactiveTasks(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Empty(t, tasks)
 		},
+		"FiltersNonstepbackTasks": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+			g.BuildVariants[0].Tasks[0].Activate = utility.FalsePtr()
+			g.BuildVariants[0].Tasks = append(g.BuildVariants[0].Tasks,
+				parserBVTaskUnit{Name: "generated-2", Activate: utility.TruePtr()},
+				parserBVTaskUnit{Name: "generated-3", Activate: utility.FalsePtr()}, // background task.
+				parserBVTaskUnit{Name: "generated-4", Activate: utility.FalsePtr()}, // task to stepback.
+			)
+			g.Task.ActivatedBy = evergreen.StepbackTaskActivator
+			g.Task.GeneratedTasksToActivate = map[string][]string{g.BuildVariants[0].Name: {g.BuildVariants[0].Tasks[3].Name}}
+
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{
+				{TaskName: g.BuildVariants[0].Tasks[0].Name, Variant: g.BuildVariants[0].Name},
+				{TaskName: g.BuildVariants[0].Tasks[1].Name, Variant: g.BuildVariants[0].Name},
+				{TaskName: g.BuildVariants[0].Tasks[2].Name, Variant: g.BuildVariants[0].Name},
+				{TaskName: g.BuildVariants[0].Tasks[3].Name, Variant: g.BuildVariants[0].Name},
+			}, v, &Project{})
+			require.NoError(t, err)
+			assert.Len(t, tasks, 2)
+
+			foundAlwaysActive := false
+			foundStepbackTask := false
+			for _, task := range tasks {
+				assert.NotEqual(t, g.BuildVariants[0].Tasks[0], task.TaskName)
+				assert.NotEqual(t, g.BuildVariants[0].Tasks[2], task.TaskName)
+
+				if task.TaskName == g.BuildVariants[0].Tasks[1].Name {
+					foundAlwaysActive = true
+				} else if task.TaskName == g.BuildVariants[0].Tasks[3].Name {
+					foundStepbackTask = true
+				}
+			}
+			assert.True(t, foundAlwaysActive, "always active task should not be filtered")
+			assert.True(t, foundStepbackTask, "stepback task should not be filtered")
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			tctx, tcancel := context.WithCancel(ctx)

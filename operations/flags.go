@@ -85,9 +85,6 @@ func serviceConfigFlags(flags ...cli.Flag) []cli.Flag {
 			Name:   clientS3BucketFlagName,
 			Usage:  "S3 bucket where the Evergreen clients are located",
 			EnvVar: evergreen.EvergreenClientS3Bucket,
-			// TODO (DEVPROD-3138): this default is only temporary to keep
-			// backward compatibility and can be removed later.
-			Value: "mciuploads",
 		},
 		cli.BoolFlag{
 			Name:  overwriteConfFlagName,

@@ -27,7 +27,7 @@ Daily aggregated statistics for task executions run in Evergreen. Tasks are aggr
 | project\_id                  | VARCHAR | Unique project identifier.
 | variant                      | VARCHAR | Name of the build variant on which the tasks ran.
 | task\_name                   | VARCHAR | Display name of the tasks.
-| request\_type                | VARCHAR | Name of the trigger that requested the task executions. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `merge_test` (commit queue), or `ad_hoc` (periodic build).
+| request\_type                | VARCHAR | Name of the trigger that requested the task executions. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `github_merge_request` (GitHub merge queue), `merge_test` (Evergreen commit queue), or `ad_hoc` (periodic build).
 | finish\_date                 | VARCHAR | Date, in ISO format `YYYY-MM-DD`, on which the tasks ran.
 | num\_success                 | BIGINT  | Number of successful task executions in the group.
 | num\_failed                  | BIGINT  | Number of failed task executions in the group.
@@ -52,7 +52,7 @@ Daily aggregated statistics for test executions run in Evergreen. Test stats are
 | variant                   | VARCHAR | Name of the build variant on which the tests ran.
 | task\_name                | VARCHAR | Name of the task that the test ran under. This is the display task name for tasks that are part of a display task.
 | test\_name                | VARCHAR | Display name of the tests.
-| request\_type             | VARCHAR | Name of the trigger that requested the task execution. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `merge_test` (commit queue), or `ad_hoc` (periodic build).
+| request\_type             | VARCHAR | Name of the trigger that requested the task execution. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `github_merge_request` (GitHub merge queue), `merge_test` (Evergreen commit queue), or `ad_hoc` (periodic build).
 | num\_pass                 | BIGINT  | Number of passing tests.
 | num\_fail                 | BIGINT  | Number of failing tests.
 | total\_pass\_duration\_ns | DOUBLE  | Total duration, in nanoseconds, of passing tests.
@@ -76,7 +76,7 @@ Finished Evergreen tasks, partitioned by the project and date (in ISO format). F
 | build\_id                     | VARCHAR        | ID of the build containing the task.
 | order                         | BIGINT         | Order number of the task's version. For patches this is the user's current patch submission count. For mainline versions this is the number of versions for that repository so far.
 | revision                      | VARCHAR        | Git commit SHA.
-| requester                     | VARCHAR        | Requester type. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `merge_test` (commit queue), or `ad_hoc` (periodic build).
+| requester                     | VARCHAR        | Name of the trigger that requested the task execution. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `github_merge_request` (GitHub merge queue), `merge_test` (Evergreen commit queue), or `ad_hoc` (periodic build).
 | tags                          | ARRAY(VARCHAR) | Array of task tags from project configuration.
 | priority                      | BIGINT         | Scheduling priority of the task.
 | task\_group                   | VARCHAR        | Name of the task group that contains this task.
@@ -172,7 +172,7 @@ Note that this is an estimated cost based solely on compute (`BoxUsage`) usage p
 | display\_name                 | VARCHAR        | Display name of the task, will be the parent task's display name if part of a display task.
 | build\_variant                | VARCHAR        | Name of the task's build variant.
 | build\_variant\_display\_name | VARCHAR        | Display name of the task's build variant.
-| requester                     | VARCHAR        | Requester type. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `merge_test` (commit queue), or `ad_hoc` (periodic build).
+| requester                     | VARCHAR        | Name of the trigger that requested the task execution. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `github_merge_request` (GitHub merge queue), `merge_test` (Evergreen commit queue), or `ad_hoc` (periodic build).
 | activated\_by                 | VARCHAR        | User or service that activated this task.
 | tags                          | ARRAY(VARCHAR) | Array of task tags from project configuration.
 | host\_id                      | VARCHAR        | ID of the host that ran this task.

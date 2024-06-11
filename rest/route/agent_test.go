@@ -70,7 +70,8 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			assert.Equal(t, http.StatusOK, resp.Status())
 			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
 			require.True(t, ok)
-			assert.Equal(t, data.Vars, map[string]string{"a": "4", "b": "3"})
+			assert.Equal(t, data.Vars, map[string]string{"a": "1", "b": "3"})
+			assert.Equal(t, data.Parameters, map[string]string{"a": "4"})
 			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
 			assert.Equal(t, data.RedactKeys, []string{"pass", "secret"})
 		},
@@ -85,7 +86,8 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			assert.Equal(t, rh.taskID, data.Expansions.Get("task_id"))
 			assert.Equal(t, "distro_expansion_value", data.Expansions.Get("distro_expansion_key"))
 			assert.Equal(t, "password", data.Expansions.Get(evergreen.HostServicePasswordExpansion))
-			assert.Equal(t, data.Vars, map[string]string{"a": "4", "b": "3"})
+			assert.Equal(t, data.Vars, map[string]string{"a": "1", "b": "3"})
+			assert.Equal(t, data.Parameters, map[string]string{"a": "4"})
 			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
 			assert.Equal(t, data.RedactKeys, []string{"pass", "secret"})
 		},
@@ -631,7 +633,7 @@ func TestCreateInstallationToken(t *testing.T) {
 			options := map[string]string{"owner": "", "repo": validRepo}
 			request = gimlet.SetURLVars(request, options)
 
-			assert.Error(t, handler.Parse(ctx, request))
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing owner")
 		},
 		"ParseErrorsOnEmptyRepo": func(ctx context.Context, t *testing.T, handler *createInstallationToken, env *mock.Environment) {
 			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", validOwner, "")
@@ -641,7 +643,7 @@ func TestCreateInstallationToken(t *testing.T) {
 			options := map[string]string{"owner": validOwner, "repo": ""}
 			request = gimlet.SetURLVars(request, options)
 
-			assert.Error(t, handler.Parse(ctx, request))
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing repo")
 		},
 		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createInstallationToken, env *mock.Environment) {
 			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", validOwner, validRepo)
@@ -727,4 +729,81 @@ func TestUpsertCheckRunParse(t *testing.T) {
 
 	assert.Equal(t, utility.FromStringPtr(r.checkRunOutput.Title), "This is my report")
 	assert.Equal(t, len(r.checkRunOutput.Annotations), 1)
+}
+
+func TestCreateGitHubDynamicAccessToken(t *testing.T) {
+	route := "/task/%s/github_dynamic_access_token/%s/%s"
+	owner := "owner"
+	repo := "repo"
+	taskID := "taskID"
+	json := []byte(`{ "checks": "read", "actions": "write" }`)
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *createGitHubDynamicAccessToken, env *mock.Environment){
+		"ParseErrorsOnEmptyOwner": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken, env *mock.Environment) {
+			url := fmt.Sprintf(route, taskID, "", repo)
+			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(json))
+			require.NoError(t, err)
+
+			options := map[string]string{"owner": "", "repo": repo, "taskID": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing owner")
+		},
+		"ParseErrorsOnEmptyRepo": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken, env *mock.Environment) {
+			url := fmt.Sprintf(route, taskID, owner, "")
+			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(json))
+			require.NoError(t, err)
+
+			options := map[string]string{"owner": owner, "repo": "", "taskID": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing repo")
+		},
+		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken, env *mock.Environment) {
+			url := fmt.Sprintf(route, "", owner, repo)
+			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(json))
+			require.NoError(t, err)
+
+			options := map[string]string{"owner": owner, "repo": repo, "taskID": ""}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing taskID")
+		},
+		"ParseErrorsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken, env *mock.Environment) {
+			url := fmt.Sprintf(route, taskID, owner, repo)
+			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+			require.NoError(t, err)
+
+			options := map[string]string{"owner": owner, "repo": repo, "taskID": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "reading permissions body for task")
+		},
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken, env *mock.Environment) {
+			url := fmt.Sprintf(route, taskID, owner, repo)
+			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(json))
+			require.NoError(t, err)
+
+			options := map[string]string{"owner": owner, "repo": repo, "taskID": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			require.NoError(t, handler.Parse(ctx, request))
+			require.NotNil(t, handler.permissions)
+			assert.Equal(t, utility.FromStringPtr(handler.permissions.Checks), "read")
+			assert.Equal(t, utility.FromStringPtr(handler.permissions.Actions), "write")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
+			r, ok := makeCreateGitHubDynamicAccessToken(env).(*createGitHubDynamicAccessToken)
+			require.True(t, ok)
+
+			tCase(ctx, t, r, env)
+		})
+	}
 }

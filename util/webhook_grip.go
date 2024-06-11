@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	defaultWebhookTimeout         = 10 * time.Second
+	defaultWebhookTimeout         = 30 * time.Second
 	defaultMinDelay               = 500 * time.Millisecond
 	evergreenNotificationIDHeader = "X-Evergreen-Notification-ID"
 	evergreenHMACHeader           = "X-Evergreen-Signature"
@@ -160,28 +160,32 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 		}
 
 		resp, err := client.Do(req)
-		if resp != nil {
-			defer resp.Body.Close()
+		msgFields := message.Fields{
+			"message":         "error sending webhook notification",
+			"notification_id": raw.NotificationID,
+			"webhook_url":     raw.URL,
+			"is_ctx_err":      utility.IsContextError(ctx.Err()),
 		}
 		if err != nil {
-			return true, errors.Wrap(err, "sending webhook data")
+			return true, message.WrapError(errors.Wrap(err, "sending webhook data"), msgFields)
 		}
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return true, errors.Errorf("response was %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode))
-		}
+
+		defer resp.Body.Close()
+
+		msgFields["status_code"] = resp.StatusCode
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return true, errors.Wrap(err, "reading webhook response")
+			return true, message.WrapError(errors.Wrap(err, "reading webhook response"), msgFields)
+		}
+		msgFields["response_body"] = string(body)
+
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return true, message.WrapError(errors.Errorf("webhook response was %d (%s)", resp.StatusCode, http.StatusText(resp.StatusCode)), msgFields)
 		}
 
-		grip.Info(message.Fields{
-			"message":         "send webhook notification",
-			"notification_id": raw.NotificationID,
-			"url":             raw.URL,
-			"response_code":   resp.StatusCode,
-			"response_body":   body,
-		})
+		msgFields["message"] = "successfully sent webhook notification"
+		grip.Info(msgFields)
 
 		return false, nil
 	}, utility.RetryOptions{

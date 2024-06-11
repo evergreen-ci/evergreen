@@ -381,7 +381,6 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, comm client
 			return false, errors.Wrap(err, "getting pull request data from GitHub")
 		}
 		if info.Mergeable == nil {
-			// TODO EVG-19723: if using the merge commit SHA here doesn't cause issues, we should remove retrying here.
 			// Need to return an error or else we won't retry, regardless of the boolean.
 			mergeSHA = info.MergeCommitSHA
 			mergeableCheckErr = true
@@ -401,8 +400,6 @@ func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, comm client
 		MaxDelay:    getPRRetryMaxDelay,
 	})
 
-	// TODO EVG-19723: this is to return the merge SHA even if we hit the mergeable check error.
-	// Remove this if we don't run into issues.
 	if mergeableCheckErr && mergeSHA != "" {
 		return mergeSHA, nil
 	}
