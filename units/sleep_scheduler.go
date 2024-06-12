@@ -89,7 +89,22 @@ func (j *sleepSchedulerJob) fixMissingNextScheduleTimes(ctx context.Context) err
 	now := time.Now()
 	catcher := grip.NewBasicCatcher()
 	for _, h := range hosts {
-		if utility.IsZeroTime(h.SleepSchedule.NextStartTime) {
+		// kim: TODO: add test for no order dependency.
+		if utility.IsZeroTime(h.SleepSchedule.NextStartTime) && utility.IsZeroTime(h.SleepSchedule.NextStopTime) {
+			oldNextStart := h.SleepSchedule.NextStartTime
+			oldNextStop := h.SleepSchedule.NextStopTime
+			nextStart, nextStop, err := h.SleepSchedule.GetNextScheduledStartAndStopTimes(now)
+			if err != nil {
+				catcher.Wrapf(err, "getting next start and stop times for host '%s'", h.Id)
+				continue
+			}
+			if err := h.SetNextScheduledStartAndStop(ctx, nextStart, nextStop); err != nil {
+				catcher.Wrapf(err, "setting next start and stop times for host '%s'", h.Id)
+				continue
+			}
+			j.logMissingNextStart(h, oldNextStart, nextStart)
+			j.logMissingNextStop(h, oldNextStop, nextStop)
+		} else if utility.IsZeroTime(h.SleepSchedule.NextStartTime) {
 			oldNextStart := h.SleepSchedule.NextStartTime
 			nextStart, err := h.SleepSchedule.GetNextScheduledStartTime(now)
 			if err != nil {
@@ -100,17 +115,8 @@ func (j *sleepSchedulerJob) fixMissingNextScheduleTimes(ctx context.Context) err
 				catcher.Wrapf(err, "setting next start time for host '%s'", h.Id)
 				continue
 			}
-
-			grip.Notice(message.Fields{
-				"message":             "host is missing next start time, re-scheduled to next available start time",
-				"host_id":             h.Id,
-				"started_by":          h.StartedBy,
-				"old_next_start_time": oldNextStart,
-				"new_next_start_time": nextStart,
-				"job":                 j.ID(),
-			})
-		}
-		if utility.IsZeroTime(h.SleepSchedule.NextStopTime) {
+			j.logMissingNextStart(h, oldNextStart, nextStart)
+		} else if utility.IsZeroTime(h.SleepSchedule.NextStopTime) {
 			oldNextStop := h.SleepSchedule.NextStopTime
 			nextStop, err := h.SleepSchedule.GetNextScheduledStopTime(now)
 			if err != nil {
@@ -121,18 +127,32 @@ func (j *sleepSchedulerJob) fixMissingNextScheduleTimes(ctx context.Context) err
 				catcher.Wrapf(err, "setting next stop time for host '%s'", h.Id)
 				continue
 			}
-
-			grip.Notice(message.Fields{
-				"message":            "host is missing next stop time, re-scheduled to next available stop time",
-				"host_id":            h.Id,
-				"started_by":         h.StartedBy,
-				"old_next_stop_time": oldNextStop,
-				"new_next_stop_time": nextStop,
-				"job":                j.ID(),
-			})
+			j.logMissingNextStop(h, oldNextStop, nextStop)
 		}
 	}
 	return catcher.Resolve()
+}
+
+func (j *sleepSchedulerJob) logMissingNextStart(h host.Host, oldNextStart, newNextStart time.Time) {
+	grip.Notice(message.Fields{
+		"message":             "host is missing next start time, re-scheduled to next available start time",
+		"host_id":             h.Id,
+		"started_by":          h.StartedBy,
+		"old_next_start_time": oldNextStart,
+		"new_next_start_time": newNextStart,
+		"job":                 j.ID(),
+	})
+}
+
+func (j *sleepSchedulerJob) logMissingNextStop(h host.Host, oldNextStop, newNextStop time.Time) {
+	grip.Notice(message.Fields{
+		"message":            "host is missing next stop time, re-scheduled to next available stop time",
+		"host_id":            h.Id,
+		"started_by":         h.StartedBy,
+		"old_next_stop_time": oldNextStop,
+		"new_next_stop_time": newNextStop,
+		"job":                j.ID(),
+	})
 }
 
 // fixHostsExceedingScheduledTimeout finds and reschedules the next stop/start
@@ -146,7 +166,24 @@ func (j *sleepSchedulerJob) fixHostsExceedingTimeout(ctx context.Context) error 
 	now := time.Now()
 	catcher := grip.NewBasicCatcher()
 	for _, h := range hosts {
-		if now.Sub(h.SleepSchedule.NextStartTime) > host.SleepScheduleActionTimeout {
+		// kim: TODO: add test for no order dependency.
+		isExceedingNextStartTimeout := now.Sub(h.SleepSchedule.NextStartTime) > host.SleepScheduleActionTimeout
+		isExceedingNextStopTimeout := now.Sub(h.SleepSchedule.NextStopTime) > host.SleepScheduleActionTimeout
+		if isExceedingNextStartTimeout && isExceedingNextStopTimeout {
+			oldNextStart := h.SleepSchedule.NextStartTime
+			oldNextStop := h.SleepSchedule.NextStopTime
+			nextStart, nextStop, err := h.SleepSchedule.GetNextScheduledStartAndStopTimes(now)
+			if err != nil {
+				catcher.Wrapf(err, "getting next start and stop times for host '%s'", h.Id)
+				continue
+			}
+			if err := h.SetNextScheduledStartAndStop(ctx, nextStart, nextStop); err != nil {
+				catcher.Wrapf(err, "setting next start and stop times for host '%s'", h.Id)
+				continue
+			}
+			j.logExceededNextStartTimeout(h, oldNextStart, nextStart)
+			j.logExceededNextStopTimeout(h, oldNextStop, nextStop)
+		} else if isExceedingNextStartTimeout {
 			oldNextStart := h.SleepSchedule.NextStartTime
 			nextStart, err := h.SleepSchedule.GetNextScheduledStartTime(now)
 			if err != nil {
@@ -157,17 +194,8 @@ func (j *sleepSchedulerJob) fixHostsExceedingTimeout(ctx context.Context) error 
 				catcher.Wrapf(err, "setting next start time for host '%s'", h.Id)
 				continue
 			}
-
-			grip.Warning(message.Fields{
-				"message":             "host has exceeded scheduled start timeout, re-scheduled to next available start time",
-				"host_id":             h.Id,
-				"started_by":          h.StartedBy,
-				"job":                 j.ID(),
-				"old_next_start_time": oldNextStart,
-				"new_next_start_time": nextStart,
-			})
-		}
-		if now.Sub(h.SleepSchedule.NextStopTime) > host.SleepScheduleActionTimeout {
+			j.logExceededNextStartTimeout(h, oldNextStart, nextStart)
+		} else if isExceedingNextStopTimeout {
 			oldNextStop := h.SleepSchedule.NextStopTime
 			nextStop, err := h.SleepSchedule.GetNextScheduledStopTime(now)
 			if err != nil {
@@ -178,18 +206,32 @@ func (j *sleepSchedulerJob) fixHostsExceedingTimeout(ctx context.Context) error 
 				catcher.Wrapf(err, "setting next stop time for host '%s'", h.Id)
 				continue
 			}
-
-			grip.Warning(message.Fields{
-				"message":            "host has exceeded scheduled stop timeout, re-scheduling to next available stop time",
-				"host_id":            h.Id,
-				"started_by":         h.StartedBy,
-				"job":                j.ID(),
-				"old_next_stop_time": oldNextStop,
-				"new_next_stop_time": nextStop,
-			})
+			j.logExceededNextStopTimeout(h, oldNextStop, nextStop)
 		}
 	}
 	return catcher.Resolve()
+}
+
+func (j *sleepSchedulerJob) logExceededNextStartTimeout(h host.Host, oldNextStart, newNextStart time.Time) {
+	grip.Warning(message.Fields{
+		"message":             "host has exceeded scheduled start timeout, re-scheduled to next available start time",
+		"host_id":             h.Id,
+		"started_by":          h.StartedBy,
+		"old_next_start_time": oldNextStart,
+		"new_next_start_time": newNextStart,
+		"job":                 j.ID(),
+	})
+}
+
+func (j *sleepSchedulerJob) logExceededNextStopTimeout(h host.Host, oldNextStop, newNextStop time.Time) {
+	grip.Warning(message.Fields{
+		"message":            "host has exceeded scheduled stop timeout, re-scheduled to next available stop time",
+		"host_id":            h.Id,
+		"started_by":         h.StartedBy,
+		"old_next_stop_time": oldNextStop,
+		"new_next_stop_time": newNextStop,
+		"job":                j.ID(),
+	})
 }
 
 // syncPermanentlyExemptHosts ensures that the hosts that are marked as
