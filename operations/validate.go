@@ -146,7 +146,7 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong, errorOnWarn
 	if projErrors.Has(validator.Error) || (errorOnWarnings && projErrors.Has(validator.Warning)) {
 		return errors.Errorf("%s is an invalid configuration", path)
 	} else if projErrors.Has(validator.Warning) {
-		grip.Infof("%s is valid with warnings", path)
+		grip.Infof("%s is valid with warnings/notices", path)
 	} else if projErrors.Has(validator.Notice) {
 		grip.Infof("%s is valid with notices", path)
 	} else {
