@@ -242,12 +242,12 @@ func getDistrosForProject(ctx context.Context, projectID string) (ids []string, 
 	return ids, utility.UniqueStrings(aliases), distroWarnings, nil
 }
 
-func addDistroWarning(distroWarnings map[string]string, distroName, infoNote string) {
+func addDistroWarning(distroWarnings map[string]string, distroName, warningNote string) {
 	if distroWarnings[distroName] == "" {
-		distroWarnings[distroName] = infoNote
+		distroWarnings[distroName] = warningNote
 		return
 	}
-	distroWarnings[distroName] = fmt.Sprintf("\t%s\n\t%s", distroWarnings[distroName], infoNote)
+	distroWarnings[distroName] = fmt.Sprintf("\t%s\n\t%s", distroWarnings[distroName], warningNote)
 }
 
 // CheckProject calls the validating logic for a Project's configuration.
