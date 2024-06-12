@@ -26,7 +26,7 @@ Your tests can run on any machine that Evergreen can cross-compile its agent for
 on x86, amd64, and arm architectures.
 
 ##### Serial Execution
-Tasks (i.e. sets of tests) run serially on hosts, meaning you can have confidence that only your tests are running on a host at any given time.
+[Tasks](Project-Configuration/Project-Configuration-Files#tasks) run serially on hosts, meaning you can have confidence that only your tests are running on a host at any given time.
 
 ##### Patch Builds
 You shouldn't have to wait until after you've committed to find out your changes break your tests.
