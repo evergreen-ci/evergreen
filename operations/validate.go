@@ -120,7 +120,7 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong, errorOnWarn
 	}
 	pp, pc, validationErrs := loadProjectIntoWithValidation(ctx, confFile, opts, errorOnWarnings, project)
 	grip.Info(validationErrs)
-	if validationErrs.HasError() {
+	if validationErrs.Has(validator.Error) {
 		return errors.Errorf("%s is an invalid configuration", path)
 	}
 
@@ -143,10 +143,12 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong, errorOnWarn
 	}
 
 	grip.Info(projErrors)
-	if projErrors.HasError() || (errorOnWarnings && len(projErrors) > 0) {
+	if projErrors.Has(validator.Error) || (errorOnWarnings && projErrors.Has(validator.Warning)) {
 		return errors.Errorf("%s is an invalid configuration", path)
-	} else if len(projErrors) > 0 {
+	} else if projErrors.Has(validator.Warning) {
 		grip.Infof("%s is valid with warnings", path)
+	} else if projErrors.Has(validator.Notice) {
+		grip.Infof("%s is valid with notices", path)
 	} else {
 		grip.Infof("%s is valid", path)
 	}
