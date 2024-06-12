@@ -156,7 +156,9 @@ type GitHubDynamicTokenPermissionGroup struct {
 }
 
 // defaultGitHubTokenPermissionGroup is an empty, all permissions, group.
-var defaultGitHubTokenPermissionGroup = GitHubDynamicTokenPermissionGroup{}
+var defaultGitHubTokenPermissionGroup = GitHubDynamicTokenPermissionGroup{
+	AllPermissions: true,
+}
 
 // GetGitHubPermissionGroup returns the GitHubDynamicTokenPermissionGroup for the given requester.
 // If the requester is not found, it returns the default.
