@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/v52/github"
 	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -23,6 +22,8 @@ type githubGenerateToken struct {
 	ExpansionName string `mapstructure:"expansion_name"`
 
 	// Permissions to grant the token. If not provided, set to nil to grant all permissions.
+	// The command can never specify to restrict all permissions- as it would
+	// be the same as not using a token.
 	Permissions *github.InstallationPermissions `mapstructure:"permissions"`
 
 	base
@@ -58,6 +59,7 @@ func (r *githubGenerateToken) ParseParams(params map[string]interface{}) error {
 			return errors.Wrap(err, "decoding permissions")
 		}
 		// If no keys were decoded, we assume all permissions should be granted.
+		// And we set the permissions back to nil.
 		if len(metadata.Keys) == 0 {
 			r.Permissions = nil
 		}
@@ -67,22 +69,15 @@ func (r *githubGenerateToken) ParseParams(params map[string]interface{}) error {
 }
 
 func (r *githubGenerateToken) validate() error {
-	catcher := grip.NewSimpleCatcher()
-
 	if r.ExpansionName == "" {
-		catcher.New("must specify expansion name")
+		return errors.New("must specify expansion name")
 	}
-
-	return catcher.Resolve()
+	return nil
 }
 
 func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	if err := util.ExpandValues(r, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
-	}
-	// Re-validate the command here, in case an expansion is not defined.
-	if err := r.validate(); err != nil {
-		return errors.WithStack(err)
 	}
 	if r.Owner == "" {
 		r.Owner = conf.ProjectRef.Owner
