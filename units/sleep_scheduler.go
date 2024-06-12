@@ -25,8 +25,9 @@ func init() {
 }
 
 type sleepSchedulerJob struct {
-	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	env      evergreen.Environment
+	job.Base  `bson:"job_base" json:"job_base" yaml:"job_base"`
+	env       evergreen.Environment
+	startedAt time.Time
 }
 
 // NewSleepSchedulerJob creates a job to manage unexpirable host sleep
@@ -72,6 +73,10 @@ func (j *sleepSchedulerJob) populateIfUnset() error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
+	if j.startedAt.IsZero() {
+		j.startedAt = time.Now()
+	}
+
 	return nil
 }
 
@@ -86,14 +91,12 @@ func (j *sleepSchedulerJob) fixMissingNextScheduleTimes(ctx context.Context) err
 	if err != nil {
 		return errors.Wrap(err, "finding hosts with missing next stop/start times")
 	}
-	now := time.Now()
 	catcher := grip.NewBasicCatcher()
 	for _, h := range hosts {
-		// kim: TODO: add test for no order dependency.
 		if utility.IsZeroTime(h.SleepSchedule.NextStartTime) && utility.IsZeroTime(h.SleepSchedule.NextStopTime) {
 			oldNextStart := h.SleepSchedule.NextStartTime
 			oldNextStop := h.SleepSchedule.NextStopTime
-			nextStart, nextStop, err := h.SleepSchedule.GetNextScheduledStartAndStopTimes(now)
+			nextStart, nextStop, err := h.SleepSchedule.GetNextScheduledStartAndStopTimes(j.startedAt)
 			if err != nil {
 				catcher.Wrapf(err, "getting next start and stop times for host '%s'", h.Id)
 				continue
@@ -106,7 +109,7 @@ func (j *sleepSchedulerJob) fixMissingNextScheduleTimes(ctx context.Context) err
 			j.logMissingNextStop(h, oldNextStop, nextStop)
 		} else if utility.IsZeroTime(h.SleepSchedule.NextStartTime) {
 			oldNextStart := h.SleepSchedule.NextStartTime
-			nextStart, err := h.SleepSchedule.GetNextScheduledStartTime(now)
+			nextStart, err := h.SleepSchedule.GetNextScheduledStartTime(j.startedAt)
 			if err != nil {
 				catcher.Wrapf(err, "getting next start time for host '%s'", h.Id)
 				continue
@@ -118,7 +121,7 @@ func (j *sleepSchedulerJob) fixMissingNextScheduleTimes(ctx context.Context) err
 			j.logMissingNextStart(h, oldNextStart, nextStart)
 		} else if utility.IsZeroTime(h.SleepSchedule.NextStopTime) {
 			oldNextStop := h.SleepSchedule.NextStopTime
-			nextStop, err := h.SleepSchedule.GetNextScheduledStopTime(now)
+			nextStop, err := h.SleepSchedule.GetNextScheduledStopTime(j.startedAt)
 			if err != nil {
 				catcher.Wrapf(err, "getting next stop time for host '%s'", h.Id)
 				continue
@@ -163,16 +166,14 @@ func (j *sleepSchedulerJob) fixHostsExceedingTimeout(ctx context.Context) error 
 	if err != nil {
 		return errors.Wrap(err, "finding hosts exceeding sleep schedule timeout")
 	}
-	now := time.Now()
 	catcher := grip.NewBasicCatcher()
 	for _, h := range hosts {
-		// kim: TODO: add test for no order dependency.
-		isExceedingNextStartTimeout := now.Sub(h.SleepSchedule.NextStartTime) > host.SleepScheduleActionTimeout
-		isExceedingNextStopTimeout := now.Sub(h.SleepSchedule.NextStopTime) > host.SleepScheduleActionTimeout
+		isExceedingNextStartTimeout := j.startedAt.Sub(h.SleepSchedule.NextStartTime) > host.SleepScheduleActionTimeout
+		isExceedingNextStopTimeout := j.startedAt.Sub(h.SleepSchedule.NextStopTime) > host.SleepScheduleActionTimeout
 		if isExceedingNextStartTimeout && isExceedingNextStopTimeout {
 			oldNextStart := h.SleepSchedule.NextStartTime
 			oldNextStop := h.SleepSchedule.NextStopTime
-			nextStart, nextStop, err := h.SleepSchedule.GetNextScheduledStartAndStopTimes(now)
+			nextStart, nextStop, err := h.SleepSchedule.GetNextScheduledStartAndStopTimes(j.startedAt)
 			if err != nil {
 				catcher.Wrapf(err, "getting next start and stop times for host '%s'", h.Id)
 				continue
@@ -185,7 +186,7 @@ func (j *sleepSchedulerJob) fixHostsExceedingTimeout(ctx context.Context) error 
 			j.logExceededNextStopTimeout(h, oldNextStop, nextStop)
 		} else if isExceedingNextStartTimeout {
 			oldNextStart := h.SleepSchedule.NextStartTime
-			nextStart, err := h.SleepSchedule.GetNextScheduledStartTime(now)
+			nextStart, err := h.SleepSchedule.GetNextScheduledStartTime(j.startedAt)
 			if err != nil {
 				catcher.Wrapf(err, "getting next start time for host '%s'", h.Id)
 				continue
@@ -197,7 +198,7 @@ func (j *sleepSchedulerJob) fixHostsExceedingTimeout(ctx context.Context) error 
 			j.logExceededNextStartTimeout(h, oldNextStart, nextStart)
 		} else if isExceedingNextStopTimeout {
 			oldNextStop := h.SleepSchedule.NextStopTime
-			nextStop, err := h.SleepSchedule.GetNextScheduledStopTime(now)
+			nextStop, err := h.SleepSchedule.GetNextScheduledStopTime(j.startedAt)
 			if err != nil {
 				catcher.Wrapf(err, "getting next stop time for host '%s'", h.Id)
 				continue
