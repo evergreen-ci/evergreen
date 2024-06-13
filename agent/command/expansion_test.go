@@ -44,7 +44,7 @@ func TestExpansionsPlugin(t *testing.T) {
 			NewExpansions: agentutil.NewDynamicExpansions(expansions),
 		}
 
-		So(updateCommand.ExecuteUpdates(ctx, &taskConfig), ShouldBeNil)
+		So(updateCommand.executeUpdates(ctx, &taskConfig), ShouldBeNil)
 		So(taskConfig.DynamicExpansions, ShouldResemble, util.Expansions{"base": "eggs", "topping": "bacon,sausage"})
 		So(expansions.Get("base"), ShouldEqual, "eggs")
 		So(expansions.Get("topping"), ShouldEqual, "bacon,sausage")

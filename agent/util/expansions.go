@@ -14,6 +14,10 @@ import (
 type DynamicExpansions struct {
 	util.Expansions
 	mu sync.RWMutex
+
+	// redact stores expansions that should be redacted.
+	redact   []string
+	redactMu sync.RWMutex
 }
 
 func NewDynamicExpansions(e util.Expansions) *DynamicExpansions {
@@ -46,4 +50,24 @@ func (e *DynamicExpansions) Get(key string) string {
 	defer e.mu.RUnlock()
 
 	return e.Expansions.Get(key)
+}
+
+func (e *DynamicExpansions) Redact(key string) {
+	e.redactMu.Lock()
+	defer e.redactMu.Unlock()
+
+	e.redact = append(e.redact, key)
+}
+
+func (e *DynamicExpansions) GetRedacted() []string {
+	e.redactMu.RLock()
+	defer e.redactMu.RUnlock()
+
+	return e.redact
+}
+
+// PutAndRedact puts the key and value into the expansions and marks it for redaction.
+func (e *DynamicExpansions) PutAndRedact(key, value string) {
+	e.Put(key, value)
+	e.Redact(key)
 }

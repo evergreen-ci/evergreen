@@ -64,7 +64,7 @@ func (c *update) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) error {
+func (c *update) executeUpdates(ctx context.Context, conf *internal.TaskConfig) error {
 	if conf.DynamicExpansions == nil {
 		conf.DynamicExpansions = util.Expansions{}
 	}
@@ -79,7 +79,7 @@ func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) 
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			conf.NewExpansions.Put(update.Key, newValue)
+			conf.NewExpansions.PutAndRedact(update.Key, newValue)
 			conf.DynamicExpansions.Put(update.Key, newValue)
 		} else {
 			newValue, err := conf.NewExpansions.ExpandString(update.Concat)
@@ -88,7 +88,7 @@ func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) 
 			}
 
 			oldValue := conf.NewExpansions.Get(update.Key)
-			conf.NewExpansions.Put(update.Key, oldValue+newValue)
+			conf.NewExpansions.PutAndRedact(update.Key, oldValue+newValue)
 			conf.DynamicExpansions.Put(update.Key, oldValue+newValue)
 		}
 	}
@@ -99,7 +99,7 @@ func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) 
 // Execute updates the expansions. Fulfills Command interface.
 func (c *update) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	err := c.ExecuteUpdates(ctx, conf)
+	err := c.executeUpdates(ctx, conf)
 
 	if err != nil {
 		return errors.WithStack(err)
