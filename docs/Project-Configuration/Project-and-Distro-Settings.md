@@ -298,6 +298,9 @@ Ambiguous behavior is outlined here:
     -   If all have variant/tasks configured, the union of these will
         determine what variants/tasks are created.
 
+
+3. **If you'd like for Git Tag triggered versions to be associated with the pusher,
+ensure that they've set their GitHub username in [their Evergreen preferences](https://spruce.mongodb.com/preferences/profile)**. 
 ### Project Triggers
 
 Users can specify that commits to another project (the "upstream"
