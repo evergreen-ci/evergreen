@@ -491,7 +491,11 @@ When the event happens, the notification can be delivered via:
 - New Jira issue - must specify a Jira project and issue type.
 - Slack channel or user.
 - Email address.
-- Webhook URL - admins can configure the behavior for resending notifications in case of failure.
+- Webhook URL - Notifications will be sent to the specified URL, and the payload
+  body will contain the same data as would be returned from [the REST API](../API/REST-V2-Usage). For
+  example, if receiving notifications whenever versions finish, it'll return the
+  same JSON data as requesting [a single version from the REST API](../API/REST-V2-Usage#tag/versions/paths/~1versions~1{version_id}/get).
+  Admins can configure the behavior for resending notifications in case of transient failure.
 
 ### Ticket Creation
 
