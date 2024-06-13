@@ -59,6 +59,7 @@ func (e *DynamicExpansions) Redact(key string) {
 	e.redact = append(e.redact, key)
 }
 
+// GetRedacted gets the expansions that should be redacted.
 func (e *DynamicExpansions) GetRedacted() []string {
 	e.redactMu.RLock()
 	defer e.redactMu.RUnlock()
