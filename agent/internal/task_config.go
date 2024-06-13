@@ -28,11 +28,13 @@ type TaskConfig struct {
 	Task         task.Task
 	BuildVariant model.BuildVariant
 
-	// Expansions are the fundamental expansions like execution,
-	// project_id, task_id, etc. These are not reset during a task's.
+	// Expansions store the fundamental expansions set by Evergreen.
+	// e.g. execution, project_id, task_id, etc. It also stores
+	// expansions that are set by the user by expansion.update.
 	Expansions util.Expansions
 
-	// NewExpansions
+	// NewExpansions is a thread safe way to access Expansions.
+	// It also exposes a way to redact expansions from logs.
 	NewExpansions *agentutil.DynamicExpansions
 
 	// DynamicExpansions holds expansions that were set from 'expansions.update'
