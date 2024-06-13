@@ -46,6 +46,7 @@ func TestExpansionsPlugin(t *testing.T) {
 
 		So(updateCommand.executeUpdates(ctx, &taskConfig), ShouldBeNil)
 		So(taskConfig.DynamicExpansions, ShouldResemble, util.Expansions{"base": "eggs", "topping": "bacon,sausage"})
+		So(taskConfig.NewExpansions.GetRedacted(), ShouldResemble, []string{"base", "topping"})
 		So(expansions.Get("base"), ShouldEqual, "eggs")
 		So(expansions.Get("topping"), ShouldEqual, "bacon,sausage")
 	})
