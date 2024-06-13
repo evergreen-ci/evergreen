@@ -659,6 +659,17 @@ func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) bson.M {
 	}
 }
 
+// FindByTemporaryExemptionsExpiringBetween finds all spawn hosts with a
+// temporary exemption from the sleep schedule that will expire between the
+// specified times.
+func FindByTemporaryExemptionsExpiringBetween(ctx context.Context, lowerBound time.Time, upperBound time.Time) ([]Host, error) {
+	sleepScheduleTemporarilyExemptUntilKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
+	return Find(ctx, isSleepScheduleApplicable(bson.M{
+		StatusKey:                              bson.M{"$in": evergreen.SleepScheduleStatuses},
+		sleepScheduleTemporarilyExemptUntilKey: bson.M{"$gte": lowerBound, "$lte": upperBound},
+	}))
+}
+
 // NeedsAgentDeploy finds hosts which need the agent to be deployed because
 // either they do not have an agent yet or their agents have not communicated
 // recently.

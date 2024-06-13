@@ -52,7 +52,7 @@ func (t *volumeTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) erro
 
 	t.templateData = hostTemplateData{
 		ID:  t.volume.ID,
-		URL: fmt.Sprintf("%s/spawn#?resourcetype=volumes&id=%s", t.uiConfig.Url, t.volume.ID),
+		URL: fmt.Sprintf("%s/spawn/volume", t.uiConfig.UIv2Url),
 	}
 
 	t.event = e

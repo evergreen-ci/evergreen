@@ -37,7 +37,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		require.NoError(h.Insert(ctx))
 		opts := uiParams{Action: "updateStatus", Status: evergreen.HostQuarantined, Notes: "because I can"}
 
-		result, httpStatus, err := api.ModifyHostStatus(ctx, env, env.LocalQueue(), &h, opts.Status, opts.Notes, &user)
+		result, httpStatus, err := api.ModifyHostStatus(ctx, env, &h, opts.Status, opts.Notes, &user)
 		require.NoError(err)
 		assert.Equal(http.StatusOK, httpStatus)
 		assert.Equal(result, fmt.Sprintf(api.HostStatusUpdateSuccess, evergreen.HostRunning, evergreen.HostQuarantined))
@@ -64,7 +64,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		}
 		require.NoError(h.Insert(ctx))
 
-		_, httpStatus, err := api.ModifyHostStatus(ctx, env, env.LocalQueue(), &h, evergreen.HostRunning, "", &user)
+		_, httpStatus, err := api.ModifyHostStatus(ctx, env, &h, evergreen.HostRunning, "", &user)
 		require.NoError(err)
 		assert.Equal(http.StatusOK, httpStatus)
 		assert.Equal(h.Status, evergreen.HostProvisioning)
@@ -80,7 +80,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		h := host.Host{Id: "h3", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
 		opts := uiParams{Action: "updateStatus", Status: evergreen.HostDecommissioned}
 
-		_, _, err := api.ModifyHostStatus(ctx, env, env.LocalQueue(), &h, opts.Status, opts.Notes, &user)
+		_, _, err := api.ModifyHostStatus(ctx, env, &h, opts.Status, opts.Notes, &user)
 		assert.Error(err)
 		assert.Contains(err.Error(), api.DecommissionStaticHostError)
 	})
@@ -89,7 +89,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		h := host.Host{Id: "h4", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
 		opts := uiParams{Action: "updateStatus", Status: "undefined"}
 
-		_, _, err := api.ModifyHostStatus(ctx, env, env.LocalQueue(), &h, opts.Status, opts.Notes, &user)
+		_, _, err := api.ModifyHostStatus(ctx, env, &h, opts.Status, opts.Notes, &user)
 		assert.Error(err)
 		assert.Contains(err.Error(), fmt.Sprintf(api.InvalidStatusError, "undefined"))
 	})

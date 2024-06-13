@@ -19,7 +19,7 @@ func MakeTaskConfigFromModelData(ctx context.Context, settings *evergreen.Settin
 		return nil, errors.Wrap(err, "getting global GitHub OAuth token")
 	}
 
-	appToken, err := settings.CreateInstallationToken(ctx, data.ProjectRef.Owner, data.ProjectRef.Repo, nil)
+	appToken, err := settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, data.ProjectRef.Owner, data.ProjectRef.Repo, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating GitHub app token")
 	}

@@ -90,20 +90,21 @@ func TestGetGithubSettings(t *testing.T) {
 	}
 	settings.Expansions[GithubAppPrivateKey] = ""
 
-	authFields := getGithubAppAuth(settings)
+	authFields := settings.CreateGitHubAppAuth()
 	assert.Nil(authFields)
 
 	settings.AuthConfig.Github = &GithubAuthConfig{
 		AppId: 1234,
 	}
-	authFields = getGithubAppAuth(settings)
+	authFields = settings.CreateGitHubAppAuth()
 	assert.Nil(authFields)
 
 	settings.Expansions[GithubAppPrivateKey] = "key"
-	authFields = getGithubAppAuth(settings)
+	authFields = settings.CreateGitHubAppAuth()
+	require.NoError(t, err)
 	assert.NotNil(authFields)
-	assert.Equal(int64(1234), authFields.appId)
-	assert.Equal([]byte("key"), authFields.privateKey)
+	assert.Equal(int64(1234), authFields.AppID)
+	assert.Equal([]byte("key"), authFields.PrivateKey)
 
 	assert.NotPanics(func() {
 		settings := &Settings{}
@@ -135,7 +136,7 @@ func TestAdminSuite(t *testing.T) {
 	originalSettings, err := GetConfig(ctx)
 	require.NoError(t, err)
 
-	env, err := NewEnvironment(ctx, configFile, "", nil, noop.NewTracerProvider())
+	env, err := NewEnvironment(ctx, configFile, "", "", nil, noop.NewTracerProvider())
 	require.NoError(t, err)
 
 	s := new(AdminSuite)
@@ -189,7 +190,6 @@ func (s *AdminSuite) TestBaseConfig() {
 		AWSInstanceRole:     "role",
 		Banner:              "banner",
 		BannerTheme:         Important,
-		ClientBinariesDir:   "bin_dir",
 		ConfigDir:           "cfg_dir",
 		Credentials:         map[string]string{"k1": "v1"},
 		DomainName:          "example.com",
@@ -213,7 +213,6 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.AWSInstanceRole, settings.AWSInstanceRole)
 	s.Equal(config.Banner, settings.Banner)
 	s.Equal(config.BannerTheme, settings.BannerTheme)
-	s.Equal(config.ClientBinariesDir, settings.ClientBinariesDir)
 	s.Equal(config.ConfigDir, settings.ConfigDir)
 	s.Equal(config.Credentials, settings.Credentials)
 	s.Equal(config.DomainName, settings.DomainName)

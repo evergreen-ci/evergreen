@@ -31,7 +31,6 @@ const (
 	// if not specified in configuration file
 	DefaultNumNewRepoRevisionsToFetch = 200
 	DefaultMaxRepoRevisionsToSearch   = 50
-	DefaultNumConcurrentRequests      = 10
 )
 
 // RepoTracker is used to manage polling repository changes and storing such
@@ -628,10 +627,10 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 		// Format them, as we need to store + display them to the user
 		var projectErrors, projectWarnings []string
 		for _, e := range verrs {
-			if e.Level == validator.Warning {
-				projectWarnings = append(projectWarnings, e.Error())
-			} else {
+			if e.Level == validator.Error {
 				projectErrors = append(projectErrors, e.Error())
+			} else if e.Level == validator.Warning {
+				projectWarnings = append(projectWarnings, e.Error())
 			}
 		}
 		v.Warnings = projectWarnings

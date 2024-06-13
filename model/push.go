@@ -12,10 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-const (
-	PushlogCollection = "pushes"
-	PushLogSuccess    = "success"
-)
+const PushlogCollection = "pushes"
 
 type PushLog struct {
 	Id mgobson.ObjectId `bson:"_id,omitempty"`

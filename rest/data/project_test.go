@@ -299,7 +299,7 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	}
 	require.NoError(t, vars.Insert())
 
-	resp, err := model.UpdateProjectVarsByValue("1", "11", "user", true)
+	resp, err := model.UpdateProjectVarsByValue("1", "11", "user", true, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Equal(t, []string{"a"}, resp[projectId])
@@ -309,7 +309,7 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	assert.NotNil(t, res)
 	assert.Equal(t, "1", res.Vars["a"])
 
-	resp, err = model.UpdateProjectVarsByValue("1", "11", username, false)
+	resp, err = model.UpdateProjectVarsByValue("1", "11", username, false, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Equal(t, []string{"a"}, resp[projectId])
@@ -319,7 +319,7 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	assert.NotNil(t, res)
 	assert.Equal(t, "11", res.Vars["a"])
 
-	resp, err = model.UpdateProjectVarsByValue("3", "33", username, false)
+	resp, err = model.UpdateProjectVarsByValue("3", "33", username, false, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Equal(t, []string{"b"}, resp[projectId])
@@ -348,6 +348,54 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	assert.Equal(t, username, eventData.User)
 	assert.Equal(t, "1", eventData.Before.Vars.Vars["a"])
 	assert.Equal(t, "11", eventData.After.Vars.Vars["a"])
+}
+
+func TestUpdateProjectVarsByValueWithEnabledOnly(t *testing.T) {
+	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, event.EventCollection, model.ProjectRefCollection))
+
+	enabledVars := &model.ProjectVars{
+		Id:          "enabledProject",
+		Vars:        map[string]string{"a": "1", "b": "3"},
+		PrivateVars: map[string]bool{"b": true},
+	}
+	disabledVars := &model.ProjectVars{
+		Id:          "disabledProject",
+		Vars:        map[string]string{"a": "1", "b": "3"},
+		PrivateVars: map[string]bool{"b": true},
+	}
+	repoVars := &model.ProjectVars{
+		Id:          "repoProject",
+		Vars:        map[string]string{"a": "1", "b": "3"},
+		PrivateVars: map[string]bool{"b": true},
+	}
+	require.NoError(t, db.InsertMany(model.ProjectVarsCollection, enabledVars, disabledVars, repoVars))
+
+	enabledRef := &model.ProjectRef{
+		Id:         "enabledProject",
+		Identifier: "enabledProjectIdent",
+		Enabled:    true,
+	}
+	disabledRef := &model.ProjectRef{
+		Id:         "disabledProject",
+		Identifier: "disabledProjectIdent",
+		Enabled:    false,
+	}
+	require.NoError(t, db.InsertMany(model.ProjectRefCollection, enabledRef, disabledRef))
+
+	resp, err := model.UpdateProjectVarsByValue("1", "11", "user", true, false)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp, 3) // All three projects considered
+	assert.Equal(t, []string{"a"}, resp["enabledProjectIdent"])
+	assert.Equal(t, []string{"a"}, resp["disabledProjectIdent"])
+	assert.Equal(t, []string{"a"}, resp["repoProject"])
+
+	resp, err = model.UpdateProjectVarsByValue("1", "11", "user", true, true)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Len(t, resp, 2) // Only two projects considered
+	assert.Equal(t, []string{"a"}, resp["enabledProjectIdent"])
+	assert.Equal(t, []string{"a"}, resp["repoProject"])
 }
 
 func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {

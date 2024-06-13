@@ -24,10 +24,10 @@ Daily aggregated statistics for task executions run in Evergreen. Tasks are aggr
 #### Columns
 | Name                         | Type    | Description |
 |------------------------------|---------|-------------|
-| project_id                   | VARCHAR | Unique project identifier.
+| project\_id                  | VARCHAR | Unique project identifier.
 | variant                      | VARCHAR | Name of the build variant on which the tasks ran.
 | task\_name                   | VARCHAR | Display name of the tasks.
-| request\_type                | VARCHAR | Name of the trigger that requested the task executions. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `merge_test` (commit queue), or `ad_hoc` (periodic build).
+| request\_type                | VARCHAR | Name of the trigger that requested the task executions. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `github_merge_request` (GitHub merge queue), `merge_test` (Evergreen commit queue), or `ad_hoc` (periodic build).
 | finish\_date                 | VARCHAR | Date, in ISO format `YYYY-MM-DD`, on which the tasks ran.
 | num\_success                 | BIGINT  | Number of successful task executions in the group.
 | num\_failed                  | BIGINT  | Number of failed task executions in the group.
@@ -52,7 +52,7 @@ Daily aggregated statistics for test executions run in Evergreen. Test stats are
 | variant                   | VARCHAR | Name of the build variant on which the tests ran.
 | task\_name                | VARCHAR | Name of the task that the test ran under. This is the display task name for tasks that are part of a display task.
 | test\_name                | VARCHAR | Display name of the tests.
-| request\_type             | VARCHAR | Name of the trigger that requested the task execution. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `merge_test` (commit queue), or `ad_hoc` (periodic build).
+| request\_type             | VARCHAR | Name of the trigger that requested the task execution. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `github_merge_request` (GitHub merge queue), `merge_test` (Evergreen commit queue), or `ad_hoc` (periodic build).
 | num\_pass                 | BIGINT  | Number of passing tests.
 | num\_fail                 | BIGINT  | Number of failing tests.
 | total\_pass\_duration\_ns | DOUBLE  | Total duration, in nanoseconds, of passing tests.
@@ -76,12 +76,12 @@ Finished Evergreen tasks, partitioned by the project and date (in ISO format). F
 | build\_id                     | VARCHAR        | ID of the build containing the task.
 | order                         | BIGINT         | Order number of the task's version. For patches this is the user's current patch submission count. For mainline versions this is the number of versions for that repository so far.
 | revision                      | VARCHAR        | Git commit SHA.
-| requester                     | VARCHAR        | Requester type. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `merge_test` (commit queue), or `ad_hoc` (periodic build).
+| requester                     | VARCHAR        | Name of the trigger that requested the task execution. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `github_merge_request` (GitHub merge queue), `merge_test` (Evergreen commit queue), or `ad_hoc` (periodic build).
 | tags                          | ARRAY(VARCHAR) | Array of task tags from project configuration.
 | priority                      | BIGINT         | Scheduling priority of the task.
 | task\_group                   | VARCHAR        | Name of the task group that contains this task.
-| task\_group_max_hosts         | BIGINT         | Maximum number of hosts that will be used to run the task group.
-| task\_group_order             | BIGINT         | Position of this task in its task group.
+| task\_group\_max\_hosts       | BIGINT         | Maximum number of hosts that will be used to run the task group.
+| task\_group\_order            | BIGINT         | Position of this task in its task group.
 | depends\_on                   | ARRAY(ROW)     | Array of `depends_on` rows describing the task's dependencies.
 | num\_dependents               | BIGINT         | The number of tasks this task depends on.
 | override\_dependencies        | BOOLEAN        | Whether this task will wait on its dependencies.
@@ -140,7 +140,7 @@ Finished Evergreen tasks, partitioned by the project and date (in ISO format). F
 | message           | VARCHAR | Task status message.
 | type              | VARCHAR | Task type.
 | desc              | VARCHAR | Task status description.
-| timed_out         | BOOLEAN | Whether the task timed out.
+| timed\_out        | BOOLEAN | Whether the task timed out.
 | timeout\_type     | VARCHAR | Timeout type of the task.
 | timeout\_duration | BIGINT  | Duration, in nanoseconds, of how long the task ran before timing out.
 | trace\_id         | VARCHAR | OTel trace ID for the task.
@@ -150,6 +150,42 @@ Finished Evergreen tasks, partitioned by the project and date (in ISO format). F
 |------|---------|-------------|
 | k    | VARCHAR | Name of a module.
 | v    | VARCHAR | Path to a module.
+
+### Evergreen AWS Task Costs
+Cost of finished Evergreen tasks that ran on AWS infrastructure, partitioned by the project and date (in ISO format). For example, the partition `mongodb-mongo-master/2023-12-05` would contain all tasks that completed on `2023-12-05` in the `mongodb-mongo-master` project. When running queries against this view it is highly recommended to always filter by project and date.
+
+Note that this is an estimated cost based solely on compute (`BoxUsage`) usage per task. These cost estimations are calculated using the discounted AWS cost report data and the finished task data, namely the task's host ID and start and finish times. The cost estimation does not include additional spend that the task may incur, including EBS usage, data transfer, and additional compute from hosts spawned via the `create.host` command.
+
+#### Table
+| Catalog        | Schema          | View                                     |
+| ---------------|-----------------|------------------------------------------|
+| awsdatacatalog | dev\_prod\_live | v\_\_evergreen\_\_aws\_task\_costs\_\_v1 |
+
+#### Columns
+| Name                          | Type           | Description |
+|-------------------------------|----------------|-------------|
+| task\_id                      | VARCHAR        | Unique task identifier.
+| execution                     | BIGINT         | Task execution number.
+| display\_task\_id             | VARCHAR        | ID of the task's display task.
+| build\_id                     | VARCHAR        | ID of the build containing the task.
+| version\_id                   | VARCHAR        | ID of the version containing the task.
+| display\_name                 | VARCHAR        | Display name of the task, will be the parent task's display name if part of a display task.
+| build\_variant                | VARCHAR        | Name of the task's build variant.
+| build\_variant\_display\_name | VARCHAR        | Display name of the task's build variant.
+| requester                     | VARCHAR        | Name of the trigger that requested the task execution. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `github_merge_request` (GitHub merge queue), `merge_test` (Evergreen commit queue), or `ad_hoc` (periodic build).
+| activated\_by                 | VARCHAR        | User or service that activated this task.
+| tags                          | ARRAY(VARCHAR) | Array of task tags from project configuration.
+| host\_id                      | VARCHAR        | ID of the host that ran this task.
+| dispatch\_time                | TIMESTAMP      | Time the scheduler assigns the task to a host.
+| start\_time                   | TIMESTAMP      | Time the task started running.
+| finish\_time                  | TIMESTAMP      | Time the task completed running.
+| time\_taken\_dispatch\_s      | DOUBLE         | Duration, in seconds, the task took to execute from dispatch time to finish time.
+| time\_taken\_s                | DOUBLE         | Duration, in seconds, the task took to execute from start time to finish time.
+| host\_net\_rate               | DOUBLE         | Per second rate, including discounts, charged by AWS for the task's host usage.
+| net\_cost\_dispatch           | DOUBLE         | Estimated host usage cost from the task's dispatch time to finish time.
+| net\_cost                     | DOUBLE         | Estimated host usage cost from the task's start time to finish time.
+| finish\_date                  | VARCHAR        | Date when the task finished, in ISO format.
+| project\_id                   | VARCHAR        | ID of the task's project.
 
 
 ### Example Queries

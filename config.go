@@ -34,11 +34,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2024-05-24"
+	ClientVersion = "2024-06-12"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2024-05-21"
+	AgentVersion = "2024-06-12"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -67,7 +67,6 @@ type Settings struct {
 	BannerTheme         BannerTheme             `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
 	Buckets             BucketsConfig           `bson:"buckets" json:"buckets" yaml:"buckets" id:"buckets"`
 	Cedar               CedarConfig             `bson:"cedar" json:"cedar" yaml:"cedar" id:"cedar"`
-	ClientBinariesDir   string                  `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
 	CommitQueue         CommitQueueConfig       `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
 	ConfigDir           string                  `yaml:"configdir" bson:"configdir" json:"configdir"`
 	ContainerPools      ContainerPoolsConfig    `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
@@ -139,7 +138,6 @@ func (c *Settings) Set(ctx context.Context) error {
 			awsInstanceRoleKey:    c.AWSInstanceRole,
 			bannerKey:             c.Banner,
 			bannerThemeKey:        c.BannerTheme,
-			clientBinariesDirKey:  c.ClientBinariesDir,
 			commitQueueKey:        c.CommitQueue,
 			configDirKey:          c.ConfigDir,
 			credentialsKey:        c.Credentials,
@@ -248,9 +246,6 @@ func (c *Settings) ValidateAndDefault() error {
 
 	if catcher.HasErrors() {
 		return catcher.Resolve()
-	}
-	if c.ClientBinariesDir == "" {
-		c.ClientBinariesDir = ClientDirectory
 	}
 	if c.LogPath == "" {
 		c.LogPath = localLoggingOverride

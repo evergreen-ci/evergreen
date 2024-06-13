@@ -351,7 +351,7 @@ func checkUpdate(client client.Communicator, silent bool, force bool) (updateSta
 // non-empty URLs, whose architecture and OS match that of the current system.
 func findClientUpdates(clients evergreen.ClientConfig) []evergreen.ClientBinary {
 	var binaries []evergreen.ClientBinary
-	for _, c := range append(clients.S3ClientBinaries, clients.ClientBinaries...) {
+	for _, c := range clients.ClientBinaries {
 		if c.Arch == runtime.GOARCH && c.OS == runtime.GOOS && len(c.URL) > 0 {
 			binaries = append(binaries, c)
 		}

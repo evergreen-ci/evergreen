@@ -434,9 +434,9 @@ func addTasksToGraph(tasks TVPairSet, graph task.DependencyGraph, p *Project, ta
 		})
 	}
 
-	allNodes := graph.Nodes()
-	bvts := make([]BuildVariantTaskUnit, 0, len(allNodes))
-	for _, node := range graph.Nodes() {
+	nodes := graph.Nodes()
+	bvts := make([]BuildVariantTaskUnit, 0, len(nodes))
+	for _, node := range nodes {
 		bvt := p.FindTaskForVariant(node.Name, node.Variant)
 		if bvt != nil {
 			bvts = append(bvts, *bvt)
@@ -460,12 +460,13 @@ func (g *GeneratedProject) addDependencyEdgesToGraph(ctx context.Context, newTas
 	}
 
 	for _, newTask := range activatedNewTasks {
-		for _, edge := range graph.EdgesIntoTask(g.Task.ToTaskNode()) {
-			graph.AddEdge(edge.From, task.TaskNode{
-				ID:      taskIDs.ExecutionTasks.GetId(newTask.Variant, newTask.TaskName),
-				Name:    newTask.TaskName,
-				Variant: newTask.Variant,
-			}, edge.Status)
+		node := task.TaskNode{
+			ID:      taskIDs.ExecutionTasks.GetId(newTask.Variant, newTask.TaskName),
+			Name:    newTask.TaskName,
+			Variant: newTask.Variant,
+		}
+		for _, edge := range graph.EdgesIntoTask(node) {
+			graph.AddEdge(edge.From, node, edge.Status)
 		}
 	}
 
@@ -507,6 +508,13 @@ func (g *GeneratedProject) filterInactiveTasks(ctx context.Context, tasks TVPair
 		}
 
 		for _, t := range tasks {
+			// If it is a stepback task, it should activate according to the stepback logic.
+			if st := activationInfo.getStepbackTask(bv, t); st != nil {
+				if st.shouldActivate() {
+					activatedTasks = append(activatedTasks, TVPair{Variant: bv, TaskName: t})
+				}
+				continue
+			}
 			// Tasks with specific activation are activated later by ActivateElapsedBuildsAndTasks and we do not add dependencies for them.
 			if !activationInfo.taskHasSpecificActivation(bv, t) {
 				activatedTasks = append(activatedTasks, TVPair{Variant: bv, TaskName: t})
@@ -524,7 +532,15 @@ type specificActivationInfo struct {
 }
 
 type specificStepbackInfo struct {
-	task string
+	task     string
+	activate bool
+}
+
+func (s *specificStepbackInfo) shouldActivate() bool {
+	if s == nil {
+		return false
+	}
+	return s.activate
 }
 
 func newSpecificActivationInfo() specificActivationInfo {
@@ -547,13 +563,13 @@ func (b *specificActivationInfo) hasActivationTasks() bool {
 	return len(b.activationTasks) > 0
 }
 
-func (b *specificActivationInfo) isStepbackTask(variant, task string) bool {
+func (b *specificActivationInfo) getStepbackTask(variant, task string) *specificStepbackInfo {
 	for _, stepbackInfo := range b.stepbackTasks[variant] {
 		if stepbackInfo.task == task {
-			return true
+			return &stepbackInfo
 		}
 	}
-	return false
+	return nil
 }
 
 func (b *specificActivationInfo) taskHasSpecificActivation(variant, task string) bool {
@@ -581,10 +597,18 @@ func (g *GeneratedProject) findTasksAndVariantsWithSpecificActivations(requester
 		// Regardless of whether the build variant has batchtime, there may be tasks with different batchtime
 		batchTimeTasks := []string{}
 		for _, bvt := range bv.Tasks {
-			if isStepbackTask(g.Task, bv.Name, bvt.Name) {
-				stepbackInfo := specificStepbackInfo{task: bvt.Name}
-				res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], stepbackInfo)
-				continue // Don't consider batchtime/activation if we're stepping back this generated task
+			// If we are doing stepback, we only want to activate specific tasks.
+			if g.Task.ActivatedBy == evergreen.StepbackTaskActivator {
+				info := specificStepbackInfo{task: bvt.Name}
+				if utility.FromBoolPtr(bvt.Activate) {
+					// If the generated task has "activate: true", we should activate it.
+					info.activate = true
+				} else if isStepbackTask(g.Task, bv.Name, bvt.Name) {
+					// If the generated task is one of the ones being stepped back, we should activate it.
+					info.activate = true
+				}
+				res.stepbackTasks[bv.Name] = append(res.stepbackTasks[bv.Name], info)
+				continue // Don't consider batchtime/activation if we're stepping generated tasks.
 			}
 			if evergreen.ShouldConsiderBatchtime(requester) && bvt.hasSpecificActivation() {
 				batchTimeTasks = append(batchTimeTasks, bvt.Name)

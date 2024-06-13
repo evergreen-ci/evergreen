@@ -1665,17 +1665,30 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 	require.NoError(t, generatorTask.Insert())
 
 	t.Run("CreatesCycle", func(t *testing.T) {
+		// Generator generates: [ A (depends on B) , B (depends on) C), C (depends on A) ]
+		// the graph:
+		//   +-----+            +-----+
+		//   |  A  |            |  C  |
+		//   +-----+ <--------- +-----+
+		//            \         ^
+		//             v       /
+		//              +-----+
+		//              |  B  |
+		//              +-----+
+
 		project := &Project{
 			BuildVariants: []BuildVariant{
 				{Name: "bv0", Tasks: []BuildVariantTaskUnit{
-					{Name: "generated", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "dependedOn", Variant: "bv0"}}},
-					{Name: "dependedOn", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
+					{Name: "A", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "B", Variant: "bv0"}}},
+					{Name: "B", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "C", Variant: "bv0"}}},
+					{Name: "C", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "A", Variant: "bv0"}}},
 					{Name: "generator", Variant: "bv0"},
 				}},
 			},
 			Tasks: []ProjectTask{
-				{Name: "generated"},
-				{Name: "dependedOn"},
+				{Name: "A"},
+				{Name: "B"},
+				{Name: "C"},
 				{Name: "generator"},
 			},
 		}
@@ -1686,7 +1699,9 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				{
 					Name: "bv0",
 					Tasks: []parserBVTaskUnit{
-						{Name: "generated"},
+						{Name: "A"},
+						{Name: "B"},
+						{Name: "C"},
 					},
 				},
 			},
@@ -1695,15 +1710,112 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 	})
 
 	t.Run("CreatesLoop", func(t *testing.T) {
+		// Generator generates: [ A (depends on B), B (depends on A) ]
+		// the graph:
+		//   +-----+ ---------> +-----+
+		//   |  A  |            |  B  |
+		//   +-----+ <--------- +-----+
+
 		project := &Project{
 			BuildVariants: []BuildVariant{
 				{Name: "bv0", Tasks: []BuildVariantTaskUnit{
-					{Name: "generated", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
+					{Name: "A", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "B", Variant: "bv0"}}},
+					{Name: "B", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "A", Variant: "bv0"}}},
 					{Name: "generator", Variant: "bv0"},
 				}},
 			},
 			Tasks: []ProjectTask{
-				{Name: "generated"},
+				{Name: "A"},
+				{Name: "B"},
+				{Name: "generator"},
+			},
+		}
+
+		g := GeneratedProject{
+			Task: &generatorTask,
+			BuildVariants: []parserBV{
+				{
+					Name: "bv0",
+					Tasks: []parserBVTaskUnit{
+						{Name: "A"},
+						{Name: "B"},
+					},
+				},
+			},
+		}
+
+		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
+	})
+	t.Run("Dependent on Generator", func(t *testing.T) {
+		// Generator generates: [ A (depends on generator) ]
+		//   +-----+            +-------------+
+		//   |  A  | ---------> |  generator  |
+		//   +-----+            +-------------+
+		// This should not error. Because A will only be able to run after the generator, it is okay for it to be dependent on it.
+
+		project := &Project{
+			BuildVariants: []BuildVariant{
+				{Name: "bv0", Tasks: []BuildVariantTaskUnit{
+					{Name: "A", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
+					{Name: "generator", Variant: "bv0"},
+				}},
+			},
+			Tasks: []ProjectTask{
+				{Name: "A"},
+				{Name: "generator"},
+			},
+		}
+
+		g := GeneratedProject{
+			Task: &generatorTask,
+			BuildVariants: []parserBV{
+				{
+					Name: "bv0",
+					Tasks: []parserBVTaskUnit{
+						{Name: "A"},
+					},
+				},
+			},
+		}
+		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
+	})
+
+	t.Run("Loop with generator", func(t *testing.T) {
+		// Generator generates: [ generated (depends on) --> A (which depends on the generator) ]
+		//   +-----------+            +-----+
+		//   | generator |            |  A  |
+		//   +-----------+ <--------- +-----+
+		//                 \         ^
+		//                  v       /
+		//                +-----------+
+		//                | generated |
+		//                +-----------+
+
+		// This should not error because the arrow from generator to generated is not a dependency. As a dependency
+		// graph it would look like this, because generated can't run before the generator (and is therefore
+		// inherently "dependent" on the generator). It will execute in the following order with no problem:
+		// generator ->  A -> generated.
+		//   +-----------+            +-----+
+		//   | generator |            |  A  |
+		//   +-----------+ <--------- +-----+
+		//                  ^        ^
+		//                   \      /
+		//                 +-----------+
+		//                 | generated |
+		//                 +-----------+
+
+		project := &Project{
+			BuildVariants: []BuildVariant{
+				{Name: "bv0", Tasks: []BuildVariantTaskUnit{
+					{Name: "A", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "generator", Variant: "bv0"}}},
+					{Name: "generated", Variant: "bv0", DependsOn: []TaskUnitDependency{{Name: "A", Variant: "bv0"}}},
+					{Name: "generator", Variant: "bv0"},
+				}},
+			},
+			Tasks: []ProjectTask{
+				{Name: "A"},
+				{Name: "B"},
+				{Name: "C"},
 				{Name: "generator"},
 			},
 		}
@@ -1719,8 +1831,7 @@ func TestSimulateNewDependencyGraph(t *testing.T) {
 				},
 			},
 		}
-
-		assert.Error(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
+		assert.NoError(t, g.CheckForCycles(context.Background(), v, project, &ProjectRef{Identifier: "mci"}))
 	})
 
 	t.Run("NoCycles", func(t *testing.T) {
@@ -1978,6 +2089,40 @@ func TestFilterInactiveTasks(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.Empty(t, tasks)
+		},
+		"FiltersNonstepbackTasks": func(ctx context.Context, t *testing.T, g GeneratedProject, v *Version) {
+			g.BuildVariants[0].Tasks[0].Activate = utility.FalsePtr()
+			g.BuildVariants[0].Tasks = append(g.BuildVariants[0].Tasks,
+				parserBVTaskUnit{Name: "generated-2", Activate: utility.TruePtr()},
+				parserBVTaskUnit{Name: "generated-3", Activate: utility.FalsePtr()}, // background task.
+				parserBVTaskUnit{Name: "generated-4", Activate: utility.FalsePtr()}, // task to stepback.
+			)
+			g.Task.ActivatedBy = evergreen.StepbackTaskActivator
+			g.Task.GeneratedTasksToActivate = map[string][]string{g.BuildVariants[0].Name: {g.BuildVariants[0].Tasks[3].Name}}
+
+			tasks, err := g.filterInactiveTasks(ctx, TVPairSet{
+				{TaskName: g.BuildVariants[0].Tasks[0].Name, Variant: g.BuildVariants[0].Name},
+				{TaskName: g.BuildVariants[0].Tasks[1].Name, Variant: g.BuildVariants[0].Name},
+				{TaskName: g.BuildVariants[0].Tasks[2].Name, Variant: g.BuildVariants[0].Name},
+				{TaskName: g.BuildVariants[0].Tasks[3].Name, Variant: g.BuildVariants[0].Name},
+			}, v, &Project{})
+			require.NoError(t, err)
+			assert.Len(t, tasks, 2)
+
+			foundAlwaysActive := false
+			foundStepbackTask := false
+			for _, task := range tasks {
+				assert.NotEqual(t, g.BuildVariants[0].Tasks[0], task.TaskName)
+				assert.NotEqual(t, g.BuildVariants[0].Tasks[2], task.TaskName)
+
+				if task.TaskName == g.BuildVariants[0].Tasks[1].Name {
+					foundAlwaysActive = true
+				} else if task.TaskName == g.BuildVariants[0].Tasks[3].Name {
+					foundStepbackTask = true
+				}
+			}
+			assert.True(t, foundAlwaysActive, "always active task should not be filtered")
+			assert.True(t, foundStepbackTask, "stepback task should not be filtered")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

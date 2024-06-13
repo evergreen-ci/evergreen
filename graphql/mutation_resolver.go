@@ -284,8 +284,7 @@ func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []strin
 		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
 
-	rq := evergreen.GetEnvironment().RemoteQueue()
-	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetUpdateHostStatusCallback(ctx, evergreen.GetEnvironment(), rq, status, *notes, user))
+	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetUpdateHostStatusCallback(ctx, evergreen.GetEnvironment(), status, *notes, user))
 	if err != nil {
 		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, err)
 	}
@@ -864,16 +863,15 @@ func (r *mutationResolver) RemoveVolume(ctx context.Context, volumeID string) (b
 }
 
 // UpdateSpawnHostStatus is the resolver for the updateSpawnHostStatus field.
-func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID *string, action *SpawnHostStatusActions, updateSpawnHostStatusInput *UpdateSpawnHostStatusInput) (*restModel.APIHost, error) {
-	shouldKeepOff := false
-	// TODO: Use input object throughout resolver once deprecated fields are removed
-	if updateSpawnHostStatusInput != nil {
-		hostID = &updateSpawnHostStatusInput.HostID
-		action = &updateSpawnHostStatusInput.Action
-		shouldKeepOff = utility.FromBoolPtr(updateSpawnHostStatusInput.ShouldKeepOff)
+func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpawnHostStatusInput UpdateSpawnHostStatusInput) (*restModel.APIHost, error) {
+	hostID := updateSpawnHostStatusInput.HostID
+	action := updateSpawnHostStatusInput.Action
+	shouldKeepOff := utility.FromBoolPtr(updateSpawnHostStatusInput.ShouldKeepOff)
 
+	h, err := host.FindOneByIdOrTag(ctx, hostID)
+	if h == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find host %s", hostID))
 	}
-	h, err := host.FindOneByIdOrTag(ctx, *hostID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
 	}
@@ -885,7 +883,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, hostID *st
 	}
 
 	var httpStatus int
-	switch *action {
+	switch action {
 	case SpawnHostStatusActionsStart:
 		httpStatus, err = data.StartSpawnHost(ctx, env, usr, h)
 	case SpawnHostStatusActionsStop:

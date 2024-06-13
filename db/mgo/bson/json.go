@@ -10,27 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db/mgo/internal/json"
 )
 
-// UnmarshalJSON unmarshals a JSON value that may hold non-standard
-// syntax as defined in BSON's extended JSON specification.
-func UnmarshalJSON(data []byte, value interface{}) error {
-	d := json.NewDecoder(bytes.NewBuffer(data))
-	d.Extend(&jsonExt)
-	return d.Decode(value)
-}
-
-// MarshalJSON marshals a JSON value that may hold non-standard
-// syntax as defined in BSON's extended JSON specification.
-func MarshalJSON(value interface{}) ([]byte, error) {
-	var buf bytes.Buffer
-	e := json.NewEncoder(&buf)
-	e.Extend(&jsonExt)
-	err := e.Encode(value)
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
 // jdec is used internally by the JSON decoding functions
 // so they may unmarshal functions without getting into endless
 // recursion due to keyed objects.

@@ -17,7 +17,6 @@ database:
 domain_name: "evergreen.local"
 
 configdir: "config_test"
-client_binaries_dir: "clients"
 credentials: {
   github: "$GITHUB_TOKEN",
 }

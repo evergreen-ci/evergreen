@@ -57,18 +57,6 @@ type StartAt struct {
 	Distro       string
 }
 
-// StartAtFromTaskStats creates a StartAt that can be used to resume a task stats query.
-// Using the returned StartAt the given TaskStats will be the first result.
-func StartAtFromTaskStats(taskStats *TaskStats) StartAt {
-	startAt := StartAt{
-		Date:         taskStats.Date,
-		BuildVariant: taskStats.BuildVariant,
-		Task:         taskStats.TaskName,
-		Distro:       taskStats.Distro,
-	}
-	return startAt
-}
-
 // validateCommon validates that the StartAt struct is valid for use with stats.
 func (s *StartAt) validateCommon(groupBy GroupBy) error {
 	catcher := grip.NewBasicCatcher()

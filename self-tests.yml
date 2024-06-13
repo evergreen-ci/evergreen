@@ -145,6 +145,9 @@ variables:
       - func: get-project-and-modules
       - func: run-make
         vars: { target: "${task_name}" }
+      - func: assume-role
+        vars:
+          assume_role_arn: ${client_assume_role_arn}
       - command: s3.put
         params:
           aws_key: ${AWS_ACCESS_KEY_ID}
@@ -154,7 +157,7 @@ variables:
           local_files_include_filter: "*_*/evergreen*"
           remote_file: evergreen/clients/${version_id}/
           content_type: binary/octet-stream
-          bucket: mciuploads
+          bucket: evg-bucket-evergreen
           permissions: public-read
           preserve_path: true
 
@@ -163,6 +166,9 @@ variables:
       - func: get-project-and-modules
       - func: run-make
         vars: { target: "bin/static_assets.tgz" }
+      - func: assume-role
+        vars:
+          assume_role_arn: ${client_assume_role_arn}
       - command: s3.put
         params:
           aws_key: ${AWS_ACCESS_KEY_ID}
@@ -171,8 +177,9 @@ variables:
           local_file: evergreen/bin/static_assets.tgz
           remote_file: evergreen/clients/${version_id}/static_assets.tgz
           content_type: application/gzip
-          bucket: mciuploads
+          bucket: evg-bucket-evergreen
           permissions: public-read
+
 #######################################
 #              Functions              #
 #######################################
@@ -200,10 +207,10 @@ functions:
           done
 
   assume-role:
-    - command: ec2.assume_role
-      type: setup
-      params:
-        role_arn: ${assume_role_arn}
+    command: ec2.assume_role
+    type: setup
+    params:
+      role_arn: ${assume_role_arn}
 
   run-make:
     command: subprocess.exec
@@ -253,12 +260,10 @@ functions:
         OTEL_COLLECTOR_ENDPOINT: ${otel_collector_endpoint}
         OTEL_TRACE_ID: ${otel_trace_id}
         OTEL_PARENT_ID: ${otel_parent_id}
+        EVG_VERSION_ID: ${version_id}
+        EVG_CLIENT_S3_BUCKET: evg-bucket-evergreen
 
   setup-credentials:
-    - command: ec2.assume_role
-      type: setup
-      params:
-        role_arn: ${assume_role_arn}
     - command: subprocess.exec
       type: setup
       params:
@@ -346,7 +351,7 @@ functions:
         args: ["scripts/verify-agent-version-update.sh"]
         env:
           BRANCH_NAME: ${branch_name}
-  
+
   verify-swaggo-fmt:
     - command: subprocess.exec
       params:
@@ -355,7 +360,7 @@ functions:
         args: ["scripts/verify-swaggo-fmt.sh"]
         env:
           GOPATH: ${workdir}/gopath
-  
+
   check-go-vulnerabilities:
     - command: subprocess.exec
       params:
@@ -420,9 +425,17 @@ tasks:
   - <<: *run-smoke-test
     name: test-smoke-internal-endpoint
     tags: ["smoke"]
+    # The endpoint smoke test needs to check that the Evergreen CLI can be downloaded.
+    depends_on:
+      - name: build-linux_amd64
+        variant: build-and-push
   - <<: *run-smoke-test
     name: test-smoke-internal-agentmonitor
     tags: ["smoke"]
+    # The agent monitor smoke test needs to download the Evergreen CLI for this OS/arch.
+    depends_on:
+      - name: build-linux_amd64
+        variant: build-and-push
   - <<: *run-generate-lint
   - <<: *run-go-test-suite
     name: js-test
@@ -647,7 +660,7 @@ tasks:
       - func: get-project-and-modules
       - func: verify-merge-function-update
   - name: generate-api-docs
-    commands: 
+    commands:
       - func: get-project-and-modules
       - command: subprocess.exec
         params:

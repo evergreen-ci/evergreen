@@ -479,7 +479,6 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 			Activated:      depTask.Activated,
 			BuildVariant:   depTask.BuildVariant,
 			Details:        depTask.Details,
-			//TODO EVG-614: add "Recursive: dep.Recursive," once Task.DependsOn includes all recursive dependencies
 		})
 	}
 

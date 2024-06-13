@@ -2726,7 +2726,8 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 			}
 			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, distroWarnings)
 			So(errs, ShouldNotResemble, ValidationErrors{})
-			So(len(errs), ShouldEqual, 1)
+			So(len(errs.AtLevel(Notice)), ShouldEqual, 1)
+			So(errs[0].Message, ShouldContainSubstring, "distro 'rhel55' with the following admin-defined warning(s): 55 is not the best number")
 		})
 		Convey("an error should be thrown if a variant references a distro has a warning", func() {
 			project := &model.Project{
@@ -2745,8 +2746,8 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 			}
 			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, distroWarnings)
 			So(errs, ShouldNotResemble, ValidationErrors{})
-			So(len(errs), ShouldEqual, 1)
-
+			So(len(errs.AtLevel(Notice)), ShouldEqual, 1)
+			So(errs[0].Message, ShouldContainSubstring, "distro 'rhel55-alias' with the following admin-defined warning: and this is not the best alias")
 		})
 		Convey("an error should be thrown if a referenced distro for a "+
 			"buildvariant does not exist", func() {

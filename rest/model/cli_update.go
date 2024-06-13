@@ -25,10 +25,6 @@ func (a *APIClientConfig) BuildFromService(c evergreen.ClientConfig) {
 	for i := range a.ClientBinaries {
 		a.ClientBinaries[i].BuildFromService(c.ClientBinaries[i])
 	}
-	a.S3ClientBinaries = make([]APIClientBinary, len(c.S3ClientBinaries))
-	for i := range a.S3ClientBinaries {
-		a.S3ClientBinaries[i].BuildFromService(c.S3ClientBinaries[i])
-	}
 
 	a.LatestRevision = utility.ToStringPtr(c.LatestRevision)
 }
@@ -40,11 +36,6 @@ func (a *APIClientConfig) ToService() evergreen.ClientConfig {
 	c.ClientBinaries = make([]evergreen.ClientBinary, len(a.ClientBinaries))
 	for i := range c.ClientBinaries {
 		c.ClientBinaries[i] = a.ClientBinaries[i].ToService()
-	}
-
-	c.S3ClientBinaries = make([]evergreen.ClientBinary, len(a.S3ClientBinaries))
-	for i := range a.S3ClientBinaries {
-		c.S3ClientBinaries[i] = a.S3ClientBinaries[i].ToService()
 	}
 
 	return c

@@ -14,13 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-const (
-	TaskTimeout       = "timeout"
-	TaskSystemFailure = "sysfail"
-	TaskSetupFailure  = "setup-fail"
-
-	taskHistoryMaxTime = 90 * time.Second
-)
+const taskHistoryMaxTime = 90 * time.Second
 
 type taskHistoryIterator struct {
 	TaskName      string

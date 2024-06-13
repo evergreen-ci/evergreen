@@ -40,6 +40,7 @@ type ValidationErrorLevel int64
 const (
 	Error ValidationErrorLevel = iota
 	Warning
+	Notice
 	EC2HostCreateTotalLimit                 = 1000
 	DockerHostCreateTotalLimit              = 200
 	HostCreateLimitPerTask                  = 3
@@ -57,6 +58,8 @@ func (vel ValidationErrorLevel) String() string {
 		return "ERROR"
 	case Warning:
 		return "WARNING"
+	case Notice:
+		return "NOTICE"
 	}
 	return "?"
 }
@@ -106,14 +109,9 @@ func (v ValidationErrors) AtLevel(level ValidationErrorLevel) ValidationErrors {
 	return errs
 }
 
-// HasError returns true if any of the errors are at the error level.
-func (v ValidationErrors) HasError() bool {
-	for _, err := range v {
-		if err.Level == Error {
-			return true
-		}
-	}
-	return false
+// Has returns if any of the errors are at the given level.
+func (v ValidationErrors) Has(level ValidationErrorLevel) bool {
+	return len(v.AtLevel(level)) > 0
 }
 
 type ValidationInput struct {
@@ -223,7 +221,6 @@ func getDistrosForProject(ctx context.Context, projectID string) (ids []string, 
 				distroWarnings[d.Id] = d.WarningNote
 				for _, alias := range d.Aliases {
 					addDistroWarning(distroWarnings, alias, d.WarningNote)
-
 				}
 			}
 		}
@@ -869,7 +866,9 @@ func validateBuildVariantTaskNames(task string, variant string, allTaskNames map
 	return errs
 }
 
-// ensureReferentialIntegrity checks all fields that reference other entities defined in the YAML and ensure that they are referring to valid names, and returns any relevant distro warnings.
+// ensureReferentialIntegrity checks all fields that reference other entities defined in the YAML and ensure that they are referring to valid names,
+// and returns any relevant distro validation info.
+// distroWarnings are considered validation notices.
 func ensureReferentialIntegrity(project *model.Project, containerNameMap map[string]bool, distroIDs []string, distroAliases []string, distroWarnings map[string]string) ValidationErrors {
 	errs := ValidationErrors{}
 	// create a set of all the task names
@@ -931,7 +930,7 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 							Message: fmt.Sprintf("task '%s' in buildvariant '%s' "+
 								"references distro '%s' with the following admin-defined warning(s): %s",
 								task.Name, buildVariant.Name, name, warning),
-							Level: Warning,
+							Level: Notice,
 						},
 					)
 				}
@@ -972,7 +971,7 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 						Message: fmt.Sprintf("buildvariant '%s' "+
 							"references distro '%s' with the following admin-defined warning: %s",
 							buildVariant.Name, name, warning),
-						Level: Warning,
+						Level: Notice,
 					},
 				)
 			}

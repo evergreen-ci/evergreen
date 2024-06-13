@@ -86,6 +86,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 			"message": "task is not running, not generating tasks",
 			"task":    t.Id,
 			"version": t.Version,
+			"job":     j.ID(),
 		})
 		return nil
 	}
@@ -120,6 +121,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 			"message": "attempted to generate tasks after getting config, but generator already ran for this task",
 			"task":    t.Id,
 			"version": t.Version,
+			"job":     j.ID(),
 		})
 		return mongo.ErrNoDocuments
 	}
@@ -194,12 +196,15 @@ func (j *generateTasksJob) handleError(handledError error) error {
 			"message": "handleError encountered task that is already generating, nooping",
 			"task":    t.Id,
 			"version": t.Version,
+			"job":     j.ID(),
 		})
 		return mongo.ErrNoDocuments
 	}
 
 	return handledError
 }
+
+const maxGenerateTasksErrMsgLength = 1024 * 250 // 250k chars * 4 bytes/char = 1 MB
 
 func (j *generateTasksJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
@@ -222,6 +227,12 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 
 	err = j.generate(ctx, t)
 	shouldNoop := adb.ResultsNotFound(err) || db.IsDuplicateKey(err)
+	if err != nil && len(err.Error()) > maxGenerateTasksErrMsgLength {
+		// If the error is excessively long (e.g. due to lots of validation
+		// errors), truncate it to avoid hitting the 16 MB limit when saving
+		// the generate.tasks error message back to the DB.
+		err = errors.New(err.Error()[:maxGenerateTasksErrMsgLength] + "(truncated due to excessively long errors)")
+	}
 
 	grip.InfoWhen(err == nil, message.Fields{
 		"message":       "generate.tasks finished",

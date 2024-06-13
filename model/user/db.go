@@ -70,15 +70,6 @@ func ById(userId string) db.Q {
 	return db.Query(bson.M{IdKey: userId})
 }
 
-// ByIds returns a query that matches any users with one of the given IDs.
-func ByIds(userIds ...string) db.Q {
-	return db.Query(bson.M{
-		IdKey: bson.M{
-			"$in": userIds,
-		},
-	})
-}
-
 // FindOne gets one DBUser for the given query.
 func FindOne(query db.Q) (*DBUser, error) {
 	u := &DBUser{}
@@ -108,11 +99,6 @@ func Find(query db.Q) ([]DBUser, error) {
 	us := []DBUser{}
 	err := db.FindAllQ(Collection, query, &us)
 	return us, err
-}
-
-// Count returns the number of user that satisfy the given query.
-func Count(query db.Q) (int, error) {
-	return db.CountQ(Collection, query)
 }
 
 // UpdateOne updates one user.

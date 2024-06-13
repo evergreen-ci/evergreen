@@ -50,19 +50,11 @@ func Validate() cli.Command {
 			if err != nil {
 				return err
 			}
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-
-			client, err := conf.setupRestCommunicator(ctx, !quiet)
-			if err != nil {
-				return errors.Wrap(err, "setting up REST communicator")
-			}
-			defer client.Close()
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
@@ -128,7 +120,7 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong, errorOnWarn
 	}
 	pp, pc, validationErrs := loadProjectIntoWithValidation(ctx, confFile, opts, errorOnWarnings, project)
 	grip.Info(validationErrs)
-	if validationErrs.HasError() {
+	if validationErrs.Has(validator.Error) {
 		return errors.Errorf("%s is an invalid configuration", path)
 	}
 
@@ -147,14 +139,16 @@ func validateFile(path string, ac *legacyClient, quiet, includeLong, errorOnWarn
 	}
 	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, includeLong, projectID)
 	if err != nil {
-		return nil
+		return errors.Wrapf(err, "validating project '%s'", projectID)
 	}
 
 	grip.Info(projErrors)
-	if projErrors.HasError() || (errorOnWarnings && len(projErrors) > 0) {
+	if projErrors.Has(validator.Error) || (errorOnWarnings && projErrors.Has(validator.Warning)) {
 		return errors.Errorf("%s is an invalid configuration", path)
-	} else if len(projErrors) > 0 {
-		grip.Infof("%s is valid with warnings", path)
+	} else if projErrors.Has(validator.Warning) {
+		grip.Infof("%s is valid with warnings/notices", path)
+	} else if projErrors.Has(validator.Notice) {
+		grip.Infof("%s is valid with notices", path)
 	} else {
 		grip.Infof("%s is valid", path)
 	}

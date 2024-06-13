@@ -149,11 +149,6 @@ func ById(id string) bson.M {
 	return bson.M{IdKey: id}
 }
 
-// ByProvider returns a query that contains a Provider selector on the string, p.
-func ByProvider(p string) bson.M {
-	return bson.M{ProviderKey: p}
-}
-
 // BySpawnAllowed returns a query that contains the SpawnAllowed selector.
 func BySpawnAllowed() bson.M {
 	return bson.M{SpawnAllowedKey: true}

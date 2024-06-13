@@ -27,6 +27,7 @@ import (
 	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
@@ -942,9 +943,32 @@ func (c *baseCommunicator) CreateInstallationToken(ctx context.Context, td TaskD
 	if resp.StatusCode != http.StatusOK {
 		return "", util.RespErrorf(resp, "creating installation token for '%s/%s'", owner, repo)
 	}
-	token := apimodels.InstallationToken{}
+	token := apimodels.Token{}
 	if err := utility.ReadJSON(resp.Body, &token); err != nil {
 		return "", errors.Wrap(err, "reading token from response")
+	}
+
+	return token.Token, nil
+}
+
+func (c *baseCommunicator) CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner, repo string, permissions *github.InstallationPermissions) (string, error) {
+	info := requestInfo{
+		method:   http.MethodPost,
+		path:     fmt.Sprintf("task/%s/github_dynamic_access_token/%s/%s", td.ID, owner, repo),
+		taskData: &td,
+	}
+	resp, err := c.request(ctx, info, permissions)
+	if err != nil {
+		return "", errors.Wrapf(err, "creating github dynamic access token for '%s/%s'", owner, repo)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", util.RespErrorf(resp, "creating github dynamic access token for '%s/%s'", owner, repo)
+	}
+	token := apimodels.Token{}
+	if err := utility.ReadJSON(resp.Body, &token); err != nil {
+		return "", errors.Wrap(err, "reading github dynamic access token from response")
 	}
 
 	return token.Token, nil

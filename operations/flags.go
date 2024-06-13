@@ -11,6 +11,7 @@ import (
 const (
 	confFlagName              = "conf"
 	versionIDFlagName         = "version_id"
+	clientS3BucketFlagName    = "client_s3_bucket"
 	traceEndpointFlagName     = "trace_endpoint"
 	overwriteConfFlagName     = "overwrite"
 	pathFlagName              = "path"
@@ -79,6 +80,11 @@ func serviceConfigFlags(flags ...cli.Flag) []cli.Flag {
 			Name:   versionIDFlagName,
 			Usage:  "version ID of the client build to link to",
 			EnvVar: evergreen.EvergreenVersionID,
+		},
+		cli.StringFlag{
+			Name:   clientS3BucketFlagName,
+			Usage:  "S3 bucket where the Evergreen clients are located",
+			EnvVar: evergreen.EvergreenClientS3Bucket,
 		},
 		cli.BoolFlag{
 			Name:  overwriteConfFlagName,
