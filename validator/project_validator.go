@@ -2348,7 +2348,8 @@ func checkTasks(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// checkTaskUsage returns a warning for each task that is defined but unused by any (un-disabled) variant.
+// checkTaskUsage returns a notice for each task that is defined but unused by any (un-disabled) variant.
+// TODO: upgrade to a warning in DEVPROD-8154
 func checkTaskUsage(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	usedTasks := map[string]bool{}
@@ -2366,7 +2367,7 @@ func checkTaskUsage(project *model.Project) ValidationErrors {
 			errs = append(errs, ValidationError{
 				Message: fmt.Sprintf("task '%s' defined but not used by any variants; consider using or disabling",
 					pt.Name),
-				Level: Warning,
+				Level: Notice,
 			})
 		}
 	}
