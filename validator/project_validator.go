@@ -111,12 +111,7 @@ func (v ValidationErrors) AtLevel(level ValidationErrorLevel) ValidationErrors {
 
 // Has returns if any of the errors are at the given level.
 func (v ValidationErrors) Has(level ValidationErrorLevel) bool {
-	for _, err := range v {
-		if err.Level == level {
-			return true
-		}
-	}
-	return false
+	return len(v.AtLevel(level)) > 0
 }
 
 type ValidationInput struct {
