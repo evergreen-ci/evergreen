@@ -1350,6 +1350,7 @@ func TestCreateManifest(t *testing.T) {
 }
 
 func TestShellVersionFromRevisionGitTags(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(user.Collection))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -1374,17 +1375,47 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
 		GitTagVersionsEnabled: utility.TruePtr(),
 	}
+
 	assert.NoError(t, evergreen.UpdateConfig(ctx, testutil.TestConfig()))
 	v, err := ShellVersionFromRevision(pRef, metadata)
 	assert.NoError(t, err)
 	require.NotNil(t, v)
 	assert.Equal(t, evergreen.GitTagRequester, v.Requester)
-	assert.Equal(t, metadata.Revision.AuthorID, v.AuthorID)
-	assert.Equal(t, metadata.Revision.Author, v.Author)
-	assert.Equal(t, metadata.Revision.AuthorEmail, v.AuthorEmail)
 	assert.Equal(t, metadata.GitTag.Tag, v.TriggeredByGitTag.Tag)
 	assert.Equal(t, metadata.GitTag.Pusher, v.TriggeredByGitTag.Pusher)
 	assert.Equal(t, metadata.RemotePath, v.RemotePath)
 	assert.Contains(t, v.Id, "my_project_release_")
 	assert.Equal(t, "Triggered From Git Tag 'release': EVG-1234 good version", v.Message)
+	// When no Evergreen user exists for the pusher, we use the author of the version that was pushed to.
+	assert.Equal(t, metadata.Revision.AuthorID, v.AuthorID)
+	assert.Equal(t, metadata.Revision.Author, v.Author)
+	assert.Equal(t, metadata.Revision.AuthorEmail, v.AuthorEmail)
+
+	usr := &user.DBUser{
+		Id:           "release-bot-boi",
+		DispName:     "Release Bot",
+		EmailAddress: "release-is-cool@progress.com",
+		OnlyAPI:      true,
+		Settings: user.UserSettings{
+			GithubUser: user.GithubUser{
+				LastKnownAs: "release-bot",
+				UID:         12,
+			},
+		},
+	}
+	assert.NoError(t, usr.Insert())
+
+	v, err = ShellVersionFromRevision(pRef, metadata)
+	assert.NoError(t, err)
+	require.NotNil(t, v)
+	assert.Equal(t, evergreen.GitTagRequester, v.Requester)
+	assert.Equal(t, metadata.GitTag.Tag, v.TriggeredByGitTag.Tag)
+	assert.Equal(t, metadata.GitTag.Pusher, v.TriggeredByGitTag.Pusher)
+	assert.Equal(t, metadata.RemotePath, v.RemotePath)
+	assert.Contains(t, v.Id, "my_project_release_")
+	assert.Equal(t, "Triggered From Git Tag 'release': EVG-1234 good version", v.Message)
+	// When an Evergreen user does exist for the pusher, we use this for the author.
+	assert.Equal(t, usr.Id, v.AuthorID)
+	assert.Equal(t, usr.DisplayName(), v.Author)
+	assert.Equal(t, usr.Email(), v.AuthorEmail)
 }
