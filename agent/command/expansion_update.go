@@ -37,6 +37,9 @@ type updateParams struct {
 	// The expanded value
 	Value string
 
+	// Redact this value at the end of the task.
+	Redact bool
+
 	// Can optionally concat a string to the end of the current value
 	Concat string
 }

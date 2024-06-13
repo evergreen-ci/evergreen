@@ -22,14 +22,23 @@ import (
 )
 
 type TaskConfig struct {
-	Distro             *apimodels.DistroView
-	ProjectRef         model.ProjectRef
-	Project            model.Project
-	Task               task.Task
-	BuildVariant       model.BuildVariant
-	Expansions         util.Expansions
-	NewExpansions      *agentutil.DynamicExpansions
-	DynamicExpansions  util.Expansions
+	Distro       *apimodels.DistroView
+	ProjectRef   model.ProjectRef
+	Project      model.Project
+	Task         task.Task
+	BuildVariant model.BuildVariant
+
+	// Expansions are the fundamental expansions like execution,
+	// project_id, task_id, etc. These are not reset during a task's.
+	Expansions util.Expansions
+
+	// NewExpansions
+	NewExpansions *agentutil.DynamicExpansions
+
+	// DynamicExpansions holds expansions that were set from 'expansions.update'
+	// and should persist throughout the task's execution.
+	DynamicExpansions util.Expansions
+
 	ProjectVars        map[string]string
 	Redacted           []string
 	RedactKeys         []string
