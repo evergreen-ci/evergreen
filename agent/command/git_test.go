@@ -96,8 +96,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	configPath1 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_clone.yml")
 	configPath2 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_config.yml")
 	configPath3 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "no_token.yml")
-	configPath4 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "additional_patch.yml")
-	configPath5 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "multiple_modules.yml")
+	configPath4 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "multiple_modules.yml")
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
 
 	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
@@ -161,7 +160,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	}
 	s.taskConfig6.Task.Requester = evergreen.GithubMergeRequester
 
-	s.modelData7, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath5, modelutil.NoPatch)
+	s.modelData7, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath4, modelutil.NoPatch)
 	s.Require().NoError(err)
 	s.taskConfig7, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData7)
 	s.Require().NoError(err)
