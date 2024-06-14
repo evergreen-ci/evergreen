@@ -265,6 +265,10 @@ authorized teams, no version will be created. **If git tag versions are not bein
 created as you expect them to**, please first check that the tag pusher is part of
 one of the above fields.
 
+If you'd like for Git Tag triggered versions to be associated with the pusher,
+ensure that they've set their GitHub username in 
+[their Evergreen preferences](https://spruce.mongodb.com/preferences/profile).
+
 2.  **Add aliases to determine what tasks will run.**
 
 There are two options for aliases:
