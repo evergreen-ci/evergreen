@@ -1522,7 +1522,7 @@ func TestValidateTaskNames(t *testing.T) {
 }
 
 func TestCheckTasksUsed(t *testing.T) {
-	t.Run("usedInTasksAndDisplay", func(t *testing.T) {
+	t.Run("UsedInTasksAndDisplay", func(t *testing.T) {
 		project := &model.Project{
 			Tasks: []model.ProjectTask{
 				{Name: "t1"},
@@ -1544,7 +1544,7 @@ func TestCheckTasksUsed(t *testing.T) {
 		errs := checkTaskUsage(project)
 		assert.Len(t, errs, 0)
 	})
-	t.Run("execTaskNotListedWithTasks", func(t *testing.T) {
+	t.Run("ExecTaskNotListedWithTasks", func(t *testing.T) {
 		project := &model.Project{
 			Tasks: []model.ProjectTask{
 				{Name: "t1"},
@@ -1567,7 +1567,7 @@ func TestCheckTasksUsed(t *testing.T) {
 		assert.Contains(t, errs[0].Message, "'execTask' defined but not used")
 		assert.Equal(t, errs[0].Level, Notice)
 	})
-	t.Run("disabledTask", func(t *testing.T) {
+	t.Run("DisabledTask", func(t *testing.T) {
 		project := &model.Project{
 			Tasks: []model.ProjectTask{
 				{Name: "t1"},
@@ -1585,7 +1585,7 @@ func TestCheckTasksUsed(t *testing.T) {
 		errs := checkTaskUsage(project)
 		require.Len(t, errs, 0)
 	})
-	t.Run("unusedTaskInDisabledVariant", func(t *testing.T) {
+	t.Run("UnusedTaskInDisabledVariant", func(t *testing.T) {
 		project := &model.Project{
 			Tasks: []model.ProjectTask{
 				{Name: "t1"},
@@ -1605,7 +1605,7 @@ func TestCheckTasksUsed(t *testing.T) {
 		assert.Contains(t, errs[0].Message, "'t1' defined but not used")
 		assert.Equal(t, errs[0].Level, Notice)
 	})
-	t.Run("unusedTaskDisabledForVariant", func(t *testing.T) {
+	t.Run("UnusedTaskDisabledForVariant", func(t *testing.T) {
 		project := &model.Project{
 			Tasks: []model.ProjectTask{
 				{Name: "t1"},
@@ -1624,7 +1624,7 @@ func TestCheckTasksUsed(t *testing.T) {
 		assert.Contains(t, errs[0].Message, "'t1' defined but not used")
 		assert.Equal(t, errs[0].Level, Notice)
 	})
-	t.Run("multipleVariants", func(t *testing.T) {
+	t.Run("MultipleVariants", func(t *testing.T) {
 		project := &model.Project{
 			Tasks: []model.ProjectTask{
 				{Name: "t1"},
