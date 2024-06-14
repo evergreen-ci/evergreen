@@ -199,6 +199,9 @@ func (tc *TaskConfig) TaskAttributes() []attribute.KeyValue {
 	for key, val := range tc.TaskAttributeMap() {
 		attributes = append(attributes, attribute.String(key, val))
 	}
+	if len(tc.Task.Tags) > 0 {
+		attributes = append(attributes, attribute.StringSlice(evergreen.TaskTagsSliceOtelAttribute, tc.Task.Tags))
+	}
 
 	return attributes
 }
