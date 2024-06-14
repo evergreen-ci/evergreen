@@ -1565,7 +1565,7 @@ func TestCheckTasksUsed(t *testing.T) {
 		errs := checkTaskUsage(project)
 		require.Len(t, errs, 1)
 		assert.Contains(t, errs[0].Message, "'execTask' defined but not used")
-		assert.Equal(t, errs[0].Level, Notice)
+		assert.Equal(t, Notice, errs[0].Level)
 	})
 	t.Run("DisabledTask", func(t *testing.T) {
 		project := &model.Project{
@@ -1603,7 +1603,7 @@ func TestCheckTasksUsed(t *testing.T) {
 		errs := checkTaskUsage(project)
 		require.Len(t, errs, 1)
 		assert.Contains(t, errs[0].Message, "'t1' defined but not used")
-		assert.Equal(t, errs[0].Level, Notice)
+		assert.Equal(t, Notice, errs[0].Level)
 	})
 	t.Run("UnusedTaskDisabledForVariant", func(t *testing.T) {
 		project := &model.Project{
@@ -1622,7 +1622,7 @@ func TestCheckTasksUsed(t *testing.T) {
 		errs := checkTaskUsage(project)
 		require.Len(t, errs, 1)
 		assert.Contains(t, errs[0].Message, "'t1' defined but not used")
-		assert.Equal(t, errs[0].Level, Notice)
+		assert.Equal(t, Notice, errs[0].Level)
 	})
 	t.Run("MultipleVariants", func(t *testing.T) {
 		project := &model.Project{

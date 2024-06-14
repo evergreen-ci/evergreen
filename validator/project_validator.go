@@ -2352,10 +2352,10 @@ func checkTasks(project *model.Project) ValidationErrors {
 // TODO: upgrade to a warning in DEVPROD-8154
 func checkTaskUsage(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
-	usedTasks := map[string]bool{}
+	seen := map[string]bool{}
 	for _, bvtu := range project.FindAllBuildVariantTasks() {
 		if !utility.FromBoolPtr(bvtu.Disable) {
-			usedTasks[bvtu.Name] = true
+			seen[bvtu.Name] = true
 		}
 	}
 
@@ -2363,7 +2363,7 @@ func checkTaskUsage(project *model.Project) ValidationErrors {
 		if utility.FromBoolPtr(pt.Disable) {
 			continue
 		}
-		if _, ok := usedTasks[pt.Name]; !ok {
+		if !seen[pt.Name] {
 			errs = append(errs, ValidationError{
 				Message: fmt.Sprintf("task '%s' defined but not used by any variants; consider using or disabling",
 					pt.Name),
