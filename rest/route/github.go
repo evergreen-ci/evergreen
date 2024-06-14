@@ -490,6 +490,16 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(event *github.MergeGrou
 	if ref.CommitQueue.MergeQueue == model.MergeQueueGitHub {
 		err = gh.AddIntentForGithubMerge(event)
 	} else {
+		grip.Info(message.Fields{
+			"source":   "GitHub hook",
+			"msg_id":   gh.msgID,
+			"event":    gh.eventType,
+			"org":      org,
+			"repo":     repo,
+			"base_sha": event.GetMergeGroup().GetBaseSHA(),
+			"head_sha": event.GetMergeGroup().GetHeadSHA(),
+			"message":  "received merge group event, but project is not set to use GitHub merge queue",
+		})
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 	if err != nil {
