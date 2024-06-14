@@ -686,13 +686,17 @@ func ShellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetad
 	if metadata.GitTag.Pusher != "" {
 		usr, err = user.FindByGithubName(metadata.GitTag.Pusher)
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": fmt.Sprintf("failed to fetch Evergreen user with GitHub name %s", metadata.GitTag.Pusher),
+			"message":        "failed to fetch Evergreen user with GitHub info",
+			"method":         "git_tag",
+			"git_tag_pusher": metadata.GitTag.Pusher,
 		}))
 	}
 	if usr == nil && metadata.Revision.AuthorGithubUID != 0 {
 		usr, err = user.FindByGithubUID(metadata.Revision.AuthorGithubUID)
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": fmt.Sprintf("failed to fetch Evergreen user with GitHub UID %d", metadata.Revision.AuthorGithubUID),
+			"message":             "failed to fetch Evergreen user with GitHub info",
+			"method":              "user_uid",
+			"revision_author_uid": metadata.Revision.AuthorGithubUID,
 		}))
 	}
 	if usr != nil {
