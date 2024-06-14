@@ -101,7 +101,7 @@ func (j *sleepSchedulerJob) fixMissingNextScheduleTimes(ctx context.Context) err
 				catcher.Wrapf(err, "getting next start and stop times for host '%s'", h.Id)
 				continue
 			}
-			if err := h.SetNextScheduledStartAndStop(ctx, nextStart, nextStop); err != nil {
+			if err := h.SetNextScheduledStartAndStopTimes(ctx, nextStart, nextStop); err != nil {
 				catcher.Wrapf(err, "setting next start and stop times for host '%s'", h.Id)
 				continue
 			}
@@ -114,7 +114,7 @@ func (j *sleepSchedulerJob) fixMissingNextScheduleTimes(ctx context.Context) err
 				catcher.Wrapf(err, "getting next start time for host '%s'", h.Id)
 				continue
 			}
-			if err := h.SetNextScheduledStart(ctx, nextStart); err != nil {
+			if err := h.SetNextScheduledStartTime(ctx, nextStart); err != nil {
 				catcher.Wrapf(err, "setting next start time for host '%s'", h.Id)
 				continue
 			}
@@ -126,7 +126,7 @@ func (j *sleepSchedulerJob) fixMissingNextScheduleTimes(ctx context.Context) err
 				catcher.Wrapf(err, "getting next stop time for host '%s'", h.Id)
 				continue
 			}
-			if err := h.SetNextScheduledStop(ctx, nextStop); err != nil {
+			if err := h.SetNextScheduledStopTime(ctx, nextStop); err != nil {
 				catcher.Wrapf(err, "setting next stop time for host '%s'", h.Id)
 				continue
 			}
@@ -178,7 +178,7 @@ func (j *sleepSchedulerJob) fixHostsExceedingTimeout(ctx context.Context) error 
 				catcher.Wrapf(err, "getting next start and stop times for host '%s'", h.Id)
 				continue
 			}
-			if err := h.SetNextScheduledStartAndStop(ctx, nextStart, nextStop); err != nil {
+			if err := h.SetNextScheduledStartAndStopTimes(ctx, nextStart, nextStop); err != nil {
 				catcher.Wrapf(err, "setting next start and stop times for host '%s'", h.Id)
 				continue
 			}
@@ -191,7 +191,7 @@ func (j *sleepSchedulerJob) fixHostsExceedingTimeout(ctx context.Context) error 
 				catcher.Wrapf(err, "getting next start time for host '%s'", h.Id)
 				continue
 			}
-			if err := h.SetNextScheduledStart(ctx, nextStart); err != nil {
+			if err := h.SetNextScheduledStartTime(ctx, nextStart); err != nil {
 				catcher.Wrapf(err, "setting next start time for host '%s'", h.Id)
 				continue
 			}
@@ -203,7 +203,7 @@ func (j *sleepSchedulerJob) fixHostsExceedingTimeout(ctx context.Context) error 
 				catcher.Wrapf(err, "getting next stop time for host '%s'", h.Id)
 				continue
 			}
-			if err := h.SetNextScheduledStop(ctx, nextStop); err != nil {
+			if err := h.SetNextScheduledStopTime(ctx, nextStop); err != nil {
 				catcher.Wrapf(err, "setting next stop time for host '%s'", h.Id)
 				continue
 			}

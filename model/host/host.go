@@ -4024,9 +4024,9 @@ func getNextScheduledTime(after time.Time, spec string) (time.Time, error) {
 	return nextTriggerAt, nil
 }
 
-// SetNextScheduledStart sets the next time the host is planned to start for its
+// SetNextScheduledStartTime sets the next time the host is planned to start for its
 // sleep schedule.
-func (h *Host) SetNextScheduledStart(ctx context.Context, t time.Time) error {
+func (h *Host) SetNextScheduledStartTime(ctx context.Context, t time.Time) error {
 	sleepScheduleStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
 	update := bson.M{}
 	if utility.IsZeroTime(t) {
@@ -4046,9 +4046,9 @@ func (h *Host) SetNextScheduledStart(ctx context.Context, t time.Time) error {
 	return nil
 }
 
-// SetNextScheduledStop sets the next time the host is planned to stop for its
+// SetNextScheduledStopTime sets the next time the host is planned to stop for its
 // sleep schedule.
-func (h *Host) SetNextScheduledStop(ctx context.Context, t time.Time) error {
+func (h *Host) SetNextScheduledStopTime(ctx context.Context, t time.Time) error {
 	sleepScheduleStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
 	update := bson.M{}
 	if utility.IsZeroTime(t) {
@@ -4069,9 +4069,10 @@ func (h *Host) SetNextScheduledStop(ctx context.Context, t time.Time) error {
 	return nil
 }
 
-// SetNextScheduledStop sets both the next time the host is planned to start and
-// the next time the host is planned to stop for its sleep schedule.
-func (h *Host) SetNextScheduledStartAndStop(ctx context.Context, nextStart, nextStop time.Time) error {
+// SetNextScheduledStartAndStopTimes sets both the next time the host is planned
+// to start and the next time the host is planned to stop for its sleep
+// schedule.
+func (h *Host) SetNextScheduledStartAndStopTimes(ctx context.Context, nextStart, nextStop time.Time) error {
 	update := bson.M{}
 	unset := bson.M{}
 	set := bson.M{}
