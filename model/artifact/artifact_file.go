@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -93,11 +94,11 @@ func presignFile(file File) (string, error) {
 	}
 
 	// TODO (DEVPROD-6193): remove this special casing once artifacts from the old
-	// AWS key have expired (after 3/1/2025).
-	// Empty creds will use the SDK's default credentials chain.
+	// AWS key have expired (after 5/20/2025).
+	// EC2Keys[0] contains static credentials that only has permissions to access the mciuploads bucket.
 	if file.Bucket == "mciuploads" {
-		file.AwsKey = ""
-		file.AwsSecret = ""
+		file.AwsKey = evergreen.GetEnvironment().Settings().Providers.AWS.EC2Keys[0].Key
+		file.AwsSecret = evergreen.GetEnvironment().Settings().Providers.AWS.EC2Keys[0].Secret
 	}
 
 	requestParams := pail.PreSignRequestParams{
