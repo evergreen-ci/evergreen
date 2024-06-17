@@ -55,6 +55,110 @@ lifetime up to 30 days past host creation.
 If you'd like to get a notification before a host expires, you can [set up a
 notification](../Project-Configuration/Notifications#spawn-host-expiration) for it.
 
+### Unexpirable Host Sleep Schedules
+
+For unexpirable hosts, Evergreen has introduced a new feature called a host sleep schedule, which allows you to control
+when you'd like your unexpirable host to be on or off. A sleep schedule lets you choose recurring times of the week when
+you want your host to be on, and when it's okay for Evergreen to turn it off. For example, you could set a sleep
+schedule where your host is on during your work hours from 10 am to 6 pm between Monday and Friday and otherwise turn it
+off overnight and during weekends. Setting a sleep schedule ensures your host is on when you're working, while also
+stopping the host when it's not being actively used. This is important to ensure that hosts are being efficiently
+utilized and to avoid over-spending on long-lived AWS resources when they're idle.
+
+In the Spruce UI, you can pick a sleep schedule for your host when creating the unexpirable host or editing an existing
+unexpirable host:
+
+![Sleep schedule](../images/set_sleep_schedule.png)
+
+From the create/edit host modal, you can pick which days you'd like the host to be on, and the time that you want your
+host to be on for those days. The time zone for the host sleep schedule will be based on the time zone set in your
+[Spruce preferences](https://spruce.mongodb.com/preferences/profile).
+
+<!-- kim: TODO: pick a date for beta test beginning/end -->
+
+#### ***Important Note***: This Feature is in Beta Testing!
+
+This feature is being rolled out in phases and is currently in beta testing. While it's in beta testing, _using the
+sleep schedule feature is an opt-in_. During this beta testing period, you have until `<DATE>` to set a sleep schedule
+for any of your existing unexpirable hosts. Until `<DATE>`, you should set a sleep schedule for any of your existing
+unexpirable hosts. On top of setting a sleep schedule, you also have the option to participate in the beta test. If you
+opt into the beta test, the sleep schedule that you set will take effect on your host, stopping and starting your host
+according to the schedule you configure; if you do not opt in, your sleep schedule will be set but will have no effect
+on your host. You can opt in or out freely during the beta test. **It's highly recommend for you to set a sleep schedule
+for your unexpirable host(s) and opt into the beta to verify that your sleep schedule is configured the way you want.**
+
+The beta test period will end on `<DATE>`, at which point the sleep schedule will take effect on all hosts so please
+make sure to set a sleep schedule by then or [request a permanent exemption](#requesting-a-permanent-exemption). If you
+do not set one, a default one will be automatically set for you when the beta test ends. Hosts that have been stopped
+for more than two weeks will also be assigned a sleep schedule if you don't pick one, but the host will be kept off
+until you manually turn it back on.
+
+
+#### Keeping a Host Off
+
+Your host's sleep schedule will regularly stop and start your host. However, there can be some use cases where you may
+wish to turn your host off for an extended period of time. For example, if you are about to go on leave, you may wish to
+leave your host off for the entire time since you won't need it.
+
+To accommodate this, Evergreen offers an option to keeping the host off until the next time you start it back up
+yourself. If you choose this option, Evergreen will let the host will remain off and will not start or stop your host
+automatically for its sleep schedule. The sleep schedule will only take effect again when you start the host back up
+manually.
+
+If you'd like to manually turn off your host and keep it off until the next time you start it back up, you can press
+pause on the host and check the option to keep the host off:
+
+![Stop the host and keep off](../images/stop_host_keep_off.png)
+
+This can also be done through the CLI:
+
+```sh
+evergreen host stop --host <host_id> --keep-off
+```
+
+#### Temporary Exemptions
+
+If you need your host to temporarily ignore its sleep schedule, you can request a temporary exemption for your host.
+During a temporary exemption, the sleep schedule will not take effect at all, so Evergreen will not stop/start your host
+unless you do it manually. This is very useful if you have a one-off need to keep your host on without interruption. For
+example, if you're running a test overnight on the host and you don't want the host to be stopped, you can request a
+temporary exemption until tomorrow to keep the host on. Another example is if it's outside your working hours (and the
+host has already automatically stopped for the night for its sleep schedule) but you want to check up on something in
+your host, you can request a temporary exemption and then turn your host on. The sleep schedule will let your host stay
+on, and will ignore the host's sleep schedule until the temporary exemption ends.
+
+You can set a temporary exemption in the Spruce edit host modal:
+
+![Temporary exemption](../images/sleep_schedule_temporary_exemption.png)
+
+Alternatively, you can set a temporary exemption from the CLI:
+
+```sh
+evergreen host modify --host <HOST_ID> --extend-temporary-exemption <NUM_HOURS>
+```
+
+You can temporarily exempt your host from the sleep schedule for up to a month from today.
+
+#### Requesting a Permanent Exemption
+
+If for some reason your host cannot use a sleep schedule at all, you can request that your host be permanently exempt
+from the sleep schedule feature. If your host is permanently exempt, it won't have a sleep schedule and Evergreen will
+not stop/start your host according to a recurring sleep schedule. This would allow your host to be kept on 24/7.
+**Requesting a permanent exemption is not recommended unless you have set up the auto-sleep script (and want it to
+substitute for a recurring sleep schedule) or you have a particular reason that your host must be kept on at all
+times.** This is because:
+
+* Keeping hosts on 24/7 is not an efficient use of AWS resources since the host incurs costs to run while it's not being
+  actively used.
+* Users who occasionally need their host to be kept on can set [temporary exemptions](#temporary-exemptions) when needed.
+
+If you'd like to request a permanent exemption, please file a DEVPROD ticket with Evergreen App as the Dev Prod service
+and use the title "Permanent exemption request". In it, please include your host ID and an explanation of why you'd like
+your host to be permanently exempt from the sleep schedule (and if relevant, why alternative options like temporary
+exemptions would not be sufficient for your usage).
+
+<!-- kim: TODO: describe auto-sleep script as an optional alternative/on top of mechanism for sleep schedule -->
+
 ## Hosts Page
 
 The Spruce hosts page offers three batch actions applicable to hosts:
