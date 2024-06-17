@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
 	"google.golang.org/grpc"
 )
@@ -120,6 +121,11 @@ type SharedCommunicator interface {
 
 	// CreateInstallationToken creates an installation token for the given owner and repo if there is a GitHub app installed.
 	CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error)
+
+	// CreateGitHubDynamicAccessToken creates a dynamic access token using the task's project's GitHub app.
+	// It intersects the permissions requested with the permissions set in the project settings for the requester
+	// the task is running for.
+	CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner, repo string, permissions *github.InstallationPermissions) (string, error)
 
 	// MarkFailedTaskToRestart marks the task as needing to be restarted
 	MarkFailedTaskToRestart(ctx context.Context, td TaskData) error

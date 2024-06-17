@@ -23,12 +23,11 @@ import (
 )
 
 var (
-	testConfig            = testutil.TestConfig()
-	firstRevision         = "99162ee5bc41eb314f5bb01bd12f0c43e9cb5f32"
-	lastRevision          = "d0d878e81b303fd2abbf09331e54af41d6cd0c7d"
-	firstRemoteConfigRef  = "6dbe53d948906ed3e0a355eb25b9d54e5b011209"
-	secondRemoteConfigRef = "9b6c7d7f479da84b767995076b13c31796a5e2bf"
-	badRemoteConfigRef    = "276382eb9f5ebcfce2791d1c99ce5e591023146b"
+	testConfig     = testutil.TestConfig()
+	firstRevision  = "15d88cbfd0b5196eebdfbeecc404e04a5b8a4507"
+	secondRevision = "94bbeb8593ffa9f7dc702a4ab0cc12283dbd3233"
+	lastRevision   = "e82137ae00cc85692175b63e008261435bda7cb3"
+	badRevision    = "276382eb9f5ebcfce2791d1c99ce5e591023146b"
 
 	projectRef    *model.ProjectRef
 	evgProjectRef *model.ProjectRef
@@ -68,10 +67,10 @@ func resetProjectRefs() {
 	projectRef = &model.ProjectRef{
 		Id:          "mci-test",
 		DisplayName: "MCI Test",
-		Owner:       "deafgoat",
-		Repo:        "mci-test",
-		Branch:      "master",
-		RemotePath:  "mci",
+		Owner:       "evergreen-ci",
+		Repo:        "integration-tests",
+		Branch:      "main",
+		RemotePath:  "commit.txt",
 		Enabled:     true,
 		Private:     utility.FalsePtr(),
 		BatchTime:   60,
@@ -136,6 +135,7 @@ func TestGetRevisionsSince(t *testing.T) {
 	_, err := model.GetNewRevisionOrderNumber(projectRef.Id)
 	require.NoError(t, err)
 
+	// The test repository contains only 3 revisions.
 	Convey("When fetching github revisions (by commit) - from a repo "+
 		"containing 3 commits - given a valid Oauth token...", t, func() {
 		ghp.ProjectRef = projectRef
@@ -145,9 +145,6 @@ func TestGetRevisionsSince(t *testing.T) {
 
 		Convey("There should be only two revisions since the first revision",
 			func() {
-				// The test repository contains only 3 revisions with revision
-				// 99162ee5bc41eb314f5bb01bd12f0c43e9cb5f32 being the first
-				// revision
 				revisions, err := ghp.GetRevisionsSince(firstRevision, 10)
 				require.NoError(t, err)
 				So(len(revisions), ShouldEqual, 2)
@@ -164,8 +161,6 @@ func TestGetRevisionsSince(t *testing.T) {
 			})
 
 		Convey("There should be no revisions since the last revision", func() {
-			// The test repository contains only 3 revisions with revision
-			// d0d878e81b303fd2abbf09331e54af41d6cd0c7d being the last revision
 			revisions, err := ghp.GetRevisionsSince(lastRevision, 10)
 			require.NoError(t, err)
 			So(len(revisions), ShouldEqual, 0)
@@ -173,9 +168,7 @@ func TestGetRevisionsSince(t *testing.T) {
 
 		Convey("There should be an error returned if the requested revision "+
 			"isn't found", func() {
-			// The test repository contains only 3 revisions with revision
-			// d0d878e81b303fd2abbf09331e54af41d6cd0c7d being the last revision
-			revisions, err := ghp.GetRevisionsSince("lastRevision", 10)
+			revisions, err := ghp.GetRevisionsSince(badRevision, 10)
 			So(len(revisions), ShouldEqual, 0)
 			So(err, ShouldNotBeNil)
 		})
@@ -214,10 +207,10 @@ func TestGetRemoteConfig(t *testing.T) {
 			ghp.ProjectRef = &model.ProjectRef{
 				Id:          "mci-test",
 				DisplayName: "MCI Test",
-				Owner:       "deafgoat",
-				Repo:        "config",
-				Branch:      "master",
-				RemotePath:  "random.txt",
+				Owner:       "evergreen-ci",
+				Repo:        "integration-tests",
+				Branch:      "main",
+				RemotePath:  "tests.yml",
 				Enabled:     true,
 				Private:     utility.FalsePtr(),
 				BatchTime:   60,
@@ -229,23 +222,23 @@ func TestGetRemoteConfig(t *testing.T) {
 
 			Convey("The config file at the requested revision should be "+
 				"exactly what is returned", func() {
-				projectInfo, err := ghp.GetRemoteConfig(ctx, firstRemoteConfigRef)
+				projectInfo, err := ghp.GetRemoteConfig(ctx, firstRevision)
 				require.NoError(t, err, "Error fetching github "+
 					"configuration file")
 				So(projectInfo.Project, ShouldNotBeNil)
 				So(len(projectInfo.Project.Tasks), ShouldEqual, 0)
-				projectInfo, err = ghp.GetRemoteConfig(ctx, secondRemoteConfigRef)
+				projectInfo, err = ghp.GetRemoteConfig(ctx, secondRevision)
 				require.NoError(t, err, "Error fetching github "+
 					"configuration file")
 				So(projectInfo.Project, ShouldNotBeNil)
 				So(len(projectInfo.Project.Tasks), ShouldEqual, 1)
 			})
 			Convey("an invalid revision should return an error", func() {
-				_, err := ghp.GetRemoteConfig(ctx, "firstRemoteConfRef")
+				_, err := ghp.GetRemoteConfig(ctx, badRevision)
 				So(err, ShouldNotBeNil)
 			})
 			Convey("an invalid project configuration should error out", func() {
-				_, err := ghp.GetRemoteConfig(ctx, badRemoteConfigRef)
+				_, err := ghp.GetRemoteConfig(ctx, lastRevision)
 				So(err, ShouldNotBeNil)
 			})
 		})

@@ -107,11 +107,9 @@ func (a *Agent) statusHandler() http.HandlerFunc {
 }
 
 type triggerEndTaskResp struct {
-	Description string `json:"desc,omitempty"`
-	Status      string `json:"status,omitempty"`
-	Type        string `json:"type,omitempty"`
-	// TODO (DEVPROD-5122): add documentation once the additional features for
-	// failing commands (which don't fail the task) are complete.
+	Description            string   `json:"desc,omitempty"`
+	Status                 string   `json:"status,omitempty"`
+	Type                   string   `json:"type,omitempty"`
 	AddFailureMetadataTags []string `json:"add_failure_metadata_tags,omitempty"`
 	ShouldContinue         bool     `json:"should_continue"`
 }

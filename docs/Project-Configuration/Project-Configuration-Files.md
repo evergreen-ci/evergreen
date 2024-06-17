@@ -1008,6 +1008,8 @@ of a normally failing task (a normally failing task does not include system fail
 This can be set or unset at the top-level, at the build variant level, and for individual tasks
 (in the task definition or for the task within a specific build variant).
 
+You can also for the whole project set the method of stepping back to "Bisection".
+
 ### Out of memory (OOM) Tracker
 
 By default, the OOM tracker is enabled. 

@@ -340,7 +340,7 @@ func getInstallationToken(ctx context.Context, owner, repo string, opts *github.
 		return "", errors.Wrap(err, "getting config")
 	}
 
-	token, err := settings.CreateInstallationToken(ctx, owner, repo, opts)
+	token, err := settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, owner, repo, opts)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "error creating token",
@@ -1009,7 +1009,7 @@ func logGitHubRateLimit(limit github.Rate) {
 			"error":   "can't parse rate limit",
 		})
 	} else if limit.Limit == 60 {
-		// TODO EVG-19966: remove manual log remover
+		// TODO DEVPROD-2923: remove manual log remover
 		return
 	} else {
 		grip.Info(message.Fields{

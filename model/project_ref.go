@@ -156,7 +156,9 @@ type GitHubDynamicTokenPermissionGroup struct {
 }
 
 // defaultGitHubTokenPermissionGroup is an empty, all permissions, group.
-var defaultGitHubTokenPermissionGroup = GitHubDynamicTokenPermissionGroup{}
+var defaultGitHubTokenPermissionGroup = GitHubDynamicTokenPermissionGroup{
+	AllPermissions: true,
+}
 
 // GetGitHubPermissionGroup returns the GitHubDynamicTokenPermissionGroup for the given requester.
 // If the requester is not found, it returns the default.
@@ -732,12 +734,12 @@ func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) err
 	if appID == 0 || len(privateKey) == 0 {
 		return errors.New("both app ID and private key must be provided")
 	}
-	auth := GithubAppAuth{
+	auth := evergreen.GithubAppAuth{
 		Id:         p.Id,
-		AppId:      appID,
+		AppID:      appID,
 		PrivateKey: privateKey,
 	}
-	return auth.Upsert()
+	return UpsertGithubAppAuth(&auth)
 }
 
 // AddToRepoScope validates that the branch can be attached to the matching repo,
@@ -1822,7 +1824,7 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 // SetTracksPushEvents returns true if the GitHub app is installed on the owner/repo for the given project.
 func SetTracksPushEvents(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 	// Don't return errors because it could cause the project page to break if GitHub is down.
-	hasApp, err := evergreen.GetEnvironment().Settings().HasGitHubApp(ctx, projectRef.Owner, projectRef.Repo)
+	hasApp, err := evergreen.GetEnvironment().Settings().CreateGitHubAppAuth().IsGithubAppInstalledOnRepo(ctx, projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":            "Error verifying GitHub app installation",
@@ -1963,7 +1965,7 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	// Don't error even if there is problem with verifying the GitHub app installation
 	// because a GitHub outage could cause project settings page to not load.
-	hasEvergreenAppInstalled, _ := evergreen.GetEnvironment().Settings().HasGitHubApp(context.Background(), p.Owner, p.Repo)
+	hasEvergreenAppInstalled, _ := evergreen.GetEnvironment().Settings().CreateGitHubAppAuth().IsGithubAppInstalledOnRepo(context.Background(), p.Owner, p.Repo)
 
 	projectVars, err := FindOneProjectVars(p.Id)
 	if err != nil {

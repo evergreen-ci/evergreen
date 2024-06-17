@@ -5,6 +5,7 @@ query {
     requester
     displayName
     project
+    projectIdentifier
     buildVariant
     priority
     revision
