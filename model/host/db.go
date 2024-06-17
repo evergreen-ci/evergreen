@@ -242,15 +242,8 @@ func hostsCanRunTasksQuery(distroID string) bson.M {
 	return bson.M{
 		distroIDKey:  distroID,
 		StartedByKey: evergreen.User,
-		"$or": []bson.M{
-			{
-				StatusKey: evergreen.HostRunning,
-			},
-			{
-				StatusKey:    evergreen.HostStarting,
-				bootstrapKey: distro.BootstrapMethodUserData,
-			},
-		},
+		StatusKey:    bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostStarting}},
+		bootstrapKey: distro.BootstrapMethodUserData,
 	}
 }
 
