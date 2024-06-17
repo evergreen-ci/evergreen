@@ -52,7 +52,6 @@ func buildApp() *cli.App {
 		operations.Host(),
 		operations.Volume(),
 		operations.Notification(),
-		operations.Buildlogger(),
 		operations.Task(),
 
 		// Top-level commands.
