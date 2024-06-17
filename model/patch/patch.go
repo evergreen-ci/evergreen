@@ -136,6 +136,14 @@ type GitMetadata struct {
 	GitVersion string `bson:"git_version,omitempty" json:"git_version,omitempty"`
 }
 
+type Include struct {
+	FileName string `yaml:"filename,omitempty" bson:"filename,omitempty" json:"filename,omitempty"`
+	Module   string `yaml:"module,omitempty" bson:"module,omitempty" json:"module,omitempty"`
+
+	// FileContent is only used for local module includes for CLI patches
+	FileContent []byte `yaml:"file_content,omitempty" bson:"file_content,omitempty" json:"file_content,omitempty"`
+}
+
 // Patch stores all details related to a patch request
 type Patch struct {
 	Id                 mgobson.ObjectId `bson:"_id,omitempty"`
@@ -182,7 +190,8 @@ type Patch struct {
 	MergeStatus string `json:"merge_status"`
 	// MergedFrom is populated with the patch id of the existing patch
 	// the merged patch is based off of, if applicable.
-	MergedFrom string `bson:"merged_from,omitempty"`
+	MergedFrom          string    `bson:"merged_from,omitempty"`
+	LocalModuleIncludes []Include `bson:"local_module_includes,omitempty"`
 }
 
 func (p *Patch) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(p) }

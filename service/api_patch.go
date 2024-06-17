@@ -99,30 +99,31 @@ func (as *APIServer) getAuthor(data patchData, dbUser *user.DBUser, projectId, p
 }
 
 type patchData struct {
-	Description       string             `json:"desc"`
-	Path              string             `json:"path"`
-	Project           string             `json:"project"`
-	BackportInfo      patch.BackportInfo `json:"backport_info"`
-	GitMetadata       *patch.GitMetadata `json:"git_metadata"`
-	PatchBytes        []byte             `json:"patch_bytes"`
-	Githash           string             `json:"githash"`
-	Parameters        []patch.Parameter  `json:"parameters"`
-	Variants          []string           `json:"buildvariants_new"`
-	Tasks             []string           `json:"tasks"`
-	RegexVariants     []string           `json:"regex_buildvariants"`
-	RegexTasks        []string           `json:"regex_tasks"`
-	SyncBuildVariants []string           `json:"sync_build_variants"`
-	SyncTasks         []string           `json:"sync_tasks"`
-	SyncStatuses      []string           `json:"sync_statuses"`
-	SyncTimeout       time.Duration      `json:"sync_timeout"`
-	Finalize          bool               `json:"finalize"`
-	TriggerAliases    []string           `json:"trigger_aliases"`
-	Alias             string             `json:"alias"`
-	RepeatFailed      bool               `json:"repeat_failed"`
-	RepeatDefinition  bool               `json:"reuse_definition"`
-	RepeatPatchId     string             `json:"repeat_patch_id"`
-	GithubAuthor      string             `json:"github_author"`
-	PatchAuthor       string             `json:"patch_author"`
+	Description         string             `json:"desc"`
+	Path                string             `json:"path"`
+	Project             string             `json:"project"`
+	BackportInfo        patch.BackportInfo `json:"backport_info"`
+	GitMetadata         *patch.GitMetadata `json:"git_metadata"`
+	PatchBytes          []byte             `json:"patch_bytes"`
+	Githash             string             `json:"githash"`
+	Parameters          []patch.Parameter  `json:"parameters"`
+	Variants            []string           `json:"buildvariants_new"`
+	Tasks               []string           `json:"tasks"`
+	RegexVariants       []string           `json:"regex_buildvariants"`
+	RegexTasks          []string           `json:"regex_tasks"`
+	SyncBuildVariants   []string           `json:"sync_build_variants"`
+	SyncTasks           []string           `json:"sync_tasks"`
+	SyncStatuses        []string           `json:"sync_statuses"`
+	SyncTimeout         time.Duration      `json:"sync_timeout"`
+	Finalize            bool               `json:"finalize"`
+	TriggerAliases      []string           `json:"trigger_aliases"`
+	Alias               string             `json:"alias"`
+	RepeatFailed        bool               `json:"repeat_failed"`
+	RepeatDefinition    bool               `json:"reuse_definition"`
+	RepeatPatchId       string             `json:"repeat_patch_id"`
+	GithubAuthor        string             `json:"github_author"`
+	PatchAuthor         string             `json:"patch_author"`
+	LocalModuleIncludes []patch.Include    `json:"local_module_includes"`
 }
 
 // submitPatch creates the Patch document, adds the patched project config to it,
@@ -189,26 +190,27 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
-		User:             author,
-		Project:          pref.Id,
-		Path:             data.Path,
-		BaseGitHash:      data.Githash,
-		Module:           r.FormValue("module"),
-		PatchContent:     patchString,
-		Description:      data.Description,
-		Finalize:         data.Finalize,
-		Parameters:       data.Parameters,
-		Variants:         data.Variants,
-		Tasks:            data.Tasks,
-		RegexVariants:    data.RegexVariants,
-		RegexTasks:       data.RegexTasks,
-		Alias:            data.Alias,
-		TriggerAliases:   data.TriggerAliases,
-		BackportOf:       data.BackportInfo,
-		GitInfo:          data.GitMetadata,
-		RepeatDefinition: data.RepeatDefinition,
-		RepeatFailed:     data.RepeatFailed,
-		RepeatPatchId:    data.RepeatPatchId,
+		User:                author,
+		Project:             pref.Id,
+		Path:                data.Path,
+		BaseGitHash:         data.Githash,
+		Module:              r.FormValue("module"),
+		PatchContent:        patchString,
+		Description:         data.Description,
+		Finalize:            data.Finalize,
+		Parameters:          data.Parameters,
+		Variants:            data.Variants,
+		Tasks:               data.Tasks,
+		RegexVariants:       data.RegexVariants,
+		RegexTasks:          data.RegexTasks,
+		Alias:               data.Alias,
+		TriggerAliases:      data.TriggerAliases,
+		BackportOf:          data.BackportInfo,
+		GitInfo:             data.GitMetadata,
+		RepeatDefinition:    data.RepeatDefinition,
+		RepeatFailed:        data.RepeatFailed,
+		RepeatPatchId:       data.RepeatPatchId,
+		LocalModuleIncludes: data.LocalModuleIncludes,
 		SyncParams: patch.SyncAtEndOptions{
 			BuildVariants: data.SyncBuildVariants,
 			Tasks:         data.SyncTasks,

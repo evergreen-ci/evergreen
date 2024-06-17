@@ -473,11 +473,6 @@ func (m Module) GetOwnerAndRepo() (string, string, error) {
 	return m.Owner, m.Repo, nil
 }
 
-type Include struct {
-	FileName string `yaml:"filename,omitempty" bson:"filename,omitempty"`
-	Module   string `yaml:"module,omitempty" bson:"module,omitempty"`
-}
-
 type ModuleList []Module
 
 func (l *ModuleList) IsIdentical(m manifest.Manifest) bool {

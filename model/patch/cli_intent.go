@@ -96,7 +96,8 @@ type cliIntent struct {
 	// RepeatFailed reuses the latest patch's failed tasks (if no patch ID is provided)
 	RepeatFailed bool `bson:"repeat_failed"`
 	// RepeatPatchId uses the given patch to reuse the task/variant definitions
-	RepeatPatchId string `bson:"repeat_patch_id"`
+	RepeatPatchId       string    `bson:"repeat_patch_id"`
+	LocalModuleIncludes []Include `bson:"local_module_includes,omitempty"`
 }
 
 // BSON fields for the patches
@@ -189,23 +190,24 @@ func (g *cliIntent) GetCalledBy() string {
 // NewPatch creates a patch from the intent
 func (c *cliIntent) NewPatch() *Patch {
 	p := Patch{
-		Description:        c.Description,
-		Author:             c.User,
-		Project:            c.ProjectID,
-		Githash:            c.BaseHash,
-		Path:               c.Path,
-		Status:             evergreen.VersionCreated,
-		BuildVariants:      c.BuildVariants,
-		RegexBuildVariants: c.RegexBuildVariants,
-		Parameters:         c.Parameters,
-		Alias:              c.Alias,
-		Triggers:           TriggerInfo{Aliases: c.TriggerAliases},
-		Tasks:              c.Tasks,
-		RegexTasks:         c.RegexTasks,
-		SyncAtEndOpts:      c.SyncAtEndOpts,
-		BackportOf:         c.BackportOf,
-		Patches:            []ModulePatch{},
-		GitInfo:            c.GitInfo,
+		Description:         c.Description,
+		Author:              c.User,
+		Project:             c.ProjectID,
+		Githash:             c.BaseHash,
+		Path:                c.Path,
+		Status:              evergreen.VersionCreated,
+		BuildVariants:       c.BuildVariants,
+		RegexBuildVariants:  c.RegexBuildVariants,
+		Parameters:          c.Parameters,
+		Alias:               c.Alias,
+		Triggers:            TriggerInfo{Aliases: c.TriggerAliases},
+		Tasks:               c.Tasks,
+		RegexTasks:          c.RegexTasks,
+		SyncAtEndOpts:       c.SyncAtEndOpts,
+		BackportOf:          c.BackportOf,
+		Patches:             []ModulePatch{},
+		GitInfo:             c.GitInfo,
+		LocalModuleIncludes: c.LocalModuleIncludes,
 	}
 	if len(c.PatchFileID) > 0 {
 		p.Patches = append(p.Patches,
@@ -221,27 +223,28 @@ func (c *cliIntent) NewPatch() *Patch {
 }
 
 type CLIIntentParams struct {
-	User             string
-	Path             string
-	Project          string
-	BaseGitHash      string
-	Module           string
-	PatchContent     string
-	Description      string
-	Finalize         bool
-	BackportOf       BackportInfo
-	GitInfo          *GitMetadata
-	Parameters       []Parameter
-	Variants         []string
-	Tasks            []string
-	RegexVariants    []string
-	RegexTasks       []string
-	Alias            string
-	TriggerAliases   []string
-	RepeatDefinition bool
-	RepeatFailed     bool
-	RepeatPatchId    string
-	SyncParams       SyncAtEndOptions
+	User                string
+	Path                string
+	Project             string
+	BaseGitHash         string
+	Module              string
+	PatchContent        string
+	Description         string
+	Finalize            bool
+	BackportOf          BackportInfo
+	GitInfo             *GitMetadata
+	Parameters          []Parameter
+	Variants            []string
+	Tasks               []string
+	RegexVariants       []string
+	RegexTasks          []string
+	Alias               string
+	TriggerAliases      []string
+	RepeatDefinition    bool
+	RepeatFailed        bool
+	RepeatPatchId       string
+	SyncParams          SyncAtEndOptions
+	LocalModuleIncludes []Include
 }
 
 func NewCliIntent(params CLIIntentParams) (Intent, error) {
@@ -282,29 +285,30 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 	}
 
 	return &cliIntent{
-		DocumentID:         mgobson.NewObjectId().Hex(),
-		IntentType:         CliIntentType,
-		PatchContent:       params.PatchContent,
-		Path:               params.Path,
-		Description:        params.Description,
-		BuildVariants:      params.Variants,
-		Tasks:              params.Tasks,
-		RegexBuildVariants: params.RegexVariants,
-		RegexTasks:         params.RegexTasks,
-		Parameters:         params.Parameters,
-		SyncAtEndOpts:      params.SyncParams,
-		User:               params.User,
-		ProjectID:          params.Project,
-		BaseHash:           params.BaseGitHash,
-		Finalize:           params.Finalize,
-		Module:             params.Module,
-		Alias:              params.Alias,
-		TriggerAliases:     params.TriggerAliases,
-		BackportOf:         params.BackportOf,
-		GitInfo:            params.GitInfo,
-		RepeatDefinition:   params.RepeatDefinition,
-		RepeatFailed:       params.RepeatFailed,
-		RepeatPatchId:      params.RepeatPatchId,
+		DocumentID:          mgobson.NewObjectId().Hex(),
+		IntentType:          CliIntentType,
+		PatchContent:        params.PatchContent,
+		Path:                params.Path,
+		Description:         params.Description,
+		BuildVariants:       params.Variants,
+		Tasks:               params.Tasks,
+		RegexBuildVariants:  params.RegexVariants,
+		RegexTasks:          params.RegexTasks,
+		Parameters:          params.Parameters,
+		SyncAtEndOpts:       params.SyncParams,
+		User:                params.User,
+		ProjectID:           params.Project,
+		BaseHash:            params.BaseGitHash,
+		Finalize:            params.Finalize,
+		Module:              params.Module,
+		Alias:               params.Alias,
+		TriggerAliases:      params.TriggerAliases,
+		BackportOf:          params.BackportOf,
+		GitInfo:             params.GitInfo,
+		RepeatDefinition:    params.RepeatDefinition,
+		RepeatFailed:        params.RepeatFailed,
+		RepeatPatchId:       params.RepeatPatchId,
+		LocalModuleIncludes: params.LocalModuleIncludes,
 	}, nil
 }
 
