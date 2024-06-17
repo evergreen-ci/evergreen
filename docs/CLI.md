@@ -376,30 +376,19 @@ evergreen last-green -p mci -v ubuntu
 
 ```
 
+#### Tasks
+The command `evergeen task` contains subcommands for interacting with task run data, including task output (build) data.
+
+```
+# Fetch task logs
+evergreen task build TaskLogs --task_id <task_id> --execution <execution> --type <task_log_type>
+
+# Fetch test logs
+evergreen task build TestLogs --task_id <task_id> --execution <execution> --log_path <test_log_path>
+```
+
 #### Commit Queue
 The command `evergreen commit-queue` contains subcommands for interacting with the commit queue. See [Commit Queue](Project-Configuration/Commit-Queue).
-
-#### Buildlogger Fetch
-
-The command `evergreen buildlogger fetch` downloads logs from cedar buildlogger.
-To use it, specify the task id and execution from which you would like to download logs. 
-
-To download all logs of a task (including test logs):
-```
-evergreen buildlogger fetch --task_id <task_id> --execution <execution>
-```
-
-To download task level logs:
-```
-evergreen buildlogger fetch --task_id <task_id> --execution <execution> --tags agent_log,task_log,system_log
-```
-You may request any combination of agent, task, or system logs by setting the corresponding names in `--tags`. They must be comma-separated if requesting more than one.
-
-To download test logs:
-```
-evergreen buildlogger fetch --task_id <task_id> --execution <execution> --test_name <test_name>
-```
-Please note that test logs may not be in cedar buildlogger yet for some projects.
 
 ### Server Side (for Evergreen admins)
 
