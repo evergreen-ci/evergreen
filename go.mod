@@ -9,10 +9,10 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.27.2
 	github.com/aws/aws-sdk-go-v2/config v1.27.18
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.18 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.163.1
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.41.13
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.164.1
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.42.0
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.21.10
-	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.29.3
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.30.0
 	github.com/aws/smithy-go v1.20.2
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/docker/docker v24.0.9+incompatible
