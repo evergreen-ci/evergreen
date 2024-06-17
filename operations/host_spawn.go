@@ -482,7 +482,10 @@ func makeWorkingDir(cmd *jasper.Command) error {
 }
 
 func hostStop() cli.Command {
-	const waitFlagName = "wait"
+	const (
+		shouldKeepOffFlagName = "keep-off"
+		waitFlagName          = "wait"
+	)
 	return cli.Command{
 		Name:  "stop",
 		Usage: "stop a running spawn host",
@@ -491,12 +494,17 @@ func hostStop() cli.Command {
 				Name:  joinFlagNames(waitFlagName, "w"),
 				Usage: "command will block until host stopped",
 			},
+			cli.BoolFlag{
+				Name:  joinFlagNames(shouldKeepOffFlagName, "k"),
+				Usage: "if stopping an unexpirable host with a sleep schedule, keep the host off indefinitely (and ignore its sleep schedule) until the host is manually started again",
+			},
 		)),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
 			subscriptionType := c.String(subscriptionTypeFlag)
+			shouldKeepOff := c.Bool(shouldKeepOffFlagName)
 			wait := c.Bool(waitFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -516,7 +524,7 @@ func hostStop() cli.Command {
 				grip.Infof("Stopping host '%s'. This may take a few minutes...", hostID)
 			}
 
-			err = client.StopSpawnHost(ctx, hostID, subscriptionType, wait)
+			err = client.StopSpawnHost(ctx, hostID, subscriptionType, shouldKeepOff, wait)
 			if err != nil {
 				return err
 			}
