@@ -131,7 +131,6 @@ func Patch() cli.Command {
 				SkipConfirm:       c.Bool(skipConfirmFlagName) || outputJSON,
 				Description:       c.String(patchDescriptionFlagName),
 				AutoDescription:   c.Bool(autoDescriptionFlag),
-				Finalize:          c.Bool(patchFinalizeFlagName),
 				Browse:            c.Bool(patchBrowseFlagName),
 				ShowSummary:       c.Bool(patchVerboseFlagName),
 				Large:             c.Bool(largeFlagName),
@@ -147,6 +146,7 @@ func Patch() cli.Command {
 
 			var err error
 			includeModules := c.Bool(includeModulesFlag)
+			shouldFinalize := c.Bool(patchFinalizeFlagName)
 			paramsPairs := c.StringSlice(parameterFlagName)
 			params.Parameters, err = getParametersFromInput(paramsPairs)
 			if err != nil {
@@ -223,12 +223,6 @@ func Patch() cli.Command {
 			if err = params.validateSubmission(diffData); err != nil {
 				return err
 			}
-			var originalFinalize bool
-			// If including modules, don't finalize the patch until we've checked all modules for changes.
-			if includeModules {
-				originalFinalize = params.Finalize
-				params.Finalize = false
-			}
 			newPatch, err := params.createPatch(ac, diffData)
 			if err != nil {
 				return err
@@ -252,9 +246,15 @@ func Patch() cli.Command {
 				}
 			}
 
-			if originalFinalize {
-				if err = ac.FinalizePatch(patchId); err != nil {
-					return errors.Wrapf(err, "finalizing patch '%s'", patchId)
+			if shouldFinalize {
+				shouldContinue, err := checkForLargeNumFinalizedTasks(ac, params, patchId)
+				if err != nil {
+					return err
+				}
+				if shouldContinue {
+					if err = ac.FinalizePatch(patchId); err != nil {
+						return errors.Wrapf(err, "finalizing patch '%s'", patchId)
+					}
 				}
 			}
 
@@ -270,6 +270,32 @@ func Patch() cli.Command {
 			return nil
 		},
 	}
+}
+
+// checkForLargeNumFinalizedTasks retrieves an un-finalized patch document, counts the number of tasks it contains,
+// and prompts the user with a confirmation popup if the number of tasks is greater than the largeNumFinalizedTasksThreshold.
+// It returns true if the finalization process should go through, and false otherwise.
+func checkForLargeNumFinalizedTasks(ac *legacyClient, params *patchParams, patchId string) (bool, error) {
+	if params.SkipConfirm {
+		return true, nil
+	}
+	existingPatch, err := ac.GetPatch(patchId)
+	if err != nil {
+		return false, errors.Wrapf(err, "getting patch '%s'", patchId)
+	}
+	if existingPatch == nil {
+		return false, errors.Wrapf(err, "patch '%s' not found", patchId)
+	}
+	numTasksToFinalize := 0
+	for _, vt := range existingPatch.VariantsTasks {
+		numTasksToFinalize += len(vt.Tasks)
+	}
+	if numTasksToFinalize > largeNumFinalizedTasksThreshold {
+		if !confirm(fmt.Sprintf("This is a large patch build, expected to schedule %d tasks. Finalize anyway?", numTasksToFinalize), true) {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func getParametersFromInput(params []string) ([]patch.Parameter, error) {
@@ -339,7 +365,6 @@ func PatchFile() cli.Command {
 				SkipConfirm:      c.Bool(skipConfirmFlagName),
 				Description:      c.String(patchDescriptionFlagName),
 				AutoDescription:  c.Bool(autoDescriptionFlag),
-				Finalize:         c.Bool(patchFinalizeFlagName),
 				ShowSummary:      c.Bool(patchVerboseFlagName),
 				Large:            c.Bool(largeFlagName),
 				SyncTasks:        utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
@@ -351,6 +376,7 @@ func PatchFile() cli.Command {
 			var err error
 			diffPath := c.String(diffPathFlagName)
 			base := c.String(baseFlagName)
+			shouldFinalize := c.Bool(patchFinalizeFlagName)
 			paramsPairs := c.StringSlice(parameterFlagName)
 			params.Parameters, err = getParametersFromInput(paramsPairs)
 			if err != nil {
@@ -381,7 +407,6 @@ func PatchFile() cli.Command {
 				return err
 			}
 			params.Description = params.getDescription()
-
 			var diffData localDiff
 			var rp *restmodel.APIRawPatch
 			if diffPatchId == "" {
@@ -424,6 +449,19 @@ func PatchFile() cli.Command {
 					}
 					grip.Infof("Module '%s' updated.", module.Name)
 
+				}
+			}
+
+			if shouldFinalize {
+				patchId := newPatch.Id.Hex()
+				shouldContinue, err := checkForLargeNumFinalizedTasks(ac, params, patchId)
+				if err != nil {
+					return err
+				}
+				if shouldContinue {
+					if err = ac.FinalizePatch(patchId); err != nil {
+						return errors.Wrapf(err, "finalizing patch '%s'", patchId)
+					}
 				}
 			}
 
