@@ -108,7 +108,10 @@ func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, sub
 	options := struct {
 		SubscriptionType string `json:"subscription_type"`
 		ShouldKeepOff    bool   `json:"should_keep_off"`
-	}{SubscriptionType: subscriptionType}
+	}{
+		SubscriptionType: subscriptionType,
+		ShouldKeepOff:    shouldKeepOff,
+	}
 
 	resp, err := c.request(ctx, info, options)
 	if err != nil {
