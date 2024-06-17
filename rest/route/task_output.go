@@ -180,14 +180,17 @@ func makeGetTaskLogs(url string) *getTaskLogsHandler {
 //	@Tags			tasks
 //	@Router			/tasks/{task_id}/build/TaskLogs [get]
 //	@Security		Api-User || Api-Key
-//	@Param			task_id		path		string	true	"Task ID."
-//	@Param			execution	query		int		false	"The 0-based number corresponding to the execution of the task ID. Defaults to the latest execution."
-//	@Param			type		query		string	false	"Task log type. Must be one of: `agent_log`, `system_log`, `task_log`, `all_logs`. Defaults to `all_logs`."
-//	@Param			start		query		string	false	"Start of targeted time interval (inclusive) in RFC3339 format. Defaults to the first timestamp of the requested logs."
-//	@Param			end			query		string	false	"End of targeted time interval (inclusive) in RFC3339 format. Defaults to the last timestamp of the requested logs."
-//	@Param			line_limit	query		int		false	"If set greater than 0, limits the number of log lines returned."
-//	@Param			tail_limit	query		int		false	"If set greater than 0, returns the last N log lines."
-//	@Success		200			{string}	string
+//	@Param			task_id			path		string	true	"Task ID."
+//	@Param			execution		query		int		false	"The 0-based number corresponding to the execution of the task ID. Defaults to the latest execution."
+//	@Param			type			query		string	false	"Task log type. Must be one of: `agent_log`, `system_log`, `task_log`, `all_logs`. Defaults to `all_logs`."
+//	@Param			start			query		string	false	"Start of targeted time interval (inclusive) in RFC3339 format. Defaults to the first timestamp of the requested logs."
+//	@Param			end				query		string	false	"End of targeted time interval (inclusive) in RFC3339 format. Defaults to the last timestamp of the requested logs."
+//	@Param			line_limit		query		int		false	"If set greater than 0, limits the number of log lines returned."
+//	@Param			tail_limit		query		int		false	"If set greater than 0, returns the last N log lines."
+//	@Param			print_time		query		bool	false	"If set to true, returns log lines prefixed with their timestamp."
+//	@Param			print_priority	query		bool	false	"If set to true, returns log lines prefixed with their priority."
+//	@Param			paginate		query		bool	false	"If set to true, paginates the response."
+//	@Success		200				{string}	string
 func (h *getTaskLogsHandler) Factory() gimlet.RouteHandler {
 	return &getTaskLogsHandler{
 		getTaskOutputLogsBaseHandler: getTaskOutputLogsBaseHandler{url: h.url},
@@ -251,6 +254,8 @@ func makeGetTestLogs(url string) *getTestLogsHandler {
 //	@Param			end				query		string	false	"End of targeted time interval (inclusive) in RFC3339 format. Defaults to the last timestamp of the test log specified in the URL path."
 //	@Param			line_limit		query		int		false	"If set greater than 0, limits the number of log lines returned."
 //	@Param			tail_limit		query		int		false	"If set greater than 0, returns the last N log lines."
+//	@Param			print_time		query		bool	false	"If set to true, returns log lines prefixed with their timestamp."
+//	@Param			print_priority	query		bool	false	"If set to true, returns log lines prefixed with their priority."
 //	@Param			paginate		query		bool	false	"If set to true, paginates the response."
 //	@Success		200				{string}	string
 func (h *getTestLogsHandler) Factory() gimlet.RouteHandler {
