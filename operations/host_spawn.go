@@ -494,9 +494,9 @@ func hostStop() cli.Command {
 				Name:  joinFlagNames(waitFlagName, "w"),
 				Usage: "command will block until host stopped",
 			},
-			cli.BoolFlag{
+			cli.BoolTFlag{
 				Name:  joinFlagNames(shouldKeepOffFlagName, "k"),
-				Usage: "if stopping an unexpirable host with a sleep schedule, keep the host off indefinitely (and ignore its sleep schedule) until the host is manually started again",
+				Usage: "if stopping an unexpirable host with a sleep schedule, keep the host off indefinitely (and ignore its sleep schedule) until the host is manually started again (default: true)",
 			},
 		)),
 		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
