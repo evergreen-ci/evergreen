@@ -106,7 +106,9 @@ func makeGetUserHandler() gimlet.RouteHandler {
 //	@Router			/users/{user_id} [get]
 //	@Security		Api-User || Api-Key
 //	@Param			user_id	path		string			true	"User ID"
-//	@Success		200		{object}	model.APIDBUser	"list of users"
+//	@Param			{object}	body		model.HostRequestOptions	true	"parameters"
+//
+// @Success		200		{object}	model.APIDBUser	"list of users"
 func (h *getUserHandler) Factory() gimlet.RouteHandler { return h }
 func (h *getUserHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.userId = gimlet.GetVars(r)["user_id"]
@@ -116,12 +118,19 @@ func (h *getUserHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *getUserHandler) Run(ctx context.Context) gimlet.Responder {
 	usr, err := user.FindOneById(h.userId)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding user"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding user by ID"))
+	}
+	if usr == nil {
+		// Try getting using the display name
+		usr, err = user.FindOneByDisplayName(h.userId)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding user by display name"))
+		}
 	}
 	if usr == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("user with ID '%s' not found", h.userId),
+			Message:    fmt.Sprintf("user '%s' not found", h.userId),
 		})
 	}
 

@@ -1049,8 +1049,7 @@ func TestGetUserHandler(t *testing.T) {
 
 			resp := handler.Run(gimlet.AttachUser(context.Background(), &me))
 			assert.Equal(t, resp.Status(), http.StatusNotFound)
-		},
-		"UserFound": func(t *testing.T) {
+		}, "UserFound": func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/beep.boop", nil)
 			req = gimlet.SetURLVars(req, map[string]string{"user_id": "beep.boop"})
 
@@ -1059,6 +1058,26 @@ func TestGetUserHandler(t *testing.T) {
 
 			assert.NoError(t, handler.Parse(ctx, req))
 			assert.Equal(t, handler.(*getUserHandler).userId, "beep.boop")
+
+			resp := handler.Run(gimlet.AttachUser(context.Background(), &me))
+			assert.Equal(t, resp.Status(), http.StatusOK)
+			respUsr, ok := resp.Data().(*restModel.APIDBUser)
+			require.True(t, ok)
+			assert.NotEmpty(t, respUsr)
+			assert.Equal(t, usrToRetrieve.Id, utility.FromStringPtr(respUsr.UserID))
+			assert.Equal(t, usrToRetrieve.DisplayName(), utility.FromStringPtr(respUsr.DisplayName))
+			assert.Equal(t, usrToRetrieve.EmailAddress, utility.FromStringPtr(respUsr.EmailAddress))
+			assert.Equal(t, usrToRetrieve.OnlyAPI, respUsr.OnlyApi)
+			assert.Equal(t, usrToRetrieve.Roles(), respUsr.Roles)
+		}, "DisplayNameUser": func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/robots are good", nil)
+			req = gimlet.SetURLVars(req, map[string]string{"user_id": usrToRetrieve.DispName})
+
+			require.NoError(t, err)
+			handler := makeGetUserHandler()
+
+			assert.NoError(t, handler.Parse(ctx, req))
+			assert.Equal(t, handler.(*getUserHandler).userId, "robots are good")
 
 			resp := handler.Run(gimlet.AttachUser(context.Background(), &me))
 			assert.Equal(t, resp.Status(), http.StatusOK)
