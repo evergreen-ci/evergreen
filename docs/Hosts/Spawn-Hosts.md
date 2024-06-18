@@ -74,9 +74,9 @@ From the create/edit host modal, you can pick which days you'd like the host to 
 host to be on for those days. The time zone for the host sleep schedule will be based on the time zone set in your
 [Spruce preferences](https://spruce.mongodb.com/preferences/profile).
 
-<!-- kim: TODO: pick a date for beta test beginning/end -->
-
 #### ***Important Note***: This Feature is in Beta Testing!
+
+<!-- TODO (DEVPROD-4055): do not merge until comms are ready and a timeline for beta/full rollout is chosen.  -->
 
 This feature is being rolled out in phases and is currently in beta testing. While it's in beta testing, _using the
 sleep schedule feature is an opt-in_. During this beta testing period, you have until `<DATE>` to set a sleep schedule
@@ -157,7 +157,35 @@ and use the title "Permanent exemption request". In it, please include your host
 your host to be permanently exempt from the sleep schedule (and if relevant, why alternative options like temporary
 exemptions would not be sufficient for your usage).
 
-<!-- kim: TODO: describe auto-sleep script as an optional alternative/on top of mechanism for sleep schedule -->
+#### Host Auto-Sleep Script
+
+The [host sleep script](https://github.com/evergreen-ci/host-sleep-script) is a standalone script-based option that can
+be used alongside (or as a substitute for) the sleep schedule feature. The main benefit of the script over the sleep
+schedule feature is that it will stop your host based on activity detected in the host, rather than stopping and
+starting on a recurring weekly schedule. It will automatically turn off your host once there is no activity detected in
+it for some time. Later on, when you SSH into the host, it uses a proxy script on your local computer to turn it back on
+and SSH into your host.
+
+In order to use it, you must install the script into your local computer and unexpirable host by following the
+instructions in [this repo](https://github.com/evergreen-ci/host-sleep-script).
+
+*Warning:*
+* This is not an Evergreen feature. It modifies your local computer SSH configuration and your unexpirable host's
+  systemd configuration.
+* It may not be free of bugs. It has been tested in only a handful of setups.
+* It may not work exactly as you'd like for your use case.
+
+If you choose to use the host sleep script, Evergreen can only provide limited assistance and will not debug your setup.
+You're highly advised to read over the script and understand how it works before installing it.
+
+##### Requesting a Permanent Exemption with the Auto-Sleep Script
+
+In addition, if you'd like to use the host sleep script _instead of_ the Evergreen sleep schedule feature, you can
+[request a permanent exemption](#requesting-a-permanent-exemption). In the request, please:
+* You're using the sleep script instead of the sleep schedule
+* Provide a text snippet of the script output.
+* Show an example in your host's event logs where the host sleep script successfully stopped your host due to
+  inactivity.
 
 ## Hosts Page
 
