@@ -190,7 +190,8 @@ type Patch struct {
 	MergeStatus string `json:"merge_status"`
 	// MergedFrom is populated with the patch id of the existing patch
 	// the merged patch is based off of, if applicable.
-	MergedFrom          string    `bson:"merged_from,omitempty"`
+	MergedFrom string `bson:"merged_from,omitempty"`
+	// LocalModuleIncludes is only used for CLI patches to store local module changes
 	LocalModuleIncludes []Include `bson:"local_module_includes,omitempty"`
 }
 

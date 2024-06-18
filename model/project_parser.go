@@ -656,12 +656,6 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		// Check if the module is a local change passed in through the CLI
 		for _, includeModule := range projectOpts.LocalModuleIncludes {
 			if includeModule.Module == include.Module && includeModule.FileName == include.FileName {
-				grip.Info(message.Fields{
-					"bynnbynn": "using local module",
-					"module":   include.Module,
-					"file":     include.FileName,
-					"local":    includeModule,
-				})
 				yaml = includeModule.FileContent
 				break
 			}

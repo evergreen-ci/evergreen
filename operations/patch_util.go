@@ -149,8 +149,6 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 		localModuleIncludes: p.LocalModuleIncludes,
 	}
 
-	fmt.Printf("bynnbynn2: '%s'", patchSub.localModuleIncludes)
-
 	newPatch, err := ac.PutPatch(patchSub)
 	if err != nil {
 		return nil, err

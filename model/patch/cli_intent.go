@@ -96,7 +96,9 @@ type cliIntent struct {
 	// RepeatFailed reuses the latest patch's failed tasks (if no patch ID is provided)
 	RepeatFailed bool `bson:"repeat_failed"`
 	// RepeatPatchId uses the given patch to reuse the task/variant definitions
-	RepeatPatchId       string    `bson:"repeat_patch_id"`
+	RepeatPatchId string `bson:"repeat_patch_id"`
+
+	// LocalModuleIncludes is only used to include local module changes
 	LocalModuleIncludes []Include `bson:"local_module_includes,omitempty"`
 }
 

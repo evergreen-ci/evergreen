@@ -115,9 +115,6 @@ func Patch() cli.Command {
 			cli.BoolFlag{
 				Name:  includeModulesFlag,
 				Usage: "if this boolean is set, Evergreen will include module diffs using changes from defined module paths",
-			}, cli.StringSliceFlag{
-				Name:  joinFlagNames(localModuleIncludesFlagName, "lmi"),
-				Usage: "specify local modules as MODULE_NAME=MODULE_PATH=FILE_NAME tuples",
 			},
 		),
 		Action: func(c *cli.Context) error {
@@ -235,15 +232,13 @@ func Patch() cli.Command {
 			if includeModules {
 				originalFinalize = params.Finalize
 				params.Finalize = false
-			}
 
-			// localModuleIncludeList := c.StringSlice(localModuleIncludesFlagName)
-			localModuleIncludes, err := getLocalModuleIncludes(params, conf, ref.RemotePath)
-			if err != nil {
-				return err
+				localModuleIncludes, err := getLocalModuleIncludes(params, conf, ref.RemotePath)
+				if err != nil {
+					return err
+				}
+				params.LocalModuleIncludes = localModuleIncludes
 			}
-			params.LocalModuleIncludes = localModuleIncludes
-			fmt.Printf("bynnbynn Local module includes: ", params.LocalModuleIncludes[0])
 
 			newPatch, err := params.createPatch(ac, diffData)
 			if err != nil {
@@ -469,7 +464,6 @@ func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, remotePat
 	}
 
 	moduleIncludes := []patch.Include{}
-	// catcher := grip.NewBasicCatcher()
 	for _, include := range p.Include {
 		if include.Module == "" {
 			continue
@@ -487,25 +481,6 @@ func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, remotePat
 		}
 		include.FileContent = fileContents
 		moduleIncludes = append(moduleIncludes, include)
-		// parsed := strings.Split(module, "=")
-		// if len(parsed) != 3 {
-		// 	catcher.Errorf("expected exactly two '=' sign while parsing local module include '%s'", module)
-		// } else {
-		// 	moduleName := parsed[0]
-		// 	modulePath := parsed[1]
-		// 	fileName := parsed[2]
-		// 	readPath := fmt.Sprintf("%s/%s", modulePath, fileName)
-		// 	fileContents, err := os.ReadFile(readPath)
-		// 	if err != nil {
-		// 		return nil, errors.Wrapf(err, "reading local module include file '%s'", readPath)
-		// 	}
-		// 	include := patch.Include{
-		// 		Module:      moduleName,
-		// 		FileName:    fileName,
-		// 		FileContent: fileContents,
-		// 	}
-		// 	moduleIncludes = append(moduleIncludes, include)
-		// }
 	}
 	return moduleIncludes, nil
 }

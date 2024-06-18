@@ -130,10 +130,6 @@ type patchData struct {
 // and saves the patches to GridFS to be retrieved
 func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
-	grip.Info(message.Fields{
-		"bynnbynn": "submit patch",
-		"r":        r.Body,
-	})
 
 	data := patchData{}
 	if err := utility.ReadJSON(utility.NewRequestReaderWithSize(r, patch.SizeLimit), &data); err != nil {
