@@ -79,6 +79,10 @@ Sometimes Evergreen has trouble sending updated GitHub statuses, so the checks o
 
 GitHub only allows one set of statuses for every commit SHA. If you have a situation where you have two PRs where the HEAD commit is the same, Evergreen will only create a patch for the first one and will make a comment on the second one explaining why. In general, if your tasks do not require the context of the PR (most notably the branch name, which is known to be used in some s3.put tasks), then the status displayed for the PRs will be correct. If the tasks do require the context of the PR, you may comment 'evergreen retry' and force Evergreen to abort currently running patches in favor of a new one in the context of the PR you have commented on.
 
+## GitHub Merge Queue
+
+See [GitHub Merge Queue](../Project-Configuration/Merge-Queue.md) for more information.
+
 ## Github Check Runs
 
 Evergreen offers integration with the GitHub checks API. Users have the option to specify check runs with or without output and they will then be sent to GitHub once the task finishes running. The check run will include basic information about the task such as the status and complete time as well as whatever information is sent as output.

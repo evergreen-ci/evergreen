@@ -671,7 +671,9 @@ patch_aliases:
         - value: "defaultValue"
 ```
 
-### Commit Queue Aliases
+### Merge Queue Aliases
+
+These apply to the [Github merge queue integration](../Merge-Queue).
 
 ``` yaml
 commit_queue_aliases:

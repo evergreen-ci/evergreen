@@ -793,10 +793,10 @@ Every task has some expansions available by default:
 -   `${github_known_hosts}` is GitHub's SSH key fingerprint
 -   `${triggered_by_git_tag}` is the name of the tag that triggered this
     version, if applicable
--   `${is_commit_queue}` is the string "true" if this is a commit
+-   `${is_commit_queue}` is the string "true" if this is a merge
     queue task
 -   `${requester}` is what triggered the task: `patch`, `github_pr`,
-    `github_tag`, `commit`, `trigger`, `commit_queue`, or `ad_hoc`
+    `github_tag`, `commit`, `trigger`, `github_merge_queue`, or `ad_hoc`
 -   `${otel_collector_endpoint}` is the gRPC endpoint for Evergreen's
     OTel collector. Tasks can send traces to this endpoint.
 -   `${otel_trace_id}` is the OTel trace ID this task is running under.
