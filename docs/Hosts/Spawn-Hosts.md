@@ -69,10 +69,17 @@ otherwise let it turn it off overnight and during weekends. Setting a sleep sche
 working, while also stopping the host when it's not being actively used. This is important to ensure that hosts are
 being efficiently utilized and to avoid over-spending on long-lived AWS resources when they're idle.
 
+Please note that even though Evergreen will automatically stop and start your host at the configured times, you can
+still manually stop and start your host whenever you need. It's recommended that if you do this, you also [set a
+temporary exemption](#temporary-exemptions) to ensure that you can use your host without being interrupted by the sleep
+schedule.
+
 In the Spruce UI, you can pick a sleep schedule for your host when creating the unexpirable host or editing an existing
 unexpirable host:
 
 ![Sleep schedule](../images/set_sleep_schedule.png)
+
+The sleep schedule above will automatically turn the host on from Monday to Friday.
 
 From the create/edit host modal, you can pick which days you'd like the host to be on, and the time that you want your
 host to be on for those days. The time zone for the host sleep schedule will be based on the time zone you choose in
