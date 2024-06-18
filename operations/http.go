@@ -576,6 +576,9 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		LocalModuleIncludes: incomingPatch.localModuleIncludes,
 	}
 
+	fmt.Print("Submitting patch... ")
+	fmt.Print(data.LocalModuleIncludes)
+
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
 	go func() {
