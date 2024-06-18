@@ -221,15 +221,14 @@ const (
 	// besides for fallback logging to stderr.
 	disableLocalLoggingEnvVar = "DISABLE_LOCAL_LOGGING"
 
-	// LegacyTaskActivator is a deprecated legacy activator that used
-	// to be a majority of non-stepback and non-API activations.
-	// TODO: EVG-20869 remove this activator after sufficient time has passed
-	LegacyTaskActivator = ""
+	// All internal Evergreen Activators should end with "-activator" for consistency and ease of scripting
+	// (i.e. to distinguish Evergreen activators from users).
+
 	// APIServerTaskActivator represents Evergreen's internal API activator
-	APIServerTaskActivator = "apiserver"
+	APIServerTaskActivator = "apiserver-activator"
 	// StepbackTaskActivator represents the activator for tasks activated
 	// due to stepback.
-	StepbackTaskActivator = "stepback"
+	StepbackTaskActivator = "stepback-activator"
 	// CheckBlockedTasksActivator represents the activator for task deactivated
 	// by the check blocked tasks job.
 	CheckBlockedTasksActivator = "check-blocked-tasks-job-activator"
@@ -247,7 +246,7 @@ const (
 	GenerateTasksActivator = "generate-tasks-activator"
 	// AutoRestartActivator represents the activator for tasks that have been
 	// automatically restarted via the retry_on_failure command flag.
-	AutoRestartActivator = "automatic_restart"
+	AutoRestartActivator = "automatic-restart-activator"
 
 	// StaleContainerTaskMonitor is the special name representing the unit
 	// responsible for monitoring container tasks that have not dispatched but
@@ -903,7 +902,6 @@ var (
 	}
 
 	SystemActivators = []string{
-		LegacyTaskActivator,
 		APIServerTaskActivator,
 		BuildActivator,
 		CheckBlockedTasksActivator,

@@ -1011,3 +1011,70 @@ func TestOffboardUserHandlerAdminis(t *testing.T) {
 		assert.NotContains(t, projRef.Admins, offboardedUser)
 	}
 }
+
+func TestGetUserHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert.NoError(t, db.ClearCollections(user.Collection))
+	usrToRetrieve := user.DBUser{
+		Id:           "beep.boop",
+		DispName:     "robots are good",
+		EmailAddress: "bots_r@us.com",
+		APIKey:       "secret_key",
+		PatchNumber:  12,
+		OnlyAPI:      true,
+		SystemRoles: []string{
+			"bot_access",
+		},
+	}
+	me := user.DBUser{
+		Id:           "me",
+		EmailAddress: "i@rock.com",
+		APIKey:       "my_key",
+	}
+	assert.NoError(t, usrToRetrieve.Insert())
+	assert.NoError(t, me.Insert())
+
+	for testName, testCase := range map[string]func(t *testing.T){
+		"UserNotFound": func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/no_one", nil)
+			req = gimlet.SetURLVars(req, map[string]string{"user_id": "no_one"})
+
+			require.NoError(t, err)
+			handler := makeGetUserHandler()
+
+			assert.NoError(t, handler.Parse(ctx, req))
+			assert.Equal(t, handler.(*getUserHandler).userId, "no_one")
+
+			resp := handler.Run(gimlet.AttachUser(context.Background(), &me))
+			assert.Equal(t, resp.Status(), http.StatusNotFound)
+		},
+		"UserFound": func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/beep.boop", nil)
+			req = gimlet.SetURLVars(req, map[string]string{"user_id": "beep.boop"})
+
+			require.NoError(t, err)
+			handler := makeGetUserHandler()
+
+			assert.NoError(t, handler.Parse(ctx, req))
+			assert.Equal(t, handler.(*getUserHandler).userId, "beep.boop")
+
+			resp := handler.Run(gimlet.AttachUser(context.Background(), &me))
+			assert.Equal(t, resp.Status(), http.StatusOK)
+			respUsr, ok := resp.Data().(*restModel.APIDBUser)
+			require.True(t, ok)
+			assert.NotEmpty(t, respUsr)
+			assert.Equal(t, usrToRetrieve.Id, utility.FromStringPtr(respUsr.UserID))
+			assert.Equal(t, usrToRetrieve.DisplayName(), utility.FromStringPtr(respUsr.DisplayName))
+			assert.Equal(t, usrToRetrieve.EmailAddress, utility.FromStringPtr(respUsr.EmailAddress))
+			assert.Equal(t, usrToRetrieve.OnlyAPI, respUsr.OnlyApi)
+			assert.Equal(t, usrToRetrieve.Roles(), respUsr.Roles)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			testCase(t)
+		})
+	}
+
+}

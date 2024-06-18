@@ -86,6 +86,43 @@ func (h *userSettingsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(apiSettings)
 }
 
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/users/{user_id}
+
+type getUserHandler struct {
+	userId string
+}
+
+func makeGetUserHandler() gimlet.RouteHandler {
+	return &getUserHandler{}
+}
+
+func (h *getUserHandler) Factory() gimlet.RouteHandler { return h }
+func (h *getUserHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.userId = gimlet.GetVars(r)["user_id"]
+	return nil
+}
+
+func (h *getUserHandler) Run(ctx context.Context) gimlet.Responder {
+	usr, err := user.FindOneById(h.userId)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding user"))
+	}
+	if usr == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("user with ID '%s' not found", h.userId),
+		})
+	}
+
+	return gimlet.NewJSONResponse(model.APIDBUserBuildFromService(*usr))
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/users/{user_id}/permissions
+
 type userPermissionsPostHandler struct {
 	rm          gimlet.RoleManager
 	userID      string
