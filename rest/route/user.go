@@ -98,6 +98,15 @@ func makeGetUserHandler() gimlet.RouteHandler {
 	return &getUserHandler{}
 }
 
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get user
+//	@Description	Get information about the given user
+//	@Tags			users
+//	@Router			/users/{user_id} [get]
+//	@Security		Api-User || Api-Key
+//	@Param			user_id	path		string			true	"User ID"
+//	@Success		200		{object}	model.APIDBUser	"list of users"
 func (h *getUserHandler) Factory() gimlet.RouteHandler { return h }
 func (h *getUserHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.userId = gimlet.GetVars(r)["user_id"]
