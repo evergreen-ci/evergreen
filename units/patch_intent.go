@@ -222,7 +222,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			catcher.Wrap(err, "building GitHub merge queue patch document")
 		}
 	case patch.TriggerIntentType:
-		patchedProject, patchedParserProject, err = j.buildTriggerPatchDoc(patchDoc)
+		patchedProject, patchedParserProject, err = j.buildTriggerPatchDoc(ctx, patchDoc)
 		catcher.Wrap(err, "building trigger patch document")
 	default:
 		return errors.Errorf("intent type '%s' is unknown", j.IntentType)
@@ -783,9 +783,10 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 	}
 
 	type aliasGroup struct {
-		project        string
-		status         string
-		parentAsModule string
+		project            string
+		status             string
+		parentAsModule     string
+		downstreamRevision string
 	}
 	aliasGroups := make(map[aliasGroup][]patch.PatchTriggerDefinition)
 	for _, aliasName := range aliasNames {
@@ -793,11 +794,12 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 		if !found {
 			return errors.Errorf("patch trigger alias '%s' is not defined", aliasName)
 		}
-		// group patches on project, status, parentAsModule
+		// group patches on project, status, parentAsModule, and revision
 		group := aliasGroup{
-			project:        alias.ChildProject,
-			status:         alias.Status,
-			parentAsModule: alias.ParentAsModule,
+			project:            alias.ChildProject,
+			status:             alias.Status,
+			parentAsModule:     alias.ParentAsModule,
+			downstreamRevision: alias.DownstreamRevision,
 		}
 		aliasGroups[group] = append(aliasGroups[group], alias)
 	}
@@ -805,14 +807,15 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 	triggerIntents := make([]patch.Intent, 0, len(aliasGroups))
 	for group, definitions := range aliasGroups {
 		triggerIntent := patch.NewTriggerIntent(patch.TriggerIntentOptions{
-			ParentID:        p.Id.Hex(),
-			ParentProjectID: p.Project,
-			ParentStatus:    group.status,
-			ProjectID:       group.project,
-			ParentAsModule:  group.parentAsModule,
-			Requester:       p.GetRequester(),
-			Author:          p.Author,
-			Definitions:     definitions,
+			ParentID:           p.Id.Hex(),
+			ParentProjectID:    p.Project,
+			ParentStatus:       group.status,
+			ProjectID:          group.project,
+			ParentAsModule:     group.parentAsModule,
+			DownstreamRevision: group.downstreamRevision,
+			Requester:          p.GetRequester(),
+			Author:             p.Author,
+			Definitions:        definitions,
 		})
 
 		if err := triggerIntent.Insert(); err != nil {
@@ -1106,7 +1109,7 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 	return nil
 }
 
-func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) (*model.Project, *model.ParserProject, error) {
+func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDoc *patch.Patch) (*model.Project, *model.ParserProject, error) {
 	defer func() {
 		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
 			"message":     "could not mark patch intent as processed",
@@ -1122,7 +1125,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) (*mod
 	if !ok {
 		return nil, nil, errors.Errorf("programmatic error: expected intent '%s' to be a trigger intent type but instead got '%T'", j.IntentID, j.intent)
 	}
-	v, project, pp, err := model.FindLatestVersionWithValidProject(patchDoc.Project, true)
+	v, project, pp, err := fetchTriggerProjectInfo(ctx, patchDoc)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "getting latest version for project '%s'", patchDoc.Project)
 	}
@@ -1168,6 +1171,26 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(patchDoc *patch.Patch) (*mod
 		}
 	}
 	return project, pp, nil
+}
+
+func fetchTriggerProjectInfo(ctx context.Context, patchDoc *patch.Patch) (*model.Version, *model.Project, *model.ParserProject, error) {
+	var v *model.Version
+	var project *model.Project
+	var pp *model.ParserProject
+	var err error
+	if patchDoc.Triggers.DownstreamRevision != "" {
+		v, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(patchDoc.Project, patchDoc.Triggers.DownstreamRevision))
+		if err != nil {
+			return nil, nil, nil, errors.Wrapf(err, "getting version at revision '%s'", patchDoc.Triggers.DownstreamRevision)
+		}
+		project, pp, err = model.FindAndTranslateProjectForVersion(ctx, evergreen.GetEnvironment().Settings(), v, true)
+	} else {
+		v, project, pp, err = model.FindLatestVersionWithValidProject(patchDoc.Project, true)
+		if err != nil {
+			return nil, nil, nil, errors.Wrapf(err, "getting latest version for project '%s'", patchDoc.Project)
+		}
+	}
+	return v, project, pp, nil
 }
 
 func (j *patchIntentProcessor) verifyValidAlias(projectId string, configStr string) error {

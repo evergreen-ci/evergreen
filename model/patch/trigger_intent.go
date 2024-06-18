@@ -20,8 +20,9 @@ type TriggerIntent struct {
 	ParentProjectID string `bson:"parent_project"`
 	ParentAsModule  string `bson:"parent_as_module"`
 	// the parent status that the child patch should run on
-	ParentStatus string                   `bson:"parent_status"`
-	Definitions  []PatchTriggerDefinition `bson:"definitions"`
+	ParentStatus       string                   `bson:"parent_status"`
+	Definitions        []PatchTriggerDefinition `bson:"definitions"`
+	DownstreamRevision string                   `bson:"downstream_revision"`
 
 	Processed bool `bson:"processed"`
 }
@@ -60,11 +61,15 @@ func (t *TriggerIntent) GetType() string {
 
 func (t *TriggerIntent) NewPatch() *Patch {
 	return &Patch{
-		Id:       mgobson.ObjectIdHex(t.Id),
-		Author:   evergreen.ParentPatchUser,
-		Triggers: TriggerInfo{ParentPatch: t.ParentID, ParentProjectID: t.ParentProjectID},
-		Status:   evergreen.VersionCreated,
-		Project:  t.ProjectID,
+		Id:     mgobson.ObjectIdHex(t.Id),
+		Author: evergreen.ParentPatchUser,
+		Triggers: TriggerInfo{
+			ParentPatch:        t.ParentID,
+			ParentProjectID:    t.ParentProjectID,
+			DownstreamRevision: t.DownstreamRevision,
+		},
+		Status:  evergreen.VersionCreated,
+		Project: t.ProjectID,
 	}
 }
 
@@ -98,14 +103,15 @@ func (t *TriggerIntent) GetCalledBy() string {
 }
 
 type TriggerIntentOptions struct {
-	Requester       string
-	Author          string
-	ProjectID       string
-	ParentID        string
-	ParentProjectID string
-	ParentAsModule  string
-	ParentStatus    string
-	Definitions     []PatchTriggerDefinition
+	Requester          string
+	Author             string
+	ProjectID          string
+	ParentID           string
+	ParentProjectID    string
+	ParentAsModule     string
+	ParentStatus       string
+	DownstreamRevision string
+	Definitions        []PatchTriggerDefinition
 }
 
 func NewTriggerIntent(opts TriggerIntentOptions) Intent {
