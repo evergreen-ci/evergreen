@@ -602,6 +602,7 @@ To cause a task to not run at all, set `disable: true`.
 
 -   This behaves similarly to commenting out the task but will not
     trigger any validation errors.
+-   Disabling a task prevents it from being warned on for not being used.
 -   If a task is disabled and is depended on by another task, the
     dependent task will simply exclude the disabled task from its
     dependencies.
