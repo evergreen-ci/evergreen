@@ -7,8 +7,11 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -234,8 +237,8 @@ func Patch() cli.Command {
 				params.Finalize = false
 			}
 
-			localModuleIncludeList := c.StringSlice(localModuleIncludesFlagName)
-			localModuleIncludes, err := getLocalModuleIncludes(localModuleIncludeList)
+			// localModuleIncludeList := c.StringSlice(localModuleIncludesFlagName)
+			localModuleIncludes, err := getLocalModuleIncludes(params, conf, ref.RemotePath)
 			if err != nil {
 				return err
 			}
@@ -251,6 +254,9 @@ func Patch() cli.Command {
 				proj, err := rc.GetPatchedConfig(patchId)
 				if err != nil {
 					return err
+				}
+				if proj == nil {
+					return errors.Errorf("project config for '%s' not found", patchId)
 				}
 
 				for _, module := range proj.Modules {
@@ -451,29 +457,55 @@ func PatchFile() cli.Command {
 	}
 }
 
-func getLocalModuleIncludes(localModuleIncludes []string) ([]patch.Include, error) {
-	moduleIncludes := []patch.Include{}
-	catcher := grip.NewBasicCatcher()
-	for _, module := range localModuleIncludes {
-		parsed := strings.Split(module, "=")
-		if len(parsed) != 3 {
-			catcher.Errorf("expected exactly two '=' sign while parsing local module include '%s'", module)
-		} else {
-			moduleName := parsed[0]
-			modulePath := parsed[1]
-			fileName := parsed[2]
-			readPath := fmt.Sprintf("%s/%s", modulePath, fileName)
-			fileContents, err := os.ReadFile(readPath)
-			if err != nil {
-				return nil, errors.Wrapf(err, "reading local module include file '%s'", readPath)
-			}
-			include := patch.Include{
-				Module:      moduleName,
-				FileName:    fileName,
-				FileContent: fileContents,
-			}
-			moduleIncludes = append(moduleIncludes, include)
-		}
+func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, remotePath string) ([]patch.Include, error) {
+	yml, err := os.ReadFile(remotePath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading local project config '%s'", remotePath)
 	}
-	return moduleIncludes, catcher.Resolve()
+	p := model.ParserProject{}
+	if err := util.UnmarshalYAMLWithFallback(yml, &p); err != nil {
+		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
+		return nil, errors.Wrap(yamlErr, "unmarshalling parser project from local project config")
+	}
+
+	moduleIncludes := []patch.Include{}
+	// catcher := grip.NewBasicCatcher()
+	for _, include := range p.Include {
+		if include.Module == "" {
+			continue
+		}
+		modulePath, err := params.getModulePath(conf, include.Module)
+		if err != nil {
+			grip.Error(err)
+			continue
+		}
+
+		filePath := fmt.Sprintf("%s/%s", modulePath, include.FileName)
+		fileContents, err := os.ReadFile(filePath)
+		if err != nil {
+			return nil, errors.Wrapf(err, "reading local module include file '%s'", filePath)
+		}
+		include.FileContent = fileContents
+		moduleIncludes = append(moduleIncludes, include)
+		// parsed := strings.Split(module, "=")
+		// if len(parsed) != 3 {
+		// 	catcher.Errorf("expected exactly two '=' sign while parsing local module include '%s'", module)
+		// } else {
+		// 	moduleName := parsed[0]
+		// 	modulePath := parsed[1]
+		// 	fileName := parsed[2]
+		// 	readPath := fmt.Sprintf("%s/%s", modulePath, fileName)
+		// 	fileContents, err := os.ReadFile(readPath)
+		// 	if err != nil {
+		// 		return nil, errors.Wrapf(err, "reading local module include file '%s'", readPath)
+		// 	}
+		// 	include := patch.Include{
+		// 		Module:      moduleName,
+		// 		FileName:    fileName,
+		// 		FileContent: fileContents,
+		// 	}
+		// 	moduleIncludes = append(moduleIncludes, include)
+		// }
+	}
+	return moduleIncludes, nil
 }
