@@ -134,7 +134,7 @@ Options:
 
 ### Aliases
 
-Aliases can be used for patch testing, commit queue testing, GitHub PRs,
+Aliases can be used for patch testing, merge queue testing, GitHub PRs,
 GitHub checks, git tag triggers, project triggers, and patch triggers.
 
 For most aliases, you must define a variant regex or tags, and a task
@@ -478,10 +478,10 @@ performance of tasks and tests.
 
 Project admins can set up notifications for when some events happen within the project. Admins can set up events when:
 
-- Any version/build/task finishes/fails - these can be filtered by build initiator (commit, patch, PR, commit queue,
+- Any version/build/task finishes/fails - these can be filtered by build initiator (commit, patch, PR,
   periodic build).
 - First failure occurs in a version, for each build or for each task name - these can be filtered by build initiator
-  (commit, patch, PR, commit queue, periodic build).
+  (commit, patch, PR, periodic build).
 - A previously-passing task fails - these can be filtered by failure type (any, test, system, setup). Furthermore, to
   reduce the amount of notifications received, the re-notification interval can be explicitly set.
 - A previously-passing test fails - these can be filtered by test name and failure type (any, test, system, setup).

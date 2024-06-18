@@ -4,9 +4,6 @@
 ensures that all pull requests pass required tests, rebased on HEAD, and it
 batches pull requests to test them as a unit to increase throughput.
 
-This is an alternative to Evergreen's commit queue, which the Evergreen team
-has deprecated in favor of GitHub's merge queue.
-
 Gating every merge on a green build means every commit on the tracked branch had a green build. This way:
 
 * No one bases their work on broken code.
@@ -15,10 +12,8 @@ Gating every merge on a green build means every commit on the tracked branch had
 To turn it on, you must turn on Evergreen's merge queue integration, and then
 turn on the GitHub merge queue in GitHub.
 
-You cannot use Evergreen's commit queue if the GitHub merge queue is on.
-
-Note that unlike Evergreen's commit queue, GitHub's requires that you have write
-access to the repository to merge, like you would have to without the queue.
+GitHub's merge queue requires that you have write access to the repository to
+merge, like you would have to without the queue.
 
 ## Enable the merge queue
 
@@ -56,7 +51,7 @@ all variants.
 Concurrency is on by default for the GitHub merge queue. If there are multiple
 PRs in the queue, your PR might be tested with other commits. This means that
 the Evergreen versions on a project patches page might be testing your PR even
-if they have a different commit queue title. This title is the title of the
+if they have a different merge queue title. This title is the title of the
 HEAD PR of a merge group, but the merge group could contain multiple PRs. Note
 that GitHub merges all commits from each PR before adding that PR to a version,
 so a given version has as many commits in it as there are PRs in it.

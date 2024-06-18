@@ -25,9 +25,6 @@ For your spawn hosts, you will receive notifications when a host is started, sto
 ### Spawn Host Expiration
 Receive notifications that your spawn host is going to expire soon, so you can update expiration accordingly if you don't want to lose the host.
 
-### Commit Queue
-Receive notifications on the status of your commit queue items.
-
 ### Build Break Notifications
 Project Admins may enable this at the project level.
 

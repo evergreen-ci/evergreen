@@ -633,7 +633,6 @@ The valid requester values are:
 - `commit`: mainline commits.
 - `trigger`: downstream trigger versions.
 - `ad_hoc`: periodic build versions.
-- `commit_queue`: Evergreen's commit queue.
 - `github_merge_queue`: GitHub's merge queue.
 
 By default, if no `allowed_requesters` are explicitly specified, then a task can
@@ -784,20 +783,18 @@ Every task has some expansions available by default:
     number, which increments on each commit, and includes the patch
     author name in patches
 -   `${github_pr_number}` is the Github PR number associated with PR
-    patches and PR triggered commit queue items
+    patches and PR triggered merge queue items
 -   `${github_org}` is the GitHub organization for the repo in which
-    a PR or PR triggered commit queue item appears
+    a PR or PR triggered merge queue item appears
 -   `${github_repo}` is the GitHub repo in which a PR or PR triggered
-    commit queue item appears
+    merge queue item appears
 -   `${github_author}` is the GitHub username of the creator of a PR
-    or PR triggered commit queue item
+    or PR triggered merge queue item
 -   `${github_known_hosts}` is GitHub's SSH key fingerprint
 -   `${triggered_by_git_tag}` is the name of the tag that triggered this
     version, if applicable
 -   `${is_commit_queue}` is the string "true" if this is a commit
     queue task
--   `${commit_message}` is the commit message if this is a commit queue
-    task
 -   `${requester}` is what triggered the task: `patch`, `github_pr`,
     `github_tag`, `commit`, `trigger`, `commit_queue`, or `ad_hoc`
 -   `${otel_collector_endpoint}` is the gRPC endpoint for Evergreen's
