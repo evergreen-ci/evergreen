@@ -71,8 +71,8 @@ being efficiently utilized and to avoid over-spending on long-lived AWS resource
 
 Please note that even though Evergreen will automatically stop and start your host at the configured times, you can
 still manually stop and start your host whenever you need. It's recommended that if you do this, you also [set a
-temporary exemption](#temporary-exemptions) to ensure that you can use your host without being interrupted by the sleep
-schedule.
+temporary exemption](#temporary-exemptions) to ensure that you can use your host without being interrupted when the
+sleep schedule tries to automatically stop/start your host.
 
 In the Spruce UI, you can pick a sleep schedule for your host when creating the unexpirable host or editing an existing
 unexpirable host:
