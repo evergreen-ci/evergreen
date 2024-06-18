@@ -91,9 +91,15 @@ func taskLogs(flags []cli.Flag) cli.Command {
 			}
 			defer restClient.Close()
 
+			var execution *int
+			if c.IsSet(executionFlagName) {
+				execution = utility.ToIntPtr(c.Int(executionFlagName))
+			}
+
 			r, err := restClient.GetTaskLogs(ctx, client.GetTaskLogsOptions{
-				TaskID:        c.String(taskIDFlagName),
-				Execution:     utility.ToIntPtr(c.Parent().Int(executionFlagName)),
+				TaskID: c.String(taskIDFlagName),
+				//Execution:     utility.ToIntPtr(c.Int(executionFlagName)),
+				Execution:     execution,
 				Type:          c.String(logTypeFlagName),
 				Start:         c.String(logStartFlagName),
 				End:           c.String(logEndFlagName),
@@ -163,10 +169,16 @@ func testLogs(flags []cli.Flag) cli.Command {
 			}
 			defer restClient.Close()
 
+			var execution *int
+			if c.IsSet(executionFlagName) {
+				execution = utility.ToIntPtr(c.Int(executionFlagName))
+			}
+
 			r, err := restClient.GetTestLogs(ctx, client.GetTestLogsOptions{
-				TaskID:        c.String(taskIDFlagName),
-				Path:          c.String(logPathFlagName),
-				Execution:     utility.ToIntPtr(c.Parent().Int(executionFlagName)),
+				TaskID:    c.String(taskIDFlagName),
+				Path:      c.String(logPathFlagName),
+				Execution: execution,
+				//Execution:     utility.ToIntPtr(c.Int(executionFlagName)),
 				LogsToMerge:   c.StringSlice(logsToMergeFlagName),
 				Start:         c.String(logStartFlagName),
 				End:           c.String(logEndFlagName),
