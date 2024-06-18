@@ -93,6 +93,9 @@ type githubIntent struct {
 
 	// RepeatPatchId uses the given patch to reuse the task/variant definitions
 	RepeatPatchId string `bson:"repeat_patch_id"`
+
+	// Alias defines the variants and tasks to run this patch on. It will default to __github if not set.
+	Alias string `bson:"alias"`
 }
 
 // BSON fields for the patches
@@ -117,7 +120,7 @@ var (
 
 // NewGithubIntent creates an Intent from a google/go-github PullRequestEvent,
 // or returns an error if the some part of the struct is invalid
-func NewGithubIntent(msgDeliveryID, patchOwner, calledBy, mergeBase string, pr *github.PullRequest) (Intent, error) {
+func NewGithubIntent(msgDeliveryID, patchOwner, calledBy, alias, mergeBase string, pr *github.PullRequest) (Intent, error) {
 	if pr == nil ||
 		pr.Base == nil || pr.Base.Repo == nil ||
 		pr.Head == nil || pr.Head.Repo == nil ||
@@ -157,6 +160,9 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy, mergeBase string, pr *
 	if patchOwner == "" {
 		patchOwner = pr.User.GetLogin()
 	}
+	if alias == "" {
+		alias = evergreen.GithubPRAlias
+	}
 
 	// get the patchId to repeat the definitions from
 	repeat, err := getRepeatPatchId(pr.Base.Repo.Owner.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber())
@@ -180,6 +186,7 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy, mergeBase string, pr *
 		IntentType:    GithubIntentType,
 		CalledBy:      calledBy,
 		RepeatPatchId: repeat,
+		Alias:         alias,
 	}, nil
 }
 
@@ -281,7 +288,7 @@ func (g *githubIntent) NewPatch() *Patch {
 	pullURL := fmt.Sprintf("https://github.com/%s/pull/%d", g.BaseRepoName, g.PRNumber)
 	patchDoc := &Patch{
 		Id:          mgobson.NewObjectId(),
-		Alias:       evergreen.GithubPRAlias,
+		Alias:       g.Alias,
 		Description: fmt.Sprintf("'%s' pull request #%d by %s: %s (%s)", g.BaseRepoName, g.PRNumber, g.User, g.Title, pullURL),
 		Author:      evergreen.GithubPatchUser,
 		Status:      evergreen.VersionCreated,
@@ -304,5 +311,5 @@ func (g *githubIntent) NewPatch() *Patch {
 }
 
 func (g *githubIntent) GetAlias() string {
-	return evergreen.GithubPRAlias
+	return g.Alias
 }

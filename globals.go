@@ -508,6 +508,7 @@ const (
 	TaskExecutionOtelAttribute   = "evergreen.task.execution"
 	TaskStatusOtelAttribute      = "evergreen.task.status"
 	TaskFailureTypeOtelAttribute = "evergreen.task.failure_type"
+	TaskTagsOtelAttribute        = "evergreen.task.tags"
 
 	// version otel attributes
 	VersionIDOtelAttribute               = "evergreen.version.id"

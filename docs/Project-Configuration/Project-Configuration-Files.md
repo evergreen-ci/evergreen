@@ -602,6 +602,7 @@ To cause a task to not run at all, set `disable: true`.
 
 -   This behaves similarly to commenting out the task but will not
     trigger any validation errors.
+-   Disabling a task prevents it from being warned on for not being used.
 -   If a task is disabled and is depended on by another task, the
     dependent task will simply exclude the disabled task from its
     dependencies.
@@ -1007,6 +1008,8 @@ Stepback is set to true if you want to stepback and test earlier commits in the 
 of a normally failing task (a normally failing task does not include system failed, setup failed, timed out, etc.).
 This can be set or unset at the top-level, at the build variant level, and for individual tasks
 (in the task definition or for the task within a specific build variant).
+
+You can also for the whole project set the method of stepping back to "Bisection".
 
 ### Out of memory (OOM) Tracker
 

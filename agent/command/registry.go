@@ -37,6 +37,7 @@ func init() {
 		"git.get_project":                       gitFetchProjectFactory,
 		"git.merge_pr":                          gitMergePRFactory,
 		"git.push":                              gitPushFactory,
+		"github.generate_token":                 githubGenerateTokenFactory,
 		"gotest.parse_files":                    goTestFactory,
 		"keyval.inc":                            keyValIncFactory,
 		"manifest.load":                         manifestLoadFactory,

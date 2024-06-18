@@ -101,7 +101,7 @@ func (c *communicatorImpl) ModifySpawnHost(ctx context.Context, hostID string, c
 	return nil
 }
 
-func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, subscriptionType string, wait bool) error {
+func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, subscriptionType string, shouldKeepOff, wait bool) error {
 	info := requestInfo{
 		method: http.MethodPost,
 		path:   fmt.Sprintf("hosts/%s/stop", hostID),
@@ -109,7 +109,11 @@ func (c *communicatorImpl) StopSpawnHost(ctx context.Context, hostID string, sub
 
 	options := struct {
 		SubscriptionType string `json:"subscription_type"`
-	}{SubscriptionType: subscriptionType}
+		ShouldKeepOff    bool   `json:"should_keep_off"`
+	}{
+		SubscriptionType: subscriptionType,
+		ShouldKeepOff:    shouldKeepOff,
+	}
 
 	resp, err := c.request(ctx, info, options)
 	if err != nil {

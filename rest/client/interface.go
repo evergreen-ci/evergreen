@@ -52,7 +52,7 @@ type Communicator interface {
 	CreateSpawnHost(context.Context, *restmodel.HostRequestOptions) (*restmodel.APIHost, error)
 	GetSpawnHost(context.Context, string) (*restmodel.APIHost, error)
 	ModifySpawnHost(context.Context, string, host.HostModifyOptions) error
-	StopSpawnHost(context.Context, string, string, bool) error
+	StopSpawnHost(context.Context, string, string, bool, bool) error
 	StartSpawnHost(context.Context, string, string, bool) error
 	TerminateSpawnHost(context.Context, string) error
 	ChangeSpawnHostPassword(context.Context, string, string) error

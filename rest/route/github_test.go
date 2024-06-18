@@ -336,8 +336,15 @@ func (s *GithubWebhookRouteSuite) TestPatchCommentTrigger() {
 
 	s.True(triggersPatch(commentString))
 
-	//test whitespace trimming
+	// test whitespace trimming
 	s.True(triggersPatch("  evergreen patch "))
+
+	// test --alias behavior
+	s.True(triggersPatch(commentString))
+	commentString = "  evergreen patch --alias patch-alias "
+	s.True(triggersPatch(commentString))
+	s.Equal(patch.ManualCaller, parsePRCommentForCaller(commentString))
+	s.Equal("patch-alias", parsePRCommentForAlias(commentString))
 }
 
 func (s *CommitQueueSuite) TestCommentTrigger() {

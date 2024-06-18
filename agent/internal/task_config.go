@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"context"
 	"strconv"
 	"strings"
 	"sync"
@@ -15,10 +14,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/baggage"
 )
 
 type TaskConfig struct {
@@ -177,27 +174,14 @@ func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 	return attributes
 }
 
-func (tc *TaskConfig) AddTaskBaggageToCtx(ctx context.Context) (context.Context, error) {
-	catcher := grip.NewBasicCatcher()
-
-	bag := baggage.FromContext(ctx)
-	for key, val := range tc.TaskAttributeMap() {
-		member, err := baggage.NewMember(key, val)
-		if err != nil {
-			catcher.Add(errors.Wrapf(err, "making member for key '%s' val '%s'", key, val))
-			continue
-		}
-		bag, err = bag.SetMember(member)
-		catcher.Add(err)
-	}
-
-	return baggage.ContextWithBaggage(ctx, bag), catcher.Resolve()
-}
-
+// TaskAttributes returns a list of common otel attributes for tasks.
 func (tc *TaskConfig) TaskAttributes() []attribute.KeyValue {
 	var attributes []attribute.KeyValue
 	for key, val := range tc.TaskAttributeMap() {
 		attributes = append(attributes, attribute.String(key, val))
+	}
+	if len(tc.Task.Tags) > 0 {
+		attributes = append(attributes, attribute.StringSlice(evergreen.TaskTagsOtelAttribute, tc.Task.Tags))
 	}
 
 	return attributes
