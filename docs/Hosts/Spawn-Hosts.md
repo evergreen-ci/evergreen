@@ -57,9 +57,9 @@ notification](../Project-Configuration/Notifications#spawn-host-expiration) for 
 
 ### Unexpirable Host Sleep Schedules
 
-**Summary: Please set a sleep schedule [in the UI](https://spruce.mongodb.com/spawn/host) for your unexpirable host(s)
-before `<DATE>`. In addition, please opt into the beta test to ensure that your sleep schedule is working the way you
-want.**
+**Summary: Please set a sleep schedule for your unexpirable hosts by editing them [in the
+UI](https://spruce.mongodb.com/spawn/host) before `<DATE>`. In addition, please opt into the beta test to ensure that
+your sleep schedule is working the way you want.**
 
 For unexpirable hosts, Evergreen has introduced a new feature called a host sleep schedule, which allows you to control
 when you'd like your unexpirable host to be automatically turned on or off. A sleep schedule lets you choose recurring
