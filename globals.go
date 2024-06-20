@@ -1121,6 +1121,10 @@ func IsGitHubPatchRequester(requester string) bool {
 	return requester == GithubPRRequester || requester == MergeTestRequester || requester == GithubMergeRequester
 }
 
+func IsGithubPRRequester(requester string) bool {
+	return requester == GithubPRRequester
+}
+
 func IsGitTagRequester(requester string) bool {
 	return requester == GitTagRequester
 }

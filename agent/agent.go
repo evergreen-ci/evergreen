@@ -1068,7 +1068,7 @@ func (a *Agent) upsertCheckRun(ctx context.Context, tc *taskContext) error {
 func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOutput, error) {
 	fileNamePointer := tc.taskConfig.Task.CheckRunPath
 	// no checkRun specified
-	if fileNamePointer == nil || !evergreen.IsGitHubPatchRequester(tc.taskConfig.Task.Requester) {
+	if fileNamePointer == nil || !evergreen.IsGithubPRRequester(tc.taskConfig.Task.Requester) {
 		return nil, nil
 	}
 

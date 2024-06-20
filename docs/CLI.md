@@ -74,7 +74,7 @@ After setting defaults, you can omit the flags and the default values will be us
 
 Defaults may be changed at any time by editing your `~/.evergreen.yml` file.
 
-Additionally, the default project for a directory is also tracked by the first successful patch or commit queue merge you perform in that directory. Symlinks are resolved to their absolute path. The defaults are maintained in the `~/.evergreen.yml` file, under the `projects_for_directory` key. The value for this key is a map, where the map keys are absolute paths, and the map values are project identifiers. The automatic defaulting can be disabled by setting disable_auto_defaulting to true.
+Additionally, the default project for a directory is also tracked by the first successful patch you perform in that directory. Symlinks are resolved to their absolute path. The defaults are maintained in the `~/.evergreen.yml` file, under the `projects_for_directory` key. The value for this key is a map, where the map keys are absolute paths, and the map values are project identifiers. The automatic defaulting can be disabled by setting disable_auto_defaulting to true.
 
 Prompts
 ---
