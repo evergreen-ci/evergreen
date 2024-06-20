@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -134,4 +135,38 @@ type Communicator interface {
 
 	// GetRawPatchWithModules fetches the raw patch and module diffs for a given patch ID.
 	GetRawPatchWithModules(ctx context.Context, patchId string) (*restmodel.APIRawPatch, error)
+
+	// GetTaskLogs returns task logs for the given task.
+	GetTaskLogs(context.Context, GetTaskLogsOptions) (io.ReadCloser, error)
+	// GetTaskLogs returns test logs for the given task.
+	GetTestLogs(context.Context, GetTestLogsOptions) (io.ReadCloser, error)
+}
+
+// GetTaskLogsOptions are the options for fetching task logs for a given task.
+type GetTaskLogsOptions struct {
+	TaskID        string
+	Execution     *int
+	Type          string
+	Start         string
+	End           string
+	LineLimit     int
+	TailLimit     int
+	PrintTime     bool
+	PrintPriority bool
+	Paginate      bool
+}
+
+// GetTestLogsOptions are the options for fetching test logs for a given task.
+type GetTestLogsOptions struct {
+	TaskID        string
+	Path          string
+	Execution     *int
+	LogsToMerge   []string
+	Start         string
+	End           string
+	LineLimit     int
+	TailLimit     int
+	PrintTime     bool
+	PrintPriority bool
+	Paginate      bool
 }
