@@ -3102,27 +3102,34 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 			assert.NoError(t, err)
 			require.Len(t, updatedDependentTasks, len(dependentTasks))
 
-			checkTaskAndDB(t, updatedDependentTasks[0], func(t *testing.T, taskToCheck Task) {
-				assert.True(t, taskToCheck.Blocked())
-				assert.True(t, taskToCheck.UnattainableDependency)
-				require.Len(t, taskToCheck.DependsOn, 2)
-				assert.True(t, taskToCheck.DependsOn[0].Unattainable)
-				assert.False(t, taskToCheck.DependsOn[1].Unattainable)
-			})
-
-			checkTaskAndDB(t, updatedDependentTasks[1], func(t *testing.T, taskToCheck Task) {
-				assert.True(t, taskToCheck.Blocked())
-				assert.True(t, taskToCheck.UnattainableDependency)
-				require.Len(t, taskToCheck.DependsOn, 1)
-				assert.True(t, taskToCheck.DependsOn[0].Unattainable)
-			})
-
-			checkTaskAndDB(t, updatedDependentTasks[2], func(t *testing.T, taskToCheck Task) {
-				assert.False(t, taskToCheck.Blocked())
-				assert.False(t, taskToCheck.UnattainableDependency)
-				require.Len(t, taskToCheck.DependsOn, 1)
-				assert.False(t, taskToCheck.DependsOn[0].Unattainable)
-			})
+			for _, updatedDependentTask := range updatedDependentTasks {
+				switch updatedDependentTask.Id {
+				case dependentTasks[0].Id:
+					checkTaskAndDB(t, updatedDependentTasks[0], func(t *testing.T, taskToCheck Task) {
+						assert.True(t, taskToCheck.Blocked())
+						assert.True(t, taskToCheck.UnattainableDependency)
+						require.Len(t, taskToCheck.DependsOn, 2)
+						assert.True(t, taskToCheck.DependsOn[0].Unattainable)
+						assert.False(t, taskToCheck.DependsOn[1].Unattainable)
+					})
+				case dependentTasks[1].Id:
+					checkTaskAndDB(t, updatedDependentTasks[1], func(t *testing.T, taskToCheck Task) {
+						assert.True(t, taskToCheck.Blocked())
+						assert.True(t, taskToCheck.UnattainableDependency)
+						require.Len(t, taskToCheck.DependsOn, 1)
+						assert.True(t, taskToCheck.DependsOn[0].Unattainable)
+					})
+				case dependentTasks[2].Id:
+					checkTaskAndDB(t, updatedDependentTasks[2], func(t *testing.T, taskToCheck Task) {
+						assert.False(t, taskToCheck.Blocked())
+						assert.False(t, taskToCheck.UnattainableDependency)
+						require.Len(t, taskToCheck.DependsOn, 1)
+						assert.False(t, taskToCheck.DependsOn[0].Unattainable)
+					})
+				default:
+					assert.Fail(t, "unexpected task '%s' in updated tasks", updatedDependentTask.Id)
+				}
+			}
 		},
 		"NonexistentDependency": func(ctx context.Context, t *testing.T) {
 			dependentTask := Task{
