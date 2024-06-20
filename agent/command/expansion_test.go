@@ -19,102 +19,203 @@ import (
 )
 
 func TestExpansionUpdate(t *testing.T) {
-	for tName, tCase := range map[string]struct {
-		updates    []updateParams
-		expansions util.Expansions
-		expected   util.Expansions
-		redact     []string
-		err        error
-	}{
-		"EmptyUpdate": {
-			updates:    []updateParams{},
-			expansions: util.Expansions{},
-			expected:   util.Expansions{},
-		},
-		"NewValuesWithValueAndEmptyConcat": {
-			updates: []updateParams{
-				{
-					Key:   "base",
-					Value: "not eggs",
+	t.Run("ParseParams", func(t *testing.T) {
+		for tName, tCase := range map[string]struct {
+			params map[string]interface{}
+			update []updateParams
+			err    string
+		}{
+			"EmptyParams": {
+				params: map[string]interface{}{},
+			},
+			"MissingKey": {
+				params: map[string]interface{}{
+					"updates": []map[string]interface{}{
+						{
+							"value": "value",
+						},
+					},
 				},
-				{
-					Key:    "toppings",
-					Concat: ", chicken",
+				err: "expansion key at index 0 must not be a blank string",
+			},
+			"EmptyKey": {
+				params: map[string]interface{}{
+					"updates": []map[string]interface{}{
+						{
+							"key":   "",
+							"value": "value",
+						},
+					},
+				},
+				err: "expansion key at index 0 must not be a blank string",
+			},
+			"ConcatAndValuePresent": {
+				params: map[string]interface{}{
+					"updates": []map[string]interface{}{
+						{
+							"key":    "key",
+							"value":  "value",
+							"concat": "concat",
+						},
+					},
+				},
+				err: "expansion 'key' at index 0 must not have both a value and a concat",
+			},
+			"ValidParams": {
+				params: map[string]interface{}{
+					"updates": []map[string]interface{}{
+						{
+							"key":   "key-1",
+							"value": "value",
+						},
+						{
+							"key":    "key-2",
+							"concat": "concat",
+						},
+						{
+							"key":    "key-3",
+							"value":  "value-2",
+							"redact": true,
+						},
+						{
+							"key":    "key-4",
+							"concat": "concat-2",
+							"redact": true,
+						},
+					},
+				},
+				update: []updateParams{
+					{
+						Key:   "key-1",
+						Value: "value",
+					},
+					{
+						Key:    "key-2",
+						Concat: "concat",
+					},
+					{
+						Key:    "key-3",
+						Value:  "value-2",
+						Redact: true,
+					},
+					{
+						Key:    "key-4",
+						Concat: "concat-2",
+						Redact: true,
+					},
 				},
 			},
-			expansions: util.Expansions{},
-			expected:   util.Expansions{"base": "not eggs", "toppings": ", chicken"},
-		},
-		"ReplaceValuesAndConcatValues": {
-			updates: []updateParams{
-				{
-					Key:   "base",
-					Value: "not eggs",
-				},
-				{
-					Key:    "toppings",
-					Concat: ", chicken",
-				},
-			},
-			expansions: util.Expansions{"base": "eggs", "toppings": "bacon"},
-			expected:   util.Expansions{"base": "not eggs", "toppings": "bacon, chicken"},
-		},
-		"RedactionNewValuesAndEmptyConcat": {
-			updates: []updateParams{
-				{
-					Key:    "base",
-					Value:  "not eggs",
-					Redact: true,
-				},
-				{
-					Key:    "toppings",
-					Concat: ", chicken",
-					Redact: true,
-				},
-			},
-			expansions: util.Expansions{},
-			expected:   util.Expansions{"base": "not eggs", "toppings": ", chicken"},
-			redact:     []string{"base", "toppings"},
-		},
-		"RedactionReplaceValuesAndConcat": {
-			updates: []updateParams{
-				{
-					Key:    "base",
-					Value:  "not eggs",
-					Redact: true,
-				},
-				{
-					Key:    "toppings",
-					Concat: ", chicken",
-					Redact: true,
-				},
-				{
-					Key:   "not-redacted",
-					Value: "other",
-				},
-			},
-			expansions: util.Expansions{"base": "eggs", "toppings": "bacon"},
-			expected:   util.Expansions{"base": "not eggs", "toppings": "bacon, chicken", "not-redacted": "other"},
-			redact:     []string{"base", "toppings"},
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			updateCommand := update{
-				Updates: tCase.updates,
-			}
+		} {
+			t.Run(tName, func(t *testing.T) {
+				updateCommand := update{}
+				err := updateCommand.ParseParams(tCase.params)
+				if tCase.err == "" {
+					require.NoError(t, err)
+					assert.Equal(t, tCase.update, updateCommand.Updates)
+				} else {
+					require.Error(t, err)
+					assert.Contains(t, err.Error(), tCase.err)
+				}
+			})
+		}
+	})
 
-			taskConfig := internal.TaskConfig{
-				Expansions:    tCase.expansions,
-				NewExpansions: agentutil.NewDynamicExpansions(tCase.expansions),
-			}
+	t.Run("ExecuteUpdates", func(t *testing.T) {
+		for tName, tCase := range map[string]struct {
+			updates    []updateParams
+			expansions util.Expansions
+			expected   util.Expansions
+			redact     []string
+		}{
+			"EmptyUpdate": {
+				updates:    []updateParams{},
+				expansions: util.Expansions{},
+				expected:   util.Expansions{},
+			},
+			"NewValuesWithValueAndEmptyConcat": {
+				updates: []updateParams{
+					{
+						Key:   "base",
+						Value: "not eggs",
+					},
+					{
+						Key:    "toppings",
+						Concat: ", chicken",
+					},
+				},
+				expansions: util.Expansions{},
+				expected:   util.Expansions{"base": "not eggs", "toppings": ", chicken"},
+			},
+			"ReplaceValuesAndConcatValues": {
+				updates: []updateParams{
+					{
+						Key:   "base",
+						Value: "not eggs",
+					},
+					{
+						Key:    "toppings",
+						Concat: ", chicken",
+					},
+				},
+				expansions: util.Expansions{"base": "eggs", "toppings": "bacon"},
+				expected:   util.Expansions{"base": "not eggs", "toppings": "bacon, chicken"},
+			},
+			"RedactionNewValuesAndEmptyConcat": {
+				updates: []updateParams{
+					{
+						Key:    "base",
+						Value:  "not eggs",
+						Redact: true,
+					},
+					{
+						Key:    "toppings",
+						Concat: ", chicken",
+						Redact: true,
+					},
+				},
+				expansions: util.Expansions{},
+				expected:   util.Expansions{"base": "not eggs", "toppings": ", chicken"},
+				redact:     []string{"base", "toppings"},
+			},
+			"RedactionReplaceValuesAndConcat": {
+				updates: []updateParams{
+					{
+						Key:    "base",
+						Value:  "not eggs",
+						Redact: true,
+					},
+					{
+						Key:    "toppings",
+						Concat: ", chicken",
+						Redact: true,
+					},
+					{
+						Key:   "not-redacted",
+						Value: "other",
+					},
+				},
+				expansions: util.Expansions{"base": "eggs", "toppings": "bacon"},
+				expected:   util.Expansions{"base": "not eggs", "toppings": "bacon, chicken", "not-redacted": "other"},
+				redact:     []string{"base", "toppings"},
+			},
+		} {
+			t.Run(tName, func(t *testing.T) {
+				updateCommand := update{
+					Updates: tCase.updates,
+				}
 
-			err := updateCommand.executeUpdates(context.Background(), &taskConfig)
-			require.NoError(t, err)
-			assert.Equal(t, tCase.expected, taskConfig.DynamicExpansions)
-			assert.Equal(t, tCase.redact, taskConfig.NewExpansions.GetRedacted())
-		})
-	}
+				taskConfig := internal.TaskConfig{
+					Expansions:    tCase.expansions,
+					NewExpansions: agentutil.NewDynamicExpansions(tCase.expansions),
+				}
 
+				err := updateCommand.executeUpdates(context.Background(), &taskConfig)
+				require.NoError(t, err)
+				assert.Equal(t, tCase.expected, taskConfig.DynamicExpansions)
+				assert.Equal(t, tCase.redact, taskConfig.NewExpansions.GetRedacted())
+			})
+		}
+	})
 }
 
 func TestExpansionUpdateFile(t *testing.T) {

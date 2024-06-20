@@ -60,7 +60,7 @@ func (c *update) ParseParams(params map[string]interface{}) error {
 			return errors.Errorf("expansion key at index %d must not be a blank string", i)
 		}
 		if item.Value != "" && item.Concat != "" {
-			return errors.Errorf("expansion key at index %d has both a value and a concat string", i)
+			return errors.Errorf("expansion '%s' at index %d must not have both a value and a concat", item.Key, i)
 		}
 	}
 
