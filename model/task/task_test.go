@@ -3015,187 +3015,243 @@ func getTaskThatNeedsContainerAllocation() Task {
 	}
 }
 
-// kim: TODO: test MarkAllWithUnattainableDependency
-func TestMarkUnattainableDependency(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func TestMarkAllForUnattainableDependency(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
 	}()
 
-	t.Run("BlockedDependency", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(Collection))
-
-		dependentTask := Task{
-			Id: "t0",
-			DependsOn: []Dependency{
-				{
-					TaskId:       "t1",
-					Unattainable: false,
-				},
-				{
-					TaskId:       "t2",
-					Unattainable: false,
-				},
-			},
-		}
-		require.NoError(t, dependentTask.Insert())
-
-		assert.NoError(t, dependentTask.MarkUnattainableDependency(ctx, "t1", true))
-		assert.True(t, dependentTask.Blocked())
-		assert.True(t, dependentTask.UnattainableDependency)
-		require.Len(t, dependentTask.DependsOn, 2)
-		assert.True(t, dependentTask.DependsOn[0].Unattainable)
-		assert.False(t, dependentTask.DependsOn[1].Unattainable)
-
-		dbTask, err := FindOneId("t0")
+	// checkTaskAndDB runs identical checks on a task and its corresponding DB document.
+	checkTaskAndDB := func(t *testing.T, tsk Task, doCheck func(t *testing.T, taskToCheck Task)) {
+		dbTask, err := FindOneId(tsk.Id)
 		require.NoError(t, err)
-		assert.True(t, dbTask.Blocked())
-		assert.True(t, dbTask.UnattainableDependency)
-		require.Len(t, dependentTask.DependsOn, 2)
-		assert.True(t, dbTask.DependsOn[0].Unattainable)
-		assert.False(t, dbTask.DependsOn[1].Unattainable)
-	})
+		require.NotZero(t, dbTask)
 
-	t.Run("NonExistentDependency", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(Collection))
+		doCheck(t, tsk)
+		doCheck(t, *dbTask)
+	}
 
-		dependentTask := Task{
-			Id: "t0",
-			DependsOn: []Dependency{
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
+		"BlockedDependency": func(ctx context.Context, t *testing.T) {
+			dependentTask := Task{
+				Id: "t0",
+				DependsOn: []Dependency{
+					{
+						TaskId:       "t1",
+						Unattainable: false,
+					},
+					{
+						TaskId:       "t2",
+						Unattainable: false,
+					},
+				},
+			}
+			require.NoError(t, dependentTask.Insert())
+
+			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", true)
+			require.NoError(t, err)
+			require.Len(t, updatedDependentTasks, 1)
+			dependentTask = updatedDependentTasks[0]
+
+			checkTaskAndDB(t, dependentTask, func(t *testing.T, taskToCheck Task) {
+				assert.True(t, dependentTask.Blocked())
+				assert.True(t, dependentTask.UnattainableDependency)
+				require.Len(t, dependentTask.DependsOn, 2)
+				assert.True(t, dependentTask.DependsOn[0].Unattainable)
+				assert.False(t, dependentTask.DependsOn[1].Unattainable)
+			})
+		},
+		"BlocksManyTasks": func(ctx context.Context, t *testing.T) {
+			dependentTasks := []Task{
 				{
-					TaskId:       "t1",
-					Unattainable: false,
+					Id: "t0",
+					DependsOn: []Dependency{
+						{
+							TaskId:       "t1",
+							Unattainable: false,
+						},
+						{
+							TaskId:       "t2",
+							Unattainable: false,
+						},
+					},
 				},
 				{
-					TaskId:       "t2",
-					Unattainable: false,
-				},
-			},
-		}
-		require.NoError(t, dependentTask.Insert())
-
-		assert.NoError(t, dependentTask.MarkUnattainableDependency(ctx, "t3", true))
-		assert.False(t, dependentTask.Blocked())
-		assert.False(t, dependentTask.UnattainableDependency)
-		require.Len(t, dependentTask.DependsOn, 2)
-		assert.False(t, dependentTask.DependsOn[0].Unattainable)
-		assert.False(t, dependentTask.DependsOn[1].Unattainable)
-
-		dbTask, err := FindOneId("t0")
-		require.NoError(t, err)
-		assert.False(t, dbTask.Blocked())
-		assert.False(t, dbTask.UnattainableDependency)
-		require.Len(t, dependentTask.DependsOn, 2)
-		assert.False(t, dbTask.DependsOn[0].Unattainable)
-		assert.False(t, dbTask.DependsOn[1].Unattainable)
-	})
-
-	t.Run("OneDependencyUnblocked", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(Collection))
-
-		dependentTask := Task{
-			Id: "t0",
-			DependsOn: []Dependency{
-				{
-					TaskId:       "t1",
-					Unattainable: true,
+					Id: "t1",
+					DependsOn: []Dependency{
+						{
+							TaskId:       "t1",
+							Unattainable: false,
+						},
+					},
 				},
 				{
-					TaskId:       "t2",
-					Unattainable: true,
+					Id: "t2",
+					DependsOn: []Dependency{
+						{
+							TaskId:       "t2",
+							Unattainable: false,
+						},
+					},
 				},
-			},
-		}
-		require.NoError(t, dependentTask.Insert())
+			}
+			for _, dependentTask := range dependentTasks {
+				require.NoError(t, dependentTask.Insert())
+			}
 
-		assert.NoError(t, dependentTask.MarkUnattainableDependency(ctx, "t1", false))
-		assert.True(t, dependentTask.Blocked())
-		assert.True(t, dependentTask.UnattainableDependency)
-		require.Len(t, dependentTask.DependsOn, 2)
-		assert.False(t, dependentTask.DependsOn[0].Unattainable)
-		assert.True(t, dependentTask.DependsOn[1].Unattainable)
+			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, dependentTasks, "t1", true)
+			assert.NoError(t, err)
+			require.Len(t, updatedDependentTasks, len(dependentTasks))
 
-		dbTask, err := FindOneId("t0")
-		require.NoError(t, err)
-		assert.True(t, dbTask.Blocked())
-		assert.True(t, dbTask.UnattainableDependency)
-		require.Len(t, dependentTask.DependsOn, 2)
-		assert.False(t, dbTask.DependsOn[0].Unattainable)
-		assert.True(t, dbTask.DependsOn[1].Unattainable)
-	})
+			checkTaskAndDB(t, updatedDependentTasks[0], func(t *testing.T, taskToCheck Task) {
+				assert.True(t, taskToCheck.Blocked())
+				assert.True(t, taskToCheck.UnattainableDependency)
+				require.Len(t, taskToCheck.DependsOn, 2)
+				assert.True(t, taskToCheck.DependsOn[0].Unattainable)
+				assert.False(t, taskToCheck.DependsOn[1].Unattainable)
+			})
 
-	t.Run("AllDependenciesUnblocked", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(Collection))
+			checkTaskAndDB(t, updatedDependentTasks[1], func(t *testing.T, taskToCheck Task) {
+				assert.True(t, taskToCheck.Blocked())
+				assert.True(t, taskToCheck.UnattainableDependency)
+				require.Len(t, taskToCheck.DependsOn, 1)
+				assert.True(t, taskToCheck.DependsOn[0].Unattainable)
+			})
 
-		dependentTask := Task{
-			Id: "t0",
-			DependsOn: []Dependency{
-				{
-					TaskId:       "t1",
-					Unattainable: true,
+			checkTaskAndDB(t, updatedDependentTasks[2], func(t *testing.T, taskToCheck Task) {
+				assert.False(t, taskToCheck.Blocked())
+				assert.False(t, taskToCheck.UnattainableDependency)
+				require.Len(t, taskToCheck.DependsOn, 1)
+				assert.False(t, taskToCheck.DependsOn[0].Unattainable)
+			})
+		},
+		"NonexistentDependency": func(ctx context.Context, t *testing.T) {
+			dependentTask := Task{
+				Id: "t0",
+				DependsOn: []Dependency{
+					{
+						TaskId:       "t1",
+						Unattainable: false,
+					},
+					{
+						TaskId:       "t2",
+						Unattainable: false,
+					},
 				},
-				{
-					TaskId:       "t2",
-					Unattainable: false,
+			}
+			require.NoError(t, dependentTask.Insert())
+
+			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t3", true)
+			require.NoError(t, err)
+			require.Len(t, updatedDependentTasks, 1)
+			dependentTask = updatedDependentTasks[0]
+
+			checkTaskAndDB(t, dependentTask, func(t *testing.T, taskToCheck Task) {
+				assert.False(t, taskToCheck.Blocked())
+				assert.False(t, taskToCheck.UnattainableDependency)
+				require.Len(t, taskToCheck.DependsOn, 2)
+				assert.False(t, taskToCheck.DependsOn[0].Unattainable)
+				assert.False(t, taskToCheck.DependsOn[1].Unattainable)
+			})
+		},
+		"OneDependencyUnblocked": func(ctx context.Context, t *testing.T) {
+			dependentTask := Task{
+				Id: "t0",
+				DependsOn: []Dependency{
+					{
+						TaskId:       "t1",
+						Unattainable: true,
+					},
+					{
+						TaskId:       "t2",
+						Unattainable: true,
+					},
 				},
-			},
-		}
-		require.NoError(t, dependentTask.Insert())
+			}
+			require.NoError(t, dependentTask.Insert())
 
-		assert.NoError(t, dependentTask.MarkUnattainableDependency(ctx, "t1", false))
-		assert.False(t, dependentTask.Blocked())
-		assert.False(t, dependentTask.UnattainableDependency)
-		require.Len(t, dependentTask.DependsOn, 2)
-		assert.False(t, dependentTask.DependsOn[0].Unattainable)
-		assert.False(t, dependentTask.DependsOn[1].Unattainable)
+			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", true)
+			require.NoError(t, err)
+			require.Len(t, updatedDependentTasks, 1)
+			dependentTask = updatedDependentTasks[0]
 
-		dbTask, err := FindOneId("t0")
-		require.NoError(t, err)
-		assert.False(t, dbTask.Blocked())
-		assert.False(t, dbTask.UnattainableDependency)
-		require.Len(t, dependentTask.DependsOn, 2)
-		assert.False(t, dbTask.DependsOn[0].Unattainable)
-		assert.False(t, dbTask.DependsOn[1].Unattainable)
-	})
-
-	t.Run("InMemoryTaskOutdated", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(Collection))
-
-		dependentTask := Task{
-			Id: "t0",
-			DependsOn: []Dependency{
-				{
-					TaskId:       "t1",
-					Unattainable: true,
+			checkTaskAndDB(t, dependentTask, func(t *testing.T, taskToCheck Task) {
+				assert.True(t, taskToCheck.Blocked())
+				assert.True(t, taskToCheck.UnattainableDependency)
+				require.Len(t, taskToCheck.DependsOn, 2)
+				assert.True(t, taskToCheck.DependsOn[0].Unattainable)
+				assert.True(t, taskToCheck.DependsOn[1].Unattainable)
+			})
+		},
+		"AllDependenciesUnblocked": func(ctx context.Context, t *testing.T) {
+			dependentTask := Task{
+				Id: "t0",
+				DependsOn: []Dependency{
+					{
+						TaskId:       "t1",
+						Unattainable: true,
+					},
+					{
+						TaskId:       "t2",
+						Unattainable: false,
+					},
 				},
-				{
-					TaskId:       "t2",
-					Unattainable: false,
+			}
+			require.NoError(t, dependentTask.Insert())
+
+			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", false)
+			require.NoError(t, err)
+			require.Len(t, updatedDependentTasks, 1)
+			dependentTask = updatedDependentTasks[0]
+
+			checkTaskAndDB(t, dependentTask, func(t *testing.T, taskToCheck Task) {
+				assert.False(t, taskToCheck.Blocked())
+				assert.False(t, taskToCheck.UnattainableDependency)
+				require.Len(t, taskToCheck.DependsOn, 2)
+				assert.False(t, taskToCheck.DependsOn[0].Unattainable)
+				assert.False(t, taskToCheck.DependsOn[1].Unattainable)
+			})
+		},
+		"InMemoryTaskOutdated": func(ctx context.Context, t *testing.T) {
+			dependentTask := Task{
+				Id: "t0",
+				DependsOn: []Dependency{
+					{
+						TaskId:       "t1",
+						Unattainable: true,
+					},
+					{
+						TaskId:       "t2",
+						Unattainable: false,
+					},
 				},
-			},
-		}
-		require.NoError(t, dependentTask.Insert())
+			}
+			require.NoError(t, dependentTask.Insert())
 
-		dependentTask.DependsOn[1].Unattainable = true
+			dependentTask.DependsOn[1].Unattainable = true
 
-		assert.NoError(t, dependentTask.MarkUnattainableDependency(ctx, "t1", false))
+			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", false)
+			require.NoError(t, err)
+			require.Len(t, updatedDependentTasks, 1)
+			dependentTask = updatedDependentTasks[0]
 
-		assert.False(t, dependentTask.Blocked())
-		assert.False(t, dependentTask.UnattainableDependency)
-		require.Len(t, dependentTask.DependsOn, 2)
-		assert.False(t, dependentTask.DependsOn[0].Unattainable)
-		assert.False(t, dependentTask.DependsOn[1].Unattainable)
+			checkTaskAndDB(t, dependentTask, func(t *testing.T, taskToCheck Task) {
+				assert.False(t, taskToCheck.Blocked())
+				assert.False(t, taskToCheck.UnattainableDependency)
+				require.Len(t, taskToCheck.DependsOn, 2)
+				assert.False(t, taskToCheck.DependsOn[0].Unattainable)
+				assert.False(t, taskToCheck.DependsOn[1].Unattainable)
+			})
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
-		dbTask, err := FindOneId("t0")
-		require.NoError(t, err)
-		assert.False(t, dbTask.Blocked())
-		assert.False(t, dbTask.UnattainableDependency)
-		require.Len(t, dependentTask.DependsOn, 2)
-		assert.False(t, dbTask.DependsOn[0].Unattainable)
-		assert.False(t, dbTask.DependsOn[1].Unattainable)
-	})
+			require.NoError(t, db.ClearCollections(Collection))
+
+			tCase(ctx, t)
+		})
+	}
 }
 
 func TestSetGeneratedTasksToActivate(t *testing.T) {

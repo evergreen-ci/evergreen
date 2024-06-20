@@ -698,8 +698,12 @@ func (t *Task) AddDependency(ctx context.Context, d Dependency) error {
 			if existingDependency.Unattainable == d.Unattainable {
 				return nil // nothing to be done
 			}
-			return errors.Wrapf(t.MarkUnattainableDependency(ctx, existingDependency.TaskId, d.Unattainable),
-				"updating matching dependency '%s' for task '%s'", existingDependency.TaskId, t.Id)
+			updatedTasks, err := MarkAllForUnattainableDependency(ctx, []Task{*t}, existingDependency.TaskId, d.Unattainable)
+			if err != nil {
+				return errors.Wrapf(err, "updating matching dependency '%s' for task '%s'", existingDependency.TaskId, t.Id)
+			}
+			*t = updatedTasks[0]
+			return nil
 		}
 	}
 	t.DependsOn = append(t.DependsOn, d)
@@ -2647,6 +2651,7 @@ func (t *Task) MarkUnscheduled() error {
 
 // MarkUnattainableDependency updates the unattainable field for the dependency in the task's dependency list,
 // and logs if the task is newly blocked.
+// kim: TODO: remove once tests are migrated.
 func (t *Task) MarkUnattainableDependency(ctx context.Context, dependencyId string, unattainable bool) error {
 	// kim: NOTE: Blocked depends on DependsOn.Unattainable so update all
 	// needs to return the updated tasks after Unattainable is updated.
@@ -2669,10 +2674,10 @@ func (t *Task) MarkUnattainableDependency(ctx context.Context, dependencyId stri
 	return nil
 }
 
-// MarkAllWithUnattainableDependency updates many tasks (taskIDs) to mark
+// MarkAllForUnattainableDependency updates many tasks (taskIDs) to mark
 // the dependency (dependencyID) as attainable or not. This returns all the
 // tasks after the update.
-func MarkAllWithUnattainableDependency(ctx context.Context, tasks []Task, dependencyID string, unattainable bool) ([]Task, error) {
+func MarkAllForUnattainableDependency(ctx context.Context, tasks []Task, dependencyID string, unattainable bool) ([]Task, error) {
 	taskWasBlocked := make(map[string]bool, len(tasks))
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {

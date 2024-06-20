@@ -1051,7 +1051,7 @@ func UpdateBlockedDependencies(ctx context.Context, t *task.Task) error {
 		return errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
 	}
 
-	dependentTasks, err = task.MarkAllWithUnattainableDependency(ctx, dependentTasks, t.Id, true)
+	dependentTasks, err = task.MarkAllForUnattainableDependency(ctx, dependentTasks, t.Id, true)
 	if err != nil {
 		return errors.Wrap(err, "marking unattainable dependency for tasks")
 	}
@@ -1100,7 +1100,7 @@ func UpdateUnblockedDependencies(ctx context.Context, t *task.Task) error {
 		return errors.Wrap(err, "getting dependencies marked unattainable")
 	}
 
-	blockedTasks, err = task.MarkAllWithUnattainableDependency(ctx, blockedTasks, t.Id, false)
+	blockedTasks, err = task.MarkAllForUnattainableDependency(ctx, blockedTasks, t.Id, false)
 	if err != nil {
 		return errors.Wrap(err, "marking attainable dependency for tasks")
 	}
