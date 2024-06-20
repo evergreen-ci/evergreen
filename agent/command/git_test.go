@@ -52,12 +52,10 @@ type GitGetProjectSuite struct {
 	taskConfig4 *internal.TaskConfig
 	modelData5  *modelutil.TestModelData
 	taskConfig5 *internal.TaskConfig
-	modelData6  *modelutil.TestModelData
-	taskConfig6 *internal.TaskConfig     // used for TestMergeMultiplePatches
-	modelData7  *modelutil.TestModelData // GitHub merge queue
-	taskConfig7 *internal.TaskConfig     // GitHub merge queue
-	modelData8  *modelutil.TestModelData // Multiple modules (parallelized)
-	taskConfig8 *internal.TaskConfig     // Multiple modules (parallelized)
+	modelData6  *modelutil.TestModelData // GitHub merge queue
+	taskConfig6 *internal.TaskConfig     // GitHub merge queue
+	modelData7  *modelutil.TestModelData // Multiple modules (parallelized)
+	taskConfig7 *internal.TaskConfig     // Multiple modules (parallelized)
 
 	comm   *client.Mock
 	jasper jasper.Manager
@@ -98,8 +96,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	configPath1 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_clone.yml")
 	configPath2 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_config.yml")
 	configPath3 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "no_token.yml")
-	configPath4 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "additional_patch.yml")
-	configPath5 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "multiple_modules.yml")
+	configPath4 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "multiple_modules.yml")
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
 
 	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
@@ -151,35 +148,26 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.taskConfig5, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData5)
 	s.Require().NoError(err)
 
-	s.modelData6, err = modelutil.SetupAPITestData(s.settings, "testtask1", "linux-64", configPath4, modelutil.InlinePatch)
-	s.Require().NoError(err)
-	s.modelData6.Task.Requester = evergreen.MergeTestRequester
+	s.modelData6, err = modelutil.SetupAPITestData(s.settings, "testtask1", "linux-64", configPath3, modelutil.InlinePatch)
 	s.Require().NoError(err)
 	s.taskConfig6, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData6)
 	s.Require().NoError(err)
 	s.taskConfig6.Expansions = *util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
 	s.taskConfig6.BuildVariant.Modules = []string{"evergreen"}
-
-	s.modelData7, err = modelutil.SetupAPITestData(s.settings, "testtask1", "linux-64", configPath3, modelutil.InlinePatch)
-	s.Require().NoError(err)
-	s.taskConfig7, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData7)
-	s.Require().NoError(err)
-	s.taskConfig7.Expansions = *util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
-	s.taskConfig7.BuildVariant.Modules = []string{"evergreen"}
-	s.taskConfig7.GithubMergeData = thirdparty.GithubMergeGroup{
+	s.taskConfig6.GithubMergeData = thirdparty.GithubMergeGroup{
 		HeadBranch: "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056",
 		HeadSHA:    "d2a90288ad96adca4a7d0122d8d4fd1deb24db11",
 	}
-	s.taskConfig7.Task.Requester = evergreen.GithubMergeRequester
+	s.taskConfig6.Task.Requester = evergreen.GithubMergeRequester
 
-	s.modelData8, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath5, modelutil.NoPatch)
+	s.modelData7, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath4, modelutil.NoPatch)
 	s.Require().NoError(err)
-	s.taskConfig8, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData8)
+	s.taskConfig7, err = agentutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData7)
 	s.Require().NoError(err)
-	s.taskConfig8.Expansions = *util.NewExpansions(s.settings.Credentials)
-	s.taskConfig8.Expansions.Put("prefixpath", "hello")
+	s.taskConfig7.Expansions = *util.NewExpansions(s.settings.Credentials)
+	s.taskConfig7.Expansions.Put("prefixpath", "hello")
 	// SetupAPITestData always creates BuildVariant with no modules so this line works around that
-	s.taskConfig8.BuildVariant.Modules = []string{"sample-1", "sample-2"}
+	s.taskConfig7.BuildVariant.Modules = []string{"sample-1", "sample-2"}
 
 	s.comm.CreateInstallationTokenResult = mockedGitHubAppToken
 }
@@ -589,7 +577,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForPullRequests() {
 	}))
 }
 func (s *GitGetProjectSuite) TestBuildSourceCommandForGitHubMergeQueue() {
-	conf := s.taskConfig7
+	conf := s.taskConfig6
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
 
@@ -795,7 +783,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 func (s *GitGetProjectSuite) TestMultipleModules() {
 	const sample1Hash = "cf46076567e4949f9fc68e0634139d4ac495c89b"
 	const sample2Hash = "9bdedd0990e83e328e42f7bb8c2771cab6ae0145"
-	conf := s.taskConfig8
+	conf := s.taskConfig7
 
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
@@ -1034,63 +1022,4 @@ func (s *GitGetProjectSuite) TestReorderPatches() {
 	s.Equal("m0", patches[0].ModuleName)
 	s.Equal("m1", patches[1].ModuleName)
 	s.Equal("", patches[2].ModuleName)
-}
-
-func (s *GitGetProjectSuite) TestMergeMultiplePatches() {
-	conf := s.taskConfig6
-	token, err := s.settings.GetGithubOauthToken()
-	s.Require().NoError(err)
-	conf.Expansions.Put("github", token)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.comm.GetTaskPatchResponse = &patch.Patch{
-		Patches: []patch.ModulePatch{
-			{
-				Githash:    "d0d878e81b303fd2abbf09331e54af41d6cd0c7d",
-				PatchSet:   patch.PatchSet{PatchFileId: "patchfile1"},
-				ModuleName: "evergreen",
-			},
-		},
-	}
-	s.comm.PatchFiles["patchfile1"] = `
-diff --git a/README.md b/README.md
-index edc0c34..8e82862 100644
---- a/README.md
-+++ b/README.md
-@@ -1,2 +1,3 @@
- mci_test
- ========
-+another line
-`
-
-	sender := send.MakeInternalLogger()
-	logger := client.NewSingleChannelLogHarness("test", sender)
-
-	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
-		for _, command := range task.Commands {
-			pluginCmds, err := Render(command, &conf.Project, BlockInfo{})
-			s.NoError(err)
-			s.NotNil(pluginCmds)
-			pluginCmds[0].SetJasperManager(s.jasper)
-			err = pluginCmds[0].Execute(ctx, s.comm, logger, conf)
-			// Running the git commands takes time, so it could hit the test's
-			// context timeout if it's slow. Make sure that the error isn't due
-			// to a timeout.
-			s.False(utility.IsContextError(errors.Cause(err)))
-			// This command will error because it'll apply the same patch twice.
-			// We are just testing that there was an attempt to apply the patch
-			// the second time.
-			s.Error(err)
-		}
-	}
-
-	successMessage := "Applied changes from previous commit queue patch '555555555555555555555555'"
-	foundSuccessMessage := false
-	for msg, ok := sender.GetMessageSafe(); ok; msg, ok = sender.GetMessageSafe() {
-		if strings.Contains(msg.Message.String(), successMessage) {
-			foundSuccessMessage = true
-		}
-	}
-	s.True(foundSuccessMessage, "did not see the following in task output: %s", successMessage)
 }

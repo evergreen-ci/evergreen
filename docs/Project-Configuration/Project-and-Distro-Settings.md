@@ -134,7 +134,7 @@ Options:
 
 ### Aliases
 
-Aliases can be used for patch testing, commit queue testing, GitHub PRs,
+Aliases can be used for patch testing, merge queue testing, GitHub PRs,
 GitHub checks, git tag triggers, project triggers, and patch triggers.
 
 For most aliases, you must define a variant regex or tags, and a task
@@ -264,6 +264,10 @@ the Github user to an Evergreen user.
 authorized teams, no version will be created. **If git tag versions are not being
 created as you expect them to**, please first check that the tag pusher is part of
 one of the above fields.
+
+If you'd like for Git Tag triggered versions to be associated with the pusher,
+ensure that they've set their GitHub username in 
+[their Evergreen preferences](https://spruce.mongodb.com/preferences/profile).
 
 2.  **Add aliases to determine what tasks will run.**
 
@@ -474,10 +478,10 @@ performance of tasks and tests.
 
 Project admins can set up notifications for when some events happen within the project. Admins can set up events when:
 
-- Any version/build/task finishes/fails - these can be filtered by build initiator (commit, patch, PR, commit queue,
+- Any version/build/task finishes/fails - these can be filtered by build initiator (commit, patch, PR,
   periodic build).
 - First failure occurs in a version, for each build or for each task name - these can be filtered by build initiator
-  (commit, patch, PR, commit queue, periodic build).
+  (commit, patch, PR, periodic build).
 - A previously-passing task fails - these can be filtered by failure type (any, test, system, setup). Furthermore, to
   reduce the amount of notifications received, the re-notification interval can be explicitly set.
 - A previously-passing test fails - these can be filtered by test name and failure type (any, test, system, setup).
@@ -667,7 +671,9 @@ patch_aliases:
         - value: "defaultValue"
 ```
 
-### Commit Queue Aliases
+### Merge Queue Aliases
+
+These apply to the [Github merge queue integration](../Merge-Queue).
 
 ``` yaml
 commit_queue_aliases:

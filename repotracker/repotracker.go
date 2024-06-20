@@ -627,10 +627,10 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 		// Format them, as we need to store + display them to the user
 		var projectErrors, projectWarnings []string
 		for _, e := range verrs {
-			if e.Level == validator.Warning {
-				projectWarnings = append(projectWarnings, e.Error())
-			} else {
+			if e.Level == validator.Error {
 				projectErrors = append(projectErrors, e.Error())
+			} else if e.Level == validator.Warning {
+				projectWarnings = append(projectWarnings, e.Error())
 			}
 		}
 		v.Warnings = projectWarnings
@@ -680,14 +680,27 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 // ShellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
 func ShellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
-	if metadata.Revision.AuthorGithubUID != 0 {
-		u, err := user.FindByGithubUID(metadata.Revision.AuthorGithubUID)
+	var usr *user.DBUser
+	var err error
+	// Default to the pusher of the git tag, if relevant.
+	if metadata.GitTag.Pusher != "" {
+		usr, err = user.FindByGithubName(metadata.GitTag.Pusher)
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": fmt.Sprintf("failed to fetch Evergreen user with GitHub UID %d", metadata.Revision.AuthorGithubUID),
+			"message":        "failed to fetch Evergreen user with GitHub info",
+			"method":         "git_tag",
+			"git_tag_pusher": metadata.GitTag.Pusher,
 		}))
-		if err == nil {
-			metadata.User = u
-		}
+	}
+	if usr == nil && metadata.Revision.AuthorGithubUID != 0 {
+		usr, err = user.FindByGithubUID(metadata.Revision.AuthorGithubUID)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":             "failed to fetch Evergreen user with GitHub info",
+			"method":              "user_uid",
+			"revision_author_uid": metadata.Revision.AuthorGithubUID,
+		}))
+	}
+	if usr != nil {
+		metadata.User = usr
 	}
 
 	number, err := model.GetNewRevisionOrderNumber(ref.Id)

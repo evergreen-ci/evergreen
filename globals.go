@@ -508,6 +508,7 @@ const (
 	TaskExecutionOtelAttribute   = "evergreen.task.execution"
 	TaskStatusOtelAttribute      = "evergreen.task.status"
 	TaskFailureTypeOtelAttribute = "evergreen.task.failure_type"
+	TaskTagsOtelAttribute        = "evergreen.task.tags"
 
 	// version otel attributes
 	VersionIDOtelAttribute               = "evergreen.version.id"
@@ -1118,6 +1119,10 @@ func IsPatchRequester(requester string) bool {
 
 func IsGitHubPatchRequester(requester string) bool {
 	return requester == GithubPRRequester || requester == MergeTestRequester || requester == GithubMergeRequester
+}
+
+func IsGithubPRRequester(requester string) bool {
+	return requester == GithubPRRequester
 }
 
 func IsGitTagRequester(requester string) bool {
