@@ -61,6 +61,12 @@ func TestExpansionUpdate(t *testing.T) {
 				},
 				err: "expansion 'key' at index 0 must not have both a value and a concat",
 			},
+			"InvalidRedactFileWithNoFile": {
+				params: map[string]interface{}{
+					"redact_file_expansions": true,
+				},
+				err: "redact_file_expansions is true but no file was provided",
+			},
 			"ValidParams": {
 				params: map[string]interface{}{
 					"updates": []map[string]interface{}{
@@ -103,6 +109,17 @@ func TestExpansionUpdate(t *testing.T) {
 						Concat: "concat-2",
 						Redact: true,
 					},
+				},
+			},
+			"ValidFile": {
+				params: map[string]interface{}{
+					"file": "file.yaml",
+				},
+			},
+			"ValidFileWithRedact": {
+				params: map[string]interface{}{
+					"file":                   "file.yaml",
+					"redact_file_expansions": true,
 				},
 			},
 		} {

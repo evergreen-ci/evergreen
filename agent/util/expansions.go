@@ -38,7 +38,7 @@ func (e *DynamicExpansions) Put(key, value string) {
 	e.Expansions.Put(key, value)
 }
 
-func (e *DynamicExpansions) UpdateFromYaml(filename string) error {
+func (e *DynamicExpansions) UpdateFromYaml(filename string) ([]string, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 

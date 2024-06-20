@@ -15,13 +15,15 @@ import (
 // task's expansions at runtime. update can take a list
 // of update expansion pairs and/or a file of expansion pairs
 type update struct {
-	// Key-value pairs for updating the task's parameters with
+	// Updates is the list of expansion updates to apply.
 	Updates []updateParams `mapstructure:"updates"`
 
-	// Filename for a yaml file containing expansion updates
-	// in the form of
-	//   "expansion_key: expansions_value"
+	// YamlFile is the name for a yaml file containing expansion updates.
 	YamlFile string `mapstructure:"file"`
+
+	// RedactFileExpansions is a flag to redact the expansions in the yaml file
+	// if one was provided.
+	RedactFileExpansions bool `mapstructure:"redact_file_expansions"`
 
 	IgnoreMissingFile bool `mapstructure:"ignore_missing_file"`
 
@@ -62,6 +64,10 @@ func (c *update) ParseParams(params map[string]interface{}) error {
 		if item.Value != "" && item.Concat != "" {
 			return errors.Errorf("expansion '%s' at index %d must not have both a value and a concat", item.Key, i)
 		}
+	}
+
+	if c.RedactFileExpansions && c.YamlFile == "" {
+		return errors.New("redact_file_expansions is true but no file was provided")
 	}
 
 	return nil
@@ -130,12 +136,17 @@ func (c *update) Execute(ctx context.Context,
 		}
 
 		logger.Task().Infof("Updating expansions with keys from file '%s'.", filename)
-		err := conf.NewExpansions.UpdateFromYaml(filename)
+		keys, err := conf.NewExpansions.UpdateFromYaml(filename)
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		if err = conf.DynamicExpansions.UpdateFromYaml(filename); err != nil {
+		if _, err = conf.DynamicExpansions.UpdateFromYaml(filename); err != nil {
 			return errors.WithStack(err)
+		}
+		if c.RedactFileExpansions {
+			for _, key := range keys {
+				conf.NewExpansions.Redact(key)
+			}
 		}
 	}
 	return nil
