@@ -37,6 +37,9 @@ type updateParams struct {
 	// The expanded value
 	Value string
 
+	// If the expansion should be redacted
+	Redact bool
+
 	// Can optionally concat a string to the end of the current value
 	Concat string
 }
@@ -56,6 +59,9 @@ func (c *update) ParseParams(params map[string]interface{}) error {
 		if item.Key == "" {
 			return errors.Errorf("expansion key at index %d must not be a blank string", i)
 		}
+		if item.Value != "" && item.Concat != "" {
+			return errors.Errorf("expansion key at index %d has both a value and a concat string", i)
+		}
 	}
 
 	return nil
@@ -70,23 +76,28 @@ func (c *update) executeUpdates(ctx context.Context, conf *internal.TaskConfig) 
 			return errors.Wrap(err, "operation aborted")
 		}
 
-		if update.Concat == "" {
-			newValue, err := conf.NewExpansions.ExpandString(update.Value)
+		value := update.Value
+		if update.Concat != "" {
+			value = update.Concat
+		}
 
-			if err != nil {
-				return errors.WithStack(err)
-			}
-			conf.NewExpansions.PutAndRedact(update.Key, newValue)
-			conf.DynamicExpansions.Put(update.Key, newValue)
+		expanded, err := conf.NewExpansions.ExpandString(value)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		// If we are concating, the expanded value is not the whole new replacement-
+		// it is the existing value plus the expanded value.
+		if update.Concat != "" {
+			existingValue := conf.NewExpansions.Get(update.Key)
+			expanded = existingValue + expanded
+		}
+
+		conf.DynamicExpansions.Put(update.Key, expanded)
+		if update.Redact {
+			conf.NewExpansions.PutAndRedact(update.Key, expanded)
 		} else {
-			newValue, err := conf.NewExpansions.ExpandString(update.Concat)
-			if err != nil {
-				return errors.WithStack(err)
-			}
-
-			oldValue := conf.NewExpansions.Get(update.Key)
-			conf.NewExpansions.PutAndRedact(update.Key, oldValue+newValue)
-			conf.DynamicExpansions.Put(update.Key, oldValue+newValue)
+			conf.NewExpansions.Put(update.Key, expanded)
 		}
 	}
 

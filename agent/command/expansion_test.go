@@ -18,42 +18,106 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestExpansionsPlugin(t *testing.T) {
-	ctx := context.Background()
-
-	Convey("Should be able to update expansions", t, func() {
-		updateCommand := update{
-			Updates: []updateParams{
+func TestExpansionUpdate(t *testing.T) {
+	for tName, tCase := range map[string]struct {
+		updates    []updateParams
+		expansions util.Expansions
+		expected   util.Expansions
+		redact     []string
+		err        error
+	}{
+		"EmptyUpdate": {
+			updates:    []updateParams{},
+			expansions: util.Expansions{},
+			expected:   util.Expansions{},
+		},
+		"NewValuesWithValueAndEmptyConcat": {
+			updates: []updateParams{
 				{
 					Key:   "base",
-					Value: "eggs",
+					Value: "not eggs",
 				},
 				{
-					Key:    "topping",
-					Concat: ",sausage",
+					Key:    "toppings",
+					Concat: ", chicken",
 				},
 			},
-		}
+			expansions: util.Expansions{},
+			expected:   util.Expansions{"base": "not eggs", "toppings": ", chicken"},
+		},
+		"ReplaceValuesAndConcatValues": {
+			updates: []updateParams{
+				{
+					Key:   "base",
+					Value: "not eggs",
+				},
+				{
+					Key:    "toppings",
+					Concat: ", chicken",
+				},
+			},
+			expansions: util.Expansions{"base": "eggs", "toppings": "bacon"},
+			expected:   util.Expansions{"base": "not eggs", "toppings": "bacon, chicken"},
+		},
+		"RedactionNewValuesAndEmptyConcat": {
+			updates: []updateParams{
+				{
+					Key:    "base",
+					Value:  "not eggs",
+					Redact: true,
+				},
+				{
+					Key:    "toppings",
+					Concat: ", chicken",
+					Redact: true,
+				},
+			},
+			expansions: util.Expansions{},
+			expected:   util.Expansions{"base": "not eggs", "toppings": ", chicken"},
+			redact:     []string{"base", "toppings"},
+		},
+		"RedactionReplaceValuesAndConcat": {
+			updates: []updateParams{
+				{
+					Key:    "base",
+					Value:  "not eggs",
+					Redact: true,
+				},
+				{
+					Key:    "toppings",
+					Concat: ", chicken",
+					Redact: true,
+				},
+				{
+					Key:   "not-redacted",
+					Value: "other",
+				},
+			},
+			expansions: util.Expansions{"base": "eggs", "toppings": "bacon"},
+			expected:   util.Expansions{"base": "not eggs", "toppings": "bacon, chicken", "not-redacted": "other"},
+			redact:     []string{"base", "toppings"},
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			updateCommand := update{
+				Updates: tCase.updates,
+			}
 
-		expansions := util.Expansions{}
-		expansions.Put("base", "not eggs")
-		expansions.Put("topping", "bacon")
+			taskConfig := internal.TaskConfig{
+				Expansions:    tCase.expansions,
+				NewExpansions: agentutil.NewDynamicExpansions(tCase.expansions),
+			}
 
-		taskConfig := internal.TaskConfig{
-			Expansions:    expansions,
-			NewExpansions: agentutil.NewDynamicExpansions(expansions),
-		}
-
-		So(updateCommand.executeUpdates(ctx, &taskConfig), ShouldBeNil)
-		So(taskConfig.DynamicExpansions, ShouldResemble, util.Expansions{"base": "eggs", "topping": "bacon,sausage"})
-		So(taskConfig.NewExpansions.GetRedacted(), ShouldResemble, []string{"base", "topping"})
-		So(expansions.Get("base"), ShouldEqual, "eggs")
-		So(expansions.Get("topping"), ShouldEqual, "bacon,sausage")
-	})
+			err := updateCommand.executeUpdates(context.Background(), &taskConfig)
+			require.NoError(t, err)
+			assert.Equal(t, tCase.expected, taskConfig.DynamicExpansions)
+			assert.Equal(t, tCase.redact, taskConfig.NewExpansions.GetRedacted())
+		})
+	}
 
 }
 
-func TestExpansionsPluginWExecution(t *testing.T) {
+func TestExpansionUpdateFile(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
