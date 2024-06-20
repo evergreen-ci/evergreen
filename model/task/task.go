@@ -2648,6 +2648,8 @@ func (t *Task) MarkUnscheduled() error {
 // MarkUnattainableDependency updates the unattainable field for the dependency in the task's dependency list,
 // and logs if the task is newly blocked.
 func (t *Task) MarkUnattainableDependency(ctx context.Context, dependencyId string, unattainable bool) error {
+	// kim: NOTE: Blocked depends on DependsOn.Unattainable so update all
+	// needs to return the updated tasks after Unattainable is updated.
 	wasBlocked := t.Blocked()
 	if err := t.updateAllMatchingDependenciesForTask(ctx, dependencyId, unattainable); err != nil {
 		return errors.Wrapf(err, "updating matching dependencies for task '%s'", t.Id)
@@ -2667,42 +2669,42 @@ func (t *Task) MarkUnattainableDependency(ctx context.Context, dependencyId stri
 	return nil
 }
 
-// MarkAllTasksWithUnattainableDependency updates many tasks (taskIDs) to mark
-// the dependency (dependencyID) as attainable or not.
-func MarkAllTasksWithUnattainableDependency(ctx context.Context, tasks []Task, dependencyID string, unattainable bool) error {
-	type taskBlockedInfo struct {
-		task       *Task
-		wasBlocked bool
-	}
-
-	taskWasBlocked := make(map[string]taskBlockedInfo, len(tasks))
+// MarkAllWithUnattainableDependency updates many tasks (taskIDs) to mark
+// the dependency (dependencyID) as attainable or not. This returns all the
+// tasks after the update.
+func MarkAllWithUnattainableDependency(ctx context.Context, tasks []Task, dependencyID string, unattainable bool) ([]Task, error) {
+	taskWasBlocked := make(map[string]bool, len(tasks))
 	taskIDs := make([]string, 0, len(tasks))
-	for i := range tasks {
-		t := tasks[i]
-		taskWasBlocked[t.Id] = taskBlockedInfo{
-			task:       &t,
-			wasBlocked: t.Blocked(),
-		}
+	for _, t := range tasks {
+		// kim: NOTE: Blocked depends on DependsOn.Unattainable so update all
+		// needs to return the updated tasks after Unattainable is updated.
+		taskWasBlocked[t.Id] = t.Blocked()
 		taskIDs = append(taskIDs, t.Id)
 	}
 
 	if err := updateAllTasksForMatchingDependencies(ctx, taskIDs, dependencyID, unattainable); err != nil {
-		return err
+		return nil, err
+	}
+
+	updatedTasks, err := FindAll(db.Query(ByIds(taskIDs)))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding updated tasks")
+	}
+	if len(updatedTasks) != len(tasks) {
+		return nil, errors.Errorf("updated dependencies for tasks but subsequent query for updated tasks returned a different number of tasks (%d) than expected (%d)", len(updatedTasks), len(tasks))
 	}
 
 	if !unattainable {
-		return nil
+		return updatedTasks, nil
 	}
 
-	for _, info := range taskWasBlocked {
-		if info.wasBlocked && !info.task.OverrideDependencies {
-			// kim: TODO: change to log many task blocked. Only do after
-			// confirming that this works in unit tests.
-			event.LogTaskBlocked(info.task.Id, info.task.Execution, dependencyID)
+	for _, t := range updatedTasks {
+		if !taskWasBlocked[t.Id] && !t.OverrideDependencies {
+			event.LogTaskBlocked(t.Id, t.Execution, dependencyID)
 		}
 	}
 
-	return nil
+	return updatedTasks, nil
 }
 
 // AbortBuildTasks sets the abort flag on all tasks associated with the build which are in an abortable

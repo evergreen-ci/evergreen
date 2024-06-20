@@ -1051,6 +1051,11 @@ func UpdateBlockedDependencies(ctx context.Context, t *task.Task) error {
 		return errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
 	}
 
+	dependentTasks, err = task.MarkAllWithUnattainableDependency(ctx, dependentTasks, t.Id, true)
+	if err != nil {
+		return errors.Wrap(err, "marking unattainable dependency for tasks")
+	}
+
 	// kim: NOTE: bulk write may or may not help this loop depending on how much
 	// this loop relies on the prior UpdateOnes taking effect.
 	// kim: NOTE: doing bulk update of all child tasks will reduce number of
@@ -1065,9 +1070,10 @@ func UpdateBlockedDependencies(ctx context.Context, t *task.Task) error {
 		// quite complicated.
 		// kim; NOTE: this passes unattainable=true because it only finds those
 		// tasks whose status filter won't match the task's status.
-		if err = dependentTask.MarkUnattainableDependency(ctx, t.Id, true); err != nil {
-			return errors.Wrap(err, "marking dependency unattainable")
-		}
+		// kim: TODO: remove
+		// if err = dependentTask.MarkUnattainableDependency(ctx, t.Id, true); err != nil {
+		//     return errors.Wrap(err, "marking dependency unattainable")
+		// }
 		if err = UpdateBlockedDependencies(ctx, &dependentTask); err != nil {
 			return errors.Wrapf(err, "updating blocked dependencies for '%s'", t.Id)
 		}
@@ -1094,11 +1100,17 @@ func UpdateUnblockedDependencies(ctx context.Context, t *task.Task) error {
 		return errors.Wrap(err, "getting dependencies marked unattainable")
 	}
 
+	blockedTasks, err = task.MarkAllWithUnattainableDependency(ctx, blockedTasks, t.Id, false)
+	if err != nil {
+		return errors.Wrap(err, "marking attainable dependency for tasks")
+	}
+
 	buildsToUpdate := make(map[string]bool)
 	for _, blockedTask := range blockedTasks {
-		if err = blockedTask.MarkUnattainableDependency(ctx, t.Id, false); err != nil {
-			return errors.Wrap(err, "marking dependency attainable")
-		}
+		// kim: TODO: remove
+		// if err = blockedTask.MarkUnattainableDependency(ctx, t.Id, false); err != nil {
+		//     return errors.Wrap(err, "marking dependency attainable")
+		// }
 
 		if err := UpdateUnblockedDependencies(ctx, &blockedTask); err != nil {
 			return errors.WithStack(err)
