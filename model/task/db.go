@@ -1841,6 +1841,7 @@ func updateAllTasksForMatchingDependencies(ctx context.Context, taskIDs []string
 				},
 			},
 			{
+				// Cache whether any dependencies are unattainable.
 				"$set": bson.M{UnattainableDependencyKey: bson.M{"$cond": bson.M{
 					"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
 					"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
