@@ -52,6 +52,7 @@ func (e *DynamicExpansions) Get(key string) string {
 	return e.Expansions.Get(key)
 }
 
+// Redact marks the expansion key for redaction.
 func (e *DynamicExpansions) Redact(key string) {
 	e.redactMu.Lock()
 	defer e.redactMu.Unlock()
@@ -67,7 +68,7 @@ func (e *DynamicExpansions) GetRedacted() []string {
 	return e.redact
 }
 
-// PutAndRedact puts the key and value into the expansions and marks it for redaction.
+// PutAndRedact puts expansion and marks it's key for redaction.
 func (e *DynamicExpansions) PutAndRedact(key, value string) {
 	e.Put(key, value)
 	e.Redact(key)
