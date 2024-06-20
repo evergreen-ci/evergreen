@@ -124,7 +124,7 @@ type Task struct {
 	DependsOn               []Dependency     `bson:"depends_on" json:"depends_on"`
 	// UnattainableDependency caches the contents of DependsOn for more
 	// efficient querying. It is true if any of its dependencies is unattainable
-	// and is false if all dependencies are attainable.
+	// and is false if all of its dependencies are attainable.
 	UnattainableDependency bool `bson:"unattainable_dependency" json:"unattainable_dependency"`
 	NumDependents          int  `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 	// OverrideDependencies indicates whether a task should override its dependencies. If set, it will not

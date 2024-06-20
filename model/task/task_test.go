@@ -3169,7 +3169,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 			}
 			require.NoError(t, dependentTask.Insert())
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", true)
+			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", false)
 			require.NoError(t, err)
 			require.Len(t, updatedDependentTasks, 1)
 			dependentTask = updatedDependentTasks[0]
@@ -3178,7 +3178,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 				assert.True(t, taskToCheck.Blocked())
 				assert.True(t, taskToCheck.UnattainableDependency)
 				require.Len(t, taskToCheck.DependsOn, 2)
-				assert.True(t, taskToCheck.DependsOn[0].Unattainable)
+				assert.False(t, taskToCheck.DependsOn[0].Unattainable)
 				assert.True(t, taskToCheck.DependsOn[1].Unattainable)
 			})
 		},
