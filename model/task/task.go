@@ -2667,6 +2667,44 @@ func (t *Task) MarkUnattainableDependency(ctx context.Context, dependencyId stri
 	return nil
 }
 
+// MarkAllTasksWithUnattainableDependency updates many tasks (taskIDs) to mark
+// the dependency (dependencyID) as attainable or not.
+func MarkAllTasksWithUnattainableDependency(ctx context.Context, tasks []Task, dependencyID string, unattainable bool) error {
+	type taskBlockedInfo struct {
+		task       *Task
+		wasBlocked bool
+	}
+
+	taskWasBlocked := make(map[string]taskBlockedInfo, len(tasks))
+	taskIDs := make([]string, 0, len(tasks))
+	for i := range tasks {
+		t := tasks[i]
+		taskWasBlocked[t.Id] = taskBlockedInfo{
+			task:       &t,
+			wasBlocked: t.Blocked(),
+		}
+		taskIDs = append(taskIDs, t.Id)
+	}
+
+	if err := updateAllTasksForMatchingDependencies(ctx, taskIDs, dependencyID, unattainable); err != nil {
+		return err
+	}
+
+	if !unattainable {
+		return nil
+	}
+
+	for _, info := range taskWasBlocked {
+		if info.wasBlocked && !info.task.OverrideDependencies {
+			// kim: TODO: change to log many task blocked. Only do after
+			// confirming that this works in unit tests.
+			event.LogTaskBlocked(info.task.Id, info.task.Execution, dependencyID)
+		}
+	}
+
+	return nil
+}
+
 // AbortBuildTasks sets the abort flag on all tasks associated with the build which are in an abortable
 func AbortBuildTasks(buildId string, reason AbortInfo) error {
 	q := bson.M{

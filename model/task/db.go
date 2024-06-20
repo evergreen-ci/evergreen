@@ -1870,7 +1870,7 @@ func (t *Task) updateAllMatchingDependenciesForTask(ctx context.Context, depende
 		// expected. The two fields that are set
 		// (DependsOn.UnattainableDependency and Task.UnattainableDependency)
 		// are not used in the rest of the UpdateUnblockedDependencies logic.
-		// However, it may be relevant to the event log.
+		// However, it may or may not be relevant to the event log.
 		options.FindOneAndUpdate().SetReturnDocument(options.After),
 	)
 	if res.Err() != nil {
@@ -1878,6 +1878,63 @@ func (t *Task) updateAllMatchingDependenciesForTask(ctx context.Context, depende
 	}
 
 	return res.Decode(&t)
+}
+
+func updateAllTasksForMatchingDependencies(ctx context.Context, taskIDs []string, dependencyID string, unattainable bool) error {
+	// Update the matching dependencies in the DependsOn array and the UnattainableDependency field that caches
+	// whether any of the dependencies are blocked. Combining both these updates in a single update operation makes it
+	// impervious to races because updates to single documents are atomic.
+	if _, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
+		bson.M{
+			// kim: NOTE: this is the task ID of the dependent (i.e. child)
+			// task.
+			IdKey: bson.M{"$in": taskIDs},
+		},
+		[]bson.M{
+			{
+				// kim: NOTE: this sets individual dependency's
+				// UnattainableDependency.
+				// Iterate over the DependsOn array and set unattainable for dependencies that
+				// match the dependencyID. Leave other dependencies untouched.
+				"$set": bson.M{DependsOnKey: bson.M{
+					"$map": bson.M{
+						// kim: NOTE: for each of the child's dependencies.
+						"input": "$" + DependsOnKey,
+						"as":    "dependency",
+						"in": bson.M{
+							"$cond": bson.M{
+								// kim: NOTE: if dependency ID matches the
+								// parent task.
+								"if": bson.M{"$eq": []string{bsonutil.GetDottedKeyName("$$dependency", DependencyTaskIdKey), dependencyID}},
+								// kim: NOTE: then set unattainable.
+								"then": bson.M{"$mergeObjects": bson.A{"$$dependency", bson.M{DependencyUnattainableKey: unattainable}}},
+								// kim: NOTE: otherwise keep the dependency as-is.
+								"else": "$$dependency",
+							},
+						},
+					}},
+				},
+			},
+			{
+				// kim: NOTE: sets overall task's UnattainableDependency
+				// Cache whether any dependencies are unattainable.
+				"$set": bson.M{UnattainableDependencyKey: bson.M{"$cond": bson.M{
+					"if": bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					// kim: NOTE: if any of the individual dependencies for the
+					// child are unattainable, set the child
+					// UnattainableDependency to true.
+					"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+					// kim: NOTE: otherwise, no dependency has been marked
+					// unattainable, so set it to false.
+					"else": false,
+				}}},
+			},
+		},
+	); err != nil {
+		return errors.Wrap(err, "updating matching dependencies")
+	}
+
+	return nil
 }
 
 // HasUnfinishedTaskForVersions returns true if there are any scheduled but
