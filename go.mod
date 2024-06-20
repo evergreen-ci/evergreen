@@ -3,7 +3,7 @@ module github.com/evergreen-ci/evergreen
 go 1.20
 
 require (
-	github.com/99designs/gqlgen v0.17.48
+	github.com/99designs/gqlgen v0.17.49
 	github.com/PuerkitoBio/rehttp v1.4.0
 	github.com/aws/aws-sdk-go v1.54.2
 	github.com/aws/aws-sdk-go-v2 v1.27.2
@@ -51,7 +51,7 @@ require (
 	github.com/smartystreets/goconvey v1.8.1
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli v1.22.15
-	github.com/vektah/gqlparser/v2 v2.5.12
+	github.com/vektah/gqlparser/v2 v2.5.16
 	go.mongodb.org/mongo-driver v1.15.0
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.21.1
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.21.1
@@ -70,7 +70,7 @@ require (
 	golang.org/x/crypto v0.24.0
 	golang.org/x/oauth2 v0.21.0
 	golang.org/x/text v0.16.0
-	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
+	golang.org/x/tools v0.22.0 // indirect
 	gonum.org/v1/gonum v0.14.0
 	google.golang.org/grpc v1.64.0
 	google.golang.org/protobuf v1.34.2
@@ -183,8 +183,8 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/contrib v1.21.1 // indirect
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
-	golang.org/x/mod v0.17.0 // indirect
-	golang.org/x/net v0.25.0 // indirect
+	golang.org/x/mod v0.18.0 // indirect
+	golang.org/x/net v0.26.0 // indirect
 	golang.org/x/sync v0.7.0
 	golang.org/x/sys v0.21.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240318140521-94a12d6c2237 // indirect
