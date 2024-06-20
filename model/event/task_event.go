@@ -164,15 +164,19 @@ func LogTaskRestarted(taskId string, execution int, userId string) {
 	logTaskEvent(taskId, TaskRestarted, TaskEventData{Execution: execution, UserId: userId})
 }
 
-// TaskBlockedEventData is event data for logging a single task blocked event.
-type TaskBlockedEventData struct {
+// TaskBlockedData is event data for logging a single task blocked event.
+type TaskBlockedData struct {
 	ID        string `bson:"-" json:"-"`
 	Execution int    `bson:"-" json:"-"`
 	BlockedOn string `bson:"-" json:"-"`
 }
 
 // LogManyTasksBlocked logs many task blocked events.
-func LogManyTasksBlocked(data []TaskBlockedEventData) {
+func LogManyTasksBlocked(data []TaskBlockedData) {
+	if len(data) == 0 {
+		return
+	}
+
 	events := make([]EventLogEntry, 0, len(data))
 	now := time.Now()
 	for _, d := range data {

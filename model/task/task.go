@@ -2652,13 +2652,21 @@ func (t *Task) MarkUnscheduled() error {
 }
 
 // MarkAllForUnattainableDependency updates many tasks (taskIDs) to mark
-// the dependency (dependencyID) as attainable or not. It creates an event log
-// for each newly blocked task. This returns all the tasks after the update.
+// the dependency (dependencyID) as attainable or not. If marking a dependency
+// unattainable, it creates an event log for each newly blocked task. This
+// returns all the tasks after the update.
 func MarkAllForUnattainableDependency(ctx context.Context, tasks []Task, dependencyID string, unattainable bool) ([]Task, error) {
-	taskWasBlocked := make(map[string]bool, len(tasks))
 	taskIDs := make([]string, 0, len(tasks))
+	newlyBlockedTaskData := make([]event.TaskBlockedData, 0, len(tasks))
 	for _, t := range tasks {
-		taskWasBlocked[t.Id] = t.Blocked()
+		if !t.Blocked() && unattainable && !t.OverrideDependencies {
+			data := event.TaskBlockedData{
+				ID:        t.Id,
+				Execution: t.Execution,
+				BlockedOn: dependencyID,
+			}
+			newlyBlockedTaskData = append(newlyBlockedTaskData, data)
+		}
 		taskIDs = append(taskIDs, t.Id)
 	}
 
@@ -2666,34 +2674,14 @@ func MarkAllForUnattainableDependency(ctx context.Context, tasks []Task, depende
 		return nil, err
 	}
 
+	event.LogManyTasksBlocked(newlyBlockedTaskData)
+
 	updatedTasks, err := FindAll(db.Query(ByIds(taskIDs)))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding updated tasks")
 	}
 	if len(updatedTasks) != len(tasks) {
 		return nil, errors.Errorf("updated dependencies for tasks but subsequent query for updated tasks returned a different number of tasks (%d) than expected (%d)", len(updatedTasks), len(tasks))
-	}
-
-	if !unattainable {
-		return updatedTasks, nil
-	}
-
-	newlyBlockedTaskData := make([]event.TaskBlockedEventData, 0, len(tasks))
-	for i := range updatedTasks {
-		t := updatedTasks[i]
-		if !taskWasBlocked[t.Id] && !t.OverrideDependencies {
-			// event.LogTaskBlocked(t.Id, t.Execution, dependencyID)
-			data := event.TaskBlockedEventData{
-				ID:        t.Id,
-				Execution: t.Execution,
-				BlockedOn: dependencyID,
-			}
-			newlyBlockedTaskData = append(newlyBlockedTaskData, data)
-		}
-	}
-
-	if len(newlyBlockedTaskData) > 0 {
-		event.LogManyTasksBlocked(newlyBlockedTaskData)
 	}
 
 	return updatedTasks, nil
