@@ -2656,6 +2656,10 @@ func (t *Task) MarkUnscheduled() error {
 // unattainable, it creates an event log for each newly blocked task. This
 // returns all the tasks after the update.
 func MarkAllForUnattainableDependency(ctx context.Context, tasks []Task, dependencyID string, unattainable bool) ([]Task, error) {
+	if len(tasks) == 0 {
+		return tasks, nil
+	}
+
 	taskIDs := make([]string, 0, len(tasks))
 	newlyBlockedTaskData := make([]event.TaskBlockedData, 0, len(tasks))
 	for _, t := range tasks {
