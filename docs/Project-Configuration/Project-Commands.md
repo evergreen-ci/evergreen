@@ -397,6 +397,7 @@ Any updates to the expansions made with this command will only persist for the d
   params:
     ignore_missing_file: true
     file: src/ec2_artifacts.yml
+    redact_file_expansions: true
 
 - command: expansions.update
   params:
@@ -427,6 +428,7 @@ Parameters:
            update, only `value or `concat` can be set.
         - `redact`: if true, the expansion will be redacted in the task logs.
 -   `file`: filename for a YAML file containing expansion updates
+-   `redact_file_expansions`: if true, the expansions added from the file will be redacted in the task logs
 -   `ignore_missing_file`: do not error if the file is missing
 
 ## expansions.write
