@@ -19,15 +19,14 @@ import (
 )
 
 const (
-	patchDescriptionFlagName    = "description"
-	patchVerboseFlagName        = "verbose"
-	patchTriggerAliasFlag       = "trigger-alias"
-	repeatDefinitionFlag        = "repeat"
-	repeatFailedDefinitionFlag  = "repeat-failed"
-	repeatPatchIdFlag           = "repeat-patch"
-	includeModulesFlag          = "include-modules"
-	autoDescriptionFlag         = "auto-description"
-	localModuleIncludesFlagName = "local-module-includes"
+	patchDescriptionFlagName   = "description"
+	patchVerboseFlagName       = "verbose"
+	patchTriggerAliasFlag      = "trigger-alias"
+	repeatDefinitionFlag       = "repeat"
+	repeatFailedDefinitionFlag = "repeat-failed"
+	repeatPatchIdFlag          = "repeat-patch"
+	includeModulesFlag         = "include-modules"
+	autoDescriptionFlag        = "auto-description"
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
