@@ -403,11 +403,29 @@ Any updates to the expansions made with this command will only persist for the d
     updates:
     - key: artifact_url
       value: http://s3/static-artifacts.tgz
+
+- command: expansions.update
+  params:
+    updates:
+    - key: artifact_url
+      concat: tgz
+
+- command: expansions.update
+  params:
+    updates:
+    - key: artifact_url
+      value: http://s3/static-artifacts.tgz
+      redact: true
 ```
 
 Parameters:
 
--   `updates`: key-value pairs for updating the task's parameters
+-   `updates`: a list of expansions to update.
+        - `key`: the expansion key to update. (required)
+        - `value`: the new value for the expansion.
+        - `concat`: the string to concatenate to the existing value. Per
+           update, only `value or `concat` can be set.
+        - `redact`: if true, the expansion will be redacted in the task logs.
 -   `file`: filename for a YAML file containing expansion updates
 -   `ignore_missing_file`: do not error if the file is missing
 
