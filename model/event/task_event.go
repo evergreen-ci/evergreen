@@ -164,6 +164,40 @@ func LogTaskRestarted(taskId string, execution int, userId string) {
 	logTaskEvent(taskId, TaskRestarted, TaskEventData{Execution: execution, UserId: userId})
 }
 
+// TaskBlockedEventData is event data for logging a single task blocked event.
+type TaskBlockedEventData struct {
+	ID        string `bson:"-" json:"-"`
+	Execution int    `bson:"-" json:"-"`
+	BlockedOn string `bson:"-" json:"-"`
+}
+
+// LogManyTasksBlocked logs many task blocked events.
+func LogManyTasksBlocked(data []TaskBlockedEventData) {
+	events := make([]EventLogEntry, 0, len(data))
+	now := time.Now()
+	for _, d := range data {
+		e := EventLogEntry{
+			Timestamp:    now,
+			ResourceId:   d.ID,
+			ResourceType: ResourceTypeTask,
+			EventType:    TaskBlocked,
+			Data: TaskEventData{
+				Execution: d.Execution,
+				BlockedOn: d.BlockedOn,
+			},
+		}
+		events = append(events, e)
+	}
+	if err := LogManyEvents(events); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"resource_type": ResourceTypeTask,
+			"event_type":    TaskBlocked,
+			"message":       "error logging event",
+			"source":        "event-log-fail",
+		}))
+	}
+}
+
 // LogTaskBlocked updates the DB with a task blocked event.
 func LogTaskBlocked(taskId string, execution int, blockedOn string) {
 	logTaskEvent(taskId, TaskBlocked, TaskEventData{Execution: execution, BlockedOn: blockedOn})

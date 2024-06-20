@@ -830,7 +830,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	}
 
 	catcher.Wrap(UpdateBlockedDependencies(ctx, t), "updating blocked dependencies")
-	catcher.Wrap(t.MarkDependenciesFinished(ctx, true), "updating dependency met status")
+	catcher.Wrap(t.MarkDependenciesFinished(ctx, true), "updating dependency finished status")
 
 	status := t.GetDisplayStatus()
 
@@ -1034,18 +1034,10 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (c
 // UpdateBlockedDependencies traverses the dependency graph and recursively sets
 // each parent dependency as unattainable in depending tasks. It updates the
 // status of builds as well, in case they change due to blocking dependencies.
-// kim: NOTE: since the problem is with updating 4k+ blocked tasks, it could be
-// that just reducing the number of round trips to the DB is not enough, and
-// it's simply updating too many docs to fit within the 60s limit. If so, will
-// need either more creativity (e.g. somehow reducing number of docs to update)
-// or will need to move to a job (similar to generate.tasks but for end task).
 func UpdateBlockedDependencies(ctx context.Context, t *task.Task) error {
 	ctx, span := tracer.Start(ctx, "update-blocked-dependencies")
 	defer span.End()
 
-	// kim: NOTE: find all tasks that depend on this task and their dependency
-	// status filter doesn't match the task's status (e.g. the dependency needs
-	// success but the task failed).
 	dependentTasks, err := t.FindAllUnmarkedBlockedDependencies()
 	if err != nil {
 		return errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
@@ -1056,24 +1048,9 @@ func UpdateBlockedDependencies(ctx context.Context, t *task.Task) error {
 		return errors.Wrap(err, "marking unattainable dependency for tasks")
 	}
 
-	// kim: NOTE: bulk write may or may not help this loop depending on how much
-	// this loop relies on the prior UpdateOnes taking effect.
-	// kim: NOTE: doing bulk update of all child tasks will reduce number of
-	// updates so it's 1 update per parent dependency vertex, rather than 1
-	// update per child-parent dependency edge.
 	// Using a set then converting to a slice to avoid duplicate build IDs.
 	buildIDsSet := make(map[string]struct{})
 	for _, dependentTask := range dependentTasks {
-		// kim; NOTE: this loop of marking unattainable and then recursively
-		// going to the next dependency is the long loop that takes forever.
-		// kim: TODO: figure out how MarkUnattainableDependency works. It seems
-		// quite complicated.
-		// kim; NOTE: this passes unattainable=true because it only finds those
-		// tasks whose status filter won't match the task's status.
-		// kim: TODO: remove
-		// if err = dependentTask.MarkUnattainableDependency(ctx, t.Id, true); err != nil {
-		//     return errors.Wrap(err, "marking dependency unattainable")
-		// }
 		if err = UpdateBlockedDependencies(ctx, &dependentTask); err != nil {
 			return errors.Wrapf(err, "updating blocked dependencies for '%s'", t.Id)
 		}
@@ -1107,11 +1084,6 @@ func UpdateUnblockedDependencies(ctx context.Context, t *task.Task) error {
 
 	buildsToUpdate := make(map[string]bool)
 	for _, blockedTask := range blockedTasks {
-		// kim: TODO: remove
-		// if err = blockedTask.MarkUnattainableDependency(ctx, t.Id, false); err != nil {
-		//     return errors.Wrap(err, "marking dependency attainable")
-		// }
-
 		if err := UpdateUnblockedDependencies(ctx, &blockedTask); err != nil {
 			return errors.WithStack(err)
 		}

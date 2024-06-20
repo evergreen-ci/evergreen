@@ -122,7 +122,9 @@ type Task struct {
 	BuildVariant            string           `bson:"build_variant" json:"build_variant"`
 	BuildVariantDisplayName string           `bson:"build_variant_display_name" json:"-"`
 	DependsOn               []Dependency     `bson:"depends_on" json:"depends_on"`
-	// UnattainableDependency caches the contents of DependsOn for more efficient querying.
+	// UnattainableDependency caches the contents of DependsOn for more
+	// efficient querying. It is true if any of its dependencies is unattainable
+	// and is false if all dependencies are attainable.
 	UnattainableDependency bool `bson:"unattainable_dependency" json:"unattainable_dependency"`
 	NumDependents          int  `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 	// OverrideDependencies indicates whether a task should override its dependencies. If set, it will not
@@ -2649,40 +2651,13 @@ func (t *Task) MarkUnscheduled() error {
 
 }
 
-// MarkUnattainableDependency updates the unattainable field for the dependency in the task's dependency list,
-// and logs if the task is newly blocked.
-// kim: TODO: remove once tests are migrated.
-func (t *Task) MarkUnattainableDependency(ctx context.Context, dependencyId string, unattainable bool) error {
-	// kim: NOTE: Blocked depends on DependsOn.Unattainable so update all
-	// needs to return the updated tasks after Unattainable is updated.
-	wasBlocked := t.Blocked()
-	if err := t.updateAllMatchingDependenciesForTask(ctx, dependencyId, unattainable); err != nil {
-		return errors.Wrapf(err, "updating matching dependencies for task '%s'", t.Id)
-	}
-
-	// Only want to log the task as blocked if it wasn't already blocked, and if we're not overriding dependencies.
-	// kim: NOTE: while this seemingly does require t.Blocked() to be up-to-date
-	// in the later recursive calls, I believe we can work around this by making
-	// it a BFS with one bulk update of all dependent children at this depth.
-	// That way, we can still record t.Blocked() initially before the update,
-	// but later iterations on later tasks at the same depth won't happen since
-	// it's now one big update.
-	// kim: NOTE: should add a test for only one task blocked log.
-	if !wasBlocked && unattainable && !t.OverrideDependencies {
-		event.LogTaskBlocked(t.Id, t.Execution, dependencyId)
-	}
-	return nil
-}
-
 // MarkAllForUnattainableDependency updates many tasks (taskIDs) to mark
-// the dependency (dependencyID) as attainable or not. This returns all the
-// tasks after the update.
+// the dependency (dependencyID) as attainable or not. It creates an event log
+// for each newly blocked task. This returns all the tasks after the update.
 func MarkAllForUnattainableDependency(ctx context.Context, tasks []Task, dependencyID string, unattainable bool) ([]Task, error) {
 	taskWasBlocked := make(map[string]bool, len(tasks))
 	taskIDs := make([]string, 0, len(tasks))
 	for _, t := range tasks {
-		// kim: NOTE: Blocked depends on DependsOn.Unattainable so update all
-		// needs to return the updated tasks after Unattainable is updated.
 		taskWasBlocked[t.Id] = t.Blocked()
 		taskIDs = append(taskIDs, t.Id)
 	}
@@ -2703,10 +2678,22 @@ func MarkAllForUnattainableDependency(ctx context.Context, tasks []Task, depende
 		return updatedTasks, nil
 	}
 
-	for _, t := range updatedTasks {
+	newlyBlockedTaskData := make([]event.TaskBlockedEventData, 0, len(tasks))
+	for i := range updatedTasks {
+		t := updatedTasks[i]
 		if !taskWasBlocked[t.Id] && !t.OverrideDependencies {
-			event.LogTaskBlocked(t.Id, t.Execution, dependencyID)
+			// event.LogTaskBlocked(t.Id, t.Execution, dependencyID)
+			data := event.TaskBlockedEventData{
+				ID:        t.Id,
+				Execution: t.Execution,
+				BlockedOn: dependencyID,
+			}
+			newlyBlockedTaskData = append(newlyBlockedTaskData, data)
 		}
+	}
+
+	if len(newlyBlockedTaskData) > 0 {
+		event.LogManyTasksBlocked(newlyBlockedTaskData)
 	}
 
 	return updatedTasks, nil
