@@ -240,6 +240,9 @@ func hostsCanRunTasksQuery(distroID string) bson.M {
 	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 
+	// Yes this query looks weird but it's a temporary stop gap to ensure we are able to avoid a MongoDB
+	// query planner issue. This query is meant to be a temporary fix until we can update to a newer version of
+	// MongoDB that does not have this bug. https://github.com/evergreen-ci/evergreen/pull/8010
 	return bson.M{
 		"$or": []bson.M{
 			{
