@@ -63,6 +63,12 @@ To skip all (y/n) prompts, the `-y` keyword can be given:
 evergreen patch -y
 ```
 
+To use local changes for a included file from a module, the `--include-modules` flag can be used:
+Note that `set-module`command will not work for module includes and this flag must be used instead.
+```
+evergreen patch --include-modules
+```
+
 Working Tree Changes
 ---
 By default patches will include only committed changes, not changes in Git's working tree or index. To include changes from the working tree use the `--uncommitted, -u` flag or set a default by inserting `patch_uncommitted_changes: true` in the `~/.evergreen.yml` file.
