@@ -150,7 +150,7 @@ func (j *spawnhostStartJob) setNextScheduledStart(ctx context.Context, h *host.H
 	if err != nil {
 		return errors.Wrap(err, "calculating next scheduled start")
 	}
-	if err := h.SetNextScheduledStart(ctx, nextStart); err != nil {
+	if err := h.SetNextScheduledStartTime(ctx, nextStart); err != nil {
 		return errors.Wrapf(err, "setting next scheduled start to '%s'", nextStart)
 	}
 	return nil

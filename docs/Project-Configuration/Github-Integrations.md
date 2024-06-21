@@ -8,7 +8,7 @@ Specific GitHub pull request behavior can trigger behavior in Evergreen.
 evergreen help
 ```
 
-We have documentation here but we also provide it on the PR itself. It will display commands that are available for your project, with some context about when to use them. If the commit queue is disabled but there is an available message, we will still display the message. If PR testing isn't enabled for the branch but [PR testing is set up for untracked branches](../Project-Configuration/Repo-Level-Settings#how-to-use-pr-testing-for-untracked-branches) then we will also still show the related GitHub Pull request commands (detailed below).
+We have documentation here but we also provide it on the PR itself. It will display commands that are available for your project, with some context about when to use them. If PR testing isn't enabled for the branch but [PR testing is set up for untracked branches](../Project-Configuration/Repo-Level-Settings#how-to-use-pr-testing-for-untracked-branches) then we will also still show the related GitHub Pull request commands (detailed below).
 
 ## GitHub Pull Request Testing
 
@@ -27,8 +27,6 @@ evergreen retry
 ```
 
 Sometimes Evergreen has trouble creating a PR patch, due to internal server errors or GitHub flakiness. Commenting `evergreen retry` will attempt to recreate this patch. This can also be used to submit a new patch.
-
-Note that this is specific to GitHub PR checks; it won't retry a commit queue patch. For that, re-type `evergreen merge` (detailed below).
 
 #### Set PR patches to reuse a patch definition
 
@@ -81,18 +79,9 @@ Sometimes Evergreen has trouble sending updated GitHub statuses, so the checks o
 
 GitHub only allows one set of statuses for every commit SHA. If you have a situation where you have two PRs where the HEAD commit is the same, Evergreen will only create a patch for the first one and will make a comment on the second one explaining why. In general, if your tasks do not require the context of the PR (most notably the branch name, which is known to be used in some s3.put tasks), then the status displayed for the PRs will be correct. If the tasks do require the context of the PR, you may comment 'evergreen retry' and force Evergreen to abort currently running patches in favor of a new one in the context of the PR you have commented on.
 
-## Commit Queue
+## GitHub Merge Queue
 
-Evergreen's commit queue merges changes after the code has passed a set of tests. You can read more about this [here](Commit-Queue#commit-queue).
-
-#### Add a PR to the commit queue
-
-```
-evergreen merge
-<any text here will be added as the commit message>
-```
-
-To add a PR to the commit queue, comment `evergreen merge`. Any text after the newline will be added as the commit message.
+See [GitHub Merge Queue](../Project-Configuration/Merge-Queue.md) for more information.
 
 ## Github Check Runs
 
