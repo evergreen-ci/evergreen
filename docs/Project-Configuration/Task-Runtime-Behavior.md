@@ -239,7 +239,7 @@ Example in a command:
 - command: shell.exec
      params:
         shell: bash
-        # Manually set task end status to setup-failed.
+        # Manually set task end status to setup-failed and append failure metadata tags.
         script: |
-          curl -d '{"status":"failed", "type":"setup", "desc":"this should be set", "should_continue": false}' -H "Content-Type: application/json" -X POST localhost:2285/task_status
+          curl -d '{"status":"failed", "type":"setup", "desc":"this should be set", "should_continue": false, "add_failure_metadata_tags": ["failure_tag"]}' -H "Content-Type: application/json" -X POST localhost:2285/task_status
 ```
