@@ -37,14 +37,14 @@ func (r *taskResolver) AbortInfo(ctx context.Context, obj *restModel.APITask) (*
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting aborted task %s: %s", *obj.Id, err.Error()))
 		}
 		if abortedTask == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find aborted task %s: %s", obj.AbortInfo.TaskID, err.Error()))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find aborted task '%s'", obj.AbortInfo.TaskID))
 		}
 		abortedTaskBuild, err := build.FindOneId(abortedTask.BuildId)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting build for aborted task %s: %s", abortedTask.BuildId, err.Error()))
 		}
 		if abortedTaskBuild == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find build %s for aborted task: %s", abortedTask.BuildId, err.Error()))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find build '%s' for aborted task", abortedTask.BuildId))
 		}
 		info.TaskDisplayName = abortedTask.DisplayName
 		info.BuildVariantDisplayName = abortedTaskBuild.DisplayName
