@@ -90,7 +90,7 @@ func PatchSetModule() cli.Command {
 					return err
 				}
 				if shouldContinue {
-					if err = ac.FinalizePatch(patchID); err != nil {
+					if err = ac.FinalizePatch(nil, patchID); err != nil {
 						return errors.Wrapf(err, "finalizing patch '%s'", patchID)
 					}
 				}

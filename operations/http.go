@@ -186,7 +186,10 @@ func (ac *legacyClient) CancelPatch(patchId string) error {
 	return ac.modifyExisting(patchId, "cancel")
 }
 
-func (ac *legacyClient) FinalizePatch(patchId string) error {
+func (ac *legacyClient) FinalizePatch(p *patch.Patch, patchId string) error {
+	if p != nil {
+		p.Activated = true
+	}
 	return ac.modifyExisting(patchId, "finalize")
 }
 
