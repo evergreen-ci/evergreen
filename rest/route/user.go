@@ -852,16 +852,20 @@ func (h *renameUserHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *renameUserHandler) Run(ctx context.Context) gimlet.Responder {
+	githubUID := h.oldUsr.Settings.GithubUser.UID
+	h.oldUsr.Settings.GithubUser.UID = 0
 	// First, upsert the new user. If this doesn't work, there's no reason to continue.
 	newUsr, err := user.UpsertOneFromExisting(h.oldUsr, h.newEmail)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
 
-	// Next, remove the old user, consolidate patches, update the host, and handle the error.
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(user.ClearUser(h.oldUsr.Id))
-	catcher.Add(h.oldUsr.UpdateAPIKey("")) // Unset API key to avoid duplicates.
+	// Update the new user's github UID, now that we've cleared out the old user.
+	newUsr.Settings.GithubUser.UID = githubUID
+	catcher.Add(newUsr.UpdateSettings(newUsr.Settings))
+
 	catcher.Add(patch.ConsolidatePatchesForUser(h.oldUsr.Id, newUsr))
 	catcher.Add(host.ConsolidateHostsForUser(ctx, h.oldUsr.Id, newUsr.Id))
 

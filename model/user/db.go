@@ -503,6 +503,7 @@ func ClearUser(userId string) error {
 			RolesKey:      1,
 			LoginCacheKey: 1,
 			PubKeysKey:    1,
+			APIKeyKey:     1,
 		},
 	}
 	query := bson.M{IdKey: userId}

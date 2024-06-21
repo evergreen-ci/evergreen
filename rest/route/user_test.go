@@ -744,7 +744,7 @@ func TestRenameUser(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 
 	for testName, testCase := range map[string]func(t *testing.T){
-		"user_already_exists": func(t *testing.T) {
+		"UserAlreadyExists": func(t *testing.T) {
 			// Insert additional testing to cover the case of the user already being created.
 			pNew := patch.Patch{
 				Id:          bson.NewObjectId(),
@@ -775,6 +775,7 @@ func TestRenameUser(t *testing.T) {
 			assert.NotEqual(t, newUsr.APIKey, newUsrFromDb.GetAPIKey())
 			assert.Equal(t, "new_me@still_awesome.com", newUsrFromDb.Email())
 			assert.Equal(t, newUsrFromDb.PatchNumber, 8)
+			assert.Equal(t, 12, newUsrFromDb.Settings.GithubUser.UID)
 
 			hosts, err := host.Find(ctx, host.ByUserWithUnterminatedStatus("new_me"))
 			assert.NoError(t, err)
@@ -794,7 +795,7 @@ func TestRenameUser(t *testing.T) {
 				}
 			}
 		},
-		"user_doesn't_already_exist": func(t *testing.T) {
+		"UserDoesntAlreadyExist": func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/users/rename_user", bytes.NewBuffer(body))
 			require.NoError(t, err)
 			handler := makeRenameUser(env)
@@ -811,6 +812,7 @@ func TestRenameUser(t *testing.T) {
 			assert.NotEmpty(t, newUsrFromDb.GetAPIKey())
 			assert.Equal(t, "new_me@still_awesome.com", newUsrFromDb.Email())
 			assert.Equal(t, newUsrFromDb.PatchNumber, 7)
+			assert.Equal(t, 12, newUsrFromDb.Settings.GithubUser.UID)
 
 			hosts, err := host.Find(ctx, host.ByUserWithUnterminatedStatus("new_me"))
 			assert.NoError(t, err)
@@ -870,12 +872,25 @@ func TestRenameUser(t *testing.T) {
 			}
 			assert.NoError(t, db.InsertMany(patch.Collection, p1, p2))
 
+			someOtherUser := user.DBUser{
+				Id:           "some_other_me",
+				EmailAddress: "me@awesome.com",
+				APIKey:       "my_key",
+				PatchNumber:  7,
+				Settings: user.UserSettings{GithubUser: user.GithubUser{
+					UID: 0, // Verify there's no issue inserting an empty UID if there's another empty UID
+				}},
+			}
 			oldUsr := user.DBUser{
 				Id:           "me",
 				EmailAddress: "me@awesome.com",
 				APIKey:       "my_key",
 				PatchNumber:  7,
+				Settings: user.UserSettings{GithubUser: user.GithubUser{
+					UID: 12,
+				}},
 			}
+			assert.NoError(t, someOtherUser.Insert())
 			assert.NoError(t, oldUsr.Insert())
 			testCase(t)
 		})
