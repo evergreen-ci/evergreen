@@ -13,7 +13,7 @@
               "commitQueue": {
                 "enabled": true,
                 "mergeMethod": "squash",
-                "mergeQueue": "EVERGREEN"
+                "mergeQueue": "GITHUB"
               },
               "periodicBuilds": null,
               "githubChecksEnabled": false,
