@@ -224,7 +224,7 @@ const (
 	// LegacyTaskActivator is a deprecated legacy activator that used
 	// to be a majority of non-stepback and non-API activations.
 	// TODO: EVG-20869 remove this activator after sufficient time has passed
-	LegacyTaskActivator = ""
+	// LegacyTaskActivator = ""
 	// APIServerTaskActivator represents Evergreen's internal API activator
 	APIServerTaskActivator = "apiserver"
 	// StepbackTaskActivator represents the activator for tasks activated
