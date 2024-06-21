@@ -903,7 +903,7 @@ var (
 	}
 
 	SystemActivators = []string{
-		LegacyTaskActivator,
+		// LegacyTaskActivator,
 		APIServerTaskActivator,
 		BuildActivator,
 		CheckBlockedTasksActivator,
