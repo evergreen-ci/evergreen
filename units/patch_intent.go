@@ -1186,9 +1186,9 @@ func fetchTriggerProjectInfo(ctx context.Context, patchDoc *patch.Patch) (*model
 		project, pp, err = model.FindAndTranslateProjectForVersion(ctx, evergreen.GetEnvironment().Settings(), v, true)
 	} else {
 		v, project, pp, err = model.FindLatestVersionWithValidProject(patchDoc.Project, true)
-		if err != nil {
-			return nil, nil, nil, errors.Wrapf(err, "getting latest version for project '%s'", patchDoc.Project)
-		}
+	}
+	if err != nil {
+		return nil, nil, nil, errors.Wrapf(err, "getting downstream version to use for patch '%s'", patchDoc.Id.Hex())
 	}
 	return v, project, pp, nil
 }
