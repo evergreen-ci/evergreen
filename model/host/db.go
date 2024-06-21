@@ -239,12 +239,23 @@ func runningHostsQuery(distroID string) bson.M {
 func hostsCanRunTasksQuery(distroID string) bson.M {
 	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
+
 	return bson.M{
-		distroIDKey:  distroID,
-		StartedByKey: evergreen.User,
-		StatusKey:    bson.M{"$in": []string{evergreen.HostRunning, evergreen.HostStarting}},
-		bootstrapKey: distro.BootstrapMethodUserData,
+		"$or": []bson.M{
+			{
+				distroIDKey:  distroID,
+				StartedByKey: evergreen.User,
+				StatusKey:    evergreen.HostRunning,
+			},
+			{
+				distroIDKey:  distroID,
+				StartedByKey: evergreen.User,
+				StatusKey:    evergreen.HostStarting,
+				bootstrapKey: distro.BootstrapMethodUserData,
+			},
+		},
 	}
+
 }
 
 func idleStartedTaskHostsQuery(distroID string) bson.M {
@@ -282,10 +293,7 @@ func CountRunningHosts(ctx context.Context, distroID string) (int, error) {
 // and run tasks for a given distro. This number is surfaced on the
 // task queue.
 func CountHostsCanRunTasks(ctx context.Context, distroID string) (int, error) {
-	opts := &options.CountOptions{
-		Hint: DistroIdStatusIndex,
-	}
-	num, err := Count(ctx, hostsCanRunTasksQuery(distroID), opts)
+	num, err := Count(ctx, hostsCanRunTasksQuery(distroID))
 	return num, errors.Wrap(err, "counting hosts that can run tasks")
 }
 
