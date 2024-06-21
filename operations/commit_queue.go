@@ -453,9 +453,10 @@ func backport() cli.Command {
 					return err
 				}
 				if shouldContinue {
-					if err = ac.FinalizePatch(backportPatch, patchId); err != nil {
+					if err = ac.FinalizePatch(patchId); err != nil {
 						return errors.Wrapf(err, "finalizing patch '%s'", patchId)
 					}
+					backportPatch.Activated = true
 				}
 			}
 

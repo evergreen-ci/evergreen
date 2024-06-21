@@ -181,7 +181,7 @@ func TestCLIFetchSource(t *testing.T) {
 		}
 		So(ac.UpdatePatchModule(params),
 			ShouldBeNil)
-		So(ac.FinalizePatch(nil, newPatch.Id.Hex()), ShouldBeNil)
+		So(ac.FinalizePatch(newPatch.Id.Hex()), ShouldBeNil)
 
 		patches, err := ac.GetPatches(0)
 		So(err, ShouldBeNil)
@@ -430,7 +430,7 @@ func TestCLIFunctions(t *testing.T) {
 						Convey("Finalizing the patch should work", func() {
 							// First double check that the patch starts with no "version" field
 							So(patches[0].Version, ShouldEqual, "")
-							So(ac.FinalizePatch(nil, newPatch.Id.Hex()), ShouldBeNil)
+							So(ac.FinalizePatch(newPatch.Id.Hex()), ShouldBeNil)
 							patches, err = ac.GetPatches(0)
 							So(err, ShouldBeNil)
 							// After finalizing, the patch should now have a version populated
@@ -546,7 +546,7 @@ func TestCLIFunctions(t *testing.T) {
 						So(len(patches[0].Patches), ShouldEqual, 0)
 						Convey("Finalizing the patch should start with no version field and then be populated", func() {
 							So(patches[0].Version, ShouldEqual, "")
-							So(ac.FinalizePatch(nil, newPatch.Id.Hex()), ShouldBeNil)
+							So(ac.FinalizePatch(newPatch.Id.Hex()), ShouldBeNil)
 							patches, err := ac.GetPatches(0)
 							So(err, ShouldBeNil)
 							So(patches[0].Version, ShouldNotEqual, "")

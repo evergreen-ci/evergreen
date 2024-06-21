@@ -252,9 +252,10 @@ func Patch() cli.Command {
 					return err
 				}
 				if shouldContinue {
-					if err = ac.FinalizePatch(newPatch, patchId); err != nil {
+					if err = ac.FinalizePatch(patchId); err != nil {
 						return errors.Wrapf(err, "finalizing patch '%s'", patchId)
 					}
+					newPatch.Activated = true
 				}
 			}
 
@@ -459,9 +460,10 @@ func PatchFile() cli.Command {
 					return err
 				}
 				if shouldContinue {
-					if err = ac.FinalizePatch(newPatch, patchId); err != nil {
+					if err = ac.FinalizePatch(patchId); err != nil {
 						return errors.Wrapf(err, "finalizing patch '%s'", patchId)
 					}
+					newPatch.Activated = true
 				}
 			}
 

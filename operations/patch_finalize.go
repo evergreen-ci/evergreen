@@ -37,7 +37,7 @@ func PatchFinalize() cli.Command {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
 
-			if err = ac.FinalizePatch(nil, patchID); err != nil {
+			if err = ac.FinalizePatch(patchID); err != nil {
 				return err
 			}
 
