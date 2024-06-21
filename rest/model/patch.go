@@ -430,6 +430,18 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 			})
 		}
 	}
+	variantTasks := []patch.VariantTasks{}
+	for _, vt := range apiPatch.VariantsTasks {
+		vtasks := make([]string, 0)
+		for _, task := range vt.Tasks {
+			vtasks = append(vtasks, utility.FromStringPtr(task))
+		}
+		variantTasks = append(variantTasks, patch.VariantTasks{
+			Variant: utility.FromStringPtr(vt.Name),
+			Tasks:   vtasks,
+		})
+	}
+	res.VariantsTasks = variantTasks
 
 	res.GithubPatchData = apiPatch.GithubPatchData.ToService()
 	res.ProjectStorageMethod = evergreen.ParserProjectStorageMethod(utility.FromStringPtr(apiPatch.ProjectStorageMethod))

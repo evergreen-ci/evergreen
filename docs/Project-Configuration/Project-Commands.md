@@ -341,7 +341,7 @@ Parameters:
 
 downstream_expansions.set is used by parent patches to pass key-value
 pairs to child patches. This command only has an effect in manual patches,
-GitHub merge queue/legacy commit queue, and PRs. For all other versions, 
+GitHub merge queue, and PRs. For all other versions,
 it will no-op. The command takes the key-value pairs written in
 the file and makes them available to the child patches. Note: these
 parameters will be public and viewable on the child patch's page.
@@ -585,10 +585,11 @@ The parameters for each module are:
 
 #### Module Hash Hierarchy
 The hash used for a module during cloning is determined by the following hierarchy:
-* For commit queue and GitHub merge queue patches, Evergreen always uses the module branch name, to ensure accurate testing.
-* For other patches, the initial default is to the githash in set-module, if specified.
-* For both commits and patches, the next default is to the `<module_name>` set in revisions for the command.
-* For commits, if this is not available, the next default is to ref, and then to branch. *Note that this
+
+- For GitHub merge queue patches, Evergreen always uses the module branch name, to ensure accurate testing.
+- For other patches, the initial default is to the githash in set-module, if specified.
+- For both commits and patches, the next default is to the `<module_name>` set in revisions for the command.
+- For commits, if this is not available, the next default is to ref, and then to branch. *Note that this
 doesn't work for patches -- hashes will need to be specified in the revisions section of the command.*
 
 ## gotest.parse_files

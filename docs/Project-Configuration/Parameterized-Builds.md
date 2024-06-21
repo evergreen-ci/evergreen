@@ -36,7 +36,7 @@ parameters:
 
 Note that value and description are not required. If value is not provided, the default value is the empty string.
 
-If the project configuration is modified, patches will use this value unless overridden through a higher-priority method. For **Pull Requests** and the **Commit Queue**, no higher-priority method is available, so modified parameters will be used.
+If the project configuration is modified, patches will use this value unless overridden through a higher-priority method. For **Pull Requests**, no higher-priority method is available, so modified parameters will be used.
 
 #### Command Line Usage
 

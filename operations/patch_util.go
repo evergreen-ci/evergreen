@@ -29,6 +29,9 @@ import (
 // Above this size, the user must explicitly use --large to submit the patch (or confirm)
 const largePatchThreshold = 1024 * 1024 * 16
 
+// Above this number of tasks to finalize, the user must confirm their intention via prompt
+const largeNumFinalizedTasksThreshold = 1000
+
 // This is the template used to render a patch's summary in a human-readable output format.
 var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
          ID : {{.Patch.Id.Hex}}

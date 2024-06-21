@@ -11,7 +11,7 @@ However, note that these properties can overlap in complex ways.
 
 - Tasks that generate tasks are prioritized over tasks that do not.
 - Patches are prioritized over mainline commits.
-- Commit queue patches are prioritized over patches and mainline.
+- Merge queue patches are prioritized over patches and mainline.
 - Newer mainline builds are prioritized over older mainline builds.
 - Stepped back tasks are prioritized over non-stepped back tasks.
 - Tasks with more dependencies are prioritized over tasks with fewer dependencies.
