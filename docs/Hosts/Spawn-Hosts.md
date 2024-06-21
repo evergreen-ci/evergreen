@@ -58,8 +58,9 @@ notification](../Project-Configuration/Notifications#spawn-host-expiration) for 
 ### Unexpirable Host Sleep Schedules
 
 **Summary: Please set a sleep schedule for your unexpirable hosts by editing them [in the
-UI](https://spruce.mongodb.com/spawn/host) before `<DATE>`. In addition, please opt into the beta test to ensure that
-your sleep schedule is working the way you want.**
+UI](https://spruce.mongodb.com/spawn/host) before `<DATE>`. If you do not take any action, a default schedule will be
+set on your behalf on `<DATE>`. In addition, please opt into [the beta
+test](#important-note-this-feature-is-in-beta-testing) to ensure that your sleep schedule is working the way you want.**
 
 For unexpirable hosts, Evergreen has introduced a new feature called a host sleep schedule, which allows you to control
 when you'd like your unexpirable host to be automatically turned on or off. A sleep schedule lets you choose recurring
@@ -90,19 +91,29 @@ your [Spruce preferences](https://spruce.mongodb.com/preferences/profile).
 <!-- TODO (DEVPROD-4055): do not merge until comms are ready and a timeline for beta/full rollout is chosen.  -->
 
 This feature is being rolled out in phases and is currently in beta testing. While it's in beta testing, _using the
-sleep schedule feature is an opt-in_. During this beta testing period, you have until `<DATE>` to set a sleep schedule
-for any of your existing unexpirable hosts. Until then, you should set a sleep schedule for any of your existing
-unexpirable hosts. On top of setting a sleep schedule, you also have the option to participate in the beta test. If you
-opt into the beta test, the sleep schedule that you set will take effect on your host, stopping and starting your host
-according to the schedule you configure; if you do not opt in, your sleep schedule will be set but will have no effect
-on your host. You can opt in or out freely during the beta test. **It's highly recommend for you to set a sleep schedule
-for your unexpirable host(s) and opt into the beta to verify that your sleep schedule is configured the way you want.**
+sleep schedule feature is an opt-in_. During this beta testing period, you have the following options:
+
+1. (Required) Set a sleep schedule for all of your existing unexpirable hosts on [the spawn host page](https://spruce.mongodb.com/spawn/host).
+2. (Optional but recommended) On top of setting a sleep schedule, opt into the beta test so that the sleep schedule
+   takes effect.
+3. If you are unable to use the sleep schedule at all, you can [request a permanent
+   exemption](#requesting-a-permanent-exemption). You will not have to do step 1 or 2 if you're granted a permanent
+   exemption.
+
+You will have until `<DATE>` to set a sleep schedule for any of your existing unexpirable hosts. Until then, you should
+set a sleep schedule for any of your existing unexpirable hosts. On top of setting a sleep schedule, you also have the
+option to participate in the beta test. If you opt into the beta test, the sleep schedule that you set will take effect
+on your host, stopping and starting your host according to the schedule you configure; if you do not opt in, your sleep
+schedule will be set but will have no effect on your host. You can opt in or out freely during the beta test. **It's
+highly recommend for you to set a sleep schedule for your unexpirable host(s) and opt into the beta to verify that your
+sleep schedule is configured the way you want.**
 
 The beta test period will end on `<DATE>`, at which point the sleep schedule will take effect on all hosts so please
-make sure to set a sleep schedule by then or [request a permanent exemption](#requesting-a-permanent-exemption). If you
-do not set one, a default one will be automatically set for you when the beta test ends. Hosts that have been stopped
-for more than two weeks will also be assigned a sleep schedule if you don't pick one by the end of the beta period, but
-the host will be [kept off](#keeping-a-host-off) until you manually start it again.
+make sure to set a sleep schedule by then or otherwise [request a permanent
+exemption](#requesting-a-permanent-exemption). If you do not set one, a default one will be automatically set for you
+when the beta test ends. Hosts that have been stopped for more than a week will also be assigned a sleep schedule if you
+don't pick one by the end of the beta period, but the host will be [kept off](#keeping-a-host-off) until you manually
+start it again.
 
 #### Keeping a Host Off
 
@@ -167,6 +178,9 @@ If you'd like to request a permanent exemption, please file a DEVPROD ticket wit
 and use the title "Permanent Exemption Request". In it, please include your host ID and an explanation of why you'd like
 your host to be permanently exempt from the sleep schedule (and if relevant, why alternative options like temporary
 exemptions would not be sufficient for your usage).
+
+If you're using the host auto-sleep script instead and would like to get a permanent exemption for the host, please
+follow the instructions [here](#requesting-a-permanent-exemption-with-the-auto-sleep-script).
 
 #### Host Auto-Sleep Script
 
