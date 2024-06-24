@@ -239,19 +239,27 @@ func runningHostsQuery(distroID string) bson.M {
 func hostsCanRunTasksQuery(distroID string) bson.M {
 	distroIDKey := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
+
+	// Yes this query looks weird but it's a temporary stop gap to ensure we are able to avoid a MongoDB
+	// query planner issue. This query is meant to be a temporary fix until we can update to a newer version of
+	// MongoDB that does not have this bug. https://github.com/evergreen-ci/evergreen/pull/8010
+	// TODO: https://jira.mongodb.org/browse/DEVPROD-8360
 	return bson.M{
-		distroIDKey:  distroID,
-		StartedByKey: evergreen.User,
 		"$or": []bson.M{
 			{
-				StatusKey: evergreen.HostRunning,
+				distroIDKey:  distroID,
+				StartedByKey: evergreen.User,
+				StatusKey:    evergreen.HostRunning,
 			},
 			{
+				distroIDKey:  distroID,
+				StartedByKey: evergreen.User,
 				StatusKey:    evergreen.HostStarting,
 				bootstrapKey: distro.BootstrapMethodUserData,
 			},
 		},
 	}
+
 }
 
 func idleStartedTaskHostsQuery(distroID string) bson.M {
@@ -289,10 +297,7 @@ func CountRunningHosts(ctx context.Context, distroID string) (int, error) {
 // and run tasks for a given distro. This number is surfaced on the
 // task queue.
 func CountHostsCanRunTasks(ctx context.Context, distroID string) (int, error) {
-	opts := &options.CountOptions{
-		Hint: DistroIdStatusIndex,
-	}
-	num, err := Count(ctx, hostsCanRunTasksQuery(distroID), opts)
+	num, err := Count(ctx, hostsCanRunTasksQuery(distroID))
 	return num, errors.Wrap(err, "counting hosts that can run tasks")
 }
 
