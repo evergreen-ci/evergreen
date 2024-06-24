@@ -278,7 +278,8 @@ func TestExpansionWriter(t *testing.T) {
 			globals.AWSSecretAccessKey:           "aws_secret_key",
 			globals.AWSSessionToken:              "aws_token",
 		},
-		Redacted: []string{"password"},
+		NewExpansions: agentutil.NewDynamicExpansions(util.Expansions{}),
+		Redacted:      []string{"password"},
 	}
 	f, err := os.CreateTemp("", t.Name())
 	require.NoError(t, err)
