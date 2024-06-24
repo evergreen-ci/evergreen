@@ -243,6 +243,7 @@ func hostsCanRunTasksQuery(distroID string) bson.M {
 	// Yes this query looks weird but it's a temporary stop gap to ensure we are able to avoid a MongoDB
 	// query planner issue. This query is meant to be a temporary fix until we can update to a newer version of
 	// MongoDB that does not have this bug. https://github.com/evergreen-ci/evergreen/pull/8010
+	// TODO: https://jira.mongodb.org/browse/DEVPROD-8360
 	return bson.M{
 		"$or": []bson.M{
 			{
