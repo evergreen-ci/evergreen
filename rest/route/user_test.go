@@ -10,12 +10,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
@@ -23,6 +24,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -747,7 +749,7 @@ func TestRenameUser(t *testing.T) {
 		"UserAlreadyExists": func(t *testing.T) {
 			// Insert additional testing to cover the case of the user already being created.
 			pNew := patch.Patch{
-				Id:          bson.NewObjectId(),
+				Id:          mgobson.NewObjectId(),
 				Author:      "new_me",
 				PatchNumber: 1,
 			}
@@ -785,7 +787,7 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, volumes, 1)
 
-			patches, err := patch.Find(db.Query(bson.M{patch.AuthorKey: "new_me"}))
+			patches, err := patch.Find(db.Query(mgobson.M{patch.AuthorKey: "new_me"}))
 			assert.NoError(t, err)
 			assert.Len(t, patches, 3)
 			for _, p := range patches {
@@ -822,13 +824,17 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, volumes, 1)
 
-			patches, err := patch.Find(db.Query(bson.M{patch.AuthorKey: "new_me"}))
+			patches, err := patch.Find(db.Query(mgobson.M{patch.AuthorKey: "new_me"}))
 			assert.NoError(t, err)
 			assert.Len(t, patches, 2)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(user.Collection, host.Collection, host.VolumesCollection, patch.Collection))
+
+			// Replicate the shape of the index on the DB.
+			require.NoError(t, modelutil.AddTestIndexes(user.Collection, true, true,
+				bsonutil.GetDottedKeyName(user.SettingsKey, user.UserSettingsGithubUserKey, user.GithubUserUIDKey)))
 
 			h1 := host.Host{
 				Id:        "h1",
@@ -861,12 +867,12 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, db.InsertMany(host.VolumesCollection, v1, v2))
 
 			p1 := patch.Patch{
-				Id:          bson.NewObjectId(),
+				Id:          mgobson.NewObjectId(),
 				Author:      "me",
 				PatchNumber: 6,
 			}
 			p2 := patch.Patch{
-				Id:          bson.NewObjectId(),
+				Id:          mgobson.NewObjectId(),
 				Author:      "me",
 				PatchNumber: 7,
 			}

@@ -803,7 +803,7 @@ type renameUserHandler struct {
 //	@Security		Api-User || Api-Key
 //	@Param			{object}	body	renameUserInfo	true	"parameters"
 //	@Success		200
-func (h renameUserHandler) Factory() gimlet.RouteHandler {
+func (h *renameUserHandler) Factory() gimlet.RouteHandler {
 	return &renameUserHandler{
 		env: h.env,
 	}
@@ -852,9 +852,11 @@ func (h *renameUserHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *renameUserHandler) Run(ctx context.Context) gimlet.Responder {
+	// Need to unset the GitHub UID because our index enforces uniqueness.
+	// Assuming that we're able to upsert the user, we update the settings with this UID later.
 	githubUID := h.oldUsr.Settings.GithubUser.UID
 	h.oldUsr.Settings.GithubUser.UID = 0
-	// First, upsert the new user. If this doesn't work, there's no reason to continue.
+
 	newUsr, err := user.UpsertOneFromExisting(h.oldUsr, h.newEmail)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
@@ -862,7 +864,6 @@ func (h *renameUserHandler) Run(ctx context.Context) gimlet.Responder {
 
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(user.ClearUser(h.oldUsr.Id))
-	// Update the new user's github UID, now that we've cleared out the old user.
 	newUsr.Settings.GithubUser.UID = githubUID
 	catcher.Add(newUsr.UpdateSettings(newUsr.Settings))
 
@@ -909,7 +910,7 @@ type offboardUserHandler struct {
 //	@Param			dry_run		query		boolean				false	"If set to true, route returns the IDs of the hosts/volumes that *would* be modified."
 //	@Param			{object}	body		offboardUserEmail	true	"parameters"
 //	@Success		200			{object}	model.APIOffboardUserResults
-func (ch offboardUserHandler) Factory() gimlet.RouteHandler {
+func (ch *offboardUserHandler) Factory() gimlet.RouteHandler {
 	return &offboardUserHandler{
 		env: ch.env,
 	}
