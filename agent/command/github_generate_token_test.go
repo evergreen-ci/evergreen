@@ -100,21 +100,30 @@ func TestGitHubGenerateTokenExecute(t *testing.T) {
 			assert.Equal(t, "token!", conf.NewExpansions.Get(cmd.ExpansionName))
 		},
 		"SucceedsWithEmptyOwnerAndRepoAndCreatesToken": func(ctx context.Context, t *testing.T, cmd *githubGenerateToken, client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) {
-			cmd.Owner = "new_owner"
-			cmd.Repo = "new_repo"
+			cmd.Owner = ""
+			cmd.Repo = ""
 			require.NoError(t, cmd.Execute(ctx, client, logger, conf))
 			assert.Equal(t, "token!", conf.NewExpansions.Get(cmd.ExpansionName))
 			assert.Equal(t, "new_owner", cmd.Owner)
 			assert.Equal(t, "new_repo", cmd.Repo)
+
+			require.Len(t, conf.CommandCleanups, 1)
+			cleanup := conf.CommandCleanups[0]
+			assert.Equal(t, "revoking token", cleanup.Name)
+			assert.Equal(t, "github.generate_token", cleanup.Command)
+			// The cleanup function is expected to return an error mocked
+			// in the test data.
+			assert.EqualError(t, cleanup.Run(ctx), "revoked!")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			conf := &internal.TaskConfig{NewExpansions: agentutil.NewDynamicExpansions(util.Expansions{}), ProjectRef: model.ProjectRef{Owner: "new_owner"}}
+			conf := &internal.TaskConfig{NewExpansions: agentutil.NewDynamicExpansions(util.Expansions{}), ProjectRef: model.ProjectRef{Owner: "new_owner", Repo: "new_repo"}}
 			comm := client.NewMock("url")
 			comm.CreateGitHubDynamicAccessTokenResult = "token!"
+			comm.RevokeGitHubDynamicAccessTokenResult = "revoked!"
 			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 			require.NoError(t, err)
 

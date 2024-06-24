@@ -828,6 +828,17 @@ func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskConte
 	ctx, span := a.tracer.Start(ctx, "post-task-commands")
 	defer span.End()
 
+	// We run the command cleanups in a defer in case any of the post commands add cleanups.
+	defer func() {
+		catcher := grip.NewBasicCatcher()
+		for _, cleanup := range tc.taskConfig.CommandCleanups {
+			catcher.Add(errors.Wrapf(cleanup.Run(ctx), "running clean up '%s' from command '%s'", cleanup.Name, cleanup.Command))
+		}
+		if catcher.HasErrors() {
+			tc.logger.Execution().Error(errors.Wrap(catcher.Resolve(), "running command cleanups"))
+		}
+	}()
+
 	a.killProcs(ctx, tc, false, "post-task or teardown-task commands are starting")
 	defer a.killProcs(ctx, tc, false, "post-task or teardown-task commands are finished")
 

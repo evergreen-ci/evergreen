@@ -1671,3 +1671,50 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		Token: token,
 	})
 }
+
+// DELETE /rest/v2/task/{task_id}/github_dynamic_access_token
+// This route is used to revoke user-used GitHub access token for a task.
+type revokeGitHubDynamicAccessToken struct {
+	taskID string
+	token  string
+
+	env evergreen.Environment
+}
+
+func makeRevokeGitHubDynamicAccessToken(env evergreen.Environment) gimlet.RouteHandler {
+	return &revokeGitHubDynamicAccessToken{env: env}
+}
+
+func (h *revokeGitHubDynamicAccessToken) Factory() gimlet.RouteHandler {
+	return &revokeGitHubDynamicAccessToken{env: h.env}
+}
+
+func (h *revokeGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task_id")
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return errors.Wrap(err, "reading body")
+	}
+
+	err = json.Unmarshal(body, &h.token)
+
+	errorMessage := fmt.Sprintf("reading token body for task '%s'", h.taskID)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message": errorMessage,
+		"task_id": h.taskID,
+	}))
+
+	return errors.Wrapf(err, errorMessage)
+}
+
+func (h *revokeGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Responder {
+	err := thirdparty.RevokeInstallationToken(ctx, h.token)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "revoking token for task '%s'", h.taskID))
+	}
+
+	return gimlet.NewJSONResponse(fmt.Sprintf("Successfully revoked token for task '%s'", h.taskID))
+}

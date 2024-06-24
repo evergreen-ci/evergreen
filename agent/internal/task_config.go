@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"strconv"
 	"strings"
 	"sync"
@@ -41,8 +42,18 @@ type TaskConfig struct {
 	ModulePaths        map[string]string
 	CedarTestResultsID string
 	TaskGroup          *model.TaskGroup
+	// CommandCleanups is a list of cleanup functions that are added dynamically
+	// during task execution. These functions are called when the task is
+	// finished. They are then purged from the list.
+	CommandCleanups []CommandCleanup
 
 	mu sync.RWMutex
+}
+
+type CommandCleanup struct {
+	Name    string
+	Command string
+	Run     func(context.Context) error
 }
 
 // Timeout records dynamic timeout information that has been explicitly set by

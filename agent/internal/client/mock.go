@@ -68,8 +68,8 @@ type Mock struct {
 	GetLoggerProducerShouldFail          bool
 	CreateInstallationTokenFail          bool
 	CreateInstallationTokenResult        string
-	CreateGitHubDynamicAccessTokenFail   bool
 	CreateGitHubDynamicAccessTokenResult string
+	RevokeGitHubDynamicAccessTokenResult string
 
 	CedarGRPCConn *grpc.ClientConn
 
@@ -539,10 +539,11 @@ func (c *Mock) CreateInstallationToken(ctx context.Context, td TaskData, owner, 
 }
 
 func (c *Mock) CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner, repo string, permissions *github.InstallationPermissions) (string, error) {
-	if c.CreateGitHubDynamicAccessTokenFail {
-		return "", errors.New("failed to create token")
-	}
 	return c.CreateGitHubDynamicAccessTokenResult, nil
+}
+
+func (c *Mock) RevokeGitHubDynamicAccessToken(ctx context.Context, td TaskData, token string) error {
+	return errors.New(c.RevokeGitHubDynamicAccessTokenResult)
 }
 
 func (c *Mock) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {

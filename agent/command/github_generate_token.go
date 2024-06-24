@@ -86,15 +86,21 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 		r.Repo = conf.ProjectRef.Repo
 	}
 
-	token, err := comm.CreateGitHubDynamicAccessToken(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, r.Owner, r.Repo, r.Permissions)
+	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+	token, err := comm.CreateGitHubDynamicAccessToken(ctx, td, r.Owner, r.Repo, r.Permissions)
 	if err != nil {
 		return errors.Wrap(err, "creating github dynamic access token")
 	}
 
-	// TODO DEVPROD-5986: Tokens should be redacted at the end, expanisions (or some other mechanism) should
-	// keep track of that and redact the token from GitHub.
-	// They also need to be redacted from logs.
 	conf.NewExpansions.Put(r.ExpansionName, token)
+
+	conf.CommandCleanups = append(conf.CommandCleanups, internal.CommandCleanup{
+		Name:    "revoking token",
+		Command: "github.generate_token",
+		Run: func(ctx context.Context) error {
+			return comm.RevokeGitHubDynamicAccessToken(ctx, td, token)
+		},
+	})
 
 	return nil
 }
