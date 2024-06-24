@@ -19,10 +19,11 @@ type TriggerIntent struct {
 	ParentID        string `bson:"parent_id"`
 	ParentProjectID string `bson:"parent_project"`
 	ParentAsModule  string `bson:"parent_as_module"`
-	// the parent status that the child patch should run on
-	ParentStatus       string                   `bson:"parent_status"`
-	Definitions        []PatchTriggerDefinition `bson:"definitions"`
-	DownstreamRevision string                   `bson:"downstream_revision"`
+	// The parent status that the child patch should run on
+	ParentStatus string                   `bson:"parent_status"`
+	Definitions  []PatchTriggerDefinition `bson:"definitions"`
+	// The revision to base the downstream patch off of
+	DownstreamRevision string `bson:"downstream_revision"`
 
 	Processed bool `bson:"processed"`
 }
