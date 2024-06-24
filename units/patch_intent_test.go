@@ -1626,6 +1626,74 @@ tasks:
 	s.Equal("my-task", dbChildPatch.VariantsTasks[0].Tasks[0])
 }
 
+func (s *PatchIntentUnitsSuite) TestTriggerAliasWithDownstreamRevision() {
+	specificRevision := model.Version{
+		Id:         "childProj-some-version",
+		Identifier: "childProj",
+		Revision:   "abc",
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}
+	s.Require().NoError(specificRevision.Insert())
+
+	specificVersionParserProject := &model.ParserProject{}
+	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
+buildvariants:
+- name: my-build-variant
+  display_name: my-build-variant
+  run_on:
+    - some-distro
+  tasks:
+    - my-task
+tasks:
+- name: my-task`), specificVersionParserProject))
+	specificVersionParserProject.Id = specificRevision.Id
+	s.Require().NoError(specificVersionParserProject.Insert())
+
+	childPatchAlias := model.ProjectAlias{
+		ProjectID: "childProj",
+		Alias:     "childProj-patch-alias",
+		Task:      "my-task",
+		Variant:   "my-build-variant",
+	}
+	s.Require().NoError(childPatchAlias.Upsert())
+
+	p := &patch.Patch{
+		Id:      mgobson.NewObjectId(),
+		Project: s.project,
+		Author:  evergreen.GithubPatchUser,
+		Githash: s.hash,
+	}
+	s.NoError(p.Insert())
+
+	u := &user.DBUser{
+		Id: evergreen.ParentPatchUser,
+	}
+	s.NoError(u.Insert())
+
+	projectRef, err := model.FindBranchProjectRef(s.project)
+	s.NotNil(projectRef)
+	s.NoError(err)
+	s.Require().Len(projectRef.PatchTriggerAliases, 1)
+	projectRef.PatchTriggerAliases[0].DownstreamRevision = "abc"
+
+	s.Len(p.Triggers.ChildPatches, 0)
+	s.NoError(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
+
+	dbPatch, err := patch.FindOneId(p.Id.Hex())
+	s.NoError(err)
+	s.Require().NotZero(dbPatch)
+	s.Equal(p.Triggers.ChildPatches, dbPatch.Triggers.ChildPatches)
+
+	s.Require().NotEmpty(dbPatch.Triggers.ChildPatches)
+	dbChildPatch, err := patch.FindOneId(dbPatch.Triggers.ChildPatches[0])
+	s.NoError(err)
+	s.Require().NotZero(dbChildPatch)
+	s.Require().Len(dbChildPatch.VariantsTasks, 1, "child patch with valid trigger alias in the child project must have the expected variants and tasks")
+	s.Equal("my-build-variant", dbChildPatch.VariantsTasks[0].Variant)
+	s.Require().Len(dbChildPatch.VariantsTasks[0].Tasks, 1, "child patch with valid trigger alias in the child project must have the expected variants and tasks")
+	s.Equal("my-task", dbChildPatch.VariantsTasks[0].Tasks[0])
+}
+
 func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithAliasThatDoesNotMatchAnyVariantTasks() {
 	p := &patch.Patch{
 		Id:      mgobson.NewObjectId(),
