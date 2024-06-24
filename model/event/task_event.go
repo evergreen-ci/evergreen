@@ -96,7 +96,7 @@ func logManyTaskEvents(taskIds []string, eventType string, eventData TaskEventDa
 	if err := LogManyEvents(events); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeTask,
-			"message":       "error logging event",
+			"message":       "error logging events",
 			"source":        "event-log-fail",
 		}))
 	}
@@ -196,7 +196,7 @@ func LogManyTasksBlocked(data []TaskBlockedData) {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeTask,
 			"event_type":    TaskBlocked,
-			"message":       "error logging event",
+			"message":       "error logging events",
 			"source":        "event-log-fail",
 		}))
 	}
