@@ -630,7 +630,7 @@ func TestBuildSetActivated(t *testing.T) {
 				deactivatedTasks, err := task.Find(task.ByActivation(false))
 				So(err, ShouldBeNil)
 				So(len(deactivatedTasks), ShouldEqual, 3)
-				So(deactivatedTasks[0].Id, ShouldEqual, matching.Id) // So(deactivatedTasks[0].Id, ShouldEqual, differentUser.Id)
+				So(deactivatedTasks[0].Id, ShouldEqual, matching.Id)
 
 				// task with the different user activating should be activated with that user
 				differentUserTask, err := task.FindOne(db.Query(task.ById(differentUser.Id)))
