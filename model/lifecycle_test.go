@@ -549,6 +549,7 @@ func TestBuildSetActivated(t *testing.T) {
 					BuildVariant: "bv",
 					Version:      vID,
 					Status:       evergreen.BuildStarted,
+					ActivatedBy:  evergreen.GenerateTasksActivator,
 				}
 				So(b.Insert(), ShouldBeNil)
 
@@ -556,18 +557,20 @@ func TestBuildSetActivated(t *testing.T) {
 				// belonging to the correct build
 
 				wrongBuildId := &task.Task{
-					Id:        "wrongBuildId",
-					BuildId:   "blech",
-					Status:    evergreen.TaskUndispatched,
-					Activated: true,
+					Id:          "wrongBuildId",
+					BuildId:     "blech",
+					Status:      evergreen.TaskUndispatched,
+					Activated:   true,
+					ActivatedBy: evergreen.GenerateTasksActivator,
 				}
 				So(wrongBuildId.Insert(), ShouldBeNil)
 
 				wrongStatus := &task.Task{
-					Id:        "wrongStatus",
-					BuildId:   b.Id,
-					Status:    evergreen.TaskDispatched,
-					Activated: true,
+					Id:          "wrongStatus",
+					BuildId:     b.Id,
+					Status:      evergreen.TaskDispatched,
+					Activated:   true,
+					ActivatedBy: evergreen.GenerateTasksActivator,
 				}
 				So(wrongStatus.Insert(), ShouldBeNil)
 
@@ -582,6 +585,7 @@ func TestBuildSetActivated(t *testing.T) {
 							Status: evergreen.TaskSucceeded,
 						},
 					},
+					ActivatedBy: evergreen.GenerateTasksActivator,
 				}
 
 				So(matching.Insert(), ShouldBeNil)
@@ -601,6 +605,7 @@ func TestBuildSetActivated(t *testing.T) {
 					Status:       evergreen.TaskUndispatched,
 					Activated:    false,
 					DispatchTime: utility.ZeroTime,
+					ActivatedBy:  evergreen.GenerateTasksActivator,
 				}
 				So(dependency.Insert(), ShouldBeNil)
 
@@ -610,15 +615,16 @@ func TestBuildSetActivated(t *testing.T) {
 					Status:       evergreen.TaskUndispatched,
 					Activated:    false,
 					DispatchTime: utility.ZeroTime,
+					ActivatedBy:  evergreen.GenerateTasksActivator,
 				}
 				So(canary.Insert(), ShouldBeNil)
 
-				So(ActivateBuildsAndTasks(ctx, []string{b.Id}, false, ""), ShouldBeNil)
+				So(ActivateBuildsAndTasks(ctx, []string{b.Id}, false, evergreen.GenerateTasksActivator), ShouldBeNil)
 				// the build should have been updated in the db
 				b, err := build.FindOne(build.ById(b.Id))
 				So(err, ShouldBeNil)
 				So(b.Activated, ShouldBeFalse)
-				So(b.ActivatedBy, ShouldEqual, "")
+				So(b.ActivatedBy, ShouldEqual, evergreen.GenerateTasksActivator)
 
 				// only the matching task should have been updated that has not been set by a user
 				deactivatedTasks, err := task.Find(task.ByActivation(false))
@@ -657,23 +663,26 @@ func TestBuildSetActivated(t *testing.T) {
 					Activated:    true,
 					BuildVariant: "bv",
 					Version:      vID,
+					ActivatedBy:  evergreen.BuildActivator,
 				}
 
 				So(b.Insert(), ShouldBeNil)
 
 				matching := &task.Task{
-					Id:        "matching",
-					BuildId:   b.Id,
-					Status:    evergreen.TaskUndispatched,
-					Activated: false,
+					Id:          "matching",
+					BuildId:     b.Id,
+					Status:      evergreen.TaskUndispatched,
+					Activated:   false,
+					ActivatedBy: evergreen.BuildActivator,
 				}
 				So(matching.Insert(), ShouldBeNil)
 
 				matching2 := &task.Task{
-					Id:        "matching2",
-					BuildId:   b.Id,
-					Status:    evergreen.TaskUndispatched,
-					Activated: false,
+					Id:          "matching2",
+					BuildId:     b.Id,
+					Status:      evergreen.TaskUndispatched,
+					Activated:   false,
+					ActivatedBy: evergreen.BuildActivator,
 				}
 				So(matching2.Insert(), ShouldBeNil)
 
@@ -699,7 +708,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(b.ActivatedBy, ShouldEqual, user)
 
 				// deactivate the task from evergreen and nothing should be deactivated.
-				So(ActivateBuildsAndTasks(ctx, []string{b.Id}, false, ""), ShouldBeNil)
+				So(ActivateBuildsAndTasks(ctx, []string{b.Id}, false, evergreen.BuildActivator), ShouldBeNil)
 
 				// refresh from the database and check again
 				b, err = build.FindOne(build.ById(b.Id))

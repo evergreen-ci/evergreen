@@ -654,6 +654,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 				"as":   "tasks",
 				"pipeline": []bson.M{
 					{"$match": bson.M{"$expr": bson.M{"$and": taskMatch}}},
+					{"$project": bson.M{"id": "$_id"}},
 				},
 			}
 			innerPipeline = append(innerPipeline, bson.M{"$lookup": taskLookup})
