@@ -116,14 +116,15 @@ type TriggerIntentOptions struct {
 
 func NewTriggerIntent(opts TriggerIntentOptions) Intent {
 	return &TriggerIntent{
-		Id:              mgobson.NewObjectId().Hex(),
-		Requester:       opts.Requester,
-		Author:          opts.Author,
-		ProjectID:       opts.ProjectID,
-		ParentID:        opts.ParentID,
-		ParentProjectID: opts.ParentProjectID,
-		ParentAsModule:  opts.ParentAsModule,
-		ParentStatus:    opts.ParentStatus,
-		Definitions:     opts.Definitions,
+		Id:                 mgobson.NewObjectId().Hex(),
+		Requester:          opts.Requester,
+		Author:             opts.Author,
+		ProjectID:          opts.ProjectID,
+		ParentID:           opts.ParentID,
+		ParentProjectID:    opts.ParentProjectID,
+		ParentAsModule:     opts.ParentAsModule,
+		ParentStatus:       opts.ParentStatus,
+		Definitions:        opts.Definitions,
+		DownstreamRevision: opts.DownstreamRevision,
 	}
 }
