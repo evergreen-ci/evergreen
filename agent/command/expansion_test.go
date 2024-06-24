@@ -267,35 +267,38 @@ func TestExpansionWriter(t *testing.T) {
 	comm := client.NewMock("http://localhost.com")
 	logger, err := comm.GetLoggerProducer(ctx, &task.Task{}, nil)
 	require.NoError(t, err)
+	expansions := util.Expansions{
+		"foo":                                "bar",
+		"baz":                                "qux",
+		"password":                           "hunter2",
+		evergreen.GlobalGitHubTokenExpansion: "sample_token",
+		evergreen.GithubAppToken:             "app_token",
+		globals.AWSAccessKeyId:               "aws_key_id",
+		globals.AWSSecretAccessKey:           "aws_secret_key",
+		globals.AWSSessionToken:              "aws_token",
+	}
 	tc := &internal.TaskConfig{
-		Expansions: util.Expansions{
-			"foo":                                "bar",
-			"baz":                                "qux",
-			"password":                           "hunter2",
-			evergreen.GlobalGitHubTokenExpansion: "sample_token",
-			evergreen.GithubAppToken:             "app_token",
-			globals.AWSAccessKeyId:               "aws_key_id",
-			globals.AWSSecretAccessKey:           "aws_secret_key",
-			globals.AWSSessionToken:              "aws_token",
-		},
-		NewExpansions: agentutil.NewDynamicExpansions(util.Expansions{}),
+		Expansions:    expansions,
+		NewExpansions: agentutil.NewDynamicExpansions(expansions),
 		Redacted:      []string{"password"},
 	}
+	// This should be redacted and not written to the output.
+	tc.NewExpansions.PutAndRedact("a_secret_password", "a_not_so_secret_value")
 	f, err := os.CreateTemp("", t.Name())
 	require.NoError(t, err)
 	defer os.Remove(f.Name())
 
 	writer := &expansionsWriter{File: f.Name()}
 	err = writer.Execute(ctx, comm, logger, tc)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	out, err := os.ReadFile(f.Name())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "baz: qux\nfoo: bar\n", string(out))
 
 	writer = &expansionsWriter{File: f.Name(), Redacted: true}
 	err = writer.Execute(ctx, comm, logger, tc)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	out, err = os.ReadFile(f.Name())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "baz: qux\nfoo: bar\npassword: hunter2\n", string(out))
 }
