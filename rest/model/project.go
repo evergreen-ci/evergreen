@@ -269,7 +269,7 @@ func (cqParams *APICommitQueueParams) BuildFromService(params model.CommitQueueP
 	cqParams.Message = utility.ToStringPtr(params.Message)
 
 	if params.MergeQueue == "" {
-		params.MergeQueue = model.MergeQueueEvergreen
+		params.MergeQueue = model.MergeQueueGitHub
 	}
 	cqParams.MergeQueue = params.MergeQueue
 }
@@ -281,7 +281,7 @@ func (cqParams *APICommitQueueParams) ToService() model.CommitQueueParams {
 	serviceParams.Message = utility.FromStringPtr(cqParams.Message)
 
 	if cqParams.MergeQueue == "" {
-		cqParams.MergeQueue = model.MergeQueueEvergreen
+		cqParams.MergeQueue = model.MergeQueueGitHub
 	}
 	serviceParams.MergeQueue = cqParams.MergeQueue
 
