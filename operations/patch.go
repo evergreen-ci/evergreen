@@ -226,9 +226,8 @@ func Patch() cli.Command {
 			if err = params.validateSubmission(diffData); err != nil {
 				return err
 			}
-			if includeModules {
-				params.Finalize = false
 
+			if includeModules {
 				localModuleIncludes, err := getLocalModuleIncludes(params, conf, ref.RemotePath)
 				if err != nil {
 					return err
