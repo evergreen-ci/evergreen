@@ -40,10 +40,8 @@ func (r *redactingSender) Send(m message.Composer) {
 			msg = strings.ReplaceAll(msg, val, fmt.Sprintf(redactedVariableTemplate, expansion))
 		}
 	}
-	for _, expansion := range r.expansions.GetRedacted() {
-		if val := r.expansions.Get(expansion); val != "" {
-			msg = strings.ReplaceAll(msg, val, fmt.Sprintf(redactedVariableTemplate, expansion))
-		}
+	for _, info := range r.expansions.GetRedacted() {
+		msg = strings.ReplaceAll(msg, info.Value, fmt.Sprintf(redactedVariableTemplate, info.Key))
 	}
 	r.Sender.Send(message.NewDefaultMessage(m.Priority(), msg))
 }

@@ -65,10 +65,11 @@ func (c *expansionsWriter) redactExpansion(key string, conf *internal.TaskConfig
 		return true
 	}
 
-	// If the expansion is listed to redact when it was added, redact it.
-	if utility.StringSliceContains(conf.NewExpansions.GetRedacted(), key) {
-		return true
+	redactedKeys := []string{}
+	for _, redacted := range conf.NewExpansions.GetRedacted() {
+		redactedKeys = append(redactedKeys, redacted.Key)
 	}
 
-	return false
+	// If the expansion is listed to redact when it was added, redact it.
+	return utility.StringSliceContains(redactedKeys, key)
 }

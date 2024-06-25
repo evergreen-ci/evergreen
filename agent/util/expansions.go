@@ -18,7 +18,16 @@ type DynamicExpansions struct {
 	// redact stores expansions that should be redacted.
 	// These expansions can be from `expansion.update` or
 	// from project commands that generate private expansions.
-	redact []string
+	// Since updates can be done dynamically and override previous
+	// expansions that should be redacted, we need to store them
+	// separately. Otherwise, previously redacted values can leak
+	// if they are updated.
+	redact []RedactInfo
+}
+
+type RedactInfo struct {
+	Key   string
+	Value string
 }
 
 func NewDynamicExpansions(e util.Expansions) *DynamicExpansions {
@@ -53,27 +62,29 @@ func (e *DynamicExpansions) Get(key string) string {
 	return e.Expansions.Get(key)
 }
 
-// Redact marks the expansion key for redaction.
-func (e *DynamicExpansions) Redact(key string) {
+// Redact marks the expansion with given key for redaction.
+func (e *DynamicExpansions) RedactKey(key string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	e.redact = append(e.redact, key)
+	if value := e.Get(key); value != "" {
+		e.redact = append(e.redact, RedactInfo{Key: key, Value: value})
+	}
 }
 
 // GetRedacted gets the expansions that should be redacted.
-func (e *DynamicExpansions) GetRedacted() []string {
+func (e *DynamicExpansions) GetRedacted() []RedactInfo {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
 	return e.redact
 }
 
-// PutAndRedact puts expansion and marks it's key for redaction.
+// PutAndRedact puts expansion and marks it for redaction.
 func (e *DynamicExpansions) PutAndRedact(key, value string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
 	e.Expansions.Put(key, value)
-	e.redact = append(e.redact, key)
+	e.redact = append(e.redact, RedactInfo{Key: key, Value: value})
 }

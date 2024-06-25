@@ -145,7 +145,7 @@ func (c *update) Execute(ctx context.Context,
 		}
 		if c.RedactFileExpansions {
 			for _, key := range keys {
-				conf.NewExpansions.Redact(key)
+				conf.NewExpansions.RedactKey(key)
 			}
 		}
 	}

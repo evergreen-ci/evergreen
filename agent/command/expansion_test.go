@@ -142,7 +142,7 @@ func TestExpansionUpdate(t *testing.T) {
 			updates    []updateParams
 			expansions util.Expansions
 			expected   util.Expansions
-			redact     []string
+			redact     []agentutil.RedactInfo
 		}{
 			"EmptyUpdate": {
 				updates:    []updateParams{},
@@ -192,7 +192,7 @@ func TestExpansionUpdate(t *testing.T) {
 				},
 				expansions: util.Expansions{},
 				expected:   util.Expansions{"base": "not eggs", "toppings": ", chicken"},
-				redact:     []string{"base", "toppings"},
+				redact:     []agentutil.RedactInfo{{Key: "base", Value: "not eggs"}, {Key: "toppings", Value: ", chicken"}},
 			},
 			"RedactionReplaceValuesAndConcat": {
 				updates: []updateParams{
@@ -213,7 +213,36 @@ func TestExpansionUpdate(t *testing.T) {
 				},
 				expansions: util.Expansions{"base": "eggs", "toppings": "bacon"},
 				expected:   util.Expansions{"base": "not eggs", "toppings": "bacon, chicken", "not-redacted": "other"},
-				redact:     []string{"base", "toppings"},
+				redact:     []agentutil.RedactInfo{{Key: "base", Value: "not eggs"}, {Key: "toppings", Value: "bacon, chicken"}},
+			},
+			"RedactionReplaceValuesAndConcatAfterExtraUpdate": {
+				updates: []updateParams{
+					{
+						Key:    "base",
+						Value:  "not eggs",
+						Redact: true,
+					},
+					{
+						Key:    "toppings",
+						Concat: ", chicken",
+						Redact: true,
+					},
+					{
+						Key:   "base",
+						Value: "truly eggs",
+					},
+					{
+						Key:    "toppings",
+						Concat: ", another bacon",
+					},
+					{
+						Key:   "not-redacted",
+						Value: "other",
+					},
+				},
+				expansions: util.Expansions{"base": "eggs", "toppings": "bacon"},
+				expected:   util.Expansions{"base": "truly eggs", "toppings": "bacon, chicken, another bacon", "not-redacted": "other"},
+				redact:     []agentutil.RedactInfo{{Key: "base", Value: "not eggs"}, {Key: "toppings", Value: "bacon, chicken"}},
 			},
 		} {
 			t.Run(tName, func(t *testing.T) {
