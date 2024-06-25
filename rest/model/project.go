@@ -520,14 +520,6 @@ type APIParameterInfo struct {
 	Description *string `json:"description"`
 }
 
-func (c *APIParameterInfo) ToService() model.ParameterInfo {
-	res := model.ParameterInfo{}
-	res.Key = utility.FromStringPtr(c.Key)
-	res.Value = utility.FromStringPtr(c.Value)
-	res.Description = utility.FromStringPtr(c.Description)
-	return res
-}
-
 func (c *APIParameterInfo) BuildFromService(info model.ParameterInfo) {
 	c.Key = utility.ToStringPtr(info.Key)
 	c.Value = utility.ToStringPtr(info.Value)

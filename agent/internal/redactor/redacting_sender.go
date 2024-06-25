@@ -40,6 +40,9 @@ func (r *redactingSender) Send(m message.Composer) {
 			msg = strings.ReplaceAll(msg, val, fmt.Sprintf(redactedVariableTemplate, expansion))
 		}
 	}
+	for _, info := range r.expansions.GetRedacted() {
+		msg = strings.ReplaceAll(msg, info.Value, fmt.Sprintf(redactedVariableTemplate, info.Key))
+	}
 	r.Sender.Send(message.NewDefaultMessage(m.Priority(), msg))
 }
 
@@ -49,7 +52,6 @@ func NewRedactingSender(sender send.Sender, opts RedactionOptions) send.Sender {
 	if opts.Expansions == nil {
 		opts.Expansions = &util.DynamicExpansions{}
 	}
-
 	return &redactingSender{
 		expansions:         opts.Expansions,
 		expansionsToRedact: append(opts.Redacted, globals.ExpansionsToRedact...),

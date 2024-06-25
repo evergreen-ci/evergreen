@@ -15,13 +15,15 @@ import (
 // task's expansions at runtime. update can take a list
 // of update expansion pairs and/or a file of expansion pairs
 type update struct {
-	// Key-value pairs for updating the task's parameters with
+	// Updates is the list of expansion updates to apply.
 	Updates []updateParams `mapstructure:"updates"`
 
-	// Filename for a yaml file containing expansion updates
-	// in the form of
-	//   "expansion_key: expansions_value"
+	// YamlFile is the name for a yaml file containing expansion updates.
 	YamlFile string `mapstructure:"file"`
+
+	// RedactFileExpansions is a flag to redact the expansions in the yaml file
+	// if one was provided.
+	RedactFileExpansions bool `mapstructure:"redact_file_expansions"`
 
 	IgnoreMissingFile bool `mapstructure:"ignore_missing_file"`
 
@@ -36,6 +38,9 @@ type updateParams struct {
 
 	// The expanded value
 	Value string
+
+	// If the expansion should be redacted
+	Redact bool
 
 	// Can optionally concat a string to the end of the current value
 	Concat string
@@ -56,12 +61,19 @@ func (c *update) ParseParams(params map[string]interface{}) error {
 		if item.Key == "" {
 			return errors.Errorf("expansion key at index %d must not be a blank string", i)
 		}
+		if item.Value != "" && item.Concat != "" {
+			return errors.Errorf("expansion '%s' at index %d must not have both a value and a concat", item.Key, i)
+		}
+	}
+
+	if c.RedactFileExpansions && c.YamlFile == "" {
+		return errors.New("redact_file_expansions is true but no file was provided")
 	}
 
 	return nil
 }
 
-func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) error {
+func (c *update) executeUpdates(ctx context.Context, conf *internal.TaskConfig) error {
 	if conf.DynamicExpansions == nil {
 		conf.DynamicExpansions = util.Expansions{}
 	}
@@ -70,23 +82,28 @@ func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) 
 			return errors.Wrap(err, "operation aborted")
 		}
 
-		if update.Concat == "" {
-			newValue, err := conf.NewExpansions.ExpandString(update.Value)
+		value := update.Value
+		if update.Concat != "" {
+			value = update.Concat
+		}
 
-			if err != nil {
-				return errors.WithStack(err)
-			}
-			conf.NewExpansions.Put(update.Key, newValue)
-			conf.DynamicExpansions.Put(update.Key, newValue)
+		expanded, err := conf.NewExpansions.ExpandString(value)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		// If we are concating, the expanded value is not the whole new replacement-
+		// it is the existing value plus the expanded value.
+		if update.Concat != "" {
+			existingValue := conf.NewExpansions.Get(update.Key)
+			expanded = existingValue + expanded
+		}
+
+		conf.DynamicExpansions.Put(update.Key, expanded)
+		if update.Redact {
+			conf.NewExpansions.PutAndRedact(update.Key, expanded)
 		} else {
-			newValue, err := conf.NewExpansions.ExpandString(update.Concat)
-			if err != nil {
-				return errors.WithStack(err)
-			}
-
-			oldValue := conf.NewExpansions.Get(update.Key)
-			conf.NewExpansions.Put(update.Key, oldValue+newValue)
-			conf.DynamicExpansions.Put(update.Key, oldValue+newValue)
+			conf.NewExpansions.Put(update.Key, expanded)
 		}
 	}
 
@@ -96,7 +113,7 @@ func (c *update) ExecuteUpdates(ctx context.Context, conf *internal.TaskConfig) 
 // Execute updates the expansions. Fulfills Command interface.
 func (c *update) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	err := c.ExecuteUpdates(ctx, conf)
+	err := c.executeUpdates(ctx, conf)
 
 	if err != nil {
 		return errors.WithStack(err)
@@ -119,11 +136,15 @@ func (c *update) Execute(ctx context.Context,
 		}
 
 		logger.Task().Infof("Updating expansions with keys from file '%s'.", filename)
-		err := conf.NewExpansions.UpdateFromYaml(filename)
+		if c.RedactFileExpansions {
+			_, err = conf.NewExpansions.UpdateFromYamlAndRedact(filename)
+		} else {
+			_, err = conf.NewExpansions.UpdateFromYaml(filename)
+		}
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		if err = conf.DynamicExpansions.UpdateFromYaml(filename); err != nil {
+		if _, err = conf.DynamicExpansions.UpdateFromYaml(filename); err != nil {
 			return errors.WithStack(err)
 		}
 	}
