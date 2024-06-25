@@ -322,7 +322,12 @@ func (s *APIWebhookSubscriber) ToService() event.WebhookSubscriber {
 
 func (s *APIWebhookHeader) BuildFromService(h event.WebhookHeader) {
 	s.Key = &h.Key
-	s.Value = &h.Value
+	// If this key is a sensitive key, redact the value.
+	if h.Key == "Authorization" {
+		s.Value = utility.ToStringPtr("")
+	} else {
+		s.Value = &h.Value
+	}
 }
 
 func (s *APIWebhookHeader) ToService() event.WebhookHeader {

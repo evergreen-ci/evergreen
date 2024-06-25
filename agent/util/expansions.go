@@ -67,7 +67,7 @@ func (e *DynamicExpansions) RedactKey(key string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	if value := e.Get(key); value != "" {
+	if value := e.Expansions.Get(key); value != "" {
 		e.redact = append(e.redact, RedactInfo{Key: key, Value: value})
 	}
 }
