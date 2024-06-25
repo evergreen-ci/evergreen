@@ -66,15 +66,14 @@ func TestRemoveGithubAppAuth(t *testing.T) {
 	err := UpsertGithubAppAuth(&githubAppAuth)
 	require.NoError(t, err)
 
-	hasGithubAppAuth, err := HasGithubAppAuth("mongodb")
+	githubAppAuthFromDB, err := FindOneGithubAppAuth("mongodb")
 	require.NoError(t, err)
-	assert.True(hasGithubAppAuth)
+	assert.NotNil(githubAppAuthFromDB)
 
 	err = RemoveGithubAppAuth(githubAppAuth.Id)
 	require.NoError(t, err)
 
-	hasGithubAppAuth, err = HasGithubAppAuth("mongodb")
+	githubAppAuthFromDB, err = FindOneGithubAppAuth("mongodb")
 	require.NoError(t, err)
-	assert.False(hasGithubAppAuth)
-
+	assert.Nil(githubAppAuthFromDB)
 }
