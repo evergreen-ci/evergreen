@@ -67,9 +67,9 @@ they're not being used is important to ensure that hosts are being efficiently u
 idle long-lived hosts.
 
 **While this feature is being rolled out, please [choose and complete one of the three options](#beta-testing) for your
-unexpirable host(s). You must complete one of the options before the beta test ends on Tuesday September 3. If you do
-not take any action, a default schedule will be set on your behalf for your unexpirable host(s) at the end of the beta
-test period.**
+unexpirable host(s). You must complete one of the options before the beta test ends at 11 am (Eastern Time) on Tuesday
+September 3. If you do not take any action, a default schedule will be set on your behalf for your unexpirable host(s)
+at the end of the beta test period.**
 
 ### ***Important Note***: This Feature is in Beta Testing! {#beta-testing}
 
