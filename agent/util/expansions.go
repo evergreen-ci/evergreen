@@ -80,7 +80,7 @@ func (e *DynamicExpansions) GetRedacted() []RedactInfo {
 	return e.redact
 }
 
-// PutAndRedact puts expansion and marks it for redaction.
+// PutAndRedact puts the expansions followed by marking it for redaction.
 func (e *DynamicExpansions) PutAndRedact(key, value string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
