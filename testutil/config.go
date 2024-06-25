@@ -367,6 +367,7 @@ func MockConfig() *evergreen.Settings {
 			LegacyUIPublicAccessDisabled:    true,
 			SleepScheduleDisabled:           true,
 			SystemFailedTaskRestartDisabled: true,
+			DegradedModeDisabled:            true,
 		},
 		SleepSchedule: evergreen.SleepScheduleConfig{
 			PermanentlyExemptHosts: []string{"host0", "host1"},

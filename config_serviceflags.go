@@ -40,6 +40,7 @@ type ServiceFlags struct {
 	SleepScheduleDisabled           bool `bson:"sleep_schedule_disabled" json:"sleep_schedule_disabled"`
 	SleepScheduleBetaTestDisabled   bool `bson:"sleep_schedule_beta_test_disabled" json:"sleep_schedule_beta_test_disabled"`
 	SystemFailedTaskRestartDisabled bool `bson:"system_failed_task_restart_disabled" json:"system_failed_task_restart_disabled"`
+	DegradedModeDisabled            bool `bson:"degraded_mode_disabled" json:"degraded_mode_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -106,6 +107,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			sleepScheduleDisabledKey:           c.SleepScheduleDisabled,
 			sleepScheduleBetaTestDisabledKey:   c.SleepScheduleBetaTestDisabled,
 			systemFailedTaskRestartDisabledKey: c.SystemFailedTaskRestartDisabled,
+			degradedModeDisabledKey:            c.DegradedModeDisabled,
 		},
 	}, options.Update().SetUpsert(true))
 
