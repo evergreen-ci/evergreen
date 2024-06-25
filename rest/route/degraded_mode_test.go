@@ -3,11 +3,11 @@ package route
 import (
 	"bytes"
 	"context"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"net/http"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
