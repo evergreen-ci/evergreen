@@ -106,7 +106,9 @@ type APIPatchTriggerDefinition struct {
 	// Name of the module corresponding to the upstream project in the
 	// downstream project's YAML.
 	ParentAsModule *string `json:"parent_as_module,omitempty"`
-	// The revision at which to create the downstream patch.
+	// An optional field representing the revision at which to create the downstream patch.
+	// By default, this field is empty and the downstream patch will be based off of its
+	// most recent commit.
 	DownstreamRevision *string `json:"downstream_revision,omitempty"`
 	// The list of variants/tasks from the alias that will run in the downstream
 	// project.

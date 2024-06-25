@@ -1605,7 +1605,7 @@ tasks:
 	s.NoError(u.Insert())
 
 	projectRef, err := model.FindBranchProjectRef(s.project)
-	s.NotNil(projectRef)
+	s.Require().NotNil(projectRef)
 	s.NoError(err)
 
 	s.Len(p.Triggers.ChildPatches, 0)
@@ -1616,7 +1616,7 @@ tasks:
 	s.Require().NotZero(dbPatch)
 	s.Equal(p.Triggers.ChildPatches, dbPatch.Triggers.ChildPatches)
 
-	s.Require().NotEmpty(dbPatch.Triggers.ChildPatches)
+	s.Require().Len(dbPatch.Triggers.ChildPatches, 1)
 	dbChildPatch, err := patch.FindOneId(dbPatch.Triggers.ChildPatches[0])
 	s.NoError(err)
 	s.Require().NotZero(dbChildPatch)
@@ -1671,12 +1671,11 @@ tasks:
 	s.NoError(u.Insert())
 
 	projectRef, err := model.FindBranchProjectRef(s.project)
-	s.NotNil(projectRef)
+	s.Require().NotNil(projectRef)
 	s.NoError(err)
 	s.Require().Len(projectRef.PatchTriggerAliases, 1)
 	projectRef.PatchTriggerAliases[0].DownstreamRevision = "abc"
 
-	s.Len(p.Triggers.ChildPatches, 0)
 	s.NoError(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
 
 	dbPatch, err := patch.FindOneId(p.Id.Hex())
@@ -1684,7 +1683,7 @@ tasks:
 	s.Require().NotZero(dbPatch)
 	s.Equal(p.Triggers.ChildPatches, dbPatch.Triggers.ChildPatches)
 
-	s.Require().NotEmpty(dbPatch.Triggers.ChildPatches)
+	s.Require().Len(dbPatch.Triggers.ChildPatches, 1)
 	dbChildPatch, err := patch.FindOneId(dbPatch.Triggers.ChildPatches[0])
 	s.NoError(err)
 	s.Require().NotZero(dbChildPatch)
@@ -1733,7 +1732,7 @@ tasks:
 	s.NoError(u.Insert())
 
 	projectRef, err := model.FindBranchProjectRef(s.project)
-	s.NotNil(projectRef)
+	s.Require().NotNil(projectRef)
 	s.NoError(err)
 
 	s.Len(p.Triggers.ChildPatches, 0)

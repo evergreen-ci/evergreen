@@ -1125,7 +1125,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 	if !ok {
 		return nil, nil, errors.Errorf("programmatic error: expected intent '%s' to be a trigger intent type but instead got '%T'", j.IntentID, j.intent)
 	}
-	v, project, pp, err := fetchTriggerProjectInfo(ctx, patchDoc)
+	v, project, pp, err := fetchTriggerVersionInfo(ctx, patchDoc)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "getting latest version for project '%s'", patchDoc.Project)
 	}
@@ -1173,7 +1173,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 	return project, pp, nil
 }
 
-func fetchTriggerProjectInfo(ctx context.Context, patchDoc *patch.Patch) (*model.Version, *model.Project, *model.ParserProject, error) {
+func fetchTriggerVersionInfo(ctx context.Context, patchDoc *patch.Patch) (*model.Version, *model.Project, *model.ParserProject, error) {
 	var v *model.Version
 	var project *model.Project
 	var pp *model.ParserProject
@@ -1183,10 +1183,16 @@ func fetchTriggerProjectInfo(ctx context.Context, patchDoc *patch.Patch) (*model
 		if err != nil {
 			return nil, nil, nil, errors.Wrapf(err, "getting version at revision '%s'", patchDoc.Triggers.DownstreamRevision)
 		}
+		if v == nil {
+			return nil, nil, nil, errors.Errorf("version at revision '%s' not found", patchDoc.Triggers.DownstreamRevision)
+		}
 		project, pp, err = model.FindAndTranslateProjectForVersion(ctx, evergreen.GetEnvironment().Settings(), v, true)
-	} else {
-		v, project, pp, err = model.FindLatestVersionWithValidProject(patchDoc.Project, true)
+		if err != nil {
+			return nil, nil, nil, errors.Wrapf(err, "getting downstream version at revision '%s' to use for patch '%s'", patchDoc.Triggers.DownstreamRevision, patchDoc.Id.Hex())
+		}
+		return v, project, pp, nil
 	}
+	v, project, pp, err = model.FindLatestVersionWithValidProject(patchDoc.Project, true)
 	if err != nil {
 		return nil, nil, nil, errors.Wrapf(err, "getting downstream version to use for patch '%s'", patchDoc.Id.Hex())
 	}
