@@ -787,6 +787,11 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, err
 	}
 
+	if spawnHostInput.SleepSchedule != nil {
+		if err := spawnHostInput.SleepSchedule.Validate(); err != nil {
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("Invalid sleep schedule: %s", err))
+		}
+	}
 	spawnHost, err := data.NewIntentHost(ctx, options, usr, evergreen.GetEnvironment())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning host: %s", err))
