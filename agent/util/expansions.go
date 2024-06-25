@@ -86,5 +86,28 @@ func (e *DynamicExpansions) PutAndRedact(key, value string) {
 	defer e.mu.Unlock()
 
 	e.Expansions.Put(key, value)
-	e.redact = append(e.redact, RedactInfo{Key: key, Value: value})
+	if value != "" {
+		e.redact = append(e.redact, RedactInfo{Key: key, Value: value})
+	}
+}
+
+// UpdateFromYamlAndRedact updates the expansions from the given yaml file
+// and then marks the expansions for redaction.
+func (e *DynamicExpansions) UpdateFromYamlAndRedact(filename string) ([]string, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	keys, err := e.Expansions.UpdateFromYaml(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, key := range keys {
+		if e.Expansions.Get(key) == "" {
+			continue
+		}
+		e.redact = append(e.redact, RedactInfo{Key: key, Value: e.Expansions.Get(key)})
+	}
+
+	return keys, nil
 }

@@ -136,17 +136,16 @@ func (c *update) Execute(ctx context.Context,
 		}
 
 		logger.Task().Infof("Updating expansions with keys from file '%s'.", filename)
-		keys, err := conf.NewExpansions.UpdateFromYaml(filename)
+		if c.RedactFileExpansions {
+			_, err = conf.NewExpansions.UpdateFromYamlAndRedact(filename)
+		} else {
+			_, err = conf.NewExpansions.UpdateFromYaml(filename)
+		}
 		if err != nil {
 			return errors.WithStack(err)
 		}
 		if _, err = conf.DynamicExpansions.UpdateFromYaml(filename); err != nil {
 			return errors.WithStack(err)
-		}
-		if c.RedactFileExpansions {
-			for _, key := range keys {
-				conf.NewExpansions.RedactKey(key)
-			}
 		}
 	}
 	return nil
