@@ -438,7 +438,8 @@ Parameters:
         - `concat`: the string to concatenate to the existing value. Per
            update, only `value` or `concat` can be set.
         - `redact`: if true, the expansion will be redacted in the task logs.
-           By default, this is false.
+           By default, this is false. Setting this to false will not unredact
+           the expansion if it was already redacted.
 -   `file`: filename for a YAML file containing expansion updates
 -   `redact_file_expansions`: if true, the expansions added from the file will be redacted in the task logs.
      By default, this is false.
