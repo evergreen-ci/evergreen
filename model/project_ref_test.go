@@ -1812,6 +1812,7 @@ func TestGithubPermissionGroups(t *testing.T) {
 	}
 	orgRequesters := map[string]string{
 		evergreen.PatchVersionRequester: "some-group",
+		evergreen.GithubPRRequester:     noPermissionsGitHubTokenPermissionGroup.Name,
 	}
 	p := &ProjectRef{
 		GitHubDynamicTokenPermissionGroups: orgGroup,

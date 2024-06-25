@@ -160,6 +160,12 @@ var defaultGitHubTokenPermissionGroup = GitHubDynamicTokenPermissionGroup{
 	AllPermissions: true,
 }
 
+// noPermissionsGitHubTokenPermissionGroup is an empty, no permissions, group.
+var noPermissionsGitHubTokenPermissionGroup = GitHubDynamicTokenPermissionGroup{
+	Name:           "No Permissions",
+	AllPermissions: false,
+}
+
 // GetGitHubPermissionGroup returns the GitHubDynamicTokenPermissionGroup for the given requester.
 // If the requester is not found, it returns the default.
 func (p *ProjectRef) GetGitHubPermissionGroup(requester string) GitHubDynamicTokenPermissionGroup {
@@ -167,6 +173,9 @@ func (p *ProjectRef) GetGitHubPermissionGroup(requester string) GitHubDynamicTok
 		return defaultGitHubTokenPermissionGroup
 	}
 	if groupName, ok := p.GitHubPermissionGroupByRequester[requester]; ok {
+		if groupName == noPermissionsGitHubTokenPermissionGroup.Name {
+			return noPermissionsGitHubTokenPermissionGroup
+		}
 		for _, group := range p.GitHubDynamicTokenPermissionGroups {
 			if group.Name == groupName {
 				return group
@@ -188,6 +197,9 @@ func (p *ProjectRef) ValidateGitHubPermissionGroups() error {
 	for requester, groupName := range p.GitHubPermissionGroupByRequester {
 		if !utility.StringSliceContains(evergreen.AllRequesterTypes, requester) {
 			catcher.Add(errors.Errorf("requester '%s' is not a valid requester", requester))
+		}
+		if groupName == noPermissionsGitHubTokenPermissionGroup.Name {
+			continue
 		}
 		foundGroup := false
 		for _, group := range p.GitHubDynamicTokenPermissionGroups {
