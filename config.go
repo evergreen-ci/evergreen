@@ -95,7 +95,7 @@ type Settings struct {
 	ProjectCreation     ProjectCreationConfig     `yaml:"project_creation" bson:"project_creation" json:"project_creation" id:"project_creation"`
 	Providers           CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
 	RepoTracker         RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
-	RuntimeEnvironments RuntimeEnvironmentsConfig `yaml:"runtimeenvironments" bson:"runtimeenvironments" json:"runtimeenvironments" id:"runtimeenvironments"`
+	RuntimeEnvironments RuntimeEnvironmentsConfig `yaml:"runtime_environments" bson:"runtime_environments" json:"runtime_environments" id:"runtime_environments"`
 	Scheduler           SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
 	ServiceFlags        ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags" yaml:"service_flags"`
 	SSHKeyDirectory     string                    `yaml:"ssh_key_directory" bson:"ssh_key_directory" json:"ssh_key_directory"`

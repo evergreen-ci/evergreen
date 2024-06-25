@@ -83,7 +83,7 @@ type APIAdminSettings struct {
 	ProjectCreation     *APIProjectCreationConfig         `json:"project_creation,omitempty"`
 	Providers           *APICloudProviders                `json:"providers,omitempty"`
 	RepoTracker         *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
-	RuntimeEnvironments *APIRuntimeEnvironmentsConfig     `json:"runtimeenvironments,omitempty"`
+	RuntimeEnvironments *APIRuntimeEnvironmentsConfig     `json:"runtime_environments,omitempty"`
 	Scheduler           *APISchedulerConfig               `json:"scheduler,omitempty"`
 	ServiceFlags        *APIServiceFlags                  `json:"service_flags,omitempty"`
 	Slack               *APISlackConfig                   `json:"slack,omitempty"`
