@@ -104,6 +104,7 @@ func TestGitHubGenerateTokenExecute(t *testing.T) {
 			cmd.Repo = "new_repo"
 			require.NoError(t, cmd.Execute(ctx, client, logger, conf))
 			assert.Equal(t, "token!", conf.NewExpansions.Get(cmd.ExpansionName))
+			assert.Contains(t, conf.NewExpansions.GetRedacted(), agentutil.RedactInfo{Key: cmd.ExpansionName, Value: "token!"})
 			assert.Equal(t, "new_owner", cmd.Owner)
 			assert.Equal(t, "new_repo", cmd.Repo)
 		},

@@ -94,7 +94,7 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 	// TODO DEVPROD-5986: Tokens should be redacted at the end, expanisions (or some other mechanism) should
 	// keep track of that and redact the token from GitHub.
 	// They also need to be redacted from logs.
-	conf.NewExpansions.Put(r.ExpansionName, token)
+	conf.NewExpansions.PutAndRedact(r.ExpansionName, token)
 
 	return nil
 }
