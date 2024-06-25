@@ -78,6 +78,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('splunk')">Splunk</li>
 						<li class="link" ng-click="scrollTo('newrelic')">New Relic</li>
 						<li class="link" ng-click="scrollTo('cedar')">Cedar</li>
+						<li class="link" ng-click="scrollTo('runtimeenvironments')">Runtime Environments</li>
 						<div>Background Processing</div>
 						<li class="link" ng-click="scrollTo('amboy')">Amboy</li>
 						<li class="link" ng-click="scrollTo('logger_config')">Logger Config</li>
@@ -1396,6 +1397,29 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>API Key</label>
 										<input type="text" ng-model="Settings.cedar.api_key">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
+						</section>
+
+						<section layout="row" flex>
+							<md-card flex=50 id="runtimeenvironments" style="height:auto">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Runtime Environments</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('runtimeenvironments')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>Base URL</label>
+										<input type="text" ng-model="Settings.runtimeenvironments.base_url">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>API Key</label>
+										<input type="text" ng-model="Settings.runtimeenvironments.api_key">
 									</md-input-container>
 								</md-card-content>
 							</md-card>
