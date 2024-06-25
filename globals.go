@@ -221,10 +221,6 @@ const (
 	// besides for fallback logging to stderr.
 	disableLocalLoggingEnvVar = "DISABLE_LOCAL_LOGGING"
 
-	// LegacyTaskActivator is a deprecated legacy activator that used
-	// to be a majority of non-stepback and non-API activations.
-	// TODO: EVG-20869 remove this activator after sufficient time has passed
-	LegacyTaskActivator = ""
 	// APIServerTaskActivator represents Evergreen's internal API activator
 	APIServerTaskActivator = "apiserver"
 	// StepbackTaskActivator represents the activator for tasks activated
@@ -903,7 +899,6 @@ var (
 	}
 
 	SystemActivators = []string{
-		LegacyTaskActivator,
 		APIServerTaskActivator,
 		BuildActivator,
 		CheckBlockedTasksActivator,

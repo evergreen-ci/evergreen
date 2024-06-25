@@ -32,19 +32,24 @@ func (exp *Expansions) Update(newItems map[string]string) {
 }
 
 // Read a map of keys/values from the given file, and update the expansions
-// to include them (overwriting any duplicates with the new value).
-func (exp *Expansions) UpdateFromYaml(filename string) error {
+// to include them (overwriting any duplicates with the new value). It returns
+// the updated keys from the Yaml.
+func (exp *Expansions) UpdateFromYaml(filename string) ([]string, error) {
 	filedata, err := os.ReadFile(filename)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	newExpansions := make(map[string]string)
 	err = yaml.Unmarshal(filedata, newExpansions)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	exp.Update(newExpansions)
-	return nil
+	keys := []string{}
+	for k := range newExpansions {
+		keys = append(keys, k)
+	}
+	return keys, nil
 }
 
 // Set a single value in the expansions.

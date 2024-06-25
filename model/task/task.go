@@ -122,7 +122,9 @@ type Task struct {
 	BuildVariant            string           `bson:"build_variant" json:"build_variant"`
 	BuildVariantDisplayName string           `bson:"build_variant_display_name" json:"-"`
 	DependsOn               []Dependency     `bson:"depends_on" json:"depends_on"`
-	// UnattainableDependency caches the contents of DependsOn for more efficient querying.
+	// UnattainableDependency caches the contents of DependsOn for more
+	// efficient querying. It is true if any of its dependencies is unattainable
+	// and is false if all of its dependencies are attainable.
 	UnattainableDependency bool `bson:"unattainable_dependency" json:"unattainable_dependency"`
 	NumDependents          int  `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 	// OverrideDependencies indicates whether a task should override its dependencies. If set, it will not
@@ -698,8 +700,12 @@ func (t *Task) AddDependency(ctx context.Context, d Dependency) error {
 			if existingDependency.Unattainable == d.Unattainable {
 				return nil // nothing to be done
 			}
-			return errors.Wrapf(t.MarkUnattainableDependency(ctx, existingDependency.TaskId, d.Unattainable),
-				"updating matching dependency '%s' for task '%s'", existingDependency.TaskId, t.Id)
+			updatedTasks, err := MarkAllForUnattainableDependency(ctx, []Task{*t}, existingDependency.TaskId, d.Unattainable)
+			if err != nil {
+				return errors.Wrapf(err, "updating matching dependency '%s' for task '%s'", existingDependency.TaskId, t.Id)
+			}
+			*t = updatedTasks[0]
+			return nil
 		}
 	}
 	t.DependsOn = append(t.DependsOn, d)
@@ -2645,19 +2651,44 @@ func (t *Task) MarkUnscheduled() error {
 
 }
 
-// MarkUnattainableDependency updates the unattainable field for the dependency in the task's dependency list,
-// and logs if the task is newly blocked.
-func (t *Task) MarkUnattainableDependency(ctx context.Context, dependencyId string, unattainable bool) error {
-	wasBlocked := t.Blocked()
-	if err := t.updateAllMatchingDependenciesForTask(ctx, dependencyId, unattainable); err != nil {
-		return errors.Wrapf(err, "updating matching dependencies for task '%s'", t.Id)
+// MarkAllForUnattainableDependency updates many tasks (taskIDs) to mark
+// the dependency (dependencyID) as attainable or not. If marking a dependency
+// unattainable, it creates an event log for each newly blocked task. This
+// returns all the tasks after the update.
+func MarkAllForUnattainableDependency(ctx context.Context, tasks []Task, dependencyID string, unattainable bool) ([]Task, error) {
+	if len(tasks) == 0 {
+		return tasks, nil
 	}
 
-	// Only want to log the task as blocked if it wasn't already blocked, and if we're not overriding dependencies.
-	if !wasBlocked && unattainable && !t.OverrideDependencies {
-		event.LogTaskBlocked(t.Id, t.Execution, dependencyId)
+	taskIDs := make([]string, 0, len(tasks))
+	newlyBlockedTaskData := make([]event.TaskBlockedData, 0, len(tasks))
+	for _, t := range tasks {
+		if !t.Blocked() && unattainable && !t.OverrideDependencies {
+			data := event.TaskBlockedData{
+				ID:        t.Id,
+				Execution: t.Execution,
+				BlockedOn: dependencyID,
+			}
+			newlyBlockedTaskData = append(newlyBlockedTaskData, data)
+		}
+		taskIDs = append(taskIDs, t.Id)
 	}
-	return nil
+
+	if err := updateAllTasksForMatchingDependencies(ctx, taskIDs, dependencyID, unattainable); err != nil {
+		return nil, err
+	}
+
+	event.LogManyTasksBlocked(newlyBlockedTaskData)
+
+	updatedTasks, err := FindAll(db.Query(ByIds(taskIDs)))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding updated tasks")
+	}
+	if len(updatedTasks) != len(tasks) {
+		return nil, errors.Errorf("updated dependencies for tasks but subsequent query for updated tasks returned a different number of tasks (%d) than expected (%d)", len(updatedTasks), len(tasks))
+	}
+
+	return updatedTasks, nil
 }
 
 // AbortBuildTasks sets the abort flag on all tasks associated with the build which are in an abortable

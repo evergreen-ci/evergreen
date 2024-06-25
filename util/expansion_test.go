@@ -73,13 +73,19 @@ func TestExpansions(t *testing.T) {
 				"key2": "val2",
 			})
 
-			err := expansions.UpdateFromYaml(filepath.Join(
+			keys, err := expansions.UpdateFromYaml(filepath.Join(
 				getDirectoryOfFile(), "testdata", "expansions.yml"))
 			So(err, ShouldBeNil)
 			So(expansions.Get("marge"), ShouldEqual, "1")
 			So(expansions.Get("lisa"), ShouldEqual, "2")
 			So(expansions.Get("bart"), ShouldEqual, "3")
+			So(expansions.Get("homer"), ShouldEqual, "4")
 			So(expansions.Get("key1"), ShouldEqual, "blah")
+			So(keys, ShouldContain, "marge")
+			So(keys, ShouldContain, "lisa")
+			So(keys, ShouldContain, "bart")
+			So(keys, ShouldContain, "homer")
+			So(keys, ShouldContain, "key1")
 		})
 
 	})

@@ -20,14 +20,25 @@ import (
 )
 
 type TaskConfig struct {
-	Distro             *apimodels.DistroView
-	ProjectRef         model.ProjectRef
-	Project            model.Project
-	Task               task.Task
-	BuildVariant       model.BuildVariant
-	Expansions         util.Expansions
-	NewExpansions      *agentutil.DynamicExpansions
-	DynamicExpansions  util.Expansions
+	Distro       *apimodels.DistroView
+	ProjectRef   model.ProjectRef
+	Project      model.Project
+	Task         task.Task
+	BuildVariant model.BuildVariant
+
+	// Expansions store the fundamental expansions set by Evergreen.
+	// e.g. execution, project_id, task_id, etc. It also stores
+	// expansions that are set by the user by expansion.update.
+	Expansions util.Expansions
+
+	// NewExpansions is a thread safe way to access Expansions.
+	// It also exposes a way to redact expansions from logs.
+	NewExpansions *agentutil.DynamicExpansions
+
+	// DynamicExpansions holds expansions that were set from 'expansions.update'
+	// and should persist throughout the task's execution.
+	DynamicExpansions util.Expansions
+
 	ProjectVars        map[string]string
 	Redacted           []string
 	RedactKeys         []string

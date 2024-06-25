@@ -1814,13 +1814,13 @@ func FindActivatedByVersionWithoutDisplay(versionId string) ([]Task, error) {
 
 }
 
-func (t *Task) updateAllMatchingDependenciesForTask(ctx context.Context, dependencyID string, unattainable bool) error {
+func updateAllTasksForMatchingDependencies(ctx context.Context, taskIDs []string, dependencyID string, unattainable bool) error {
 	// Update the matching dependencies in the DependsOn array and the UnattainableDependency field that caches
 	// whether any of the dependencies are blocked. Combining both these updates in a single update operation makes it
 	// impervious to races because updates to single documents are atomic.
-	res := evergreen.GetEnvironment().DB().Collection(Collection).FindOneAndUpdate(ctx,
+	if _, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
 		bson.M{
-			IdKey: t.Id,
+			IdKey: bson.M{"$in": taskIDs},
 		},
 		[]bson.M{
 			{
@@ -1849,13 +1849,11 @@ func (t *Task) updateAllMatchingDependenciesForTask(ctx context.Context, depende
 				}}},
 			},
 		},
-		options.FindOneAndUpdate().SetReturnDocument(options.After),
-	)
-	if res.Err() != nil {
-		return errors.Wrap(res.Err(), "updating matching dependencies")
+	); err != nil {
+		return errors.Wrap(err, "updating matching dependencies")
 	}
 
-	return res.Decode(&t)
+	return nil
 }
 
 // HasUnfinishedTaskForVersions returns true if there are any scheduled but

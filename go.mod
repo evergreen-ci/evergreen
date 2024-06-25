@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/99designs/gqlgen v0.17.49
 	github.com/PuerkitoBio/rehttp v1.4.0
-	github.com/aws/aws-sdk-go v1.54.2
+	github.com/aws/aws-sdk-go v1.54.6
 	github.com/aws/aws-sdk-go-v2 v1.27.2
 	github.com/aws/aws-sdk-go-v2/config v1.27.18
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.18 // indirect
@@ -33,7 +33,7 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gorilla/csrf v1.7.2
 	github.com/gorilla/mux v1.8.1
-	github.com/gorilla/sessions v1.2.2
+	github.com/gorilla/sessions v1.3.0
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
 	github.com/jpillora/backoff v1.0.0
 	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629
@@ -52,7 +52,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli v1.22.15
 	github.com/vektah/gqlparser/v2 v2.5.16
-	go.mongodb.org/mongo-driver v1.15.0
+	go.mongodb.org/mongo-driver v1.15.1
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.21.1
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.21.1
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.46.1
