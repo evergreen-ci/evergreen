@@ -16,6 +16,8 @@ type DynamicExpansions struct {
 	mu sync.RWMutex
 
 	// redact stores expansions that should be redacted.
+	// These expansions can be from `expansion.update` or
+	// from project commands that generate private expansions.
 	redact []string
 }
 
