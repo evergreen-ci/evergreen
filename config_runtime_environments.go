@@ -14,7 +14,7 @@ type RuntimeEnvironmentsConfig struct {
 	APIKey  string `yaml:"api_key" bson:"api_key" json:"api_key"`
 }
 
-func (*RuntimeEnvironmentsConfig) SectionId() string { return "runtimeenvironments" }
+func (*RuntimeEnvironmentsConfig) SectionId() string { return "runtime_environments" }
 
 func (c *RuntimeEnvironmentsConfig) Get(ctx context.Context) error {
 	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
