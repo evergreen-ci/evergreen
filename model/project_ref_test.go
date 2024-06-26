@@ -1490,8 +1490,7 @@ func TestSetGithubAppCredentials(t *testing.T) {
 		"NoCredentialsWhenNoneExist": func(t *testing.T, p *ProjectRef) {
 			app, err := FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
-			assert.Zero(t, app.AppID)
-			assert.Nil(t, app.PrivateKey)
+			assert.Nil(t, app)
 		},
 		"CredentialsCanBeSet": func(t *testing.T, p *ProjectRef) {
 			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
