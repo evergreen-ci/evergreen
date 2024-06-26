@@ -48,7 +48,6 @@ func GetIntegrationFile(t *testing.T) *evergreen.Settings {
 
 	// grab the file with the integration test settings
 	integrationSettings, err := evergreen.NewSettings(*settingsOverride)
-
 	require.NoError(t, err, "Error opening settings override file '%s'", *settingsOverride)
 
 	return integrationSettings
