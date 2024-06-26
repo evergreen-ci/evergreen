@@ -17,6 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -1816,53 +1817,72 @@ func FindActivatedByVersionWithoutDisplay(versionId string) ([]Task, error) {
 
 // kim: TODO: could potentially convert dependencyID into list, not sure how
 // well it'll work.
-func updateAllTasksForMatchingDependencies(ctx context.Context, taskIDs []string, dependencyID string, unattainable bool) error {
-	// Update the matching dependencies in the DependsOn array and the UnattainableDependency field that caches
-	// whether any of the dependencies are blocked. Combining both these updates in a single update operation makes it
-	// impervious to races because updates to single documents are atomic.
-	if _, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
-		bson.M{
-			IdKey: bson.M{"$in": taskIDs},
-		},
-		[]bson.M{
-			{
-				// Iterate over the DependsOn array and set unattainable for dependencies that
-				// match the dependencyID. Leave other dependencies untouched.
-				"$set": bson.M{DependsOnKey: bson.M{
-					"$map": bson.M{
-						"input": "$" + DependsOnKey,
-						"as":    "dependency",
-						"in": bson.M{
-							"$cond": bson.M{
-								"if":   bson.M{"$eq": []string{bsonutil.GetDottedKeyName("$$dependency", DependencyTaskIdKey), dependencyID}},
-								"then": bson.M{"$mergeObjects": bson.A{"$$dependency", bson.M{DependencyUnattainableKey: unattainable}}},
-								"else": "$$dependency",
-							},
-						},
-					}},
-				},
-			},
-			{
-				// Cache whether any dependencies are unattainable.
-				"$set": bson.M{UnattainableDependencyKey: bson.M{"$cond": bson.M{
-					"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-					"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-					"else": false,
-				}}},
-			},
-		},
-	); err != nil {
-		return errors.Wrap(err, "updating matching dependencies")
-	}
+// kim: TODO: remove
+// func updateAllTasksForMatchingDependencies(ctx context.Context, taskIDs []string, dependencyID string, unattainable bool) error {
+//     // Update the matching dependencies in the DependsOn array and the UnattainableDependency field that caches
+//     // whether any of the dependencies are blocked. Combining both these updates in a single update operation makes it
+//     // impervious to races because updates to single documents are atomic.
+//     if _, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
+//         bson.M{
+//             IdKey: bson.M{"$in": taskIDs},
+//         },
+//         []bson.M{
+//             {
+//                 // Iterate over the DependsOn array and set unattainable for dependencies that
+//                 // match the dependencyID. Leave other dependencies untouched.
+//                 "$set": bson.M{DependsOnKey: bson.M{
+//                     "$map": bson.M{
+//                         "input": "$" + DependsOnKey,
+//                         "as":    "dependency",
+//                         "in": bson.M{
+//                             "$cond": bson.M{
+//                                 "if":   bson.M{"$eq": []string{bsonutil.GetDottedKeyName("$$dependency", DependencyTaskIdKey), dependencyID}},
+//                                 "then": bson.M{"$mergeObjects": bson.A{"$$dependency", bson.M{DependencyUnattainableKey: unattainable}}},
+//                                 "else": "$$dependency",
+//                             },
+//                         },
+//                     }},
+//                 },
+//             },
+//             {
+//                 // Cache whether any dependencies are unattainable.
+//                 "$set": bson.M{UnattainableDependencyKey: bson.M{"$cond": bson.M{
+//                     "if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+//                     "then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
+//                     "else": false,
+//                 }}},
+//             },
+//         },
+//     ); err != nil {
+//         return errors.Wrap(err, "updating matching dependencies")
+//     }
+//
+//     return nil
+// }
 
-	return nil
-}
-
+// updateAllTasksForAllMatchingDependencies updates all tasks (taskIDs) that
+// have matching dependencies (dependencyIDs) to mark them as attainable or not.
+// Secondly, for a given task, after updating individual dependency
+// attainability, it updates the cache of whether the task has all attainable
+// dependencies or not.
 // kim: NOTE: because taskIDs and dependencyIDs are very long, and each ID is
 // very long (one task had ID of length 250), this query could hit the 16 MB
 // limit. May have to update in batches if the list of both taskIDs and
-// dependencyIDs is unreasonably long.
+// dependencyIDs is unreasonably long. Could solve by having set of
+// dependencyIDs mapped to set of the taskIDs that need to be updated (or vice
+// versa).
 func updateAllTasksForAllMatchingDependencies(ctx context.Context, taskIDs []string, dependencyIDs []string, unattainable bool) error {
+	ctx, span := tracer.Start(ctx, "update-task-dependencies", trace.WithAttributes(
+		// Because some projects have huge dependency trees, this update has the
+		// potential to make an extremely large query that exceeds the 16 MB
+		// aggregation size limit. Track the number of tasks/dependencies that
+		// it's trying to update to diagnose such problems.
+		attribute.Int("num_tasks", len(taskIDs)),
+		attribute.Int("num_dependencies", len(dependencyIDs)),
+		attribute.Bool("unattainable", unattainable),
+	))
+	defer span.End()
+
 	// Update the matching dependencies in the DependsOn array and the UnattainableDependency field that caches
 	// whether any of the dependencies are blocked. Combining both these updates in a single update operation makes it
 	// impervious to races because updates to single documents are atomic.

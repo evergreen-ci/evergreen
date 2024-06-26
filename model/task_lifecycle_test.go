@@ -4554,7 +4554,6 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	require.NoError(v.Insert())
 
 	buildID := "buildtest"
-	// kim: NOTE: should end with failure
 	testTask := task.Task{
 		Id:          "testone",
 		DisplayName: "compile",
@@ -4572,7 +4571,6 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 		RunningTask: testTask.Id,
 	}
 	assert.NoError(taskHost.Insert(ctx))
-	// kim: NOTE: should be blocked and log blocked
 	anotherTask := task.Task{
 		Id:          "two",
 		Activated:   true,
@@ -4591,7 +4589,6 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	}
 	require.NoError(anotherTask.Insert())
 
-	// kim: NOTE: should log blocked
 	b := &build.Build{
 		Id:        buildID,
 		Status:    evergreen.BuildStarted,
