@@ -1815,51 +1815,6 @@ func FindActivatedByVersionWithoutDisplay(versionId string) ([]Task, error) {
 
 }
 
-// kim: TODO: could potentially convert dependencyID into list, not sure how
-// well it'll work.
-// kim: TODO: remove
-// func updateAllTasksForMatchingDependencies(ctx context.Context, taskIDs []string, dependencyID string, unattainable bool) error {
-//     // Update the matching dependencies in the DependsOn array and the UnattainableDependency field that caches
-//     // whether any of the dependencies are blocked. Combining both these updates in a single update operation makes it
-//     // impervious to races because updates to single documents are atomic.
-//     if _, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
-//         bson.M{
-//             IdKey: bson.M{"$in": taskIDs},
-//         },
-//         []bson.M{
-//             {
-//                 // Iterate over the DependsOn array and set unattainable for dependencies that
-//                 // match the dependencyID. Leave other dependencies untouched.
-//                 "$set": bson.M{DependsOnKey: bson.M{
-//                     "$map": bson.M{
-//                         "input": "$" + DependsOnKey,
-//                         "as":    "dependency",
-//                         "in": bson.M{
-//                             "$cond": bson.M{
-//                                 "if":   bson.M{"$eq": []string{bsonutil.GetDottedKeyName("$$dependency", DependencyTaskIdKey), dependencyID}},
-//                                 "then": bson.M{"$mergeObjects": bson.A{"$$dependency", bson.M{DependencyUnattainableKey: unattainable}}},
-//                                 "else": "$$dependency",
-//                             },
-//                         },
-//                     }},
-//                 },
-//             },
-//             {
-//                 // Cache whether any dependencies are unattainable.
-//                 "$set": bson.M{UnattainableDependencyKey: bson.M{"$cond": bson.M{
-//                     "if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-//                     "then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-//                     "else": false,
-//                 }}},
-//             },
-//         },
-//     ); err != nil {
-//         return errors.Wrap(err, "updating matching dependencies")
-//     }
-//
-//     return nil
-// }
-
 // updateAllTasksForAllMatchingDependencies updates all tasks (taskIDs) that
 // have matching dependencies (dependencyIDs) to mark them as attainable or not.
 // Secondly, for a given task, after updating individual dependency
@@ -2739,9 +2694,7 @@ func FindAllUnmarkedDependenciesToBlock(tasks []Task) ([]Task, error) {
 		okStatusSet := []string{AllStatuses, t.Status}
 		unmatchedDep = append(unmatchedDep, bson.M{
 			DependsOnKey: bson.M{"$elemMatch": bson.M{
-				DependencyTaskIdKey: t.Id,
-				// kim: NOTE: if the task isn't finished, it's assumed that
-				// it'll be blocked as well.
+				DependencyTaskIdKey:       t.Id,
 				DependencyStatusKey:       bson.M{"$nin": okStatusSet},
 				DependencyUnattainableKey: false,
 			}},
