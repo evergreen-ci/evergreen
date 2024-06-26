@@ -31,7 +31,7 @@ func FindOneGithubAppAuth(projectId string) (*evergreen.GithubAppAuth, error) {
 // byGithubAppAuthID returns a query that finds a github app auth by the given identifier
 // corresponding to the project id
 func byGithubAppAuthID(projectId string) db.Q {
-	return db.Query(bson.M{githubAppAuthAppIdKey: projectId})
+	return db.Query(bson.M{githubAppAuthIdKey: projectId})
 }
 
 // GetGitHubAppID returns the app id for the given project id
