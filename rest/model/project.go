@@ -607,7 +607,9 @@ func (p *APIGitHubDynamicTokenPermissionGroup) BuildFromService(h model.GitHubDy
 	if err != nil {
 		return errors.Wrapf(err, "converting GitHub permission group '%s'", h.Name)
 	}
-	json.Unmarshal(data, &permissions)
+	if err := json.Unmarshal(data, &permissions); err != nil {
+		return errors.Wrap(err, "unmarshalling GitHub permissions")
+	}
 	p.Permissions = permissions
 
 	p.AllPermissions = utility.ToBoolPtr(h.AllPermissions)
@@ -927,7 +929,9 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 		permissionGroups := []APIGitHubDynamicTokenPermissionGroup{}
 		for _, pg := range projectRef.GitHubDynamicTokenPermissionGroups {
 			group := APIGitHubDynamicTokenPermissionGroup{}
-			group.BuildFromService(pg)
+			if err := group.BuildFromService(pg); err != nil {
+				return errors.Wrapf(err, "converting GitHub permission group '%s' to API model", pg.Name)
+			}
 			permissionGroups = append(permissionGroups, group)
 		}
 		p.GitHubDynamicTokenPermissionGroups = permissionGroups

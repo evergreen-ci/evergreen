@@ -423,7 +423,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NotContains(t, err.Error(), "the commit queue")
 			assert.NotContains(t, err.Error(), "commit checks")
 		},
-		model.ProjectPageGithubAndCQSection: func(t *testing.T, ref model.ProjectRef) {
+		model.ProjectPageGithubPermissionGroupsSection: func(t *testing.T, ref model.ProjectRef) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: restModel.APIProjectRef{
 					GitHubDynamicTokenPermissionGroups: restModel.APIGitHubDynamicTokenPermissionGroups{
@@ -443,10 +443,9 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 							AllPermissions: utility.TruePtr(), // Should have all permissions.
 						},
 					},
-					PRTestingEnabled: utility.FalsePtr(),
 				},
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGithubAndCQSection, false, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGithubPermissionGroupsSection, false, "me")
 			require.NoError(t, err)
 			require.NotNil(t, settings)
 
