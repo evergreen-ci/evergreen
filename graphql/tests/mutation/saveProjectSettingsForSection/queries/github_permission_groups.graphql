@@ -1,0 +1,26 @@
+mutation {
+  saveProjectSettingsForSection(
+    projectSettings: {
+      projectId: "sandbox_project_id"
+      projectRef: {
+        id: "sandbox_project_id"
+        githubDynamicTokenPermissionGroups: [
+          {
+            name: "group-1"
+            permissions: { pull_requests: "read", organization_hooks: "read" }
+          }
+          { name: "group-2", permissions: { contents: "write" } }
+        ]
+      }
+    }
+    section: GITHUB_PERMISSION_GROUPS
+  ) {
+    projectRef {
+      id
+      githubDynamicTokenPermissionGroups {
+        name
+        permissions
+      }
+    }
+  }
+}

@@ -601,6 +601,22 @@ func (p *APIGitHubDynamicTokenPermissionGroups) ToService() ([]model.GitHubDynam
 	return groups, nil
 }
 
+func (p *APIGitHubDynamicTokenPermissionGroup) BuildFromService(h model.GitHubDynamicTokenPermissionGroup) error {
+	p.Name = utility.ToStringPtr(h.Name)
+
+	permissions := map[string]string{}
+	data, err := json.Marshal(h.Permissions)
+	if err != nil {
+		return errors.Wrapf(err, "converting GitHub permission group '%s'", h.Name)
+	}
+	json.Unmarshal(data, &permissions)
+	p.Permissions = permissions
+
+	p.AllPermissions = utility.ToBoolPtr(h.AllPermissions)
+
+	return nil
+}
+
 type APIProjectRef struct {
 	Id *string `json:"id"`
 	// Owner of project repository.
@@ -908,6 +924,16 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 	projectBanner := APIProjectBanner{}
 	projectBanner.BuildFromService(projectRef.Banner)
 	p.Banner = projectBanner
+
+	if projectRef.GitHubDynamicTokenPermissionGroups != nil {
+		permissionGroups := []APIGitHubDynamicTokenPermissionGroup{}
+		for _, pg := range projectRef.GitHubDynamicTokenPermissionGroups {
+			group := APIGitHubDynamicTokenPermissionGroup{}
+			group.BuildFromService(pg)
+			permissionGroups = append(permissionGroups, group)
+		}
+		p.GitHubDynamicTokenPermissionGroups = permissionGroups
+	}
 
 	if projectRef.RepotrackerError != nil {
 		repotrackerErr := APIRepositoryErrorDetails{}

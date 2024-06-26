@@ -1,8 +1,8 @@
 enum ProjectSettingsSection {
+  # Evergreen sections.
   GENERAL
   ACCESS
   VARIABLES
-  GITHUB_AND_COMMIT_QUEUE
   NOTIFICATIONS
   PATCH_ALIASES
   WORKSTATION
@@ -11,6 +11,11 @@ enum ProjectSettingsSection {
   PLUGINS
   CONTAINERS
   VIEWS_AND_FILTERS
+
+  # GitHub sections.
+  GITHUB_AND_COMMIT_QUEUE
+  GITHUB_APP_SETTINGS
+  GITHUB_PERMISSION_GROUPS
 }
 
 ###### INPUTS ######
@@ -44,6 +49,7 @@ input ProjectInput {
   enabled: Boolean
   externalLinks: [ExternalLinkInput!]
   githubChecksEnabled: Boolean
+  githubDynamicTokenPermissionGroups: [GitHubDynamicTokenPermissionGroupInput!]
   githubTriggerAliases: [String!]
   gitTagAuthorizedTeams: [String!]
   gitTagAuthorizedUsers: [String!]

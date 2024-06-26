@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -139,5 +140,50 @@ func TestGitHubDynamicTokenPermissionGroupToService(t *testing.T) {
 		}
 		_, err := req.ToService()
 		require.ErrorContains(err, "a group will all permissions must have no permissions set")
+	})
+}
+
+func TestGitHubDynamicTokenPermissionGroupBuildFromService(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	t.Run("Empty permissions should result in no permissions", func(t *testing.T) {
+		pg := APIGitHubDynamicTokenPermissionGroup{}
+		err := pg.BuildFromService(model.GitHubDynamicTokenPermissionGroup{})
+		require.NoError(err)
+		assert.Equal(utility.FromStringPtr(pg.Name), "")
+		assert.Equal(len(pg.Permissions), 0)
+	})
+
+	t.Run("Valid permissions should be converted", func(t *testing.T) {
+		pg := APIGitHubDynamicTokenPermissionGroup{}
+		err := pg.BuildFromService(model.GitHubDynamicTokenPermissionGroup{
+			Name: "some-group",
+			Permissions: github.InstallationPermissions{
+				Administration: utility.ToStringPtr("write"),
+				Actions:        utility.ToStringPtr("write"),
+				Checks:         utility.ToStringPtr("read"),
+			},
+		})
+		require.NoError(err)
+		require.Equal(len(pg.Permissions), 3)
+		assert.Equal(utility.FromStringPtr(pg.Name), "some-group")
+		assert.Contains(pg.Permissions, "administration")
+		assert.Equal(pg.Permissions["administration"], "write")
+		assert.Contains(pg.Permissions, "actions")
+		assert.Equal(pg.Permissions["actions"], "write")
+		assert.Contains(pg.Permissions, "checks")
+		assert.Equal(pg.Permissions["checks"], "read")
+	})
+
+	t.Run("All permissions set should be kept", func(t *testing.T) {
+		pg := APIGitHubDynamicTokenPermissionGroup{}
+		err := pg.BuildFromService(model.GitHubDynamicTokenPermissionGroup{
+			Name:           "some-group",
+			AllPermissions: true,
+		})
+		require.NoError(err)
+		assert.Equal(utility.FromStringPtr(pg.Name), "some-group")
+		assert.True(utility.FromBoolPtr(pg.AllPermissions))
 	})
 }

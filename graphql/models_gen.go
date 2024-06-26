@@ -1219,25 +1219,26 @@ func (e ProjectPermission) MarshalGQL(w io.Writer) {
 type ProjectSettingsSection string
 
 const (
-	ProjectSettingsSectionGeneral              ProjectSettingsSection = "GENERAL"
-	ProjectSettingsSectionAccess               ProjectSettingsSection = "ACCESS"
-	ProjectSettingsSectionVariables            ProjectSettingsSection = "VARIABLES"
-	ProjectSettingsSectionGithubAndCommitQueue ProjectSettingsSection = "GITHUB_AND_COMMIT_QUEUE"
-	ProjectSettingsSectionNotifications        ProjectSettingsSection = "NOTIFICATIONS"
-	ProjectSettingsSectionPatchAliases         ProjectSettingsSection = "PATCH_ALIASES"
-	ProjectSettingsSectionWorkstation          ProjectSettingsSection = "WORKSTATION"
-	ProjectSettingsSectionTriggers             ProjectSettingsSection = "TRIGGERS"
-	ProjectSettingsSectionPeriodicBuilds       ProjectSettingsSection = "PERIODIC_BUILDS"
-	ProjectSettingsSectionPlugins              ProjectSettingsSection = "PLUGINS"
-	ProjectSettingsSectionContainers           ProjectSettingsSection = "CONTAINERS"
-	ProjectSettingsSectionViewsAndFilters      ProjectSettingsSection = "VIEWS_AND_FILTERS"
+	ProjectSettingsSectionGeneral                ProjectSettingsSection = "GENERAL"
+	ProjectSettingsSectionAccess                 ProjectSettingsSection = "ACCESS"
+	ProjectSettingsSectionVariables              ProjectSettingsSection = "VARIABLES"
+	ProjectSettingsSectionNotifications          ProjectSettingsSection = "NOTIFICATIONS"
+	ProjectSettingsSectionPatchAliases           ProjectSettingsSection = "PATCH_ALIASES"
+	ProjectSettingsSectionWorkstation            ProjectSettingsSection = "WORKSTATION"
+	ProjectSettingsSectionTriggers               ProjectSettingsSection = "TRIGGERS"
+	ProjectSettingsSectionPeriodicBuilds         ProjectSettingsSection = "PERIODIC_BUILDS"
+	ProjectSettingsSectionPlugins                ProjectSettingsSection = "PLUGINS"
+	ProjectSettingsSectionContainers             ProjectSettingsSection = "CONTAINERS"
+	ProjectSettingsSectionViewsAndFilters        ProjectSettingsSection = "VIEWS_AND_FILTERS"
+	ProjectSettingsSectionGithubAndCommitQueue   ProjectSettingsSection = "GITHUB_AND_COMMIT_QUEUE"
+	ProjectSettingsSectionGithubAppSettings      ProjectSettingsSection = "GITHUB_APP_SETTINGS"
+	ProjectSettingsSectionGithubPermissionGroups ProjectSettingsSection = "GITHUB_PERMISSION_GROUPS"
 )
 
 var AllProjectSettingsSection = []ProjectSettingsSection{
 	ProjectSettingsSectionGeneral,
 	ProjectSettingsSectionAccess,
 	ProjectSettingsSectionVariables,
-	ProjectSettingsSectionGithubAndCommitQueue,
 	ProjectSettingsSectionNotifications,
 	ProjectSettingsSectionPatchAliases,
 	ProjectSettingsSectionWorkstation,
@@ -1246,11 +1247,14 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 	ProjectSettingsSectionPlugins,
 	ProjectSettingsSectionContainers,
 	ProjectSettingsSectionViewsAndFilters,
+	ProjectSettingsSectionGithubAndCommitQueue,
+	ProjectSettingsSectionGithubAppSettings,
+	ProjectSettingsSectionGithubPermissionGroups,
 }
 
 func (e ProjectSettingsSection) IsValid() bool {
 	switch e {
-	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionContainers, ProjectSettingsSectionViewsAndFilters:
+	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionContainers, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissionGroups:
 		return true
 	}
 	return false

@@ -10,6 +10,18 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
+// GithubDynamicTokenPermissionGroups is the resolver for the githubDynamicTokenPermissionGroups field.
+func (r *projectResolver) GithubDynamicTokenPermissionGroups(ctx context.Context, obj *restModel.APIProjectRef) ([]*restModel.APIGitHubDynamicTokenPermissionGroup, error) {
+	permissionGroups := []*restModel.APIGitHubDynamicTokenPermissionGroup{}
+	for _, pg := range obj.GitHubDynamicTokenPermissionGroups {
+		permissionGroups = append(permissionGroups, &restModel.APIGitHubDynamicTokenPermissionGroup{
+			Name:        pg.Name,
+			Permissions: pg.Permissions,
+		})
+	}
+	return permissionGroups, nil
+}
+
 // IsFavorite is the resolver for the isFavorite field.
 func (r *projectResolver) IsFavorite(ctx context.Context, obj *restModel.APIProjectRef) (bool, error) {
 	p, err := model.FindBranchProjectRef(*obj.Identifier)

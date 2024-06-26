@@ -599,18 +599,20 @@ type ProjectPageSection string
 
 // These values must remain consistent with the GraphQL enum ProjectSettingsSection
 const (
-	ProjectPageGeneralSection         = "GENERAL"
-	ProjectPageAccessSection          = "ACCESS"
-	ProjectPageVariablesSection       = "VARIABLES"
-	ProjectPageGithubAndCQSection     = "GITHUB_AND_COMMIT_QUEUE"
-	ProjectPageNotificationsSection   = "NOTIFICATIONS"
-	ProjectPagePatchAliasSection      = "PATCH_ALIASES"
-	ProjectPageWorkstationsSection    = "WORKSTATION"
-	ProjectPageTriggersSection        = "TRIGGERS"
-	ProjectPagePeriodicBuildsSection  = "PERIODIC_BUILDS"
-	ProjectPagePluginSection          = "PLUGINS"
-	ProjectPageContainerSection       = "CONTAINERS"
-	ProjectPageViewsAndFiltersSection = "VIEWS_AND_FILTERS"
+	ProjectPageGeneralSection                = "GENERAL"
+	ProjectPageAccessSection                 = "ACCESS"
+	ProjectPageVariablesSection              = "VARIABLES"
+	ProjectPageNotificationsSection          = "NOTIFICATIONS"
+	ProjectPagePatchAliasSection             = "PATCH_ALIASES"
+	ProjectPageWorkstationsSection           = "WORKSTATION"
+	ProjectPageTriggersSection               = "TRIGGERS"
+	ProjectPagePeriodicBuildsSection         = "PERIODIC_BUILDS"
+	ProjectPagePluginSection                 = "PLUGINS"
+	ProjectPageContainerSection              = "CONTAINERS"
+	ProjectPageViewsAndFiltersSection        = "VIEWS_AND_FILTERS"
+	ProjectPageGithubAndCQSection            = "GITHUB_AND_COMMIT_QUEUE"
+	ProjectPageGithubAppSettingsSection      = "GITHUB_APP_SETTINGS"
+	ProjectPageGithubPermissionGroupsSection = "GITHUB_PERMISSION_GROUPS"
 )
 
 const (
@@ -2215,16 +2217,16 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
-					projectRefPRTestingEnabledKey:                p.PRTestingEnabled,
-					projectRefManualPRTestingEnabledKey:          p.ManualPRTestingEnabled,
-					projectRefGithubChecksEnabledKey:             p.GithubChecksEnabled,
-					projectRefGitTagVersionsEnabledKey:           p.GitTagVersionsEnabled,
-					ProjectRefGitTagAuthorizedUsersKey:           p.GitTagAuthorizedUsers,
-					ProjectRefGitTagAuthorizedTeamsKey:           p.GitTagAuthorizedTeams,
-					projectRefCommitQueueKey:                     p.CommitQueue,
-					projectRefOldestAllowedMergeBaseKey:          p.OldestAllowedMergeBase,
-					projectRefGitHubDynamicTokenPermissionGroups: p.GitHubDynamicTokenPermissionGroups,
-					projectRefGithubPermissionGroupByRequester:   p.GitHubPermissionGroupByRequester,
+					projectRefPRTestingEnabledKey:       p.PRTestingEnabled,
+					projectRefManualPRTestingEnabledKey: p.ManualPRTestingEnabled,
+					projectRefGithubChecksEnabledKey:    p.GithubChecksEnabled,
+					projectRefGitTagVersionsEnabledKey:  p.GitTagVersionsEnabled,
+					ProjectRefGitTagAuthorizedUsersKey:  p.GitTagAuthorizedUsers,
+					ProjectRefGitTagAuthorizedTeamsKey:  p.GitTagAuthorizedTeams,
+					projectRefCommitQueueKey:            p.CommitQueue,
+					projectRefOldestAllowedMergeBaseKey: p.OldestAllowedMergeBase,
+					// TODO: Remove in DEVPROD-5995 because removing it now causes lint errors.
+					projectRefGithubPermissionGroupByRequester: p.GitHubPermissionGroupByRequester,
 				},
 			})
 	case ProjectPageNotificationsSection:
@@ -2276,6 +2278,17 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				"$set": bson.M{
 					projectRefParsleyFiltersKey:    p.ParsleyFilters,
 					projectRefProjectHealthViewKey: p.ProjectHealthView,
+				},
+			})
+	case ProjectPageGithubAppSettingsSection:
+		// this section doesn't modify the project/repo ref yet
+		return false, nil
+	case ProjectPageGithubPermissionGroupsSection:
+		err = db.Update(coll,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefGitHubDynamicTokenPermissionGroups: p.GitHubDynamicTokenPermissionGroups,
 				},
 			})
 	case ProjectPageVariablesSection:
