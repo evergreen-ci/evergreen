@@ -73,9 +73,7 @@ at the end of the beta test period.**
 
 ### ***Important Note***: This Feature is in Beta Testing! {#beta-testing}
 
-<!-- TODO (DEVPROD-4055): do not merge until comms are ready and a timeline for beta/full rollout is chosen.  -->
-
-**This feature is currently available for beta testing until Tuesday September 3.** While it's in beta testing, _using
+**This feature is currently available for beta testing until September 3.** While it's in beta testing, _using
 the sleep schedule is an opt-in feature_. During this beta testing period, you have the following options to choose from
 for your host, **please pick and complete one before the beta test period ends**:
 
@@ -88,7 +86,7 @@ for your host, **please pick and complete one before the beta test period ends**
 3. [Option 3](#permanent-exemption): If you have a special reason that your host cannot use 1 or 2, you
    can request a permanent exemption for your host.
 
-**The beta test period will end on Tuesday September 3, at which point the sleep schedule will stop being an opt-in
+**The beta test period will end on September 3, at which point the sleep schedule will stop being an opt-in
 feature and will take effect on _all_ unexpirable hosts except those that have been granted a permanent exemption, so
 please make sure to complete one of the options above**. If you do not do any of the three options, a default sleep
 schedule will be automatically set for your unexpirable host when the beta test ends - the default is that the host will
@@ -119,9 +117,9 @@ your [Spruce preferences](https://spruce.mongodb.com/preferences/profile). You c
 When setting a sleep schedule in the UI, you also have the option to participate in the beta test. If you opt into the
 beta test, the sleep schedule that you set will take effect on your host, stopping and starting your host according to
 the schedule you configure; if you do not opt in, your sleep schedule will be set but will have no effect on your host
-during the beta test period (i.e. until `<DATE>`). You can opt in or out freely during the beta test for this feature.
-**It's highly recommend that when you set a sleep schedule for your unexpirable host(s), you also opt into the beta test
-to verify that your sleep schedule is working the way you want.**
+during the beta test period (i.e. until September 3). You can opt in or out freely during the beta test for this
+feature. **It's highly recommend that when you set a sleep schedule for your unexpirable host(s), you also opt into the
+beta test to verify that your sleep schedule is working the way you want.**
 
 #### Manually Starting/Stopping a Host
 
