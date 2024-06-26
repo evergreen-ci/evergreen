@@ -1858,6 +1858,10 @@ func updateAllTasksForMatchingDependencies(ctx context.Context, taskIDs []string
 	return nil
 }
 
+// kim: NOTE: because taskIDs and dependencyIDs are very long, and each ID is
+// very long (one task had ID of length 250), this query could hit the 16 MB
+// limit. May have to update in batches if the list of both taskIDs and
+// dependencyIDs is unreasonably long.
 func updateAllTasksForAllMatchingDependencies(ctx context.Context, taskIDs []string, dependencyIDs []string, unattainable bool) error {
 	// Update the matching dependencies in the DependsOn array and the UnattainableDependency field that caches
 	// whether any of the dependencies are blocked. Combining both these updates in a single update operation makes it
@@ -1868,8 +1872,9 @@ func updateAllTasksForAllMatchingDependencies(ctx context.Context, taskIDs []str
 		},
 		[]bson.M{
 			{
-				// Iterate over the DependsOn array and set unattainable for dependencies that
-				// match the dependencyID. Leave other dependencies untouched.
+				// Iterate over the DependsOn array and set unattainable for
+				// dependencies matching by IDs. Leave other dependencies
+				// untouched.
 				"$set": bson.M{DependsOnKey: bson.M{
 					"$map": bson.M{
 						"input": "$" + DependsOnKey,
