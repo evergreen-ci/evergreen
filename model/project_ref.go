@@ -189,11 +189,9 @@ func (p *ProjectRef) GetGitHubPermissionGroup(requester string) GitHubDynamicTok
 
 func (p *ProjectRef) ValidateGitHubPermissionGroups() error {
 	catcher := grip.NewBasicCatcher()
-	// Groups validation.
 	for _, group := range p.GitHubDynamicTokenPermissionGroups {
 		catcher.ErrorfWhen(group.Name == "", "group name cannot be empty")
 	}
-	// Requester validation.
 	for requester, groupName := range p.GitHubPermissionGroupByRequester {
 		catcher.ErrorfWhen(!utility.StringSliceContains(evergreen.AllRequesterTypes, requester),
 			"requester '%s' is not a valid requester", requester)
