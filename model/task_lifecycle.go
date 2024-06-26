@@ -1912,18 +1912,19 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		if err = checkUpdateBuildPRStatusPending(ctx, taskBuild); err != nil {
 			return errors.Wrapf(err, "updating build '%s' PR status", taskBuild.Id)
 		}
-		// only add tracing for versions, patches need to wait for child patches
-		if !evergreen.IsPatchRequester(taskVersion.Requester) {
-			traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project)
-			if err != nil {
-				return errors.Wrap(err, "getting context for tracing")
-			}
-			// use a new root span so that it logs it every time instead of only logging a small sample set as an http call span
-			_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
-			defer span.End()
+	}
 
-			return nil
+	if evergreen.IsFinishedVersionStatus(newVersionStatus) && !evergreen.IsPatchRequester(taskVersion.Requester) {
+		// only add tracing for versions, patches need to wait for child patches
+		traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project)
+		if err != nil {
+			return errors.Wrap(err, "getting context for tracing")
 		}
+		// use a new root span so that it logs it every time instead of only logging a small sample set as an http call span
+		_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
+		defer span.End()
+
+		return nil
 	}
 
 	if evergreen.IsPatchRequester(taskVersion.Requester) {

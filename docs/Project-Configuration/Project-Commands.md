@@ -392,23 +392,57 @@ This command will also send an external ID in the form
 `expansions.update` updates the task's expansions at runtime.
 Any updates to the expansions made with this command will only persist for the duration of the task.
 
-``` yaml
-- command: expansions.update
-  params:
-    ignore_missing_file: true
-    file: src/ec2_artifacts.yml
+The order of operations is the `params.updates` field, then the file updates (if a file is given). This
+means the file updates take precedence over the `params.updates` field.
 
+Redacting is handled on a per-update basis and stored separately from the current expansion value. This
+means that if an expansion is updated multiple times, only updates with `redact` or `redact_file_expansions`
+will have their values redacted in the task logs.
+
+For example, the below commands redact `http://s3/static-artifacts.tgz` throughout the task logs, but not
+`http://s3/dynamic-artifacts` or `http://s3/dynamic-artifacts.tgz`.
+
+
+``` yaml
 - command: expansions.update
   params:
     updates:
     - key: artifact_url
       value: http://s3/static-artifacts.tgz
+      redact: true
+
+- command: expansions.update
+  params:
+    updates:
+    - key: artifact_url
+      value: http://s3/dynamic-artifacts
+
+- command: expansions.update
+  params:
+    updates:
+    - key: artifact_url
+      concat: tgz
+
+- command: expansions.update
+  params:
+    ignore_missing_file: true
+    file: src/ec2_artifacts.yml
+    redact_file_expansions: true
 ```
 
 Parameters:
 
--   `updates`: key-value pairs for updating the task's parameters
+-   `updates`: a list of expansions to update.
+        - `key`: the expansion key to update. (required)
+        - `value`: the new value for the expansion.
+        - `concat`: the string to concatenate to the existing value. Per
+           update, only `value` or `concat` can be set.
+        - `redact`: if true, the expansion will be redacted in the task logs.
+           By default, this is false. Setting this to false will not unredact
+           the expansion if it was already redacted.
 -   `file`: filename for a YAML file containing expansion updates
+-   `redact_file_expansions`: if true, the expansions added from the file will be redacted in the task logs.
+     By default, this is false.
 -   `ignore_missing_file`: do not error if the file is missing
 
 ## expansions.write

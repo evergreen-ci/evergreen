@@ -1767,15 +1767,15 @@ func TestValidateBVNames(t *testing.T) {
 			So(validationResults[0].Level, ShouldEqual, Error)
 		})
 
-		Convey("if any variant has warnings from translating, an warning should be returned", func() {
+		Convey("if any variant has task selectors that don't target anything, an warning should be returned", func() {
 			project := &model.Project{
 				BuildVariants: []model.BuildVariant{
-					{Name: "linux", TranslationWarnings: []string{"this is a warning"}},
+					{Name: "linux", EmptyTaskSelectors: []string{".task1"}},
 				},
 			}
 			validationResults := checkBuildVariants(project)
 
-			So(validationResults.String(), ShouldContainSubstring, "WARNING: this is a warning")
+			So(validationResults.String(), ShouldContainSubstring, "WARNING: buildvariant 'linux' has task names/tags that do not match any tasks: '.task1'")
 		})
 
 		Convey("if two variants have the same display name, a warning should be returned, but no errors", func() {
