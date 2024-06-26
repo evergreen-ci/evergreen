@@ -526,25 +526,40 @@ func (s *GenerateSuite) TestParseProjectFromJSON() {
 }
 
 func (s *GenerateSuite) TestValidateMaxVariants() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	p := &Project{}
 	g := GeneratedProject{}
-	s.NoError(g.validateMaxTasksAndVariants())
+	s.NoError(g.validateMaxTasksAndVariants(ctx, p))
 	for i := 0; i < maxGeneratedBuildVariants; i++ {
 		g.BuildVariants = append(g.BuildVariants, parserBV{})
 	}
-	s.NoError(g.validateMaxTasksAndVariants())
+	s.NoError(g.validateMaxTasksAndVariants(ctx, p))
 	g.BuildVariants = append(g.BuildVariants, parserBV{})
-	s.Error(g.validateMaxTasksAndVariants())
+	s.Error(g.validateMaxTasksAndVariants(ctx, p))
 }
 
 func (s *GenerateSuite) TestValidateMaxTasks() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	settings := &evergreen.Settings{
+		TaskLimits: evergreen.TaskLimitsConfig{
+			MaxTasksPerVersion: 25000,
+		},
+	}
+	s.NoError(evergreen.UpdateConfig(s.ctx, settings))
+	p := &Project{}
 	g := GeneratedProject{}
-	s.NoError(g.validateMaxTasksAndVariants())
+	s.NoError(g.validateMaxTasksAndVariants(ctx, p))
 	for i := 0; i < maxGeneratedTasks; i++ {
 		g.Tasks = append(g.Tasks, parserTask{})
 	}
-	s.NoError(g.validateMaxTasksAndVariants())
+	s.NoError(g.validateMaxTasksAndVariants(ctx, p))
+	p.BuildVariants = []BuildVariant{{Name: "bv", Tasks: []BuildVariantTaskUnit{{Name: "some_task"}}}}
+	s.Error(g.validateMaxTasksAndVariants(ctx, p))
+	p.BuildVariants = []BuildVariant{}
 	g.Tasks = append(g.Tasks, parserTask{})
-	s.Error(g.validateMaxTasksAndVariants())
+	s.Error(g.validateMaxTasksAndVariants(ctx, p))
 }
 
 func (s *GenerateSuite) TestValidateNoRedefine() {
