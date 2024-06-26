@@ -700,7 +700,9 @@ func (t *Task) AddDependency(ctx context.Context, d Dependency) error {
 			if existingDependency.Unattainable == d.Unattainable {
 				return nil // nothing to be done
 			}
-			updatedTasks, err := MarkAllForUnattainableDependency(ctx, []Task{*t}, existingDependency.TaskId, d.Unattainable)
+			// kim: TODO: remove
+			// updatedTasks, err := MarkAllForUnattainableDependency(ctx, []Task{*t}, existingDependency.TaskId, d.Unattainable)
+			updatedTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{*t}, []string{existingDependency.TaskId}, d.Unattainable)
 			if err != nil {
 				return errors.Wrapf(err, "updating matching dependency '%s' for task '%s'", existingDependency.TaskId, t.Id)
 			}
@@ -2675,6 +2677,66 @@ func MarkAllForUnattainableDependency(ctx context.Context, tasks []Task, depende
 	}
 
 	if err := updateAllTasksForMatchingDependencies(ctx, taskIDs, dependencyID, unattainable); err != nil {
+		return nil, err
+	}
+
+	event.LogManyTasksBlocked(newlyBlockedTaskData)
+
+	updatedTasks, err := FindAll(db.Query(ByIds(taskIDs)))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding updated tasks")
+	}
+	if len(updatedTasks) != len(tasks) {
+		return nil, errors.Errorf("updated dependencies for tasks but subsequent query for updated tasks returned a different number of tasks (%d) than expected (%d)", len(updatedTasks), len(tasks))
+	}
+
+	return updatedTasks, nil
+}
+
+// MarkAllForUnattainableDependency updates many tasks (taskIDs) to mark many
+// dependencies (dependencies) as attainable or not. If marking a dependency
+// unattainable, it creates an event log for each newly blocked task. This
+// returns all the tasks after the update.
+func MarkAllForUnattainableDependencies(ctx context.Context, tasks []Task, dependencyIDs []string, unattainable bool) ([]Task, error) {
+	if len(tasks) == 0 {
+		return tasks, nil
+	}
+
+	dependencyIDSet := map[string]struct{}{}
+	for _, depID := range dependencyIDs {
+		dependencyIDSet[depID] = struct{}{}
+	}
+
+	taskIDs := make([]string, 0, len(tasks))
+	newlyBlockedTaskData := make([]event.TaskBlockedData, 0, len(tasks))
+	for _, t := range tasks {
+		taskIDs = append(taskIDs, t.Id)
+
+		if unattainable && !t.Blocked() && !t.OverrideDependencies { // kim: NOTE: it's being marked attainable OR it's already blocked (no need to log blocked again) OR it's overriding dependencies (logging blocked is pointless)
+			var taskDependsOnDependency string
+			for _, dependsOn := range t.DependsOn {
+				if _, ok := dependencyIDSet[dependsOn.TaskId]; ok {
+					// At least one dependency has been found that will be
+					// blocked. Even if there are other dependencies that will
+					// also be blocked by this update, the task only needs to
+					// log that it's blocked on one of them.
+					taskDependsOnDependency = dependsOn.TaskId
+					break
+				}
+			}
+
+			if taskDependsOnDependency != "" {
+				data := event.TaskBlockedData{
+					ID:        t.Id,
+					Execution: t.Execution,
+					BlockedOn: taskDependsOnDependency,
+				}
+				newlyBlockedTaskData = append(newlyBlockedTaskData, data)
+			}
+		}
+	}
+
+	if err := updateAllTasksForAllMatchingDependencies(ctx, taskIDs, dependencyIDs, unattainable); err != nil {
 		return nil, err
 	}
 

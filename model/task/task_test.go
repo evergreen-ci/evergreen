@@ -3047,7 +3047,9 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 			}
 			require.NoError(t, dependentTask.Insert())
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", true)
+			// kim: TODO: remove
+			// updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", true)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t1"}, true)
 			require.NoError(t, err)
 			require.Len(t, updatedDependentTasks, 1)
 			dependentTask = updatedDependentTasks[0]
@@ -3098,7 +3100,9 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 				require.NoError(t, dependentTask.Insert())
 			}
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, dependentTasks, "t1", true)
+			// kim: TODO: remove
+			// updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, dependentTasks, "t1", true)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, dependentTasks, []string{"t1"}, true)
 			assert.NoError(t, err)
 			require.Len(t, updatedDependentTasks, len(dependentTasks))
 
@@ -3147,7 +3151,9 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 			}
 			require.NoError(t, dependentTask.Insert())
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t3", true)
+			// kim: TODO: remove
+			// updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t3", true)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t3"}, true)
 			require.NoError(t, err)
 			require.Len(t, updatedDependentTasks, 1)
 			dependentTask = updatedDependentTasks[0]
@@ -3176,7 +3182,9 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 			}
 			require.NoError(t, dependentTask.Insert())
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", false)
+			// kim: TODO: remove
+			// updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", false)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t1"}, false)
 			require.NoError(t, err)
 			require.Len(t, updatedDependentTasks, 1)
 			dependentTask = updatedDependentTasks[0]
@@ -3205,7 +3213,9 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 			}
 			require.NoError(t, dependentTask.Insert())
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", false)
+			// kim: TODO: remove
+			// updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", false)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t1"}, false)
 			require.NoError(t, err)
 			require.Len(t, updatedDependentTasks, 1)
 			dependentTask = updatedDependentTasks[0]
@@ -3236,7 +3246,9 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 
 			dependentTask.DependsOn[1].Unattainable = true
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", false)
+			// kim: TODO: remove
+			// updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", false)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t1"}, false)
 			require.NoError(t, err)
 			require.Len(t, updatedDependentTasks, 1)
 			dependentTask = updatedDependentTasks[0]

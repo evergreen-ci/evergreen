@@ -829,7 +829,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		return errors.Wrapf(err, "marking task '%s' finished", t.Id)
 	}
 
-	catcher.Wrap(UpdateBlockedDependencies(ctx, t), "updating blocked dependencies")
+	catcher.Wrap(UpdateBlockedDependencies(ctx, []task.Task{*t}), "updating blocked dependencies")
 	catcher.Wrap(t.MarkDependenciesFinished(ctx, true), "updating dependency finished status")
 
 	status := t.GetDisplayStatus()
@@ -1034,27 +1034,61 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (c
 // UpdateBlockedDependencies traverses the dependency graph and recursively sets
 // each parent dependency as unattainable in depending tasks. It updates the
 // status of builds as well, in case they change due to blocking dependencies.
-func UpdateBlockedDependencies(ctx context.Context, t *task.Task) error {
+// kim: NOTE: could change single task block to slice of tasks so that we can do
+// one recursive call for each level of tasks rather than iterate through each
+// dependentTask. That would reduce the amount of small
+// FindAllUnmarkedBlockedDependencies calls that are needed.
+// func UpdateBlockedDependencies(ctx context.Context, t *task.Task) error {
+func UpdateBlockedDependencies(ctx context.Context, dependencies []task.Task) error {
 	ctx, span := tracer.Start(ctx, "update-blocked-dependencies")
 	defer span.End()
 
-	dependentTasks, err := t.FindAllUnmarkedBlockedDependencies()
+	// kim: TODO: remove
+	// dependentTasks, err := t.FindAllUnmarkedBlockedDependencies()
+	// if err != nil {
+	//     return errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
+	// }
+	dependentTasks, err := task.FindAllUnmarkedDependenciesToBlock(dependencies)
 	if err != nil {
-		return errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
+		return errors.Wrapf(err, "getting all tasks depending on tasks")
+	}
+	if len(dependentTasks) == 0 {
+		return nil
 	}
 
-	dependentTasks, err = task.MarkAllForUnattainableDependency(ctx, dependentTasks, t.Id, true)
+	dependencyIDs := make([]string, 0, len(dependencies))
+	for _, dep := range dependencies {
+		dependencyIDs = append(dependencyIDs, dep.Id)
+	}
+	// kim: NOTE: we can roll this into an even larger UpdateMany if we
+	// first (still recursively) gather a map of all the tasks that need to be
+	// blocked, and then block them all in one huge update. That way, rather
+	// than doing one update per task that was just blocked, we do one huge
+	// block all at once.
+	// kim: TODO: remove
+	// dependentTasks, err = task.MarkAllForUnattainableDependency(ctx, dependentTasks, t.Id, true)
+	// if err != nil {
+	//     return errors.Wrap(err, "marking unattainable dependency for tasks")
+	// }
+	dependentTasks, err = task.MarkAllForUnattainableDependencies(ctx, dependentTasks, dependencyIDs, true)
 	if err != nil {
-		return errors.Wrap(err, "marking unattainable dependency for tasks")
+		return errors.Wrap(err, "marking unattainable dependencies for tasks")
 	}
 
+	if err := UpdateBlockedDependencies(ctx, dependentTasks); err != nil {
+		return errors.Wrap(err, "updating many blocked dependencies recursively")
+	}
 	// Using a set then converting to a slice to avoid duplicate build IDs.
 	buildIDsSet := make(map[string]struct{})
+	// kim: TODO: remove
+	// for _, dependentTask := range dependentTasks {
+	//     if err = UpdateBlockedDependencies(ctx, &dependentTask); err != nil {
+	//         return errors.Wrapf(err, "updating blocked dependencies for '%s'", t.Id)
+	//     }
+	//
+	//     buildIDsSet[dependentTask.BuildId] = struct{}{}
+	// }
 	for _, dependentTask := range dependentTasks {
-		if err = UpdateBlockedDependencies(ctx, &dependentTask); err != nil {
-			return errors.Wrapf(err, "updating blocked dependencies for '%s'", t.Id)
-		}
-
 		buildIDsSet[dependentTask.BuildId] = struct{}{}
 	}
 
@@ -1077,7 +1111,12 @@ func UpdateUnblockedDependencies(ctx context.Context, t *task.Task) error {
 		return errors.Wrap(err, "getting dependencies marked unattainable")
 	}
 
-	blockedTasks, err = task.MarkAllForUnattainableDependency(ctx, blockedTasks, t.Id, false)
+	// kim: TODO: remove
+	// blockedTasks, err = task.MarkAllForUnattainableDependency(ctx, blockedTasks, t.Id, false)
+	// if err != nil {
+	//     return errors.Wrap(err, "marking attainable dependency for tasks")
+	// }
+	blockedTasks, err = task.MarkAllForUnattainableDependencies(ctx, blockedTasks, []string{t.Id}, false)
 	if err != nil {
 		return errors.Wrap(err, "marking attainable dependency for tasks")
 	}
