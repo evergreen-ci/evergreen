@@ -1174,25 +1174,21 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 }
 
 func fetchTriggerVersionInfo(ctx context.Context, patchDoc *patch.Patch) (*model.Version, *model.Project, *model.ParserProject, error) {
-	var v *model.Version
-	var project *model.Project
-	var pp *model.ParserProject
-	var err error
 	if patchDoc.Triggers.DownstreamRevision != "" {
-		v, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(patchDoc.Project, patchDoc.Triggers.DownstreamRevision))
+		v, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(patchDoc.Project, patchDoc.Triggers.DownstreamRevision))
 		if err != nil {
 			return nil, nil, nil, errors.Wrapf(err, "getting version at revision '%s'", patchDoc.Triggers.DownstreamRevision)
 		}
 		if v == nil {
 			return nil, nil, nil, errors.Errorf("version at revision '%s' not found", patchDoc.Triggers.DownstreamRevision)
 		}
-		project, pp, err = model.FindAndTranslateProjectForVersion(ctx, evergreen.GetEnvironment().Settings(), v, true)
+		project, pp, err := model.FindAndTranslateProjectForVersion(ctx, evergreen.GetEnvironment().Settings(), v, true)
 		if err != nil {
 			return nil, nil, nil, errors.Wrapf(err, "getting downstream version at revision '%s' to use for patch '%s'", patchDoc.Triggers.DownstreamRevision, patchDoc.Id.Hex())
 		}
 		return v, project, pp, nil
 	}
-	v, project, pp, err = model.FindLatestVersionWithValidProject(patchDoc.Project, true)
+	v, project, pp, err := model.FindLatestVersionWithValidProject(patchDoc.Project, true)
 	if err != nil {
 		return nil, nil, nil, errors.Wrapf(err, "getting downstream version to use for patch '%s'", patchDoc.Id.Hex())
 	}
