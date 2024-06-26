@@ -64,7 +64,7 @@ evergreen patch -y
 ```
 
 To use local changes for an included file from a module, the `--include-modules` flag can be used:
-Note that `set-module`command will not work for module includes and this flag must be used instead.
+Note that `set-module` command will not work for module includes and this flag must be used instead.
 ```
 evergreen patch --include-modules
 ```

@@ -665,6 +665,7 @@ func (p *Patch) SetFinalized(ctx context.Context, versionId string) error {
 	p.Activated = true
 	p.ProjectStorageMethod = ""
 	p.PatchedProjectConfig = ""
+	p.LocalModuleIncludes = nil
 
 	return nil
 }

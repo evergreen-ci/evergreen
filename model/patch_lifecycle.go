@@ -291,7 +291,6 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "fetching project options for patch")
 	}
-	opts.LocalModuleIncludes = p.LocalModuleIncludes
 
 	projectFileBytes, err := getPatchedProjectYAML(ctx, projectRef, opts, p)
 	if err != nil {
@@ -876,10 +875,11 @@ func getLoadProjectOptsForPatch(p *patch.Patch, githubOauthToken string) (*Proje
 	}
 
 	opts := GetProjectOpts{
-		Ref:          projectRef,
-		Token:        githubOauthToken,
-		ReadFileFrom: ReadFromPatch,
-		Revision:     hash,
+		Ref:                 projectRef,
+		Token:               githubOauthToken,
+		ReadFileFrom:        ReadFromPatch,
+		Revision:            hash,
+		LocalModuleIncludes: p.LocalModuleIncludes,
 		PatchOpts: &PatchOpts{
 			patch: p,
 		},
