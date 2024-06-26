@@ -37,9 +37,10 @@ func (s *runtimeEnvironmentsSuite) TearDownTest() {
 	s.cancel()
 }
 
-func (s *runtimeEnvironmentsSuite) TestGetImageNames() {
-	result, err := getImageNames(s.ctx, s.config.RuntimeEnvironments.BaseURL, s.config.RuntimeEnvironments.APIKey)
-	s.NoError(err)
-	s.NotEmpty(result)
-	s.NotContains(result, "")
-}
+// TODO: Uncomment when DEVPROD-6983 is resolved. Right now, the API does not work on task hosts.
+// func (s *runtimeEnvironmentsSuite) TestGetImageNames() {
+// 	result, err := getImageNames(s.ctx, s.config.RuntimeEnvironments.BaseURL, s.config.RuntimeEnvironments.APIKey)
+// 	s.NoError(err)
+// 	s.NotEmpty(result)
+// 	s.NotContains(result, "")
+// }
