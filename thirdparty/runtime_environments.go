@@ -11,6 +11,9 @@ import (
 )
 
 // getImageNames returns a list of strings containing the names of all images from the runtime environments api
+// TODO: Remove nolint:unused when DEVPROD-6983 is resolved.
+//
+//nolint:unused
 func getImageNames(ctx context.Context, base_url string, api_key string) ([]string, error) {
 	apiURL := base_url + "/rest/api/v1/imageList"
 	request, err := http.NewRequest(http.MethodGet, apiURL, nil)
