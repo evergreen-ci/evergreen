@@ -49,7 +49,7 @@ func TestGetGitHubAppID(t *testing.T) {
 
 	appIDFromDB, err := GetGitHubAppID("mongodb")
 	require.NoError(t, err)
-	assert.Equal("mongodb", appIDFromDB)
+	assert.Equal(int64(1234), appIDFromDB)
 }
 
 func TestRemoveGithubAppAuth(t *testing.T) {

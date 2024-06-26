@@ -21,16 +21,16 @@ const (
 // FindOneGithubAppAuth finds the github app auth for the given project id
 func FindOneGithubAppAuth(projectId string) (*evergreen.GithubAppAuth, error) {
 	githubAppAuth := &evergreen.GithubAppAuth{}
-	err := db.FindOneQ(GitHubAppAuthCollection, byAppAuthID(projectId), githubAppAuth)
+	err := db.FindOneQ(GitHubAppAuthCollection, byGithubAppAuthID(projectId), githubAppAuth)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return githubAppAuth, err
 }
 
-// byAppAuthID returns a query that finds a github app auth by the given identifier
+// byGithubAppAuthID returns a query that finds a github app auth by the given identifier
 // corresponding to the project id
-func byAppAuthID(projectId string) db.Q {
+func byGithubAppAuthID(projectId string) db.Q {
 	return db.Query(bson.M{githubAppAuthAppIdKey: projectId})
 }
 
@@ -38,7 +38,7 @@ func byAppAuthID(projectId string) db.Q {
 func GetGitHubAppID(projectId string) (*int64, error) {
 	githubAppAuth := &evergreen.GithubAppAuth{}
 
-	q := byAppAuthID(projectId).WithFields(githubAppAuthIdKey)
+	q := byGithubAppAuthID(projectId).WithFields(githubAppAuthIdKey)
 	err := db.FindOneQ(GitHubAppAuthCollection, q, githubAppAuth)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
