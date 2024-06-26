@@ -1820,18 +1820,13 @@ func FindActivatedByVersionWithoutDisplay(versionId string) ([]Task, error) {
 // Secondly, for a given task, after updating individual dependency
 // attainability, it updates the cache of whether the task has all attainable
 // dependencies or not.
-// kim: NOTE: because taskIDs and dependencyIDs are very long, and each ID is
-// very long (one task had ID of length 250), this query could hit the 16 MB
-// limit. May have to update in batches if the list of both taskIDs and
-// dependencyIDs is unreasonably long. Could solve by having set of
-// dependencyIDs mapped to set of the taskIDs that need to be updated (or vice
-// versa).
 func updateAllTasksForAllMatchingDependencies(ctx context.Context, taskIDs []string, dependencyIDs []string, unattainable bool) error {
 	ctx, span := tracer.Start(ctx, "update-task-dependencies", trace.WithAttributes(
-		// Because some projects have huge dependency trees, this update has the
-		// potential to make an extremely large query that exceeds the 16 MB
-		// aggregation size limit. Track the number of tasks/dependencies that
-		// it's trying to update to diagnose such problems.
+		// Because some projects have huge dependency trees and task IDs are
+		// long strings, this update has the potential to make an extremely
+		// large query that exceeds the 16 MB aggregation size limit. Track the
+		// number of tasks/dependencies that it's trying to update to diagnose
+		// such problems.
 		attribute.Int("num_tasks", len(taskIDs)),
 		attribute.Int("num_dependencies", len(dependencyIDs)),
 		attribute.Bool("unattainable", unattainable),

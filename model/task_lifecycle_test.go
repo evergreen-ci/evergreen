@@ -7284,7 +7284,6 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 	events, err := event.Find(db.Q{})
 	assert.NoError(err)
 	assert.Len(events, 6)
-
 }
 
 func TestUpdateUnblockedDependencies(t *testing.T) {

@@ -2651,10 +2651,10 @@ func (t *Task) MarkUnscheduled() error {
 
 }
 
-// MarkAllForUnattainableDependency updates many tasks (taskIDs) to mark some of
-// their dependencies (dependencyIDs) as attainable or not. If marking the
-// dependencies unattainable, it creates an event log for each newly blocked
-// task. This returns all the tasks after the update.
+// MarkAllForUnattainableDependency updates many tasks (taskIDs) to mark a
+// subset of all their dependencies (dependencyIDs) as attainable or not. If
+// marking the dependencies unattainable, it creates an event log for each newly
+// blocked task. This returns all the tasks after the update.
 func MarkAllForUnattainableDependencies(ctx context.Context, tasks []Task, dependencyIDs []string, unattainable bool) ([]Task, error) {
 	if len(tasks) == 0 {
 		return tasks, nil
@@ -2665,42 +2665,15 @@ func MarkAllForUnattainableDependencies(ctx context.Context, tasks []Task, depen
 		dependencyIDSet[depID] = struct{}{}
 	}
 
-	taskIDs := make([]string, 0, len(tasks))
-	newlyBlockedTaskData := make([]event.TaskBlockedData, 0, len(tasks))
-	for _, t := range tasks {
-		taskIDs = append(taskIDs, t.Id)
+	toUpdate := getTaskDependenciesToUpdate(tasks, dependencyIDSet, unattainable)
 
-		if unattainable && !t.Blocked() && !t.OverrideDependencies {
-			var taskBlockedOn string
-			for _, dependsOn := range t.DependsOn {
-				if _, ok := dependencyIDSet[dependsOn.TaskId]; ok {
-					// At least one dependency has been found that will be
-					// blocked. Even if there are other dependencies that will
-					// also be blocked by this update, the task only needs to
-					// log that it's blocked on one of them.
-					taskBlockedOn = dependsOn.TaskId
-					break
-				}
-			}
-
-			if taskBlockedOn != "" {
-				data := event.TaskBlockedData{
-					ID:        t.Id,
-					Execution: t.Execution,
-					BlockedOn: taskBlockedOn,
-				}
-				newlyBlockedTaskData = append(newlyBlockedTaskData, data)
-			}
-		}
+	if err := updateTaskDependenciesChunked(ctx, toUpdate, unattainable); err != nil {
+		return nil, errors.Wrap(err, "updating task dependencies in chunks")
 	}
 
-	if err := updateAllTasksForAllMatchingDependencies(ctx, taskIDs, dependencyIDs, unattainable); err != nil {
-		return nil, err
-	}
+	event.LogManyTasksBlocked(toUpdate.newlyBlockedTaskData)
 
-	event.LogManyTasksBlocked(newlyBlockedTaskData)
-
-	updatedTasks, err := FindAll(db.Query(ByIds(taskIDs)))
+	updatedTasks, err := FindAll(db.Query(ByIds(toUpdate.taskIDs)))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding updated tasks")
 	}
@@ -2709,6 +2682,119 @@ func MarkAllForUnattainableDependencies(ctx context.Context, tasks []Task, depen
 	}
 
 	return updatedTasks, nil
+}
+
+type taskDependencyUpdate struct {
+	// taskIDs is the list of task IDs whose dependencies should be updated.
+	taskIDs []string
+	// taskDependenciesToUpdate is a mapping of task IDs that need updating to
+	// the dependency IDs that should be updated for that task.
+	taskDependenciesToUpdate map[string][]string
+	// newlyBlockedTaskData contains info on tasks that were not blocked but are
+	// about to be blocked.
+	newlyBlockedTaskData []event.TaskBlockedData
+}
+
+func getTaskDependenciesToUpdate(tasks []Task, dependencyIDSet map[string]struct{}, unattainable bool) taskDependencyUpdate {
+	taskIDs := make([]string, 0, len(tasks))
+	taskDependenciesToUpdate := make(map[string][]string)
+	newlyBlockedTaskData := make([]event.TaskBlockedData, 0, len(tasks))
+	for _, t := range tasks {
+		taskIDs = append(taskIDs, t.Id)
+
+		taskCanBeNewlyBlocked := unattainable && !t.Blocked() && !t.OverrideDependencies
+		var taskBlockedOn string
+		for _, dependsOn := range t.DependsOn {
+			depID := dependsOn.TaskId
+			if _, ok := dependencyIDSet[depID]; !ok {
+				continue
+			}
+
+			taskDependenciesToUpdate[t.Id] = append(taskDependenciesToUpdate[t.Id], depID)
+
+			if taskCanBeNewlyBlocked && taskBlockedOn == "" {
+				// If a task is going to be newly blocked by multiple
+				// dependencies at once, just block it arbitrarily on
+				// the first one.
+				taskBlockedOn = depID
+			}
+		}
+
+		if taskCanBeNewlyBlocked && taskBlockedOn != "" {
+			data := event.TaskBlockedData{
+				ID:        t.Id,
+				Execution: t.Execution,
+				BlockedOn: taskBlockedOn,
+			}
+			newlyBlockedTaskData = append(newlyBlockedTaskData, data)
+		}
+	}
+
+	return taskDependencyUpdate{
+		taskIDs:                  taskIDs,
+		taskDependenciesToUpdate: taskDependenciesToUpdate,
+		newlyBlockedTaskData:     newlyBlockedTaskData,
+	}
+}
+
+func updateTaskDependenciesChunked(ctx context.Context, toUpdate taskDependencyUpdate, unattainable bool) error {
+	// Update tasks in chunks rather than in one big update. This is to avoid
+	// the 16 MB update query size limit - if too many task IDs and dependency
+	// IDs are passed into a single query, the query size will be too large and
+	// the DB will reject it.
+	const taskDependencyUpdateChunkSize = 2000
+	var chunkTaskIDs []string
+	chunkDependencyIDSet := make(map[string]struct{})
+
+	for taskID, dependencyIDs := range toUpdate.taskDependenciesToUpdate {
+		if len(chunkDependencyIDSet) >= taskDependencyUpdateChunkSize {
+			// Update this chunk of task dependencies, which has hit/exceeded
+			// the max number of dependencies that can be updated at once, then
+			// continue on with a new chunk of task dependencies.
+
+			if err := updateTaskDependenciesForChunk(ctx, chunkTaskIDs, chunkDependencyIDSet, unattainable); err != nil {
+				return err
+			}
+
+			chunkTaskIDs = nil
+			chunkDependencyIDSet = make(map[string]struct{})
+		}
+
+		chunkTaskIDs = append(chunkTaskIDs, taskID)
+		for _, depID := range dependencyIDs {
+			chunkDependencyIDSet[depID] = struct{}{}
+		}
+	}
+
+	if len(chunkDependencyIDSet) > 0 {
+		// Update any remaining task dependencies in this chunk.
+		if err := updateTaskDependenciesForChunk(ctx, chunkTaskIDs, chunkDependencyIDSet, unattainable); err != nil {
+			return err
+		}
+		chunkDependencyIDs := make([]string, 0, len(chunkDependencyIDSet))
+		for depID := range chunkDependencyIDSet {
+			chunkDependencyIDs = append(chunkDependencyIDs, depID)
+		}
+	}
+
+	return nil
+}
+
+func updateTaskDependenciesForChunk(ctx context.Context, taskIDs []string, dependencyIDSet map[string]struct{}, unattainable bool) error {
+	// Update this chunk of task dependencies, which has hit/exceeded
+	// the max number of dependencies that can be updated at once, then
+	// continue on with a new chunk of task dependencies.
+
+	dependencyIDs := make([]string, 0, len(dependencyIDSet))
+	for depID := range dependencyIDSet {
+		dependencyIDs = append(dependencyIDs, depID)
+	}
+
+	if err := updateAllTasksForAllMatchingDependencies(ctx, taskIDs, dependencyIDs, unattainable); err != nil {
+		return errors.Wrapf(err, "updating %d dependencies across %d tasks for dependency attainability", len(dependencyIDs), len(taskIDs))
+	}
+
+	return nil
 }
 
 // AbortBuildTasks sets the abort flag on all tasks associated with the build which are in an abortable
