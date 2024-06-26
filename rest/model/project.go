@@ -106,6 +106,10 @@ type APIPatchTriggerDefinition struct {
 	// Name of the module corresponding to the upstream project in the
 	// downstream project's YAML.
 	ParentAsModule *string `json:"parent_as_module,omitempty"`
+	// An optional field representing the revision at which to create the downstream patch.
+	// By default, this field is empty and the downstream patch will be based off of its
+	// most recent commit.
+	DownstreamRevision *string `json:"downstream_revision,omitempty"`
 	// The list of variants/tasks from the alias that will run in the downstream
 	// project.
 	VariantsTasks []VariantTask `json:"variants_tasks,omitempty"`
@@ -121,6 +125,7 @@ func (t *APIPatchTriggerDefinition) BuildFromService(def patch.PatchTriggerDefin
 	// not sure in which direction this should go
 	t.Alias = utility.ToStringPtr(def.Alias)
 	t.Status = utility.ToStringPtr(def.Status)
+	t.DownstreamRevision = utility.ToStringPtr(def.DownstreamRevision)
 	t.ParentAsModule = utility.ToStringPtr(def.ParentAsModule)
 	var specifiers []APITaskSpecifier
 	for _, ts := range def.TaskSpecifiers {
@@ -139,6 +144,7 @@ func (t *APIPatchTriggerDefinition) ToService() patch.PatchTriggerDefinition {
 	trigger.Status = utility.FromStringPtr(t.Status)
 	trigger.Alias = utility.FromStringPtr(t.Alias)
 	trigger.ParentAsModule = utility.FromStringPtr(t.ParentAsModule)
+	trigger.DownstreamRevision = utility.FromStringPtr(t.DownstreamRevision)
 	var specifiers []patch.TaskSpecifier
 	for _, ts := range t.TaskSpecifiers {
 		specifiers = append(specifiers, ts.ToService())
@@ -518,14 +524,6 @@ type APIParameterInfo struct {
 	Key         *string `json:"key"`
 	Value       *string `json:"value"`
 	Description *string `json:"description"`
-}
-
-func (c *APIParameterInfo) ToService() model.ParameterInfo {
-	res := model.ParameterInfo{}
-	res.Key = utility.FromStringPtr(c.Key)
-	res.Value = utility.FromStringPtr(c.Value)
-	res.Description = utility.FromStringPtr(c.Description)
-	return res
 }
 
 func (c *APIParameterInfo) BuildFromService(info model.ParameterInfo) {

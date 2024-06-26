@@ -778,6 +778,7 @@ type ComplexityRoot struct {
 		Alias                  func(childComplexity int) int
 		ChildProjectId         func(childComplexity int) int
 		ChildProjectIdentifier func(childComplexity int) int
+		DownstreamRevision     func(childComplexity int) int
 		ParentAsModule         func(childComplexity int) int
 		Status                 func(childComplexity int) int
 		TaskSpecifiers         func(childComplexity int) int
@@ -5346,6 +5347,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PatchTriggerAlias.ChildProjectIdentifier(childComplexity), true
+
+	case "PatchTriggerAlias.downstreamRevision":
+		if e.complexity.PatchTriggerAlias.DownstreamRevision == nil {
+			break
+		}
+
+		return e.complexity.PatchTriggerAlias.DownstreamRevision(childComplexity), true
 
 	case "PatchTriggerAlias.parentAsModule":
 		if e.complexity.PatchTriggerAlias.ParentAsModule == nil {
@@ -34787,6 +34795,8 @@ func (ec *executionContext) fieldContext_Patch_patchTriggerAliases(_ context.Con
 				return ec.fieldContext_PatchTriggerAlias_parentAsModule(ctx, field)
 			case "status":
 				return ec.fieldContext_PatchTriggerAlias_status(ctx, field)
+			case "downstreamRevision":
+				return ec.fieldContext_PatchTriggerAlias_downstreamRevision(ctx, field)
 			case "taskSpecifiers":
 				return ec.fieldContext_PatchTriggerAlias_taskSpecifiers(ctx, field)
 			case "variantsTasks":
@@ -36020,6 +36030,47 @@ func (ec *executionContext) _PatchTriggerAlias_status(ctx context.Context, field
 }
 
 func (ec *executionContext) fieldContext_PatchTriggerAlias_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PatchTriggerAlias",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PatchTriggerAlias_downstreamRevision(ctx context.Context, field graphql.CollectedField, obj *model.APIPatchTriggerDefinition) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PatchTriggerAlias_downstreamRevision(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DownstreamRevision, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PatchTriggerAlias_downstreamRevision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "PatchTriggerAlias",
 		Field:      field,
@@ -40021,6 +40072,8 @@ func (ec *executionContext) fieldContext_Project_patchTriggerAliases(_ context.C
 				return ec.fieldContext_PatchTriggerAlias_parentAsModule(ctx, field)
 			case "status":
 				return ec.fieldContext_PatchTriggerAlias_status(ctx, field)
+			case "downstreamRevision":
+				return ec.fieldContext_PatchTriggerAlias_downstreamRevision(ctx, field)
 			case "taskSpecifiers":
 				return ec.fieldContext_PatchTriggerAlias_taskSpecifiers(ctx, field)
 			case "variantsTasks":
@@ -47442,6 +47495,8 @@ func (ec *executionContext) fieldContext_RepoRef_patchTriggerAliases(_ context.C
 				return ec.fieldContext_PatchTriggerAlias_parentAsModule(ctx, field)
 			case "status":
 				return ec.fieldContext_PatchTriggerAlias_status(ctx, field)
+			case "downstreamRevision":
+				return ec.fieldContext_PatchTriggerAlias_downstreamRevision(ctx, field)
 			case "taskSpecifiers":
 				return ec.fieldContext_PatchTriggerAlias_taskSpecifiers(ctx, field)
 			case "variantsTasks":
@@ -69840,7 +69895,7 @@ func (ec *executionContext) unmarshalInputPatchTriggerAliasInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"alias", "childProjectIdentifier", "parentAsModule", "status", "taskSpecifiers"}
+	fieldsInOrder := [...]string{"alias", "childProjectIdentifier", "parentAsModule", "status", "downstreamRevision", "taskSpecifiers"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -69875,6 +69930,13 @@ func (ec *executionContext) unmarshalInputPatchTriggerAliasInput(ctx context.Con
 				return it, err
 			}
 			it.Status = data
+		case "downstreamRevision":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("downstreamRevision"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DownstreamRevision = data
 		case "taskSpecifiers":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskSpecifiers"))
 			data, err := ec.unmarshalNTaskSpecifierInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifierᚄ(ctx, v)
@@ -78682,6 +78744,8 @@ func (ec *executionContext) _PatchTriggerAlias(ctx context.Context, sel ast.Sele
 			out.Values[i] = ec._PatchTriggerAlias_parentAsModule(ctx, field, obj)
 		case "status":
 			out.Values[i] = ec._PatchTriggerAlias_status(ctx, field, obj)
+		case "downstreamRevision":
+			out.Values[i] = ec._PatchTriggerAlias_downstreamRevision(ctx, field, obj)
 		case "taskSpecifiers":
 			out.Values[i] = ec._PatchTriggerAlias_taskSpecifiers(ctx, field, obj)
 		case "variantsTasks":
