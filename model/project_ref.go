@@ -1993,7 +1993,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 
 	githubAppID, err := GetGitHubAppID(p.Id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "finding hadGithubApp for project '%s'", p.Id)
+		return nil, errors.Wrapf(err, "finding github app for project '%s'", p.Id)
 	}
 	if githubAppID != nil {
 		projectSettingsEvent.GitHubAppID = *githubAppID
