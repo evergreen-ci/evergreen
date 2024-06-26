@@ -3,6 +3,7 @@ package evergreen
 import (
 	"context"
 
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -13,6 +14,11 @@ type RuntimeEnvironmentsConfig struct {
 	BaseURL string `yaml:"base_url" bson:"base_url" json:"base_url"`
 	APIKey  string `yaml:"api_key" bson:"api_key" json:"api_key"`
 }
+
+var (
+	runtimeEnvironmentsBaseURLKey = bsonutil.MustHaveTag(RuntimeEnvironmentsConfig{}, "BaseURL")
+	runtimeEnvironmentsAPIKey     = bsonutil.MustHaveTag(RuntimeEnvironmentsConfig{}, "APIKey")
+)
 
 func (*RuntimeEnvironmentsConfig) SectionId() string { return "runtime_environments" }
 
@@ -36,8 +42,8 @@ func (c *RuntimeEnvironmentsConfig) Get(ctx context.Context) error {
 func (c *RuntimeEnvironmentsConfig) Set(ctx context.Context) error {
 	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			"base_url": c.BaseURL,
-			"api_key":  c.APIKey,
+			runtimeEnvironmentsBaseURLKey: c.BaseURL,
+			runtimeEnvironmentsAPIKey:     c.APIKey,
 		},
 	}, options.Update().SetUpsert(true))
 
