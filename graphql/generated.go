@@ -86,7 +86,6 @@ type ResolverRoot interface {
 	FinderSettingsInput() FinderSettingsInputResolver
 	HostAllocatorSettingsInput() HostAllocatorSettingsInputResolver
 	PlannerSettingsInput() PlannerSettingsInputResolver
-	ProjectInput() ProjectInputResolver
 	ProjectSettingsInput() ProjectSettingsInputResolver
 	RepoSettingsInput() RepoSettingsInputResolver
 	SleepScheduleInput() SleepScheduleInputResolver
@@ -880,11 +879,11 @@ type ComplexityRoot struct {
 		DisplayName                        func(childComplexity int) int
 		Enabled                            func(childComplexity int) int
 		ExternalLinks                      func(childComplexity int) int
+		GitHubDynamicTokenPermissionGroups func(childComplexity int) int
 		GitTagAuthorizedTeams              func(childComplexity int) int
 		GitTagAuthorizedUsers              func(childComplexity int) int
 		GitTagVersionsEnabled              func(childComplexity int) int
 		GithubChecksEnabled                func(childComplexity int) int
-		GithubDynamicTokenPermissionGroups func(childComplexity int) int
 		GithubTriggerAliases               func(childComplexity int) int
 		Hidden                             func(childComplexity int) int
 		Id                                 func(childComplexity int) int
@@ -1768,8 +1767,6 @@ type PodEventLogDataResolver interface {
 	Task(ctx context.Context, obj *model.PodAPIEventData) (*model.APITask, error)
 }
 type ProjectResolver interface {
-	GithubDynamicTokenPermissionGroups(ctx context.Context, obj *model.APIProjectRef) ([]*model.APIGitHubDynamicTokenPermissionGroup, error)
-
 	IsFavorite(ctx context.Context, obj *model.APIProjectRef) (bool, error)
 
 	Patches(ctx context.Context, obj *model.APIProjectRef, patchesInput PatchesInput) (*Patches, error)
@@ -1989,9 +1986,6 @@ type HostAllocatorSettingsInputResolver interface {
 type PlannerSettingsInputResolver interface {
 	TargetTime(ctx context.Context, obj *model.APIPlannerSettings, data int) error
 	Version(ctx context.Context, obj *model.APIPlannerSettings, data PlannerVersion) error
-}
-type ProjectInputResolver interface {
-	GithubDynamicTokenPermissionGroups(ctx context.Context, obj *model.APIProjectRef, data []*model.APIGitHubDynamicTokenPermissionGroup) error
 }
 type ProjectSettingsInputResolver interface {
 	ProjectID(ctx context.Context, obj *model.APIProjectSettings, data string) error
@@ -5851,6 +5845,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.ExternalLinks(childComplexity), true
 
+	case "Project.githubDynamicTokenPermissionGroups":
+		if e.complexity.Project.GitHubDynamicTokenPermissionGroups == nil {
+			break
+		}
+
+		return e.complexity.Project.GitHubDynamicTokenPermissionGroups(childComplexity), true
+
 	case "Project.gitTagAuthorizedTeams":
 		if e.complexity.Project.GitTagAuthorizedTeams == nil {
 			break
@@ -5878,13 +5879,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Project.GithubChecksEnabled(childComplexity), true
-
-	case "Project.githubDynamicTokenPermissionGroups":
-		if e.complexity.Project.GithubDynamicTokenPermissionGroups == nil {
-			break
-		}
-
-		return e.complexity.Project.GithubDynamicTokenPermissionGroups(childComplexity), true
 
 	case "Project.githubTriggerAliases":
 		if e.complexity.Project.GithubTriggerAliases == nil {
@@ -39566,7 +39560,7 @@ func (ec *executionContext) _Project_githubDynamicTokenPermissionGroups(ctx cont
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Project().GithubDynamicTokenPermissionGroups(rctx, obj)
+		return obj.GitHubDynamicTokenPermissionGroups, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -39578,17 +39572,17 @@ func (ec *executionContext) _Project_githubDynamicTokenPermissionGroups(ctx cont
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.APIGitHubDynamicTokenPermissionGroup)
+	res := resTmp.([]model.APIGitHubDynamicTokenPermissionGroup)
 	fc.Result = res
-	return ec.marshalNGitHubDynamicTokenPermissionGroup2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroupᚄ(ctx, field.Selections, res)
+	return ec.marshalNGitHubDynamicTokenPermissionGroup2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroupᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Project_githubDynamicTokenPermissionGroups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Project",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "name":
@@ -69423,7 +69417,7 @@ func (ec *executionContext) unmarshalInputGitHubDynamicTokenPermissionGroupInput
 			it.Name = data
 		case "permissions":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("permissions"))
-			data, err := ec.unmarshalOStringMap2map(ctx, v)
+			data, err := ec.unmarshalNStringMap2map(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -70711,13 +70705,11 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 			it.GithubChecksEnabled = data
 		case "githubDynamicTokenPermissionGroups":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubDynamicTokenPermissionGroups"))
-			data, err := ec.unmarshalOGitHubDynamicTokenPermissionGroupInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroupᚄ(ctx, v)
+			data, err := ec.unmarshalOGitHubDynamicTokenPermissionGroupInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroupᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.ProjectInput().GithubDynamicTokenPermissionGroups(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.GitHubDynamicTokenPermissionGroups = data
 		case "githubTriggerAliases":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubTriggerAliases"))
 			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
@@ -79980,41 +79972,10 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 		case "githubChecksEnabled":
 			out.Values[i] = ec._Project_githubChecksEnabled(ctx, field, obj)
 		case "githubDynamicTokenPermissionGroups":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Project_githubDynamicTokenPermissionGroups(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._Project_githubDynamicTokenPermissionGroups(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "githubTriggerAliases":
 			out.Values[i] = ec._Project_githubTriggerAliases(ctx, field, obj)
 		case "gitTagAuthorizedTeams":
@@ -88940,7 +88901,11 @@ func (ec *executionContext) marshalNGeneralSubscription2ᚖgithubᚗcomᚋevergr
 	return ec._GeneralSubscription(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNGitHubDynamicTokenPermissionGroup2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroupᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIGitHubDynamicTokenPermissionGroup) graphql.Marshaler {
+func (ec *executionContext) marshalNGitHubDynamicTokenPermissionGroup2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroup(ctx context.Context, sel ast.SelectionSet, v model.APIGitHubDynamicTokenPermissionGroup) graphql.Marshaler {
+	return ec._GitHubDynamicTokenPermissionGroup(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNGitHubDynamicTokenPermissionGroup2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroupᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIGitHubDynamicTokenPermissionGroup) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -88964,7 +88929,7 @@ func (ec *executionContext) marshalNGitHubDynamicTokenPermissionGroup2ᚕᚖgith
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNGitHubDynamicTokenPermissionGroup2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroup(ctx, sel, v[i])
+			ret[i] = ec.marshalNGitHubDynamicTokenPermissionGroup2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroup(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -88984,19 +88949,9 @@ func (ec *executionContext) marshalNGitHubDynamicTokenPermissionGroup2ᚕᚖgith
 	return ret
 }
 
-func (ec *executionContext) marshalNGitHubDynamicTokenPermissionGroup2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroup(ctx context.Context, sel ast.SelectionSet, v *model.APIGitHubDynamicTokenPermissionGroup) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._GitHubDynamicTokenPermissionGroup(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNGitHubDynamicTokenPermissionGroupInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroup(ctx context.Context, v interface{}) (*model.APIGitHubDynamicTokenPermissionGroup, error) {
+func (ec *executionContext) unmarshalNGitHubDynamicTokenPermissionGroupInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroup(ctx context.Context, v interface{}) (model.APIGitHubDynamicTokenPermissionGroup, error) {
 	res, err := ec.unmarshalInputGitHubDynamicTokenPermissionGroupInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNGitTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitTag(ctx context.Context, sel ast.SelectionSet, v model.APIGitTag) graphql.Marshaler {
@@ -93068,7 +93023,7 @@ func (ec *executionContext) marshalOGeneralSubscription2ᚕᚖgithubᚗcomᚋeve
 	return ret
 }
 
-func (ec *executionContext) unmarshalOGitHubDynamicTokenPermissionGroupInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroupᚄ(ctx context.Context, v interface{}) ([]*model.APIGitHubDynamicTokenPermissionGroup, error) {
+func (ec *executionContext) unmarshalOGitHubDynamicTokenPermissionGroupInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroupᚄ(ctx context.Context, v interface{}) ([]model.APIGitHubDynamicTokenPermissionGroup, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -93077,10 +93032,10 @@ func (ec *executionContext) unmarshalOGitHubDynamicTokenPermissionGroupInput2ᚕ
 		vSlice = graphql.CoerceList(v)
 	}
 	var err error
-	res := make([]*model.APIGitHubDynamicTokenPermissionGroup, len(vSlice))
+	res := make([]model.APIGitHubDynamicTokenPermissionGroup, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNGitHubDynamicTokenPermissionGroupInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroup(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNGitHubDynamicTokenPermissionGroupInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroup(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}

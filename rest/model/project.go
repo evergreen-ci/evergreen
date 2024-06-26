@@ -556,8 +556,6 @@ type APIGitHubDynamicTokenPermissionGroup struct {
 	AllPermissions *bool `json:"all_permissions"`
 }
 
-type APIGitHubDynamicTokenPermissionGroups []APIGitHubDynamicTokenPermissionGroup
-
 func (p *APIGitHubDynamicTokenPermissionGroup) ToService() (model.GitHubDynamicTokenPermissionGroup, error) {
 	group := model.GitHubDynamicTokenPermissionGroup{
 		Name: utility.FromStringPtr(p.Name),
@@ -585,18 +583,6 @@ func (p *APIGitHubDynamicTokenPermissionGroup) ToService() (model.GitHubDynamicT
 		return group, errors.New("a group will all permissions must have no permissions set")
 	}
 	return group, nil
-}
-
-func (p *APIGitHubDynamicTokenPermissionGroups) ToService() ([]model.GitHubDynamicTokenPermissionGroup, error) {
-	groups := []model.GitHubDynamicTokenPermissionGroup{}
-	for _, group := range *p {
-		serviceGroup, err := group.ToService()
-		if err != nil {
-			return groups, errors.Wrapf(err, "converting GitHub permission group '%s'", utility.FromStringPtr(group.Name))
-		}
-		groups = append(groups, serviceGroup)
-	}
-	return groups, nil
 }
 
 func (p *APIGitHubDynamicTokenPermissionGroup) BuildFromService(h model.GitHubDynamicTokenPermissionGroup) error {
@@ -739,7 +725,7 @@ type APIProjectRef struct {
 	// Default project health view.
 	ProjectHealthView model.ProjectHealthView `json:"project_health_view"`
 	// List of GitHub permission groups.
-	GitHubDynamicTokenPermissionGroups APIGitHubDynamicTokenPermissionGroups `json:"github_dynamic_token_permission_groups,omitempty"`
+	GitHubDynamicTokenPermissionGroups []APIGitHubDynamicTokenPermissionGroup `json:"github_dynamic_token_permission_groups,omitempty"`
 	// GitHub permission group by requester.
 	GitHubPermissionGroupByRequester map[string]string `json:"github_permission_group_by_requester,omitempty"`
 }
@@ -839,9 +825,13 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 	}
 
 	if p.GitHubDynamicTokenPermissionGroups != nil {
-		groups, err := p.GitHubDynamicTokenPermissionGroups.ToService()
-		if err != nil {
-			return nil, errors.Wrap(err, "converting GitHub permission groups")
+		groups := []model.GitHubDynamicTokenPermissionGroup{}
+		for _, group := range p.GitHubDynamicTokenPermissionGroups {
+			serviceGroup, err := group.ToService()
+			if err != nil {
+				return nil, errors.Wrapf(err, "converting GitHub permission group '%s'", utility.FromStringPtr(group.Name))
+			}
+			groups = append(groups, serviceGroup)
 		}
 		projectRef.GitHubDynamicTokenPermissionGroups = groups
 	}
