@@ -652,22 +652,22 @@ func TestGetDistrosForImage(t *testing.T) {
 	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase())
 
 	numCorrectDistros := 3
-	image_id := "distro"
-	other_image_id := "not_distro"
+	imageID := "distro"
+	otherImageID := "not_distro"
 	for i := 0; i < numCorrectDistros; i++ {
 		d := &Distro{
 			Id:      fmt.Sprintf("distro_%d", i),
-			ImageID: image_id,
+			ImageID: imageID,
 		}
 		assert.Nil(d.Insert(ctx))
 	}
 	d := &Distro{
 		Id:      fmt.Sprintf("distro_%d", rand.Int()),
-		ImageID: other_image_id,
+		ImageID: otherImageID,
 	}
 	assert.Nil(d.Insert(ctx))
 
-	found, err := getDistrosForImage(ctx, image_id)
+	found, err := getDistrosForImage(ctx, imageID)
 	assert.NoError(err)
 	assert.Len(found, numCorrectDistros)
 }
