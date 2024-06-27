@@ -832,7 +832,7 @@ func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskConte
 	defer func() {
 		catcher := grip.NewBasicCatcher()
 		for _, cleanup := range tc.taskConfig.CommandCleanups {
-			catcher.Add(errors.Wrapf(cleanup.Run(ctx), "running clean up '%s' from command '%s'", cleanup.Name, cleanup.Command))
+			catcher.Wrapf(cleanup.Run(ctx), "running clean up '%s' from command '%s'", cleanup.Name, cleanup.Command)
 		}
 		if catcher.HasErrors() {
 			tc.logger.Execution().Error(errors.Wrap(catcher.Resolve(), "running command cleanups"))
