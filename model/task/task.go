@@ -2737,11 +2737,12 @@ func getTaskDependenciesToUpdate(tasks []Task, dependencyIDSet map[string]struct
 	}
 }
 
+// updateTaskDependenciesChunked updates all task dependencies in toUpdate in
+// chunks of updates. The updates must be updated in smaller chunks to avoid the
+// 16 MB update query size limit - if too many task IDs and dependency IDs are
+// passed into a single query, the query size will be too large and the DB will
+// reject it.
 func updateTaskDependenciesChunked(ctx context.Context, toUpdate taskDependencyUpdate, unattainable bool) error {
-	// Update tasks in chunks rather than in one big update. This is to avoid
-	// the 16 MB update query size limit - if too many task IDs and dependency
-	// IDs are passed into a single query, the query size will be too large and
-	// the DB will reject it.
 	const taskDependencyUpdateChunkSize = 2000
 	var chunkTaskIDs []string
 	chunkDependencyIDSet := make(map[string]struct{})
@@ -2750,7 +2751,7 @@ func updateTaskDependenciesChunked(ctx context.Context, toUpdate taskDependencyU
 		if len(chunkDependencyIDSet) >= taskDependencyUpdateChunkSize {
 			// Update this chunk of task dependencies, which has hit/exceeded
 			// the max number of dependencies that can be updated at once, then
-			// continue on with a new chunk of task dependencies.
+			// continue on with a updating a new chunk of task dependencies.
 
 			if err := updateTaskDependenciesForChunk(ctx, chunkTaskIDs, chunkDependencyIDSet, unattainable); err != nil {
 				return err
@@ -2770,10 +2771,6 @@ func updateTaskDependenciesChunked(ctx context.Context, toUpdate taskDependencyU
 		// Update any remaining task dependencies in this chunk.
 		if err := updateTaskDependenciesForChunk(ctx, chunkTaskIDs, chunkDependencyIDSet, unattainable); err != nil {
 			return err
-		}
-		chunkDependencyIDs := make([]string, 0, len(chunkDependencyIDSet))
-		for depID := range chunkDependencyIDSet {
-			chunkDependencyIDs = append(chunkDependencyIDs, depID)
 		}
 	}
 
