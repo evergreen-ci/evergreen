@@ -97,6 +97,7 @@ func (s *APISubscriber) BuildFromService(in event.Subscriber) error {
 			return err
 		}
 		target = sub
+		s.WebhookSubscriber = &sub
 
 	case event.JIRAIssueSubscriberType:
 		sub := APIJIRAIssueSubscriber{}
@@ -105,6 +106,7 @@ func (s *APISubscriber) BuildFromService(in event.Subscriber) error {
 			return err
 		}
 		target = sub
+		s.JiraIssueSubscriber = &sub
 
 	case event.JIRACommentSubscriberType, event.EmailSubscriberType,
 		event.SlackSubscriberType, event.EnqueuePatchSubscriberType:

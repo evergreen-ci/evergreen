@@ -416,6 +416,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		for _, subscription := range changes.Subscriptions {
 			webhook := subscription.Subscriber.WebhookSubscriber
 			if webhook == nil {
+				subscriptionChanges = append(subscriptionChanges, subscription)
 				continue
 			}
 			newHeaders := []restModel.APIWebhookHeader{}
