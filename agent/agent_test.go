@@ -437,11 +437,20 @@ pre:
     params:
       script: exit 0
 `
+	ranCommandCleanup := false
 	s.setupRunTask(projYml)
+	s.tc.taskConfig.CommandCleanups = append(s.tc.taskConfig.CommandCleanups, internal.CommandCleanup{
+		Command: "custom-command.exe",
+		Run: func(ctx context.Context) error {
+			ranCommandCleanup = true
+			return nil
+		},
+	})
 
 	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
 
 	s.NoError(s.tc.logger.Close())
+	s.True(ranCommandCleanup, "command cleanups should have ran")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running pre-task commands",
 		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'pre'",
@@ -628,11 +637,19 @@ post:
     params:
       script: exit 0
 `
+	ranCommandCleanup := false
 	s.setupRunTask(projYml)
-
+	s.tc.taskConfig.CommandCleanups = append(s.tc.taskConfig.CommandCleanups, internal.CommandCleanup{
+		Command: "custom-command.exe",
+		Run: func(ctx context.Context) error {
+			ranCommandCleanup = true
+			return nil
+		},
+	})
 	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
 
 	s.NoError(s.tc.logger.Close())
+	s.True(ranCommandCleanup, "command cleanups should have ran")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
 		"Setting heartbeat timeout to type 'post'",
@@ -1836,13 +1853,21 @@ task_groups:
         params:
           script: exit 0
 `
-
+	ranCommandCleanup := false
 	s.setupRunTask(projYml)
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 	s.tc.taskConfig.TaskGroup = s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
+	s.tc.taskConfig.CommandCleanups = append(s.tc.taskConfig.CommandCleanups, internal.CommandCleanup{
+		Command: "custom-command.exe",
+		Run: func(ctx context.Context) error {
+			ranCommandCleanup = true
+			return nil
+		},
+	})
 
 	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
+	s.True(ranCommandCleanup, "command cleanup should have ran")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running setup-group commands",
 		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'setup_group'",
@@ -1964,13 +1989,22 @@ task_groups:
         params:
           script: exit 0
 `
+	ranCommandCleanup := false
 	s.setupRunTask(projYml)
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 	s.tc.taskConfig.TaskGroup = s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
+	s.tc.taskConfig.CommandCleanups = append(s.tc.taskConfig.CommandCleanups, internal.CommandCleanup{
+		Command: "custom-command.exe",
+		Run: func(ctx context.Context) error {
+			ranCommandCleanup = true
+			return nil
+		},
+	})
 
 	s.NoError(s.a.runPreTaskCommands(s.ctx, s.tc))
 
 	s.NoError(s.tc.logger.Close())
+	s.True(ranCommandCleanup, "command cleanup should have ran")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running setup-task commands",
 		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'setup_task'",
@@ -2095,13 +2129,22 @@ task_groups:
         params:
           script: exit 0
 `
+	ranCommandCleanup := false
 	s.setupRunTask(projYml)
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 	s.tc.taskConfig.TaskGroup = s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
+	s.tc.taskConfig.CommandCleanups = append(s.tc.taskConfig.CommandCleanups, internal.CommandCleanup{
+		Command: "custom-command.exe",
+		Run: func(ctx context.Context) error {
+			ranCommandCleanup = true
+			return nil
+		},
+	})
 
 	s.NoError(s.a.runPostOrTeardownTaskCommands(s.ctx, s.tc))
 
 	s.NoError(s.tc.logger.Close())
+	s.True(ranCommandCleanup, "command cleanup should have ran")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running teardown-task commands",
 		"Setting heartbeat timeout to type 'teardown_task'",
@@ -2238,12 +2281,21 @@ task_groups:
           script: exit 0
 `
 	s.setupRunTask(projYml)
+	ranCommandCleanup := false
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 	s.tc.taskConfig.TaskGroup = s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
+	s.tc.taskConfig.CommandCleanups = append(s.tc.taskConfig.CommandCleanups, internal.CommandCleanup{
+		Command: "custom-command.exe",
+		Run: func(ctx context.Context) error {
+			ranCommandCleanup = true
+			return nil
+		},
+	})
 
 	s.a.runTeardownGroupCommands(s.ctx, s.tc)
 
 	s.NoError(s.tc.logger.Close())
+	s.True(ranCommandCleanup, "command cleanups should have ran")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running teardown-group commands",
 		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_group'",
