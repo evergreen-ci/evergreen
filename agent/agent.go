@@ -760,13 +760,13 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		if setupGroup.commands != nil {
 			err = a.runCommandsInBlock(ctx, tc, *setupGroup)
 			if err != nil && setupGroup.canFailTask {
+				err = tc.taskConfig.CommandCleanups.RunAll(ctx)
+				if err != nil {
+					tc.logger.Execution().Error(err)
+				}
+				tc.taskConfig.CommandCleanups = nil
 				return err
 			}
-			err = tc.taskConfig.CommandCleanups.RunAll(ctx)
-			if err != nil {
-				tc.logger.Execution().Error(err)
-			}
-			tc.taskConfig.CommandCleanups = nil
 		}
 		tc.ranSetupGroup = true
 	}
