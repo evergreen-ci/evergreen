@@ -2671,7 +2671,7 @@ func MarkAllForUnattainableDependencies(ctx context.Context, tasks []Task, depen
 		return nil, errors.Wrap(err, "updating task dependencies in chunks")
 	}
 
-	event.LogManyTasksBlocked(toUpdate.newlyBlockedTaskData)
+	event.LogManyTasksBlocked(ctx, toUpdate.newlyBlockedTaskData)
 
 	updatedTasks, err := FindAll(db.Query(ByIds(toUpdate.taskIDs)))
 	if err != nil {

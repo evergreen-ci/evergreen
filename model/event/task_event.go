@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"strconv"
 	"time"
 
@@ -172,7 +173,7 @@ type TaskBlockedData struct {
 }
 
 // LogManyTasksBlocked logs many task blocked events.
-func LogManyTasksBlocked(data []TaskBlockedData) {
+func LogManyTasksBlocked(ctx context.Context, data []TaskBlockedData) {
 	if len(data) == 0 {
 		return
 	}
@@ -192,7 +193,7 @@ func LogManyTasksBlocked(data []TaskBlockedData) {
 		}
 		events = append(events, e)
 	}
-	if err := LogManyEvents(events); err != nil {
+	if err := LogManyEventsWithContext(ctx, events); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeTask,
 			"event_type":    TaskBlocked,
