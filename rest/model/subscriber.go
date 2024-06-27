@@ -333,7 +333,7 @@ func (s *APIWebhookHeader) BuildFromService(h event.WebhookHeader) {
 func (s *APIWebhookHeader) ToService() event.WebhookHeader {
 	return event.WebhookHeader{
 		Key:   *s.Key,
-		Value: utility.FromStringPtr(s.Value),
+		Value: *s.Value,
 	}
 }
 

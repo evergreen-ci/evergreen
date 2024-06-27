@@ -422,7 +422,24 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			for _, header := range webhook.Headers {
 				if utility.FromStringPtr(header.Key) == "Authorization" && utility.FromStringPtr(header.Value) == evergreen.RedactedWebhookAuthorizationHeaderValue {
 					// Do not update the value if redacted Authorization header in changes.
-					header.Value = nil
+					var previousSubscription *event.WebhookSubscriber
+					for _, beforeSubscription := range before.Subscriptions {
+						if beforeSubscription.ID == utility.FromStringPtr(subscription.ID) {
+							previousSubscription, _ = beforeSubscription.Subscriber.Target.(*event.WebhookSubscriber)
+							break
+						}
+					}
+					if previousSubscription == nil {
+						return nil, errors.Errorf("could not update subscription with ID '%s'", utility.FromStringPtr(subscription.ID))
+					}
+					var previousHeaderValue string
+					for _, h := range previousSubscription.Headers {
+						if h.Key == "Authorization" {
+							previousHeaderValue = h.Value
+							break
+						}
+					}
+					header.Value = &previousHeaderValue
 				}
 				newHeaders = append(newHeaders, header)
 			}
