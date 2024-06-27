@@ -2662,19 +2662,6 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	return pipeline, nil
 }
 
-func (t *Task) FindAllUnmarkedBlockedDependencies() ([]Task, error) {
-	okStatusSet := []string{AllStatuses, t.Status}
-	query := db.Query(bson.M{
-		DependsOnKey: bson.M{"$elemMatch": bson.M{
-			DependencyTaskIdKey:       t.Id,
-			DependencyStatusKey:       bson.M{"$nin": okStatusSet},
-			DependencyUnattainableKey: false,
-		},
-		}},
-	)
-	return FindAll(query)
-}
-
 // FindAllUnmarkedDependenciesToBlock finds tasks that depend on one of the
 // given tasks. For each task dependency, it finds those that have not been
 // marked unattainable and currently have a status that would block the task
