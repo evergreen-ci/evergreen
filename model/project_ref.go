@@ -167,8 +167,8 @@ var noPermissionsGitHubTokenPermissionGroup = GitHubDynamicTokenPermissionGroup{
 }
 
 // GetGitHubPermissionGroup returns the GitHubDynamicTokenPermissionGroup for the given requester.
-// If the requester is not found, it returns the default. It returns a boolean indiciating if the group
-// is not the default group.
+// If the requester is not found, it returns the default permission group and a false boolean to
+// indicate not found.
 func (p *ProjectRef) GetGitHubPermissionGroup(requester string) (GitHubDynamicTokenPermissionGroup, bool) {
 	if p.GitHubPermissionGroupByRequester == nil {
 		return defaultGitHubTokenPermissionGroup, false
