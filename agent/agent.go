@@ -762,6 +762,11 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 			if err != nil && setupGroup.canFailTask {
 				return err
 			}
+			err = tc.taskConfig.CommandCleanups.RunAll(ctx)
+			if err != nil {
+				tc.logger.Execution().Error(err)
+			}
+			tc.taskConfig.CommandCleanups = nil
 		}
 		tc.ranSetupGroup = true
 	}
@@ -830,13 +835,10 @@ func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskConte
 
 	// We run the command cleanups in a defer in case any of the post commands add cleanups.
 	defer func() {
-		catcher := grip.NewBasicCatcher()
-		for _, cleanup := range tc.taskConfig.CommandCleanups {
-			catcher.Wrapf(cleanup.Run(ctx), "running clean up from command '%s'", cleanup.Command)
+		if err := tc.taskConfig.CommandCleanups.RunAll(ctx); err != nil {
+			tc.logger.Execution().Error(err)
 		}
-		if catcher.HasErrors() {
-			tc.logger.Execution().Error(errors.Wrap(catcher.Resolve(), "running command cleanups"))
-		}
+		tc.taskConfig.CommandCleanups = nil
 	}()
 
 	a.killProcs(ctx, tc, false, "post-task or teardown-task commands are starting")

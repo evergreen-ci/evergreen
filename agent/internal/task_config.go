@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -53,7 +54,7 @@ type TaskConfig struct {
 	ModulePaths        map[string]string
 	CedarTestResultsID string
 	TaskGroup          *model.TaskGroup
-	CommandCleanups    []CommandCleanup
+	CommandCleanups    CommandCleanups
 
 	mu sync.RWMutex
 }
@@ -66,6 +67,16 @@ type CommandCleanup struct {
 	Command string
 	// Run is the function that is called when the task is finished.
 	Run func(context.Context) error
+}
+
+type CommandCleanups []CommandCleanup
+
+func (c CommandCleanups) RunAll(ctx context.Context) error {
+	catcher := grip.NewBasicCatcher()
+	for _, cleanup := range c {
+		catcher.Wrapf(cleanup.Run(ctx), "running clean up from command '%s'", cleanup.Command)
+	}
+	return errors.Wrap(catcher.Resolve(), "running command cleanups")
 }
 
 // Timeout records dynamic timeout information that has been explicitly set by
