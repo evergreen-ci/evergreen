@@ -1504,7 +1504,7 @@ func findAllTaskIDs(q db.Q) ([]string, error) {
 // if it has a "dispatched" status for more than 30 minutes.
 func FindStuckDispatching() ([]Task, error) {
 	tasks, err := FindAll(db.Query(bson.M{
-		StatusKey:       evergreen.TaskDispatched,
+		StatusKey:       bson.M{ "$in": [evergreen.TaskStarted, evergreen.TaskFinished] } ,
 		DispatchTimeKey: bson.M{"$gt": time.Now().Add(30 * time.Minute)},
 		StartTimeKey:    utility.ZeroTime,
 	}))
@@ -2962,3 +2962,17 @@ func getGenerateTasksEstimation(ctx context.Context, project, buildVariant, disp
 
 	return results, nil
 }
+
+// getLatestTask retrieves the latest task from all the distros corresponding to the imageID
+// func getLatestTask(ctx context.Context, imageID string) (*Task, error) {
+// 	tasks, err := FindAll(db.Query(bson.M{
+// 		DistroIdKey: bson.M{
+// 			"$in": []string{
+
+// 			}
+// 		}
+// 	}))
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// }

@@ -642,32 +642,47 @@ func TestGetAuthorizedKeysFile(t *testing.T) {
 func TestGetDistrosForImage(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	assert.NoError(t, db.ClearCollections(Collection))
 
-	testConfig := testutil.TestConfig()
-	assert := assert.New(t)
-	session, _, err := db.GetGlobalSessionFactory().GetSession()
-	assert.NoError(err)
-	require.NotNil(t, session)
-	defer session.Close()
-	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase())
+	// testConfig := testutil.TestConfig()
+	// assert := assert.New(t)
+	// session, _, err := db.GetGlobalSessionFactory().GetSession()
+	// assert.NoError(err)
+	// require.NotNil(t, session)
+	// defer session.Close()
+	// require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase())
 
-	numCorrectDistros := 3
 	imageID := "distro"
 	otherImageID := "not_distro"
-	for i := 0; i < numCorrectDistros; i++ {
-		d := &Distro{
-			Id:      fmt.Sprintf("distro_%d", i),
-			ImageID: imageID,
-		}
-		assert.Nil(d.Insert(ctx))
+	d1 := &Distro{
+		Id:      "distro-1",
+		ImageID: imageID,
 	}
+	assert.Nil(t, d1.Insert(ctx))
+	d2 := &Distro{
+		Id:      "distro-2",
+		ImageID: imageID,
+	}
+	assert.Nil(t, d2.Insert(ctx))
+	d3 := &Distro{
+		Id:      "distro-3",
+		ImageID: imageID,
+	}
+	assert.Nil(t, d3.Insert(ctx))
+	// for i := 0; i < numCorrectDistros; i++ {
+	// 	d := &Distro{
+	// 		Id:      fmt.Sprintf("distro_%d", i),
+	// 		ImageID: imageID,
+	// 	}
+	// 	assert.Nil(d.Insert(ctx))
+	// }
 	d := &Distro{
 		Id:      fmt.Sprintf("distro_%d", rand.Int()),
 		ImageID: otherImageID,
 	}
-	assert.Nil(d.Insert(ctx))
+	assert.Nil(t, d.Insert(ctx))
 
 	found, err := getDistrosForImage(ctx, imageID)
-	assert.NoError(err)
-	assert.Len(found, numCorrectDistros)
+	assert.NoError(t, err)
+	assert.Len(t, found, 3)
 }
