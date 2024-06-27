@@ -410,12 +410,31 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		modified, err = updateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPageNotificationsSection:
-		if err = SaveSubscriptions(projectId, changes.Subscriptions, true); err != nil {
+		// If the webhook's Authoirzation header is the redacted value, we should exclude it from the updates
+		// to keep the existing value.
+		subscriptionChanges := []restModel.APISubscription{}
+		for _, subscription := range changes.Subscriptions {
+			webhook := subscription.Subscriber.WebhookSubscriber
+			if webhook == nil {
+				continue
+			}
+			newHeaders := []restModel.APIWebhookHeader{}
+			for _, header := range webhook.Headers {
+				if utility.FromStringPtr(header.Key) == "Authorization" && utility.FromStringPtr(header.Value) == evergreen.RedactedWebhookAuthorizationHeaderValue {
+					// Do not update the value if redacted Authorization header in changes.
+					header.Value = nil
+				}
+				newHeaders = append(newHeaders, header)
+			}
+			webhook.Headers = newHeaders
+			subscriptionChanges = append(subscriptionChanges, subscription)
+		}
+		if err = SaveSubscriptions(projectId, subscriptionChanges, true); err != nil {
 			return nil, errors.Wrapf(err, "saving subscriptions for project '%s'", projectId)
 		}
 		modified = true
 		subscriptionsToKeep := []string{}
-		for _, s := range changes.Subscriptions {
+		for _, s := range subscriptionChanges {
 			subscriptionsToKeep = append(subscriptionsToKeep, utility.FromStringPtr(s.ID))
 		}
 		// Remove any subscriptions that only existed in the original state.

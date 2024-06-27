@@ -144,7 +144,7 @@ type WebhookSubscriber struct {
 
 type WebhookHeader struct {
 	Key   string `bson:"key"`
-	Value string `bson:"value"`
+	Value string `bson:"value,omitempty"`
 }
 
 func (s *WebhookSubscriber) String() string {

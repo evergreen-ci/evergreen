@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -322,7 +323,11 @@ func (s *APIWebhookSubscriber) ToService() event.WebhookSubscriber {
 
 func (s *APIWebhookHeader) BuildFromService(h event.WebhookHeader) {
 	s.Key = &h.Key
-	s.Value = &h.Value
+	if h.Key == "Authorization" {
+		s.Value = utility.ToStringPtr(evergreen.RedactedWebhookAuthorizationHeaderValue)
+	} else {
+		s.Value = &h.Value
+	}
 }
 
 func (s *APIWebhookHeader) ToService() event.WebhookHeader {
