@@ -763,9 +763,9 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 				// Run the command cleanups if the setup group fails.
 				// If it passes, the cleanup commands will be run after the task
 				// finishes.
-				err = tc.taskConfig.CommandCleanups.RunAll(ctx)
-				if err != nil {
-					tc.logger.Execution().Error(err)
+				cleanupErr := tc.taskConfig.CommandCleanups.RunAll(ctx)
+				if cleanupErr != nil {
+					tc.logger.Execution().Error(cleanupErr)
 				}
 				tc.taskConfig.CommandCleanups = nil
 				return err
@@ -786,9 +786,9 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 			// Run the command cleaups if the pre-task commands fail.
 			// If they pass, the cleanup commands will be run after the task
 			// finishes.
-			err = tc.taskConfig.CommandCleanups.RunAll(ctx)
-			if err != nil {
-				tc.logger.Execution().Error(err)
+			cleanupErr := tc.taskConfig.CommandCleanups.RunAll(ctx)
+			if cleanupErr != nil {
+				tc.logger.Execution().Error(cleanupErr)
 			}
 			tc.taskConfig.CommandCleanups = nil
 			return err
