@@ -167,24 +167,25 @@ var noPermissionsGitHubTokenPermissionGroup = GitHubDynamicTokenPermissionGroup{
 }
 
 // GetGitHubPermissionGroup returns the GitHubDynamicTokenPermissionGroup for the given requester.
-// If the requester is not found, it returns the default.
-func (p *ProjectRef) GetGitHubPermissionGroup(requester string) GitHubDynamicTokenPermissionGroup {
+// If the requester is not found, it returns the default. It returns a boolean indiciating if the group
+// is not the default group.
+func (p *ProjectRef) GetGitHubPermissionGroup(requester string) (GitHubDynamicTokenPermissionGroup, bool) {
 	if p.GitHubPermissionGroupByRequester == nil {
-		return defaultGitHubTokenPermissionGroup
+		return defaultGitHubTokenPermissionGroup, false
 	}
 	groupName, ok := p.GitHubPermissionGroupByRequester[requester]
 	if !ok {
-		return defaultGitHubTokenPermissionGroup
+		return defaultGitHubTokenPermissionGroup, false
 	}
 	if groupName == noPermissionsGitHubTokenPermissionGroup.Name {
-		return noPermissionsGitHubTokenPermissionGroup
+		return noPermissionsGitHubTokenPermissionGroup, true
 	}
 	for _, group := range p.GitHubDynamicTokenPermissionGroups {
 		if group.Name == groupName {
-			return group
+			return group, true
 		}
 	}
-	return defaultGitHubTokenPermissionGroup
+	return defaultGitHubTokenPermissionGroup, false
 }
 
 func (p *ProjectRef) ValidateGitHubPermissionGroups() error {
@@ -193,9 +194,13 @@ func (p *ProjectRef) ValidateGitHubPermissionGroups() error {
 		catcher.ErrorfWhen(group.Name == "", "group name cannot be empty")
 	}
 	for requester, groupName := range p.GitHubPermissionGroupByRequester {
-		catcher.ErrorfWhen(!utility.StringSliceContains(evergreen.AllRequesterTypes, requester),
+		catcher.ErrorfWhen(
+			!utility.StringSliceContains(evergreen.AllRequesterTypes, requester),
 			"requester '%s' is not a valid requester", requester)
-		catcher.ErrorfWhen(p.GetGitHubPermissionGroup(requester) == defaultGitHubTokenPermissionGroup,
+
+		_, found := p.GetGitHubPermissionGroup(requester)
+		catcher.ErrorfWhen(
+			!found,
 			"group '%s' for requester '%s' not found", groupName, requester)
 	}
 	return errors.Wrap(catcher.Resolve(), "invalid GitHub dynamic token permission groups")
