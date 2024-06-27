@@ -2280,26 +2280,35 @@ func TestTopologicalSort(t *testing.T) {
 
 func TestActivateTasks(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
+		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, user.Collection))
 	}()
 
 	t.Run("DependencyChain", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
+		require.NoError(t, db.ClearCollections(Collection, event.EventCollection, user.Collection))
+		u := &user.DBUser{
+			Id: "user",
+		}
+		require.NoError(t, u.Insert())
 		tasks := []Task{
-			{Id: "t0", Priority: evergreen.DisabledTaskPriority},
-			{Id: "t1", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false},
-			{Id: "t2", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}, Activated: false, DeactivatedForDependency: true},
-			{Id: "t3", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false, DeactivatedForDependency: true},
-			{Id: "t4", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t3"}}, Activated: false, DeactivatedForDependency: true},
-			{Id: "t5", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: true, DeactivatedForDependency: true},
+			{Id: "t0", Requester: evergreen.PatchVersionRequester, Priority: evergreen.DisabledTaskPriority},
+			{Id: "t1", Requester: evergreen.PatchVersionRequester, DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false, EstimatedNumActivatedGeneratedTasks: utility.ToIntPtr(100)},
+			{Id: "t2", Requester: evergreen.PatchVersionRequester, DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}, Activated: false, DeactivatedForDependency: true},
+			{Id: "t3", Requester: evergreen.PatchVersionRequester, DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false, DeactivatedForDependency: true},
+			{Id: "t4", Requester: evergreen.PatchVersionRequester, DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t3"}}, Activated: false, DeactivatedForDependency: true},
+			{Id: "t5", Requester: evergreen.PatchVersionRequester, DependsOn: []Dependency{{TaskId: "t0"}}, Activated: true, DeactivatedForDependency: true},
 		}
 		for _, task := range tasks {
 			require.NoError(t, task.Insert())
 		}
 
 		updatedIDs := []string{"t0", "t3", "t4"}
-		err := ActivateTasks([]Task{tasks[0]}, time.Time{}, true, "")
+		err := ActivateTasks([]Task{tasks[0]}, time.Time{}, true, u.Id)
 		assert.NoError(t, err)
+
+		u, err = user.FindOne(user.ById(u.Id))
+		require.NoError(t, err)
+		require.NotNil(t, u)
+		assert.Equal(t, u.NumScheduledPatchTasks, len(updatedIDs))
 
 		dbTasks, err := FindAll(All)
 		assert.NoError(t, err)
@@ -2323,6 +2332,10 @@ func TestActivateTasks(t *testing.T) {
 				assert.Empty(t, events)
 			}
 		}
+
+		err = ActivateTasks([]Task{tasks[1]}, time.Time{}, true, u.Id)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), fmt.Sprintf("cannot schedule %d tasks, maximum hourly per-user limit is %d", 102, 100))
 	})
 
 	t.Run("NoopActivatedTask", func(t *testing.T) {
