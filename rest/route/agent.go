@@ -1694,7 +1694,14 @@ func (h *revokeGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Requ
 		return errors.New("missing task_id")
 	}
 
-	return errors.Wrap(utility.ReadJSON(r.Body, &h.body), "reading from JSON request body")
+	if err := utility.ReadJSON(r.Body, &h.body); err != nil {
+		return errors.Wrapf(err, "reading token JSON request body for task '%s'", h.taskID)
+	}
+
+	if h.body.Token == "" {
+		return errors.New("missing token")
+	}
+	return nil
 }
 
 func (h *revokeGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Responder {
@@ -1702,5 +1709,5 @@ func (h *revokeGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "revoking token for task '%s'", h.taskID))
 	}
 
-	return gimlet.NewJSONResponse(fmt.Sprintf("Successfully revoked token for task '%s'", h.taskID))
+	return gimlet.NewJSONResponse(struct{}{})
 }
