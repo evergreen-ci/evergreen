@@ -95,10 +95,9 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 	conf.NewExpansions.Put(r.ExpansionName, token)
 
 	conf.CommandCleanups = append(conf.CommandCleanups, internal.CommandCleanup{
-		Name:    "revoking token",
-		Command: "github.generate_token",
+		Command: r.FullDisplayName(),
 		Run: func(ctx context.Context) error {
-			return comm.RevokeGitHubDynamicAccessToken(ctx, td, token)
+			return errors.Wrap(comm.RevokeGitHubDynamicAccessToken(ctx, td, token), "revoking token")
 		},
 	})
 

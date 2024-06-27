@@ -62,9 +62,10 @@ type TaskConfig struct {
 // during task execution. These functions are called when the task is
 // finished. They are then purged from the list.
 type CommandCleanup struct {
-	Name    string
+	// Command is the name of the command from (base).FullDisplayName().
 	Command string
-	Run     func(context.Context) error
+	// Run is the function that is called when the task is finished.
+	Run func(context.Context) error
 }
 
 // Timeout records dynamic timeout information that has been explicitly set by

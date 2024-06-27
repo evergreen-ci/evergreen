@@ -109,11 +109,10 @@ func TestGitHubGenerateTokenExecute(t *testing.T) {
 
 			require.Len(t, conf.CommandCleanups, 1)
 			cleanup := conf.CommandCleanups[0]
-			assert.Equal(t, "revoking token", cleanup.Name)
 			assert.Equal(t, "github.generate_token", cleanup.Command)
 			// The cleanup function is expected to return an error mocked
 			// in the test data.
-			assert.EqualError(t, cleanup.Run(ctx), "revoked!")
+			assert.EqualError(t, cleanup.Run(ctx), "revoking token: revoked!")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
