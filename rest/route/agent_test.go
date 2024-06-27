@@ -868,7 +868,7 @@ func TestRevokeGitHubDynamicAccessToken(t *testing.T) {
 			request = gimlet.SetURLVars(request, options)
 
 			require.NoError(t, handler.Parse(ctx, request))
-			assert.Equal(t, token, handler.token)
+			assert.Equal(t, token, handler.body)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

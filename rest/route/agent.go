@@ -1676,7 +1676,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 // This route is used to revoke user-used GitHub access token for a task.
 type revokeGitHubDynamicAccessToken struct {
 	taskID string
-	token  string
+	body   apimodels.Token
 
 	env evergreen.Environment
 }
@@ -1694,25 +1694,11 @@ func (h *revokeGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Requ
 		return errors.New("missing task_id")
 	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		return errors.Wrap(err, "reading body")
-	}
-
-	err = json.Unmarshal(body, &h.token)
-
-	errorMessage := fmt.Sprintf("reading token body for task '%s'", h.taskID)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message": errorMessage,
-		"task_id": h.taskID,
-	}))
-
-	return errors.Wrapf(err, errorMessage)
+	return errors.Wrap(utility.ReadJSON(r.Body, &h.body), "reading from JSON request body")
 }
 
 func (h *revokeGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Responder {
-	err := thirdparty.RevokeInstallationToken(ctx, h.token)
-	if err != nil {
+	if err := thirdparty.RevokeInstallationToken(ctx, h.body.Token); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "revoking token for task '%s'", h.taskID))
 	}
 

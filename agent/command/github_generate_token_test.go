@@ -90,16 +90,38 @@ func TestGitHubGenerateTokenParseParams(t *testing.T) {
 }
 
 func TestGitHubGenerateTokenExecute(t *testing.T) {
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, cmd *githubGenerateToken, client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig){
-		"FailsWithMalformedExpansion": func(ctx context.Context, t *testing.T, cmd *githubGenerateToken, client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, cmd *githubGenerateToken, client *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig){
+		"FailsWithMalformedExpansion": func(ctx context.Context, t *testing.T, cmd *githubGenerateToken, client *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			cmd.Owner = "${badexpansion"
 			assert.Error(t, cmd.Execute(ctx, client, logger, conf))
 		},
-		"SucceedsAndCreatesToken": func(ctx context.Context, t *testing.T, cmd *githubGenerateToken, client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) {
-			require.NoError(t, cmd.Execute(ctx, client, logger, conf))
-			assert.Equal(t, "token!", conf.NewExpansions.Get(cmd.ExpansionName))
+		"FailsIfCreatingFails": func(ctx context.Context, t *testing.T, cmd *githubGenerateToken, client *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+			client.CreateGitHubDynamicAccessTokenFail = true
+			assert.ErrorContains(t, cmd.Execute(ctx, client, logger, conf), "creating github dynamic access token: failed to create token")
 		},
-		"SucceedsWithEmptyOwnerAndRepoAndCreatesToken": func(ctx context.Context, t *testing.T, cmd *githubGenerateToken, client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) {
+		"TokenRedactionSurfacesError": func(ctx context.Context, t *testing.T, cmd *githubGenerateToken, client *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+			client.CreateGitHubDynamicAccessTokenResult = "token!"
+			client.RevokeGitHubDynamicAccessTokenFail = true
+			require.NoError(t, cmd.Execute(ctx, client, logger, conf))
+			assert.Equal(t, client.CreateGitHubDynamicAccessTokenResult, conf.NewExpansions.Get(cmd.ExpansionName))
+
+			require.Len(t, conf.CommandCleanups, 1)
+			cleanup := conf.CommandCleanups[0]
+			assert.Equal(t, "github.generate_token", cleanup.Command)
+			assert.ErrorContains(t, cleanup.Run(ctx), "revoking token: failed to revoke token")
+		},
+		"SucceedsAndCreatesToken": func(ctx context.Context, t *testing.T, cmd *githubGenerateToken, client *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+			client.CreateGitHubDynamicAccessTokenResult = "token!"
+			require.NoError(t, cmd.Execute(ctx, client, logger, conf))
+			assert.Equal(t, client.CreateGitHubDynamicAccessTokenResult, conf.NewExpansions.Get(cmd.ExpansionName))
+
+			require.Len(t, conf.CommandCleanups, 1)
+			cleanup := conf.CommandCleanups[0]
+			assert.Equal(t, "github.generate_token", cleanup.Command)
+			assert.Nil(t, cleanup.Run(ctx))
+		},
+		"SucceedsWithEmptyOwnerAndRepoAndCreatesToken": func(ctx context.Context, t *testing.T, cmd *githubGenerateToken, client *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+			client.CreateGitHubDynamicAccessTokenResult = "token!"
 			cmd.Owner = ""
 			cmd.Repo = ""
 			require.NoError(t, cmd.Execute(ctx, client, logger, conf))
@@ -110,9 +132,7 @@ func TestGitHubGenerateTokenExecute(t *testing.T) {
 			require.Len(t, conf.CommandCleanups, 1)
 			cleanup := conf.CommandCleanups[0]
 			assert.Equal(t, "github.generate_token", cleanup.Command)
-			// The cleanup function is expected to return an error mocked
-			// in the test data.
-			assert.EqualError(t, cleanup.Run(ctx), "revoking token: revoked!")
+			assert.Nil(t, cleanup.Run(ctx))
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -121,16 +141,17 @@ func TestGitHubGenerateTokenExecute(t *testing.T) {
 
 			conf := &internal.TaskConfig{NewExpansions: agentutil.NewDynamicExpansions(util.Expansions{}), ProjectRef: model.ProjectRef{Owner: "new_owner", Repo: "new_repo"}}
 			comm := client.NewMock("url")
-			comm.CreateGitHubDynamicAccessTokenResult = "token!"
-			comm.RevokeGitHubDynamicAccessTokenResult = "revoked!"
 			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 			require.NoError(t, err)
 
-			tCase(ctx, t, &githubGenerateToken{
+			cmd := &githubGenerateToken{
 				Owner:         "owner",
 				Repo:          "repo",
 				ExpansionName: "expansion_name",
-			}, comm, logger, conf)
+			}
+			cmd.SetFullDisplayName("github.generate_token")
+
+			tCase(ctx, t, cmd, comm, logger, conf)
 		})
 	}
 }

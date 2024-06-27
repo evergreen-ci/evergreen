@@ -980,7 +980,7 @@ func (c *baseCommunicator) RevokeGitHubDynamicAccessToken(ctx context.Context, t
 		path:     fmt.Sprintf("task/%s/github_dynamic_access_token", td.ID),
 		taskData: &td,
 	}
-	resp, err := c.request(ctx, info, token)
+	resp, err := c.request(ctx, info, apimodels.Token{Token: token})
 	if err != nil {
 		return errors.Wrap(err, "revoking github dynamic access token")
 	}
