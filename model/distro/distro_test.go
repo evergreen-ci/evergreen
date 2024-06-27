@@ -643,15 +643,6 @@ func TestGetDistrosForImage(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	assert.NoError(t, db.ClearCollections(Collection))
-
-	// testConfig := testutil.TestConfig()
-	// assert := assert.New(t)
-	// session, _, err := db.GetGlobalSessionFactory().GetSession()
-	// assert.NoError(err)
-	// require.NotNil(t, session)
-	// defer session.Close()
-	// require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase())
-
 	imageID := "distro"
 	otherImageID := "not_distro"
 	d1 := &Distro{
@@ -669,13 +660,6 @@ func TestGetDistrosForImage(t *testing.T) {
 		ImageID: imageID,
 	}
 	assert.Nil(t, d3.Insert(ctx))
-	// for i := 0; i < numCorrectDistros; i++ {
-	// 	d := &Distro{
-	// 		Id:      fmt.Sprintf("distro_%d", i),
-	// 		ImageID: imageID,
-	// 	}
-	// 	assert.Nil(d.Insert(ctx))
-	// }
 	d := &Distro{
 		Id:      fmt.Sprintf("distro_%d", rand.Int()),
 		ImageID: otherImageID,
