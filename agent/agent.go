@@ -760,6 +760,9 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		if setupGroup.commands != nil {
 			err = a.runCommandsInBlock(ctx, tc, *setupGroup)
 			if err != nil && setupGroup.canFailTask {
+				// Run the command cleanups if the setup group fails.
+				// If it passes, the cleanup commands will be run after the task
+				// finishes.
 				err = tc.taskConfig.CommandCleanups.RunAll(ctx)
 				if err != nil {
 					tc.logger.Execution().Error(err)
@@ -780,6 +783,14 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	if pre.commands != nil {
 		err = a.runCommandsInBlock(ctx, tc, *pre)
 		if err != nil && pre.canFailTask {
+			// Run the command cleaups if the pre-task commands fail.
+			// If they pass, the cleanup commands will be run after the task
+			// finishes.
+			err = tc.taskConfig.CommandCleanups.RunAll(ctx)
+			if err != nil {
+				tc.logger.Execution().Error(err)
+			}
+			tc.taskConfig.CommandCleanups = nil
 			return err
 		}
 	}
@@ -890,6 +901,12 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 		a.killProcs(ctx, tc, true, "teardown group commands are starting")
 
 		_ = a.runCommandsInBlock(ctx, tc, *teardownGroup)
+		// Run the command cleanups after running the teardown group commands.
+		err = tc.taskConfig.CommandCleanups.RunAll(ctx)
+		if err != nil {
+			tc.logger.Execution().Error(err)
+		}
+		tc.taskConfig.CommandCleanups = nil
 	}
 }
 
