@@ -900,6 +900,10 @@ buildvariants:
 	assert.True(t, foundCompile)
 	assert.True(t, foundPassing)
 
+	dbPatch, err := patch.FindOneId(unfinalized.Id.Hex())
+	assert.NoError(t, err)
+	assert.Equal(t, len(dbPatch.VariantsTasks[0].Tasks), len(tasks))
+
 	// valid request, reconfiguring a finalized patch
 	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
@@ -935,6 +939,11 @@ buildvariants:
 	assert.True(t, foundFailing)
 	assert.True(t, foundPassing)
 	assert.True(t, foundCompile)
+
+	// ensure that the patch contains all the tasks and didn't overwrite it with the new tasks
+	dbPatch, err = patch.FindOneId(unfinalized.Id.Hex())
+	assert.NoError(t, err)
+	assert.Equal(t, len(dbPatch.VariantsTasks[0].Tasks), len(tasks))
 
 	// * should select all tasks
 	patch2 := patch.Patch{
