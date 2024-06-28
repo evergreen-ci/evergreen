@@ -1817,6 +1817,7 @@ func TestGithubPermissionGroups(t *testing.T) {
 	}
 	orgRequesters := map[string]string{
 		evergreen.PatchVersionRequester: "some-group",
+		evergreen.GithubPRRequester:     noPermissionsGitHubTokenPermissionGroup.Name,
 	}
 	p := &ProjectRef{
 		GitHubDynamicTokenPermissionGroups: orgGroup,
@@ -1825,13 +1826,15 @@ func TestGithubPermissionGroups(t *testing.T) {
 	require.NoError(p.Insert())
 
 	t.Run("Not found requester should return default permissions", func(t *testing.T) {
-		group := p.GetGitHubPermissionGroup("requester")
+		group, found := p.GetGitHubPermissionGroup("requester")
 		assert.Equal(defaultGitHubTokenPermissionGroup, group)
+		assert.False(found)
 	})
 
 	t.Run("Found requester should return correct group", func(t *testing.T) {
-		group := p.GetGitHubPermissionGroup(evergreen.PatchVersionRequester)
+		group, found := p.GetGitHubPermissionGroup(evergreen.PatchVersionRequester)
 		assert.Equal("some-group", group.Name)
+		assert.True(found)
 		assert.Equal("read", utility.FromStringPtr(group.Permissions.Actions))
 	})
 
@@ -3584,8 +3587,9 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.NotNil(t, projectRef)
 	assert.Len(projectRef.GitHubDynamicTokenPermissionGroups, 1)
 
-	perms := projectRef.GetGitHubPermissionGroup(evergreen.GithubMergeRequester)
+	perms, found := projectRef.GetGitHubPermissionGroup(evergreen.GithubMergeRequester)
 	assert.Equal("some-group", perms.Name)
+	assert.True(found)
 	assert.Equal("read", utility.FromStringPtr(perms.Permissions.Actions))
 }
 
