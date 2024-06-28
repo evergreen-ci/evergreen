@@ -64,7 +64,9 @@ func LogManyEvents(events []EventLogEntry) error {
 	return db.InsertMany(EventCollection, interfaces...)
 }
 
-func LogManyEventsWithContext(ctx context.Context, events []EventLogEntry) error {
+// LogManyUnorderedEventsWithContext logs many events without any ordering on
+// insertion. Do not use this if the events must be inserted in order.
+func LogManyUnorderedEventsWithContext(ctx context.Context, events []EventLogEntry) error {
 	catcher := grip.NewBasicCatcher()
 	interfaces := make([]interface{}, len(events))
 	for i := range events {
