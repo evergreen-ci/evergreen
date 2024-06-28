@@ -1511,8 +1511,7 @@ func TestSetGithubAppCredentials(t *testing.T) {
 			require.NoError(t, p.SetGithubAppCredentials(0, []byte("")))
 			app, err = FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
-			assert.Zero(t, app.AppID)
-			assert.Equal(t, []byte(""), app.PrivateKey)
+			assert.Nil(t, app)
 		},
 		"CredentialsCanBeRemovedByEmptyAppIDAndNilPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
@@ -1526,8 +1525,7 @@ func TestSetGithubAppCredentials(t *testing.T) {
 			require.NoError(t, p.SetGithubAppCredentials(0, nil))
 			app, err = FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
-			assert.Zero(t, app.AppID)
-			assert.Nil(t, app.PrivateKey)
+			assert.Nil(t, app)
 		},
 		"CredentialsCannotBeRemovedByOnlyEmptyPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
