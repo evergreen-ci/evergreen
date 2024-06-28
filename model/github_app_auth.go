@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	githubAppAuthIdKey      = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "Id")
-	githubAppAuthAppIdKey   = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "AppID")
-	githubAppAuthPrivateKey = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "PrivateKey")
+	ghAuthIdKey         = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "Id")
+	ghAuthAppIdKey      = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "AppID")
+	ghAuthPrivateKeyKey = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "PrivateKey")
 )
 
 const (
@@ -31,14 +31,14 @@ func FindOneGithubAppAuth(projectId string) (*evergreen.GithubAppAuth, error) {
 // byGithubAppAuthID returns a query that finds a github app auth by the given identifier
 // corresponding to the project id
 func byGithubAppAuthID(projectId string) db.Q {
-	return db.Query(bson.M{githubAppAuthIdKey: projectId})
+	return db.Query(bson.M{ghAuthIdKey: projectId})
 }
 
 // GetGitHubAppID returns the app id for the given project id
 func GetGitHubAppID(projectId string) (*int64, error) {
 	githubAppAuth := &evergreen.GithubAppAuth{}
 
-	q := byGithubAppAuthID(projectId).WithFields(githubAppAuthIdKey)
+	q := byGithubAppAuthID(projectId).WithFields(ghAuthIdKey)
 	err := db.FindOneQ(GitHubAppAuthCollection, q, githubAppAuth)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -52,12 +52,12 @@ func UpsertGithubAppAuth(githubAppAuth *evergreen.GithubAppAuth) error {
 	_, err := db.Upsert(
 		GitHubAppAuthCollection,
 		bson.M{
-			githubAppAuthIdKey: githubAppAuth.Id,
+			ghAuthIdKey: githubAppAuth.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				githubAppAuthAppIdKey:   githubAppAuth.AppID,
-				githubAppAuthPrivateKey: githubAppAuth.PrivateKey,
+				ghAuthAppIdKey:      githubAppAuth.AppID,
+				ghAuthPrivateKeyKey: githubAppAuth.PrivateKey,
 			},
 		},
 	)
@@ -68,6 +68,6 @@ func UpsertGithubAppAuth(githubAppAuth *evergreen.GithubAppAuth) error {
 func RemoveGithubAppAuth(id string) error {
 	return db.Remove(
 		GitHubAppAuthCollection,
-		bson.M{githubAppAuthIdKey: id},
+		bson.M{ghAuthIdKey: id},
 	)
 }
