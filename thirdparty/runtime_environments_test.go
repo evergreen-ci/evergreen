@@ -5,7 +5,12 @@ package thirdparty
 // 	assert := assert.New(t)
 // 	config := testutil.TestConfig()
 // 	testutil.ConfigureIntegrationTest(t, config, "TestGetImageNames")
-// 	result, err := getImageNames(context.TODO(), config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+// 	c := RuntimeEnvironmentsClient{
+// 		Client:  &http.Client{},
+// 		BaseURL: config.RuntimeEnvironments.BaseURL,
+// 		APIKey:  config.RuntimeEnvironments.APIKey,
+// 	}
+// 	result, err := getImageNames(context.TODO(), &c)
 // 	assert.NoError(err)
 // 	assert.NotEmpty(result)
 // 	assert.NotContains(result, "")

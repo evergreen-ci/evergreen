@@ -3,33 +3,33 @@ package thirdparty
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
 type RuntimeEnvironmentsClient struct {
-	base_url string
-	api_key  string
+	Client  *http.Client
+	BaseURL string
+	APIKey  string
 }
 
 // getImageNames returns a list of strings containing the names of all images from the runtime environments api
 // TODO: Remove nolint:unused when DEVPROD-6983 is resolved.
 //
 //nolint:unused
-func getImageNames(ctx context.Context, base_url string, api_key string) ([]string, error) {
-	apiURL := base_url + "/rest/api/v1/imageList"
+func getImageNames(ctx context.Context, c *RuntimeEnvironmentsClient) ([]string, error) {
+	apiURL := fmt.Sprintf("%s/rest/api/v1/imageList", c.BaseURL)
 	request, err := http.NewRequest(http.MethodGet, apiURL, nil)
 	if err != nil {
 		return nil, err
 	}
 	request = request.WithContext(ctx)
 	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("api-key", api_key)
-	client := utility.GetHTTPClient()
-	result, err := client.Do(request)
+	request.Header.Add("api-key", c.APIKey)
+	result, err := c.Client.Do(request)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
