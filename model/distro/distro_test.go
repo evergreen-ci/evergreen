@@ -660,11 +660,11 @@ func TestGetDistrosForImage(t *testing.T) {
 		ImageID: imageID,
 	}
 	assert.Nil(t, d3.Insert(ctx))
-	d := &Distro{
-		Id:      fmt.Sprintf("distro_%d", rand.Int()),
+	d4 := &Distro{
+		Id:      "distro-4",
 		ImageID: otherImageID,
 	}
-	assert.Nil(t, d.Insert(ctx))
+	assert.Nil(t, d4.Insert(ctx))
 
 	found, err := getDistrosForImage(ctx, imageID)
 	assert.NoError(t, err)
