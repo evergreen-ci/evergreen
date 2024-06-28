@@ -38,6 +38,8 @@ const (
 	snsPayloadKey    requestContextKey = 5
 )
 
+const alertmanagerUser = "alertmanager"
+
 type projCtxMiddleware struct{}
 
 func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -432,8 +434,10 @@ func NewAlertmanagerMiddleware() gimlet.Middleware {
 }
 
 func (m *alertmanagerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	// Our Alertmanager webhook sends its credentials via basic auth, so we treat the username/password
+	// pair incoming from the request as we would Api-User / Api-Key header pairs to fetch a user document.
 	username, password, ok := r.BasicAuth()
-	if !ok {
+	if !ok || username != alertmanagerUser {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "not authorized",
@@ -442,10 +446,7 @@ func (m *alertmanagerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	}
 	u, err := user.FindOneById(username)
 	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("finding user '%s'", username),
-		}))
+		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding user '%s'", username)))
 		return
 	}
 	if u == nil {

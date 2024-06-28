@@ -27,7 +27,7 @@ func (h *degradedModeHandler) Factory() gimlet.RouteHandler {
 
 func (h *degradedModeHandler) Parse(ctx context.Context, r *http.Request) error {
 	if err := gimlet.GetJSON(r.Body, h); err != nil {
-		return errors.Wrap(err, "problem parsing request")
+		return errors.Wrap(err, "parsing request")
 	}
 	if h.Status != firingStatus || h.Receiver != evergreenWebhook {
 		return gimlet.ErrorResponse{
@@ -43,7 +43,7 @@ func (h *degradedModeHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving service flags"))
 	}
-	flags.DegradedModeDisabled = false
+	flags.CpuDegradedModeDisabled = false
 	if err = flags.Set(ctx); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting service flags"))
 	}

@@ -22,7 +22,7 @@ func TestSetDegradedMode(t *testing.T) {
 
 	settings := testutil.MockConfig()
 	assert.NoError(settings.Set(ctx))
-	assert.True(settings.ServiceFlags.DegradedModeDisabled)
+	assert.True(settings.ServiceFlags.CpuDegradedModeDisabled)
 	json := []byte(`{
     "receiver": "webhook-devprod-evergreen",
     "status": "firing"
@@ -38,7 +38,7 @@ func TestSetDegradedMode(t *testing.T) {
 
 	settings, err = evergreen.GetConfig(ctx)
 	assert.NoError(err)
-	assert.False(settings.ServiceFlags.DegradedModeDisabled)
+	assert.False(settings.ServiceFlags.CpuDegradedModeDisabled)
 
 	json = []byte(`{
     "receiver": "webhook-devprod-evergreen",

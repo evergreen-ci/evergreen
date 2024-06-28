@@ -203,7 +203,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.LargeParserProjectsDisabled, apiSettings.ServiceFlags.LargeParserProjectsDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, apiSettings.ServiceFlags.SleepScheduleDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, apiSettings.ServiceFlags.SystemFailedTaskRestartDisabled)
-	assert.EqualValues(testSettings.ServiceFlags.DegradedModeDisabled, apiSettings.ServiceFlags.DegradedModeDisabled)
+	assert.EqualValues(testSettings.ServiceFlags.CpuDegradedModeDisabled, apiSettings.ServiceFlags.DegradedModeDisabled)
 	assert.EqualValues(testSettings.Slack.Level, utility.FromStringPtr(apiSettings.Slack.Level))
 	assert.EqualValues(testSettings.Slack.Options.Channel, utility.FromStringPtr(apiSettings.Slack.Options.Channel))
 	assert.ElementsMatch(testSettings.SleepSchedule.PermanentlyExemptHosts, apiSettings.SleepSchedule.PermanentlyExemptHosts)
@@ -307,7 +307,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.UnrecognizedPodCleanupDisabled, dbSettings.ServiceFlags.UnrecognizedPodCleanupDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, dbSettings.ServiceFlags.SleepScheduleDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, apiSettings.ServiceFlags.SystemFailedTaskRestartDisabled)
-	assert.EqualValues(testSettings.ServiceFlags.DegradedModeDisabled, apiSettings.ServiceFlags.DegradedModeDisabled)
+	assert.EqualValues(testSettings.ServiceFlags.CpuDegradedModeDisabled, apiSettings.ServiceFlags.DegradedModeDisabled)
 	require.Len(dbSettings.SSHKeyPairs, len(testSettings.SSHKeyPairs))
 	for i := 0; i < len(testSettings.SSHKeyPairs); i++ {
 		assert.Equal(dbSettings.SSHKeyPairs[i].Name, testSettings.SSHKeyPairs[i].Name)

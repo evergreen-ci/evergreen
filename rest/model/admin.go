@@ -2038,7 +2038,7 @@ type APIServiceFlags struct {
 	SleepScheduleDisabled           bool `json:"sleep_schedule_disabled"`
 	SleepScheduleBetaTestDisabled   bool `json:"sleep_schedule_beta_test_disabled"`
 	SystemFailedTaskRestartDisabled bool `json:"system_failed_task_restart_disabled"`
-	DegradedModeDisabled            bool `json:"degraded_mode_disabled"`
+	DegradedModeDisabled            bool `json:"cpu_degraded_mode_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2356,7 +2356,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
 		as.SleepScheduleBetaTestDisabled = v.SleepScheduleBetaTestDisabled
 		as.SystemFailedTaskRestartDisabled = v.SystemFailedTaskRestartDisabled
-		as.DegradedModeDisabled = v.DegradedModeDisabled
+		as.DegradedModeDisabled = v.CpuDegradedModeDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2401,7 +2401,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		SleepScheduleDisabled:           as.SleepScheduleDisabled,
 		SleepScheduleBetaTestDisabled:   as.SleepScheduleBetaTestDisabled,
 		SystemFailedTaskRestartDisabled: as.SystemFailedTaskRestartDisabled,
-		DegradedModeDisabled:            as.DegradedModeDisabled,
+		CpuDegradedModeDisabled:         as.DegradedModeDisabled,
 	}, nil
 }
 
