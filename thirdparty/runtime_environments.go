@@ -10,6 +10,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+type RuntimeEnvironmentsClient struct {
+	base_url string
+	api_key  string
+}
+
 // getImageNames returns a list of strings containing the names of all images from the runtime environments api
 // TODO: Remove nolint:unused when DEVPROD-6983 is resolved.
 //
