@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TODO: Uncomment when DEVPROD-6983 is resolved. Right now, the API does not work on task hosts.
 func TestGetImageNames(t *testing.T) {
 	assert := assert.New(t)
 	config := testutil.TestConfig()

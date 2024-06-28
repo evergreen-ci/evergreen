@@ -17,18 +17,15 @@ type RuntimeEnvironmentsClient struct {
 }
 
 // getImageNames returns a list of strings containing the names of all images from the runtime environments api
-// TODO: Remove nolint:unused when DEVPROD-6983 is resolved.
-//
-//nolint:unused
 func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string, error) {
 	apiURL := fmt.Sprintf("%s/rest/api/v1/imageList", c.BaseURL)
-	request, err := http.NewRequest(http.MethodGet, apiURL, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return nil, err
 	}
 	request = request.WithContext(ctx)
 	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("api-key", c.APIKey)
+	request.Header.Add("Api-key", c.APIKey)
 	result, err := c.Client.Do(request)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -37,15 +34,15 @@ func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string
 		msg, _ := io.ReadAll(result.Body)
 		return nil, errors.Errorf("HTTP request returned unexpected status `%v`: %v", result.Status, string(msg))
 	}
-	var imageList []string
-	if err := json.NewDecoder(result.Body).Decode(&imageList); err != nil {
+	var images []string
+	if err := json.NewDecoder(result.Body).Decode(&images); err != nil {
 		return nil, errors.Wrap(err, "Unable to decode http body")
 	}
-	var filteredImageList []string // filter out empty values
-	for _, img := range imageList {
+	var filteredImages []string // filter out empty values
+	for _, img := range images {
 		if img != "" {
-			filteredImageList = append(filteredImageList, img)
+			filteredImages = append(filteredImages, img)
 		}
 	}
-	return filteredImageList, nil
+	return filteredImages, nil
 }
