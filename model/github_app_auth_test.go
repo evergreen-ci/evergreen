@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -49,7 +50,7 @@ func TestGetGitHubAppID(t *testing.T) {
 
 	appIDFromDB, err := GetGitHubAppID("mongodb")
 	require.NoError(t, err)
-	assert.Equal(int64(1234), appIDFromDB)
+	assert.Equal(int64(1234), utility.FromInt64Ptr(appIDFromDB))
 }
 
 func TestRemoveGithubAppAuth(t *testing.T) {

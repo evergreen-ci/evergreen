@@ -38,7 +38,7 @@ func byGithubAppAuthID(projectId string) db.Q {
 func GetGitHubAppID(projectId string) (*int64, error) {
 	githubAppAuth := &evergreen.GithubAppAuth{}
 
-	q := byGithubAppAuthID(projectId).WithFields(ghAuthIdKey)
+	q := byGithubAppAuthID(projectId).WithFields(ghAuthAppIdKey)
 	err := db.FindOneQ(GitHubAppAuthCollection, q, githubAppAuth)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
