@@ -356,19 +356,19 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 
 func TestHasAnnotationPermission(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
-		"HasAnnotationPermission": func(ctx context.Context, t *testing.T) {
+		"TrueWhenUserHasRequiredLevelAndIsNotPatchOwner": func(ctx context.Context, t *testing.T) {
 			task := restModel.APITask{ProjectId: utility.ToStringPtr("project_id_belonging_to_user"), Version: utility.ToStringPtr("random_version_id")}
 			hasAccess, err := hasAnnotationPermission(ctx, &task, evergreen.AnnotationsView.Value)
 			assert.NoError(t, err)
 			assert.True(t, hasAccess)
 		},
-		"DoesNotOwnPatchAndDoesNotHaveAnnotationPermission": func(ctx context.Context, t *testing.T) {
+		"FalseWhenUserDoesNotHaveRequiredLevelAndIsNotPatchOwner": func(ctx context.Context, t *testing.T) {
 			task := restModel.APITask{ProjectId: utility.ToStringPtr("project_id_belonging_to_user"), Version: utility.ToStringPtr("random_version_id")}
 			hasAccess, err := hasAnnotationPermission(ctx, &task, evergreen.AnnotationsModify.Value)
 			assert.NoError(t, err)
 			assert.False(t, hasAccess)
 		},
-		"OwnsPatchButDoesNotHaveAnnotationPermission": func(ctx context.Context, t *testing.T) {
+		"TrueWhenUserIsPatchOwnerButDoesNotHaveRequiredLevel": func(ctx context.Context, t *testing.T) {
 			versionAndPatchID := bson.NewObjectId()
 			patch := patch.Patch{
 				Id:     versionAndPatchID,
