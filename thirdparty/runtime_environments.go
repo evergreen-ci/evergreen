@@ -20,7 +20,7 @@ type RuntimeEnvironmentsClient struct {
 // TODO: Remove nolint:unused when DEVPROD-6983 is resolved.
 //
 //nolint:unused
-func getImageNames(ctx context.Context, c *RuntimeEnvironmentsClient) ([]string, error) {
+func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string, error) {
 	apiURL := fmt.Sprintf("%s/rest/api/v1/imageList", c.BaseURL)
 	request, err := http.NewRequest(http.MethodGet, apiURL, nil)
 	if err != nil {
