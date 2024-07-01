@@ -99,31 +99,31 @@ func (as *APIServer) getAuthor(data patchData, dbUser *user.DBUser, projectId, p
 }
 
 type patchData struct {
-	Description         string             `json:"desc"`
-	Path                string             `json:"path"`
-	Project             string             `json:"project"`
-	BackportInfo        patch.BackportInfo `json:"backport_info"`
-	GitMetadata         *patch.GitMetadata `json:"git_metadata"`
-	PatchBytes          []byte             `json:"patch_bytes"`
-	Githash             string             `json:"githash"`
-	Parameters          []patch.Parameter  `json:"parameters"`
-	Variants            []string           `json:"buildvariants_new"`
-	Tasks               []string           `json:"tasks"`
-	RegexVariants       []string           `json:"regex_buildvariants"`
-	RegexTasks          []string           `json:"regex_tasks"`
-	SyncBuildVariants   []string           `json:"sync_build_variants"`
-	SyncTasks           []string           `json:"sync_tasks"`
-	SyncStatuses        []string           `json:"sync_statuses"`
-	SyncTimeout         time.Duration      `json:"sync_timeout"`
-	Finalize            bool               `json:"finalize"`
-	TriggerAliases      []string           `json:"trigger_aliases"`
-	Alias               string             `json:"alias"`
-	RepeatFailed        bool               `json:"repeat_failed"`
-	RepeatDefinition    bool               `json:"reuse_definition"`
-	RepeatPatchId       string             `json:"repeat_patch_id"`
-	GithubAuthor        string             `json:"github_author"`
-	PatchAuthor         string             `json:"patch_author"`
-	LocalModuleIncludes []patch.Include    `json:"local_module_includes"`
+	Description         string                     `json:"desc"`
+	Path                string                     `json:"path"`
+	Project             string                     `json:"project"`
+	BackportInfo        patch.BackportInfo         `json:"backport_info"`
+	GitMetadata         *patch.GitMetadata         `json:"git_metadata"`
+	PatchBytes          []byte                     `json:"patch_bytes"`
+	Githash             string                     `json:"githash"`
+	Parameters          []patch.Parameter          `json:"parameters"`
+	Variants            []string                   `json:"buildvariants_new"`
+	Tasks               []string                   `json:"tasks"`
+	RegexVariants       []string                   `json:"regex_buildvariants"`
+	RegexTasks          []string                   `json:"regex_tasks"`
+	SyncBuildVariants   []string                   `json:"sync_build_variants"`
+	SyncTasks           []string                   `json:"sync_tasks"`
+	SyncStatuses        []string                   `json:"sync_statuses"`
+	SyncTimeout         time.Duration              `json:"sync_timeout"`
+	Finalize            bool                       `json:"finalize"`
+	TriggerAliases      []string                   `json:"trigger_aliases"`
+	Alias               string                     `json:"alias"`
+	RepeatFailed        bool                       `json:"repeat_failed"`
+	RepeatDefinition    bool                       `json:"reuse_definition"`
+	RepeatPatchId       string                     `json:"repeat_patch_id"`
+	GithubAuthor        string                     `json:"github_author"`
+	PatchAuthor         string                     `json:"patch_author"`
+	LocalModuleIncludes []patch.LocalModuleInclude `json:"local_module_includes"`
 }
 
 // submitPatch creates the Patch document, adds the patched project config to it,

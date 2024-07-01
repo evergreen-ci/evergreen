@@ -92,7 +92,7 @@ type patchParams struct {
 	RepeatPatchId       string
 	GithubAuthor        string
 	PatchAuthor         string
-	LocalModuleIncludes []patch.Include
+	LocalModuleIncludes []patch.LocalModuleInclude
 }
 
 type patchSubmission struct {
@@ -120,7 +120,7 @@ type patchSubmission struct {
 	repeatPatchId       string
 	githubAuthor        string
 	patchAuthor         string
-	localModuleIncludes []patch.Include
+	localModuleIncludes []patch.LocalModuleInclude
 }
 
 func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch.Patch, error) {

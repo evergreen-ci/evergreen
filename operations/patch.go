@@ -494,7 +494,7 @@ func PatchFile() cli.Command {
 }
 
 // getLocalModuleIncludes reads and saves files module includes from the local project config.
-func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, remotePath string) ([]patch.Include, error) {
+func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, remotePath string) ([]patch.LocalModuleInclude, error) {
 	var yml []byte
 	var err error
 	if path != "" {
@@ -511,7 +511,7 @@ func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, rem
 		return nil, errors.Wrap(yamlErr, "unmarshalling parser project from local project config")
 	}
 
-	moduleIncludes := []patch.Include{}
+	moduleIncludes := []patch.LocalModuleInclude{}
 	for _, include := range p.Include {
 		if include.Module == "" {
 			continue
@@ -527,7 +527,7 @@ func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, rem
 		if err != nil {
 			return nil, errors.Wrapf(err, "reading local module include file '%s'", filePath)
 		}
-		patchedInclude := patch.Include{
+		patchedInclude := patch.LocalModuleInclude{
 			Module:      include.Module,
 			FileName:    include.FileName,
 			FileContent: fileContents,

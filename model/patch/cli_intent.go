@@ -99,7 +99,7 @@ type cliIntent struct {
 	RepeatPatchId string `bson:"repeat_patch_id"`
 
 	// LocalModuleIncludes is only used to include local module changes
-	LocalModuleIncludes []Include `bson:"local_module_includes,omitempty"`
+	LocalModuleIncludes []LocalModuleInclude `bson:"-"`
 }
 
 // BSON fields for the patches
@@ -246,7 +246,7 @@ type CLIIntentParams struct {
 	RepeatFailed        bool
 	RepeatPatchId       string
 	SyncParams          SyncAtEndOptions
-	LocalModuleIncludes []Include
+	LocalModuleIncludes []LocalModuleInclude
 }
 
 func NewCliIntent(params CLIIntentParams) (Intent, error) {

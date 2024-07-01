@@ -839,6 +839,57 @@ tasks:
 	assert.Equal("", cr.PathToOutputs)
 }
 
+func TestLocalModuleIncludes(t *testing.T) {
+	assert := assert.New(t)
+	yml := `
+modules:
+- name: "something_different"
+  repo: "evergreen"
+  owner: "evergreen-ci"
+  prefix: "src/third_party"
+  branch: "master"
+include:
+- filename: "include.yml"
+  module: "something_different"
+buildvariants:
+- name: "v1"
+  modules:
+  - something_different
+  tasks:
+  - name: "t1"
+    create_check_run:
+      path_to_outputs: "path"
+tasks:
+- name: t1
+- name: t2
+`
+
+	opts := &GetProjectOpts{
+		LocalModuleIncludes: []patch.LocalModuleInclude{
+			{
+				Module:   "something_different",
+				FileName: "include.yml",
+				FileContent: []byte(`
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t2"
+`),
+			},
+		},
+	}
+
+	proj := &Project{}
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), opts, "id", proj)
+	assert.NotNil(proj)
+	assert.Nil(err)
+
+	require.NotNil(t, proj)
+	require.Len(t, proj.BuildVariants, 1)
+	assert.Len(proj.BuildVariants[0].Tasks, 2)
+}
+
 func TestParseModule(t *testing.T) {
 	assert := assert.New(t)
 	yml := `

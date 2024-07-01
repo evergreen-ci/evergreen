@@ -136,7 +136,7 @@ type GitMetadata struct {
 	GitVersion string `bson:"git_version,omitempty" json:"git_version,omitempty"`
 }
 
-type Include struct {
+type LocalModuleInclude struct {
 	FileName string `yaml:"filename,omitempty" bson:"filename,omitempty" json:"filename,omitempty"`
 	Module   string `yaml:"module,omitempty" bson:"module,omitempty" json:"module,omitempty"`
 
@@ -192,7 +192,7 @@ type Patch struct {
 	// the merged patch is based off of, if applicable.
 	MergedFrom string `bson:"merged_from,omitempty"`
 	// LocalModuleIncludes is only used for CLI patches to store local module changes
-	LocalModuleIncludes []Include `bson:"local_module_includes,omitempty"`
+	LocalModuleIncludes []LocalModuleInclude `bson:"-"`
 }
 
 func (p *Patch) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(p) }

@@ -637,15 +637,16 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 	// modified concurrently.  Note, however, that Ref and PatchOpts are
 	// themselves pointers, so should not be modified.
 	localOpts := &GetProjectOpts{
-		Ref:             projectOpts.Ref,
-		PatchOpts:       projectOpts.PatchOpts,
-		LocalModules:    projectOpts.LocalModules,
-		RemotePath:      include.FileName,
-		Revision:        projectOpts.Revision,
-		Token:           projectOpts.Token,
-		ReadFileFrom:    projectOpts.ReadFileFrom,
-		Identifier:      identifier,
-		UnmarshalStrict: projectOpts.UnmarshalStrict,
+		Ref:                 projectOpts.Ref,
+		PatchOpts:           projectOpts.PatchOpts,
+		LocalModules:        projectOpts.LocalModules,
+		RemotePath:          include.FileName,
+		Revision:            projectOpts.Revision,
+		Token:               projectOpts.Token,
+		ReadFileFrom:        projectOpts.ReadFileFrom,
+		Identifier:          identifier,
+		UnmarshalStrict:     projectOpts.UnmarshalStrict,
+		LocalModuleIncludes: projectOpts.LocalModuleIncludes,
 	}
 	localOpts.UpdateReadFileFrom(include.FileName)
 
@@ -790,7 +791,7 @@ type GetProjectOpts struct {
 	ReadFileFrom        string
 	Identifier          string
 	UnmarshalStrict     bool
-	LocalModuleIncludes []patch.Include
+	LocalModuleIncludes []patch.LocalModuleInclude
 }
 
 type PatchOpts struct {

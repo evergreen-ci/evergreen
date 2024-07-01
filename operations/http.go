@@ -523,31 +523,31 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	// Because marshalling a byte slice to JSON will base64 encode it, the patch will be sent over the wire in base64
 	// and non utf-8 characters will be preserved.
 	data := struct {
-		Description         string             `json:"desc"`
-		Project             string             `json:"project"`
-		Path                string             `json:"path"`
-		PatchBytes          []byte             `json:"patch_bytes"`
-		Githash             string             `json:"githash"`
-		Alias               string             `json:"alias"`
-		Variants            []string           `json:"buildvariants_new"`
-		Tasks               []string           `json:"tasks"`
-		RegexVariants       []string           `json:"regex_buildvariants"`
-		RegexTasks          []string           `json:"regex_tasks"`
-		SyncTasks           []string           `json:"sync_tasks"`
-		SyncBuildVariants   []string           `json:"sync_build_variants"`
-		SyncStatuses        []string           `json:"sync_statuses"`
-		SyncTimeout         time.Duration      `json:"sync_timeout"`
-		Finalize            bool               `json:"finalize"`
-		BackportInfo        patch.BackportInfo `json:"backport_info"`
-		TriggerAliases      []string           `json:"trigger_aliases"`
-		Parameters          []patch.Parameter  `json:"parameters"`
-		GitMetadata         patch.GitMetadata  `json:"git_metadata"`
-		RepeatDefinition    bool               `json:"reuse_definition"`
-		RepeatFailed        bool               `json:"repeat_failed"`
-		RepeatPatchId       string             `json:"repeat_patch_id"`
-		GithubAuthor        string             `json:"github_author"`
-		PatchAuthor         string             `json:"patch_author"`
-		LocalModuleIncludes []patch.Include    `json:"local_module_includes"`
+		Description         string                     `json:"desc"`
+		Project             string                     `json:"project"`
+		Path                string                     `json:"path"`
+		PatchBytes          []byte                     `json:"patch_bytes"`
+		Githash             string                     `json:"githash"`
+		Alias               string                     `json:"alias"`
+		Variants            []string                   `json:"buildvariants_new"`
+		Tasks               []string                   `json:"tasks"`
+		RegexVariants       []string                   `json:"regex_buildvariants"`
+		RegexTasks          []string                   `json:"regex_tasks"`
+		SyncTasks           []string                   `json:"sync_tasks"`
+		SyncBuildVariants   []string                   `json:"sync_build_variants"`
+		SyncStatuses        []string                   `json:"sync_statuses"`
+		SyncTimeout         time.Duration              `json:"sync_timeout"`
+		Finalize            bool                       `json:"finalize"`
+		BackportInfo        patch.BackportInfo         `json:"backport_info"`
+		TriggerAliases      []string                   `json:"trigger_aliases"`
+		Parameters          []patch.Parameter          `json:"parameters"`
+		GitMetadata         patch.GitMetadata          `json:"git_metadata"`
+		RepeatDefinition    bool                       `json:"reuse_definition"`
+		RepeatFailed        bool                       `json:"repeat_failed"`
+		RepeatPatchId       string                     `json:"repeat_patch_id"`
+		GithubAuthor        string                     `json:"github_author"`
+		PatchAuthor         string                     `json:"patch_author"`
+		LocalModuleIncludes []patch.LocalModuleInclude `json:"local_module_includes"`
 	}{
 		Description:         incomingPatch.description,
 		Project:             incomingPatch.projectName,
