@@ -99,7 +99,7 @@ type cliIntent struct {
 	RepeatPatchId string `bson:"repeat_patch_id"`
 
 	// LocalModuleIncludes is only used to include local module changes
-	LocalModuleIncludes []LocalModuleInclude `bson:"-"`
+	LocalModuleIncludes []LocalModuleInclude `bson:"local_module_includes,omitempty"`
 }
 
 // BSON fields for the patches

@@ -191,7 +191,8 @@ type Patch struct {
 	// MergedFrom is populated with the patch id of the existing patch
 	// the merged patch is based off of, if applicable.
 	MergedFrom string `bson:"merged_from,omitempty"`
-	// LocalModuleIncludes is only used for CLI patches to store local module changes
+	// LocalModuleIncludes is only used for CLI patches to store local module changes.
+	// Not stored in the database since the DB patch should already include changes from this module.
 	LocalModuleIncludes []LocalModuleInclude `bson:"-"`
 }
 
@@ -665,7 +666,6 @@ func (p *Patch) SetFinalized(ctx context.Context, versionId string) error {
 	p.Activated = true
 	p.ProjectStorageMethod = ""
 	p.PatchedProjectConfig = ""
-	p.LocalModuleIncludes = nil
 
 	return nil
 }
