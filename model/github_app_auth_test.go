@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,6 +33,26 @@ func TestFindOneGithubAppAuth(t *testing.T) {
 	assert.Equal(key, githubAppAuthFromDB.PrivateKey)
 }
 
+func TestGetGitHubAppID(t *testing.T) {
+	assert := assert.New(t)
+
+	require.NoError(t, db.Clear(GitHubAppAuthCollection),
+		"Error clearing collection")
+
+	key := []byte("I'm private!")
+	githubAppAuth := evergreen.GithubAppAuth{
+		Id:         "mongodb",
+		AppID:      1234,
+		PrivateKey: key,
+	}
+	err := UpsertGithubAppAuth(&githubAppAuth)
+	require.NoError(t, err)
+
+	appIDFromDB, err := GetGitHubAppID("mongodb")
+	require.NoError(t, err)
+	assert.Equal(int64(1234), utility.FromInt64Ptr(appIDFromDB))
+}
+
 func TestRemoveGithubAppAuth(t *testing.T) {
 	assert := assert.New(t)
 	require.NoError(t, db.Clear(GitHubAppAuthCollection),
@@ -46,15 +67,14 @@ func TestRemoveGithubAppAuth(t *testing.T) {
 	err := UpsertGithubAppAuth(&githubAppAuth)
 	require.NoError(t, err)
 
-	hasGithubAppAuth, err := HasGithubAppAuth("mongodb")
+	githubAppAuthFromDB, err := FindOneGithubAppAuth("mongodb")
 	require.NoError(t, err)
-	assert.True(hasGithubAppAuth)
+	assert.NotNil(githubAppAuthFromDB)
 
 	err = RemoveGithubAppAuth(githubAppAuth.Id)
 	require.NoError(t, err)
 
-	hasGithubAppAuth, err = HasGithubAppAuth("mongodb")
+	githubAppAuthFromDB, err = FindOneGithubAppAuth("mongodb")
 	require.NoError(t, err)
-	assert.False(hasGithubAppAuth)
-
+	assert.Nil(githubAppAuthFromDB)
 }

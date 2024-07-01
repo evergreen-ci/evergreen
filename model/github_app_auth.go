@@ -21,26 +21,30 @@ const (
 // FindOneGithubAppAuth finds the github app auth for the given project id
 func FindOneGithubAppAuth(projectId string) (*evergreen.GithubAppAuth, error) {
 	githubAppAuth := &evergreen.GithubAppAuth{}
-	q := db.Query(bson.M{ghAuthIdKey: projectId})
+	err := db.FindOneQ(GitHubAppAuthCollection, byGithubAppAuthID(projectId), githubAppAuth)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return githubAppAuth, err
+}
+
+// byGithubAppAuthID returns a query that finds a github app auth by the given identifier
+// corresponding to the project id
+func byGithubAppAuthID(projectId string) db.Q {
+	return db.Query(bson.M{ghAuthIdKey: projectId})
+}
+
+// GetGitHubAppID returns the app id for the given project id
+func GetGitHubAppID(projectId string) (*int64, error) {
+	githubAppAuth := &evergreen.GithubAppAuth{}
+
+	q := byGithubAppAuthID(projectId).WithFields(ghAuthAppIdKey)
 	err := db.FindOneQ(GitHubAppAuthCollection, q, githubAppAuth)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
-	if err != nil {
-		return nil, err
-	}
-	return githubAppAuth, nil
-}
 
-// HasGithubAppAuth checks if the github app auth for the given project id exists
-func HasGithubAppAuth(projectId string) (bool, error) {
-	var app *evergreen.GithubAppAuth
-	var err error
-	if app, err = FindOneGithubAppAuth(projectId); err != nil {
-		return false, err
-	}
-
-	return app != nil, nil
+	return &githubAppAuth.AppID, err
 }
 
 // UpsertGithubAppAuth inserts or updates the app auth for the given project id in the database

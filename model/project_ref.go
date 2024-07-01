@@ -1986,18 +1986,21 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 		return nil, errors.Wrapf(err, "finding subscription for project '%s'", p.Id)
 	}
 
-	hasGithubAppAuth, err := HasGithubAppAuth(p.Id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding hadGithubApp for project '%s'", p.Id)
-	}
-
 	projectSettingsEvent := ProjectSettings{
 		ProjectRef:         *p,
 		GithubHooksEnabled: hasEvergreenAppInstalled,
 		Vars:               *projectVars,
 		Aliases:            projectAliases,
 		Subscriptions:      subscriptions,
-		HasGitHubApp:       hasGithubAppAuth,
+	}
+
+	githubAppID, err := GetGitHubAppID(p.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding github app for project '%s'", p.Id)
+	}
+	if githubAppID != nil {
+		projectSettingsEvent.GitHubAppID = *githubAppID
+
 	}
 	return &projectSettingsEvent, nil
 }
