@@ -13,8 +13,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -2967,9 +2965,6 @@ func getGenerateTasksEstimation(ctx context.Context, project, buildVariant, disp
 
 // getLatestTask retrieves the latest task from all the distros corresponding to the imageID
 func getLatestTask(ctx context.Context, imageID string) (*Task, error) {
-	grip.Debug(message.Fields{
-		"imageID": imageID,
-	})
 	distros, err := distro.GetDistrosForImage(ctx, imageID)
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieving distros from imageID")
@@ -2978,9 +2973,6 @@ func getLatestTask(ctx context.Context, imageID string) (*Task, error) {
 	for i, d := range distros {
 		distroNames[i] = d.Id
 	}
-	grip.Debug(message.Fields{
-		"distrosNames": distroNames,
-	})
 	if len(distroNames) == 0 {
 		return nil, errors.New("No distros found for image.")
 	}
