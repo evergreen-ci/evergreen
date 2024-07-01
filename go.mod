@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/99designs/gqlgen v0.17.49
 	github.com/PuerkitoBio/rehttp v1.4.0
-	github.com/aws/aws-sdk-go v1.54.6
+	github.com/aws/aws-sdk-go v1.54.11
 	github.com/aws/aws-sdk-go-v2 v1.30.1
 	github.com/aws/aws-sdk-go-v2/config v1.27.23
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.23 // indirect
@@ -52,7 +52,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli v1.22.15
 	github.com/vektah/gqlparser/v2 v2.5.16
-	go.mongodb.org/mongo-driver v1.15.1
+	go.mongodb.org/mongo-driver v1.16.0
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.21.1
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.21.1
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.46.1
@@ -150,7 +150,7 @@ require (
 	github.com/mattn/go-xmpp v0.0.1 // indirect
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809 // indirect
-	github.com/montanaflynn/stats v0.0.0-20180911141734-db72e6cae808 // indirect
+	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	github.com/okta/okta-jwt-verifier-golang v1.3.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
