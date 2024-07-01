@@ -1631,7 +1631,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 			Message:    fmt.Sprintf("project ref '%s' not found", t.Project),
 		})
 	}
-	requesterPermissionGroup := p.GetGitHubPermissionGroup(t.Requester)
+	requesterPermissionGroup, _ := p.GetGitHubPermissionGroup(t.Requester)
 	intersection, err := requesterPermissionGroup.Intersection(model.GitHubDynamicTokenPermissionGroup{
 		Permissions:    h.permissions,
 		AllPermissions: h.allPermissions,

@@ -92,7 +92,7 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 		return errors.Wrap(err, "creating github dynamic access token")
 	}
 
-	conf.NewExpansions.Put(r.ExpansionName, token)
+	conf.NewExpansions.PutAndRedact(r.ExpansionName, token)
 
 	conf.CommandCleanups = append(conf.CommandCleanups, internal.CommandCleanup{
 		Command: r.FullDisplayName(),
