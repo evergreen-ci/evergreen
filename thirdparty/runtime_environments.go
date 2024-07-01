@@ -35,23 +35,23 @@ func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string
 	request = request.WithContext(ctx)
 	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add("Api-key", c.APIKey)
-	result, err := c.Client.Do(request)
+	resp, err := c.Client.Do(request)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	if result.StatusCode != http.StatusOK {
-		msg, _ := io.ReadAll(result.Body)
-		return nil, errors.Errorf("HTTP request returned unexpected status `%v`: %v", result.Status, string(msg))
+	if resp.StatusCode != http.StatusOK {
+		msg, _ := io.ReadAll(resp.Body)
+		return nil, errors.Errorf("HTTP request returned unexpected status `%s`: %s", resp.Status, string(msg))
 	}
 	var images []string
-
-	if err := gimlet.GetJSON(result.Body, images); err != nil {
+	if err := gimlet.GetJSON(resp.Body, &images); err != nil {
 		return nil, errors.Wrap(err, "decoding http body")
 	}
+	defer resp.Body.Close()
 	if images == nil {
 		return nil, errors.New("No corresponding images")
 	}
-	var filteredImages []string // filter out empty values
+	var filteredImages []string
 	for _, img := range images {
 		if img != "" {
 			filteredImages = append(filteredImages, img)
