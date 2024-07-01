@@ -163,6 +163,7 @@ func (s *AgentSuite) SetupTest() {
 			return nil
 		},
 	})
+	s.ranCommandCleanups = false
 
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
