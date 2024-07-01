@@ -806,7 +806,7 @@ buildvariants:
       decompress: tar zxvf
     tasks:
       - name: ".smoke"
-      - name: ".test"
+      - name: ".test !.skip-container"
       - name: "js-test"
       - name: ".linter !.skip-container"
 
