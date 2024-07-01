@@ -508,7 +508,7 @@ tasks:
     tags: ["db", "test"]
     name: test-taskoutput
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["db", "test", "skip-container"]
     name: test-thirdparty
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]

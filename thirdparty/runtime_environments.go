@@ -25,16 +25,15 @@ func NewRuntimeEnvironmentsClient(baseURL string, apiKey string) *RuntimeEnviron
 	return &c
 }
 
-// getImageNames returns a list of strings containing the names of all images from the runtime environments api
+// The function getImageNames returns a list of strings containing the names of all images from the runtime environments API.
 func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string, error) {
 	apiURL := fmt.Sprintf("%s/rest/api/v1/imageList", c.BaseURL)
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return nil, err
 	}
-	request = request.WithContext(ctx)
 	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-key", c.APIKey)
+	request.Header.Add("Api-Key", c.APIKey)
 	resp, err := c.Client.Do(request)
 	if err != nil {
 		return nil, errors.WithStack(err)
