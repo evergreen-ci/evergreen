@@ -290,7 +290,7 @@ func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *event.WebhookSubscriber:
 		s.URL = utility.ToStringPtr(v.URL)
-		s.Secret = utility.ToStringPtr(string(v.Secret))
+		s.Secret = utility.ToStringPtr(evergreen.RedactedWebhookSecretsValue)
 		s.Headers = []APIWebhookHeader{}
 		s.Retries = v.Retries
 		s.MinDelayMS = v.MinDelayMS
@@ -311,7 +311,7 @@ func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
 func (s *APIWebhookSubscriber) ToService() event.WebhookSubscriber {
 	sub := event.WebhookSubscriber{
 		URL:        utility.FromStringPtr(s.URL),
-		Secret:     []byte(evergreen.RedactedWebhookSecretsValue),
+		Secret:     []byte(utility.FromStringPtr(s.Secret)),
 		Headers:    []event.WebhookHeader{},
 		Retries:    s.Retries,
 		MinDelayMS: s.MinDelayMS,
