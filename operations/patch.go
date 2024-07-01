@@ -145,10 +145,10 @@ func Patch() cli.Command {
 				RepeatPatchId:     c.String(repeatPatchIdFlag),
 				RepeatDefinition:  c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
 				RepeatFailed:      c.Bool(repeatFailedDefinitionFlag),
+				IncludeModules:    c.Bool(includeModulesFlag),
 			}
 
 			var err error
-			includeModules := c.Bool(includeModulesFlag)
 			shouldFinalize := c.Bool(patchFinalizeFlagName)
 			paramsPairs := c.StringSlice(parameterFlagName)
 			params.Parameters, err = getParametersFromInput(paramsPairs)
@@ -227,7 +227,7 @@ func Patch() cli.Command {
 				return err
 			}
 
-			if includeModules {
+			if params.IncludeModules {
 				localModuleIncludes, err := getLocalModuleIncludes(params, conf, params.Path, ref.RemotePath)
 				if err != nil {
 					return err
@@ -240,7 +240,7 @@ func Patch() cli.Command {
 				return err
 			}
 			patchId := newPatch.Id.Hex()
-			if includeModules {
+			if params.IncludeModules {
 				proj, err := rc.GetPatchedConfig(patchId)
 				if err != nil {
 					return err

@@ -92,6 +92,7 @@ type patchParams struct {
 	RepeatPatchId       string
 	GithubAuthor        string
 	PatchAuthor         string
+	IncludeModules      bool
 	LocalModuleIncludes []patch.LocalModuleInclude
 }
 
