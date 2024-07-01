@@ -25,7 +25,7 @@ func NewRuntimeEnvironmentsClient(baseURL string, apiKey string) *RuntimeEnviron
 	return &c
 }
 
-// The function getImageNames returns a list of strings containing the names of all images from the runtime environments API.
+// getImageNames returns a list of strings containing the names of all images from the runtime environments API.
 func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string, error) {
 	apiURL := fmt.Sprintf("%s/rest/api/v1/imageList", c.BaseURL)
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
@@ -38,16 +38,16 @@ func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
-		return nil, errors.Errorf("HTTP request returned unexpected status `%s`: %s", resp.Status, string(msg))
+		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
 	}
 	var images []string
 	if err := gimlet.GetJSON(resp.Body, &images); err != nil {
 		return nil, errors.Wrap(err, "decoding http body")
 	}
-	defer resp.Body.Close()
-	if images == nil {
+	if len(images) == 0 {
 		return nil, errors.New("No corresponding images")
 	}
 	var filteredImages []string
