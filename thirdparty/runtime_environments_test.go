@@ -9,12 +9,13 @@ import (
 )
 
 func TestGetImageNames(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config, "TestGetImageNames")
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	result, err := c.getImageNames(ctx)
 	assert.NoError(err)
 	assert.NotEmpty(result)
