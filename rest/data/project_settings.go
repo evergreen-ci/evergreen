@@ -432,7 +432,9 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				}
 			}
 			if previousSubscription == nil {
-				return nil, errors.Errorf("could not find subscription with ID '%s'", utility.FromStringPtr(subscription.ID))
+				// If there are no previous subscriptions, we should just add the new subscription.
+				subscriptionChanges = append(subscriptionChanges, subscription)
+				continue
 			}
 			if webhook.Secret != nil && *webhook.Secret == evergreen.RedactedWebhookSecretsValue {
 				previousSecret := string(previousSubscription.Secret)
