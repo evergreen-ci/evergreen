@@ -761,7 +761,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 			err = a.runCommandsInBlock(ctx, tc, *setupGroup)
 			// Setup groups run their cleanup commands immediately after
 			// running their commands.
-			defer tc.taskConfig.RunCleanupCommands(ctx, tc.logger)
+			tc.taskConfig.RunCleanupCommands(ctx, tc.logger)
 			if err != nil && setupGroup.canFailTask {
 				return err
 			}
