@@ -641,7 +641,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 
 			webhookSubscriber := restModel.APIWebhookSubscriber{
 				URL:    utility.ToStringPtr("http://example.com"),
-				Secret: utility.ToStringPtr("super_secret"),
+				Secret: utility.ToStringPtr("super_secret_2"),
 				Headers: []restModel.APIWebhookHeader{
 					{
 						Key:   utility.ToStringPtr("Key"),
@@ -649,7 +649,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 					},
 					{
 						Key:   utility.ToStringPtr("Authorization"),
-						Value: utility.ToStringPtr(evergreen.RedactedWebhookAuthorizationHeaderValue),
+						Value: utility.ToStringPtr(evergreen.RedactedWebhookSecretsValue),
 					},
 				},
 			}
@@ -684,13 +684,14 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			// Check if webhooks Authorization header is kept as before.
 			webhookAPI, ok := subsFromDb[1].Subscriber.Target.(*event.WebhookSubscriber)
 			require.True(t, ok)
-			assert.Equal(t, "A new value", webhookAPI.Headers[0].Value)
-			assert.Equal(t, "a_very_super_secret", webhookAPI.Headers[1].Value)
+			assert.Equal(t, "A new value", webhookAPI.Headers[0].Value, "webhook headers should persist after saving")
+			assert.Equal(t, "a_very_super_secret", webhookAPI.Headers[1].Value, "Authorization header should not be changed when saving as redacted value")
+			assert.Equal(t, "super_secret_2", string(webhookAPI.Secret), "webhook secret should be updated to the new value")
 
 			// Update the Authorization header to a new value and delete the first subscription.
 			webhookSubscriber = restModel.APIWebhookSubscriber{
 				URL:    utility.ToStringPtr("http://example.com"),
-				Secret: utility.ToStringPtr("super_secret"),
+				Secret: utility.ToStringPtr(evergreen.RedactedWebhookSecretsValue),
 				Headers: []restModel.APIWebhookHeader{
 					{
 						Key:   utility.ToStringPtr("Key"),
@@ -732,8 +733,9 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			// Check if webhooks Authorization header is the new value.
 			webhookAPI, ok = subsFromDb[0].Subscriber.Target.(*event.WebhookSubscriber)
 			require.True(t, ok)
-			assert.Equal(t, "A new value", webhookAPI.Headers[0].Value)
-			assert.Equal(t, "a_different_secret", webhookAPI.Headers[1].Value)
+			assert.Equal(t, "A new value", webhookAPI.Headers[0].Value, "webhook headers should persist after saving")
+			assert.Equal(t, "a_different_secret", webhookAPI.Headers[1].Value, "Authorization header should be updated to the new value")
+			assert.Equal(t, "super_secret_2", string(webhookAPI.Secret), "webhook secret should not be changed when saving as redacted value")
 		},
 		model.ProjectPageTriggersSection: func(t *testing.T, ref model.ProjectRef) {
 			upstreamProject := model.ProjectRef{
@@ -974,7 +976,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				Type: event.EvergreenWebhookSubscriberType,
 				Target: &event.WebhookSubscriber{
 					URL:    "http://example.com",
-					Secret: []byte("super_secret"),
+					Secret: []byte("super_secret_1"),
 					Headers: []event.WebhookHeader{
 						{
 							Key:   "Key",

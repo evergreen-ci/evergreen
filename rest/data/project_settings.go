@@ -410,8 +410,6 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		modified, err = updateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPageNotificationsSection:
-		// If the webhook's Authoirzation header is the redacted value, we should exclude it from the updates
-		// to keep the existing value.
 		subscriptionChanges := []restModel.APISubscription{}
 		for _, subscription := range changes.Subscriptions {
 			webhook := subscription.Subscriber.WebhookSubscriber
@@ -419,20 +417,31 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				subscriptionChanges = append(subscriptionChanges, subscription)
 				continue
 			}
+			// If this subscription is a webhook, we should redact the webhook secret and Authorization header.
+			// This means when the user changes other values, we should not update the secret or Authorization header if
+			// they are still set to the redacted value and instead we should use the previous value(s).
+			var previousSubscription *event.WebhookSubscriber
+			for _, beforeSubscription := range before.Subscriptions {
+				if beforeSubscription.ID == utility.FromStringPtr(subscription.ID) {
+					var ok bool
+					previousSubscription, ok = beforeSubscription.Subscriber.Target.(*event.WebhookSubscriber)
+					if !ok {
+						return nil, errors.Errorf("could not find subscription with ID '%s'", utility.FromStringPtr(subscription.ID))
+					}
+					break
+				}
+			}
+			if previousSubscription == nil {
+				return nil, errors.Errorf("could not find subscription with ID '%s'", utility.FromStringPtr(subscription.ID))
+			}
+			if webhook.Secret != nil && *webhook.Secret == evergreen.RedactedWebhookSecretsValue {
+				previousSecret := string(previousSubscription.Secret)
+				webhook.Secret = &previousSecret
+			}
 			newHeaders := []restModel.APIWebhookHeader{}
 			for _, header := range webhook.Headers {
-				if utility.FromStringPtr(header.Key) == "Authorization" && utility.FromStringPtr(header.Value) == evergreen.RedactedWebhookAuthorizationHeaderValue {
+				if utility.FromStringPtr(header.Key) == "Authorization" && utility.FromStringPtr(header.Value) == evergreen.RedactedWebhookSecretsValue {
 					// Do not update the value if redacted Authorization header in changes.
-					var previousSubscription *event.WebhookSubscriber
-					for _, beforeSubscription := range before.Subscriptions {
-						if beforeSubscription.ID == utility.FromStringPtr(subscription.ID) {
-							previousSubscription, _ = beforeSubscription.Subscriber.Target.(*event.WebhookSubscriber)
-							break
-						}
-					}
-					if previousSubscription == nil {
-						return nil, errors.Errorf("could not update subscription with ID '%s'", utility.FromStringPtr(subscription.ID))
-					}
 					var previousHeaderValue string
 					for _, h := range previousSubscription.Headers {
 						if h.Key == "Authorization" {
