@@ -2,11 +2,11 @@ package thirdparty
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -14,6 +14,15 @@ type RuntimeEnvironmentsClient struct {
 	Client  *http.Client
 	BaseURL string
 	APIKey  string
+}
+
+func NewRuntimeEnvironmentsClient(baseURL string, apiKey string) *RuntimeEnvironmentsClient {
+	c := RuntimeEnvironmentsClient{
+		Client:  &http.Client{},
+		BaseURL: baseURL,
+		APIKey:  apiKey,
+	}
+	return &c
 }
 
 // getImageNames returns a list of strings containing the names of all images from the runtime environments api
@@ -35,8 +44,12 @@ func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string
 		return nil, errors.Errorf("HTTP request returned unexpected status `%v`: %v", result.Status, string(msg))
 	}
 	var images []string
-	if err := json.NewDecoder(result.Body).Decode(&images); err != nil {
-		return nil, errors.Wrap(err, "Unable to decode http body")
+
+	if err := gimlet.GetJSON(result.Body, images); err != nil {
+		return nil, errors.Wrap(err, "decoding http body")
+	}
+	if images == nil {
+		return nil, errors.New("No corresponding images")
 	}
 	var filteredImages []string // filter out empty values
 	for _, img := range images {
