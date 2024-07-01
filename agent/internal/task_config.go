@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -61,7 +62,11 @@ type TaskConfig struct {
 
 // CommandCleanups is a list of cleanup functions that are added dynamically
 // during task execution. These functions are called when the task is
-// finished. They are then purged from the list.
+// finished and then cleared from the list. A 'task' in this context is what
+// is gurenteed** to run for every task under normal circumstances. For example,
+// 'setup task + main commands + teardown task' or 'pre, main, post'. For
+// setup group, teardown group, and timeout commands, the cleanup functions are
+// always ran and cleared after their respective commands are finished.
 type CommandCleanup struct {
 	// Command is the name of the command from (base).FullDisplayName().
 	Command string
@@ -77,6 +82,19 @@ func (c CommandCleanups) RunAll(ctx context.Context) error {
 		catcher.Wrapf(cleanup.Run(ctx), "running clean up from command '%s'", cleanup.Command)
 	}
 	return errors.Wrap(catcher.Resolve(), "running command cleanups")
+}
+
+// RunCleanupCommands runs all the cleanup commands that have been added to the
+// task config. This should be called right after setup group, teardown group,
+// and timeout commands. It should also be ran after completing pre + main commands
+// + post or setup task + main commands + teardown task. If the task errors out
+// along one of these stages, the cleanup commands will run then as well.
+func (t *TaskConfig) RunCleanupCommands(ctx context.Context, logger client.LoggerProducer) {
+	err := t.CommandCleanups.RunAll(ctx)
+	if err != nil {
+		logger.Execution().Error(err)
+	}
+	t.CommandCleanups = nil
 }
 
 // Timeout records dynamic timeout information that has been explicitly set by

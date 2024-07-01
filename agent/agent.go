@@ -759,15 +759,10 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 
 		if setupGroup.commands != nil {
 			err = a.runCommandsInBlock(ctx, tc, *setupGroup)
+			// Setup groups run their cleanup commands immediately after
+			// running their commands.
+			defer tc.taskConfig.RunCleanupCommands(ctx, tc.logger)
 			if err != nil && setupGroup.canFailTask {
-				// Run the command cleanups if the setup group fails.
-				// If it passes, the cleanup commands will be run after the task
-				// finishes.
-				cleanupErr := tc.taskConfig.CommandCleanups.RunAll(ctx)
-				if cleanupErr != nil {
-					tc.logger.Execution().Error(cleanupErr)
-				}
-				tc.taskConfig.CommandCleanups = nil
 				return err
 			}
 		}
@@ -783,14 +778,6 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	if pre.commands != nil {
 		err = a.runCommandsInBlock(ctx, tc, *pre)
 		if err != nil && pre.canFailTask {
-			// Run the command cleaups if the pre-task commands fail.
-			// If they pass, the cleanup commands will be run after the task
-			// finishes.
-			cleanupErr := tc.taskConfig.CommandCleanups.RunAll(ctx)
-			if cleanupErr != nil {
-				tc.logger.Execution().Error(cleanupErr)
-			}
-			tc.taskConfig.CommandCleanups = nil
 			return err
 		}
 	}
@@ -845,12 +832,10 @@ func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskConte
 	defer span.End()
 
 	// We run the command cleanups in a defer in case any of the post commands add cleanups.
-	defer func() {
-		if err := tc.taskConfig.CommandCleanups.RunAll(ctx); err != nil {
-			tc.logger.Execution().Error(err)
-		}
-		tc.taskConfig.CommandCleanups = nil
-	}()
+	// This will clean up anything added from commands running in pre, main, or post or the
+	// task group's setup task, main, and teardown task. As well, if the task timed out,
+	// it will run any cleanup commands that were added from it as well.
+	defer tc.taskConfig.RunCleanupCommands(ctx, tc.logger)
 
 	a.killProcs(ctx, tc, false, "post-task or teardown-task commands are starting")
 	defer a.killProcs(ctx, tc, false, "post-task or teardown-task commands are finished")
@@ -901,12 +886,9 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 		a.killProcs(ctx, tc, true, "teardown group commands are starting")
 
 		_ = a.runCommandsInBlock(ctx, tc, *teardownGroup)
-		// Run the command cleanups after running the teardown group commands.
-		err = tc.taskConfig.CommandCleanups.RunAll(ctx)
-		if err != nil {
-			tc.logger.Execution().Error(err)
-		}
-		tc.taskConfig.CommandCleanups = nil
+		// Teardown groups run their cleanup commands immediately after
+		// running their commands.
+		tc.taskConfig.RunCleanupCommands(ctx, tc.logger)
 	}
 }
 
