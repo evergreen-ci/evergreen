@@ -97,6 +97,8 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 	conf.CommandCleanups = append(conf.CommandCleanups, internal.CommandCleanup{
 		Command: r.FullDisplayName(),
 		Run: func(ctx context.Context) error {
+			// We remove the expansion when we revoke since the token is no longer valid.
+			conf.NewExpansions.Remove(r.ExpansionName)
 			return errors.Wrap(comm.RevokeGitHubDynamicAccessToken(ctx, td, token), "revoking token")
 		},
 	})
