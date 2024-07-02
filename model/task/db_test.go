@@ -2227,40 +2227,36 @@ func TestFindGeneratedTasksFromID(t *testing.T) {
 	}
 }
 
-func TestGetLatestTask(t *testing.T) {
+func TestGetLatestTaskFromImage(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	require.NoError(t, db.ClearCollections(Collection, OldCollection))
-	require.NoError(t, db.ClearCollections(distro.Collection))
-	DistroIdOne := "distro-1"
-	DistroIdTwo := "distro-2"
-	DistroIdThree := "distro-3"
+	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
+	imageID := "distro"
+	d1 := &distro.Distro{
+		Id:      "distro-1",
+		ImageID: imageID,
+	}
+	require.NoError(t, d1.Insert(ctx))
+	d2 := &distro.Distro{
+		Id:      "distro-2",
+		ImageID: imageID,
+	}
+	require.NoError(t, d2.Insert(ctx))
+	d3 := &distro.Distro{
+		Id:      "distro-3",
+		ImageID: imageID,
+	}
+	require.NoError(t, d3.Insert(ctx))
 	tasks := []Task{
-		{Id: "t0", FinishTime: time.Date(2023, time.February, 1, 10, 30, 15, 0, time.UTC), DistroId: DistroIdOne},
-		{Id: "t1", FinishTime: time.Date(2023, time.January, 1, 10, 30, 15, 0, time.UTC), DistroId: DistroIdTwo},
-		{Id: "t2", FinishTime: time.Date(2023, time.March, 1, 10, 30, 15, 0, time.UTC), DistroId: DistroIdThree},
+		{Id: "t0", FinishTime: time.Date(2023, time.February, 1, 10, 30, 15, 0, time.UTC), DistroId: d1.Id},
+		{Id: "t1", FinishTime: time.Date(2023, time.January, 1, 10, 30, 15, 0, time.UTC), DistroId: d2.Id},
+		{Id: "t2", FinishTime: time.Date(2023, time.March, 1, 10, 30, 15, 0, time.UTC), DistroId: d3.Id},
 		{Id: "t3", FinishTime: time.Date(2024, time.January, 1, 10, 30, 15, 0, time.UTC), DistroId: "rando"},
 	}
 	for _, task := range tasks {
 		require.NoError(t, task.Insert())
 	}
-	imageID := "distro"
-	d1 := &distro.Distro{
-		Id:      DistroIdOne,
-		ImageID: imageID,
-	}
-	require.NoError(t, d1.Insert(ctx))
-	d2 := &distro.Distro{
-		Id:      DistroIdTwo,
-		ImageID: imageID,
-	}
-	require.NoError(t, d2.Insert(ctx))
-	d3 := &distro.Distro{
-		Id:      DistroIdThree,
-		ImageID: imageID,
-	}
-	require.NoError(t, d3.Insert(ctx))
-	latestTask, err := getLatestTask(ctx, imageID)
+	latestTask, err := GetLatestTaskFromImage(ctx, imageID)
 	assert.NoError(t, err)
 	require.NotNil(t, latestTask)
 	assert.Equal(t, latestTask.Id, "t2")
