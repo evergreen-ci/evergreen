@@ -3575,22 +3575,16 @@ func TestSaveProjectPageForSection(t *testing.T) {
 				},
 			},
 		},
-		GitHubPermissionGroupByRequester: map[string]string{
-			evergreen.GithubMergeRequester: "some-group",
-		},
 	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGithubAndCQSection, false)
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGithubPermissionsSection, false)
 	assert.NoError(err)
 
 	projectRef, err = FindBranchProjectRef("iden_")
 	require.NoError(t, err)
 	assert.NotNil(t, projectRef)
-	assert.Len(projectRef.GitHubDynamicTokenPermissionGroups, 1)
-
-	perms, found := projectRef.GetGitHubPermissionGroup(evergreen.GithubMergeRequester)
-	assert.Equal("some-group", perms.Name)
-	assert.True(found)
-	assert.Equal("read", utility.FromStringPtr(perms.Permissions.Actions))
+	require.Len(t, projectRef.GitHubDynamicTokenPermissionGroups, 1)
+	assert.Equal("some-group", projectRef.GitHubDynamicTokenPermissionGroups[0].Name)
+	assert.Equal("read", utility.FromStringPtr(projectRef.GitHubDynamicTokenPermissionGroups[0].Permissions.Actions))
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {

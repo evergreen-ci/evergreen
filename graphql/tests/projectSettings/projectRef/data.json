@@ -16,6 +16,20 @@
       "stepback_bisect": false,
       "batch_time": 2,
       "deactivate_previous": true,
+      "github_dynamic_token_permission_groups": [
+        {
+          "name": "group-1",
+          "permissions": {
+            "pullrequests": "read"
+          }
+        },
+        {
+          "name": "group-2",
+          "permissions": {
+            "issues": "write"
+          }
+        }
+      ],
       "triggers": [
         {
           "project": "spruce",
