@@ -1276,13 +1276,13 @@ func getProjectPermissionLevel(projectPermission ProjectPermission, access Acces
 	return permission, level, nil
 }
 
-func canModifyAnnotation(ctx context.Context, obj *restModel.APITask) (bool, error) {
+func hasAnnotationPermission(ctx context.Context, obj *restModel.APITask, requiredLevel int) (bool, error) {
 	authUser := gimlet.GetUser(ctx)
 	permissions := gimlet.PermissionOpts{
 		Resource:      *obj.ProjectId,
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionAnnotations,
-		RequiredLevel: evergreen.AnnotationsModify.Value,
+		RequiredLevel: requiredLevel,
 	}
 	if authUser.HasPermission(permissions) {
 		return true, nil
@@ -1307,7 +1307,7 @@ func annotationPermissionHelper(ctx context.Context, taskID string, execution *i
 	if err != nil {
 		return err
 	}
-	canModify, err := canModifyAnnotation(ctx, t)
+	canModify, err := hasAnnotationPermission(ctx, t, evergreen.AnnotationsModify.Value)
 	if err != nil {
 		return err
 	}

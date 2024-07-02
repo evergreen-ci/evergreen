@@ -8,10 +8,12 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -350,4 +352,64 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 	assert.Equal(t, versionsMatchingTasksMap["v2"], false)
 	assert.Equal(t, versionsMatchingTasksMap["v3"], true)
 
+}
+
+func TestHasAnnotationPermission(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
+		"TrueWhenUserHasRequiredLevelAndIsNotPatchOwner": func(ctx context.Context, t *testing.T) {
+			task := restModel.APITask{ProjectId: utility.ToStringPtr("project_id_belonging_to_user"), Version: utility.ToStringPtr("random_version_id")}
+			hasAccess, err := hasAnnotationPermission(ctx, &task, evergreen.AnnotationsView.Value)
+			assert.NoError(t, err)
+			assert.True(t, hasAccess)
+		},
+		"FalseWhenUserDoesNotHaveRequiredLevelAndIsNotPatchOwner": func(ctx context.Context, t *testing.T) {
+			task := restModel.APITask{ProjectId: utility.ToStringPtr("project_id_belonging_to_user"), Version: utility.ToStringPtr("random_version_id")}
+			hasAccess, err := hasAnnotationPermission(ctx, &task, evergreen.AnnotationsModify.Value)
+			assert.NoError(t, err)
+			assert.False(t, hasAccess)
+		},
+		"TrueWhenUserIsPatchOwnerButDoesNotHaveRequiredLevel": func(ctx context.Context, t *testing.T) {
+			versionAndPatchID := bson.NewObjectId()
+			patch := patch.Patch{
+				Id:     versionAndPatchID,
+				Author: "basic_user",
+			}
+			assert.NoError(t, patch.Insert())
+			task := restModel.APITask{ProjectId: utility.ToStringPtr("random_project_id"), Version: utility.ToStringPtr(versionAndPatchID.Hex()), Requester: utility.ToStringPtr(evergreen.PatchVersionRequester)}
+			hasAccess, err := hasAnnotationPermission(ctx, &task, evergreen.AnnotationsView.Value)
+			assert.NoError(t, err)
+			assert.True(t, hasAccess)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(user.Collection, evergreen.RoleCollection, evergreen.ScopeCollection, annotations.Collection, task.Collection, patch.Collection))
+			usr := user.DBUser{
+				Id: "basic_user",
+			}
+			assert.NoError(t, usr.Insert())
+			ctx := gimlet.AttachUser(context.Background(), &usr)
+
+			env := evergreen.GetEnvironment()
+			roleManager := env.RoleManager()
+			projectScope := gimlet.Scope{
+				ID:        "projectScopeID",
+				Name:      "project scope",
+				Type:      evergreen.ProjectResourceType,
+				Resources: []string{"project_id_belonging_to_user"},
+			}
+			err := roleManager.AddScope(projectScope)
+
+			annotationViewRole := gimlet.Role{
+				ID:          "view_annotation",
+				Scope:       projectScope.ID,
+				Permissions: map[string]int{evergreen.PermissionAnnotations: evergreen.AnnotationsView.Value},
+			}
+			require.NoError(t, roleManager.UpdateRole(annotationViewRole))
+
+			require.NoError(t, usr.AddRole("view_annotation"))
+			require.NoError(t, err)
+
+			tCase(ctx, t)
+		})
+	}
 }
