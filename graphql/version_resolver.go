@@ -98,7 +98,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 	}
 	foundPatch, err := patch.FindOneId(*obj.Id)
 	if err != nil {
-		return nil, err
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id: `%s` %s", *obj.Id, err.Error()))
 	}
 	if foundPatch == nil {
 		return nil, gimlet.ErrorResponse{
@@ -107,9 +107,6 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 		}
 	}
 	childPatchIds := foundPatch.Triggers.ChildPatches
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id: `%s` %s", *obj.Id, err.Error()))
-	}
 	if len(childPatchIds) > 0 {
 		childVersions := []*restModel.APIVersion{}
 		for _, cp := range childPatchIds {
