@@ -83,6 +83,7 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings, te
 	testSettings.Credentials = integrationSettings.Credentials
 	testSettings.Plugins = integrationSettings.Plugins
 	testSettings.Jira = integrationSettings.Jira
+	testSettings.RuntimeEnvironments = integrationSettings.RuntimeEnvironments
 	testSettings.GithubPRCreatorOrg = integrationSettings.GithubPRCreatorOrg
 	testSettings.Slack = integrationSettings.Slack
 	testSettings.ShutdownWaitSeconds = integrationSettings.ShutdownWaitSeconds
