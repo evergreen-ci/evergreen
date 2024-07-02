@@ -1,12 +1,15 @@
 package event
 
 import (
+	"context"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func (e *EventLogEntry) Log() error {
@@ -59,4 +62,25 @@ func LogManyEvents(events []EventLogEntry) error {
 	}
 
 	return db.InsertMany(EventCollection, interfaces...)
+}
+
+// LogManyUnorderedEventsWithContext logs many events without any ordering on
+// insertion. Do not use this if the events must be inserted in order.
+func LogManyUnorderedEventsWithContext(ctx context.Context, events []EventLogEntry) error {
+	catcher := grip.NewBasicCatcher()
+	interfaces := make([]interface{}, len(events))
+	for i := range events {
+		e := &events[i]
+		if err := e.validateEvent(); err != nil {
+			catcher.Add(err)
+			continue
+		}
+		interfaces[i] = &events[i]
+	}
+	if catcher.HasErrors() {
+		return errors.Wrap(catcher.Resolve(), "invalid events")
+	}
+
+	_, err := evergreen.GetEnvironment().DB().Collection(EventCollection).InsertMany(ctx, interfaces, options.InsertMany().SetOrdered(false))
+	return err
 }

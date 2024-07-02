@@ -1793,7 +1793,7 @@ func TestHasMatchingTasks(t *testing.T) {
 	assert.False(t, hasMatchingTasks)
 }
 
-func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
+func TestFindAllUnmarkedDependenciesToBlock(t *testing.T) {
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
 
@@ -1849,9 +1849,10 @@ func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	deps, err := t1.FindAllUnmarkedBlockedDependencies()
+	deps, err := FindAllUnmarkedDependenciesToBlock([]Task{*t1})
 	assert.NoError(err)
-	assert.Len(deps, 1)
+	require.Len(t, deps, 1)
+	assert.Equal("t2", deps[0].Id)
 }
 
 func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
