@@ -2673,7 +2673,7 @@ func MarkAllForUnattainableDependencies(ctx context.Context, tasks []Task, depen
 
 	event.LogManyTasksBlocked(ctx, toUpdate.newlyBlockedTaskData)
 
-	updatedTasks, err := FindAll(db.Query(ByIds(toUpdate.taskIDs)))
+	updatedTasks, err := findAllTasksChunked(toUpdate.taskIDs)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding updated tasks")
 	}
