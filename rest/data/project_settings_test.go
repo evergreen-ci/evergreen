@@ -423,7 +423,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NotContains(t, err.Error(), "the commit queue")
 			assert.NotContains(t, err.Error(), "commit checks")
 		},
-		model.ProjectPageGithubPermissionGroupsSection: func(t *testing.T, ref model.ProjectRef) {
+		model.ProjectPageGithubPermissionsSection: func(t *testing.T, ref model.ProjectRef) {
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: restModel.APIProjectRef{
 					GitHubDynamicTokenPermissionGroups: []restModel.APIGitHubDynamicTokenPermissionGroup{
@@ -445,7 +445,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 					},
 				},
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGithubPermissionGroupsSection, false, "me")
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGithubPermissionsSection, false, "me")
 			require.NoError(t, err)
 			require.NotNil(t, settings)
 

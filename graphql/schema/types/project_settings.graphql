@@ -15,7 +15,7 @@ enum ProjectSettingsSection {
   # GitHub sections.
   GITHUB_AND_COMMIT_QUEUE
   GITHUB_APP_SETTINGS
-  GITHUB_PERMISSION_GROUPS
+  GITHUB_PERMISSIONS
 }
 
 ###### INPUTS ######

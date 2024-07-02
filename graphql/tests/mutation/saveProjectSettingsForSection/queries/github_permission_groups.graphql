@@ -13,7 +13,7 @@ mutation {
         ]
       }
     }
-    section: GITHUB_PERMISSION_GROUPS
+    section: GITHUB_PERMISSIONS
   ) {
     projectRef {
       id

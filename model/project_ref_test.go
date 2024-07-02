@@ -3576,7 +3576,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 			},
 		},
 	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGithubPermissionGroupsSection, false)
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGithubPermissionsSection, false)
 	assert.NoError(err)
 
 	projectRef, err = FindBranchProjectRef("iden_")

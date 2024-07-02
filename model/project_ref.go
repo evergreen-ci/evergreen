@@ -602,20 +602,20 @@ type ProjectPageSection string
 
 // These values must remain consistent with the GraphQL enum ProjectSettingsSection.
 const (
-	ProjectPageGeneralSection                = "GENERAL"
-	ProjectPageAccessSection                 = "ACCESS"
-	ProjectPageVariablesSection              = "VARIABLES"
-	ProjectPageNotificationsSection          = "NOTIFICATIONS"
-	ProjectPagePatchAliasSection             = "PATCH_ALIASES"
-	ProjectPageWorkstationsSection           = "WORKSTATION"
-	ProjectPageTriggersSection               = "TRIGGERS"
-	ProjectPagePeriodicBuildsSection         = "PERIODIC_BUILDS"
-	ProjectPagePluginSection                 = "PLUGINS"
-	ProjectPageContainerSection              = "CONTAINERS"
-	ProjectPageViewsAndFiltersSection        = "VIEWS_AND_FILTERS"
-	ProjectPageGithubAndCQSection            = "GITHUB_AND_COMMIT_QUEUE"
-	ProjectPageGithubAppSettingsSection      = "GITHUB_APP_SETTINGS"
-	ProjectPageGithubPermissionGroupsSection = "GITHUB_PERMISSION_GROUPS"
+	ProjectPageGeneralSection           = "GENERAL"
+	ProjectPageAccessSection            = "ACCESS"
+	ProjectPageVariablesSection         = "VARIABLES"
+	ProjectPageNotificationsSection     = "NOTIFICATIONS"
+	ProjectPagePatchAliasSection        = "PATCH_ALIASES"
+	ProjectPageWorkstationsSection      = "WORKSTATION"
+	ProjectPageTriggersSection          = "TRIGGERS"
+	ProjectPagePeriodicBuildsSection    = "PERIODIC_BUILDS"
+	ProjectPagePluginSection            = "PLUGINS"
+	ProjectPageContainerSection         = "CONTAINERS"
+	ProjectPageViewsAndFiltersSection   = "VIEWS_AND_FILTERS"
+	ProjectPageGithubAndCQSection       = "GITHUB_AND_COMMIT_QUEUE"
+	ProjectPageGithubAppSettingsSection = "GITHUB_APP_SETTINGS"
+	ProjectPageGithubPermissionsSection = "GITHUB_PERMISSIONS"
 )
 
 const (
@@ -2289,7 +2289,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 	case ProjectPageGithubAppSettingsSection:
 		// TODO: Implement in DEVPROD-5995.
 		return false, nil
-	case ProjectPageGithubPermissionGroupsSection:
+	case ProjectPageGithubPermissionsSection:
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
