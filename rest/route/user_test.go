@@ -1016,7 +1016,6 @@ func TestGetUserHandler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	assert.NoError(t, db.ClearCollections(user.Collection))
 	usrToRetrieve := user.DBUser{
 		Id:           "beep.boop",
 		DispName:     "robots are good",
@@ -1033,8 +1032,6 @@ func TestGetUserHandler(t *testing.T) {
 		EmailAddress: "i@rock.com",
 		APIKey:       "my_key",
 	}
-	assert.NoError(t, usrToRetrieve.Insert())
-	assert.NoError(t, me.Insert())
 
 	for testName, testCase := range map[string]func(t *testing.T){
 		"UserNotFound": func(t *testing.T) {
@@ -1076,6 +1073,9 @@ func TestGetUserHandler(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(user.Collection))
+			assert.NoError(t, usrToRetrieve.Insert())
+			assert.NoError(t, me.Insert())
 			testCase(t)
 		})
 	}
