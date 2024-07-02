@@ -581,7 +581,7 @@ func makeSchedulePatchHandler(env evergreen.Environment) gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Configure/schedule a patch
-//	@Description	Update the list of tasks that the specified patch will run. This works both for initially specifying a patch's tasks, as well as for adding additional tasks to an already-scheduled patch.
+//	@Description	Update the list of tasks that the specified patch will run. This will only add on tasks, existing tasks will not be removed. This works both for initially specifying a patch's tasks, as well as for adding additional tasks to an already-scheduled patch.
 //	@Tags			patches
 //	@Router			/patches/{patch_id}/configure [post]
 //	@Security		Api-User || Api-Key
@@ -646,14 +646,29 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 	patchUpdateReq := dbModel.PatchUpdate{
-		Description: p.variantTasks.Description,
-		Caller:      u.Id,
+		Description:   p.variantTasks.Description,
+		Caller:        u.Id,
+		VariantsTasks: p.patch.VariantsTasks,
 	}
 	if patchUpdateReq.Description == "" && dbVersion != nil {
 		patchUpdateReq.Description = dbVersion.Message
 	}
 	for _, v := range p.variantTasks.Variants {
-		variantToSchedule := patch.VariantTasks{Variant: v.Id}
+		// If patchUpdateReq.VariantsTasks already contains the variant, append to that variant.
+		// Otherwise, create a new variant.
+		variantToSchedule := patch.VariantTasks{}
+		variantExists := false
+		for _, variant := range patchUpdateReq.VariantsTasks {
+			if variant.Variant == v.Id {
+				variantToSchedule = variant
+				variantExists = true
+				break
+			}
+		}
+		if !variantExists {
+			variantToSchedule = patch.VariantTasks{Variant: v.Id}
+		}
+
 		if len(v.Tasks) > 0 && v.Tasks[0] == "*" {
 			projectVariant := project.FindBuildVariant(v.Id)
 			if projectVariant == nil {
