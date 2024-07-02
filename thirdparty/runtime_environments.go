@@ -66,7 +66,7 @@ func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string
 	return filteredImages, nil
 }
 
-// getPackages returns a list of packages changes (name and version) from the corresponding AMI id.
+// getPackages returns a list of package changes (name and version) from the corresponding AMI id.
 func (c *RuntimeEnvironmentsClient) getPackages(ctx context.Context, amiId string, page string, limit string) ([]Package, error) {
 	apiURL := fmt.Sprintf("%s/rest/api/v1/image", c.BaseURL)
 	params := url.Values{}
