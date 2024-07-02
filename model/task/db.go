@@ -2963,7 +2963,7 @@ func getGenerateTasksEstimation(ctx context.Context, project, buildVariant, disp
 	return results, nil
 }
 
-// GetLatestTask retrieves the latest task from all the distros corresponding to the imageID.
+// GetLatestTaskFromImage retrieves the latest task from all the distros corresponding to the imageID.
 func GetLatestTaskFromImage(ctx context.Context, imageID string) (*Task, error) {
 	distros, err := distro.GetDistrosForImage(ctx, imageID)
 	if err != nil {
