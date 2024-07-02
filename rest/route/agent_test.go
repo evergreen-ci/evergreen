@@ -820,3 +820,69 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 		})
 	}
 }
+
+func TestRevokeGitHubDynamicAccessToken(t *testing.T) {
+	const (
+		route  = "/task/%s/github_dynamic_access_token"
+		taskID = "taskID"
+		token  = "some-token-would-be-here"
+	)
+	body, err := json.Marshal(apimodels.Token{Token: token})
+	require.NoError(t, err)
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *revokeGitHubDynamicAccessToken, env *mock.Environment){
+		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *revokeGitHubDynamicAccessToken, env *mock.Environment) {
+			url := fmt.Sprintf(route, "")
+			request, err := http.NewRequest(http.MethodDelete, url, bytes.NewReader(body))
+			require.NoError(t, err)
+
+			options := map[string]string{"task_id": ""}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing task_id")
+		},
+		"ParseErrorsOnNilBody": func(ctx context.Context, t *testing.T, handler *revokeGitHubDynamicAccessToken, env *mock.Environment) {
+			url := fmt.Sprintf(route, taskID)
+			request, err := http.NewRequest(http.MethodDelete, url, bytes.NewReader(nil))
+			require.NoError(t, err)
+
+			options := map[string]string{"task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "reading token JSON request body for task 'taskID'")
+		}, "ParseErrorsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *revokeGitHubDynamicAccessToken, env *mock.Environment) {
+			url := fmt.Sprintf(route, taskID)
+			request, err := http.NewRequest(http.MethodDelete, url, bytes.NewReader([]byte("{}")))
+			require.NoError(t, err)
+
+			options := map[string]string{"task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing token")
+		},
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *revokeGitHubDynamicAccessToken, env *mock.Environment) {
+			url := fmt.Sprintf(route, taskID)
+			request, err := http.NewRequest(http.MethodDelete, url, bytes.NewReader(body))
+			require.NoError(t, err)
+
+			options := map[string]string{"task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			require.NoError(t, handler.Parse(ctx, request))
+			assert.Equal(t, token, handler.body.Token)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
+			r, ok := makeRevokeGitHubDynamicAccessToken(env).(*revokeGitHubDynamicAccessToken)
+			require.True(t, ok)
+
+			tCase(ctx, t, r, env)
+		})
+	}
+}
