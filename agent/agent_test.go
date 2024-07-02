@@ -57,16 +57,17 @@ post:
 
 type AgentSuite struct {
 	suite.Suite
-	a                            *Agent
-	mockCommunicator             *client.Mock
-	tc                           *taskContext
-	task                         task.Task
-	ctx                          context.Context
-	canceler                     context.CancelFunc
-	suiteTmpDirName              string
-	testTmpDirName               string
-	ranCommandCleanupsTask       bool
-	ranCommandCleanupsSetupGroup bool
+	a                               *Agent
+	mockCommunicator                *client.Mock
+	tc                              *taskContext
+	task                            task.Task
+	ctx                             context.Context
+	canceler                        context.CancelFunc
+	suiteTmpDirName                 string
+	testTmpDirName                  string
+	ranCommandCleanupsTask          bool
+	ranCommandCleanupsSetupGroup    bool
+	ranCommandCleanupFromTaskConfig bool
 }
 
 func TestAgentSuite(t *testing.T) {
@@ -157,6 +158,11 @@ func (s *AgentSuite) SetupTest() {
 	s.ctx = ctx
 	s.tc.logger, err = s.mockCommunicator.GetLoggerProducer(ctx, &s.task, nil)
 	s.NoError(err)
+	s.tc.taskConfig.AddCommandCleanup("other_cleanup_command", func(ctx context.Context) error {
+		s.ranCommandCleanupFromTaskConfig = true
+		return nil
+	})
+	s.ranCommandCleanupFromTaskConfig = false
 	s.tc.addTaskCommandCleanups([]internal.CommandCleanup{{
 		Command: "cleanup_command",
 		Run: func(ctx context.Context) error {
@@ -461,6 +467,7 @@ pre:
 
 	s.NoError(s.tc.logger.Close())
 	s.False(s.ranCommandCleanupsTask, "command cleanups should not run at the end of pre block")
+	s.False(s.ranCommandCleanupFromTaskConfig, "command cleanups should not run at the end of pre block")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running pre-task commands",
 		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'pre'",
@@ -651,6 +658,7 @@ post:
 
 	s.NoError(s.tc.logger.Close())
 	s.True(s.ranCommandCleanupsTask, "command cleanups should run at the end of post block")
+	s.True(s.ranCommandCleanupFromTaskConfig, "command cleanups should run at the end of post block")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running post-task commands",
 		"Setting heartbeat timeout to type 'post'",
@@ -1992,6 +2000,7 @@ task_groups:
 
 	s.NoError(s.tc.logger.Close())
 	s.False(s.ranCommandCleanupsTask, "command cleanups should not run after setup task")
+	s.False(s.ranCommandCleanupFromTaskConfig, "command cleanups should not run after setup task")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running setup-task commands",
 		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'setup_task'",
@@ -2023,6 +2032,7 @@ task_groups:
 
 	s.NoError(s.tc.logger.Close())
 	s.False(s.ranCommandCleanupsTask, "command cleanups should not run after setup task")
+	s.False(s.ranCommandCleanupFromTaskConfig, "command cleanups should not run after setup task")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running setup-task commands",
 		"Set idle timeout for 'shell.exec' (step 1 of 1) in block 'setup_task'",
@@ -2125,6 +2135,7 @@ task_groups:
 
 	s.NoError(s.tc.logger.Close())
 	s.True(s.ranCommandCleanupsTask, "command cleanup should run after teardown task")
+	s.True(s.ranCommandCleanupFromTaskConfig, "command cleanup should run after teardown task")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running teardown-task commands",
 		"Setting heartbeat timeout to type 'teardown_task'",
@@ -2268,7 +2279,8 @@ task_groups:
 
 	s.NoError(s.tc.logger.Close())
 	s.True(s.ranCommandCleanupsTask, "command cleanups should run after teardown group")
-	s.True(s.ranCommandCleanupsSetupGroup, "command cleanup for setup group should run after teardown task")
+	s.True(s.ranCommandCleanupsSetupGroup, "command cleanup for setup group should run after teardown group")
+	s.True(s.ranCommandCleanupFromTaskConfig, "command cleanup should run after teardown group")
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running teardown-group commands",
 		"Running command 'shell.exec' (step 1 of 1) in block 'teardown_group'",

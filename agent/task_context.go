@@ -41,8 +41,6 @@ type taskContext struct {
 	oomTracker           jasper.OOMTracker
 	traceID              string
 	diskDevices          []string
-	currentBlock         command.BlockType
-
 	// taskCleanups and taskGroupCleanups store the cleanup commands for the
 	// task and setup group, respectively.
 	taskCleanups       []internal.CommandCleanup
