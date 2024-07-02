@@ -105,8 +105,8 @@ func makeGetUserHandler() gimlet.RouteHandler {
 //	@Tags			users
 //	@Router			/users/{user_id} [get]
 //	@Security		Api-User || Api-Key
-//	@Param			user_id		path		string						true	"User ID"
-//	@Success		200			{object}	model.APIDBUser				"the requested user"
+//	@Param			user_id	path		string			true	"User ID"
+//	@Success		200		{object}	model.APIDBUser	"the requested user"
 func (h *getUserHandler) Factory() gimlet.RouteHandler { return h }
 func (h *getUserHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.userId = gimlet.GetVars(r)["user_id"]
