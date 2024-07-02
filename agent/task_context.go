@@ -89,11 +89,9 @@ func (tc *taskContext) addSetupGroupCommandCleanups(cleanups []internal.CommandC
 	tc.setupGroupCleanups = append(tc.setupGroupCleanups, cleanups...)
 }
 
-// RunCleanupCommands runs all the cleanup commands that have been added to the
-// task config. This should be called right after setup group, teardown group,
-// and timeout commands. It should also be ran after completing pre + main commands
-// + post or setup task + main commands + teardown task. If the task errors out
-// along one of these stages, the cleanup commands will run then as well.
+// runTaskCommandCleanups runs the cleanup commands added throughout the normal execution of
+// 'pre+main+post' or 'setup_task+main+teardown_task' and 'teardown_group'. For 'setup_group',
+// use runSetupGroupCommandCleanups instead.
 func (tc *taskContext) runTaskCommandCleanups(ctx context.Context, logger client.LoggerProducer) {
 	catcher := grip.NewBasicCatcher()
 	for _, cleanup := range tc.taskCleanups {
@@ -105,6 +103,7 @@ func (tc *taskContext) runTaskCommandCleanups(ctx context.Context, logger client
 	}
 }
 
+// runSetupGroupCommandCleanups runs the cleanup commands added throughout the execution of a setup group.
 func (tc *taskContext) runSetupGroupCommandCleanups(ctx context.Context, logger client.LoggerProducer) {
 	catcher := grip.NewBasicCatcher()
 	for _, cleanup := range tc.setupGroupCleanups {

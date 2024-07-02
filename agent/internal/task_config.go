@@ -58,25 +58,10 @@ type TaskConfig struct {
 	mu sync.RWMutex
 }
 
-type CommandCleanupLevel int
-
-const (
-	// TaskCleanupLevel runs the cleanup commands after the task is finished.
-	// The task is considered 'pre+main+post' or 'setup_task+main+teardown_task'
-	// and includes timeout commands if the task timed out.
-	TaskCleanupLevel = CommandCleanupLevel(iota)
-	// TaskGroupCleanupLevel runs the cleanup commands after the task group is finished.
-	// This is for 'setup_group+teardown_group'.
-	TaskGroupCleanupLevel
-)
-
-// CommandCleanups is a list of cleanup functions that are added dynamically
-// during task execution. These functions are called when the task is
-// finished and then cleared from the list. A 'task' in this context is what
-// is gurenteed** to run for every task under normal circumstances. For example,
-// 'setup task + main commands + teardown task' or 'pre, main, post'. For
-// setup group, teardown group, and timeout commands, the cleanup functions are
-// always ran and cleared after their respective commands are finished.
+// CommandCleanup is a cleanup function associated with a command. As a command
+// block is executed, the cleanup function(s) are added to the TaskConfig. When
+// the command block is finished, the cleanup function(s) are collected by the
+// TaskContext and executed depending on what command block was executed.
 type CommandCleanup struct {
 	// Command is the name of the command from (base).FullDisplayName().
 	Command string
@@ -84,13 +69,26 @@ type CommandCleanup struct {
 	Run func(context.Context) error
 }
 
+// AddCommandCleanup adds a cleanup function to the TaskConfig.
 func (t *TaskConfig) AddCommandCleanup(cmd string, run func(context.Context) error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+
 	t.CommandCleanups = append(t.CommandCleanups, CommandCleanup{
 		Command: cmd,
 		Run:     run,
 	})
+}
+
+// GetAndClearCommandCleanups returns the command cleanups that have been added
+// to the TaskConfig and clears the list of command cleanups.
+func (t *TaskConfig) GetAndClearCommandCleanups() []CommandCleanup {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	cleanups := t.CommandCleanups
+	t.CommandCleanups = nil
+	return cleanups
 }
 
 // Timeout records dynamic timeout information that has been explicitly set by

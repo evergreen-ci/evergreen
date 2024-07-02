@@ -258,11 +258,10 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 		// should only be cleaned up after the entire group has run while
 		// any other block should clean up after the task is done running.
 		if options.block == command.SetupGroupBlock {
-			tc.addSetupGroupCommandCleanups(tc.taskConfig.CommandCleanups)
+			tc.addSetupGroupCommandCleanups(tc.taskConfig.GetAndClearCommandCleanups())
 		} else {
-			tc.addTaskCommandCleanups(tc.taskConfig.CommandCleanups)
+			tc.addTaskCommandCleanups(tc.taskConfig.GetAndClearCommandCleanups())
 		}
-		tc.taskConfig.CommandCleanups = nil
 	}()
 
 	start := time.Now()
