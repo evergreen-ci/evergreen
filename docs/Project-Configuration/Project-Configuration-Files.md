@@ -218,6 +218,9 @@ buildvariants:
   - ubuntu1404-test
   expansions:
     test_flags: "blah blah"
+  modules:
+  - spruce
+  - parsley
   tasks:
   - name: compile
   - name: passing_test
@@ -275,6 +278,9 @@ Fields:
     different levels, the order of priority is defined
     [here](#dependency-override-hierarchy).
 -   `expansions`: a set of key-value expansion pairs
+-   `modules`: A list of the module names this build variant's tasks reference.
+    It corresponds to the [modules defined](Project-Configuration-Files#modules)
+    and declares what can be used in the [git.get_project](Project-Commands#gitgetproject) command.
 -   `tasks`: a list of tasks to run, referenced either by task name or by tags.
     Tasks listed here can also include other task-level fields, such as
     `batchtime`, `cron`, `activate`, `depends_on`, and `run_on`. We can also
