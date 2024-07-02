@@ -34,5 +34,5 @@ func TestGetPackages(t *testing.T) {
 	result, err := c.getPackages(ctx, "ami-0e12ef25a5f7712a4", "0", "10")
 	require.NoError(t, err)
 	assert.NotEmpty(result)
-	assert.Equal(len(result), 10)
+	assert.Len(result, 10)
 }

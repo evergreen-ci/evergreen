@@ -67,19 +67,14 @@ func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string
 }
 
 // getPackages returns a list of package changes (name and version) from the corresponding AMI id.
-func (c *RuntimeEnvironmentsClient) getPackages(ctx context.Context, amiId string, page string, limit string) ([]Package, error) {
-	apiURL := fmt.Sprintf("%s/rest/api/v1/image", c.BaseURL)
+func (c *RuntimeEnvironmentsClient) getPackages(ctx context.Context, amiID string, page string, limit string) ([]Package, error) {
 	params := url.Values{}
-	params.Set("ami", amiId)
+	params.Set("ami", amiID)
 	params.Set("page", page)
 	params.Set("limit", limit)
 	params.Set("type", "Packages")
-	reqURL, err := url.Parse(apiURL)
-	if err != nil {
-		return nil, errors.Wrap(err, "parsing API url")
-	}
-	reqURL.RawQuery = params.Encode()
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL.String(), nil)
+	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -94,9 +89,9 @@ func (c *RuntimeEnvironmentsClient) getPackages(ctx context.Context, amiId strin
 		msg, _ := io.ReadAll(resp.Body)
 		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
 	}
-	var decodedPackages []Package
-	if err := gimlet.GetJSON(resp.Body, &decodedPackages); err != nil {
+	var packages []Package
+	if err := gimlet.GetJSON(resp.Body, &packages); err != nil {
 		return nil, errors.Wrap(err, "decoding http body")
 	}
-	return decodedPackages, nil
+	return packages, nil
 }
