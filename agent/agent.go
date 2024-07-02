@@ -828,6 +828,12 @@ func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskConte
 	ctx, span := a.tracer.Start(ctx, "post-task-commands")
 	defer span.End()
 
+	// We run the command cleanups in a defer in case any of the post commands add cleanups.
+	// This will clean up anything added from commands running in pre, main, or post or the
+	// task group's setup task, main, and teardown task. As well, if the task timed out,
+	// it will run any cleanup commands that were added from it as well.
+	defer tc.runTaskCommandCleanups(ctx, tc.logger)
+
 	a.killProcs(ctx, tc, false, "post-task or teardown-task commands are starting")
 	defer a.killProcs(ctx, tc, false, "post-task or teardown-task commands are finished")
 
@@ -877,6 +883,9 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 		a.killProcs(ctx, tc, true, "teardown group commands are starting")
 
 		_ = a.runCommandsInBlock(ctx, tc, *teardownGroup)
+		// Teardown groups should run all the remaining command cleanups.
+		tc.runTaskCommandCleanups(ctx, tc.logger)
+		tc.runSetupGroupCommandCleanups(ctx, tc.logger)
 	}
 }
 

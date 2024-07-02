@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"strconv"
 	"strings"
 	"sync"
@@ -52,8 +53,42 @@ type TaskConfig struct {
 	ModulePaths        map[string]string
 	CedarTestResultsID string
 	TaskGroup          *model.TaskGroup
+	CommandCleanups    []CommandCleanup
 
 	mu sync.RWMutex
+}
+
+// CommandCleanup is a cleanup function associated with a command. As a command
+// block is executed, the cleanup function(s) are added to the TaskConfig. When
+// the command block is finished, the cleanup function(s) are collected by the
+// TaskContext and executed depending on what command block was executed.
+type CommandCleanup struct {
+	// Command is the name of the command from (base).FullDisplayName().
+	Command string
+	// Run is the function that is called when the task is finished.
+	Run func(context.Context) error
+}
+
+// AddCommandCleanup adds a cleanup function to the TaskConfig.
+func (t *TaskConfig) AddCommandCleanup(cmd string, run func(context.Context) error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.CommandCleanups = append(t.CommandCleanups, CommandCleanup{
+		Command: cmd,
+		Run:     run,
+	})
+}
+
+// GetAndClearCommandCleanups returns the command cleanups that have been added
+// to the TaskConfig and clears the list of command cleanups.
+func (t *TaskConfig) GetAndClearCommandCleanups() []CommandCleanup {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	cleanups := t.CommandCleanups
+	t.CommandCleanups = nil
+	return cleanups
 }
 
 // Timeout records dynamic timeout information that has been explicitly set by

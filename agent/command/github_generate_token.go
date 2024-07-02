@@ -86,12 +86,22 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 		r.Repo = conf.ProjectRef.Repo
 	}
 
-	token, err := comm.CreateGitHubDynamicAccessToken(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, r.Owner, r.Repo, r.Permissions)
+	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+	token, err := comm.CreateGitHubDynamicAccessToken(ctx, td, r.Owner, r.Repo, r.Permissions)
 	if err != nil {
 		return errors.Wrap(err, "creating github dynamic access token")
 	}
 
+	// We write or overwrite the expansion with the new token.
 	conf.NewExpansions.PutAndRedact(r.ExpansionName, token)
+
+	conf.AddCommandCleanup(r.FullDisplayName(), func(ctx context.Context) error {
+		// We remove the expansion and revoke the token. We do not restore
+		// the expansion to any previous value as overwriting the token
+		// reduces the scope of the token.
+		conf.NewExpansions.Remove(r.ExpansionName)
+		return errors.Wrap(comm.RevokeGitHubDynamicAccessToken(ctx, td, token), "revoking token")
+	})
 
 	return nil
 }

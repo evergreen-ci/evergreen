@@ -17,8 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/manifest"
-	"github.com/evergreen-ci/evergreen/model/patch"
-	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
+	patchModel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -64,12 +63,13 @@ type Mock struct {
 	HeartbeatCount                       int
 	TaskExecution                        int
 	CreatedHost                          apimodels.CreateHost
-	GetTaskPatchResponse                 *patchmodel.Patch
+	GetTaskPatchResponse                 *patchModel.Patch
 	GetLoggerProducerShouldFail          bool
 	CreateInstallationTokenFail          bool
 	CreateInstallationTokenResult        string
-	CreateGitHubDynamicAccessTokenFail   bool
 	CreateGitHubDynamicAccessTokenResult string
+	CreateGitHubDynamicAccessTokenFail   bool
+	RevokeGitHubDynamicAccessTokenFail   bool
 
 	CedarGRPCConn *grpc.ClientConn
 
@@ -87,7 +87,7 @@ type Mock struct {
 
 	// Mock data returned from methods
 	LastMessageSent  time.Time
-	DownstreamParams []patchmodel.Parameter
+	DownstreamParams []patchModel.Parameter
 
 	mu sync.RWMutex
 }
@@ -385,12 +385,12 @@ func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string
 	return out, nil
 }
 
-func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData, patchId string) (*patchmodel.Patch, error) {
+func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData, patchId string) (*patchModel.Patch, error) {
 	if c.GetTaskPatchResponse != nil {
 		return c.GetTaskPatchResponse, nil
 	}
 
-	return &patch.Patch{}, nil
+	return &patchModel.Patch{}, nil
 }
 
 // CreateSpawnHost will return a mock host that would have been intended
@@ -436,7 +436,7 @@ func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifa
 	return nil
 }
 
-func (c *Mock) SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error {
+func (c *Mock) SetDownstreamParams(ctx context.Context, downstreamParams []patchModel.Parameter, taskData TaskData) error {
 	c.DownstreamParams = downstreamParams
 	return nil
 }
@@ -543,6 +543,13 @@ func (c *Mock) CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, 
 		return "", errors.New("failed to create token")
 	}
 	return c.CreateGitHubDynamicAccessTokenResult, nil
+}
+
+func (c *Mock) RevokeGitHubDynamicAccessToken(ctx context.Context, td TaskData, token string) error {
+	if c.RevokeGitHubDynamicAccessTokenFail {
+		return errors.New("failed to revoke token")
+	}
+	return nil
 }
 
 func (c *Mock) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {

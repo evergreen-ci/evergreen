@@ -111,3 +111,11 @@ func (e *DynamicExpansions) UpdateFromYamlAndRedact(filename string) ([]string, 
 
 	return keys, nil
 }
+
+// Remove deletes a value from the expansions.
+func (e *DynamicExpansions) Remove(expansion string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.Expansions.Remove(expansion)
+}

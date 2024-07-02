@@ -127,6 +127,9 @@ type SharedCommunicator interface {
 	// the task is running for.
 	CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner, repo string, permissions *github.InstallationPermissions) (string, error)
 
+	// RevokeGitHubDynamicAccessToken revokes a dynamic access token.
+	RevokeGitHubDynamicAccessToken(ctx context.Context, td TaskData, token string) error
+
 	// MarkFailedTaskToRestart marks the task as needing to be restarted
 	MarkFailedTaskToRestart(ctx context.Context, td TaskData) error
 

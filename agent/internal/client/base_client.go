@@ -974,6 +974,24 @@ func (c *baseCommunicator) CreateGitHubDynamicAccessToken(ctx context.Context, t
 	return token.Token, nil
 }
 
+func (c *baseCommunicator) RevokeGitHubDynamicAccessToken(ctx context.Context, td TaskData, token string) error {
+	info := requestInfo{
+		method:   http.MethodDelete,
+		path:     fmt.Sprintf("task/%s/github_dynamic_access_token", td.ID),
+		taskData: &td,
+	}
+	resp, err := c.request(ctx, info, apimodels.Token{Token: token})
+	if err != nil {
+		return errors.Wrap(err, "revoking github dynamic access token")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return util.RespErrorf(resp, "revoking github dynamic access token")
+	}
+	return nil
+}
+
 // MarkFailedTaskToRestart will mark the task to automatically restart upon completion
 func (c *baseCommunicator) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {
 	info := requestInfo{
