@@ -2257,7 +2257,7 @@ func TestGetLatestTaskFromImage(t *testing.T) {
 		require.NoError(t, task.Insert())
 	}
 	latestTask, err := GetLatestTaskFromImage(ctx, imageID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, latestTask)
 	assert.Equal(t, latestTask.Id, "t2")
 }
