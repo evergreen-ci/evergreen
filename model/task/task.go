@@ -2677,9 +2677,11 @@ func MarkAllForUnattainableDependencies(ctx context.Context, tasks []Task, depen
 	if err != nil {
 		return nil, errors.Wrap(err, "finding updated tasks")
 	}
-	if len(updatedTasks) != len(tasks) {
-		return nil, errors.Errorf("updated dependencies for tasks but subsequent query for updated tasks returned a different number of tasks (%d) than expected (%d)", len(updatedTasks), len(tasks))
-	}
+	grip.ErrorWhen(len(updatedTasks) != len(tasks), message.Fields{
+		"message":            "successfully updated dependencies for tasks but the subsequent query for updated tasks returned a different number of tasks than expected (which may cause bugs blocking other tasks)",
+		"expected_num_tasks": len(tasks),
+		"actual_num_tasks":   len(updatedTasks),
+	})
 
 	return updatedTasks, nil
 }

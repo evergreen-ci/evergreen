@@ -1070,7 +1070,7 @@ func UpdateBlockedDependencies(ctx context.Context, dependencies []task.Task) er
 		if _, ok := buildIDsSet[buildID]; ok {
 			continue
 		}
-		buildIDsSet[dependentTask.BuildId] = struct{}{}
+		buildIDsSet[buildID] = struct{}{}
 		buildIDs = append(buildIDs, buildID)
 	}
 
