@@ -600,7 +600,7 @@ const (
 
 type ProjectPageSection string
 
-// These values must remain consistent with the GraphQL enum ProjectSettingsSection
+// These values must remain consistent with the GraphQL enum ProjectSettingsSection.
 const (
 	ProjectPageGeneralSection                = "GENERAL"
 	ProjectPageAccessSection                 = "ACCESS"
@@ -2231,7 +2231,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 					ProjectRefGitTagAuthorizedTeamsKey:  p.GitTagAuthorizedTeams,
 					projectRefCommitQueueKey:            p.CommitQueue,
 					projectRefOldestAllowedMergeBaseKey: p.OldestAllowedMergeBase,
-					// TODO: Remove in DEVPROD-5995 because removing it now causes lint errors.
+					// TODO: Remove in DEVPROD-5995 because removing it causes lint errors.
 					projectRefGithubPermissionGroupByRequester: p.GitHubPermissionGroupByRequester,
 				},
 			})
@@ -2287,7 +2287,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				},
 			})
 	case ProjectPageGithubAppSettingsSection:
-		// this section doesn't modify the project/repo ref yet
+		// TODO: Implement in DEVPROD-5995.
 		return false, nil
 	case ProjectPageGithubPermissionGroupsSection:
 		err = db.Update(coll,

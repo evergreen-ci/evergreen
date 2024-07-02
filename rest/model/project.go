@@ -825,15 +825,15 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 	}
 
 	if p.GitHubDynamicTokenPermissionGroups != nil {
-		groups := []model.GitHubDynamicTokenPermissionGroup{}
-		for _, group := range p.GitHubDynamicTokenPermissionGroups {
-			serviceGroup, err := group.ToService()
+		permissionGroups := []model.GitHubDynamicTokenPermissionGroup{}
+		for _, pg := range p.GitHubDynamicTokenPermissionGroups {
+			serviceGroup, err := pg.ToService()
 			if err != nil {
-				return nil, errors.Wrapf(err, "converting GitHub permission group '%s'", utility.FromStringPtr(group.Name))
+				return nil, errors.Wrapf(err, "converting GitHub permission group '%s'", utility.FromStringPtr(pg.Name))
 			}
-			groups = append(groups, serviceGroup)
+			permissionGroups = append(permissionGroups, serviceGroup)
 		}
-		projectRef.GitHubDynamicTokenPermissionGroups = groups
+		projectRef.GitHubDynamicTokenPermissionGroups = permissionGroups
 	}
 
 	for _, size := range p.ContainerSizeDefinitions {
@@ -918,11 +918,11 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 	if projectRef.GitHubDynamicTokenPermissionGroups != nil {
 		permissionGroups := []APIGitHubDynamicTokenPermissionGroup{}
 		for _, pg := range projectRef.GitHubDynamicTokenPermissionGroups {
-			group := APIGitHubDynamicTokenPermissionGroup{}
-			if err := group.BuildFromService(pg); err != nil {
+			apiGroup := APIGitHubDynamicTokenPermissionGroup{}
+			if err := apiGroup.BuildFromService(pg); err != nil {
 				return errors.Wrapf(err, "converting GitHub permission group '%s' to API model", pg.Name)
 			}
-			permissionGroups = append(permissionGroups, group)
+			permissionGroups = append(permissionGroups, apiGroup)
 		}
 		p.GitHubDynamicTokenPermissionGroups = permissionGroups
 	}

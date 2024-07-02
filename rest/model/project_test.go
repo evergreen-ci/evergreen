@@ -167,7 +167,7 @@ func TestGitHubDynamicTokenPermissionGroupBuildFromService(t *testing.T) {
 		assert.Equal(pg.Permissions["checks"], "read")
 	})
 
-	t.Run("All permissions set should be kept", func(t *testing.T) {
+	t.Run("All permissions set (default permission group) should be kept", func(t *testing.T) {
 		pg := APIGitHubDynamicTokenPermissionGroup{}
 		err := pg.BuildFromService(model.GitHubDynamicTokenPermissionGroup{
 			Name:           "some-group",
