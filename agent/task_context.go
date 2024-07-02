@@ -41,6 +41,12 @@ type taskContext struct {
 	oomTracker           jasper.OOMTracker
 	traceID              string
 	diskDevices          []string
+	currentBlock         command.BlockType
+
+	// taskCleanups and taskGroupCleanups store the cleanup commands for the
+	// task and setup group, respectively.
+	taskCleanups       []internal.CommandCleanup
+	setupGroupCleanups []internal.CommandCleanup
 	// userEndTaskResp is the end task response that the user can define, which
 	// will overwrite the default end task response.
 	userEndTaskResp *triggerEndTaskResp
@@ -69,6 +75,47 @@ func (tc *taskContext) addFailingCommand(cmd command.Command) {
 	tc.Lock()
 	defer tc.Unlock()
 	tc.otherFailingCommands = append(tc.otherFailingCommands, cmd)
+}
+
+func (tc *taskContext) addTaskCommandCleanups(cleanups []internal.CommandCleanup) {
+	tc.Lock()
+	defer tc.Unlock()
+
+	tc.taskCleanups = append(tc.taskCleanups, cleanups...)
+}
+
+func (tc *taskContext) addSetupGroupCommandCleanups(cleanups []internal.CommandCleanup) {
+	tc.Lock()
+	defer tc.Unlock()
+
+	tc.setupGroupCleanups = append(tc.setupGroupCleanups, cleanups...)
+}
+
+// RunCleanupCommands runs all the cleanup commands that have been added to the
+// task config. This should be called right after setup group, teardown group,
+// and timeout commands. It should also be ran after completing pre + main commands
+// + post or setup task + main commands + teardown task. If the task errors out
+// along one of these stages, the cleanup commands will run then as well.
+func (tc *taskContext) runTaskCommandCleanups(ctx context.Context, logger client.LoggerProducer) {
+	catcher := grip.NewBasicCatcher()
+	for _, cleanup := range tc.taskCleanups {
+		catcher.Wrapf(cleanup.Run(ctx), "running clean up from command '%s'", cleanup.Command)
+	}
+	tc.taskCleanups = nil
+	if err := errors.Wrap(catcher.Resolve(), "running command cleanups"); err != nil {
+		logger.Execution().Error(err)
+	}
+}
+
+func (tc *taskContext) runSetupGroupCommandCleanups(ctx context.Context, logger client.LoggerProducer) {
+	catcher := grip.NewBasicCatcher()
+	for _, cleanup := range tc.setupGroupCleanups {
+		catcher.Wrapf(cleanup.Run(ctx), "running clean up from command '%s'", cleanup.Command)
+	}
+	tc.setupGroupCleanups = nil
+	if err := errors.Wrap(catcher.Resolve(), "running command cleanups"); err != nil {
+		logger.Execution().Error(err)
+	}
 }
 
 func (tc *taskContext) getOtherFailingCommands() []apimodels.FailingCommand {

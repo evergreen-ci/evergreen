@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -16,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -55,10 +53,22 @@ type TaskConfig struct {
 	ModulePaths        map[string]string
 	CedarTestResultsID string
 	TaskGroup          *model.TaskGroup
-	CommandCleanups    CommandCleanups
+	CommandCleanups    []CommandCleanup
 
 	mu sync.RWMutex
 }
+
+type CommandCleanupLevel int
+
+const (
+	// TaskCleanupLevel runs the cleanup commands after the task is finished.
+	// The task is considered 'pre+main+post' or 'setup_task+main+teardown_task'
+	// and includes timeout commands if the task timed out.
+	TaskCleanupLevel = CommandCleanupLevel(iota)
+	// TaskGroupCleanupLevel runs the cleanup commands after the task group is finished.
+	// This is for 'setup_group+teardown_group'.
+	TaskGroupCleanupLevel
+)
 
 // CommandCleanups is a list of cleanup functions that are added dynamically
 // during task execution. These functions are called when the task is
@@ -74,27 +84,13 @@ type CommandCleanup struct {
 	Run func(context.Context) error
 }
 
-type CommandCleanups []CommandCleanup
-
-func (c CommandCleanups) RunAll(ctx context.Context) error {
-	catcher := grip.NewBasicCatcher()
-	for _, cleanup := range c {
-		catcher.Wrapf(cleanup.Run(ctx), "running clean up from command '%s'", cleanup.Command)
-	}
-	return errors.Wrap(catcher.Resolve(), "running command cleanups")
-}
-
-// RunCleanupCommands runs all the cleanup commands that have been added to the
-// task config. This should be called right after setup group, teardown group,
-// and timeout commands. It should also be ran after completing pre + main commands
-// + post or setup task + main commands + teardown task. If the task errors out
-// along one of these stages, the cleanup commands will run then as well.
-func (t *TaskConfig) RunCleanupCommands(ctx context.Context, logger client.LoggerProducer) {
-	err := t.CommandCleanups.RunAll(ctx)
-	if err != nil {
-		logger.Execution().Error(err)
-	}
-	t.CommandCleanups = nil
+func (t *TaskConfig) AddCommandCleanup(cmd string, run func(context.Context) error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.CommandCleanups = append(t.CommandCleanups, CommandCleanup{
+		Command: cmd,
+		Run:     run,
+	})
 }
 
 // Timeout records dynamic timeout information that has been explicitly set by
