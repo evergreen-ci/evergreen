@@ -1484,73 +1484,78 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 }
 
 func TestSetGithubAppCredentials(t *testing.T) {
+	sampleAppId := int64(10)
+	samplePrivateKey := []byte("private_key")
 	for name, test := range map[string]func(t *testing.T, p *ProjectRef){
 		"NoCredentialsWhenNoneExist": func(t *testing.T, p *ProjectRef) {
-			hasApp, err := HasGithubAppAuth(p.Id)
+			app, err := FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
-			assert.False(t, hasApp)
+			assert.Nil(t, app)
 		},
 		"CredentialsCanBeSet": func(t *testing.T, p *ProjectRef) {
-			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
-			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
+			app, err := FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
-			assert.True(t, hasApp)
+			assert.Equal(t, sampleAppId, app.AppID)
+			assert.Equal(t, samplePrivateKey, app.PrivateKey)
 		},
 		"CredentialsCanBeRemovedByEmptyAppIDAndEmptyPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
-			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
-			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
+			app, err := FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
-			assert.True(t, hasApp)
+			assert.Equal(t, sampleAppId, app.AppID)
+			assert.Equal(t, samplePrivateKey, app.PrivateKey)
 
 			// Remove credentials.
 			require.NoError(t, p.SetGithubAppCredentials(0, []byte("")))
-			hasApp, err = HasGithubAppAuth(p.Id)
+			app, err = FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
-			assert.False(t, hasApp)
+			assert.Nil(t, app)
 		},
 		"CredentialsCanBeRemovedByEmptyAppIDAndNilPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
-			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
-			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
+			app, err := FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
-			assert.True(t, hasApp)
+			assert.Equal(t, sampleAppId, app.AppID)
+			assert.Equal(t, samplePrivateKey, app.PrivateKey)
 
 			// Remove credentials.
 			require.NoError(t, p.SetGithubAppCredentials(0, nil))
-			hasApp, err = HasGithubAppAuth(p.Id)
+			app, err = FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
-			assert.False(t, hasApp)
+			assert.Nil(t, app)
 		},
 		"CredentialsCannotBeRemovedByOnlyEmptyPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
-			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
-			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
+			appID, err := GetGitHubAppID(p.Id)
 			require.NoError(t, err)
-			assert.True(t, hasApp)
+			assert.NotNil(t, appID)
 
 			// Remove credentials.
-			require.Error(t, p.SetGithubAppCredentials(10, []byte("")), "both app ID and private key must be provided")
+			require.Error(t, p.SetGithubAppCredentials(sampleAppId, []byte("")), "both app ID and private key must be provided")
 		},
 		"CredentialsCannotBeRemovedByOnlyNilPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
-			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
-			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, p.SetGithubAppCredentials(10, samplePrivateKey))
+			appID, err := GetGitHubAppID(p.Id)
 			require.NoError(t, err)
-			assert.True(t, hasApp)
+			assert.NotNil(t, appID)
 
 			// Remove credentials.
-			require.Error(t, p.SetGithubAppCredentials(10, nil), "both app ID and private key must be provided")
+			require.Error(t, p.SetGithubAppCredentials(sampleAppId, nil), "both app ID and private key must be provided")
 		},
 		"CredentialsCannotBeRemovedByOnlyEmptyAppID": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
-			require.NoError(t, p.SetGithubAppCredentials(10, []byte("private_key")))
-			hasApp, err := HasGithubAppAuth(p.Id)
+			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
+			appID, err := GetGitHubAppID(p.Id)
 			require.NoError(t, err)
-			assert.True(t, hasApp)
+			assert.NotNil(t, appID)
 
 			// Remove credentials.
-			require.Error(t, p.SetGithubAppCredentials(0, []byte("private_key")), "both app ID and private key must be provided")
+			require.Error(t, p.SetGithubAppCredentials(0, samplePrivateKey), "both app ID and private key must be provided")
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -1812,6 +1817,7 @@ func TestGithubPermissionGroups(t *testing.T) {
 	}
 	orgRequesters := map[string]string{
 		evergreen.PatchVersionRequester: "some-group",
+		evergreen.GithubPRRequester:     noPermissionsGitHubTokenPermissionGroup.Name,
 	}
 	p := &ProjectRef{
 		GitHubDynamicTokenPermissionGroups: orgGroup,
@@ -1820,13 +1826,15 @@ func TestGithubPermissionGroups(t *testing.T) {
 	require.NoError(p.Insert())
 
 	t.Run("Not found requester should return default permissions", func(t *testing.T) {
-		group := p.GetGitHubPermissionGroup("requester")
+		group, found := p.GetGitHubPermissionGroup("requester")
 		assert.Equal(defaultGitHubTokenPermissionGroup, group)
+		assert.False(found)
 	})
 
 	t.Run("Found requester should return correct group", func(t *testing.T) {
-		group := p.GetGitHubPermissionGroup(evergreen.PatchVersionRequester)
+		group, found := p.GetGitHubPermissionGroup(evergreen.PatchVersionRequester)
 		assert.Equal("some-group", group.Name)
+		assert.True(found)
 		assert.Equal("read", utility.FromStringPtr(group.Permissions.Actions))
 	})
 
@@ -3579,8 +3587,9 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.NotNil(t, projectRef)
 	assert.Len(projectRef.GitHubDynamicTokenPermissionGroups, 1)
 
-	perms := projectRef.GetGitHubPermissionGroup(evergreen.GithubMergeRequester)
+	perms, found := projectRef.GetGitHubPermissionGroup(evergreen.GithubMergeRequester)
 	assert.Equal("some-group", perms.Name)
+	assert.True(found)
 	assert.Equal("read", utility.FromStringPtr(perms.Permissions.Actions))
 }
 

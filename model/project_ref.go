@@ -160,45 +160,48 @@ var defaultGitHubTokenPermissionGroup = GitHubDynamicTokenPermissionGroup{
 	AllPermissions: true,
 }
 
+// noPermissionsGitHubTokenPermissionGroup is an empty, no permissions, group.
+var noPermissionsGitHubTokenPermissionGroup = GitHubDynamicTokenPermissionGroup{
+	Name:           "No Permissions",
+	AllPermissions: false,
+}
+
 // GetGitHubPermissionGroup returns the GitHubDynamicTokenPermissionGroup for the given requester.
-// If the requester is not found, it returns the default.
-func (p *ProjectRef) GetGitHubPermissionGroup(requester string) GitHubDynamicTokenPermissionGroup {
+// If the requester is not found, it returns the default permission group and a false boolean to
+// indicate not found.
+func (p *ProjectRef) GetGitHubPermissionGroup(requester string) (GitHubDynamicTokenPermissionGroup, bool) {
 	if p.GitHubPermissionGroupByRequester == nil {
-		return defaultGitHubTokenPermissionGroup
+		return defaultGitHubTokenPermissionGroup, false
 	}
-	if groupName, ok := p.GitHubPermissionGroupByRequester[requester]; ok {
-		for _, group := range p.GitHubDynamicTokenPermissionGroups {
-			if group.Name == groupName {
-				return group
-			}
+	groupName, ok := p.GitHubPermissionGroupByRequester[requester]
+	if !ok {
+		return defaultGitHubTokenPermissionGroup, false
+	}
+	if groupName == noPermissionsGitHubTokenPermissionGroup.Name {
+		return noPermissionsGitHubTokenPermissionGroup, true
+	}
+	for _, group := range p.GitHubDynamicTokenPermissionGroups {
+		if group.Name == groupName {
+			return group, true
 		}
 	}
-	return defaultGitHubTokenPermissionGroup
+	return defaultGitHubTokenPermissionGroup, false
 }
 
 func (p *ProjectRef) ValidateGitHubPermissionGroups() error {
 	catcher := grip.NewBasicCatcher()
-	// Group validation
 	for _, group := range p.GitHubDynamicTokenPermissionGroups {
-		if group.Name == "" {
-			catcher.Add(errors.New("group name cannot be empty"))
-		}
+		catcher.ErrorfWhen(group.Name == "", "group name cannot be empty")
 	}
-	// Requester validation
 	for requester, groupName := range p.GitHubPermissionGroupByRequester {
-		if !utility.StringSliceContains(evergreen.AllRequesterTypes, requester) {
-			catcher.Add(errors.Errorf("requester '%s' is not a valid requester", requester))
-		}
-		foundGroup := false
-		for _, group := range p.GitHubDynamicTokenPermissionGroups {
-			if groupName == group.Name {
-				foundGroup = true
-				break
-			}
-		}
-		if !foundGroup {
-			catcher.Add(errors.Errorf("group '%s' for requester '%s' not found", groupName, requester))
-		}
+		catcher.ErrorfWhen(
+			!utility.StringSliceContains(evergreen.AllRequesterTypes, requester),
+			"requester '%s' is not a valid requester", requester)
+
+		_, found := p.GetGitHubPermissionGroup(requester)
+		catcher.ErrorfWhen(
+			!found,
+			"group '%s' for requester '%s' not found", groupName, requester)
 	}
 	return errors.Wrap(catcher.Resolve(), "invalid GitHub dynamic token permission groups")
 }
@@ -1983,18 +1986,21 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 		return nil, errors.Wrapf(err, "finding subscription for project '%s'", p.Id)
 	}
 
-	hasGithubAppAuth, err := HasGithubAppAuth(p.Id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding hadGithubApp for project '%s'", p.Id)
-	}
-
 	projectSettingsEvent := ProjectSettings{
 		ProjectRef:         *p,
 		GithubHooksEnabled: hasEvergreenAppInstalled,
 		Vars:               *projectVars,
 		Aliases:            projectAliases,
 		Subscriptions:      subscriptions,
-		HasGitHubApp:       hasGithubAppAuth,
+	}
+
+	githubAppID, err := GetGitHubAppID(p.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding github app for project '%s'", p.Id)
+	}
+	if githubAppID != nil {
+		projectSettingsEvent.GitHubAppID = *githubAppID
+
 	}
 	return &projectSettingsEvent, nil
 }

@@ -638,3 +638,35 @@ func TestGetAuthorizedKeysFile(t *testing.T) {
 		assert.Equal(t, expected, d.GetAuthorizedKeysFile())
 	})
 }
+
+func TestGetDistrosForImage(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	assert.NoError(t, db.ClearCollections(Collection))
+	imageID := "distro"
+	otherImageID := "not_distro"
+	d1 := &Distro{
+		Id:      "distro-1",
+		ImageID: imageID,
+	}
+	assert.Nil(t, d1.Insert(ctx))
+	d2 := &Distro{
+		Id:      "distro-2",
+		ImageID: imageID,
+	}
+	assert.Nil(t, d2.Insert(ctx))
+	d3 := &Distro{
+		Id:      "distro-3",
+		ImageID: imageID,
+	}
+	assert.Nil(t, d3.Insert(ctx))
+	d4 := &Distro{
+		Id:      "distro-4",
+		ImageID: otherImageID,
+	}
+	assert.Nil(t, d4.Insert(ctx))
+
+	found, err := getDistrosForImage(ctx, imageID)
+	assert.NoError(t, err)
+	assert.Len(t, found, 3)
+}

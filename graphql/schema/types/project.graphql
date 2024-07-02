@@ -132,6 +132,7 @@ input PatchTriggerAliasInput {
   childProjectIdentifier: String!
   parentAsModule: String
   status: String
+  downstreamRevision: String
   taskSpecifiers: [TaskSpecifierInput!]!
 }
 

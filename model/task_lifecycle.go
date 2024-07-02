@@ -830,7 +830,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	}
 
 	catcher.Wrap(UpdateBlockedDependencies(ctx, t), "updating blocked dependencies")
-	catcher.Wrap(t.MarkDependenciesFinished(ctx, true), "updating dependency met status")
+	catcher.Wrap(t.MarkDependenciesFinished(ctx, true), "updating dependency finished status")
 
 	status := t.GetDisplayStatus()
 
@@ -1043,12 +1043,14 @@ func UpdateBlockedDependencies(ctx context.Context, t *task.Task) error {
 		return errors.Wrapf(err, "getting tasks depending on task '%s'", t.Id)
 	}
 
+	dependentTasks, err = task.MarkAllForUnattainableDependency(ctx, dependentTasks, t.Id, true)
+	if err != nil {
+		return errors.Wrap(err, "marking unattainable dependency for tasks")
+	}
+
 	// Using a set then converting to a slice to avoid duplicate build IDs.
 	buildIDsSet := make(map[string]struct{})
 	for _, dependentTask := range dependentTasks {
-		if err = dependentTask.MarkUnattainableDependency(ctx, t.Id, true); err != nil {
-			return errors.Wrap(err, "marking dependency unattainable")
-		}
 		if err = UpdateBlockedDependencies(ctx, &dependentTask); err != nil {
 			return errors.Wrapf(err, "updating blocked dependencies for '%s'", t.Id)
 		}
@@ -1075,12 +1077,13 @@ func UpdateUnblockedDependencies(ctx context.Context, t *task.Task) error {
 		return errors.Wrap(err, "getting dependencies marked unattainable")
 	}
 
+	blockedTasks, err = task.MarkAllForUnattainableDependency(ctx, blockedTasks, t.Id, false)
+	if err != nil {
+		return errors.Wrap(err, "marking attainable dependency for tasks")
+	}
+
 	buildsToUpdate := make(map[string]bool)
 	for _, blockedTask := range blockedTasks {
-		if err = blockedTask.MarkUnattainableDependency(ctx, t.Id, false); err != nil {
-			return errors.Wrap(err, "marking dependency attainable")
-		}
-
 		if err := UpdateUnblockedDependencies(ctx, &blockedTask); err != nil {
 			return errors.WithStack(err)
 		}
@@ -1909,18 +1912,19 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		if err = checkUpdateBuildPRStatusPending(ctx, taskBuild); err != nil {
 			return errors.Wrapf(err, "updating build '%s' PR status", taskBuild.Id)
 		}
-		// only add tracing for versions, patches need to wait for child patches
-		if !evergreen.IsPatchRequester(taskVersion.Requester) {
-			traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project)
-			if err != nil {
-				return errors.Wrap(err, "getting context for tracing")
-			}
-			// use a new root span so that it logs it every time instead of only logging a small sample set as an http call span
-			_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
-			defer span.End()
+	}
 
-			return nil
+	if evergreen.IsFinishedVersionStatus(newVersionStatus) && !evergreen.IsPatchRequester(taskVersion.Requester) {
+		// only add tracing for versions, patches need to wait for child patches
+		traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project)
+		if err != nil {
+			return errors.Wrap(err, "getting context for tracing")
 		}
+		// use a new root span so that it logs it every time instead of only logging a small sample set as an http call span
+		_, span := tracer.Start(traceContext, "version-completion", trace.WithNewRoot())
+		defer span.End()
+
+		return nil
 	}
 
 	if evergreen.IsPatchRequester(taskVersion.Requester) {
