@@ -140,7 +140,7 @@ func getInstallationID(ctx context.Context, authFields *GithubAppAuth, owner, re
 		InstallationID: installationID,
 	}
 
-	if authFields.AppID == 0 {
+	if authFields.AppID != 0 {
 		cachedInstallation.AppID = authFields.AppID
 	}
 
