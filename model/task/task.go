@@ -2749,30 +2749,26 @@ func updateTaskDependenciesChunked(ctx context.Context, toUpdate taskDependencyU
 	var chunkTaskIDs []string
 	chunkDependencyIDSet := make(map[string]struct{})
 
+	numTasksToUpdate := len(toUpdate.taskDependenciesToUpdate)
+	numTasksSeen := 0
 	for taskID, dependencyIDs := range toUpdate.taskDependenciesToUpdate {
-		if len(chunkDependencyIDSet) >= taskDependencyUpdateChunkSize {
-			// Update this chunk of task dependencies, which has hit/exceeded
-			// the max number of dependencies that can be updated at once, then
-			// continue on with a updating a new chunk of task dependencies.
+		chunkTaskIDs = append(chunkTaskIDs, taskID)
+		for _, depID := range dependencyIDs {
+			chunkDependencyIDSet[depID] = struct{}{}
+		}
 
+		numTasksSeen++
+
+		if len(chunkDependencyIDSet) >= taskDependencyUpdateChunkSize || numTasksSeen == numTasksToUpdate {
+			// Update the tasks now - either there's no remaining task
+			// dependencies to update, or the max number of task dependencies
+			// that can be checked per query has been reached.
 			if err := updateTaskDependenciesForChunk(ctx, chunkTaskIDs, chunkDependencyIDSet, unattainable); err != nil {
 				return err
 			}
 
 			chunkTaskIDs = nil
 			chunkDependencyIDSet = make(map[string]struct{})
-		}
-
-		chunkTaskIDs = append(chunkTaskIDs, taskID)
-		for _, depID := range dependencyIDs {
-			chunkDependencyIDSet[depID] = struct{}{}
-		}
-	}
-
-	if len(chunkDependencyIDSet) > 0 {
-		// Update any remaining task dependencies in this chunk.
-		if err := updateTaskDependenciesForChunk(ctx, chunkTaskIDs, chunkDependencyIDSet, unattainable); err != nil {
-			return err
 		}
 	}
 
@@ -2794,6 +2790,36 @@ func updateTaskDependenciesForChunk(ctx context.Context, taskIDs []string, depen
 	}
 
 	return nil
+}
+
+// findAllTasksChunked finds all tasks by ID. This finds tasks in smaller chunks
+// to avoid the 16  MB query size limit - if the number of tasks is large, a
+// single query could be too large and the DB will reject it.
+func findAllTasksChunked(taskIDs []string) ([]Task, error) {
+	if len(taskIDs) == 0 {
+		return nil, nil
+	}
+
+	const maxTasksPerQuery = 2000
+	var chunkedTasks []string
+	allTasks := make([]Task, 0, len(taskIDs))
+
+	for i, taskID := range taskIDs {
+		chunkedTasks = append(chunkedTasks, taskID)
+
+		if i == len(taskIDs)-1 || len(chunkedTasks) > maxTasksPerQuery {
+			// Query the tasks now - either there's no remaining task IDs, or
+			// the max task IDs that can be checked per query has been reached.
+			tasks, err := FindAll(db.Query(ByIds(chunkedTasks)))
+			if err != nil {
+				return nil, errors.Wrap(err, "finding tasks")
+			}
+			allTasks = append(allTasks, tasks...)
+			chunkedTasks = nil
+		}
+	}
+
+	return allTasks, nil
 }
 
 // AbortBuildTasks sets the abort flag on all tasks associated with the build which are in an abortable

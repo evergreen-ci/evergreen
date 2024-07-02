@@ -2678,11 +2678,20 @@ func FindAllUnmarkedDependenciesToBlock(tasks []Task) ([]Task, error) {
 	var unmatchedDep []bson.M
 	allTasks := make([]Task, 0, len(tasks))
 
-	for _, t := range tasks {
-		if len(unmatchedDep) >= maxTasksPerQuery {
-			// Find task dependencies in chunks to avoid exceeding the 16 MB
-			// query size limit. Then continue on with finding a new chunk of
-			// task dependencies.
+	for i, t := range tasks {
+		okStatusSet := []string{AllStatuses, t.Status}
+		unmatchedDep = append(unmatchedDep, bson.M{
+			DependsOnKey: bson.M{"$elemMatch": bson.M{
+				DependencyTaskIdKey:       t.Id,
+				DependencyStatusKey:       bson.M{"$nin": okStatusSet},
+				DependencyUnattainableKey: false,
+			}},
+		})
+
+		if i == len(tasks)-1 || len(unmatchedDep) >= maxTasksPerQuery {
+			// Query the tasks now - either there's no remaining task
+			// dependencies to check, or the max task dependencies that can be
+			// checked per query has been reached.
 			query := db.Query(bson.M{
 				"$or": unmatchedDep,
 			})
@@ -2693,26 +2702,6 @@ func FindAllUnmarkedDependenciesToBlock(tasks []Task) ([]Task, error) {
 			allTasks = append(allTasks, tasks...)
 			unmatchedDep = nil
 		}
-
-		okStatusSet := []string{AllStatuses, t.Status}
-		unmatchedDep = append(unmatchedDep, bson.M{
-			DependsOnKey: bson.M{"$elemMatch": bson.M{
-				DependencyTaskIdKey:       t.Id,
-				DependencyStatusKey:       bson.M{"$nin": okStatusSet},
-				DependencyUnattainableKey: false,
-			}},
-		})
-	}
-	if len(unmatchedDep) > 0 {
-		// Find any remaining task dependencies.
-		query := db.Query(bson.M{
-			"$or": unmatchedDep,
-		})
-		tasks, err := FindAll(query)
-		if err != nil {
-			return nil, err
-		}
-		allTasks = append(allTasks, tasks...)
 	}
 
 	return allTasks, nil
