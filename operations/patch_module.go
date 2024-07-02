@@ -117,7 +117,7 @@ func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 	}
 
 	ref := params.Ref
-	if params.Uncommitted || conf.UncommittedChanges {
+	if params.Uncommitted || conf.UncommittedChanges || params.IncludeModules {
 		ref = ""
 	}
 

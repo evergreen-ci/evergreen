@@ -152,18 +152,26 @@ func newTagSelectorEvaluator(selectees []tagged) *tagSelectorEvaluator {
 	}
 }
 
-// evalSelector returns all names that fulfill a selector. This is done
-// by evaluating each criterion individually and taking the intersection.
-func (tse *tagSelectorEvaluator) evalSelector(s Selector) ([]string, error) {
+// evalSelector returns all names that fulfill a selector and all unmatched criterion.
+// This is done by evaluating each criterion individually and taking the intersection.
+func (tse *tagSelectorEvaluator) evalSelector(s Selector) ([]string, []string, error) {
 	// keep a slice of results per criterion
 	results := []string{}
+	unmatchedCriteria := []string{}
 	if len(s) == 0 {
-		return nil, errors.New("cannot evaluate selector with no criteria")
+		return nil, nil, errors.New("cannot evaluate selector with no criteria")
 	}
 	for i, sc := range s {
 		names, err := tse.evalCriterion(sc)
 		if err != nil {
-			return nil, errors.Wrapf(err, "%v", s)
+			return nil, nil, errors.Wrapf(err, "%v", s)
+		}
+		if len(names) == 0 {
+			unmatchedCriteria = append(unmatchedCriteria, sc.String())
+			// If this is a negated criteria, we do not want to intersect it with the rest
+			if sc.negated {
+				continue
+			}
 		}
 		if i == 0 {
 			results = names
@@ -172,7 +180,7 @@ func (tse *tagSelectorEvaluator) evalSelector(s Selector) ([]string, error) {
 			results = utility.StringSliceIntersection(results, names)
 		}
 	}
-	return results, nil
+	return results, unmatchedCriteria, nil
 }
 
 // evalCriterion returns all names that fulfill a single selection criterion.
@@ -191,14 +199,14 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 	case !sc.tagged && !sc.negated: // just a regular name
 		item := tse.byName[sc.name]
 		if item == nil {
-			return nil, errors.Errorf("nothing named '%v'", sc.name)
+			return nil, nil
 		}
 		return []string{item.name()}, nil
 
 	case sc.tagged && !sc.negated: // expand a tag
 		taggedItems := tse.byTag[sc.name]
 		if len(taggedItems) == 0 {
-			return nil, errors.Errorf("nothing has the tag '%v'", sc.name)
+			return nil, nil
 		}
 		names := make([]string, len(taggedItems))
 		for i, item := range taggedItems {
@@ -208,8 +216,7 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 
 	case !sc.tagged && sc.negated: // everything *but* a specific item
 		if tse.byName[sc.name] == nil {
-			// we want to treat this as an error for better usability
-			return nil, errors.Errorf("nothing named '%v'", sc.name)
+			return nil, nil
 		}
 		names := []string{}
 		for _, item := range tse.items {
@@ -222,8 +229,7 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 	case sc.tagged && sc.negated: // everything *but* a tag
 		items := tse.byTag[sc.name]
 		if len(items) == 0 {
-			// we want to treat this as an error for better usability
-			return nil, errors.Errorf("nothing has the tag '%v'", sc.name)
+			return nil, nil
 		}
 		illegalItems := map[string]bool{}
 		for _, item := range items {
@@ -264,12 +270,12 @@ func NewParserTaskSelectorEvaluator(tasks []parserTask) *taskSelectorEvaluator {
 }
 
 // evalSelector returns all tasks selected by a selector.
-func (t *taskSelectorEvaluator) evalSelector(s Selector) ([]string, error) {
-	results, err := t.tagEval.evalSelector(s)
+func (t *taskSelectorEvaluator) evalSelector(s Selector) ([]string, []string, error) {
+	results, unmatched, err := t.tagEval.evalSelector(s)
 	if err != nil {
-		return nil, errors.Wrap(err, "evaluating task selector")
+		return nil, nil, errors.Wrap(err, "evaluating task selector")
 	}
-	return results, nil
+	return results, unmatched, nil
 }
 
 func newTaskGroupSelectorEvaluator(groups []parserTaskGroup) *tagSelectorEvaluator {
@@ -334,9 +340,12 @@ func (ase *axisSelectorEvaluator) evalSelector(axis string, s Selector) ([]strin
 	if !ok {
 		return nil, errors.Errorf("axis '%v' does not exist", axis)
 	}
-	results, err := tagEval.evalSelector(s)
+	results, unmatched, err := tagEval.evalSelector(s)
 	if err != nil {
 		return nil, errors.Wrapf(err, "evaluating axis '%v' selector", axis)
+	}
+	if len(unmatched) > 0 {
+		return nil, errors.Errorf("axis '%v' selector contains unmatched criteria: %v", axis, unmatched)
 	}
 	return results, nil
 }
@@ -386,9 +395,12 @@ func (v *variantSelectorEvaluator) evalSelector(vs *variantSelector) ([]string, 
 		}
 		return results, nil
 	}
-	results, err := v.tagEval.evalSelector(ParseSelector(vs.StringSelector))
+	results, unmatched, err := v.tagEval.evalSelector(ParseSelector(vs.StringSelector))
 	if err != nil {
-		return nil, errors.Wrap(err, "variant tag selector")
+		return nil, errors.Wrap(err, "variant selector")
+	}
+	if len(unmatched) > 0 {
+		return nil, errors.Errorf("variant selector contains unmatched criteria: %v", unmatched)
 	}
 	return results, nil
 }

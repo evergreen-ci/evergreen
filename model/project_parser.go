@@ -74,7 +74,7 @@ type ParserProject struct {
 	// UpdatedByGenerators is used to determine if the parser project needs to be re-saved or not.
 	UpdatedByGenerators []string `yaml:"updated_by_generators,omitempty" bson:"updated_by_generators,omitempty"`
 	// List of yamls to merge
-	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
+	Include []parserInclude `yaml:"include,omitempty" bson:"include,omitempty"`
 
 	// Beginning of ParserProject mergeable fields (this comment is used by the linter).
 	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
@@ -238,6 +238,11 @@ func (pd *parserDependency) UnmarshalYAML(unmarshal func(interface{}) error) err
 		return errors.WithStack(errors.New("task selector must have a name"))
 	}
 	return nil
+}
+
+type parserInclude struct {
+	FileName string `yaml:"filename,omitempty" bson:"filename,omitempty"`
+	Module   string `yaml:"module,omitempty" bson:"module,omitempty"`
 }
 
 // TaskSelector handles the selection of specific task/variant combinations
@@ -627,20 +632,21 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 }
 
 func processIntermediateProjectIncludes(ctx context.Context, identifier string, intermediateProject *ParserProject,
-	include Include, outputYAMLs chan<- yamlTuple, projectOpts *GetProjectOpts) {
+	include parserInclude, outputYAMLs chan<- yamlTuple, projectOpts *GetProjectOpts) {
 	// Make a copy of opts because otherwise parts of opts would be
 	// modified concurrently.  Note, however, that Ref and PatchOpts are
 	// themselves pointers, so should not be modified.
 	localOpts := &GetProjectOpts{
-		Ref:             projectOpts.Ref,
-		PatchOpts:       projectOpts.PatchOpts,
-		LocalModules:    projectOpts.LocalModules,
-		RemotePath:      include.FileName,
-		Revision:        projectOpts.Revision,
-		Token:           projectOpts.Token,
-		ReadFileFrom:    projectOpts.ReadFileFrom,
-		Identifier:      identifier,
-		UnmarshalStrict: projectOpts.UnmarshalStrict,
+		Ref:                 projectOpts.Ref,
+		PatchOpts:           projectOpts.PatchOpts,
+		LocalModules:        projectOpts.LocalModules,
+		RemotePath:          include.FileName,
+		Revision:            projectOpts.Revision,
+		Token:               projectOpts.Token,
+		ReadFileFrom:        projectOpts.ReadFileFrom,
+		Identifier:          identifier,
+		UnmarshalStrict:     projectOpts.UnmarshalStrict,
+		LocalModuleIncludes: projectOpts.LocalModuleIncludes,
 	}
 	localOpts.UpdateReadFileFrom(include.FileName)
 
@@ -653,7 +659,7 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		"module":      include.Module,
 	})
 	if include.Module != "" {
-		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include.Module)
+		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include)
 		err = errors.Wrapf(err, "%s: retrieving file for module '%s'", LoadProjectError, include.Module)
 	} else {
 		yaml, err = retrieveFile(ctx, *localOpts)
@@ -694,7 +700,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 
 		wg := sync.WaitGroup{}
 		outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
-		includesToProcess := make(chan Include, len(intermediateProject.Include))
+		includesToProcess := make(chan parserInclude, len(intermediateProject.Include))
 
 		for _, path := range intermediateProject.Include {
 			includesToProcess <- path
@@ -776,15 +782,16 @@ const (
 )
 
 type GetProjectOpts struct {
-	Ref             *ProjectRef
-	PatchOpts       *PatchOpts
-	LocalModules    map[string]string
-	RemotePath      string
-	Revision        string
-	Token           string
-	ReadFileFrom    string
-	Identifier      string
-	UnmarshalStrict bool
+	Ref                 *ProjectRef
+	PatchOpts           *PatchOpts
+	LocalModules        map[string]string
+	RemotePath          string
+	Revision            string
+	Token               string
+	ReadFileFrom        string
+	Identifier          string
+	UnmarshalStrict     bool
+	LocalModuleIncludes []patch.LocalModuleInclude
 }
 
 type PatchOpts struct {
@@ -855,21 +862,28 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	}
 }
 
-func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, moduleName string) ([]byte, error) {
+func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, include parserInclude) ([]byte, error) {
+	// Check if the module has a local change passed in through the CLI
+	for _, patchedInclude := range opts.LocalModuleIncludes {
+		if patchedInclude.Module == include.Module && patchedInclude.FileName == include.FileName {
+			return patchedInclude.FileContent, nil
+		}
+	}
+
 	// Look through any given local modules first
-	if path, ok := opts.LocalModules[moduleName]; ok {
+	if path, ok := opts.LocalModules[include.Module]; ok {
 		moduleOpts := GetProjectOpts{
 			RemotePath:   fmt.Sprintf("%s/%s", path, opts.RemotePath),
 			ReadFileFrom: ReadFromLocal,
 		}
 		return retrieveFile(ctx, moduleOpts)
 	} else if opts.ReadFileFrom == ReadFromLocal {
-		return nil, errors.Errorf("local path for module '%s' is unspecified", moduleName)
+		return nil, errors.Errorf("local path for module '%s' is unspecified", include.Module)
 	}
 	// Retrieve from github
-	module, err := GetModuleByName(modules, moduleName)
+	module, err := GetModuleByName(modules, include.Module)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting module for module name '%s'", moduleName)
+		return nil, errors.Wrapf(err, "getting module for module name '%s'", include.Module)
 	}
 	repoOwner, repoName, err := module.GetOwnerAndRepo()
 	if err != nil {
@@ -885,7 +899,7 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		Revision:     module.Branch,
 		Token:        opts.Token,
 		ReadFileFrom: ReadFromGithub,
-		Identifier:   moduleName,
+		Identifier:   include.Module,
 	}
 	return retrieveFile(ctx, moduleOpts)
 }
@@ -1138,9 +1152,12 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 		// expand, validate that tasks defined in a group are listed in the project tasks
 		var taskNames []string
 		for _, taskName := range ptg.Tasks {
-			names, err := tse.evalSelector(ParseSelector(taskName))
+			names, unmatched, err := tse.evalSelector(ParseSelector(taskName))
 			if err != nil {
 				evalErrs = append(evalErrs, err)
+			}
+			if len(unmatched) > 0 {
+				evalErrs = append(evalErrs, errors.Errorf("task group '%s' has unmatched selector: '%s'", ptg.Name, strings.Join(unmatched, "', '")))
 			}
 			taskNames = append(taskNames, names...)
 		}
@@ -1155,6 +1172,8 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
 	pbvs []parserBV, tasks []parserTask, tgs []TaskGroup) ([]BuildVariant, []error) {
 	bvs := []BuildVariant{}
+	var unmatchedSelectors []string
+	var unmatchedCriteria []string
 	var evalErrs, errs []error
 	for _, pbv := range pbvs {
 		bv := BuildVariant{
@@ -1175,7 +1194,13 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			Tags:           pbv.Tags,
 		}
 		bv.AllowedRequesters = pbv.AllowedRequesters
-		bv.Tasks, bv.EmptyTaskSelectors, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
+		bv.Tasks, unmatchedSelectors, unmatchedCriteria, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
+		if len(unmatchedSelectors) > 0 {
+			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' has unmatched selector: '%s'", pbv.Name, strings.Join(unmatchedSelectors, "', '")))
+		}
+		if len(unmatchedCriteria) > 0 {
+			bv.TranslationWarnings = append(bv.TranslationWarnings, fmt.Sprintf("buildvariant '%s' has unmatched criteria: '%s'", pbv.Name, strings.Join(unmatchedCriteria, "', '")))
+		}
 
 		// evaluate any rules passed in during matrix construction
 		for _, r := range pbv.MatrixRules {
@@ -1184,7 +1209,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 				prunedTasks := []BuildVariantTaskUnit{}
 				toRemove := []string{}
 				for _, t := range r.RemoveTasks {
-					removed, err := tse.evalSelector(ParseSelector(t))
+					removed, _, err := tse.evalSelector(ParseSelector(t))
 					if err != nil {
 						evalErrs = append(evalErrs, errors.Wrap(err, "remove rule"))
 						continue
@@ -1209,7 +1234,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 
 				var added []BuildVariantTaskUnit
 				pbv.Tasks = r.AddTasks
-				added, _, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
+				added, _, _, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)
 				evalErrs = append(evalErrs, errs...)
 				// check for conflicting duplicates
 				for _, t := range added {
@@ -1256,9 +1281,12 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			//resolve tags for display tasks
 			tasks := []string{}
 			for _, et := range dt.ExecutionTasks {
-				results, err := dtse.evalSelector(ParseSelector(et))
+				results, unmatched, err := dtse.evalSelector(ParseSelector(et))
 				if err != nil {
 					errs = append(errs, err)
+				}
+				if len(unmatched) > 0 {
+					errs = append(errs, errors.Errorf("display task '%s' contains unmatched criteria: '%s'", dt.Name, strings.Join(unmatched, "', '")))
 				}
 				tasks = append(tasks, results...)
 			}
@@ -1294,11 +1322,15 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 // tasks.
 // For task units that represent task groups, the resulting BuildVariantTaskUnit
 // represents the task group itself, not the individual tasks in the task group.
+// Returns the list of BuildVariantTaskUnits, the list of selectors that did not
+// match anything, the list of criteria that did not match any tasks, and
+// any errors encountered during evaluation.
 func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
-	pbv parserBV, tasks []parserTask) ([]BuildVariantTaskUnit, []string, []error) {
+	pbv parserBV, tasks []parserTask) ([]BuildVariantTaskUnit, []string, []string, []error) {
 	var evalErrs, errs []error
 	ts := []BuildVariantTaskUnit{}
-	emptySelectors := []string{}
+	unmatchedSelectors := []string{}
+	unmatchedCriteria := []string{}
 	taskUnitsByName := map[string]BuildVariantTaskUnit{}
 	tasksByName := map[string]parserTask{}
 	for _, t := range tasks {
@@ -1309,32 +1341,43 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		// only error if both selectors error because each task should only be found
 		// in one or the other.  Skip selector checking if task group is defined
 		// directly on the build variant task.
-		var names, temp []string
+		var names, unmatchedCriteriaFromTasks, unmatchedCriteriaFromTaskGroups, temp []string
 		isGroup := false
 		if pbvt.TaskGroup != nil {
 			names = append(names, pbvt.Name)
 			isGroup = true
 		} else {
-			var err1, err2 error
+			var taskSelectorErr, taskGroupSelectorErr error
 			if tse != nil {
-				temp, err1 = tse.evalSelector(ParseSelector(pbvt.Name))
+				temp, unmatchedCriteriaFromTasks, taskSelectorErr = tse.evalSelector(ParseSelector(pbvt.Name))
 				names = append(names, temp...)
 			}
 			if tgse != nil {
-				temp, err2 = tgse.evalSelector(ParseSelector(pbvt.Name))
+				temp, unmatchedCriteriaFromTaskGroups, taskGroupSelectorErr = tgse.evalSelector(ParseSelector(pbvt.Name))
 				if len(temp) > 0 {
 					names = append(names, temp...)
 					isGroup = true
 				}
 			}
-			if err1 != nil && err2 != nil {
-				evalErrs = append(evalErrs, err1, err2)
-				emptySelectors = append(emptySelectors, pbvt.Name)
+			if taskSelectorErr != nil && taskGroupSelectorErr != nil {
+				evalErrs = append(evalErrs, taskSelectorErr, taskGroupSelectorErr)
+				unmatchedSelectors = append(unmatchedSelectors, pbvt.Name)
 				continue
 			}
 		}
+		initialUnmatchedCriteriaLen := len(unmatchedCriteriaFromTasks)
+		for _, unmatchedTask := range unmatchedCriteriaFromTasks {
+			if utility.StringSliceContains(unmatchedCriteriaFromTaskGroups, unmatchedTask) {
+				unmatchedCriteria = append(unmatchedCriteria, unmatchedTask)
+			}
+		}
 		if len(names) == 0 {
-			emptySelectors = append(emptySelectors, pbvt.Name)
+			unmatchedSelectors = append(unmatchedSelectors, pbvt.Name)
+			continue
+		}
+		// If any were unmatched, do not add any matched tasks to the list.
+		if len(unmatchedCriteriaFromTasks) > initialUnmatchedCriteriaLen {
+			continue
 		}
 		// create new task definitions--duplicates must have the same status requirements
 		for _, name := range names {
@@ -1378,7 +1421,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 		evalErrs = append(evalErrs, errors.Errorf("task selectors for build variant '%s' did not match any tasks", pbv.Name))
 
 	}
-	return ts, emptySelectors, evalErrs
+	return ts, unmatchedSelectors, unmatchedCriteria, evalErrs
 }
 
 // getParserBuildVariantTaskUnit combines the parser project's build variant
@@ -1499,7 +1542,7 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 	newDeps := []TaskUnitDependency{}
 	newDepsByNameAndVariant := map[TVPair]TaskUnitDependency{}
 	for _, d := range deps {
-		var names []string
+		var names, unmatched []string
 
 		if d.TaskSelector.Name == AllDependencies {
 			// * is a special case for dependencies, so don't eval it
@@ -1508,12 +1551,18 @@ func evaluateDependsOn(tse *tagSelectorEvaluator, tgse *tagSelectorEvaluator, vs
 			var temp []string
 			var err1, err2 error
 			if tse != nil {
-				temp, err1 = tse.evalSelector(ParseSelector(d.TaskSelector.Name))
+				temp, unmatched, err1 = tse.evalSelector(ParseSelector(d.TaskSelector.Name))
 				names = append(names, temp...)
+				if err1 == nil && len(unmatched) > 0 {
+					err1 = errors.Errorf("unmatched criteria: '%s' from selector '%s'", strings.Join(unmatched, ", "), d.TaskSelector.Name)
+				}
 			}
 			if tgse != nil {
-				temp, err2 = tgse.evalSelector(ParseSelector(d.TaskSelector.Name))
+				temp, unmatched, err2 = tgse.evalSelector(ParseSelector(d.TaskSelector.Name))
 				names = append(names, temp...)
+				if err2 == nil && len(unmatched) > 0 {
+					err2 = errors.Errorf("unmatched criteria: '%s' from selector '%s'", strings.Join(unmatched, ", "), d.TaskSelector.Name)
+				}
 			}
 			if err1 != nil && err2 != nil {
 				evalErrs = append(evalErrs, err1, err2)

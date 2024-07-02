@@ -377,6 +377,17 @@ We will maintain the following merge rules:
     merge generated variants.
 -   Matrix definitions or axes cannot be defined for more than one yaml.
 
+#### Testing with module includes
+
+When running a patch normally, the module include files will be pulled
+from GitHub. In order to see your local changes reflected in a patch, 
+the patch must be created with the `include-modules` flag.
+
+Note: the `set-modules` command will not reflect the local changes 
+in the project configuration page.
+
+``` evergreen patch --include-modules ```
+
 #### Validating changes to config files
 
 When editing yaml project files, you can verify that the file will work

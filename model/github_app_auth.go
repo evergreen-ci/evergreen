@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	githubAppAuthIdKey      = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "Id")
-	githubAppAuthAppId      = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "AppID")
-	githubAppAuthPrivateKey = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "PrivateKey")
+	ghAuthIdKey         = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "Id")
+	ghAuthAppIdKey      = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "AppID")
+	ghAuthPrivateKeyKey = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "PrivateKey")
 )
 
 const (
@@ -21,26 +21,30 @@ const (
 // FindOneGithubAppAuth finds the github app auth for the given project id
 func FindOneGithubAppAuth(projectId string) (*evergreen.GithubAppAuth, error) {
 	githubAppAuth := &evergreen.GithubAppAuth{}
-	q := db.Query(bson.M{githubAppAuthIdKey: projectId})
+	err := db.FindOneQ(GitHubAppAuthCollection, byGithubAppAuthID(projectId), githubAppAuth)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return githubAppAuth, err
+}
+
+// byGithubAppAuthID returns a query that finds a github app auth by the given identifier
+// corresponding to the project id
+func byGithubAppAuthID(projectId string) db.Q {
+	return db.Query(bson.M{ghAuthIdKey: projectId})
+}
+
+// GetGitHubAppID returns the app id for the given project id
+func GetGitHubAppID(projectId string) (*int64, error) {
+	githubAppAuth := &evergreen.GithubAppAuth{}
+
+	q := byGithubAppAuthID(projectId).WithFields(ghAuthAppIdKey)
 	err := db.FindOneQ(GitHubAppAuthCollection, q, githubAppAuth)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
-	if err != nil {
-		return nil, err
-	}
-	return githubAppAuth, nil
-}
 
-// HasGithubAppAuth checks if the github app auth for the given project id exists
-func HasGithubAppAuth(projectId string) (bool, error) {
-	var app *evergreen.GithubAppAuth
-	var err error
-	if app, err = FindOneGithubAppAuth(projectId); err != nil {
-		return false, err
-	}
-
-	return app != nil, nil
+	return &githubAppAuth.AppID, err
 }
 
 // UpsertGithubAppAuth inserts or updates the app auth for the given project id in the database
@@ -48,12 +52,12 @@ func UpsertGithubAppAuth(githubAppAuth *evergreen.GithubAppAuth) error {
 	_, err := db.Upsert(
 		GitHubAppAuthCollection,
 		bson.M{
-			githubAppAuthIdKey: githubAppAuth.Id,
+			ghAuthIdKey: githubAppAuth.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				githubAppAuthAppId:      githubAppAuth.AppID,
-				githubAppAuthPrivateKey: githubAppAuth.PrivateKey,
+				ghAuthAppIdKey:      githubAppAuth.AppID,
+				ghAuthPrivateKeyKey: githubAppAuth.PrivateKey,
 			},
 		},
 	)
@@ -64,6 +68,6 @@ func UpsertGithubAppAuth(githubAppAuth *evergreen.GithubAppAuth) error {
 func RemoveGithubAppAuth(id string) error {
 	return db.Remove(
 		GitHubAppAuthCollection,
-		bson.M{githubAppAuthIdKey: id},
+		bson.M{ghAuthIdKey: id},
 	)
 }
