@@ -38,6 +38,8 @@ const (
 	snsPayloadKey    requestContextKey = 5
 )
 
+const alertmanagerUser = "alertmanager"
+
 type projCtxMiddleware struct{}
 
 func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -420,6 +422,47 @@ func (m *podAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 		return
 	}
 
+	next(rw, r)
+}
+
+type alertmanagerMiddleware struct{}
+
+// NewAlertmanagerMiddleware returns a middleware that verifies the request
+// is coming from Evergreen's configured Alertmanager Kanopy webhook.
+func NewAlertmanagerMiddleware() gimlet.Middleware {
+	return &alertmanagerMiddleware{}
+}
+
+func (m *alertmanagerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	// Our Alertmanager webhook sends its credentials via basic auth, so we treat the username/password
+	// pair incoming from the request as we would Api-User / Api-Key header pairs to fetch a user document.
+	username, password, ok := r.BasicAuth()
+	if !ok || username != alertmanagerUser {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "not authorized",
+		}))
+		return
+	}
+	u, err := user.FindOneById(username)
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding user '%s'", username)))
+		return
+	}
+	if u == nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("user '%s' not found", username),
+		}))
+		return
+	}
+	if u.APIKey != password {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "not authorized",
+		}))
+		return
+	}
 	next(rw, r)
 }
 
