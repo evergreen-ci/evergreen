@@ -1015,13 +1015,13 @@ func TestOffboardUserHandlerAdminis(t *testing.T) {
 		env:    env,
 		user:   offboardedUser,
 	}
-	resp := handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"}))
+	resp := handler.Run(gimlet.AttachUser(ctx, &user.DBUser{Id: "root"}))
 	require.Equal(t, http.StatusOK, resp.Status())
 	assert.Contains(t, projectRef0.Admins, offboardedUser)
 
 	handler.dryRun = false
 	handler.env.SetUserManager(serviceutil.MockUserManager{})
-	resp = handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"}))
+	resp = handler.Run(gimlet.AttachUser(ctx, &user.DBUser{Id: "root"}))
 	require.Equal(t, http.StatusOK, resp.Status())
 	env.SetUserManager(userManager)
 
@@ -1031,4 +1031,74 @@ func TestOffboardUserHandlerAdminis(t *testing.T) {
 	for _, projRef := range projectRefs {
 		assert.NotContains(t, projRef.Admins, offboardedUser)
 	}
+}
+
+func TestGetUserHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	usrToRetrieve := user.DBUser{
+		Id:           "beep.boop",
+		DispName:     "robots are good",
+		EmailAddress: "bots_r@us.com",
+		APIKey:       "secret_key",
+		PatchNumber:  12,
+		OnlyAPI:      true,
+		SystemRoles: []string{
+			"bot_access",
+		},
+	}
+	me := user.DBUser{
+		Id:           "me",
+		EmailAddress: "i@rock.com",
+		APIKey:       "my_key",
+	}
+
+	for testName, testCase := range map[string]func(t *testing.T){
+		"UserNotFound": func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/no_one", nil)
+			req = gimlet.SetURLVars(req, map[string]string{"user_id": "no_one"})
+
+			require.NoError(t, err)
+			handler := makeGetUserHandler()
+
+			assert.NoError(t, handler.Parse(ctx, req))
+			userHandler, ok := handler.(*getUserHandler)
+			require.True(t, ok)
+			assert.Equal(t, userHandler.userId, "no_one")
+
+			resp := handler.Run(gimlet.AttachUser(ctx, &me))
+			assert.Equal(t, resp.Status(), http.StatusNotFound)
+		}, "UserFound": func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/beep.boop", nil)
+			req = gimlet.SetURLVars(req, map[string]string{"user_id": "beep.boop"})
+
+			require.NoError(t, err)
+			handler := makeGetUserHandler()
+
+			assert.NoError(t, handler.Parse(ctx, req))
+			userHandler, ok := handler.(*getUserHandler)
+			require.True(t, ok)
+			assert.Equal(t, userHandler.userId, "beep.boop")
+
+			resp := handler.Run(gimlet.AttachUser(ctx, &me))
+			assert.Equal(t, resp.Status(), http.StatusOK)
+			respUsr, ok := resp.Data().(*restModel.APIDBUser)
+			require.True(t, ok)
+			assert.NotEmpty(t, respUsr)
+			assert.Equal(t, usrToRetrieve.Id, utility.FromStringPtr(respUsr.UserID))
+			assert.Equal(t, usrToRetrieve.DisplayName(), utility.FromStringPtr(respUsr.DisplayName))
+			assert.Equal(t, usrToRetrieve.EmailAddress, utility.FromStringPtr(respUsr.EmailAddress))
+			assert.Equal(t, usrToRetrieve.OnlyAPI, respUsr.OnlyApi)
+			assert.Equal(t, usrToRetrieve.Roles(), respUsr.Roles)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(user.Collection))
+			assert.NoError(t, usrToRetrieve.Insert())
+			assert.NoError(t, me.Insert())
+			testCase(t)
+		})
+	}
+
 }
