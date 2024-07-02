@@ -2962,3 +2962,46 @@ func getGenerateTasksEstimation(ctx context.Context, project, buildVariant, disp
 
 	return results, nil
 }
+
+// GetLatestTask retrieves the latest task from all the distros corresponding to the imageID.
+func GetLatestTaskFromImage(ctx context.Context, imageID string) (*Task, error) {
+	distros, err := distro.GetDistrosForImage(ctx, imageID)
+	if err != nil {
+		return nil, errors.Wrap(err, "retrieving distros from imageID")
+	}
+	distroNames := make([]string, len(distros))
+	for i, d := range distros {
+		distroNames[i] = d.Id
+	}
+	if len(distroNames) == 0 {
+		return nil, errors.New("No distros found for image.")
+	}
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
+				DistroIdKey: bson.M{
+					"$in": distroNames,
+				},
+			},
+		},
+		{
+			"$sort": bson.M{FinishTimeKey: -1},
+		},
+		{
+			"$limit": 1,
+		},
+	}
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding latest task")
+	}
+	if cursor.Next(ctx) {
+		var task Task
+		if err := cursor.Decode(&task); err != nil {
+			return nil, errors.Wrap(err, "decoding task")
+		}
+		return &task, nil
+	}
+	return nil, errors.New("Found no latest task.")
+}
