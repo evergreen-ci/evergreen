@@ -410,12 +410,60 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		modified, err = updateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPageNotificationsSection:
-		if err = SaveSubscriptions(projectId, changes.Subscriptions, true); err != nil {
+		subscriptionChanges := []restModel.APISubscription{}
+		for _, subscription := range changes.Subscriptions {
+			webhook := subscription.Subscriber.WebhookSubscriber
+			if webhook == nil {
+				subscriptionChanges = append(subscriptionChanges, subscription)
+				continue
+			}
+			// If this subscription is a webhook, we should redact the webhook secret and Authorization header.
+			// This means when the user changes other values, we should not update the secret or Authorization header if
+			// they are still set to the redacted value and instead we should use the previous value(s).
+			var previousSubscription *event.WebhookSubscriber
+			for _, beforeSubscription := range before.Subscriptions {
+				if beforeSubscription.ID == utility.FromStringPtr(subscription.ID) {
+					var ok bool
+					previousSubscription, ok = beforeSubscription.Subscriber.Target.(*event.WebhookSubscriber)
+					if !ok {
+						return nil, errors.Errorf("could not find subscription with ID '%s'", utility.FromStringPtr(subscription.ID))
+					}
+					break
+				}
+			}
+			if previousSubscription == nil {
+				// If there are no previous subscriptions, we should just add the new subscription.
+				subscriptionChanges = append(subscriptionChanges, subscription)
+				continue
+			}
+			if webhook.Secret != nil && *webhook.Secret == evergreen.RedactedWebhookSecretsValue {
+				previousSecret := string(previousSubscription.Secret)
+				webhook.Secret = &previousSecret
+			}
+			newHeaders := []restModel.APIWebhookHeader{}
+			for _, header := range webhook.Headers {
+				if utility.FromStringPtr(header.Key) == "Authorization" && utility.FromStringPtr(header.Value) == evergreen.RedactedWebhookSecretsValue {
+					// Do not update the value if redacted Authorization header in changes.
+					var previousHeaderValue string
+					for _, h := range previousSubscription.Headers {
+						if h.Key == "Authorization" {
+							previousHeaderValue = h.Value
+							break
+						}
+					}
+					header.Value = &previousHeaderValue
+				}
+				newHeaders = append(newHeaders, header)
+			}
+			webhook.Headers = newHeaders
+			subscriptionChanges = append(subscriptionChanges, subscription)
+		}
+		if err = SaveSubscriptions(projectId, subscriptionChanges, true); err != nil {
 			return nil, errors.Wrapf(err, "saving subscriptions for project '%s'", projectId)
 		}
 		modified = true
 		subscriptionsToKeep := []string{}
-		for _, s := range changes.Subscriptions {
+		for _, s := range subscriptionChanges {
 			subscriptionsToKeep = append(subscriptionsToKeep, utility.FromStringPtr(s.ID))
 		}
 		// Remove any subscriptions that only existed in the original state.

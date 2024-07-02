@@ -623,6 +623,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		},
 		model.ProjectPageNotificationsSection: func(t *testing.T, ref model.ProjectRef) {
 			newSubscription := event.Subscription{
+				ID:           "existingSub1",
 				Owner:        ref.Id,
 				OwnerType:    event.OwnerTypeProject,
 				ResourceType: event.ResourceTypeTask,
@@ -637,16 +638,104 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			}
 			apiSub := restModel.APISubscription{}
 			assert.NoError(t, apiSub.BuildFromService(newSubscription))
+
+			webhookSubscriber := restModel.APIWebhookSubscriber{
+				URL:    utility.ToStringPtr("http://example.com"),
+				Secret: utility.ToStringPtr("super_secret_2"),
+				Headers: []restModel.APIWebhookHeader{
+					{
+						Key:   utility.ToStringPtr("Key"),
+						Value: utility.ToStringPtr("A new value"),
+					},
+					{
+						Key:   utility.ToStringPtr("Authorization"),
+						Value: utility.ToStringPtr(evergreen.RedactedWebhookSecretsValue),
+					},
+				},
+			}
+			apiSub2 := restModel.APISubscription{
+				ID:           utility.ToStringPtr("existingSub2"),
+				Owner:        utility.ToStringPtr(ref.Id),
+				OwnerType:    utility.ToStringPtr(string(event.OwnerTypeProject)),
+				ResourceType: utility.ToStringPtr(event.ResourceTypeTask),
+				Trigger:      utility.ToStringPtr(event.TriggerSuccess),
+				Selectors: []restModel.APISelector{
+					{
+						Type: utility.ToStringPtr("id"),
+						Data: utility.ToStringPtr("1234"),
+					},
+				},
+				Subscriber: restModel.APISubscriber{
+					Type:              utility.ToStringPtr(event.EvergreenWebhookSubscriberType),
+					Target:            webhookSubscriber,
+					WebhookSubscriber: &webhookSubscriber,
+				},
+			}
 			apiChanges := &restModel.APIProjectSettings{
-				Subscriptions: []restModel.APISubscription{apiSub},
+				Subscriptions: []restModel.APISubscription{apiSub, apiSub2},
 			}
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageNotificationsSection, false, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 			subsFromDb, err := event.FindSubscriptionsByOwner(ref.Id, event.OwnerTypeProject)
 			assert.NoError(t, err)
-			require.Len(t, subsFromDb, 1)
+			require.Len(t, subsFromDb, 2)
 			assert.Equal(t, subsFromDb[0].Trigger, event.TriggerSuccess)
+			// Check if webhooks Authorization header is kept as before.
+			webhookAPI, ok := subsFromDb[1].Subscriber.Target.(*event.WebhookSubscriber)
+			require.True(t, ok)
+			assert.Equal(t, "A new value", webhookAPI.Headers[0].Value, "webhook headers should persist after saving")
+			assert.Equal(t, "a_very_super_secret", webhookAPI.Headers[1].Value, "Authorization header should not be changed when saving as redacted value")
+			assert.Equal(t, "super_secret_2", string(webhookAPI.Secret), "webhook secret should be updated to the new value")
+
+			// Update the Authorization header to a new value and delete the first subscription.
+			webhookSubscriber = restModel.APIWebhookSubscriber{
+				URL:    utility.ToStringPtr("http://example.com"),
+				Secret: utility.ToStringPtr(evergreen.RedactedWebhookSecretsValue),
+				Headers: []restModel.APIWebhookHeader{
+					{
+						Key:   utility.ToStringPtr("Key"),
+						Value: utility.ToStringPtr("A new value"),
+					},
+					{
+						Key:   utility.ToStringPtr("Authorization"),
+						Value: utility.ToStringPtr("a_different_secret"),
+					},
+				},
+			}
+			apiSub2 = restModel.APISubscription{
+				ID:           utility.ToStringPtr("existingSub2"),
+				Owner:        utility.ToStringPtr(ref.Id),
+				OwnerType:    utility.ToStringPtr(string(event.OwnerTypeProject)),
+				ResourceType: utility.ToStringPtr(event.ResourceTypeTask),
+				Trigger:      utility.ToStringPtr(event.TriggerSuccess),
+				Selectors: []restModel.APISelector{
+					{
+						Type: utility.ToStringPtr("id"),
+						Data: utility.ToStringPtr("1234"),
+					},
+				},
+				Subscriber: restModel.APISubscriber{
+					Type:              utility.ToStringPtr(event.EvergreenWebhookSubscriberType),
+					Target:            webhookSubscriber,
+					WebhookSubscriber: &webhookSubscriber,
+				},
+			}
+			apiChanges = &restModel.APIProjectSettings{
+				Subscriptions: []restModel.APISubscription{apiSub2},
+			}
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageNotificationsSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
+			subsFromDb, err = event.FindSubscriptionsByOwner(ref.Id, event.OwnerTypeProject)
+			assert.NoError(t, err)
+			require.Len(t, subsFromDb, 1)
+			// Check if webhooks Authorization header is the new value.
+			webhookAPI, ok = subsFromDb[0].Subscriber.Target.(*event.WebhookSubscriber)
+			require.True(t, ok)
+			assert.Equal(t, "A new value", webhookAPI.Headers[0].Value, "webhook headers should persist after saving")
+			assert.Equal(t, "a_different_secret", webhookAPI.Headers[1].Value, "Authorization header should be updated to the new value")
+			assert.Equal(t, "super_secret_2", string(webhookAPI.Secret), "webhook secret should not be changed when saving as redacted value")
 		},
 		model.ProjectPageTriggersSection: func(t *testing.T, ref model.ProjectRef) {
 			upstreamProject := model.ProjectRef{
@@ -860,6 +949,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 		require.NoError(t, oldAdmin.Insert())
 
 		existingSub := event.Subscription{
+			ID:           "existingSub1",
 			Owner:        pRef.Id,
 			OwnerType:    event.OwnerTypeProject,
 			ResourceType: event.ResourceTypeTask,
@@ -873,6 +963,34 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			},
 		}
 		assert.NoError(t, existingSub.Upsert())
+		existingSub2 := event.Subscription{
+			ID:           "existingSub2",
+			Owner:        pRef.Id,
+			OwnerType:    event.OwnerTypeProject,
+			ResourceType: event.ResourceTypeTask,
+			Trigger:      event.TriggerFailure,
+			Selectors: []event.Selector{
+				{Type: "id", Data: "1234"},
+			},
+			Subscriber: event.Subscriber{
+				Type: event.EvergreenWebhookSubscriberType,
+				Target: &event.WebhookSubscriber{
+					URL:    "http://example.com",
+					Secret: []byte("super_secret_1"),
+					Headers: []event.WebhookHeader{
+						{
+							Key:   "Key",
+							Value: "Value",
+						},
+						{
+							Key:   "Authorization",
+							Value: "a_very_super_secret",
+						},
+					},
+				},
+			},
+		}
+		assert.NoError(t, existingSub2.Upsert())
 		t.Run(name, func(t *testing.T) {
 			test(t, pRef)
 		})
