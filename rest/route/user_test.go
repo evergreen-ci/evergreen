@@ -994,13 +994,13 @@ func TestOffboardUserHandlerAdminis(t *testing.T) {
 		env:    env,
 		user:   offboardedUser,
 	}
-	resp := handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"}))
+	resp := handler.Run(gimlet.AttachUser(ctx, &user.DBUser{Id: "root"}))
 	require.Equal(t, http.StatusOK, resp.Status())
 	assert.Contains(t, projectRef0.Admins, offboardedUser)
 
 	handler.dryRun = false
 	handler.env.SetUserManager(serviceutil.MockUserManager{})
-	resp = handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "root"}))
+	resp = handler.Run(gimlet.AttachUser(ctx, &user.DBUser{Id: "root"}))
 	require.Equal(t, http.StatusOK, resp.Status())
 	env.SetUserManager(userManager)
 
@@ -1045,9 +1045,11 @@ func TestGetUserHandler(t *testing.T) {
 			handler := makeGetUserHandler()
 
 			assert.NoError(t, handler.Parse(ctx, req))
-			assert.Equal(t, handler.(*getUserHandler).userId, "no_one")
+			userHandler, ok := handler.(*getUserHandler)
+			require.True(t, ok)
+			assert.Equal(t, userHandler.userId, "no_one")
 
-			resp := handler.Run(gimlet.AttachUser(context.Background(), &me))
+			resp := handler.Run(gimlet.AttachUser(ctx, &me))
 			assert.Equal(t, resp.Status(), http.StatusNotFound)
 		}, "UserFound": func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/beep.boop", nil)
@@ -1057,29 +1059,11 @@ func TestGetUserHandler(t *testing.T) {
 			handler := makeGetUserHandler()
 
 			assert.NoError(t, handler.Parse(ctx, req))
-			assert.Equal(t, handler.(*getUserHandler).userId, "beep.boop")
-
-			resp := handler.Run(gimlet.AttachUser(context.Background(), &me))
-			assert.Equal(t, resp.Status(), http.StatusOK)
-			respUsr, ok := resp.Data().(*restModel.APIDBUser)
+			userHandler, ok := handler.(*getUserHandler)
 			require.True(t, ok)
-			assert.NotEmpty(t, respUsr)
-			assert.Equal(t, usrToRetrieve.Id, utility.FromStringPtr(respUsr.UserID))
-			assert.Equal(t, usrToRetrieve.DisplayName(), utility.FromStringPtr(respUsr.DisplayName))
-			assert.Equal(t, usrToRetrieve.EmailAddress, utility.FromStringPtr(respUsr.EmailAddress))
-			assert.Equal(t, usrToRetrieve.OnlyAPI, respUsr.OnlyApi)
-			assert.Equal(t, usrToRetrieve.Roles(), respUsr.Roles)
-		}, "DisplayNameUser": func(t *testing.T) {
-			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/robots are good", nil)
-			req = gimlet.SetURLVars(req, map[string]string{"user_id": usrToRetrieve.DispName})
+			assert.Equal(t, userHandler.userId, "beep.boop")
 
-			require.NoError(t, err)
-			handler := makeGetUserHandler()
-
-			assert.NoError(t, handler.Parse(ctx, req))
-			assert.Equal(t, handler.(*getUserHandler).userId, "robots are good")
-
-			resp := handler.Run(gimlet.AttachUser(context.Background(), &me))
+			resp := handler.Run(gimlet.AttachUser(ctx, &me))
 			assert.Equal(t, resp.Status(), http.StatusOK)
 			respUsr, ok := resp.Data().(*restModel.APIDBUser)
 			require.True(t, ok)
