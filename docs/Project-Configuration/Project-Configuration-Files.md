@@ -442,6 +442,9 @@ Module fields support the expansion of variables defined in the [Variables](Proj
 tab of the Spruce project settings. These fields are expanded at the time of version creation, at which point 
 the "Version Manifest" shown in the Spruce UI should show module configurations including the expanded variables.
 
+The modules can only be used in the [git.get_project](Project-Commands#gitgetproject) command if the [build variant](Project-Configuration-Files#build-variants)
+is configured to use the module via the module field.
+
 ``` yaml
 modules:
 - name: evergreen
