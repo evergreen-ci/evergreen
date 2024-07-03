@@ -35,7 +35,7 @@ type Manager interface {
 	// ModifyHost modifies an existing host
 	ModifyHost(context.Context, *host.Host, host.HostModifyOptions) error
 
-	// Get the information of an instance
+	// Gets the state of an instance
 	GetInstanceState(ctx context.Context, h *host.Host) (CloudInstanceState, error)
 
 	// SetPortMappings sets the port mappings for the container
