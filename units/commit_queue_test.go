@@ -360,9 +360,6 @@ func (s *commitQueueSuite) TestSetDefaultNotification() {
 }
 
 func (s *commitQueueSuite) TestUpdatePatch() {
-	githubToken, err := s.settings.GetGithubOauthToken()
-	s.NoError(err)
-
 	projectRef := &model.ProjectRef{
 		Id:         "evergreen",
 		Owner:      "evergreen-ci",
@@ -383,8 +380,8 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 			{Variant: "my-variant", Tasks: []string{"my-task"}},
 		},
 	}
-
-	projectConfig, pp, err := updatePatch(s.ctx, s.settings, githubToken, projectRef, patchDoc)
+	testutil.ConfigureIntegrationTest(s.T(), s.settings, s.T().Name())
+	projectConfig, pp, err := updatePatch(s.ctx, s.settings, "", projectRef, patchDoc)
 	s.NoError(err)
 	s.NotEqual("abcdef", patchDoc.Patches[0].Githash)
 	s.NotEqual(model.Project{}, projectConfig)
