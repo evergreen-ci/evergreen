@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -17,6 +18,7 @@ type RuntimeEnvironmentsClient struct {
 	APIKey  string
 }
 
+// OSInfo stores operating system information.
 type OSInfo struct {
 	Version string
 	Name    string
@@ -66,11 +68,11 @@ func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string
 }
 
 // getOSInfo returns a list of operating system information for an AMI.
-func (c *RuntimeEnvironmentsClient) getOSInfo(ctx context.Context, amiID string, page string, limit string) ([]OSInfo, error) {
+func (c *RuntimeEnvironmentsClient) getOSInfo(ctx context.Context, amiID string, page int, limit int) ([]OSInfo, error) {
 	params := url.Values{}
 	params.Set("ami", amiID)
-	params.Set("page", page)
-	params.Set("limit", limit)
+	params.Set("page", strconv.Itoa(page))
+	params.Set("limit", strconv.Itoa(limit))
 	params.Set("type", "OS")
 	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
