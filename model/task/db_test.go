@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/annotations"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/utility"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -2224,4 +2225,39 @@ func TestFindGeneratedTasksFromID(t *testing.T) {
 			tCase(t, generatorID, generated)
 		})
 	}
+}
+
+func TestGetLatestTaskFromImage(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	require.NoError(t, db.ClearCollections(Collection, distro.Collection))
+	imageID := "distro"
+	d1 := &distro.Distro{
+		Id:      "distro-1",
+		ImageID: imageID,
+	}
+	require.NoError(t, d1.Insert(ctx))
+	d2 := &distro.Distro{
+		Id:      "distro-2",
+		ImageID: imageID,
+	}
+	require.NoError(t, d2.Insert(ctx))
+	d3 := &distro.Distro{
+		Id:      "distro-3",
+		ImageID: imageID,
+	}
+	require.NoError(t, d3.Insert(ctx))
+	tasks := []Task{
+		{Id: "t0", FinishTime: time.Date(2023, time.February, 1, 10, 30, 15, 0, time.UTC), DistroId: d1.Id},
+		{Id: "t1", FinishTime: time.Date(2023, time.January, 1, 10, 30, 15, 0, time.UTC), DistroId: d2.Id},
+		{Id: "t2", FinishTime: time.Date(2023, time.March, 1, 10, 30, 15, 0, time.UTC), DistroId: d3.Id},
+		{Id: "t3", FinishTime: time.Date(2024, time.January, 1, 10, 30, 15, 0, time.UTC), DistroId: "rando"},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+	latestTask, err := GetLatestTaskFromImage(ctx, imageID)
+	require.NoError(t, err)
+	require.NotNil(t, latestTask)
+	assert.Equal(t, latestTask.Id, "t2")
 }
