@@ -98,7 +98,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 	}
 	foundPatch, err := patch.FindOneId(*obj.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id: `%s` %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id '%s': %s", *obj.Id, err.Error()))
 	}
 	if foundPatch == nil {
 		return nil, gimlet.ErrorResponse{
