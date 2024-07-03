@@ -797,7 +797,9 @@ func (m *ec2Manager) GetInstanceState(ctx context.Context, h *host.Host) (CloudI
 		}))
 	}
 
-	info.StateReason = utility.FromStringPtr(instance.StateReason.Message)
+	if instance.StateReason != nil {
+		info.StateReason = utility.FromStringPtr(instance.StateReason.Message)
+	}
 
 	return info, nil
 }
