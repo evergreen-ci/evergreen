@@ -2974,7 +2974,7 @@ func GetLatestTaskFromImage(ctx context.Context, imageID string) (*Task, error) 
 		distroNames[i] = d.Id
 	}
 	if len(distroNames) == 0 {
-		return nil, errors.New("No distros found for image.")
+		return nil, errors.New("no distros found for image")
 	}
 	pipeline := []bson.M{
 		{
@@ -3003,5 +3003,5 @@ func GetLatestTaskFromImage(ctx context.Context, imageID string) (*Task, error) 
 		}
 		return &task, nil
 	}
-	return nil, errors.New("Found no latest task.")
+	return nil, errors.New("no latest task found for image")
 }
