@@ -538,8 +538,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		if !bvtu.HasSpecificActivation() {
 			continue
 		}
-		// Use the version create time to ensure we're being consistent
-		activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(bvtu, creationInfo.Version.CreateTime)
+		activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(bvtu)
 		batchTimeCatcher.Wrapf(err, "getting activation time for task '%s'", t.DisplayName)
 		batchTimeTaskStatuses = append(batchTimeTaskStatuses, BatchTimeTaskStatus{
 			TaskName: t.DisplayName,
@@ -1605,13 +1604,12 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		var activateVariantAt time.Time
 		batchTimeTaskStatuses := []BatchTimeTaskStatus{}
 		if !activateVariant {
-			activateVariantAt, err = creationInfo.ProjectRef.GetActivationTimeForVariant(
-				creationInfo.Project.FindBuildVariant(pair.Variant), creationInfo.Version.CreateTime)
+			activateVariantAt, err = creationInfo.ProjectRef.GetActivationTimeForVariant(creationInfo.Project.FindBuildVariant(pair.Variant))
 			batchTimeCatcher.Wrapf(err, "getting activation time for variant '%s'", pair.Variant)
 		}
 		for taskName, id := range batchTimeTasksToIds {
 			activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(
-				creationInfo.Project.FindTaskForVariant(taskName, pair.Variant), creationInfo.Version.CreateTime)
+				creationInfo.Project.FindTaskForVariant(taskName, pair.Variant))
 			batchTimeCatcher.Wrapf(err, "getting activation time for task '%s' in variant '%s'", taskName, pair.Variant)
 			batchTimeTaskStatuses = append(batchTimeTaskStatuses, BatchTimeTaskStatus{
 				TaskId:   id,
