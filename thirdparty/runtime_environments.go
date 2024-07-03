@@ -58,3 +58,43 @@ func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string
 	}
 	return filteredImages, nil
 }
+
+type ImageDiffOptions struct {
+	AMI   string
+	AMI2  string
+	Page  int
+	Limit int
+}
+
+type ImageDiffChange struct {
+	
+}
+
+func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts ImageDiffOptions) (, error) {
+	params := url.Values{}
+	params.Set("ami", opts.AMI)
+	params.Set("ami-2", opts.AMI2)
+	params.Set("page", strconv.Itoa(opts.Page))
+	params.Set("limit", strconv.Itoa(opts.Limit))
+	apiURL := fmt.Sprintf("%s/rest/api/v1/imageDiffs?%s", c.BaseURL, params.Encode())
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("Content-Type", "application/json")
+	request.Header.Add("Api-Key", c.APIKey)
+	resp, err := c.Client.Do(request)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		msg, _ := io.ReadAll(resp.Body)
+		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+	}
+	var packages []Package
+	if err := gimlet.GetJSON(resp.Body, &packages); err != nil {
+		return nil, errors.Wrap(err, "decoding http body")
+	}
+	return packages, nil
+}
