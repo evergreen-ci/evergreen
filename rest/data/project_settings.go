@@ -463,6 +463,11 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if err = parsley.ValidateFilters(mergedSection.ParsleyFilters); err != nil {
 			return nil, errors.Wrap(err, "invalid Parsley filters")
 		}
+	case model.ProjectPageGithubAppSettingsSection:
+		mergedSection.GitHubDynamicTokenPermissionGroups = mergedBeforeRef.GitHubDynamicTokenPermissionGroups
+		if err := mergedSection.ValidateGitHubPermissionGroups(); err != nil {
+			return nil, errors.Wrap(err, "invalid GitHub permission groups")
+		}
 	case model.ProjectPageGithubPermissionsSection:
 		if err := mergedSection.ValidateGitHubPermissionGroups(); err != nil {
 			return nil, errors.Wrap(err, "invalid GitHub permission groups")

@@ -2231,8 +2231,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 					ProjectRefGitTagAuthorizedTeamsKey:  p.GitTagAuthorizedTeams,
 					projectRefCommitQueueKey:            p.CommitQueue,
 					projectRefOldestAllowedMergeBaseKey: p.OldestAllowedMergeBase,
-					// TODO: Remove in DEVPROD-5995 because removing it causes lint errors.
-					projectRefGithubPermissionGroupByRequester: p.GitHubPermissionGroupByRequester,
 				},
 			})
 	case ProjectPageNotificationsSection:
@@ -2287,8 +2285,13 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				},
 			})
 	case ProjectPageGithubAppSettingsSection:
-		// TODO: Implement in DEVPROD-5995.
-		return false, nil
+		err = db.Update(coll,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefGithubPermissionGroupByRequester: p.GitHubPermissionGroupByRequester,
+				},
+			})
 	case ProjectPageGithubPermissionsSection:
 		err = db.Update(coll,
 			bson.M{ProjectRefIdKey: projectId},

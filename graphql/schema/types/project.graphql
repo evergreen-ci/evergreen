@@ -248,6 +248,7 @@ type Project {
   externalLinks: [ExternalLink!]
   githubChecksEnabled: Boolean
   githubDynamicTokenPermissionGroups: [GitHubDynamicTokenPermissionGroup!]!
+  githubPermissionGroupByRequester: StringMap
   githubTriggerAliases: [String!]
   gitTagAuthorizedTeams: [String!]
   gitTagAuthorizedUsers: [String!]

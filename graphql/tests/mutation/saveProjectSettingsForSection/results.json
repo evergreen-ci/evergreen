@@ -194,19 +194,36 @@
               "id": "sandbox_project_id",
               "githubDynamicTokenPermissionGroups": [
                 {
-                  "name": "group-1",
+                  "name": "permission-group-1",
                   "permissions": {
                     "pull_requests": "read",
                     "organization_hooks": "read"
                   }
                 },
                 {
-                  "name": "group-2",
+                  "name": "permission-group-2",
                   "permissions": {
+                    "actions": "admin",
                     "contents": "write"
                   }
                 }
               ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "github_app_settings.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "id": "sandbox_project_id",
+              "githubPermissionGroupByRequester": {
+                "ad_hoc": "permission-group-2",
+                "gitter_request": "permission-group-1"
+              }
             }
           }
         }

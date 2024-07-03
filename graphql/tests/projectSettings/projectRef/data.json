@@ -30,6 +30,11 @@
           }
         }
       ],
+      "github_token_permission_by_requester": {
+        "github_pull_request": "group-1",
+        "gitter_request": "group-2",
+        "patch_request": "group-1"
+      },
       "triggers": [
         {
           "project": "spruce",
