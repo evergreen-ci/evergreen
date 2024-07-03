@@ -177,10 +177,9 @@ sleep schedule tries to automatically stop/start your host.
 **Q: Will the hostname change between restarts?**
 
 A: You can get a hostname that doesn't change from your unexpirable host. While it's true that EC2 hosts typically do
-change their DNS names every time the host restarts, Evergreen has support for persistent DNS names for unexpirable
+change their DNS names every time the host restarts, Evergreen automatically assigns persistent DNS names to unexpirable
 hosts. This persistent DNS name will let you use to a single, stable name to refer to your host even if it restarts. You
-can view your host's persistent DNS name by copying the SSH command from the host page or by running `evergreen host
-list --mine`.
+can view your host's persistent DNS name by copying the SSH command from the host page or by running `evergreen host list --mine`.
 
 Once you have your persistent DNS name, you can use it in your SSH config file (`~/.ssh/config`). For example:
 
