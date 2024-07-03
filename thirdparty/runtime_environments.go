@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -66,12 +67,21 @@ func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string
 	return filteredImages, nil
 }
 
+// PackageFilterOptions represents the filtering arguments, each of which is optional.
+type PackageFilterOptions struct {
+	Page    int
+	Limit   int
+	Name    string
+	Manager string
+}
+
 // getPackages returns a list of package changes (name and version) from the corresponding AMI id.
-func (c *RuntimeEnvironmentsClient) getPackages(ctx context.Context, amiID string, page string, limit string) ([]Package, error) {
+func (c *RuntimeEnvironmentsClient) getPackages(ctx context.Context, amiID string, opts PackageFilterOptions) ([]Package, error) {
 	params := url.Values{}
 	params.Set("ami", amiID)
-	params.Set("page", page)
-	params.Set("limit", limit)
+	params.Set("page", strconv.Itoa(opts.Page))
+	params.Set("limit", strconv.Itoa(opts.Limit))
+	params.Set("manager", opts.Manager)
 	params.Set("type", "Packages")
 	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)

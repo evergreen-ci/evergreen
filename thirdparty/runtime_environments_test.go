@@ -31,7 +31,12 @@ func TestGetPackages(t *testing.T) {
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config, "TestGetPackages")
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
-	result, err := c.getPackages(ctx, "ami-0e12ef25a5f7712a4", "0", "10")
+	opts := PackageFilterOptions{
+		Page:    0,
+		Limit:   10,
+		Manager: "pip",
+	}
+	result, err := c.getPackages(ctx, "ami-0e12ef25a5f7712a4", opts)
 	require.NoError(t, err)
 	assert.NotEmpty(result)
 	assert.Len(result, 10)
