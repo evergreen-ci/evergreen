@@ -180,7 +180,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 		instanceMap[*describeInstancesOutput.Reservations[i].Instances[0].InstanceId] = &describeInstancesOutput.Reservations[i].Instances[0]
 		instanceInfo := describeInstancesOutput.Reservations[i].Instances[0]
 		instanceID := *instanceInfo.InstanceId
-		status := ec2StatusToEvergreenStatus(instanceInfo.State.Name)
+		status := ec2StatusToEvergreenStatus(instanceInfo.State)
 		statuses[instanceID] = status
 	}
 
@@ -209,17 +209,22 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 	return statuses, nil
 }
 
-func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
-	status := StatusUnknown
+// GetInstanceState returns a universal status code representing the state
+// of an ec2 fleet and a state reason if available. The state reason should not be
+// used to determine the status of the ec2 fleet but rather to provide additional
+// context about the state of the ec2 state.
+func (m *ec2FleetManager) GetInstanceState(ctx context.Context, h *host.Host) (CloudInstanceState, error) {
+	info := CloudInstanceState{Status: StatusUnknown}
 
 	if err := m.client.Create(ctx, m.region); err != nil {
-		return status, errors.Wrap(err, "creating client")
+		return info, errors.Wrap(err, "creating client")
 	}
 
 	instance, err := m.client.GetInstanceInfo(ctx, h.Id)
 	if err != nil {
 		if isEC2InstanceNotFound(err) {
-			return StatusNonExistent, nil
+			info.Status = StatusNonExistent
+			return info, nil
 		}
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error getting instance info",
@@ -227,26 +232,22 @@ func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
-		return status, errors.Wrap(err, "getting instance info")
+		return info, errors.Wrap(err, "getting instance info")
 	}
 
-	if instance.State == nil || instance.State.Name == "" {
-		return status, errors.New("state name is missing")
-	}
-	status = ec2StatusToEvergreenStatus(instance.State.Name)
-	if status == StatusRunning {
+	if info.Status = ec2StatusToEvergreenStatus(instance.State); info.Status == StatusRunning {
 		// Cache instance information so we can make fewer calls to AWS's API.
-		pair := hostInstancePair{
-			host:     h,
-			instance: instance,
-		}
+		pair := hostInstancePair{host: h, instance: instance}
 		grip.Error(message.WrapError(cacheAllHostData(ctx, m.env, m.client, pair), message.Fields{
 			"message": "can't update host cached data",
+			"type":    "ec2 fleet",
 			"host_id": h.Id,
 		}))
 	}
 
-	return status, nil
+	info.StateReason = utility.FromStringPtr(instance.StateReason.Message)
+
+	return info, nil
 }
 
 func (m *ec2FleetManager) SetPortMappings(context.Context, *host.Host, *host.Host) error {

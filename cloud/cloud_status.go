@@ -1,5 +1,13 @@
 package cloud
 
+type CloudInstanceState struct {
+	// Status is the current status of the instance.
+	Status CloudStatus
+	// StateReason is a human-readable explanation of why the instance is in
+	// its current state.
+	StateReason string
+}
+
 type CloudStatus int
 
 const (
