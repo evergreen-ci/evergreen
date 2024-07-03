@@ -18,12 +18,6 @@ type RuntimeEnvironmentsClient struct {
 	APIKey  string
 }
 
-type Package struct {
-	Name    string
-	Version string
-	Manager string
-}
-
 func NewRuntimeEnvironmentsClient(baseURL string, apiKey string) *RuntimeEnvironmentsClient {
 	c := RuntimeEnvironmentsClient{
 		Client:  &http.Client{},
@@ -67,20 +61,28 @@ func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string
 	return filteredImages, nil
 }
 
+// Package represents a package's information.
+type Package struct {
+	Name    string
+	Version string
+	Manager string
+}
+
 // PackageFilterOptions represents the filtering arguments, each of which is optional.
 type PackageFilterOptions struct {
 	Page    int
 	Limit   int
-	Name    string
-	Manager string
+	Name    string // Filter by the name of the package.
+	Manager string // Filter by the package manager (ex. pip).
 }
 
-// getPackages returns a list of package changes (name and version) from the corresponding AMI id.
+// getPackages returns a list of packages from the corresponding AMI id.
 func (c *RuntimeEnvironmentsClient) getPackages(ctx context.Context, amiID string, opts PackageFilterOptions) ([]Package, error) {
 	params := url.Values{}
 	params.Set("ami", amiID)
 	params.Set("page", strconv.Itoa(opts.Page))
 	params.Set("limit", strconv.Itoa(opts.Limit))
+	params.Set("name", opts.Name)
 	params.Set("manager", opts.Manager)
 	params.Set("type", "Packages")
 	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
