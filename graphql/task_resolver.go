@@ -63,6 +63,14 @@ func (r *taskResolver) Ami(ctx context.Context, obj *restModel.APITask) (*string
 
 // Annotation is the resolver for the annotation field.
 func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (*restModel.APITaskAnnotation, error) {
+	hasPermission, err := hasAnnotationPermission(ctx, obj, evergreen.AnnotationsView.Value)
+	if err != nil {
+		return nil, err
+	}
+	if !hasPermission {
+		return nil, Forbidden.Send(ctx, "insufficient permission for viewing annotation")
+	}
+
 	annotation, err := annotations.FindOneByTaskIdAndExecution(*obj.Id, obj.Execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding annotation: %s", err.Error()))
@@ -164,7 +172,7 @@ func (r *taskResolver) CanDisable(ctx context.Context, obj *restModel.APITask) (
 
 // CanModifyAnnotation is the resolver for the canModifyAnnotation field.
 func (r *taskResolver) CanModifyAnnotation(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	return canModifyAnnotation(ctx, obj)
+	return hasAnnotationPermission(ctx, obj, evergreen.AnnotationsModify.Value)
 }
 
 // CanOverrideDependencies is the resolver for the canOverrideDependencies field.
