@@ -20,8 +20,7 @@ type ProjectSettings struct {
 	Vars               ProjectVars          `bson:"vars" json:"vars"`
 	Aliases            []ProjectAlias       `bson:"aliases" json:"aliases"`
 	Subscriptions      []event.Subscription `bson:"subscriptions" json:"subscriptions"`
-	// HasGithubApp indicates if a user has saved an app key and secret for a github app
-	HasGitHubApp bool `bson:"has_github_app" json:"has_github_app"`
+	GitHubAppID        int64                `bson:"github_app_id" json:"github_app_id"`
 }
 
 type ProjectSettingsEvent struct {

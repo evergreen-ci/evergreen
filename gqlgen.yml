@@ -100,6 +100,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
   GithubCheckSubscriber:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubCheckSubscriber
+  GitHubDynamicTokenPermissionGroupInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGitHubDynamicTokenPermissionGroup
+  GitHubDynamicTokenPermissionGroup:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGitHubDynamicTokenPermissionGroup
   GithubProjectConflicts:
     model: github.com/evergreen-ci/evergreen/model.GithubProjectConflicts
   GithubPRSubscriber:

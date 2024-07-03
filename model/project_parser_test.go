@@ -647,49 +647,6 @@ func TestTranslateBuildVariants(t *testing.T) {
 	})
 }
 
-func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEvaluator, tasks parserBVTaskUnits, taskDefs []parserTask, expected []BuildVariantTaskUnit, expectedEmptySelectors []string) {
-	names := []string{}
-	exp := []string{}
-	for _, t := range tasks {
-		names = append(names, t.Name)
-	}
-	for _, e := range expected {
-		exp = append(exp, e.Name)
-	}
-	vse := NewVariantSelectorEvaluator([]parserBV{}, nil)
-	Convey(fmt.Sprintf("tasks [%v] should evaluate to [%v]",
-		strings.Join(names, ", "), strings.Join(exp, ", ")), func() {
-		pbv := parserBV{Name: "build-variant-wow", Tasks: tasks}
-		ts, es, errs := evaluateBVTasks(tse, tsge, vse, pbv, taskDefs)
-		if expected != nil {
-			So(errs, ShouldBeNil)
-		} else {
-			So(errs, ShouldNotBeNil)
-		}
-		So(len(ts), ShouldEqual, len(expected))
-		for _, e := range expected {
-			exists := false
-			for _, t := range ts {
-				if t.Name == e.Name && t.Priority == e.Priority && len(t.DependsOn) == len(e.DependsOn) {
-					exists = true
-				}
-				So(t.Variant, ShouldEqual, pbv.Name)
-			}
-			So(exists, ShouldBeTrue)
-		}
-		So(len(es), ShouldEqual, len(expectedEmptySelectors))
-		for _, expectedEmptySelector := range expectedEmptySelectors {
-			exists := false
-			for _, emptySelector := range es {
-				if emptySelector == expectedEmptySelector {
-					exists = true
-				}
-			}
-			So(exists, ShouldBeTrue)
-		}
-	})
-}
-
 func TestParserTaskSelectorEvaluation(t *testing.T) {
 	Convey("With a colorful set of ProjectTasks", t, func() {
 		taskDefs := []parserTask{
@@ -711,17 +668,17 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{{Name: "white"}},
 					taskDefs,
-					[]BuildVariantTaskUnit{{Name: "white"}}, nil)
+					[]BuildVariantTaskUnit{{Name: "white"}}, nil, nil)
 				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{{Name: "red", Priority: 500}, {Name: ".secondary"}},
 					taskDefs,
-					[]BuildVariantTaskUnit{{Name: "red", Priority: 500}, {Name: "orange"}, {Name: "purple"}, {Name: "green"}}, nil)
+					[]BuildVariantTaskUnit{{Name: "red", Priority: 500}, {Name: "orange"}, {Name: "purple"}, {Name: "green"}}, nil, nil)
 				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{
 						{Name: "orange", Distros: []string{"d1"}},
 						{Name: ".warm .secondary", Distros: []string{"d1"}}},
 					taskDefs,
-					[]BuildVariantTaskUnit{{Name: "orange", RunOn: []string{"d1"}}}, nil)
+					[]BuildVariantTaskUnit{{Name: "orange", RunOn: []string{"d1"}}}, nil, nil)
 				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{
 						{Name: "orange", Distros: []string{"d1"}},
@@ -730,7 +687,7 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 					[]BuildVariantTaskUnit{
 						{Name: "orange", RunOn: []string{"d1"}},
 						{Name: "purple", RunOn: []string{"d1"}},
-						{Name: "green", RunOn: []string{"d1"}}}, nil)
+						{Name: "green", RunOn: []string{"d1"}}}, nil, nil)
 				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{{Name: "*"}},
 					taskDefs,
@@ -738,7 +695,7 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 						{Name: "red"}, {Name: "blue"}, {Name: "yellow"},
 						{Name: "orange"}, {Name: "purple"}, {Name: "green"},
 						{Name: "brown"}, {Name: "white"}, {Name: "black"},
-					}, nil)
+					}, nil, nil)
 				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{
 						{Name: "red", Priority: 100},
@@ -747,25 +704,91 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 					[]BuildVariantTaskUnit{
 						{Name: "red", Priority: 100},
 						{Name: "purple", Priority: 100},
-						{Name: "green", Priority: 100}}, nil)
+						{Name: "green", Priority: 100}}, nil, nil)
 			})
 			Convey("should ignore selectors that do not select any tasks if another does select a task", func() {
 				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{{Name: ".warm .cool"}, {Name: "white"}},
 					taskDefs,
-					[]BuildVariantTaskUnit{{Name: "white"}}, []string{".warm .cool"})
+					[]BuildVariantTaskUnit{{Name: "white"}}, []string{".warm .cool"}, nil)
 			})
 			Convey("should error when all selectors combined do not select any tasks", func() {
 				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{{Name: ".warm .cool"}},
 					taskDefs,
-					nil, []string{".warm .cool"})
+					nil, []string{".warm .cool"}, nil)
 				parserTaskSelectorTaskEval(tse, tgse,
 					parserBVTaskUnits{{Name: ".warm .cool"}, {Name: ".secondary .primary"}},
 					taskDefs,
-					nil, []string{".warm .cool", ".secondary .primary"})
+					nil, []string{".warm .cool", ".secondary .primary"}, nil)
+			})
+			Convey("should warn when some selectors do not exist", func() {
+				parserTaskSelectorTaskEval(tse, tgse,
+					parserBVTaskUnits{{Name: ".warm .doesnt-exist"}, {Name: "white"}},
+					taskDefs,
+					[]BuildVariantTaskUnit{{Name: "white"}}, []string{".warm .doesnt-exist"}, []string{".doesnt-exist"})
+				parserTaskSelectorTaskEval(tse, tgse,
+					parserBVTaskUnits{{Name: ".warm !.doesnt-exist"}, {Name: "white"}},
+					taskDefs,
+					[]BuildVariantTaskUnit{{Name: "red"}, {Name: "orange"}, {Name: "yellow"}, {Name: "white"}}, nil, []string{"!.doesnt-exist"})
 			})
 		})
+	})
+}
+
+func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tsge *tagSelectorEvaluator, tasks parserBVTaskUnits, taskDefs []parserTask, expected []BuildVariantTaskUnit, expectedEmptySelectors, expectedUnmatchedCriteria []string) {
+	names := []string{}
+	exp := []string{}
+	for _, t := range tasks {
+		names = append(names, t.Name)
+	}
+	for _, e := range expected {
+		exp = append(exp, e.Name)
+	}
+	vse := NewVariantSelectorEvaluator([]parserBV{}, nil)
+	Convey(fmt.Sprintf("tasks [%v] should evaluate to [%v]",
+		strings.Join(names, ", "), strings.Join(exp, ", ")), func() {
+		pbv := parserBV{Name: "build-variant-wow", Tasks: tasks}
+		taskUnit, unmatchedSelectors, unmatchedCriteria, errs := evaluateBVTasks(tse, tsge, vse, pbv, taskDefs)
+		if expected != nil {
+			So(errs, ShouldBeNil)
+		} else {
+			So(errs, ShouldNotBeNil)
+		}
+		So(len(taskUnit), ShouldEqual, len(expected))
+		for _, e := range expected {
+			exists := false
+			for _, t := range taskUnit {
+				if t.Name == e.Name && t.Priority == e.Priority && len(t.DependsOn) == len(e.DependsOn) {
+					exists = true
+					break
+				}
+				So(t.Variant, ShouldEqual, pbv.Name)
+			}
+			So(exists, ShouldBeTrue)
+		}
+		So(len(unmatchedSelectors), ShouldEqual, len(expectedEmptySelectors))
+		for _, expectedEmptySelector := range expectedEmptySelectors {
+			exists := false
+			for _, emptySelector := range unmatchedSelectors {
+				if emptySelector == expectedEmptySelector {
+					exists = true
+					break
+				}
+			}
+			So(exists, ShouldBeTrue)
+		}
+		So(len(unmatchedCriteria), ShouldEqual, len(expectedUnmatchedCriteria))
+		for _, expectedUnmatchedTag := range expectedUnmatchedCriteria {
+			exists := false
+			for _, unmatchedTag := range unmatchedCriteria {
+				if unmatchedTag == expectedUnmatchedTag {
+					exists = true
+					break
+				}
+			}
+			So(exists, ShouldBeTrue)
+		}
 	})
 }
 
@@ -814,6 +837,57 @@ tasks:
 	cr = proj.BuildVariants[0].Tasks[0].CreateCheckRun
 	assert.NotNil(cr)
 	assert.Equal("", cr.PathToOutputs)
+}
+
+func TestLocalModuleIncludes(t *testing.T) {
+	assert := assert.New(t)
+	yml := `
+modules:
+- name: "something_different"
+  repo: "evergreen"
+  owner: "evergreen-ci"
+  prefix: "src/third_party"
+  branch: "master"
+include:
+- filename: "include.yml"
+  module: "something_different"
+buildvariants:
+- name: "v1"
+  modules:
+  - something_different
+  tasks:
+  - name: "t1"
+    create_check_run:
+      path_to_outputs: "path"
+tasks:
+- name: t1
+- name: t2
+`
+
+	opts := &GetProjectOpts{
+		LocalModuleIncludes: []patch.LocalModuleInclude{
+			{
+				Module:   "something_different",
+				FileName: "include.yml",
+				FileContent: []byte(`
+buildvariants:
+- name: "v1"
+  tasks:
+  - name: "t2"
+`),
+			},
+		},
+	}
+
+	proj := &Project{}
+	ctx := context.Background()
+	_, err := LoadProjectInto(ctx, []byte(yml), opts, "id", proj)
+	assert.NotNil(proj)
+	assert.Nil(err)
+
+	require.NotNil(t, proj)
+	require.Len(t, proj.BuildVariants, 1)
+	assert.Len(proj.BuildVariants[0].Tasks, 2)
 }
 
 func TestParseModule(t *testing.T) {
@@ -1020,7 +1094,7 @@ tasks:
 	proj = &Project{}
 	_, err = LoadProjectInto(ctx, []byte(nonexistentTaskYml), nil, "id", proj)
 	assert.NotNil(proj)
-	assert.Contains(err.Error(), "notHere: nothing named 'notHere'")
+	assert.Contains(err.Error(), "contains unmatched criteria: 'notHere'")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
 	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecTasks, 2)
 	assert.Len(proj.BuildVariants[1].DisplayTasks, 0)
@@ -1440,7 +1514,7 @@ buildvariants:
 		_, err := LoadProjectInto(ctx, []byte(wrongTaskYml), nil, "id", proj)
 		assert.NotNil(t, proj)
 		require.NotNil(t, err)
-		assert.Contains(t, err.Error(), `nothing named 'example_task_3'`)
+		assert.Contains(t, err.Error(), `'example_task_group' has unmatched selector: 'example_task_3'`)
 	})
 
 	t.Run("MaintainsTaskGroupTaskOrdering", func(t *testing.T) {

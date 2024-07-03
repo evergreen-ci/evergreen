@@ -12,38 +12,39 @@ import (
 
 func NewConfigModel() *APIAdminSettings {
 	return &APIAdminSettings{
-		Amboy:             &APIAmboyConfig{},
-		Api:               &APIapiConfig{},
-		AuthConfig:        &APIAuthConfig{},
-		Buckets:           &APIBucketsConfig{},
-		Cedar:             &APICedarConfig{},
-		CommitQueue:       &APICommitQueueConfig{},
-		ContainerPools:    &APIContainerPoolsConfig{},
-		Credentials:       map[string]string{},
-		Expansions:        map[string]string{},
-		HostInit:          &APIHostInitConfig{},
-		HostJasper:        &APIHostJasperConfig{},
-		Jira:              &APIJiraConfig{},
-		JIRANotifications: &APIJIRANotificationsConfig{},
-		LoggerConfig:      &APILoggerConfig{},
-		NewRelic:          &APINewRelicConfig{},
-		Notify:            &APINotifyConfig{},
-		Plugins:           map[string]map[string]interface{}{},
-		PodLifecycle:      &APIPodLifecycleConfig{},
-		ProjectCreation:   &APIProjectCreationConfig{},
-		Providers:         &APICloudProviders{},
-		RepoTracker:       &APIRepoTrackerConfig{},
-		Scheduler:         &APISchedulerConfig{},
-		ServiceFlags:      &APIServiceFlags{},
-		Slack:             &APISlackConfig{},
-		SleepSchedule:     &APISleepScheduleConfig{},
-		Splunk:            &APISplunkConfig{},
-		TaskLimits:        &APITaskLimitsConfig{},
-		Triggers:          &APITriggerConfig{},
-		Ui:                &APIUIConfig{},
-		Spawnhost:         &APISpawnHostConfig{},
-		Tracer:            &APITracerSettings{},
-		GitHubCheckRun:    &APIGitHubCheckRunConfig{},
+		Amboy:               &APIAmboyConfig{},
+		Api:                 &APIapiConfig{},
+		AuthConfig:          &APIAuthConfig{},
+		Buckets:             &APIBucketsConfig{},
+		Cedar:               &APICedarConfig{},
+		CommitQueue:         &APICommitQueueConfig{},
+		ContainerPools:      &APIContainerPoolsConfig{},
+		Credentials:         map[string]string{},
+		Expansions:          map[string]string{},
+		HostInit:            &APIHostInitConfig{},
+		HostJasper:          &APIHostJasperConfig{},
+		Jira:                &APIJiraConfig{},
+		JIRANotifications:   &APIJIRANotificationsConfig{},
+		LoggerConfig:        &APILoggerConfig{},
+		NewRelic:            &APINewRelicConfig{},
+		Notify:              &APINotifyConfig{},
+		Plugins:             map[string]map[string]interface{}{},
+		PodLifecycle:        &APIPodLifecycleConfig{},
+		ProjectCreation:     &APIProjectCreationConfig{},
+		Providers:           &APICloudProviders{},
+		RepoTracker:         &APIRepoTrackerConfig{},
+		RuntimeEnvironments: &APIRuntimeEnvironmentsConfig{},
+		Scheduler:           &APISchedulerConfig{},
+		ServiceFlags:        &APIServiceFlags{},
+		Slack:               &APISlackConfig{},
+		SleepSchedule:       &APISleepScheduleConfig{},
+		Splunk:              &APISplunkConfig{},
+		TaskLimits:          &APITaskLimitsConfig{},
+		Triggers:            &APITriggerConfig{},
+		Ui:                  &APIUIConfig{},
+		Spawnhost:           &APISpawnHostConfig{},
+		Tracer:              &APITracerSettings{},
+		GitHubCheckRun:      &APIGitHubCheckRunConfig{},
 	}
 }
 
@@ -82,6 +83,7 @@ type APIAdminSettings struct {
 	ProjectCreation     *APIProjectCreationConfig         `json:"project_creation,omitempty"`
 	Providers           *APICloudProviders                `json:"providers,omitempty"`
 	RepoTracker         *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
+	RuntimeEnvironments *APIRuntimeEnvironmentsConfig     `json:"runtime_environments,omitempty"`
 	Scheduler           *APISchedulerConfig               `json:"scheduler,omitempty"`
 	ServiceFlags        *APIServiceFlags                  `json:"service_flags,omitempty"`
 	Slack               *APISlackConfig                   `json:"slack,omitempty"`
@@ -164,6 +166,12 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 			return errors.Wrap(err, "converting Jira config to API model")
 		}
 		as.Jira = &jiraConfig
+		runtimeEnvironmentsConfig := APIRuntimeEnvironmentsConfig{}
+		err = runtimeEnvironmentsConfig.BuildFromService(v.RuntimeEnvironments)
+		if err != nil {
+			return errors.Wrap(err, "converting Runtime Environments config to API model")
+		}
+		as.RuntimeEnvironments = &runtimeEnvironmentsConfig
 		cloudProviders := APICloudProviders{}
 		err = cloudProviders.BuildFromService(v.Providers)
 		if err != nil {
@@ -2710,5 +2718,28 @@ func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 		MaxHourlyPatchTasks:      utility.FromIntPtr(c.MaxHourlyPatchTasks),
 		MaxPendingGeneratedTasks: utility.FromIntPtr(c.MaxPendingGeneratedTasks),
 		MaxGenerateTaskJSONSize:  utility.FromIntPtr(c.MaxGenerateTaskJSONSize),
+	}, nil
+}
+
+type APIRuntimeEnvironmentsConfig struct {
+	BaseURL *string `json:"base_url"`
+	APIKey  *string `json:"api_key"`
+}
+
+func (a *APIRuntimeEnvironmentsConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.RuntimeEnvironmentsConfig:
+		a.BaseURL = utility.ToStringPtr(v.BaseURL)
+		a.APIKey = utility.ToStringPtr(v.APIKey)
+	default:
+		return errors.Errorf("programmatic error: expected Runtime Environments config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIRuntimeEnvironmentsConfig) ToService() (interface{}, error) {
+	return evergreen.RuntimeEnvironmentsConfig{
+		BaseURL: utility.FromStringPtr(a.BaseURL),
+		APIKey:  utility.FromStringPtr(a.APIKey),
 	}, nil
 }

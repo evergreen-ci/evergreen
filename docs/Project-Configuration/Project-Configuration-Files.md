@@ -218,6 +218,9 @@ buildvariants:
   - ubuntu1404-test
   expansions:
     test_flags: "blah blah"
+  modules:
+  - spruce
+  - parsley
   tasks:
   - name: compile
   - name: passing_test
@@ -275,6 +278,9 @@ Fields:
     different levels, the order of priority is defined
     [here](#dependency-override-hierarchy).
 -   `expansions`: a set of key-value expansion pairs
+-   `modules`: A list of the module names.
+    It corresponds to the [modules defined](Project-Configuration-Files#modules)
+    and declares what can be used in the [git.get_project](Project-Commands#gitgetproject) command.
 -   `tasks`: a list of tasks to run, referenced either by task name or by tags.
     Tasks listed here can also include other task-level fields, such as
     `batchtime`, `cron`, `activate`, `depends_on`, and `run_on`. We can also
@@ -377,6 +383,17 @@ We will maintain the following merge rules:
     merge generated variants.
 -   Matrix definitions or axes cannot be defined for more than one yaml.
 
+#### Testing with module includes
+
+When running a patch normally, the module include files will be pulled
+from GitHub. In order to see your local changes reflected in a patch, 
+the patch must be created with the `include-modules` flag.
+
+Note: the `set-modules` command will not reflect the local changes 
+in the project configuration page.
+
+``` evergreen patch --include-modules ```
+
 #### Validating changes to config files
 
 When editing yaml project files, you can verify that the file will work
@@ -424,6 +441,9 @@ docs.
 Module fields support the expansion of variables defined in the [Variables](Project-and-Distro-Settings#variables)
 tab of the Spruce project settings. These fields are expanded at the time of version creation, at which point 
 the "Version Manifest" shown in the Spruce UI should show module configurations including the expanded variables.
+
+The modules will only be cloned in the [git.get_project](Project-Commands#gitgetproject) command if the [build variant](Project-Configuration-Files#build-variants)
+is configured to use the module via the module field.
 
 ``` yaml
 modules:

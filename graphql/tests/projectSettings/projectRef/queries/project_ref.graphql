@@ -15,6 +15,10 @@
         message
       }
       githubChecksEnabled
+      githubDynamicTokenPermissionGroups {
+        name
+        permissions
+      }
       patchingDisabled
       prTestingEnabled
       stepbackDisabled

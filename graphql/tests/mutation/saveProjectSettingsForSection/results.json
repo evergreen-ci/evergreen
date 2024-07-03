@@ -184,6 +184,33 @@
           }
         }
       }
+    },
+    {
+      "query_file": "github_permission_groups.graphql",
+      "result": {
+        "data": {
+          "saveProjectSettingsForSection": {
+            "projectRef": {
+              "id": "sandbox_project_id",
+              "githubDynamicTokenPermissionGroups": [
+                {
+                  "name": "group-1",
+                  "permissions": {
+                    "pull_requests": "read",
+                    "organization_hooks": "read"
+                  }
+                },
+                {
+                  "name": "group-2",
+                  "permissions": {
+                    "contents": "write"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
     }
   ]
 }

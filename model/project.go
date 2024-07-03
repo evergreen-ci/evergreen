@@ -413,9 +413,10 @@ type BuildVariant struct {
 	Tasks        []BuildVariantTaskUnit `yaml:"tasks,omitempty" bson:"tasks"`
 	DisplayTasks []patch.DisplayTask    `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
 
-	// EmptyTaskSelectors stores task selectors that don't target any tasks for this build variant.
-	// This is only for validation purposes.
-	EmptyTaskSelectors []string `yaml:"-" bson:"-"`
+	// TranslationWarnings are validation warnings that are only detectable during project translation.
+	// e.g. task selectors that don't target any tasks in a build variant but the build
+	// variant still has tasks.
+	TranslationWarnings []string `yaml:"-" bson:"-"`
 }
 
 // CheckRun is used to provide information about a github check run.
@@ -470,11 +471,6 @@ func (m Module) GetOwnerAndRepo() (string, string, error) {
 		return thirdparty.ParseGitUrl(m.Repo)
 	}
 	return m.Owner, m.Repo, nil
-}
-
-type Include struct {
-	FileName string `yaml:"filename,omitempty" bson:"filename,omitempty"`
-	Module   string `yaml:"module,omitempty" bson:"module,omitempty"`
 }
 
 type ModuleList []Module
