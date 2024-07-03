@@ -1717,3 +1717,156 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupOrdering() {
 		s.Equal(expectedOrder[i], next.Id)
 	}
 }
+
+func (s *taskDAGDispatchServiceSuite) TestGenerateTaskLimits() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	s.Require().NoError(db.ClearCollections(host.Collection))
+	distroID := "distro_1"
+	items := []TaskQueueItem{}
+
+	evergreen.GetEnvironment().Settings().TaskLimits = evergreen.TaskLimitsConfig{
+		MaxPendingGeneratedTasks: 6,
+	}
+
+	running := task.Task{
+		Id:                         "running",
+		BuildId:                    "build_id",
+		StartTime:                  time.Now(),
+		BuildVariant:               "bv",
+		Version:                    "version",
+		Project:                    "proj",
+		Activated:                  true,
+		ActivatedBy:                "",
+		DistroId:                   distroID,
+		Requester:                  "github_pull_request",
+		Status:                     evergreen.TaskStarted,
+		Revision:                   "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		EstimatedNumGeneratedTasks: utility.ToIntPtr(3),
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
+
+	t1 := task.Task{
+		Id:                         "t1",
+		BuildId:                    "build_id",
+		StartTime:                  utility.ZeroTime,
+		BuildVariant:               "bv",
+		Version:                    "version",
+		Project:                    "proj",
+		Activated:                  true,
+		ActivatedBy:                "",
+		DistroId:                   distroID,
+		Requester:                  "github_pull_request",
+		Status:                     evergreen.TaskUndispatched,
+		Revision:                   "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		EstimatedNumGeneratedTasks: utility.ToIntPtr(4),
+	}
+	item1 := TaskQueueItem{
+		Id:                  "t1",
+		IsDispatched:        false,
+		Version:             "version",
+		BuildVariant:        "dv",
+		RevisionOrderNumber: 261,
+		Requester:           "github_pull_request",
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		Project:             "proj",
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
+
+	t2 := task.Task{
+		Id:                         "t2",
+		BuildId:                    "build_id",
+		StartTime:                  utility.ZeroTime,
+		BuildVariant:               "bv",
+		Version:                    "version",
+		Project:                    "proj",
+		Activated:                  true,
+		ActivatedBy:                "",
+		DistroId:                   distroID,
+		Requester:                  "github_pull_request",
+		Status:                     evergreen.TaskUndispatched,
+		Revision:                   "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		EstimatedNumGeneratedTasks: utility.ToIntPtr(2),
+	}
+	item2 := TaskQueueItem{
+		Id:                  "t2",
+		IsDispatched:        false,
+		Version:             "version",
+		BuildVariant:        "dv",
+		RevisionOrderNumber: 261,
+		Requester:           "github_pull_request",
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		Project:             "proj",
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
+
+	t3 := task.Task{
+		Id:           "t3",
+		BuildId:      "build_id",
+		StartTime:    utility.ZeroTime,
+		BuildVariant: "bv",
+		Version:      "version",
+		Project:      "proj",
+		Activated:    true,
+		ActivatedBy:  "",
+		DistroId:     distroID,
+		Requester:    "github_pull_request",
+		Status:       evergreen.TaskUndispatched,
+		Revision:     "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+	}
+	item3 := TaskQueueItem{
+		Id:                  "t3",
+		IsDispatched:        false,
+		Version:             "version",
+		BuildVariant:        "dv",
+		RevisionOrderNumber: 261,
+		Requester:           "github_pull_request",
+		Revision:            "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		Project:             "proj",
+	}
+
+	s.Require().NoError(running.Insert())
+	s.Require().NoError(t1.Insert())
+	s.Require().NoError(t2.Insert())
+	s.Require().NoError(t3.Insert())
+	items = append(items, item1, item2, item3)
+
+	s.taskQueue = TaskQueue{
+		Distro: distroID,
+		Queue:  items,
+	}
+
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+	spec := TaskSpec{}
+
+	// Next task should be t2 since t1 exceeds the generate tasks limit,
+	next := service.FindNextTask(ctx, spec, utility.ZeroTime)
+	s.Require().NotNil(next)
+	s.Equal(t2.Id, next.Id)
+
+	// Mark running task as complete so that t1 can be dispatched.
+	s.Require().NoError(running.MarkEnd(time.Now(), nil))
+
+	// Fake a refresh of the in-memory queue.
+	items = []TaskQueueItem{item1, item3}
+	s.taskQueue.Queue = items
+	s.Require().NoError(service.rebuild(s.taskQueue.Queue))
+
+	next = service.FindNextTask(ctx, spec, utility.ZeroTime)
+	s.Require().NotNil(next)
+	s.Equal(t1.Id, next.Id)
+
+	// Tasks without estimated generated tasks should not be limited.
+	next = service.FindNextTask(ctx, spec, utility.ZeroTime)
+	s.Require().NotNil(next)
+	s.Equal(t3.Id, next.Id)
+
+	next = service.FindNextTask(ctx, spec, utility.ZeroTime)
+	s.Require().Nil(next)
+}

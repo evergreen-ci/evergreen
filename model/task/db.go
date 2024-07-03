@@ -2962,3 +2962,53 @@ func getGenerateTasksEstimation(ctx context.Context, project, buildVariant, disp
 
 	return results, nil
 }
+
+type pendingGenerateTasksResults struct {
+	NumPendingGenerateTasks int `bson:"pending_generate_tasks"`
+}
+
+func GetPendingGenerateTasks(ctx context.Context) (int, error) {
+	match := bson.M{
+		GeneratedTasksKey: bson.M{
+			"$ne": true,
+		},
+		StatusKey: bson.M{
+			"$in": evergreen.TaskInProgressStatuses,
+		},
+	}
+
+	pipeline := []bson.M{
+		{
+			"$match": match,
+		},
+		{
+			"$group": bson.M{
+				"_id": nil,
+				"pending_generate_tasks": bson.M{
+					"$sum": fmt.Sprintf("$%s", EstimatedNumGeneratedTasksKey),
+				},
+			},
+		},
+	}
+
+	results := []pendingGenerateTasksResults{}
+
+	coll := evergreen.GetEnvironment().DB().Collection(Collection)
+	dbCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	cursor, err := coll.Aggregate(dbCtx, pipeline)
+	if err != nil {
+		return 0, errors.Wrap(err, "aggregating pending generate tasks")
+	}
+	err = cursor.All(dbCtx, &results)
+	if err != nil {
+		return 0, errors.Wrap(err, "iterating and decoding pending generate tasks")
+	}
+	if len(results) == 0 {
+		return 0, nil
+	} else if len(results) != 1 {
+		return 0, errors.New("expected exactly one result from pending generate tasks aggregation")
+	} else {
+		return results[0].NumPendingGenerateTasks, nil
+	}
+}

@@ -14,7 +14,7 @@ const (
 	lookBackTime = 7 * 24 * time.Hour // one week
 )
 
-func (t *Task) setGenerateTasksEstimations(ctx context.Context) error {
+func (t *Task) SetGenerateTasksEstimations(ctx context.Context) error {
 	// Do not run if the task is not a generator or estimations have already been cached.
 	if !t.GenerateTask || (t.EstimatedNumGeneratedTasks != nil && t.EstimatedNumActivatedGeneratedTasks != nil) {
 		return nil

@@ -78,7 +78,7 @@ func TestGenerateTasksEstimations(t *testing.T) {
 	}
 	assert.NoError(t4.Insert())
 
-	err = t4.setGenerateTasksEstimations(ctx)
+	err = t4.SetGenerateTasksEstimations(ctx)
 	assert.NoError(err)
 	assert.Equal(2, utility.FromIntPtr(t4.EstimatedNumGeneratedTasks))
 	assert.Equal(20, utility.FromIntPtr(t4.EstimatedNumActivatedGeneratedTasks))
@@ -109,7 +109,7 @@ func TestGenerateTasksEstimationsNoPreviousTasks(t *testing.T) {
 	}
 	assert.NoError(t1.Insert())
 
-	err = t1.setGenerateTasksEstimations(ctx)
+	err = t1.SetGenerateTasksEstimations(ctx)
 	assert.NoError(err)
 	assert.Equal(0, utility.FromIntPtr(t1.EstimatedNumGeneratedTasks))
 	assert.Equal(0, utility.FromIntPtr(t1.EstimatedNumActivatedGeneratedTasks))
@@ -137,7 +137,7 @@ func TestGenerateTasksEstimationsDoesNotRun(t *testing.T) {
 	}
 	assert.NoError(t1.Insert())
 
-	err := t1.setGenerateTasksEstimations(ctx)
+	err := t1.SetGenerateTasksEstimations(ctx)
 	assert.NoError(err)
 	assert.Nil(t1.EstimatedNumGeneratedTasks)
 	assert.Nil(t1.EstimatedNumActivatedGeneratedTasks)
@@ -172,7 +172,7 @@ func TestGenerateTasksEstimationsDoesNotRun(t *testing.T) {
 	}
 	assert.NoError(t3.Insert())
 
-	err = t3.setGenerateTasksEstimations(ctx)
+	err = t3.SetGenerateTasksEstimations(ctx)
 	assert.NoError(err)
 	assert.Equal(1, utility.FromIntPtr(t3.EstimatedNumGeneratedTasks))
 	assert.Equal(2, utility.FromIntPtr(t3.EstimatedNumActivatedGeneratedTasks))
