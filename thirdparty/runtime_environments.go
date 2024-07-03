@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -59,6 +61,7 @@ func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string
 	return filteredImages, nil
 }
 
+// ImageDiffOptions represents the arguments for getImageDiff. AMI is the starting AMI, and AMI2 is the ending AMI.
 type ImageDiffOptions struct {
 	AMI   string
 	AMI2  string
@@ -66,14 +69,20 @@ type ImageDiffOptions struct {
 	Limit int
 }
 
+// ImageDiffChange represents a change between two AMIs.
 type ImageDiffChange struct {
-	
+	Name    string
+	Manager string
+	Type    string
+	Removed string
+	Added   string
 }
 
-func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts ImageDiffOptions) (, error) {
+// getImageDiff returns a list of package and toolchain changes that occurred between the provided AMIs.
+func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts ImageDiffOptions) ([]ImageDiffChange, error) {
 	params := url.Values{}
 	params.Set("ami", opts.AMI)
-	params.Set("ami-2", opts.AMI2)
+	params.Set("ami2", opts.AMI2)
 	params.Set("page", strconv.Itoa(opts.Page))
 	params.Set("limit", strconv.Itoa(opts.Limit))
 	apiURL := fmt.Sprintf("%s/rest/api/v1/imageDiffs?%s", c.BaseURL, params.Encode())
@@ -92,9 +101,15 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts Image
 		msg, _ := io.ReadAll(resp.Body)
 		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
 	}
-	var packages []Package
-	if err := gimlet.GetJSON(resp.Body, &packages); err != nil {
+	changes := []ImageDiffChange{}
+	if err := gimlet.GetJSON(resp.Body, &changes); err != nil {
 		return nil, errors.Wrap(err, "decoding http body")
 	}
-	return packages, nil
+	filteredChanges := []ImageDiffChange{}
+	for _, c := range changes {
+		if c.Type == "Packages" || c.Type == "Toolchains" {
+			filteredChanges = append(filteredChanges, c)
+		}
+	}
+	return filteredChanges, nil
 }
