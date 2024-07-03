@@ -65,7 +65,7 @@ func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string
 	return filteredImages, nil
 }
 
-// getOSInfo returns a list of operating system changes (name and version) from the corresponding AMI id.
+// getOSInfo returns a list of operating system information for an AMI.
 func (c *RuntimeEnvironmentsClient) getOSInfo(ctx context.Context, amiID string, page string, limit string) ([]OSInfo, error) {
 	params := url.Values{}
 	params.Set("ami", amiID)
