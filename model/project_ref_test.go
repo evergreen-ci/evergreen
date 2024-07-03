@@ -544,15 +544,13 @@ func TestGetActivationTimeForTask(t *testing.T) {
 	assert.NoError(t, versionWithoutTask.Insert())
 	assert.NoError(t, versionWithTask.Insert())
 
-	currentTime := time.Now()
-	activationTime, err := projectRef.GetActivationTimeForTask(bvt, currentTime)
+	activationTime, err := projectRef.GetActivationTimeForTask(bvt)
 	assert.NoError(t, err)
 	assert.True(t, activationTime.Equal(prevTime.Add(time.Hour)))
 
-	// Activation time should be the zero time, because this variant is disabled.
-	activationTime, err = projectRef.GetActivationTimeForTask(bvt2, currentTime)
+	activationTime, err = projectRef.GetActivationTimeForTask(bvt2)
 	assert.NoError(t, err)
-	assert.True(t, utility.IsZeroTime(activationTime))
+	assert.True(t, activationTime.Equal(utility.ZeroTime))
 }
 
 func TestGetActivationTimeWithCron(t *testing.T) {
@@ -3575,22 +3573,16 @@ func TestSaveProjectPageForSection(t *testing.T) {
 				},
 			},
 		},
-		GitHubPermissionGroupByRequester: map[string]string{
-			evergreen.GithubMergeRequester: "some-group",
-		},
 	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGithubAndCQSection, false)
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGithubPermissionsSection, false)
 	assert.NoError(err)
 
 	projectRef, err = FindBranchProjectRef("iden_")
 	require.NoError(t, err)
 	assert.NotNil(t, projectRef)
-	assert.Len(projectRef.GitHubDynamicTokenPermissionGroups, 1)
-
-	perms, found := projectRef.GetGitHubPermissionGroup(evergreen.GithubMergeRequester)
-	assert.Equal("some-group", perms.Name)
-	assert.True(found)
-	assert.Equal("read", utility.FromStringPtr(perms.Permissions.Actions))
+	require.Len(t, projectRef.GitHubDynamicTokenPermissionGroups, 1)
+	assert.Equal("some-group", projectRef.GitHubDynamicTokenPermissionGroups[0].Name)
+	assert.Equal("read", utility.FromStringPtr(projectRef.GitHubDynamicTokenPermissionGroups[0].Permissions.Actions))
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {
@@ -3805,11 +3797,10 @@ func TestGetActivationTimeForVariant(t *testing.T) {
 	}
 	assert.Nil(projectRef.Insert())
 
-	// Set based on last activation time when no version is found
-	currentTime := time.Now().Add(-1 * time.Minute)
-	activationTime, err := projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"}, currentTime)
+	// set based on last activation time when no version is found
+	activationTime, err := projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"})
 	assert.NoError(err)
-	assert.Equal(activationTime, currentTime)
+	assert.NotZero(activationTime)
 
 	// set based on last activation time with a version
 	version := &Version{
@@ -3829,8 +3820,7 @@ func TestGetActivationTimeForVariant(t *testing.T) {
 	}
 	assert.Nil(version.Insert())
 
-	activationTime, err = projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"}, currentTime)
+	activationTime, err = projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"})
 	assert.NoError(err)
 	assert.NotZero(activationTime)
-	assert.Equal(activationTime, currentTime)
 }
