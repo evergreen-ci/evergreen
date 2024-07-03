@@ -3521,13 +3521,13 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	}
 	assert.NoError(projectRef.Insert())
 	projectRef, err := FindBranchProjectRef("identifier")
-	assert.NoError(err)
-	assert.NotNil(t, projectRef)
+	require.NoError(t, err)
+	require.NotNil(t, projectRef)
 
 	settings := evergreen.Settings{
 		GithubOrgs: []string{"newOwner", "evergreen-ci"},
 	}
-	assert.NoError(settings.Set(ctx))
+	require.NoError(t, settings.Set(ctx))
 
 	update := &ProjectRef{
 		Id:      "iden_",
@@ -3536,7 +3536,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		Repo:    "test",
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
-	assert.NoError(err)
+	require.NoError(t, err)
 
 	// Test parsley filters and view update
 	update = &ProjectRef{
@@ -3546,7 +3546,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		ProjectHealthView: ProjectHealthViewAll,
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageViewsAndFiltersSection, false)
-	assert.NoError(err)
+	require.NoError(t, err)
 
 	// Test private field does not get updated
 	update = &ProjectRef{
@@ -3557,7 +3557,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 
 	projectRef, err = FindBranchProjectRef("iden_")
 	require.NoError(t, err)
-	assert.NotNil(t, projectRef)
+	require.NotNil(t, projectRef)
 	assert.Len(projectRef.ParsleyFilters, 1)
 	assert.Equal(projectRef.ProjectHealthView, ProjectHealthViewAll)
 	assert.True(utility.FromBoolPtr(projectRef.Restricted))
@@ -3579,10 +3579,25 @@ func TestSaveProjectPageForSection(t *testing.T) {
 
 	projectRef, err = FindBranchProjectRef("iden_")
 	require.NoError(t, err)
-	assert.NotNil(t, projectRef)
+	require.NotNil(t, projectRef)
 	require.Len(t, projectRef.GitHubDynamicTokenPermissionGroups, 1)
 	assert.Equal("some-group", projectRef.GitHubDynamicTokenPermissionGroups[0].Name)
 	assert.Equal("read", utility.FromStringPtr(projectRef.GitHubDynamicTokenPermissionGroups[0].Permissions.Actions))
+
+	// Test GitHub permission group by requester
+	update = &ProjectRef{
+		GitHubPermissionGroupByRequester: map[string]string{
+			evergreen.PatchVersionRequester: "some-group",
+		},
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGithubAppSettingsSection, false)
+	assert.NoError(err)
+
+	projectRef, err = FindBranchProjectRef("iden_")
+	require.NoError(t, err)
+	require.NotNil(t, projectRef)
+	require.NotNil(t, projectRef.GitHubPermissionGroupByRequester)
+	assert.Equal(projectRef.GitHubPermissionGroupByRequester[evergreen.PatchVersionRequester], "some-group")
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {
