@@ -893,3 +893,8 @@ func GetHostCreateDistro(ctx context.Context, createHost apimodels.CreateHost) (
 	d.BootstrapSettings.Method = BootstrapMethodNone
 	return d, nil
 }
+
+// getDistrosForImage returns the distros for a given image
+func getDistrosForImage(ctx context.Context, imageID string) ([]Distro, error) {
+	return Find(ctx, bson.M{ImageIDKey: imageID})
+}

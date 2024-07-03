@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,14 +20,25 @@ import (
 )
 
 type TaskConfig struct {
-	Distro             *apimodels.DistroView
-	ProjectRef         model.ProjectRef
-	Project            model.Project
-	Task               task.Task
-	BuildVariant       model.BuildVariant
-	Expansions         util.Expansions
-	NewExpansions      *agentutil.DynamicExpansions
-	DynamicExpansions  util.Expansions
+	Distro       *apimodels.DistroView
+	ProjectRef   model.ProjectRef
+	Project      model.Project
+	Task         task.Task
+	BuildVariant model.BuildVariant
+
+	// Expansions store the fundamental expansions set by Evergreen.
+	// e.g. execution, project_id, task_id, etc. It also stores
+	// expansions that are set by the user by expansion.update.
+	Expansions util.Expansions
+
+	// NewExpansions is a thread safe way to access Expansions.
+	// It also exposes a way to redact expansions from logs.
+	NewExpansions *agentutil.DynamicExpansions
+
+	// DynamicExpansions holds expansions that were set from 'expansions.update'
+	// and should persist throughout the task's execution.
+	DynamicExpansions util.Expansions
+
 	ProjectVars        map[string]string
 	Redacted           []string
 	RedactKeys         []string
@@ -41,8 +53,42 @@ type TaskConfig struct {
 	ModulePaths        map[string]string
 	CedarTestResultsID string
 	TaskGroup          *model.TaskGroup
+	CommandCleanups    []CommandCleanup
 
 	mu sync.RWMutex
+}
+
+// CommandCleanup is a cleanup function associated with a command. As a command
+// block is executed, the cleanup function(s) are added to the TaskConfig. When
+// the command block is finished, the cleanup function(s) are collected by the
+// TaskContext and executed depending on what command block was executed.
+type CommandCleanup struct {
+	// Command is the name of the command from (base).FullDisplayName().
+	Command string
+	// Run is the function that is called when the task is finished.
+	Run func(context.Context) error
+}
+
+// AddCommandCleanup adds a cleanup function to the TaskConfig.
+func (t *TaskConfig) AddCommandCleanup(cmd string, run func(context.Context) error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.CommandCleanups = append(t.CommandCleanups, CommandCleanup{
+		Command: cmd,
+		Run:     run,
+	})
+}
+
+// GetAndClearCommandCleanups returns the command cleanups that have been added
+// to the TaskConfig and clears the list of command cleanups.
+func (t *TaskConfig) GetAndClearCommandCleanups() []CommandCleanup {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	cleanups := t.CommandCleanups
+	t.CommandCleanups = nil
+	return cleanups
 }
 
 // Timeout records dynamic timeout information that has been explicitly set by

@@ -332,6 +332,8 @@ type VersionMetadata struct {
 var (
 	VersionBuildStatusVariantKey        = bsonutil.MustHaveTag(VersionBuildStatus{}, "BuildVariant")
 	VersionBuildStatusActivatedKey      = bsonutil.MustHaveTag(VersionBuildStatus{}, "Activated")
+	VersionBuildStatusActivateAtKey     = bsonutil.MustHaveTag(VersionBuildStatus{}, "ActivateAt")
+	VersionBuildStatusBuildIdKey        = bsonutil.MustHaveTag(VersionBuildStatus{}, "BuildId")
 	VersionBuildStatusBatchTimeTasksKey = bsonutil.MustHaveTag(VersionBuildStatus{}, "BatchTimeTasks")
 
 	BatchTimeTaskStatusTaskNameKey  = bsonutil.MustHaveTag(BatchTimeTaskStatus{}, "TaskName")
@@ -654,6 +656,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 				"as":   "tasks",
 				"pipeline": []bson.M{
 					{"$match": bson.M{"$expr": bson.M{"$and": taskMatch}}},
+					{"$project": bson.M{"id": "$_id"}},
 				},
 			}
 			innerPipeline = append(innerPipeline, bson.M{"$lookup": taskLookup})

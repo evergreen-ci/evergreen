@@ -30,6 +30,10 @@ func TestSleepSchedulerJob(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(host.Collection))
 	}()
 
+	const easternTZ = "America/New_York"
+	easternTZLoc, err := time.LoadLocation(easternTZ)
+	require.NoError(t, err)
+
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob){
 		"EnqueuesJobsForHostsNeedingToStopForSleepSchedule": func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob) {
 			now := utility.BSONTime(time.Now())
@@ -165,29 +169,40 @@ func TestSleepSchedulerJob(t *testing.T) {
 			require.NoError(t, err)
 			assert.Zero(t, q.Stats(ctx).Total)
 		},
-		"AddsNextSleepSchedulesTimesForHostMissingIt": func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob) {
-			now := utility.BSONTime(time.Now())
+		"AddsNextSleepScheduleTimesBasedOnCurrentTimeForHostMissingThem": func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob) {
 			h := host.Host{
 				Id:           "host_missing_sleep_schedule_times",
 				Status:       evergreen.HostRunning,
 				NoExpiration: true,
 				SleepSchedule: host.SleepScheduleInfo{
-					TimeZone:         "America/New_York",
-					WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
+					DailyStartTime: "10:00",
+					DailyStopTime:  "18:00",
+					TimeZone:       easternTZ,
 				},
 			}
 			require.NoError(t, h.Insert(ctx))
 
+			// Simulate the current time, which is:
+			// Wednesday February 21, 2024 at 15:00 EST
+			now, err := time.ParseInLocation(time.DateTime, "2024-02-21 15:00:00", easternTZLoc)
+			require.NoError(t, err)
+			now = utility.BSONTime(now.UTC())
+
+			j.startedAt = now
 			j.Run(ctx)
 			assert.NoError(t, j.Error())
 
 			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
-			assert.NotZero(t, dbHost.SleepSchedule.NextStartTime)
-			assert.True(t, dbHost.SleepSchedule.NextStartTime.After(now), "next start time should be in the future")
-			assert.NotZero(t, dbHost.SleepSchedule.NextStopTime)
-			assert.True(t, dbHost.SleepSchedule.NextStopTime.After(now), "next stop time should be in the future")
+
+			expectedNextStartTime, err := time.ParseInLocation(time.DateTime, "2024-02-22 10:00:00", easternTZLoc)
+			require.NoError(t, err)
+			assert.WithinDuration(t, expectedNextStartTime, dbHost.SleepSchedule.NextStartTime, 0, "next start time should be at 10:00 local time on the next day")
+
+			expectedNextStopTime, err := time.ParseInLocation(time.DateTime, "2024-02-21 18:00:00", easternTZLoc)
+			require.NoError(t, err)
+			assert.WithinDuration(t, expectedNextStopTime, dbHost.SleepSchedule.NextStopTime, 0, "next stop time should be at 18:00 local time on the same day")
 		},
 		"AddsNextStartTimeForHostMissingIt": func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob) {
 			now := utility.BSONTime(time.Now())
@@ -311,6 +326,43 @@ func TestSleepSchedulerJob(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Zero(t, dbHost.SleepSchedule.NextStartTime)
 			assert.Zero(t, dbHost.SleepSchedule.NextStopTime)
+		},
+		"ReschedulesSleepScheduleTimesBasedOnCurrentTimeForHostExceedingAttemptTimeouts": func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob) {
+			// Simulate the current time, which is:
+			// Wednesday February 21, 2024 at 15:00 EST
+			now, err := time.ParseInLocation(time.DateTime, "2024-02-21 15:00:00", easternTZLoc)
+			require.NoError(t, err)
+			now = utility.BSONTime(now.UTC())
+
+			h := host.Host{
+				Id:           "host_with_long_outdated_sleep_schedule_times",
+				Status:       evergreen.HostRunning,
+				NoExpiration: true,
+				SleepSchedule: host.SleepScheduleInfo{
+					DailyStartTime: "10:00",
+					DailyStopTime:  "18:00",
+					TimeZone:       easternTZ,
+					NextStartTime:  utility.BSONTime(now.Add(-utility.Day)),
+					NextStopTime:   utility.BSONTime(now.Add(-utility.Day)),
+				},
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			j.startedAt = now
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+
+			expectedNextStartTime, err := time.ParseInLocation(time.DateTime, "2024-02-22 10:00:00", easternTZLoc)
+			require.NoError(t, err)
+			assert.WithinDuration(t, expectedNextStartTime, dbHost.SleepSchedule.NextStartTime, 0, "next start time should be at 10:00 local time on the next day")
+
+			expectedNextStopTime, err := time.ParseInLocation(time.DateTime, "2024-02-21 18:00:00", easternTZLoc)
+			require.NoError(t, err)
+			assert.WithinDuration(t, expectedNextStopTime, dbHost.SleepSchedule.NextStopTime, 0, "next stop time should be at 18:00 local time on the same day")
 		},
 		"ReschedulesNextStopForHostExceedingAttemptTimeout": func(ctx context.Context, t *testing.T, env *mock.Environment, j *sleepSchedulerJob) {
 			now := utility.BSONTime(time.Now())

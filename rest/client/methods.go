@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -1631,4 +1633,110 @@ func (c *communicatorImpl) GetRawPatchWithModules(ctx context.Context, patchId s
 		return nil, errors.Wrap(err, "reading JSON response body")
 	}
 	return &rp, nil
+}
+
+func (c *communicatorImpl) GetTaskLogs(ctx context.Context, opts GetTaskLogsOptions) (io.ReadCloser, error) {
+	var params []string
+	if opts.Execution != nil {
+		params = append(params, fmt.Sprintf("execution=%d", utility.FromIntPtr(opts.Execution)))
+	}
+	if opts.Type != "" {
+		params = append(params, fmt.Sprintf("type=%s", opts.Type))
+	}
+	if opts.Start != "" {
+		params = append(params, fmt.Sprintf("start=%s", opts.Start))
+	}
+	if opts.End != "" {
+		params = append(params, fmt.Sprintf("end=%s", opts.End))
+	}
+	if opts.LineLimit > 0 {
+		params = append(params, fmt.Sprintf("line_limit=%d", opts.LineLimit))
+	}
+	if opts.TailLimit > 0 {
+		params = append(params, fmt.Sprintf("tail_limit=%d", opts.TailLimit))
+	}
+	if opts.PrintTime {
+		params = append(params, fmt.Sprintf("print_time=%v", opts.PrintTime))
+	}
+	if opts.PrintPriority {
+		params = append(params, fmt.Sprintf("print_priority=%v", opts.PrintPriority))
+	}
+	if opts.Paginate {
+		params = append(params, fmt.Sprintf("paginate=%v", opts.Paginate))
+	}
+
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("tasks/%s/build/TaskLogs?%s", opts.TaskID, strings.Join(params, "&")),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "sending request to get task logs")
+	}
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, util.RespErrorf(resp, AuthError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespErrorf(resp, "getting task logs")
+	}
+
+	header := make(http.Header)
+	header.Add(evergreen.APIUserHeader, c.apiUser)
+	header.Add(evergreen.APIKeyHeader, c.apiKey)
+	return utility.NewPaginatedReadCloser(ctx, c.httpClient, resp, header), nil
+}
+
+func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOptions) (io.ReadCloser, error) {
+	var params []string
+	if opts.Execution != nil {
+		params = append(params, fmt.Sprintf("execution=%d", utility.FromIntPtr(opts.Execution)))
+	}
+	for _, path := range opts.LogsToMerge {
+		params = append(params, fmt.Sprintf("logs_to_merge=%s", url.QueryEscape(path)))
+	}
+	if opts.Start != "" {
+		params = append(params, fmt.Sprintf("start=%s", opts.Start))
+	}
+	if opts.End != "" {
+		params = append(params, fmt.Sprintf("end=%s", opts.End))
+	}
+	if opts.LineLimit > 0 {
+		params = append(params, fmt.Sprintf("line_limit=%d", opts.LineLimit))
+	}
+	if opts.TailLimit > 0 {
+		params = append(params, fmt.Sprintf("tail_limit=%d", opts.TailLimit))
+	}
+	if opts.PrintTime {
+		params = append(params, fmt.Sprintf("print_time=%v", opts.PrintTime))
+	}
+	if opts.PrintPriority {
+		params = append(params, fmt.Sprintf("print_priority=%v", opts.PrintPriority))
+	}
+	if opts.Paginate {
+		params = append(params, fmt.Sprintf("paginate=%v", opts.Paginate))
+	}
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("tasks/%s/build/TestLogs/%s?%s", opts.TaskID, url.PathEscape(opts.Path), strings.Join(params, "&")),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "sending request to get test logs")
+	}
+	fmt.Println(resp.Request.URL)
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, util.RespErrorf(resp, AuthError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespErrorf(resp, "getting test logs")
+	}
+
+	header := make(http.Header)
+	header.Add(evergreen.APIUserHeader, c.apiUser)
+	header.Add(evergreen.APIKeyHeader, c.apiKey)
+	return utility.NewPaginatedReadCloser(ctx, c.httpClient, resp, header), nil
 }

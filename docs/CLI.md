@@ -63,6 +63,12 @@ To skip all (y/n) prompts, the `-y` keyword can be given:
 evergreen patch -y
 ```
 
+To use local changes for an included file from a module, the `--include-modules` flag can be used:
+Note that `set-module` command will not work for module includes and this flag must be used instead.
+```
+evergreen patch --include-modules
+```
+
 Working Tree Changes
 ---
 By default patches will include only committed changes, not changes in Git's working tree or index. To include changes from the working tree use the `--uncommitted, -u` flag or set a default by inserting `patch_uncommitted_changes: true` in the `~/.evergreen.yml` file.
@@ -376,27 +382,19 @@ evergreen last-green -p mci -v ubuntu
 
 ```
 
-#### Buildlogger Fetch
+#### Tasks
+The command `evergeen task` contains subcommands for interacting with task run data, including task output (build) data.
 
-The command `evergreen buildlogger fetch` downloads logs from cedar buildlogger.
-To use it, specify the task id and execution from which you would like to download logs. 
+```
+# Fetch task logs
+evergreen task build TaskLogs --task_id <task_id> --execution <execution> --type <task_log_type>
 
-To download all logs of a task (including test logs):
-```
-evergreen buildlogger fetch --task_id <task_id> --execution <execution>
+# Fetch test logs
+evergreen task build TestLogs --task_id <task_id> --execution <execution> --log_path <test_log_path>
 ```
 
-To download task level logs:
-```
-evergreen buildlogger fetch --task_id <task_id> --execution <execution> --tags agent_log,task_log,system_log
-```
-You may request any combination of agent, task, or system logs by setting the corresponding names in `--tags`. They must be comma-separated if requesting more than one.
-
-To download test logs:
-```
-evergreen buildlogger fetch --task_id <task_id> --execution <execution> --test_name <test_name>
-```
-Please note that test logs may not be in cedar buildlogger yet for some projects.
+#### Commit Queue
+The command `evergreen commit-queue` contains subcommands for interacting with the commit queue. See [Commit Queue](Project-Configuration/Commit-Queue).
 
 ### Server Side (for Evergreen admins)
 

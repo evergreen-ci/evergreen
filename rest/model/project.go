@@ -106,6 +106,10 @@ type APIPatchTriggerDefinition struct {
 	// Name of the module corresponding to the upstream project in the
 	// downstream project's YAML.
 	ParentAsModule *string `json:"parent_as_module,omitempty"`
+	// An optional field representing the revision at which to create the downstream patch.
+	// By default, this field is empty and the downstream patch will be based off of its
+	// most recent commit.
+	DownstreamRevision *string `json:"downstream_revision,omitempty"`
 	// The list of variants/tasks from the alias that will run in the downstream
 	// project.
 	VariantsTasks []VariantTask `json:"variants_tasks,omitempty"`
@@ -121,6 +125,7 @@ func (t *APIPatchTriggerDefinition) BuildFromService(def patch.PatchTriggerDefin
 	// not sure in which direction this should go
 	t.Alias = utility.ToStringPtr(def.Alias)
 	t.Status = utility.ToStringPtr(def.Status)
+	t.DownstreamRevision = utility.ToStringPtr(def.DownstreamRevision)
 	t.ParentAsModule = utility.ToStringPtr(def.ParentAsModule)
 	var specifiers []APITaskSpecifier
 	for _, ts := range def.TaskSpecifiers {
@@ -139,6 +144,7 @@ func (t *APIPatchTriggerDefinition) ToService() patch.PatchTriggerDefinition {
 	trigger.Status = utility.FromStringPtr(t.Status)
 	trigger.Alias = utility.FromStringPtr(t.Alias)
 	trigger.ParentAsModule = utility.FromStringPtr(t.ParentAsModule)
+	trigger.DownstreamRevision = utility.FromStringPtr(t.DownstreamRevision)
 	var specifiers []patch.TaskSpecifier
 	for _, ts := range t.TaskSpecifiers {
 		specifiers = append(specifiers, ts.ToService())
@@ -269,7 +275,7 @@ func (cqParams *APICommitQueueParams) BuildFromService(params model.CommitQueueP
 	cqParams.Message = utility.ToStringPtr(params.Message)
 
 	if params.MergeQueue == "" {
-		params.MergeQueue = model.MergeQueueEvergreen
+		params.MergeQueue = model.MergeQueueGitHub
 	}
 	cqParams.MergeQueue = params.MergeQueue
 }
@@ -281,7 +287,7 @@ func (cqParams *APICommitQueueParams) ToService() model.CommitQueueParams {
 	serviceParams.Message = utility.FromStringPtr(cqParams.Message)
 
 	if cqParams.MergeQueue == "" {
-		cqParams.MergeQueue = model.MergeQueueEvergreen
+		cqParams.MergeQueue = model.MergeQueueGitHub
 	}
 	serviceParams.MergeQueue = cqParams.MergeQueue
 
@@ -520,14 +526,6 @@ type APIParameterInfo struct {
 	Description *string `json:"description"`
 }
 
-func (c *APIParameterInfo) ToService() model.ParameterInfo {
-	res := model.ParameterInfo{}
-	res.Key = utility.FromStringPtr(c.Key)
-	res.Value = utility.FromStringPtr(c.Value)
-	res.Description = utility.FromStringPtr(c.Description)
-	return res
-}
-
 func (c *APIParameterInfo) BuildFromService(info model.ParameterInfo) {
 	c.Key = utility.ToStringPtr(info.Key)
 	c.Value = utility.ToStringPtr(info.Value)
@@ -558,8 +556,6 @@ type APIGitHubDynamicTokenPermissionGroup struct {
 	AllPermissions *bool `json:"all_permissions"`
 }
 
-type APIGitHubDynamicTokenPermissionGroups []APIGitHubDynamicTokenPermissionGroup
-
 func (p *APIGitHubDynamicTokenPermissionGroup) ToService() (model.GitHubDynamicTokenPermissionGroup, error) {
 	group := model.GitHubDynamicTokenPermissionGroup{
 		Name: utility.FromStringPtr(p.Name),
@@ -589,16 +585,22 @@ func (p *APIGitHubDynamicTokenPermissionGroup) ToService() (model.GitHubDynamicT
 	return group, nil
 }
 
-func (p *APIGitHubDynamicTokenPermissionGroups) ToService() ([]model.GitHubDynamicTokenPermissionGroup, error) {
-	groups := []model.GitHubDynamicTokenPermissionGroup{}
-	for _, group := range *p {
-		serviceGroup, err := group.ToService()
-		if err != nil {
-			return groups, errors.Wrapf(err, "converting GitHub permission group '%s'", utility.FromStringPtr(group.Name))
-		}
-		groups = append(groups, serviceGroup)
+func (p *APIGitHubDynamicTokenPermissionGroup) BuildFromService(h model.GitHubDynamicTokenPermissionGroup) error {
+	p.Name = utility.ToStringPtr(h.Name)
+
+	permissions := map[string]string{}
+	data, err := json.Marshal(h.Permissions)
+	if err != nil {
+		return errors.Wrapf(err, "converting GitHub permission group '%s'", h.Name)
 	}
-	return groups, nil
+	if err := json.Unmarshal(data, &permissions); err != nil {
+		return errors.Wrap(err, "unmarshalling GitHub permissions")
+	}
+	p.Permissions = permissions
+
+	p.AllPermissions = utility.ToBoolPtr(h.AllPermissions)
+
+	return nil
 }
 
 type APIProjectRef struct {
@@ -723,7 +725,7 @@ type APIProjectRef struct {
 	// Default project health view.
 	ProjectHealthView model.ProjectHealthView `json:"project_health_view"`
 	// List of GitHub permission groups.
-	GitHubDynamicTokenPermissionGroups APIGitHubDynamicTokenPermissionGroups `json:"github_dynamic_token_permission_groups,omitempty"`
+	GitHubDynamicTokenPermissionGroups []APIGitHubDynamicTokenPermissionGroup `json:"github_dynamic_token_permission_groups,omitempty"`
 	// GitHub permission group by requester.
 	GitHubPermissionGroupByRequester map[string]string `json:"github_permission_group_by_requester,omitempty"`
 }
@@ -823,11 +825,15 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 	}
 
 	if p.GitHubDynamicTokenPermissionGroups != nil {
-		groups, err := p.GitHubDynamicTokenPermissionGroups.ToService()
-		if err != nil {
-			return nil, errors.Wrap(err, "converting GitHub permission groups")
+		permissionGroups := []model.GitHubDynamicTokenPermissionGroup{}
+		for _, pg := range p.GitHubDynamicTokenPermissionGroups {
+			serviceGroup, err := pg.ToService()
+			if err != nil {
+				return nil, errors.Wrapf(err, "converting GitHub permission group '%s'", utility.FromStringPtr(pg.Name))
+			}
+			permissionGroups = append(permissionGroups, serviceGroup)
 		}
-		projectRef.GitHubDynamicTokenPermissionGroups = groups
+		projectRef.GitHubDynamicTokenPermissionGroups = permissionGroups
 	}
 
 	for _, size := range p.ContainerSizeDefinitions {
@@ -908,6 +914,18 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 	projectBanner := APIProjectBanner{}
 	projectBanner.BuildFromService(projectRef.Banner)
 	p.Banner = projectBanner
+
+	if projectRef.GitHubDynamicTokenPermissionGroups != nil {
+		permissionGroups := []APIGitHubDynamicTokenPermissionGroup{}
+		for _, pg := range projectRef.GitHubDynamicTokenPermissionGroups {
+			apiGroup := APIGitHubDynamicTokenPermissionGroup{}
+			if err := apiGroup.BuildFromService(pg); err != nil {
+				return errors.Wrapf(err, "converting GitHub permission group '%s' to API model", pg.Name)
+			}
+			permissionGroups = append(permissionGroups, apiGroup)
+		}
+		p.GitHubDynamicTokenPermissionGroups = permissionGroups
+	}
 
 	if projectRef.RepotrackerError != nil {
 		repotrackerErr := APIRepositoryErrorDetails{}

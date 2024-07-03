@@ -57,6 +57,10 @@ providers:
         key: "$AWS_KEY"
         secret: "$AWS_SECRET"
 
+runtime_environments:
+  base_url: "$RUNTIME_ENVIRONMENTS_BASE_URL"
+  api_key: "$RUNTIME_ENVIRONMENTS_API_KEY"
+
 auth:
     naive:
       users:

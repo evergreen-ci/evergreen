@@ -52,13 +52,13 @@ var (
 
 //nolint:megacheck,unused
 var (
-	githubUserUID         = bsonutil.MustHaveTag(GithubUser{}, "UID")
-	githubUserLastKnownAs = bsonutil.MustHaveTag(GithubUser{}, "LastKnownAs")
+	GithubUserUIDKey         = bsonutil.MustHaveTag(GithubUser{}, "UID")
+	githubUserLastKnownAsKey = bsonutil.MustHaveTag(GithubUser{}, "LastKnownAs")
 )
 
 var (
 	SettingsTZKey                = bsonutil.MustHaveTag(UserSettings{}, "Timezone")
-	userSettingsGithubUserKey    = bsonutil.MustHaveTag(UserSettings{}, "GithubUser")
+	UserSettingsGithubUserKey    = bsonutil.MustHaveTag(UserSettings{}, "GithubUser")
 	userSettingsSlackUsernameKey = bsonutil.MustHaveTag(UserSettings{}, "SlackUsername")
 	userSettingsSlackMemberIdKey = bsonutil.MustHaveTag(UserSettings{}, "SlackMemberId")
 	UseSpruceOptionsKey          = bsonutil.MustHaveTag(UserSettings{}, "UseSpruceOptions")
@@ -161,7 +161,7 @@ func FindOneByDisplayName(displayName string) (*DBUser, error) {
 func FindByGithubUID(uid int) (*DBUser, error) {
 	u := DBUser{}
 	err := db.FindOneQ(Collection, db.Query(bson.M{
-		bsonutil.GetDottedKeyName(SettingsKey, userSettingsGithubUserKey, githubUserUID): uid,
+		bsonutil.GetDottedKeyName(SettingsKey, UserSettingsGithubUserKey, GithubUserUIDKey): uid,
 	}), &u)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -177,7 +177,7 @@ func FindByGithubUID(uid int) (*DBUser, error) {
 func FindByGithubName(name string) (*DBUser, error) {
 	u := DBUser{}
 	err := db.FindOneQ(Collection, db.Query(bson.M{
-		bsonutil.GetDottedKeyName(SettingsKey, userSettingsGithubUserKey, githubUserLastKnownAs): name,
+		bsonutil.GetDottedKeyName(SettingsKey, UserSettingsGithubUserKey, githubUserLastKnownAsKey): name,
 	}), &u)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -517,6 +517,7 @@ func ClearUser(userId string) error {
 			RolesKey:      1,
 			LoginCacheKey: 1,
 			PubKeysKey:    1,
+			APIKeyKey:     1,
 		},
 	}
 	query := bson.M{IdKey: userId}

@@ -117,7 +117,7 @@ func (it *chunkIterator) Next() bool {
 		}
 		it.lineCount++
 
-		if it.opts.end != nil && item.Timestamp > *it.opts.end {
+		if it.opts.end != nil && item.Timestamp > utility.FromInt64Ptr(it.opts.end) {
 			it.exhausted = true
 			return false
 		}
@@ -174,7 +174,7 @@ func (it *chunkIterator) Close() error {
 func filterChunksByTimeRange(chunks []chunkInfo, start, end *int64) []chunkInfo {
 	var filteredChunks []chunkInfo
 	for i := 0; i < len(chunks); i++ {
-		if (end != nil && *end < chunks[i].start) || utility.FromInt64Ptr(start) > chunks[i].end {
+		if (end != nil && utility.FromInt64Ptr(end) < chunks[i].start) || utility.FromInt64Ptr(start) > chunks[i].end {
 			continue
 		}
 		filteredChunks = append(filteredChunks, chunks[i])

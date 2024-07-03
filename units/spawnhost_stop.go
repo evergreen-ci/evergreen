@@ -163,7 +163,7 @@ func (j *spawnhostStopJob) setNextScheduledStop(ctx context.Context, h *host.Hos
 	if err != nil {
 		return errors.Wrap(err, "calculating next scheduled stop time")
 	}
-	if err := h.SetNextScheduledStop(ctx, nextStop); err != nil {
+	if err := h.SetNextScheduledStopTime(ctx, nextStop); err != nil {
 		return errors.Wrapf(err, "setting next scheduled stop to '%s'", nextStop)
 	}
 	return nil

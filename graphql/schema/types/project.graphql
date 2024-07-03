@@ -132,6 +132,7 @@ input PatchTriggerAliasInput {
   childProjectIdentifier: String!
   parentAsModule: String
   status: String
+  downstreamRevision: String
   taskSpecifiers: [TaskSpecifierInput!]!
 }
 
@@ -158,6 +159,11 @@ input WorkstationSetupCommandInput {
   directory: String
 }
 
+input GitHubDynamicTokenPermissionGroupInput {
+  name: String!
+  permissions: StringMap!
+}
+
 """
 DeactivateStepbackTaskInput is the input to the deactivateStepbackTask mutation.
 """
@@ -182,7 +188,6 @@ input PromoteVarsToRepoInput {
   projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
   varNames: [String!]!
 }
-
 
 ###### TYPES ######
 """
@@ -242,6 +247,7 @@ type Project {
   enabled: Boolean
   externalLinks: [ExternalLink!]
   githubChecksEnabled: Boolean
+  githubDynamicTokenPermissionGroups: [GitHubDynamicTokenPermissionGroup!]!
   githubTriggerAliases: [String!]
   gitTagAuthorizedTeams: [String!]
   gitTagAuthorizedUsers: [String!]
@@ -277,6 +283,11 @@ type Project {
   triggers: [TriggerAlias!]
   versionControlEnabled: Boolean
   workstationConfig: WorkstationConfig!
+}
+
+type GitHubDynamicTokenPermissionGroup {
+  name: String!
+  permissions: StringMap!
 }
 
 type RepotrackerError {

@@ -136,6 +136,14 @@ type GitMetadata struct {
 	GitVersion string `bson:"git_version,omitempty" json:"git_version,omitempty"`
 }
 
+type LocalModuleInclude struct {
+	FileName string `yaml:"filename,omitempty" bson:"filename,omitempty" json:"filename,omitempty"`
+	Module   string `yaml:"module,omitempty" bson:"module,omitempty" json:"module,omitempty"`
+
+	// FileContent is only used for local module includes for CLI patches
+	FileContent []byte `yaml:"file_content,omitempty" bson:"file_content,omitempty" json:"file_content,omitempty"`
+}
+
 // Patch stores all details related to a patch request
 type Patch struct {
 	Id                 mgobson.ObjectId `bson:"_id,omitempty"`
@@ -183,6 +191,9 @@ type Patch struct {
 	// MergedFrom is populated with the patch id of the existing patch
 	// the merged patch is based off of, if applicable.
 	MergedFrom string `bson:"merged_from,omitempty"`
+	// LocalModuleIncludes is only used for CLI patches to store local module changes.
+	// Not stored in the database since the DB patch should already include changes from this module.
+	LocalModuleIncludes []LocalModuleInclude `bson:"-"`
 }
 
 func (p *Patch) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(p) }
@@ -208,6 +219,7 @@ type TriggerInfo struct {
 	Aliases              []string    `bson:"aliases,omitempty"`
 	ParentPatch          string      `bson:"parent_patch,omitempty"`
 	ParentProjectID      string      `bson:"parent_project_id,omitempty"`
+	DownstreamRevision   string      `bson:"downstream_revision,omitempty"`
 	SameBranchAsParent   bool        `bson:"same_branch_as_parent"`
 	ChildPatches         []string    `bson:"child_patches,omitempty"`
 	DownstreamParameters []Parameter `bson:"downstream_parameters,omitempty"`
@@ -217,9 +229,11 @@ type PatchTriggerDefinition struct {
 	Alias          string          `bson:"alias" json:"alias"`
 	ChildProject   string          `bson:"child_project" json:"child_project"`
 	TaskSpecifiers []TaskSpecifier `bson:"task_specifiers" json:"task_specifiers"`
-	// the parent status that the child patch should run on: failure, success, or *
+	// The parent status that the child patch should run on: failure, success, or *
 	Status         string `bson:"status,omitempty" json:"status,omitempty"`
 	ParentAsModule string `bson:"parent_as_module,omitempty" json:"parent_as_module,omitempty"`
+	// The revision to base the downstream patch off of
+	DownstreamRevision string `bson:"downstream_revision,omitempty" json:"downstream_revision,omitempty"`
 }
 
 type TaskSpecifier struct {

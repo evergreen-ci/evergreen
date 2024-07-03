@@ -840,7 +840,6 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 				BuildVariant: "a_variant",
 			},
 		},
-		CreateTime: time.Now(),
 	}
 	s.NoError(v.Insert())
 	pp := &ParserProject{}

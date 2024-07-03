@@ -13,10 +13,24 @@
               "commitQueue": {
                 "enabled": true,
                 "mergeMethod": "squash",
-                "mergeQueue": "EVERGREEN"
+                "mergeQueue": "GITHUB"
               },
               "periodicBuilds": null,
               "githubChecksEnabled": false,
+              "githubDynamicTokenPermissionGroups": [
+                {
+                  "name": "group-1",
+                  "permissions": {
+                    "pull_requests": "read"
+                  }
+                },
+                {
+                  "name": "group-2",
+                  "permissions": {
+                    "issues": "write"
+                  }
+                }
+              ],
               "patchingDisabled": false,
               "prTestingEnabled": true,
               "stepbackDisabled": false,

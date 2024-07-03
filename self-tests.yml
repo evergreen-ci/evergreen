@@ -283,6 +283,8 @@ functions:
           JIRA_CONSUMER_KEY: ${jira_consumer_key}
           PAPERTRAIL_KEY_ID: ${papertrail_key_id}
           PAPERTRAIL_SECRET_KEY: ${papertrail_secret_key}
+          RUNTIME_ENVIRONMENTS_BASE_URL: ${staging_runtime_environments_base_url}
+          RUNTIME_ENVIRONMENTS_API_KEY: ${staging_runtime_environments_api_key}
         command: bash scripts/setup-credentials.sh
 
   setup-mongodb:
@@ -506,7 +508,7 @@ tasks:
     tags: ["db", "test"]
     name: test-taskoutput
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["db", "test", "skip-container"]
     name: test-thirdparty
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -804,7 +806,7 @@ buildvariants:
       decompress: tar zxvf
     tasks:
       - name: ".smoke"
-      - name: ".test"
+      - name: ".test !.skip-container"
       - name: "js-test"
       - name: ".linter !.skip-container"
 

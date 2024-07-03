@@ -1015,6 +1015,7 @@ func (s *UserTestSuite) TestClearUser() {
 	s.Equal(true, u.Settings.UseSpruceOptions.SpruceV1)
 	s.NoError(u.AddRole("r1p1"))
 	s.NotEmpty(u.SystemRoles)
+	s.NotEmpty(u.APIKey)
 
 	s.NoError(ClearUser(u.Id))
 
@@ -1028,6 +1029,7 @@ func (s *UserTestSuite) TestClearUser() {
 	s.Empty(u.Settings.SlackMemberId)
 	s.Empty(u.Roles())
 	s.Empty(u.LoginCache)
+	s.Empty(u.APIKey)
 
 	// User should have spruce UI enabled.
 	s.True(u.Settings.UseSpruceOptions.SpruceV1)

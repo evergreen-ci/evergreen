@@ -849,7 +849,7 @@ type renameUserHandler struct {
 //	@Security		Api-User || Api-Key
 //	@Param			{object}	body	renameUserInfo	true	"parameters"
 //	@Success		200
-func (h renameUserHandler) Factory() gimlet.RouteHandler {
+func (h *renameUserHandler) Factory() gimlet.RouteHandler {
 	return &renameUserHandler{
 		env: h.env,
 	}
@@ -898,16 +898,21 @@ func (h *renameUserHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *renameUserHandler) Run(ctx context.Context) gimlet.Responder {
-	// First, upsert the new user. If this doesn't work, there's no reason to continue.
+	// Need to unset the GitHub UID because our index enforces uniqueness.
+	// Assuming that we're able to upsert the user, we update the settings with this UID later.
+	githubUID := h.oldUsr.Settings.GithubUser.UID
+	h.oldUsr.Settings.GithubUser.UID = 0
+
 	newUsr, err := user.UpsertOneFromExisting(h.oldUsr, h.newEmail)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
 
-	// Next, remove the old user, consolidate patches, update the host, and handle the error.
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(user.ClearUser(h.oldUsr.Id))
-	catcher.Add(h.oldUsr.UpdateAPIKey("")) // Unset API key to avoid duplicates.
+	newUsr.Settings.GithubUser.UID = githubUID
+	catcher.Add(newUsr.UpdateSettings(newUsr.Settings))
+
 	catcher.Add(patch.ConsolidatePatchesForUser(h.oldUsr.Id, newUsr))
 	catcher.Add(host.ConsolidateHostsForUser(ctx, h.oldUsr.Id, newUsr.Id))
 
@@ -951,7 +956,7 @@ type offboardUserHandler struct {
 //	@Param			dry_run		query		boolean				false	"If set to true, route returns the IDs of the hosts/volumes that *would* be modified."
 //	@Param			{object}	body		offboardUserEmail	true	"parameters"
 //	@Success		200			{object}	model.APIOffboardUserResults
-func (ch offboardUserHandler) Factory() gimlet.RouteHandler {
+func (ch *offboardUserHandler) Factory() gimlet.RouteHandler {
 	return &offboardUserHandler{
 		env: ch.env,
 	}

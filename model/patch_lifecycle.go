@@ -875,10 +875,11 @@ func getLoadProjectOptsForPatch(p *patch.Patch, githubOauthToken string) (*Proje
 	}
 
 	opts := GetProjectOpts{
-		Ref:          projectRef,
-		Token:        githubOauthToken,
-		ReadFileFrom: ReadFromPatch,
-		Revision:     hash,
+		Ref:                 projectRef,
+		Token:               githubOauthToken,
+		ReadFileFrom:        ReadFromPatch,
+		Revision:            hash,
+		LocalModuleIncludes: p.LocalModuleIncludes,
 		PatchOpts: &PatchOpts{
 			patch: p,
 		},

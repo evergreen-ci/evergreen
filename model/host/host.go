@@ -3639,25 +3639,14 @@ func (h *Host) UpdateSleepSchedule(ctx context.Context, schedule SleepScheduleIn
 	schedule.NextStartTime = time.Time{}
 	schedule.NextStopTime = time.Time{}
 
-	nextStart, err := schedule.GetNextScheduledStartTime(now)
+	nextStart, nextStop, err := schedule.GetNextScheduledStartAndStopTimes(now)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "determining next sleep schedule start time").Error(),
-		}
-	}
-	nextStop, err := schedule.GetNextScheduledStopTime(now)
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "determining next sleep schedule stop time").Error(),
+			Message:    errors.Wrap(err, "determining next sleep schedule start/stop times").Error(),
 		}
 	}
 
-	// Intentionally set these fields on the sleep schedule only after
-	// calculating both the next start and next stop times. If the next start
-	// time is set first on the schedule, the next stop time can be pushed
-	// further into the future than necessary.
 	schedule.NextStartTime = nextStart
 	schedule.NextStopTime = nextStop
 
@@ -4006,6 +3995,21 @@ func (s *SleepScheduleInfo) GetNextScheduledStartTime(now time.Time) (time.Time,
 	return time.Time{}, errors.New("neither daily nor whole days off schedule could determine a next start time")
 }
 
+// GetNextScheduledStartAndStopTimes is a convenience function to return both
+// the next time a host should be started and the next time a host should be
+// stopped according to its sleep schedule.
+func (s *SleepScheduleInfo) GetNextScheduledStartAndStopTimes(now time.Time) (nextStart, nextStop time.Time, err error) {
+	catcher := grip.NewBasicCatcher()
+	nextStart, err = s.GetNextScheduledStartTime(now)
+	catcher.Wrap(err, "getting next start time")
+	nextStop, err = s.GetNextScheduledStopTime(now)
+	catcher.Wrap(err, "getting next stop time")
+	if catcher.HasErrors() {
+		return time.Time{}, time.Time{}, catcher.Resolve()
+	}
+	return nextStart, nextStop, nil
+}
+
 // getNextScheduledTime returns the next time a cron schedule should trigger
 // after the given time. The spec must be in the format "<minute> <hour> <weekday>".
 func getNextScheduledTime(after time.Time, spec string) (time.Time, error) {
@@ -4020,9 +4024,9 @@ func getNextScheduledTime(after time.Time, spec string) (time.Time, error) {
 	return nextTriggerAt, nil
 }
 
-// SetNextScheduledStart sets the next time the host is planned to start for its
+// SetNextScheduledStartTime sets the next time the host is planned to start for its
 // sleep schedule.
-func (h *Host) SetNextScheduledStart(ctx context.Context, t time.Time) error {
+func (h *Host) SetNextScheduledStartTime(ctx context.Context, t time.Time) error {
 	sleepScheduleStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
 	update := bson.M{}
 	if utility.IsZeroTime(t) {
@@ -4042,9 +4046,9 @@ func (h *Host) SetNextScheduledStart(ctx context.Context, t time.Time) error {
 	return nil
 }
 
-// SetNextScheduledStop sets the next time the host is planned to stop for its
+// SetNextScheduledStopTime sets the next time the host is planned to stop for its
 // sleep schedule.
-func (h *Host) SetNextScheduledStop(ctx context.Context, t time.Time) error {
+func (h *Host) SetNextScheduledStopTime(ctx context.Context, t time.Time) error {
 	sleepScheduleStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
 	update := bson.M{}
 	if utility.IsZeroTime(t) {
@@ -4061,6 +4065,47 @@ func (h *Host) SetNextScheduledStop(ctx context.Context, t time.Time) error {
 	}
 
 	h.SleepSchedule.NextStopTime = t
+
+	return nil
+}
+
+// SetNextScheduledStartAndStopTimes sets both the next time the host is planned
+// to start and the next time the host is planned to stop for its sleep
+// schedule.
+func (h *Host) SetNextScheduledStartAndStopTimes(ctx context.Context, nextStart, nextStop time.Time) error {
+	update := bson.M{}
+	unset := bson.M{}
+	set := bson.M{}
+
+	sleepScheduleNextStartKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStartTimeKey)
+	if utility.IsZeroTime(nextStart) {
+		unset[sleepScheduleNextStartKey] = 1
+	} else {
+		set[sleepScheduleNextStartKey] = nextStart
+	}
+
+	sleepScheduleNextStopKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleNextStopTimeKey)
+	if utility.IsZeroTime(nextStop) {
+		unset[sleepScheduleNextStopKey] = 1
+	} else {
+		set[sleepScheduleNextStopKey] = nextStop
+	}
+	if len(unset) > 0 {
+		update["$unset"] = unset
+	}
+	if len(set) > 0 {
+		update["$set"] = set
+	}
+
+	if err := UpdateOne(ctx,
+		bson.M{IdKey: h.Id},
+		update,
+	); err != nil {
+		return err
+	}
+
+	h.SleepSchedule.NextStartTime = nextStart
+	h.SleepSchedule.NextStopTime = nextStop
 
 	return nil
 }

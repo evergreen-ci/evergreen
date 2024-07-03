@@ -129,7 +129,7 @@ func LogManyHostsCreated(hostIDs []string) {
 	if err := LogManyEvents(events); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeHost,
-			"message":       "error logging event",
+			"message":       "error logging events",
 			"source":        "event-log-fail",
 		}))
 	}

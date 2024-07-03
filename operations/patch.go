@@ -7,8 +7,11 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -142,10 +145,10 @@ func Patch() cli.Command {
 				RepeatPatchId:     c.String(repeatPatchIdFlag),
 				RepeatDefinition:  c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
 				RepeatFailed:      c.Bool(repeatFailedDefinitionFlag),
+				IncludeModules:    c.Bool(includeModulesFlag),
 			}
 
 			var err error
-			includeModules := c.Bool(includeModulesFlag)
 			shouldFinalize := c.Bool(patchFinalizeFlagName)
 			paramsPairs := c.StringSlice(parameterFlagName)
 			params.Parameters, err = getParametersFromInput(paramsPairs)
@@ -223,15 +226,27 @@ func Patch() cli.Command {
 			if err = params.validateSubmission(diffData); err != nil {
 				return err
 			}
+
+			if params.IncludeModules {
+				localModuleIncludes, err := getLocalModuleIncludes(params, conf, params.Path, ref.RemotePath)
+				if err != nil {
+					return err
+				}
+				params.LocalModuleIncludes = localModuleIncludes
+			}
+
 			newPatch, err := params.createPatch(ac, diffData)
 			if err != nil {
 				return err
 			}
 			patchId := newPatch.Id.Hex()
-			if includeModules {
+			if params.IncludeModules {
 				proj, err := rc.GetPatchedConfig(patchId)
 				if err != nil {
 					return err
+				}
+				if proj == nil {
+					return errors.Errorf("project config for '%s' not found", patchId)
 				}
 
 				for _, module := range proj.Modules {
@@ -255,6 +270,7 @@ func Patch() cli.Command {
 					if err = ac.FinalizePatch(patchId); err != nil {
 						return errors.Wrapf(err, "finalizing patch '%s'", patchId)
 					}
+					newPatch.Activated = true
 				}
 			}
 
@@ -462,6 +478,7 @@ func PatchFile() cli.Command {
 					if err = ac.FinalizePatch(patchId); err != nil {
 						return errors.Wrapf(err, "finalizing patch '%s'", patchId)
 					}
+					newPatch.Activated = true
 				}
 			}
 
@@ -474,4 +491,48 @@ func PatchFile() cli.Command {
 			return params.displayPatch(ac, outputParams)
 		},
 	}
+}
+
+// getLocalModuleIncludes reads and saves files module includes from the local project config.
+func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, remotePath string) ([]patch.LocalModuleInclude, error) {
+	var yml []byte
+	var err error
+	if path != "" {
+		yml, err = os.ReadFile(path)
+	} else {
+		yml, err = os.ReadFile(remotePath)
+	}
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading local project config '%s'", remotePath)
+	}
+	p := model.ParserProject{}
+	if err := util.UnmarshalYAMLWithFallback(yml, &p); err != nil {
+		yamlErr := thirdparty.YAMLFormatError{Message: err.Error()}
+		return nil, errors.Wrap(yamlErr, "unmarshalling parser project from local project config")
+	}
+
+	moduleIncludes := []patch.LocalModuleInclude{}
+	for _, include := range p.Include {
+		if include.Module == "" {
+			continue
+		}
+		modulePath, err := params.getModulePath(conf, include.Module)
+		if err != nil {
+			grip.Error(errors.Wrapf(err, "getting module path for '%s'", include.Module))
+			continue
+		}
+
+		filePath := fmt.Sprintf("%s/%s", modulePath, include.FileName)
+		fileContents, err := os.ReadFile(filePath)
+		if err != nil {
+			return nil, errors.Wrapf(err, "reading local module include file '%s'", filePath)
+		}
+		patchedInclude := patch.LocalModuleInclude{
+			Module:      include.Module,
+			FileName:    include.FileName,
+			FileContent: fileContents,
+		}
+		moduleIncludes = append(moduleIncludes, patchedInclude)
+	}
+	return moduleIncludes, nil
 }

@@ -74,7 +74,7 @@ type ParserProject struct {
 	// UpdatedByGenerators is used to determine if the parser project needs to be re-saved or not.
 	UpdatedByGenerators []string `yaml:"updated_by_generators,omitempty" bson:"updated_by_generators,omitempty"`
 	// List of yamls to merge
-	Include []Include `yaml:"include,omitempty" bson:"include,omitempty"`
+	Include []parserInclude `yaml:"include,omitempty" bson:"include,omitempty"`
 
 	// Beginning of ParserProject mergeable fields (this comment is used by the linter).
 	Stepback           *bool                      `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
@@ -238,6 +238,11 @@ func (pd *parserDependency) UnmarshalYAML(unmarshal func(interface{}) error) err
 		return errors.WithStack(errors.New("task selector must have a name"))
 	}
 	return nil
+}
+
+type parserInclude struct {
+	FileName string `yaml:"filename,omitempty" bson:"filename,omitempty"`
+	Module   string `yaml:"module,omitempty" bson:"module,omitempty"`
 }
 
 // TaskSelector handles the selection of specific task/variant combinations
@@ -627,20 +632,21 @@ func GetProjectFromBSON(data []byte) (*Project, error) {
 }
 
 func processIntermediateProjectIncludes(ctx context.Context, identifier string, intermediateProject *ParserProject,
-	include Include, outputYAMLs chan<- yamlTuple, projectOpts *GetProjectOpts) {
+	include parserInclude, outputYAMLs chan<- yamlTuple, projectOpts *GetProjectOpts) {
 	// Make a copy of opts because otherwise parts of opts would be
 	// modified concurrently.  Note, however, that Ref and PatchOpts are
 	// themselves pointers, so should not be modified.
 	localOpts := &GetProjectOpts{
-		Ref:             projectOpts.Ref,
-		PatchOpts:       projectOpts.PatchOpts,
-		LocalModules:    projectOpts.LocalModules,
-		RemotePath:      include.FileName,
-		Revision:        projectOpts.Revision,
-		Token:           projectOpts.Token,
-		ReadFileFrom:    projectOpts.ReadFileFrom,
-		Identifier:      identifier,
-		UnmarshalStrict: projectOpts.UnmarshalStrict,
+		Ref:                 projectOpts.Ref,
+		PatchOpts:           projectOpts.PatchOpts,
+		LocalModules:        projectOpts.LocalModules,
+		RemotePath:          include.FileName,
+		Revision:            projectOpts.Revision,
+		Token:               projectOpts.Token,
+		ReadFileFrom:        projectOpts.ReadFileFrom,
+		Identifier:          identifier,
+		UnmarshalStrict:     projectOpts.UnmarshalStrict,
+		LocalModuleIncludes: projectOpts.LocalModuleIncludes,
 	}
 	localOpts.UpdateReadFileFrom(include.FileName)
 
@@ -653,7 +659,7 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		"module":      include.Module,
 	})
 	if include.Module != "" {
-		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include.Module)
+		yaml, err = retrieveFileForModule(ctx, *localOpts, intermediateProject.Modules, include)
 		err = errors.Wrapf(err, "%s: retrieving file for module '%s'", LoadProjectError, include.Module)
 	} else {
 		yaml, err = retrieveFile(ctx, *localOpts)
@@ -694,7 +700,7 @@ func LoadProjectInto(ctx context.Context, data []byte, opts *GetProjectOpts, ide
 
 		wg := sync.WaitGroup{}
 		outputYAMLs := make(chan yamlTuple, len(intermediateProject.Include))
-		includesToProcess := make(chan Include, len(intermediateProject.Include))
+		includesToProcess := make(chan parserInclude, len(intermediateProject.Include))
 
 		for _, path := range intermediateProject.Include {
 			includesToProcess <- path
@@ -776,15 +782,16 @@ const (
 )
 
 type GetProjectOpts struct {
-	Ref             *ProjectRef
-	PatchOpts       *PatchOpts
-	LocalModules    map[string]string
-	RemotePath      string
-	Revision        string
-	Token           string
-	ReadFileFrom    string
-	Identifier      string
-	UnmarshalStrict bool
+	Ref                 *ProjectRef
+	PatchOpts           *PatchOpts
+	LocalModules        map[string]string
+	RemotePath          string
+	Revision            string
+	Token               string
+	ReadFileFrom        string
+	Identifier          string
+	UnmarshalStrict     bool
+	LocalModuleIncludes []patch.LocalModuleInclude
 }
 
 type PatchOpts struct {
@@ -855,21 +862,28 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 	}
 }
 
-func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, moduleName string) ([]byte, error) {
+func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, include parserInclude) ([]byte, error) {
+	// Check if the module has a local change passed in through the CLI
+	for _, patchedInclude := range opts.LocalModuleIncludes {
+		if patchedInclude.Module == include.Module && patchedInclude.FileName == include.FileName {
+			return patchedInclude.FileContent, nil
+		}
+	}
+
 	// Look through any given local modules first
-	if path, ok := opts.LocalModules[moduleName]; ok {
+	if path, ok := opts.LocalModules[include.Module]; ok {
 		moduleOpts := GetProjectOpts{
 			RemotePath:   fmt.Sprintf("%s/%s", path, opts.RemotePath),
 			ReadFileFrom: ReadFromLocal,
 		}
 		return retrieveFile(ctx, moduleOpts)
 	} else if opts.ReadFileFrom == ReadFromLocal {
-		return nil, errors.Errorf("local path for module '%s' is unspecified", moduleName)
+		return nil, errors.Errorf("local path for module '%s' is unspecified", include.Module)
 	}
 	// Retrieve from github
-	module, err := GetModuleByName(modules, moduleName)
+	module, err := GetModuleByName(modules, include.Module)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting module for module name '%s'", moduleName)
+		return nil, errors.Wrapf(err, "getting module for module name '%s'", include.Module)
 	}
 	repoOwner, repoName, err := module.GetOwnerAndRepo()
 	if err != nil {
@@ -885,7 +899,7 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		Revision:     module.Branch,
 		Token:        opts.Token,
 		ReadFileFrom: ReadFromGithub,
-		Identifier:   moduleName,
+		Identifier:   include.Module,
 	}
 	return retrieveFile(ctx, moduleOpts)
 }
