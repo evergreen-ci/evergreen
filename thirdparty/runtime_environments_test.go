@@ -37,11 +37,12 @@ func TestGetPackages(t *testing.T) {
 	ami := "ami-0e12ef25a5f7712a4"
 	limit := 10
 	opts := PackageFilterOptions{
+		AMIID:   ami,
 		Page:    0,
 		Limit:   limit,
 		Manager: manager,
 	}
-	result, err := c.getPackages(ctx, ami, opts)
+	result, err := c.getPackages(ctx, opts)
 	require.NoError(t, err)
 	require.Len(t, result, limit)
 	for i := 0; i < limit; i++ {
@@ -51,12 +52,13 @@ func TestGetPackages(t *testing.T) {
 	// Verify that we filter correctly by both manager and name.
 	name := "Automat"
 	opts = PackageFilterOptions{
+		AMIID:   ami,
 		Page:    0,
 		Limit:   5,
 		Name:    "Automat",
 		Manager: manager,
 	}
-	result, err = c.getPackages(ctx, ami, opts)
+	result, err = c.getPackages(ctx, opts)
 	require.NoError(t, err)
 	require.Len(t, result, 1)
 	assert.Equal(result[0].Name, name)
@@ -64,13 +66,18 @@ func TestGetPackages(t *testing.T) {
 
 	// Verify that there are no results for fake package name.
 	opts = PackageFilterOptions{
-		Name: "blahblahblah",
+		AMIID: ami,
+		Name:  "blahblahblah",
 	}
-	result, err = c.getPackages(ctx, ami, opts)
+	result, err = c.getPackages(ctx, opts)
 	require.NoError(t, err)
 	assert.Empty(result)
 
-	// Verify that there are no errors with empty PackageFilterOptions.
-	_, err = c.getPackages(ctx, ami, PackageFilterOptions{})
+	// Verify that there are no errors with PackageFilterOptions only including the AMI.
+	_, err = c.getPackages(ctx, PackageFilterOptions{AMIID: ami})
 	require.NoError(t, err)
+
+	// Verify that there is an error with no AMI provided.
+	_, err = c.getPackages(ctx, PackageFilterOptions{})
+	require.Error(t, err)
 }

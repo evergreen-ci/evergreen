@@ -68,18 +68,22 @@ type Package struct {
 	Manager string
 }
 
-// PackageFilterOptions represents the filtering arguments, each of which is optional.
+// PackageFilterOptions represents the filtering arguments, each of which is optional except the AMIID.
 type PackageFilterOptions struct {
+	AMIID   string
 	Page    int
 	Limit   int
 	Name    string // Filter by the name of the package.
 	Manager string // Filter by the package manager (ex. pip).
 }
 
-// getPackages returns a list of packages from the corresponding AMI.
-func (c *RuntimeEnvironmentsClient) getPackages(ctx context.Context, amiID string, opts PackageFilterOptions) ([]Package, error) {
+// getPackages returns a list of packages from the corresponding AMI and filters in opts.
+func (c *RuntimeEnvironmentsClient) getPackages(ctx context.Context, opts PackageFilterOptions) ([]Package, error) {
 	params := url.Values{}
-	params.Set("ami", amiID)
+	if opts.AMIID == "" {
+		return nil, errors.New("no AMI provided")
+	}
+	params.Set("ami", opts.AMIID)
 	params.Set("page", strconv.Itoa(opts.Page))
 	if opts.Limit != 0 {
 		params.Set("limit", strconv.Itoa(opts.Limit))
