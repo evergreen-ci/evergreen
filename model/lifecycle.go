@@ -1192,7 +1192,8 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		TriggerEvent:            creationInfo.Version.TriggerEvent,
 		CommitQueueMerge:        buildVarTask.CommitQueueMerge,
 		IsGithubCheck:           isGithubCheck,
-		DisplayTaskId:           utility.ToStringPtr(""), // this will be overridden if the task is an execution task
+		ActivatedBy:             creationInfo.Version.AuthorID, // this will be overridden if the task was activated by stepback
+		DisplayTaskId:           utility.ToStringPtr(""),       // this will be overridden if the task is an execution task
 		IsEssentialToSucceed:    creationInfo.ActivatedTasksAreEssentialToSucceed && activateTask,
 	}
 
@@ -1228,8 +1229,6 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 
 	if stepbackInfo != nil {
 		t.ActivatedBy = evergreen.StepbackTaskActivator
-	} else if t.Activated {
-		t.ActivatedBy = creationInfo.Version.Author
 	}
 
 	if buildVarTask.IsPartOfGroup {

@@ -1308,7 +1308,7 @@ func FindLatestVersionWithValidProject(projectId string, preGeneration bool) (*V
 		env := evergreen.GetEnvironment()
 		project, pp, err = FindAndTranslateProjectForVersion(ctx, env.Settings(), lastGoodVersion, preGeneration)
 		if err != nil {
-			grip.Critical(message.WrapError(err, message.Fields{
+			grip.Error(message.WrapError(err, message.Fields{
 				"message": "last known good version has malformed config",
 				"version": lastGoodVersion.Id,
 				"project": projectId,

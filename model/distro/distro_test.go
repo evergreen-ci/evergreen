@@ -666,7 +666,7 @@ func TestGetDistrosForImage(t *testing.T) {
 	}
 	assert.Nil(t, d4.Insert(ctx))
 
-	found, err := getDistrosForImage(ctx, imageID)
+	found, err := GetDistrosForImage(ctx, imageID)
 	assert.NoError(t, err)
 	assert.Len(t, found, 3)
 }
