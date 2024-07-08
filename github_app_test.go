@@ -34,6 +34,7 @@ func (s *installationSuite) TestUpsert() {
 		Owner:          "evergreen-ci",
 		Repo:           "evergreen",
 		InstallationID: 0,
+		AppID:          1234,
 	}
 
 	s.NoError(installation.Upsert(s.ctx))
@@ -48,6 +49,12 @@ func (s *installationSuite) TestUpsert() {
 	err = installation.Upsert(s.ctx)
 	s.Error(err)
 	s.Equal("Owner and repository must not be empty strings", err.Error())
+
+	installation.Repo = "evergreen"
+	installation.AppID = 0
+	err = installation.Upsert(s.ctx)
+	s.Error(err)
+	s.Equal("App ID must not be 0", err.Error())
 
 	installationWithInstallationAndAppID := GitHubAppInstallation{
 		Owner:          "evergreen-ci",
