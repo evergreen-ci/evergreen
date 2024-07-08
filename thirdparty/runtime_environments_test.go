@@ -33,6 +33,5 @@ func TestGetOSInfo(t *testing.T) {
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	result, err := c.getOSInfo(ctx, "ami-0e12ef25a5f7712a4", 0, 10)
 	require.NoError(t, err)
-	assert.NotEmpty(result)
 	assert.Len(result, 10)
 }

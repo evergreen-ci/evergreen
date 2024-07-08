@@ -68,7 +68,7 @@ func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string
 }
 
 // getOSInfo returns a list of operating system information for an AMI.
-func (c *RuntimeEnvironmentsClient) getOSInfo(ctx context.Context, amiID string, page int, limit int) ([]OSInfo, error) {
+func (c *RuntimeEnvironmentsClient) getOSInfo(ctx context.Context, amiID string, page, limit int) ([]OSInfo, error) {
 	params := url.Values{}
 	params.Set("ami", amiID)
 	params.Set("page", strconv.Itoa(page))
