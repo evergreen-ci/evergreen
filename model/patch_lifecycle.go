@@ -1333,7 +1333,7 @@ func SendCommitQueueResult(ctx context.Context, p *patch.Patch, status message.G
 		URL:         url,
 	}
 
-	sender, err := evergreen.GetEnvironment().GetGitHubSender(projectRef.Owner, projectRef.Repo)
+	sender, err := evergreen.GetEnvironment().GetGitHubStatusSender(projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		return errors.Wrap(err, "getting GitHub sender")
 	}

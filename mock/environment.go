@@ -261,7 +261,13 @@ func (e *Environment) ClientConfig() *evergreen.ClientConfig {
 	return &e.Clients
 }
 
-func (e *Environment) GetGitHubSender(owner, repo string) (send.Sender, error) {
+func (e *Environment) GetGitHubStatusSender(owner, repo string) (send.Sender, error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.InternalSender, nil
+}
+
+func (e *Environment) GetGitHubCommentSender(owner, repo string, prId int) (send.Sender, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.InternalSender, nil

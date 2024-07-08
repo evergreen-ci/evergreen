@@ -248,7 +248,7 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 
 func (j *githubStatusUpdateJob) setSender(owner, repo string) error {
 	var err error
-	j.sender, err = j.env.GetGitHubSender(owner, repo)
+	j.sender, err = j.env.GetGitHubStatusSender(owner, repo)
 	return err
 }
 
