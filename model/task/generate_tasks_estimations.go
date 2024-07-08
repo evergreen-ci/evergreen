@@ -16,6 +16,11 @@ const (
 // SetGenerateTasksEstimations calculates and caches the estimated number of tasks that this task will generate.
 // To be called only in task creation.
 func (t *Task) SetGenerateTasksEstimations(ctx context.Context) error {
+	// Do not run if the task is not a generator.
+	if !t.GenerateTask {
+		return nil
+	}
+
 	results, err := getGenerateTasksEstimation(ctx, t.Project, t.BuildVariant, t.DisplayName, lookBackTime)
 	if err != nil {
 		return errors.Wrap(err, "getting generate tasks estimation")
