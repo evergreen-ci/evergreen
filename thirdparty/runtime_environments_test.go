@@ -38,7 +38,6 @@ func TestGetPackages(t *testing.T) {
 	}
 	result, err := c.getToolchains(ctx, ami, opts)
 	require.NoError(t, err)
-	assert.NotEmpty(result)
 	assert.Len(result, 10)
 	name := "nodejs"
 	version := "toolchain_version_v16.17.0"
