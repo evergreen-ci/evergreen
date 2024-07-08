@@ -2335,7 +2335,7 @@ func TestActivateTasks(t *testing.T) {
 		}
 
 		err = ActivateTasks([]Task{tasks[1]}, time.Time{}, true, u.Id)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), fmt.Sprintf("cannot schedule %d tasks, maximum hourly per-user limit is %d", 102, 100))
 	})
 
