@@ -136,7 +136,7 @@ func (j *eventSendJob) send(n *notification.Notification) error {
 		if !ok || payload == nil {
 			return errors.New("github status payload is invalid")
 		}
-		sender, err = j.env.GetGitHubStatusSender(payload.Owner, payload.Repo)
+		sender, err = j.env.GetGitHubSender(payload.Owner, payload.Repo)
 		if err != nil {
 			return errors.Wrap(err, "getting github status sender")
 		}

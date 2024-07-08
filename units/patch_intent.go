@@ -1356,10 +1356,6 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 			patchDoc.GithubMergeData.HeadSHA,
 			j.gitHubError,
 		)
-		// TODO: Do it for the above too
-		commentUpdate := NewGitHubCommentJob(patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubPatchData.PRNumber, j.gitHubError)
-		commentUpdate.Run(ctx)
-		j.AddError(commentUpdate.Error())
 	} else {
 		j.AddError(errors.Errorf("unexpected intent type '%s'", j.IntentType))
 		return

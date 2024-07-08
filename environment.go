@@ -151,13 +151,9 @@ type Environment interface {
 	GetSender(SenderKey) (send.Sender, error)
 	SetSender(SenderKey, send.Sender) error
 
-	// GetGitHubStatusSender provides a grip Sender configured with the given
-	// owner and repo information to send GitHub statuses.
-	GetGitHubStatusSender(string, string) (send.Sender, error)
-
-	// GetGitHubCommentSender provides a grip Sender configured with the given
-	// owner and repo information to send GitHub comments on a PR.
-	GetGitHubCommentSender(string, string, int) (send.Sender, error)
+	// GetGitHubSender provides a grip Sender configured with the given
+	// owner and repo information.
+	GetGitHubSender(string, string) (send.Sender, error)
 
 	// RegisterCloser adds a function object to an internal
 	// tracker to be called by the Close method before process
@@ -275,7 +271,7 @@ type envState struct {
 	clientConfig            *ClientConfig
 	closers                 []closerOp
 	senders                 map[SenderKey]send.Sender
-	githubTokens            map[string]cachedGitHubToken
+	githubSenders           map[string]cachedGitHubSender
 	roleManager             gimlet.RoleManager
 	userManager             gimlet.UserManager
 	userManagerInfo         UserManagerInfo
@@ -298,11 +294,12 @@ type closerOp struct {
 	closerFn   func(context.Context) error
 }
 
-// cachedGitHubTokens stores the cached GitHub tokens and the time it was created.
-// These tokens expire after an hour and need to be refreshed then.
-type cachedGitHubToken struct {
-	token string
-	time  time.Time
+// cachedGitHubSender stores a GitHub sender and the time it was created
+// because GitHub app tokens, and by extension, the senders, will expire
+// one hour after creation.
+type cachedGitHubSender struct {
+	sender send.Sender
+	time   time.Time
 }
 
 func (e *envState) initSettings(ctx context.Context, path string, tracer trace.Tracer) error {
@@ -796,7 +793,7 @@ func (e *envState) initThirdPartySenders(ctx context.Context, tracer trace.Trace
 		e.senders[SenderEmail] = sesSender
 	}
 
-	e.githubTokens = make(map[string]cachedGitHubToken)
+	e.githubSenders = make(map[string]cachedGitHubSender)
 
 	var sender send.Sender
 	var err error
@@ -1111,63 +1108,35 @@ func (e *envState) SaveConfig(ctx context.Context) error {
 	return errors.WithStack(UpdateConfig(ctx, &copy))
 }
 
-func (e *envState) getCachedGitHubInstallationToken(owner, repo string) (string, error) {
-	githubToken, ok := e.githubTokens[owner]
-	// If githubToken exists and has not expired, return it.
-	if ok && time.Since(githubToken.time) < githubTokenTimeout {
-		return githubToken.token, nil
-	}
-	tokenCreatedAt := time.Now()
-	token, err := e.settings.CreateGitHubAppAuth().CreateInstallationToken(e.ctx, owner, repo, nil)
-	if err != nil {
-		return "", errors.Wrap(err, "getting installation token")
-	}
-	e.githubTokens[owner] = cachedGitHubToken{
-		token: token,
-		time:  tokenCreatedAt,
-	}
-	return token, nil
-}
-
-// GetGitHubStatusSender returns a status sender with a cached GitHub app generated token. Each org in GitHub needs a separate token
+// GetGitHubSender returns a cached sender with a GitHub app generated token. Each org in GitHub needs a separate token
 // for authentication so we cache a sender for each org and return it if the token has not expired.
-// If the sender for the org doesn't exist or the token has expired, we create a new one and cache it.
+// If the sender for the org doesn't exist or has expired, we create a new one and cache it.
+// In case of GitHub app errors, the function returns the legacy GitHub sender with a global token attached.
 // The senders are only unique to orgs, not repos, but the repo name is needed to generate a token if necessary.
-func (e *envState) GetGitHubStatusSender(owner, repo string) (send.Sender, error) {
-	return e.getGitHubSender(owner, repo, func(token string) (send.Sender, error) {
-		return send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-			Token:       token,
-			MinDelay:    GithubRetryMinDelay,
-			MaxAttempts: GitHubRetryAttempts,
-		}, "")
-	})
-}
-
-// GetGitHubCommentSender returns a comment sender with a cached GitHub app generated token. Each org in GitHub needs a separate token
-// for authentication so we cache a sender for each org and return it if the token has not expired.
-// If the sender for the org doesn't exist or the token has expired, we create a new one and cache it.
-// The senders are only unique to orgs, not repos, but the repo name is needed to generate a token if necessary.
-func (e *envState) GetGitHubCommentSender(owner, repo string, prId int) (send.Sender, error) {
-	return e.getGitHubSender(owner, repo, func(token string) (send.Sender, error) {
-		return send.NewGithubCommentLogger("evergreen", prId, &send.GithubOptions{
-			Token:       token,
-			MinDelay:    GithubRetryMinDelay,
-			MaxAttempts: GitHubRetryAttempts,
-		})
-	})
-}
-
-func (e *envState) getGitHubSender(owner, repo string, getSender func(token string) (send.Sender, error)) (send.Sender, error) {
+func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	token, err := e.getCachedGitHubInstallationToken(owner, repo)
+	githubSender, ok := e.githubSenders[owner]
+	// If githubSender exists and has not expired, return it.
+	if ok && time.Since(githubSender.time) < githubTokenTimeout {
+		return githubSender.sender, nil
+	}
+
+	// If githubSender does not exist or has expired, create one, add it to the cache, then return it.
+
+	tokenCreatedAt := time.Now()
+	token, err := e.settings.CreateGitHubAppAuth().CreateInstallationToken(e.ctx, owner, repo, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting installation token")
 	}
-	sender, err := getSender(token)
+	sender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
+		Token:       token,
+		MinDelay:    GithubRetryMinDelay,
+		MaxAttempts: GitHubRetryAttempts,
+	}, "")
 	if err != nil {
-		return nil, errors.Wrap(err, "creating GitHub comment logger")
+		return nil, errors.Wrap(err, "creating GitHub status logger")
 	}
 
 	// Just log and continue if the GitHub sender fails to set the error
@@ -1179,8 +1148,11 @@ func (e *envState) getGitHubSender(owner, repo string, getSender func(token stri
 		"repo":    repo,
 	}))
 
+	e.githubSenders[owner] = cachedGitHubSender{
+		sender: sender,
+		time:   tokenCreatedAt,
+	}
 	return sender, nil
-
 }
 
 func (e *envState) GetSender(key SenderKey) (send.Sender, error) {

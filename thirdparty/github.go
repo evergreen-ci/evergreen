@@ -595,7 +595,7 @@ func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput,
 		Description: input.Desc,
 	}
 
-	sender, err := env.GetGitHubStatusSender(input.Owner, input.Repo)
+	sender, err := env.GetGitHubSender(input.Owner, input.Repo)
 	if err != nil {
 		return errors.Wrap(err, "getting github status sender")
 	}
@@ -1871,7 +1871,7 @@ func SendCommitQueueGithubStatus(ctx context.Context, env evergreen.Environment,
 	owner := utility.FromStringPtr(pr.Base.Repo.Owner.Login)
 	repo := utility.FromStringPtr(pr.Base.Repo.Name)
 
-	sender, err := env.GetGitHubStatusSender(owner, repo)
+	sender, err := env.GetGitHubSender(owner, repo)
 	if err != nil {
 		return errors.Wrap(err, "getting github status sender")
 	}

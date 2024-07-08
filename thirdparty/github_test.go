@@ -418,7 +418,7 @@ func TestGetGitHubSender(t *testing.T) {
 	require.NoError(t, env.Configure(ctx))
 	testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
 
-	sender, err := env.GetGitHubStatusSender("evergreen-ci", "evergreen")
+	sender, err := env.GetGitHubSender("evergreen-ci", "evergreen")
 	require.NoError(t, err)
 	assert.NotZero(t, sender.ErrorHandler, "fallback error handler should be set")
 }
