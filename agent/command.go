@@ -251,6 +251,18 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 		tc.setCurrentIdleTimeout(cmd)
 	}
 	a.comm.UpdateLastMessageTime()
+	defer func() {
+		// After this block is done running, add the command cleanups to the
+		// task context from the task config and then clear the task config's
+		// command cleanups. Setup group commands are handled differently and
+		// should only be cleaned up after the entire group has run while
+		// any other block should clean up after the task is done running.
+		if options.block == command.SetupGroupBlock {
+			tc.addSetupGroupCommandCleanups(tc.taskConfig.GetAndClearCommandCleanups())
+		} else {
+			tc.addTaskCommandCleanups(tc.taskConfig.GetAndClearCommandCleanups())
+		}
+	}()
 
 	start := time.Now()
 	defer func() {

@@ -1222,7 +1222,6 @@ const (
 	ProjectSettingsSectionGeneral              ProjectSettingsSection = "GENERAL"
 	ProjectSettingsSectionAccess               ProjectSettingsSection = "ACCESS"
 	ProjectSettingsSectionVariables            ProjectSettingsSection = "VARIABLES"
-	ProjectSettingsSectionGithubAndCommitQueue ProjectSettingsSection = "GITHUB_AND_COMMIT_QUEUE"
 	ProjectSettingsSectionNotifications        ProjectSettingsSection = "NOTIFICATIONS"
 	ProjectSettingsSectionPatchAliases         ProjectSettingsSection = "PATCH_ALIASES"
 	ProjectSettingsSectionWorkstation          ProjectSettingsSection = "WORKSTATION"
@@ -1231,13 +1230,15 @@ const (
 	ProjectSettingsSectionPlugins              ProjectSettingsSection = "PLUGINS"
 	ProjectSettingsSectionContainers           ProjectSettingsSection = "CONTAINERS"
 	ProjectSettingsSectionViewsAndFilters      ProjectSettingsSection = "VIEWS_AND_FILTERS"
+	ProjectSettingsSectionGithubAndCommitQueue ProjectSettingsSection = "GITHUB_AND_COMMIT_QUEUE"
+	ProjectSettingsSectionGithubAppSettings    ProjectSettingsSection = "GITHUB_APP_SETTINGS"
+	ProjectSettingsSectionGithubPermissions    ProjectSettingsSection = "GITHUB_PERMISSIONS"
 )
 
 var AllProjectSettingsSection = []ProjectSettingsSection{
 	ProjectSettingsSectionGeneral,
 	ProjectSettingsSectionAccess,
 	ProjectSettingsSectionVariables,
-	ProjectSettingsSectionGithubAndCommitQueue,
 	ProjectSettingsSectionNotifications,
 	ProjectSettingsSectionPatchAliases,
 	ProjectSettingsSectionWorkstation,
@@ -1246,11 +1247,14 @@ var AllProjectSettingsSection = []ProjectSettingsSection{
 	ProjectSettingsSectionPlugins,
 	ProjectSettingsSectionContainers,
 	ProjectSettingsSectionViewsAndFilters,
+	ProjectSettingsSectionGithubAndCommitQueue,
+	ProjectSettingsSectionGithubAppSettings,
+	ProjectSettingsSectionGithubPermissions,
 }
 
 func (e ProjectSettingsSection) IsValid() bool {
 	switch e {
-	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionContainers, ProjectSettingsSectionViewsAndFilters:
+	case ProjectSettingsSectionGeneral, ProjectSettingsSectionAccess, ProjectSettingsSectionVariables, ProjectSettingsSectionNotifications, ProjectSettingsSectionPatchAliases, ProjectSettingsSectionWorkstation, ProjectSettingsSectionTriggers, ProjectSettingsSectionPeriodicBuilds, ProjectSettingsSectionPlugins, ProjectSettingsSectionContainers, ProjectSettingsSectionViewsAndFilters, ProjectSettingsSectionGithubAndCommitQueue, ProjectSettingsSectionGithubAppSettings, ProjectSettingsSectionGithubPermissions:
 		return true
 	}
 	return false

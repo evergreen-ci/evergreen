@@ -462,9 +462,10 @@ task_groups:
 
 type GenerateSuite struct {
 	suite.Suite
-	ctx    context.Context
-	cancel context.CancelFunc
-	env    evergreen.Environment
+	ctx            context.Context
+	cancel         context.CancelFunc
+	env            evergreen.Environment
+	originalConfig *evergreen.Settings
 }
 
 func TestGenerateSuite(t *testing.T) {
@@ -485,10 +486,15 @@ func (s *GenerateSuite) SetupTest() {
 	env := &mock.Environment{}
 	s.Require().NoError(env.Configure(s.ctx))
 	s.env = env
+	originalConfig, err := evergreen.GetConfig(s.ctx)
+	s.Require().NoError(err)
+	s.originalConfig = originalConfig
 }
 
 func (s *GenerateSuite) TearDownTest() {
-	s.cancel()
+	if s.originalConfig != nil {
+		s.NoError(evergreen.UpdateConfig(s.ctx, s.originalConfig))
+	}
 }
 
 func (s *GenerateSuite) TestParseProjectFromJSON() {
@@ -545,6 +551,84 @@ func (s *GenerateSuite) TestValidateMaxTasks() {
 	s.NoError(g.validateMaxTasksAndVariants())
 	g.Tasks = append(g.Tasks, parserTask{})
 	s.Error(g.validateMaxTasksAndVariants())
+}
+
+func (s *GenerateSuite) TestSaveWithMaxTasksPerVersion() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	settings := &evergreen.Settings{
+		TaskLimits: evergreen.TaskLimitsConfig{
+			MaxTasksPerVersion: 5,
+		},
+	}
+	s.NoError(evergreen.UpdateConfig(ctx, settings))
+	tasksThatExist := []task.Task{
+		{
+			Id:      "task_that_called_generate_task",
+			Version: "version_that_called_generate_task",
+			BuildId: "generate_build",
+		},
+		{
+			Id:          "say-hi-task-id",
+			Version:     "version_that_called_generate_task",
+			BuildId:     "sample_build",
+			DisplayName: "say-hi",
+			Activated:   true,
+		},
+		{
+			Id:          "say-bye-task-id",
+			Version:     "version_that_called_generate_task",
+			BuildId:     "sample_build",
+			DisplayName: "say-bye",
+		},
+		{
+			Id:          "say_something_else",
+			Version:     "version_that_called_generate_task",
+			BuildId:     "sample_build",
+			DisplayName: "say_something_else",
+		},
+	}
+	for _, t := range tasksThatExist {
+		s.NoError(t.Insert())
+	}
+	sampleBuild := build.Build{
+		Id:           "sample_build",
+		BuildVariant: "a_variant",
+		Version:      "version_that_called_generate_task",
+	}
+	v := &Version{
+		Id:       "version_that_called_generate_task",
+		BuildIds: []string{"sample_build"},
+	}
+	pp := &ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(sampleProjYmlTaskGroups), &pp)
+	s.NoError(err)
+	pp.Id = "version_that_called_generate_task"
+	s.NoError(pp.Insert())
+	s.NoError(sampleBuild.Insert())
+	s.NoError(v.Insert())
+
+	g := sampleGeneratedProjectAddToBVOnly
+	g.Task = &tasksThatExist[0]
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v, false)
+	s.Require().NoError(err)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
+	s.NoError(err)
+	s.Error(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+
+	settings = &evergreen.Settings{
+		TaskLimits: evergreen.TaskLimitsConfig{
+			MaxTasksPerVersion: 10,
+		},
+	}
+	s.NoError(evergreen.UpdateConfig(ctx, settings))
+
+	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+
+	generatorTask, err := task.FindOneId(tasksThatExist[0].Id)
+	s.NoError(err)
+	s.Require().NotNil(generatorTask)
+	s.Equal(4, generatorTask.NumGeneratedTasks)
 }
 
 func (s *GenerateSuite) TestValidateNoRedefine() {
@@ -840,7 +924,6 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 				BuildVariant: "a_variant",
 			},
 		},
-		CreateTime: time.Now(),
 	}
 	s.NoError(v.Insert())
 	pp := &ParserProject{}

@@ -121,13 +121,6 @@ during the beta test period (i.e. until September 3). You can opt in or out free
 feature. **It's highly recommend that when you set a sleep schedule for your unexpirable host(s), you also opt into the
 beta test to verify that your sleep schedule is working the way you want.**
 
-#### Manually Starting/Stopping a Host
-
-Even though Evergreen will automatically stop and start your host on the configured schedule, you can still manually
-stop and start your host whenever you need to. If you do this, it's recommended, you also [set a temporary
-exemption](#temporary-exemptions) to ensure that you can use your host without being accidentally interrupted when the
-sleep schedule tries to automatically stop/start your host.
-
 #### Temporary Exemptions
 
 If you need your host to temporarily ignore its sleep schedule, you can request a temporary exemption for your host.
@@ -171,6 +164,29 @@ This can also be done through the CLI:
 
 ```sh
 evergreen host stop --host <host_id> --keep-off
+```
+
+#### FAQ
+
+**Q: Can I still manually stop and start my hosts if the schedule is running?**
+A: Yes! Even though Evergreen will automatically stop and start your host on the configured schedule, you can still
+manually stop and start your host whenever you need to. If you do this, it's recommended, you also [set a temporary
+exemption](#temporary-exemptions) to ensure that you can use your host without being accidentally interrupted when the
+sleep schedule tries to automatically stop/start your host.
+
+**Q: Will the hostname change between restarts?**
+
+A: You can get a hostname that doesn't change from your unexpirable host. While it's true that EC2 hosts typically do
+change their DNS names every time the host restarts, Evergreen automatically assigns persistent DNS names to unexpirable
+hosts. This persistent DNS name will let you use to a single, stable name to refer to your host even if it restarts. You
+can view your host's persistent DNS name by copying the SSH command from the host page or by running `evergreen host list --mine`.
+
+Once you have your persistent DNS name, you can use it in your SSH config file (`~/.ssh/config`). For example:
+
+```sshconfig
+Host <your_persistent_dns_name>
+    User <ssh_username>
+    Hostname <your_persistent_dns_name>
 ```
 
 ---

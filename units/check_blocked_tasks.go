@@ -145,7 +145,7 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 	if err == nil {
 		for _, blockingTask := range finishedBlockingTasks {
 			blockingTaskIds = append(blockingTaskIds, blockingTask.Id)
-			err = model.UpdateBlockedDependencies(ctx, &blockingTask)
+			err = model.UpdateBlockedDependencies(ctx, []task.Task{blockingTask})
 			catcher.Wrapf(err, "updating blocked dependencies for '%s'", blockingTask.Id)
 			if err != nil {
 				err = t.MarkDependenciesFinished(ctx, false)

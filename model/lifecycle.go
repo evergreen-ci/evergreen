@@ -538,8 +538,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		if !bvtu.HasSpecificActivation() {
 			continue
 		}
-		// Use the version create time to ensure we're being consistent
-		activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(bvtu, creationInfo.Version.CreateTime)
+		activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(bvtu)
 		batchTimeCatcher.Wrapf(err, "getting activation time for task '%s'", t.DisplayName)
 		batchTimeTaskStatuses = append(batchTimeTaskStatuses, BatchTimeTaskStatus{
 			TaskName: t.DisplayName,
@@ -1193,7 +1192,8 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		TriggerEvent:            creationInfo.Version.TriggerEvent,
 		CommitQueueMerge:        buildVarTask.CommitQueueMerge,
 		IsGithubCheck:           isGithubCheck,
-		DisplayTaskId:           utility.ToStringPtr(""), // this will be overridden if the task is an execution task
+		ActivatedBy:             creationInfo.Version.AuthorID, // this will be overridden if the task was activated by stepback
+		DisplayTaskId:           utility.ToStringPtr(""),       // this will be overridden if the task is an execution task
 		IsEssentialToSucceed:    creationInfo.ActivatedTasksAreEssentialToSucceed && activateTask,
 	}
 
@@ -1233,8 +1233,6 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 
 	if stepbackInfo != nil {
 		t.ActivatedBy = evergreen.StepbackTaskActivator
-	} else if t.Activated {
-		t.ActivatedBy = creationInfo.Version.Author
 	}
 
 	if buildVarTask.IsPartOfGroup {
@@ -1532,6 +1530,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 	newBuildIds := make([]string, 0)
 	newActivatedTaskIds := make([]string, 0)
 	newBuildStatuses := make([]VersionBuildStatus, 0)
+	numEstimatedActivatedGeneratedTasks := 0
 
 	variantsProcessed := map[string]bool{}
 	for _, b := range existingBuilds {
@@ -1600,6 +1599,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		for _, t := range tasks {
 			if t.Activated {
 				newActivatedTaskIds = append(newActivatedTaskIds, t.Id)
+				numEstimatedActivatedGeneratedTasks += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 			}
 			if evergreen.ShouldConsiderBatchtime(t.Requester) && creationInfo.ActivationInfo.taskHasSpecificActivation(t.BuildVariant, t.DisplayName) {
 				batchTimeTasksToIds[t.DisplayName] = t.Id
@@ -1609,13 +1609,12 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		var activateVariantAt time.Time
 		batchTimeTaskStatuses := []BatchTimeTaskStatus{}
 		if !activateVariant {
-			activateVariantAt, err = creationInfo.ProjectRef.GetActivationTimeForVariant(
-				creationInfo.Project.FindBuildVariant(pair.Variant), creationInfo.Version.CreateTime)
+			activateVariantAt, err = creationInfo.ProjectRef.GetActivationTimeForVariant(creationInfo.Project.FindBuildVariant(pair.Variant))
 			batchTimeCatcher.Wrapf(err, "getting activation time for variant '%s'", pair.Variant)
 		}
 		for taskName, id := range batchTimeTasksToIds {
 			activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(
-				creationInfo.Project.FindTaskForVariant(taskName, pair.Variant), creationInfo.Version.CreateTime)
+				creationInfo.Project.FindTaskForVariant(taskName, pair.Variant))
 			batchTimeCatcher.Wrapf(err, "getting activation time for task '%s' in variant '%s'", taskName, pair.Variant)
 			batchTimeTaskStatuses = append(batchTimeTaskStatuses, BatchTimeTaskStatus{
 				TaskId:   id,
@@ -1637,7 +1636,8 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			},
 		)
 	}
-	if err = task.UpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, len(newActivatedTaskIds), true); err != nil {
+	numTasksModified := numEstimatedActivatedGeneratedTasks + len(newActivatedTaskIds)
+	if err = task.UpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, numTasksModified, true); err != nil {
 		return nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
 	}
 	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{

@@ -600,20 +600,22 @@ const (
 
 type ProjectPageSection string
 
-// These values must remain consistent with the GraphQL enum ProjectSettingsSection
+// These values must remain consistent with the GraphQL enum ProjectSettingsSection.
 const (
-	ProjectPageGeneralSection         = "GENERAL"
-	ProjectPageAccessSection          = "ACCESS"
-	ProjectPageVariablesSection       = "VARIABLES"
-	ProjectPageGithubAndCQSection     = "GITHUB_AND_COMMIT_QUEUE"
-	ProjectPageNotificationsSection   = "NOTIFICATIONS"
-	ProjectPagePatchAliasSection      = "PATCH_ALIASES"
-	ProjectPageWorkstationsSection    = "WORKSTATION"
-	ProjectPageTriggersSection        = "TRIGGERS"
-	ProjectPagePeriodicBuildsSection  = "PERIODIC_BUILDS"
-	ProjectPagePluginSection          = "PLUGINS"
-	ProjectPageContainerSection       = "CONTAINERS"
-	ProjectPageViewsAndFiltersSection = "VIEWS_AND_FILTERS"
+	ProjectPageGeneralSection           = "GENERAL"
+	ProjectPageAccessSection            = "ACCESS"
+	ProjectPageVariablesSection         = "VARIABLES"
+	ProjectPageNotificationsSection     = "NOTIFICATIONS"
+	ProjectPagePatchAliasSection        = "PATCH_ALIASES"
+	ProjectPageWorkstationsSection      = "WORKSTATION"
+	ProjectPageTriggersSection          = "TRIGGERS"
+	ProjectPagePeriodicBuildsSection    = "PERIODIC_BUILDS"
+	ProjectPagePluginSection            = "PLUGINS"
+	ProjectPageContainerSection         = "CONTAINERS"
+	ProjectPageViewsAndFiltersSection   = "VIEWS_AND_FILTERS"
+	ProjectPageGithubAndCQSection       = "GITHUB_AND_COMMIT_QUEUE"
+	ProjectPageGithubAppSettingsSection = "GITHUB_APP_SETTINGS"
+	ProjectPageGithubPermissionsSection = "GITHUB_PERMISSIONS"
 )
 
 const (
@@ -2221,16 +2223,16 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
-					projectRefPRTestingEnabledKey:                p.PRTestingEnabled,
-					projectRefManualPRTestingEnabledKey:          p.ManualPRTestingEnabled,
-					projectRefGithubChecksEnabledKey:             p.GithubChecksEnabled,
-					projectRefGitTagVersionsEnabledKey:           p.GitTagVersionsEnabled,
-					ProjectRefGitTagAuthorizedUsersKey:           p.GitTagAuthorizedUsers,
-					ProjectRefGitTagAuthorizedTeamsKey:           p.GitTagAuthorizedTeams,
-					projectRefCommitQueueKey:                     p.CommitQueue,
-					projectRefOldestAllowedMergeBaseKey:          p.OldestAllowedMergeBase,
-					projectRefGitHubDynamicTokenPermissionGroups: p.GitHubDynamicTokenPermissionGroups,
-					projectRefGithubPermissionGroupByRequester:   p.GitHubPermissionGroupByRequester,
+					projectRefPRTestingEnabledKey:       p.PRTestingEnabled,
+					projectRefManualPRTestingEnabledKey: p.ManualPRTestingEnabled,
+					projectRefGithubChecksEnabledKey:    p.GithubChecksEnabled,
+					projectRefGitTagVersionsEnabledKey:  p.GitTagVersionsEnabled,
+					ProjectRefGitTagAuthorizedUsersKey:  p.GitTagAuthorizedUsers,
+					ProjectRefGitTagAuthorizedTeamsKey:  p.GitTagAuthorizedTeams,
+					projectRefCommitQueueKey:            p.CommitQueue,
+					projectRefOldestAllowedMergeBaseKey: p.OldestAllowedMergeBase,
+					// TODO: Remove in DEVPROD-5995 because removing it causes lint errors.
+					projectRefGithubPermissionGroupByRequester: p.GitHubPermissionGroupByRequester,
 				},
 			})
 	case ProjectPageNotificationsSection:
@@ -2282,6 +2284,17 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				"$set": bson.M{
 					projectRefParsleyFiltersKey:    p.ParsleyFilters,
 					projectRefProjectHealthViewKey: p.ProjectHealthView,
+				},
+			})
+	case ProjectPageGithubAppSettingsSection:
+		// TODO: Implement in DEVPROD-5995.
+		return false, nil
+	case ProjectPageGithubPermissionsSection:
+		err = db.Update(coll,
+			bson.M{ProjectRefIdKey: projectId},
+			bson.M{
+				"$set": bson.M{
+					projectRefGitHubDynamicTokenPermissionGroups: p.GitHubDynamicTokenPermissionGroups,
 				},
 			})
 	case ProjectPageVariablesSection:
@@ -2418,15 +2431,14 @@ func getCronParserSchedule(cronStr string) (cron.Schedule, error) {
 	return sched, nil
 }
 
-// GetActivationTimeForVariant returns the time at which this variant should next be activated.
-// To ensure consistency across variants, the version create time is used to determine the next time.
-func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionCreateTime time.Time) (time.Time, error) {
+func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant) (time.Time, error) {
+	defaultRes := time.Now()
 	// if we don't want to activate the build, set batchtime to the zero time
 	if !utility.FromBoolTPtr(variant.Activate) {
 		return utility.ZeroTime, nil
 	}
 	if variant.CronBatchTime != "" {
-		return GetNextCronTime(versionCreateTime, variant.CronBatchTime)
+		return GetNextCronTime(time.Now(), variant.CronBatchTime)
 	}
 	// if activated explicitly set to true and we don't have batchtime, then we want to just activate now
 	if utility.FromBoolPtr(variant.Activate) && variant.BatchTime == nil {
@@ -2439,7 +2451,7 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionC
 	}
 
 	if lastActivated == nil {
-		return versionCreateTime, nil
+		return defaultRes, nil
 	}
 
 	// find matching activated build variant
@@ -2452,18 +2464,19 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionC
 		}
 	}
 
-	return versionCreateTime, nil
+	return defaultRes, nil
 }
 
 // GetActivationTimeForTask returns the time at which this task should next be activated.
-// To ensure consistency across tasks, the version create time is used to determine the next time.
-func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, versionCreateTime time.Time) (time.Time, error) {
+// Temporarily takes in the task ID that prompted this query, for logging.
+func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit) (time.Time, error) {
+	defaultRes := time.Now()
 	// if we don't want to activate the task, set batchtime to the zero time
 	if !utility.FromBoolTPtr(t.Activate) || t.IsDisabled() {
 		return utility.ZeroTime, nil
 	}
 	if t.CronBatchTime != "" {
-		return GetNextCronTime(versionCreateTime, t.CronBatchTime)
+		return GetNextCronTime(time.Now(), t.CronBatchTime)
 	}
 	// If activated explicitly set to true and we don't have batchtime, then we want to just activate now
 	if utility.FromBoolPtr(t.Activate) && t.BatchTime == nil {
@@ -2472,10 +2485,10 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, versionCr
 
 	lastActivated, err := VersionFindOne(VersionByLastTaskActivation(p.Id, t.Variant, t.Name).WithFields(VersionBuildVariantsKey))
 	if err != nil {
-		return versionCreateTime, errors.Wrap(err, "finding version")
+		return defaultRes, errors.Wrap(err, "finding version")
 	}
 	if lastActivated == nil {
-		return versionCreateTime, nil
+		return defaultRes, nil
 	}
 
 	for _, buildStatus := range lastActivated.BuildVariants {
@@ -2490,7 +2503,7 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, versionCr
 			return taskStatus.ActivateAt.Add(time.Minute * time.Duration(p.getBatchTimeForTask(t))), nil
 		}
 	}
-	return versionCreateTime, nil
+	return defaultRes, nil
 }
 
 // GetGithubProjectConflicts returns any potential conflicts; i.e. regardless of whether or not

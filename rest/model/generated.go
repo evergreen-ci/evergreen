@@ -22,8 +22,9 @@ type APIModule struct {
 	Issue  *string `json:"issue"`
 }
 type APIDBUser struct {
-	UserID       *string  `json:"user_id"`
-	DisplayName  *string  `json:"display_name"`
+	UserID      *string `json:"user_id"`
+	DisplayName *string `json:"display_name"`
+	// will be set to true if the user represents a service user
 	OnlyApi      bool     `json:"only_api"`
 	Roles        []string `json:"roles"`
 	EmailAddress *string  `json:"email_address"`
