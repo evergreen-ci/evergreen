@@ -56,4 +56,14 @@ func TestGetPackages(t *testing.T) {
 	assert.Equal(result[0].Name, name)
 	assert.Contains(result[0].Manager, manager)
 	assert.Len(result, 1)
+	name = "blahblahblah"
+	opts = PackageFilterOptions{
+		Page:    0,
+		Limit:   5,
+		Name:    name,
+		Manager: manager,
+	}
+	result, err = c.getPackages(ctx, ami, opts)
+	require.NoError(t, err)
+	assert.Empty(result)
 }
