@@ -24,6 +24,7 @@ type OSInfo struct {
 	Name    string
 }
 
+// NewRuntimeEnvironmentsClient creates a new client with the API base URL and API key fields.
 func NewRuntimeEnvironmentsClient(baseURL string, apiKey string) *RuntimeEnvironmentsClient {
 	c := RuntimeEnvironmentsClient{
 		Client:  &http.Client{},
@@ -33,8 +34,8 @@ func NewRuntimeEnvironmentsClient(baseURL string, apiKey string) *RuntimeEnviron
 	return &c
 }
 
-// getImageNames returns a list of strings containing the names of all images from the runtime environments API.
-func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string, error) {
+// GetImageNames returns a list of strings containing the names of all images from the runtime environments API.
+func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string, error) {
 	apiURL := fmt.Sprintf("%s/rest/api/v1/imageList", c.BaseURL)
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {

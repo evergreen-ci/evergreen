@@ -17,7 +17,7 @@ func TestGetImageNames(t *testing.T) {
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config, "TestGetImageNames")
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
-	result, err := c.getImageNames(ctx)
+	result, err := c.GetImageNames(ctx)
 	assert.NoError(err)
 	assert.NotEmpty(result)
 	assert.NotContains(result, "")
