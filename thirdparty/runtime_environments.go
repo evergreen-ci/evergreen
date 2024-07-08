@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -14,6 +16,12 @@ type RuntimeEnvironmentsClient struct {
 	Client  *http.Client
 	BaseURL string
 	APIKey  string
+}
+
+// OSInfo stores operating system information.
+type OSInfo struct {
+	Version string
+	Name    string
 }
 
 func NewRuntimeEnvironmentsClient(baseURL string, apiKey string) *RuntimeEnvironmentsClient {
@@ -57,4 +65,34 @@ func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string
 		}
 	}
 	return filteredImages, nil
+}
+
+// getOSInfo returns a list of operating system information for an AMI.
+func (c *RuntimeEnvironmentsClient) getOSInfo(ctx context.Context, amiID string, page, limit int) ([]OSInfo, error) {
+	params := url.Values{}
+	params.Set("ami", amiID)
+	params.Set("page", strconv.Itoa(page))
+	params.Set("limit", strconv.Itoa(limit))
+	params.Set("type", "OS")
+	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("Content-Type", "application/json")
+	request.Header.Add("Api-Key", c.APIKey)
+	resp, err := c.Client.Do(request)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		msg, _ := io.ReadAll(resp.Body)
+		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+	}
+	var osInfo []OSInfo
+	if err := gimlet.GetJSON(resp.Body, &osInfo); err != nil {
+		return nil, errors.Wrap(err, "decoding http body")
+	}
+	return osInfo, nil
 }
