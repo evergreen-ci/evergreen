@@ -31,39 +31,46 @@ func TestGetPackages(t *testing.T) {
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config, "TestGetPackages")
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+
+	// Verify that we filter correctly by limit and manager.
 	manager := "pip"
 	ami := "ami-0e12ef25a5f7712a4"
+	limit := 10
 	opts := PackageFilterOptions{
 		Page:    0,
-		Limit:   10,
+		Limit:   limit,
 		Manager: manager,
 	}
 	result, err := c.getPackages(ctx, ami, opts)
 	require.NoError(t, err)
-	assert.NotEmpty(result)
-	assert.Len(result, 10)
-	assert.Contains(result[0].Manager, manager)
+	require.Len(t, result, limit)
+	for i := 0; i < limit; i++ {
+		assert.Contains(result[i].Manager, manager)
+	}
+
+	// Verify that we filter correctly by both manager and name.
 	name := "Automat"
 	opts = PackageFilterOptions{
 		Page:    0,
 		Limit:   5,
-		Name:    name,
+		Name:    "Automat",
 		Manager: manager,
 	}
 	result, err = c.getPackages(ctx, ami, opts)
 	require.NoError(t, err)
-	require.NotEmpty(t, result)
+	require.Len(t, result, 1)
 	assert.Equal(result[0].Name, name)
 	assert.Contains(result[0].Manager, manager)
-	assert.Len(result, 1)
-	name = "blahblahblah"
+
+	// Verify that there are no results for fake package name.
 	opts = PackageFilterOptions{
-		Page:    0,
-		Limit:   5,
-		Name:    name,
-		Manager: manager,
+		Name: "blahblahblah",
 	}
 	result, err = c.getPackages(ctx, ami, opts)
 	require.NoError(t, err)
 	assert.Empty(result)
+
+	// Verify that there are no errors with empty PackageFilterOptions.
+	_, err = c.getPackages(ctx, ami, PackageFilterOptions{})
+	require.NoError(t, err)
 }

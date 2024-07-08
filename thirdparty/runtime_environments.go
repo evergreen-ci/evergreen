@@ -76,12 +76,14 @@ type PackageFilterOptions struct {
 	Manager string // Filter by the package manager (ex. pip).
 }
 
-// getPackages returns a list of packages from the corresponding AMI id.
+// getPackages returns a list of packages from the corresponding AMI.
 func (c *RuntimeEnvironmentsClient) getPackages(ctx context.Context, amiID string, opts PackageFilterOptions) ([]Package, error) {
 	params := url.Values{}
 	params.Set("ami", amiID)
 	params.Set("page", strconv.Itoa(opts.Page))
-	params.Set("limit", strconv.Itoa(opts.Limit))
+	if opts.Limit != 0 {
+		params.Set("limit", strconv.Itoa(opts.Limit))
+	}
 	params.Set("name", opts.Name)
 	params.Set("manager", opts.Manager)
 	params.Set("type", "Packages")
