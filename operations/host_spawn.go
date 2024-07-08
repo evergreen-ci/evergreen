@@ -30,14 +30,18 @@ import (
 
 func hostCreate() cli.Command {
 	const (
-		distroFlagName       = "distro"
-		keyFlagName          = "key"
-		scriptFlagName       = "script"
-		tagFlagName          = "tag"
-		instanceTypeFlagName = "type"
-		noExpireFlagName     = "no-expire"
-		fileFlagName         = "file"
-		setupFlagName        = "setup"
+		distroFlagName           = "distro"
+		keyFlagName              = "key"
+		scriptFlagName           = "script"
+		tagFlagName              = "tag"
+		instanceTypeFlagName     = "type"
+		noExpireFlagName         = "no-expire"
+		wholeWeekdaysOffFlagName = "weekdays-off"
+		dailyStartTimeFlagName   = "daily-start"
+		dailyStopTimeFlagName    = "daily-stop"
+		timeZoneFlagName         = "timezone"
+		fileFlagName             = "file"
+		setupFlagName            = "setup"
 	)
 
 	return cli.Command{
@@ -76,6 +80,22 @@ func hostCreate() cli.Command {
 				Name:  noExpireFlagName,
 				Usage: "make host never expire",
 			},
+			cli.StringSliceFlag{
+				Name:  wholeWeekdaysOffFlagName,
+				Usage: `for an unexpirable host, the days when the host should be turned off for its sleep schedule (allowed values: Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday)`,
+			},
+			cli.StringFlag{
+				Name:  dailyStartTimeFlagName,
+				Usage: "for an unexpirable host, the time when the host should start each day for its sleep schedule",
+			},
+			cli.StringFlag{
+				Name:  dailyStopTimeFlagName,
+				Usage: "for an unexpirable host, the time when the host should stop each day for its sleep schedule",
+			},
+			cli.StringFlag{
+				Name:  timeZoneFlagName,
+				Usage: "for an unexpirable host, the time zone of the sleep schedule",
+			},
 			cli.StringFlag{
 				Name:  joinFlagNames(fileFlagName, "f"),
 				Usage: "name of a JSON or YAML file containing the spawn host params",
@@ -92,6 +112,14 @@ func hostCreate() cli.Command {
 			instanceType := c.String(instanceTypeFlagName)
 			region := c.String(regionFlagName)
 			noExpire := c.Bool(noExpireFlagName)
+			weekdaysOffStrs := c.StringSlice(wholeWeekdaysOffFlagName)
+			wholeWeekdaysOff, err := convertWeekdays(weekdaysOffStrs)
+			if err != nil {
+				return err
+			}
+			dailyStartTime := c.String(dailyStartTimeFlagName)
+			dailyStopTime := c.String(dailyStopTimeFlagName)
+			timeZone := c.String(timeZoneFlagName)
 			file := c.String(fileFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -135,6 +163,12 @@ func hostCreate() cli.Command {
 					InstanceType: instanceType,
 					Region:       region,
 					NoExpiration: noExpire,
+					SleepScheduleOptions: host.SleepScheduleOptions{
+						WholeWeekdaysOff: wholeWeekdaysOff,
+						DailyStartTime:   dailyStartTime,
+						DailyStopTime:    dailyStopTime,
+						TimeZone:         timeZone,
+					},
 				}
 			}
 
@@ -169,6 +203,26 @@ func hostCreate() cli.Command {
 	}
 }
 
+func convertWeekdays(weekdayStrs []string) ([]time.Weekday, error) {
+	if len(weekdayStrs) == 0 {
+		return []time.Weekday{}, nil
+	}
+
+	var weekdays []time.Weekday
+	weekdayStrToEnum := map[string]time.Weekday{}
+	for _, weekday := range utility.Weekdays {
+		weekdayStrToEnum[strings.ToLower(weekday.String())] = weekday
+	}
+	for _, weekdayStr := range weekdayStrs {
+		weekday, ok := weekdayStrToEnum[strings.ToLower(weekdayStr)]
+		if !ok {
+			return nil, errors.Errorf("invalid weekday '%s'", weekdayStr)
+		}
+		weekdays = append(weekdays, weekday)
+	}
+	return weekdays, nil
+}
+
 func hostModify() cli.Command {
 	const (
 		addTagFlagName             = "tag"
@@ -176,6 +230,10 @@ func hostModify() cli.Command {
 		instanceTypeFlagName       = "type"
 		displayNameFlagName        = "name"
 		noExpireFlagName           = "no-expire"
+		wholeWeekdaysOffFlagName   = "weekdays-off"
+		dailyStartTimeFlagName     = "daily-start"
+		dailyStopTimeFlagName      = "daily-stop"
+		timeZoneFlagName           = "timezone"
 		expireFlagName             = "expire"
 		extendFlagName             = "extend"
 		temporaryExemptionFlagName = "extend-temporary-exemption"
@@ -219,6 +277,22 @@ func hostModify() cli.Command {
 				Name:  expireFlagName,
 				Usage: "make host expire like a normal spawn host, in 24 hours",
 			},
+			cli.StringSliceFlag{
+				Name:  wholeWeekdaysOffFlagName,
+				Usage: `for an unexpirable host, the days when the host should be turned off for its sleep schedule (allowed values: Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday)`,
+			},
+			cli.StringFlag{
+				Name:  dailyStartTimeFlagName,
+				Usage: "for an unexpirable host, the time when the host should start each day for its sleep schedule (format: HH:MM, e.g. 12:34)",
+			},
+			cli.StringFlag{
+				Name:  dailyStopTimeFlagName,
+				Usage: "for an unexpirable host, the time when the host should stop each day for its sleep schedule (format: HH:MM, e.g. 12:34)",
+			},
+			cli.StringFlag{
+				Name:  timeZoneFlagName,
+				Usage: "for an unexpirable host, the time zone of the sleep schedule",
+			},
 			cli.StringFlag{
 				Name:  addSSHKeyFlag,
 				Usage: "add public key from local file `PATH` to the host's authorized_keys",
@@ -231,7 +305,7 @@ func hostModify() cli.Command {
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
 			requireHostFlag,
-			requireAtLeastOneFlag(addTagFlagName, deleteTagFlagName, instanceTypeFlagName, expireFlagName, noExpireFlagName, extendFlagName, temporaryExemptionFlagName, addSSHKeyFlag, addSSHKeyNameFlag),
+			requireAtLeastOneFlag(addTagFlagName, deleteTagFlagName, instanceTypeFlagName, expireFlagName, noExpireFlagName, extendFlagName, temporaryExemptionFlagName, addSSHKeyFlag, addSSHKeyNameFlag, wholeWeekdaysOffFlagName, dailyStartTimeFlagName, dailyStopTimeFlagName, timeZoneFlagName),
 			mutuallyExclusiveArgs(false, noExpireFlagName, extendFlagName),
 			mutuallyExclusiveArgs(false, noExpireFlagName, expireFlagName),
 			mutuallyExclusiveArgs(false, addSSHKeyFlag, addSSHKeyNameFlag),
@@ -242,11 +316,19 @@ func hostModify() cli.Command {
 			addTagSlice := c.StringSlice(addTagFlagName)
 			deleteTagSlice := c.StringSlice(deleteTagFlagName)
 			instanceType := c.String(instanceTypeFlagName)
-			noExpire := c.Bool(noExpireFlagName)
 			displayName := c.String(displayNameFlagName)
+			noExpire := c.Bool(noExpireFlagName)
 			expire := c.Bool(expireFlagName)
-			extension := c.Int(extendFlagName)
+			weekdaysOffStrs := c.StringSlice(wholeWeekdaysOffFlagName)
+			wholeWeekdaysOff, err := convertWeekdays(weekdaysOffStrs)
+			if err != nil {
+				return err
+			}
+			dailyStartTime := c.String(dailyStartTimeFlagName)
+			dailyStopTime := c.String(dailyStopTimeFlagName)
+			timeZone := c.String(timeZoneFlagName)
 			temporaryExemptionHours := c.Int(temporaryExemptionFlagName)
+			extension := c.Int(extendFlagName)
 			subscriptionType := c.String(subscriptionTypeFlag)
 			publicKeyFile := c.String(addSSHKeyFlag)
 			publicKeyName := c.String(addSSHKeyNameFlag)
@@ -283,6 +365,12 @@ func hostModify() cli.Command {
 				SubscriptionType:           subscriptionType,
 				NewName:                    displayName,
 				AddKey:                     publicKey,
+				SleepScheduleOptions: host.SleepScheduleOptions{
+					WholeWeekdaysOff: wholeWeekdaysOff,
+					DailyStartTime:   dailyStartTime,
+					DailyStopTime:    dailyStopTime,
+					TimeZone:         timeZone,
+				},
 			}
 
 			if noExpire {
