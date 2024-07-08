@@ -1,8 +1,17 @@
 {
-  yes: task(taskId: "some_task_2") {
+  yesNonDisplayTask: task(taskId: "some_task_2") {
     canSetPriority
   }
-  no: task(taskId: "some_task") {
+  noNonDisplayTask: task(taskId: "some_task") {
+    canSetPriority
+  }
+  yesRunningDisplayTask: task(taskId: "display_task_1") {
+    canSetPriority  
+  }
+  noRunningDisplayTask: task(taskId: "display_task_2") {
+    canSetPriority
+  }
+  noFinishedDisplayTask: task(taskId: "display_task_3") {
     canSetPriority
   }
 }
