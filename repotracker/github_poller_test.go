@@ -296,9 +296,6 @@ func TestGetChangedFiles(t *testing.T) {
 
 	Convey("When fetching changed files from evergreen-ci/evergreen ", t, func() {
 		grp.ProjectRef = evgProjectRef
-		token, err := testConfig.GetGithubOauthToken()
-		So(err, ShouldBeNil)
-		grp.OauthToken = token
 
 		r1 := "b11fcb25624c6a0649dd35b895f5b550d649a128"
 		Convey("the revision "+r1+" should have 8 files", func() {
