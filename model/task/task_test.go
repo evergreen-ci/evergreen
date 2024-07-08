@@ -3015,7 +3015,7 @@ func getTaskThatNeedsContainerAllocation() Task {
 	}
 }
 
-func TestMarkAllForUnattainableDependency(t *testing.T) {
+func TestMarkAllForUnattainableDependencies(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
 	}()
@@ -3047,7 +3047,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 			}
 			require.NoError(t, dependentTask.Insert())
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", true)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t1"}, true)
 			require.NoError(t, err)
 			require.Len(t, updatedDependentTasks, 1)
 			dependentTask = updatedDependentTasks[0]
@@ -3066,7 +3066,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 					Id: "t0",
 					DependsOn: []Dependency{
 						{
-							TaskId:       "t1",
+							TaskId:       "t4",
 							Unattainable: false,
 						},
 						{
@@ -3079,7 +3079,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 					Id: "t1",
 					DependsOn: []Dependency{
 						{
-							TaskId:       "t1",
+							TaskId:       "t4",
 							Unattainable: false,
 						},
 					},
@@ -3088,7 +3088,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 					Id: "t2",
 					DependsOn: []Dependency{
 						{
-							TaskId:       "t2",
+							TaskId:       "t5",
 							Unattainable: false,
 						},
 					},
@@ -3098,7 +3098,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 				require.NoError(t, dependentTask.Insert())
 			}
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, dependentTasks, "t1", true)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, dependentTasks, []string{"t4"}, true)
 			assert.NoError(t, err)
 			require.Len(t, updatedDependentTasks, len(dependentTasks))
 
@@ -3131,6 +3131,82 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 				}
 			}
 		},
+		"BlocksManyDependenciesForManyTasks": func(ctx context.Context, t *testing.T) {
+			dependentTasks := []Task{
+				{
+					Id: "t0",
+					DependsOn: []Dependency{
+						{
+							TaskId:       "t2",
+							Unattainable: false,
+						},
+						{
+							TaskId:       "t4",
+							Unattainable: false,
+						},
+					},
+				},
+				{
+					Id: "t1",
+					DependsOn: []Dependency{
+						{
+							TaskId:       "t4",
+							Unattainable: false,
+						},
+						{
+							TaskId:       "t5",
+							Unattainable: false,
+						},
+					},
+				},
+				{
+					Id: "t2",
+					DependsOn: []Dependency{
+						{
+							TaskId:       "t6",
+							Unattainable: false,
+						},
+					},
+				},
+			}
+			for _, dependentTask := range dependentTasks {
+				require.NoError(t, dependentTask.Insert())
+			}
+
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, dependentTasks, []string{"t4", "t5"}, true)
+			assert.NoError(t, err)
+			require.Len(t, updatedDependentTasks, len(dependentTasks))
+
+			for _, updatedDependentTask := range updatedDependentTasks {
+				switch updatedDependentTask.Id {
+				case dependentTasks[0].Id:
+					checkTaskAndDB(t, updatedDependentTasks[0], func(t *testing.T, taskToCheck Task) {
+						assert.True(t, taskToCheck.Blocked())
+						assert.True(t, taskToCheck.UnattainableDependency)
+						require.Len(t, taskToCheck.DependsOn, 2)
+						assert.False(t, taskToCheck.DependsOn[0].Unattainable)
+						assert.True(t, taskToCheck.DependsOn[1].Unattainable)
+					})
+				case dependentTasks[1].Id:
+					checkTaskAndDB(t, updatedDependentTasks[1], func(t *testing.T, taskToCheck Task) {
+						assert.True(t, taskToCheck.Blocked())
+						assert.True(t, taskToCheck.UnattainableDependency)
+						require.Len(t, taskToCheck.DependsOn, 2)
+						assert.True(t, taskToCheck.DependsOn[0].Unattainable)
+						assert.True(t, taskToCheck.DependsOn[1].Unattainable)
+					})
+				case dependentTasks[2].Id:
+					checkTaskAndDB(t, updatedDependentTasks[2], func(t *testing.T, taskToCheck Task) {
+						assert.False(t, taskToCheck.Blocked())
+						assert.False(t, taskToCheck.UnattainableDependency)
+						require.Len(t, taskToCheck.DependsOn, 1)
+						assert.False(t, taskToCheck.DependsOn[0].Unattainable)
+					})
+				default:
+					assert.Fail(t, "unexpected task '%s' in updated tasks", updatedDependentTask.Id)
+				}
+			}
+		},
 		"NonexistentDependency": func(ctx context.Context, t *testing.T) {
 			dependentTask := Task{
 				Id: "t0",
@@ -3147,7 +3223,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 			}
 			require.NoError(t, dependentTask.Insert())
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t3", true)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t3"}, true)
 			require.NoError(t, err)
 			require.Len(t, updatedDependentTasks, 1)
 			dependentTask = updatedDependentTasks[0]
@@ -3176,7 +3252,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 			}
 			require.NoError(t, dependentTask.Insert())
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", false)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t1"}, false)
 			require.NoError(t, err)
 			require.Len(t, updatedDependentTasks, 1)
 			dependentTask = updatedDependentTasks[0]
@@ -3205,7 +3281,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 			}
 			require.NoError(t, dependentTask.Insert())
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", false)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t1"}, false)
 			require.NoError(t, err)
 			require.Len(t, updatedDependentTasks, 1)
 			dependentTask = updatedDependentTasks[0]
@@ -3236,7 +3312,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 
 			dependentTask.DependsOn[1].Unattainable = true
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", false)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t1"}, false)
 			require.NoError(t, err)
 			require.Len(t, updatedDependentTasks, 1)
 			dependentTask = updatedDependentTasks[0]
