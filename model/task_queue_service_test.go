@@ -1724,12 +1724,15 @@ func (s *taskDAGDispatchServiceSuite) TestGenerateTaskLimits() {
 
 	s.Require().NoError(db.ClearCollections(task.Collection))
 	s.Require().NoError(db.ClearCollections(host.Collection))
+	s.Require().NoError(db.ClearCollections(evergreen.ConfigCollection))
+
 	distroID := "distro_1"
 	items := []TaskQueueItem{}
 
-	evergreen.GetEnvironment().Settings().TaskLimits = evergreen.TaskLimitsConfig{
+	settings := evergreen.TaskLimitsConfig{
 		MaxPendingGeneratedTasks: 6,
 	}
+	s.Require().NoError(settings.Set(ctx))
 
 	running := task.Task{
 		Id:                         "running",

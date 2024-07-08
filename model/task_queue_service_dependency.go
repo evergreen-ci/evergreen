@@ -321,19 +321,19 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				continue
 			}
 
-			if err = nextTaskFromDB.SetGenerateTasksEstimations(ctx); err != nil {
+			// Skip the task if it's estimated to create more tasks than the generate task limit.
+			settings, err := evergreen.GetConfig(ctx)
+			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"dispatcher": DAGDispatcher,
 					"function":   "FindNextTask",
-					"message":    "problem setting generate tasks estimations",
+					"message":    "problem getting evergreen settings",
 					"task_id":    item.Id,
 					"distro_id":  d.distroID,
 				}))
 				continue
 			}
-
-			// Skip the task if it's estimated to create more tasks than the generate task limit.
-			generateTasksLimit := evergreen.GetEnvironment().Settings().TaskLimits.MaxPendingGeneratedTasks
+			generateTasksLimit := settings.TaskLimits.MaxPendingGeneratedTasks
 			tasksToGenerate := utility.FromIntPtr(nextTaskFromDB.EstimatedNumGeneratedTasks)
 			if generateTasksLimit > 0 && tasksToGenerate > 0 {
 				pendingGenerateTasks, err := task.GetPendingGenerateTasks(ctx)
@@ -348,6 +348,16 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 					continue
 				}
 				if pendingGenerateTasks+tasksToGenerate >= generateTasksLimit {
+					grip.Info(message.Fields{
+						"dispatcher":          DAGDispatcher,
+						"function":            "FindNextTask",
+						"message":             "skipping task because it would exceed the generate task limit",
+						"task_id":             item.Id,
+						"distro_id":           d.distroID,
+						"generate_task_limit": generateTasksLimit,
+						"pending_generate":    pendingGenerateTasks,
+						"tasks_to_generate":   tasksToGenerate,
+					})
 					continue
 				}
 			}

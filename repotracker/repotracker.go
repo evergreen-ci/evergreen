@@ -905,7 +905,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			GithubChecksAliases: aliasesMatchingVariant,
 		}
 
-		b, tasks, err := model.CreateBuildFromVersionNoInsert(creationInfo)
+		b, tasks, err := model.CreateBuildFromVersionNoInsert(ctx, creationInfo)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating build",

@@ -2967,6 +2967,7 @@ type pendingGenerateTasksResults struct {
 	NumPendingGenerateTasks int `bson:"pending_generate_tasks"`
 }
 
+// GetPendingGenerateTasks returns an estimated number of tasks the current dispatched tasks will generate.
 func GetPendingGenerateTasks(ctx context.Context) (int, error) {
 	match := bson.M{
 		GeneratedTasksKey: bson.M{
@@ -3000,8 +3001,7 @@ func GetPendingGenerateTasks(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, errors.Wrap(err, "aggregating pending generate tasks")
 	}
-	err = cursor.All(dbCtx, &results)
-	if err != nil {
+	if err = cursor.All(dbCtx, &results); err != nil {
 		return 0, errors.Wrap(err, "iterating and decoding pending generate tasks")
 	}
 	if len(results) == 0 {

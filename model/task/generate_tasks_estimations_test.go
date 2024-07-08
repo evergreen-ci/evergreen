@@ -113,12 +113,6 @@ func TestGenerateTasksEstimationsNoPreviousTasks(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(0, utility.FromIntPtr(t1.EstimatedNumGeneratedTasks))
 	assert.Equal(0, utility.FromIntPtr(t1.EstimatedNumActivatedGeneratedTasks))
-
-	dbTask, err := FindOneId(t1.Id)
-	assert.NoError(err)
-	require.NotZero(t, dbTask)
-	assert.Equal(0, utility.FromIntPtr(dbTask.EstimatedNumGeneratedTasks))
-	assert.Equal(0, utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks))
 }
 
 func TestGenerateTasksEstimationsDoesNotRun(t *testing.T) {
@@ -141,12 +135,6 @@ func TestGenerateTasksEstimationsDoesNotRun(t *testing.T) {
 	assert.NoError(err)
 	assert.Nil(t1.EstimatedNumGeneratedTasks)
 	assert.Nil(t1.EstimatedNumActivatedGeneratedTasks)
-
-	dbTask, err := FindOneId(t1.Id)
-	assert.NoError(err)
-	require.NotZero(t, dbTask)
-	assert.Nil(dbTask.EstimatedNumGeneratedTasks)
-	assert.Nil(dbTask.EstimatedNumActivatedGeneratedTasks)
 
 	t2 := Task{
 		Id:                         "t2",
@@ -176,10 +164,4 @@ func TestGenerateTasksEstimationsDoesNotRun(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(1, utility.FromIntPtr(t3.EstimatedNumGeneratedTasks))
 	assert.Equal(2, utility.FromIntPtr(t3.EstimatedNumActivatedGeneratedTasks))
-
-	dbTask, err = FindOneId(t3.Id)
-	assert.NoError(err)
-	require.NotZero(t, dbTask)
-	assert.Equal(1, utility.FromIntPtr(dbTask.EstimatedNumGeneratedTasks))
-	assert.Equal(2, utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks))
 }
