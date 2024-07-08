@@ -1027,8 +1027,13 @@ func (r *queryResolver) Version(ctx context.Context, versionID string) (*restMod
 // Images is the resolver for the images field.
 func (r *queryResolver) Images(ctx context.Context) ([]string, error) {
 	config, err := evergreen.GetConfig(ctx)
+	grip.Debug(message.Fields{
+		"config":       config,
+		"base-URL":     config.RuntimeEnvironments.BaseURL,
+		"runtime-envs": config.RuntimeEnvironments,
+	})
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("retrieving evergreen configuration settings: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: %s", err.Error()))
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	return c.GetImageNames(ctx)
