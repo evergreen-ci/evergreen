@@ -7,9 +7,9 @@ require (
 	github.com/PuerkitoBio/rehttp v1.4.0
 	github.com/aws/aws-sdk-go v1.54.11
 	github.com/aws/aws-sdk-go-v2 v1.30.1
-	github.com/aws/aws-sdk-go-v2/config v1.27.23
-	github.com/aws/aws-sdk-go-v2/credentials v1.17.23 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.167.1
+	github.com/aws/aws-sdk-go-v2/config v1.27.24
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.24 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.168.0
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.44.1
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.23.1
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.32.1
@@ -95,7 +95,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ses v1.19.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.29.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.22.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.26.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.26.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/brunoscheufler/aws-ecs-metadata-go v0.0.0-20220812150832-b6b31c6eeeaf // indirect
