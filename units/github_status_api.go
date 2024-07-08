@@ -197,14 +197,12 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 	if j.UpdateType == githubUpdateTypeProcessingError {
 		status.Context = j.GithubContext
 		status.State = message.GithubStateFailure
-		// GitHub status descriptions can only be up to 140 characters.
-		status.Description = j.Description[:139]
+		status.Description = j.Description
 
 	} else if j.UpdateType == githubUpdateTypeSuccessMessage {
 		status.Context = j.GithubContext
 		status.State = message.GithubStateSuccess
-		// GitHub status descriptions can only be up to 140 characters.
-		status.Description = j.Description[:139]
+		status.Description = j.Description
 
 	} else if j.UpdateType == githubUpdateTypeNewPatch {
 		status.URL = fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", j.urlBase, j.FetchID)
