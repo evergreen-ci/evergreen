@@ -33,27 +33,27 @@ func TestGetPackages(t *testing.T) {
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	manager := "pip"
 	ami := "ami-0e12ef25a5f7712a4"
-	opts1 := PackageFilterOptions{
+	opts := PackageFilterOptions{
 		Page:    0,
 		Limit:   10,
 		Manager: manager,
 	}
-	result1, err := c.getPackages(ctx, ami, opts1)
+	result, err := c.getPackages(ctx, ami, opts)
 	require.NoError(t, err)
-	assert.NotEmpty(result1)
-	assert.Len(result1, 10)
-	require.NotEqual(t, result1[0].Name, "")
-	assert.NotEqual(result1[0].Version, "")
-	assert.Contains(result1[0].Manager, manager)
-	opts2 := PackageFilterOptions{
+	assert.NotEmpty(result)
+	assert.Len(result, 10)
+	assert.Contains(result[0].Manager, manager)
+	name := "Automat"
+	opts = PackageFilterOptions{
 		Page:    0,
 		Limit:   5,
-		Name:    result1[0].Name,
+		Name:    name,
 		Manager: manager,
 	}
-	result2, err := c.getPackages(ctx, ami, opts2)
+	result, err = c.getPackages(ctx, ami, opts)
 	require.NoError(t, err)
-	assert.NotEmpty(result2)
-	assert.Equal(result2[0].Name, result2[0].Name)
-	assert.Contains(result2[0].Manager, manager)
+	require.NotEmpty(t, result)
+	assert.Equal(result[0].Name, name)
+	assert.Contains(result[0].Manager, manager)
+	assert.Len(result, 1)
 }
