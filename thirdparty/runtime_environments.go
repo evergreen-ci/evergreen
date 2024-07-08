@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -63,10 +62,8 @@ func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string
 
 // ImageDiffOptions represents the arguments for getImageDiff. AMI is the starting AMI, and AMI2 is the ending AMI.
 type ImageDiffOptions struct {
-	AMI   string
-	AMI2  string
-	Page  int
-	Limit int
+	BeforeAMI string
+	AfterAMI  string
 }
 
 // ImageDiffChange represents a change between two AMIs.
@@ -81,10 +78,9 @@ type ImageDiffChange struct {
 // getImageDiff returns a list of package and toolchain changes that occurred between the provided AMIs.
 func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts ImageDiffOptions) ([]ImageDiffChange, error) {
 	params := url.Values{}
-	params.Set("ami", opts.AMI)
-	params.Set("ami2", opts.AMI2)
-	params.Set("page", strconv.Itoa(opts.Page))
-	params.Set("limit", strconv.Itoa(opts.Limit))
+	params.Set("ami", opts.BeforeAMI)
+	params.Set("ami2", opts.AfterAMI)
+	params.Set("limit", "100")
 	apiURL := fmt.Sprintf("%s/rest/api/v1/imageDiffs?%s", c.BaseURL, params.Encode())
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
