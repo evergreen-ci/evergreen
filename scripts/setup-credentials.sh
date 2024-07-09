@@ -18,7 +18,7 @@ domain_name: "evergreen.local"
 
 configdir: "config_test"
 credentials: {
-  github: "$GITHUB_TOKEN",
+  github: "token $GITHUB_TOKEN",
 }
 
 api_url: http://localhost:9090
