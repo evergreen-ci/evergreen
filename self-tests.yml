@@ -98,6 +98,9 @@ variables:
       - func: setup-credentials
       - func: run-make
         vars: { target: "load-smoke-data" }
+      - command: github.generate_token
+        params:
+          expansion_name: github_token_new
       - command: subprocess.exec
         params:
           silent: true
@@ -105,7 +108,7 @@ variables:
           env:
             GITHUB_APP_ID: ${staging_github_app_id}
             GITHUB_APP_KEY: ${staging_github_app_key}
-            GITHUB_TOKEN: ${github_token}
+            GITHUB_TOKEN: ${github_token_new}
           command: bash scripts/setup-smoke-config.sh
       - func: run-make
         vars: { target: "set-smoke-vars" }
@@ -185,11 +188,14 @@ variables:
 #######################################
 functions:
   get-project-and-modules:
+    - command: github.generate_token
+      params:
+        expansion_name: github_token_new
     - command: git.get_project
       type: setup
       params:
         directory: evergreen
-        token: ${github_token}
+        token: ${github_token_new}
         shallow_clone: true
     - command: shell.exec
       type: setup
@@ -270,7 +276,6 @@ functions:
         silent: true
         working_dir: evergreen
         env:
-          GITHUB_TOKEN: ${github_token}
           GITHUB_APP_ID: ${staging_github_app_id}
           GITHUB_APP_KEY: ${staging_github_app_key}
           JIRA_SERVER: ${jiraserver}
@@ -594,11 +599,14 @@ tasks:
   - name: test-repotracker
     tags: ["db", "test"]
     commands:
+      - command: github.generate_token
+        params:
+          expansion_name: github_token_new
       - command: git.get_project
         type: setup
         params:
           directory: evergreen
-          token: ${github_token}
+          token: ${github_token_new}
           shallow_clone: false
       - func: setup-credentials
       - func: setup-mongodb
@@ -648,11 +656,14 @@ tasks:
   - name: verify-mod-tidy
     tags: ["linter"]
     commands:
+      - command: github.generate_token
+        params:
+          expansion_name: github_token_new
       - command: git.get_project
         type: setup
         params:
           directory: evergreen
-          token: ${github_token}
+          token: ${github_token_new}
       - func: run-make
         vars: { target: "${task_name}" }
   - name: verify-merge-function-update
