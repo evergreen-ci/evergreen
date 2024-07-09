@@ -70,7 +70,7 @@ func TestSubscriberModelsWebhook(t *testing.T) {
 	origWebhookSubscriber, err := apiWebhookSubscriber.ToService()
 	assert.NoError(err)
 
-	target.Secret = []byte(evergreen.RedactedWebhookSecretsValue)
+	target.Secret = []byte(evergreen.RedactedValue)
 
 	assert.EqualValues(webhookSubscriber.Type, origWebhookSubscriber.Type)
 	assert.EqualValues(target, origWebhookSubscriber.Target)
@@ -80,7 +80,7 @@ func TestSubscriberModelsWebhook(t *testing.T) {
 		Type: utility.ToStringPtr(event.EvergreenWebhookSubscriberType),
 		Target: map[string]interface{}{
 			"url":          "foo",
-			"secret":       evergreen.RedactedWebhookSecretsValue,
+			"secret":       evergreen.RedactedValue,
 			"retries":      3,
 			"min_delay_ms": 500,
 			"timeout_ms":   10000,

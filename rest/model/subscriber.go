@@ -290,7 +290,7 @@ func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *event.WebhookSubscriber:
 		s.URL = utility.ToStringPtr(v.URL)
-		s.Secret = utility.ToStringPtr(evergreen.RedactedWebhookSecretsValue)
+		s.Secret = utility.ToStringPtr(evergreen.RedactedValue)
 		s.Headers = []APIWebhookHeader{}
 		s.Retries = v.Retries
 		s.MinDelayMS = v.MinDelayMS
@@ -326,7 +326,7 @@ func (s *APIWebhookSubscriber) ToService() event.WebhookSubscriber {
 func (s *APIWebhookHeader) BuildFromService(h event.WebhookHeader) {
 	s.Key = &h.Key
 	if h.Key == "Authorization" {
-		s.Value = utility.ToStringPtr(evergreen.RedactedWebhookSecretsValue)
+		s.Value = utility.ToStringPtr(evergreen.RedactedValue)
 	} else {
 		s.Value = &h.Value
 	}

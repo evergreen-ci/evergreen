@@ -436,13 +436,13 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				subscriptionChanges = append(subscriptionChanges, subscription)
 				continue
 			}
-			if webhook.Secret != nil && *webhook.Secret == evergreen.RedactedWebhookSecretsValue {
+			if webhook.Secret != nil && *webhook.Secret == evergreen.RedactedValue {
 				previousSecret := string(previousSubscription.Secret)
 				webhook.Secret = &previousSecret
 			}
 			newHeaders := []restModel.APIWebhookHeader{}
 			for _, header := range webhook.Headers {
-				if utility.FromStringPtr(header.Key) == "Authorization" && utility.FromStringPtr(header.Value) == evergreen.RedactedWebhookSecretsValue {
+				if utility.FromStringPtr(header.Key) == "Authorization" && utility.FromStringPtr(header.Value) == evergreen.RedactedValue {
 					// Do not update the value if redacted Authorization header in changes.
 					var previousHeaderValue string
 					for _, h := range previousSubscription.Headers {

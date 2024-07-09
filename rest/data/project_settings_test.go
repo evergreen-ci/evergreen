@@ -649,7 +649,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 					},
 					{
 						Key:   utility.ToStringPtr("Authorization"),
-						Value: utility.ToStringPtr(evergreen.RedactedWebhookSecretsValue),
+						Value: utility.ToStringPtr(evergreen.RedactedValue),
 					},
 				},
 			}
@@ -691,7 +691,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			// Update the Authorization header to a new value and delete the first subscription.
 			webhookSubscriber = restModel.APIWebhookSubscriber{
 				URL:    utility.ToStringPtr("http://example.com"),
-				Secret: utility.ToStringPtr(evergreen.RedactedWebhookSecretsValue),
+				Secret: utility.ToStringPtr(evergreen.RedactedValue),
 				Headers: []restModel.APIWebhookHeader{
 					{
 						Key:   utility.ToStringPtr("Key"),

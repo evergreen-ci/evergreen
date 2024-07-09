@@ -378,9 +378,8 @@ const (
 	// and is meant to be set as a private variable so that it will be redacted in all logs.
 	HostServicePasswordExpansion = "host_service_password"
 
-	// RedactedWebhookSecretsValue is the value that is shown in the REST API and UI for a redacted
-	// webhook header authorization value.
-	RedactedWebhookSecretsValue = "<REDACTED>"
+	// RedactedValue is the value that is shown in the REST API and UI for redacted values.
+	RedactedValue = "<REDACTED>"
 )
 
 var VersionSucceededStatuses = []string{
