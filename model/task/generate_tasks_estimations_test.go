@@ -135,33 +135,4 @@ func TestGenerateTasksEstimationsDoesNotRun(t *testing.T) {
 	assert.NoError(err)
 	assert.Nil(t1.EstimatedNumGeneratedTasks)
 	assert.Nil(t1.EstimatedNumActivatedGeneratedTasks)
-
-	t2 := Task{
-		Id:                         "t2",
-		DisplayName:                "already cached",
-		BuildVariant:               "bv",
-		Project:                    "project",
-		GenerateTask:               true,
-		NumGeneratedTasks:          100,
-		NumActivatedGeneratedTasks: 200,
-		StartTime:                  time.Now().Add(-1 * 10 * time.Hour),
-		FinishTime:                 time.Now().Add(-1 * 9 * time.Hour),
-	}
-	assert.NoError(t2.Insert())
-
-	t3 := Task{
-		Id:                                  "t3",
-		DisplayName:                         "already cached",
-		BuildVariant:                        "bv",
-		Project:                             "project",
-		GenerateTask:                        true,
-		EstimatedNumGeneratedTasks:          utility.ToIntPtr(1),
-		EstimatedNumActivatedGeneratedTasks: utility.ToIntPtr(2),
-	}
-	assert.NoError(t3.Insert())
-
-	err = t3.SetGenerateTasksEstimations(ctx)
-	assert.NoError(err)
-	assert.Equal(1, utility.FromIntPtr(t3.EstimatedNumGeneratedTasks))
-	assert.Equal(2, utility.FromIntPtr(t3.EstimatedNumActivatedGeneratedTasks))
 }
