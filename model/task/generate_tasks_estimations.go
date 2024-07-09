@@ -29,6 +29,8 @@ func (t *Task) SetGenerateTasksEstimations(ctx context.Context) error {
 	if len(results) == 0 {
 		t.EstimatedNumGeneratedTasks = utility.ToIntPtr(0)
 		t.EstimatedNumActivatedGeneratedTasks = utility.ToIntPtr(0)
+
+		return nil
 	} else if len(results) > 1 {
 		return errors.Errorf("expected 1 result from generate tasks estimations aggregation but got %d", len(results))
 	}

@@ -349,14 +349,14 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				}
 				if pendingGenerateTasks+tasksToGenerate >= generateTasksLimit {
 					grip.Info(message.Fields{
-						"dispatcher":          DAGDispatcher,
-						"function":            "FindNextTask",
-						"message":             "skipping task because it would exceed the generate task limit",
-						"task_id":             item.Id,
-						"distro_id":           d.distroID,
-						"generate_task_limit": generateTasksLimit,
-						"pending_generate":    pendingGenerateTasks,
-						"tasks_to_generate":   tasksToGenerate,
+						"dispatcher":             DAGDispatcher,
+						"function":               "FindNextTask",
+						"message":                "skipping task because it would exceed the generate task limit",
+						"task_id":                item.Id,
+						"distro_id":              d.distroID,
+						"generate_task_limit":    generateTasksLimit,
+						"pending_generate_tasks": pendingGenerateTasks,
+						"tasks_to_generate":      tasksToGenerate,
 					})
 					continue
 				}
