@@ -625,7 +625,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			// When saving a webhook that has redacted values, it should not update to the redacted
 			// values but stay as the existing values.
 
-			// This subscription just makes sure we don't accidently affect other subscriptions
+			// This subscription just makes sure we don't accidentally affect other subscriptions
 			// when saving subscriptions.
 			t.Run("SaveRedactedWebhookSecretAndHeader", func(t *testing.T) {
 				noiseSubscription := event.Subscription{
