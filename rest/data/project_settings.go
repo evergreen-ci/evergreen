@@ -436,7 +436,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				subscriptionChanges = append(subscriptionChanges, subscription)
 				continue
 			}
-			if webhook.Secret != nil && *webhook.Secret == evergreen.RedactedValue {
+			if utility.FromStringPtr(webhook.Secret) == evergreen.RedactedValue {
 				previousSecret := string(previousSubscription.Secret)
 				webhook.Secret = &previousSecret
 			}
