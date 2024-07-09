@@ -437,8 +437,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				continue
 			}
 			if utility.FromStringPtr(webhook.Secret) == evergreen.RedactedValue {
-				previousSecret := string(previousSubscription.Secret)
-				webhook.Secret = &previousSecret
+				webhook.Secret = utility.ToStringPtr(string(previousSubscription.Secret))
 			}
 			newHeaders := []restModel.APIWebhookHeader{}
 			for _, header := range webhook.Headers {
