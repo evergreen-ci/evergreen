@@ -191,6 +191,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settings.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, settings.ServiceFlags.SleepScheduleDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, settings.ServiceFlags.SystemFailedTaskRestartDisabled)
+	s.EqualValues(testSettings.ServiceFlags.CPUDegradedModeDisabled, settings.ServiceFlags.CPUDegradedModeDisabled)
 	s.EqualValues(testSettings.Slack.Level, settings.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settings.Slack.Options.Channel)
 	s.ElementsMatch(testSettings.SleepSchedule.PermanentlyExemptHosts, settings.SleepSchedule.PermanentlyExemptHosts)
