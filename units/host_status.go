@@ -135,13 +135,13 @@ clientsLoop:
 
 		for _, h := range hosts {
 			statusCtx, cancel := context.WithTimeout(ctx, time.Minute)
-			cloudStatus, err := m.GetInstanceStatus(statusCtx, &h)
+			cloudInfo, err := m.GetInstanceState(statusCtx, &h)
 			cancel()
 			if err != nil {
 				j.AddError(errors.Wrapf(err, "checking instance status of host '%s'", h.Id))
 				continue clientsLoop
 			}
-			j.AddError(errors.Wrapf(j.setCloudHostStatus(ctx, m, h, cloudStatus), "setting status for host '%s' based on its cloud instance's status", h.Id))
+			j.AddError(errors.Wrapf(j.setCloudHostStatus(ctx, m, h, cloudInfo.Status), "setting status for host '%s' based on its cloud instance's status", h.Id))
 		}
 	}
 }

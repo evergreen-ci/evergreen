@@ -46,8 +46,8 @@ func (cloudHost *CloudHost) StartInstance(ctx context.Context, user string) erro
 	return cloudHost.CloudMgr.StartInstance(ctx, cloudHost.Host, user)
 }
 
-func (cloudHost *CloudHost) GetInstanceStatus(ctx context.Context) (CloudStatus, error) {
-	return cloudHost.CloudMgr.GetInstanceStatus(ctx, cloudHost.Host)
+func (cloudHost *CloudHost) GetInstanceState(ctx context.Context) (CloudInstanceState, error) {
+	return cloudHost.CloudMgr.GetInstanceState(ctx, cloudHost.Host)
 }
 
 func (cloudHost *CloudHost) GetDNSName(ctx context.Context) (string, error) {
