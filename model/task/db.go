@@ -17,6 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -1814,7 +1815,24 @@ func FindActivatedByVersionWithoutDisplay(versionId string) ([]Task, error) {
 
 }
 
-func updateAllTasksForMatchingDependencies(ctx context.Context, taskIDs []string, dependencyID string, unattainable bool) error {
+// updateAllTasksForAllMatchingDependencies updates all tasks (taskIDs) that
+// have matching dependencies (dependencyIDs) to mark them as attainable or not.
+// Secondly, for a given task, after updating individual dependency
+// attainability, it updates the cache of whether the task has all attainable
+// dependencies or not.
+func updateAllTasksForAllMatchingDependencies(ctx context.Context, taskIDs []string, dependencyIDs []string, unattainable bool) error {
+	ctx, span := tracer.Start(ctx, "update-task-dependencies", trace.WithAttributes(
+		// Because some projects have huge dependency trees and task IDs are
+		// long strings, this update has the potential to make an extremely
+		// large query that exceeds the 16 MB aggregation size limit. Track the
+		// number of tasks/dependencies that it's trying to update to diagnose
+		// such problems.
+		attribute.Int("num_tasks", len(taskIDs)),
+		attribute.Int("num_dependencies", len(dependencyIDs)),
+		attribute.Bool("unattainable", unattainable),
+	))
+	defer span.End()
+
 	// Update the matching dependencies in the DependsOn array and the UnattainableDependency field that caches
 	// whether any of the dependencies are blocked. Combining both these updates in a single update operation makes it
 	// impervious to races because updates to single documents are atomic.
@@ -1824,15 +1842,16 @@ func updateAllTasksForMatchingDependencies(ctx context.Context, taskIDs []string
 		},
 		[]bson.M{
 			{
-				// Iterate over the DependsOn array and set unattainable for dependencies that
-				// match the dependencyID. Leave other dependencies untouched.
+				// Iterate over the DependsOn array and set unattainable for
+				// dependencies matching by IDs. Leave other dependencies
+				// untouched.
 				"$set": bson.M{DependsOnKey: bson.M{
 					"$map": bson.M{
 						"input": "$" + DependsOnKey,
 						"as":    "dependency",
 						"in": bson.M{
 							"$cond": bson.M{
-								"if":   bson.M{"$eq": []string{bsonutil.GetDottedKeyName("$$dependency", DependencyTaskIdKey), dependencyID}},
+								"if":   bson.M{"$in": bson.A{bsonutil.GetDottedKeyName("$$dependency", DependencyTaskIdKey), dependencyIDs}},
 								"then": bson.M{"$mergeObjects": bson.A{"$$dependency", bson.M{DependencyUnattainableKey: unattainable}}},
 								"else": "$$dependency",
 							},
@@ -2643,17 +2662,49 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	return pipeline, nil
 }
 
-func (t *Task) FindAllUnmarkedBlockedDependencies() ([]Task, error) {
-	okStatusSet := []string{AllStatuses, t.Status}
-	query := db.Query(bson.M{
-		DependsOnKey: bson.M{"$elemMatch": bson.M{
-			DependencyTaskIdKey:       t.Id,
-			DependencyStatusKey:       bson.M{"$nin": okStatusSet},
-			DependencyUnattainableKey: false,
-		},
-		}},
-	)
-	return FindAll(query)
+// FindAllUnmarkedDependenciesToBlock finds tasks that depend on one of the
+// given tasks. For each task dependency, it finds those that have not been
+// marked unattainable and currently have a status that would block the task
+// from running.
+// This must find tasks in smaller chunks to avoid the 16 MB query size limit -
+// if the number of tasks is large, a single query could be too large and the DB
+// will reject it.
+func FindAllUnmarkedDependenciesToBlock(tasks []Task) ([]Task, error) {
+	if len(tasks) == 0 {
+		return nil, nil
+	}
+
+	const maxTasksPerQuery = 2000
+	var unmatchedDep []bson.M
+	allTasks := make([]Task, 0, len(tasks))
+
+	for i, t := range tasks {
+		okStatusSet := []string{AllStatuses, t.Status}
+		unmatchedDep = append(unmatchedDep, bson.M{
+			DependsOnKey: bson.M{"$elemMatch": bson.M{
+				DependencyTaskIdKey:       t.Id,
+				DependencyStatusKey:       bson.M{"$nin": okStatusSet},
+				DependencyUnattainableKey: false,
+			}},
+		})
+
+		if i == len(tasks)-1 || len(unmatchedDep) >= maxTasksPerQuery {
+			// Query the tasks now - either there's no remaining task
+			// dependencies to check, or the max task dependencies that can be
+			// checked per query has been reached.
+			query := db.Query(bson.M{
+				"$or": unmatchedDep,
+			})
+			tasks, err := FindAll(query)
+			if err != nil {
+				return nil, err
+			}
+			allTasks = append(allTasks, tasks...)
+			unmatchedDep = nil
+		}
+	}
+
+	return allTasks, nil
 }
 
 func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {

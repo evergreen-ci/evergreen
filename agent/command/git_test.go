@@ -287,9 +287,6 @@ func (s *GitGetProjectSuite) TestGitPlugin() {
 	conf := s.taskConfig1
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
-	token, err := s.settings.GetGithubOauthToken()
-	s.Require().NoError(err)
-	conf.Expansions.Put("github", token)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -329,8 +326,7 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	conf.ProjectRef.Repo = "invalidRepo"
 	conf.Distro = nil
 	s.comm.CreateInstallationTokenFail = true
-	token, err := s.settings.GetGithubOauthToken()
-	s.Require().NoError(err)
+	token := "abcdefghij"
 	conf.Expansions.Put(evergreen.GlobalGitHubTokenExpansion, token)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -414,9 +410,7 @@ func (s *GitGetProjectSuite) TestValidateGitCommands() {
 	conf := s.taskConfig2
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
-	token, err := s.settings.GetGithubOauthToken()
-	s.Require().NoError(err)
-	conf.Expansions.Put(evergreen.GlobalGitHubTokenExpansion, token)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	var pluginCmds []Command
@@ -787,9 +781,7 @@ func (s *GitGetProjectSuite) TestMultipleModules() {
 
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
-	token, err := s.settings.GetGithubOauthToken()
-	s.Require().NoError(err)
-	conf.Expansions.Put(evergreen.GlobalGitHubTokenExpansion, token)
+
 	var pluginCmds []Command
 
 	conf.Expansions.Put(moduleRevExpansionName("sample-1"), sample1Hash)

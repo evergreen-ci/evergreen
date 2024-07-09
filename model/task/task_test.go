@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -2280,26 +2281,35 @@ func TestTopologicalSort(t *testing.T) {
 
 func TestActivateTasks(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection))
+		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, user.Collection))
 	}()
 
 	t.Run("DependencyChain", func(t *testing.T) {
-		require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
+		require.NoError(t, db.ClearCollections(Collection, event.EventCollection, user.Collection))
+		u := &user.DBUser{
+			Id: "user",
+		}
+		require.NoError(t, u.Insert())
 		tasks := []Task{
-			{Id: "t0", Priority: evergreen.DisabledTaskPriority},
-			{Id: "t1", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false},
-			{Id: "t2", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}, Activated: false, DeactivatedForDependency: true},
-			{Id: "t3", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false, DeactivatedForDependency: true},
-			{Id: "t4", DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t3"}}, Activated: false, DeactivatedForDependency: true},
-			{Id: "t5", DependsOn: []Dependency{{TaskId: "t0"}}, Activated: true, DeactivatedForDependency: true},
+			{Id: "t0", Requester: evergreen.PatchVersionRequester, Priority: evergreen.DisabledTaskPriority},
+			{Id: "t1", Requester: evergreen.PatchVersionRequester, DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false, EstimatedNumActivatedGeneratedTasks: utility.ToIntPtr(100)},
+			{Id: "t2", Requester: evergreen.PatchVersionRequester, DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t1"}}, Activated: false, DeactivatedForDependency: true},
+			{Id: "t3", Requester: evergreen.PatchVersionRequester, DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false, DeactivatedForDependency: true},
+			{Id: "t4", Requester: evergreen.PatchVersionRequester, DependsOn: []Dependency{{TaskId: "t0"}, {TaskId: "t3"}}, Activated: false, DeactivatedForDependency: true},
+			{Id: "t5", Requester: evergreen.PatchVersionRequester, DependsOn: []Dependency{{TaskId: "t0"}}, Activated: true, DeactivatedForDependency: true},
 		}
 		for _, task := range tasks {
 			require.NoError(t, task.Insert())
 		}
 
 		updatedIDs := []string{"t0", "t3", "t4"}
-		err := ActivateTasks([]Task{tasks[0]}, time.Time{}, true, "")
+		err := ActivateTasks([]Task{tasks[0]}, time.Time{}, true, u.Id)
 		assert.NoError(t, err)
+
+		u, err = user.FindOne(user.ById(u.Id))
+		require.NoError(t, err)
+		require.NotNil(t, u)
+		assert.Equal(t, u.NumScheduledPatchTasks, len(updatedIDs))
 
 		dbTasks, err := FindAll(All)
 		assert.NoError(t, err)
@@ -2323,6 +2333,10 @@ func TestActivateTasks(t *testing.T) {
 				assert.Empty(t, events)
 			}
 		}
+
+		err = ActivateTasks([]Task{tasks[1]}, time.Time{}, true, u.Id)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), fmt.Sprintf("cannot schedule %d tasks, maximum hourly per-user limit is %d", 102, 100))
 	})
 
 	t.Run("NoopActivatedTask", func(t *testing.T) {
@@ -3015,7 +3029,7 @@ func getTaskThatNeedsContainerAllocation() Task {
 	}
 }
 
-func TestMarkAllForUnattainableDependency(t *testing.T) {
+func TestMarkAllForUnattainableDependencies(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
 	}()
@@ -3047,7 +3061,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 			}
 			require.NoError(t, dependentTask.Insert())
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", true)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t1"}, true)
 			require.NoError(t, err)
 			require.Len(t, updatedDependentTasks, 1)
 			dependentTask = updatedDependentTasks[0]
@@ -3066,7 +3080,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 					Id: "t0",
 					DependsOn: []Dependency{
 						{
-							TaskId:       "t1",
+							TaskId:       "t4",
 							Unattainable: false,
 						},
 						{
@@ -3079,7 +3093,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 					Id: "t1",
 					DependsOn: []Dependency{
 						{
-							TaskId:       "t1",
+							TaskId:       "t4",
 							Unattainable: false,
 						},
 					},
@@ -3088,7 +3102,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 					Id: "t2",
 					DependsOn: []Dependency{
 						{
-							TaskId:       "t2",
+							TaskId:       "t5",
 							Unattainable: false,
 						},
 					},
@@ -3098,7 +3112,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 				require.NoError(t, dependentTask.Insert())
 			}
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, dependentTasks, "t1", true)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, dependentTasks, []string{"t4"}, true)
 			assert.NoError(t, err)
 			require.Len(t, updatedDependentTasks, len(dependentTasks))
 
@@ -3131,6 +3145,82 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 				}
 			}
 		},
+		"BlocksManyDependenciesForManyTasks": func(ctx context.Context, t *testing.T) {
+			dependentTasks := []Task{
+				{
+					Id: "t0",
+					DependsOn: []Dependency{
+						{
+							TaskId:       "t2",
+							Unattainable: false,
+						},
+						{
+							TaskId:       "t4",
+							Unattainable: false,
+						},
+					},
+				},
+				{
+					Id: "t1",
+					DependsOn: []Dependency{
+						{
+							TaskId:       "t4",
+							Unattainable: false,
+						},
+						{
+							TaskId:       "t5",
+							Unattainable: false,
+						},
+					},
+				},
+				{
+					Id: "t2",
+					DependsOn: []Dependency{
+						{
+							TaskId:       "t6",
+							Unattainable: false,
+						},
+					},
+				},
+			}
+			for _, dependentTask := range dependentTasks {
+				require.NoError(t, dependentTask.Insert())
+			}
+
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, dependentTasks, []string{"t4", "t5"}, true)
+			assert.NoError(t, err)
+			require.Len(t, updatedDependentTasks, len(dependentTasks))
+
+			for _, updatedDependentTask := range updatedDependentTasks {
+				switch updatedDependentTask.Id {
+				case dependentTasks[0].Id:
+					checkTaskAndDB(t, updatedDependentTasks[0], func(t *testing.T, taskToCheck Task) {
+						assert.True(t, taskToCheck.Blocked())
+						assert.True(t, taskToCheck.UnattainableDependency)
+						require.Len(t, taskToCheck.DependsOn, 2)
+						assert.False(t, taskToCheck.DependsOn[0].Unattainable)
+						assert.True(t, taskToCheck.DependsOn[1].Unattainable)
+					})
+				case dependentTasks[1].Id:
+					checkTaskAndDB(t, updatedDependentTasks[1], func(t *testing.T, taskToCheck Task) {
+						assert.True(t, taskToCheck.Blocked())
+						assert.True(t, taskToCheck.UnattainableDependency)
+						require.Len(t, taskToCheck.DependsOn, 2)
+						assert.True(t, taskToCheck.DependsOn[0].Unattainable)
+						assert.True(t, taskToCheck.DependsOn[1].Unattainable)
+					})
+				case dependentTasks[2].Id:
+					checkTaskAndDB(t, updatedDependentTasks[2], func(t *testing.T, taskToCheck Task) {
+						assert.False(t, taskToCheck.Blocked())
+						assert.False(t, taskToCheck.UnattainableDependency)
+						require.Len(t, taskToCheck.DependsOn, 1)
+						assert.False(t, taskToCheck.DependsOn[0].Unattainable)
+					})
+				default:
+					assert.Fail(t, "unexpected task '%s' in updated tasks", updatedDependentTask.Id)
+				}
+			}
+		},
 		"NonexistentDependency": func(ctx context.Context, t *testing.T) {
 			dependentTask := Task{
 				Id: "t0",
@@ -3147,7 +3237,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 			}
 			require.NoError(t, dependentTask.Insert())
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t3", true)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t3"}, true)
 			require.NoError(t, err)
 			require.Len(t, updatedDependentTasks, 1)
 			dependentTask = updatedDependentTasks[0]
@@ -3176,7 +3266,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 			}
 			require.NoError(t, dependentTask.Insert())
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", false)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t1"}, false)
 			require.NoError(t, err)
 			require.Len(t, updatedDependentTasks, 1)
 			dependentTask = updatedDependentTasks[0]
@@ -3205,7 +3295,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 			}
 			require.NoError(t, dependentTask.Insert())
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", false)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t1"}, false)
 			require.NoError(t, err)
 			require.Len(t, updatedDependentTasks, 1)
 			dependentTask = updatedDependentTasks[0]
@@ -3236,7 +3326,7 @@ func TestMarkAllForUnattainableDependency(t *testing.T) {
 
 			dependentTask.DependsOn[1].Unattainable = true
 
-			updatedDependentTasks, err := MarkAllForUnattainableDependency(ctx, []Task{dependentTask}, "t1", false)
+			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t1"}, false)
 			require.NoError(t, err)
 			require.Len(t, updatedDependentTasks, 1)
 			dependentTask = updatedDependentTasks[0]

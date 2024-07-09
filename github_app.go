@@ -138,10 +138,7 @@ func getInstallationID(ctx context.Context, authFields *GithubAppAuth, owner, re
 		Owner:          owner,
 		Repo:           repo,
 		InstallationID: installationID,
-	}
-
-	if authFields.AppID != 0 {
-		cachedInstallation.AppID = authFields.AppID
+		AppID:          authFields.AppID,
 	}
 
 	if err := cachedInstallation.Upsert(ctx); err != nil {
@@ -156,14 +153,16 @@ func byAppOwnerRepo(appId int64, owner, repo string) bson.M {
 	q := bson.M{
 		ownerKey: owner,
 		repoKey:  repo,
-	}
-	if appId != 0 {
-		q[appIDKey] = appId
+		appIDKey: appId,
 	}
 	return q
 }
 
-func validateOwnerRepo(owner, repo string) error {
+func validateOwnerRepo(appId int64, owner, repo string) error {
+	if appId == 0 {
+		return errors.New("App ID must not be 0")
+	}
+
 	if len(owner) == 0 || len(repo) == 0 {
 		return errors.New("Owner and repository must not be empty strings")
 	}
@@ -172,7 +171,7 @@ func validateOwnerRepo(owner, repo string) error {
 
 // Upsert updates the installation information in the database.
 func (h *GitHubAppInstallation) Upsert(ctx context.Context) error {
-	if err := validateOwnerRepo(h.Owner, h.Repo); err != nil {
+	if err := validateOwnerRepo(h.AppID, h.Owner, h.Repo); err != nil {
 		return err
 	}
 
@@ -191,7 +190,7 @@ func (h *GitHubAppInstallation) Upsert(ctx context.Context) error {
 
 // getInstallationID returns the cached installation ID for GitHub app from the database.
 func getInstallationIDFromCache(ctx context.Context, app int64, owner, repo string) (int64, error) {
-	if err := validateOwnerRepo(owner, repo); err != nil {
+	if err := validateOwnerRepo(app, owner, repo); err != nil {
 		return 0, err
 	}
 

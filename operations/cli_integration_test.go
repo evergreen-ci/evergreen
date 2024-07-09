@@ -193,9 +193,7 @@ func TestCLIFetchSource(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(testTask, ShouldNotBeNil)
 
-		token, err := testConfig.GetGithubOauthToken()
-		So(err, ShouldBeNil)
-		err = fetchSource(ctx, ac, rc, comm, "", testTask.Id, token, false)
+		err = fetchSource(ctx, ac, rc, comm, "", testTask.Id, "", false)
 		So(err, ShouldBeNil)
 
 		fileStat, err := os.Stat("./source-patch-1_sample/README.md")

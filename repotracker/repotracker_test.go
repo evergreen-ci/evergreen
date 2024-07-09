@@ -31,16 +31,13 @@ func TestFetchRevisions(t *testing.T) {
 	dropTestDB(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 	defer cancel()
-	Convey("With a GithubRepositoryPoller with a valid OAuth token...", t, func() {
+	Convey("With a GithubRepositoryPoller", t, func() {
 		err := modelutil.CreateTestLocalConfig(testConfig, "mci-test", "")
-		So(err, ShouldBeNil)
-		token, err := testConfig.GetGithubOauthToken()
 		So(err, ShouldBeNil)
 
 		resetProjectRefs()
-
+		token := ""
 		repoTracker := RepoTracker{
 			testConfig,
 			evgProjectRef,
@@ -63,6 +60,7 @@ func TestFetchRevisions(t *testing.T) {
 
 		Convey("Only get 2 revisions from the given repository if given a "+
 			"limit of 2 commits where 3 exist", func() {
+			testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 2
 			require.NoError(t, repoTracker.FetchRevisions(ctx),
 				"Error running repository process %s", repoTracker.Settings.Id)
@@ -97,6 +95,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 		Convey("On storing a single repo revision, we expect a version to be created"+
 			" in the database for this project, which should be retrieved when we search"+
 			" for this project's most recent version", func() {
+			testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 			createTime := time.Now()
 			revisionOne := *createTestRevision("1d97b5e8127a684f341d9fea5b3a2848f075c3b0", createTime)
 			revisions := []model.Revision{revisionOne}
@@ -112,6 +111,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 		Convey("On storing several repo revisions, we expect a version to be created "+
 			"for each revision", func() {
+			testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 			createTime := time.Now()
 			laterCreateTime := createTime.Add(4 * time.Hour)
 
@@ -134,6 +134,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			So(versionTwo.AuthorID, ShouldEqual, "")
 		})
 		Convey("if an evergreen user can be associated with the commit, record it", func() {
+			testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 			revisionOne := *createTestRevision("1d97b5e8127a684f341d9fea5b3a2848f075c3b0", time.Now())
 			revisions := []model.Revision{revisionOne}
 			revisions[0].AuthorGithubUID = 1234
