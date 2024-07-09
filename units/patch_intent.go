@@ -507,7 +507,7 @@ func (j *patchIntentProcessor) setGitHubPatchingError(err error) error {
 		j.gitHubError = GitHubInternalError
 	}
 	if strings.Contains(err.Error(), model.LoadProjectError) {
-		j.gitHubError = fmt.Sprintf("%s: please sync with base branch and run `evergreen validate`", InvalidConfig)
+		j.gitHubError = InvalidConfig
 	}
 	return err
 }

@@ -46,7 +46,7 @@ const (
 	noChildPatchTasksOrVariants = "no tasks/variants were configured for child patch"
 	NoSyncTasksOrVariants       = "no tasks/variants were configured for sync"
 	GitHubInternalError         = "GitHub returned an error"
-	InvalidConfig               = "config file was invalid"
+	InvalidConfig               = "config file was invalid: please sync with base branch and run `evergreen validate`"
 	EmptyConfig                 = "config file was empty"
 	ProjectFailsValidation      = "Project fails validation"
 	OtherErrors                 = "Evergreen error"
