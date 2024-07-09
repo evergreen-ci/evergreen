@@ -11,6 +11,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	Packages   = "Packages"
+	Toolchains = "Toolchains"
+)
+
 type RuntimeEnvironmentsClient struct {
 	Client  *http.Client
 	BaseURL string
@@ -103,7 +108,7 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts Image
 	}
 	filteredChanges := []ImageDiffChange{}
 	for _, c := range changes {
-		if c.Type == "Packages" || c.Type == "Toolchains" {
+		if c.Type == Packages || c.Type == Toolchains {
 			filteredChanges = append(filteredChanges, c)
 		}
 	}
