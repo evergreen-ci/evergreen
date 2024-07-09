@@ -176,6 +176,15 @@ func (s *WebhookSubscriber) validate() error {
 	return catcher.Resolve()
 }
 
+func (s *WebhookSubscriber) GetHeader(key string) string {
+	for _, h := range s.Headers {
+		if h.Key == key {
+			return h.Value
+		}
+	}
+	return ""
+}
+
 type JIRAIssueSubscriber struct {
 	Project   string `bson:"project"`
 	IssueType string `bson:"issue_type"`
