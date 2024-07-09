@@ -70,25 +70,6 @@ func TestGetGithubSettings(t *testing.T) {
 	settings, err := NewSettings(filepath.Join(FindEvergreenHome(),
 		"testdata", "mci_settings.yml"))
 	assert.NoError(err)
-	assert.Empty(settings.Credentials["github"])
-
-	token, err := settings.GetGithubOauthToken()
-	assert.NoError(err)
-	assert.Empty(token)
-
-	settings, err = NewSettings(filepath.Join(FindEvergreenHome(),
-		"config_test", "evg_settings.yml"))
-	assert.NoError(err)
-	assert.NotNil(settings.Credentials["github"])
-
-	token, err = settings.GetGithubOauthString()
-	assert.NoError(err)
-	assert.Equal(settings.Credentials["github"], token)
-
-	settings.AuthConfig.Github = &GithubAuthConfig{
-		AppId: 0,
-	}
-	settings.Expansions[GithubAppPrivateKey] = ""
 
 	authFields := settings.CreateGitHubAppAuth()
 	assert.Nil(authFields)
@@ -105,15 +86,6 @@ func TestGetGithubSettings(t *testing.T) {
 	assert.NotNil(authFields)
 	assert.Equal(int64(1234), authFields.AppID)
 	assert.Equal([]byte("key"), authFields.PrivateKey)
-
-	assert.NotPanics(func() {
-		settings := &Settings{}
-		assert.Nil(settings.Credentials)
-
-		token, err = settings.GetGithubOauthToken()
-		assert.NoError(err)
-		assert.Empty(token)
-	})
 }
 
 type AdminSuite struct {

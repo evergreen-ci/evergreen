@@ -36,14 +36,12 @@ type githubSuite struct {
 	suite.Suite
 	config *evergreen.Settings
 
-	token  string
 	ctx    context.Context
 	cancel func()
 }
 
 func (s *githubSuite) SetupTest() {
 	var err error
-	s.token, err = s.config.GetGithubOauthToken()
 	s.NoError(err)
 
 	s.ctx, s.cancel = context.WithTimeout(context.Background(), 30*time.Second)
@@ -145,20 +143,20 @@ func (s *githubSuite) TestGithubShouldRetry() {
 }
 
 func (s *githubSuite) TestCheckGithubAPILimit() {
-	rem, err := CheckGithubAPILimit(s.ctx, s.token)
+	rem, err := CheckGithubAPILimit(s.ctx, "")
 	s.NoError(err)
 	s.NotNil(rem)
 }
 
 func (s *githubSuite) TestGetGithubCommits() {
-	githubCommits, _, err := GetGithubCommits(s.ctx, s.token, "evergreen-ci", "sample", "", time.Time{}, 0)
+	githubCommits, _, err := GetGithubCommits(s.ctx, "", "evergreen-ci", "sample", "", time.Time{}, 0)
 	s.NoError(err)
 	s.Len(githubCommits, 18)
 }
 
 func (s *githubSuite) TestGetGithubCommitsUntil() {
 	until := time.Date(2015, time.January, 1, 0, 0, 0, 0, time.UTC)
-	githubCommits, _, err := GetGithubCommits(s.ctx, s.token, "evergreen-ci", "sample", "", until, 0)
+	githubCommits, _, err := GetGithubCommits(s.ctx, "", "evergreen-ci", "sample", "", until, 0)
 	s.NoError(err)
 	s.Len(githubCommits, 4)
 }
@@ -179,20 +177,20 @@ func (s *githubSuite) TestRevokeInstallationToken() {
 
 func (s *githubSuite) TestGetTaggedCommitFromGithub() {
 	s.Run("AnnotatedTag", func() {
-		commit, err := GetTaggedCommitFromGithub(s.ctx, s.token, "evergreen-ci", "spruce", "refs/tags/v3.0.97")
+		commit, err := GetTaggedCommitFromGithub(s.ctx, "", "evergreen-ci", "spruce", "refs/tags/v3.0.97")
 		s.NoError(err)
 		s.Equal("89549e0939ecf5fc59ddd288d860b8a150e6346e", commit)
 	})
 
 	s.Run("LightweightTag", func() {
-		commit, err := GetTaggedCommitFromGithub(s.ctx, s.token, "evergreen-ci", "evergreen", "refs/tags/v3")
+		commit, err := GetTaggedCommitFromGithub(s.ctx, "", "evergreen-ci", "evergreen", "refs/tags/v3")
 		s.NoError(err)
 		s.Equal("f0dd0c11df68b975c7dab3d7d3ee675d27119736", commit)
 	})
 }
 
 func (s *githubSuite) TestGetBranchEvent() {
-	branch, err := GetBranchEvent(s.ctx, s.token, "evergreen-ci", "evergreen", "main")
+	branch, err := GetBranchEvent(s.ctx, "", "evergreen-ci", "evergreen", "main")
 	s.NoError(err)
 	s.NotPanics(func() {
 		s.Equal("main", *branch.Name)
@@ -201,20 +199,20 @@ func (s *githubSuite) TestGetBranchEvent() {
 }
 
 func (s *githubSuite) TestGithubMergeBaseRevision() {
-	rev, err := GetGithubMergeBaseRevision(s.ctx, s.token, "evergreen-ci", "evergreen",
+	rev, err := GetGithubMergeBaseRevision(s.ctx, "", "evergreen-ci", "evergreen",
 		"105bbb4b34e7da59c42cb93d92954710b1f101ee", "49bb297759edd1284ef6adee665180e7b7bac299")
 	s.NoError(err)
 	s.Equal("2c282735952d7b15e5af7075f483a896783dc2a4", rev)
 }
 
 func (s *githubSuite) TestGetGithubFile() {
-	_, err := GetGithubFile(s.ctx, s.token, "evergreen-ci", "evergreen",
+	_, err := GetGithubFile(s.ctx, "", "evergreen-ci", "evergreen",
 		"doesntexist.txt", "105bbb4b34e7da59c42cb93d92954710b1f101ee")
 	s.Error(err)
 	s.IsType(FileNotFoundError{}, err)
 	s.EqualError(err, "Requested file at doesntexist.txt not found")
 
-	file, err := GetGithubFile(s.ctx, s.token, "evergreen-ci", "evergreen",
+	file, err := GetGithubFile(s.ctx, "", "evergreen-ci", "evergreen",
 		"self-tests.yml", "105bbb4b34e7da59c42cb93d92954710b1f101ee")
 	s.NoError(err)
 	s.NotPanics(func() {
@@ -234,11 +232,11 @@ func (s *githubSuite) TestGetGithubFile() {
 }
 
 func (s *githubSuite) TestGetCommitEvent() {
-	commit, err := GetCommitEvent(s.ctx, s.token, "evergreen-ci", "evergreen", "nope")
+	commit, err := GetCommitEvent(s.ctx, "", "evergreen-ci", "evergreen", "nope")
 	s.Error(err)
 	s.Nil(commit)
 
-	commit, err = GetCommitEvent(s.ctx, s.token, "evergreen-ci", "evergreen", "ddf48e044c307e3f8734279be95f2d9d7134410f")
+	commit, err = GetCommitEvent(s.ctx, "", "evergreen-ci", "evergreen", "ddf48e044c307e3f8734279be95f2d9d7134410f")
 	s.NoError(err)
 
 	s.NotPanics(func() {
@@ -249,7 +247,7 @@ func (s *githubSuite) TestGetCommitEvent() {
 }
 
 func (s *githubSuite) TestGetGithubUser() {
-	user, err := GetGithubUser(s.ctx, s.token, "octocat")
+	user, err := GetGithubUser(s.ctx, "", "octocat")
 	s.NoError(err)
 	s.Require().NotNil(user)
 	s.NotPanics(func() {
@@ -266,7 +264,7 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 		HeadRepo:  "somebodyoutthere",
 		PRNumber:  666,
 	}
-	hash, err := GetPullRequestMergeBase(s.ctx, s.token, data)
+	hash, err := GetPullRequestMergeBase(s.ctx, "", data)
 	s.NoError(err)
 	s.Equal("61d770097ca0515e46d29add8f9b69e9d9272b94", hash)
 
@@ -278,23 +276,23 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 	s.Require().NotNil(s.ctx)
 	s.Require().NotNil(s.cancel)
 	data.BaseRepo = "conifer"
-	hash, err = GetPullRequestMergeBase(s.ctx, s.token, data)
+	hash, err = GetPullRequestMergeBase(s.ctx, "", data)
 	s.Error(err)
 	s.Empty(hash)
 }
 
 func (s *githubSuite) TestGithubUserInOrganization() {
-	isMember, err := GithubUserInOrganization(s.ctx, s.token, "evergreen-ci", "octocat")
+	isMember, err := GithubUserInOrganization(s.ctx, "", "evergreen-ci", "octocat")
 	s.NoError(err)
 	s.False(isMember)
 }
 
 func (s *githubSuite) TestGitHubUserPermissionLevel() {
-	hasPermission, err := GitHubUserHasWritePermission(s.ctx, s.token, "evergreen-ci", "evergreen", "evrg-bot-webhook")
+	hasPermission, err := GitHubUserHasWritePermission(s.ctx, "", "evergreen-ci", "evergreen", "evrg-bot-webhook")
 	s.NoError(err)
 	s.True(hasPermission)
 
-	hasPermission, err = GitHubUserHasWritePermission(s.ctx, s.token, "evergreen-ci", "evergreen", "octocat")
+	hasPermission, err = GitHubUserHasWritePermission(s.ctx, "", "evergreen-ci", "evergreen", "octocat")
 	s.NoError(err)
 	s.False(hasPermission)
 }
@@ -307,14 +305,14 @@ func (s *githubSuite) TestGetGithubPullRequestDiff() {
 		BaseBranch: "main",
 	}
 
-	diff, summaries, err := GetGithubPullRequestDiff(s.ctx, s.token, p)
+	diff, summaries, err := GetGithubPullRequestDiff(s.ctx, "", p)
 	s.NoError(err)
 	s.Len(summaries, 2)
 	s.Contains(diff, "diff --git a/cli/host.go b/cli/host.go")
 }
 
 func (s *githubSuite) TestGetBranchProtectionRules() {
-	_, err := GetEvergreenBranchProtectionRules(s.ctx, s.token, "evergreen-ci", "evergreen", "main")
+	_, err := GetEvergreenBranchProtectionRules(s.ctx, "", "evergreen-ci", "evergreen", "main")
 	s.NoError(err)
 }
 

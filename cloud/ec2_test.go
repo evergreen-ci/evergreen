@@ -648,15 +648,15 @@ func (s *EC2Suite) TestModifyHostWithExpiredTemporaryExemption() {
 	s.WithinDuration(time.Now().Add(hours*time.Hour), dbHost.SleepSchedule.TemporarilyExemptUntil, time.Minute, "should create new temporary exemption rather than extend the expired one")
 }
 
-func (s *EC2Suite) TestGetInstanceStatus() {
+func (s *EC2Suite) TestGetInstanceInformation() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 	s.Require().NoError(s.h.Insert(ctx))
 
 	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	status, err := s.onDemandManager.GetInstanceStatus(ctx, s.h)
+	info, err := s.onDemandManager.GetInstanceState(ctx, s.h)
 	s.NoError(err)
-	s.Equal(StatusRunning, status)
+	s.Equal(StatusRunning, info.Status)
 
 	// instance information is cached in the host
 	s.Equal("us-east-1a", s.h.Zone)
