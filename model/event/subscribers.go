@@ -176,6 +176,7 @@ func (s *WebhookSubscriber) validate() error {
 	return catcher.Resolve()
 }
 
+// GetHeader gets the value for the given key.
 func (s *WebhookSubscriber) GetHeader(key string) string {
 	for _, h := range s.Headers {
 		if h.Key == key {
