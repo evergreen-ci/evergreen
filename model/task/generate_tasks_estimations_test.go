@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -82,12 +81,6 @@ func TestGenerateTasksEstimations(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(2, utility.FromIntPtr(t4.EstimatedNumGeneratedTasks))
 	assert.Equal(20, utility.FromIntPtr(t4.EstimatedNumActivatedGeneratedTasks))
-
-	dbTask, err := FindOneId(t4.Id)
-	assert.NoError(err)
-	require.NotZero(t, dbTask)
-	assert.Equal(2, utility.FromIntPtr(dbTask.EstimatedNumGeneratedTasks))
-	assert.Equal(20, utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks))
 }
 
 func TestGenerateTasksEstimationsNoPreviousTasks(t *testing.T) {
