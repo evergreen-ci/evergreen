@@ -94,3 +94,34 @@ func TestGetPackages(t *testing.T) {
 	_, err = c.getPackages(ctx, PackageFilterOptions{})
 	require.Error(t, err)
 }
+
+func TestGetImageDiff(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert := assert.New(t)
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config, "TestGetImageDiff")
+	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+
+	// Verify that getImageDiff correctly returns Toolchain/Package changes for a pair of sample AMIs.
+	opts := ImageDiffOptions{
+		BeforeAMI: "ami-029ab576546a58916",
+		AfterAMI:  "ami-02b25f680ad574d33",
+	}
+	result, err := c.getImageDiff(ctx, opts)
+	require.NoError(t, err)
+	assert.NotEmpty(result)
+	for _, change := range result {
+		assert.True(change.Type == "Toolchains" || change.Type == "Packages")
+	}
+
+	// Verify that getImageDiff finds no differences between the same AMI.
+	opts = ImageDiffOptions{
+		BeforeAMI: "ami-016662ab459a49e9d",
+		AfterAMI:  "ami-016662ab459a49e9d",
+	}
+	result, err = c.getImageDiff(ctx, opts)
+	require.NoError(t, err)
+	assert.Empty(result)
+}
