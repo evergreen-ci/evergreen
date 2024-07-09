@@ -213,6 +213,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 // of an ec2 fleet and a state reason if available. The state reason should not be
 // used to determine the status of the ec2 fleet but rather to provide additional
 // context about the state of the ec2 state.
+// For more information about ec2 state's, look in to the instance.StateReason field.
 func (m *ec2FleetManager) GetInstanceState(ctx context.Context, h *host.Host) (CloudInstanceState, error) {
 	info := CloudInstanceState{Status: StatusUnknown}
 
