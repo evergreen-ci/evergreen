@@ -86,9 +86,9 @@ func AztoRegion(az string) string {
 	return az[:len(az)-1]
 }
 
-// ec2StatusToEvergreenStatus returns a "universal" status code based on EC2's
+// ec2StateToEvergreenStatus returns a "universal" status code based on EC2's
 // provider-specific status codes.
-func ec2StatusToEvergreenStatus(ec2State *types.InstanceState) CloudStatus {
+func ec2StateToEvergreenStatus(ec2State *types.InstanceState) CloudStatus {
 	if ec2State == nil {
 		return StatusUnknown
 	}

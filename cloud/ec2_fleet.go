@@ -180,7 +180,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 		instanceMap[*describeInstancesOutput.Reservations[i].Instances[0].InstanceId] = &describeInstancesOutput.Reservations[i].Instances[0]
 		instanceInfo := describeInstancesOutput.Reservations[i].Instances[0]
 		instanceID := *instanceInfo.InstanceId
-		status := ec2StatusToEvergreenStatus(instanceInfo.State)
+		status := ec2StateToEvergreenStatus(instanceInfo.State)
 		statuses[instanceID] = status
 	}
 
@@ -235,7 +235,7 @@ func (m *ec2FleetManager) GetInstanceState(ctx context.Context, h *host.Host) (C
 		return info, errors.Wrap(err, "getting instance info")
 	}
 
-	if info.Status = ec2StatusToEvergreenStatus(instance.State); info.Status == StatusRunning {
+	if info.Status = ec2StateToEvergreenStatus(instance.State); info.Status == StatusRunning {
 		// Cache instance information so we can make fewer calls to AWS's API.
 		pair := hostInstancePair{host: h, instance: instance}
 		grip.Error(message.WrapError(cacheAllHostData(ctx, m.env, m.client, pair), message.Fields{

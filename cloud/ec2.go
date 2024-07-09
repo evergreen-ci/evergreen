@@ -746,7 +746,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 			hostToStatusMap[hostID] = StatusNonExistent
 			continue
 		}
-		status := ec2StatusToEvergreenStatus(instance.State)
+		status := ec2StateToEvergreenStatus(instance.State)
 		if status == StatusRunning {
 			hostsToCache = append(hostsToCache, hostInstancePair{
 				host:     instanceIdToHostMap[hostID],
@@ -787,7 +787,7 @@ func (m *ec2Manager) GetInstanceState(ctx context.Context, h *host.Host) (CloudI
 		return info, err
 	}
 
-	if info.Status = ec2StatusToEvergreenStatus(instance.State); info.Status == StatusRunning {
+	if info.Status = ec2StateToEvergreenStatus(instance.State); info.Status == StatusRunning {
 		// Cache instance information so we can make fewer calls to AWS's API.
 		pair := hostInstancePair{host: h, instance: instance}
 		grip.Error(message.WrapError(cacheAllHostData(ctx, m.env, m.client, pair), message.Fields{
@@ -922,7 +922,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, shouldKeepO
 		// Stopping a host can be quite fast, so sometimes EC2 will say the host
 		// is stopping or already stopped in its response.
 		instance := out.StoppingInstances[0]
-		status := ec2StatusToEvergreenStatus(instance.CurrentState)
+		status := ec2StateToEvergreenStatus(instance.CurrentState)
 		switch status {
 		case StatusStopping:
 			grip.Error(message.WrapError(h.SetStopping(ctx, user), message.Fields{
