@@ -23,6 +23,19 @@ func TestGetImageNames(t *testing.T) {
 	assert.NotContains(result, "")
 }
 
+func TestGetOSInfo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert := assert.New(t)
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config, "TestGetOSInfo")
+	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+	result, err := c.getOSInfo(ctx, "ami-0e12ef25a5f7712a4", 0, 10)
+	require.NoError(t, err)
+	assert.Len(result, 10)
+}
+
 func TestGetImageDiff(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
