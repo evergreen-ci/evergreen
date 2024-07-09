@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	Packages   = "Packages"
-	Toolchains = "Toolchains"
+	EnvChangeTypePackages   = "Packages"
+	EnvChangeTypeToolchains = "Toolchains"
 )
 
 type RuntimeEnvironmentsClient struct {
@@ -145,7 +145,7 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts Image
 	}
 	filteredChanges := []ImageDiffChange{}
 	for _, c := range changes {
-		if c.Type == Packages || c.Type == Toolchains {
+		if c.Type == EnvChangeTypePackages || c.Type == EnvChangeTypeToolchains {
 			filteredChanges = append(filteredChanges, c)
 		}
 	}
