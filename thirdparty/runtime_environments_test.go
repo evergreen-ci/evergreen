@@ -35,3 +35,26 @@ func TestGetOSInfo(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(result, 10)
 }
+
+func TestGetHistory(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert := assert.New(t)
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config, "TestGetHistory")
+	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+
+	// Verify that getHistory errors when not provided the required distro field
+	_, err := c.getHistory(ctx, DistroHistoryFilter{})
+	require.Error(t, err)
+
+	// Verify that getHistory provides images for all distributions
+	imageNames, err := c.getImageNames(ctx)
+	assert.NoError(err)
+	for _, image := range imageNames {
+		result, err := c.getHistory(ctx, DistroHistoryFilter{Distro: image})
+		require.NoError(t, err)
+		require.NotEmpty(t, result)
+	}
+}

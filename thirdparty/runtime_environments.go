@@ -96,3 +96,49 @@ func (c *RuntimeEnvironmentsClient) getOSInfo(ctx context.Context, amiID string,
 	}
 	return osInfo, nil
 }
+
+// ImageInfo represents information about an image with its AMIID and creation date.
+type ImageInfo struct {
+	AMIID        string
+	CreationDate string
+}
+
+// DistoHistoryFilter represents the filtering arguments for getHistory. The Distro field is required and the other fields are optional.
+type DistroHistoryFilter struct {
+	Distro string
+	Page   int
+	Limit  int
+}
+
+func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts DistroHistoryFilter) ([]ImageInfo, error) {
+	params := url.Values{}
+	if opts.Distro == "" {
+		return nil, errors.New("no distro provided.")
+	}
+	params.Set("distro", opts.Distro)
+	params.Set("page", strconv.Itoa(opts.Page))
+	if opts.Limit != 0 {
+		params.Set("limit", strconv.Itoa(opts.Limit))
+	}
+	apiURL := fmt.Sprintf("%s/rest/api/v1/distroHistory?%s", c.BaseURL, params.Encode())
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("Content-Type", "application/json")
+	request.Header.Add("Api-Key", c.APIKey)
+	resp, err := c.Client.Do(request)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		msg, _ := io.ReadAll(resp.Body)
+		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+	}
+	var amiHistory []ImageInfo
+	if err := gimlet.GetJSON(resp.Body, &amiHistory); err != nil {
+		return nil, errors.Wrap(err, "decoding http body")
+	}
+	return amiHistory, nil
+}
