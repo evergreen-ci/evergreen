@@ -80,7 +80,7 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts Image
 	params := url.Values{}
 	params.Set("ami", opts.BeforeAMI)
 	params.Set("ami2", opts.AfterAMI)
-	params.Set("limit", "100")
+	params.Set("limit", "1000000000") // Artificial limit set high because API has default limit of 10.
 	apiURL := fmt.Sprintf("%s/rest/api/v1/imageDiffs?%s", c.BaseURL, params.Encode())
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
