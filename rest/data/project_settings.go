@@ -426,7 +426,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 					var ok bool
 					previousSubscription, ok = beforeSubscription.Subscriber.Target.(*event.WebhookSubscriber)
 					if !ok {
-						return nil, errors.Errorf("could not find subscription with ID '%s'", utility.FromStringPtr(subscription.ID))
+						return nil, errors.Errorf("programmatic error: subscription with ID '%s' was expected to be webhook subscription, but it was actually %T", utility.FromStringPtr(subscription.ID), previousSubscription)
 					}
 					break
 				}
