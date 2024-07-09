@@ -23,7 +23,7 @@ func TestGetImageNames(t *testing.T) {
 	assert.NotContains(result, "")
 }
 
-func TestGetPackages(t *testing.T) {
+func TestGetToolchains(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -31,35 +31,47 @@ func TestGetPackages(t *testing.T) {
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config, "TestGetToolchains")
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+
+	// Verify that there are no errors with ToolchainFilterOptions including the AMI and limit.
 	ami := "ami-016662ab459a49e9d"
 	opts := ToolchainFilterOptions{
-		Page:  0,
+		AMIID: ami,
 		Limit: 10,
 	}
-	result, err := c.getToolchains(ctx, ami, opts)
+	result, err := c.getToolchains(ctx, opts)
 	require.NoError(t, err)
 	assert.Len(result, 10)
+
+	// Verify that we filter correctly by name and version.
 	name := "nodejs"
 	version := "toolchain_version_v16.17.0"
 	opts = ToolchainFilterOptions{
+		AMIID:   ami,
 		Page:    0,
 		Limit:   5,
 		Name:    name,
 		Version: version,
 	}
-	result, err = c.getToolchains(ctx, ami, opts)
+	result, err = c.getToolchains(ctx, opts)
 	require.NoError(t, err)
 	require.NotEmpty(t, result)
 	assert.Equal(result[0].Name, name)
 	assert.Equal(result[0].Version, version)
 	assert.Len(result, 1)
+
+	// Verify that we receive no results for a fake toolchain
 	name = "blahblahblah"
 	opts = ToolchainFilterOptions{
+		AMIID: ami,
 		Page:  0,
 		Limit: 5,
 		Name:  name,
 	}
-	result, err = c.getToolchains(ctx, ami, opts)
+	result, err = c.getToolchains(ctx, opts)
 	require.NoError(t, err)
 	assert.Empty(result)
+
+	// Verify that we receive an error when an AMI is not provided.
+	_, err = c.getToolchains(ctx, ToolchainFilterOptions{})
+	require.Error(t, err)
 }

@@ -68,8 +68,9 @@ type Toolchain struct {
 	Manager string
 }
 
-// ToolchainFilterOptions represents the filtering arguments, each of which is optional.
+// ToolchainFilterOptions represents the filtering arguments, each of which is optional except for the AMIID.
 type ToolchainFilterOptions struct {
+	AMIID   string
 	Page    int
 	Limit   int
 	Name    string // Filter by the name of the toolchain (ex. golang).
@@ -77,11 +78,16 @@ type ToolchainFilterOptions struct {
 }
 
 // getPackages returns a list of packages from the corresponding AMI id.
-func (c *RuntimeEnvironmentsClient) getToolchains(ctx context.Context, amiID string, opts ToolchainFilterOptions) ([]Toolchain, error) {
+func (c *RuntimeEnvironmentsClient) getToolchains(ctx context.Context, opts ToolchainFilterOptions) ([]Toolchain, error) {
 	params := url.Values{}
-	params.Set("ami", amiID)
+	if opts.AMIID == "" {
+		return nil, errors.New("no AMI provided")
+	}
+	params.Set("ami", opts.AMIID)
 	params.Set("page", strconv.Itoa(opts.Page))
-	params.Set("limit", strconv.Itoa(opts.Limit))
+	if opts.Limit != 0 {
+		params.Set("limit", strconv.Itoa(opts.Limit))
+	}
 	params.Set("name", opts.Name)
 	params.Set("version", opts.Version)
 	params.Set("type", "Toolchains")
