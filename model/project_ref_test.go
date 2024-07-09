@@ -3597,7 +3597,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, projectRef)
 	require.NotNil(t, projectRef.GitHubPermissionGroupByRequester)
-	assert.Equal(t, len(projectRef.GitHubPermissionGroupByRequester), 1)
+	assert.Equal(len(projectRef.GitHubPermissionGroupByRequester), 1)
 	assert.Equal(projectRef.GitHubPermissionGroupByRequester[evergreen.PatchVersionRequester], "some-group")
 }
 
