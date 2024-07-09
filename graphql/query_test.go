@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -179,4 +180,18 @@ func TestMainlineCommits(t *testing.T) {
 			assert.Equal(t, evergreen.RepotrackerVersionRequester, utility.FromStringPtr(v.Version.Requester))
 		}
 	}
+}
+
+func TestImages(t *testing.T) {
+	config := New("/graphql")
+	ctx := getContext(t)
+	testConfig := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestImages")
+	grip.Debug(testConfig.RuntimeEnvironments)
+	assert.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
+	output, _ := evergreen.GetConfig(ctx)
+	grip.Debug(output.RuntimeEnvironments)
+	res, err := config.Resolvers.Query().Images(ctx)
+	require.NoError(t, err)
+	assert.NotEmpty(t, res)
 }
