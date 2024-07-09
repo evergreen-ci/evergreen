@@ -191,10 +191,11 @@ Host <your_persistent_dns_name>
 
 **Q: How do I choose the time zone when setting a sleep schedule?**
 
-A: The time zone is automatically inherited from the time zone in your [Spruce user preferences](https://spruce.mongodb.com/preferences/profile).
-If you'd like to change your sleep schedule's time zone, update your time zone under your Spruce preferences, then edit
-the host to set a sleep schedule. Note that updating just the Spruce preference will _not_ automatically update your
-sleep schedule's time zone until [DEVPROD-8685](https://jira.mongodb.org/browse/DEVPROD-8685) is complete.
+A: The sleep schedule's time zone is inherited from the time zone in your [Spruce user
+preferences](https://spruce.mongodb.com/preferences/profile). If you'd like to change your sleep schedule's time zone,
+update your time zone under your Spruce preferences, then edit the host to set a sleep schedule. Once
+[DEVPROD-8685](https://jira.mongodb.org/browse/DEVPROD-8685) is complete, you'll be able to set a time zone on your
+sleep schedule to override the default from your Spruce preferences.
 
 ---
 
