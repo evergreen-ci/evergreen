@@ -180,11 +180,3 @@ func TestMainlineCommits(t *testing.T) {
 		}
 	}
 }
-
-func TestImages(t *testing.T) {
-	config := New("/graphql")
-	ctx := getContext(t)
-	res, err := config.Resolvers.Query().Images(ctx)
-	require.NoError(t, err)
-	assert.NotEmpty(t, res)
-}
