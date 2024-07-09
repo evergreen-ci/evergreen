@@ -60,7 +60,7 @@ func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string
 	return filteredImages, nil
 }
 
-// ImageDiffOptions represents the arguments for getImageDiff. AMI is the starting AMI, and AMI2 is the ending AMI.
+// ImageDiffOptions represents the arguments for getImageDiff. BeforeAMI is the starting AMI, and AfterAMI is the ending AMI.
 type ImageDiffOptions struct {
 	BeforeAMI string
 	AfterAMI  string

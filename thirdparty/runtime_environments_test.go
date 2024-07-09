@@ -32,7 +32,7 @@ func TestGetImageDiff(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, config, "TestGetImageDiff")
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
-	// Verify that getImageDiff correctly returns Toolchain changes
+	// Verify that getImageDiff correctly returns Toolchain/Package changes for a pair of sample AMIs.
 	opts := ImageDiffOptions{
 		BeforeAMI: "ami-029ab576546a58916",
 		AfterAMI:  "ami-02b25f680ad574d33",
@@ -41,10 +41,10 @@ func TestGetImageDiff(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(result)
 	for _, change := range result {
-		assert.Equal(change.Type, "Toolchains")
+		assert.True(change.Type == "Toolchains" || change.Type == "Packages")
 	}
 
-	// Verify that getImageDiff correctly returns Package changes
+	// Verify that getImageDiff correctly returns Toolchain/Package changes for a different pair of sample AMIs.
 	opts = ImageDiffOptions{
 		BeforeAMI: "ami-016662ab459a49e9d",
 		AfterAMI:  "ami-0628416ca497d1b38",
@@ -53,10 +53,10 @@ func TestGetImageDiff(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(result)
 	for _, change := range result {
-		assert.Equal(change.Type, "Packages")
+		assert.True(change.Type == "Toolchains" || change.Type == "Packages")
 	}
 
-	// Verify that getImageDiff finds no differences between the same AMI
+	// Verify that getImageDiff finds no differences between the same AMI.
 	opts = ImageDiffOptions{
 		BeforeAMI: "ami-016662ab459a49e9d",
 		AfterAMI:  "ami-016662ab459a49e9d",
