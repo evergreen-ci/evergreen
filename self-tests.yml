@@ -270,12 +270,16 @@ functions:
         EVG_CLIENT_S3_BUCKET: evg-bucket-evergreen
 
   setup-credentials:
+    - command: github.generate_token
+      params:
+        expansion_name: github_token_new
     - command: subprocess.exec
       type: setup
       params:
         silent: true
         working_dir: evergreen
         env:
+          GITHUB_TOKEN: ${github_token_new}
           GITHUB_APP_ID: ${staging_github_app_id}
           GITHUB_APP_KEY: ${staging_github_app_key}
           JIRA_SERVER: ${jiraserver}
