@@ -469,6 +469,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Equal(t, pRefFromDB.GitHubDynamicTokenPermissionGroups[2].AllPermissions, true)
 		},
 		model.ProjectPageGithubAppSettingsSection: func(t *testing.T, ref model.ProjectRef) {
+			// Invalid requester should return an error.
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: restModel.APIProjectRef{
 					GitHubPermissionGroupByRequester: map[string]string{
@@ -480,10 +481,11 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			require.Error(t, err)
 			assert.Nil(t, settings)
 
+			// Invalid permission group (i.e. nonexistent permission group) should return an error.
 			apiChanges = &restModel.APIProjectSettings{
 				ProjectRef: restModel.APIProjectRef{
 					GitHubPermissionGroupByRequester: map[string]string{
-						evergreen.GitTagRequester: "invalid-permission-group",
+						evergreen.GitTagRequester: "nonexistent-permission-group",
 					},
 				},
 			}
@@ -491,6 +493,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			require.Error(t, err)
 			assert.Nil(t, settings)
 
+			// Should be able to save with a valid requester and existing permission group.
 			apiChanges = &restModel.APIProjectSettings{
 				ProjectRef: restModel.APIProjectRef{
 					GitHubPermissionGroupByRequester: map[string]string{
@@ -506,8 +509,10 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, pRefFromDB)
 			require.NotNil(t, pRefFromDB.GitHubPermissionGroupByRequester)
+			assert.Equal(t, len(pRefFromDB.GitHubPermissionGroupByRequester), 1)
 			assert.Equal(t, pRefFromDB.GitHubPermissionGroupByRequester[evergreen.GitTagRequester], "permission-group")
 
+			// Should be able to save the field as nil.
 			apiChanges = &restModel.APIProjectSettings{
 				ProjectRef: restModel.APIProjectRef{
 					GitHubPermissionGroupByRequester: nil,

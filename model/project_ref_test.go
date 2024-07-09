@@ -3538,7 +3538,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	require.NoError(t, err)
 
-	// Test parsley filters and view update
+	// Verify that Parsley filters and project health view are saved correctly.
 	update = &ProjectRef{
 		ParsleyFilters: []parsley.Filter{
 			{Expression: "filter", CaseSensitive: false, ExactMatch: true},
@@ -3548,7 +3548,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageViewsAndFiltersSection, false)
 	require.NoError(t, err)
 
-	// Test private field does not get updated
+	// Verify that private field does not get updated when updating restricted field.
 	update = &ProjectRef{
 		Restricted: utility.TruePtr(),
 	}
@@ -3563,7 +3563,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.True(utility.FromBoolPtr(projectRef.Restricted))
 	assert.True(utility.FromBoolPtr(projectRef.Private))
 
-	// Test GitHub dynamic token permission groups
+	// Verify that GitHub dynamic token permission groups are saved correctly.
 	update = &ProjectRef{
 		GitHubDynamicTokenPermissionGroups: []GitHubDynamicTokenPermissionGroup{
 			{
@@ -3584,7 +3584,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.Equal("some-group", projectRef.GitHubDynamicTokenPermissionGroups[0].Name)
 	assert.Equal("read", utility.FromStringPtr(projectRef.GitHubDynamicTokenPermissionGroups[0].Permissions.Actions))
 
-	// Test GitHub permission group by requester
+	// Verify that GitHub permission group by requester is saved correctly.
 	update = &ProjectRef{
 		GitHubPermissionGroupByRequester: map[string]string{
 			evergreen.PatchVersionRequester: "some-group",
@@ -3597,6 +3597,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, projectRef)
 	require.NotNil(t, projectRef.GitHubPermissionGroupByRequester)
+	assert.Equal(t, len(projectRef.GitHubPermissionGroupByRequester), 1)
 	assert.Equal(projectRef.GitHubPermissionGroupByRequester[evergreen.PatchVersionRequester], "some-group")
 }
 
