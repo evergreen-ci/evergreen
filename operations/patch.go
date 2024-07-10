@@ -7,8 +7,10 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -16,6 +18,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -302,8 +305,32 @@ func checkForLargeNumFinalizedTasks(ac *legacyClient, params *patchParams, patch
 	if existingPatch == nil {
 		return false, errors.Wrapf(err, "patch '%s' not found", patchId)
 	}
+	proj, err := ac.GetPatchedConfig(patchId)
+	if err != nil {
+		return false, errors.Wrapf(err, "getting patched config for patch '%s'", patchId)
+	}
+	if proj == nil {
+		return false, errors.Errorf("project config for '%s' not found", patchId)
+	}
+	generatorTasks := proj.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
 	numTasksToFinalize := 0
 	for _, vt := range existingPatch.VariantsTasks {
+		for _, t := range vt.Tasks {
+			if _, ok := generatorTasks[fmt.Sprintf("%s_%s", vt.Variant, t)]; ok {
+				dbTask, err := task.FindOne(db.Query(bson.M{
+					task.ProjectKey:      existingPatch.Project,
+					task.BuildVariantKey: vt.Variant,
+					task.DisplayNameKey:  t,
+					task.GenerateTaskKey: true,
+				}).Sort([]string{"-" + task.CreateTimeKey}))
+				if err != nil {
+					return false, errors.Wrapf(err, "getting task with variant '%s' and name '%s'", vt.Variant, t)
+				}
+				if dbTask != nil {
+					numTasksToFinalize += utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks)
+				}
+			}
+		}
 		numTasksToFinalize += len(vt.Tasks)
 	}
 	if numTasksToFinalize > largeNumFinalizedTasksThreshold {

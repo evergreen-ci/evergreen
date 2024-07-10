@@ -1186,7 +1186,7 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		Revision:                creationInfo.Version.Revision,
 		Project:                 creationInfo.Project.Identifier,
 		Priority:                buildVarTask.Priority,
-		GenerateTask:            creationInfo.Project.IsGenerateTask(buildVarTask.Name),
+		GenerateTask:            creationInfo.Project.IsGenerateTask(buildVarTask.Variant, buildVarTask.Name),
 		TriggerID:               creationInfo.Version.TriggerID,
 		TriggerType:             creationInfo.Version.TriggerType,
 		TriggerEvent:            creationInfo.Version.TriggerEvent,
