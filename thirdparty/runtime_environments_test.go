@@ -48,7 +48,7 @@ func TestGetToolchains(t *testing.T) {
 	// Verify that there are no errors with ToolchainFilterOptions including the AMI and limit.
 	ami := "ami-016662ab459a49e9d"
 	opts := ToolchainFilterOptions{
-		AMIID: ami,
+		AMI:   ami,
 		Limit: 10,
 	}
 	result, err := c.getToolchains(ctx, opts)
@@ -59,7 +59,7 @@ func TestGetToolchains(t *testing.T) {
 	name := "nodejs"
 	version := "toolchain_version_v16.17.0"
 	opts = ToolchainFilterOptions{
-		AMIID:   ami,
+		AMI:     ami,
 		Page:    0,
 		Limit:   5,
 		Name:    name,
@@ -75,7 +75,7 @@ func TestGetToolchains(t *testing.T) {
 	// Verify that we receive no results for a fake toolchain
 	name = "blahblahblah"
 	opts = ToolchainFilterOptions{
-		AMIID: ami,
+		AMI:   ami,
 		Page:  0,
 		Limit: 5,
 		Name:  name,

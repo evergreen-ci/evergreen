@@ -104,22 +104,22 @@ type Toolchain struct {
 	Manager string
 }
 
-// ToolchainFilterOptions represents the filtering arguments, each of which is optional except for the AMIID.
+// ToolchainFilterOptions represents the filtering arguments, each of which is optional except for the AMI.
 type ToolchainFilterOptions struct {
-	AMIID   string
+	AMI     string
 	Page    int
 	Limit   int
 	Name    string // Filter by the name of the toolchain (ex. golang).
 	Version string // Filter by the version (ex. go1.8.7).
 }
 
-// getPackages returns a list of packages from the corresponding AMI id.
+// getToolchains returns a list of packages from the corresponding AMI id.
 func (c *RuntimeEnvironmentsClient) getToolchains(ctx context.Context, opts ToolchainFilterOptions) ([]Toolchain, error) {
 	params := url.Values{}
-	if opts.AMIID == "" {
+	if opts.AMI == "" {
 		return nil, errors.New("no AMI provided")
 	}
-	params.Set("ami", opts.AMIID)
+	params.Set("ami", opts.AMI)
 	params.Set("page", strconv.Itoa(opts.Page))
 	if opts.Limit != 0 {
 		params.Set("limit", strconv.Itoa(opts.Limit))
