@@ -13,7 +13,7 @@ mutation {
         dailyStartTime: ""
         dailyStopTime: ""
         permanentlyExempt: false
-        shouldKeepOff: true
+        shouldKeepOff: false
         timeZone: "America/New_York"
         wholeWeekdaysOff: [0, 6]
       }
@@ -30,7 +30,6 @@ mutation {
       dailyStartTime
       dailyStopTime
       isBetaTester
-      nextStartTime
       permanentlyExempt
       shouldKeepOff
       timeZone

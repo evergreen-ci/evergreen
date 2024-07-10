@@ -6160,7 +6160,7 @@ func TestNewSleepScheduleInfo(t *testing.T) {
 			TimeZone:         "Asia/Macau",
 		})
 		assert.NoError(t, err)
-		require.Zero(t, info)
+		require.NotZero(t, info)
 		assert.Equal(t, []time.Weekday{time.Sunday}, info.WholeWeekdaysOff)
 		assert.Zero(t, info.DailyStartTime)
 		assert.Zero(t, info.DailyStopTime)
