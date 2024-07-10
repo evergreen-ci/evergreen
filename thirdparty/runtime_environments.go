@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 
 	"github.com/evergreen-ci/gimlet"
@@ -33,8 +34,8 @@ func NewRuntimeEnvironmentsClient(baseURL string, apiKey string) *RuntimeEnviron
 	return &c
 }
 
-// getImageNames returns a list of strings containing the names of all images from the runtime environments API.
-func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string, error) {
+// GetImageNames returns a list of strings containing the names of all images from the runtime environments API.
+func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string, error) {
 	apiURL := fmt.Sprintf("%s/rest/api/v1/imageList", c.BaseURL)
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
@@ -64,6 +65,7 @@ func (c *RuntimeEnvironmentsClient) getImageNames(ctx context.Context) ([]string
 			filteredImages = append(filteredImages, img)
 		}
 	}
+	sort.Strings(filteredImages)
 	return filteredImages, nil
 }
 
