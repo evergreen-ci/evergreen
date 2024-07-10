@@ -17319,11 +17319,14 @@ func (ec *executionContext) _Distro_imageId(ctx context.Context, field graphql.C
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Distro_imageId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -68947,7 +68950,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 			it.IcecreamSettings = data
 		case "imageId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("imageId"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -74574,6 +74577,9 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "imageId":
 			out.Values[i] = ec._Distro_imageId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "isCluster":
 			out.Values[i] = ec._Distro_isCluster(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
