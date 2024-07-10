@@ -17,7 +17,7 @@ mutation {
         timeZone: "America/New_York"
         wholeWeekdaysOff: [0, 6]
       }
-      noExpiration: false
+      noExpiration: true
       expiration: "2020-08-06T17:42:12Z"
     }
   ) {
