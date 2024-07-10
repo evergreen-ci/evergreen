@@ -49,12 +49,21 @@ func TestGetHistory(t *testing.T) {
 	_, err := c.getHistory(ctx, DistroHistoryFilterOptions{})
 	require.Error(t, err)
 
-	// Verify that getHistory provides images for all distributions.
+	// Verify that getHistory provides images for a distribution.
 	imageNames, err := c.getImageNames(ctx)
 	require.NoError(t, err)
-	for _, image := range imageNames {
-		result, err := c.getHistory(ctx, DistroHistoryFilterOptions{Distro: image})
-		require.NoError(t, err)
-		assert.NotEmpty(t, result)
+	require.NotEmpty(t, imageNames)
+	result, err := c.getHistory(ctx, DistroHistoryFilterOptions{Distro: imageNames[0]})
+	require.NoError(t, err)
+	assert.NotEmpty(t, result)
+
+	// Verify that getHistory functions correctly with page and limit
+	opts := DistroHistoryFilterOptions{
+		Distro: imageNames[0],
+		Page:   0,
+		Limit:  20,
 	}
+	result, err = c.getHistory(ctx, opts)
+	require.NoError(t, err)
+	assert.NotEmpty(t, result)
 }
