@@ -343,6 +343,9 @@ func (c *Mock) GetLoggerProducer(ctx context.Context, tsk *task.Task, _ *LoggerC
 	// in tests, otherwise the append line function will try to access the
 	// task ID in the task pointer every time `sendTaskLogLine` is called.
 	taskID := tsk.Id
+
+	// Every time we make a new producer, we should flush it between tests.
+	c.flushTaskLog(taskID)
 	appendLine := func(line log.LogLine) error {
 		return c.sendTaskLogLine(taskID, line)
 	}
@@ -362,6 +365,14 @@ func (c *Mock) sendTaskLogLine(taskID string, line log.LogLine) error {
 	c.taskLogs[taskID] = append(c.taskLogs[taskID], line)
 
 	return nil
+}
+
+// flushTaskLog clears the log cache for a given task.
+func (c *Mock) flushTaskLog(taskID string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.taskLogs[taskID] = []log.LogLine{}
 }
 
 func (c *Mock) GetTaskLogs(taskID string) []log.LogLine {

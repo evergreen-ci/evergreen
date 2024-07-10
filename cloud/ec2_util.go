@@ -86,10 +86,13 @@ func AztoRegion(az string) string {
 	return az[:len(az)-1]
 }
 
-// ec2StatusToEvergreenStatus returns a "universal" status code based on EC2's
+// ec2StateToEvergreenStatus returns a "universal" status code based on EC2's
 // provider-specific status codes.
-func ec2StatusToEvergreenStatus(ec2Status types.InstanceStateName) CloudStatus {
-	switch ec2Status {
+func ec2StateToEvergreenStatus(ec2State *types.InstanceState) CloudStatus {
+	if ec2State == nil {
+		return StatusUnknown
+	}
+	switch ec2State.Name {
 	case types.InstanceStateNamePending:
 		return StatusInitializing
 	case types.InstanceStateNameRunning:
@@ -103,7 +106,7 @@ func ec2StatusToEvergreenStatus(ec2Status types.InstanceStateName) CloudStatus {
 	default:
 		grip.Error(message.Fields{
 			"message": "got an unknown EC2 state name",
-			"status":  ec2Status,
+			"status":  ec2State.Name,
 		})
 		return StatusUnknown
 	}

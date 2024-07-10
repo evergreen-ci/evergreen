@@ -188,26 +188,36 @@ func (m *dockerManager) ModifyHost(context.Context, *host.Host, host.HostModifyO
 	return errors.New("can't modify instances with docker provider")
 }
 
-// GetInstanceStatus returns a universal status code representing the state
-// of a container.
-func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
-	// get parent of container host
+// GetInstanceState returns a universal status code representing the state
+// of a container and a state reason if available. The state reason should not be
+// used to determine the status of the container but rather to provide additional
+// context about the state of the container.
+func (m *dockerManager) GetInstanceState(ctx context.Context, h *host.Host) (CloudInstanceState, error) {
+	info := CloudInstanceState{Status: StatusUnknown}
 	parent, err := h.GetParent(ctx)
 	if err != nil {
-		return StatusUnknown, errors.Wrapf(err, "retrieving parent of host '%s'", h.Id)
+		return info, errors.Wrapf(err, "retrieving parent of host '%s'", h.Id)
 	}
 
 	container, err := m.client.GetContainer(ctx, parent, h.Id)
 	if err != nil {
 		if client.IsErrConnectionFailed(err) {
-			return StatusTerminated, nil
+			info.Status = StatusTerminated
+			return info, nil
 		}
 		if client.IsErrNotFound(err) {
-			return StatusNonExistent, nil
+			info.Status = StatusNonExistent
+			return info, nil
 		}
-		return StatusUnknown, errors.Wrapf(err, "getting container information for host '%s'", h.Id)
+		return info, errors.Wrapf(err, "getting container information for host '%s'", h.Id)
 	}
-	return toEvgStatus(container.State), nil
+	info.Status = toEvgStatus(container.State)
+	if container.State.Error != "" {
+		info.StateReason = container.State.Error
+	} else if container.State.OOMKilled {
+		info.StateReason = "Out of memory"
+	}
+	return info, nil
 }
 
 func (m *dockerManager) SetPortMappings(ctx context.Context, h, parent *host.Host) error {

@@ -261,6 +261,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
 
+	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
 	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
@@ -290,6 +291,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithBadAlias() {
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
 
+	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
 	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
@@ -324,7 +326,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
-
+	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
 	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
@@ -1055,6 +1057,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
+	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
 	headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
 	orgName := "evergreen-ci"
 	repoName := "commit-queue-sandbox"
@@ -1147,6 +1150,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {
 		Number:         github.Int(1),
 		MergeCommitSHA: github.String("abcdef"),
 	}
+	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
 	// SHA ed42b5e51e81724c5258686a0b9d515a99696eac is newer than the oldest allowed merge base and should be accepted
 	intent, err := patch.NewGithubIntent("id", "auto", "", "", "ed42b5e51e81724c5258686a0b9d515a99696eac", pr)
 
@@ -1172,15 +1176,13 @@ func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
-	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
-	s.Require().NoError(err)
-
 	flags := evergreen.ServiceFlags{
 		GithubPRTestingDisabled: true,
 	}
 	s.NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
-	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, githubOauthToken, s.githubPatchData)
+	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, "", s.githubPatchData)
 	s.Require().NoError(err)
 	s.Require().Len(summaries, 2)
 	s.NotEmpty(patchContent)
@@ -1240,15 +1242,14 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
-	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
-	s.Require().NoError(err)
-
 	flags := evergreen.ServiceFlags{
 		GithubPRTestingDisabled: true,
 	}
 	s.NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
-	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, githubOauthToken, s.githubPatchData)
+	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
+
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, "", s.githubPatchData)
 	s.Require().NoError(err)
 	s.Require().Len(summaries, 2)
 	s.NotEmpty(patchContent)
@@ -1457,6 +1458,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	}
 	s.Require().NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
+	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
 	intent, err := patch.NewGithubIntent("1", "", "", "", "", testutil.NewGithubPR(s.prNumber, "evergreen-ci/evergreen", s.baseHash, s.headRepo, "8a425038834326c212d65289e0c9e80e48d07e7e", "octocat", "title1"))
 	s.NoError(err)
 	s.NotNil(intent)
@@ -1542,6 +1544,7 @@ func (s *PatchIntentUnitsSuite) TestCliBackport() {
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
 
+	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
 	id := mgobson.NewObjectId()
 	j, ok := NewPatchIntentProcessor(s.env, id, intent).(*patchIntentProcessor)
 	j.env = s.env
