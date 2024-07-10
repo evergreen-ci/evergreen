@@ -201,8 +201,8 @@ github.com/envoyproxy/go-control-plane v0.9.10-0.20210907150352-cf90f659a021/go.
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/evergreen-ci/aviation v0.0.0-20211026175554-41a4410c650f/go.mod h1:aKaSPhULP3hvwaX/sF5k5bQLtnOhndnRdnwNTqR3/cA=
 github.com/evergreen-ci/aviation v0.0.0-20220405151811-ff4a78a4297c/go.mod h1:5A+CTXmwVhGbqj5jryhkREK5iMmZEGpbFkdim4HwHtQ=
-github.com/evergreen-ci/aviation v0.0.0-20240509141021-0e3a1c91cc79 h1:pIQpqil9BYFhZkBGZ7CsGQ7/Kz4GLvnFp6TDV4lbJ6s=
-github.com/evergreen-ci/aviation v0.0.0-20240509141021-0e3a1c91cc79/go.mod h1:aUvipiBrechcLJyZx2IOp43HRAEM9iSNn4oLIWBQ4NQ=
+github.com/evergreen-ci/aviation v0.0.0-20240709194445-8b05ffe0c2fa h1:sB6Ngz+Gg6/Si59/kaxPoM89hX80EoZm2hpkAZWvNsM=
+github.com/evergreen-ci/aviation v0.0.0-20240709194445-8b05ffe0c2fa/go.mod h1:aUvipiBrechcLJyZx2IOp43HRAEM9iSNn4oLIWBQ4NQ=
 github.com/evergreen-ci/baobab v1.0.1-0.20220107150152-03b522479f52 h1:e5fgBYO+zFtcG84TL+1eq6vGg16W4vXYYPEsmfOomwE=
 github.com/evergreen-ci/baobab v1.0.1-0.20220107150152-03b522479f52/go.mod h1:/9fbOyzmfyAMEVTvlXzG/ASiUb0ucC4bu05MeCrmV7I=
 github.com/evergreen-ci/birch v0.0.0-20191213201306-f4dae6f450a2/go.mod h1:IfmR6rcYhoHGAdYS51VEr60p1YzzXJvb7pFtGdNc88A=

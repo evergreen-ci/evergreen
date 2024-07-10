@@ -6,7 +6,7 @@ set -o errexit
 mkdir -p clients
 cat >> smoke/internal/testdata/admin_settings.yml <<EOF
 credentials:
-  github: "$GITHUB_TOKEN"
+  github: "token $GITHUB_TOKEN"
 
 auth:
   naive:
