@@ -1024,6 +1024,11 @@ func (r *queryResolver) Version(ctx context.Context, versionID string) (*restMod
 	return &apiVersion, nil
 }
 
+// Image is the resolver for the image field.
+func (r *queryResolver) Image(ctx context.Context, imageID string) (*Image, error) {
+	panic(fmt.Errorf("not implemented: Image - image"))
+}
+
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
