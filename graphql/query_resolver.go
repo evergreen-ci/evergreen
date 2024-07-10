@@ -1032,7 +1032,7 @@ func (r *queryResolver) Image(ctx context.Context, imageID string) (*Image, erro
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	image := Image{}
-
+	c.GetOSInfo()
 	return &image, nil
 }
 
