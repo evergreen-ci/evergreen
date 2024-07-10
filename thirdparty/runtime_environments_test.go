@@ -177,3 +177,33 @@ func TestGetToolchains(t *testing.T) {
 	_, err = c.getToolchains(ctx, ToolchainFilterOptions{})
 	require.Error(t, err)
 }
+
+func TestGetHistory(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert := assert.New(t)
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config, "TestGetHistory")
+	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+
+	// Verify that getHistory errors when not provided the required distro field.
+	_, err := c.getHistory(ctx, DistroHistoryFilterOptions{})
+	assert.Error(err)
+
+	// Verify that getHistory provides images for a distribution.
+	result, err := c.getHistory(ctx, DistroHistoryFilterOptions{Distro: "ubuntu2204"})
+	require.NoError(t, err)
+	assert.NotEmpty(t, result)
+
+	// Verify that getHistory functions correctly with page and limit.
+	opts := DistroHistoryFilterOptions{
+		Distro: "ubuntu2204",
+		Page:   0,
+		Limit:  15,
+	}
+	result, err = c.getHistory(ctx, opts)
+	require.NoError(t, err)
+	assert.NotEmpty(t, result)
+	assert.Len(result, 15)
+}
