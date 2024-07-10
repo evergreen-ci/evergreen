@@ -901,6 +901,7 @@ buildvariants:
 	assert.True(t, foundPassing)
 
 	dbPatch, err := patch.FindOneId(unfinalized.Id.Hex())
+	require.NotNil(t, dbPatch)
 	assert.NoError(t, err)
 	assert.Equal(t, len(dbPatch.VariantsTasks[0].Tasks), len(tasks))
 
@@ -940,8 +941,10 @@ buildvariants:
 	assert.True(t, foundPassing)
 	assert.True(t, foundCompile)
 
-	// ensure that the patch contains all the tasks and didn't overwrite it with the new tasks
+	// ensure that the patch contains both the previously-scheduled and newly-scheduled tasks,
+	// and didn't overwrite the previous tasks with the new tasks
 	dbPatch, err = patch.FindOneId(unfinalized.Id.Hex())
+	require.NotNil(t, dbPatch)
 	assert.NoError(t, err)
 	assert.Equal(t, len(dbPatch.VariantsTasks[0].Tasks), len(tasks))
 

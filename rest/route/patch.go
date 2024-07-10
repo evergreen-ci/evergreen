@@ -646,8 +646,9 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 	patchUpdateReq := dbModel.PatchUpdate{
-		Description:   p.variantTasks.Description,
-		Caller:        u.Id,
+		Description: p.variantTasks.Description,
+		Caller:      u.Id,
+		// PatchUpdate must include all of the variant tasks for the patch (existing and new ones)
 		VariantsTasks: p.patch.VariantsTasks,
 	}
 	if patchUpdateReq.Description == "" && dbVersion != nil {
