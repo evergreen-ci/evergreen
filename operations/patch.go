@@ -316,7 +316,7 @@ func checkForLargeNumFinalizedTasks(ac *legacyClient, params *patchParams, patch
 	numTasksToFinalize := 0
 	for _, vt := range existingPatch.VariantsTasks {
 		for _, t := range vt.Tasks {
-			if _, ok := generatorTasks[fmt.Sprintf("%s_%s", vt.Variant, t)]; ok {
+			if _, ok := generatorTasks[t]; ok {
 				dbTask, err := task.FindOne(db.Query(bson.M{
 					task.ProjectKey:      existingPatch.Project,
 					task.BuildVariantKey: vt.Variant,

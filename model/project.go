@@ -1843,19 +1843,15 @@ func (p *Project) TasksThatCallCommand(find string) map[string]int {
 
 	// get all tasks that call the command.
 	ts := map[string]int{}
-	for _, bv := range p.BuildVariants {
-		for _, t := range bv.Tasks {
-			key := fmt.Sprintf("%s_%s", bv.Name, t.Name)
-			pt := p.FindProjectTask(t.Name)
-			for _, c := range pt.Commands {
-				if c.Function != "" {
-					if times, ok := fs[c.Function]; ok {
-						ts[key] = ts[key] + times
-					}
+	for _, t := range p.Tasks {
+		for _, c := range t.Commands {
+			if c.Function != "" {
+				if times, ok := fs[c.Function]; ok {
+					ts[t.Name] = ts[t.Name] + times
 				}
-				if c.Command == find {
-					ts[key] = ts[key] + 1
-				}
+			}
+			if c.Command == find {
+				ts[t.Name] = ts[t.Name] + 1
 			}
 		}
 	}
@@ -1864,8 +1860,8 @@ func (p *Project) TasksThatCallCommand(find string) map[string]int {
 
 // IsGenerateTask indicates that the task generates other tasks, which the
 // scheduler will use to prioritize this task.
-func (p *Project) IsGenerateTask(variantName, taskName string) bool {
-	_, ok := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)[fmt.Sprintf("%s_%s", variantName, taskName)]
+func (p *Project) IsGenerateTask(taskName string) bool {
+	_, ok := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)[taskName]
 	return ok
 }
 
