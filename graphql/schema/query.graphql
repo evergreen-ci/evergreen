@@ -94,11 +94,9 @@ type Query {
   hasVersion(patchId: String!): Boolean!
   version(versionId: String! @requireProjectAccess(permission: TASKS, access: VIEW)): Version!
 
-
-
-
-
-
   # image
   image(imageId: String!): Image
+  
+  # images
+  images: [String!]!
 }

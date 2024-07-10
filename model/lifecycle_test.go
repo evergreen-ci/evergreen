@@ -799,6 +799,7 @@ func TestBuildMarkFinished(t *testing.T) {
 }
 
 func TestCreateBuildFromVersion(t *testing.T) {
+	ctx := context.TODO()
 
 	Convey("When creating a build from a version", t, func() {
 
@@ -1054,7 +1055,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				ActivateBuild:    false,
 				TaskNames:        []string{},
 			}
-			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+			build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldNotBeNil)
 			So(build, ShouldBeNil)
 			So(tasks, ShouldBeNil)
@@ -1071,14 +1072,14 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				ActivateBuild:    false,
 				TaskNames:        []string{},
 			}
-			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+			build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build, ShouldNotBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			So(len(tasks), ShouldEqual, 6)
 
 			creationInfo.BuildVariantName = buildVar2.Name
-			build, tasks, err = CreateBuildFromVersionNoInsert(creationInfo)
+			build, tasks, err = CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build, ShouldNotBeNil)
 			So(build.Id, ShouldNotEqual, "")
@@ -1097,7 +1098,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				ActivateBuild:    true,
 				TaskNames:        []string{"taskA", "taskB"},
 			}
-			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+			build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			So(len(tasks), ShouldEqual, 2)
@@ -1120,7 +1121,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					buildVar1.Name: batchTimeTasks},
 				},
 			}
-			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+			build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			So(len(tasks), ShouldEqual, 4)
@@ -1144,7 +1145,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				Aliases:          []ProjectAlias{alias},
 				TaskNames:        []string{"taskA", "taskB", "taskC"},
 			}
-			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+			build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			So(len(tasks), ShouldEqual, 3)
@@ -1160,7 +1161,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				ActivateBuild:    false,
 				TaskNames:        []string{"taskA", "taskB"},
 			}
-			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+			build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			for _, t := range tasks {
@@ -1178,7 +1179,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				BuildVariantName: buildVar1.Name,
 				ActivateBuild:    false,
 			}
-			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+			build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			for _, t := range tasks {
@@ -1200,7 +1201,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				ActivateBuild:    false,
 				TaskNames:        []string{},
 			}
-			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+			build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			So(len(build.Tasks), ShouldEqual, 4)
@@ -1245,7 +1246,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				ActivateBuild:    false,
 				TaskNames:        []string{},
 			}
-			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+			build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			So(len(tasks), ShouldEqual, 4)
@@ -1269,7 +1270,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				ActivateBuild:    false,
 				TaskNames:        []string{},
 			}
-			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+			build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			So(len(build.Tasks), ShouldEqual, 2)
@@ -1297,16 +1298,16 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				ActivateBuild:    false,
 				TaskNames:        []string{},
 			}
-			build, tasks1, err := CreateBuildFromVersionNoInsert(creationInfo)
+			build, tasks1, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 
 			creationInfo.BuildVariantName = buildVar2.Name
-			build, tasks2, err := CreateBuildFromVersionNoInsert(creationInfo)
+			build, tasks2, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			creationInfo.BuildVariantName = buildVar3.Name
-			build, tasks3, err := CreateBuildFromVersionNoInsert(creationInfo)
+			build, tasks3, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 
@@ -1364,7 +1365,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				TaskNames:                           []string{},
 				ActivatedTasksAreEssentialToSucceed: true,
 			}
-			build, _, err := CreateBuildFromVersionNoInsert(creationInfo)
+			build, _, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 
@@ -1407,7 +1408,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				TaskCreateTime:                      time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 				ActivatedTasksAreEssentialToSucceed: true,
 			}
-			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+			build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			So(build.HasUnfinishedEssentialTask, ShouldBeFalse)
@@ -1500,7 +1501,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					TaskCreateTime:                      time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 					ActivatedTasksAreEssentialToSucceed: true,
 				}
-				build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+				build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 				So(err, ShouldBeNil)
 				So(build.Id, ShouldNotEqual, "")
 				So(build.Activated, ShouldBeTrue)
@@ -1590,7 +1591,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				ActivateBuild:    true,
 				TaskNames:        []string{},
 			}
-			_, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+			_, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			for _, t := range tasks {
 				if t.DisplayName == "taskD" {
@@ -1608,7 +1609,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				BuildVariantName: buildVar5.Name,
 				TaskNames:        []string{},
 			}
-			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+			build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 
@@ -1638,7 +1639,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				BuildVariantName: buildVar5.Name,
 				TaskNames:        []string{"singleHostTaskGroup1", "singleHostTaskGroup3"},
 			}
-			build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+			build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 			So(err, ShouldBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			So(len(tasks), ShouldEqual, 2)
@@ -1732,7 +1733,7 @@ func TestCreateTaskGroup(t *testing.T) {
 		BuildVariantName: "bv",
 		ActivateBuild:    true,
 	}
-	build, tasks, err := CreateBuildFromVersionNoInsert(creationInfo)
+	build, tasks, err := CreateBuildFromVersionNoInsert(ctx, creationInfo)
 	assert.NoError(err)
 	assert.Len(build.Tasks, 3)
 	assert.Len(tasks, 3)

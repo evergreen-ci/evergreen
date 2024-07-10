@@ -1032,8 +1032,19 @@ func (r *queryResolver) Image(ctx context.Context, imageID string) (*Image, erro
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	image := Image{}
-	c.GetOSInfo()
+	c.GetHistory(ctx)
+	c.GetOSInfo(ctx, ami, 0, 10)
 	return &image, nil
+}
+
+// Images is the resolver for the images field.
+func (r *queryResolver) Images(ctx context.Context) ([]string, error) {
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: %s", err.Error()))
+	}
+	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+	return c.GetImageNames(ctx)
 }
 
 // Query returns QueryResolver implementation.

@@ -325,9 +325,8 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	s.Require().NoError(err)
 	conf.ProjectRef.Repo = "invalidRepo"
 	conf.Distro = nil
-	s.comm.CreateInstallationTokenFail = true
 	token := "abcdefghij"
-	conf.Expansions.Put(evergreen.GlobalGitHubTokenExpansion, token)
+	s.comm.CreateInstallationTokenResult = token
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -347,10 +346,10 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	foundCloneCommand := false
 	foundCloneErr := false
 	for _, line := range s.comm.GetTaskLogs(conf.Task.Id) {
-		if strings.Contains(line.Data, "https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/invalidRepo.git") {
+		if strings.Contains(line.Data, "https://[redacted github token]:x-oauth-basic@github.com/evergreen-ci/invalidRepo.git") {
 			foundCloneCommand = true
 		}
-		if strings.Contains(line.Data, "Repository not found.") {
+		if strings.Contains(line.Data, "Authentication failed for") {
 			foundCloneErr = true
 		}
 		if strings.Contains(line.Data, token) {
@@ -369,7 +368,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
 	conf.ProjectRef.Repo = "invalidRepo"
-	s.comm.CreateInstallationTokenFail = true
+	s.comm.CreateInstallationTokenResult = "unauthed-token"
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -396,7 +395,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 		if strings.Contains(line.Data, "/invalidRepo.git/' not found") {
 			foundCloneErr = true
 		}
-		if strings.Contains(line.Data, "Permission denied (publickey)") || strings.Contains(line.Data, "Host key verification failed.") {
+		if strings.Contains(line.Data, "Authentication failed for") && strings.Contains(line.Data, "/evergreen-ci/invalidRepo.git") {
 			foundSSHErr = true
 		}
 	}
@@ -458,7 +457,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
 		"set +o xtrace",
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"",
+		"echo \"git clone https://[redacted github token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"",
 		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'",
 		"set -o xtrace",
 		"cd dir",
@@ -470,7 +469,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
 		"set +o xtrace",
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir'\"",
+		"echo \"git clone https://[redacted github token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir'\"",
 		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir'",
 		"set -o xtrace",
 		"cd dir",
@@ -484,7 +483,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"",
+		"echo \"git clone https://[redacted github token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"",
 		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'",
 	}))
 
@@ -495,7 +494,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main'\"",
+		"echo \"git clone https://[redacted github token]:x-oauth-basic@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main'\"",
 		"git clone https://PROJECTTOKEN:x-oauth-basic@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main'",
 	}))
 }
@@ -532,7 +531,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommand() {
 		"set -o errexit",
 		"rm -rf dir",
 		"set +o xtrace",
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"",
+		"echo \"git clone https://[redacted github token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"",
 		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'",
 		"set -o xtrace",
 		"cd dir",
@@ -652,7 +651,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 		"set -o xtrace",
 		"set -o errexit",
 		"set +o xtrace",
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'\"",
+		"echo \"git clone https://[redacted github token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'\"",
 		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'",
 		"set -o xtrace",
 		"cd module",
@@ -665,7 +664,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
-		"echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'\"",
+		"echo \"git clone https://[redacted github token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'\"",
 		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'",
 	}))
 
