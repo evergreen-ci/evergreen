@@ -98,23 +98,25 @@ func (c *RuntimeEnvironmentsClient) getOSInfo(ctx context.Context, amiID string,
 }
 
 // ImageInfo represents information about an image with its AMIID and creation date.
-type ImageInfo struct {
+type ImageHistoryInfo struct {
 	AMIID        string
 	CreationDate string
 }
 
 // DistoHistoryFilter represents the filtering arguments for getHistory. The Distro field is required and the other fields are optional.
-type DistroHistoryFilter struct {
+type DistroHistoryFilterOptions struct {
 	Distro string
 	Page   int
 	Limit  int
 }
 
-func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts DistroHistoryFilter) ([]ImageInfo, error) {
-	params := url.Values{}
+// getHistory returns a list of images with their AMI and creation date corresponding to the provided distro in the order of most recently
+// created first.
+func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts DistroHistoryFilterOptions) ([]ImageHistoryInfo, error) {
 	if opts.Distro == "" {
-		return nil, errors.New("no distro provided.")
+		return nil, errors.New("no distro provided")
 	}
+	params := url.Values{}
 	params.Set("distro", opts.Distro)
 	params.Set("page", strconv.Itoa(opts.Page))
 	if opts.Limit != 0 {
@@ -136,7 +138,7 @@ func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts DistroH
 		msg, _ := io.ReadAll(resp.Body)
 		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
 	}
-	var amiHistory []ImageInfo
+	var amiHistory []ImageHistoryInfo
 	if err := gimlet.GetJSON(resp.Body, &amiHistory); err != nil {
 		return nil, errors.Wrap(err, "decoding http body")
 	}

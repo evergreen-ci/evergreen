@@ -45,16 +45,16 @@ func TestGetHistory(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, config, "TestGetHistory")
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
-	// Verify that getHistory errors when not provided the required distro field
-	_, err := c.getHistory(ctx, DistroHistoryFilter{})
+	// Verify that getHistory errors when not provided the required distro field.
+	_, err := c.getHistory(ctx, DistroHistoryFilterOptions{})
 	require.Error(t, err)
 
-	// Verify that getHistory provides images for all distributions
+	// Verify that getHistory provides images for all distributions.
 	imageNames, err := c.getImageNames(ctx)
-	assert.NoError(err)
+	require.NoError(t, err)
 	for _, image := range imageNames {
-		result, err := c.getHistory(ctx, DistroHistoryFilter{Distro: image})
+		result, err := c.getHistory(ctx, DistroHistoryFilterOptions{Distro: image})
 		require.NoError(t, err)
-		require.NotEmpty(t, result)
+		assert.NotEmpty(t, result)
 	}
 }
