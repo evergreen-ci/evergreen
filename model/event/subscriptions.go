@@ -146,6 +146,16 @@ func (s *Subscription) SetBSON(raw mgobson.Raw) error {
 	return nil
 }
 
+// GetSubscriptionTarget asserts a type on the subscription's subscriber's target
+// and if it is not found, returns an error.
+func GetSubscriptionTarget[T any](s Subscription) (*T, error) {
+	found, ok := s.Subscriber.Target.(*T)
+	if !ok {
+		return found, errors.Errorf("programmatic error: subscription with ID '%s' was expected to be %T, but it was actually %T", s.ID, found, s.Subscriber.Target)
+	}
+	return found, nil
+}
+
 type Selector struct {
 	Type string `bson:"type"`
 	Data string `bson:"data"`

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -96,6 +97,7 @@ func (s *APISubscriber) BuildFromService(in event.Subscriber) error {
 			return err
 		}
 		target = sub
+		s.WebhookSubscriber = &sub
 
 	case event.JIRAIssueSubscriberType:
 		sub := APIJIRAIssueSubscriber{}
@@ -104,6 +106,7 @@ func (s *APISubscriber) BuildFromService(in event.Subscriber) error {
 			return err
 		}
 		target = sub
+		s.JiraIssueSubscriber = &sub
 
 	case event.JIRACommentSubscriberType, event.EmailSubscriberType,
 		event.SlackSubscriberType, event.EnqueuePatchSubscriberType:
@@ -287,7 +290,7 @@ func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *event.WebhookSubscriber:
 		s.URL = utility.ToStringPtr(v.URL)
-		s.Secret = utility.ToStringPtr(string(v.Secret))
+		s.Secret = utility.ToStringPtr(evergreen.RedactedValue)
 		s.Headers = []APIWebhookHeader{}
 		s.Retries = v.Retries
 		s.MinDelayMS = v.MinDelayMS
@@ -322,7 +325,11 @@ func (s *APIWebhookSubscriber) ToService() event.WebhookSubscriber {
 
 func (s *APIWebhookHeader) BuildFromService(h event.WebhookHeader) {
 	s.Key = &h.Key
-	s.Value = &h.Value
+	if h.Key == "Authorization" {
+		s.Value = utility.ToStringPtr(evergreen.RedactedValue)
+	} else {
+		s.Value = &h.Value
+	}
 }
 
 func (s *APIWebhookHeader) ToService() event.WebhookHeader {

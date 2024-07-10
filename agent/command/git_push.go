@@ -167,7 +167,7 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 	errorOutput := stdErr.String()
 	if errorOutput != "" {
 		if p.token != "" {
-			errorOutput = strings.Replace(errorOutput, p.token, "[redacted oauth token]", -1)
+			errorOutput = strings.Replace(errorOutput, p.token, "[redacted github token]", -1)
 		}
 		logger.Execution().Error(errorOutput)
 	}
