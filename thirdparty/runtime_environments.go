@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"time"
 
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -208,8 +207,8 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts Image
 
 // ImageHistoryInfo represents information about an image with its AMI and creation date.
 type ImageHistoryInfo struct {
-	AMI          string
-	CreationDate time.Time
+	AMI          string `json:"ami_id"`
+	CreationDate string `json:"created_date"`
 }
 
 // DistoHistoryFilter represents the filtering arguments for getHistory. The Distro field is required and the other fields are optional.
@@ -217,12 +216,6 @@ type DistroHistoryFilterOptions struct {
 	Distro string
 	Page   int
 	Limit  int
-}
-
-// ImageHistoryInfoReceiver represents information about an image
-type ImageHistoryInfoReceiver struct {
-	AMI_ID       string
-	Created_Date string
 }
 
 // getHistory returns a list of images with their AMI and creation date corresponding to the provided distro in the order of most recently
@@ -253,27 +246,9 @@ func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts DistroH
 		msg, _ := io.ReadAll(resp.Body)
 		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
 	}
-	amiHistory := []ImageHistoryInfoReceiver{}
+	amiHistory := []ImageHistoryInfo{}
 	if err := gimlet.GetJSON(resp.Body, &amiHistory); err != nil {
 		return nil, errors.Wrap(err, "decoding http body")
 	}
-	amiHistoryParsed := []ImageHistoryInfo{}
-	for _, img := range amiHistory {
-		if img.AMI_ID == "" {
-			return nil, errors.New("no AMI found")
-		}
-		if img.Created_Date == "" {
-			return nil, errors.New("no creation found")
-		}
-		timestamp, err := strconv.ParseInt(img.Created_Date, 10, 64)
-		if err != nil {
-			return nil, errors.Wrap(err, "converting creation date")
-		}
-		image := ImageHistoryInfo{
-			AMI:          img.AMI_ID,
-			CreationDate: time.Unix(timestamp, 0),
-		}
-		amiHistoryParsed = append(amiHistoryParsed, image)
-	}
-	return amiHistoryParsed, nil
+	return amiHistory, nil
 }

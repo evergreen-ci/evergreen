@@ -140,16 +140,14 @@ func TestGetHistory(t *testing.T) {
 	assert.Error(err)
 
 	// Verify that getHistory provides images for a distribution.
-	imageNames, err := c.getImageNames(ctx)
 	require.NoError(t, err)
-	require.NotEmpty(t, imageNames)
-	result, err := c.getHistory(ctx, DistroHistoryFilterOptions{Distro: imageNames[1]})
+	result, err := c.getHistory(ctx, DistroHistoryFilterOptions{Distro: "ubuntu2204"})
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
 
-	// Verify that getHistory functions correctly with page and limit
+	// Verify that getHistory functions correctly with page and limit.
 	opts := DistroHistoryFilterOptions{
-		Distro: imageNames[0],
+		Distro: "ubuntu2204",
 		Page:   0,
 		Limit:  20,
 	}
