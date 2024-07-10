@@ -18,12 +18,10 @@ mutation {
         wholeWeekdaysOff: [0, 6]
       }
       noExpiration: true
-      expiration: "2020-08-06T17:42:12Z"
     }
   ) {
     hostUrl
     id
-    expiration
     noExpiration
     distro {
       id
