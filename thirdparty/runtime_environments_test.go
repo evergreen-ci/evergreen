@@ -140,7 +140,6 @@ func TestGetHistory(t *testing.T) {
 	assert.Error(err)
 
 	// Verify that getHistory provides images for a distribution.
-	require.NoError(t, err)
 	result, err := c.getHistory(ctx, DistroHistoryFilterOptions{Distro: "ubuntu2204"})
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
