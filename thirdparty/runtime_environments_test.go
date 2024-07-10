@@ -36,6 +36,96 @@ func TestGetOSInfo(t *testing.T) {
 	assert.Len(result, 10)
 }
 
+func TestGetPackages(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert := assert.New(t)
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config, "TestGetPackages")
+	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+
+	// Verify that we filter correctly by limit and manager.
+	manager := "pip"
+	ami := "ami-0e12ef25a5f7712a4"
+	limit := 10
+	opts := PackageFilterOptions{
+		AMI:     ami,
+		Page:    0,
+		Limit:   limit,
+		Manager: manager,
+	}
+	result, err := c.getPackages(ctx, opts)
+	require.NoError(t, err)
+	require.Len(t, result, limit)
+	for i := 0; i < limit; i++ {
+		assert.Contains(result[i].Manager, manager)
+	}
+
+	// Verify that we filter correctly by both manager and name.
+	name := "Automat"
+	opts = PackageFilterOptions{
+		AMI:     ami,
+		Page:    0,
+		Limit:   5,
+		Name:    "Automat",
+		Manager: manager,
+	}
+	result, err = c.getPackages(ctx, opts)
+	require.NoError(t, err)
+	require.Len(t, result, 1)
+	assert.Equal(result[0].Name, name)
+	assert.Contains(result[0].Manager, manager)
+
+	// Verify that there are no results for fake package name.
+	opts = PackageFilterOptions{
+		AMI:  ami,
+		Name: "blahblahblah",
+	}
+	result, err = c.getPackages(ctx, opts)
+	require.NoError(t, err)
+	assert.Empty(result)
+
+	// Verify that there are no errors with PackageFilterOptions only including the AMI.
+	_, err = c.getPackages(ctx, PackageFilterOptions{AMI: ami})
+	require.NoError(t, err)
+
+	// Verify that there is an error with no AMI provided.
+	_, err = c.getPackages(ctx, PackageFilterOptions{})
+	require.Error(t, err)
+}
+
+func TestGetImageDiff(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert := assert.New(t)
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config, "TestGetImageDiff")
+	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+
+	// Verify that getImageDiff correctly returns Toolchain/Package changes for a pair of sample AMIs.
+	opts := ImageDiffOptions{
+		BeforeAMI: "ami-029ab576546a58916",
+		AfterAMI:  "ami-02b25f680ad574d33",
+	}
+	result, err := c.getImageDiff(ctx, opts)
+	require.NoError(t, err)
+	assert.NotEmpty(result)
+	for _, change := range result {
+		assert.True(change.Type == "Toolchains" || change.Type == "Packages")
+	}
+
+	// Verify that getImageDiff finds no differences between the same AMI.
+	opts = ImageDiffOptions{
+		BeforeAMI: "ami-016662ab459a49e9d",
+		AfterAMI:  "ami-016662ab459a49e9d",
+	}
+	result, err = c.getImageDiff(ctx, opts)
+	require.NoError(t, err)
+	assert.Empty(result)
+}
+
 func TestGetToolchains(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -68,17 +158,16 @@ func TestGetToolchains(t *testing.T) {
 	result, err = c.getToolchains(ctx, opts)
 	require.NoError(t, err)
 	require.NotEmpty(t, result)
+	require.Len(t, result, 1)
 	assert.Equal(result[0].Name, name)
 	assert.Equal(result[0].Version, version)
-	assert.Len(result, 1)
 
-	// Verify that we receive no results for a fake toolchain
-	name = "blahblahblah"
+	// Verify that we receive no results for a fake toolchain.
 	opts = ToolchainFilterOptions{
 		AMI:   ami,
 		Page:  0,
 		Limit: 5,
-		Name:  name,
+		Name:  "blahblahblah",
 	}
 	result, err = c.getToolchains(ctx, opts)
 	require.NoError(t, err)
