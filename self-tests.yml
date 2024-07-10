@@ -100,7 +100,7 @@ variables:
         vars: { target: "load-smoke-data" }
       - command: github.generate_token
         params:
-          expansion_name: github_token_new
+          expansion_name: github_token
       - command: subprocess.exec
         params:
           silent: true
@@ -108,7 +108,7 @@ variables:
           env:
             GITHUB_APP_ID: ${staging_github_app_id}
             GITHUB_APP_KEY: ${staging_github_app_key}
-            GITHUB_TOKEN: ${github_token_new}
+            GITHUB_TOKEN: ${github_token}
           command: bash scripts/setup-smoke-config.sh
       - func: run-make
         vars: { target: "set-smoke-vars" }
@@ -190,12 +190,12 @@ functions:
   get-project-and-modules:
     - command: github.generate_token
       params:
-        expansion_name: github_token_new
+        expansion_name: github_token
     - command: git.get_project
       type: setup
       params:
         directory: evergreen
-        token: ${github_token_new}
+        token: ${github_token}
         shallow_clone: true
     - command: shell.exec
       type: setup
@@ -272,14 +272,14 @@ functions:
   setup-credentials:
     - command: github.generate_token
       params:
-        expansion_name: github_token_new
+        expansion_name: github_token
     - command: subprocess.exec
       type: setup
       params:
         silent: true
         working_dir: evergreen
         env:
-          GITHUB_TOKEN: ${github_token_new}
+          GITHUB_TOKEN: ${github_token}
           GITHUB_APP_ID: ${staging_github_app_id}
           GITHUB_APP_KEY: ${staging_github_app_key}
           JIRA_SERVER: ${jiraserver}
@@ -605,12 +605,12 @@ tasks:
     commands:
       - command: github.generate_token
         params:
-          expansion_name: github_token_new
+          expansion_name: github_token
       - command: git.get_project
         type: setup
         params:
           directory: evergreen
-          token: ${github_token_new}
+          token: ${github_token}
           shallow_clone: false
       - func: setup-credentials
       - func: setup-mongodb
@@ -662,12 +662,12 @@ tasks:
     commands:
       - command: github.generate_token
         params:
-          expansion_name: github_token_new
+          expansion_name: github_token
       - command: git.get_project
         type: setup
         params:
           directory: evergreen
-          token: ${github_token_new}
+          token: ${github_token}
       - func: run-make
         vars: { target: "${task_name}" }
   - name: verify-merge-function-update
