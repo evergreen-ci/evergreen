@@ -122,6 +122,14 @@ func (c *RuntimeEnvironmentsClient) getPackages(ctx context.Context, opts Packag
 	return packages, nil
 }
 
+// OSInfoFilterOptions represents the filtering options for GetOSInfo. Each argument is optional except for the AMI field.
+type OSInfoFilterOptions struct {
+	AMI   string
+	Name  string
+	Page  int
+	Limit int
+}
+
 // OSInfo stores operating system information.
 type OSInfo struct {
 	Version string
@@ -129,11 +137,16 @@ type OSInfo struct {
 }
 
 // GetOSInfo returns a list of operating system information for an AMI.
-func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, amiID string, page, limit int) ([]OSInfo, error) {
+func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFilterOptions) ([]OSInfo, error) {
+	if opts.AMI == "" {
+		return nil, errors.New("no AMI provided")
+	}
 	params := url.Values{}
-	params.Set("ami", amiID)
-	params.Set("page", strconv.Itoa(page))
-	params.Set("limit", strconv.Itoa(limit))
+	params.Set("ami", opts.AMI)
+	params.Set("page", strconv.Itoa(opts.Page))
+	if opts.Limit != 0 {
+		params.Set("limit", strconv.Itoa(opts.Limit))
+	}
 	params.Set("type", OSType)
 	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)

@@ -31,7 +31,26 @@ func TestGetOSInfo(t *testing.T) {
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config, "TestGetOSInfo")
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
-	result, err := c.GetOSInfo(ctx, "ami-0e12ef25a5f7712a4", 0, 10)
+
+	// Verify that providing no AMI produces an error.
+	_, err := c.GetOSInfo(ctx, OSInfoFilterOptions{})
+	assert.Error(err)
+
+	// Verify that we correctly filter only providing the AMI.
+	opts := OSInfoFilterOptions{
+		AMI: "ami-0e12ef25a5f7712a4",
+	}
+	result, err := c.GetOSInfo(ctx, opts)
+	require.NoError(t, err)
+	assert.NotEmpty(result)
+
+	// Verify that we correctly filter by AMI, limit, and manager.
+	opts = OSInfoFilterOptions{
+		AMI:   "ami-0e12ef25a5f7712a4",
+		Page:  0,
+		Limit: 10,
+	}
+	result, err = c.GetOSInfo(ctx, opts)
 	require.NoError(t, err)
 	assert.Len(result, 10)
 }
