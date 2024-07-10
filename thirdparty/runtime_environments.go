@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	EnvChangeTypePackages   = "Packages"
-	EnvChangeTypeToolchains = "Toolchains"
+	PackagesType   = "Packages"
+	ToolchainsType = "Toolchains"
+	OSType         = "OS"
 )
 
 type RuntimeEnvironmentsClient struct {
@@ -95,7 +96,7 @@ func (c *RuntimeEnvironmentsClient) getPackages(ctx context.Context, opts Packag
 	}
 	params.Set("name", opts.Name)
 	params.Set("manager", opts.Manager)
-	params.Set("type", "Packages")
+	params.Set("type", PackagesType)
 	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
@@ -131,7 +132,7 @@ func (c *RuntimeEnvironmentsClient) getOSInfo(ctx context.Context, amiID string,
 	params.Set("ami", amiID)
 	params.Set("page", strconv.Itoa(page))
 	params.Set("limit", strconv.Itoa(limit))
-	params.Set("type", "OS")
+	params.Set("type", OSType)
 	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
@@ -198,7 +199,7 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts Image
 	}
 	filteredChanges := []ImageDiffChange{}
 	for _, c := range changes {
-		if c.Type == EnvChangeTypePackages || c.Type == EnvChangeTypeToolchains {
+		if c.Type == PackagesType || c.Type == ToolchainsType {
 			filteredChanges = append(filteredChanges, c)
 		}
 	}
@@ -234,7 +235,7 @@ func (c *RuntimeEnvironmentsClient) getToolchains(ctx context.Context, opts Tool
 	}
 	params.Set("name", opts.Name)
 	params.Set("version", opts.Version)
-	params.Set("type", "Toolchains")
+	params.Set("type", ToolchainsType)
 	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
