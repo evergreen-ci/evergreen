@@ -326,7 +326,7 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	conf.ProjectRef.Repo = "invalidRepo"
 	conf.Distro = nil
 	token := "abcdefghij"
-	s.comm.CreateInstallationTokenResult = "unauthed-token"
+	s.comm.CreateInstallationTokenResult = token
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
