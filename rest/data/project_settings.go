@@ -518,7 +518,7 @@ func getUnredactedSubscriptions(unredactedPreviousSubscriptions []event.Subscrip
 		// Apply all subscription unredaction functions.
 		err := unredactWebhookSubscription(unredactedPreviousSubscriptions, &redactedSub)
 		if err != nil {
-			return nil, errors.Wrapf(err, "while unredacting webhook subscription")
+			return nil, errors.Wrapf(err, "unredacting webhook subscription")
 		}
 		// Add to final subscription slice.
 		unredactedNewSubscriptions = append(unredactedNewSubscriptions, redactedSub)
