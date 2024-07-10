@@ -1,0 +1,12 @@
+###### TYPES ######
+"""
+Image is returned by the image query.
+It contains information about an image.
+"""
+type Image {
+  name: String!
+  versionId: String!
+  kernel: String!
+  lastDeployed: Time!
+  ami: String!
+}
