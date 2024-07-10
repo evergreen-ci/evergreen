@@ -346,11 +346,7 @@ func TestPopulateExpansions(t *testing.T) {
 		Project:      "mci",
 	}
 
-	settings := &evergreen.Settings{
-		Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
-	}
-	oauthToken, err := settings.GetGithubOauthToken()
-	assert.NoError(err)
+	oauthToken := "globalGitHubOauthToken"
 	expansions, err := PopulateExpansions(taskDoc, &h, oauthToken, "appToken", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 25)

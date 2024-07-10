@@ -218,10 +218,12 @@ func (m *mockManager) ModifyHost(ctx context.Context, host *host.Host, changes h
 	return nil
 }
 
-// GetInstanceStatus gets the status of one instance according to the instance
+// GetInstanceStatus gets the state of one instance according to the instance
 // data stored in the mock manager.
-func (m *mockManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
-	return m.getOrDefaultInstanceStatus(ctx, h.Id), nil
+func (m *mockManager) GetInstanceState(ctx context.Context, h *host.Host) (CloudInstanceState, error) {
+	info := CloudInstanceState{}
+	info.Status = m.getOrDefaultInstanceStatus(ctx, h.Id)
+	return info, nil
 }
 
 func (m *mockManager) getOrDefaultInstanceStatus(ctx context.Context, hostID string) CloudStatus {

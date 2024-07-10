@@ -197,13 +197,11 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 	defer cancel()
 
 	testutil.ConfigureIntegrationTest(t, patchTestConfig, t.Name())
-	token, err := patchTestConfig.GetGithubOauthToken()
-	require.NoError(t, err)
 	Convey("With calling GetPatchedProject with a config and remote configuration path",
 		t, func() {
 			Convey("Calling GetPatchedProject returns a valid project given a patch and settings", func() {
 				configPatch := resetPatchSetup(ctx, t, remotePath)
-				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
+				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, "")
 				So(err, ShouldBeNil)
 				So(project, ShouldNotBeNil)
 				So(patchConfig, ShouldNotBeNil)
@@ -211,7 +209,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 				So(patchConfig.PatchedParserProject, ShouldNotBeNil)
 
 				Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
-					projectConfig, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch, token)
+					projectConfig, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch, "")
 					So(err, ShouldBeNil)
 					So(projectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
 				})
@@ -235,7 +233,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 					So(patchConfigFromPatchAndDB.PatchedProjectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
 
 					Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
-						projectConfigFromPatch, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch, token)
+						projectConfigFromPatch, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch, "")
 						So(err, ShouldBeNil)
 						So(projectConfigFromPatch, ShouldEqual, patchConfig.PatchedProjectConfig)
 					})
@@ -244,13 +242,13 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 
 			Convey("Calling GetPatchedProject on a project-less version returns a valid project", func() {
 				configPatch := resetProjectlessPatchSetup(ctx, t)
-				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
+				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, "")
 				So(err, ShouldBeNil)
 				So(patchConfig, ShouldNotBeEmpty)
 				So(project, ShouldNotBeNil)
 
 				Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
-					projectConfig, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch, token)
+					projectConfig, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch, "")
 					So(err, ShouldBeNil)
 					So(projectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
 				})
@@ -264,13 +262,13 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 				configPatch.Patches[0].PatchSet.Patch = ""
 				configPatch.Patches[0].PatchSet.PatchFileId = patchFileID.Hex()
 
-				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, token)
+				project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, configPatch, "")
 				So(err, ShouldBeNil)
 				So(patchConfig, ShouldNotBeEmpty)
 				So(project, ShouldNotBeNil)
 
 				Convey("Calling GetPatchedProjectConfig should return the same project config as GetPatchedProject", func() {
-					projectConfig, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch, token)
+					projectConfig, err := GetPatchedProjectConfig(ctx, patchTestConfig, configPatch, "")
 					So(err, ShouldBeNil)
 					So(projectConfig, ShouldEqual, patchConfig.PatchedProjectConfig)
 				})
@@ -294,12 +292,9 @@ func TestFinalizePatch(t *testing.T) {
 	// first before any documents can be inserted.
 	require.NoError(t, db.CreateCollections(manifest.Collection, VersionCollection, ParserProjectCollection, ProjectConfigCollection))
 
-	token, err := patchTestConfig.GetGithubOauthToken()
-	require.NoError(t, err)
-
 	for name, test := range map[string]func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig){
 		"VersionCreationWithParserProjectInDB": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
-			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, p, token)
+			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, p, "")
 			require.NoError(t, err)
 			assert.NotNil(t, project)
 
@@ -309,7 +304,7 @@ func TestFinalizePatch(t *testing.T) {
 			p.ProjectStorageMethod = ppStorageMethod
 			require.NoError(t, p.Insert())
 
-			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, token)
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, "")
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 			assert.Len(t, version.Parameters, 1)
@@ -353,7 +348,7 @@ func TestFinalizePatch(t *testing.T) {
 			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
 			require.NoError(t, p.Insert())
 
-			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, p, token)
+			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, p, "")
 			require.NoError(t, err)
 			assert.NotNil(t, project)
 
@@ -369,7 +364,7 @@ func TestFinalizePatch(t *testing.T) {
 			_, err = baseManifest.TryInsert()
 			require.NoError(t, err)
 
-			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, token)
+			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester, "")
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 			// Ensure that the manifest was created and that auto_update worked for
@@ -393,13 +388,13 @@ func TestFinalizePatch(t *testing.T) {
 			p.VariantsTasks = []patch.VariantTasks{}
 			require.NoError(t, p.Insert())
 
-			_, err := FinalizePatch(ctx, p, evergreen.MergeTestRequester, token)
+			_, err := FinalizePatch(ctx, p, evergreen.MergeTestRequester, "")
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "cannot finalize patch with no tasks")
 
 			// commit queue patch should fail with different error
 			p.Alias = evergreen.CommitQueueAlias
-			_, err = FinalizePatch(ctx, p, evergreen.MergeTestRequester, token)
+			_, err = FinalizePatch(ctx, p, evergreen.MergeTestRequester, "")
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "no builds or tasks for commit queue version")
 		},
@@ -409,7 +404,7 @@ func TestFinalizePatch(t *testing.T) {
 			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
 			require.NoError(t, p.Insert())
 
-			version, err := FinalizePatch(ctx, p, evergreen.GithubPRRequester, token)
+			version, err := FinalizePatch(ctx, p, evergreen.GithubPRRequester, "")
 			require.NoError(t, err)
 			assert.NotNil(t, version)
 			assert.Len(t, version.Parameters, 1)
@@ -436,7 +431,7 @@ func TestFinalizePatch(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			p := resetPatchSetup(ctx, t, remotePath)
 
-			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, p, token)
+			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, p, "")
 			require.NoError(t, err)
 			assert.NotNil(t, project)
 
