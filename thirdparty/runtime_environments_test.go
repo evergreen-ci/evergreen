@@ -200,9 +200,10 @@ func TestGetHistory(t *testing.T) {
 	opts := DistroHistoryFilterOptions{
 		Distro: "ubuntu2204",
 		Page:   0,
-		Limit:  20,
+		Limit:  15,
 	}
 	result, err = c.getHistory(ctx, opts)
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
+	assert.Len(result, 15)
 }
