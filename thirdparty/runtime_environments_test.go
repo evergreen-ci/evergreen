@@ -137,13 +137,13 @@ func TestGetHistory(t *testing.T) {
 
 	// Verify that getHistory errors when not provided the required distro field.
 	_, err := c.getHistory(ctx, DistroHistoryFilterOptions{})
-	require.Error(t, err)
+	assert.Error(err)
 
 	// Verify that getHistory provides images for a distribution.
 	imageNames, err := c.getImageNames(ctx)
 	require.NoError(t, err)
 	require.NotEmpty(t, imageNames)
-	result, err := c.getHistory(ctx, DistroHistoryFilterOptions{Distro: imageNames[0]})
+	result, err := c.getHistory(ctx, DistroHistoryFilterOptions{Distro: imageNames[1]})
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
 
