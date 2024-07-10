@@ -98,6 +98,9 @@ variables:
       - func: setup-credentials
       - func: run-make
         vars: { target: "load-smoke-data" }
+      - command: github.generate_token
+        params:
+          expansion_name: github_token
       - command: subprocess.exec
         params:
           silent: true
@@ -185,6 +188,9 @@ variables:
 #######################################
 functions:
   get-project-and-modules:
+    - command: github.generate_token
+      params:
+        expansion_name: github_token
     - command: git.get_project
       type: setup
       params:
@@ -264,6 +270,9 @@ functions:
         EVG_CLIENT_S3_BUCKET: evg-bucket-evergreen
 
   setup-credentials:
+    - command: github.generate_token
+      params:
+        expansion_name: github_token
     - command: subprocess.exec
       type: setup
       params:
@@ -594,6 +603,9 @@ tasks:
   - name: test-repotracker
     tags: ["db", "test"]
     commands:
+      - command: github.generate_token
+        params:
+          expansion_name: github_token
       - command: git.get_project
         type: setup
         params:
@@ -648,6 +660,9 @@ tasks:
   - name: verify-mod-tidy
     tags: ["linter"]
     commands:
+      - command: github.generate_token
+        params:
+          expansion_name: github_token
       - command: git.get_project
         type: setup
         params:

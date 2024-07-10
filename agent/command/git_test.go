@@ -325,9 +325,8 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	s.Require().NoError(err)
 	conf.ProjectRef.Repo = "invalidRepo"
 	conf.Distro = nil
-	s.comm.CreateInstallationTokenFail = true
 	token := "abcdefghij"
-	conf.Expansions.Put(evergreen.GlobalGitHubTokenExpansion, token)
+	s.comm.CreateInstallationTokenResult = token
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -350,7 +349,7 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 		if strings.Contains(line.Data, "https://[redacted github token]:x-oauth-basic@github.com/evergreen-ci/invalidRepo.git") {
 			foundCloneCommand = true
 		}
-		if strings.Contains(line.Data, "Repository not found.") {
+		if strings.Contains(line.Data, "Authentication failed for") {
 			foundCloneErr = true
 		}
 		if strings.Contains(line.Data, token) {
@@ -369,7 +368,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
 	conf.ProjectRef.Repo = "invalidRepo"
-	s.comm.CreateInstallationTokenFail = true
+	s.comm.CreateInstallationTokenResult = "unauthed-token"
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -396,7 +395,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 		if strings.Contains(line.Data, "/invalidRepo.git/' not found") {
 			foundCloneErr = true
 		}
-		if strings.Contains(line.Data, "Permission denied (publickey)") || strings.Contains(line.Data, "Host key verification failed.") {
+		if strings.Contains(line.Data, "Authentication failed for") && strings.Contains(line.Data, "/evergreen-ci/invalidRepo.git") {
 			foundSSHErr = true
 		}
 	}
