@@ -369,7 +369,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
 	conf.ProjectRef.Repo = "invalidRepo"
-	s.comm.CreateInstallationTokenResult = conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
+	s.comm.CreateInstallationTokenResult = "unauthed-token"
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
