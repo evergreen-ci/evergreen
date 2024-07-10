@@ -54,6 +54,22 @@ type ConfigSection interface {
 	ValidateAndDefault() error
 }
 
+func decodeDBConfig(ctx context.Context, target ConfigSection) error {
+	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(target.SectionId()))
+	if err := res.Err(); err != nil {
+		// No override is set in the database.
+		if err == mongo.ErrNoDocuments {
+			return nil
+		}
+		return errors.Wrapf(err, "getting config section '%s'", target.SectionId())
+	}
+
+	if err := res.Decode(target); err != nil {
+		return errors.Wrapf(err, "decoding config section '%s'", target.SectionId())
+	}
+	return nil
+}
+
 // Settings contains all configuration settings for running Evergreen. Settings
 // with the "id" struct tag should implement the ConfigSection interface.
 type Settings struct {
@@ -273,8 +289,8 @@ func NewSettings(filename string) (*Settings, error) {
 	return settings, nil
 }
 
-// GetConfig returns the Evergreen config document. If no document is
-// present in the DB, it will return the defaults.
+// GetConfig returns the Evergreen config struct. If no configuration is
+// present in SSM or the database, it will return the defaults.
 // Use Settings() to get the cached settings object.
 func GetConfig(ctx context.Context) (*Settings, error) {
 	config := NewConfigSections()

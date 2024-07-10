@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -63,6 +64,32 @@ func NewConfigSections() ConfigSections {
 }
 
 func (c *ConfigSections) populateSections(ctx context.Context) error {
+	// SSM parameters may not be available such as when running locally.
+	grip.Error(errors.Wrap(c.getSSMParameters(ctx), "getting SSM parameters"))
+
+	// A parameter set in the database overrides the same parameter set in SSM.
+	return errors.Wrap(c.getDBParameters(ctx), "getting database parameters")
+}
+
+func (c *ConfigSections) getSSMParameters(ctx context.Context) error {
+	ssmSections, err := getAllParameters(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting parameters from SSM")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for sectionID, value := range ssmSections {
+		section, ok := c.Sections[sectionID]
+		if !ok {
+			continue
+		}
+		catcher.Wrapf(json.Unmarshal([]byte(value), section), "unmarshalling SSM section ID '%s'", sectionID)
+	}
+
+	return catcher.Resolve()
+}
+
+func (c *ConfigSections) getDBParameters(ctx context.Context) error {
 	sectionIDs := make([]string, 0, len(c.Sections))
 	for sectionID := range c.Sections {
 		sectionIDs = append(sectionIDs, sectionID)
