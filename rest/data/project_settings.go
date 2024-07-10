@@ -511,7 +511,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 }
 
 // getUnredactedSubscriptions parses the new subscriptions for any values that are redacted and if they are redacted,
-// it replaces the redacted value with the previous value for that subscription.
+// it replaces the placeholder string with the unredacted value.
 func getUnredactedSubscriptions(unredactedPreviousSubscriptions []event.Subscription, redactedNewSubscriptions []restModel.APISubscription) ([]restModel.APISubscription, error) {
 	unredactedNewSubscriptions := []restModel.APISubscription{}
 	for _, redactedSub := range redactedNewSubscriptions {
