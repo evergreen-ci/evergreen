@@ -111,7 +111,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
-	github.com/evergreen-ci/aviation v0.0.0-20240509141021-0e3a1c91cc79 // indirect
+	github.com/evergreen-ci/aviation v0.0.0-20240709194445-8b05ffe0c2fa // indirect
 	github.com/evergreen-ci/baobab v1.0.1-0.20220107150152-03b522479f52 // indirect
 	github.com/evergreen-ci/bond v0.0.0-20220411194221-3710ea2ac361 // indirect
 	github.com/evergreen-ci/lru v0.0.0-20220404184951-eb0842380798 // indirect

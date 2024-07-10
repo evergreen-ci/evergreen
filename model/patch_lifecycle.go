@@ -717,7 +717,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		var build *build.Build
 		var tasks task.Tasks
-		build, tasks, err = CreateBuildFromVersionNoInsert(buildCreationArgs)
+		build, tasks, err = CreateBuildFromVersionNoInsert(ctx, buildCreationArgs)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

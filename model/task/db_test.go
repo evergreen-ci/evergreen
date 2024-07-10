@@ -2228,6 +2228,49 @@ func TestFindGeneratedTasksFromID(t *testing.T) {
 	}
 }
 
+func TestGetPendingGenerateTasks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	t1 := Task{
+		Id:                         "should_sum1",
+		Status:                     evergreen.TaskStarted,
+		EstimatedNumGeneratedTasks: utility.ToIntPtr(1),
+		GeneratedTasks:             false,
+	}
+	t2 := Task{
+		Id:                         "should_sum2",
+		Status:                     evergreen.TaskDispatched,
+		EstimatedNumGeneratedTasks: utility.ToIntPtr(2),
+	}
+	t3 := Task{
+		Id:                         "should_not_sum1",
+		Status:                     evergreen.TaskStarted,
+		EstimatedNumGeneratedTasks: utility.ToIntPtr(3),
+		GeneratedTasks:             true,
+	}
+	t4 := Task{
+		Id:                         "should_not_sum2",
+		Status:                     evergreen.TaskFailed,
+		EstimatedNumGeneratedTasks: utility.ToIntPtr(4),
+		GeneratedTasks:             false,
+	}
+	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
+
+	ctx := context.TODO()
+	numPending, err := GetPendingGenerateTasks(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 3, numPending)
+}
+
+func TestGetNoPendingGenerateTasks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	ctx := context.TODO()
+	numPending, err := GetPendingGenerateTasks(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numPending)
+}
+
 func TestGetLatestTaskFromImage(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
