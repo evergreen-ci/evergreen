@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 
 	"github.com/evergreen-ci/gimlet"
@@ -70,6 +71,7 @@ func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string
 			filteredImages = append(filteredImages, img)
 		}
 	}
+	sort.Strings(filteredImages)
 	return filteredImages, nil
 }
 
