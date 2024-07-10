@@ -178,7 +178,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 		Id:     testUserID,
 		APIKey: testUserAPIKey,
 		Settings: user.UserSettings{
-			Timezone: "America/New_York",
+			Timezone: "Asia/Macau",
 		},
 	}
 	ctx = gimlet.AttachUser(ctx, testUser)

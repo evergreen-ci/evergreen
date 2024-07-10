@@ -6160,7 +6160,7 @@ func TestNewSleepScheduleInfo(t *testing.T) {
 			TimeZone:         "Asia/Macau",
 		})
 		assert.NoError(t, err)
-		assert.NotNil(t, info)
+		require.Zero(t, info)
 		assert.Equal(t, []time.Weekday{time.Sunday}, info.WholeWeekdaysOff)
 		assert.Zero(t, info.DailyStartTime)
 		assert.Zero(t, info.DailyStopTime)
@@ -6172,7 +6172,7 @@ func TestNewSleepScheduleInfo(t *testing.T) {
 		defaultOpts := GetDefaultSleepSchedule("America/New_York")
 		info, err := NewSleepScheduleInfo(defaultOpts)
 		assert.NoError(t, err)
-		assert.NotZero(t, info)
+		require.NotZero(t, info)
 		assert.ElementsMatch(t, defaultOpts.WholeWeekdaysOff, info.WholeWeekdaysOff)
 		assert.Equal(t, defaultOpts.DailyStartTime, info.DailyStartTime)
 		assert.Equal(t, defaultOpts.DailyStopTime, info.DailyStopTime)

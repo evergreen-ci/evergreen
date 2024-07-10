@@ -84,10 +84,10 @@ func (so *SpawnOptions) validate(ctx context.Context, settings *evergreen.Settin
 		return errors.New("public key contains invalid base64 string")
 	}
 
-	if !so.SleepScheduleOptions.IsZero() && !so.NoExpiration {
-		return errors.New("cannot set a sleep schedule on an expirable host")
-	}
 	if !so.SleepScheduleOptions.IsZero() {
+		if !so.NoExpiration {
+			return errors.New("cannot set a sleep schedule on an expirable host")
+		}
 		if err := so.SleepScheduleOptions.Validate(); err != nil {
 			return errors.Wrap(err, "invalid sleep schedule options")
 		}
