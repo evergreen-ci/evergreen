@@ -1026,7 +1026,14 @@ func (r *queryResolver) Version(ctx context.Context, versionID string) (*restMod
 
 // Image is the resolver for the image field.
 func (r *queryResolver) Image(ctx context.Context, imageID string) (*Image, error) {
-	panic(fmt.Errorf("not implemented: Image - image"))
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: %s", err.Error()))
+	}
+	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+	image := Image{}
+
+	return &image, nil
 }
 
 // Query returns QueryResolver implementation.
