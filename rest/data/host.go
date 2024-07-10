@@ -239,6 +239,15 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 	if keyVal == "" {
 		return nil, errors.Errorf("public key '%s' cannot have an empty value", options.KeyName)
 	}
+
+	if options.NoExpiration {
+		if options.SleepScheduleOptions.IsZero() {
+			options.SleepScheduleOptions = host.GetDefaultSleepSchedule(user.Settings.Timezone)
+		} else {
+			options.SleepScheduleOptions.SetDefaultTimeZone(user.Settings.Timezone)
+		}
+	}
+
 	spawnOptions := cloud.SpawnOptions{
 		DistroId:              options.DistroID,
 		Userdata:              options.UserData,
@@ -253,6 +262,7 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 		HomeVolumeID:          options.HomeVolumeID,
 		Region:                options.Region,
 		Expiration:            options.Expiration,
+		SleepScheduleOptions:  options.SleepScheduleOptions,
 		UseProjectSetupScript: options.UseProjectSetupScript,
 		ProvisionOptions: &host.ProvisionOptions{
 			TaskId:      options.TaskID,
