@@ -191,3 +191,14 @@ func TestImages(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, res)
 }
+
+func TestImage(t *testing.T) {
+	config := New("/graphql")
+	ctx := getContext(t)
+	testConfig := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestImage")
+	assert.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
+	res, err := config.Resolvers.Query().Image(ctx, "ubuntu2204")
+	require.NoError(t, err)
+	assert.NotEmpty(t, res)
+}
