@@ -220,7 +220,7 @@ func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITas
 	if len(obj.ExecutionTasks) != 0 && !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
 		tasks, err := task.FindByExecutionTasksAndMaxExecution(utility.FromStringPtrSlice(obj.ExecutionTasks), obj.Execution)
 		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding execution tasks for task: %s : %s", *obj.Id, err.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding execution tasks for task '%s': %s", *obj.Id, err.Error()))
 		}
 		for _, t := range tasks {
 			if t.Status == evergreen.TaskUndispatched {
