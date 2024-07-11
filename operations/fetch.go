@@ -205,6 +205,9 @@ type cloneOptions struct {
 
 func clone(opts cloneOptions) error {
 	// clone the repo first
+	if opts.token == "" {
+		return errors.New("cannot clone without token")
+	}
 	cloneArgs := []string{"clone", thirdparty.FormGitURL("github.com", opts.owner, opts.repository, opts.token)}
 	if opts.depth > 0 {
 		cloneArgs = append(cloneArgs, "--depth", fmt.Sprintf("%d", opts.depth))

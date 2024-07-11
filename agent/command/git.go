@@ -219,8 +219,14 @@ func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 	}
 	var gitURL string
 	if forApp {
+		if opts.token == "" {
+			return nil, errors.New("cannot clone using access token if token is not set")
+		}
 		gitURL = thirdparty.FormGitURLForApp(urlLocation.Host, opts.owner, opts.repo, opts.token)
 	} else {
+		if opts.token == "" {
+			return nil, errors.New("cannot clone using OAuth if token is not set")
+		}
 		gitURL = thirdparty.FormGitURL(urlLocation.Host, opts.owner, opts.repo, opts.token)
 	}
 	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
