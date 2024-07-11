@@ -473,7 +473,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	case model.ProjectPageGithubAppSettingsSection:
 		mergedSection.GitHubDynamicTokenPermissionGroups = mergedBeforeRef.GitHubDynamicTokenPermissionGroups
 		if err := mergedSection.ValidateGitHubPermissionGroups(); err != nil {
-			return nil, errors.Wrap(err, "invalid GitHub permission groups")
+			return nil, errors.Wrap(err, "invalid GitHub permission group by requester")
 		}
 	case model.ProjectPageGithubPermissionsSection:
 		if err := mergedSection.ValidateGitHubPermissionGroups(); err != nil {

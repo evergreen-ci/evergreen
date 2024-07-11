@@ -3521,13 +3521,13 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	}
 	assert.NoError(projectRef.Insert())
 	projectRef, err := FindBranchProjectRef("identifier")
-	require.NoError(t, err)
-	require.NotNil(t, projectRef)
+	assert.NoError(err)
+	assert.NotNil(t, projectRef)
 
 	settings := evergreen.Settings{
 		GithubOrgs: []string{"newOwner", "evergreen-ci"},
 	}
-	require.NoError(t, settings.Set(ctx))
+	assert.NoError(settings.Set(ctx))
 
 	update := &ProjectRef{
 		Id:      "iden_",
@@ -3536,7 +3536,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		Repo:    "test",
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
-	require.NoError(t, err)
+	assert.NoError(err)
 
 	// Verify that Parsley filters and project health view are saved correctly.
 	update = &ProjectRef{
@@ -3546,7 +3546,13 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		ProjectHealthView: ProjectHealthViewAll,
 	}
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageViewsAndFiltersSection, false)
-	require.NoError(t, err)
+	assert.NoError(err)
+
+	projectRef, err = FindBranchProjectRef("iden_")
+	assert.NoError(err)
+	require.NotNil(t, projectRef)
+	assert.Len(projectRef.ParsleyFilters, 1)
+	assert.Equal(projectRef.ProjectHealthView, ProjectHealthViewAll)
 
 	// Verify that private field does not get updated when updating restricted field.
 	update = &ProjectRef{
@@ -3556,10 +3562,8 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.NoError(err)
 
 	projectRef, err = FindBranchProjectRef("iden_")
-	require.NoError(t, err)
+	assert.NoError(err)
 	require.NotNil(t, projectRef)
-	assert.Len(projectRef.ParsleyFilters, 1)
-	assert.Equal(projectRef.ProjectHealthView, ProjectHealthViewAll)
 	assert.True(utility.FromBoolPtr(projectRef.Restricted))
 	assert.True(utility.FromBoolPtr(projectRef.Private))
 
@@ -3578,7 +3582,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.NoError(err)
 
 	projectRef, err = FindBranchProjectRef("iden_")
-	require.NoError(t, err)
+	assert.NoError(err)
 	require.NotNil(t, projectRef)
 	require.Len(t, projectRef.GitHubDynamicTokenPermissionGroups, 1)
 	assert.Equal("some-group", projectRef.GitHubDynamicTokenPermissionGroups[0].Name)
