@@ -298,6 +298,8 @@ type HostSuite struct {
 	route *hostIDGetHandler
 	env   evergreen.Environment
 	suite.Suite
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func TestHostSuite(t *testing.T) {
@@ -312,13 +314,18 @@ func TestHostSuite(t *testing.T) {
 }
 
 func (s *HostSuite) SetupTest() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 	setupMockHostsConnector(s.T(), s.env)
 	s.route = &hostIDGetHandler{}
 }
 
+func (s *HostSuite) TearDownTest() {
+	s.cancel()
+}
+
 func (s *HostSuite) TestFindByIdFirst() {
 	s.route.hostID = "host1"
-	res := s.route.Run(context.TODO())
+	res := s.route.Run(s.ctx)
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 
@@ -332,7 +339,7 @@ func (s *HostSuite) TestFindByIdFirst() {
 
 func (s *HostSuite) TestFindByIdLast() {
 	s.route.hostID = "host2"
-	res := s.route.Run(context.TODO())
+	res := s.route.Run(s.ctx)
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 
@@ -347,18 +354,16 @@ func (s *HostSuite) TestFindByIdLast() {
 
 func (s *HostSuite) TestFindByIdFail() {
 	s.route.hostID = "host5"
-	res := s.route.Run(context.TODO())
+	res := s.route.Run(s.ctx)
 	s.NotNil(res)
 	s.Equal(http.StatusNotFound, res.Status(), "%+v", res)
 
 }
 
 func (s *HostSuite) TestBuildFromServiceHost() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	host, err := host.FindOneId(ctx, "host1")
+	host, err := host.FindOneId(s.ctx, "host1")
 	s.NoError(err)
+	s.Require().NotZero(host)
 	apiHost := model.APIHost{}
 	apiHost.BuildFromService(host, nil)
 	s.Equal(apiHost.Id, utility.ToStringPtr(host.Id))
@@ -372,6 +377,28 @@ func (s *HostSuite) TestBuildFromServiceHost() {
 	s.Equal(apiHost.Distro.Id, utility.ToStringPtr(host.Distro.Id))
 	s.Equal(apiHost.Distro.Provider, utility.ToStringPtr(host.Distro.Provider))
 	s.Equal(apiHost.Distro.ImageId, utility.ToStringPtr(""))
+}
+
+func (s *HostSuite) TestHostSpawnedFromTask() {
+	h := host.Host{
+		Id: "host_id",
+		ProvisionOptions: &host.ProvisionOptions{
+			TaskId: "task_id",
+		},
+	}
+	s.Require().NoError(h.Insert(s.ctx))
+
+	s.route.hostID = h.Id
+	resp := s.route.Run(s.ctx)
+	s.Require().NotZero(resp)
+	s.Equal(http.StatusOK, resp.Status())
+
+	apiHost, ok := resp.Data().(*model.APIHost)
+	s.Require().True(ok)
+	s.Require().NotZero(apiHost)
+	s.Equal(h.Id, utility.FromStringPtr(apiHost.Id))
+	s.Require().NotZero(apiHost.ProvisionOptions)
+	s.Equal(h.ProvisionOptions.TaskId, utility.FromStringPtr(apiHost.ProvisionOptions.TaskID))
 }
 
 ////////////////////////////////////////////////////////////////////////

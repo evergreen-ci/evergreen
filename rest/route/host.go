@@ -114,7 +114,7 @@ type hostIDGetHandler struct {
 
 // Factory creates an instance of the handler.
 //
-//	@Summary		Fetch hosts by ID
+//	@Summary		Fetch host by ID
 //	@Description	Fetches a single host using its ID
 //	@Tags			hosts
 //	@Router			/hosts/{host_id} [get]

@@ -43,6 +43,18 @@ type APIHost struct {
 	CreationTime          *time.Time  `json:"creation_time"`
 	Expiration            *time.Time  `json:"expiration_time"`
 	AttachedVolumeIDs     []string    `json:"attached_volume_ids"`
+	// Contains options for spawn hosts.
+	ProvisionOptions APIProvisionOptions `json:"provision_options"`
+}
+
+// APIProvisionOptions contains options for spawn hosts.
+type APIProvisionOptions struct {
+	// ID of the task that the host was spawned from.
+	TaskID *string `json:"task_id"`
+}
+
+func (apiOpts *APIProvisionOptions) BuildFromService(opts host.ProvisionOptions) {
+	apiOpts.TaskID = utility.ToStringPtr(opts.TaskId)
 }
 
 // HostRequestOptions is a struct that holds the format of a POST request to
@@ -141,6 +153,9 @@ func (apiHost *APIHost) buildFromHostStruct(h *host.Host) {
 		attachedVolumeIds = append(attachedVolumeIds, volAttachment.VolumeID)
 	}
 	apiHost.AttachedVolumeIDs = attachedVolumeIds
+	if h.ProvisionOptions != nil {
+		apiHost.ProvisionOptions.BuildFromService(*h.ProvisionOptions)
+	}
 	imageId, err := h.Distro.GetImageID()
 	if err != nil {
 		// report error but do not fail function because of a bad imageId
