@@ -212,32 +212,32 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "vol-12345", dbHost.Volumes[0].VolumeID)
 			assert.Equal(t, "/dev/sda1", dbHost.Volumes[0].DeviceName)
 		},
-		"GetInstanceStatus": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
-			status, err := m.GetInstanceStatus(ctx, h)
+		"GetInstanceInformation": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+			info, err := m.GetInstanceState(ctx, h)
 			assert.NoError(t, err)
-			assert.Equal(t, StatusRunning, status)
+			assert.Equal(t, StatusRunning, info.Status)
 
 			assert.Equal(t, "us-east-1a", h.Zone)
 			hDb, err := host.FindOneId(ctx, "h1")
 			assert.NoError(t, err)
 			assert.Equal(t, "us-east-1a", hDb.Zone)
 		},
-		"GetInstanceStatusNonExistentInstance": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+		"GetInstanceInformationNonExistentInstance": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			apiErr := &smithy.GenericAPIError{
 				Code:    EC2ErrorNotFound,
 				Message: "The instance ID 'test-id' does not exist",
 			}
 			wrappedAPIError := errors.Wrap(apiErr, "EC2 API returned error for DescribeInstances")
 			client.RequestGetInstanceInfoError = wrappedAPIError
-			status, err := m.GetInstanceStatus(ctx, h)
+			info, err := m.GetInstanceState(ctx, h)
 			assert.NoError(t, err)
-			assert.Equal(t, StatusNonExistent, status)
+			assert.Equal(t, StatusNonExistent, info.Status)
 		},
-		"GetInstanceStatusNonExistentReservation": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
+		"GetInstanceInformationNonExistentReservation": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			client.RequestGetInstanceInfoError = noReservationError
-			status, err := m.GetInstanceStatus(ctx, h)
+			info, err := m.GetInstanceState(ctx, h)
 			assert.NoError(t, err)
-			assert.Equal(t, StatusNonExistent, status)
+			assert.Equal(t, StatusNonExistent, info.Status)
 		},
 		"TerminateInstance": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
 			assert.NoError(t, m.TerminateInstance(ctx, h, "evergreen", ""))

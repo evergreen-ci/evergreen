@@ -66,9 +66,9 @@ func (staticMgr *staticManager) ModifyHost(context.Context, *host.Host, host.Hos
 	return errors.New("cannot modify instances with static provider")
 }
 
-// get the status of an instance
-func (staticMgr *staticManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
-	return StatusRunning, nil
+// get the information of an instance
+func (staticMgr *staticManager) GetInstanceState(ctx context.Context, host *host.Host) (CloudInstanceState, error) {
+	return CloudInstanceState{Status: StatusRunning}, nil
 }
 
 // get instance DNS

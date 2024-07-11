@@ -309,6 +309,10 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 
 		if filematch == "**" {
 			walk = func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+
 				for _, ignore := range excludes {
 					if match, _ := filepath.Match(ignore, path); match {
 						return nil
@@ -323,6 +327,10 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 		} else if strings.Contains(filematch, "**") {
 			globSuffix := filematch[2:]
 			walk = func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+
 				if strings.HasSuffix(filepath.Base(path), globSuffix) {
 					for _, ignore := range excludes {
 						if match, _ := filepath.Match(ignore, path); match {
@@ -337,6 +345,10 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 			catcher.Wrapf(filepath.Walk(dir, walk), "matching files included in filter '%s' for path '%s'", filematch, dir)
 		} else {
 			walk = func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+
 				a, b := filepath.Split(path)
 				if filepath.Clean(a) == filepath.Clean(dir) {
 					match, err := filepath.Match(filematch, b)
