@@ -3,6 +3,9 @@ package route
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"go.mongodb.org/mongo-driver/bson"
 	"net/http"
 	"time"
 
@@ -543,6 +546,61 @@ func (p *mergePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating merge patch '%s'", p.patchId))
 	}
 	return gimlet.NewJSONResponse(apiPatch)
+}
+
+// /patches/{patch_id}/estimated_generated_tasks
+type countEstimatedGeneratedTasksHandler struct {
+	patchId string
+	files   []dbModel.TVPair
+}
+
+func makeCountEstimatedGeneratedTasks() gimlet.RouteHandler {
+	return &countEstimatedGeneratedTasksHandler{}
+}
+
+func (p *countEstimatedGeneratedTasksHandler) Factory() gimlet.RouteHandler {
+	return &countEstimatedGeneratedTasksHandler{}
+}
+
+func (p *countEstimatedGeneratedTasksHandler) Parse(ctx context.Context, r *http.Request) error {
+	p.patchId = gimlet.GetVars(r)["patch_id"]
+
+	body := utility.NewRequestReader(r)
+	defer body.Close()
+	if err := utility.ReadJSON(body, &p.files); err != nil {
+		return errors.Wrap(err, "reading JSON request body")
+	}
+
+	return nil
+}
+
+func (p *countEstimatedGeneratedTasksHandler) Run(ctx context.Context) gimlet.Responder {
+	existingPatch, err := patch.FindOneId(p.patchId)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting patch '%s'", p.patchId))
+	}
+	if existingPatch == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "patch not found",
+		})
+	}
+	numTasksToFinalize := 0
+	for _, vt := range p.files {
+		dbTask, err := task.FindOne(db.Query(bson.M{
+			task.ProjectKey:      existingPatch.Project,
+			task.BuildVariantKey: vt.Variant,
+			task.DisplayNameKey:  vt.TaskName,
+			task.GenerateTaskKey: true,
+		}).Sort([]string{"-" + task.CreateTimeKey}))
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting task with variant '%s' and name '%s'", vt.Variant, vt.TaskName))
+		}
+		if dbTask != nil {
+			numTasksToFinalize += utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks)
+		}
+	}
+	return gimlet.NewTextResponse(numTasksToFinalize)
 }
 
 type patchTasks struct {

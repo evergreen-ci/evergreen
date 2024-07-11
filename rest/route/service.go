@@ -187,6 +187,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/patches/{patch_id}/raw_modules").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeModuleRawHandler())
 	app.AddRoute("/patches/{patch_id}/restart").Version(2).Post().Wrap(requireUser, submitPatches).RouteHandler(makeRestartPatch())
 	app.AddRoute("/patches/{patch_id}/merge_patch").Version(2).Put().Wrap(requireUser, addProject, submitPatches, requireCommitQueueItemOwner).RouteHandler(makeMergePatch(env))
+	app.AddRoute("/patches/{patch_id}/estimated_generated_tasks").Version(2).Get().Wrap(requireUser).RouteHandler(makeCountEstimatedGeneratedTasks())
 	app.AddRoute("/pods").Version(2).Post().Wrap(adminSettings).RouteHandler(makePostPod(env))
 	app.AddRoute("/pods/{pod_id}").Version(2).Get().Wrap(adminSettings).RouteHandler(makeGetPod(env))
 	app.AddRoute("/pods/{pod_id}/provisioning_script").Version(2).Get().Wrap(requirePod).RouteHandler(makePodProvisioningScript(env))

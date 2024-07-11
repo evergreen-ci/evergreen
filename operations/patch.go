@@ -7,10 +7,8 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/task"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -18,7 +16,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -265,7 +262,7 @@ func Patch() cli.Command {
 			}
 
 			if shouldFinalize {
-				shouldContinue, err := checkForLargeNumFinalizedTasks(ac, params, patchId)
+				shouldContinue, err := checkForLargeNumFinalizedTasks(rc, params, patchId)
 				if err != nil {
 					return err
 				}
@@ -294,18 +291,18 @@ func Patch() cli.Command {
 // checkForLargeNumFinalizedTasks retrieves an un-finalized patch document, counts the number of tasks it contains,
 // and prompts the user with a confirmation popup if the number of tasks is greater than the largeNumFinalizedTasksThreshold.
 // It returns true if the finalization process should go through, and false otherwise.
-func checkForLargeNumFinalizedTasks(ac *legacyClient, params *patchParams, patchId string) (bool, error) {
+func checkForLargeNumFinalizedTasks(rc *legacyClient, params *patchParams, patchId string) (bool, error) {
 	if params.SkipConfirm {
 		return true, nil
 	}
-	existingPatch, err := ac.GetPatch(patchId)
+	existingPatch, err := rc.GetPatch(patchId)
 	if err != nil {
 		return false, errors.Wrapf(err, "getting patch '%s'", patchId)
 	}
 	if existingPatch == nil {
 		return false, errors.Wrapf(err, "patch '%s' not found", patchId)
 	}
-	proj, err := ac.GetPatchedConfig(patchId)
+	proj, err := rc.GetPatchedConfig(patchId)
 	if err != nil {
 		return false, errors.Wrapf(err, "getting patched config for patch '%s'", patchId)
 	}
@@ -313,26 +310,24 @@ func checkForLargeNumFinalizedTasks(ac *legacyClient, params *patchParams, patch
 		return false, errors.Errorf("project config for '%s' not found", patchId)
 	}
 	generatorTasks := proj.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
+	var tvPairs []model.TVPair
 	numTasksToFinalize := 0
 	for _, vt := range existingPatch.VariantsTasks {
 		for _, t := range vt.Tasks {
 			if _, ok := generatorTasks[t]; ok {
-				dbTask, err := task.FindOne(db.Query(bson.M{
-					task.ProjectKey:      existingPatch.Project,
-					task.BuildVariantKey: vt.Variant,
-					task.DisplayNameKey:  t,
-					task.GenerateTaskKey: true,
-				}).Sort([]string{"-" + task.CreateTimeKey}))
-				if err != nil {
-					return false, errors.Wrapf(err, "getting task with variant '%s' and name '%s'", vt.Variant, t)
-				}
-				if dbTask != nil {
-					numTasksToFinalize += utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks)
-				}
+				tvPairs = append(tvPairs, model.TVPair{
+					TaskName: t,
+					Variant:  vt.Variant,
+				})
 			}
 		}
 		numTasksToFinalize += len(vt.Tasks)
 	}
+	numEstimatedGeneratedTasks, err := rc.GetEstimatedGeneratedTasks(patchId, tvPairs)
+	if err != nil {
+		return false, errors.Wrapf(err, "getting estimated generated tasks for patch '%s'", patchId)
+	}
+	numTasksToFinalize += numEstimatedGeneratedTasks
 	if numTasksToFinalize > largeNumFinalizedTasksThreshold {
 		if !confirm(fmt.Sprintf("This is a large patch build, expected to schedule %d tasks. Finalize anyway?", numTasksToFinalize), true) {
 			return false, nil

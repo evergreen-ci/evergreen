@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -301,6 +302,35 @@ func (ac *legacyClient) GetPatchedConfig(patchId string) (*model.Project, error)
 		return nil, err
 	}
 	return ref, nil
+}
+
+// GetEstimatedGeneratedTasks returns the estimated number of generated tasks to be created by an unfinalized patch.
+func (ac *legacyClient) GetEstimatedGeneratedTasks(patchId string, tvPairs []model.TVPair) (int, error) {
+	tvPairsJSON, err := json.Marshal(tvPairs)
+	if err != nil {
+		return 0, errors.Wrap(err, "marshalling task/variant pairs")
+	}
+	resp, err := ac.get2(fmt.Sprintf("patches/%s/estimated_generated_tasks", patchId), bytes.NewBuffer(tvPairsJSON))
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return 0, NewAuthError(resp)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return 0, NewAPIError(resp)
+	}
+	out, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, errors.Wrap(err, "reading estimated generated tasks from response")
+	}
+	count, err := strconv.Atoi(string(out))
+	if err != nil {
+		return 0, errors.Wrapf(err, "parsing integer from estimated generated tasks response '%s'", out)
+	}
+	return count, nil
 }
 
 // GetConfig fetches the config yaml from the API server for a given project ID.
