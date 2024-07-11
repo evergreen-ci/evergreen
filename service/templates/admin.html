@@ -630,6 +630,14 @@ Admin Settings
 										<label>Generate Task JSON Limit (MB)</label>
 										<input type="number" ng-model="Settings.task_limits.max_generate_task_json_size">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>CPU Degraded Mode Parser Project Limit (MB)</label>
+										<input type="number" ng-model="Settings.task_limits.max_degraded_mode_parser_project_size">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Max Concurrent Large Parser Project Tasks</label>
+										<input type="number" ng-model="Settings.task_limits.max_concurrent_large_parser_project_tasks">
+									</md-input-container>
 								</md-card-content>
 							</md-card>
 						</section>

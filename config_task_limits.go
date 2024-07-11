@@ -32,14 +32,22 @@ type TaskLimitsConfig struct {
 
 	// MaxGenerateTaskJSONSize is the maximum size of a JSON file in MB that can be specified in the GenerateTasks command.
 	MaxGenerateTaskJSONSize int `bson:"max_generate_task_json_size" json:"max_generate_task_json_size" yaml:"max_generate_task_json_size"`
+
+	// MaxConcurrentLargeParserProjectTasks is the maximum number of tasks with >16MB parser projects that can be running at once.
+	MaxConcurrentLargeParserProjectTasks int `bson:"max_concurrent_large_parser_project_tasks" json:"max_concurrent_large_parser_project_tasks" yaml:"max_concurrent_large_parser_project_tasks"`
+
+	// MaxDegradedModeParserProjectSize is the maximum parser project size during CPU degraded mode.
+	MaxDegradedModeParserProjectSize int `bson:"max_degraded_mode_parser_project_size" json:"max_degraded_mode_parser_project_size" yaml:"max_degraded_mode_parser_project_size"`
 }
 
 var (
-	maxTasksPerVersionKey    = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxTasksPerVersion")
-	maxIncludesPerVersionKey = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxIncludesPerVersion")
-	maxHourlyPatchTasksKey   = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxHourlyPatchTasks")
-	maxPendingGeneratedTasks = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxPendingGeneratedTasks")
-	maxGenerateTaskJSONSize  = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxGenerateTaskJSONSize")
+	maxTasksPerVersionKey                = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxTasksPerVersion")
+	maxIncludesPerVersionKey             = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxIncludesPerVersion")
+	maxHourlyPatchTasksKey               = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxHourlyPatchTasks")
+	maxPendingGeneratedTasks             = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxPendingGeneratedTasks")
+	maxGenerateTaskJSONSize              = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxGenerateTaskJSONSize")
+	maxConcurrentLargeParserProjectTasks = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxConcurrentLargeParserProjectTasks")
+	maxDegradedModeParserProjectSize     = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxDegradedModeParserProjectSize")
 )
 
 func (c *TaskLimitsConfig) SectionId() string { return "task_limits" }
@@ -64,11 +72,13 @@ func (c *TaskLimitsConfig) Get(ctx context.Context) error {
 func (c *TaskLimitsConfig) Set(ctx context.Context) error {
 	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			maxTasksPerVersionKey:    c.MaxTasksPerVersion,
-			maxIncludesPerVersionKey: c.MaxIncludesPerVersion,
-			maxPendingGeneratedTasks: c.MaxPendingGeneratedTasks,
-			maxHourlyPatchTasksKey:   c.MaxHourlyPatchTasks,
-			maxGenerateTaskJSONSize:  c.MaxGenerateTaskJSONSize,
+			maxTasksPerVersionKey:                c.MaxTasksPerVersion,
+			maxIncludesPerVersionKey:             c.MaxIncludesPerVersion,
+			maxPendingGeneratedTasks:             c.MaxPendingGeneratedTasks,
+			maxHourlyPatchTasksKey:               c.MaxHourlyPatchTasks,
+			maxGenerateTaskJSONSize:              c.MaxGenerateTaskJSONSize,
+			maxConcurrentLargeParserProjectTasks: c.MaxConcurrentLargeParserProjectTasks,
+			maxDegradedModeParserProjectSize:     c.MaxDegradedModeParserProjectSize,
 		},
 	}, options.Update().SetUpsert(true))
 

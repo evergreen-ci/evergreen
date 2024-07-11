@@ -12,6 +12,9 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+// sizeLimit is a hard limit on parser project size.
+const sizeLimit = 1024 * 1024 * 50
+
 // ParserProjectS3Storage implements the ParserProjectStorage interface to
 // access parser projects stored in S3.
 type ParserProjectS3Storage struct {
@@ -75,7 +78,10 @@ func (s *ParserProjectS3Storage) UpsertOne(ctx context.Context, pp *ParserProjec
 	if err != nil {
 		return errors.Wrapf(err, "marshalling parser project '%s' to BSON", pp.Id)
 	}
-
+	parserProjectLen := len(bsonPP)
+	if parserProjectLen > sizeLimit {
+		return errors.Errorf("parser project exceeds the system limit (%v > %v bytes).", parserProjectLen, sizeLimit)
+	}
 	return s.UpsertOneBSON(ctx, pp.Id, bsonPP)
 }
 
