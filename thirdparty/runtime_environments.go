@@ -132,8 +132,8 @@ type OSInfoFilterOptions struct {
 
 // OSInfo stores operating system information.
 type OSInfo struct {
-	Version string
-	Name    string
+	Version string `json:"version"`
+	Name    string `json:"name"`
 }
 
 // GetOSInfo returns a list of operating system information for an AMI.
@@ -148,6 +148,7 @@ func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFi
 		params.Set("limit", strconv.Itoa(opts.Limit))
 	}
 	params.Set("type", OSType)
+	params.Set("name", opts.Name)
 	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {

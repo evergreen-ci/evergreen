@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -53,6 +55,18 @@ func TestGetOSInfo(t *testing.T) {
 	result, err = c.GetOSInfo(ctx, opts)
 	require.NoError(t, err)
 	assert.Len(result, 10)
+
+	// Verify that we correctly filter by AMI and name.
+	opts = OSInfoFilterOptions{
+		AMI:  "ami-0f6b89500372d4a06",
+		Name: "Kernel",
+	}
+	result, err = c.GetOSInfo(ctx, opts)
+	require.NoError(t, err)
+	assert.NotEmpty(result)
+	grip.Debug(message.Fields{
+		"result": result,
+	})
 }
 
 func TestGetPackages(t *testing.T) {

@@ -1039,14 +1039,14 @@ func (r *queryResolver) Image(ctx context.Context, imageID string) (*Image, erro
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting history for distro '%s': %s", imageID, err.Error()))
 	}
 	if len(resultHistory) == 0 {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("history for distro '%s' not found: %s", imageID, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("history for distro '%s' not found", imageID))
 	}
 	if resultHistory[0].AMI == "" {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("latest ami for distro '%s' not found: %s", imageID, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("latest ami for distro '%s' not found", imageID))
 	}
 	ami := resultHistory[0].AMI
 	if resultHistory[0].CreationDate == "" {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("creation time for distro '%s' not found: %s", imageID, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("creation time for distro '%s' not found", imageID))
 	}
 	lastDeployed := resultHistory[0].CreationDate
 	timestamp, err := strconv.ParseInt(lastDeployed, 10, 64)
@@ -1064,7 +1064,7 @@ func (r *queryResolver) Image(ctx context.Context, imageID string) (*Image, erro
 	}
 	name := ""
 	for _, osInfo := range resultOS {
-		if osInfo.Name == "Name" {
+		if osInfo.Name == "NAME" {
 			name = osInfo.Version
 		}
 	}
@@ -1081,9 +1081,17 @@ func (r *queryResolver) Image(ctx context.Context, imageID string) (*Image, erro
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting OS info: %s", err.Error()))
 	}
 	kernel := ""
+	grip.Debug(message.Fields{
+		"resultOS": resultOS,
+	})
 	for _, osInfo := range resultOS {
+		grip.Debug(message.Fields{
+			"osInfoName":    osInfo.Name,
+			"osInfoVersion": osInfo.Version,
+		})
 		if osInfo.Name == "Kernel" {
-			name = osInfo.Version
+			grip.Debug("I ran.")
+			kernel = osInfo.Version
 		}
 	}
 	if kernel == "" {
@@ -1101,7 +1109,7 @@ func (r *queryResolver) Image(ctx context.Context, imageID string) (*Image, erro
 	versionID := ""
 	for _, osInfo := range resultOS {
 		if osInfo.Name == "VERSION_ID" {
-			name = osInfo.Version
+			versionID = osInfo.Version
 		}
 	}
 	if versionID == "" {
