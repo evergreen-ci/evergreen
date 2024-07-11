@@ -308,3 +308,59 @@ func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts DistroH
 	}
 	return amiHistory, nil
 }
+
+// ImageEventEntry represents a change to the image.
+type ImageEventEntry struct {
+	Name   string
+	After  string
+	Before string
+	Type   string
+	Action string
+}
+
+// ImageEvent contains information about changes to an image when the ami changes.
+type ImageEvent struct {
+	Entries   []ImageEventEntry
+	Timestamp string
+	AMIBefore string
+	AMIAfter  string
+}
+
+type EventHistoryOptions struct {
+	Distro string
+	Page   int
+	Limit  int
+}
+
+// getEvents (TODO!)
+func (c *RuntimeEnvironmentsClient) getEvents(ctx context.Context, opts EventHistoryOptions) ([]ImageEvent, error) {
+	limit := 10
+	if opts.Limit != 0 {
+		limit = opts.Limit
+	}
+	optsHistory := DistroHistoryFilterOptions{
+		Distro: opts.Distro,
+		Page:   opts.Page,
+		Limit:  limit,
+	}
+	imageHistory, err := c.getHistory(ctx, optsHistory)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting image history")
+	}
+	result := []ImageEvent{}
+	for i, imageHistoryEntry := range imageHistory {
+		amiBefore := ""
+		if i < len(imageHistory) - 1 {
+			amiBefore = imageHistory[i + 1].AMI
+		}
+		imageEvent := ImageEvent {
+			Entries: ,
+			Timestamp: imageHistoryEntry.CreationDate, 
+			AMIBefore: amiBefore, 
+			AMIAfter: imageHistoryEntry.AMI, 
+		}
+		result = append(result, )
+	}
+
+	return result, nil
+}
