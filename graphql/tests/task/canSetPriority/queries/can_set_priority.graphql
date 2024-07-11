@@ -1,17 +1,17 @@
 {
-  yesNonDisplayTask: task(taskId: "some_task_2") {
+  undispatchedTask: task(taskId: "some_task_2") {
     canSetPriority
   }
-  noNonDisplayTask: task(taskId: "some_task") {
+  runningTask: task(taskId: "some_task") {
     canSetPriority
   }
-  yesRunningDisplayTask: task(taskId: "display_task_1") {
+  runningDisplayTaskWithUndispatchedExecutionTask: task(taskId: "display_task_1") {
     canSetPriority  
   }
-  noRunningDisplayTask: task(taskId: "display_task_2") {
+  runningDisplayTaskWithRunningExecutionTask: task(taskId: "display_task_2") {
     canSetPriority
   }
-  noFinishedDisplayTask: task(taskId: "display_task_3") {
+  finishedDisplayTask: task(taskId: "display_task_3") {
     canSetPriority
   }
 }
