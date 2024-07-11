@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	awsConfig     *aws.Config
-	parameterPath = os.Getenv("SSM_PARAMETER_PATH")
+	awsConfig                    *aws.Config
+	ssmParameterPath, ssmEnabled = os.LookupEnv("SSM_PARAMETER_PATH")
+	ssmDisabledErr               = errors.New("SSM is not enabled")
 )
 
 func getClient(ctx context.Context) (*ssm.Client, error) {
@@ -35,8 +36,8 @@ func getClient(ctx context.Context) (*ssm.Client, error) {
 }
 
 func getAllParameters(ctx context.Context) (map[string]string, error) {
-	if parameterPath == "" {
-		return nil, errors.New("parameter path is not set")
+	if !ssmEnabled {
+		return nil, ssmDisabledErr
 	}
 
 	client, err := getClient(ctx)
@@ -45,7 +46,7 @@ func getAllParameters(ctx context.Context) (map[string]string, error) {
 	}
 
 	res, err := client.GetParametersByPath(ctx, &ssm.GetParametersByPathInput{
-		Path:           aws.String(parameterPath),
+		Path:           aws.String(ssmParameterPath),
 		WithDecryption: aws.Bool(true),
 	})
 	if err != nil {
@@ -57,15 +58,15 @@ func getAllParameters(ctx context.Context) (map[string]string, error) {
 		if param.Name == nil && param.Value == nil {
 			continue
 		}
-		sectionID, _ := strings.CutPrefix(*param.Name, parameterPath)
+		sectionID, _ := strings.CutPrefix(*param.Name, ssmParameterPath)
 		params[sectionID] = *param.Value
 	}
 	return params, nil
 }
 
 func decodeParameter(ctx context.Context, target ConfigSection) error {
-	if parameterPath == "" {
-		return errors.New("parameter path is not set")
+	if !ssmEnabled {
+		return ssmDisabledErr
 	}
 
 	client, err := getClient(ctx)
@@ -74,7 +75,7 @@ func decodeParameter(ctx context.Context, target ConfigSection) error {
 	}
 
 	res, err := client.GetParameter(ctx, &ssm.GetParameterInput{
-		Name:           aws.String(fmt.Sprintf("%s%s", parameterPath, target.SectionId())),
+		Name:           aws.String(fmt.Sprintf("%s%s", ssmParameterPath, target.SectionId())),
 		WithDecryption: aws.Bool(true),
 	})
 	if err != nil {
@@ -88,8 +89,8 @@ func decodeParameter(ctx context.Context, target ConfigSection) error {
 }
 
 func setParameter(ctx context.Context, input ConfigSection) error {
-	if parameterPath == "" {
-		return errors.New("parameter path is not set")
+	if !ssmEnabled {
+		return ssmDisabledErr
 	}
 
 	client, err := getClient(ctx)
@@ -102,7 +103,7 @@ func setParameter(ctx context.Context, input ConfigSection) error {
 		return errors.Wrap(err, "marshalling input as json")
 	}
 	_, err = client.PutParameter(ctx, &ssm.PutParameterInput{
-		Name:  aws.String(parameterPath + input.SectionId()),
+		Name:  aws.String(ssmParameterPath + input.SectionId()),
 		Value: aws.String(string(data)),
 		Type:  types.ParameterTypeSecureString,
 	})

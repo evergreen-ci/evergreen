@@ -64,8 +64,9 @@ func NewConfigSections() ConfigSections {
 }
 
 func (c *ConfigSections) populateSections(ctx context.Context) error {
-	// SSM parameters may not be available such as when running locally.
-	grip.Error(errors.Wrap(c.getSSMParameters(ctx), "getting SSM parameters"))
+	if err := c.getSSMParameters(ctx); err != nil && !errors.Is(err, ssmDisabledErr) {
+		return errors.Wrap(err, "getting SSM parameters")
+	}
 
 	// A parameter set in the database overrides the same parameter set in SSM.
 	return errors.Wrap(c.getDBParameters(ctx), "getting database parameters")
