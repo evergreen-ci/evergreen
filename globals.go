@@ -291,6 +291,7 @@ const (
 	DefaultMaxVolumeSizePerUser      = 500
 	DefaultUnexpirableHostsPerUser   = 1
 	DefaultUnexpirableVolumesPerUser = 1
+	DefaultSleepScheduleTimeZone     = "America/New_York"
 
 	// host resource tag names
 	TagName             = "name"

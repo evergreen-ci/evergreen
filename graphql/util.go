@@ -851,6 +851,14 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 		IsVirtualWorkstation: spawnHostInput.IsVirtualWorkStation,
 		NoExpiration:         spawnHostInput.NoExpiration,
 	}
+	if spawnHostInput.SleepSchedule != nil {
+		options.SleepScheduleOptions = host.SleepScheduleOptions{
+			WholeWeekdaysOff: spawnHostInput.SleepSchedule.WholeWeekdaysOff,
+			DailyStartTime:   spawnHostInput.SleepSchedule.DailyStartTime,
+			DailyStopTime:    spawnHostInput.SleepSchedule.DailyStopTime,
+			TimeZone:         spawnHostInput.SleepSchedule.TimeZone,
+		}
+	}
 	if spawnHostInput.SetUpScript != nil {
 		options.SetupScript = *spawnHostInput.SetUpScript
 	}

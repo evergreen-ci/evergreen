@@ -61,11 +61,12 @@ type HostRequestOptions struct {
 	InstanceTags          []host.Tag `json:"instance_tags" yaml:"instance_tags"`
 	InstanceType          string     `json:"instance_type" yaml:"type"`
 	NoExpiration          bool       `json:"no_expiration" yaml:"no-expire"`
-	IsVirtualWorkstation  bool       `json:"is_virtual_workstation" yaml:"is_virtual_workstation"`
-	IsCluster             bool       `json:"is_cluster" yaml:"is_cluster"`
-	HomeVolumeSize        int        `json:"home_volume_size" yaml:"home_volume_size"`
-	HomeVolumeID          string     `json:"home_volume_id" yaml:"home_volume_id"`
-	Expiration            *time.Time `json:"expiration" yaml:"expiration"`
+	host.SleepScheduleOptions
+	IsVirtualWorkstation bool       `json:"is_virtual_workstation" yaml:"is_virtual_workstation"`
+	IsCluster            bool       `json:"is_cluster" yaml:"is_cluster"`
+	HomeVolumeSize       int        `json:"home_volume_size" yaml:"home_volume_size"`
+	HomeVolumeID         string     `json:"home_volume_id" yaml:"home_volume_id"`
+	Expiration           *time.Time `json:"expiration" yaml:"expiration"`
 }
 
 type DistroInfo struct {
