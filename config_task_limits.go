@@ -38,6 +38,9 @@ type TaskLimitsConfig struct {
 
 	// MaxDegradedModeParserProjectSize is the maximum parser project size during CPU degraded mode.
 	MaxDegradedModeParserProjectSize int `bson:"max_degraded_mode_parser_project_size" json:"max_degraded_mode_parser_project_size" yaml:"max_degraded_mode_parser_project_size"`
+
+	// MaxParserProjectSize is the maximum allowed parser project size.
+	MaxParserProjectSize int `bson:"max_parser_project_size" json:"max_parser_project_size" yaml:"max_parser_project_size"`
 }
 
 var (
@@ -48,6 +51,7 @@ var (
 	maxGenerateTaskJSONSize              = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxGenerateTaskJSONSize")
 	maxConcurrentLargeParserProjectTasks = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxConcurrentLargeParserProjectTasks")
 	maxDegradedModeParserProjectSize     = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxDegradedModeParserProjectSize")
+	maxParserProjectSize                 = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxParserProjectSize")
 )
 
 func (c *TaskLimitsConfig) SectionId() string { return "task_limits" }
@@ -79,6 +83,7 @@ func (c *TaskLimitsConfig) Set(ctx context.Context) error {
 			maxGenerateTaskJSONSize:              c.MaxGenerateTaskJSONSize,
 			maxConcurrentLargeParserProjectTasks: c.MaxConcurrentLargeParserProjectTasks,
 			maxDegradedModeParserProjectSize:     c.MaxDegradedModeParserProjectSize,
+			maxParserProjectSize:                 c.MaxParserProjectSize,
 		},
 	}, options.Update().SetUpsert(true))
 
