@@ -14,9 +14,12 @@ import (
 )
 
 const (
-	PackagesType   = "Packages"
-	ToolchainsType = "Toolchains"
-	OSType         = "OS"
+	PackagesType            = "Packages"
+	ToolchainsType          = "Toolchains"
+	OSType                  = "OS"
+	AddedImageEntryAction   = "ADDED"
+	UpdatedImageEntryAction = "UPDATED"
+	DeletedImageEntryAction = "DELETED"
 )
 
 type RuntimeEnvironmentsClient struct {
@@ -349,17 +352,43 @@ func (c *RuntimeEnvironmentsClient) getEvents(ctx context.Context, opts EventHis
 	}
 	result := []ImageEvent{}
 	for i, imageHistoryEntry := range imageHistory {
-		amiBefore := ""
-		if i < len(imageHistory) - 1 {
-			amiBefore = imageHistory[i + 1].AMI
+		if i < len(imageHistory)-1 {
+			amiBefore := imageHistory[i+1].AMI
+			optsImageDiffs := ImageDiffOptions{
+				BeforeAMI: amiBefore,
+				AfterAMI:  imageHistoryEntry.AMI,
+			}
+			imageDiffs, err := c.getImageDiff(ctx, optsImageDiffs)
+			if err != nil {
+				return nil, errors.Wrap(err, "getting image differences")
+			}
+			entries := []ImageEventEntry{}
+			for _, diff := range imageDiffs {
+				action := ""
+				if diff.Added != "" && diff.Removed != "" {
+					action = UpdatedImageEntryAction
+				} else if diff.Added != "" {
+					action = AddedImageEntryAction
+				} else if diff.Removed != "" {
+					action = DeletedImageEntryAction
+				}
+				entry := ImageEventEntry{
+					Name:   diff.Name,
+					After:  diff.Added,
+					Before: diff.Removed,
+					Type:   diff.Type,
+					Action: action,
+				}
+				entries = append(entries, entry)
+			}
+			imageEvent := ImageEvent{
+				Entries:   entries,
+				Timestamp: imageHistoryEntry.CreationDate,
+				AMIBefore: amiBefore,
+				AMIAfter:  imageHistoryEntry.AMI,
+			}
+			result = append(result, imageEvent)
 		}
-		imageEvent := ImageEvent {
-			Entries: ,
-			Timestamp: imageHistoryEntry.CreationDate, 
-			AMIBefore: amiBefore, 
-			AMIAfter: imageHistoryEntry.AMI, 
-		}
-		result = append(result, )
 	}
 
 	return result, nil
