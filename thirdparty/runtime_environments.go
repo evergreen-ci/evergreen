@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	PackagesType            = "Packages"
-	ToolchainsType          = "Toolchains"
-	OSType                  = "OS"
+	PackagesType   = "Packages"
+	ToolchainsType = "Toolchains"
+	OSType         = "OS"
+
 	AddedImageEntryAction   = "ADDED"
 	UpdatedImageEntryAction = "UPDATED"
 	DeletedImageEntryAction = "DELETED"
@@ -322,7 +323,7 @@ type ImageEventEntry struct {
 	Action string
 }
 
-// ImageEvent contains information about changes to an image when the ami changes.
+// ImageEvent contains information about changes to an image when the AMI changes.
 type ImageEvent struct {
 	Entries   []ImageEventEntry
 	Timestamp time.Time
@@ -330,7 +331,7 @@ type ImageEvent struct {
 	AMIAfter  string
 }
 
-// EventHistoryOptions represents the filtering arguments for getEvents. Image is a required argument.
+// EventHistoryOptions represents the filtering arguments for getEvents. Image and Limit are required argument.
 type EventHistoryOptions struct {
 	Image string
 	Page  int
@@ -341,13 +342,13 @@ type EventHistoryOptions struct {
 func stringToTime(timeInitial string) (time.Time, error) {
 	timestamp, err := strconv.ParseInt(timeInitial, 10, 64)
 	if err != nil {
-		return time.Time{}, errors.Wrapf(err, "converting time: '%s'", timeInitial)
+		return time.Time{}, errors.Wrapf(err, "converting string '%s' to time", timeInitial)
 	}
 	return time.Unix(timestamp, 0), nil
 }
 
 // buildImageEventEntry make an ImageEventEntry given an ImageDiffChange.
-func buildImageEventEntry(diff ImageDiffChange) *ImageEventEntry {
+func buildImageEventEntry(diff ImageDiffChange) (*ImageEventEntry, error) {
 	action := ""
 	if diff.Added != "" && diff.Removed != "" {
 		action = UpdatedImageEntryAction
@@ -355,6 +356,8 @@ func buildImageEventEntry(diff ImageDiffChange) *ImageEventEntry {
 		action = AddedImageEntryAction
 	} else if diff.Removed != "" {
 		action = DeletedImageEntryAction
+	} else {
+		return nil, errors.New("neither added nor removed")
 	}
 	entry := ImageEventEntry{
 		Name:   diff.Name,
@@ -363,24 +366,28 @@ func buildImageEventEntry(diff ImageDiffChange) *ImageEventEntry {
 		Type:   diff.Type,
 		Action: action,
 	}
-	return &entry
+	return &entry, nil
 }
 
 // getEvents returns information about the changes between AMIs that occurred on the image.
 func (c *RuntimeEnvironmentsClient) getEvents(ctx context.Context, opts EventHistoryOptions) ([]ImageEvent, error) {
 	if opts.Limit == 0 {
-		opts.Limit = 9
+		return nil, errors.New("no limit provided")
 	}
 	optsHistory := DistroHistoryFilterOptions{
 		Distro: opts.Image,
 		Page:   opts.Page,
-		Limit:  opts.Limit + 1,
+		// Add 1 to ensure that the number of ImageEvents returned matches the limit.
+		Limit: opts.Limit + 1,
 	}
 	imageHistory, err := c.getHistory(ctx, optsHistory)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting image history")
 	}
 	result := []ImageEvent{}
+	// Loop through the imageHistory which are in order from most recent to last to populate the
+	// changes between the images. We set the current index i as the AfterAMI and base the timestamp
+	// from the current index i.
 	for i := 0; i < len(imageHistory)-1; i++ {
 		amiBefore := imageHistory[i+1].AMI
 		optsImageDiffs := ImageDiffOptions{
@@ -393,7 +400,10 @@ func (c *RuntimeEnvironmentsClient) getEvents(ctx context.Context, opts EventHis
 		}
 		entries := []ImageEventEntry{}
 		for _, diff := range imageDiffs {
-			entry := buildImageEventEntry(diff)
+			entry, err := buildImageEventEntry(diff)
+			if err != nil {
+				return nil, errors.Wrap(err, "building image event entry")
+			}
 			entries = append(entries, *entry)
 		}
 		timestamp, err := stringToTime(imageHistory[i].CreationDate)

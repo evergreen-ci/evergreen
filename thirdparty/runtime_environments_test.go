@@ -224,7 +224,7 @@ func TestGetEvents(t *testing.T) {
 	// Verify that getEvents provides the image events for a distribution.
 	result, err := c.getEvents(ctx, EventHistoryOptions{Image: "ubuntu2204"})
 	require.NoError(t, err)
-	require.NotEmpty(t, result)
+	assert.NotEmpty(t, result)
 
 	// Verify that getEvents functions correctly with page and limit.
 	opts := EventHistoryOptions{
@@ -234,6 +234,6 @@ func TestGetEvents(t *testing.T) {
 	}
 	result, err = c.getEvents(ctx, opts)
 	require.NoError(t, err)
-	require.NotEmpty(t, result)
+	assert.NotEmpty(t, result)
 	assert.Len(result, 5)
 }
