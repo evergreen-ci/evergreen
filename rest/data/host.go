@@ -241,10 +241,16 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 	}
 
 	if options.NoExpiration {
-		if options.SleepScheduleOptions.IsZero() {
-			options.SleepScheduleOptions = host.GetDefaultSleepSchedule(user.Settings.Timezone)
+		var defaultTimeZone string
+		if options.TimeZone != "" {
+			defaultTimeZone = options.TimeZone
+		} else if user.Settings.Timezone != "" {
+			defaultTimeZone = user.Settings.Timezone
 		}
-		options.SleepScheduleOptions.SetDefaultTimeZone(user.Settings.Timezone)
+		if !options.SleepScheduleOptions.HasSchedule() {
+			options.SleepScheduleOptions = host.GetDefaultSleepSchedule(defaultTimeZone)
+		}
+		options.SetDefaultTimeZone(defaultTimeZone)
 	}
 
 	spawnOptions := cloud.SpawnOptions{

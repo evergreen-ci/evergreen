@@ -508,7 +508,13 @@ type SleepScheduleOptions struct {
 }
 
 func (o *SleepScheduleOptions) IsZero() bool {
-	return len(o.WholeWeekdaysOff) == 0 && o.DailyStartTime == "" && o.DailyStopTime == ""
+	return len(o.WholeWeekdaysOff) == 0 && o.DailyStartTime == "" && o.DailyStopTime == "" && o.TimeZone == ""
+}
+
+// HasSchedule returns whether a sleep schedule has been defined (with or
+// without an explicit time zone).
+func (o *SleepScheduleOptions) HasSchedule() bool {
+	return len(o.WholeWeekdaysOff) > 0 || o.DailyStartTime != "" || o.DailyStopTime != ""
 }
 
 // SetDefaultTimeZone sets a default time zone if other sleep schedule options

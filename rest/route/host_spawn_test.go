@@ -35,8 +35,8 @@ func TestHostPostHandler(t *testing.T) {
 
 	env := &mock.Environment{}
 	assert.NoError(t, env.Configure(ctx))
-	env.EvergreenSettings.Spawnhost.SpawnHostsPerUser = 8
-	env.EvergreenSettings.Spawnhost.UnexpirableHostsPerUser = 4
+	env.EvergreenSettings.Spawnhost.SpawnHostsPerUser = 9
+	env.EvergreenSettings.Spawnhost.UnexpirableHostsPerUser = 5
 	var err error
 	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
 		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
@@ -132,6 +132,16 @@ func TestHostPostHandler(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "test_instance_type", *h3.InstanceType)
 
+	checkUnexpirableHostSchedule := func(t *testing.T, h *host.Host, opts host.SleepScheduleOptions) {
+		assert.True(t, h.NoExpiration)
+		assert.Equal(t, opts.WholeWeekdaysOff, h.SleepSchedule.WholeWeekdaysOff)
+		assert.Equal(t, opts.DailyStartTime, h.SleepSchedule.DailyStartTime)
+		assert.Equal(t, opts.DailyStopTime, h.SleepSchedule.DailyStopTime)
+		assert.Equal(t, opts.TimeZone, h.SleepSchedule.TimeZone)
+		assert.NotZero(t, h.SleepSchedule.NextStartTime)
+		assert.NotZero(t, h.SleepSchedule.NextStopTime)
+	}
+
 	t.Run("UnexpirableHostSetsDefaultSchedule", func(t *testing.T) {
 		h.options.NoExpiration = true
 		resp := h.Run(ctx)
@@ -145,22 +155,35 @@ func TestHostPostHandler(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, dbHost)
 
-		assert.True(t, dbHost.NoExpiration)
-
 		defaultSchedule := host.GetDefaultSleepSchedule(u.Settings.Timezone)
-		assert.Equal(t, dbHost.SleepSchedule.WholeWeekdaysOff, defaultSchedule.WholeWeekdaysOff)
-		assert.Equal(t, dbHost.SleepSchedule.DailyStartTime, defaultSchedule.DailyStartTime)
-		assert.Equal(t, dbHost.SleepSchedule.DailyStopTime, defaultSchedule.DailyStopTime)
-		assert.Equal(t, dbHost.SleepSchedule.TimeZone, defaultSchedule.TimeZone)
-		assert.NotZero(t, dbHost.SleepSchedule.NextStartTime)
-		assert.NotZero(t, dbHost.SleepSchedule.NextStopTime)
+		checkUnexpirableHostSchedule(t, dbHost, defaultSchedule)
 	})
 	t.Run("UnexpirableHostSetsExplicitScheduleWithUserDefaultTimeZone", func(t *testing.T) {
 		h.options.NoExpiration = true
-		h.options.SleepScheduleOptions = host.SleepScheduleOptions{
+		expectedOpts := host.SleepScheduleOptions{
 			WholeWeekdaysOff: []time.Weekday{time.Monday, time.Tuesday},
 			DailyStartTime:   "01:00",
 			DailyStopTime:    "05:00",
+		}
+		h.options.SleepScheduleOptions = expectedOpts
+		resp := h.Run(ctx)
+		require.NotZero(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+
+		apiHost, ok := resp.Data().(*model.APIHost)
+		require.True(t, ok)
+
+		dbHost, err := host.FindOneId(ctx, utility.FromStringPtr(apiHost.Id))
+		require.NoError(t, err)
+		require.NotZero(t, dbHost)
+
+		expectedOpts.TimeZone = u.Settings.Timezone
+		checkUnexpirableHostSchedule(t, dbHost, expectedOpts)
+	})
+	t.Run("UnexpirableHostSetsExplicitTimeZoneWithDefaultSchedule", func(t *testing.T) {
+		h.options.NoExpiration = true
+		h.options.SleepScheduleOptions = host.SleepScheduleOptions{
+			TimeZone: "Asia/Seoul",
 		}
 		resp := h.Run(ctx)
 		require.NotZero(t, resp)
@@ -173,23 +196,18 @@ func TestHostPostHandler(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, dbHost)
 
-		assert.True(t, dbHost.NoExpiration)
-
-		assert.Equal(t, dbHost.SleepSchedule.WholeWeekdaysOff, h.options.WholeWeekdaysOff)
-		assert.Equal(t, dbHost.SleepSchedule.DailyStartTime, h.options.DailyStartTime)
-		assert.Equal(t, dbHost.SleepSchedule.DailyStopTime, h.options.DailyStopTime)
-		assert.Equal(t, dbHost.SleepSchedule.TimeZone, u.Settings.Timezone)
-		assert.NotZero(t, dbHost.SleepSchedule.NextStartTime)
-		assert.NotZero(t, dbHost.SleepSchedule.NextStopTime)
+		defaultSchedule := host.GetDefaultSleepSchedule("Asia/Seoul")
+		checkUnexpirableHostSchedule(t, dbHost, defaultSchedule)
 	})
 	t.Run("UnexpirableHostSetsExplicitScheduleAndExplicitTimeZone", func(t *testing.T) {
 		h.options.NoExpiration = true
-		h.options.SleepScheduleOptions = host.SleepScheduleOptions{
+		expectedOpts := host.SleepScheduleOptions{
 			WholeWeekdaysOff: []time.Weekday{time.Monday, time.Tuesday},
 			DailyStartTime:   "01:00",
 			DailyStopTime:    "05:00",
 			TimeZone:         "Asia/Macau",
 		}
+		h.options.SleepScheduleOptions = expectedOpts
 		resp := h.Run(ctx)
 		require.NotZero(t, resp)
 		assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
@@ -201,14 +219,7 @@ func TestHostPostHandler(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, dbHost)
 
-		assert.True(t, dbHost.NoExpiration)
-
-		assert.Equal(t, dbHost.SleepSchedule.WholeWeekdaysOff, h.options.WholeWeekdaysOff)
-		assert.Equal(t, dbHost.SleepSchedule.DailyStartTime, h.options.DailyStartTime)
-		assert.Equal(t, dbHost.SleepSchedule.DailyStopTime, h.options.DailyStopTime)
-		assert.Equal(t, dbHost.SleepSchedule.TimeZone, h.options.TimeZone)
-		assert.NotZero(t, dbHost.SleepSchedule.NextStartTime)
-		assert.NotZero(t, dbHost.SleepSchedule.NextStopTime)
+		checkUnexpirableHostSchedule(t, dbHost, expectedOpts)
 	})
 	t.Run("UnexpirableHostSetsOnlyTimeZoneAndUsesDefaultSchedule", func(t *testing.T) {
 		h.options.NoExpiration = true
