@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -324,76 +325,88 @@ type ImageEventEntry struct {
 // ImageEvent contains information about changes to an image when the ami changes.
 type ImageEvent struct {
 	Entries   []ImageEventEntry
-	Timestamp string
+	Timestamp time.Time
 	AMIBefore string
 	AMIAfter  string
 }
 
-// EventHistoryOptions represents the filtering arguments for getEvents. Distro is a required argument.
+// EventHistoryOptions represents the filtering arguments for getEvents. Image is a required argument.
 type EventHistoryOptions struct {
-	Distro string
-	Page   int
-	Limit  int
+	Image string
+	Page  int
+	Limit int
+}
+
+// stringToTime converts a string representing time to type time.Time.
+func stringToTime(timeInitial string) (time.Time, error) {
+	timestamp, err := strconv.ParseInt(timeInitial, 10, 64)
+	if err != nil {
+		return time.Time{}, errors.Wrapf(err, "converting time: '%s'", timeInitial)
+	}
+	return time.Unix(timestamp, 0), nil
+}
+
+// buildImageEventEntry make an ImageEventEntry given an ImageDiffChange.
+func buildImageEventEntry(diff ImageDiffChange) *ImageEventEntry {
+	action := ""
+	if diff.Added != "" && diff.Removed != "" {
+		action = UpdatedImageEntryAction
+	} else if diff.Added != "" {
+		action = AddedImageEntryAction
+	} else if diff.Removed != "" {
+		action = DeletedImageEntryAction
+	}
+	entry := ImageEventEntry{
+		Name:   diff.Name,
+		After:  diff.Added,
+		Before: diff.Removed,
+		Type:   diff.Type,
+		Action: action,
+	}
+	return &entry
 }
 
 // getEvents returns information about the changes between AMIs that occurred on the image.
 func (c *RuntimeEnvironmentsClient) getEvents(ctx context.Context, opts EventHistoryOptions) ([]ImageEvent, error) {
-	if opts.Distro == "" {
-		return nil, errors.Errorf("no distro provided")
-	}
-	limit := 10
-	if opts.Limit != 0 {
-		limit = opts.Limit
+	if opts.Limit == 0 {
+		opts.Limit = 9
 	}
 	optsHistory := DistroHistoryFilterOptions{
-		Distro: opts.Distro,
+		Distro: opts.Image,
 		Page:   opts.Page,
-		Limit:  limit + 1,
+		Limit:  opts.Limit + 1,
 	}
 	imageHistory, err := c.getHistory(ctx, optsHistory)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting image history")
 	}
 	result := []ImageEvent{}
-	for i, imageHistoryEntry := range imageHistory {
-		if i < len(imageHistory)-1 {
-			amiBefore := imageHistory[i+1].AMI
-			optsImageDiffs := ImageDiffOptions{
-				BeforeAMI: amiBefore,
-				AfterAMI:  imageHistoryEntry.AMI,
-			}
-			imageDiffs, err := c.getImageDiff(ctx, optsImageDiffs)
-			if err != nil {
-				return nil, errors.Wrap(err, "getting image differences")
-			}
-			entries := []ImageEventEntry{}
-			for _, diff := range imageDiffs {
-				action := ""
-				if diff.Added != "" && diff.Removed != "" {
-					action = UpdatedImageEntryAction
-				} else if diff.Added != "" {
-					action = AddedImageEntryAction
-				} else if diff.Removed != "" {
-					action = DeletedImageEntryAction
-				}
-				entry := ImageEventEntry{
-					Name:   diff.Name,
-					After:  diff.Added,
-					Before: diff.Removed,
-					Type:   diff.Type,
-					Action: action,
-				}
-				entries = append(entries, entry)
-			}
-			imageEvent := ImageEvent{
-				Entries:   entries,
-				Timestamp: imageHistoryEntry.CreationDate,
-				AMIBefore: amiBefore,
-				AMIAfter:  imageHistoryEntry.AMI,
-			}
-			result = append(result, imageEvent)
+	for i := 0; i <= len(imageHistory)-1; i++ {
+		amiBefore := imageHistory[i+1].AMI
+		optsImageDiffs := ImageDiffOptions{
+			BeforeAMI: amiBefore,
+			AfterAMI:  imageHistory[i].AMI,
 		}
+		imageDiffs, err := c.getImageDiff(ctx, optsImageDiffs)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting image differences")
+		}
+		entries := []ImageEventEntry{}
+		for _, diff := range imageDiffs {
+			entry := buildImageEventEntry(diff)
+			entries = append(entries, *entry)
+		}
+		timestamp, err := stringToTime(imageHistory[i].CreationDate)
+		if err != nil {
+			return nil, errors.Wrap(err, "converting creation date")
+		}
+		imageEvent := ImageEvent{
+			Entries:   entries,
+			Timestamp: timestamp,
+			AMIBefore: amiBefore,
+			AMIAfter:  imageHistory[i].AMI,
+		}
+		result = append(result, imageEvent)
 	}
-
 	return result, nil
 }

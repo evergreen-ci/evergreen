@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -223,18 +222,17 @@ func TestGetEvents(t *testing.T) {
 	assert.Error(err)
 
 	// Verify that getEvents provides the image events for a distribution.
-	result, err := c.getEvents(ctx, EventHistoryOptions{Distro: "ubuntu2204"})
+	result, err := c.getEvents(ctx, EventHistoryOptions{Image: "ubuntu2204"})
 	require.NoError(t, err)
 	require.NotEmpty(t, result)
 
 	// Verify that getEvents functions correctly with page and limit.
 	opts := EventHistoryOptions{
-		Distro: "ubuntu2204",
-		Page:   0,
-		Limit:  5,
+		Image: "ubuntu2204",
+		Page:  0,
+		Limit: 5,
 	}
 	result, err = c.getEvents(ctx, opts)
-	grip.Debug(result)
 	require.NoError(t, err)
 	require.NotEmpty(t, result)
 	assert.Len(result, 5)
