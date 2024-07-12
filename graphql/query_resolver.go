@@ -1081,16 +1081,8 @@ func (r *queryResolver) Image(ctx context.Context, imageID string) (*Image, erro
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting OS info: %s", err.Error()))
 	}
 	kernel := ""
-	grip.Debug(message.Fields{
-		"resultOS": resultOS,
-	})
 	for _, osInfo := range resultOS {
-		grip.Debug(message.Fields{
-			"osInfoName":    osInfo.Name,
-			"osInfoVersion": osInfo.Version,
-		})
 		if osInfo.Name == "Kernel" {
-			grip.Debug("I ran.")
 			kernel = osInfo.Version
 		}
 	}
