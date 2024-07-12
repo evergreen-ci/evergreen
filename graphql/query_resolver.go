@@ -1024,7 +1024,7 @@ func (r *queryResolver) Version(ctx context.Context, versionID string) (*restMod
 	return &apiVersion, nil
 }
 
-// Image is the resolver for the image field.
+// Image is the resolver for the image field returning information about an image including kernel, version, ami, name, and last deployed time.
 func (r *queryResolver) Image(ctx context.Context, imageID string) (*Image, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
