@@ -96,7 +96,5 @@ type Query {
 
   # image
   image(imageId: String!): Image
-  
-  # images
   images: [String!]!
 }

@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -321,4 +322,110 @@ func (c *RuntimeEnvironmentsClient) GetHistory(ctx context.Context, opts DistroH
 		return nil, errors.Wrap(err, "decoding http body")
 	}
 	return amiHistory, nil
+}
+
+// stringToTime converts a string representing time to type time.Time.
+func stringToTime(timeInitial string) (time.Time, error) {
+	timestamp, err := strconv.ParseInt(timeInitial, 10, 64)
+	if err != nil {
+		return time.Time{}, errors.Wrapf(err, "converting time: '%s'", timeInitial)
+	}
+	return time.Unix(timestamp, 0), nil
+}
+
+// ImageInfo stores information about an image including its name, version_id, kernel, ami, and its last deployed time.
+type ImageInfo struct {
+	Name         string
+	VersionID    string
+	Kernel       string
+	LastDeployed time.Time
+	AMI          string
+}
+
+// GetDistroInfo returns information about a distro.
+func (c *RuntimeEnvironmentsClient) GetDistroInfo(ctx context.Context, imageID string) (*ImageInfo, error) {
+	optsHistory := DistroHistoryFilterOptions{
+		Distro: imageID,
+		Limit:  1,
+	}
+	resultHistory, err := c.GetHistory(ctx, optsHistory)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting history for distro '%s': '%s'", imageID, err.Error())
+	}
+	if len(resultHistory) == 0 {
+		return nil, errors.Errorf("history for distro '%s' not found", imageID)
+	}
+	if resultHistory[0].AMI == "" {
+		return nil, errors.Errorf("latest ami for distro '%s' not found", imageID)
+	}
+	ami := resultHistory[0].AMI
+	if resultHistory[0].CreationDate == "" {
+		return nil, errors.Errorf("creation time for distro '%s' not found", imageID)
+	}
+	timestamp, err := stringToTime(resultHistory[0].CreationDate)
+	if err != nil {
+		return nil, errors.Wrap(err, "converting creation time: '%s'")
+	}
+
+	optsOS := OSInfoFilterOptions{
+		AMI:  ami,
+		Name: "PRETTY_NAME",
+	}
+	resultOS, err := c.GetOSInfo(ctx, optsOS)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting OS info")
+	}
+	name := ""
+	for _, osInfo := range resultOS {
+		if osInfo.Name == "PRETTY_NAME" {
+			name = osInfo.Version
+		}
+	}
+	if name == "" {
+		return nil, errors.Errorf("OS information field not found for distro: '%s'", imageID)
+	}
+
+	optsOS = OSInfoFilterOptions{
+		AMI:  ami,
+		Name: "Kernel",
+	}
+	resultOS, err = c.GetOSInfo(ctx, optsOS)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting OS info")
+	}
+	kernel := ""
+	for _, osInfo := range resultOS {
+		if osInfo.Name == "Kernel" {
+			kernel = osInfo.Version
+		}
+	}
+	if kernel == "" {
+		return nil, errors.Errorf("OS information kernel field not found for distro: '%s'", imageID)
+	}
+
+	optsOS = OSInfoFilterOptions{
+		AMI:  ami,
+		Name: "VERSION_ID",
+	}
+	resultOS, err = c.GetOSInfo(ctx, optsOS)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting OS info")
+	}
+	versionID := ""
+	for _, osInfo := range resultOS {
+		if osInfo.Name == "VERSION_ID" {
+			versionID = osInfo.Version
+		}
+	}
+	if versionID == "" {
+		return nil, errors.Errorf("OS information version_id field not found")
+	}
+	image := ImageInfo{
+		Name:         name,
+		VersionID:    versionID,
+		Kernel:       kernel,
+		LastDeployed: timestamp,
+		AMI:          ami,
+	}
+	return &image, nil
 }

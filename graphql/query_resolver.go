@@ -1028,92 +1028,19 @@ func (r *queryResolver) Version(ctx context.Context, versionID string) (*restMod
 func (r *queryResolver) Image(ctx context.Context, imageID string) (*Image, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: '%s'", err.Error()))
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
-	optsHistory := thirdparty.DistroHistoryFilterOptions{
-		Distro: imageID,
-	}
-	resultHistory, err := c.GetHistory(ctx, optsHistory)
+	result, err := c.GetDistroInfo(ctx, imageID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting history for distro '%s': %s", imageID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting image info: '%s'", err.Error()))
 	}
-	if len(resultHistory) == 0 {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("history for distro '%s' not found", imageID))
-	}
-	if resultHistory[0].AMI == "" {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("latest ami for distro '%s' not found", imageID))
-	}
-	ami := resultHistory[0].AMI
-	if resultHistory[0].CreationDate == "" {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("creation time for distro '%s' not found", imageID))
-	}
-	lastDeployed := resultHistory[0].CreationDate
-	timestamp, err := strconv.ParseInt(lastDeployed, 10, 64)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting creation time: %s", err.Error()))
-	}
-
-	optsOS := thirdparty.OSInfoFilterOptions{
-		AMI:  ami,
-		Name: "Name",
-	}
-	resultOS, err := c.GetOSInfo(ctx, optsOS)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting OS info: %s", err.Error()))
-	}
-	name := ""
-	for _, osInfo := range resultOS {
-		if osInfo.Name == "NAME" {
-			name = osInfo.Version
-		}
-	}
-	if name == "" {
-		return nil, ResourceNotFound.Send(ctx, "OS information name field not found.")
-	}
-
-	optsOS = thirdparty.OSInfoFilterOptions{
-		AMI:  ami,
-		Name: "Kernel",
-	}
-	resultOS, err = c.GetOSInfo(ctx, optsOS)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting OS info: %s", err.Error()))
-	}
-	kernel := ""
-	for _, osInfo := range resultOS {
-		if osInfo.Name == "Kernel" {
-			kernel = osInfo.Version
-		}
-	}
-	if kernel == "" {
-		return nil, ResourceNotFound.Send(ctx, "OS information kernel field not found.")
-	}
-
-	optsOS = thirdparty.OSInfoFilterOptions{
-		AMI:  ami,
-		Name: "VERSION_ID",
-	}
-	resultOS, err = c.GetOSInfo(ctx, optsOS)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting OS info: %s", err.Error()))
-	}
-	versionID := ""
-	for _, osInfo := range resultOS {
-		if osInfo.Name == "VERSION_ID" {
-			versionID = osInfo.Version
-		}
-	}
-	if versionID == "" {
-		return nil, ResourceNotFound.Send(ctx, "OS information version_id field not found.")
-	}
-
 	image := Image{
-		Name:         name,
-		VersionID:    versionID,
-		Kernel:       kernel,
-		LastDeployed: time.Unix(timestamp, 0),
-		Ami:          ami,
+		Name:         result.Name,
+		VersionID:    result.VersionID,
+		Kernel:       result.Kernel,
+		LastDeployed: result.LastDeployed,
+		Ami:          result.AMI,
 	}
 	return &image, nil
 }

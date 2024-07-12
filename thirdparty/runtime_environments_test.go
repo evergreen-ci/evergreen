@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,7 +44,7 @@ func TestGetOSInfo(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(result)
 
-	// Verify that we correctly filter by AMI, limit, and manager.
+	// Verify that we correctly filter by AMI and limit.
 	opts = OSInfoFilterOptions{
 		AMI:   "ami-0e12ef25a5f7712a4",
 		Page:  0,
@@ -64,9 +62,6 @@ func TestGetOSInfo(t *testing.T) {
 	result, err = c.GetOSInfo(ctx, opts)
 	require.NoError(t, err)
 	assert.NotEmpty(result)
-	grip.Debug(message.Fields{
-		"result": result,
-	})
 }
 
 func TestGetPackages(t *testing.T) {
@@ -239,4 +234,23 @@ func TestGetHistory(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
 	assert.Len(result, 15)
+}
+
+func TestGetDistroInfo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert := assert.New(t)
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config, "TestGetDistroInfo")
+	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+
+	result, err := c.GetDistroInfo(ctx, "ubuntu2204")
+	require.NoError(t, err)
+	require.NotEmpty(t, result)
+	assert.NotEmpty(result.Name)
+	assert.NotEmpty(result.VersionID)
+	assert.NotEmpty(result.Kernel)
+	assert.NotEmpty(result.LastDeployed)
+	assert.NotEmpty(result.AMI)
 }
