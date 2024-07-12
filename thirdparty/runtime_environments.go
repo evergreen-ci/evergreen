@@ -381,7 +381,7 @@ func (c *RuntimeEnvironmentsClient) getEvents(ctx context.Context, opts EventHis
 		return nil, errors.Wrap(err, "getting image history")
 	}
 	result := []ImageEvent{}
-	for i := 0; i <= len(imageHistory)-1; i++ {
+	for i := 0; i < len(imageHistory)-1; i++ {
 		amiBefore := imageHistory[i+1].AMI
 		optsImageDiffs := ImageDiffOptions{
 			BeforeAMI: amiBefore,
