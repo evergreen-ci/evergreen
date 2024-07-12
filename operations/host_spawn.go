@@ -82,7 +82,7 @@ func hostCreate() cli.Command {
 			},
 			cli.StringSliceFlag{
 				Name:  wholeWeekdaysOffFlagName,
-				Usage: `for an unexpirable host, the days when the host should be turned off for its sleep schedule (allowed values: Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday)`,
+				Usage: "for an unexpirable host, the days when the host should be turned off for its sleep schedule (allowed values: Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday)",
 			},
 			cli.StringFlag{
 				Name:  dailyStartTimeFlagName,
@@ -279,7 +279,7 @@ func hostModify() cli.Command {
 			},
 			cli.StringSliceFlag{
 				Name:  wholeWeekdaysOffFlagName,
-				Usage: `for an unexpirable host, the days when the host should be turned off for its sleep schedule (allowed values: Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday)`,
+				Usage: "for an unexpirable host, the days when the host should be turned off for its sleep schedule (allowed values: Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday)",
 			},
 			cli.StringFlag{
 				Name:  dailyStartTimeFlagName,
