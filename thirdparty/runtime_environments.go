@@ -329,14 +329,18 @@ type ImageEvent struct {
 	AMIAfter  string
 }
 
+// EventHistoryOptions represents the filtering arguments for getEvents. Distro is a required argument.
 type EventHistoryOptions struct {
 	Distro string
 	Page   int
 	Limit  int
 }
 
-// getEvents (TODO!)
+// getEvents returns information about the changes between AMIs that occurred on the image.
 func (c *RuntimeEnvironmentsClient) getEvents(ctx context.Context, opts EventHistoryOptions) ([]ImageEvent, error) {
+	if opts.Distro == "" {
+		return nil, errors.Errorf("no distro provided")
+	}
 	limit := 10
 	if opts.Limit != 0 {
 		limit = opts.Limit
@@ -344,7 +348,7 @@ func (c *RuntimeEnvironmentsClient) getEvents(ctx context.Context, opts EventHis
 	optsHistory := DistroHistoryFilterOptions{
 		Distro: opts.Distro,
 		Page:   opts.Page,
-		Limit:  limit,
+		Limit:  limit + 1,
 	}
 	imageHistory, err := c.getHistory(ctx, optsHistory)
 	if err != nil {
