@@ -306,6 +306,9 @@ func (ac *legacyClient) GetPatchedConfig(patchId string) (*model.Project, error)
 
 // GetEstimatedGeneratedTasks returns the estimated number of generated tasks to be created by an unfinalized patch.
 func (ac *legacyClient) GetEstimatedGeneratedTasks(patchId string, tvPairs []model.TVPair) (int, error) {
+	if len(tvPairs) == 0 {
+		return 0, nil
+	}
 	tvPairsJSON, err := json.Marshal(tvPairs)
 	if err != nil {
 		return 0, errors.Wrap(err, "marshalling task/variant pairs")

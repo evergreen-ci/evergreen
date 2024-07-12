@@ -596,6 +596,77 @@ func (s *PatchesByUserSuite) TestEmptyTimeShouldSetNow() {
 	s.InDelta(time.Now().UnixNano(), s.route.key.UnixNano(), float64(time.Second))
 }
 
+type CountEstimatedGeneratedTasksSuite struct {
+	route *countEstimatedGeneratedTasksHandler
+	suite.Suite
+}
+
+func TestCountEstimatedGeneratedTasksSuite(t *testing.T) {
+	suite.Run(t, new(CountEstimatedGeneratedTasksSuite))
+}
+
+func (s *CountEstimatedGeneratedTasksSuite) SetupSuite() {
+	s.NoError(db.ClearCollections(patch.Collection, task.Collection))
+
+	p := patch.Patch{Id: patch.NewId("aabbccddeeff001122334455"), Project: "proj"}
+	s.NoError(p.Insert())
+
+	tasks := []task.Task{
+		{Id: "t0", DisplayName: "t0", BuildVariant: "v1", Version: "aabbccddeeff001122334455", Project: "proj", GenerateTask: true, EstimatedNumActivatedGeneratedTasks: utility.ToIntPtr(5)},
+		{Id: "t1", DisplayName: "t1", BuildVariant: "v1", Version: "aabbccddeeff001122334455", Project: "proj", GenerateTask: true, EstimatedNumActivatedGeneratedTasks: utility.ToIntPtr(20)},
+		{Id: "t2", DisplayName: "t2", BuildVariant: "v1", Version: "aabbccddeeff001122334455", Project: "proj", GenerateTask: true, EstimatedNumActivatedGeneratedTasks: utility.ToIntPtr(100)},
+		{Id: "t3", DisplayName: "t3", BuildVariant: "v2", Version: "aabbccddeeff001122334455", Project: "proj", GenerateTask: true, EstimatedNumActivatedGeneratedTasks: utility.ToIntPtr(35)},
+		{Id: "t4", DisplayName: "t4", BuildVariant: "v2", Version: "aabbccddeeff001122334455", Project: "proj", GenerateTask: true, EstimatedNumActivatedGeneratedTasks: utility.ToIntPtr(60)},
+		{Id: "t5", DisplayName: "t5", BuildVariant: "v2", Version: "aabbccddeeff001122334455", Project: "proj", GenerateTask: true, EstimatedNumActivatedGeneratedTasks: utility.ToIntPtr(99)},
+	}
+	for _, t := range tasks {
+		s.NoError(t.Insert())
+	}
+
+}
+
+func (s *CountEstimatedGeneratedTasksSuite) SetupTest() {
+	s.route = makeCountEstimatedGeneratedTasks().(*countEstimatedGeneratedTasksHandler)
+}
+
+func (s *CountEstimatedGeneratedTasksSuite) TestFindById() {
+	tvPairs := []serviceModel.TVPair{
+		{
+			Variant:  "v1",
+			TaskName: "t1",
+		},
+		{
+			Variant:  "v1",
+			TaskName: "t2",
+		},
+		{
+			Variant:  "nonexistent",
+			TaskName: "t2",
+		},
+		{
+			Variant:  "v1",
+			TaskName: "nonexistent",
+		},
+	}
+	tvPairsJSON, err := json.Marshal(tvPairs)
+	s.Require().NoError(err)
+	req, err := http.NewRequest(http.MethodGet, "https://example.net/foo/?limit=10", bytes.NewBuffer(tvPairsJSON))
+	s.Require().NoError(err)
+	s.NoError(s.route.Parse(context.Background(), req))
+	s.Require().Len(s.route.files, 4)
+	s.Equal(s.route.files[0].TaskName, "t1")
+	s.Equal(s.route.files[0].Variant, "v1")
+	s.Equal(s.route.files[1].TaskName, "t2")
+	s.Equal(s.route.files[1].Variant, "v1")
+
+	s.route.patchId = "aabbccddeeff001122334455"
+	res := s.route.Run(context.TODO())
+	s.NotNil(res)
+	data := res.Data()
+	s.Equal(http.StatusOK, res.Status())
+	s.Equal(120, data)
+}
+
 func TestPatchRawModulesHandler(t *testing.T) {
 	require.NoError(t, db.ClearCollections(patch.Collection))
 	require.NoError(t, db.ClearGridCollections(patch.GridFSPrefix))
