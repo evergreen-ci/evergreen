@@ -435,77 +435,82 @@ func TestHostModifyHandlers(t *testing.T) {
 	}
 
 	t.Run("SleepScheduleOptions", func(t *testing.T) {
-		expirableHost := host.Host{
-			Id: "host_id",
-		}
-		unexpirableHost := host.Host{
-			Id:           "host_id",
-			NoExpiration: true,
-		}
-		u := user.DBUser{
-			Id: "user",
-			Settings: user.UserSettings{
-				Timezone: "Asia/Macau",
+		for tName, tCase := range map[string]func(t *testing.T, h *host.Host, u *user.DBUser){
+			"SetsDefaultScheduleForHostSwitchingToUnexpirable": func(t *testing.T, h *host.Host, u *user.DBUser) {
+				rh := &hostModifyHandler{
+					options: &host.HostModifyOptions{
+						NoExpiration: utility.TruePtr(),
+					},
+				}
+				opts := rh.getDefaultedSleepScheduleOpts(h, u)
+				assert.Equal(t, host.GetDefaultSleepSchedule(u.Settings.Timezone), opts)
 			},
-		}
-		t.Run("SetsDefaultScheduleForHostSwitchingToUnexpirable", func(t *testing.T) {
-			rh := &hostModifyHandler{
-				options: &host.HostModifyOptions{
+			"IgnoresExpirableHost": func(t *testing.T, h *host.Host, u *user.DBUser) {
+				rh := &hostModifyHandler{options: &host.HostModifyOptions{}}
+				opts := rh.getDefaultedSleepScheduleOpts(h, u)
+				assert.Zero(t, opts)
+			},
+			"SetsDefaultScheduleForAlreadyUnexpirableHostMissingOne": func(t *testing.T, h *host.Host, u *user.DBUser) {
+				h.NoExpiration = true
+				rh := &hostModifyHandler{options: &host.HostModifyOptions{}}
+				opts := rh.getDefaultedSleepScheduleOpts(h, u)
+				assert.Equal(t, host.GetDefaultSleepSchedule(u.Settings.Timezone), opts)
+			},
+			"SetsDefaultTimeZoneWhenSettingSchedule": func(t *testing.T, h *host.Host, u *user.DBUser) {
+				rh := &hostModifyHandler{options: &host.HostModifyOptions{
 					NoExpiration: utility.TruePtr(),
-				},
-			}
-			opts := rh.getDefaultedSleepScheduleOpts(&expirableHost, &u)
-			assert.Equal(t, host.GetDefaultSleepSchedule(u.Settings.Timezone), opts)
-		})
-		t.Run("IgnoresExpirableHost", func(t *testing.T) {
-			rh := &hostModifyHandler{options: &host.HostModifyOptions{}}
-			opts := rh.getDefaultedSleepScheduleOpts(&expirableHost, &u)
-			assert.Zero(t, opts)
-		})
-		t.Run("SetsDefaultScheduleForAlreadyUnexpirableHostMissingOne", func(t *testing.T) {
-			rh := &hostModifyHandler{options: &host.HostModifyOptions{}}
-			opts := rh.getDefaultedSleepScheduleOpts(&unexpirableHost, &u)
-			assert.Equal(t, host.GetDefaultSleepSchedule(u.Settings.Timezone), opts)
-		})
-		t.Run("SetsDefaultTimeZoneWhenSettingSchedule", func(t *testing.T) {
-			rh := &hostModifyHandler{options: &host.HostModifyOptions{
-				NoExpiration: utility.TruePtr(),
-				SleepScheduleOptions: host.SleepScheduleOptions{
-					DailyStartTime: "02:00",
-					DailyStopTime:  "08:00",
-				},
-			}}
-			defaultedOpts := rh.getDefaultedSleepScheduleOpts(&expirableHost, &u)
-			expectedOpts := rh.options.SleepScheduleOptions
-			expectedOpts.TimeZone = u.Settings.Timezone
-			assert.Equal(t, expectedOpts, defaultedOpts)
-		})
-		t.Run("RetainsExistingSleepScheduleIfOnlySettingTimeZone", func(t *testing.T) {
-			unexpirableHost.SleepSchedule.DailyStartTime = "02:00"
-			unexpirableHost.SleepSchedule.DailyStopTime = "08:00"
-			rh := &hostModifyHandler{options: &host.HostModifyOptions{
-				SleepScheduleOptions: host.SleepScheduleOptions{
-					TimeZone: "Asia/Seoul",
-				},
-			}}
-			defaultedOpts := rh.getDefaultedSleepScheduleOpts(&unexpirableHost, &u)
-			expectedOpts := rh.options.SleepScheduleOptions
-			expectedOpts.DailyStartTime = unexpirableHost.SleepSchedule.DailyStartTime
-			expectedOpts.DailyStopTime = unexpirableHost.SleepSchedule.DailyStopTime
-			assert.Equal(t, expectedOpts, defaultedOpts)
-		})
-		t.Run("SetsDefaultScheduleForHostSwitchingToUnexpirableAndOnlySettingScheduleTimeZone", func(t *testing.T) {
-			rh := &hostModifyHandler{
-				options: &host.HostModifyOptions{
-					NoExpiration: utility.TruePtr(),
+					SleepScheduleOptions: host.SleepScheduleOptions{
+						DailyStartTime: "02:00",
+						DailyStopTime:  "08:00",
+					},
+				}}
+				defaultedOpts := rh.getDefaultedSleepScheduleOpts(h, u)
+				expectedOpts := rh.options.SleepScheduleOptions
+				expectedOpts.TimeZone = u.Settings.Timezone
+				assert.Equal(t, expectedOpts, defaultedOpts)
+			},
+			"RetainsExistingSleepScheduleIfOnlySettingTimeZone": func(t *testing.T, h *host.Host, u *user.DBUser) {
+				h.NoExpiration = true
+				h.SleepSchedule.DailyStartTime = "02:00"
+				h.SleepSchedule.DailyStopTime = "08:00"
+				rh := &hostModifyHandler{options: &host.HostModifyOptions{
 					SleepScheduleOptions: host.SleepScheduleOptions{
 						TimeZone: "Asia/Seoul",
 					},
-				},
-			}
-			defaultedOpts := rh.getDefaultedSleepScheduleOpts(&expirableHost, &u)
-			assert.Equal(t, host.GetDefaultSleepSchedule(rh.options.TimeZone), defaultedOpts)
-		})
+				}}
+				defaultedOpts := rh.getDefaultedSleepScheduleOpts(h, u)
+				expectedOpts := rh.options.SleepScheduleOptions
+				expectedOpts.DailyStartTime = h.SleepSchedule.DailyStartTime
+				expectedOpts.DailyStopTime = h.SleepSchedule.DailyStopTime
+				assert.Equal(t, expectedOpts, defaultedOpts)
+			},
+			"SetsDefaultScheduleForHostSwitchingToUnexpirableAndOnlySettingScheduleTimeZone": func(t *testing.T, h *host.Host, u *user.DBUser) {
+				rh := &hostModifyHandler{
+					options: &host.HostModifyOptions{
+						NoExpiration: utility.TruePtr(),
+						SleepScheduleOptions: host.SleepScheduleOptions{
+							TimeZone: "Asia/Seoul",
+						},
+					},
+				}
+				defaultedOpts := rh.getDefaultedSleepScheduleOpts(h, u)
+				assert.Equal(t, host.GetDefaultSleepSchedule(rh.options.TimeZone), defaultedOpts)
+			},
+		} {
+			t.Run(tName, func(t *testing.T) {
+				u := user.DBUser{
+					Id: "user",
+					Settings: user.UserSettings{
+						Timezone: "Asia/Macau",
+					},
+				}
+				h := host.Host{
+					Id:           "host_id",
+					NoExpiration: false,
+				}
+				tCase(t, &h, &u)
+			})
+		}
 	})
 }
 
