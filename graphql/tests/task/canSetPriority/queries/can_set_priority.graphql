@@ -1,8 +1,17 @@
 {
-  yes: task(taskId: "some_task_2") {
+  undispatchedTask: task(taskId: "some_task_2") {
     canSetPriority
   }
-  no: task(taskId: "some_task") {
+  runningTask: task(taskId: "some_task") {
+    canSetPriority
+  }
+  runningDisplayTaskWithUndispatchedExecutionTask: task(taskId: "display_task_1") {
+    canSetPriority  
+  }
+  runningDisplayTaskWithRunningExecutionTask: task(taskId: "display_task_2") {
+    canSetPriority
+  }
+  finishedDisplayTask: task(taskId: "display_task_3") {
     canSetPriority
   }
 }

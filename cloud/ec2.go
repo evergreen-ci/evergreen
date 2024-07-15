@@ -622,6 +622,34 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 	return errors.Wrapf(h.MarkShouldExpire(ctx, expireOnValue), "marking host should in DB for host '%s'", h.Id)
 }
 
+// setSleepScheduleOptions updates a host's sleep schedule options.
+func (m *ec2Manager) setSleepScheduleOptions(ctx context.Context, h *host.Host, opts host.SleepScheduleOptions) error {
+	if err := opts.Validate(); err != nil {
+		return errors.Wrap(err, "invalid new sleep schedule options")
+	}
+
+	now := time.Now()
+
+	var updatedSchedule host.SleepScheduleInfo
+	if !h.SleepSchedule.IsZero() {
+		// A sleep schedule already exists - overwrite just the recurring sleep
+		// schedule settings while preserving existing unrelated settings.
+		updatedSchedule = h.SleepSchedule
+		updatedSchedule.WholeWeekdaysOff = opts.WholeWeekdaysOff
+		updatedSchedule.DailyStartTime = opts.DailyStartTime
+		updatedSchedule.DailyStopTime = opts.DailyStopTime
+		updatedSchedule.TimeZone = opts.TimeZone
+	} else {
+		schedule, err := host.NewSleepScheduleInfo(opts)
+		if err != nil {
+			return errors.Wrap(err, "creating new sleep schedule")
+		}
+		updatedSchedule = *schedule
+	}
+
+	return h.UpdateSleepSchedule(ctx, updatedSchedule, now)
+}
+
 // extendExpiration extends a host's expiration time by the number of hours specified
 func (m *ec2Manager) extendExpiration(ctx context.Context, h *host.Host, extension time.Duration) error {
 	return errors.Wrapf(h.SetExpirationTime(ctx, h.ExpirationTime.Add(extension)), "extending expiration time in DB for host '%s'", h.Id)
@@ -651,6 +679,9 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 	}
 	if opts.NoExpiration != nil {
 		catcher.Add(m.setNoExpiration(ctx, h, *opts.NoExpiration))
+	}
+	if !opts.SleepScheduleOptions.IsZero() {
+		catcher.Wrap(m.setSleepScheduleOptions(ctx, h, opts.SleepScheduleOptions), "updating host sleep schedule")
 	}
 	if opts.AddHours != 0 {
 		if err := h.ValidateExpirationExtension(opts.AddHours); err != nil {

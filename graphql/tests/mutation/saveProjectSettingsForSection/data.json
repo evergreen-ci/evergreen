@@ -1,26 +1,40 @@
 {
   "project_ref": [
     {
-      "_id" : "sandbox_project_id",
-      "identifier" : "sandbox",
-      "display_name" : "Sandbox",
-      "enabled" : null,
-      "owner_name" : "evergreen-ci",
-      "repo_name" : "commit-queue-sandbox",
-      "branch_name" : "main",
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox",
+      "display_name": "Sandbox",
+      "enabled": null,
+      "owner_name": "evergreen-ci",
+      "repo_name": "commit-queue-sandbox",
+      "branch_name": "main",
       "admins": ["me"],
       "spawn_host_script_path": "spawn_script",
-      "commit_queue" : {
-        "enabled" : true,
+      "commit_queue": {
+        "enabled": true,
         "require_signed": false
-      }
+      },
+      "github_dynamic_token_permission_groups": [
+        {
+          "name": "permission-group-1",
+          "permissions": {
+            "pullrequests": "read"
+          }
+        },
+        {
+          "name": "permission-group-2",
+          "permissions": {
+            "issues": "write"
+          }
+        }
+      ]
     },
     {
-      "_id" : "second_project_id",
-      "identifier" : "new_identifier"
+      "_id": "second_project_id",
+      "identifier": "new_identifier"
     }
   ],
-  "repo_ref":[
+  "repo_ref": [
     {
       "_id": "myRepo",
       "owner_name": "evergreen-ci",
@@ -30,8 +44,8 @@
   "project_vars": [
     {
       "_id": "sandbox_project_id",
-      "vars": {"hello": "world", "foo":  "bar"},
-      "private_vars": {"hello":  true, "foo":  false}
+      "vars": { "hello": "world", "foo": "bar" },
+      "private_vars": { "hello": true, "foo": false }
     }
   ]
 }

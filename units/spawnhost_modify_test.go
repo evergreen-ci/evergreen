@@ -67,8 +67,8 @@ func TestSpawnhostModifyJob(t *testing.T) {
 		assert.Equal(t, evergreen.ModifySpawnHostManual, j.Source)
 	})
 
-	for tName, tCase := range map[string]func(ctx context.Context, h *host.Host, mock cloud.MockProvider){
-		"RunModifiesInstanceType": func(ctx context.Context, h *host.Host, mock cloud.MockProvider) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, h *host.Host, mock cloud.MockProvider){
+		"RunModifiesInstanceType": func(ctx context.Context, t *testing.T, h *host.Host, mock cloud.MockProvider) {
 			require.NoError(t, h.Insert(ctx))
 			mock.Set(h.Id, cloud.MockInstance{
 				Status: cloud.StatusRunning,
@@ -120,7 +120,7 @@ func TestSpawnhostModifyJob(t *testing.T) {
 				Distro:   distro.Distro{Provider: evergreen.ProviderNameMock},
 			}
 
-			tCase(ctx, &h, mock)
+			tCase(ctx, t, &h, mock)
 		})
 	}
 }

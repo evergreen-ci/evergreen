@@ -7,8 +7,7 @@
                     "spawnHost": {
                         "hostUrl": "",
                         "id": "static",
-                        "expiration": "2020-08-06T13:42:12-04:00",
-                        "noExpiration": false,
+                        "noExpiration": true,
                         "distro": {
                             "id": "rhel71-power8-large"
                         },
@@ -16,9 +15,8 @@
                           "dailyStartTime": "",
                           "dailyStopTime": "",
                           "isBetaTester": false,
-                          "nextStartTime": null,
                           "permanentlyExempt": false,
-                          "shouldKeepOff": true,
+                          "shouldKeepOff": false,
                           "timeZone": "America/New_York",
                           "temporarilyExemptUntil": null,
                           "wholeWeekdaysOff": [0, 6]

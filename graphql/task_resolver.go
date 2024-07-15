@@ -222,7 +222,21 @@ func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) 
 
 // CanSetPriority is the resolver for the canSetPriority field.
 func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	return *obj.Status == evergreen.TaskUndispatched, nil
+	if *obj.Status == evergreen.TaskUndispatched {
+		return true, nil
+	}
+	if len(obj.ExecutionTasks) != 0 && !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
+		tasks, err := task.FindByExecutionTasksAndMaxExecution(utility.FromStringPtrSlice(obj.ExecutionTasks), obj.Execution)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding execution tasks for task '%s': %s", *obj.Id, err.Error()))
+		}
+		for _, t := range tasks {
+			if t.Status == evergreen.TaskUndispatched {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 // CanUnschedule is the resolver for the canUnschedule field.
