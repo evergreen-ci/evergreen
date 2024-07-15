@@ -2414,12 +2414,12 @@ func handleBatchTimeOverflow(in int) int {
 }
 
 // GetNextCronTime returns the next valid batch time
-func GetNextCronTime(curTime time.Time, cronBatchTime string) (time.Time, error) {
+func GetNextCronTime(baseTime time.Time, cronBatchTime string) (time.Time, error) {
 	sched, err := getCronParserSchedule(cronBatchTime)
 	if err != nil {
 		return time.Time{}, err
 	}
-	return sched.Next(curTime), nil
+	return sched.Next(baseTime), nil
 }
 
 func getCronParserSchedule(cronStr string) (cron.Schedule, error) {
@@ -2442,6 +2442,9 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionC
 		return utility.ZeroTime, nil
 	}
 	if variant.CronBatchTime != "" {
+		// kim: TODO: handle if versionCreateTime is too far in the past or
+		// another version is already scheduled to run at that time. If so, use
+		// the original logic to schedule the cron based on current ts.
 		return GetNextCronTime(versionCreateTime, variant.CronBatchTime)
 	}
 	// if activated explicitly set to true and we don't have batchtime, then we want to just activate now
@@ -2479,6 +2482,9 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, versionCr
 		return utility.ZeroTime, nil
 	}
 	if t.CronBatchTime != "" {
+		// kim: TODO: handle if versionCreateTime is too far in the past or
+		// another version is already scheduled to run at that time. If so, use
+		// the original logic to schedule the cron based on current ts.
 		return GetNextCronTime(versionCreateTime, t.CronBatchTime)
 	}
 	// If activated explicitly set to true and we don't have batchtime, then we want to just activate now
