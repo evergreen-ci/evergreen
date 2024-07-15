@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -17,6 +18,10 @@ const (
 	PackagesType   = "Packages"
 	ToolchainsType = "Toolchains"
 	OSType         = "OS"
+
+	AddedImageEntryAction   = "ADDED"
+	UpdatedImageEntryAction = "UPDATED"
+	DeletedImageEntryAction = "DELETED"
 )
 
 type RuntimeEnvironmentsClient struct {
@@ -158,10 +163,10 @@ func (c *RuntimeEnvironmentsClient) getOSInfo(ctx context.Context, amiID string,
 	return osInfo, nil
 }
 
-// ImageDiffOptions represents the arguments for getImageDiff. BeforeAMI is the starting AMI, and AfterAMI is the ending AMI.
+// ImageDiffOptions represents the arguments for getImageDiff. AMIBefore is the starting AMI, and AMIAfter is the ending AMI.
 type ImageDiffOptions struct {
-	BeforeAMI string
-	AfterAMI  string
+	AMIBefore string
+	AMIAfter  string
 }
 
 // ImageDiffChange represents a change between two AMIs.
@@ -176,8 +181,8 @@ type ImageDiffChange struct {
 // getImageDiff returns a list of package and toolchain changes that occurred between the provided AMIs.
 func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts ImageDiffOptions) ([]ImageDiffChange, error) {
 	params := url.Values{}
-	params.Set("ami", opts.BeforeAMI)
-	params.Set("ami2", opts.AfterAMI)
+	params.Set("ami", opts.AMIBefore)
+	params.Set("ami2", opts.AMIAfter)
 	params.Set("limit", "1000000000") // Artificial limit set high because API has default limit of 10.
 	apiURL := fmt.Sprintf("%s/rest/api/v1/imageDiffs?%s", c.BaseURL, params.Encode())
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
@@ -307,4 +312,111 @@ func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts DistroH
 		return nil, errors.Wrap(err, "decoding http body")
 	}
 	return amiHistory, nil
+}
+
+// ImageEventEntry represents a change to the image.
+type ImageEventEntry struct {
+	Name   string
+	After  string
+	Before string
+	Type   string
+	Action string
+}
+
+// ImageEvent contains information about changes to an image when the AMI changes.
+type ImageEvent struct {
+	Entries   []ImageEventEntry
+	Timestamp time.Time
+	AMIBefore string
+	AMIAfter  string
+}
+
+// EventHistoryOptions represents the filtering arguments for getEvents. Image and Limit are required arguments.
+type EventHistoryOptions struct {
+	Image string
+	Page  int
+	Limit int
+}
+
+// stringToTime converts a string representing time to type time.Time.
+func stringToTime(timeInitial string) (time.Time, error) {
+	timestamp, err := strconv.ParseInt(timeInitial, 10, 64)
+	if err != nil {
+		return time.Time{}, errors.Wrapf(err, "converting string '%s' to time", timeInitial)
+	}
+	return time.Unix(timestamp, 0), nil
+}
+
+// buildImageEventEntry make an ImageEventEntry given an ImageDiffChange.
+func buildImageEventEntry(diff ImageDiffChange) (*ImageEventEntry, error) {
+	action := ""
+	if diff.Added != "" && diff.Removed != "" {
+		action = UpdatedImageEntryAction
+	} else if diff.Added != "" {
+		action = AddedImageEntryAction
+	} else if diff.Removed != "" {
+		action = DeletedImageEntryAction
+	} else {
+		return nil, errors.New("neither added nor removed")
+	}
+	entry := ImageEventEntry{
+		Name:   diff.Name,
+		After:  diff.Added,
+		Before: diff.Removed,
+		Type:   diff.Type,
+		Action: action,
+	}
+	return &entry, nil
+}
+
+// getEvents returns information about the changes between AMIs that occurred on the image.
+func (c *RuntimeEnvironmentsClient) getEvents(ctx context.Context, opts EventHistoryOptions) ([]ImageEvent, error) {
+	if opts.Limit == 0 {
+		return nil, errors.New("no limit provided")
+	}
+	optsHistory := DistroHistoryFilterOptions{
+		Distro: opts.Image,
+		Page:   opts.Page,
+		// Diffing two AMIs only produces one ImageEvent. We need to add 1 so that the number of returned events is equal to the limit.
+		Limit: opts.Limit + 1,
+	}
+	imageHistory, err := c.getHistory(ctx, optsHistory)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting image history")
+	}
+	result := []ImageEvent{}
+	// Loop through the imageHistory which are in order from most recent to last to populate the
+	// changes between the images. We set the current index i as the AfterAMI and base the timestamp
+	// from the current index i.
+	for i := 0; i < len(imageHistory)-1; i++ {
+		amiBefore := imageHistory[i+1].AMI
+		optsImageDiffs := ImageDiffOptions{
+			AMIBefore: amiBefore,
+			AMIAfter:  imageHistory[i].AMI,
+		}
+		imageDiffs, err := c.getImageDiff(ctx, optsImageDiffs)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting image differences")
+		}
+		entries := []ImageEventEntry{}
+		for _, diff := range imageDiffs {
+			entry, err := buildImageEventEntry(diff)
+			if err != nil {
+				return nil, errors.Wrap(err, "building image event entry")
+			}
+			entries = append(entries, *entry)
+		}
+		timestamp, err := stringToTime(imageHistory[i].CreationDate)
+		if err != nil {
+			return nil, errors.Wrap(err, "converting creation date")
+		}
+		imageEvent := ImageEvent{
+			Entries:   entries,
+			Timestamp: timestamp,
+			AMIBefore: amiBefore,
+			AMIAfter:  imageHistory[i].AMI,
+		}
+		result = append(result, imageEvent)
+	}
+	return result, nil
 }
