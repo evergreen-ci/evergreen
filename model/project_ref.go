@@ -2438,20 +2438,35 @@ func getCronParserSchedule(cronStr string) (cron.Schedule, error) {
 // To ensure consistency across variants, the version create time is used to determine the next time.
 func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionCreateTime time.Time) (time.Time, error) {
 	// if we don't want to activate the build, set batchtime to the zero time
+	now := time.Now()
 	if !utility.FromBoolTPtr(variant.Activate) {
 		return utility.ZeroTime, nil
 	}
 	if variant.CronBatchTime != "" {
-		// kim: TODO: handle if versionCreateTime is too far in the past or
-		// another version is already scheduled to run at that time. If so, use
-		// the original logic to schedule the cron based on current ts.
-		return GetNextCronTime(versionCreateTime, variant.CronBatchTime)
+		proposedCron, err := GetNextCronTime(versionCreateTime, variant.CronBatchTime)
+		if err != nil {
+			return time.Time{}, errors.Wrap(err, "getting next cron time")
+		}
+		isValidCron, err := p.isValidBVCron(variant, proposedCron, now)
+		if err != nil {
+			return time.Time{}, errors.Wrapf(err, "checking if proposed cron %s for variant '%s' is valid", proposedCron.String(), variant.Name)
+		}
+		if isValidCron {
+			return proposedCron, nil
+		}
+
+		return GetNextCronTime(now, variant.CronBatchTime)
 	}
 	// if activated explicitly set to true and we don't have batchtime, then we want to just activate now
 	if utility.FromBoolPtr(variant.Activate) && variant.BatchTime == nil {
-		return time.Now(), nil
+		return now, nil
 	}
 
+	// kim: NOTE: logic below is kind of similar to what we want to check if
+	// there's another version that might be activated, but we can't assume that
+	// the most recent variant is the one that contains the most recent cron
+	// run (because it could include irrelevant version types like periodic
+	// builds).
 	lastActivated, err := VersionFindOne(VersionByLastVariantActivation(p.Id, variant.Name).WithFields(VersionBuildVariantsKey))
 	if err != nil {
 		return time.Time{}, errors.Wrap(err, "finding version")
@@ -2474,6 +2489,104 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionC
 	return versionCreateTime, nil
 }
 
+// allowedCronDelay is the grace period for which a cron is valid when it's
+// scheduled late. This is used to check if the cron should have run recently.
+const allowedCronDelay = 5 * time.Minute
+
+func (p *ProjectRef) isCronTimeRangeValid(proposedCron time.Time, now time.Time) bool {
+	if proposedCron.After(now) {
+		// Cron is scheduled for the future, which is valid.
+		return true
+	}
+	const allowedCronDelay = 5 * time.Minute
+	if proposedCron.Before(now.Add(-allowedCronDelay)) {
+		// Cron is scheduled in the past, but it's been more than a few minutes
+		// since the time it should have run, so it's too late.
+		return false
+	}
+	return true
+}
+
+// isValidBVCron checks if a proposed time to activate a cron for a build
+// variant is valid. A cron scheduled to activate in the future is always valid,
+// but if the cron is scheduled to run in the past, that mean it will run
+// immediately. Crons scheduled for the past are only valid if they've recently
+// passed the proposed cron time and there's no conflicting cron that could
+// activate.
+func (p *ProjectRef) isValidBVCron(bv *BuildVariant, proposedCron time.Time, now time.Time) (bool, error) {
+	if !p.isCronTimeRangeValid(proposedCron, now) {
+		return false, nil
+	}
+
+	// Cron is scheduled in the past (i.e. it will activate immediately), but
+	// it's within the allowed delay. Check that no other conflicting cron was
+	// already scheduled to activate in that delay period - if there is a cron
+	// that is activated/will activate soon, then this cron conflicts and is
+	// therefore invalid.
+	mostRecentCommit, err := VersionFindOne(VersionByMostRecentNonIgnored(p.Id, now))
+	if err != nil {
+		return false, errors.Wrap(err, "getting most recent commit version")
+	}
+	if mostRecentCommit == nil {
+		return true, nil
+	}
+
+	for _, bvStatus := range mostRecentCommit.BuildVariants {
+		if bvStatus.BuildVariant != bv.Name {
+			continue
+		}
+
+		// The new proposed cron for the build variant can only run if
+		// there's no conflicting cron run that's imminently going to
+		// activate/has already activated. If so, this cron can't be
+		// schedule in the past because it would run a duplicate of the one
+		// already scheduled.
+		return bvStatus.ActivateAt.Before(now.Add(-allowedCronDelay)), nil
+	}
+
+	return true, nil
+}
+
+// isValidTaskCron checks if a proposed time to activate a cron for a task is
+// valid. A cron scheduled to activate in the future is always valid,
+// but if the cron is scheduled to run in the past, that mean it will run
+// immediately. Crons scheduled for the past are only valid if they've recently
+// passed the proposed cron time and there's no conflicting cron that could
+// activate.
+func (p *ProjectRef) isValidTaskCron(bvtu *BuildVariantTaskUnit, proposedCron time.Time, now time.Time) (bool, error) {
+	if !p.isCronTimeRangeValid(proposedCron, now) {
+		return false, nil
+	}
+
+	// Cron is scheduled in the past (i.e. it will activate immediately), but
+	// it's within the allowed delay. Check that no other conflicting cron was
+	// already scheduled to activate in that delay period - if there is a cron
+	// that is activated/will activate soon, then this cron conflicts and is
+	// therefore invalid.
+	mostRecentCommit, err := VersionFindOne(VersionByMostRecentNonIgnored(p.Id, now))
+	if err != nil {
+		return false, errors.Wrap(err, "getting most recent commit version")
+	}
+	if mostRecentCommit == nil {
+		return true, nil
+	}
+
+	for _, bvStatus := range mostRecentCommit.BuildVariants {
+		if bvStatus.BuildVariant != bvtu.Variant {
+			continue
+		}
+
+		for _, taskStatus := range bvStatus.BatchTimeTasks {
+			if taskStatus.TaskName != bvtu.Name {
+				continue
+			}
+			return taskStatus.ActivateAt.Before(now.Add(-allowedCronDelay)), nil
+		}
+	}
+
+	return true, nil
+}
+
 // GetActivationTimeForTask returns the time at which this task should next be activated.
 // To ensure consistency across tasks, the version create time is used to determine the next time.
 func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, versionCreateTime time.Time) (time.Time, error) {
@@ -2481,11 +2594,21 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, versionCr
 	if !utility.FromBoolTPtr(t.Activate) || t.IsDisabled() {
 		return utility.ZeroTime, nil
 	}
+	now := time.Now()
 	if t.CronBatchTime != "" {
-		// kim: TODO: handle if versionCreateTime is too far in the past or
-		// another version is already scheduled to run at that time. If so, use
-		// the original logic to schedule the cron based on current ts.
-		return GetNextCronTime(versionCreateTime, t.CronBatchTime)
+		proposedCron, err := GetNextCronTime(versionCreateTime, t.CronBatchTime)
+		if err != nil {
+			return time.Time{}, errors.Wrap(err, "getting next cron time")
+		}
+		isValidCron, err := p.isValidTaskCron(t, proposedCron, now)
+		if err != nil {
+			return time.Time{}, errors.Wrapf(err, "checking if proposed cron %s for task '%s' in build variant '%s' is valid", proposedCron.String(), t.Name, t.Variant)
+		}
+		if isValidCron {
+			return proposedCron, nil
+		}
+
+		return GetNextCronTime(now, t.CronBatchTime)
 	}
 	// If activated explicitly set to true and we don't have batchtime, then we want to just activate now
 	if utility.FromBoolPtr(t.Activate) && t.BatchTime == nil {
