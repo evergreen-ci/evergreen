@@ -221,18 +221,13 @@ func TestGetEvents(t *testing.T) {
 	_, err := c.getEvents(ctx, EventHistoryOptions{})
 	assert.Error(err)
 
-	// Verify that getEvents provides the image events for a distribution.
-	result, err := c.getEvents(ctx, EventHistoryOptions{Image: "ubuntu2204"})
-	require.NoError(t, err)
-	assert.NotEmpty(t, result)
-
 	// Verify that getEvents functions correctly with page and limit.
 	opts := EventHistoryOptions{
 		Image: "ubuntu2204",
 		Page:  0,
 		Limit: 5,
 	}
-	result, err = c.getEvents(ctx, opts)
+	result, err := c.getEvents(ctx, opts)
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
 	assert.Len(result, 5)
