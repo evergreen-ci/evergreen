@@ -115,31 +115,6 @@ buildvariants:
 
 		assert.Empty(t, errs)
 	})
-	t.Run("WarnsWithTaskDependingOnNonexistentTaskInSpecificBuildVariant", func(t *testing.T) {
-		projYAML := `
-tasks:
-- name: t1
-  depends_on:
-  - name: t2
-    variant: bv2
-- name: t2
-
-buildvariants:
-- name: bv1
-  tasks:
-  - name: t1
-  - name: t2
-- name: bv2
-`
-		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
-		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
-
-		require.Len(t, errs, 1)
-		assert.Equal(t, Warning, errs[0].Level)
-		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv2', but it was not found")
-	})
 	t.Run("IgnoresDuplicateDependencies", func(t *testing.T) {
 		// Duplicate dependencies are allowed because when the project is
 		// translated, it consolidates all the duplicates.
@@ -238,29 +213,6 @@ buildvariants:
 
 		assert.Empty(t, errs)
 	})
-	t.Run("WarnsWithTaskImplicitlyDependingOnNonexistentTaskInSameBuildVariant", func(t *testing.T) {
-		projYAML := `
-tasks:
-- name: t1
-  depends_on:
-  - name: t2
-- name: t2
-
-buildvariants:
-- name: bv1
-  tasks:
-  - name: t1
-`
-		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
-		require.NoError(t, err)
-		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
-
-		require.Len(t, errs, 1)
-		assert.Equal(t, Warning, errs[0].Level)
-		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv1', but it was not found")
-	})
 	t.Run("SucceedsWithTaskImplicitlyDependingOnTaskGroupTaskInSameBuildVariant", func(t *testing.T) {
 		projYAML := `
 tasks:
@@ -286,33 +238,6 @@ buildvariants:
 		errs := validateTaskDependencies(&p)
 
 		assert.Empty(t, errs)
-	})
-	t.Run("WarnsWithTaskImplicitlyDependingOnNonexistentTaskGroupTaskInSameBuildVariant", func(t *testing.T) {
-		projYAML := `
-tasks:
-- name: t1
-  depends_on:
-  - name: t2
-- name: t2
-
-task_groups:
-- name: tg1
-  tasks:
-  - t2
-
-buildvariants:
-- name: bv1
-  tasks:
-  - name: t1
-`
-		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
-		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
-
-		require.Len(t, errs, 1)
-		assert.Equal(t, Warning, errs[0].Level)
-		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv1', but it was not found")
 	})
 	t.Run("SucceedsWithTaskGroupTaskImplicitlyDependingOnTask", func(t *testing.T) {
 		projYAML := `
@@ -340,33 +265,6 @@ buildvariants:
 
 		assert.Empty(t, errs)
 	})
-	t.Run("WarnsWithTaskGroupTaskImplicitlyDependingOnNonexistentTask", func(t *testing.T) {
-		projYAML := `
-tasks:
-- name: t1
-  depends_on:
-  - name: t2
-- name: t2
-
-task_groups:
-- name: tg1
-  tasks:
-  - t1
-
-buildvariants:
-- name: bv1
-  tasks:
-  - name: tg1
-`
-		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
-		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
-
-		require.Len(t, errs, 1)
-		assert.Equal(t, Warning, errs[0].Level)
-		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv1', but it was not found")
-	})
 	t.Run("SucceedsWithBuildVariantTaskDependingOnTask", func(t *testing.T) {
 		projYAML := `
 tasks:
@@ -387,29 +285,6 @@ buildvariants:
 		errs := validateTaskDependencies(&p)
 
 		assert.Empty(t, errs)
-	})
-	t.Run("WarnsWithBuildVariantTaskDependingOnNonexistentTask", func(t *testing.T) {
-		projYAML := `
-tasks:
-- name: t1
-- name: t2
-
-buildvariants:
-- name: bv1
-  tasks:
-  - name: t1
-    depends_on:
-    - name: t2
-`
-		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
-		require.NoError(t, err)
-		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
-
-		require.Len(t, errs, 1)
-		assert.Equal(t, Warning, errs[0].Level)
-		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv1', but it was not found")
 	})
 	t.Run("SucceedsWithBuildVariantTaskDependingOnTaskAndOverridingTaskDependencyDefinition", func(t *testing.T) {
 		projYAML := `
@@ -435,33 +310,6 @@ buildvariants:
 
 		assert.Empty(t, errs)
 	})
-	t.Run("WarnsWithBuildVariantTaskDependingOnNonexistentTaskAndOverridingTaskDependencyDefinition", func(t *testing.T) {
-		projYAML := `
-tasks:
-- name: t1
-  depends_on:
-  - name: t2
-- name: t2
-- name: t3
-
-buildvariants:
-- name: bv1
-  tasks:
-  - name: t1
-    depends_on:
-    - name: t3
-  - name: t2
-`
-		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
-		require.NoError(t, err)
-		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
-
-		require.Len(t, errs, 1)
-		assert.Equal(t, Warning, errs[0].Level)
-		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't3' in build variant 'bv1', but it was not found")
-	})
 	t.Run("SucceedsWithBuildVariantDependingOnTask", func(t *testing.T) {
 		projYAML := `
 tasks:
@@ -485,30 +333,6 @@ buildvariants:
 		errs := validateTaskDependencies(&p)
 
 		assert.Empty(t, errs)
-	})
-	t.Run("WarnsWithBuildVariantDependingOnNonexistentTask", func(t *testing.T) {
-		projYAML := `
-tasks:
-- name: t1
-- name: t2
-
-buildvariants:
-- name: bv1
-  depends_on:
-  - name: t2
-    variant: bv2
-  tasks:
-  - name: t1
-- name: bv2
-`
-		var p model.Project
-		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
-		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
-
-		require.Len(t, errs, 1)
-		assert.Equal(t, Warning, errs[0].Level)
-		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv2', but it was not found")
 	})
 	t.Run("SucceedsWithTaskDependingOnAllTasksAndAllVariants", func(t *testing.T) {
 		projYAML := `
@@ -554,6 +378,449 @@ buildvariants:
 
 		assert.Empty(t, errs)
 	})
+	t.Run("SucceedsWithTaskDependingOnSpecificTaskInAllBuildVariants", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+    variant: "*"
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+- name: bv2
+  tasks:
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := validateTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+}
+
+func TestCheckTaskDependencies(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	t.Run("WarnsWithTaskDependingOnNonexistentTaskInSpecificBuildVariant", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+    variant: bv2
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+  - name: t2
+- name: bv2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv2', but it was not found")
+	})
+	t.Run("IgnoresDuplicateDependencies", func(t *testing.T) {
+		// Duplicate dependencies are allowed because when the project is
+		// translated, it consolidates all the duplicates.
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+  - name: t2
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("AllowsDependenciesOnSameTaskInDifferentBuildVariants", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+    variant: bv1
+  - name: t2
+    variant: bv2
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+  - name: t2
+- name: bv2
+  tasks:
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("SucceedsWithTaskImplicitlyDependingOnTaskInSameBuildVariant", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithTaskImplicitlyDependingOnNonexistentTaskInSameBuildVariant", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		require.NoError(t, err)
+		errs := checkTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv1', but it was not found")
+	})
+	t.Run("SucceedsWithTaskImplicitlyDependingOnTaskGroupTaskInSameBuildVariant", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+- name: t2
+
+task_groups:
+- name: tg1
+  tasks:
+  - t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+  - name: tg1
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithTaskImplicitlyDependingOnNonexistentTaskGroupTaskInSameBuildVariant", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+- name: t2
+
+task_groups:
+- name: tg1
+  tasks:
+  - t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv1', but it was not found")
+	})
+	t.Run("SucceedsWithTaskGroupTaskImplicitlyDependingOnTask", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+- name: t2
+
+task_groups:
+- name: tg1
+  tasks:
+  - t1
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: tg1
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithTaskGroupTaskImplicitlyDependingOnNonexistentTask", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+- name: t2
+
+task_groups:
+- name: tg1
+  tasks:
+  - t1
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: tg1
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv1', but it was not found")
+	})
+	t.Run("SucceedsWithBuildVariantTaskDependingOnTask", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+    depends_on:
+    - name: t2
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithBuildVariantTaskDependingOnNonexistentTask", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+    depends_on:
+    - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		require.NoError(t, err)
+		errs := checkTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv1', but it was not found")
+	})
+	t.Run("SucceedsWithBuildVariantTaskDependingOnTaskAndOverridingTaskDependencyDefinition", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t3
+- name: t2
+- name: t3
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+    depends_on:
+    - name: t2
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithBuildVariantTaskDependingOnNonexistentTaskAndOverridingTaskDependencyDefinition", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: t2
+- name: t2
+- name: t3
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+    depends_on:
+    - name: t3
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		require.NoError(t, err)
+		errs := checkTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't3' in build variant 'bv1', but it was not found")
+	})
+	t.Run("SucceedsWithBuildVariantDependingOnTask", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+- name: t2
+
+buildvariants:
+- name: bv1
+  depends_on:
+  - name: t2
+    variant: bv2
+  tasks:
+  - name: t1
+- name: bv2
+  tasks:
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("WarnsWithBuildVariantDependingOnNonexistentTask", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+- name: t2
+
+buildvariants:
+- name: bv1
+  depends_on:
+  - name: t2
+    variant: bv2
+  tasks:
+  - name: t1
+- name: bv2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkTaskDependencies(&p)
+
+		require.Len(t, errs, 1)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, errs[0].Message, "task 't1' in build variant 'bv1' depends on task 't2' in build variant 'bv2', but it was not found")
+	})
+	t.Run("SucceedsWithTaskDependingOnAllTasksAndAllVariants", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: "*"
+    variant: "*"
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
+	t.Run("SucceedsWithTaskDependingOnAllTasksInSpecificVariant", func(t *testing.T) {
+		projYAML := `
+tasks:
+- name: t1
+  depends_on:
+  - name: "*"
+    variant: bv2
+- name: t2
+
+buildvariants:
+- name: bv1
+  tasks:
+  - name: t1
+- name: bv2
+  tasks:
+  - name: t2
+`
+		var p model.Project
+		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
+		require.NoError(t, err)
+		errs := checkTaskDependencies(&p)
+
+		assert.Empty(t, errs)
+	})
 	t.Run("WarnsWithTaskDependingOnAllTasksInSpecificNonexistentVariant", func(t *testing.T) {
 		p := model.Project{
 			Tasks: []model.ProjectTask{
@@ -586,7 +853,7 @@ buildvariants:
 				},
 			},
 		}
-		errs := validateTaskDependencies(&p)
+		errs := checkTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)
@@ -612,7 +879,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
+		errs := checkTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -633,7 +900,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
+		errs := checkTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)
@@ -669,7 +936,7 @@ buildvariants:
 				},
 			},
 		}
-		errs := validateTaskDependencies(&p)
+		errs := checkTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)
@@ -706,7 +973,7 @@ buildvariants:
 				},
 			},
 		}
-		errs := validateTaskDependencies(&p)
+		errs := checkTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)

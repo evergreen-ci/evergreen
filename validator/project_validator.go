@@ -157,6 +157,7 @@ var projectWarningValidators = []projectValidator{
 	checkTaskRuns,
 	checkModules,
 	checkTasks,
+	checkTaskDependencies,
 	checkRequestersForTaskDependencies,
 	checkBuildVariants,
 	checkTaskUsage,
@@ -1584,6 +1585,28 @@ func checkTaskRuns(project *model.Project) ValidationErrors {
 // reference tasks that will actually run. For example, if task t1 in build
 // variant bv1 depends on task t2, t2 should also be listed under bv1.
 func validateTaskDependencies(project *model.Project) ValidationErrors {
+	var errs ValidationErrors
+	for _, bvtu := range project.FindAllBuildVariantTasks() {
+		for _, d := range bvtu.DependsOn {
+			validDepStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, model.AllStatuses, ""}
+			if !utility.StringSliceContains(validDepStatuses, d.Status) {
+				errs = append(errs,
+					ValidationError{
+						Level:   Error,
+						Message: fmt.Sprintf("invalid dependency status '%s' for task '%s' in build variant '%s'", d.Status, d.Name, bvtu.Variant),
+					},
+				)
+			}
+		}
+	}
+	return errs
+}
+
+// validateTaskDependencies checks that, for all tasks that have
+// dependencies, those dependencies set the expected fields and all dependencies
+// reference tasks that will actually run. For example, if task t1 in build
+// variant bv1 depends on task t2, t2 should also be listed under bv1.
+func checkTaskDependencies(project *model.Project) ValidationErrors {
 	bvtus := map[model.TVPair]model.BuildVariantTaskUnit{}
 	bvs := map[string]struct{}{}
 	tasks := map[string]struct{}{}
@@ -1596,16 +1619,6 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 	var errs ValidationErrors
 	for _, bvtu := range bvtus {
 		for _, d := range bvtu.DependsOn {
-			validDepStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, model.AllStatuses, ""}
-			if !utility.StringSliceContains(validDepStatuses, d.Status) {
-				errs = append(errs,
-					ValidationError{
-						Level:   Error,
-						Message: fmt.Sprintf("invalid dependency status '%s' for task '%s' in build variant '%s'", d.Status, d.Name, bvtu.Variant),
-					},
-				)
-			}
-
 			// Dependencies can be specified in different places, which can
 			// overwrite each other. Each build variant task unit already takes
 			// into account these precedence rules, so after resolving the
