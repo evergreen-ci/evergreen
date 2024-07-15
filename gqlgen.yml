@@ -130,6 +130,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.HostAPIEventData
   HostEventLogEntry:
     model: github.com/evergreen-ci/evergreen/rest/model.HostAPIEventLogEntry
+  Image: 
+    model: github.com/evergreen-ci/evergreen/thirdparty.Image
   IceCreamSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIceCreamSettings
   IceCreamSettingsInput:

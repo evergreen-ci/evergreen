@@ -174,16 +174,6 @@ type HostsResponse struct {
 	TotalHostsCount    int              `json:"totalHostsCount"`
 }
 
-// Image is returned by the image query.
-// It contains information about an image.
-type Image struct {
-	Name         string    `json:"name"`
-	VersionID    string    `json:"versionId"`
-	Kernel       string    `json:"kernel"`
-	LastDeployed time.Time `json:"lastDeployed"`
-	Ami          string    `json:"ami"`
-}
-
 type MainlineCommitVersion struct {
 	RolledUpVersions []*model.APIVersion `json:"rolledUpVersions,omitempty"`
 	Version          *model.APIVersion   `json:"version,omitempty"`

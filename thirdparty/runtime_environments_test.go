@@ -236,16 +236,16 @@ func TestGetHistory(t *testing.T) {
 	assert.Len(result, 15)
 }
 
-func TestGetDistroInfo(t *testing.T) {
+func TestGetImageInfo(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	assert := assert.New(t)
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGetDistroInfo")
+	testutil.ConfigureIntegrationTest(t, config, "TestGetImageInfo")
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
-	result, err := c.GetDistroInfo(ctx, "ubuntu2204")
+	result, err := c.GetImageInfo(ctx, "ubuntu2204")
 	require.NoError(t, err)
 	require.NotEmpty(t, result)
 	assert.NotEmpty(result.Name)

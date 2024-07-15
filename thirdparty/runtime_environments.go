@@ -333,8 +333,8 @@ func stringToTime(timeInitial string) (time.Time, error) {
 	return time.Unix(timestamp, 0), nil
 }
 
-// ImageInfo stores information about an image including its name, version_id, kernel, ami, and its last deployed time.
-type ImageInfo struct {
+// Image stores information about an image including its name, version_id, kernel, ami, and its last deployed time.
+type Image struct {
 	Name         string
 	VersionID    string
 	Kernel       string
@@ -342,85 +342,69 @@ type ImageInfo struct {
 	AMI          string
 }
 
-// GetDistroInfo returns information about a distro.
-func (c *RuntimeEnvironmentsClient) GetDistroInfo(ctx context.Context, imageID string) (*ImageInfo, error) {
+// getNameFromOSInfo uses the provided AMI and name arguments to filter the image information.
+func (c *RuntimeEnvironmentsClient) getNameFromOSInfo(ctx context.Context, ami string, name string) (string, error) {
+	optsOS := OSInfoFilterOptions{
+		AMI:  ami,
+		Name: name,
+	}
+	resultOS, err := c.GetOSInfo(ctx, optsOS)
+	if err != nil {
+		return "", errors.Wrap(err, "getting OS info")
+	}
+	if len(resultOS) == 0 {
+		return "", errors.Errorf("OS information name '%s' not found for distro", name)
+	}
+	return resultOS[0].Version, nil
+}
+
+// GetImageInfo returns information about a image.
+func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID string) (*Image, error) {
+	// Determine AMI field.
 	optsHistory := DistroHistoryFilterOptions{
 		Distro: imageID,
 		Limit:  1,
 	}
 	resultHistory, err := c.GetHistory(ctx, optsHistory)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting history for distro '%s': '%s'", imageID, err.Error())
+		return nil, errors.Wrapf(err, "getting history for image '%s': '%s'", imageID, err.Error())
 	}
 	if len(resultHistory) == 0 {
-		return nil, errors.Errorf("history for distro '%s' not found", imageID)
+		return nil, errors.Errorf("history for image '%s' not found", imageID)
 	}
 	if resultHistory[0].AMI == "" {
-		return nil, errors.Errorf("latest ami for distro '%s' not found", imageID)
+		return nil, errors.Errorf("latest ami for image '%s' not found", imageID)
 	}
 	ami := resultHistory[0].AMI
+
+	// Determine timestamp field.
 	if resultHistory[0].CreationDate == "" {
-		return nil, errors.Errorf("creation time for distro '%s' not found", imageID)
+		return nil, errors.Errorf("creation time for image '%s' not found", imageID)
 	}
 	timestamp, err := stringToTime(resultHistory[0].CreationDate)
 	if err != nil {
 		return nil, errors.Wrap(err, "converting creation time: '%s'")
 	}
 
-	optsOS := OSInfoFilterOptions{
-		AMI:  ami,
-		Name: "PRETTY_NAME",
-	}
-	resultOS, err := c.GetOSInfo(ctx, optsOS)
+	// Determine name field.
+	name, err := c.getNameFromOSInfo(ctx, ami, "\bPRETTY_NAME\b")
 	if err != nil {
-		return nil, errors.Wrap(err, "getting OS info")
-	}
-	name := ""
-	for _, osInfo := range resultOS {
-		if osInfo.Name == "PRETTY_NAME" {
-			name = osInfo.Version
-		}
-	}
-	if name == "" {
-		return nil, errors.Errorf("OS information field not found for distro: '%s'", imageID)
+		return nil, errors.Wrapf(err, "getting OSInfo for distro: '%s'", imageID)
 	}
 
-	optsOS = OSInfoFilterOptions{
-		AMI:  ami,
-		Name: "Kernel",
-	}
-	resultOS, err = c.GetOSInfo(ctx, optsOS)
+	// Determine kernel field.
+	kernel, err := c.getNameFromOSInfo(ctx, ami, "\bKernel\b")
 	if err != nil {
-		return nil, errors.Wrap(err, "getting OS info")
-	}
-	kernel := ""
-	for _, osInfo := range resultOS {
-		if osInfo.Name == "Kernel" {
-			kernel = osInfo.Version
-		}
-	}
-	if kernel == "" {
-		return nil, errors.Errorf("OS information kernel field not found for distro: '%s'", imageID)
+		return nil, errors.Wrapf(err, "getting OSInfo for distro: '%s'", imageID)
 	}
 
-	optsOS = OSInfoFilterOptions{
-		AMI:  ami,
-		Name: "VERSION_ID",
-	}
-	resultOS, err = c.GetOSInfo(ctx, optsOS)
+	// Determine versionID field.
+	versionID, err := c.getNameFromOSInfo(ctx, ami, "\bVERSION_ID\b")
 	if err != nil {
-		return nil, errors.Wrap(err, "getting OS info")
+		return nil, errors.Wrapf(err, "getting OSInfo for distro: '%s'", imageID)
 	}
-	versionID := ""
-	for _, osInfo := range resultOS {
-		if osInfo.Name == "VERSION_ID" {
-			versionID = osInfo.Version
-		}
-	}
-	if versionID == "" {
-		return nil, errors.Errorf("OS information version_id field not found")
-	}
-	image := ImageInfo{
+
+	image := Image{
 		Name:         name,
 		VersionID:    versionID,
 		Kernel:       kernel,
