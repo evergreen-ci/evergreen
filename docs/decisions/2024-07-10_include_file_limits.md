@@ -1,6 +1,6 @@
 # 2024-03-26 Appropriate limit for include files per project
 
-- status: in review (will change to accepted after PR is approved)
+- status: approved
 - date: 2024-07-11
 - authors: Bynn Lee
 
@@ -14,4 +14,4 @@ The two biggest loads are the the mongo repo projects that have around 25 includ
 
 ## Decision Outcome
 
-I propose a limit of 40 includes on all projects. Assuming our GitHub usage scales consistently with what we have been seeing, we should be able to handle a 100% increase on the number of include files. So in theory, a limit of 50 should not exceed our limits. However, there are intermittent cases (about once a month) where we do end up using 10,000 of our API limit for the hour and setting the limit too high could use up our limit during those times. 
+I propose a limit of 35 includes on all projects. Assuming our GitHub usage scales consistently with what we have been seeing, we should be able to handle a 100% increase on the number of include files. So in theory, a limit of 45-50 should not regularly exceed our limits. However, there are intermittent cases (about once a month) where we do end up using 10,000 of our API limit for the hour and setting the limit too high could use up our limit during those times and leaves no room for growth.
