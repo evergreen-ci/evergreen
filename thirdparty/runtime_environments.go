@@ -144,7 +144,9 @@ func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFi
 	}
 	params := url.Values{}
 	params.Set("ami", opts.AMI)
-	params.Set("page", strconv.Itoa(opts.Page))
+	if opts.Page != 0 {
+		params.Set("page", strconv.Itoa(opts.Page))
+	}
 	if opts.Limit != 0 {
 		params.Set("limit", strconv.Itoa(opts.Limit))
 	}
@@ -342,18 +344,18 @@ type Image struct {
 	AMI          string
 }
 
-// getNameFromOSInfo uses the provided AMI and name arguments to filter the image information.
+// getNameFromOSInfo uses the provided AMI and name (exact match) arguments to filter the image information.
 func (c *RuntimeEnvironmentsClient) getNameFromOSInfo(ctx context.Context, ami string, name string) (string, error) {
 	optsOS := OSInfoFilterOptions{
 		AMI:  ami,
-		Name: name,
+		Name: "^" + name + "$",
 	}
 	resultOS, err := c.GetOSInfo(ctx, optsOS)
 	if err != nil {
 		return "", errors.Wrap(err, "getting OS info")
 	}
 	if len(resultOS) == 0 {
-		return "", errors.Errorf("OS information name '%s' not found for distro", name)
+		return "", errors.Errorf("OS information name '%q' not found for distro", optsOS.Name)
 	}
 	return resultOS[0].Version, nil
 }
@@ -387,19 +389,19 @@ func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID st
 	}
 
 	// Determine name field.
-	name, err := c.getNameFromOSInfo(ctx, ami, "\bPRETTY_NAME\b")
+	name, err := c.getNameFromOSInfo(ctx, ami, "^PRETTY_NAME$")
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting OSInfo for distro: '%s'", imageID)
 	}
 
 	// Determine kernel field.
-	kernel, err := c.getNameFromOSInfo(ctx, ami, "\bKernel\b")
+	kernel, err := c.getNameFromOSInfo(ctx, ami, "^Kernel")
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting OSInfo for distro: '%s'", imageID)
 	}
 
 	// Determine versionID field.
-	versionID, err := c.getNameFromOSInfo(ctx, ami, "\bVERSION_ID\b")
+	versionID, err := c.getNameFromOSInfo(ctx, ami, "VERSION_ID")
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting OSInfo for distro: '%s'", imageID)
 	}
