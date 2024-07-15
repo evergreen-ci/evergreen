@@ -163,10 +163,10 @@ func (c *RuntimeEnvironmentsClient) getOSInfo(ctx context.Context, amiID string,
 	return osInfo, nil
 }
 
-// ImageDiffOptions represents the arguments for getImageDiff. BeforeAMI is the starting AMI, and AfterAMI is the ending AMI.
+// ImageDiffOptions represents the arguments for getImageDiff. AMIBefore is the starting AMI, and AMIAfter is the ending AMI.
 type ImageDiffOptions struct {
-	BeforeAMI string
-	AfterAMI  string
+	AMIBefore string
+	AMIAfter  string
 }
 
 // ImageDiffChange represents a change between two AMIs.
@@ -181,8 +181,8 @@ type ImageDiffChange struct {
 // getImageDiff returns a list of package and toolchain changes that occurred between the provided AMIs.
 func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts ImageDiffOptions) ([]ImageDiffChange, error) {
 	params := url.Values{}
-	params.Set("ami", opts.BeforeAMI)
-	params.Set("ami2", opts.AfterAMI)
+	params.Set("ami", opts.AMIBefore)
+	params.Set("ami2", opts.AMIAfter)
 	params.Set("limit", "1000000000") // Artificial limit set high because API has default limit of 10.
 	apiURL := fmt.Sprintf("%s/rest/api/v1/imageDiffs?%s", c.BaseURL, params.Encode())
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
@@ -331,7 +331,7 @@ type ImageEvent struct {
 	AMIAfter  string
 }
 
-// EventHistoryOptions represents the filtering arguments for getEvents. Image and Limit are required argument.
+// EventHistoryOptions represents the filtering arguments for getEvents. Image and Limit are required arguments.
 type EventHistoryOptions struct {
 	Image string
 	Page  int
@@ -377,7 +377,7 @@ func (c *RuntimeEnvironmentsClient) getEvents(ctx context.Context, opts EventHis
 	optsHistory := DistroHistoryFilterOptions{
 		Distro: opts.Image,
 		Page:   opts.Page,
-		// Add 1 to ensure that the number of ImageEvents returned matches the limit.
+		// Diffing two AMIs only produces one ImageEvent. We need to add 1 so that the number of returned events is equal to the limit.
 		Limit: opts.Limit + 1,
 	}
 	imageHistory, err := c.getHistory(ctx, optsHistory)
@@ -391,8 +391,8 @@ func (c *RuntimeEnvironmentsClient) getEvents(ctx context.Context, opts EventHis
 	for i := 0; i < len(imageHistory)-1; i++ {
 		amiBefore := imageHistory[i+1].AMI
 		optsImageDiffs := ImageDiffOptions{
-			BeforeAMI: amiBefore,
-			AfterAMI:  imageHistory[i].AMI,
+			AMIBefore: amiBefore,
+			AMIAfter:  imageHistory[i].AMI,
 		}
 		imageDiffs, err := c.getImageDiff(ctx, optsImageDiffs)
 		if err != nil {

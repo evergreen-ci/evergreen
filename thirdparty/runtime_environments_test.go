@@ -106,8 +106,8 @@ func TestGetImageDiff(t *testing.T) {
 
 	// Verify that getImageDiff correctly returns Toolchain/Package changes for a pair of sample AMIs.
 	opts := ImageDiffOptions{
-		BeforeAMI: "ami-029ab576546a58916",
-		AfterAMI:  "ami-02b25f680ad574d33",
+		AMIBefore: "ami-029ab576546a58916",
+		AMIAfter:  "ami-02b25f680ad574d33",
 	}
 	result, err := c.getImageDiff(ctx, opts)
 	require.NoError(t, err)
@@ -118,8 +118,8 @@ func TestGetImageDiff(t *testing.T) {
 
 	// Verify that getImageDiff finds no differences between the same AMI.
 	opts = ImageDiffOptions{
-		BeforeAMI: "ami-016662ab459a49e9d",
-		AfterAMI:  "ami-016662ab459a49e9d",
+		AMIBefore: "ami-016662ab459a49e9d",
+		AMIAfter:  "ami-016662ab459a49e9d",
 	}
 	result, err = c.getImageDiff(ctx, opts)
 	require.NoError(t, err)
@@ -221,7 +221,11 @@ func TestGetEvents(t *testing.T) {
 	_, err := c.getEvents(ctx, EventHistoryOptions{})
 	assert.Error(err)
 
-	// Verify that getEvents functions correctly with page and limit.
+	// Verify that getEvents errors with missing limit.
+	_, err = c.getEvents(ctx, EventHistoryOptions{Image: "ubuntu2204"})
+	assert.Error(err)
+
+	// Verify that getEvents functions correctly with page and limit and returns in chronological order.
 	opts := EventHistoryOptions{
 		Image: "ubuntu2204",
 		Page:  0,
@@ -231,4 +235,7 @@ func TestGetEvents(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
 	assert.Len(result, 5)
+	for i := 0; i < len(result)-1; i++ {
+		assert.Greater(result[i].Timestamp, result[i+1].Timestamp)
+	}
 }
