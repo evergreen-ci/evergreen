@@ -410,12 +410,19 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		modified, err = updateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPageNotificationsSection:
-		if err = SaveSubscriptions(projectId, changes.Subscriptions, true); err != nil {
+		// Some subscription values are redacted like webhook secret and 'Authorization' header.
+		// Before saving to the database, we should unredact all of these, referencing the before
+		// as the unredacted values.
+		unredactedSubscriptions, err := getUnredactedSubscriptions(before.Subscriptions, changes.Subscriptions)
+		if err != nil {
+			return nil, errors.Wrap(err, "unredacting subscriptions")
+		}
+		if err = SaveSubscriptions(projectId, unredactedSubscriptions, true); err != nil {
 			return nil, errors.Wrapf(err, "saving subscriptions for project '%s'", projectId)
 		}
 		modified = true
 		subscriptionsToKeep := []string{}
-		for _, s := range changes.Subscriptions {
+		for _, s := range unredactedSubscriptions {
 			subscriptionsToKeep = append(subscriptionsToKeep, utility.FromStringPtr(s.ID))
 		}
 		// Remove any subscriptions that only existed in the original state.
@@ -463,6 +470,11 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if err = parsley.ValidateFilters(mergedSection.ParsleyFilters); err != nil {
 			return nil, errors.Wrap(err, "invalid Parsley filters")
 		}
+	case model.ProjectPageGithubAppSettingsSection:
+		mergedSection.GitHubDynamicTokenPermissionGroups = mergedBeforeRef.GitHubDynamicTokenPermissionGroups
+		if err := mergedSection.ValidateGitHubPermissionGroups(); err != nil {
+			return nil, errors.Wrap(err, "invalid GitHub permission group by requester")
+		}
 	case model.ProjectPageGithubPermissionsSection:
 		if err := mergedSection.ValidateGitHubPermissionGroups(); err != nil {
 			return nil, errors.Wrap(err, "invalid GitHub permission groups")
@@ -505,6 +517,67 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 	}
 	return &res, errors.Wrapf(catcher.Resolve(), "saving section '%s'", section)
+}
+
+// getUnredactedSubscriptions parses the new subscriptions for any values that are redacted and if they are redacted,
+// it replaces the placeholder string with the unredacted value.
+func getUnredactedSubscriptions(unredactedPreviousSubscriptions []event.Subscription, redactedNewSubscriptions []restModel.APISubscription) ([]restModel.APISubscription, error) {
+	unredactedNewSubscriptions := []restModel.APISubscription{}
+	for _, redactedSub := range redactedNewSubscriptions {
+		// Apply all subscription unredaction functions.
+		err := unredactWebhookSubscription(unredactedPreviousSubscriptions, &redactedSub)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unredacting webhook subscription")
+		}
+		// Add to final subscription slice.
+		unredactedNewSubscriptions = append(unredactedNewSubscriptions, redactedSub)
+	}
+	return unredactedNewSubscriptions, nil
+}
+
+// unredactWebhookSubscription unredacts the webhook secret and the Authorization header for the subscription.
+// If the given subscription isn't a webhook one, it no-ops.
+func unredactWebhookSubscription(unredactedPreviousSubscriptions []event.Subscription, redactedNewSubscription *restModel.APISubscription) error {
+	redactedNewWebhookSubscription := redactedNewSubscription.Subscriber.WebhookSubscriber
+	// If no webhook is present, we can no-op.
+	if redactedNewWebhookSubscription == nil {
+		return nil
+	}
+
+	// Get the unredacted webhook subscription.
+	unredactedPreviousWebhookSubscription, err := getSubscription[event.WebhookSubscriber](unredactedPreviousSubscriptions, utility.FromStringPtr(redactedNewSubscription.ID))
+	if err != nil || unredactedPreviousWebhookSubscription == nil {
+		return err
+	}
+
+	// Unredact the secret if it was redacted.
+	if utility.FromStringPtr(redactedNewWebhookSubscription.Secret) == evergreen.RedactedValue {
+		redactedNewWebhookSubscription.Secret = utility.ToStringPtr(string(unredactedPreviousWebhookSubscription.Secret))
+	}
+
+	// Unredact the Authorization header if it was redacted.
+	unredactedNewHeaders := []restModel.APIWebhookHeader{}
+	for _, redactedHeader := range redactedNewWebhookSubscription.Headers {
+		// If the header is the Authorization header and set to redacted, replace it with the unredacted value.
+		if utility.FromStringPtr(redactedHeader.Key) == "Authorization" && utility.FromStringPtr(redactedHeader.Value) == evergreen.RedactedValue {
+			redactedHeader.Value = utility.ToStringPtr(unredactedPreviousWebhookSubscription.GetHeader("Authorization"))
+		}
+		unredactedNewHeaders = append(unredactedNewHeaders, redactedHeader)
+	}
+	redactedNewWebhookSubscription.Headers = unredactedNewHeaders
+
+	return nil
+}
+
+// getSubscription gets a subscription by id and asserts a type on it. If
+// the type does not match for that id, it returns an error.
+func getSubscription[T any](subscriptions []event.Subscription, id string) (*T, error) {
+	for _, subscription := range subscriptions {
+		if subscription.ID == id {
+			return event.GetSubscriptionTarget[T](subscription)
+		}
+	}
+	return nil, nil
 }
 
 func validateModifiedIdentifier(pRef *model.ProjectRef) error {

@@ -3538,7 +3538,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
 	assert.NoError(err)
 
-	// Test parsley filters and view update
+	// Verify that Parsley filters and project health view are saved correctly.
 	update = &ProjectRef{
 		ParsleyFilters: []parsley.Filter{
 			{Expression: "filter", CaseSensitive: false, ExactMatch: true},
@@ -3548,7 +3548,13 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	_, err = SaveProjectPageForSection("iden_", update, ProjectPageViewsAndFiltersSection, false)
 	assert.NoError(err)
 
-	// Test private field does not get updated
+	projectRef, err = FindBranchProjectRef("iden_")
+	assert.NoError(err)
+	require.NotNil(t, projectRef)
+	assert.Len(projectRef.ParsleyFilters, 1)
+	assert.Equal(projectRef.ProjectHealthView, ProjectHealthViewAll)
+
+	// Verify that private field does not get updated when updating restricted field.
 	update = &ProjectRef{
 		Restricted: utility.TruePtr(),
 	}
@@ -3556,14 +3562,12 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.NoError(err)
 
 	projectRef, err = FindBranchProjectRef("iden_")
-	require.NoError(t, err)
-	assert.NotNil(t, projectRef)
-	assert.Len(projectRef.ParsleyFilters, 1)
-	assert.Equal(projectRef.ProjectHealthView, ProjectHealthViewAll)
+	assert.NoError(err)
+	require.NotNil(t, projectRef)
 	assert.True(utility.FromBoolPtr(projectRef.Restricted))
 	assert.True(utility.FromBoolPtr(projectRef.Private))
 
-	// Test GitHub dynamic token permission groups
+	// Verify that GitHub dynamic token permission groups are saved correctly.
 	update = &ProjectRef{
 		GitHubDynamicTokenPermissionGroups: []GitHubDynamicTokenPermissionGroup{
 			{
@@ -3578,11 +3582,27 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.NoError(err)
 
 	projectRef, err = FindBranchProjectRef("iden_")
-	require.NoError(t, err)
-	assert.NotNil(t, projectRef)
+	assert.NoError(err)
+	require.NotNil(t, projectRef)
 	require.Len(t, projectRef.GitHubDynamicTokenPermissionGroups, 1)
 	assert.Equal("some-group", projectRef.GitHubDynamicTokenPermissionGroups[0].Name)
 	assert.Equal("read", utility.FromStringPtr(projectRef.GitHubDynamicTokenPermissionGroups[0].Permissions.Actions))
+
+	// Verify that GitHub permission group by requester is saved correctly.
+	update = &ProjectRef{
+		GitHubPermissionGroupByRequester: map[string]string{
+			evergreen.PatchVersionRequester: "some-group",
+		},
+	}
+	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGithubAppSettingsSection, false)
+	assert.NoError(err)
+
+	projectRef, err = FindBranchProjectRef("iden_")
+	require.NoError(t, err)
+	require.NotNil(t, projectRef)
+	require.NotNil(t, projectRef.GitHubPermissionGroupByRequester)
+	assert.Equal(len(projectRef.GitHubPermissionGroupByRequester), 1)
+	assert.Equal(projectRef.GitHubPermissionGroupByRequester[evergreen.PatchVersionRequester], "some-group")
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {

@@ -648,15 +648,104 @@ func (s *EC2Suite) TestModifyHostWithExpiredTemporaryExemption() {
 	s.WithinDuration(time.Now().Add(hours*time.Hour), dbHost.SleepSchedule.TemporarilyExemptUntil, time.Minute, "should create new temporary exemption rather than extend the expired one")
 }
 
-func (s *EC2Suite) TestGetInstanceStatus() {
+func (s *EC2Suite) TestModifyHostWithNewSleepSchedule() {
+	s.h.NoExpiration = true
+	s.Require().NoError(s.h.Insert(s.ctx))
+
+	changes := host.HostModifyOptions{
+		SleepScheduleOptions: host.SleepScheduleOptions{
+			WholeWeekdaysOff: []time.Weekday{time.Saturday},
+			DailyStartTime:   "10:00",
+			DailyStopTime:    "20:00",
+			TimeZone:         "America/New_York",
+		},
+	}
+	s.NoError(s.onDemandManager.ModifyHost(s.ctx, s.h, changes))
+
+	modifiedHost, err := host.FindOneId(s.ctx, s.h.Id)
+	s.Require().NoError(err)
+	s.Require().NotZero(modifiedHost)
+	s.ElementsMatch(changes.SleepScheduleOptions.WholeWeekdaysOff, modifiedHost.SleepSchedule.WholeWeekdaysOff)
+	s.Equal(changes.SleepScheduleOptions.DailyStartTime, modifiedHost.SleepSchedule.DailyStartTime)
+	s.Equal(changes.SleepScheduleOptions.DailyStopTime, modifiedHost.SleepSchedule.DailyStopTime)
+	s.Equal(changes.SleepScheduleOptions.TimeZone, modifiedHost.SleepSchedule.TimeZone)
+	s.NotZero(modifiedHost.SleepSchedule.NextStartTime)
+	s.NotZero(modifiedHost.SleepSchedule.NextStopTime)
+}
+
+func (s *EC2Suite) TestModifyHostUpdateExistingSleepSchedule() {
+	s.h.NoExpiration = true
+	temporarilyExemptUntil := utility.BSONTime(time.Now().Add(time.Hour))
+	s.h.SleepSchedule = host.SleepScheduleInfo{
+		WholeWeekdaysOff:       []time.Weekday{time.Sunday},
+		DailyStartTime:         "09:00",
+		DailyStopTime:          "19:00",
+		TimeZone:               "Antarctica/Casey",
+		TemporarilyExemptUntil: temporarilyExemptUntil,
+	}
+	s.Require().NoError(s.h.Insert(s.ctx))
+
+	changes := host.HostModifyOptions{
+		SleepScheduleOptions: host.SleepScheduleOptions{
+			WholeWeekdaysOff: []time.Weekday{time.Saturday},
+			DailyStartTime:   "10:00",
+			DailyStopTime:    "20:00",
+			TimeZone:         "America/New_York",
+		},
+	}
+	s.NoError(s.onDemandManager.ModifyHost(s.ctx, s.h, changes))
+
+	modifiedHost, err := host.FindOneId(s.ctx, s.h.Id)
+	s.Require().NoError(err)
+	s.Require().NotZero(modifiedHost)
+	s.ElementsMatch(changes.SleepScheduleOptions.WholeWeekdaysOff, modifiedHost.SleepSchedule.WholeWeekdaysOff, "should update whole weekdays off")
+	s.Equal(changes.SleepScheduleOptions.DailyStartTime, modifiedHost.SleepSchedule.DailyStartTime, "should update daily start time")
+	s.Equal(changes.SleepScheduleOptions.DailyStopTime, modifiedHost.SleepSchedule.DailyStopTime, "should update daily stop time")
+	s.Equal(changes.SleepScheduleOptions.TimeZone, modifiedHost.SleepSchedule.TimeZone, "should update time zone")
+	s.True(temporarilyExemptUntil.Equal(modifiedHost.SleepSchedule.TemporarilyExemptUntil), "should not change temporary exemption")
+}
+
+func (s *EC2Suite) TestModifyHostInvalidSchedule() {
+	s.h.NoExpiration = true
+	temporarilyExemptUntil := utility.BSONTime(time.Now().Add(time.Hour))
+	originalSchedule := host.SleepScheduleInfo{
+		WholeWeekdaysOff:       []time.Weekday{time.Sunday},
+		DailyStartTime:         "09:00",
+		DailyStopTime:          "19:00",
+		TimeZone:               "Antarctica/Casey",
+		TemporarilyExemptUntil: temporarilyExemptUntil,
+	}
+	s.h.SleepSchedule = originalSchedule
+	s.Require().NoError(s.h.Insert(s.ctx))
+
+	changes := host.HostModifyOptions{
+		SleepScheduleOptions: host.SleepScheduleOptions{
+			DailyStartTime: "10:00",
+			DailyStopTime:  "10:00",
+			TimeZone:       "America/New_York",
+		},
+	}
+	s.Error(s.onDemandManager.ModifyHost(s.ctx, s.h, changes))
+
+	modifiedHost, err := host.FindOneId(s.ctx, s.h.Id)
+	s.Require().NoError(err)
+	s.Require().NotZero(modifiedHost)
+	s.ElementsMatch(originalSchedule.WholeWeekdaysOff, modifiedHost.SleepSchedule.WholeWeekdaysOff)
+	s.Equal(originalSchedule.DailyStartTime, modifiedHost.SleepSchedule.DailyStartTime)
+	s.Equal(originalSchedule.DailyStopTime, modifiedHost.SleepSchedule.DailyStopTime)
+	s.Equal(originalSchedule.TimeZone, modifiedHost.SleepSchedule.TimeZone)
+	s.True(temporarilyExemptUntil.Equal(modifiedHost.SleepSchedule.TemporarilyExemptUntil))
+}
+
+func (s *EC2Suite) TestGetInstanceInformation() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 	s.Require().NoError(s.h.Insert(ctx))
 
 	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	status, err := s.onDemandManager.GetInstanceStatus(ctx, s.h)
+	info, err := s.onDemandManager.GetInstanceState(ctx, s.h)
 	s.NoError(err)
-	s.Equal(StatusRunning, status)
+	s.Equal(StatusRunning, info.Status)
 
 	// instance information is cached in the host
 	s.Equal("us-east-1a", s.h.Zone)

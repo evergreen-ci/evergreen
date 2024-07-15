@@ -717,7 +717,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		var build *build.Build
 		var tasks task.Tasks
-		build, tasks, err = CreateBuildFromVersionNoInsert(buildCreationArgs)
+		build, tasks, err = CreateBuildFromVersionNoInsert(ctx, buildCreationArgs)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -746,6 +746,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	for _, t := range tasksToInsert {
 		if t.Activated {
 			numActivatedTasks++
+			numActivatedTasks += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 		}
 	}
 	if err = task.UpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, numActivatedTasks, true); err != nil {

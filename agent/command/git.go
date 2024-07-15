@@ -237,7 +237,7 @@ func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
 
-	redactedClone := strings.Replace(clone, opts.token, "[redacted oauth token]", -1)
+	redactedClone := strings.Replace(clone, opts.token, "[redacted github token]", -1)
 	return []string{
 		"set +o xtrace",
 		fmt.Sprintf(`echo %s`, strconv.Quote(redactedClone)),
@@ -546,7 +546,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 		logger.Execution().Info("Fetching source from git...")
 		redactedCmds := fetchScript
 		if opts.token != "" {
-			redactedCmds = strings.Replace(redactedCmds, opts.token, "[redacted oauth token]", -1)
+			redactedCmds = strings.Replace(redactedCmds, opts.token, "[redacted github token]", -1)
 		}
 		logger.Execution().Debugf("Commands are: %s", redactedCmds)
 
@@ -563,7 +563,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 		out := stdErr.String()
 		if out != "" {
 			if opts.token != "" {
-				out = strings.Replace(out, opts.token, "[redacted oauth token]", -1)
+				out = strings.Replace(out, opts.token, "[redacted github token]", -1)
 			}
 			logger.Execution().Error(out)
 		}
@@ -787,7 +787,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		errOutput := stdErr.String()
 		if errOutput != "" {
 			if opts.token != "" {
-				errOutput = strings.Replace(errOutput, opts.token, "[redacted oauth token]", -1)
+				errOutput = strings.Replace(errOutput, opts.token, "[redacted github token]", -1)
 			}
 			logger.Execution().Error(fmt.Sprintf("%s: %s", module.Name, errOutput))
 		}

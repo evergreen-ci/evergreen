@@ -6,10 +6,13 @@ mutation {
         id: "sandbox_project_id"
         githubDynamicTokenPermissionGroups: [
           {
-            name: "group-1"
+            name: "permission-group-1"
             permissions: { pull_requests: "read", organization_hooks: "read" }
           }
-          { name: "group-2", permissions: { contents: "write" } }
+          {
+            name: "permission-group-2"
+            permissions: { actions: "admin", contents: "write" }
+          }
         ]
       }
     }

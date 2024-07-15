@@ -1849,6 +1849,7 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 	}
 	tasksToActivate := make([]Task, 0, len(tasks))
 	taskIDs := make([]string, 0, len(tasks))
+	numEstimatedActivatedGeneratedTasks := 0
 	for _, t := range tasks {
 		// Activating an activated task is a noop.
 		if t.Activated {
@@ -1856,14 +1857,19 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 		}
 		tasksToActivate = append(tasksToActivate, t)
 		taskIDs = append(taskIDs, t.Id)
+		numEstimatedActivatedGeneratedTasks += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 	}
 	depTasksToUpdate, depTaskIDsToUpdate, err := getDependencyTaskIdsToActivate(taskIDs, updateDependencies)
 	if err != nil {
 		return errors.Wrap(err, "getting dependency tasks to activate")
 	}
+	for _, depTask := range depTasksToUpdate {
+		numEstimatedActivatedGeneratedTasks += utility.FromIntPtr(depTask.EstimatedNumActivatedGeneratedTasks)
+	}
 	// Tasks passed into this function will all be from the same version or build, so we can assume
 	// all tasks also share the same requester field.
-	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, len(taskIDs)+len(depTaskIDsToUpdate), true); err != nil {
+	numTasksModified := len(taskIDs) + len(depTaskIDsToUpdate) + numEstimatedActivatedGeneratedTasks
+	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, numTasksModified, true); err != nil {
 		return err
 	}
 	err = activateTasks(taskIDs, caller, activationTime)
@@ -2107,6 +2113,7 @@ func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error
 		return nil
 	}
 	taskIDs := make([]string, 0, len(tasks))
+	numEstimatedActivatedGeneratedTasks := 0
 	for _, t := range tasks {
 		// Deactivating a deactivated task is a noop.
 		if !t.Activated {
@@ -2116,6 +2123,7 @@ func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error
 			taskIDs = append(taskIDs, t.ExecutionTasks...)
 		}
 		taskIDs = append(taskIDs, t.Id)
+		numEstimatedActivatedGeneratedTasks += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 	}
 
 	depTasksToUpdate, depTaskIDsToUpdate, err := getDependencyTasksToUpdate(taskIDs, updateDependencies)
@@ -2123,9 +2131,13 @@ func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error
 		return errors.Wrap(err, "retrieving dependency tasks to deactivate")
 	}
 
+	for _, depTask := range depTasksToUpdate {
+		numEstimatedActivatedGeneratedTasks += utility.FromIntPtr(depTask.EstimatedNumActivatedGeneratedTasks)
+	}
 	// Tasks passed into this function will all be from the same version or build, so we can assume
 	// all tasks also share the same requester field.
-	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, len(taskIDs)+len(depTaskIDsToUpdate), false); err != nil {
+	numTasksModified := len(taskIDs) + len(depTaskIDsToUpdate) + numEstimatedActivatedGeneratedTasks
+	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, numTasksModified, false); err != nil {
 		return err
 	}
 
@@ -3303,6 +3315,7 @@ func CheckUsersPatchTaskLimit(requester, username string, includeDisplayAndTaskG
 		}
 		if t.Activated {
 			numTasksToActivate++
+			numTasksToActivate += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 		}
 	}
 	return UpdateSchedulingLimit(username, requester, numTasksToActivate, true)

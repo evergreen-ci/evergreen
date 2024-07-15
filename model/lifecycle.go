@@ -494,7 +494,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 	creationInfo.GithubChecksAliases = githubCheckAliases
 	creationInfo.TaskCreateTime = createTime
 	// Create the new tasks for the build
-	tasks, err := createTasksForBuild(creationInfo)
+	tasks, err := createTasksForBuild(ctx, creationInfo)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "creating tasks for build '%s'", creationInfo.Build.Id)
 	}
@@ -569,7 +569,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 // CreateBuildFromVersionNoInsert creates a build given all of the necessary information
 // from the corresponding version and project and a list of tasks. Note that the caller
 // is responsible for inserting the created build and task documents
-func CreateBuildFromVersionNoInsert(creationInfo TaskCreationInfo) (*build.Build, task.Tasks, error) {
+func CreateBuildFromVersionNoInsert(ctx context.Context, creationInfo TaskCreationInfo) (*build.Build, task.Tasks, error) {
 	// avoid adding all tasks in the case of no tasks matching aliases
 	if len(creationInfo.Aliases) > 0 && len(creationInfo.TaskNames) == 0 {
 		return nil, nil, nil
@@ -628,7 +628,7 @@ func CreateBuildFromVersionNoInsert(creationInfo TaskCreationInfo) (*build.Build
 	// create all the necessary tasks for the build
 	creationInfo.BuildVariant = buildVariant
 	creationInfo.Build = b
-	tasksForBuild, err := createTasksForBuild(creationInfo)
+	tasksForBuild, err := createTasksForBuild(ctx, creationInfo)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "creating tasks for build '%s'", b.Id)
 	}
@@ -675,7 +675,7 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester stri
 // The slice of tasks will be in the same order as the project's specified tasks
 // appear in the specified build variant.
 // If tasksToActivate is nil, then all tasks will be activated.
-func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
+func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (task.Tasks, error) {
 
 	// The list of tasks we should create.
 	// If tasks are passed in, then use those, otherwise use the default set.
@@ -748,7 +748,7 @@ func createTasksForBuild(creationInfo TaskCreationInfo) (task.Tasks, error) {
 	taskMap := make(map[string]*task.Task)
 	for _, t := range tasksToCreate {
 		id := execTable.GetId(creationInfo.Build.BuildVariant, t.Name)
-		newTask, err := createOneTask(id, creationInfo, t)
+		newTask, err := createOneTask(ctx, id, creationInfo, t)
 		if err != nil {
 			return nil, errors.Wrapf(err, "creating task '%s'", id)
 		}
@@ -1128,7 +1128,7 @@ func getTaskCreateTime(creationInfo TaskCreationInfo) (time.Time, error) {
 }
 
 // createOneTask is a helper to create a single task.
-func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildVariantTaskUnit) (*task.Task, error) {
+func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo, buildVarTask BuildVariantTaskUnit) (*task.Task, error) {
 	activateTask := creationInfo.Build.Activated && !creationInfo.ActivationInfo.taskHasSpecificActivation(creationInfo.Build.BuildVariant, buildVarTask.Name)
 
 	// If stepback is enabled, check if the task should be activated via stepback.
@@ -1195,6 +1195,10 @@ func createOneTask(id string, creationInfo TaskCreationInfo, buildVarTask BuildV
 		ActivatedBy:             creationInfo.Version.AuthorID, // this will be overridden if the task was activated by stepback
 		DisplayTaskId:           utility.ToStringPtr(""),       // this will be overridden if the task is an execution task
 		IsEssentialToSucceed:    creationInfo.ActivatedTasksAreEssentialToSucceed && activateTask,
+	}
+
+	if err := t.SetGenerateTasksEstimations(ctx); err != nil {
+		return nil, errors.Wrap(err, "setting generate tasks estimations")
 	}
 
 	if buildVarTask.CreateCheckRun != nil {
@@ -1526,6 +1530,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 	newBuildIds := make([]string, 0)
 	newActivatedTaskIds := make([]string, 0)
 	newBuildStatuses := make([]VersionBuildStatus, 0)
+	numEstimatedActivatedGeneratedTasks := 0
 
 	variantsProcessed := map[string]bool{}
 	for _, b := range existingBuilds {
@@ -1568,7 +1573,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			"activated": activateVariant,
 			"version":   creationInfo.Version.Id,
 		})
-		build, tasks, err := CreateBuildFromVersionNoInsert(buildCreationArgs)
+		build, tasks, err := CreateBuildFromVersionNoInsert(ctx, buildCreationArgs)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -1594,6 +1599,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		for _, t := range tasks {
 			if t.Activated {
 				newActivatedTaskIds = append(newActivatedTaskIds, t.Id)
+				numEstimatedActivatedGeneratedTasks += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 			}
 			if evergreen.ShouldConsiderBatchtime(t.Requester) && creationInfo.ActivationInfo.taskHasSpecificActivation(t.BuildVariant, t.DisplayName) {
 				batchTimeTasksToIds[t.DisplayName] = t.Id
@@ -1630,7 +1636,8 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			},
 		)
 	}
-	if err = task.UpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, len(newActivatedTaskIds), true); err != nil {
+	numTasksModified := numEstimatedActivatedGeneratedTasks + len(newActivatedTaskIds)
+	if err = task.UpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, numTasksModified, true); err != nil {
 		return nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
 	}
 	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{

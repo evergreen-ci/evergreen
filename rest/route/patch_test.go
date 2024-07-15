@@ -31,6 +31,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -900,6 +901,11 @@ buildvariants:
 	assert.True(t, foundCompile)
 	assert.True(t, foundPassing)
 
+	dbPatch, err := patch.FindOneId(unfinalized.Id.Hex())
+	require.NotNil(t, dbPatch)
+	assert.NoError(t, err)
+	assert.Equal(t, len(dbPatch.VariantsTasks[0].Tasks), len(tasks))
+
 	// valid request, reconfiguring a finalized patch
 	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
@@ -935,6 +941,13 @@ buildvariants:
 	assert.True(t, foundFailing)
 	assert.True(t, foundPassing)
 	assert.True(t, foundCompile)
+
+	// ensure that the patch contains both the previously-scheduled and newly-scheduled tasks,
+	// and didn't overwrite the previous tasks with the new tasks
+	dbPatch, err = patch.FindOneId(unfinalized.Id.Hex())
+	require.NotNil(t, dbPatch)
+	assert.NoError(t, err)
+	assert.Equal(t, len(dbPatch.VariantsTasks[0].Tasks), len(tasks))
 
 	// * should select all tasks
 	patch2 := patch.Patch{
@@ -1205,6 +1218,9 @@ tasks:
 `
 	require.NoError(t, db.ClearCollections(serviceModel.ParserProjectCollection, serviceModel.ProjectRefCollection, patch.Collection, evergreen.ConfigCollection, task.Collection, serviceModel.VersionCollection, build.Collection))
 	require.NoError(t, db.CreateCollections(serviceModel.ParserProjectCollection, build.Collection, task.Collection, serviceModel.VersionCollection, serviceModel.ParserProjectCollection, manifest.Collection))
+	require.NoError(t, db.EnsureIndex(task.Collection, mongo.IndexModel{
+		Keys: task.DurationIndex,
+	}))
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings, "TestSchedulePatchRoute")
 	require.NoError(t, settings.Set(ctx))

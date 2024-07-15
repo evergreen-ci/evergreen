@@ -109,12 +109,12 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 	if err != nil {
 		return false, errors.Wrapf(err, "getting cloud host for host '%s'", h.Id)
 	}
-	cloudStatus, err := cloudHost.GetInstanceStatus(ctx)
+	cloudInfo, err := cloudHost.GetInstanceState(ctx)
 	if err != nil {
 		return false, errors.Wrapf(err, "getting cloud status for host '%s'", h.Id)
 	}
 
-	switch cloudStatus {
+	switch cloudInfo.Status {
 	case cloud.StatusRunning:
 		userDataProvisioning := h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData && h.Status == evergreen.HostStarting
 		if h.Status != evergreen.HostRunning && !userDataProvisioning {
@@ -133,7 +133,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 		// terminated for so long that the provider has no information about the
 		// host anymore. Therefore, a nonexistent host is equivalent to one
 		// that's terminated.
-		isTerminated := cloudStatus == cloud.StatusTerminated || cloudStatus == cloud.StatusNonExistent
+		isTerminated := cloudInfo.Status == cloud.StatusTerminated || cloudInfo.Status == cloud.StatusNonExistent
 
 		// Avoid accidentally terminating non-agent hosts that are stopped (e.g.
 		// spawn hosts).
@@ -144,7 +144,8 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 		if err := handleTerminatedHostSpawnedByTask(ctx, h); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":      "handling prematurely terminated task host",
-				"cloud_status": cloudStatus.String(),
+				"cloud_status": cloudInfo.Status.String(),
+				"state_reason": cloudInfo.StateReason,
 				"host_id":      h.Id,
 				"task_id":      h.StartedBy,
 			}))
@@ -159,17 +160,19 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 			"distro":       h.Distro.Id,
 			"provider":     h.Provider,
 			"status":       h.Status,
-			"cloud_status": cloudStatus.String(),
+			"cloud_status": cloudInfo.Status.String(),
+			"state_reason": cloudInfo.StateReason,
 		})
 
 		err = EnqueueTerminateHostJob(ctx, env, NewHostTerminationJob(env, h, HostTerminationOptions{
 			TerminateIfBusy:          true,
-			TerminationReason:        fmt.Sprintf("host was found in state '%s'", cloudStatus.String()),
+			TerminationReason:        fmt.Sprintf("host was found in state '%s'", cloudInfo.Status.String()),
 			SkipCloudHostTermination: isTerminated,
 		}))
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":      "could not enqueue job to terminate externally-modified host",
-			"cloud_status": cloudStatus.String(),
+			"cloud_status": cloudInfo.Status.String(),
+			"state_reason": cloudInfo.StateReason,
 			"host_id":      h.Id,
 			"distro":       h.Distro.Id,
 			"op_id":        id,
@@ -182,9 +185,10 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 			"host_id":      h.Id,
 			"distro":       h.Distro.Id,
 			"host_status":  h.Status,
-			"cloud_status": cloudStatus.String(),
+			"cloud_status": cloudInfo.Status.String(),
+			"state_reason": cloudInfo.StateReason,
 		})
-		return false, errors.Errorf("unexpected host status '%s'", cloudStatus)
+		return false, errors.Errorf("unexpected host status '%s'", cloudInfo)
 	}
 }
 

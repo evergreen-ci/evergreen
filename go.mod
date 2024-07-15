@@ -40,7 +40,7 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/mongodb/amboy v0.0.0-20240603145730-d49e4aef9c74
+	github.com/mongodb/amboy v0.0.0-20240712160923-0afebf372092
 	github.com/mongodb/anser v0.0.0-20231019191251-2a589a5299e6
 	github.com/mongodb/grip v0.0.0-20240213223901-f906268d82b9
 	github.com/pkg/errors v0.9.1
@@ -72,7 +72,7 @@ require (
 	golang.org/x/text v0.16.0
 	golang.org/x/tools v0.22.0 // indirect
 	gonum.org/v1/gonum v0.14.0
-	google.golang.org/grpc v1.65.0
+	google.golang.org/grpc v1.64.0
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -111,7 +111,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
-	github.com/evergreen-ci/aviation v0.0.0-20240509141021-0e3a1c91cc79 // indirect
+	github.com/evergreen-ci/aviation v0.0.0-20240709194445-8b05ffe0c2fa // indirect
 	github.com/evergreen-ci/baobab v1.0.1-0.20220107150152-03b522479f52 // indirect
 	github.com/evergreen-ci/bond v0.0.0-20220411194221-3710ea2ac361 // indirect
 	github.com/evergreen-ci/lru v0.0.0-20220404184951-eb0842380798 // indirect
@@ -187,8 +187,8 @@ require (
 	golang.org/x/net v0.26.0 // indirect
 	golang.org/x/sync v0.7.0
 	golang.org/x/sys v0.22.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240528184218-531527333157 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240528184218-531527333157 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240513163218-0867130af1f8 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240513163218-0867130af1f8 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
 )
 

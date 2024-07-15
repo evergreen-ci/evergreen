@@ -600,7 +600,7 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 		// Use GetInstanceStatus to add/update the cached host data (including
 		// unexpirable host information like persistent DNS names and IP
 		// addrseses) if the unexpirable host is running.
-		_, err := m.GetInstanceStatus(ctx, h)
+		_, err := m.GetInstanceState(ctx, h)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "could not get instance info to assign persistent DNS name",
 			"dashboard":  "evergreen sleep schedule health",
@@ -620,6 +620,34 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 	}))
 
 	return errors.Wrapf(h.MarkShouldExpire(ctx, expireOnValue), "marking host should in DB for host '%s'", h.Id)
+}
+
+// setSleepScheduleOptions updates a host's sleep schedule options.
+func (m *ec2Manager) setSleepScheduleOptions(ctx context.Context, h *host.Host, opts host.SleepScheduleOptions) error {
+	if err := opts.Validate(); err != nil {
+		return errors.Wrap(err, "invalid new sleep schedule options")
+	}
+
+	now := time.Now()
+
+	var updatedSchedule host.SleepScheduleInfo
+	if !h.SleepSchedule.IsZero() {
+		// A sleep schedule already exists - overwrite just the recurring sleep
+		// schedule settings while preserving existing unrelated settings.
+		updatedSchedule = h.SleepSchedule
+		updatedSchedule.WholeWeekdaysOff = opts.WholeWeekdaysOff
+		updatedSchedule.DailyStartTime = opts.DailyStartTime
+		updatedSchedule.DailyStopTime = opts.DailyStopTime
+		updatedSchedule.TimeZone = opts.TimeZone
+	} else {
+		schedule, err := host.NewSleepScheduleInfo(opts)
+		if err != nil {
+			return errors.Wrap(err, "creating new sleep schedule")
+		}
+		updatedSchedule = *schedule
+	}
+
+	return h.UpdateSleepSchedule(ctx, updatedSchedule, now)
 }
 
 // extendExpiration extends a host's expiration time by the number of hours specified
@@ -651,6 +679,9 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 	}
 	if opts.NoExpiration != nil {
 		catcher.Add(m.setNoExpiration(ctx, h, *opts.NoExpiration))
+	}
+	if !opts.SleepScheduleOptions.IsZero() {
+		catcher.Wrap(m.setSleepScheduleOptions(ctx, h, opts.SleepScheduleOptions), "updating host sleep schedule")
 	}
 	if opts.AddHours != 0 {
 		if err := h.ValidateExpirationExtension(opts.AddHours); err != nil {
@@ -746,7 +777,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 			hostToStatusMap[hostID] = StatusNonExistent
 			continue
 		}
-		status := ec2StatusToEvergreenStatus(instance.State.Name)
+		status := ec2StateToEvergreenStatus(instance.State)
 		if status == StatusRunning {
 			hostsToCache = append(hostsToCache, hostInstancePair{
 				host:     instanceIdToHostMap[hostID],
@@ -767,35 +798,42 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 	return hostToStatusMap, nil
 }
 
-// GetInstanceStatus returns the current status of an EC2 instance.
-func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
-	status := StatusUnknown
+// GetInstanceState returns a universal status code representing the state
+// of an ec2 and a state reason if available. The state reason should not be
+// used to determine the status of the ec2 but rather to provide additional
+// context about the state of the ec2 state.
+// For more information about ec2 state's, look in to the instance.StateReason field.
+func (m *ec2Manager) GetInstanceState(ctx context.Context, h *host.Host) (CloudInstanceState, error) {
+	info := CloudInstanceState{Status: StatusUnknown}
 
 	if err := m.client.Create(ctx, m.region); err != nil {
-		return status, errors.Wrap(err, "creating client")
+		return info, errors.Wrap(err, "creating client")
 	}
 
 	instance, err := m.client.GetInstanceInfo(ctx, h.Id)
 	if err != nil {
 		if isEC2InstanceNotFound(err) {
-			return StatusNonExistent, nil
+			info.Status = StatusNonExistent
+			return info, nil
 		}
-		return status, err
+		return info, err
 	}
-	status = ec2StatusToEvergreenStatus(instance.State.Name)
 
-	if status == StatusRunning {
+	if info.Status = ec2StateToEvergreenStatus(instance.State); info.Status == StatusRunning {
 		// Cache instance information so we can make fewer calls to AWS's API.
-		pair := hostInstancePair{
-			host:     h,
-			instance: instance,
-		}
-		if err = cacheAllHostData(ctx, m.env, m.client, pair); err != nil {
-			return status, errors.Wrapf(err, "caching EC2 host data for host '%s'", h.Id)
-		}
+		pair := hostInstancePair{host: h, instance: instance}
+		grip.Error(message.WrapError(cacheAllHostData(ctx, m.env, m.client, pair), message.Fields{
+			"message": "can't update host cached data",
+			"type":    "ec2",
+			"host_id": h.Id,
+		}))
 	}
 
-	return status, nil
+	if instance.StateReason != nil {
+		info.StateReason = utility.FromStringPtr(instance.StateReason.Message)
+	}
+
+	return info, nil
 }
 
 func (m *ec2Manager) SetPortMappings(context.Context, *host.Host, *host.Host) error {
@@ -916,7 +954,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, shouldKeepO
 		// Stopping a host can be quite fast, so sometimes EC2 will say the host
 		// is stopping or already stopped in its response.
 		instance := out.StoppingInstances[0]
-		status := ec2StatusToEvergreenStatus(instance.CurrentState.Name)
+		status := ec2StateToEvergreenStatus(instance.CurrentState)
 		switch status {
 		case StatusStopping:
 			grip.Error(message.WrapError(h.SetStopping(ctx, user), message.Fields{
@@ -950,14 +988,14 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, shouldKeepO
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
-			status, err := m.GetInstanceStatus(ctx, h)
+			info, err := m.GetInstanceState(ctx, h)
 			if err != nil {
 				return false, errors.Wrap(err, "getting instance status")
 			}
-			if status == StatusStopped {
+			if info.Status == StatusStopped {
 				return false, nil
 			}
-			return true, errors.Errorf("host is not stopped, current status is '%s'", status)
+			return true, errors.Errorf("host is not stopped, current status is '%s' becauase '%s'", info.Status, info.StateReason)
 		}, utility.RetryOptions{
 			MaxAttempts: checkSuccessAttempts,
 			MinDelay:    checkSuccessInitPeriod,
@@ -1000,11 +1038,11 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
-			status, err := m.GetInstanceStatus(ctx, h)
+			info, err := m.GetInstanceState(ctx, h)
 			if err != nil {
 				return false, errors.Wrap(err, "getting instance status")
 			}
-			if status == StatusRunning {
+			if info.Status == StatusRunning {
 				return false, nil
 			}
 			return true, errors.New("host is not started")

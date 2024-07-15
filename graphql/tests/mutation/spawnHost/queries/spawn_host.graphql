@@ -13,17 +13,15 @@ mutation {
         dailyStartTime: ""
         dailyStopTime: ""
         permanentlyExempt: false
-        shouldKeepOff: true
+        shouldKeepOff: false
         timeZone: "America/New_York"
         wholeWeekdaysOff: [0, 6]
       }
-      noExpiration: false
-      expiration: "2020-08-06T17:42:12Z"
+      noExpiration: true
     }
   ) {
     hostUrl
     id
-    expiration
     noExpiration
     distro {
       id
@@ -32,7 +30,6 @@ mutation {
       dailyStartTime
       dailyStopTime
       isBetaTester
-      nextStartTime
       permanentlyExempt
       shouldKeepOff
       timeZone

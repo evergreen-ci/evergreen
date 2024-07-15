@@ -388,79 +388,46 @@ type SleepScheduleInfo struct {
 	IsBetaTester bool `bson:"is_beta_tester,omitempty" json:"is_beta_tester,omitempty"`
 }
 
-// Validate checks that the sleep schedule provided by the user is valid.
+// NewSleepScheduleInfo creates a new sleep schedule for a host that does not
+// already have one defined.
+func NewSleepScheduleInfo(opts SleepScheduleOptions) (*SleepScheduleInfo, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid sleep schedule")
+	}
+
+	schedule := SleepScheduleInfo{
+		WholeWeekdaysOff: opts.WholeWeekdaysOff,
+		DailyStartTime:   opts.DailyStartTime,
+		DailyStopTime:    opts.DailyStopTime,
+		TimeZone:         opts.TimeZone,
+	}
+
+	nextStart, nextStop, err := schedule.GetNextScheduledStartAndStopTimes(time.Now())
+	if err != nil {
+		return nil, errors.Wrap(err, "getting next scheduled start and stop times")
+	}
+
+	schedule.NextStartTime = nextStart
+	schedule.NextStopTime = nextStop
+
+	return &schedule, nil
+}
+
+// Validate checks that the sleep schedule provided by the user is valid, or
+// the host is permanently exempt.
 func (i *SleepScheduleInfo) Validate() error {
 	if i.PermanentlyExempt {
 		return nil
 	}
 
-	catcher := grip.NewBasicCatcher()
-
-	catcher.NewWhen(len(i.WholeWeekdaysOff) == 7, "cannot create a sleep schedule where the host is off 24/7 since the host could never turn on")
-	catcher.NewWhen(len(i.WholeWeekdaysOff) == 0 && i.DailyStartTime == "" && i.DailyStopTime == "", "cannot specify an empty sleep schedule that's missing both daily stop/start time and whole days off")
-	catcher.NewWhen(i.TimeZone == "", "sleep schedule time zone must be set")
-	catcher.ErrorfWhen(i.DailyStopTime != "" && i.DailyStartTime == "", "cannot specify a daily stop time without a daily start time")
-	catcher.ErrorfWhen(i.DailyStopTime == "" && i.DailyStartTime != "", "cannot specify a daily start time without a daily stop time")
-
-	_, err := time.LoadLocation(i.TimeZone)
-	catcher.Wrapf(err, "invalid time zone '%s'", i.TimeZone)
-
-	if i.DailyStopTime != "" {
-		catcher.Wrapf(i.validateDailyTime(i.DailyStopTime), "invalid daily stop time")
-	}
-	if i.DailyStartTime != "" {
-		catcher.Wrapf(i.validateDailyTime(i.DailyStartTime), "invalid daily start time")
+	opts := SleepScheduleOptions{
+		WholeWeekdaysOff: i.WholeWeekdaysOff,
+		DailyStartTime:   i.DailyStartTime,
+		DailyStopTime:    i.DailyStopTime,
+		TimeZone:         i.TimeZone,
 	}
 
-	catcher.ErrorfWhen(i.DailyStartTime != "" && i.DailyStopTime != "" && i.DailyStartTime == i.DailyStopTime, "daily start time and daily stop time cannot be the same (%s)", i.DailyStartTime)
-
-	uniqueWeekdays := map[time.Weekday]struct{}{}
-	for _, weekday := range i.WholeWeekdaysOff {
-		if _, ok := uniqueWeekdays[weekday]; ok {
-			catcher.Errorf("weekday '%s' cannot be listed more than once in weekdays off", weekday.String())
-		}
-		catcher.ErrorfWhen(weekday < time.Sunday || weekday > time.Saturday, "weekday '%s' is not a valid day of the week", weekday.String())
-		uniqueWeekdays[weekday] = struct{}{}
-	}
-
-	const minNumHoursPerWeek = utility.Day
-
-	weeklySleep := utility.Day * time.Duration(len(i.WholeWeekdaysOff))
-	if i.DailyStopTime != "" && i.DailyStartTime != "" {
-		// Add up how much time is hypothetically spent sleeping for the daily
-		// sleep schedule.
-		const hoursMinsFmt = "15:04"
-		sampleStart, err := time.Parse(hoursMinsFmt, i.DailyStartTime)
-		catcher.Wrapf(err, "parsing daily start time as a timestamp")
-		sampleStop, err := time.Parse(hoursMinsFmt, i.DailyStopTime)
-		catcher.Wrapf(err, "parsing daily stop time as a timestamp")
-		if !utility.IsZeroTime(sampleStart) && !utility.IsZeroTime(sampleStop) {
-			var dailySleep time.Duration
-			if i.isDailyOvernightSchedule() {
-				dailySleep = utility.Day - sampleStop.Sub(sampleStart)
-			} else {
-				dailySleep = sampleStart.Sub(sampleStop)
-			}
-			catcher.ErrorfWhen(dailySleep < time.Hour, "daily sleep schedule runs for %s per day, which is less than the minimum of 1 hour", dailySleep.String())
-			weeklySleep += dailySleep * time.Duration(len(utility.Weekdays)-len(i.WholeWeekdaysOff))
-		}
-	}
-	catcher.ErrorfWhen(weeklySleep < minNumHoursPerWeek, "sleep schedule runs for %s, which does not meet minimum requirement of %s", weeklySleep.String(), minNumHoursPerWeek.String())
-
-	return catcher.Resolve()
-}
-
-func (i *SleepScheduleInfo) validateDailyTime(t string) error {
-	hours, mins, err := parseDailyTime(t)
-	if err != nil {
-		return errors.Wrap(err, "parsing daily time format")
-	}
-
-	catcher := grip.NewBasicCatcher()
-	catcher.NewWhen(hours < 0 || hours >= 24, "hours must be between 0 and 23 (inclusive)")
-	catcher.NewWhen(mins < 0 || mins >= 60, "minutes must be between 0 and 59 (inclusive)")
-
-	return catcher.Resolve()
+	return opts.Validate()
 }
 
 // isDailyOvernightSchedule returns whether the daily sleep schedule runs
@@ -511,17 +478,140 @@ type ContainersOnParents struct {
 }
 
 type HostModifyOptions struct {
-	AddInstanceTags            []Tag         `json:"add_instance_tags"`
-	DeleteInstanceTags         []string      `json:"delete_instance_tags"`
-	InstanceType               string        `json:"instance_type"`
-	NoExpiration               *bool         `json:"no_expiration"` // whether host should never expire
-	AddHours                   time.Duration `json:"add_hours"`     // duration to extend expiration
+	AddInstanceTags            []Tag    `json:"add_instance_tags"`
+	DeleteInstanceTags         []string `json:"delete_instance_tags"`
+	InstanceType               string   `json:"instance_type"`
+	NoExpiration               *bool    `json:"no_expiration"` // whether host should never expire
+	SleepScheduleOptions       `bson:",inline"`
+	AddHours                   time.Duration `json:"add_hours"` // duration to extend expiration
 	AddTemporaryExemptionHours int           `json:"add_temporary_exemption_hours"`
 	AttachVolume               string        `json:"attach_volume"`
 	DetachVolume               string        `json:"detach_volume"`
 	SubscriptionType           string        `json:"subscription_type"`
 	NewName                    string        `json:"new_name"`
 	AddKey                     string        `json:"add_key"`
+}
+
+// SleepScheduleOptions represent options that a user can set for creating a
+// sleep schedule.
+type SleepScheduleOptions struct {
+	// WholeWeekdaysOff are when the host is off for its sleep schedule.
+	WholeWeekdaysOff []time.Weekday `bson:"whole_weekdays_off,omitempty" json:"whole_weekdays_off,omitempty"`
+	// DailyStartTime is the daily time to start the host for each day the host is on
+	// during its sleep schedule. The format is "HH:MM".
+	DailyStartTime string `bson:"daily_start_time,omitempty" json:"daily_start_time,omitempty"`
+	// DailyStopTime is the daily time to stop the host for each day the host is
+	// on during its sleep schedule. The format is "HH:MM".
+	DailyStopTime string `bson:"daily_stop_time,omitempty" json:"daily_stop_time,omitempty"`
+	// TimeZone is the time zone in which the sleep schedule runs.
+	TimeZone string `bson:"time_zone" json:"time_zone"`
+}
+
+func (o *SleepScheduleOptions) IsZero() bool {
+	return len(o.WholeWeekdaysOff) == 0 && o.DailyStartTime == "" && o.DailyStopTime == ""
+}
+
+// SetDefaultTimeZone sets a default time zone if other sleep schedule options
+// are specified and the time zone is not explicitly set. If prefers the given
+// default timezone if it's not empty, but otherwise falls back to using a
+// default time zone.
+func (o *SleepScheduleOptions) SetDefaultTimeZone(timezone string) {
+	if o.IsZero() || o.TimeZone != "" {
+		return
+	}
+	if timezone == "" {
+		timezone = evergreen.DefaultSleepScheduleTimeZone
+	}
+	o.TimeZone = timezone
+}
+
+// Validate checks that the sleep schedule provided by the user is valid.
+func (o *SleepScheduleOptions) Validate() error {
+	catcher := grip.NewBasicCatcher()
+
+	catcher.NewWhen(len(o.WholeWeekdaysOff) == 7, "cannot create a sleep schedule where the host is off 24/7 since the host could never turn on")
+	catcher.NewWhen(len(o.WholeWeekdaysOff) == 0 && o.DailyStartTime == "" && o.DailyStopTime == "", "cannot specify an empty sleep schedule that's missing both daily stop/start time and whole days off")
+	catcher.NewWhen(o.TimeZone == "", "sleep schedule time zone must be set")
+	catcher.ErrorfWhen(o.DailyStopTime != "" && o.DailyStartTime == "", "cannot specify a daily stop time without a daily start time")
+	catcher.ErrorfWhen(o.DailyStopTime == "" && o.DailyStartTime != "", "cannot specify a daily start time without a daily stop time")
+
+	_, err := time.LoadLocation(o.TimeZone)
+	catcher.Wrapf(err, "invalid time zone '%s'", o.TimeZone)
+
+	if o.DailyStopTime != "" {
+		catcher.Wrapf(o.validateDailyTime(o.DailyStopTime), "invalid daily stop time")
+	}
+	if o.DailyStartTime != "" {
+		catcher.Wrapf(o.validateDailyTime(o.DailyStartTime), "invalid daily start time")
+	}
+
+	catcher.ErrorfWhen(o.DailyStartTime != "" && o.DailyStopTime != "" && o.DailyStartTime == o.DailyStopTime, "daily start time and daily stop time cannot be the same (%s)", o.DailyStartTime)
+
+	uniqueWeekdays := map[time.Weekday]struct{}{}
+	for _, weekday := range o.WholeWeekdaysOff {
+		if _, ok := uniqueWeekdays[weekday]; ok {
+			catcher.Errorf("weekday '%s' cannot be listed more than once in weekdays off", weekday.String())
+		}
+		catcher.ErrorfWhen(weekday < time.Sunday || weekday > time.Saturday, "weekday '%s' is not a valid day of the week", weekday.String())
+		uniqueWeekdays[weekday] = struct{}{}
+	}
+
+	const minNumHoursPerWeek = utility.Day
+
+	weeklySleep := utility.Day * time.Duration(len(o.WholeWeekdaysOff))
+	if o.DailyStopTime != "" && o.DailyStartTime != "" {
+		// Add up how much time is hypothetically spent sleeping for the daily
+		// sleep schedule.
+		const hoursMinsFmt = "15:04"
+		sampleStart, err := time.Parse(hoursMinsFmt, o.DailyStartTime)
+		catcher.Wrapf(err, "parsing daily start time as a timestamp")
+		sampleStop, err := time.Parse(hoursMinsFmt, o.DailyStopTime)
+		catcher.Wrapf(err, "parsing daily stop time as a timestamp")
+		if !utility.IsZeroTime(sampleStart) && !utility.IsZeroTime(sampleStop) {
+			var dailySleep time.Duration
+			if o.isDailyOvernightSchedule() {
+				dailySleep = utility.Day - sampleStop.Sub(sampleStart)
+			} else {
+				dailySleep = sampleStart.Sub(sampleStop)
+			}
+			catcher.ErrorfWhen(dailySleep < time.Hour, "daily sleep schedule runs for %s per day, which is less than the minimum of 1 hour", dailySleep.String())
+			weeklySleep += dailySleep * time.Duration(len(utility.Weekdays)-len(o.WholeWeekdaysOff))
+		}
+	}
+	catcher.ErrorfWhen(weeklySleep < minNumHoursPerWeek, "sleep schedule runs for %s, which does not meet minimum requirement of %s", weeklySleep.String(), minNumHoursPerWeek.String())
+	return catcher.Resolve()
+}
+
+// isDailyOvernightSchedule returns whether the daily sleep schedule runs
+// overnight. In other words, the host sleeps on one day, then starts up again
+// on the next day.
+func (o *SleepScheduleOptions) isDailyOvernightSchedule() bool {
+	return o.DailyStartTime < o.DailyStopTime
+}
+
+func (o *SleepScheduleOptions) validateDailyTime(t string) error {
+	hours, mins, err := parseDailyTime(t)
+	if err != nil {
+		return errors.Wrap(err, "parsing daily time format")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(hours < 0 || hours >= 24, "hours must be between 0 and 23 (inclusive)")
+	catcher.NewWhen(mins < 0 || mins >= 60, "minutes must be between 0 and 59 (inclusive)")
+
+	return catcher.Resolve()
+}
+
+// GetDefaultSleepSchedule returns the default sleep schedule in the user's time
+// zone.
+func GetDefaultSleepSchedule(timezone string) SleepScheduleOptions {
+	opts := SleepScheduleOptions{
+		WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
+		DailyStartTime:   "08:00",
+		DailyStopTime:    "20:00",
+	}
+	opts.SetDefaultTimeZone(timezone)
+	return opts
 }
 
 type SpawnHostUsage struct {
@@ -3621,11 +3711,11 @@ func (h *Host) UnsetPersistentDNSInfo(ctx context.Context) error {
 	return nil
 }
 
-// UpdateSleepSchedule updates the host's sleep schedule. Note that if some fields
-// in the sleep schedule are not being modified, the sleep schedule must still
-// contain all the unmodified fields. For example, if this host is on a
-// temporary exemption when their daily schedule is updated, the new schedule
-// must still have the temporary exemption populated.
+// UpdateSleepSchedule updates the sleep schedule of an existing host. Note that
+// if some fields in the sleep schedule are not being modified, the sleep
+// schedule must still contain all the unmodified fields. For example, if this
+// host is on a temporary exemption when their daily schedule is updated, the
+// new schedule must still have the temporary exemption populated.
 func (h *Host) UpdateSleepSchedule(ctx context.Context, schedule SleepScheduleInfo, now time.Time) error {
 	if err := schedule.Validate(); err != nil {
 		return gimlet.ErrorResponse{

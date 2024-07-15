@@ -50,6 +50,7 @@ input ProjectInput {
   externalLinks: [ExternalLinkInput!]
   githubChecksEnabled: Boolean
   githubDynamicTokenPermissionGroups: [GitHubDynamicTokenPermissionGroupInput!]
+  githubPermissionGroupByRequester: StringMap
   githubTriggerAliases: [String!]
   gitTagAuthorizedTeams: [String!]
   gitTagAuthorizedUsers: [String!]

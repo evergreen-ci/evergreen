@@ -30,10 +30,11 @@ type CreateOptions struct {
 	InstanceTags          []Tag
 	InstanceType          string
 	NoExpiration          bool
-	IsVirtualWorkstation  bool
-	IsCluster             bool
-	HomeVolumeSize        int
-	HomeVolumeID          string
+	SleepScheduleInfo
+	IsVirtualWorkstation bool
+	IsCluster            bool
+	HomeVolumeSize       int
+	HomeVolumeID         string
 }
 
 // NewIntent creates an intent host using the given host settings. An intent host is a host that
@@ -71,6 +72,7 @@ func NewIntent(options CreateOptions) *Host {
 		HomeVolumeSize:        options.HomeVolumeSize,
 		HomeVolumeID:          options.HomeVolumeID,
 		NoExpiration:          options.NoExpiration,
+		SleepSchedule:         options.SleepScheduleInfo,
 		ExpirationTime:        options.ExpirationTime,
 		ProvisionOptions:      options.ProvisionOptions,
 	}

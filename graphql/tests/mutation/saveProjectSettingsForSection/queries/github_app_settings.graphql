@@ -1,0 +1,20 @@
+mutation {
+  saveProjectSettingsForSection(
+    projectSettings: {
+      projectId: "sandbox_project_id"
+      projectRef: {
+        id: "sandbox_project_id"
+        githubPermissionGroupByRequester: {
+          gitter_request: "permission-group-1"
+          ad_hoc: "permission-group-2"
+        }
+      }
+    }
+    section: GITHUB_APP_SETTINGS
+  ) {
+    projectRef {
+      id
+      githubPermissionGroupByRequester
+    }
+  }
+}
