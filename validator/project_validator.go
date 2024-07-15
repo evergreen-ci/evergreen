@@ -1581,9 +1581,7 @@ func checkTaskRuns(project *model.Project) ValidationErrors {
 }
 
 // validateTaskDependencies checks that, for all tasks that have
-// dependencies, those dependencies set the expected fields and all dependencies
-// reference tasks that will actually run. For example, if task t1 in build
-// variant bv1 depends on task t2, t2 should also be listed under bv1.
+// the status field is a valid status.
 func validateTaskDependencies(project *model.Project) ValidationErrors {
 	var errs ValidationErrors
 	for _, bvtu := range project.FindAllBuildVariantTasks() {
@@ -1602,7 +1600,7 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// validateTaskDependencies checks that, for all tasks that have
+// checkTaskDependencies checks that, for all tasks that have
 // dependencies, those dependencies set the expected fields and all dependencies
 // reference tasks that will actually run. For example, if task t1 in build
 // variant bv1 depends on task t2, t2 should also be listed under bv1.
