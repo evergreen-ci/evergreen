@@ -1252,6 +1252,7 @@ type ComplexityRoot struct {
 		HasCedarResults         func(childComplexity int) int
 		HostId                  func(childComplexity int) int
 		Id                      func(childComplexity int) int
+		ImageID                 func(childComplexity int) int
 		IngestTime              func(childComplexity int) int
 		IsPerfPluginEnabled     func(childComplexity int) int
 		LatestExecution         func(childComplexity int) int
@@ -1876,6 +1877,8 @@ type TaskResolver interface {
 	Files(ctx context.Context, obj *model.APITask) (*TaskFiles, error)
 
 	GeneratedByName(ctx context.Context, obj *model.APITask) (*string, error)
+
+	ImageID(ctx context.Context, obj *model.APITask) (string, error)
 
 	IsPerfPluginEnabled(ctx context.Context, obj *model.APITask) (bool, error)
 	LatestExecution(ctx context.Context, obj *model.APITask) (int, error)
@@ -7931,6 +7934,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.Id(childComplexity), true
+
+	case "Task.imageId":
+		if e.complexity.Task.ImageID == nil {
+			break
+		}
+
+		return e.complexity.Task.ImageID(childComplexity), true
 
 	case "Task.ingestTime":
 		if e.complexity.Task.IngestTime == nil {
@@ -20907,6 +20917,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -25997,6 +26009,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -30601,6 +30615,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -30806,6 +30822,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -31011,6 +31029,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -31216,6 +31236,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -31421,6 +31443,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -31626,6 +31650,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -32780,6 +32806,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -37784,6 +37812,8 @@ func (ec *executionContext) fieldContext_Pod_task(_ context.Context, field graph
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -38323,6 +38353,8 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(_ context.Context,
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -45416,6 +45448,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -45621,6 +45655,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -52430,6 +52466,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -53510,6 +53548,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -53871,6 +53911,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -54313,6 +54355,50 @@ func (ec *executionContext) fieldContext_Task_hostId(_ context.Context, field gr
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_imageId(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_imageId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().ImageID(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_imageId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
@@ -61166,6 +61252,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -64981,6 +65069,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_hasCedarResults(ctx, field)
 			case "hostId":
 				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
 			case "ingestTime":
 				return ec.fieldContext_Task_ingestTime(ctx, field)
 			case "isPerfPluginEnabled":
@@ -84096,6 +84186,42 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "hostId":
 			out.Values[i] = ec._Task_hostId(ctx, field, obj)
+		case "imageId":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_imageId(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "ingestTime":
 			out.Values[i] = ec._Task_ingestTime(ctx, field, obj)
 		case "isPerfPluginEnabled":

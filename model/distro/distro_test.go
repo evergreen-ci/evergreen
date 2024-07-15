@@ -670,3 +670,20 @@ func TestGetDistrosForImage(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, found, 3)
 }
+
+func TestGetImageIdFromDistro(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	assert.NoError(t, db.ClearCollections(Collection))
+	id := "distro-1"
+	imageID := "distro"
+	d1 := &Distro{
+		Id:      id,
+		ImageID: imageID,
+	}
+	require.Nil(t, d1.Insert(ctx))
+
+	found, err := GetImageIdFromDistro(ctx, id)
+	require.NoError(t, err)
+	require.Equal(t, found, imageID)
+}

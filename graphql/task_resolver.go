@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -428,6 +429,15 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 	name := generator.DisplayName
 
 	return &name, nil
+}
+
+// ImageID is the resolver for the imageId field.
+func (r *taskResolver) ImageID(ctx context.Context, obj *restModel.APITask) (string, error) {
+	imageId, err := distro.GetImageIdFromDistro(ctx, *obj.DistroId)
+	if err != nil {
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("unable to find imageId from distro: '%s'", err.Error()))
+	}
+	return imageId, nil
 }
 
 // IsPerfPluginEnabled is the resolver for the isPerfPluginEnabled field.
