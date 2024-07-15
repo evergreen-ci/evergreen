@@ -382,6 +382,11 @@ type ComplexityRoot struct {
 		Tag    func(childComplexity int) int
 	}
 
+	GithubAppAuth struct {
+		AppID      func(childComplexity int) int
+		PrivateKey func(childComplexity int) int
+	}
+
 	GithubCheckSubscriber struct {
 		Owner func(childComplexity int) int
 		Ref   func(childComplexity int) int
@@ -971,6 +976,7 @@ type ComplexityRoot struct {
 
 	ProjectSettings struct {
 		Aliases               func(childComplexity int) int
+		GithubAppAuth         func(childComplexity int) int
 		GithubWebhooksEnabled func(childComplexity int) int
 		ProjectRef            func(childComplexity int) int
 		Subscriptions         func(childComplexity int) int
@@ -1775,6 +1781,7 @@ type ProjectResolver interface {
 }
 type ProjectSettingsResolver interface {
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
+	GithubAppAuth(ctx context.Context, obj *model.APIProjectSettings) (*model.APIGithubAppAuth, error)
 	GithubWebhooksEnabled(ctx context.Context, obj *model.APIProjectSettings) (bool, error)
 
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
@@ -3183,6 +3190,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.GitTag.Tag(childComplexity), true
+
+	case "GithubAppAuth.appId":
+		if e.complexity.GithubAppAuth.AppID == nil {
+			break
+		}
+
+		return e.complexity.GithubAppAuth.AppID(childComplexity), true
+
+	case "GithubAppAuth.privateKey":
+		if e.complexity.GithubAppAuth.PrivateKey == nil {
+			break
+		}
+
+		return e.complexity.GithubAppAuth.PrivateKey(childComplexity), true
 
 	case "GithubCheckSubscriber.owner":
 		if e.complexity.GithubCheckSubscriber.Owner == nil {
@@ -6328,6 +6349,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ProjectSettings.Aliases(childComplexity), true
+
+	case "ProjectSettings.githubAppAuth":
+		if e.complexity.ProjectSettings.GithubAppAuth == nil {
+			break
+		}
+
+		return e.complexity.ProjectSettings.GithubAppAuth(childComplexity), true
 
 	case "ProjectSettings.githubWebhooksEnabled":
 		if e.complexity.ProjectSettings.GithubWebhooksEnabled == nil {
@@ -9716,6 +9744,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputExternalLinkInput,
 		ec.unmarshalInputFinderSettingsInput,
 		ec.unmarshalInputGitHubDynamicTokenPermissionGroupInput,
+		ec.unmarshalInputGithubAppAuthInput,
 		ec.unmarshalInputGithubUserInput,
 		ec.unmarshalInputHomeVolumeSettingsInput,
 		ec.unmarshalInputHostAllocatorSettingsInput,
@@ -20227,6 +20256,88 @@ func (ec *executionContext) fieldContext_GitTag_pusher(_ context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _GithubAppAuth_appId(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubAppAuth) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubAppAuth_appId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AppID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GithubAppAuth_appId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GithubAppAuth",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GithubAppAuth_privateKey(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubAppAuth) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GithubAppAuth_privateKey(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PrivateKey, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GithubAppAuth_privateKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GithubAppAuth",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GithubCheckSubscriber_owner(ctx context.Context, field graphql.CollectedField, obj *model.APIGithubCheckSubscriber) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GithubCheckSubscriber_owner(ctx, field)
 	if err != nil {
@@ -29663,6 +29774,8 @@ func (ec *executionContext) fieldContext_Mutation_saveProjectSettingsForSection(
 			switch field.Name {
 			case "aliases":
 				return ec.fieldContext_ProjectSettings_aliases(ctx, field)
+			case "githubAppAuth":
+				return ec.fieldContext_ProjectSettings_githubAppAuth(ctx, field)
 			case "githubWebhooksEnabled":
 				return ec.fieldContext_ProjectSettings_githubWebhooksEnabled(ctx, field)
 			case "projectRef":
@@ -42717,6 +42830,53 @@ func (ec *executionContext) fieldContext_ProjectSettings_aliases(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _ProjectSettings_githubAppAuth(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectSettings_githubAppAuth(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ProjectSettings().GithubAppAuth(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIGithubAppAuth)
+	fc.Result = res
+	return ec.marshalOGithubAppAuth2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubAppAuth(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectSettings_githubAppAuth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectSettings",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "appId":
+				return ec.fieldContext_GithubAppAuth_appId(ctx, field)
+			case "privateKey":
+				return ec.fieldContext_GithubAppAuth_privateKey(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GithubAppAuth", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProjectSettings_githubWebhooksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ProjectSettings_githubWebhooksEnabled(ctx, field)
 	if err != nil {
@@ -44841,6 +45001,8 @@ func (ec *executionContext) fieldContext_Query_projectSettings(ctx context.Conte
 			switch field.Name {
 			case "aliases":
 				return ec.fieldContext_ProjectSettings_aliases(ctx, field)
+			case "githubAppAuth":
+				return ec.fieldContext_ProjectSettings_githubAppAuth(ctx, field)
 			case "githubWebhooksEnabled":
 				return ec.fieldContext_ProjectSettings_githubWebhooksEnabled(ctx, field)
 			case "projectRef":
@@ -69558,6 +69720,40 @@ func (ec *executionContext) unmarshalInputGitHubDynamicTokenPermissionGroupInput
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputGithubAppAuthInput(ctx context.Context, obj interface{}) (model.APIGithubAppAuth, error) {
+	var it model.APIGithubAppAuth
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"appId", "privateKey"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "appId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("appId"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AppID = data
+		case "privateKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("privateKey"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrivateKey = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputGithubUserInput(ctx context.Context, obj interface{}) (model.APIGithubUser, error) {
 	var it model.APIGithubUser
 	asMap := map[string]interface{}{}
@@ -71097,7 +71293,7 @@ func (ec *executionContext) unmarshalInputProjectSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectId", "aliases", "githubWebhooksEnabled", "projectRef", "subscriptions", "vars"}
+	fieldsInOrder := [...]string{"projectId", "aliases", "githubAppAuth", "githubWebhooksEnabled", "projectRef", "subscriptions", "vars"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -71141,6 +71337,28 @@ func (ec *executionContext) unmarshalInputProjectSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.Aliases = data
+		case "githubAppAuth":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubAppAuth"))
+			directive0 := func(ctx context.Context) (interface{}, error) {
+				return ec.unmarshalOGithubAppAuthInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubAppAuth(ctx, v)
+			}
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				if ec.directives.RedactSecrets == nil {
+					return nil, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(model.APIGithubAppAuth); ok {
+				it.GithubAppAuth = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be github.com/evergreen-ci/evergreen/rest/model.APIGithubAppAuth`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "githubWebhooksEnabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubWebhooksEnabled"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
@@ -75600,6 +75818,44 @@ func (ec *executionContext) _GitTag(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var githubAppAuthImplementors = []string{"GithubAppAuth"}
+
+func (ec *executionContext) _GithubAppAuth(ctx context.Context, sel ast.SelectionSet, obj *model.APIGithubAppAuth) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, githubAppAuthImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GithubAppAuth")
+		case "appId":
+			out.Values[i] = ec._GithubAppAuth_appId(ctx, field, obj)
+		case "privateKey":
+			out.Values[i] = ec._GithubAppAuth_privateKey(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -80687,6 +80943,39 @@ func (ec *executionContext) _ProjectSettings(ctx context.Context, sel ast.Select
 					}
 				}()
 				res = ec._ProjectSettings_aliases(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "githubAppAuth":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ProjectSettings_githubAppAuth(ctx, field, obj)
 				return res
 			}
 
@@ -93249,6 +93538,18 @@ func (ec *executionContext) marshalOGitTag2ᚕgithubᚗcomᚋevergreenᚑciᚋev
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOGithubAppAuth2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubAppAuth(ctx context.Context, sel ast.SelectionSet, v *model.APIGithubAppAuth) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._GithubAppAuth(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOGithubAppAuthInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubAppAuth(ctx context.Context, v interface{}) (model.APIGithubAppAuth, error) {
+	res, err := ec.unmarshalInputGithubAppAuthInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOGithubCheckSubscriber2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubCheckSubscriber(ctx context.Context, sel ast.SelectionSet, v *model.APIGithubCheckSubscriber) graphql.Marshaler {

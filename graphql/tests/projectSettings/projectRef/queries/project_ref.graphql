@@ -1,5 +1,9 @@
 {
   projectSettings(projectIdentifier: "sandbox") {
+    githubAppAuth {
+      appId
+      privateKey
+    }
     githubWebhooksEnabled
     projectRef {
       id

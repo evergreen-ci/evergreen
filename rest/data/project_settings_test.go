@@ -469,16 +469,48 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Equal(t, pRefFromDB.GitHubDynamicTokenPermissionGroups[2].AllPermissions, true)
 		},
 		model.ProjectPageGithubAppSettingsSection: func(t *testing.T, ref model.ProjectRef) {
-			// Invalid requester should return an error.
+			// Should be able to save GitHub app credentials.
 			apiChanges := &restModel.APIProjectSettings{
+				GithubAppAuth: restModel.APIGithubAppAuth{
+					AppID:      12345,
+					PrivateKey: utility.ToStringPtr("my_secret"),
+				},
+			}
+			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGithubAppSettingsSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
+
+			githubAppFromDB, err := model.FindOneGithubAppAuth(ref.Id)
+			assert.NoError(t, err)
+			require.NotNil(t, githubAppFromDB)
+			assert.Equal(t, githubAppFromDB.AppID, int64(12345))
+			assert.Equal(t, githubAppFromDB.PrivateKey, []byte("my_secret"))
+
+			// Should be able to clear GitHub app credentials.
+			apiChanges = &restModel.APIProjectSettings{
+				GithubAppAuth: restModel.APIGithubAppAuth{
+					AppID:      0,
+					PrivateKey: utility.ToStringPtr(""),
+				},
+			}
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGithubAppSettingsSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
+
+			githubAppFromDB, err = model.FindOneGithubAppAuth(ref.Id)
+			assert.NoError(t, err)
+			assert.Nil(t, githubAppFromDB)
+
+			// Invalid requester should return an error.
+			apiChanges = &restModel.APIProjectSettings{
 				ProjectRef: restModel.APIProjectRef{
 					GitHubPermissionGroupByRequester: map[string]string{
 						"invalid-requester": "permission-group",
 					},
 				},
 			}
-			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGithubAppSettingsSection, false, "me")
-			require.Error(t, err)
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGithubAppSettingsSection, false, "me")
+			assert.Error(t, err)
 			assert.Nil(t, settings)
 
 			// Invalid permission group (i.e. nonexistent permission group) should return an error.
@@ -490,7 +522,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				},
 			}
 			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGithubAppSettingsSection, false, "me")
-			require.Error(t, err)
+			assert.Error(t, err)
 			assert.Nil(t, settings)
 
 			// Should be able to save with a valid requester and existing permission group.
@@ -502,11 +534,11 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				},
 			}
 			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGithubAppSettingsSection, false, "me")
-			require.NoError(t, err)
-			require.NotNil(t, settings)
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
 
 			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.NotNil(t, pRefFromDB)
 			require.NotNil(t, pRefFromDB.GitHubPermissionGroupByRequester)
 			assert.Equal(t, len(pRefFromDB.GitHubPermissionGroupByRequester), 1)
@@ -519,11 +551,11 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				},
 			}
 			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGithubAppSettingsSection, false, "me")
-			require.NoError(t, err)
-			require.NotNil(t, settings)
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
 
 			pRefFromDB, err = model.FindBranchProjectRef(ref.Id)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.NotNil(t, pRefFromDB)
 			assert.Nil(t, pRefFromDB.GitHubPermissionGroupByRequester)
 		},

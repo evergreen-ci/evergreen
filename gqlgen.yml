@@ -98,6 +98,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFinderSettings
   GeneralSubscription:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
+  GithubAppAuth:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubAppAuth
+  GithubAppAuthInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubAppAuth
   GithubCheckSubscriber:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubCheckSubscriber
   GitHubDynamicTokenPermissionGroupInput:
@@ -256,6 +260,8 @@ models:
       aliases:
         resolver: true
       subscriptions:
+        resolver: true
+      githubAppAuth:
         resolver: true
   ProjectSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
