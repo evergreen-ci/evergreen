@@ -671,7 +671,7 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 
 					activateAt, err := getActivationTime(v.CreateTime, now)
 					require.NoError(t, err)
-					assert.True(t, activateAt.After(now), "cron should be scheduled in the future due to conflicting recent commit version with cron task")
+					assert.True(t, activateAt.After(now), "cron should be scheduled in the future due to conflicting recent commit version with recent activation time")
 				},
 				"SchedulesPastCronWithNonconflictingRecentCommitVersion": func(t *testing.T, pRef *ProjectRef, v *Version, bvtu *BuildVariantTaskUnit) {
 					now := v.CreateTime.Add(2 * time.Minute)
@@ -704,7 +704,40 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 					activateAt, err := getActivationTime(v.CreateTime, now)
 					require.NoError(t, err)
 
-					assert.True(t, activateAt.Before(now), "cron should be scheduled in the past because the most recent commit version's cron does not conflict")
+					assert.True(t, activateAt.Before(now), "cron should be scheduled in the past because the most recent commit version's activation time does not conflict")
+				},
+				"SchedulesPastCronWithRecentCommitVersionWithZeroActivationTime": func(t *testing.T, pRef *ProjectRef, v *Version, bvtu *BuildVariantTaskUnit) {
+					now := v.CreateTime.Add(2 * time.Minute)
+
+					zeroActivationTime := time.Time{}
+					recentVersionWithCron := Version{
+						Id:         "conflicting_version_with_cron",
+						Identifier: pRef.Id,
+						CreateTime: zeroActivationTime,
+						Requester:  evergreen.AdHocRequester,
+						BuildVariants: []VersionBuildStatus{
+							{
+								BuildVariant: "bv_name",
+								ActivationStatus: ActivationStatus{
+									ActivateAt: zeroActivationTime,
+								},
+								BatchTimeTasks: []BatchTimeTaskStatus{
+									{
+										TaskName: "task_name",
+										ActivationStatus: ActivationStatus{
+											ActivateAt: zeroActivationTime,
+										},
+									},
+								},
+							},
+						},
+					}
+					require.NoError(t, recentVersionWithCron.Insert())
+
+					activateAt, err := getActivationTime(v.CreateTime, now)
+					require.NoError(t, err)
+
+					assert.True(t, activateAt.Before(now), "cron should be scheduled in the past because the most recent commit version's activation time is zero")
 				},
 				"SchedulesPastCronWithNonconflictingPeriodicBuild": func(t *testing.T, pRef *ProjectRef, v *Version, bvtu *BuildVariantTaskUnit) {
 					now := v.CreateTime.Add(2 * time.Minute)

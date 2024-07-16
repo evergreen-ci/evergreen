@@ -538,7 +538,6 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		if !bvtu.HasSpecificActivation() {
 			continue
 		}
-		// Use the version create time to ensure we're being consistent
 		activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(bvtu, creationInfo.Version.CreateTime, time.Now())
 		batchTimeCatcher.Wrapf(err, "getting activation time for task '%s'", t.DisplayName)
 		batchTimeTaskStatuses = append(batchTimeTaskStatuses, BatchTimeTaskStatus{
