@@ -106,9 +106,7 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 		attribute.String(githubGenerateTokenRepoAttribute, r.Repo),
 		attribute.Bool(githubGenerateTokenAllPermissionAttribute, r.Permissions == nil),
 	)
-	createTokenCtx, span := getTracer().Start(ctx, "create_token")
-	token, err := comm.CreateGitHubDynamicAccessToken(createTokenCtx, td, r.Owner, r.Repo, r.Permissions)
-	span.End()
+	token, err := comm.CreateGitHubDynamicAccessToken(ctx, td, r.Owner, r.Repo, r.Permissions)
 	if err != nil {
 		return errors.Wrap(err, "creating github dynamic access token")
 	}
@@ -122,15 +120,12 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 		// reduces the scope of the token.
 		conf.NewExpansions.Remove(r.ExpansionName)
 
-		// This span bundles the attributes again because this will not be a child span of the
-		// spans above.
-		revokeTokenCtx, span := getTracer().Start(ctx, "revoke_token", trace.WithAttributes(
+		trace.SpanFromContext(ctx).SetAttributes(
 			attribute.String(githubGenerateTokenOwnerAttribute, r.Owner),
 			attribute.String(githubGenerateTokenRepoAttribute, r.Repo),
 			attribute.Bool(githubGenerateTokenAllPermissionAttribute, r.Permissions == nil),
-		))
-		defer span.End()
-		return errors.Wrap(comm.RevokeGitHubDynamicAccessToken(revokeTokenCtx, td, token), "revoking token")
+		)
+		return errors.Wrap(comm.RevokeGitHubDynamicAccessToken(ctx, td, token), "revoking token")
 	})
 
 	return nil

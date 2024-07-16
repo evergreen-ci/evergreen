@@ -20,6 +20,7 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/v3/disk"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type taskContext struct {
@@ -92,27 +93,41 @@ func (tc *taskContext) addSetupGroupCommandCleanups(cleanups []internal.CommandC
 // runTaskCommandCleanups runs the cleanup commands added throughout the normal execution of
 // 'pre+main+post' or 'setup_task+main+teardown_task' and 'teardown_group'. For 'setup_group',
 // use runSetupGroupCommandCleanups instead.
-func (tc *taskContext) runTaskCommandCleanups(ctx context.Context, logger client.LoggerProducer) {
-	catcher := grip.NewBasicCatcher()
-	for _, cleanup := range tc.taskCleanups {
-		catcher.Wrapf(cleanup.Run(ctx), "running clean up from command '%s'", cleanup.Command)
+func (tc *taskContext) runTaskCommandCleanups(ctx context.Context, logger client.LoggerProducer, trace trace.Tracer) {
+	// Noop on empty cleanup list.
+	if len(tc.taskCleanups) == 0 {
+		return
 	}
-	tc.taskCleanups = nil
-	if err := errors.Wrap(catcher.Resolve(), "running command cleanups"); err != nil {
+	ctx, span := trace.Start(ctx, "task_command_cleanups")
+	defer span.End()
+
+	if err := errors.Wrap(runCommandCleanups(ctx, tc.taskCleanups, trace), "running setup group command cleanups"); err != nil {
 		logger.Execution().Error(err)
 	}
 }
 
 // runSetupGroupCommandCleanups runs the cleanup commands added throughout the execution of a setup group.
-func (tc *taskContext) runSetupGroupCommandCleanups(ctx context.Context, logger client.LoggerProducer) {
-	catcher := grip.NewBasicCatcher()
-	for _, cleanup := range tc.setupGroupCleanups {
-		catcher.Wrapf(cleanup.Run(ctx), "running clean up from command '%s'", cleanup.Command)
+func (tc *taskContext) runSetupGroupCommandCleanups(ctx context.Context, logger client.LoggerProducer, trace trace.Tracer) {
+	// Noop on empty cleanup list.
+	if len(tc.setupGroupCleanups) == 0 {
+		return
 	}
-	tc.setupGroupCleanups = nil
-	if err := errors.Wrap(catcher.Resolve(), "running command cleanups"); err != nil {
+	ctx, span := trace.Start(ctx, "setup_group_command_cleanups")
+	defer span.End()
+
+	if err := errors.Wrap(runCommandCleanups(ctx, tc.setupGroupCleanups, trace), "running setup group command cleanups"); err != nil {
 		logger.Execution().Error(err)
 	}
+}
+
+func runCommandCleanups(ctx context.Context, cleanups []internal.CommandCleanup, trace trace.Tracer) error {
+	catcher := grip.NewBasicCatcher()
+	for _, cleanup := range cleanups {
+		ctx, span := trace.Start(ctx, cleanup.Command)
+		catcher.Wrapf(cleanup.Run(ctx), "running clean up from command '%s'", cleanup.Command)
+		span.End()
+	}
+	return catcher.Resolve()
 }
 
 func (tc *taskContext) getOtherFailingCommands() []apimodels.FailingCommand {

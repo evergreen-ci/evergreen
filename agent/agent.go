@@ -825,14 +825,15 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 }
 
 func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskContext) error {
-	ctx, span := a.tracer.Start(ctx, "post-task-commands")
-	defer span.End()
-
 	// We run the command cleanups in a defer in case any of the post commands add cleanups.
 	// This will clean up anything added from commands running in pre, main, or post or the
 	// task group's setup task, main, and teardown task. As well, if the task timed out,
 	// it will run any cleanup commands that were added from it as well.
-	defer tc.runTaskCommandCleanups(ctx, tc.logger)
+	// We also run it as the first defer since they are handled in LIFO order.
+	defer tc.runTaskCommandCleanups(ctx, tc.logger, a.tracer)
+
+	ctx, span := a.tracer.Start(ctx, "post-task-commands")
+	defer span.End()
 
 	a.killProcs(ctx, tc, false, "post-task or teardown-task commands are starting")
 	defer a.killProcs(ctx, tc, false, "post-task or teardown-task commands are finished")
@@ -884,8 +885,8 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 
 		_ = a.runCommandsInBlock(ctx, tc, *teardownGroup)
 		// Teardown groups should run all the remaining command cleanups.
-		tc.runTaskCommandCleanups(ctx, tc.logger)
-		tc.runSetupGroupCommandCleanups(ctx, tc.logger)
+		tc.runTaskCommandCleanups(ctx, tc.logger, a.tracer)
+		tc.runSetupGroupCommandCleanups(ctx, tc.logger, a.tracer)
 	}
 }
 
