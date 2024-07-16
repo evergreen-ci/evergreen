@@ -216,11 +216,11 @@ func TestGetHistory(t *testing.T) {
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
 	// Verify that getHistory errors when not provided the required distro field.
-	_, err := c.GetHistory(ctx, DistroHistoryFilterOptions{})
+	_, err := c.getHistory(ctx, DistroHistoryFilterOptions{})
 	assert.Error(err)
 
 	// Verify that getHistory provides images for a distribution.
-	result, err := c.GetHistory(ctx, DistroHistoryFilterOptions{Distro: "ubuntu2204"})
+	result, err := c.getHistory(ctx, DistroHistoryFilterOptions{Distro: "ubuntu2204"})
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
 
@@ -230,7 +230,7 @@ func TestGetHistory(t *testing.T) {
 		Page:   0,
 		Limit:  15,
 	}
-	result, err = c.GetHistory(ctx, opts)
+	result, err = c.getHistory(ctx, opts)
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
 	assert.Len(result, 15)

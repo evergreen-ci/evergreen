@@ -18,6 +18,10 @@ const (
 	PackagesType   = "Packages"
 	ToolchainsType = "Toolchains"
 	OSType         = "OS"
+
+	OSNameField      = "PRETTY_NAME"
+	OSKernelField    = "Kernel"
+	OSVersionIDField = "VERSION_ID"
 )
 
 type RuntimeEnvironmentsClient struct {
@@ -291,9 +295,9 @@ type DistroHistoryFilterOptions struct {
 	Limit  int
 }
 
-// GetHistory returns a list of images with their AMI and creation date corresponding to the provided distro in the order of most recently
+// getHistory returns a list of images with their AMI and creation date corresponding to the provided distro in the order of most recently
 // created.
-func (c *RuntimeEnvironmentsClient) GetHistory(ctx context.Context, opts DistroHistoryFilterOptions) ([]ImageHistoryInfo, error) {
+func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts DistroHistoryFilterOptions) ([]ImageHistoryInfo, error) {
 	if opts.Distro == "" {
 		return nil, errors.New("no distro provided")
 	}
@@ -348,26 +352,28 @@ type Image struct {
 func (c *RuntimeEnvironmentsClient) getNameFromOSInfo(ctx context.Context, ami string, name string) (string, error) {
 	optsOS := OSInfoFilterOptions{
 		AMI:  ami,
-		Name: "^" + name + "$",
+		Name: fmt.Sprintf("^%s$", name),
 	}
 	resultOS, err := c.GetOSInfo(ctx, optsOS)
 	if err != nil {
 		return "", errors.Wrap(err, "getting OS info")
 	}
 	if len(resultOS) == 0 {
-		return "", errors.Errorf("OS information name '%q' not found for distro", optsOS.Name)
+		return "", errors.Errorf("OS information name '%s' not found for distro", optsOS.Name)
+	}
+	if len(resultOS) > 1 {
+		return "", errors.Errorf("multiple options found for OS information name '%s'", optsOS.Name)
 	}
 	return resultOS[0].Version, nil
 }
 
 // GetImageInfo returns information about a image.
 func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID string) (*Image, error) {
-	// Determine AMI field.
 	optsHistory := DistroHistoryFilterOptions{
 		Distro: imageID,
 		Limit:  1,
 	}
-	resultHistory, err := c.GetHistory(ctx, optsHistory)
+	resultHistory, err := c.getHistory(ctx, optsHistory)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting history for image '%s': '%s'", imageID, err.Error())
 	}
@@ -389,29 +395,28 @@ func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID st
 	}
 
 	// Determine name field.
-	name, err := c.getNameFromOSInfo(ctx, ami, "^PRETTY_NAME$")
+	name, err := c.getNameFromOSInfo(ctx, ami, OSNameField)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting OSInfo for distro: '%s'", imageID)
 	}
 
 	// Determine kernel field.
-	kernel, err := c.getNameFromOSInfo(ctx, ami, "^Kernel")
+	kernel, err := c.getNameFromOSInfo(ctx, ami, OSKernelField)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting OSInfo for distro: '%s'", imageID)
 	}
 
 	// Determine versionID field.
-	versionID, err := c.getNameFromOSInfo(ctx, ami, "VERSION_ID")
+	versionID, err := c.getNameFromOSInfo(ctx, ami, OSVersionIDField)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting OSInfo for distro: '%s'", imageID)
 	}
 
-	image := Image{
-		Name:         name,
-		VersionID:    versionID,
+	return &Image{
+		AMI:          ami,
 		Kernel:       kernel,
 		LastDeployed: timestamp,
-		AMI:          ami,
-	}
-	return &image, nil
+		Name:         name,
+		VersionID:    versionID,
+	}, nil
 }
