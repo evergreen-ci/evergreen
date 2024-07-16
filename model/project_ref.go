@@ -2466,11 +2466,6 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionC
 		return now, nil
 	}
 
-	// kim: NOTE: logic below is kind of similar to what we want to check if
-	// there's another version that might be activated, but we can't assume that
-	// the most recent variant is the one that contains the most recent cron
-	// run (because it could include irrelevant version types like periodic
-	// builds).
 	lastActivated, err := VersionFindOne(VersionByLastVariantActivation(p.Id, variant.Name).WithFields(VersionBuildVariantsKey))
 	if err != nil {
 		return time.Time{}, errors.Wrap(err, "finding version")
