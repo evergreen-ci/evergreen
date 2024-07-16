@@ -387,7 +387,7 @@ func (c *RuntimeEnvironmentsClient) getNameFromOSInfo(ctx context.Context, ami s
 	if len(result) == 0 {
 		return "", errors.Errorf("OS information name '%s' not found for distro", opts.Name)
 	} else if len(result) > 1 {
-		return "", errors.Errorf("multiple options found for OS information name '%s'", opts.Name)
+		return "", errors.Errorf("multiple results found for OS information name '%s'", opts.Name)
 	}
 	return result[0].Version, nil
 }
