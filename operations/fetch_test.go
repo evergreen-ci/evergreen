@@ -24,18 +24,21 @@ func TestClone(t *testing.T) {
 			repository: "sample",
 			revision:   "cf46076567e4949f9fc68e0634139d4ac495c89b",
 			branch:     "main",
+			token:      "token",
 		}},
 		"InvalidRepo": {isPassing: false, opts: cloneOptions{
 			owner:      "evergreen-ci",
 			repository: "foo",
 			revision:   "cf46076567e4949f9fc68e0634139d4ac495c89b",
 			branch:     "main",
+			token:      "token",
 		}},
 		"InvalidRevision": {isPassing: false, opts: cloneOptions{
 			owner:      "evergreen-ci",
 			repository: "sample",
 			revision:   "9999999999999999999999999999999999999999",
 			branch:     "main",
+			token:      "token",
 		}},
 		"InvalidToken": {isPassing: false, opts: cloneOptions{
 			owner:      "10gen",
