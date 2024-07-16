@@ -2490,24 +2490,21 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionC
 	return versionCreateTime, nil
 }
 
-// allowedCronDelay is the grace period for which a cron is valid when it's
-// scheduled late. This is used to check if the cron should have run recently.
-const allowedCronDelay = 5 * time.Minute
-
-// isCronTimeRangeValid checks that the proposed cron is not too far in the
-// past.
-func (p *ProjectRef) isCronTimeRangeValid(proposedCron time.Time, now time.Time) bool {
-	return !proposedCron.Before(now.Add(-allowedCronDelay))
+// isActiveCronTimeRange checks that the proposed cron should activate now or
+// has already activated very recently.
+func (p *ProjectRef) isActiveCronTimeRange(proposedCron time.Time, now time.Time) bool {
+	const cronActiveRange = 5 * time.Minute
+	return !proposedCron.Before(now.Add(-cronActiveRange))
 }
 
 // isValidBVCron checks if a proposed time to activate a cron for a build
 // variant is valid. A cron scheduled to activate in the future is always valid,
 // but if the cron is scheduled to run in the past, that mean it will run
 // immediately. Crons scheduled for the past are only valid if they've recently
-// passed the proposed cron time and there's no conflicting cron that could
-// activate.
+// passed the proposed cron time and there's no conflicting cron that will
+// activate or has already activated.
 func (p *ProjectRef) isValidBVCron(bv *BuildVariant, proposedCron time.Time, now time.Time) (bool, error) {
-	if !p.isCronTimeRangeValid(proposedCron, now) {
+	if !p.isActiveCronTimeRange(proposedCron, now) {
 		return false, nil
 	}
 
@@ -2529,12 +2526,7 @@ func (p *ProjectRef) isValidBVCron(bv *BuildVariant, proposedCron time.Time, now
 			continue
 		}
 
-		// The new proposed cron for the build variant can only run if
-		// there's no conflicting cron run that's imminently going to
-		// activate/has already activated. If so, this cron can't be
-		// schedule in the past because it would run a duplicate of the one
-		// already scheduled.
-		return bvStatus.ActivateAt.Before(now.Add(-allowedCronDelay)), nil
+		return !p.isActiveCronTimeRange(bvStatus.ActivateAt, now), nil
 	}
 
 	return true, nil
@@ -2604,7 +2596,7 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, versionCr
 // passed the proposed cron time and there's no conflicting cron that could
 // activate.
 func (p *ProjectRef) isValidTaskCron(bvtu *BuildVariantTaskUnit, proposedCron time.Time, now time.Time) (bool, error) {
-	if !p.isCronTimeRangeValid(proposedCron, now) {
+	if !p.isActiveCronTimeRange(proposedCron, now) {
 		return false, nil
 	}
 
@@ -2630,7 +2622,8 @@ func (p *ProjectRef) isValidTaskCron(bvtu *BuildVariantTaskUnit, proposedCron ti
 			if taskStatus.TaskName != bvtu.Name {
 				continue
 			}
-			return taskStatus.ActivateAt.Before(now.Add(-allowedCronDelay)), nil
+
+			return !p.isActiveCronTimeRange(taskStatus.ActivateAt, now), nil
 		}
 	}
 
