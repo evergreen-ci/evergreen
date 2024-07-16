@@ -186,7 +186,7 @@ func TestImages(t *testing.T) {
 	ctx := getContext(t)
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestImages")
-	assert.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
+	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
 	res, err := config.Resolvers.Query().Images(ctx)
 	require.NoError(t, err)
 	assert.NotEmpty(t, res)
