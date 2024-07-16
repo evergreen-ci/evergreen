@@ -882,7 +882,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		return TryResetTask(ctx, settings, t.Id, caller, "", detail)
 	}
 
-	return nil
+	return catcher.Resolve()
 }
 
 func markEndDisplayTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, caller, origin string) error {
