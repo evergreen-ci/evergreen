@@ -930,7 +930,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		activateVariantAt := time.Now()
 		taskStatuses := []model.BatchTimeTaskStatus{}
 		if evergreen.ShouldConsiderBatchtime(v.Requester) {
-			activateVariantAt, err = projectInfo.Ref.GetActivationTimeForVariant(&buildvariant, v.CreateTime)
+			activateVariantAt, err = projectInfo.Ref.GetActivationTimeForVariant(&buildvariant, v.CreateTime, time.Now())
 			batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for variant '%s'", buildvariant.Name))
 			// add only tasks that require activation times
 			for _, bvt := range buildvariant.Tasks {
@@ -938,7 +938,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				if !ok || !bvt.HasSpecificActivation() {
 					continue
 				}
-				activateTaskAt, err := projectInfo.Ref.GetActivationTimeForTask(&bvt, v.CreateTime)
+				activateTaskAt, err := projectInfo.Ref.GetActivationTimeForTask(&bvt, v.CreateTime, time.Now())
 				batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for task '%s' (variant '%s')", bvt.Name, buildvariant.Name))
 
 				taskStatuses = append(taskStatuses,

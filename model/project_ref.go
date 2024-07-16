@@ -2436,13 +2436,14 @@ func getCronParserSchedule(cronStr string) (cron.Schedule, error) {
 
 // GetActivationTimeForVariant returns the time at which this variant should next be activated.
 // To ensure consistency across variants, the version create time is used to determine the next time.
-func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionCreateTime time.Time) (time.Time, error) {
+func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionCreateTime time.Time, now time.Time) (time.Time, error) {
 	// if we don't want to activate the build, set batchtime to the zero time
-	now := time.Now()
 	if !utility.FromBoolTPtr(variant.Activate) {
 		return utility.ZeroTime, nil
 	}
 	if variant.CronBatchTime != "" {
+		// Prefer to schedule the cron activation time based on the time that
+		// the version was created.
 		proposedCron, err := GetNextCronTime(versionCreateTime, variant.CronBatchTime)
 		if err != nil {
 			return time.Time{}, errors.Wrap(err, "getting next cron time")
@@ -2455,6 +2456,9 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionC
 			return proposedCron, nil
 		}
 
+		// If the cron is scheduled too far in the past or will conflict with
+		// another cron activation, skip it and run the cron in the future
+		// instead.
 		return GetNextCronTime(now, variant.CronBatchTime)
 	}
 	// if activated explicitly set to true and we don't have batchtime, then we want to just activate now
@@ -2589,13 +2593,14 @@ func (p *ProjectRef) isValidTaskCron(bvtu *BuildVariantTaskUnit, proposedCron ti
 
 // GetActivationTimeForTask returns the time at which this task should next be activated.
 // To ensure consistency across tasks, the version create time is used to determine the next time.
-func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, versionCreateTime time.Time) (time.Time, error) {
+func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, versionCreateTime time.Time, now time.Time) (time.Time, error) {
 	// if we don't want to activate the task, set batchtime to the zero time
 	if !utility.FromBoolTPtr(t.Activate) || t.IsDisabled() {
 		return utility.ZeroTime, nil
 	}
-	now := time.Now()
 	if t.CronBatchTime != "" {
+		// Prefer to schedule the cron activation time based on the time that
+		// the version was created.
 		proposedCron, err := GetNextCronTime(versionCreateTime, t.CronBatchTime)
 		if err != nil {
 			return time.Time{}, errors.Wrap(err, "getting next cron time")
@@ -2608,6 +2613,9 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, versionCr
 			return proposedCron, nil
 		}
 
+		// If the cron is scheduled too far in the past or will conflict with
+		// another cron activation, skip it and run the cron in the future
+		// instead.
 		return GetNextCronTime(now, t.CronBatchTime)
 	}
 	// If activated explicitly set to true and we don't have batchtime, then we want to just activate now

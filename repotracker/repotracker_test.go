@@ -1114,7 +1114,9 @@ tasks:
 }
 
 func (s *CreateVersionFromConfigSuite) TestCreateVersionItemsBatchtime() {
-	// Test that we correctly use the version create time to determine task batchtimes, rather than the task create time.
+	// Test that we correctly use the version create time to determine task
+	// batchtimes if the version create time is in the recent past, rather than
+	// the task create time.
 	configYml := `
 buildvariants:
 - name: bv
@@ -1146,7 +1148,7 @@ tasks:
 		Project:             p,
 	}
 	metadata := model.VersionMetadata{Revision: *s.rev}
-	versionCreateTime := time.Now().Add(time.Minute * -10)
+	versionCreateTime := time.Now().Add(-10 * time.Minute)
 
 	v := &model.Version{
 		Id:                  "_abc",
@@ -1170,11 +1172,11 @@ tasks:
 	s.Len(v.BuildVariants, 2)
 	for _, bv := range v.BuildVariants {
 		if bv.BuildVariant == "bv" {
-			s.Equal(versionCreateTime, bv.ActivateAt) // Build variant activate time should use the version create time
+			s.Equal(versionCreateTime, bv.ActivateAt, "build variant activation should be based on version create time")
 			s.Require().Len(bv.BatchTimeTasks, 2)
 			for _, t := range bv.BatchTimeTasks {
-				if t.TaskName == "task1" { // activate time is the version create time because there isn't a previous task
-					s.Equal(versionCreateTime, t.ActivateAt)
+				if t.TaskName == "task1" {
+					s.Equal(versionCreateTime, t.ActivateAt, "task cron activation should be based on version create time because there is no previous task that ran the cron")
 				} else {
 					// ensure that "daily" cron is set for the next day
 					ty, tm, td := t.ActivateAt.Date()
