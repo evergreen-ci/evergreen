@@ -24743,8 +24743,8 @@ func (ec *executionContext) fieldContext_IceCreamSettings_schedulerHost(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Image_name(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Image_name(ctx, field)
+func (ec *executionContext) _Image_ami(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Image_ami(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -24757,7 +24757,7 @@ func (ec *executionContext) _Image_name(ctx context.Context, field graphql.Colle
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Name, nil
+		return obj.AMI, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -24774,51 +24774,7 @@ func (ec *executionContext) _Image_name(ctx context.Context, field graphql.Colle
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Image_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Image",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Image_versionId(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Image_versionId(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.VersionID, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Image_versionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Image_ami(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Image",
 		Field:      field,
@@ -24919,8 +24875,8 @@ func (ec *executionContext) fieldContext_Image_lastDeployed(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Image_ami(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Image_ami(ctx, field)
+func (ec *executionContext) _Image_name(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Image_name(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -24933,7 +24889,7 @@ func (ec *executionContext) _Image_ami(ctx context.Context, field graphql.Collec
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.AMI, nil
+		return obj.Name, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -24950,7 +24906,51 @@ func (ec *executionContext) _Image_ami(ctx context.Context, field graphql.Collec
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Image_ami(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Image_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Image",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Image_versionId(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Image_versionId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.VersionID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Image_versionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Image",
 		Field:      field,
@@ -46748,16 +46748,16 @@ func (ec *executionContext) fieldContext_Query_image(ctx context.Context, field 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "name":
-				return ec.fieldContext_Image_name(ctx, field)
-			case "versionId":
-				return ec.fieldContext_Image_versionId(ctx, field)
+			case "ami":
+				return ec.fieldContext_Image_ami(ctx, field)
 			case "kernel":
 				return ec.fieldContext_Image_kernel(ctx, field)
 			case "lastDeployed":
 				return ec.fieldContext_Image_lastDeployed(ctx, field)
-			case "ami":
-				return ec.fieldContext_Image_ami(ctx, field)
+			case "name":
+				return ec.fieldContext_Image_name(ctx, field)
+			case "versionId":
+				return ec.fieldContext_Image_versionId(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Image", field.Name)
 		},
@@ -77239,13 +77239,8 @@ func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, ob
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Image")
-		case "name":
-			out.Values[i] = ec._Image_name(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "versionId":
-			out.Values[i] = ec._Image_versionId(ctx, field, obj)
+		case "ami":
+			out.Values[i] = ec._Image_ami(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -77259,8 +77254,13 @@ func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "ami":
-			out.Values[i] = ec._Image_ami(ctx, field, obj)
+		case "name":
+			out.Values[i] = ec._Image_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "versionId":
+			out.Values[i] = ec._Image_versionId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

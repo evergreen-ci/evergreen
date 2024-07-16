@@ -152,9 +152,7 @@ func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFi
 	}
 	params := url.Values{}
 	params.Set("ami", opts.AMI)
-	if opts.Page != 0 {
-		params.Set("page", strconv.Itoa(opts.Page))
-	}
+	params.Set("page", strconv.Itoa(opts.Page))
 	if opts.Limit != 0 {
 		params.Set("limit", strconv.Itoa(opts.Limit))
 	}
@@ -292,21 +290,21 @@ type ImageHistoryInfo struct {
 	CreationDate string `json:"created_date"`
 }
 
-// DistoHistoryFilter represents the filtering arguments for getHistory. The Distro field is required and the other fields are optional.
-type DistroHistoryFilterOptions struct {
-	Distro string
-	Page   int
-	Limit  int
+// ImageHistoryFilter represents the filtering arguments for getHistory. The ImageID field is required and the other fields are optional.
+type ImageHistoryFilterOptions struct {
+	ImageID string
+	Page    int
+	Limit   int
 }
 
 // getHistory returns a list of images with their AMI and creation date corresponding to the provided distro in the order of most recently
 // created.
-func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts DistroHistoryFilterOptions) ([]ImageHistoryInfo, error) {
-	if opts.Distro == "" {
+func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts ImageHistoryFilterOptions) ([]ImageHistoryInfo, error) {
+	if opts.ImageID == "" {
 		return nil, errors.New("no distro provided")
 	}
 	params := url.Values{}
-	params.Set("distro", opts.Distro)
+	params.Set("distro", opts.ImageID)
 	params.Set("page", strconv.Itoa(opts.Page))
 	if opts.Limit != 0 {
 		params.Set("limit", strconv.Itoa(opts.Limit))
@@ -378,66 +376,76 @@ type Image struct {
 
 // getNameFromOSInfo uses the provided AMI and name (exact match) arguments to filter the image information.
 func (c *RuntimeEnvironmentsClient) getNameFromOSInfo(ctx context.Context, ami string, name string) (string, error) {
-	optsOS := OSInfoFilterOptions{
+	opts := OSInfoFilterOptions{
 		AMI:  ami,
 		Name: fmt.Sprintf("^%s$", name),
 	}
-	resultOS, err := c.GetOSInfo(ctx, optsOS)
+	result, err := c.GetOSInfo(ctx, opts)
 	if err != nil {
 		return "", errors.Wrap(err, "getting OS info")
 	}
-	if len(resultOS) == 0 {
-		return "", errors.Errorf("OS information name '%s' not found for distro", optsOS.Name)
+	if len(result) == 0 {
+		return "", errors.Errorf("OS information name '%s' not found for distro", opts.Name)
+	} else if len(result) > 1 {
+		return "", errors.Errorf("multiple options found for OS information name '%s'", opts.Name)
 	}
-	if len(resultOS) > 1 {
-		return "", errors.Errorf("multiple options found for OS information name '%s'", optsOS.Name)
+	return result[0].Version, nil
+}
+
+// getLatestImageHistory returns the latest AMI and timestamp given the provided imageId.
+func (c *RuntimeEnvironmentsClient) getLatestImageHistory(ctx context.Context, imageID string) (string, time.Time, error) {
+	optsHistory := ImageHistoryFilterOptions{
+		ImageID: imageID,
+		Limit:   1,
 	}
-	return resultOS[0].Version, nil
+	resultHistory, err := c.getHistory(ctx, optsHistory)
+	if err != nil {
+		return "", time.Time{}, errors.Wrapf(err, "getting history for image '%s': '%s'", imageID, err.Error())
+	}
+	if len(resultHistory) == 0 {
+		return "", time.Time{}, errors.Errorf("history for image '%s' not found", imageID)
+	} else if len(resultHistory) > 1 {
+		return "", time.Time{}, errors.Errorf("found more history than history limit provided for image '%s'", imageID)
+	}
+	if resultHistory[0].AMI == "" {
+		return "", time.Time{}, errors.Errorf("latest ami for image '%s' not found", imageID)
+	}
+	ami := resultHistory[0].AMI
+
+	if resultHistory[0].CreationDate == "" {
+		return "", time.Time{}, errors.Errorf("creation time for image '%s' not found", imageID)
+	}
+	timestamp, err := stringToTime(resultHistory[0].CreationDate)
+	if err != nil {
+		return "", time.Time{}, errors.Wrap(err, "converting creation time: '%s'")
+	}
+
+	return ami, timestamp, nil
 }
 
 // GetImageInfo returns information about a image.
 func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID string) (*Image, error) {
-	optsHistory := DistroHistoryFilterOptions{
-		Distro: imageID,
-		Limit:  1,
-	}
-	resultHistory, err := c.getHistory(ctx, optsHistory)
+	ami, timestamp, err := c.getLatestImageHistory(ctx, imageID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting history for image '%s': '%s'", imageID, err.Error())
-	}
-	if len(resultHistory) == 0 {
-		return nil, errors.Errorf("history for image '%s' not found", imageID)
-	}
-	if resultHistory[0].AMI == "" {
-		return nil, errors.Errorf("latest ami for image '%s' not found", imageID)
-	}
-	ami := resultHistory[0].AMI
-
-	// Determine timestamp field.
-	if resultHistory[0].CreationDate == "" {
-		return nil, errors.Errorf("creation time for image '%s' not found", imageID)
-	}
-	timestamp, err := stringToTime(resultHistory[0].CreationDate)
-	if err != nil {
-		return nil, errors.Wrap(err, "converting creation time: '%s'")
+		return nil, errors.Wrapf(err, "getting latest AMI and timestamp")
 	}
 
 	// Determine name field.
 	name, err := c.getNameFromOSInfo(ctx, ami, OSNameField)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting OSInfo for distro: '%s'", imageID)
+		return nil, errors.Wrapf(err, "getting OSInfo '%s' field for image: '%s'", OSNameField, imageID)
 	}
 
 	// Determine kernel field.
 	kernel, err := c.getNameFromOSInfo(ctx, ami, OSKernelField)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting OSInfo for distro: '%s'", imageID)
+		return nil, errors.Wrapf(err, "getting OSInfo '%s' field for image: '%s'", OSKernelField, imageID)
 	}
 
 	// Determine versionID field.
 	versionID, err := c.getNameFromOSInfo(ctx, ami, OSVersionIDField)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting OSInfo for distro: '%s'", imageID)
+		return nil, errors.Wrapf(err, "getting OSInfo '%s' field for image: '%s'", OSVersionIDField, imageID)
 	}
 
 	return &Image{
@@ -476,9 +484,9 @@ func (c *RuntimeEnvironmentsClient) getEvents(ctx context.Context, opts EventHis
 	if opts.Limit == 0 {
 		return nil, errors.New("no limit provided")
 	}
-	optsHistory := DistroHistoryFilterOptions{
-		Distro: opts.Image,
-		Page:   opts.Page,
+	optsHistory := ImageHistoryFilterOptions{
+		ImageID: opts.Image,
+		Page:    opts.Page,
 		// Diffing two AMIs only produces one ImageEvent. We need to add 1 so that the number of returned events is equal to the limit.
 		Limit: opts.Limit + 1,
 	}
