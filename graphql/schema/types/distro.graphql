@@ -129,7 +129,7 @@ input DistroInput {
   homeVolumeSettings: HomeVolumeSettingsInput!
   hostAllocatorSettings: HostAllocatorSettingsInput!
   iceCreamSettings: IceCreamSettingsInput!
-  imageId: String
+  imageId: String!
   isCluster: Boolean!
   isVirtualWorkStation: Boolean!
   name: String! @requireDistroAccess(access: EDIT)
@@ -279,7 +279,7 @@ type Distro {
   homeVolumeSettings: HomeVolumeSettings!
   hostAllocatorSettings: HostAllocatorSettings!
   iceCreamSettings: IceCreamSettings!
-  imageId: String
+  imageId: String!
   isCluster: Boolean!
   isVirtualWorkStation: Boolean!
   name: String!
