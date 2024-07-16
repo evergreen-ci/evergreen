@@ -30,6 +30,7 @@ func TestGitPush(t *testing.T) {
 		Directory: "src",
 	}
 	comm := client.NewMock("http://localhost.com")
+	comm.CreateInstallationTokenResult = "token"
 	conf := &internal.TaskConfig{
 		Task:       task.Task{},
 		ProjectRef: model.ProjectRef{Branch: "main"},
