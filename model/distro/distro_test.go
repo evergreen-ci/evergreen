@@ -685,5 +685,5 @@ func TestGetImageIdFromDistro(t *testing.T) {
 
 	found, err := GetImageIdFromDistro(ctx, id)
 	require.NoError(t, err)
-	require.Equal(t, found, imageID)
+	assert.Equal(t, found, imageID)
 }
