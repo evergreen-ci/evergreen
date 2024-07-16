@@ -905,5 +905,8 @@ func GetImageIdFromDistro(ctx context.Context, distro string) (string, error) {
 	if err != nil {
 		return "", errors.Wrapf(err, "finding distro '%s'", distro)
 	}
+	if result == nil {
+		return "", errors.Errorf("no imageID found for distro '%s'", distro)
+	}
 	return result.ImageID, nil
 }
