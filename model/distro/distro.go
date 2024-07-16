@@ -900,13 +900,13 @@ func GetDistrosForImage(ctx context.Context, imageID string) ([]Distro, error) {
 }
 
 // GetImageIdFromDistro returns the imageID corresponding to the given distro.
-func GetImageIdFromDistro(ctx context.Context, distro string) (string, error) {
-	result, err := FindOne(ctx, bson.M{IdKey: distro})
+func GetImageIDFromDistro(ctx context.Context, distro string) (string, error) {
+	d, err := FindOneId(ctx, distro)
 	if err != nil {
 		return "", errors.Wrapf(err, "finding distro '%s'", distro)
 	}
-	if result == nil {
-		return "", errors.Errorf("no imageID found for distro '%s'", distro)
+	if d == nil {
+		return "", errors.Errorf("distro '%s' not found", distro)
 	}
-	return result.ImageID, nil
+	return d.ImageID, nil
 }

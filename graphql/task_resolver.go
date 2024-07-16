@@ -433,8 +433,7 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 
 // ImageID is the resolver for the imageId field.
 func (r *taskResolver) ImageID(ctx context.Context, obj *restModel.APITask) (string, error) {
-	distroId := *obj.DistroId
-	imageId, err := distro.GetImageIdFromDistro(ctx, distroId)
+	imageId, err := distro.GetImageIDFromDistro(ctx, *obj.DistroId)
 	if err != nil {
 		return "", InternalServerError.Send(ctx, fmt.Sprintf("unable to find imageId from distro: '%s'", err.Error()))
 	}
