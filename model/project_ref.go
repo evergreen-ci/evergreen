@@ -2494,20 +2494,10 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionC
 // scheduled late. This is used to check if the cron should have run recently.
 const allowedCronDelay = 5 * time.Minute
 
+// isCronTimeRangeValid checks that the proposed cron is not too far in the
+// past.
 func (p *ProjectRef) isCronTimeRangeValid(proposedCron time.Time, now time.Time) bool {
-	if proposedCron.After(now) {
-		// Cron is scheduled for the future, which is valid.
-		return true
-	}
-	const allowedCronDelay = 5 * time.Minute
-	if proposedCron.Before(now.Add(-allowedCronDelay)) {
-		// Cron is scheduled in the past, but it's been more than a few minutes
-		// since the time it should have activated, so it has missed its chance
-		// and is too late. Activating it past the allowed cron delay would be
-		// risky since activating may cause a conflict with future cron runs.
-		return false
-	}
-	return true
+	return !proposedCron.Before(now.Add(-allowedCronDelay))
 }
 
 // isValidBVCron checks if a proposed time to activate a cron for a build
