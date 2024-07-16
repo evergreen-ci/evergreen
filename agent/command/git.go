@@ -70,7 +70,8 @@ type gitFetchProject struct {
 	// Note: If a module does not have a revision it will use the module's branch to get the project.
 	Revisions map[string]string `plugin:"expand"`
 
-	Token string `plugin:"expand" mapstructure:"token"`
+	Token   string `plugin:"expand" mapstructure:"token"`
+	isOauth bool   `mapstructure:"is_oauth"`
 
 	// ShallowClone sets CloneDepth to 100, and is kept for backwards compatibility.
 	ShallowClone bool `mapstructure:"shallow_clone"`
@@ -145,10 +146,13 @@ func (opts *cloneOpts) setLocation() error {
 
 // getProjectMethodAndToken returns the project's clone method and token. If
 // set, the project token takes precedence over GitHub App token which takes precedence over over global settings.
-func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td client.TaskData, conf *internal.TaskConfig, projectToken string) (string, string, error) {
+func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td client.TaskData, conf *internal.TaskConfig, projectToken string, isOauth bool) (string, string, error) {
 	if projectToken != "" {
 		token, err := parseToken(projectToken)
-		return cloneMethodOAuth, token, err
+		if isOauth {
+			return cloneMethodOAuth, token, err
+		}
+		return cloneMethodAccessToken, token, err
 	}
 
 	owner := conf.ProjectRef.Owner
@@ -490,7 +494,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
-	projectMethod, projectToken, err := getProjectMethodAndToken(ctx, comm, td, conf, c.Token)
+	projectMethod, projectToken, err := getProjectMethodAndToken(ctx, comm, td, conf, c.Token, c.isOauth)
 	if err != nil {
 		return errors.Wrap(err, "getting method of cloning and token")
 	}
