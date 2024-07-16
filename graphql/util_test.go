@@ -353,7 +353,56 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 	assert.Equal(t, versionsMatchingTasksMap["v3"], true)
 
 }
-
+func TestIsPatchAuthorForTask(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
+		"TrueWhenUserIsPatchAuthor": func(ctx context.Context, t *testing.T) {
+			versionAndPatchID := bson.NewObjectId()
+			patch := patch.Patch{
+				Id:     versionAndPatchID,
+				Author: "basic_user",
+			}
+			assert.NoError(t, patch.Insert())
+			task := restModel.APITask{ProjectId: utility.ToStringPtr("random_project_id"), Version: utility.ToStringPtr(versionAndPatchID.Hex()), Requester: utility.ToStringPtr(evergreen.PatchVersionRequester)}
+			isPatchAuthor, err := isPatchAuthorForTask(ctx, &task)
+			assert.NoError(t, err)
+			assert.True(t, isPatchAuthor)
+		},
+		"FalseWhenUserIsNotPatchAuthor": func(ctx context.Context, t *testing.T) {
+			versionAndPatchID := bson.NewObjectId()
+			patch := patch.Patch{
+				Id:     versionAndPatchID,
+				Author: "someone_else",
+			}
+			assert.NoError(t, patch.Insert())
+			task := restModel.APITask{ProjectId: utility.ToStringPtr("random_project_id"), Version: utility.ToStringPtr(versionAndPatchID.Hex()), Requester: utility.ToStringPtr(evergreen.PatchVersionRequester)}
+			isPatchAuthor, err := isPatchAuthorForTask(ctx, &task)
+			assert.NoError(t, err)
+			assert.False(t, isPatchAuthor)
+		},
+		"FalseWhenTaskRequesterIsNotPatchVersionRequester": func(ctx context.Context, t *testing.T) {
+			versionAndPatchID := bson.NewObjectId()
+			patch := patch.Patch{
+				Id:     versionAndPatchID,
+				Author: "basic_user",
+			}
+			assert.NoError(t, patch.Insert())
+			task := restModel.APITask{ProjectId: utility.ToStringPtr("random_project_id"), Version: utility.ToStringPtr(versionAndPatchID.Hex()), Requester: utility.ToStringPtr(evergreen.TriggerRequester)}
+			isPatchAuthor, err := isPatchAuthorForTask(ctx, &task)
+			assert.NoError(t, err)
+			assert.False(t, isPatchAuthor)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(user.Collection, evergreen.RoleCollection, evergreen.ScopeCollection, annotations.Collection, task.Collection, patch.Collection))
+			usr := user.DBUser{
+				Id: "basic_user",
+			}
+			assert.NoError(t, usr.Insert())
+			ctx := gimlet.AttachUser(context.Background(), &usr)
+			tCase(ctx, t)
+		})
+	}
+}
 func TestHasAnnotationPermission(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
 		"TrueWhenUserHasRequiredLevelAndIsNotPatchOwner": func(ctx context.Context, t *testing.T) {
