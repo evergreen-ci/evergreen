@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -9,6 +10,18 @@ import (
 	"github.com/google/go-github/v52/github"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+)
+
+const (
+	githubGenerateTokenAttribute = "evergreen.command.github_generate_token"
+)
+
+var (
+	githubGenerateTokenOwnerAttribute         = fmt.Sprintf("%s.owner", githubGenerateTokenAttribute)
+	githubGenerateTokenRepoAttribute          = fmt.Sprintf("%s.repo", githubGenerateTokenAttribute)
+	githubGenerateTokenAllPermissionAttribute = fmt.Sprintf("%s.all_permissions", githubGenerateTokenAttribute)
 )
 
 type githubGenerateToken struct {
@@ -87,7 +100,15 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 	}
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-	token, err := comm.CreateGitHubDynamicAccessToken(ctx, td, r.Owner, r.Repo, r.Permissions)
+
+	trace.SpanFromContext(ctx).SetAttributes(
+		attribute.String(githubGenerateTokenOwnerAttribute, r.Owner),
+		attribute.String(githubGenerateTokenRepoAttribute, r.Repo),
+		attribute.Bool(githubGenerateTokenAllPermissionAttribute, r.Permissions == nil),
+	)
+	createTokenCtx, span := getTracer().Start(ctx, "create_token")
+	token, err := comm.CreateGitHubDynamicAccessToken(createTokenCtx, td, r.Owner, r.Repo, r.Permissions)
+	span.End()
 	if err != nil {
 		return errors.Wrap(err, "creating github dynamic access token")
 	}
@@ -100,7 +121,16 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 		// the expansion to any previous value as overwriting the token
 		// reduces the scope of the token.
 		conf.NewExpansions.Remove(r.ExpansionName)
-		return errors.Wrap(comm.RevokeGitHubDynamicAccessToken(ctx, td, token), "revoking token")
+
+		// This span bundles the attributes again because this will not be a child span of the
+		// spans above.
+		revokeTokenCtx, span := getTracer().Start(ctx, "revoke_token", trace.WithAttributes(
+			attribute.String(githubGenerateTokenOwnerAttribute, r.Owner),
+			attribute.String(githubGenerateTokenRepoAttribute, r.Repo),
+			attribute.Bool(githubGenerateTokenAllPermissionAttribute, r.Permissions == nil),
+		))
+		defer span.End()
+		return errors.Wrap(comm.RevokeGitHubDynamicAccessToken(revokeTokenCtx, td, token), "revoking token")
 	})
 
 	return nil
