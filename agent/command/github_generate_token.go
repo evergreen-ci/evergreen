@@ -114,7 +114,7 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 	// We write or overwrite the expansion with the new token.
 	conf.NewExpansions.PutAndRedact(r.ExpansionName, token)
 
-	conf.AddCommandCleanup(r.FullDisplayName(), func(ctx context.Context) error {
+	conf.AddCommandCleanup(r.Name(), func(ctx context.Context) error {
 		// We remove the expansion and revoke the token. We do not restore
 		// the expansion to any previous value as overwriting the token
 		// reduces the scope of the token.
