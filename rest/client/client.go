@@ -27,6 +27,9 @@ type communicatorImpl struct {
 	// these fields have setters
 	apiUser string
 	apiKey  string
+
+	hostID     string
+	hostSecret string
 }
 
 // NewCommunicator returns a Communicator capable of making HTTP REST requests
@@ -83,4 +86,16 @@ func (c *communicatorImpl) SetAPIUser(apiUser string) {
 // SetAPIKey sets the API key.
 func (c *communicatorImpl) SetAPIKey(apiKey string) {
 	c.apiKey = apiKey
+}
+
+// SetHostID sets the host ID for authentication using host credentials instead
+// of API keys.
+func (c *communicatorImpl) SetHostID(hostID string) {
+	c.hostID = hostID
+}
+
+// SetHostID sets the host secret for authentication using host credentials
+// instead of API keys.
+func (c *communicatorImpl) SetHostSecret(hostSecret string) {
+	c.hostSecret = hostSecret
 }

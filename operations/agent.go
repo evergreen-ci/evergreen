@@ -23,12 +23,12 @@ const defaultAgentStatusPort = 2285
 const (
 	agentAPIServerURLFlagName  = "api_server"
 	agentCloudProviderFlagName = "provider"
+	agentHostIDFlagName        = "host_id"
+	agentHostSecretFlagName    = "host_secret"
 )
 
 func Agent() cli.Command {
 	const (
-		hostIDFlagName                     = "host_id"
-		hostSecretFlagName                 = "host_secret"
 		workingDirectoryFlagName           = "working_directory"
 		logOutputFlagName                  = "log_output"
 		logPrefixFlagName                  = "log_prefix"
@@ -49,11 +49,11 @@ func Agent() cli.Command {
 		},
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  hostIDFlagName,
+				Name:  agentHostIDFlagName,
 				Usage: "the ID of the host the agent is running on (applies only to host mode)",
 			},
 			cli.StringFlag{
-				Name:  hostSecretFlagName,
+				Name:  agentHostSecretFlagName,
 				Usage: "secret for the current host (applies only to host mode)",
 			},
 			cli.StringFlag{
@@ -123,8 +123,8 @@ func Agent() cli.Command {
 				mode := c.String(modeFlagName)
 				switch mode {
 				case string(globals.HostMode):
-					catcher.Add(requireStringFlag(hostIDFlagName)(c))
-					catcher.Add(requireStringFlag(hostSecretFlagName)(c))
+					catcher.Add(requireStringFlag(agentHostIDFlagName)(c))
+					catcher.Add(requireStringFlag(agentHostSecretFlagName)(c))
 				case string(globals.PodMode):
 					catcher.Add(requireStringFlag(podIDFlagName)(c))
 					catcher.Add(requireStringFlag(podSecretFlagName)(c))
@@ -145,8 +145,8 @@ func Agent() cli.Command {
 			}
 
 			opts := agent.Options{
-				HostID:                     c.String(hostIDFlagName),
-				HostSecret:                 c.String(hostSecretFlagName),
+				HostID:                     c.String(agentHostIDFlagName),
+				HostSecret:                 c.String(agentHostSecretFlagName),
 				PodID:                      c.String(podIDFlagName),
 				PodSecret:                  c.String(podSecretFlagName),
 				Mode:                       globals.Mode(c.String(modeFlagName)),

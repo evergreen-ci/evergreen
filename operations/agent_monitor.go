@@ -52,6 +52,7 @@ type monitor struct {
 	// Monitor args
 	credentialsPath string
 	clientPath      string
+	hostID          string
 	cloudProvider   string
 	distroID        string
 	shellPath       string
@@ -154,14 +155,24 @@ func agentMonitor() cli.Command {
 			},
 		),
 		Action: func(c *cli.Context) error {
-			comm, err := client.NewCommunicator(c.Parent().String(agentAPIServerURLFlagName))
+			apiServerURL := c.Parent().String(agentAPIServerURLFlagName)
+			hostID := c.Parent().String(agentHostIDFlagName)
+			hostSecret := c.Parent().String(agentHostSecretFlagName)
+			if hostID == "" || hostSecret == "" {
+				return errors.New("host ID and host secret must be set")
+			}
+			comm, err := client.NewCommunicator(apiServerURL)
 			if err != nil {
 				return errors.Wrap(err, "initializing communicator")
 			}
+			comm.SetHostID(hostID)
+			comm.SetHostSecret(hostSecret)
+
 			m := &monitor{
 				comm:            comm,
 				credentialsPath: c.String(credentialsPathFlagName),
 				clientPath:      c.String(clientPathFlagName),
+				hostID:          hostID,
 				distroID:        c.String(distroIDFlagName),
 				cloudProvider:   c.Parent().String(agentCloudProviderFlagName),
 				shellPath:       c.String(shellPathFlagName),
@@ -425,11 +436,43 @@ func (m *monitor) runAgent(ctx context.Context, retry utility.RetryOptions) erro
 	return errors.Wrapf(err, "agent exited with code %d", exitCode)
 }
 
+var errHostPermanentlyUnhealthy = errors.New("host is permanently unhealthy and should stop running agents")
+
 // runMonitor runs the monitor loop. It fetches the agent, starts it, and
 // repeats when the agent terminates.
 func (m *monitor) run(ctx context.Context) {
 	for {
 		if err := utility.Retry(ctx, func() (bool, error) {
+			healthCheck, err := m.checkHost(ctx)
+			if err != nil {
+				return true, errors.Wrap(err, "checking host health")
+			}
+
+			// kim: TODO: check over this logic to ensure it makes sense.
+			// kim: TODO: test logic in smoke test
+			// kim: TODO: test logic in staging
+			if healthCheck.isPermanentlyUnhealthy {
+				grip.Info(message.Fields{
+					"message":     "host status is permanently unhealthy, shutting down",
+					"host_id":     m.hostID,
+					"host_status": healthCheck.status,
+					"distro_id":   m.distroID,
+				})
+				return false, errHostPermanentlyUnhealthy
+			}
+			if !healthCheck.isHealthy {
+				const unhealthyCheckInterval = 10 * time.Minute
+				grip.Info(message.Fields{
+					"message":             "host status is not healthy currently, refusing to run agent and will check again later",
+					"host_id":             m.hostID,
+					"host_status":         healthCheck.status,
+					"distro_id":           m.distroID,
+					"check_interval_secs": unhealthyCheckInterval.Seconds(),
+				})
+				time.Sleep(unhealthyCheckInterval)
+				return true, nil
+			}
+
 			clientURLs, err := m.comm.GetClientURLs(ctx, m.distroID)
 			if err != nil {
 				return true, errors.Wrap(err, "retrieving client URLs")
@@ -468,7 +511,48 @@ func (m *monitor) run(ctx context.Context) {
 				grip.Warning(errors.Wrap(err, "context cancelled while running monitor"))
 				return
 			}
+			if errors.Is(err, errHostPermanentlyUnhealthy) {
+				return
+			}
 			grip.Error(errors.Wrapf(err, "managing agent"))
 		}
+	}
+}
+
+type hostHealthCheck struct {
+	isHealthy              bool
+	isPermanentlyUnhealthy bool
+	status                 string
+}
+
+func (m *monitor) checkHost(ctx context.Context) (hostHealthCheck, error) {
+	apiHost, err := m.comm.PostHostIsUp(ctx, "")
+	if err != nil {
+		return hostHealthCheck{
+			isHealthy:              false,
+			isPermanentlyUnhealthy: false,
+		}, errors.Wrap(err, "getting host to check its status")
+	}
+
+	status := utility.FromStringPtr(apiHost.Status)
+	switch status {
+	case evergreen.HostBuilding, evergreen.HostStarting, evergreen.HostProvisioning, evergreen.HostRunning:
+		return hostHealthCheck{
+			isHealthy:              true,
+			isPermanentlyUnhealthy: false,
+			status:                 status,
+		}, nil
+	case evergreen.HostTerminated:
+		return hostHealthCheck{
+			isHealthy:              false,
+			isPermanentlyUnhealthy: true,
+			status:                 status,
+		}, nil
+	default:
+		return hostHealthCheck{
+			isHealthy:              false,
+			isPermanentlyUnhealthy: false,
+			status:                 status,
+		}, nil
 	}
 }

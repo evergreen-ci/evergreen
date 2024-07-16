@@ -76,8 +76,11 @@ func hostProvision() cli.Command {
 
 			hostID := c.String(hostIDFlagName)
 			hostSecret := c.String(hostSecretFlagName)
+			comm.SetHostID(hostID)
+			comm.SetHostSecret(hostSecret)
+
 			cloudProvider := c.String(cloudProviderFlagName)
-			h, err := postHostIsUp(ctx, comm, hostID, hostSecret, cloudProvider)
+			h, err := postHostIsUp(ctx, comm, hostID, cloudProvider)
 			if err != nil {
 				return errors.Wrap(err, "posting that the host is up")
 			}
@@ -90,7 +93,7 @@ func hostProvision() cli.Command {
 				}
 			}
 
-			opts, err := comm.GetHostProvisioningOptions(ctx, hostID, hostSecret)
+			opts, err := comm.GetHostProvisioningOptions(ctx)
 			if err != nil {
 				return errors.Wrap(err, "getting host provisioning script")
 			}
@@ -113,7 +116,7 @@ func hostProvision() cli.Command {
 	}
 }
 
-func postHostIsUp(ctx context.Context, comm client.Communicator, hostID, hostSecret, cloudProvider string) (*restmodel.APIHost, error) {
+func postHostIsUp(ctx context.Context, comm client.Communicator, hostID, cloudProvider string) (*restmodel.APIHost, error) {
 	var ec2InstanceID string
 	if cloud.IsEC2InstanceID(hostID) {
 		ec2InstanceID = hostID
@@ -129,7 +132,7 @@ func postHostIsUp(ctx context.Context, comm client.Communicator, hostID, hostSec
 		}
 	}
 
-	h, err := comm.PostHostIsUp(ctx, hostID, hostSecret, ec2InstanceID)
+	h, err := comm.PostHostIsUp(ctx, ec2InstanceID)
 	if err != nil {
 		return nil, errors.Wrap(err, "posting that the host is up")
 	}

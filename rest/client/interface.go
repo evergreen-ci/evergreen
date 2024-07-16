@@ -23,10 +23,12 @@ type Communicator interface {
 	SetTimeoutMax(time.Duration)
 	// SetMaxAttempts sets the number of attempts a request will be made.
 	SetMaxAttempts(int)
-	// Client Configuration methods
-	//
+	// Client authentication methods (for users)
 	SetAPIUser(string)
 	SetAPIKey(string)
+	// Client authentication methods (for hosts)
+	SetHostID(string)
+	SetHostSecret(string)
 
 	// Method to release resources used by the communicator.
 	Close()
@@ -126,9 +128,9 @@ type Communicator interface {
 
 	// PostHostIsUp indicates to the app server that the task host is up and
 	// running.
-	PostHostIsUp(ctx context.Context, hostID, hostSecret, instanceID string) (*restmodel.APIHost, error)
+	PostHostIsUp(ctx context.Context, instanceID string) (*restmodel.APIHost, error)
 	// GetHostProvisioningOptions gets the options to provision a host.
-	GetHostProvisioningOptions(ctx context.Context, hostID, hostSecret string) (*restmodel.APIHostProvisioningOptions, error)
+	GetHostProvisioningOptions(ctx context.Context) (*restmodel.APIHostProvisioningOptions, error)
 
 	// CompareTasks returns the order that the given tasks would be scheduled, along with the scheduling logic.
 	CompareTasks(context.Context, []string, bool) ([]string, map[string]map[string]string, error)
