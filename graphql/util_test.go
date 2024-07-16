@@ -403,6 +403,72 @@ func TestIsPatchAuthorForTask(t *testing.T) {
 		})
 	}
 }
+
+func TestHasLogViewPermission(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, userWithRole gimlet.User, userWithoutRole gimlet.User){
+		"TrueWhenUserHasRequiredLevelAndIsNotPatchOwner": func(ctx context.Context, t *testing.T, userWithRole gimlet.User, userWithoutRole gimlet.User) {
+			ctx = gimlet.AttachUser(ctx, userWithRole)
+			task := restModel.APITask{ProjectId: utility.ToStringPtr("project_id_belonging_to_user"), Version: utility.ToStringPtr("random_version_id")}
+			hasAccess, err := hasLogViewPermission(ctx, &task)
+			assert.NoError(t, err)
+			assert.True(t, hasAccess)
+		},
+		"FalseWhenUserDoesNotHaveRequiredLevelAndIsNotPatchOwner": func(ctx context.Context, t *testing.T, userWithRole gimlet.User, userWithoutRole gimlet.User) {
+			ctx = gimlet.AttachUser(ctx, userWithoutRole)
+			task := restModel.APITask{ProjectId: utility.ToStringPtr("project_id_belonging_to_user"), Version: utility.ToStringPtr("random_version_id")}
+			hasAccess, err := hasLogViewPermission(ctx, &task)
+			assert.NoError(t, err)
+			assert.False(t, hasAccess)
+		},
+		"TrueWhenUserIsPatchOwnerButDoesNotHaveViewRole": func(ctx context.Context, t *testing.T, userWithRole gimlet.User, userWithoutRole gimlet.User) {
+			ctx = gimlet.AttachUser(ctx, userWithoutRole)
+			versionAndPatchID := bson.NewObjectId()
+			patch := patch.Patch{
+				Id:     versionAndPatchID,
+				Author: "basic_user",
+			}
+			assert.NoError(t, patch.Insert())
+			task := restModel.APITask{ProjectId: utility.ToStringPtr("random_project_id"), Version: utility.ToStringPtr(versionAndPatchID.Hex()), Requester: utility.ToStringPtr(evergreen.PatchVersionRequester)}
+			hasAccess, err := hasLogViewPermission(ctx, &task)
+			assert.NoError(t, err)
+			assert.True(t, hasAccess)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(user.Collection, evergreen.RoleCollection, evergreen.ScopeCollection, annotations.Collection, task.Collection, patch.Collection))
+			userWithoutRole := user.DBUser{
+				Id: "basic_user",
+			}
+			assert.NoError(t, userWithoutRole.Insert())
+			userWithRole := user.DBUser{
+				Id: "usr_with_log_view_role",
+			}
+			assert.NoError(t, userWithRole.Insert())
+			ctx := gimlet.AttachUser(context.Background(), &userWithRole)
+			env := evergreen.GetEnvironment()
+			roleManager := env.RoleManager()
+			projectScope := gimlet.Scope{
+				ID:        "projectScopeID",
+				Name:      "project scope",
+				Type:      evergreen.ProjectResourceType,
+				Resources: []string{"project_id_belonging_to_user"},
+			}
+			err := roleManager.AddScope(projectScope)
+
+			logViewRole := gimlet.Role{
+				ID:          "view_log",
+				Scope:       projectScope.ID,
+				Permissions: map[string]int{evergreen.PermissionLogs: evergreen.LogsView.Value},
+			}
+			require.NoError(t, roleManager.UpdateRole(logViewRole))
+
+			require.NoError(t, userWithRole.AddRole("view_log"))
+			require.NoError(t, err)
+
+			tCase(ctx, t, &userWithRole, &userWithoutRole)
+		})
+	}
+}
 func TestHasAnnotationPermission(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
 		"TrueWhenUserHasRequiredLevelAndIsNotPatchOwner": func(ctx context.Context, t *testing.T) {
