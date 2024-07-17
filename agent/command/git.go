@@ -866,6 +866,9 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 
 	// For every module, expand the module prefix.
 	for _, moduleName := range conf.BuildVariant.Modules {
+		if conf.NewExpansions.Get(moduleName) != "" {
+			moduleName = conf.NewExpansions.Get(moduleName)
+		}
 		module, err := conf.Project.GetModuleByName(moduleName)
 		if err != nil {
 			return errors.Wrapf(err, "getting module '%s'", moduleName)
