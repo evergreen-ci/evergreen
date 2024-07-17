@@ -408,7 +408,7 @@ func (c *RuntimeEnvironmentsClient) getLatestImageHistory(ctx context.Context, i
 		return nil, errors.Errorf("found more history than history limit provided for image '%s'", imageID)
 	}
 	if resultHistory[0].AMI == "" {
-		return nil, errors.Errorf("latest ami for image '%s' not found", imageID)
+		return nil, errors.Errorf("latest AMI for image '%s' not found", imageID)
 	}
 	if resultHistory[0].CreationDate == "" {
 		return nil, errors.Errorf("creation time for image '%s' not found", imageID)
