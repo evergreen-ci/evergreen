@@ -7,6 +7,7 @@ tasks:
         params:
           directory: src
           token: ${github}
+          is_oauth: true
 
 modules:
   - name: sample
