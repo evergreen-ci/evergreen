@@ -220,7 +220,7 @@
           "saveProjectSettingsForSection": {
             "githubAppAuth": {
               "appId": 12345,
-              "privateKey": "{REDACTED}"
+              "privateKey": ""
             },
             "projectRef": {
               "id": "sandbox_project_id",
