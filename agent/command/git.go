@@ -866,8 +866,9 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 
 	// For every module, expand the module prefix.
 	for _, moduleName := range conf.BuildVariant.Modules {
-		if conf.NewExpansions.Get(moduleName) != "" {
-			moduleName = conf.NewExpansions.Get(moduleName)
+		expanded, err := conf.NewExpansions.ExpandString(moduleName)
+		if err == nil {
+			moduleName = expanded
 		}
 		module, err := conf.Project.GetModuleByName(moduleName)
 		if err != nil {
@@ -886,8 +887,9 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	for _, name := range conf.BuildVariant.Modules {
 		// TODO (DEVPROD-3611): remove capturing the loop variable and use the loop variable directly.
 		moduleName := name
-		if conf.NewExpansions.Get(moduleName) != "" {
-			moduleName = conf.NewExpansions.Get(moduleName)
+		expanded, err := conf.NewExpansions.ExpandString(moduleName)
+		if err == nil {
+			moduleName = expanded
 		}
 		g.Go(func() error {
 			if err := gCtx.Err(); err != nil {

@@ -775,48 +775,6 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 	s.Equal("hello/module", conf.ModulePaths["sample"])
 }
 
-func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModuleWithExpansion() {
-	const correctHash = "3585388b1591dfca47ac26a5b9a564ec8f138a5e"
-	conf := s.taskConfig2
-	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
-	s.Require().NoError(err)
-	conf.BuildVariant.Modules = []string{"${sample_expansion_name}"}
-	conf.Expansions.Put(moduleRevExpansionName("sample"), correctHash)
-	conf.Expansions.Put("sample_expansion_name", "sample")
-
-	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
-		for _, command := range task.Commands {
-			var pluginCmds []Command
-			pluginCmds, err = Render(command, &conf.Project, BlockInfo{})
-			s.NoError(err)
-			s.NotNil(pluginCmds)
-			pluginCmds[0].SetJasperManager(s.jasper)
-			err = pluginCmds[0].Execute(s.ctx, s.comm, logger, conf)
-			s.NoError(err)
-		}
-	}
-
-	cmd := exec.Command("git", "rev-parse", "HEAD")
-	cmd.Dir = conf.WorkDir + "/src/hello/module/sample/"
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err = cmd.Run()
-	s.NoError(err)
-	ref := strings.Trim(out.String(), "\n")
-	s.Equal(correctHash, ref)
-	s.NoError(logger.Close())
-	toCheck := `Using revision/ref '3585388b1591dfca47ac26a5b9a564ec8f138a5e' for module 'sample' (reason: from manifest).`
-	foundMsg := false
-	for _, line := range s.comm.GetTaskLogs(conf.Task.Id) {
-		if line.Data == toCheck {
-			foundMsg = true
-		}
-	}
-	s.True(foundMsg)
-	s.Equal("hello/module", conf.ModulePaths["sample"])
-}
-
 func (s *GitGetProjectSuite) TestMultipleModules() {
 	const sample1Hash = "cf46076567e4949f9fc68e0634139d4ac495c89b"
 	const sample2Hash = "9bdedd0990e83e328e42f7bb8c2771cab6ae0145"
@@ -889,6 +847,48 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
 	conf.Expansions.Put(moduleRevExpansionName("sample"), correctHash)
+
+	for _, task := range conf.Project.Tasks {
+		s.NotEqual(len(task.Commands), 0)
+		for _, command := range task.Commands {
+			var pluginCmds []Command
+			pluginCmds, err = Render(command, &conf.Project, BlockInfo{})
+			s.NoError(err)
+			s.NotNil(pluginCmds)
+			pluginCmds[0].SetJasperManager(s.jasper)
+			err = pluginCmds[0].Execute(s.ctx, s.comm, logger, conf)
+			s.NoError(err)
+		}
+	}
+
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = conf.WorkDir + "/src/hello/module/sample/"
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err = cmd.Run()
+	s.NoError(err)
+	ref := strings.Trim(out.String(), "\n")
+	s.Equal(correctHash, ref)
+	s.NoError(logger.Close())
+	toCheck := `Using revision/ref '3585388b1591dfca47ac26a5b9a564ec8f138a5e' for module 'sample' (reason: from manifest).`
+	foundMsg := false
+	for _, line := range s.comm.GetTaskLogs(conf.Task.Id) {
+		if line.Data == toCheck {
+			foundMsg = true
+		}
+	}
+	s.True(foundMsg)
+	s.Equal("hello/module", conf.ModulePaths["sample"])
+}
+
+func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifestWithExpansion() {
+	const correctHash = "3585388b1591dfca47ac26a5b9a564ec8f138a5e"
+	conf := s.taskConfig2
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
+	conf.BuildVariant.Modules = []string{"${sample_expansion_name}"}
+	conf.Expansions.Put(moduleRevExpansionName("sample"), correctHash)
+	conf.Expansions.Put("sample_expansion_name", "sample")
 
 	for _, task := range conf.Project.Tasks {
 		s.NotEqual(len(task.Commands), 0)
