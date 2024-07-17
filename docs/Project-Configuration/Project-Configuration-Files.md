@@ -281,6 +281,7 @@ Fields:
 -   `modules`: A list of the module names.
     It corresponds to the [modules defined](Project-Configuration-Files#modules)
     and declares what can be used in the [git.get_project](Project-Commands#gitgetproject) command.
+    These can be [expansions](Project-Configuration-Files#expansions).
 -   `tasks`: a list of tasks to run, referenced either by task name or by tags.
     Tasks listed here can also include other task-level fields, such as
     `batchtime`, `cron`, `activate`, `depends_on`, and `run_on`. We can also
