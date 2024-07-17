@@ -899,7 +899,7 @@ func GetDistrosForImage(ctx context.Context, imageID string) ([]Distro, error) {
 	return Find(ctx, bson.M{ImageIDKey: imageID})
 }
 
-// GetImageIdFromDistro returns the imageID corresponding to the given distro.
+// GetImageIDFromDistro returns the imageID corresponding to the given distro.
 func GetImageIDFromDistro(ctx context.Context, distro string) (string, error) {
 	d, err := FindOneId(ctx, distro)
 	if err != nil {
