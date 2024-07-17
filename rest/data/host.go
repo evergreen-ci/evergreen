@@ -318,8 +318,6 @@ func fixProvisioningIntentHost(ctx context.Context, h *host.Host, instanceID str
 		// If the host is an intent host but the agent does not send the EC2
 		// instance ID, there's nothing that can be done to fix it here.
 
-		// kim: TODO: verify that this does not log because when the agent
-		// monitor runs, it already has a real host ID.
 		msg := "intent host is up, but it did not provide an EC2 instance ID, which is required"
 		grip.Warning(message.Fields{
 			"message":     msg,

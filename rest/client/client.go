@@ -94,7 +94,7 @@ func (c *communicatorImpl) SetHostID(hostID string) {
 	c.hostID = hostID
 }
 
-// SetHostID sets the host secret for authentication using host credentials
+// SetHostSecret sets the host secret for authentication using host credentials
 // instead of API keys.
 func (c *communicatorImpl) SetHostSecret(hostSecret string) {
 	c.hostSecret = hostSecret

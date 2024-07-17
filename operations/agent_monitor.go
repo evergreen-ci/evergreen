@@ -436,41 +436,26 @@ func (m *monitor) runAgent(ctx context.Context, retry utility.RetryOptions) erro
 	return errors.Wrapf(err, "agent exited with code %d", exitCode)
 }
 
-var errHostPermanentlyUnhealthy = errors.New("host is permanently unhealthy and should stop running agents")
+var errAgentMonitorShouldExit = errors.New("host's agent monitor should exit")
 
 // runMonitor runs the monitor loop. It fetches the agent, starts it, and
 // repeats when the agent terminates.
 func (m *monitor) run(ctx context.Context) {
 	for {
 		if err := utility.Retry(ctx, func() (bool, error) {
-			healthCheck, err := m.checkHost(ctx)
+			healthCheck, err := m.getHostHealth(ctx)
 			if err != nil {
 				return true, errors.Wrap(err, "checking host health")
 			}
 
-			// kim: TODO: check over this logic to ensure it makes sense.
-			// kim: TODO: test logic in smoke test
-			// kim: TODO: test logic in staging
-			if healthCheck.isPermanentlyUnhealthy {
+			if healthCheck.shouldExit {
 				grip.Info(message.Fields{
-					"message":     "host status is permanently unhealthy, shutting down",
+					"message":     "host status indicates it should exit, shutting down",
 					"host_id":     m.hostID,
 					"host_status": healthCheck.status,
 					"distro_id":   m.distroID,
 				})
-				return false, errHostPermanentlyUnhealthy
-			}
-			if !healthCheck.isHealthy {
-				const unhealthyCheckInterval = 10 * time.Minute
-				grip.Info(message.Fields{
-					"message":             "host status is not healthy currently, refusing to run agent and will check again later",
-					"host_id":             m.hostID,
-					"host_status":         healthCheck.status,
-					"distro_id":           m.distroID,
-					"check_interval_secs": unhealthyCheckInterval.Seconds(),
-				})
-				time.Sleep(unhealthyCheckInterval)
-				return true, nil
+				return false, errAgentMonitorShouldExit
 			}
 
 			clientURLs, err := m.comm.GetClientURLs(ctx, m.distroID)
@@ -511,7 +496,7 @@ func (m *monitor) run(ctx context.Context) {
 				grip.Warning(errors.Wrap(err, "context cancelled while running monitor"))
 				return
 			}
-			if errors.Is(err, errHostPermanentlyUnhealthy) {
+			if errors.Is(err, errAgentMonitorShouldExit) {
 				return
 			}
 			grip.Error(errors.Wrapf(err, "managing agent"))
@@ -520,39 +505,39 @@ func (m *monitor) run(ctx context.Context) {
 }
 
 type hostHealthCheck struct {
-	isHealthy              bool
-	isPermanentlyUnhealthy bool
-	status                 string
+	shouldExit bool
+	status     string
 }
 
-func (m *monitor) checkHost(ctx context.Context) (hostHealthCheck, error) {
+func (m *monitor) getHostHealth(ctx context.Context) (hostHealthCheck, error) {
 	apiHost, err := m.comm.PostHostIsUp(ctx, "")
 	if err != nil {
 		return hostHealthCheck{
-			isHealthy:              false,
-			isPermanentlyUnhealthy: false,
+			shouldExit: false,
 		}, errors.Wrap(err, "getting host to check its status")
 	}
 
 	status := utility.FromStringPtr(apiHost.Status)
-	switch status {
-	case evergreen.HostBuilding, evergreen.HostStarting, evergreen.HostProvisioning, evergreen.HostRunning:
+
+	if utility.FromStringPtr(apiHost.NeedsReprovision) != "" {
+		// If the host needs to reprovision, the agent monitor has to stop to
+		// allow the reprovisioning to happen.
 		return hostHealthCheck{
-			isHealthy:              true,
-			isPermanentlyUnhealthy: false,
-			status:                 status,
+			shouldExit: true,
+			status:     status,
 		}, nil
-	case evergreen.HostTerminated:
+	}
+
+	switch status {
+	case evergreen.HostBuilding, evergreen.HostStarting, evergreen.HostRunning:
 		return hostHealthCheck{
-			isHealthy:              false,
-			isPermanentlyUnhealthy: true,
-			status:                 status,
+			shouldExit: false,
+			status:     status,
 		}, nil
 	default:
 		return hostHealthCheck{
-			isHealthy:              false,
-			isPermanentlyUnhealthy: false,
-			status:                 status,
+			shouldExit: true,
+			status:     status,
 		}, nil
 	}
 }

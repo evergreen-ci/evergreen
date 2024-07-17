@@ -45,6 +45,7 @@ type APIHost struct {
 	AttachedVolumeIDs     []string    `json:"attached_volume_ids"`
 	// Contains options for spawn hosts.
 	ProvisionOptions APIProvisionOptions `json:"provision_options"`
+	NeedsReprovision *string             `json:"needs_reprovision"`
 }
 
 // APIProvisionOptions contains options for spawn hosts.
@@ -153,6 +154,7 @@ func (apiHost *APIHost) buildFromHostStruct(h *host.Host) {
 		attachedVolumeIds = append(attachedVolumeIds, volAttachment.VolumeID)
 	}
 	apiHost.AttachedVolumeIDs = attachedVolumeIds
+	apiHost.NeedsReprovision = utility.ToStringPtr(string(h.NeedsReprovision))
 	if h.ProvisionOptions != nil {
 		apiHost.ProvisionOptions.BuildFromService(*h.ProvisionOptions)
 	}
@@ -176,26 +178,6 @@ func (apiHost *APIHost) buildFromHostStruct(h *host.Host) {
 		BootstrapMethod:      utility.ToStringPtr(h.Distro.BootstrapSettings.Method),
 	}
 	apiHost.Distro = di
-}
-
-// ToService returns a service layer host using the data from the APIHost.
-func (apiHost *APIHost) ToService() host.Host {
-	return host.Host{
-		Id:                    utility.FromStringPtr(apiHost.Id),
-		PersistentDNSName:     utility.FromStringPtr(apiHost.PersistentDNSName),
-		Tag:                   utility.FromStringPtr(apiHost.Tag),
-		Provisioned:           apiHost.Provisioned,
-		NoExpiration:          apiHost.NoExpiration,
-		StartedBy:             utility.FromStringPtr(apiHost.StartedBy),
-		Provider:              utility.FromStringPtr(apiHost.Provider),
-		InstanceType:          utility.FromStringPtr(apiHost.InstanceType),
-		User:                  utility.FromStringPtr(apiHost.User),
-		Status:                utility.FromStringPtr(apiHost.Status),
-		Zone:                  utility.FromStringPtr(apiHost.AvailabilityZone),
-		DisplayName:           utility.FromStringPtr(apiHost.DisplayName),
-		HomeVolumeID:          utility.FromStringPtr(apiHost.HomeVolumeID),
-		LastCommunicationTime: apiHost.LastCommunicationTime,
-	}
 }
 
 type APIVolume struct {
