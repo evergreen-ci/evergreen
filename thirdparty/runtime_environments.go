@@ -365,7 +365,7 @@ func stringToTime(timeInitial string) (time.Time, error) {
 	return time.Unix(timestamp, 0), nil
 }
 
-// Image stores information about an image including its name, version_id, kernel, ami, and its last deployed time.
+// Image stores information about an image including its name, version ID, kernel, AMI, and its last deployed time.
 type Image struct {
 	Name         string
 	VersionID    string
@@ -404,8 +404,6 @@ func (c *RuntimeEnvironmentsClient) getLatestImageHistory(ctx context.Context, i
 	}
 	if len(resultHistory) == 0 {
 		return nil, errors.Errorf("history for image '%s' not found", imageID)
-	} else if len(resultHistory) > 1 {
-		return nil, errors.Errorf("found more history than history limit provided for image '%s'", imageID)
 	}
 	if resultHistory[0].AMI == "" {
 		return nil, errors.Errorf("latest AMI for image '%s' not found", imageID)
