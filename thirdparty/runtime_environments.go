@@ -393,63 +393,54 @@ func (c *RuntimeEnvironmentsClient) getNameFromOSInfo(ctx context.Context, ami s
 }
 
 // getLatestImageHistory returns the latest AMI and timestamp given the provided imageId.
-func (c *RuntimeEnvironmentsClient) getLatestImageHistory(ctx context.Context, imageID string) (string, time.Time, error) {
+func (c *RuntimeEnvironmentsClient) getLatestImageHistory(ctx context.Context, imageID string) (*ImageHistoryInfo, error) {
 	optsHistory := ImageHistoryFilterOptions{
 		ImageID: imageID,
 		Limit:   1,
 	}
 	resultHistory, err := c.getHistory(ctx, optsHistory)
 	if err != nil {
-		return "", time.Time{}, errors.Wrapf(err, "getting history for image '%s': '%s'", imageID, err.Error())
+		return nil, errors.Wrapf(err, "getting history for image '%s': '%s'", imageID, err.Error())
 	}
 	if len(resultHistory) == 0 {
-		return "", time.Time{}, errors.Errorf("history for image '%s' not found", imageID)
+		return nil, errors.Errorf("history for image '%s' not found", imageID)
 	} else if len(resultHistory) > 1 {
-		return "", time.Time{}, errors.Errorf("found more history than history limit provided for image '%s'", imageID)
+		return nil, errors.Errorf("found more history than history limit provided for image '%s'", imageID)
 	}
 	if resultHistory[0].AMI == "" {
-		return "", time.Time{}, errors.Errorf("latest ami for image '%s' not found", imageID)
+		return nil, errors.Errorf("latest ami for image '%s' not found", imageID)
 	}
-	ami := resultHistory[0].AMI
-
 	if resultHistory[0].CreationDate == "" {
-		return "", time.Time{}, errors.Errorf("creation time for image '%s' not found", imageID)
+		return nil, errors.Errorf("creation time for image '%s' not found", imageID)
 	}
-	timestamp, err := stringToTime(resultHistory[0].CreationDate)
-	if err != nil {
-		return "", time.Time{}, errors.Wrap(err, "converting creation time: '%s'")
-	}
-
-	return ami, timestamp, nil
+	return &resultHistory[0], nil
 }
 
 // GetImageInfo returns information about a image.
 func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID string) (*Image, error) {
-	ami, timestamp, err := c.getLatestImageHistory(ctx, imageID)
+	latestImageHistory, err := c.getLatestImageHistory(ctx, imageID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting latest AMI and timestamp")
 	}
-
-	// Determine name field.
-	name, err := c.getNameFromOSInfo(ctx, ami, OSNameField)
+	timestamp, err := stringToTime(latestImageHistory.CreationDate)
+	if err != nil {
+		return nil, errors.Wrap(err, "converting creation time: '%s'")
+	}
+	name, err := c.getNameFromOSInfo(ctx, latestImageHistory.AMI, OSNameField)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting OSInfo '%s' field for image: '%s'", OSNameField, imageID)
 	}
-
-	// Determine kernel field.
-	kernel, err := c.getNameFromOSInfo(ctx, ami, OSKernelField)
+	kernel, err := c.getNameFromOSInfo(ctx, latestImageHistory.AMI, OSKernelField)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting OSInfo '%s' field for image: '%s'", OSKernelField, imageID)
 	}
-
-	// Determine versionID field.
-	versionID, err := c.getNameFromOSInfo(ctx, ami, OSVersionIDField)
+	versionID, err := c.getNameFromOSInfo(ctx, latestImageHistory.AMI, OSVersionIDField)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting OSInfo '%s' field for image: '%s'", OSVersionIDField, imageID)
 	}
 
 	return &Image{
-		AMI:          ami,
+		AMI:          latestImageHistory.AMI,
 		Kernel:       kernel,
 		LastDeployed: timestamp,
 		Name:         name,
