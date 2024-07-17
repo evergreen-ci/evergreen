@@ -299,12 +299,10 @@ evergreen --delete-tag KEY
 Note these tags cannot overwrite Evergreen tags. 
 
 Hosts can be set to never expire using the `--no-expire` option. Keep in mind that if making a host unexpirable from the
-CLI, you should also set up a [sleep schedule](Hosts/Spawn-Hosts#unexpirable-host-sleep-schedules) from the command
-line as well; if you don't set one, your unexpirable host will be automatically assigned a default sleep schedule. The
-sleep schedule can be set in the CLI request. To set daily times when you'd like your host to be running/stopped, set
-`--daily-stop` and `--daily-start`. To set whole weekdays when you'd like your host to be stopped, set `--weekdays-off`.
-To set the time zone for your sleep schedule, set `--timezone`. For example, this command will make a host unexpirable
-and defines a sleep schedule so the host is on from 9 am to 5 pm between Monday and Friday in Eastern Time:
+CLI, you should also set up a [sleep schedule](Hosts/Spawn-Hosts#unexpirable-host-sleep-schedules) from the command line
+as well; if you don't set one, your unexpirable host will be automatically assigned a default sleep schedule. For
+example, this command will make a host unexpirable and defines a sleep schedule so the host is on from 9 am to 5 pm
+between Monday and Friday in Eastern Time:
 
 ```sh
 evergreen host modify --host "<HOST_ID>" --no-expire --daily-start '09:00' --daily-stop '17:00' --weekdays-off Saturday --weekdays-off Sunday --timezone "America/New_York"

@@ -35,7 +35,7 @@ func TestHostPostHandler(t *testing.T) {
 
 	env := &mock.Environment{}
 	assert.NoError(t, env.Configure(ctx))
-	env.EvergreenSettings.Spawnhost.SpawnHostsPerUser = 9
+	env.EvergreenSettings.Spawnhost.SpawnHostsPerUser = 10
 	env.EvergreenSettings.Spawnhost.UnexpirableHostsPerUser = 5
 	var err error
 	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
@@ -155,7 +155,9 @@ func TestHostPostHandler(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, dbHost)
 
-		defaultSchedule := host.GetDefaultSleepSchedule(u.Settings.Timezone)
+		var defaultSchedule host.SleepScheduleOptions
+		defaultSchedule.SetDefaultSchedule()
+		defaultSchedule.SetDefaultTimeZone(u.Settings.Timezone)
 		checkUnexpirableHostSchedule(t, dbHost, defaultSchedule)
 	})
 	t.Run("UnexpirableHostSetsExplicitScheduleWithUserDefaultTimeZone", func(t *testing.T) {
@@ -196,7 +198,9 @@ func TestHostPostHandler(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, dbHost)
 
-		defaultSchedule := host.GetDefaultSleepSchedule("Asia/Seoul")
+		var defaultSchedule host.SleepScheduleOptions
+		defaultSchedule.SetDefaultSchedule()
+		defaultSchedule.SetDefaultTimeZone("Asia/Seoul")
 		checkUnexpirableHostSchedule(t, dbHost, defaultSchedule)
 	})
 	t.Run("UnexpirableHostSetsExplicitScheduleAndExplicitTimeZone", func(t *testing.T) {
@@ -229,6 +233,15 @@ func TestHostPostHandler(t *testing.T) {
 		resp := h.Run(ctx)
 		require.NotZero(t, resp)
 		assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+	})
+	t.Run("ExpirableHostCannotSetSleepSchedule", func(t *testing.T) {
+		h.options.NoExpiration = false
+		var defaultSchedule host.SleepScheduleOptions
+		defaultSchedule.SetDefaultSchedule()
+		h.options.SleepScheduleOptions = defaultSchedule
+		resp := h.Run(ctx)
+		require.NotZero(t, resp)
+		assert.NotEqual(t, http.StatusOK, resp.Status(), resp.Data())
 	})
 }
 
@@ -454,7 +467,10 @@ func TestHostModifyHandlers(t *testing.T) {
 					},
 				}
 				opts := rh.getDefaultedSleepScheduleOpts(h, u)
-				assert.Equal(t, host.GetDefaultSleepSchedule(u.Settings.Timezone), opts)
+				var defaultSchedule host.SleepScheduleOptions
+				defaultSchedule.SetDefaultSchedule()
+				defaultSchedule.SetDefaultTimeZone(u.Settings.Timezone)
+				assert.Equal(t, defaultSchedule, opts)
 			},
 			"IgnoresExpirableHost": func(t *testing.T, h *host.Host, u *user.DBUser) {
 				rh := &hostModifyHandler{options: &host.HostModifyOptions{}}
@@ -465,7 +481,10 @@ func TestHostModifyHandlers(t *testing.T) {
 				h.NoExpiration = true
 				rh := &hostModifyHandler{options: &host.HostModifyOptions{}}
 				opts := rh.getDefaultedSleepScheduleOpts(h, u)
-				assert.Equal(t, host.GetDefaultSleepSchedule(u.Settings.Timezone), opts)
+				var defaultSchedule host.SleepScheduleOptions
+				defaultSchedule.SetDefaultSchedule()
+				defaultSchedule.SetDefaultTimeZone(u.Settings.Timezone)
+				assert.Equal(t, defaultSchedule, opts)
 			},
 			"SetsDefaultTimeZoneWhenSettingSchedule": func(t *testing.T, h *host.Host, u *user.DBUser) {
 				rh := &hostModifyHandler{options: &host.HostModifyOptions{
@@ -505,7 +524,10 @@ func TestHostModifyHandlers(t *testing.T) {
 					},
 				}
 				defaultedOpts := rh.getDefaultedSleepScheduleOpts(h, u)
-				assert.Equal(t, host.GetDefaultSleepSchedule(rh.options.TimeZone), defaultedOpts)
+				var defaultSchedule host.SleepScheduleOptions
+				defaultSchedule.SetDefaultSchedule()
+				defaultSchedule.SetDefaultTimeZone(rh.options.TimeZone)
+				assert.Equal(t, defaultSchedule, defaultedOpts)
 			},
 		} {
 			t.Run(tName, func(t *testing.T) {

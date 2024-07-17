@@ -67,19 +67,8 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "checking expirable host limit"))
 		}
 
-		var defaultTimeZone string
-		if hph.options.TimeZone != "" {
-			defaultTimeZone = hph.options.TimeZone
-		} else if user.Settings.Timezone != "" {
-			defaultTimeZone = user.Settings.Timezone
-		}
-		if !hph.options.HasSchedule() {
-			// If making an unexpirable host and the request did not specify a
-			// sleep schedule, set it to the default sleep schedule to ensure it
-			// sets some sleep schedule.
-			hph.options.SleepScheduleOptions = host.GetDefaultSleepSchedule(defaultTimeZone)
-		}
-		hph.options.SetDefaultTimeZone(defaultTimeZone)
+		hph.options.SleepScheduleOptions.SetDefaultSchedule()
+		hph.options.SetDefaultTimeZone(user.Settings.Timezone)
 	}
 
 	intentHost, err := data.NewIntentHost(ctx, hph.options, user, hph.env)
@@ -200,10 +189,10 @@ func (h *hostModifyHandler) getDefaultedSleepScheduleOpts(existingHost *host.Hos
 
 	optsWithDefaults := h.options.SleepScheduleOptions
 
+	// Since the host already exists and may have a sleep schedule defined, try
+	// using the host's existing time zone as the default.
 	var defaultTimeZone string
-	if h.options.TimeZone != "" {
-		defaultTimeZone = h.options.TimeZone
-	} else if existingHost.SleepSchedule.TimeZone != "" {
+	if existingHost.SleepSchedule.TimeZone != "" {
 		defaultTimeZone = existingHost.SleepSchedule.TimeZone
 	} else if u.Settings.Timezone != "" {
 		defaultTimeZone = u.Settings.Timezone
@@ -213,11 +202,7 @@ func (h *hostModifyHandler) getDefaultedSleepScheduleOpts(existingHost *host.Hos
 		// The unexpirable host does not already have a sleep schedule set
 		// and the request did not specify a new sleep schedule. It needs to
 		// have some sleep schedule set, so just use the default.
-		optsWithDefaults = host.GetDefaultSleepSchedule(defaultTimeZone)
-	} else if optsWithDefaults.HasSchedule() && len(h.options.TimeZone) == 0 {
-		// The host is setting a new sleep schedule. If the user didn't
-		// specify an explicit time zone, just set the default time zone.
-		optsWithDefaults.SetDefaultTimeZone(defaultTimeZone)
+		optsWithDefaults.SetDefaultSchedule()
 	} else if !optsWithDefaults.HasSchedule() && len(h.options.TimeZone) != 0 {
 		// The user is only overwriting the sleep schedule's time zone, so
 		// retain the rest of the host's existing sleep schedule.
@@ -225,6 +210,7 @@ func (h *hostModifyHandler) getDefaultedSleepScheduleOpts(existingHost *host.Hos
 		optsWithDefaults.DailyStartTime = existingHost.SleepSchedule.DailyStartTime
 		optsWithDefaults.DailyStopTime = existingHost.SleepSchedule.DailyStopTime
 	}
+	optsWithDefaults.SetDefaultTimeZone(defaultTimeZone)
 
 	return optsWithDefaults
 }

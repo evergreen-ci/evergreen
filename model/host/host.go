@@ -517,6 +517,18 @@ func (o *SleepScheduleOptions) HasSchedule() bool {
 	return len(o.WholeWeekdaysOff) > 0 || o.DailyStartTime != "" || o.DailyStopTime != ""
 }
 
+// SetDefaultSchedule sets a default sleep schedule if none is provided. This
+// does not specify a default time zone, which must be set using
+// SetDefaultTimeZone.
+func (o *SleepScheduleOptions) SetDefaultSchedule() {
+	if o.HasSchedule() {
+		return
+	}
+	o.WholeWeekdaysOff = []time.Weekday{time.Saturday, time.Sunday}
+	o.DailyStartTime = "08:00"
+	o.DailyStopTime = "20:00"
+}
+
 // SetDefaultTimeZone sets a default time zone if other sleep schedule options
 // are specified and the time zone is not explicitly set. If prefers the given
 // default timezone if it's not empty, but otherwise falls back to using a
@@ -606,18 +618,6 @@ func (o *SleepScheduleOptions) validateDailyTime(t string) error {
 	catcher.NewWhen(mins < 0 || mins >= 60, "minutes must be between 0 and 59 (inclusive)")
 
 	return catcher.Resolve()
-}
-
-// GetDefaultSleepSchedule returns the default sleep schedule in the user's time
-// zone.
-func GetDefaultSleepSchedule(timezone string) SleepScheduleOptions {
-	opts := SleepScheduleOptions{
-		WholeWeekdaysOff: []time.Weekday{time.Saturday, time.Sunday},
-		DailyStartTime:   "08:00",
-		DailyStopTime:    "20:00",
-	}
-	opts.SetDefaultTimeZone(timezone)
-	return opts
 }
 
 type SpawnHostUsage struct {
