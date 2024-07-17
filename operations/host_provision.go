@@ -90,6 +90,7 @@ func hostProvision() cli.Command {
 				// starting the agent.
 				if updatedHostID := utility.FromStringPtr(h.Id); updatedHostID != "" {
 					hostID = updatedHostID
+					comm.SetHostID(hostID)
 				}
 			}
 
