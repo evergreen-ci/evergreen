@@ -435,7 +435,7 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 func (r *taskResolver) ImageID(ctx context.Context, obj *restModel.APITask) (string, error) {
 	imageId, err := distro.GetImageIDFromDistro(ctx, *obj.DistroId)
 	if err != nil {
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("unable to find imageId from distro: '%s'", err.Error()))
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("error finding imageID from distro: '%s'", err.Error()))
 	}
 	return imageId, nil
 }
