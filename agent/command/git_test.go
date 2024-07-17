@@ -773,6 +773,58 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 	s.Equal("hello/module", conf.ModulePaths["sample"])
 }
 
+func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModuleWithExpansion() {
+	const correctHash = "b27779f856b211ffaf97cbc124b7082a20ea8bc0"
+	conf := s.taskConfig2
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
+	s.modelData2.Task.Requester = evergreen.PatchVersionRequester
+	s.taskConfig2.Task.Requester = evergreen.PatchVersionRequester
+	s.comm.GetTaskPatchResponse = &patch.Patch{
+		Patches: []patch.ModulePatch{
+			{
+				ModuleName: "${sample_expansion_value}",
+				Githash:    correctHash,
+			},
+		},
+	}
+	conf.NewExpansions.Put("sample_expansion_value", "sample")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, task := range conf.Project.Tasks {
+		s.NotEqual(len(task.Commands), 0)
+		for _, command := range task.Commands {
+			var pluginCmds []Command
+			pluginCmds, err = Render(command, &conf.Project, BlockInfo{})
+			s.NoError(err)
+			s.NotNil(pluginCmds)
+			pluginCmds[0].SetJasperManager(s.jasper)
+			err = pluginCmds[0].Execute(ctx, s.comm, logger, conf)
+			s.NoError(err)
+		}
+	}
+
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = conf.WorkDir + "/src/hello/module/sample/"
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err = cmd.Run()
+	s.NoError(err)
+	ref := strings.Trim(out.String(), "\n")
+	s.Equal(correctHash, ref) // this revision is defined in the patch, returned by GetTaskPatch
+	s.NoError(logger.Close())
+	toCheck := `Using revision/ref 'b27779f856b211ffaf97cbc124b7082a20ea8bc0' for module 'sample' (reason: specified in set-module).`
+	foundMsg := false
+	for _, line := range s.comm.GetTaskLogs(conf.Task.Id) {
+		if line.Data == toCheck {
+			foundMsg = true
+		}
+	}
+	s.True(foundMsg)
+	s.Equal("hello/module", conf.ModulePaths["sample"])
+}
+
 func (s *GitGetProjectSuite) TestMultipleModules() {
 	const sample1Hash = "cf46076567e4949f9fc68e0634139d4ac495c89b"
 	const sample2Hash = "9bdedd0990e83e328e42f7bb8c2771cab6ae0145"

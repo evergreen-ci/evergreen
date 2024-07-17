@@ -883,6 +883,9 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	for _, name := range conf.BuildVariant.Modules {
 		// TODO (DEVPROD-3611): remove capturing the loop variable and use the loop variable directly.
 		moduleName := name
+		if conf.NewExpansions.Get(moduleName) != "" {
+			moduleName = conf.NewExpansions.Get(moduleName)
+		}
 		g.Go(func() error {
 			if err := gCtx.Err(); err != nil {
 				return nil
