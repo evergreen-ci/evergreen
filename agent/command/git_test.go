@@ -780,6 +780,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModuleWithExpansion() {
 	s.Require().NoError(err)
 	conf.BuildVariant.Modules = []string{"${sample_expansion_name}"}
 	conf.Expansions.Put(moduleRevExpansionName("sample"), correctHash)
+	conf.Expansions.Put("sample_expansion_name", "sample")
 
 	for _, task := range conf.Project.Tasks {
 		s.NotEqual(len(task.Commands), 0)
