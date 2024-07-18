@@ -40,7 +40,7 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/mongodb/amboy v0.0.0-20240712160923-0afebf372092
+	github.com/mongodb/amboy v0.0.0-20240718152556-3b1827bc7168
 	github.com/mongodb/anser v0.0.0-20231019191251-2a589a5299e6
 	github.com/mongodb/grip v0.0.0-20240213223901-f906268d82b9
 	github.com/pkg/errors v0.9.1
