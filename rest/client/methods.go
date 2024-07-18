@@ -528,6 +528,10 @@ func (c *communicatorImpl) GetEstimatedGeneratedTasks(ctx context.Context, patch
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return 0, errors.New("getting an estimated number of activated generated tasks")
+	}
+
 	numTasksToFinalize := model.APINumTasksToFinalize{}
 	if err = utility.ReadJSON(resp.Body, &numTasksToFinalize); err != nil {
 		return 0, errors.Wrap(err, "reading JSON response body")
