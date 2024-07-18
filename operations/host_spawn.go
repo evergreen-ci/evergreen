@@ -86,15 +86,15 @@ func hostCreate() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  dailyStartTimeFlagName,
-				Usage: "for an unexpirable host, the time when the host should start each day for its sleep schedule",
+				Usage: "for an unexpirable host, the time when the host should start each day for its sleep schedule (format: HH:MM, e.g. 12:34)",
 			},
 			cli.StringFlag{
 				Name:  dailyStopTimeFlagName,
-				Usage: "for an unexpirable host, the time when the host should stop each day for its sleep schedule",
+				Usage: "for an unexpirable host, the time when the host should stop each day for its sleep schedule (format: HH:MM, e.g. 12:34)",
 			},
 			cli.StringFlag{
 				Name:  timeZoneFlagName,
-				Usage: "for an unexpirable host, the time zone of the sleep schedule",
+				Usage: "for an unexpirable host, the time zone of the sleep schedule (e.g. America/New_York)",
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(fileFlagName, "f"),
@@ -291,7 +291,7 @@ func hostModify() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  timeZoneFlagName,
-				Usage: "for an unexpirable host, the time zone of the sleep schedule",
+				Usage: "for an unexpirable host, the time zone of the sleep schedule (e.g. America/New_York)",
 			},
 			cli.StringFlag{
 				Name:  addSSHKeyFlag,
