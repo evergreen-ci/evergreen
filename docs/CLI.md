@@ -57,7 +57,7 @@ To repeat a specific patch id, you can use the '--repeat-patch' flag.
 ```
 evergreen patch --repeat-patch <patch_id>
 ```
-Similarly, using the `--repeat-failed` flag will perform the same behavior as the `--reuse` flag, with the only difference being that it will repeat only the failed tasks and build variants from the most recent patch (if any failures exist).
+Similarly, using the `--repeat-failed` flag will perform the same behavior as the `--reuse` flag and by default use the last patch as a reference, with the only difference being that it will repeat only the failed tasks and build variants from the most recent patch (if any failures exist).
 ```
 evergreen patch --repeat-failed
 ```
