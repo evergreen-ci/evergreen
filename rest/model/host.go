@@ -43,6 +43,18 @@ type APIHost struct {
 	CreationTime          *time.Time  `json:"creation_time"`
 	Expiration            *time.Time  `json:"expiration_time"`
 	AttachedVolumeIDs     []string    `json:"attached_volume_ids"`
+	// Contains options for spawn hosts.
+	ProvisionOptions APIProvisionOptions `json:"provision_options"`
+}
+
+// APIProvisionOptions contains options for spawn hosts.
+type APIProvisionOptions struct {
+	// ID of the task that the host was spawned from.
+	TaskID *string `json:"task_id"`
+}
+
+func (apiOpts *APIProvisionOptions) BuildFromService(opts host.ProvisionOptions) {
+	apiOpts.TaskID = utility.ToStringPtr(opts.TaskId)
 }
 
 // HostRequestOptions is a struct that holds the format of a POST request to
@@ -61,11 +73,12 @@ type HostRequestOptions struct {
 	InstanceTags          []host.Tag `json:"instance_tags" yaml:"instance_tags"`
 	InstanceType          string     `json:"instance_type" yaml:"type"`
 	NoExpiration          bool       `json:"no_expiration" yaml:"no-expire"`
-	IsVirtualWorkstation  bool       `json:"is_virtual_workstation" yaml:"is_virtual_workstation"`
-	IsCluster             bool       `json:"is_cluster" yaml:"is_cluster"`
-	HomeVolumeSize        int        `json:"home_volume_size" yaml:"home_volume_size"`
-	HomeVolumeID          string     `json:"home_volume_id" yaml:"home_volume_id"`
-	Expiration            *time.Time `json:"expiration" yaml:"expiration"`
+	host.SleepScheduleOptions
+	IsVirtualWorkstation bool       `json:"is_virtual_workstation" yaml:"is_virtual_workstation"`
+	IsCluster            bool       `json:"is_cluster" yaml:"is_cluster"`
+	HomeVolumeSize       int        `json:"home_volume_size" yaml:"home_volume_size"`
+	HomeVolumeID         string     `json:"home_volume_id" yaml:"home_volume_id"`
+	Expiration           *time.Time `json:"expiration" yaml:"expiration"`
 }
 
 type DistroInfo struct {
@@ -140,6 +153,9 @@ func (apiHost *APIHost) buildFromHostStruct(h *host.Host) {
 		attachedVolumeIds = append(attachedVolumeIds, volAttachment.VolumeID)
 	}
 	apiHost.AttachedVolumeIDs = attachedVolumeIds
+	if h.ProvisionOptions != nil {
+		apiHost.ProvisionOptions.BuildFromService(*h.ProvisionOptions)
+	}
 	imageId, err := h.Distro.GetImageID()
 	if err != nil {
 		// report error but do not fail function because of a bad imageId

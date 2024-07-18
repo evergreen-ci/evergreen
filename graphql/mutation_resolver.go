@@ -744,7 +744,6 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	}
 
 	if spawnHost.SleepSchedule != nil {
-
 		if err = h.UpdateSleepSchedule(ctx, *spawnHost.SleepSchedule, time.Now()); err != nil {
 			gimletErr, ok := err.(gimlet.ErrorResponse)
 			if ok {
@@ -787,26 +786,12 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, err
 	}
 
-	if spawnHostInput.SleepSchedule != nil {
-		if err := spawnHostInput.SleepSchedule.Validate(); err != nil {
-			return nil, InputValidationError.Send(ctx, fmt.Sprintf("Invalid sleep schedule: %s", err))
-		}
-	}
 	spawnHost, err := data.NewIntentHost(ctx, options, usr, evergreen.GetEnvironment())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning host: %s", err))
 	}
 	if spawnHost == nil {
 		return nil, InternalServerError.Send(ctx, "An error occurred Spawn host is nil")
-	}
-	if spawnHostInput.SleepSchedule != nil {
-		if err = spawnHost.UpdateSleepSchedule(ctx, *spawnHostInput.SleepSchedule, time.Now()); err != nil {
-			gimletErr, ok := err.(gimlet.ErrorResponse)
-			if ok {
-				return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
-			}
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting sleep schedule: '%s'", err.Error()))
-		}
 	}
 	apiHost := restModel.APIHost{}
 	apiHost.BuildFromService(spawnHost, nil)

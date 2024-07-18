@@ -1024,6 +1024,30 @@ func (r *queryResolver) Version(ctx context.Context, versionID string) (*restMod
 	return &apiVersion, nil
 }
 
+// Image is the resolver for the image field returning information about an image including kernel, version, ami, name, and last deployed time.
+func (r *queryResolver) Image(ctx context.Context, imageID string) (*thirdparty.Image, error) {
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: '%s'", err.Error()))
+	}
+	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+	result, err := c.GetImageInfo(ctx, imageID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting image info: '%s'", err.Error()))
+	}
+	return result, nil
+}
+
+// Images is the resolver for the images field.
+func (r *queryResolver) Images(ctx context.Context) ([]string, error) {
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: %s", err.Error()))
+	}
+	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+	return c.GetImageNames(ctx)
+}
+
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 

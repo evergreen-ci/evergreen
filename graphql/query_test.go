@@ -180,3 +180,25 @@ func TestMainlineCommits(t *testing.T) {
 		}
 	}
 }
+
+func TestImages(t *testing.T) {
+	config := New("/graphql")
+	ctx := getContext(t)
+	testConfig := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestImages")
+	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
+	res, err := config.Resolvers.Query().Images(ctx)
+	require.NoError(t, err)
+	assert.NotEmpty(t, res)
+}
+
+func TestImage(t *testing.T) {
+	config := New("/graphql")
+	ctx := getContext(t)
+	testConfig := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestImage")
+	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
+	res, err := config.Resolvers.Query().Image(ctx, "ubuntu2204")
+	require.NoError(t, err)
+	assert.NotEmpty(t, res)
+}

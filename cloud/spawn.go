@@ -35,11 +35,12 @@ type SpawnOptions struct {
 	InstanceType          string
 	Region                string
 	NoExpiration          bool
-	IsVirtualWorkstation  bool
-	IsCluster             bool
-	HomeVolumeSize        int
-	HomeVolumeID          string
-	Expiration            *time.Time
+	host.SleepScheduleOptions
+	IsVirtualWorkstation bool
+	IsCluster            bool
+	HomeVolumeSize       int
+	HomeVolumeID         string
+	Expiration           *time.Time
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -81,6 +82,15 @@ func (so *SpawnOptions) validate(ctx context.Context, settings *evergreen.Settin
 	// check for valid base64
 	if _, err = base64.StdEncoding.DecodeString(sections[1]); err != nil {
 		return errors.New("public key contains invalid base64 string")
+	}
+
+	if !so.SleepScheduleOptions.IsZero() {
+		if !so.NoExpiration {
+			return errors.New("cannot set a sleep schedule on an expirable host")
+		}
+		if err := so.SleepScheduleOptions.Validate(); err != nil {
+			return errors.Wrap(err, "invalid sleep schedule options")
+		}
 	}
 
 	return nil
@@ -175,8 +185,15 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 	if so.Expiration != nil {
 		expiration = so.Expiration.Sub(currentTime)
 	}
+	var sleepSchedule host.SleepScheduleInfo
 	if so.NoExpiration {
 		expiration = evergreen.SpawnHostNoExpirationDuration
+
+		schedule, err := host.NewSleepScheduleInfo(so.SleepScheduleOptions)
+		if err != nil {
+			return nil, errors.Wrap(err, "creating sleep schedule")
+		}
+		sleepSchedule = *schedule
 	}
 	hostOptions := host.CreateOptions{
 		Distro:               *d,
@@ -187,6 +204,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		InstanceTags:         so.InstanceTags,
 		InstanceType:         so.InstanceType,
 		NoExpiration:         so.NoExpiration,
+		SleepScheduleInfo:    sleepSchedule,
 		IsVirtualWorkstation: so.IsVirtualWorkstation,
 		IsCluster:            so.IsCluster,
 		HomeVolumeSize:       so.HomeVolumeSize,

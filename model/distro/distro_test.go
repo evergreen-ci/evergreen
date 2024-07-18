@@ -670,3 +670,18 @@ func TestGetDistrosForImage(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, found, 3)
 }
+
+func TestGetImageIDFromDistro(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	assert.NoError(t, db.ClearCollections(Collection))
+	d := &Distro{
+		Id:      "ubuntu1804-large",
+		ImageID: "ubuntu1804",
+	}
+	require.Nil(t, d.Insert(ctx))
+
+	found, err := GetImageIDFromDistro(ctx, "ubuntu1804-large")
+	require.NoError(t, err)
+	assert.Equal(t, found, "ubuntu1804")
+}

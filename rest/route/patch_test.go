@@ -972,6 +972,11 @@ buildvariants:
 	assert.True(t, foundCompile)
 	assert.True(t, foundPassing)
 
+	dbPatch, err := patch.FindOneId(unfinalized.Id.Hex())
+	require.NotNil(t, dbPatch)
+	assert.NoError(t, err)
+	assert.Equal(t, len(dbPatch.VariantsTasks[0].Tasks), len(tasks))
+
 	// valid request, reconfiguring a finalized patch
 	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
@@ -1007,6 +1012,13 @@ buildvariants:
 	assert.True(t, foundFailing)
 	assert.True(t, foundPassing)
 	assert.True(t, foundCompile)
+
+	// ensure that the patch contains both the previously-scheduled and newly-scheduled tasks,
+	// and didn't overwrite the previous tasks with the new tasks
+	dbPatch, err = patch.FindOneId(unfinalized.Id.Hex())
+	require.NotNil(t, dbPatch)
+	assert.NoError(t, err)
+	assert.Equal(t, len(dbPatch.VariantsTasks[0].Tasks), len(tasks))
 
 	// * should select all tasks
 	patch2 := patch.Patch{

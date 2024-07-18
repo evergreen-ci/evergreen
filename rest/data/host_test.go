@@ -177,6 +177,9 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	testUser := &user.DBUser{
 		Id:     testUserID,
 		APIKey: testUserAPIKey,
+		Settings: user.UserSettings{
+			Timezone: "Asia/Macau",
+		},
 	}
 	ctx = gimlet.AttachUser(ctx, testUser)
 	testUser.PubKeys = append(testUser.PubKeys, user.PubKey{
@@ -185,33 +188,74 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	})
 	s.NoError(testUser.Insert())
 
-	options := &restmodel.HostRequestOptions{
-		DistroID:     testDistroID,
-		TaskID:       "",
-		KeyName:      testPublicKeyName,
-		UserData:     testUserdata,
-		InstanceTags: nil,
+	for tName, tCase := range map[string]func(t *testing.T, options *restmodel.HostRequestOptions){
+		"IntentHostCreatedSuccessfully": func(t *testing.T, options *restmodel.HostRequestOptions) {
+			intentHost, err := NewIntentHost(ctx, options, testUser, env)
+			s.NoError(err)
+			s.Require().NotNil(intentHost)
+			foundHost, err := host.FindOneByIdOrTag(ctx, intentHost.Id)
+			s.NotNil(foundHost)
+			s.NoError(err)
+			s.True(foundHost.UserHost)
+			s.Equal(testUserID, foundHost.StartedBy)
+
+			s.Require().Len(foundHost.Distro.ProviderSettingsList, 1)
+			ec2Settings := &cloud.EC2ProviderSettings{}
+			s.NoError(ec2Settings.FromDistroSettings(foundHost.Distro, ""))
+			s.Equal(ec2Settings.UserData, options.UserData)
+
+		},
+		"UnexpirableIntentHostSetsDefaultSleepSchedule": func(t *testing.T, options *restmodel.HostRequestOptions) {
+			options.NoExpiration = true
+			intentHost, err := NewIntentHost(ctx, options, testUser, env)
+			s.NoError(err)
+			s.Require().NotZero(intentHost)
+			s.NotZero(intentHost.SleepSchedule)
+			var defaultSchedule host.SleepScheduleOptions
+			defaultSchedule.SetDefaultSchedule()
+			defaultSchedule.SetDefaultTimeZone(testUser.Settings.Timezone)
+			s.Equal(defaultSchedule.WholeWeekdaysOff, intentHost.SleepSchedule.WholeWeekdaysOff, "default weekdays off should be set for unexpirable host if no explicit sleep schedule")
+			s.Equal(defaultSchedule.DailyStartTime, intentHost.SleepSchedule.DailyStartTime, "default daily start time should be set for unexpirable host if no explicit sleep schedule")
+			s.Equal(defaultSchedule.DailyStopTime, intentHost.SleepSchedule.DailyStopTime, "default daily stop time should be set for unexpirable host if no explicit sleep schedule")
+			s.Equal(defaultSchedule.TimeZone, intentHost.SleepSchedule.TimeZone, "default time zone should match user's time zone")
+		},
+		"UnexpirableIntentHostSetsExplicitSleepSchedule": func(t *testing.T, options *restmodel.HostRequestOptions) {
+			options.NoExpiration = true
+			options.SleepScheduleOptions = host.SleepScheduleOptions{
+				WholeWeekdaysOff: []time.Weekday{time.Friday},
+				DailyStartTime:   "10:00",
+				DailyStopTime:    "16:00",
+			}
+			intentHost, err := NewIntentHost(ctx, options, testUser, env)
+			s.NoError(err)
+			s.Require().NotZero(intentHost)
+			s.NotZero(intentHost.SleepSchedule)
+			s.Equal(options.SleepScheduleOptions.WholeWeekdaysOff, intentHost.SleepSchedule.WholeWeekdaysOff, "should set sleep schedule whole weekdays off")
+			s.Equal(options.SleepScheduleOptions.DailyStartTime, intentHost.SleepSchedule.DailyStartTime, "should set sleep schedule daily start time")
+			s.Equal(options.SleepScheduleOptions.DailyStopTime, intentHost.SleepSchedule.DailyStopTime, "should set sleep schedule daily stop time")
+			s.Equal(testUser.Settings.Timezone, intentHost.SleepSchedule.TimeZone, "default time zone should match user's time zone")
+		},
+		"FailsWithDisallowedInstanceType": func(t *testing.T, options *restmodel.HostRequestOptions) {
+			options.InstanceType = testInstanceType
+			_, err = NewIntentHost(ctx, options, testUser, env)
+			s.Require().Error(err)
+			s.Contains(err.Error(), "not been allowed by admins")
+		},
+	} {
+		s.T().Run(tName, func(t *testing.T) {
+			s.Require().NoError(db.ClearCollections(host.Collection))
+
+			options := &restmodel.HostRequestOptions{
+				DistroID:     testDistroID,
+				TaskID:       "",
+				KeyName:      testPublicKeyName,
+				UserData:     testUserdata,
+				InstanceTags: nil,
+			}
+
+			tCase(t, options)
+		})
 	}
-
-	intentHost, err := NewIntentHost(ctx, options, testUser, env)
-	s.NoError(err)
-	s.Require().NotNil(intentHost)
-	foundHost, err := host.FindOneByIdOrTag(ctx, intentHost.Id)
-	s.NotNil(foundHost)
-	s.NoError(err)
-	s.True(foundHost.UserHost)
-	s.Equal(testUserID, foundHost.StartedBy)
-
-	s.Require().Len(foundHost.Distro.ProviderSettingsList, 1)
-	ec2Settings := &cloud.EC2ProviderSettings{}
-	s.NoError(ec2Settings.FromDistroSettings(foundHost.Distro, ""))
-	s.Equal(ec2Settings.UserData, options.UserData)
-
-	// with instance type
-	options.InstanceType = testInstanceType
-	_, err = NewIntentHost(ctx, options, testUser, env)
-	s.Require().Error(err)
-	s.Contains(err.Error(), "not been allowed by admins")
 }
 
 func (s *HostConnectorSuite) TestFindHostByIdWithOwner() {

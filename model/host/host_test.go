@@ -6153,6 +6153,49 @@ func TestUnsetPersistentDNSInfo(t *testing.T) {
 	}
 }
 
+func TestNewSleepScheduleInfo(t *testing.T) {
+	t.Run("SucceedsWithValidOptions", func(t *testing.T) {
+		info, err := NewSleepScheduleInfo(SleepScheduleOptions{
+			WholeWeekdaysOff: []time.Weekday{time.Sunday},
+			TimeZone:         "Asia/Macau",
+		})
+		assert.NoError(t, err)
+		require.NotZero(t, info)
+		assert.Equal(t, []time.Weekday{time.Sunday}, info.WholeWeekdaysOff)
+		assert.Zero(t, info.DailyStartTime)
+		assert.Zero(t, info.DailyStopTime)
+		assert.Equal(t, "Asia/Macau", info.TimeZone)
+		assert.NotZero(t, info.NextStartTime)
+		assert.NotZero(t, info.NextStopTime)
+	})
+	t.Run("SucceedsWithDefaultOptions", func(t *testing.T) {
+		var defaultOpts SleepScheduleOptions
+		defaultOpts.SetDefaultSchedule()
+		defaultOpts.SetDefaultTimeZone("America/New_York")
+		info, err := NewSleepScheduleInfo(defaultOpts)
+		assert.NoError(t, err)
+		require.NotZero(t, info)
+		assert.ElementsMatch(t, defaultOpts.WholeWeekdaysOff, info.WholeWeekdaysOff)
+		assert.Equal(t, defaultOpts.DailyStartTime, info.DailyStartTime)
+		assert.Equal(t, defaultOpts.DailyStopTime, info.DailyStopTime)
+		assert.Equal(t, defaultOpts.TimeZone, info.TimeZone)
+		assert.NotZero(t, info.NextStartTime)
+		assert.NotZero(t, info.NextStopTime)
+	})
+	t.Run("FailsWithZeroOptions", func(t *testing.T) {
+		info, err := NewSleepScheduleInfo(SleepScheduleOptions{})
+		assert.Error(t, err)
+		assert.Zero(t, info)
+	})
+	t.Run("FailsWithoutTimeZone", func(t *testing.T) {
+		var defaultOpts SleepScheduleOptions
+		defaultOpts.SetDefaultSchedule()
+		info, err := NewSleepScheduleInfo(defaultOpts)
+		assert.Error(t, err)
+		assert.Zero(t, info)
+	})
+}
+
 func TestSleepScheduleInfoValidate(t *testing.T) {
 	t.Run("FailsWithZeroOptions", func(t *testing.T) {
 		assert.Error(t, (&SleepScheduleInfo{}).Validate())

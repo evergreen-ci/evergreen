@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -222,7 +223,21 @@ func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) 
 
 // CanSetPriority is the resolver for the canSetPriority field.
 func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	return *obj.Status == evergreen.TaskUndispatched, nil
+	if *obj.Status == evergreen.TaskUndispatched {
+		return true, nil
+	}
+	if len(obj.ExecutionTasks) != 0 && !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
+		tasks, err := task.FindByExecutionTasksAndMaxExecution(utility.FromStringPtrSlice(obj.ExecutionTasks), obj.Execution)
+		if err != nil {
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding execution tasks for task '%s': %s", *obj.Id, err.Error()))
+		}
+		for _, t := range tasks {
+			if t.Status == evergreen.TaskUndispatched {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 // CanUnschedule is the resolver for the canUnschedule field.
@@ -414,6 +429,15 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 	name := generator.DisplayName
 
 	return &name, nil
+}
+
+// ImageID is the resolver for the imageId field.
+func (r *taskResolver) ImageID(ctx context.Context, obj *restModel.APITask) (string, error) {
+	imageId, err := distro.GetImageIDFromDistro(ctx, *obj.DistroId)
+	if err != nil {
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("error finding imageID from distro: '%s'", err.Error()))
+	}
+	return imageId, nil
 }
 
 // IsPerfPluginEnabled is the resolver for the isPerfPluginEnabled field.

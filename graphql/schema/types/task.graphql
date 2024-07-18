@@ -89,6 +89,7 @@ type Task {
   generateTask: Boolean
   hasCedarResults: Boolean!
   hostId: String
+  imageId: String!
   ingestTime: Time
   isPerfPluginEnabled: Boolean!
   latestExecution: Int!

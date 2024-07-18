@@ -75,7 +75,15 @@ func (s *ParserProjectS3Storage) UpsertOne(ctx context.Context, pp *ParserProjec
 	if err != nil {
 		return errors.Wrapf(err, "marshalling parser project '%s' to BSON", pp.Id)
 	}
-
+	parserProjectLen := len(bsonPP)
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting config")
+	}
+	maxSize := config.TaskLimits.MaxParserProjectSize
+	if maxSize > 0 && parserProjectLen > maxSize {
+		return errors.Errorf("parser project exceeds the system limit (%v > %v bytes).", parserProjectLen, maxSize)
+	}
 	return s.UpsertOneBSON(ctx, pp.Id, bsonPP)
 }
 

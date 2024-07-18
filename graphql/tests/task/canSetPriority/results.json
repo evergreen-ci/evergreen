@@ -4,10 +4,19 @@
       "query_file": "can_set_priority.graphql",
       "result": {
         "data": {
-          "yes": {
+          "undispatchedTask": {
             "canSetPriority": true
           },
-          "no": {
+          "runningTask": {
+            "canSetPriority": false
+          },
+          "runningDisplayTaskWithUndispatchedExecutionTask": {
+            "canSetPriority": true
+          },
+          "runningDisplayTaskWithRunningExecutionTask": {
+            "canSetPriority": false
+          },
+          "finishedDisplayTask": {
             "canSetPriority": false
           }
         }
