@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"os"
 	"strings"
 
@@ -262,7 +263,7 @@ func Patch() cli.Command {
 			}
 
 			if shouldFinalize {
-				shouldContinue, err := checkForLargeNumFinalizedTasks(rc, params, patchId)
+				shouldContinue, err := checkForLargeNumFinalizedTasks(ctx, comm, rc, params, patchId)
 				if err != nil {
 					return err
 				}
@@ -291,7 +292,7 @@ func Patch() cli.Command {
 // checkForLargeNumFinalizedTasks retrieves an un-finalized patch document, counts the number of tasks it contains,
 // and prompts the user with a confirmation popup if the number of tasks is greater than the largeNumFinalizedTasksThreshold.
 // It returns true if the finalization process should go through, and false otherwise.
-func checkForLargeNumFinalizedTasks(rc *legacyClient, params *patchParams, patchId string) (bool, error) {
+func checkForLargeNumFinalizedTasks(ctx context.Context, comm client.Communicator, rc *legacyClient, params *patchParams, patchId string) (bool, error) {
 	if params.SkipConfirm {
 		return true, nil
 	}
@@ -323,13 +324,13 @@ func checkForLargeNumFinalizedTasks(rc *legacyClient, params *patchParams, patch
 		}
 		numTasksToFinalize += len(vt.Tasks)
 	}
-	numEstimatedGeneratedTasks, err := rc.GetEstimatedGeneratedTasks(patchId, tvPairs)
+	numEstimatedGeneratedTasks, err := comm.GetEstimatedGeneratedTasks(ctx, patchId, tvPairs)
 	if err != nil {
 		return false, errors.Wrapf(err, "getting estimated generated tasks for patch '%s'", patchId)
 	}
 	numTasksToFinalize += numEstimatedGeneratedTasks
 	if numTasksToFinalize > largeNumFinalizedTasksThreshold {
-		if !confirm(fmt.Sprintf("This is a large patch build, expected to schedule %d tasks. Finalize anyway?", numTasksToFinalize), true) {
+		if !confirm(fmt.Sprintf("This is a large patch, expected to schedule %d tasks (%d via task generation). Finalize anyway?", numTasksToFinalize, numEstimatedGeneratedTasks), true) {
 			return false, nil
 		}
 	}
@@ -435,7 +436,7 @@ func PatchFile() cli.Command {
 			}
 			defer comm.Close()
 
-			ac, _, err := conf.getLegacyClients()
+			ac, rc, err := conf.getLegacyClients()
 
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
@@ -492,7 +493,7 @@ func PatchFile() cli.Command {
 
 			if shouldFinalize {
 				patchId := newPatch.Id.Hex()
-				shouldContinue, err := checkForLargeNumFinalizedTasks(ac, params, patchId)
+				shouldContinue, err := checkForLargeNumFinalizedTasks(ctx, comm, rc, params, patchId)
 				if err != nil {
 					return err
 				}

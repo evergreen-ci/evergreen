@@ -600,7 +600,9 @@ func (p *countEstimatedGeneratedTasksHandler) Run(ctx context.Context) gimlet.Re
 			numTasksToFinalize += utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks)
 		}
 	}
-	return gimlet.NewTextResponse(numTasksToFinalize)
+	return gimlet.NewJSONResponse(&model.APINumTasksToFinalize{
+		NumTasksToFinalize: utility.ToIntPtr(numTasksToFinalize),
+	})
 }
 
 type patchTasks struct {

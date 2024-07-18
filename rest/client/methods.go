@@ -513,6 +513,29 @@ func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error)
 	return utility.FromStringPtr(banner.Text), nil
 }
 
+// GetEstimatedGeneratedTasks returns the estimated number of generated tasks to be created by an unfinalized patch.
+func (c *communicatorImpl) GetEstimatedGeneratedTasks(ctx context.Context, patchId string, tvPairs []serviceModel.TVPair) (int, error) {
+	if len(tvPairs) == 0 {
+		return 0, nil
+	}
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("patches/%s/estimated_generated_tasks", patchId),
+	}
+	resp, err := c.request(ctx, info, tvPairs)
+	if err != nil {
+		return 0, errors.Wrap(err, "sending request to estimate number of activated generated tasks")
+	}
+	defer resp.Body.Close()
+
+	numTasksToFinalize := model.APINumTasksToFinalize{}
+	if err = utility.ReadJSON(resp.Body, &numTasksToFinalize); err != nil {
+		return 0, errors.Wrap(err, "reading JSON response body")
+	}
+
+	return utility.FromIntPtr(numTasksToFinalize.NumTasksToFinalize), nil
+}
+
 func (c *communicatorImpl) GetUiV2URL(ctx context.Context) (string, error) {
 	info := requestInfo{
 		method: http.MethodGet,

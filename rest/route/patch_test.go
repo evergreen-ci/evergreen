@@ -661,10 +661,9 @@ func (s *CountEstimatedGeneratedTasksSuite) TestFindById() {
 
 	s.route.patchId = "aabbccddeeff001122334455"
 	res := s.route.Run(context.TODO())
-	s.NotNil(res)
-	data := res.Data()
-	s.Equal(http.StatusOK, res.Status())
-	s.Equal(120, data)
+	s.Require().NotNil(res)
+	s.Require().Equal(http.StatusOK, res.Status())
+	s.Equal(120, res.Data())
 }
 
 func TestPatchRawModulesHandler(t *testing.T) {
