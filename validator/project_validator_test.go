@@ -46,15 +46,39 @@ func TestProjectErrorValidators(t *testing.T) {
 		funcName := funcPtr.Name()[strings.LastIndex(funcPtr.Name(), ".")+1:]
 
 		t.Run(funcName, func(t *testing.T) {
-			assert.True(t, variableInFunction(funcBodies, funcName, "Error", map[string]bool{}), "ProjectErrorValidators should return at least one Error")
-			assert.False(t, variableInFunction(funcBodies, funcName, "Warning", map[string]bool{}), "ProjectErrorValidators should never use Warnings")
-			assert.False(t, variableInFunction(funcBodies, funcName, "Notice", map[string]bool{}), "ProjectErrorValidators should never use Notice")
+			assert.True(t, variablesInFunction(funcBodies, funcName, []string{"Error"}, map[string]bool{}), "ProjectErrorValidators should return at least one Error")
+			assert.False(t, variablesInFunction(funcBodies, funcName, []string{"Warning", "Notice"}, map[string]bool{}), "ProjectErrorValidators should never use Warnings or Notices")
 		})
 	}
 }
 
-// variableInFunction recursively checks if a given variable is used in a function or any of the functions it calls.
-func variableInFunction(funcBodies map[string]*ast.BlockStmt, funcName, variable string, visited map[string]bool) bool {
+func TestProjectWarningValidators(t *testing.T) {
+	node, err := parser.ParseFile(token.NewFileSet(), "project_validator.go", nil, parser.AllErrors)
+	require.NoError(t, err)
+	funcBodies := make(map[string]*ast.BlockStmt)
+	ast.Inspect(node, func(n ast.Node) bool {
+		if fn, ok := n.(*ast.FuncDecl); ok {
+			funcBodies[fn.Name.Name] = fn.Body
+		}
+		return true
+	})
+
+	// projectErrorValidators have some restrictions and conventions that they must follow:
+	// 1. They must return an error explicitly.
+	// 2. They must not return any other type of ValidationError level.
+	for _, validator := range projectWarningValidators {
+		funcPtr := runtime.FuncForPC(reflect.ValueOf(validator).Pointer())
+		funcName := funcPtr.Name()[strings.LastIndex(funcPtr.Name(), ".")+1:]
+
+		t.Run(funcName, func(t *testing.T) {
+			assert.False(t, variablesInFunction(funcBodies, funcName, []string{"Error"}, map[string]bool{}), "ProjectWarningValidators should never use Error")
+			assert.True(t, variablesInFunction(funcBodies, funcName, []string{"Warning", "Notice"}, map[string]bool{}), "ProjectWarningValidators return at least one Warning or Notice")
+		})
+	}
+}
+
+// variablesInFunction recursively checks if the given variables are used in a function or any of the functions it calls.
+func variablesInFunction(funcBodies map[string]*ast.BlockStmt, funcName string, variables []string, visited map[string]bool) bool {
 	if visited[funcName] {
 		return false
 	}
@@ -68,7 +92,13 @@ func variableInFunction(funcBodies map[string]*ast.BlockStmt, funcName, variable
 	found := false
 	ast.Inspect(body, func(n ast.Node) bool {
 		// Check if the variable is used directly in the function.
-		if ident, ok := n.(*ast.Ident); ok && ident.Name == variable {
+		if ident, ok := n.(*ast.Ident); ok && utility.StringSliceContains(variables, ident.Name) {
+			// If the object is nil, that means it is a call expression.
+			// e.g. (error).Error() would match the identifier for the
+			// call expression if the variable = "Error".
+			if ident.Obj == nil {
+				return true
+			}
 			found = true
 			return false
 		}
@@ -76,7 +106,7 @@ func variableInFunction(funcBodies map[string]*ast.BlockStmt, funcName, variable
 		if callExpr, ok := n.(*ast.CallExpr); ok {
 			// If this is a call expression, get the function identifier.
 			if funIdent, ok := callExpr.Fun.(*ast.Ident); ok {
-				if variableInFunction(funcBodies, funIdent.Name, variable, visited) {
+				if variablesInFunction(funcBodies, funIdent.Name, variables, visited) {
 					found = true
 					return false
 				}

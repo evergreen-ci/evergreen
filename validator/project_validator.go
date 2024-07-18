@@ -122,6 +122,9 @@ type ValidationInput struct {
 }
 
 // Functions used to validate the syntax of a project configuration file.
+// These are expected to only return ValidationError's with
+// a level of Error ValidationLevel. They must also explicitly return
+// Error as opposed to leaving the field blank.
 var projectErrorValidators = []projectValidator{
 	validateBVFields,
 	validateDependencyGraph,
@@ -151,6 +154,8 @@ var projectConfigErrorValidators = []projectConfigValidator{
 }
 
 // Functions used to validate the semantics of a project configuration file.
+// These are expected to only return ValidationError's with
+// a level of Warning ValidationLevel or Notice ValidationLevel.
 var projectWarningValidators = []projectValidator{
 	checkTaskGroups,
 	checkProjectFields,
