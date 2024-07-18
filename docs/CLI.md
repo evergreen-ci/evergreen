@@ -53,9 +53,17 @@ To use the same tasks and variants defined for the previous patch created for th
 ```
 evergreen patch --reuse
 ```
-Similarly, to using the `--repeat-failed` flag will perform the same behavior as the `--reuse` flag, with the only difference being that it will repeat only the failed tasks and build variants from the most recent patch (if any failures exist).
+To repeat a specific patch id, you can use the '--repeat-patch' flag.
+```
+evergreen patch --repeat-patch <patch_id>
+```
+Similarly, using the `--repeat-failed` flag will perform the same behavior as the `--reuse` flag and by default use the last patch as a reference, with the only difference being that it will repeat only the failed tasks and build variants from the most recent patch (if any failures exist).
 ```
 evergreen patch --repeat-failed
+```
+To repeat the failed of a specific patch, the '--repeat-failed' flag can be used with the '--repeat-patch' flag to specify the patch id.
+```
+evergreen patch --repeat-failed --repeat-patch <patch_id>
 ```
 
 To skip all (y/n) prompts, the `-y` keyword can be given:

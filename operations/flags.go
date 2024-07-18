@@ -274,18 +274,18 @@ func addUncommittedChangesFlag(flags ...cli.Flag) []cli.Flag {
 }
 
 func addReuseFlags(flags ...cli.Flag) []cli.Flag {
-	message := "repeat %s: use the %s tasks/variants defined for the %s patch"
+	message := "repeat %s: use the %s tasks/variants defined for the %s patch %s"
 	res := append(flags, cli.BoolFlag{
 		Name:  joinFlagNames(repeatDefinitionFlag, "reuse"),
-		Usage: fmt.Sprintf(message, "latest", "same", "latest"),
+		Usage: fmt.Sprintf(message, "latest", "same", "latest", ""),
 	})
 	res = append(res, cli.BoolFlag{
 		Name:  joinFlagNames(repeatFailedDefinitionFlag, "rf"),
-		Usage: fmt.Sprintf(message, "latest failed", "failed", "latest"),
+		Usage: fmt.Sprintf(message, "latest failed", "failed", "latest", "(can be overridden by the --reuse-patch flag)"),
 	})
 	res = append(res, cli.StringFlag{
 		Name:  joinFlagNames(repeatPatchIdFlag, "reuse-patch"),
-		Usage: fmt.Sprintf(message, "specific patch", "same", "given"),
+		Usage: fmt.Sprintf(message, "specific patch", "same", "given", ""),
 	})
 	return res
 }
