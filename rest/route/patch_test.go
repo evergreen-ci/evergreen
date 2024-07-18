@@ -663,7 +663,8 @@ func (s *CountEstimatedGeneratedTasksSuite) TestFindById() {
 	res := s.route.Run(context.TODO())
 	s.Require().NotNil(res)
 	s.Require().Equal(http.StatusOK, res.Status())
-	s.Equal(120, res.Data())
+	result := (res.Data()).(*restmodel.APINumTasksToFinalize)
+	s.Equal(utility.ToIntPtr(120), result.NumTasksToFinalize)
 }
 
 func TestPatchRawModulesHandler(t *testing.T) {
