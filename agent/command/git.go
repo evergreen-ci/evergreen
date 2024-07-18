@@ -71,7 +71,7 @@ type gitFetchProject struct {
 	Revisions map[string]string `plugin:"expand"`
 
 	Token   string `plugin:"expand" mapstructure:"token"`
-	isOauth bool   `mapstructure:"is_oauth"`
+	IsOauth bool   `mapstructure:"is_oauth"`
 
 	// ShallowClone sets CloneDepth to 100, and is kept for backwards compatibility.
 	ShallowClone bool `mapstructure:"shallow_clone"`
@@ -494,7 +494,7 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
-	projectMethod, projectToken, err := getProjectMethodAndToken(ctx, comm, td, conf, c.Token, c.isOauth)
+	projectMethod, projectToken, err := getProjectMethodAndToken(ctx, comm, td, conf, c.Token, c.IsOauth)
 	if err != nil {
 		return errors.Wrap(err, "getting method of cloning and token")
 	}
