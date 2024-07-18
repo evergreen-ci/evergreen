@@ -2497,13 +2497,26 @@ func (p *ProjectRef) isActiveCronTimeRange(proposedCron time.Time, now time.Time
 	return !proposedCron.Before(now.Add(-cronActiveRange))
 }
 
-// isValidBVCron checks if a proposed time to activate a cron for a build
-// variant is valid. A cron scheduled to activate in the future is always valid,
-// but if the cron is scheduled to run in the past, that mean it will run
-// immediately. Crons scheduled for the past are only valid if they've recently
-// passed the proposed cron time and there's no conflicting cron that will
-// activate or has already activated.
+// isValidBVCron checks is a build variant cron is valid.
 func (p *ProjectRef) isValidBVCron(bv *BuildVariant, proposedCron time.Time, now time.Time) (bool, error) {
+	return p.isValidCron(proposedCron, now, func(mostRecentCommit *Version) bool {
+		for _, bvStatus := range mostRecentCommit.BuildVariants {
+			if bvStatus.BuildVariant != bv.Name {
+				continue
+			}
+
+			return p.isActiveCronTimeRange(bvStatus.ActivateAt, now)
+		}
+		return false
+	})
+}
+
+// isValidBVCron checks if a proposed time to activate a cron. A cron scheduled
+// to activate in the future is always valid, but if the cron is scheduled to
+// run in the past, that mean it will run immediately. Crons scheduled for the
+// past are only valid if they've recently passed the proposed cron time and
+// there's no conflicting cron that will activate or has already activated.
+func (p *ProjectRef) isValidCron(proposedCron time.Time, now time.Time, isDuplicateCron func(mostRecentCommit *Version) bool) (bool, error) {
 	if !p.isActiveCronTimeRange(proposedCron, now) {
 		return false, nil
 	}
@@ -2521,15 +2534,7 @@ func (p *ProjectRef) isValidBVCron(bv *BuildVariant, proposedCron time.Time, now
 		return true, nil
 	}
 
-	for _, bvStatus := range mostRecentCommit.BuildVariants {
-		if bvStatus.BuildVariant != bv.Name {
-			continue
-		}
-
-		return !p.isActiveCronTimeRange(bvStatus.ActivateAt, now), nil
-	}
-
-	return true, nil
+	return !isDuplicateCron(mostRecentCommit), nil
 }
 
 // GetActivationTimeForTask returns the time at which this task should next be
@@ -2589,45 +2594,24 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, versionCr
 	return versionCreateTime, nil
 }
 
-// isValidTaskCron checks if a proposed time to activate a cron for a task is
-// valid. A cron scheduled to activate in the future is always valid,
-// but if the cron is scheduled to run in the past, that mean it will run
-// immediately. Crons scheduled for the past are only valid if they've recently
-// passed the proposed cron time and there's no conflicting cron that could
-// activate.
+// isValidBVCron checks is a build variant cron is valid.
 func (p *ProjectRef) isValidTaskCron(bvtu *BuildVariantTaskUnit, proposedCron time.Time, now time.Time) (bool, error) {
-	if !p.isActiveCronTimeRange(proposedCron, now) {
-		return false, nil
-	}
-
-	// Cron is scheduled in the past (i.e. it will activate immediately), but
-	// it's within the allowed delay. Check that no other conflicting cron was
-	// already scheduled to activate in that delay period - if there is a cron
-	// that is activated/will activate soon, then this cron conflicts and is
-	// therefore invalid.
-	mostRecentCommit, err := VersionFindOne(VersionByMostRecentNonIgnored(p.Id, now))
-	if err != nil {
-		return false, errors.Wrap(err, "getting most recent commit version")
-	}
-	if mostRecentCommit == nil {
-		return true, nil
-	}
-
-	for _, bvStatus := range mostRecentCommit.BuildVariants {
-		if bvStatus.BuildVariant != bvtu.Variant {
-			continue
-		}
-
-		for _, taskStatus := range bvStatus.BatchTimeTasks {
-			if taskStatus.TaskName != bvtu.Name {
+	return p.isValidCron(proposedCron, now, func(mostRecentCommit *Version) bool {
+		for _, bvStatus := range mostRecentCommit.BuildVariants {
+			if bvStatus.BuildVariant != bvtu.Variant {
 				continue
 			}
 
-			return !p.isActiveCronTimeRange(taskStatus.ActivateAt, now), nil
-		}
-	}
+			for _, taskStatus := range bvStatus.BatchTimeTasks {
+				if taskStatus.TaskName != bvtu.Name {
+					continue
+				}
 
-	return true, nil
+				return p.isActiveCronTimeRange(taskStatus.ActivateAt, now)
+			}
+		}
+		return false
+	})
 }
 
 // GetGithubProjectConflicts returns any potential conflicts; i.e. regardless of whether or not
