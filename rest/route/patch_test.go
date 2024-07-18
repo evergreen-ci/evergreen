@@ -1275,7 +1275,7 @@ tasks:
 			task.GeneratedJSONAsStringKey: generatedProject,
 		}})
 	assert.NoError(t, err)
-	j := units.NewGenerateTasksJob(tasks[0].Version, tasks[0].Id, "1")
+	j := units.NewGenerateTasksJob(env, tasks[0].Version, tasks[0].Id, "1")
 	j.Run(context.Background())
 	assert.NoError(t, j.Error())
 
