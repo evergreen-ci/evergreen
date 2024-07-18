@@ -1301,7 +1301,7 @@ func isPatchAuthorForTask(ctx context.Context, obj *restModel.APITask) (bool, er
 	return false, nil
 }
 
-func hasLogViewPermission(ctx context.Context, obj *restModel.APITask) (bool, error) {
+func hasLogViewPermission(ctx context.Context, obj *restModel.APITask) bool {
 	authUser := gimlet.GetUser(ctx)
 	permissions := gimlet.PermissionOpts{
 		Resource:      *obj.ProjectId,
@@ -1309,10 +1309,7 @@ func hasLogViewPermission(ctx context.Context, obj *restModel.APITask) (bool, er
 		Permission:    evergreen.PermissionLogs,
 		RequiredLevel: evergreen.LogsView.Value,
 	}
-	if authUser.HasPermission(permissions) {
-		return true, nil
-	}
-	return isPatchAuthorForTask(ctx, obj)
+	return authUser.HasPermission(permissions)
 }
 
 func hasAnnotationPermission(ctx context.Context, obj *restModel.APITask, requiredLevel int) (bool, error) {

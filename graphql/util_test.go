@@ -406,32 +406,17 @@ func TestIsPatchAuthorForTask(t *testing.T) {
 
 func TestHasLogViewPermission(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, userWithRole gimlet.User, userWithoutRole gimlet.User){
-		"TrueWhenUserHasRequiredLevelAndIsNotPatchOwner": func(ctx context.Context, t *testing.T, userWithRole gimlet.User, userWithoutRole gimlet.User) {
+		"TrueWhenUserHasRequiredPermission": func(ctx context.Context, t *testing.T, userWithRole gimlet.User, userWithoutRole gimlet.User) {
 			ctx = gimlet.AttachUser(ctx, userWithRole)
 			task := restModel.APITask{ProjectId: utility.ToStringPtr("project_id_belonging_to_user"), Version: utility.ToStringPtr("random_version_id")}
-			hasAccess, err := hasLogViewPermission(ctx, &task)
-			assert.NoError(t, err)
+			hasAccess := hasLogViewPermission(ctx, &task)
 			assert.True(t, hasAccess)
 		},
-		"FalseWhenUserDoesNotHaveRequiredLevelAndIsNotPatchOwner": func(ctx context.Context, t *testing.T, userWithRole gimlet.User, userWithoutRole gimlet.User) {
+		"FalseWhenUserDoesNotHaveRequiredPermission": func(ctx context.Context, t *testing.T, userWithRole gimlet.User, userWithoutRole gimlet.User) {
 			ctx = gimlet.AttachUser(ctx, userWithoutRole)
 			task := restModel.APITask{ProjectId: utility.ToStringPtr("project_id_belonging_to_user"), Version: utility.ToStringPtr("random_version_id")}
-			hasAccess, err := hasLogViewPermission(ctx, &task)
-			assert.NoError(t, err)
+			hasAccess := hasLogViewPermission(ctx, &task)
 			assert.False(t, hasAccess)
-		},
-		"TrueWhenUserIsPatchOwnerButDoesNotHaveViewRole": func(ctx context.Context, t *testing.T, userWithRole gimlet.User, userWithoutRole gimlet.User) {
-			ctx = gimlet.AttachUser(ctx, userWithoutRole)
-			versionAndPatchID := bson.NewObjectId()
-			patch := patch.Patch{
-				Id:     versionAndPatchID,
-				Author: "basic_user",
-			}
-			assert.NoError(t, patch.Insert())
-			task := restModel.APITask{ProjectId: utility.ToStringPtr("random_project_id"), Version: utility.ToStringPtr(versionAndPatchID.Hex()), Requester: utility.ToStringPtr(evergreen.PatchVersionRequester)}
-			hasAccess, err := hasLogViewPermission(ctx, &task)
-			assert.NoError(t, err)
-			assert.True(t, hasAccess)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
