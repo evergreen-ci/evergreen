@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -56,6 +57,38 @@ func TestProvisioningCreateHostJob(t *testing.T) {
 			foundHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.HostTerminated, foundHost.Status)
+		},
+		"ThrottlesIntentHostAtGlobalMaxDynamicHosts": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
+			const maxHosts = 50
+
+			// Create enough active task hosts to exceed the global max dynamic
+			// hosts limit, meaning any more host creation should be throttled.
+			statuses := []string{evergreen.HostDecommissioned, evergreen.HostStarting, evergreen.HostRunning}
+			for i := 0; i < maxHosts+1; i++ {
+				statusIdx := i % len(statuses)
+				taskHost := host.Host{
+					Id:        fmt.Sprintf("task_host_%d", i),
+					Distro:    h.Distro,
+					Provider:  evergreen.ProviderNameEc2Fleet,
+					StartedBy: evergreen.User,
+					Status:    statuses[statusIdx],
+				}
+				require.NoError(t, taskHost.Insert(ctx))
+			}
+
+			h.UserHost = false
+			require.NoError(t, h.Insert(ctx))
+			assert.True(t, h.IsSubjectToHostCreationThrottle(), "host should respect host creation throttle")
+
+			env.Settings().HostInit.MaxTotalDynamicHosts = maxHosts
+
+			j := NewHostCreateJob(env, *h, "", 0, true)
+			j.Run(ctx)
+			assert.NoError(t, j.Error())
+
+			foundHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			assert.Zero(t, foundHost, "host creation should have been throttled due to hitting global dynamic max hosts")
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
