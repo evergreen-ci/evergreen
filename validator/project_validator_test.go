@@ -63,9 +63,7 @@ func TestProjectWarningValidators(t *testing.T) {
 		return true
 	})
 
-	// projectErrorValidators have some restrictions and conventions that they must follow:
-	// 1. They must return an error explicitly.
-	// 2. They must not return any other type of ValidationError level.
+	// projectWarningValidators must only return Warning or Notice.
 	for _, validator := range projectWarningValidators {
 		funcPtr := runtime.FuncForPC(reflect.ValueOf(validator).Pointer())
 		funcName := funcPtr.Name()[strings.LastIndex(funcPtr.Name(), ".")+1:]
