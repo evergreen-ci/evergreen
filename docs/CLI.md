@@ -306,7 +306,19 @@ evergreen --delete-tag KEY
 ```
 Note these tags cannot overwrite Evergreen tags. 
 
-Hosts can be set to never expire using the `--no-expire` tag (although each user has a limit for these kinds of hosts). Hosts can be set to expire again using the `--expire` tag, which will set the host to expire in 24 hours. This expiration can be extended using `--extend <hours>`, and you can extend its lifetime up to a max of 30 days past host creation.
+Hosts can be set to never expire using the `--no-expire` option. Keep in mind that if making a host unexpirable from the
+CLI, you should also set up a [sleep schedule](Hosts/Spawn-Hosts#unexpirable-host-sleep-schedules) from the command line
+as well; if you don't set one, your unexpirable host will be automatically assigned a default sleep schedule. For
+example, this command will make a host unexpirable and defines a sleep schedule so the host is on from 9 am to 5 pm
+between Monday and Friday in Eastern Time:
+
+```sh
+evergreen host modify --host "<HOST_ID>" --no-expire --daily-start '09:00' --daily-stop '17:00' --weekdays-off Saturday --weekdays-off Sunday --timezone "America/New_York"
+```
+
+Hosts can be set to expire again using the `--expire` option, which will set the host to expire in 24 hours. This
+expiration can be extended using `--extend <hours>`, and you can extend its lifetime up to a max of 30 days past host
+creation. There are limits on the number of spawn hosts (expirable or unexpirable) that a user can have at once.
 
 
 ### Stop/Start Host to Change Instance Type

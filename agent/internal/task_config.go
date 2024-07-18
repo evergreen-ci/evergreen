@@ -62,6 +62,7 @@ type TaskConfig struct {
 // block is executed, the cleanup function(s) are added to the TaskConfig. When
 // the command block is finished, the cleanup function(s) are collected by the
 // TaskContext and executed depending on what command block was executed.
+// For every command cleanup, a span is created with the Command as the name.
 type CommandCleanup struct {
 	// Command is the name of the command from (base).FullDisplayName().
 	Command string

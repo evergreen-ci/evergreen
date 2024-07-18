@@ -31,9 +31,37 @@ func TestGetOSInfo(t *testing.T) {
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config, "TestGetOSInfo")
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
-	result, err := c.getOSInfo(ctx, "ami-0e12ef25a5f7712a4", 0, 10)
+
+	// Verify that providing no AMI produces an error.
+	_, err := c.GetOSInfo(ctx, OSInfoFilterOptions{})
+	assert.Error(err)
+
+	// Verify that we correctly filter only providing the AMI.
+	opts := OSInfoFilterOptions{
+		AMI: "ami-0e12ef25a5f7712a4",
+	}
+	result, err := c.GetOSInfo(ctx, opts)
+	require.NoError(t, err)
+	assert.NotEmpty(result)
+
+	// Verify that we correctly filter by AMI and limit.
+	opts = OSInfoFilterOptions{
+		AMI:   "ami-0e12ef25a5f7712a4",
+		Page:  0,
+		Limit: 10,
+	}
+	result, err = c.GetOSInfo(ctx, opts)
 	require.NoError(t, err)
 	assert.Len(result, 10)
+
+	// Verify that we correctly filter by AMI and name.
+	opts = OSInfoFilterOptions{
+		AMI:  "ami-0f6b89500372d4a06",
+		Name: "Kernel",
+	}
+	result, err = c.GetOSInfo(ctx, opts)
+	require.NoError(t, err)
+	assert.NotEmpty(result)
 }
 
 func TestGetPackages(t *testing.T) {
@@ -187,25 +215,44 @@ func TestGetHistory(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, config, "TestGetHistory")
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
-	// Verify that getHistory errors when not provided the required distro field.
-	_, err := c.getHistory(ctx, DistroHistoryFilterOptions{})
+	// Verify that getHistory errors when not provided the required imageid field.
+	_, err := c.getHistory(ctx, ImageHistoryFilterOptions{})
 	assert.Error(err)
 
 	// Verify that getHistory provides images for a distribution.
-	result, err := c.getHistory(ctx, DistroHistoryFilterOptions{Distro: "ubuntu2204"})
+	result, err := c.getHistory(ctx, ImageHistoryFilterOptions{ImageID: "ubuntu2204"})
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
 
 	// Verify that getHistory functions correctly with page and limit.
-	opts := DistroHistoryFilterOptions{
-		Distro: "ubuntu2204",
-		Page:   0,
-		Limit:  15,
+	opts := ImageHistoryFilterOptions{
+		ImageID: "ubuntu2204",
+		Page:    0,
+		Limit:   15,
 	}
 	result, err = c.getHistory(ctx, opts)
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
 	assert.Len(result, 15)
+}
+
+func TestGetImageInfo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert := assert.New(t)
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config, "TestGetImageInfo")
+	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+
+	result, err := c.GetImageInfo(ctx, "ubuntu2204")
+	require.NoError(t, err)
+	require.NotEmpty(t, result)
+	assert.NotEmpty(result.Name)
+	assert.NotEmpty(result.VersionID)
+	assert.NotEmpty(result.Kernel)
+	assert.NotEmpty(result.LastDeployed)
+	assert.NotEmpty(result.AMI)
 }
 
 func TestGetEvents(t *testing.T) {
@@ -214,6 +261,7 @@ func TestGetEvents(t *testing.T) {
 
 	assert := assert.New(t)
 	config := testutil.TestConfig()
+
 	testutil.ConfigureIntegrationTest(t, config, "TestGetEvents")
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 

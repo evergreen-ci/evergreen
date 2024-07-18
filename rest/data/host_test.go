@@ -211,7 +211,9 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 			s.NoError(err)
 			s.Require().NotZero(intentHost)
 			s.NotZero(intentHost.SleepSchedule)
-			defaultSchedule := host.GetDefaultSleepSchedule(testUser.Settings.Timezone)
+			var defaultSchedule host.SleepScheduleOptions
+			defaultSchedule.SetDefaultSchedule()
+			defaultSchedule.SetDefaultTimeZone(testUser.Settings.Timezone)
 			s.Equal(defaultSchedule.WholeWeekdaysOff, intentHost.SleepSchedule.WholeWeekdaysOff, "default weekdays off should be set for unexpirable host if no explicit sleep schedule")
 			s.Equal(defaultSchedule.DailyStartTime, intentHost.SleepSchedule.DailyStartTime, "default daily start time should be set for unexpirable host if no explicit sleep schedule")
 			s.Equal(defaultSchedule.DailyStopTime, intentHost.SleepSchedule.DailyStopTime, "default daily stop time should be set for unexpirable host if no explicit sleep schedule")

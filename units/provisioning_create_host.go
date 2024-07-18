@@ -217,6 +217,12 @@ func (j *createHostJob) Run(ctx context.Context) {
 
 	defer func() {
 		if j.IsLastAttempt() && j.HasErrors() && (j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) && j.host.SpawnOptions.SpawnedByTask {
+			grip.Error(message.WrapError(j.Error(), message.Fields{
+				"message": "no attempts remaining to create host",
+				"outcome": "giving up on creating this host",
+				"host_id": j.HostID,
+				"distro":  j.host.Distro.Id,
+			}))
 			if err := task.AddHostCreateDetails(j.host.StartedBy, j.host.Id, j.host.SpawnOptions.TaskExecutionNumber, j.Error()); err != nil {
 				j.AddError(errors.Wrapf(err, "adding host create error details"))
 			}

@@ -1,0 +1,21 @@
+{
+    "tasks": [
+      {
+        "_id": "task-1",
+        "distro": "ubuntu1604-large",
+        "branch": "spruce"
+      }
+    ], 
+    "distro": [
+        {
+          "_id": "ubuntu1604-large",
+          "image_id": "ubuntu1604"
+        }
+    ],
+    "project_ref": [
+        {
+          "_id": "spruce",
+          "identifier": "spruce"
+        }
+    ]
+  }
