@@ -24,7 +24,7 @@ func (r *projectSettingsResolver) GithubAppAuth(ctx context.Context, obj *restMo
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding GitHub app for project '%s': %s", utility.FromStringPtr(obj.ProjectRef.Id), err.Error()))
 	}
-	// It's valid for a project to not have a Github app defined.
+	// It's valid for a project to not have a GitHub app defined.
 	if app == nil {
 		return nil, nil
 	}

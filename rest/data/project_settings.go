@@ -473,7 +473,8 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	// This section does not support repo-level at this time.
 	case model.ProjectPageGithubAppSettingsSection:
 		mergedSection.Id = mergedBeforeRef.Id
-		if changes.GithubAppAuth.AppID != int(before.GitHubAppAuth.AppID) {
+		if changes.GithubAppAuth.AppID != int(before.GitHubAppAuth.AppID) ||
+			utility.FromStringPtr(changes.GithubAppAuth.PrivateKey) != string(before.GitHubAppAuth.PrivateKey) {
 			if err = mergedSection.SetGithubAppCredentials(int64(changes.GithubAppAuth.AppID), []byte(utility.FromStringPtr(changes.GithubAppAuth.PrivateKey))); err != nil {
 				return nil, errors.Wrap(err, "updating GitHub app credentials")
 			}
