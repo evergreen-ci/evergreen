@@ -1,0 +1,5 @@
+{
+  task(taskId: "task-1") {
+    imageId
+  }
+}

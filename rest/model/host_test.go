@@ -10,6 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type hostCompare struct {
@@ -87,5 +89,19 @@ func TestHostBuildFromService(t *testing.T) {
 				So(utility.FromStringPtr(apiHost.Status), ShouldEqual, utility.FromStringPtr(hc.ah.Status))
 			}
 		})
+	})
+
+	t.Run("BuildFromServicePopulatesProvisionOptionsForHostSpawnedFromTask", func(t *testing.T) {
+		h := host.Host{
+			Id: "host_id",
+			ProvisionOptions: &host.ProvisionOptions{
+				TaskId: "task_id",
+			},
+		}
+		var apiHost APIHost
+		apiHost.BuildFromService(&h, nil)
+		assert.Equal(t, h.Id, utility.FromStringPtr(apiHost.Id))
+		require.NotZero(t, apiHost.ProvisionOptions)
+		assert.Equal(t, h.ProvisionOptions.TaskId, utility.FromStringPtr(apiHost.ProvisionOptions.TaskID))
 	})
 }

@@ -66,6 +66,9 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 		if err := CheckUnexpirableHostLimitExceeded(ctx, user.Id, hph.env.Settings().Spawnhost.UnexpirableHostsPerUser); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "checking expirable host limit"))
 		}
+
+		hph.options.SleepScheduleOptions.SetDefaultSchedule()
+		hph.options.SetDefaultTimeZone(user.Settings.Timezone)
 	}
 
 	intentHost, err := data.NewIntentHost(ctx, hph.options, user, hph.env)
@@ -136,10 +139,21 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		allowedTypes := h.env.Settings().Providers.AWS.AllowedInstanceTypes
 		catcher.Add(cloud.CheckInstanceTypeValid(ctx, foundHost.Distro, h.options.InstanceType, allowedTypes))
 	}
-	if h.options.NoExpiration != nil && *h.options.NoExpiration {
+	willBeUnexpirable := utility.FromBoolPtr(h.options.NoExpiration)
+	if willBeUnexpirable {
 		catcher.AddWhen(h.options.AddHours != 0, errors.New("can't specify no expiration and new expiration"))
 		catcher.Add(CheckUnexpirableHostLimitExceeded(ctx, user.Id, h.env.Settings().Spawnhost.UnexpirableHostsPerUser))
 	}
+
+	if !willBeUnexpirable && !foundHost.NoExpiration && !h.options.SleepScheduleOptions.IsZero() {
+		catcher.New("cannot set a sleep schedule on an expirable host")
+	}
+	if willBeUnexpirable || (foundHost.NoExpiration && !foundHost.SleepSchedule.PermanentlyExempt) {
+		// If the host is already or will become unexpirable, then it must have
+		// a sleep schedule set.
+		h.options.SleepScheduleOptions = h.getDefaultedSleepScheduleOpts(foundHost, user)
+	}
+
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "invalid host modify request"))
 	}
@@ -159,6 +173,46 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
+}
+
+// getDefaultedSleepScheduleOpts gets the sleep schedule options (if any) to
+// modify the host. If this is only partially modifying the sleep schedule (e.g.
+// just setting the time zone and nothing else), it'll attempt to retain the
+// rest of the host's existing sleep schedule settings.
+func (h *hostModifyHandler) getDefaultedSleepScheduleOpts(existingHost *host.Host, u *user.DBUser) host.SleepScheduleOptions {
+	if !existingHost.NoExpiration && !utility.FromBoolPtr(h.options.NoExpiration) {
+		return h.options.SleepScheduleOptions
+	}
+	if existingHost.SleepSchedule.PermanentlyExempt {
+		return h.options.SleepScheduleOptions
+	}
+
+	optsWithDefaults := h.options.SleepScheduleOptions
+
+	// Since the host already exists and may have a sleep schedule defined, try
+	// using the host's existing time zone as the default.
+	var defaultTimeZone string
+	if existingHost.SleepSchedule.TimeZone != "" {
+		defaultTimeZone = existingHost.SleepSchedule.TimeZone
+	} else if u.Settings.Timezone != "" {
+		defaultTimeZone = u.Settings.Timezone
+	}
+
+	if !optsWithDefaults.HasSchedule() && existingHost.SleepSchedule.IsZero() {
+		// The unexpirable host does not already have a sleep schedule set
+		// and the request did not specify a new sleep schedule. It needs to
+		// have some sleep schedule set, so just use the default.
+		optsWithDefaults.SetDefaultSchedule()
+	} else if !optsWithDefaults.HasSchedule() && len(h.options.TimeZone) != 0 {
+		// The user is only overwriting the sleep schedule's time zone, so
+		// retain the rest of the host's existing sleep schedule.
+		optsWithDefaults.WholeWeekdaysOff = existingHost.SleepSchedule.WholeWeekdaysOff
+		optsWithDefaults.DailyStartTime = existingHost.SleepSchedule.DailyStartTime
+		optsWithDefaults.DailyStopTime = existingHost.SleepSchedule.DailyStopTime
+	}
+	optsWithDefaults.SetDefaultTimeZone(defaultTimeZone)
+
+	return optsWithDefaults
 }
 
 // checkTemporaryExemption validates whether it's allowed to extend the

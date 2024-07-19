@@ -315,7 +315,7 @@ func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewTextResponse(t.S3Path(t.BuildVariant, t.DisplayName))
 }
 
-// GET /task/sync_read_credentials
+// GET /tasks/sync/read_credentials
 
 type taskSyncReadCredentialsGetHandler struct{}
 

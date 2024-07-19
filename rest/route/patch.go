@@ -549,13 +549,8 @@ type patchTasks struct {
 	// Optional, if sent will update the patch's description
 	Description string `json:"description"`
 	// Required, these are the variants and tasks that the patch should run.
-	// Each variant object is of the format { "variant": "\<variant name>",
-	// "tasks": ["task name"] }. This field is analogous in syntax and usage to
-	// the "buildvariants" field in the project's evergreen.yml file. Names of
-	// display tasks can be specified in the tasks array and will work as one
-	// would expect. For an already-scheduled patch, any new tasks in this array
-	// will be created, and any existing tasks not in this array will be
-	// unscheduled.
+	// For an already-scheduled patch, any new tasks in this array will be
+	// created and any existing tasks not in this array will be unscheduled.
 	Variants []variant `json:"variants"`
 }
 

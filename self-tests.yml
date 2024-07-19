@@ -598,7 +598,7 @@ tasks:
     tags: ["db", "test"]
     name: test-plugin
   - <<: *run-go-test-suite-with-mongodb-useast
-    tags: ["db", "test"]
+    tags: ["db", "test", "skip-container"]
     name: test-graphql
   - name: test-repotracker
     tags: ["db", "test"]

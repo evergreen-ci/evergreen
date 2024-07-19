@@ -53,9 +53,17 @@ To use the same tasks and variants defined for the previous patch created for th
 ```
 evergreen patch --reuse
 ```
-Similarly, to using the `--repeat-failed` flag will perform the same behavior as the `--reuse` flag, with the only difference being that it will repeat only the failed tasks and build variants from the most recent patch (if any failures exist).
+To repeat a specific patch id, you can use the '--repeat-patch' flag.
+```
+evergreen patch --repeat-patch <patch_id>
+```
+Similarly, using the `--repeat-failed` flag will perform the same behavior as the `--reuse` flag and by default use the last patch as a reference, with the only difference being that it will repeat only the failed tasks and build variants from the most recent patch (if any failures exist).
 ```
 evergreen patch --repeat-failed
+```
+To repeat the failed of a specific patch, the '--repeat-failed' flag can be used with the '--repeat-patch' flag to specify the patch id.
+```
+evergreen patch --repeat-failed --repeat-patch <patch_id>
 ```
 
 To skip all (y/n) prompts, the `-y` keyword can be given:
@@ -298,7 +306,19 @@ evergreen --delete-tag KEY
 ```
 Note these tags cannot overwrite Evergreen tags. 
 
-Hosts can be set to never expire using the `--no-expire` tag (although each user has a limit for these kinds of hosts). Hosts can be set to expire again using the `--expire` tag, which will set the host to expire in 24 hours. This expiration can be extended using `--extend <hours>`, and you can extend its lifetime up to a max of 30 days past host creation.
+Hosts can be set to never expire using the `--no-expire` option. Keep in mind that if making a host unexpirable from the
+CLI, you should also set up a [sleep schedule](Hosts/Spawn-Hosts#unexpirable-host-sleep-schedules) from the command line
+as well; if you don't set one, your unexpirable host will be automatically assigned a default sleep schedule. For
+example, this command will make a host unexpirable and defines a sleep schedule so the host is on from 9 am to 5 pm
+between Monday and Friday in Eastern Time:
+
+```sh
+evergreen host modify --host "<HOST_ID>" --no-expire --daily-start '09:00' --daily-stop '17:00' --weekdays-off Saturday --weekdays-off Sunday --timezone "America/New_York"
+```
+
+Hosts can be set to expire again using the `--expire` option, which will set the host to expire in 24 hours. This
+expiration can be extended using `--extend <hours>`, and you can extend its lifetime up to a max of 30 days past host
+creation. There are limits on the number of spawn hosts (expirable or unexpirable) that a user can have at once.
 
 
 ### Stop/Start Host to Change Instance Type
