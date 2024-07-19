@@ -1426,7 +1426,7 @@ func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, proj
 func (c *communicatorImpl) GetTaskSyncReadCredentials(ctx context.Context) (*evergreen.S3Credentials, error) {
 	info := requestInfo{
 		method: http.MethodGet,
-		path:   "/task/sync_read_credentials",
+		path:   "/tasks/sync/read_credentials",
 	}
 
 	resp, err := c.request(ctx, info, nil)
