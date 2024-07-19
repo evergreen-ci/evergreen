@@ -717,3 +717,8 @@ func (i *APIGeneratedTaskInfo) BuildFromService(dbInfo task.GeneratedTaskInfo) {
 	i.BuildVariant = dbInfo.BuildVariant
 	i.BuildVariantDisplayName = dbInfo.BuildVariantDisplayName
 }
+
+// APINumTasksToFinalize contains information on the number of tasks a generator is set to finalize.
+type APINumTasksToFinalize struct {
+	NumTasksToFinalize *int `json:"num_tasks_to_finalize"`
+}

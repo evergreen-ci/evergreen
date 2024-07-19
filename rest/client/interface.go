@@ -140,6 +140,9 @@ type Communicator interface {
 	GetTaskLogs(context.Context, GetTaskLogsOptions) (io.ReadCloser, error)
 	// GetTaskLogs returns test logs for the given task.
 	GetTestLogs(context.Context, GetTestLogsOptions) (io.ReadCloser, error)
+
+	// GetEstimatedGeneratedTasks returns the estimated number of generated tasks to be created by an unfinalized patch.
+	GetEstimatedGeneratedTasks(context.Context, string, []model.TVPair) (int, error)
 }
 
 // GetTaskLogsOptions are the options for fetching task logs for a given task.
