@@ -443,6 +443,10 @@ var errAgentMonitorShouldExit = errors.New("host's agent monitor should exit")
 func (m *monitor) run(ctx context.Context) {
 	for {
 		if err := utility.Retry(ctx, func() (bool, error) {
+			// Check the host health before actually starting a new agent. If
+			// the host is in a state where it cannot run tasks (e.g.
+			// indefinitely for quarantined hosts, or permanently for terminated
+			// hosts), the agent cannot run tasks anyways.
 			healthCheck, err := m.getHostHealth(ctx)
 			if err != nil {
 				return true, errors.Wrap(err, "checking host health")
