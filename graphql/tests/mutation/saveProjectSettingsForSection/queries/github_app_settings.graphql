@@ -2,6 +2,7 @@ mutation {
   saveProjectSettingsForSection(
     projectSettings: {
       projectId: "sandbox_project_id"
+      githubAppAuth: { appId: 12345, privateKey: "secret" }
       projectRef: {
         id: "sandbox_project_id"
         githubPermissionGroupByRequester: {
@@ -12,6 +13,10 @@ mutation {
     }
     section: GITHUB_APP_SETTINGS
   ) {
+    githubAppAuth {
+      appId
+      privateKey
+    }
     projectRef {
       id
       githubPermissionGroupByRequester

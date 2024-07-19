@@ -218,6 +218,10 @@
       "result": {
         "data": {
           "saveProjectSettingsForSection": {
+            "githubAppAuth": {
+              "appId": 12345,
+              "privateKey": ""
+            },
             "projectRef": {
               "id": "sandbox_project_id",
               "githubPermissionGroupByRequester": {

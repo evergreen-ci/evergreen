@@ -1988,22 +1988,23 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 		return nil, errors.Wrapf(err, "finding subscription for project '%s'", p.Id)
 	}
 
+	githubApp, err := FindOneGithubAppAuth(p.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding GitHub app for project '%s'", p.Id)
+	}
+	if githubApp == nil {
+		githubApp = &evergreen.GithubAppAuth{}
+	}
+
 	projectSettingsEvent := ProjectSettings{
 		ProjectRef:         *p,
+		GitHubAppAuth:      *githubApp,
 		GithubHooksEnabled: hasEvergreenAppInstalled,
 		Vars:               *projectVars,
 		Aliases:            projectAliases,
 		Subscriptions:      subscriptions,
 	}
 
-	githubAppID, err := GetGitHubAppID(p.Id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding github app for project '%s'", p.Id)
-	}
-	if githubAppID != nil {
-		projectSettingsEvent.GitHubAppID = *githubAppID
-
-	}
 	return &projectSettingsEvent, nil
 }
 

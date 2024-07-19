@@ -189,6 +189,11 @@ input PromoteVarsToRepoInput {
   varNames: [String!]!
 }
 
+input GithubAppAuthInput {
+  appId: Int!
+  privateKey: String!
+}
+
 ###### TYPES ######
 """
 GroupedProjects is the return value for the projects & viewableProjectRefs queries.
@@ -329,4 +334,9 @@ type ParsleyFilter {
   expression: String!
   caseSensitive: Boolean!
   exactMatch: Boolean!
+}
+
+type GithubAppAuth {
+  appId: Int
+  privateKey: String
 }

@@ -27,6 +27,7 @@ update the settings for a given project.
 input ProjectSettingsInput {
   projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
   aliases: [ProjectAliasInput!]
+  githubAppAuth: GithubAppAuthInput @redactSecrets
   githubWebhooksEnabled: Boolean
   projectRef: ProjectInput
   subscriptions: [SubscriptionInput!]
@@ -89,6 +90,7 @@ ProjectSettings models the settings for a given Project.
 """
 type ProjectSettings {
   aliases: [ProjectAlias!]
+  githubAppAuth: GithubAppAuth
   githubWebhooksEnabled: Boolean!
   projectRef: Project @requireProjectSettingsAccess
   subscriptions: [GeneralSubscription!]

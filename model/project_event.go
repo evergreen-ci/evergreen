@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -15,12 +16,12 @@ import (
 )
 
 type ProjectSettings struct {
-	ProjectRef         ProjectRef           `bson:"proj_ref" json:"proj_ref"`
-	GithubHooksEnabled bool                 `bson:"github_hooks_enabled" json:"github_hooks_enabled"`
-	Vars               ProjectVars          `bson:"vars" json:"vars"`
-	Aliases            []ProjectAlias       `bson:"aliases" json:"aliases"`
-	Subscriptions      []event.Subscription `bson:"subscriptions" json:"subscriptions"`
-	GitHubAppID        int64                `bson:"github_app_id" json:"github_app_id"`
+	ProjectRef         ProjectRef              `bson:"proj_ref" json:"proj_ref"`
+	GitHubAppAuth      evergreen.GithubAppAuth `bson:"github_app_auth" json:"github_app_auth"`
+	GithubHooksEnabled bool                    `bson:"github_hooks_enabled" json:"github_hooks_enabled"`
+	Vars               ProjectVars             `bson:"vars" json:"vars"`
+	Aliases            []ProjectAlias          `bson:"aliases" json:"aliases"`
+	Subscriptions      []event.Subscription    `bson:"subscriptions" json:"subscriptions"`
 }
 
 type ProjectSettingsEvent struct {
