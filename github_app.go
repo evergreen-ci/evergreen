@@ -299,6 +299,6 @@ func createInstallationTokenForID(ctx context.Context, authFields *GithubAppAuth
 
 // RedactPrivateKey redacts the GitHub app's private key so that it's not exposed via the UI or GraphQL.
 func (g *GithubAppAuth) RedactPrivateKey() *GithubAppAuth {
-	g.PrivateKey = []byte("{REDACTED}")
+	g.PrivateKey = []byte(RedactedValue)
 	return g
 }

@@ -380,7 +380,9 @@ const (
 	HostServicePasswordExpansion = "host_service_password"
 
 	// RedactedValue is the value that is shown in the REST API and UI for redacted values.
-	RedactedValue = "<REDACTED>"
+	RedactedValue       = "{REDACTED}"
+	RedactedAfterValue  = "{REDACTED_AFTER}"
+	RedactedBeforeValue = "{REDACTED_BEFORE}"
 )
 
 var VersionSucceededStatuses = []string{
