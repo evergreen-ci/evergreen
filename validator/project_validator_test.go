@@ -139,7 +139,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
+		errs := validateStatusesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -163,7 +163,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
+		errs := validateStatusesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -187,7 +187,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
+		errs := validateStatusesForTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, Error, errs[0].Level)
@@ -216,7 +216,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
+		errs := validateStatusesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -237,7 +237,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
+		errs := validateStatusesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -263,7 +263,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
+		errs := validateStatusesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -289,7 +289,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
+		errs := validateStatusesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -310,7 +310,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
+		errs := validateStatusesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -334,7 +334,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
+		errs := validateStatusesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -358,7 +358,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
+		errs := validateStatusesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -378,7 +378,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
+		errs := validateStatusesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -402,7 +402,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
+		errs := validateStatusesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -426,7 +426,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := validateTaskDependencies(&p)
+		errs := validateStatusesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -455,7 +455,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)
@@ -481,7 +481,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -508,7 +508,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -529,7 +529,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -550,7 +550,7 @@ buildvariants:
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)
@@ -578,7 +578,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -603,7 +603,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)
@@ -631,7 +631,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -656,7 +656,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)
@@ -679,7 +679,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -700,7 +700,7 @@ buildvariants:
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)
@@ -726,7 +726,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -751,7 +751,7 @@ buildvariants:
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)
@@ -777,7 +777,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -799,7 +799,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)
@@ -821,7 +821,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -845,7 +845,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -881,7 +881,7 @@ buildvariants:
 				},
 			},
 		}
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)
@@ -907,7 +907,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		assert.Empty(t, errs)
 	})
@@ -928,7 +928,7 @@ buildvariants:
 		var p model.Project
 		_, err := model.LoadProjectInto(ctx, []byte(projYAML), nil, "", &p)
 		require.NoError(t, err)
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)
@@ -964,7 +964,7 @@ buildvariants:
 				},
 			},
 		}
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)
@@ -1001,7 +1001,7 @@ buildvariants:
 				},
 			},
 		}
-		errs := checkTaskDependencies(&p)
+		errs := checkReferencesForTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
 		assert.Equal(t, Warning, errs[0].Level)

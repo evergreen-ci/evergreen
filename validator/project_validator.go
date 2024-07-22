@@ -130,7 +130,7 @@ var projectErrorValidators = []projectValidator{
 	validateDependencyGraph,
 	validatePluginCommands,
 	validateProjectFields,
-	validateTaskDependencies,
+	validateStatusesForTaskDependencies,
 	validateTaskNames,
 	validateBVNames,
 	validateBVBatchTimes,
@@ -162,7 +162,7 @@ var projectWarningValidators = []projectValidator{
 	checkTaskRuns,
 	checkModules,
 	checkTasks,
-	checkTaskDependencies,
+	checkReferencesForTaskDependencies,
 	checkRequestersForTaskDependencies,
 	checkBuildVariants,
 	checkTaskUsage,
@@ -1585,9 +1585,9 @@ func checkTaskRuns(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// validateTaskDependencies checks that, for all tasks that have
+// validateStatusesForTaskDependencies checks that, for all tasks that have
 // the status field is a valid status.
-func validateTaskDependencies(project *model.Project) ValidationErrors {
+func validateStatusesForTaskDependencies(project *model.Project) ValidationErrors {
 	var errs ValidationErrors
 	for _, bvtu := range project.FindAllBuildVariantTasks() {
 		for _, d := range bvtu.DependsOn {
@@ -1605,11 +1605,11 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// checkTaskDependencies checks that, for all tasks that have
+// checkReferencesForTaskDependencies checks that, for all tasks that have
 // dependencies, those dependencies set the expected fields and all dependencies
 // reference tasks that will actually run. For example, if task t1 in build
 // variant bv1 depends on task t2, t2 should also be listed under bv1.
-func checkTaskDependencies(project *model.Project) ValidationErrors {
+func checkReferencesForTaskDependencies(project *model.Project) ValidationErrors {
 	bvtus := map[model.TVPair]model.BuildVariantTaskUnit{}
 	bvs := map[string]struct{}{}
 	tasks := map[string]struct{}{}
