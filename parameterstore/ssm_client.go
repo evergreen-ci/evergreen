@@ -61,7 +61,7 @@ func (c *ssmClient) getParameters(ctx context.Context, parameters []string) ([]p
 		if param.Name == nil || param.Value == nil || param.LastModifiedDate == nil {
 			continue
 		}
-		params = append(params, parameter{id: *param.Name, value: *param.Value, lastUpdate: *param.LastModifiedDate})
+		params = append(params, parameter{ID: *param.Name, Value: *param.Value, LastUpdate: *param.LastModifiedDate})
 	}
 	return params, nil
 }

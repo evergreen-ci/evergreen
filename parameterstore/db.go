@@ -39,6 +39,7 @@ func (p *parameterStore) setLocalValue(ctx context.Context, name, value string) 
 	return errors.Wrapf(err, "setting value for '%s'", name)
 }
 
+// SetLastUpdate sets the time a parameter has last been updated in its backing data source.
 func (p *parameterStore) SetLastUpdate(ctx context.Context, name string, updated time.Time) error {
 	_, err := p.opts.Database.Collection(collection).UpdateOne(
 		ctx,
