@@ -122,12 +122,15 @@ type ValidationInput struct {
 }
 
 // Functions used to validate the syntax of a project configuration file.
+// These are expected to only return ValidationError's with
+// a level of Error ValidationLevel. They must also explicitly return
+// Error as opposed to leaving the field blank.
 var projectErrorValidators = []projectValidator{
 	validateBVFields,
 	validateDependencyGraph,
 	validatePluginCommands,
 	validateProjectFields,
-	validateTaskDependencies,
+	validateStatusesForTaskDependencies,
 	validateTaskNames,
 	validateBVNames,
 	validateBVBatchTimes,
@@ -151,12 +154,15 @@ var projectConfigErrorValidators = []projectConfigValidator{
 }
 
 // Functions used to validate the semantics of a project configuration file.
+// These are expected to only return ValidationError's with
+// a level of Warning ValidationLevel or Notice ValidationLevel.
 var projectWarningValidators = []projectValidator{
 	checkTaskGroups,
 	checkProjectFields,
 	checkTaskRuns,
 	checkModules,
 	checkTasks,
+	checkReferencesForTaskDependencies,
 	checkRequestersForTaskDependencies,
 	checkBuildVariants,
 	checkTaskUsage,
@@ -399,6 +405,7 @@ func validateAllDependenciesSpec(project *model.Project) ValidationErrors {
 					if dependency.Variant == "" || coveredVariants[dependency.Variant] {
 						errs = append(errs,
 							ValidationError{
+								Level: Error,
 								Message: fmt.Sprintf("task '%s' contains the all dependencies (%s)' "+
 									"specification and other explicit dependencies or duplicate variants",
 									task.Name, model.AllDependencies),
@@ -733,6 +740,7 @@ func validateBVFields(project *model.Project) ValidationErrors {
 	if len(project.BuildVariants) == 0 {
 		return ValidationErrors{
 			{
+				Level:   Error,
 				Message: "must specify at least one buildvariant",
 			},
 		}
@@ -742,6 +750,7 @@ func validateBVFields(project *model.Project) ValidationErrors {
 		if buildVariant.Name == "" {
 			errs = append(errs,
 				ValidationError{
+					Level:   Error,
 					Message: "all buildvariants must have a name",
 				},
 			)
@@ -749,6 +758,7 @@ func validateBVFields(project *model.Project) ValidationErrors {
 		if len(buildVariant.Tasks) == 0 {
 			errs = append(errs,
 				ValidationError{
+					Level: Error,
 					Message: fmt.Sprintf("buildvariant '%s' must have at least one task",
 						buildVariant.Name),
 				},
@@ -790,6 +800,7 @@ func validateBVFields(project *model.Project) ValidationErrors {
 			if !taskHasValidDistro {
 				errs = append(errs,
 					ValidationError{
+						Level: Error,
 						Message: fmt.Sprintf("buildvariant '%s' "+
 							"must either specify run_on field or have every task specify run_on",
 							buildVariant.Name),
@@ -810,6 +821,7 @@ func validateProjectFields(project *model.Project) ValidationErrors {
 	if project.BatchTime < 0 {
 		errs = append(errs,
 			ValidationError{
+				Level:   Error,
 				Message: "'batchtime' must be non-negative",
 			},
 		)
@@ -819,6 +831,7 @@ func validateProjectFields(project *model.Project) ValidationErrors {
 		if !utility.StringSliceContains(evergreen.ValidCommandTypes, project.CommandType) {
 			errs = append(errs,
 				ValidationError{
+					Level:   Error,
 					Message: fmt.Sprintf("invalid command type: %s", project.CommandType),
 				},
 			)
@@ -1146,6 +1159,7 @@ func validateBVNames(project *model.Project) ValidationErrors {
 		if _, ok := buildVariantNames[buildVariant.Name]; ok {
 			errs = append(errs,
 				ValidationError{
+					Level:   Error,
 					Message: fmt.Sprintf("buildvariant '%s' already exists", buildVariant.Name),
 				},
 			)
@@ -1155,11 +1169,13 @@ func validateBVNames(project *model.Project) ValidationErrors {
 		if dispName == "" {
 			errs = append(errs,
 				ValidationError{
+					Level:   Error,
 					Message: fmt.Sprintf("buildvariant '%s' does not have a display name", buildVariant.Name),
 				},
 			)
 		} else if dispName == evergreen.MergeTaskVariant {
 			errs = append(errs, ValidationError{
+				Level:   Error,
 				Message: fmt.Sprintf("the variant name '%s' is reserved for the commit queue", evergreen.MergeTaskVariant),
 			})
 		}
@@ -1167,6 +1183,7 @@ func validateBVNames(project *model.Project) ValidationErrors {
 		if strings.ContainsAny(buildVariant.Name, strings.Join(unauthorizedCharacters, "")) {
 			errs = append(errs,
 				ValidationError{
+					Level: Error,
 					Message: fmt.Sprintf("buildvariant name '%s' contains unauthorized characters (%s)",
 						buildVariant.Name, unauthorizedCharacters),
 				})
@@ -1218,6 +1235,7 @@ func validateBVTaskNames(project *model.Project) ValidationErrors {
 			if _, ok := buildVariantTasks[task.Name]; ok {
 				errs = append(errs,
 					ValidationError{
+						Level: Error,
 						Message: fmt.Sprintf("task '%s' in buildvariant '%s' already exists",
 							task.Name, buildVariant.Name),
 					},
@@ -1445,6 +1463,7 @@ func validateProjectTaskNames(project *model.Project) ValidationErrors {
 		if _, ok := taskNames[task.Name]; ok {
 			errs = append(errs,
 				ValidationError{
+					Level:   Error,
 					Message: fmt.Sprintf("task '%s' already exists", task.Name),
 				},
 			)
@@ -1462,6 +1481,7 @@ func validateProjectTaskIdsAndTags(project *model.Project) ValidationErrors {
 		// check task name
 		if i := strings.IndexAny(task.Name, model.InvalidCriterionRunes); i == 0 {
 			errs = append(errs, ValidationError{
+				Level: Error,
 				Message: fmt.Sprintf("task '%s' has invalid name: starts with invalid character %s",
 					task.Name, strconv.QuoteRune(rune(task.Name[0])))})
 		}
@@ -1469,11 +1489,13 @@ func validateProjectTaskIdsAndTags(project *model.Project) ValidationErrors {
 		for _, tag := range task.Tags {
 			if i := strings.IndexAny(tag, model.InvalidCriterionRunes); i == 0 {
 				errs = append(errs, ValidationError{
+					Level: Error,
 					Message: fmt.Sprintf("task '%s' has invalid tag '%s': starts with invalid character %s",
 						task.Name, tag, strconv.QuoteRune(rune(tag[0])))})
 			}
 			if i := util.IndexWhiteSpace(tag); i != -1 {
 				errs = append(errs, ValidationError{
+					Level: Error,
 					Message: fmt.Sprintf("task '%s' has invalid tag '%s': tag contains white space",
 						task.Name, tag)})
 			}
@@ -1563,11 +1585,31 @@ func checkTaskRuns(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// validateTaskDependencies checks that, for all tasks that have
+// validateStatusesForTaskDependencies checks that, for all tasks that have
+// the status field is a valid status.
+func validateStatusesForTaskDependencies(project *model.Project) ValidationErrors {
+	var errs ValidationErrors
+	for _, bvtu := range project.FindAllBuildVariantTasks() {
+		for _, d := range bvtu.DependsOn {
+			validDepStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, model.AllStatuses, ""}
+			if !utility.StringSliceContains(validDepStatuses, d.Status) {
+				errs = append(errs,
+					ValidationError{
+						Level:   Error,
+						Message: fmt.Sprintf("invalid dependency status '%s' for task '%s' in build variant '%s'", d.Status, d.Name, bvtu.Variant),
+					},
+				)
+			}
+		}
+	}
+	return errs
+}
+
+// checkReferencesForTaskDependencies checks that, for all tasks that have
 // dependencies, those dependencies set the expected fields and all dependencies
 // reference tasks that will actually run. For example, if task t1 in build
 // variant bv1 depends on task t2, t2 should also be listed under bv1.
-func validateTaskDependencies(project *model.Project) ValidationErrors {
+func checkReferencesForTaskDependencies(project *model.Project) ValidationErrors {
 	bvtus := map[model.TVPair]model.BuildVariantTaskUnit{}
 	bvs := map[string]struct{}{}
 	tasks := map[string]struct{}{}
@@ -1580,16 +1622,6 @@ func validateTaskDependencies(project *model.Project) ValidationErrors {
 	var errs ValidationErrors
 	for _, bvtu := range bvtus {
 		for _, d := range bvtu.DependsOn {
-			validDepStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, model.AllStatuses, ""}
-			if !utility.StringSliceContains(validDepStatuses, d.Status) {
-				errs = append(errs,
-					ValidationError{
-						Level:   Error,
-						Message: fmt.Sprintf("invalid dependency status '%s' for task '%s' in build variant '%s'", d.Status, d.Name, bvtu.Variant),
-					},
-				)
-			}
-
 			// Dependencies can be specified in different places, which can
 			// overwrite each other. Each build variant task unit already takes
 			// into account these precedence rules, so after resolving the
@@ -1799,8 +1831,8 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 		// validate that teardown group timeout is not over MaxTeardownGroupTimeout
 		if tg.TeardownGroupTimeoutSecs > int(globals.MaxTeardownGroupTimeout.Seconds()) {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("task group '%s' has a teardown task timeout of %d seconds, which exceeds the maximum of %d seconds", tg.Name, tg.TeardownGroupTimeoutSecs, int(globals.MaxTeardownGroupTimeout.Seconds())),
 				Level:   Warning,
+				Message: fmt.Sprintf("task group '%s' has a teardown task timeout of %d seconds, which exceeds the maximum of %d seconds", tg.Name, tg.TeardownGroupTimeoutSecs, int(globals.MaxTeardownGroupTimeout.Seconds())),
 			})
 		}
 		if _, ok := names[tg.Name]; ok {
@@ -1812,8 +1844,8 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 		names[tg.Name] = true
 		if tg.MaxHosts < -1 {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("task group '%s' has number of hosts %d less than 1", tg.Name, tg.MaxHosts),
 				Level:   Warning,
+				Message: fmt.Sprintf("task group '%s' has number of hosts %d less than 1", tg.Name, tg.MaxHosts),
 			})
 		}
 		if len(tg.Tasks) == 1 {
@@ -1821,8 +1853,8 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 		}
 		if tg.MaxHosts > len(tg.Tasks) {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("task group '%s' has max number of hosts %d greater than the number of tasks %d", tg.Name, tg.MaxHosts, len(tg.Tasks)),
 				Level:   Warning,
+				Message: fmt.Sprintf("task group '%s' has max number of hosts %d greater than the number of tasks %d", tg.Name, tg.MaxHosts, len(tg.Tasks)),
 			})
 		}
 		for _, t := range tg.Tasks {
@@ -1872,8 +1904,8 @@ func validateDuplicateBVTasks(p *model.Project) ValidationErrors {
 func checkOrAddTask(task, variant string, tasksFound map[string]interface{}) *ValidationError {
 	if _, found := tasksFound[task]; found {
 		return &ValidationError{
-			Message: fmt.Sprintf("task '%s' in '%s' is listed more than once, likely through a task group", task, variant),
 			Level:   Error,
+			Message: fmt.Sprintf("task '%s' in '%s' is listed more than once, likely through a task group", task, variant),
 		}
 	}
 	tasksFound[task] = nil
@@ -1956,8 +1988,8 @@ func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName
 			if count, ok := ts[t.Name]; ok {
 				if count > times {
 					errs = append(errs, ValidationError{
-						Message: fmt.Sprintf("build variant '%s' with task '%s' may only call %s %d time(s) but calls it %d time(s)", bv.Name, t.Name, commandName, times, count),
 						Level:   level,
+						Message: fmt.Sprintf("build variant '%s' with task '%s' may only call %s %d time(s) but calls it %d time(s)", bv.Name, t.Name, commandName, times, count),
 					})
 				}
 			}
