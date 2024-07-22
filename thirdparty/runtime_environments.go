@@ -143,6 +143,7 @@ type OSInfoFilterOptions struct {
 type OSInfo struct {
 	Version string `json:"version"`
 	Name    string `json:"name"`
+	ImageID string `json:"distro"`
 }
 
 // GetOSInfo returns a list of operating system information for an AMI.

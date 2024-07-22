@@ -1,0 +1,28 @@
+{
+    "image": [
+      {
+        "_id": "image-1",
+        "ami": "ami-0f6b89500372d4a06"
+      }
+    ], 
+    "distro": [
+        {
+          "_id": "ubuntu1604-large",
+          "image_id": "ubuntu1604"
+        },
+        {
+            "_id": "ubuntu1604-small",
+            "image_id": "ubuntu1604"
+        },
+        {
+            "_id": "rhel82-small",
+            "image_id": "rhel82"
+        }
+    ],
+    "project_ref": [
+        {
+          "_id": "spruce",
+          "identifier": "spruce"
+        }
+    ]
+  }

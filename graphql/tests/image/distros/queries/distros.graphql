@@ -1,0 +1,5 @@
+{
+  image(imageId: "image-1") {
+    distros
+  }
+}
