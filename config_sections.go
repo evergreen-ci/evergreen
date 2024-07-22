@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/evergreen-ci/evergreen/parameterstore"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 
@@ -64,39 +65,49 @@ func NewConfigSections() ConfigSections {
 }
 
 func (c *ConfigSections) populateSections(ctx context.Context) error {
-	if err := c.getSSMParameters(ctx); err != nil && !errors.Is(err, ssmDisabledErr) {
+	missingSections, err := c.getSSMParameters(ctx)
+	if err != nil {
 		return errors.Wrap(err, "getting SSM parameters")
 	}
 
-	// A parameter set in the database overrides the same parameter set in SSM.
-	return errors.Wrap(c.getDBParameters(ctx), "getting database parameters")
+	// Fill in missing sections from the database.
+	// TODO (DEVPROD-8038): Remove this once all parameters have been migrated to Parameter Store.
+	return errors.Wrap(c.getDBParameters(ctx, missingSections), "getting database parameters")
 }
 
-func (c *ConfigSections) getSSMParameters(ctx context.Context) error {
-	ssmSections, err := getAllParameters(ctx)
+func (c *ConfigSections) getSSMParameters(ctx context.Context) ([]string, error) {
+	parameterStoreOpts, err := GetParameterStoreOpts(ctx)
 	if err != nil {
-		return errors.Wrap(err, "getting parameters from SSM")
+		return nil, errors.Wrap(err, "getting Parameter Store options")
+	}
+
+	parameterStore, err := parameterstore.NewParameterStore(ctx, parameterStoreOpts)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting Parameter Store client")
+	}
+	var sectionNames []string
+	for section := range c.Sections {
+		sectionNames = append(sectionNames, section)
+	}
+	ssmSections, err := parameterStore.GetParameters(ctx, sectionNames)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting parameters from SSM")
 	}
 
 	catcher := grip.NewBasicCatcher()
-	for sectionID, value := range ssmSections {
-		section, ok := c.Sections[sectionID]
+	var missingSections []string
+	for name, section := range c.Sections {
+		ssmSection, ok := ssmSections[name]
 		if !ok {
-			continue
+			missingSections = append(missingSections, name)
 		}
-		catcher.Wrapf(json.Unmarshal([]byte(value), section), "unmarshalling SSM section ID '%s'", sectionID)
+		catcher.Wrapf(json.Unmarshal([]byte(ssmSection), section), "unmarshalling SSM section ID '%s'", name)
 	}
-
-	return catcher.Resolve()
+	return missingSections, catcher.Resolve()
 }
 
-func (c *ConfigSections) getDBParameters(ctx context.Context) error {
-	sectionIDs := make([]string, 0, len(c.Sections))
-	for sectionID := range c.Sections {
-		sectionIDs = append(sectionIDs, sectionID)
-	}
-
-	rawSections, err := getSectionsBSON(ctx, sectionIDs)
+func (c *ConfigSections) getDBParameters(ctx context.Context, sections []string) error {
+	rawSections, err := getSectionsBSON(ctx, sections)
 	if err != nil {
 		return errors.Wrap(err, "getting raw sections")
 	}

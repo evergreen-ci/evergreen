@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/pod"
+	"github.com/evergreen-ci/evergreen/parameterstore"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -39,6 +40,8 @@ const (
 
 	ecsTaskStateChangeType              = "ECS Task State Change"
 	ecsContainerInstanceStateChangeType = "ECS Container Instance State Change"
+
+	ssmParameterStoreChangeType = "Parameter Store Change"
 )
 
 type baseSNS struct {
@@ -655,4 +658,106 @@ func (sns *ecsSNS) listECSTasks(ctx context.Context, details ecsContainerInstanc
 	}
 
 	return nil, errors.Errorf("hit max realistic number of pages of tasks (%d) for a single container instance, refusing to iterate through any more pages", maxRealisticTaskPages)
+}
+
+type ssmSNS struct {
+	baseSNS
+}
+
+type ssmEventBridgeNotification struct {
+	// EventTimestamp is the time the event occurred in RFC3339 format.
+	EventTimestamp string `json:"time"`
+	// DetailType is the type of SSM Event Bridge notification.
+	DetailType string `json:"detail-type"`
+	// Detail is the detailed contents of the notification.
+	Detail parameterStoreChangeEventDetail `json:"detail"`
+}
+
+type parameterStoreChangeEventDetail struct {
+	Operation   string `json:"operation"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Description string `json:"description"`
+}
+
+func makeSSMSNS(env evergreen.Environment, queue amboy.Queue) gimlet.RouteHandler {
+	return &ssmSNS{
+		baseSNS: makeBaseSNS(env, queue),
+	}
+}
+
+func (sns *ssmSNS) Factory() gimlet.RouteHandler {
+	return &ecsSNS{
+		baseSNS: makeBaseSNS(sns.env, sns.queue),
+	}
+}
+
+func (sns *ssmSNS) Run(ctx context.Context) gimlet.Responder {
+	if sns.handleSNSConfirmation() {
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+
+	switch sns.messageType {
+	case messageTypeNotification:
+		if err := sns.handleNotification(ctx); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":      "could not handle SNS notification",
+				"notification": sns.payload.Message,
+				"route":        "/hooks/aws/ssm",
+			}))
+			return gimlet.NewJSONResponse(err)
+		}
+
+		return gimlet.NewJSONResponse(struct{}{})
+	default:
+		grip.Error(message.Fields{
+			"message":         "received an unknown message type",
+			"type":            sns.messageType,
+			"payload_subject": sns.payload.Subject,
+			"payload_message": sns.payload.Message,
+			"payload_topic":   sns.payload.TopicArn,
+			"route":           "/hooks/aws/ssm",
+		})
+		return gimlet.NewTextErrorResponse(fmt.Sprintf("message type '%s' is not recognized", sns.messageType))
+	}
+}
+
+func (sns *ssmSNS) handleNotification(ctx context.Context) error {
+	notification := ssmEventBridgeNotification{}
+	if err := json.Unmarshal([]byte(sns.payload.Message), &notification); err != nil {
+		return errors.Wrap(err, "unmarshalling SSM notification")
+	}
+	switch notification.DetailType {
+	case ssmParameterStoreChangeType:
+		eventTimestamp, err := time.Parse(time.RFC3339, notification.EventTimestamp)
+		if err != nil {
+			return errors.Wrap(err, "parsing event timestamp")
+		}
+
+		parameterStoreOpts, err := evergreen.GetParameterStoreOpts(ctx)
+		if err != nil {
+			return errors.Wrap(err, "getting Parameter Store options")
+		}
+		parameterStore, err := parameterstore.NewParameterStore(ctx, parameterStoreOpts)
+		if err != nil {
+			return errors.Wrap(err, "getting Parameter Store")
+		}
+
+		return parameterStore.SetLastUpdate(ctx, notification.Detail.Name, eventTimestamp)
+
+	default:
+		grip.Error(message.Fields{
+			"message":         "received an unknown notification detail type",
+			"message_type":    sns.messageType,
+			"detail_type":     notification.DetailType,
+			"payload_subject": sns.payload.Subject,
+			"payload_message": sns.payload.Message,
+			"payload_topic":   sns.payload.TopicArn,
+			"route":           "/hooks/aws/ssm",
+		})
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("unknown detail type '%s'", notification.DetailType),
+		}
+	}
 }

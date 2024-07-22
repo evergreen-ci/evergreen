@@ -119,6 +119,9 @@ var (
 	tracerCollectorInternalEndpointKey = bsonutil.MustHaveTag(TracerConfig{}, "CollectorInternalEndpoint")
 	tracerCollectorAPIKeyKey           = bsonutil.MustHaveTag(TracerConfig{}, "CollectorAPIKey")
 
+	parameterStoreSSMBackendKey = bsonutil.MustHaveTag(ParameterStoreConfig{}, "SSMBackend")
+	parameterStorePrefixKey     = bsonutil.MustHaveTag(ParameterStoreConfig{}, "Prefix")
+
 	// GithubCheckRun keys
 	checkRunLimitKey = bsonutil.MustHaveTag(GitHubCheckRunConfig{}, "CheckRunLimit")
 )

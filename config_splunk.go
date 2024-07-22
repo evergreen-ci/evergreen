@@ -2,11 +2,11 @@ package evergreen
 
 import (
 	"context"
+	"encoding/json"
 
+	"github.com/evergreen-ci/evergreen/parameterstore"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type SplunkConfig struct {
@@ -16,27 +16,37 @@ type SplunkConfig struct {
 func (c *SplunkConfig) SectionId() string { return "splunk" }
 
 func (c *SplunkConfig) Get(ctx context.Context) error {
-	if err := decodeParameter(ctx, c); err != nil && !errors.Is(err, ssmDisabledErr) {
-		return errors.Wrapf(err, "getting config section '%s' from SSM", c.SectionId())
+	parameterStoreOpts, err := GetParameterStoreOpts(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting Parameter Store options")
 	}
-	return errors.Wrapf(decodeDBConfig(ctx, c), "getting config section '%s' from the database", c.SectionId())
+	parameterStore, err := parameterstore.NewParameterStore(ctx, parameterStoreOpts)
+	if err != nil {
+		return errors.Wrap(err, "getting Parameter Store client")
+	}
+
+	data, err := parameterStore.GetParameter(ctx, c.SectionId())
+	if err != nil {
+		return errors.Wrapf(err, "getting config section '%s' from Parameter Store", c.SectionId())
+	}
+	return errors.Wrapf(json.Unmarshal([]byte(data), c), "decoding config section '%s'", c.SectionId())
 }
 
 func (c *SplunkConfig) Set(ctx context.Context) error {
-	if err := setParameter(ctx, c); err == nil || !errors.Is(err, ssmDisabledErr) {
-		return errors.Wrapf(err, "setting config section '%s' in SSM", c.SectionId())
+	data, err := json.Marshal(c)
+	if err != nil {
+		return errors.Wrapf(err, "marshalling config section '%s' as json", c.SectionId())
 	}
 
-	// When SSM is disabled set the value in the database.
-	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
-		"$set": bson.M{
-			"url":     c.SplunkConnectionInfo.ServerURL,
-			"token":   c.SplunkConnectionInfo.Token,
-			"channel": c.SplunkConnectionInfo.Channel,
-		},
-	}, options.Update().SetUpsert(true))
-
-	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
+	parameterStoreOpts, err := GetParameterStoreOpts(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting Parameter Store options")
+	}
+	parameterStore, err := parameterstore.NewParameterStore(ctx, parameterStoreOpts)
+	if err != nil {
+		return errors.Wrap(err, "getting Parameter Store client")
+	}
+	return errors.Wrapf(parameterStore.SetParameter(ctx, c.SectionId(), string(data)), "setting config section '%s' in Parameter Store", c.SectionId())
 }
 
 func (c *SplunkConfig) ValidateAndDefault() error { return nil }
