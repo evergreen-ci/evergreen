@@ -31,7 +31,7 @@ func TestProjectErrorValidators(t *testing.T) {
 	// projectErrorValidators have some restrictions and conventions that they must follow:
 	// 1. They must return an error explicitly.
 	// 2. They must not return any other type of ValidationError level.
-	testProjectValidators(t, projectErrorValidators, func(t *testing.T, funcBodies map[string]*ast.BlockStmt, funcName string) {
+	testProjectValidatorsFunctions(t, projectErrorValidators, func(t *testing.T, funcBodies map[string]*ast.BlockStmt, funcName string) {
 		assert.True(t, variablesInFunction(funcBodies, funcName, []string{"Error"}, map[string]bool{}), "ProjectErrorValidators should return at least one Error")
 		assert.False(t, variablesInFunction(funcBodies, funcName, []string{"Warning", "Notice"}, map[string]bool{}), "ProjectErrorValidators should never use Warnings or Notices")
 	})
@@ -39,13 +39,13 @@ func TestProjectErrorValidators(t *testing.T) {
 
 func TestProjectWarningValidators(t *testing.T) {
 	// projectWarningValidators must only return Warning or Notice.
-	testProjectValidators(t, projectWarningValidators, func(t *testing.T, funcBodies map[string]*ast.BlockStmt, funcName string) {
+	testProjectValidatorsFunctions(t, projectWarningValidators, func(t *testing.T, funcBodies map[string]*ast.BlockStmt, funcName string) {
 		assert.False(t, variablesInFunction(funcBodies, funcName, []string{"Error"}, map[string]bool{}), "ProjectWarningValidators should never use Error")
 		assert.True(t, variablesInFunction(funcBodies, funcName, []string{"Warning", "Notice"}, map[string]bool{}), "ProjectWarningValidators return at least one Warning or Notice")
 	})
 }
 
-func testProjectValidators(t *testing.T, projectValidators []projectValidator, test func(t *testing.T, funcBodies map[string]*ast.BlockStmt, funcName string)) {
+func testProjectValidatorsFunctions(t *testing.T, projectValidators []projectValidator, test func(t *testing.T, funcBodies map[string]*ast.BlockStmt, funcName string)) {
 	node, err := parser.ParseFile(token.NewFileSet(), "project_validator.go", nil, parser.AllErrors)
 	require.NoError(t, err)
 	funcBodies := make(map[string]*ast.BlockStmt)
