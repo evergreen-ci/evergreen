@@ -25,7 +25,6 @@ type gitPush struct {
 	// Must be a valid non-blank directory name.
 	Directory string `yaml:"directory" plugin:"expand"`
 	DryRun    bool   `yaml:"dry_run" mapstructure:"dry_run"`
-	Token     string `yaml:"token" plugin:"expand" mapstructure:"token"`
 
 	base
 }
@@ -82,12 +81,11 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 
 	// get commit information
 	var projectToken string
-	_, projectToken, err = getProjectMethodAndToken(ctx, comm, td, conf, c.Token)
+	_, projectToken, err = getProjectMethodAndToken(ctx, comm, td, conf, "", false)
 	if err != nil {
 		return errors.Wrap(err, "getting token")
 	}
 	params := pushParams{token: projectToken}
-
 	// push module patches
 	for _, modulePatch := range p.Patches {
 		if modulePatch.ModuleName == "" {

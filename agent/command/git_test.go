@@ -414,6 +414,8 @@ func (s *GitGetProjectSuite) TestValidateGitCommands() {
 	defer cancel()
 	var pluginCmds []Command
 
+	s.comm.CreateGitHubDynamicAccessTokenResult = mockedGitHubAppToken
+
 	for _, task := range conf.Project.Tasks {
 		for _, command := range task.Commands {
 			pluginCmds, err = Render(command, &conf.Project, BlockInfo{})
@@ -786,6 +788,8 @@ func (s *GitGetProjectSuite) TestMultipleModules() {
 	conf.Expansions.Put(moduleRevExpansionName("sample-1"), sample1Hash)
 	conf.Expansions.Put(moduleRevExpansionName("sample-2"), sample2Hash)
 
+	s.comm.CreateInstallationTokenResult = mockedGitHubAppToken
+
 	for _, task := range conf.Project.Tasks {
 		s.NotEqual(len(task.Commands), 0)
 		for _, command := range task.Commands {
@@ -956,46 +960,46 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 		},
 	}
 
-	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
+	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken, true)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
 	s.Equal(cloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
+	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "", false)
 	s.NoError(err)
 	s.Equal(mockedGitHubAppToken, token)
 	s.Equal(cloneMethodAccessToken, method)
 
-	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
+	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "", false)
 	s.NoError(err)
 	s.Equal(mockedGitHubAppToken, token)
 	s.Equal(cloneMethodAccessToken, method)
 
-	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
+	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken, true)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
 	s.Equal(cloneMethodOAuth, method)
 
 	conf.Expansions[evergreen.GlobalGitHubTokenExpansion] = ""
 
-	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
+	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken, true)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
 	s.Equal(cloneMethodOAuth, method)
 
-	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken)
+	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken, true)
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
 	s.Equal(cloneMethodOAuth, method)
 
 	s.comm.CreateInstallationTokenFail = true
 
-	_, _, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "")
+	_, _, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "", false)
 	s.Error(err)
 
 	conf.Expansions[evergreen.GlobalGitHubTokenExpansion] = globalGitHubToken
 
-	_, _, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "token this is not a real token")
+	_, _, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "token this is not a real token", false)
 	s.Error(err)
 }
 
