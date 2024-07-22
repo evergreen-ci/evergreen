@@ -98,7 +98,7 @@ func (c *ConfigSections) getSSMParameters(ctx context.Context) ([]string, error)
 	var missingSections []string
 	for name, section := range c.Sections {
 		ssmSection, ok := ssmSections[name]
-		if !ok {
+		if !ok || ssmSection == "" {
 			missingSections = append(missingSections, name)
 		}
 		catcher.Wrapf(json.Unmarshal([]byte(ssmSection), section), "unmarshalling SSM section ID '%s'", name)
