@@ -9,4 +9,5 @@ type Image {
   lastDeployed: Time!
   name: String!
   versionId: String!
+  distros: [Distro!]!
 }
