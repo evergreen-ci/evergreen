@@ -368,11 +368,12 @@ func stringToTime(timeInitial string) (time.Time, error) {
 
 // Image stores information about an image including its name, version ID, kernel, AMI, and its last deployed time.
 type Image struct {
-	Name         string
-	VersionID    string
+	AMI          string
+	ImageID      string
 	Kernel       string
 	LastDeployed time.Time
-	AMI          string
+	Name         string
+	VersionID    string
 }
 
 // getNameFromOSInfo uses the provided AMI and name (exact match) arguments to filter the image information.
@@ -437,9 +438,9 @@ func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID st
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting OSInfo '%s' field for image: '%s'", OSVersionIDField, imageID)
 	}
-
 	return &Image{
 		AMI:          latestImageHistory.AMI,
+		ImageID:      imageID,
 		Kernel:       kernel,
 		LastDeployed: timestamp,
 		Name:         name,

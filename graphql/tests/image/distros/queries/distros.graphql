@@ -1,5 +1,7 @@
 {
-  image(imageId: "image-1") {
-    distros
+  image(imageId: "ubuntu1604") {
+    distros {
+        name
+    }
   }
 }
