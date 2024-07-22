@@ -3,6 +3,7 @@ package parameterstore
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/mongodb/grip"
@@ -42,21 +43,19 @@ func NewParameterStore(ctx context.Context, opts ParameterStoreOptions) (*parame
 }
 
 func (p *parameterStore) SetParameter(ctx context.Context, name, value string) error {
-	fullName := fmt.Sprintf("%s/%s", p.opts.Prefix, name)
-
 	if !p.opts.SSMBackend {
-		return p.setLocalValue(ctx, fullName, value)
+		return p.setLocalValue(ctx, p.prefixedName(name), value)
 	}
 
-	if err := p.ssm.putParameter(ctx, fullName, value); err != nil {
+	if err := p.ssm.putParameter(ctx, p.prefixedName(name), value); err != nil {
 		return errors.Wrap(err, "putting parameter in Parameter Store")
 	}
 
 	now := time.Now()
-	if err := p.SetLastUpdate(ctx, fullName, now); err != nil {
+	if err := p.SetLastUpdate(ctx, p.prefixedName(name), now); err != nil {
 		return errors.Wrap(err, "setting last updated")
 	}
-	parameterCache[fullName] = parameter{value: value, lastUpdate: now}
+	parameterCache[p.prefixedName(name)] = parameter{value: value, lastUpdate: now}
 	return nil
 }
 
@@ -68,7 +67,7 @@ func (p *parameterStore) GetParameter(ctx context.Context, name string) (string,
 func (p *parameterStore) GetParameters(ctx context.Context, names []string) (map[string]string, error) {
 	fullNames := make([]string, 0, len(names))
 	for _, name := range names {
-		fullNames = append(fullNames, fmt.Sprintf("%s/%s", p.opts.Prefix, name))
+		fullNames = append(fullNames, p.prefixedName(name))
 	}
 
 	params, err := p.find(ctx, fullNames)
@@ -84,11 +83,11 @@ func (p *parameterStore) GetParameters(ctx context.Context, names []string) (map
 			}
 			// Values set in the database override values set in Parameter Store.
 			if param.value != "" {
-				paramMap[name] = param.value
+				paramMap[p.basename(name)] = param.value
 				continue
 			}
 			if cachedParam, ok := parameterCache[name]; ok && cachedParam.lastUpdate.After(param.lastUpdate) {
-				paramMap[name] = cachedParam.value
+				paramMap[p.basename(name)] = cachedParam.value
 				continue
 			}
 			fullNames[n] = name
@@ -107,7 +106,7 @@ func (p *parameterStore) GetParameters(ctx context.Context, names []string) (map
 	}
 	catcher := grip.NewBasicCatcher()
 	for _, ssmParam := range data {
-		paramMap[ssmParam.id] = ssmParam.value
+		paramMap[p.basename(ssmParam.id)] = ssmParam.value
 		parameterCache[ssmParam.id] = parameter{value: ssmParam.value, lastUpdate: time.Now()}
 		for _, dbParam := range params {
 			if dbParam.id != ssmParam.id {
@@ -119,4 +118,12 @@ func (p *parameterStore) GetParameters(ctx context.Context, names []string) (map
 		}
 	}
 	return paramMap, catcher.Resolve()
+}
+
+func (p *parameterStore) prefixedName(name string) string {
+	return fmt.Sprintf("%s/%s", p.opts.Prefix, name)
+}
+
+func (p *parameterStore) basename(fullName string) string {
+	return strings.TrimPrefix(fullName, p.opts.Prefix+"/")
 }
