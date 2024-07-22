@@ -12,9 +12,12 @@ import (
 
 // Distros is the resolver for the distros field.
 func (r *imageResolver) Distros(ctx context.Context, obj *thirdparty.Image) ([]*model.APIDistro, error) {
+	if obj.ImageID == "" {
+		return nil, ResourceNotFound.Send(ctx, "unable to find imageID from provided Image")
+	}
 	distros, err := distro.GetDistrosForImage(ctx, obj.ImageID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding distros from imageID: '%s'", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding distros from imageID '%s': '%s'", obj.ImageID, err.Error()))
 	}
 	apiDistros := []*restModel.APIDistro{}
 	for _, d := range distros {
