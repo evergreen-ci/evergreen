@@ -45,6 +45,7 @@ func TestProjectWarningValidators(t *testing.T) {
 	})
 }
 
+// testProjectValidatorsFunctions parses through all the given project validators and runs the given test function on each one.
 func testProjectValidatorsFunctions(t *testing.T, projectValidators []projectValidator, test func(t *testing.T, funcBodies map[string]*ast.BlockStmt, funcName string)) {
 	node, err := parser.ParseFile(token.NewFileSet(), "project_validator.go", nil, parser.AllErrors)
 	require.NoError(t, err)
