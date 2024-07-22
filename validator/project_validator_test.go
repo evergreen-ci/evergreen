@@ -28,6 +28,24 @@ import (
 )
 
 func TestProjectErrorValidators(t *testing.T) {
+	// projectErrorValidators have some restrictions and conventions that they must follow:
+	// 1. They must return an error explicitly.
+	// 2. They must not return any other type of ValidationError level.
+	testProjectValidators(t, projectErrorValidators, func(t *testing.T, funcBodies map[string]*ast.BlockStmt, funcName string) {
+		assert.True(t, variablesInFunction(funcBodies, funcName, []string{"Error"}, map[string]bool{}), "ProjectErrorValidators should return at least one Error")
+		assert.False(t, variablesInFunction(funcBodies, funcName, []string{"Warning", "Notice"}, map[string]bool{}), "ProjectErrorValidators should never use Warnings or Notices")
+	})
+}
+
+func TestProjectWarningValidators(t *testing.T) {
+	// projectWarningValidators must only return Warning or Notice.
+	testProjectValidators(t, projectWarningValidators, func(t *testing.T, funcBodies map[string]*ast.BlockStmt, funcName string) {
+		assert.False(t, variablesInFunction(funcBodies, funcName, []string{"Error"}, map[string]bool{}), "ProjectWarningValidators should never use Error")
+		assert.True(t, variablesInFunction(funcBodies, funcName, []string{"Warning", "Notice"}, map[string]bool{}), "ProjectWarningValidators return at least one Warning or Notice")
+	})
+}
+
+func testProjectValidators(t *testing.T, projectValidators []projectValidator, test func(t *testing.T, funcBodies map[string]*ast.BlockStmt, funcName string)) {
 	node, err := parser.ParseFile(token.NewFileSet(), "project_validator.go", nil, parser.AllErrors)
 	require.NoError(t, err)
 	funcBodies := make(map[string]*ast.BlockStmt)
@@ -41,42 +59,18 @@ func TestProjectErrorValidators(t *testing.T) {
 	// projectErrorValidators have some restrictions and conventions that they must follow:
 	// 1. They must return an error explicitly.
 	// 2. They must not return any other type of ValidationError level.
-	for _, validator := range projectErrorValidators {
+	for _, validator := range projectValidators {
 		funcPtr := runtime.FuncForPC(reflect.ValueOf(validator).Pointer())
 		funcName := funcPtr.Name()[strings.LastIndex(funcPtr.Name(), ".")+1:]
 
 		t.Run(funcName, func(t *testing.T) {
-			assert.True(t, variablesInFunction(funcBodies, funcName, []string{"Error"}, map[string]bool{}), "ProjectErrorValidators should return at least one Error")
-			assert.False(t, variablesInFunction(funcBodies, funcName, []string{"Warning", "Notice"}, map[string]bool{}), "ProjectErrorValidators should never use Warnings or Notices")
-		})
-	}
-}
-
-func TestProjectWarningValidators(t *testing.T) {
-	node, err := parser.ParseFile(token.NewFileSet(), "project_validator.go", nil, parser.AllErrors)
-	require.NoError(t, err)
-	funcBodies := make(map[string]*ast.BlockStmt)
-	ast.Inspect(node, func(n ast.Node) bool {
-		if fn, ok := n.(*ast.FuncDecl); ok {
-			funcBodies[fn.Name.Name] = fn.Body
-		}
-		return true
-	})
-
-	// projectWarningValidators must only return Warning or Notice.
-	for _, validator := range projectWarningValidators {
-		funcPtr := runtime.FuncForPC(reflect.ValueOf(validator).Pointer())
-		funcName := funcPtr.Name()[strings.LastIndex(funcPtr.Name(), ".")+1:]
-
-		t.Run(funcName, func(t *testing.T) {
-			assert.False(t, variablesInFunction(funcBodies, funcName, []string{"Error"}, map[string]bool{}), "ProjectWarningValidators should never use Error")
-			assert.True(t, variablesInFunction(funcBodies, funcName, []string{"Warning", "Notice"}, map[string]bool{}), "ProjectWarningValidators return at least one Warning or Notice")
+			test(t, funcBodies, funcName)
 		})
 	}
 }
 
 // variablesInFunction recursively checks if the given variables are used in a function or any of the functions it calls.
-func variablesInFunction(funcBodies map[string]*ast.BlockStmt, funcName string, variables []string, visited map[string]bool) bool {
+func variablesInFunction(funcBodies map[string]*ast.BlockStmt, funcName string, variableNames []string, visited map[string]bool) bool {
 	if visited[funcName] {
 		return false
 	}
@@ -90,7 +84,7 @@ func variablesInFunction(funcBodies map[string]*ast.BlockStmt, funcName string, 
 	found := false
 	ast.Inspect(body, func(n ast.Node) bool {
 		// Check if the variable is used directly in the function.
-		if ident, ok := n.(*ast.Ident); ok && utility.StringSliceContains(variables, ident.Name) {
+		if ident, ok := n.(*ast.Ident); ok && utility.StringSliceContains(variableNames, ident.Name) {
 			// If the object is nil, that means it is a call expression.
 			// e.g. (error).Error() would match the identifier for the
 			// call expression if the variable = "Error".
@@ -104,7 +98,7 @@ func variablesInFunction(funcBodies map[string]*ast.BlockStmt, funcName string, 
 		if callExpr, ok := n.(*ast.CallExpr); ok {
 			// If this is a call expression, get the function identifier.
 			if funIdent, ok := callExpr.Fun.(*ast.Ident); ok {
-				if variablesInFunction(funcBodies, funIdent.Name, variables, visited) {
+				if variablesInFunction(funcBodies, funIdent.Name, variableNames, visited) {
 					found = true
 					return false
 				}
@@ -115,7 +109,7 @@ func variablesInFunction(funcBodies map[string]*ast.BlockStmt, funcName string, 
 	return found
 }
 
-func TestValidateTaskDependencies(t *testing.T) {
+func TestValidateStatusesForTaskDependencies(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -432,7 +426,7 @@ buildvariants:
 	})
 }
 
-func TestCheckTaskDependencies(t *testing.T) {
+func TestCheckReferencesForTaskDependencies(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
