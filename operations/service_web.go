@@ -49,6 +49,8 @@ func startWebService() cli.Command {
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 
+			// When running within a container, detect the number of CPUs available to the container
+			// and set GOMAXPROCS. This noops when running outside of a container.
 			_, err := maxprocs.Set()
 			grip.EmergencyFatal(errors.Wrap(err, "setting max procs"))
 
