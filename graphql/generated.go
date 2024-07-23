@@ -56,6 +56,7 @@ type ResolverRoot interface {
 	FinderSettings() FinderSettingsResolver
 	Host() HostResolver
 	HostAllocatorSettings() HostAllocatorSettingsResolver
+	Image() ImageResolver
 	IssueLink() IssueLinkResolver
 	LogkeeperBuild() LogkeeperBuildResolver
 	Mutation() MutationResolver
@@ -527,6 +528,7 @@ type ComplexityRoot struct {
 
 	Image struct {
 		AMI          func(childComplexity int) int
+		Distros      func(childComplexity int) int
 		Kernel       func(childComplexity int) int
 		LastDeployed func(childComplexity int) int
 		Name         func(childComplexity int) int
@@ -1673,6 +1675,9 @@ type HostAllocatorSettingsResolver interface {
 
 	RoundingRule(ctx context.Context, obj *model.APIHostAllocatorSettings) (RoundingRule, error)
 	Version(ctx context.Context, obj *model.APIHostAllocatorSettings) (HostAllocatorVersion, error)
+}
+type ImageResolver interface {
+	Distros(ctx context.Context, obj *thirdparty.Image) ([]*model.APIDistro, error)
 }
 type IssueLinkResolver interface {
 	JiraTicket(ctx context.Context, obj *model.APIIssueLink) (*thirdparty.JiraTicket, error)
@@ -3855,6 +3860,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Image.AMI(childComplexity), true
+
+	case "Image.distros":
+		if e.complexity.Image.Distros == nil {
+			break
+		}
+
+		return e.complexity.Image.Distros(childComplexity), true
 
 	case "Image.kernel":
 		if e.complexity.Image.Kernel == nil {
@@ -25092,6 +25104,114 @@ func (ec *executionContext) fieldContext_Image_versionId(_ context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Image_distros(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Image_distros(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Image().Distros(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIDistro)
+	fc.Result = res
+	return ec.marshalNDistro2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistroᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Image",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "adminOnly":
+				return ec.fieldContext_Distro_adminOnly(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Distro_aliases(ctx, field)
+			case "arch":
+				return ec.fieldContext_Distro_arch(ctx, field)
+			case "authorizedKeysFile":
+				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
+			case "bootstrapSettings":
+				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
+			case "containerPool":
+				return ec.fieldContext_Distro_containerPool(ctx, field)
+			case "disabled":
+				return ec.fieldContext_Distro_disabled(ctx, field)
+			case "disableShallowClone":
+				return ec.fieldContext_Distro_disableShallowClone(ctx, field)
+			case "dispatcherSettings":
+				return ec.fieldContext_Distro_dispatcherSettings(ctx, field)
+			case "expansions":
+				return ec.fieldContext_Distro_expansions(ctx, field)
+			case "finderSettings":
+				return ec.fieldContext_Distro_finderSettings(ctx, field)
+			case "homeVolumeSettings":
+				return ec.fieldContext_Distro_homeVolumeSettings(ctx, field)
+			case "hostAllocatorSettings":
+				return ec.fieldContext_Distro_hostAllocatorSettings(ctx, field)
+			case "iceCreamSettings":
+				return ec.fieldContext_Distro_iceCreamSettings(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Distro_imageId(ctx, field)
+			case "isCluster":
+				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isVirtualWorkStation":
+				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
+			case "name":
+				return ec.fieldContext_Distro_name(ctx, field)
+			case "note":
+				return ec.fieldContext_Distro_note(ctx, field)
+			case "warningNote":
+				return ec.fieldContext_Distro_warningNote(ctx, field)
+			case "plannerSettings":
+				return ec.fieldContext_Distro_plannerSettings(ctx, field)
+			case "provider":
+				return ec.fieldContext_Distro_provider(ctx, field)
+			case "providerSettingsList":
+				return ec.fieldContext_Distro_providerSettingsList(ctx, field)
+			case "setup":
+				return ec.fieldContext_Distro_setup(ctx, field)
+			case "setupAsSudo":
+				return ec.fieldContext_Distro_setupAsSudo(ctx, field)
+			case "sshOptions":
+				return ec.fieldContext_Distro_sshOptions(ctx, field)
+			case "user":
+				return ec.fieldContext_Distro_user(ctx, field)
+			case "userSpawnAllowed":
+				return ec.fieldContext_Distro_userSpawnAllowed(ctx, field)
+			case "validProjects":
+				return ec.fieldContext_Distro_validProjects(ctx, field)
+			case "workDir":
+				return ec.fieldContext_Distro_workDir(ctx, field)
+			case "mountpoints":
+				return ec.fieldContext_Distro_mountpoints(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Distro", field.Name)
 		},
 	}
 	return fc, nil
@@ -47018,6 +47138,8 @@ func (ec *executionContext) fieldContext_Query_image(ctx context.Context, field 
 				return ec.fieldContext_Image_name(ctx, field)
 			case "versionId":
 				return ec.fieldContext_Image_versionId(ctx, field)
+			case "distros":
+				return ec.fieldContext_Image_distros(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Image", field.Name)
 		},
@@ -77653,28 +77775,64 @@ func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, ob
 		case "ami":
 			out.Values[i] = ec._Image_ami(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "kernel":
 			out.Values[i] = ec._Image_kernel(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "lastDeployed":
 			out.Values[i] = ec._Image_lastDeployed(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "name":
 			out.Values[i] = ec._Image_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "versionId":
 			out.Values[i] = ec._Image_versionId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "distros":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Image_distros(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
