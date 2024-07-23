@@ -535,6 +535,9 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 			continue
 		}
 		bvtu := creationInfo.Project.FindTaskForVariant(t.DisplayName, creationInfo.Build.BuildVariant)
+		// Some tasks have been added to the activation tasks list because they are dependencies of the generated tasks, and all the
+		// generated tasks that depend on them are also inactive. This check allows us to skip calling GetActivationTimeForTask
+		// for these tasks, because doing so would be a slow for tasks that don't have any batchtime / cron / activation set in the version directly.
 		if !bvtu.HasSpecificActivation() {
 			continue
 		}
