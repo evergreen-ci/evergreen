@@ -28,10 +28,10 @@ func (r *projectSettingsResolver) GithubAppAuth(ctx context.Context, obj *restMo
 	if app == nil {
 		return nil, nil
 	}
-	return &restModel.APIGithubAppAuth{
-		AppID:      int(app.AppID),
-		PrivateKey: utility.ToStringPtr(""),
-	}, nil
+	res := &restModel.APIGithubAppAuth{}
+	app = app.RedactPrivateKey()
+	res.BuildFromService(*app)
+	return res, nil
 }
 
 // GithubWebhooksEnabled is the resolver for the githubWebhooksEnabled field.

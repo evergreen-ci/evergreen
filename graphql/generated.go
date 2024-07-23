@@ -966,6 +966,7 @@ type ComplexityRoot struct {
 
 	ProjectEventSettings struct {
 		Aliases               func(childComplexity int) int
+		GithubAppAuth         func(childComplexity int) int
 		GithubWebhooksEnabled func(childComplexity int) int
 		ProjectRef            func(childComplexity int) int
 		Subscriptions         func(childComplexity int) int
@@ -6334,6 +6335,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ProjectEventSettings.Aliases(childComplexity), true
+
+	case "ProjectEventSettings.githubAppAuth":
+		if e.complexity.ProjectEventSettings.GithubAppAuth == nil {
+			break
+		}
+
+		return e.complexity.ProjectEventSettings.GithubAppAuth(childComplexity), true
 
 	case "ProjectEventSettings.githubWebhooksEnabled":
 		if e.complexity.ProjectEventSettings.GithubWebhooksEnabled == nil {
@@ -42391,6 +42399,8 @@ func (ec *executionContext) fieldContext_ProjectEventLogEntry_after(_ context.Co
 			switch field.Name {
 			case "aliases":
 				return ec.fieldContext_ProjectEventSettings_aliases(ctx, field)
+			case "githubAppAuth":
+				return ec.fieldContext_ProjectEventSettings_githubAppAuth(ctx, field)
 			case "githubWebhooksEnabled":
 				return ec.fieldContext_ProjectEventSettings_githubWebhooksEnabled(ctx, field)
 			case "projectRef":
@@ -42444,6 +42454,8 @@ func (ec *executionContext) fieldContext_ProjectEventLogEntry_before(_ context.C
 			switch field.Name {
 			case "aliases":
 				return ec.fieldContext_ProjectEventSettings_aliases(ctx, field)
+			case "githubAppAuth":
+				return ec.fieldContext_ProjectEventSettings_githubAppAuth(ctx, field)
 			case "githubWebhooksEnabled":
 				return ec.fieldContext_ProjectEventSettings_githubWebhooksEnabled(ctx, field)
 			case "projectRef":
@@ -42605,6 +42617,53 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_aliases(_ context.
 				return ec.fieldContext_ProjectAlias_parameters(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectAlias", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectEventSettings_githubAppAuth(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectEventSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectEventSettings_githubAppAuth(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GithubAppAuth, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(model.APIGithubAppAuth)
+	fc.Result = res
+	return ec.marshalOGithubAppAuth2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubAppAuth(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectEventSettings_githubAppAuth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectEventSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "appId":
+				return ec.fieldContext_GithubAppAuth_appId(ctx, field)
+			case "privateKey":
+				return ec.fieldContext_GithubAppAuth_privateKey(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GithubAppAuth", field.Name)
 		},
 	}
 	return fc, nil
@@ -81312,6 +81371,8 @@ func (ec *executionContext) _ProjectEventSettings(ctx context.Context, sel ast.S
 			out.Values[i] = graphql.MarshalString("ProjectEventSettings")
 		case "aliases":
 			out.Values[i] = ec._ProjectEventSettings_aliases(ctx, field, obj)
+		case "githubAppAuth":
+			out.Values[i] = ec._ProjectEventSettings_githubAppAuth(ctx, field, obj)
 		case "githubWebhooksEnabled":
 			out.Values[i] = ec._ProjectEventSettings_githubWebhooksEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -94105,6 +94166,10 @@ func (ec *executionContext) marshalOGitTag2ᚕgithubᚗcomᚋevergreenᚑciᚋev
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOGithubAppAuth2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubAppAuth(ctx context.Context, sel ast.SelectionSet, v model.APIGithubAppAuth) graphql.Marshaler {
+	return ec._GithubAppAuth(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalOGithubAppAuth2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubAppAuth(ctx context.Context, sel ast.SelectionSet, v *model.APIGithubAppAuth) graphql.Marshaler {

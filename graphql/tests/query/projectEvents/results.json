@@ -13,8 +13,12 @@
                   "projectRef": {
                     "branch": "master"
                   },
+                  "githubAppAuth": {
+                    "appId": 12345,
+                    "privateKey": "{REDACTED_BEFORE}"
+                  },
                   "githubWebhooksEnabled": false,
-                   "vars": {
+                  "vars": {
                     "vars": {
                       "hello": "world"
                     }
@@ -23,6 +27,10 @@
                 "after": {
                   "projectRef": {
                     "branch": "main"
+                  },
+                  "githubAppAuth": {
+                    "appId": 67890,
+                    "privateKey": "{REDACTED_AFTER}"
                   },
                   "githubWebhooksEnabled": true,
                   "vars": {
