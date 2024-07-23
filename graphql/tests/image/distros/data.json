@@ -1,13 +1,13 @@
 {
     "image": [
-      {
-        "_id": "ubuntu1604"
-      }
-    ], 
+        {
+            "_id": "ubuntu1604"
+        }
+    ],
     "distro": [
         {
-          "name": "ubuntu1604-large",
-          "image_id": "ubuntu1604"
+            "name": "ubuntu1604-large",
+            "image_id": "ubuntu1604"
         },
         {
             "name": "ubuntu1604-small",
@@ -20,8 +20,8 @@
     ],
     "project_ref": [
         {
-          "_id": "spruce",
-          "identifier": "spruce"
+            "_id": "spruce",
+            "identifier": "spruce"
         }
     ]
-  }
+}

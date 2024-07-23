@@ -139,11 +139,10 @@ type OSInfoFilterOptions struct {
 	Limit int
 }
 
-// OSInfo stores operating system information. Distro field from runtime environments API corresponds to our definition of ImageID.
+// OSInfo stores operating system information.
 type OSInfo struct {
 	Version string `json:"version"`
 	Name    string `json:"name"`
-	ImageID string `json:"distro"`
 }
 
 // GetOSInfo returns a list of operating system information for an AMI.
@@ -368,8 +367,8 @@ func stringToTime(timeInitial string) (time.Time, error) {
 
 // Image stores information about an image including its AMI, imageID, kernel, last deployed time, name, and versionID.
 type Image struct {
+	ID           string
 	AMI          string
-	ImageID      string
 	Kernel       string
 	LastDeployed time.Time
 	Name         string
@@ -439,8 +438,8 @@ func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID st
 		return nil, errors.Wrapf(err, "getting OSInfo '%s' field for image: '%s'", OSVersionIDField, imageID)
 	}
 	return &Image{
+		ID:           imageID,
 		AMI:          latestImageHistory.AMI,
-		ImageID:      imageID,
 		Kernel:       kernel,
 		LastDeployed: timestamp,
 		Name:         name,
