@@ -982,16 +982,31 @@ var (
 		HostStarting,
 	}
 
-	// Hosts in "initializing" status aren't actually running yet:
-	// they're just intents, so this list omits that value.
-	ActiveStatus = []string{
-		HostRunning,
+	// IsRunningOrWillRunStatuses includes all statuses for active hosts (see
+	// ActiveStatus) where the host is either currently running or is making
+	// progress towards running.
+	IsRunningOrWillRunStatuses = []string{
 		HostBuilding,
 		HostStarting,
 		HostProvisioning,
+		HostRunning,
+	}
+
+	// ActiveStatuses includes all where the host is alive in the cloud provider
+	// or could be alive (e.g. for building hosts, the host is in the process of
+	// starting up). Intent hosts have not requested a real host from the cloud
+	// provider, so they are omitted.
+	ActiveStatuses = []string{
+		HostBuilding,
+		HostBuildingFailed,
+		HostStarting,
+		HostProvisioning,
 		HostProvisionFailed,
+		HostRunning,
 		HostStopping,
 		HostStopped,
+		HostDecommissioned,
+		HostQuarantined,
 	}
 
 	// SleepScheduleStatuses are all host statuses for which the sleep schedule

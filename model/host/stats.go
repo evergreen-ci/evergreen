@@ -110,11 +110,9 @@ func statsByDistroPipeline() []bson.M {
 	return []bson.M{
 		{
 			"$match": bson.M{
-				// Don't count user-spawned hosts (EVG-15232).
-				// This also excludes hostcreate tasks (EVG-14363), as their started_by field is the task name.
 				StartedByKey: evergreen.User,
 				StatusKey: bson.M{
-					"$in": evergreen.ActiveStatus,
+					"$in": evergreen.IsRunningOrWillRunStatuses,
 				},
 			},
 		},
@@ -158,7 +156,7 @@ func statsByProviderPipeline() []bson.M {
 		{
 			"$match": bson.M{
 				StatusKey: bson.M{
-					"$in": evergreen.ActiveStatus,
+					"$in": evergreen.IsRunningOrWillRunStatuses,
 				},
 			},
 		},
