@@ -31,6 +31,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
+	"go.uber.org/automaxprocs/maxprocs"
 )
 
 func startWebService() cli.Command {
@@ -47,6 +48,9 @@ func startWebService() cli.Command {
 		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
+
+			_, err := maxprocs.Set()
+			grip.EmergencyFatal(errors.Wrap(err, "setting max procs"))
 
 			var tp trace.TracerProvider
 			sdkTracerProvider, err := startupTracerProvider(ctx, c.String(traceEndpointFlagName))
