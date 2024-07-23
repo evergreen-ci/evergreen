@@ -1198,6 +1198,7 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		ActivatedBy:             creationInfo.Version.AuthorID, // this will be overridden if the task was activated by stepback
 		DisplayTaskId:           utility.ToStringPtr(""),       // this will be overridden if the task is an execution task
 		IsEssentialToSucceed:    creationInfo.ActivatedTasksAreEssentialToSucceed && activateTask,
+		ProjectStorageMethod:    creationInfo.Version.ProjectStorageMethod,
 	}
 
 	if err := t.SetGenerateTasksEstimations(ctx); err != nil {

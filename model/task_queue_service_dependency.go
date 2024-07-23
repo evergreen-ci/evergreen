@@ -362,6 +362,57 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				}
 			}
 
+			taskVersion, err := VersionFindOneId(nextTaskFromDB.Version)
+			if err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"dispatcher": DAGDispatcher,
+					"function":   "FindNextTask",
+					"message":    "problem finding version for task in db",
+					"version_id": nextTaskFromDB.Version,
+					"task_id":    nextTaskFromDB.Id,
+					"distro_id":  d.distroID,
+				}))
+				return nil
+			}
+			if taskVersion == nil {
+				grip.Warning(message.Fields{
+					"dispatcher": DAGDispatcher,
+					"function":   "FindNextTask",
+					"message":    "version for task from db not found",
+					"task_id":    nextTaskFromDB.Id,
+					"version_id": nextTaskFromDB.Version,
+					"distro_id":  d.distroID,
+				})
+				return nil
+			}
+			maxConcurrentLargeParserProjTasks := settings.TaskLimits.MaxConcurrentLargeParserProjectTasks
+			isDegradedMode := !settings.ServiceFlags.CPUDegradedModeDisabled
+			if isDegradedMode && maxConcurrentLargeParserProjTasks > 0 && taskVersion.ProjectStorageMethod == evergreen.ProjectStorageMethodS3 {
+				numLargeParserProjectTasks, err := task.CountLargeParserProjectTasks()
+				if err != nil {
+					grip.Warning(message.WrapError(err, message.Fields{
+						"dispatcher": DAGDispatcher,
+						"function":   "FindNextTask",
+						"message":    "problem getting num large parser project tasks",
+						"task_id":    item.Id,
+						"distro_id":  d.distroID,
+					}))
+					continue
+				}
+				if numLargeParserProjectTasks >= maxConcurrentLargeParserProjTasks {
+					grip.Info(message.Fields{
+						"dispatcher": DAGDispatcher,
+						"function":   "FindNextTask",
+						"message":    "skipping task because it would exceed the concurrent large parser project task limit",
+						"task_id":    item.Id,
+						"distro_id":  d.distroID,
+						"max_concurrent_large_parser_project_tasks": maxConcurrentLargeParserProjTasks,
+						"num_large_parser_project_tasks":            numLargeParserProjectTasks,
+					})
+					continue
+				}
+			}
+
 			dependenciesMet, err := nextTaskFromDB.DependenciesMet(dependencyCaches)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{

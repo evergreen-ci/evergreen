@@ -80,7 +80,11 @@ func (s *ParserProjectS3Storage) UpsertOne(ctx context.Context, pp *ParserProjec
 	if err != nil {
 		return errors.Wrap(err, "getting config")
 	}
+	isDegradedMode := !config.ServiceFlags.CPUDegradedModeDisabled
 	maxSize := config.TaskLimits.MaxParserProjectSize
+	if isDegradedMode {
+		maxSize = config.TaskLimits.MaxDegradedModeParserProjectSize
+	}
 	if maxSize > 0 && parserProjectLen > maxSize {
 		return errors.Errorf("parser project exceeds the system limit (%v > %v bytes).", parserProjectLen, maxSize)
 	}
