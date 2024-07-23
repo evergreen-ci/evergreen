@@ -47,16 +47,31 @@ func makeSpawnhostStopJob() *spawnhostStopJob {
 	return j
 }
 
+// SpawnHostModifyJobOptions represents common options for creating spawn host
+// modification jobs.
+type SpawnHostModifyJobOptions struct {
+	Host      *host.Host                      `bson:"-" json:"-" yaml:"-"`
+	Source    evergreen.ModifySpawnHostSource `bson:"-" json:"-" yaml:"-"`
+	User      string                          `bson:"-" json:"-" yaml:"-"`
+	Timestamp string                          `bson:"-" json:"-" yaml:"-"`
+	WaitUntil time.Time                       `bson:"-" json:"-" yaml:"-"`
+}
+
 // NewSpawnhostStopJob returns a job to stop a running spawn host.
-func NewSpawnhostStopJob(h *host.Host, shouldKeepOff bool, source evergreen.ModifySpawnHostSource, user, ts string) amboy.Job {
+// kim: TODO: refactor into common options
+func NewSpawnhostStopJob(opts SpawnHostModifyJobOptions, shouldKeepOff bool) amboy.Job {
 	j := makeSpawnhostStopJob()
-	j.SetID(fmt.Sprintf("%s.%s.%s.%s", spawnhostStopName, user, h.Id, ts))
-	j.SetScopes([]string{fmt.Sprintf("%s.%s", spawnHostStatusChangeScopeName, h.Id)})
+	j.SetID(fmt.Sprintf("%s.%s.%s.%s", spawnhostStopName, opts.User, opts.Host.Id, opts.Timestamp))
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", spawnHostStatusChangeScopeName, opts.Host.Id)})
 	j.SetEnqueueAllScopes(true)
-	j.CloudHostModification.HostID = h.Id
-	j.CloudHostModification.UserID = user
+	j.CloudHostModification.HostID = opts.Host.Id
+	j.CloudHostModification.UserID = opts.User
 	j.ShouldKeepOff = shouldKeepOff
-	j.CloudHostModification.Source = source
+	j.CloudHostModification.Source = opts.Source
+	// kim: TODO: check if Amboy will behave fine if I set the zero time here.
+	j.SetTimeInfo(amboy.JobTimeInfo{
+		WaitUntil: opts.WaitUntil,
+	})
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(spawnHostStopRetryLimit),
@@ -114,14 +129,7 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 		}
 
 		if err := mgr.StopInstance(ctx, h, j.ShouldKeepOff, user); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":  "error stopping spawn host",
-				"host_id":  h.Id,
-				"host_tag": h.Tag,
-				"distro":   h.Distro.Id,
-				"job":      j.ID(),
-			}))
-			return errors.Wrap(err, "stopping spawn host")
+			return errors.Wrapf(err, "stopping spawn host '%s'", j.HostID)
 		}
 
 		event.LogHostStopSucceeded(h.Id, string(j.Source))

@@ -47,14 +47,17 @@ func makeSpawnhostStartJob() *spawnhostStartJob {
 }
 
 // NewSpawnhostStartJob returns a job to start a stopped spawn host.
-func NewSpawnhostStartJob(h *host.Host, source evergreen.ModifySpawnHostSource, user, ts string) amboy.Job {
+func NewSpawnhostStartJob(opts SpawnHostModifyJobOptions) amboy.Job {
 	j := makeSpawnhostStartJob()
-	j.SetID(fmt.Sprintf("%s.%s.%s.%s", spawnhostStartName, user, h.Id, ts))
-	j.SetScopes([]string{fmt.Sprintf("%s.%s", spawnHostStatusChangeScopeName, h.Id)})
+	j.SetID(fmt.Sprintf("%s.%s.%s.%s", spawnhostStartName, opts.User, opts.Host.Id, opts.Timestamp))
+	j.SetScopes([]string{fmt.Sprintf("%s.%s", spawnHostStatusChangeScopeName, opts.Host.Id)})
 	j.SetEnqueueAllScopes(true)
-	j.CloudHostModification.HostID = h.Id
-	j.CloudHostModification.UserID = user
-	j.CloudHostModification.Source = source
+	j.CloudHostModification.HostID = opts.Host.Id
+	j.CloudHostModification.UserID = opts.User
+	j.CloudHostModification.Source = opts.Source
+	j.SetTimeInfo(amboy.JobTimeInfo{
+		WaitUntil: opts.WaitUntil,
+	})
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(spawnHostStartRetryLimit),
@@ -97,14 +100,7 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 		}
 
 		if err := mgr.StartInstance(ctx, h, user); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":  "error starting spawn host",
-				"host_id":  h.Id,
-				"host_tag": h.Tag,
-				"distro":   h.Distro.Id,
-				"job":      j.ID(),
-			}))
-			return errors.Wrap(err, "starting spawn host")
+			return errors.Wrapf(err, "starting spawn host '%s'", j.HostID)
 		}
 
 		event.LogHostStartSucceeded(h.Id, string(j.Source))
