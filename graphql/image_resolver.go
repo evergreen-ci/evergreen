@@ -17,7 +17,7 @@ func (r *imageResolver) Distros(ctx context.Context, obj *thirdparty.Image) ([]*
 	}
 	distros, err := distro.GetDistrosForImage(ctx, obj.ID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distros for imageID '%s': '%s'", obj.ID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distros for image '%s': '%s'", obj.ID, err.Error()))
 	}
 	apiDistros := []*restModel.APIDistro{}
 	for _, d := range distros {

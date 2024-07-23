@@ -1,9 +1,4 @@
 {
-    "image": [
-        {
-            "_id": "ubuntu1604"
-        }
-    ],
     "distro": [
         {
             "name": "ubuntu1604-large",

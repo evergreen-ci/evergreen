@@ -365,7 +365,7 @@ func stringToTime(timeInitial string) (time.Time, error) {
 	return time.Unix(timestamp, 0), nil
 }
 
-// Image stores information about an image including its AMI, imageID, kernel, last deployed time, name, and versionID.
+// Image stores information about an image including its AMI, ID, kernel, last deployed time, name, and version ID.
 type Image struct {
 	ID           string
 	AMI          string

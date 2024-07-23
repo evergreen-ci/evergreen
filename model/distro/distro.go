@@ -897,7 +897,7 @@ func GetHostCreateDistro(ctx context.Context, createHost apimodels.CreateHost) (
 // GetDistrosForImage returns the distros for a given image.
 func GetDistrosForImage(ctx context.Context, imageID string) ([]Distro, error) {
 	if imageID == "" {
-		return nil, errors.Errorf("imageID not found")
+		return nil, errors.Errorf("imageID not provided")
 	}
 	return Find(ctx, bson.M{ImageIDKey: imageID})
 }
