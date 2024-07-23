@@ -568,8 +568,7 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 }
 
 func (s *taskDAGDispatchServiceSuite) SetupTest() {
-	s.Require().NoError(db.ClearCollections(task.Collection))
-	s.Require().NoError(db.ClearCollections(host.Collection))
+	s.Require().NoError(db.ClearCollections(task.Collection, host.Collection, VersionCollection))
 	items := []TaskQueueItem{}
 	var group string
 	var variant string
@@ -655,6 +654,26 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 		}
 		s.Require().NoError(t.Insert())
 	}
+	taskVersion1 := &Version{
+		Id: "version_1",
+	}
+	taskVersion2 := &Version{
+		Id: "5d8cd23da4cf4747f4210333",
+	}
+	taskVersion3 := &Version{
+		Id: "5d88953e2a60ed61eefe9561",
+	}
+	taskVersion4 := &Version{
+		Id: "version",
+	}
+	taskVersion5 := &Version{
+		Id: "",
+	}
+	s.Require().NoError(taskVersion1.Insert())
+	s.Require().NoError(taskVersion2.Insert())
+	s.Require().NoError(taskVersion3.Insert())
+	s.Require().NoError(taskVersion4.Insert())
+	s.Require().NoError(taskVersion5.Insert())
 
 	s.taskQueue = TaskQueue{
 		Distro: distroID,
