@@ -471,9 +471,9 @@ Fields:
 (note: all fields can be expanded by project variables with the exception of `auto_update`)
 
 -   `name`: alias to refer to the module
--   `branch`: the branch of the module to use in the project
+-   `branch`: the branch of the module to use in the project. These can be [expansions](Project-Configuration-Files#expansions)
 -   `repo`: the git repository of the module
--   `prefix`: the path prefix to use for the module
+-   `prefix`: the path prefix to use for the module. These can be [expansions](Project-Configuration-Files#expansions)
 -   `ref`: the git commit hash to use for the module in the project (if
     not specified, defaults to the latest revision that existed at the
     time of the Evergreen version creation)
