@@ -1,3 +1,11 @@
+###### INPUTS ######
+input PackageOpts {
+    name: String
+    manager: String
+    limit: Int
+    page: Int
+}
+
 ###### TYPES ######
 """
 Image is returned by the image query.
@@ -10,5 +18,16 @@ type Image {
   kernel: String!
   lastDeployed: Time!
   name: String!
+  packages(opts: PackageOpts!): [Package!]!
   versionId: String!
 }
+
+type Package {
+    name: String!
+    manager: String!
+    version: String!
+}
+
+
+
+
