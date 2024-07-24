@@ -8,7 +8,7 @@
 
 Ticket: DEVPROD-8993
 
-Typically, all project commands use options from their `params` field to configure the command- allowing the command to be customizable at runtime. The `git.get_project` command uses the `modules` field from the build variant the command is running in, which is not expandable and not customizable at runtime.
+Typically, all project commands use options from their `params` field to configure the command, allowing the command to be customizable at runtime. The `git.get_project` command uses the `modules` field from the build variant the command is running in, which is not expandable and not customizable at runtime.
 
 ## Considered Options
 
