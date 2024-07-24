@@ -752,7 +752,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 						if task == t {
 							break
 						}
-						if !slices.Contains(variantToSchedule.Tasks, task) {
+						if utility.StringSliceContains(variantToSchedule.Tasks, task) {
 							variantToSchedule.Tasks = append(variantToSchedule.Tasks, task)
 						}
 					}
