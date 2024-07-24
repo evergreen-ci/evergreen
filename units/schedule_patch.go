@@ -32,7 +32,7 @@ func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId strin
 	if projectRef == nil {
 		return http.StatusInternalServerError, errors.Errorf("project '%s' for version '%s' not found", p.Project, p.Version)
 	}
-	project, err := model.FindProjectFromVersionID(version.Id)
+	project, err := model.FindProjectFromVersionID(p.Version)
 	if err != nil {
 		return http.StatusInternalServerError, errors.Wrapf(err, "finding project for version '%s'", version.Id)
 	}
