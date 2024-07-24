@@ -32,12 +32,21 @@ func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId strin
 	if projectRef == nil {
 		return http.StatusInternalServerError, errors.Errorf("project '%s' for version '%s' not found", p.Project, p.Version)
 	}
-	project, err := model.FindProjectFromVersionID(p.Version)
-	if err != nil {
-		return http.StatusInternalServerError, errors.Wrapf(err, "finding project for version '%s'", version.Id)
-	}
-	if project == nil {
-		return http.StatusInternalServerError, errors.Errorf("project not found for version '%s'", version.Id)
+	var project *model.Project
+	if version == nil {
+		githubOauthToken, err := env.Settings().GetGithubOauthToken()
+		if err != nil {
+			return http.StatusInternalServerError, errors.Wrap(err, "getting GitHub OAuth token")
+		}
+		project, _, err = model.GetPatchedProject(ctx, env.Settings(), p, githubOauthToken)
+		if err != nil {
+			return http.StatusInternalServerError, errors.Wrapf(err, "finding project for patch '%s'", p.Id.Hex())
+		}
+	} else {
+		project, err = model.FindProjectFromVersionID(version.Id)
+		if err != nil {
+			return http.StatusInternalServerError, errors.Wrapf(err, "finding project for version '%s'", version.Id)
+		}
 	}
 	taskGroupTasksToAddToVariant := map[string]string{}
 	for _, vt := range patchUpdateReq.VariantsTasks {
