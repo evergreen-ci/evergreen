@@ -243,6 +243,10 @@ type ComplexityRoot struct {
 		DeletedDistroID func(childComplexity int) int
 	}
 
+	DeleteGithubAppCredentialsPayload struct {
+		OldAppID func(childComplexity int) int
+	}
+
 	Dependency struct {
 		BuildVariant   func(childComplexity int) int
 		MetStatus      func(childComplexity int) int
@@ -529,6 +533,7 @@ type ComplexityRoot struct {
 	Image struct {
 		AMI          func(childComplexity int) int
 		Distros      func(childComplexity int) int
+		ID           func(childComplexity int) int
 		Kernel       func(childComplexity int) int
 		LastDeployed func(childComplexity int) int
 		Name         func(childComplexity int) int
@@ -653,6 +658,7 @@ type ComplexityRoot struct {
 		DeactivateStepbackTask        func(childComplexity int, opts DeactivateStepbackTaskInput) int
 		DefaultSectionToRepo          func(childComplexity int, opts DefaultSectionToRepoInput) int
 		DeleteDistro                  func(childComplexity int, opts DeleteDistroInput) int
+		DeleteGithubAppCredentials    func(childComplexity int, opts DeleteGithubAppCredentialsInput) int
 		DeleteProject                 func(childComplexity int, projectID string) int
 		DeleteSubscriptions           func(childComplexity int, subscriptionIds []string) int
 		DetachProjectFromRepo         func(childComplexity int, projectID string) int
@@ -1708,6 +1714,7 @@ type MutationResolver interface {
 	CopyProject(ctx context.Context, project data.CopyProjectOpts, requestS3Creds *bool) (*model.APIProjectRef, error)
 	DeactivateStepbackTask(ctx context.Context, opts DeactivateStepbackTaskInput) (bool, error)
 	DefaultSectionToRepo(ctx context.Context, opts DefaultSectionToRepoInput) (*string, error)
+	DeleteGithubAppCredentials(ctx context.Context, opts DeleteGithubAppCredentialsInput) (*DeleteGithubAppCredentialsPayload, error)
 	DeleteProject(ctx context.Context, projectID string) (bool, error)
 	DetachProjectFromRepo(ctx context.Context, projectID string) (*model.APIProjectRef, error)
 	ForceRepotrackerRun(ctx context.Context, projectID string) (bool, error)
@@ -2607,6 +2614,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.DeleteDistroPayload.DeletedDistroID(childComplexity), true
+
+	case "DeleteGithubAppCredentialsPayload.oldAppId":
+		if e.complexity.DeleteGithubAppCredentialsPayload.OldAppID == nil {
+			break
+		}
+
+		return e.complexity.DeleteGithubAppCredentialsPayload.OldAppID(childComplexity), true
 
 	case "Dependency.buildVariant":
 		if e.complexity.Dependency.BuildVariant == nil {
@@ -3868,6 +3882,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Image.Distros(childComplexity), true
 
+	case "Image.id":
+		if e.complexity.Image.ID == nil {
+			break
+		}
+
+		return e.complexity.Image.ID(childComplexity), true
+
 	case "Image.kernel":
 		if e.complexity.Image.Kernel == nil {
 			break
@@ -4474,6 +4495,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.DeleteDistro(childComplexity, args["opts"].(DeleteDistroInput)), true
+
+	case "Mutation.deleteGithubAppCredentials":
+		if e.complexity.Mutation.DeleteGithubAppCredentials == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteGithubAppCredentials_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteGithubAppCredentials(childComplexity, args["opts"].(DeleteGithubAppCredentialsInput)), true
 
 	case "Mutation.deleteProject":
 		if e.complexity.Mutation.DeleteProject == nil {
@@ -9820,6 +9853,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputDeactivateStepbackTaskInput,
 		ec.unmarshalInputDefaultSectionToRepoInput,
 		ec.unmarshalInputDeleteDistroInput,
+		ec.unmarshalInputDeleteGithubAppCredentialsInput,
 		ec.unmarshalInputDispatcherSettingsInput,
 		ec.unmarshalInputDisplayTask,
 		ec.unmarshalInputDistroEventsInput,
@@ -10460,6 +10494,21 @@ func (ec *executionContext) field_Mutation_deleteDistro_args(ctx context.Context
 	if tmp, ok := rawArgs["opts"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
 		arg0, err = ec.unmarshalNDeleteDistroInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeleteDistroInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["opts"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteGithubAppCredentials_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 DeleteGithubAppCredentialsInput
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+		arg0, err = ec.unmarshalNDeleteGithubAppCredentialsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeleteGithubAppCredentialsInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -16496,6 +16545,50 @@ func (ec *executionContext) fieldContext_DeleteDistroPayload_deletedDistroId(_ c
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DeleteGithubAppCredentialsPayload_oldAppId(ctx context.Context, field graphql.CollectedField, obj *DeleteGithubAppCredentialsPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DeleteGithubAppCredentialsPayload_oldAppId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OldAppID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DeleteGithubAppCredentialsPayload_oldAppId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DeleteGithubAppCredentialsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -24889,6 +24982,50 @@ func (ec *executionContext) fieldContext_IceCreamSettings_schedulerHost(_ contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Image_id(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Image_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Image_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Image",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Image_ami(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Image_ami(ctx, field)
 	if err != nil {
@@ -24928,6 +25065,114 @@ func (ec *executionContext) fieldContext_Image_ami(_ context.Context, field grap
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Image_distros(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Image_distros(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Image().Distros(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIDistro)
+	fc.Result = res
+	return ec.marshalNDistro2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistroᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Image",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "adminOnly":
+				return ec.fieldContext_Distro_adminOnly(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Distro_aliases(ctx, field)
+			case "arch":
+				return ec.fieldContext_Distro_arch(ctx, field)
+			case "authorizedKeysFile":
+				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
+			case "bootstrapSettings":
+				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
+			case "containerPool":
+				return ec.fieldContext_Distro_containerPool(ctx, field)
+			case "disabled":
+				return ec.fieldContext_Distro_disabled(ctx, field)
+			case "disableShallowClone":
+				return ec.fieldContext_Distro_disableShallowClone(ctx, field)
+			case "dispatcherSettings":
+				return ec.fieldContext_Distro_dispatcherSettings(ctx, field)
+			case "expansions":
+				return ec.fieldContext_Distro_expansions(ctx, field)
+			case "finderSettings":
+				return ec.fieldContext_Distro_finderSettings(ctx, field)
+			case "homeVolumeSettings":
+				return ec.fieldContext_Distro_homeVolumeSettings(ctx, field)
+			case "hostAllocatorSettings":
+				return ec.fieldContext_Distro_hostAllocatorSettings(ctx, field)
+			case "iceCreamSettings":
+				return ec.fieldContext_Distro_iceCreamSettings(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Distro_imageId(ctx, field)
+			case "isCluster":
+				return ec.fieldContext_Distro_isCluster(ctx, field)
+			case "isVirtualWorkStation":
+				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
+			case "name":
+				return ec.fieldContext_Distro_name(ctx, field)
+			case "note":
+				return ec.fieldContext_Distro_note(ctx, field)
+			case "warningNote":
+				return ec.fieldContext_Distro_warningNote(ctx, field)
+			case "plannerSettings":
+				return ec.fieldContext_Distro_plannerSettings(ctx, field)
+			case "provider":
+				return ec.fieldContext_Distro_provider(ctx, field)
+			case "providerSettingsList":
+				return ec.fieldContext_Distro_providerSettingsList(ctx, field)
+			case "setup":
+				return ec.fieldContext_Distro_setup(ctx, field)
+			case "setupAsSudo":
+				return ec.fieldContext_Distro_setupAsSudo(ctx, field)
+			case "sshOptions":
+				return ec.fieldContext_Distro_sshOptions(ctx, field)
+			case "user":
+				return ec.fieldContext_Distro_user(ctx, field)
+			case "userSpawnAllowed":
+				return ec.fieldContext_Distro_userSpawnAllowed(ctx, field)
+			case "validProjects":
+				return ec.fieldContext_Distro_validProjects(ctx, field)
+			case "workDir":
+				return ec.fieldContext_Distro_workDir(ctx, field)
+			case "mountpoints":
+				return ec.fieldContext_Distro_mountpoints(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Distro", field.Name)
 		},
 	}
 	return fc, nil
@@ -25104,114 +25349,6 @@ func (ec *executionContext) fieldContext_Image_versionId(_ context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Image_distros(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Image_distros(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Image().Distros(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.APIDistro)
-	fc.Result = res
-	return ec.marshalNDistro2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDistroᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Image",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "adminOnly":
-				return ec.fieldContext_Distro_adminOnly(ctx, field)
-			case "aliases":
-				return ec.fieldContext_Distro_aliases(ctx, field)
-			case "arch":
-				return ec.fieldContext_Distro_arch(ctx, field)
-			case "authorizedKeysFile":
-				return ec.fieldContext_Distro_authorizedKeysFile(ctx, field)
-			case "bootstrapSettings":
-				return ec.fieldContext_Distro_bootstrapSettings(ctx, field)
-			case "containerPool":
-				return ec.fieldContext_Distro_containerPool(ctx, field)
-			case "disabled":
-				return ec.fieldContext_Distro_disabled(ctx, field)
-			case "disableShallowClone":
-				return ec.fieldContext_Distro_disableShallowClone(ctx, field)
-			case "dispatcherSettings":
-				return ec.fieldContext_Distro_dispatcherSettings(ctx, field)
-			case "expansions":
-				return ec.fieldContext_Distro_expansions(ctx, field)
-			case "finderSettings":
-				return ec.fieldContext_Distro_finderSettings(ctx, field)
-			case "homeVolumeSettings":
-				return ec.fieldContext_Distro_homeVolumeSettings(ctx, field)
-			case "hostAllocatorSettings":
-				return ec.fieldContext_Distro_hostAllocatorSettings(ctx, field)
-			case "iceCreamSettings":
-				return ec.fieldContext_Distro_iceCreamSettings(ctx, field)
-			case "imageId":
-				return ec.fieldContext_Distro_imageId(ctx, field)
-			case "isCluster":
-				return ec.fieldContext_Distro_isCluster(ctx, field)
-			case "isVirtualWorkStation":
-				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
-			case "name":
-				return ec.fieldContext_Distro_name(ctx, field)
-			case "note":
-				return ec.fieldContext_Distro_note(ctx, field)
-			case "warningNote":
-				return ec.fieldContext_Distro_warningNote(ctx, field)
-			case "plannerSettings":
-				return ec.fieldContext_Distro_plannerSettings(ctx, field)
-			case "provider":
-				return ec.fieldContext_Distro_provider(ctx, field)
-			case "providerSettingsList":
-				return ec.fieldContext_Distro_providerSettingsList(ctx, field)
-			case "setup":
-				return ec.fieldContext_Distro_setup(ctx, field)
-			case "setupAsSudo":
-				return ec.fieldContext_Distro_setupAsSudo(ctx, field)
-			case "sshOptions":
-				return ec.fieldContext_Distro_sshOptions(ctx, field)
-			case "user":
-				return ec.fieldContext_Distro_user(ctx, field)
-			case "userSpawnAllowed":
-				return ec.fieldContext_Distro_userSpawnAllowed(ctx, field)
-			case "validProjects":
-				return ec.fieldContext_Distro_validProjects(ctx, field)
-			case "workDir":
-				return ec.fieldContext_Distro_workDir(ctx, field)
-			case "mountpoints":
-				return ec.fieldContext_Distro_mountpoints(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Distro", field.Name)
 		},
 	}
 	return fc, nil
@@ -29839,6 +29976,62 @@ func (ec *executionContext) fieldContext_Mutation_defaultSectionToRepo(ctx conte
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_defaultSectionToRepo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteGithubAppCredentials(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteGithubAppCredentials(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteGithubAppCredentials(rctx, fc.Args["opts"].(DeleteGithubAppCredentialsInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*DeleteGithubAppCredentialsPayload)
+	fc.Result = res
+	return ec.marshalODeleteGithubAppCredentialsPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeleteGithubAppCredentialsPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteGithubAppCredentials(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "oldAppId":
+				return ec.fieldContext_DeleteGithubAppCredentialsPayload_oldAppId(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DeleteGithubAppCredentialsPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteGithubAppCredentials_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -47128,8 +47321,12 @@ func (ec *executionContext) fieldContext_Query_image(ctx context.Context, field 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "id":
+				return ec.fieldContext_Image_id(ctx, field)
 			case "ami":
 				return ec.fieldContext_Image_ami(ctx, field)
+			case "distros":
+				return ec.fieldContext_Image_distros(ctx, field)
 			case "kernel":
 				return ec.fieldContext_Image_kernel(ctx, field)
 			case "lastDeployed":
@@ -47138,8 +47335,6 @@ func (ec *executionContext) fieldContext_Query_image(ctx context.Context, field 
 				return ec.fieldContext_Image_name(ctx, field)
 			case "versionId":
 				return ec.fieldContext_Image_versionId(ctx, field)
-			case "distros":
-				return ec.fieldContext_Image_distros(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Image", field.Name)
 		},
@@ -69633,6 +69828,54 @@ func (ec *executionContext) unmarshalInputDeleteDistroInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputDeleteGithubAppCredentialsInput(ctx context.Context, obj interface{}) (DeleteGithubAppCredentialsInput, error) {
+	var it DeleteGithubAppCredentialsInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"projectId"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "projectId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				permission, err := ec.unmarshalNProjectPermission2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectPermission(ctx, "SETTINGS")
+				if err != nil {
+					return nil, err
+				}
+				access, err := ec.unmarshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAccessLevel(ctx, "EDIT")
+				if err != nil {
+					return nil, err
+				}
+				if ec.directives.RequireProjectAccess == nil {
+					return nil, errors.New("directive requireProjectAccess is not implemented")
+				}
+				return ec.directives.RequireProjectAccess(ctx, obj, directive0, permission, access)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.ProjectID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputDispatcherSettingsInput(ctx context.Context, obj interface{}) (model.APIDispatcherSettings, error) {
 	var it model.APIDispatcherSettings
 	asMap := map[string]interface{}{}
@@ -75317,6 +75560,45 @@ func (ec *executionContext) _DeleteDistroPayload(ctx context.Context, sel ast.Se
 	return out
 }
 
+var deleteGithubAppCredentialsPayloadImplementors = []string{"DeleteGithubAppCredentialsPayload"}
+
+func (ec *executionContext) _DeleteGithubAppCredentialsPayload(ctx context.Context, sel ast.SelectionSet, obj *DeleteGithubAppCredentialsPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, deleteGithubAppCredentialsPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DeleteGithubAppCredentialsPayload")
+		case "oldAppId":
+			out.Values[i] = ec._DeleteGithubAppCredentialsPayload_oldAppId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var dependencyImplementors = []string{"Dependency"}
 
 func (ec *executionContext) _Dependency(ctx context.Context, sel ast.SelectionSet, obj *Dependency) graphql.Marshaler {
@@ -77772,28 +78054,13 @@ func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, ob
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Image")
+		case "id":
+			out.Values[i] = ec._Image_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "ami":
 			out.Values[i] = ec._Image_ami(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "kernel":
-			out.Values[i] = ec._Image_kernel(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "lastDeployed":
-			out.Values[i] = ec._Image_lastDeployed(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "name":
-			out.Values[i] = ec._Image_name(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "versionId":
-			out.Values[i] = ec._Image_versionId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -77833,6 +78100,26 @@ func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "kernel":
+			out.Values[i] = ec._Image_kernel(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "lastDeployed":
+			out.Values[i] = ec._Image_lastDeployed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "name":
+			out.Values[i] = ec._Image_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "versionId":
+			out.Values[i] = ec._Image_versionId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -78814,6 +79101,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "defaultSectionToRepo":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_defaultSectionToRepo(ctx, field)
+			})
+		case "deleteGithubAppCredentials":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteGithubAppCredentials(ctx, field)
 			})
 		case "deleteProject":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -89581,6 +89872,11 @@ func (ec *executionContext) marshalNDeleteDistroPayload2ᚖgithubᚗcomᚋevergr
 	return ec._DeleteDistroPayload(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNDeleteGithubAppCredentialsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeleteGithubAppCredentialsInput(ctx context.Context, v interface{}) (DeleteGithubAppCredentialsInput, error) {
+	res, err := ec.unmarshalInputDeleteGithubAppCredentialsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNDependency2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependency(ctx context.Context, sel ast.SelectionSet, v *Dependency) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -93924,6 +94220,13 @@ func (ec *executionContext) unmarshalOContainerResourcesInput2ᚕgithubᚗcomᚋ
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) marshalODeleteGithubAppCredentialsPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeleteGithubAppCredentialsPayload(ctx context.Context, sel ast.SelectionSet, v *DeleteGithubAppCredentialsPayload) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._DeleteGithubAppCredentialsPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalODependency2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDependencyᚄ(ctx context.Context, sel ast.SelectionSet, v []*Dependency) graphql.Marshaler {

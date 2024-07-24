@@ -536,6 +536,33 @@ func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, opts Defaul
 	return &opts.ProjectID, nil
 }
 
+// DeleteGithubAppCredentials is the resolver for the deleteGithubAppCredentials field.
+func (r *mutationResolver) DeleteGithubAppCredentials(ctx context.Context, opts DeleteGithubAppCredentialsInput) (*DeleteGithubAppCredentialsPayload, error) {
+	usr := mustHaveUser(ctx)
+	app, err := model.FindOneGithubAppAuth(opts.ProjectID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding GitHub app for project '%s': %s", opts.ProjectID, err.Error()))
+	}
+	if app == nil {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("project '%s' does not have a GitHub app defined", opts.ProjectID))
+	}
+	if err = model.RemoveGithubAppAuth(opts.ProjectID); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("removing GitHub app auth for project '%s': %s", opts.ProjectID, err.Error()))
+	}
+	before := model.ProjectSettings{
+		GitHubAppAuth: *app,
+	}
+	after := model.ProjectSettings{
+		GitHubAppAuth: evergreen.GithubAppAuth{},
+	}
+	if err = model.LogProjectModified(opts.ProjectID, usr.Id, &before, &after); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("logging project modification for project '%s': %s", opts.ProjectID, err.Error()))
+	}
+	return &DeleteGithubAppCredentialsPayload{
+		OldAppID: int(app.AppID),
+	}, nil
+}
+
 // DeleteProject is the resolver for the deleteProject field.
 func (r *mutationResolver) DeleteProject(ctx context.Context, projectID string) (bool, error) {
 	if err := data.HideBranch(projectID); err != nil {

@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 )
 
@@ -19,9 +18,9 @@ func (r *imageResolver) Distros(ctx context.Context, obj *thirdparty.Image) ([]*
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distros for image '%s': '%s'", obj.ID, err.Error()))
 	}
-	apiDistros := []*restModel.APIDistro{}
+	apiDistros := []*model.APIDistro{}
 	for _, d := range distros {
-		apiDistro := restModel.APIDistro{}
+		apiDistro := model.APIDistro{}
 		apiDistro.BuildFromService(d)
 		apiDistros = append(apiDistros, &apiDistro)
 	}

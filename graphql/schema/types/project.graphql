@@ -44,6 +44,20 @@ type SetLastRevisionPayload {
   mergeBaseRevision: String!
 }
 
+"""
+DeleteGithubAppCredentialsInput is the input to the deleteGithubAppCredentials mutation.
+"""
+input DeleteGithubAppCredentialsInput {
+  projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
+}
+
+"""
+DeleteGithubAppCredentialsPayload is returned by the deleteGithubAppCredentials mutation.
+"""
+type DeleteGithubAppCredentialsPayload {
+  oldAppId: Int!
+}
+
 input ProjectAliasInput {
   id: String!
   alias: String!
