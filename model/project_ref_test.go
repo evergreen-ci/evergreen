@@ -544,13 +544,15 @@ func TestGetActivationTimeForTask(t *testing.T) {
 	assert.NoError(t, versionWithoutTask.Insert())
 	assert.NoError(t, versionWithTask.Insert())
 
-	activationTime, err := projectRef.GetActivationTimeForTask(bvt)
+	currentTime := time.Now()
+	activationTime, err := projectRef.GetActivationTimeForTask(bvt, currentTime, time.Now())
 	assert.NoError(t, err)
 	assert.True(t, activationTime.Equal(prevTime.Add(time.Hour)))
 
-	activationTime, err = projectRef.GetActivationTimeForTask(bvt2)
+	// Activation time should be the zero time, because this variant is disabled.
+	activationTime, err = projectRef.GetActivationTimeForTask(bvt2, currentTime, time.Now())
 	assert.NoError(t, err)
-	assert.True(t, activationTime.Equal(utility.ZeroTime))
+	assert.True(t, utility.IsZeroTime(activationTime))
 }
 
 func TestGetActivationTimeWithCron(t *testing.T) {
@@ -600,6 +602,190 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 		},
 	} {
 		t.Run(name, test)
+	}
+
+	pRef := ProjectRef{
+		Id:         "project",
+		Identifier: "project",
+	}
+	versionCreatedAt, err := time.Parse(time.RFC3339, "2024-07-15T23:59:00Z")
+	require.NoError(t, err)
+	v := Version{
+		Id:         "version",
+		CreateTime: versionCreatedAt,
+	}
+	const cronExpr = "0 */4 * * *" // Every 4 hours
+	bvtu := BuildVariantTaskUnit{
+		Name:          "task_name",
+		Variant:       "bv_name",
+		CronBatchTime: cronExpr,
+	}
+	bv := BuildVariant{
+		Name:          "bv_name",
+		CronBatchTime: cronExpr,
+	}
+
+	for activationType, getActivationTime := range map[string]func(versionCreatedAt time.Time, now time.Time) (time.Time, error){
+		"Task": func(versionCreatedAt time.Time, now time.Time) (time.Time, error) {
+			return pRef.GetActivationTimeForTask(&bvtu, versionCreatedAt, now)
+		},
+		"Variant": func(versionCreatedAt time.Time, now time.Time) (time.Time, error) {
+			return pRef.GetActivationTimeForVariant(&bv, versionCreatedAt, now)
+		},
+	} {
+		t.Run(activationType, func(t *testing.T) {
+			for tName, tCase := range map[string]func(t *testing.T, pRef *ProjectRef, v *Version, bvtu *BuildVariantTaskUnit){
+				"SchedulesPastCronWithRecentlyElapsedCron": func(t *testing.T, pRef *ProjectRef, v *Version, bvtu *BuildVariantTaskUnit) {
+					now := v.CreateTime.Add(2 * time.Minute)
+
+					activateAt, err := getActivationTime(v.CreateTime, now)
+					require.NoError(t, err)
+
+					assert.True(t, activateAt.Before(now), "cron should be scheduled in the past")
+				},
+				"SchedulesFutureCronWithRecentlyElapsedCronButConflictingRecentCommitVersion": func(t *testing.T, pRef *ProjectRef, v *Version, bvtu *BuildVariantTaskUnit) {
+					now := v.CreateTime.Add(2 * time.Minute)
+					conflictingVersionWithCron := Version{
+						Id:         "conflicting_version_with_cron",
+						Identifier: pRef.Id,
+						CreateTime: v.CreateTime.Add(-time.Hour),
+						Requester:  evergreen.RepotrackerVersionRequester,
+						BuildVariants: []VersionBuildStatus{
+							{
+								BuildVariant: "bv_name",
+								ActivationStatus: ActivationStatus{
+									ActivateAt: now,
+								},
+								BatchTimeTasks: []BatchTimeTaskStatus{
+									{
+										TaskName: "task_name",
+										ActivationStatus: ActivationStatus{
+											ActivateAt: now,
+										},
+									},
+								},
+							},
+						},
+					}
+					require.NoError(t, conflictingVersionWithCron.Insert())
+
+					activateAt, err := getActivationTime(v.CreateTime, now)
+					require.NoError(t, err)
+					assert.True(t, activateAt.After(now), "cron should be scheduled in the future due to conflicting recent commit version with recent activation time")
+				},
+				"SchedulesPastCronWithNonconflictingRecentCommitVersion": func(t *testing.T, pRef *ProjectRef, v *Version, bvtu *BuildVariantTaskUnit) {
+					now := v.CreateTime.Add(2 * time.Minute)
+
+					recentVersionCreatedAt := v.CreateTime.Add(-6 * time.Hour)
+					recentVersionWithCron := Version{
+						Id:         "conflicting_version_with_cron",
+						Identifier: pRef.Id,
+						CreateTime: recentVersionCreatedAt,
+						Requester:  evergreen.AdHocRequester,
+						BuildVariants: []VersionBuildStatus{
+							{
+								BuildVariant: "bv_name",
+								ActivationStatus: ActivationStatus{
+									ActivateAt: recentVersionCreatedAt,
+								},
+								BatchTimeTasks: []BatchTimeTaskStatus{
+									{
+										TaskName: "task_name",
+										ActivationStatus: ActivationStatus{
+											ActivateAt: recentVersionCreatedAt,
+										},
+									},
+								},
+							},
+						},
+					}
+					require.NoError(t, recentVersionWithCron.Insert())
+
+					activateAt, err := getActivationTime(v.CreateTime, now)
+					require.NoError(t, err)
+
+					assert.True(t, activateAt.Before(now), "cron should be scheduled in the past because the most recent commit version's activation time does not conflict")
+				},
+				"SchedulesPastCronWithRecentCommitVersionWithZeroActivationTime": func(t *testing.T, pRef *ProjectRef, v *Version, bvtu *BuildVariantTaskUnit) {
+					now := v.CreateTime.Add(2 * time.Minute)
+
+					zeroActivationTime := time.Time{}
+					recentVersionWithCron := Version{
+						Id:         "conflicting_version_with_cron",
+						Identifier: pRef.Id,
+						CreateTime: zeroActivationTime,
+						Requester:  evergreen.AdHocRequester,
+						BuildVariants: []VersionBuildStatus{
+							{
+								BuildVariant: "bv_name",
+								ActivationStatus: ActivationStatus{
+									ActivateAt: zeroActivationTime,
+								},
+								BatchTimeTasks: []BatchTimeTaskStatus{
+									{
+										TaskName: "task_name",
+										ActivationStatus: ActivationStatus{
+											ActivateAt: zeroActivationTime,
+										},
+									},
+								},
+							},
+						},
+					}
+					require.NoError(t, recentVersionWithCron.Insert())
+
+					activateAt, err := getActivationTime(v.CreateTime, now)
+					require.NoError(t, err)
+
+					assert.True(t, activateAt.Before(now), "cron should be scheduled in the past because the most recent commit version's activation time is zero")
+				},
+				"SchedulesPastCronWithNonconflictingPeriodicBuild": func(t *testing.T, pRef *ProjectRef, v *Version, bvtu *BuildVariantTaskUnit) {
+					now := v.CreateTime.Add(2 * time.Minute)
+					conflictingVersionWithCron := Version{
+						Id:         "conflicting_version_with_cron",
+						Identifier: pRef.Id,
+						CreateTime: v.CreateTime.Add(-time.Hour),
+						Requester:  evergreen.AdHocRequester,
+						BuildVariants: []VersionBuildStatus{
+							{
+								BuildVariant: "bv_name",
+								ActivationStatus: ActivationStatus{
+									ActivateAt: now,
+								},
+								BatchTimeTasks: []BatchTimeTaskStatus{
+									{
+										TaskName: "task_name",
+										ActivationStatus: ActivationStatus{
+											ActivateAt: now,
+										},
+									},
+								},
+							},
+						},
+					}
+					require.NoError(t, conflictingVersionWithCron.Insert())
+
+					activateAt, err := getActivationTime(v.CreateTime, now)
+					require.NoError(t, err)
+
+					assert.True(t, activateAt.Before(now), "cron should be scheduled in the past since the most recent version is a periodic build")
+				},
+				"SchedulesFutureCronForLongElapsedCron": func(t *testing.T, pRef *ProjectRef, v *Version, bvtu *BuildVariantTaskUnit) {
+					now := v.CreateTime.Add(time.Hour)
+
+					activateAt, err := getActivationTime(v.CreateTime, now)
+					require.NoError(t, err)
+
+					assert.True(t, activateAt.After(now), "cron should be scheduled in the future because it has been a long time since the version was created")
+				},
+			} {
+				t.Run(tName, func(t *testing.T) {
+					require.NoError(t, db.ClearCollections(VersionCollection))
+
+					tCase(t, &pRef, &v, &bvtu)
+				})
+			}
+		})
 	}
 }
 
@@ -3817,10 +4003,11 @@ func TestGetActivationTimeForVariant(t *testing.T) {
 	}
 	assert.Nil(projectRef.Insert())
 
-	// set based on last activation time when no version is found
-	activationTime, err := projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"})
+	// Set based on last activation time when no version is found
+	versionCreatedAt := time.Now().Add(-1 * time.Minute)
+	activationTime, err := projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"}, versionCreatedAt, time.Now())
 	assert.NoError(err)
-	assert.NotZero(activationTime)
+	assert.Equal(activationTime, versionCreatedAt)
 
 	// set based on last activation time with a version
 	version := &Version{
@@ -3840,7 +4027,8 @@ func TestGetActivationTimeForVariant(t *testing.T) {
 	}
 	assert.Nil(version.Insert())
 
-	activationTime, err = projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"})
+	activationTime, err = projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"}, versionCreatedAt, time.Now())
 	assert.NoError(err)
 	assert.NotZero(activationTime)
+	assert.Equal(activationTime, versionCreatedAt)
 }

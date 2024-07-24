@@ -6169,14 +6169,15 @@ func TestNewSleepScheduleInfo(t *testing.T) {
 		assert.NotZero(t, info.NextStopTime)
 	})
 	t.Run("SucceedsWithDefaultOptions", func(t *testing.T) {
-		defaultOpts := GetDefaultSleepSchedule("America/New_York")
+		var defaultOpts SleepScheduleOptions
+		defaultOpts.SetDefaultSchedule()
+		defaultOpts.SetDefaultTimeZone("America/New_York")
 		info, err := NewSleepScheduleInfo(defaultOpts)
 		assert.NoError(t, err)
 		require.NotZero(t, info)
 		assert.ElementsMatch(t, defaultOpts.WholeWeekdaysOff, info.WholeWeekdaysOff)
 		assert.Equal(t, defaultOpts.DailyStartTime, info.DailyStartTime)
 		assert.Equal(t, defaultOpts.DailyStopTime, info.DailyStopTime)
-		assert.Equal(t, "America/New_York", info.TimeZone)
 		assert.Equal(t, defaultOpts.TimeZone, info.TimeZone)
 		assert.NotZero(t, info.NextStartTime)
 		assert.NotZero(t, info.NextStopTime)
@@ -6187,8 +6188,8 @@ func TestNewSleepScheduleInfo(t *testing.T) {
 		assert.Zero(t, info)
 	})
 	t.Run("FailsWithoutTimeZone", func(t *testing.T) {
-		defaultOpts := GetDefaultSleepSchedule("")
-		defaultOpts.TimeZone = ""
+		var defaultOpts SleepScheduleOptions
+		defaultOpts.SetDefaultSchedule()
 		info, err := NewSleepScheduleInfo(defaultOpts)
 		assert.Error(t, err)
 		assert.Zero(t, info)

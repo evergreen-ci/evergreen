@@ -4,7 +4,9 @@ Image is returned by the image query.
 It contains information about an image.
 """
 type Image {
+  id: String!
   ami: String!
+  distros: [Distro!]!
   kernel: String!
   lastDeployed: Time!
   name: String!

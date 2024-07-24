@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -97,7 +98,7 @@ func Patch() cli.Command {
 			setPlainLogger,
 			mutuallyExclusiveArgs(false, patchDescriptionFlagName, autoDescriptionFlag),
 			mutuallyExclusiveArgs(false, preserveCommitsFlag, uncommittedChangesFlag),
-			mutuallyExclusiveArgs(false, repeatDefinitionFlag, repeatPatchIdFlag, repeatFailedDefinitionFlag),
+			mutuallyExclusiveArgs(false, repeatDefinitionFlag, repeatPatchIdFlag),
 			func(c *cli.Context) error {
 				catcher := grip.NewBasicCatcher()
 				for _, status := range utility.SplitCommas(c.StringSlice(syncStatusesFlagName)) {
@@ -262,7 +263,7 @@ func Patch() cli.Command {
 			}
 
 			if shouldFinalize {
-				shouldContinue, err := checkForLargeNumFinalizedTasks(ac, params, patchId)
+				shouldContinue, err := checkForLargeNumFinalizedTasks(ctx, comm, rc, params, patchId)
 				if err != nil {
 					return err
 				}
@@ -291,23 +292,45 @@ func Patch() cli.Command {
 // checkForLargeNumFinalizedTasks retrieves an un-finalized patch document, counts the number of tasks it contains,
 // and prompts the user with a confirmation popup if the number of tasks is greater than the largeNumFinalizedTasksThreshold.
 // It returns true if the finalization process should go through, and false otherwise.
-func checkForLargeNumFinalizedTasks(ac *legacyClient, params *patchParams, patchId string) (bool, error) {
+func checkForLargeNumFinalizedTasks(ctx context.Context, comm client.Communicator, rc *legacyClient, params *patchParams, patchId string) (bool, error) {
 	if params.SkipConfirm {
 		return true, nil
 	}
-	existingPatch, err := ac.GetPatch(patchId)
+	existingPatch, err := rc.GetPatch(patchId)
 	if err != nil {
 		return false, errors.Wrapf(err, "getting patch '%s'", patchId)
 	}
 	if existingPatch == nil {
 		return false, errors.Wrapf(err, "patch '%s' not found", patchId)
 	}
+	proj, err := rc.GetPatchedConfig(patchId)
+	if err != nil {
+		return false, errors.Wrapf(err, "getting patched config for patch '%s'", patchId)
+	}
+	if proj == nil {
+		return false, errors.Errorf("project config for '%s' not found", patchId)
+	}
+	generatorTasks := proj.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
+	var tvPairs []model.TVPair
 	numTasksToFinalize := 0
 	for _, vt := range existingPatch.VariantsTasks {
+		for _, t := range vt.Tasks {
+			if _, ok := generatorTasks[t]; ok {
+				tvPairs = append(tvPairs, model.TVPair{
+					TaskName: t,
+					Variant:  vt.Variant,
+				})
+			}
+		}
 		numTasksToFinalize += len(vt.Tasks)
 	}
+	numEstimatedGeneratedTasks, err := comm.GetEstimatedGeneratedTasks(ctx, patchId, tvPairs)
+	if err != nil {
+		return false, errors.Wrapf(err, "getting estimated generated tasks for patch '%s'", patchId)
+	}
+	numTasksToFinalize += numEstimatedGeneratedTasks
 	if numTasksToFinalize > largeNumFinalizedTasksThreshold {
-		if !confirm(fmt.Sprintf("This is a large patch build, expected to schedule %d tasks. Finalize anyway?", numTasksToFinalize), true) {
+		if !confirm(fmt.Sprintf("This is a large patch, expected to schedule %d tasks (%d via task generation). Finalize anyway?", numTasksToFinalize, numEstimatedGeneratedTasks), true) {
 			return false, nil
 		}
 	}
@@ -413,7 +436,7 @@ func PatchFile() cli.Command {
 			}
 			defer comm.Close()
 
-			ac, _, err := conf.getLegacyClients()
+			ac, rc, err := conf.getLegacyClients()
 
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
@@ -470,7 +493,7 @@ func PatchFile() cli.Command {
 
 			if shouldFinalize {
 				patchId := newPatch.Id.Hex()
-				shouldContinue, err := checkForLargeNumFinalizedTasks(ac, params, patchId)
+				shouldContinue, err := checkForLargeNumFinalizedTasks(ctx, comm, rc, params, patchId)
 				if err != nil {
 					return err
 				}

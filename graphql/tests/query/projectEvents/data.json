@@ -34,6 +34,10 @@
             "repo_name": "evergreen",
             "branch_name": "master"
           },
+          "github_app_auth": {
+            "app_id": 12345,
+            "private_key": "secret_before"
+          },
           "github_hooks_enabled": false,
           "vars": {
             "_id": "sandbox_project_id",
@@ -49,6 +53,10 @@
             "owner_name": "evergreen-ci",
             "repo_name": "evergreen",
             "branch_name": "main"
+          },
+          "github_app_auth": {
+            "app_id": 67890,
+            "private_key": "secret_after"
           },
           "github_hooks_enabled": true,
           "vars": {

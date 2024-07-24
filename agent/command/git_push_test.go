@@ -28,9 +28,9 @@ func TestGitPush(t *testing.T) {
 	token := "0123456789"
 	c := gitPush{
 		Directory: "src",
-		Token:     token,
 	}
 	comm := client.NewMock("http://localhost.com")
+	comm.CreateInstallationTokenResult = "token"
 	conf := &internal.TaskConfig{
 		Task:       task.Task{},
 		ProjectRef: model.ProjectRef{Branch: "main"},

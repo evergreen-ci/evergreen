@@ -7,14 +7,17 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -545,17 +548,69 @@ func (p *mergePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(apiPatch)
 }
 
+// /patches/{patch_id}/estimated_generated_tasks
+type countEstimatedGeneratedTasksHandler struct {
+	patchId string
+	files   []dbModel.TVPair
+}
+
+func makeCountEstimatedGeneratedTasks() gimlet.RouteHandler {
+	return &countEstimatedGeneratedTasksHandler{}
+}
+
+func (p *countEstimatedGeneratedTasksHandler) Factory() gimlet.RouteHandler {
+	return &countEstimatedGeneratedTasksHandler{}
+}
+
+func (p *countEstimatedGeneratedTasksHandler) Parse(ctx context.Context, r *http.Request) error {
+	p.patchId = gimlet.GetVars(r)["patch_id"]
+
+	body := utility.NewRequestReader(r)
+	defer body.Close()
+	if err := utility.ReadJSON(body, &p.files); err != nil {
+		return errors.Wrap(err, "reading JSON request body")
+	}
+
+	return nil
+}
+
+func (p *countEstimatedGeneratedTasksHandler) Run(ctx context.Context) gimlet.Responder {
+	existingPatch, err := patch.FindOneId(p.patchId)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting patch '%s'", p.patchId))
+	}
+	if existingPatch == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "patch not found",
+		})
+	}
+	numTasksToFinalize := 0
+	for _, vt := range p.files {
+		dbTask, err := task.FindOne(db.Query(bson.M{
+			task.ProjectKey:      existingPatch.Project,
+			task.BuildVariantKey: vt.Variant,
+			task.DisplayNameKey:  vt.TaskName,
+			task.GenerateTaskKey: true,
+		}).Sort([]string{"-" + task.CreateTimeKey}))
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting task with variant '%s' and name '%s'", vt.Variant, vt.TaskName))
+		}
+		if dbTask != nil {
+			numTasksToFinalize += utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks)
+		}
+	}
+	return gimlet.NewJSONResponse(&model.APINumTasksToFinalize{
+		NumTasksToFinalize: utility.ToIntPtr(numTasksToFinalize),
+	})
+}
+
 type patchTasks struct {
 	// Optional, if sent will update the patch's description
 	Description string `json:"description"`
 	// Required, these are the variants and tasks that the patch should run.
-	// Each variant object is of the format { "variant": "\<variant name>",
-	// "tasks": ["task name"] }. This field is analogous in syntax and usage to
-	// the "buildvariants" field in the project's evergreen.yml file. Names of
-	// display tasks can be specified in the tasks array and will work as one
-	// would expect. For an already-scheduled patch, any new tasks in this array
-	// will be created, and any existing tasks not in this array will be
-	// unscheduled.
+	// For an already-scheduled patch, any new tasks in this array will be
+	// created and any existing tasks not in this array will be unscheduled.
 	Variants []variant `json:"variants"`
 }
 

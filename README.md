@@ -1,5 +1,6 @@
-See [the docs](https://github.com/evergreen-ci/evergreen/tree/main/docs/) for
-user-facing documentation.
+See [the docs](https://docs.devprod.prod.corp.mongodb.com/evergreen/Home/) for
+user-facing documentation, or [in the repo](https://github.com/evergreen-ci/evergreen/tree/main/docs/) 
+if you don't have access to internal MongoDB sites.
 
 See [the API docs](https://pkg.go.dev/github.com/evergreen-ci/evergreen) for
 developer documentation. For an overview of the architecture, see the list of

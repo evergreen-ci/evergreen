@@ -513,6 +513,33 @@ func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error)
 	return utility.FromStringPtr(banner.Text), nil
 }
 
+// GetEstimatedGeneratedTasks returns the estimated number of generated tasks to be created by an unfinalized patch.
+func (c *communicatorImpl) GetEstimatedGeneratedTasks(ctx context.Context, patchId string, tvPairs []serviceModel.TVPair) (int, error) {
+	if len(tvPairs) == 0 {
+		return 0, nil
+	}
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("patches/%s/estimated_generated_tasks", patchId),
+	}
+	resp, err := c.request(ctx, info, tvPairs)
+	if err != nil {
+		return 0, errors.Wrap(err, "sending request to estimate number of activated generated tasks")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return 0, errors.New("getting an estimated number of activated generated tasks")
+	}
+
+	numTasksToFinalize := model.APINumTasksToFinalize{}
+	if err = utility.ReadJSON(resp.Body, &numTasksToFinalize); err != nil {
+		return 0, errors.Wrap(err, "reading JSON response body")
+	}
+
+	return utility.FromIntPtr(numTasksToFinalize.NumTasksToFinalize), nil
+}
+
 func (c *communicatorImpl) GetUiV2URL(ctx context.Context) (string, error) {
 	info := requestInfo{
 		method: http.MethodGet,
@@ -1399,7 +1426,7 @@ func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, proj
 func (c *communicatorImpl) GetTaskSyncReadCredentials(ctx context.Context) (*evergreen.S3Credentials, error) {
 	info := requestInfo{
 		method: http.MethodGet,
-		path:   "/task/sync_read_credentials",
+		path:   "/tasks/sync/read_credentials",
 	}
 
 	resp, err := c.request(ctx, info, nil)
@@ -1489,32 +1516,30 @@ func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) (
 	return urls, nil
 }
 
-func (c *communicatorImpl) PostHostIsUp(ctx context.Context, hostID, hostSecret, ec2InstanceID string) (*restmodel.APIHost, error) {
+func (c *communicatorImpl) PostHostIsUp(ctx context.Context, ec2InstanceID string) (*restmodel.APIHost, error) {
 	info := requestInfo{
 		method: http.MethodPost,
-		path:   fmt.Sprintf("/hosts/%s/is_up", hostID),
+		path:   fmt.Sprintf("/hosts/%s/is_up", c.hostID),
 	}
 	opts := restmodel.APIHostIsUpOptions{
-		HostID:        hostID,
+		HostID:        c.hostID,
 		EC2InstanceID: ec2InstanceID,
 	}
 	r, err := c.createRequest(info, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating request")
 	}
-	r.Header.Add(evergreen.HostHeader, hostID)
-	r.Header.Add(evergreen.HostSecretHeader, hostSecret)
 	resp, err := utility.RetryRequest(ctx, r, utility.RetryOptions{
 		MaxAttempts: c.maxAttempts,
 		MinDelay:    c.timeoutStart,
 		MaxDelay:    c.timeoutMax,
 	})
 	if err != nil {
-		return nil, util.RespErrorf(resp, "sending request to indicate host '%s' is up", hostID)
+		return nil, util.RespErrorf(resp, errors.Wrapf(err, "sending request to indicate host '%s' is up", c.hostID).Error())
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "posting that host '%s' is up", hostID)
+		return nil, util.RespErrorf(resp, "posting that host '%s' is up", c.hostID)
 	}
 	var h restmodel.APIHost
 	if err = utility.ReadJSON(resp.Body, &h); err != nil {
@@ -1523,24 +1548,22 @@ func (c *communicatorImpl) PostHostIsUp(ctx context.Context, hostID, hostSecret,
 	return &h, nil
 }
 
-func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context, hostID, hostSecret string) (*restmodel.APIHostProvisioningOptions, error) {
+func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context) (*restmodel.APIHostProvisioningOptions, error) {
 	info := requestInfo{
 		method: http.MethodGet,
-		path:   fmt.Sprintf("/hosts/%s/provisioning_options", hostID),
+		path:   fmt.Sprintf("/hosts/%s/provisioning_options", c.hostID),
 	}
 	r, err := c.createRequest(info, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating request")
 	}
-	r.Header.Add(evergreen.HostHeader, hostID)
-	r.Header.Add(evergreen.HostSecretHeader, hostSecret)
 	resp, err := utility.RetryRequest(ctx, r, utility.RetryOptions{
 		MaxAttempts: c.maxAttempts,
 		MinDelay:    c.timeoutStart,
 		MaxDelay:    c.timeoutMax,
 	})
 	if err != nil {
-		return nil, util.RespErrorf(resp, "sending request to get provisioning options for host '%s'", hostID)
+		return nil, util.RespErrorf(resp, errors.Wrapf(err, "sending request to get provisioning options for host '%s'", c.hostID).Error())
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -1726,7 +1749,6 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 	if err != nil {
 		return nil, errors.Wrapf(err, "sending request to get test logs")
 	}
-	fmt.Println(resp.Request.URL)
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespErrorf(resp, AuthError)

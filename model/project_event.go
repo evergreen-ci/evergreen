@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -15,12 +16,12 @@ import (
 )
 
 type ProjectSettings struct {
-	ProjectRef         ProjectRef           `bson:"proj_ref" json:"proj_ref"`
-	GithubHooksEnabled bool                 `bson:"github_hooks_enabled" json:"github_hooks_enabled"`
-	Vars               ProjectVars          `bson:"vars" json:"vars"`
-	Aliases            []ProjectAlias       `bson:"aliases" json:"aliases"`
-	Subscriptions      []event.Subscription `bson:"subscriptions" json:"subscriptions"`
-	GitHubAppID        int64                `bson:"github_app_id" json:"github_app_id"`
+	ProjectRef         ProjectRef              `bson:"proj_ref" json:"proj_ref"`
+	GitHubAppAuth      evergreen.GithubAppAuth `bson:"github_app_auth" json:"github_app_auth"`
+	GithubHooksEnabled bool                    `bson:"github_hooks_enabled" json:"github_hooks_enabled"`
+	Vars               ProjectVars             `bson:"vars" json:"vars"`
+	Aliases            []ProjectAlias          `bson:"aliases" json:"aliases"`
+	Subscriptions      []event.Subscription    `bson:"subscriptions" json:"subscriptions"`
 }
 
 type ProjectSettingsEvent struct {
@@ -102,6 +103,25 @@ func (p *ProjectChangeEvents) ApplyDefaults() {
 
 }
 
+// RedactGitHubPrivateKey redacts the GitHub app's private key from the project modification event.
+func (p *ProjectChangeEvents) RedactGitHubPrivateKey() {
+	for _, event := range *p {
+		changeEvent, isChangeEvent := event.Data.(*ProjectChangeEvent)
+		if !isChangeEvent {
+			continue
+		}
+		if len(changeEvent.After.GitHubAppAuth.PrivateKey) > 0 && len(changeEvent.Before.GitHubAppAuth.PrivateKey) > 0 {
+			changeEvent.After.GitHubAppAuth.PrivateKey = []byte(evergreen.RedactedAfterValue)
+			changeEvent.Before.GitHubAppAuth.PrivateKey = []byte(evergreen.RedactedBeforeValue)
+		} else if len(changeEvent.After.GitHubAppAuth.PrivateKey) > 0 {
+			changeEvent.After.GitHubAppAuth.RedactPrivateKey()
+		} else if len(changeEvent.Before.GitHubAppAuth.PrivateKey) > 0 {
+			changeEvent.Before.GitHubAppAuth.RedactPrivateKey()
+		}
+		event.EventLogEntry.Data = changeEvent
+	}
+}
+
 // RedactPrivateVars redacts private variables from the project modification event.
 func (p *ProjectChangeEvents) RedactPrivateVars() {
 	for _, event := range *p {
@@ -118,8 +138,8 @@ func (p *ProjectChangeEvents) RedactPrivateVars() {
 		// function redacts private variables to an empty string, which will not get picked up
 		// by the UI as it relies on the before / after diff.
 		for _, privateVarKey := range modifiedPrivateVarKeys {
-			changeEvent.After.Vars.Vars[privateVarKey] = "{REDACTED_AFTER}"
-			changeEvent.Before.Vars.Vars[privateVarKey] = "{REDACTED_BEFORE}"
+			changeEvent.After.Vars.Vars[privateVarKey] = evergreen.RedactedAfterValue
+			changeEvent.Before.Vars.Vars[privateVarKey] = evergreen.RedactedBeforeValue
 		}
 		event.EventLogEntry.Data = changeEvent
 	}

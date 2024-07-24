@@ -34,11 +34,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2024-06-30"
+	ClientVersion = "2024-07-23"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2024-07-17"
+	AgentVersion = "2024-07-24"
 )
 
 // ConfigSection defines a sub-document in the evergreen config

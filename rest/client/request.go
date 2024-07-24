@@ -52,6 +52,10 @@ func (c *communicatorImpl) newRequest(method, path string, data interface{}) (*h
 	if c.apiUser != "" {
 		r.Header.Add(evergreen.APIKeyHeader, c.apiKey)
 	}
+	if c.hostID != "" && c.hostSecret != "" {
+		r.Header.Add(evergreen.HostHeader, c.hostID)
+		r.Header.Add(evergreen.HostSecretHeader, c.hostSecret)
+	}
 	r.Header.Add(evergreen.ContentTypeHeader, evergreen.ContentTypeValue)
 
 	return r, nil

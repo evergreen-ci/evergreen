@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -22,6 +23,7 @@ type APIProjectEvent struct {
 type APIProjectEventSettings struct {
 	Id                    *string           `json:"id"`
 	ProjectRef            APIProjectRef     `json:"proj_ref"`
+	GithubAppAuth         APIGithubAppAuth  `json:"github_app_auth"`
 	GithubWebhooksEnabled bool              `json:"github_webhooks_enabled"`
 	Vars                  APIProjectVars    `json:"vars"`
 	Aliases               []APIProjectAlias `json:"aliases"`
@@ -31,10 +33,16 @@ type APIProjectEventSettings struct {
 type APIProjectSettings struct {
 	Id                    *string           `json:"id"`
 	ProjectRef            APIProjectRef     `json:"proj_ref"`
+	GithubAppAuth         APIGithubAppAuth  `json:"github_app_auth"`
 	GithubWebhooksEnabled bool              `json:"github_webhooks_enabled"`
 	Vars                  APIProjectVars    `json:"vars"`
 	Aliases               []APIProjectAlias `json:"aliases"`
 	Subscriptions         []APISubscription `json:"subscriptions"`
+}
+
+type APIGithubAppAuth struct {
+	AppID      int     `json:"app_id"`
+	PrivateKey *string `json:"private_key"`
 }
 
 type APIProjectVars struct {
@@ -118,8 +126,12 @@ func DbProjectSettingsToRestModel(settings model.ProjectSettings) (APIProjectSet
 	apiProjectVars := APIProjectVars{}
 	apiProjectVars.BuildFromService(settings.Vars)
 
+	githubAuthApp := APIGithubAppAuth{}
+	githubAuthApp.BuildFromService(settings.GitHubAppAuth)
+
 	return APIProjectSettings{
 		ProjectRef:            apiProjectRef,
+		GithubAppAuth:         githubAuthApp,
 		GithubWebhooksEnabled: settings.GithubHooksEnabled,
 		Vars:                  apiProjectVars,
 		Aliases:               dbProjectAliasesToRestModel(settings.Aliases),
@@ -247,4 +259,16 @@ func (vars *APIProjectVars) IsPrivate(key string) bool {
 		return true
 	}
 	return utility.StringSliceContains(vars.PrivateVarsList, key)
+}
+
+func (g *APIGithubAppAuth) ToService() *evergreen.GithubAppAuth {
+	return &evergreen.GithubAppAuth{
+		AppID:      int64(g.AppID),
+		PrivateKey: []byte(utility.FromStringPtr(g.PrivateKey)),
+	}
+}
+
+func (g *APIGithubAppAuth) BuildFromService(v evergreen.GithubAppAuth) {
+	g.AppID = int(v.AppID)
+	g.PrivateKey = utility.ToStringPtr(string(v.PrivateKey))
 }
