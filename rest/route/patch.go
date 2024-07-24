@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"slices"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -741,7 +740,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 				if dt != nil {
 					variantToSchedule.DisplayTasks = append(variantToSchedule.DisplayTasks, *dt)
 				} else {
-					if !slices.Contains(variantToSchedule.Tasks, t) {
+					if utility.StringSliceContains(variantToSchedule.Tasks, t) {
 						variantToSchedule.Tasks = append(variantToSchedule.Tasks, t)
 					}
 				}
