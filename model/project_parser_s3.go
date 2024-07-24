@@ -85,7 +85,7 @@ func (s *ParserProjectS3Storage) UpsertOne(ctx context.Context, pp *ParserProjec
 	if isDegradedMode {
 		maxSize = config.TaskLimits.MaxDegradedModeParserProjectSize
 	}
-	if maxSize > 0 && parserProjectLen > maxSize {
+	if maxSize > 0 && parserProjectLen > maxSize*1024*1024 {
 		return errors.Errorf("parser project exceeds the system limit (%v > %v bytes).", parserProjectLen, maxSize)
 	}
 	return s.UpsertOneBSON(ctx, pp.Id, bsonPP)
