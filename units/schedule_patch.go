@@ -42,7 +42,7 @@ func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId strin
 	taskGroupTasksToAddToVariant := map[string]string{}
 	for _, vt := range patchUpdateReq.VariantsTasks {
 		for _, t := range vt.Tasks {
-			tg := project.FindTaskGroup(t)
+			tg := project.FindTaskGroupForTask(t)
 			if tg == nil || tg.MaxHosts != 1 {
 				continue
 			}
