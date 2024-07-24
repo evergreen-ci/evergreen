@@ -740,21 +740,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 				if dt != nil {
 					variantToSchedule.DisplayTasks = append(variantToSchedule.DisplayTasks, *dt)
 				} else {
-					if !utility.StringSliceContains(variantToSchedule.Tasks, t) {
-						variantToSchedule.Tasks = append(variantToSchedule.Tasks, t)
-					}
-				}
-				// If this is a single host task group task, add all the tasks before it to the variant.
-				tg := project.FindTaskGroupForTask(t)
-				if tg != nil && tg.MaxHosts == 1 {
-					for _, task := range tg.Tasks {
-						if task == t {
-							break
-						}
-						if !utility.StringSliceContains(variantToSchedule.Tasks, task) {
-							variantToSchedule.Tasks = append(variantToSchedule.Tasks, task)
-						}
-					}
+					variantToSchedule.Tasks = append(variantToSchedule.Tasks, t)
 				}
 			}
 		}

@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -30,6 +31,35 @@ func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId strin
 	}
 	if projectRef == nil {
 		return http.StatusInternalServerError, errors.Errorf("project '%s' for version '%s' not found", p.Project, p.Version)
+	}
+	project, err := model.FindProjectFromVersionID(version.Id)
+	if err != nil {
+		return http.StatusInternalServerError, errors.Wrapf(err, "finding project for version '%s'", version.Id)
+	}
+	if project == nil {
+		return http.StatusInternalServerError, errors.Errorf("project not found for version '%s'", version.Id)
+	}
+	taskGroupTasksToAddToVariant := map[string]string{}
+	for _, vt := range patchUpdateReq.VariantsTasks {
+		for _, t := range vt.Tasks {
+			tg := project.FindTaskGroup(t)
+			if tg == nil || tg.MaxHosts != 1 {
+				continue
+			}
+			for _, tgt := range tg.Tasks {
+				if tgt == t {
+					break
+				}
+				taskGroupTasksToAddToVariant[t] = vt.Variant
+			}
+		}
+	}
+	for t, v := range taskGroupTasksToAddToVariant {
+		for _, vt := range patchUpdateReq.VariantsTasks {
+			if vt.Variant == v && !utility.StringSliceContains(vt.Tasks, t) {
+				vt.Tasks = append(vt.Tasks, t)
+			}
+		}
 	}
 
 	statusCode, err := model.ConfigurePatch(ctx, env.Settings(), p, version, projectRef, patchUpdateReq)
