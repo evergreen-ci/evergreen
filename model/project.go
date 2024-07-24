@@ -1231,6 +1231,32 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 	return nil
 }
 
+// FindTaskGroupForTask returns a specific task group from a project
+// that contains the given task.
+func (p *Project) FindTaskGroupForTask(name string) *TaskGroup {
+	for _, tg := range p.TaskGroups {
+		for _, t := range tg.Tasks {
+			if t == name {
+				return &tg
+			}
+		}
+	}
+
+	for _, bv := range p.BuildVariants {
+		for _, t := range bv.Tasks {
+			if t.TaskGroup != nil {
+				for _, tg := range t.TaskGroup.Tasks {
+					if tg == name {
+						return t.TaskGroup
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 func FindProjectFromVersionID(versionStr string) (*Project, error) {
 	ver, err := VersionFindOne(VersionById(versionStr))
 	if err != nil {

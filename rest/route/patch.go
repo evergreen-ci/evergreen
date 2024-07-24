@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -740,7 +741,21 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 				if dt != nil {
 					variantToSchedule.DisplayTasks = append(variantToSchedule.DisplayTasks, *dt)
 				} else {
-					variantToSchedule.Tasks = append(variantToSchedule.Tasks, t)
+					if !slices.Contains(variantToSchedule.Tasks, t) {
+						variantToSchedule.Tasks = append(variantToSchedule.Tasks, t)
+					}
+				}
+				// If this is a single host task group task, add all the tasks before it to the variant.
+				tg := project.FindTaskGroupForTask(t)
+				if tg != nil {
+					for _, task := range tg.Tasks {
+						if task == t {
+							break
+						}
+						if !slices.Contains(variantToSchedule.Tasks, task) {
+							variantToSchedule.Tasks = append(variantToSchedule.Tasks, task)
+						}
+					}
 				}
 			}
 		}
