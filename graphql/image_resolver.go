@@ -8,6 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // Distros is the resolver for the distros field.
@@ -36,21 +38,32 @@ func (r *imageResolver) Packages(ctx context.Context, obj *thirdparty.Image, opt
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	optsPackages := thirdparty.PackageFilterOptions{
-		AMI:     obj.AMI,
-		Manager: *opts.Manager,
-		Name:    *opts.Name,
-		Page:    *opts.Page,
-		Limit:   *opts.Limit,
+		AMI: obj.AMI,
+	}
+	if opts.Manager != nil {
+		optsPackages.Manager = *(opts.Manager)
+	}
+	if opts.Name != nil {
+		optsPackages.Name = *(opts.Name)
+	}
+	if opts.Page != nil {
+		optsPackages.Page = *(opts.Page)
+	}
+	if opts.Limit != nil {
+		optsPackages.Limit = *(opts.Limit)
 	}
 	packages, err := c.GetPackages(ctx, optsPackages)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, "getting packages")
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting packages for image '%s': '%s'", obj.ID, err.Error()))
 	}
-	packagesCleaned := []*thirdparty.Package{}
-	for _, p := range packages {
-		packagesCleaned = append(packagesCleaned, &p)
+	grip.Debug(message.Fields{
+		"packages": packages,
+	})
+	packagesPtr := make([]*thirdparty.Package, 0, len(packages))
+	for i := range packages {
+		packagesPtr = append(packagesPtr, &packages[i])
 	}
-	return packagesCleaned, nil
+	return packagesPtr, nil
 }
 
 // Image returns ImageResolver implementation.
