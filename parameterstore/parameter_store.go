@@ -11,7 +11,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var parameterCache = make(map[string]parameter)
+var parameterCache = make(map[string]cachedParameter)
+
+type cachedParameter struct {
+	value       string
+	lastRefresh time.Time
+}
 
 type parameter struct {
 	// ID is the internal name of a parameter, comprised of the parameter store prefix
@@ -53,19 +58,21 @@ func NewParameterStore(ctx context.Context, opts ParameterStoreOptions) (*parame
 
 // SetParameter sets a parameter in the backing parameter store.
 func (p *parameterStore) SetParameter(ctx context.Context, name, value string) error {
+	fullName := p.prefixedName(name)
+
 	if !p.opts.SSMBackend {
-		return p.setLocalValue(ctx, p.prefixedName(name), value)
+		return errors.Wrap(p.setLocalValue(ctx, fullName, value), "setting value locally")
 	}
 
-	if err := p.ssm.putParameter(ctx, p.prefixedName(name), value); err != nil {
+	if err := p.ssm.putParameter(ctx, fullName, value); err != nil {
 		return errors.Wrap(err, "putting parameter in Parameter Store")
 	}
 
 	now := time.Now()
-	if err := p.SetLastUpdate(ctx, p.prefixedName(name), now); err != nil {
+	if err := p.SetLastUpdate(ctx, fullName, now); err != nil {
 		return errors.Wrap(err, "setting last updated")
 	}
-	parameterCache[p.prefixedName(name)] = parameter{Value: value, LastUpdate: now}
+	parameterCache[fullName] = cachedParameter{value: value, lastRefresh: now}
 	return nil
 }
 
@@ -90,22 +97,23 @@ func (p *parameterStore) GetParameters(ctx context.Context, names []string) (map
 	paramMap := make(map[string]string, len(fullNames))
 	n := 0
 	for _, name := range fullNames {
-		for _, param := range params {
-			if param.ID != name {
-				continue
+		var param parameter
+		for _, param = range params {
+			if param.ID == name {
+				break
 			}
-			// Values set in the database override values set in Parameter Store.
-			if param.Value != "" {
-				paramMap[p.basename(name)] = param.Value
-				continue
-			}
-			if cachedParam, ok := parameterCache[name]; ok && cachedParam.LastUpdate.After(param.LastUpdate) {
-				paramMap[p.basename(name)] = cachedParam.Value
-				continue
-			}
-			fullNames[n] = name
-			n++
 		}
+		// Values set in the database override values set in Parameter Store.
+		if param.Value != "" {
+			paramMap[p.basename(name)] = param.Value
+			continue
+		}
+		if cachedParam, ok := parameterCache[name]; ok && !param.LastUpdate.Before(cachedParam.lastRefresh) {
+			paramMap[p.basename(name)] = cachedParam.value
+			continue
+		}
+		fullNames[n] = name
+		n++
 	}
 	fullNames = fullNames[:n]
 
@@ -120,15 +128,8 @@ func (p *parameterStore) GetParameters(ctx context.Context, names []string) (map
 	catcher := grip.NewBasicCatcher()
 	for _, ssmParam := range data {
 		paramMap[p.basename(ssmParam.ID)] = ssmParam.Value
-		parameterCache[ssmParam.ID] = parameter{Value: ssmParam.Value, LastUpdate: time.Now()}
-		for _, dbParam := range params {
-			if dbParam.ID != ssmParam.ID {
-				continue
-			}
-			if !dbParam.LastUpdate.Equal(ssmParam.LastUpdate) {
-				catcher.Wrapf(p.SetLastUpdate(ctx, ssmParam.ID, ssmParam.LastUpdate), "setting last update for parameter '%s'", ssmParam.ID)
-			}
-		}
+		parameterCache[ssmParam.ID] = cachedParameter{value: ssmParam.Value, lastRefresh: time.Now()}
+		catcher.Wrapf(p.SetLastUpdate(ctx, ssmParam.ID, ssmParam.LastUpdate), "setting last update for parameter '%s'", ssmParam.ID)
 	}
 	return paramMap, catcher.Resolve()
 }

@@ -10,10 +10,10 @@ import (
 )
 
 type SplunkConfig struct {
-	SplunkConnectionInfo send.SplunkConnectionInfo `bson:",inline" json:"splunk_connection_info" yaml:"splunk_connection_info"`
+	SplunkConnectionInfo send.SplunkConnectionInfo `json:"splunk_connection_info" yaml:"splunk_connection_info"`
 }
 
-func (c *SplunkConfig) SectionId() string { return "splunk" }
+func (c *SplunkConfig) SectionId() string { return adminParameterName("splunk") }
 
 func (c *SplunkConfig) Get(ctx context.Context) error {
 	parameterStoreOpts, err := GetParameterStoreOpts(ctx)

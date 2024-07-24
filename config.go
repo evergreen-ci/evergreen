@@ -54,22 +54,6 @@ type ConfigSection interface {
 	ValidateAndDefault() error
 }
 
-func decodeDBConfig(ctx context.Context, target ConfigSection) error {
-	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(target.SectionId()))
-	if err := res.Err(); err != nil {
-		// No override is set in the database.
-		if err == mongo.ErrNoDocuments {
-			return nil
-		}
-		return errors.Wrapf(err, "getting config section '%s'", target.SectionId())
-	}
-
-	if err := res.Decode(target); err != nil {
-		return errors.Wrapf(err, "decoding config section '%s'", target.SectionId())
-	}
-	return nil
-}
-
 // Settings contains all configuration settings for running Evergreen. Settings
 // with the "id" struct tag should implement the ConfigSection interface.
 type Settings struct {
@@ -118,14 +102,15 @@ type Settings struct {
 	SSHKeyPairs         []SSHKeyPair              `yaml:"ssh_key_pairs" bson:"ssh_key_pairs" json:"ssh_key_pairs"`
 	Slack               SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
 	SleepSchedule       SleepScheduleConfig       `yaml:"sleep_schedule" bson:"sleep_schedule" json:"sleep_schedule" id:"sleep_schedule"`
-	Splunk              SplunkConfig              `yaml:"splunk" bson:"splunk" json:"splunk" id:"splunk"`
-	TaskLimits          TaskLimitsConfig          `yaml:"task_limits" bson:"task_limits" json:"task_limits" id:"task_limits"`
-	Triggers            TriggerConfig             `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
-	Ui                  UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
-	Spawnhost           SpawnHostConfig           `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
-	ShutdownWaitSeconds int                       `yaml:"shutdown_wait_seconds" bson:"shutdown_wait_seconds" json:"shutdown_wait_seconds"`
-	Tracer              TracerConfig              `yaml:"tracer" bson:"tracer" json:"tracer" id:"tracer"`
-	GitHubCheckRun      GitHubCheckRunConfig      `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
+	// TODO (DEVPROD-8038): adjust ID tag back to "splunk" once all sections have been migrated to Parameter Store.
+	Splunk              SplunkConfig         `yaml:"splunk" bson:"splunk" json:"splunk" id:"admin/splunk"`
+	TaskLimits          TaskLimitsConfig     `yaml:"task_limits" bson:"task_limits" json:"task_limits" id:"task_limits"`
+	Triggers            TriggerConfig        `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
+	Ui                  UIConfig             `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
+	Spawnhost           SpawnHostConfig      `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
+	ShutdownWaitSeconds int                  `yaml:"shutdown_wait_seconds" bson:"shutdown_wait_seconds" json:"shutdown_wait_seconds"`
+	Tracer              TracerConfig         `yaml:"tracer" bson:"tracer" json:"tracer" id:"tracer"`
+	GitHubCheckRun      GitHubCheckRunConfig `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
 }
 
 func (c *Settings) SectionId() string { return ConfigDocID }
@@ -598,6 +583,12 @@ func (s *Settings) GetGithubOauthToken() (string, error) {
 		return "", errors.New("token format was invalid, expected 'token [token]'")
 	}
 	return splitToken[1], nil
+}
+
+var adminParameterStorePrefix = "admin"
+
+func adminParameterName(basename string) string {
+	return fmt.Sprintf("%s/%s", adminParameterStorePrefix, basename)
 }
 
 // PluginConfig holds plugin-specific settings, which are handled.

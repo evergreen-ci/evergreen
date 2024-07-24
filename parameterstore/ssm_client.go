@@ -17,7 +17,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-const region = "us-east-1"
+const (
+	region = "us-east-1"
+
+	// maxParametersPerRequest is an AWS limit on how many parameters can be included in a single request.
+	// https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_GetParameters.html
+	maxParametersPerRequest = 10
+)
 
 var (
 	cachedClient *ssm.Client
@@ -33,35 +39,42 @@ type ssmClient struct {
 }
 
 func newSSMClient(ctx context.Context) (*ssmClient, error) {
-	if cachedClient != nil {
-		return &ssmClient{client: cachedClient}, nil
+	if cachedClient == nil {
+		config, err := config.LoadDefaultConfig(ctx,
+			config.WithRegion(region),
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "loading AWS config")
+		}
+		cachedClient = ssm.NewFromConfig(config)
 	}
 
-	config, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(region),
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "loading AWS config")
-	}
-
-	return &ssmClient{client: ssm.NewFromConfig(config)}, nil
+	return &ssmClient{client: cachedClient}, nil
 }
 
 func (c *ssmClient) getParameters(ctx context.Context, parameters []string) ([]parameter, error) {
-	res, err := c.callGetParameters(ctx, &ssm.GetParametersInput{
-		Names:          parameters,
-		WithDecryption: aws.Bool(true),
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "getting parameters")
+	batches := make([][]string, 0, (len(parameters)+maxParametersPerRequest-1)/maxParametersPerRequest)
+	for maxParametersPerRequest < len(parameters) {
+		parameters, batches = parameters[maxParametersPerRequest:], append(batches, parameters[0:maxParametersPerRequest:maxParametersPerRequest])
 	}
+	batches = append(batches, parameters)
 
 	var params []parameter
-	for _, param := range res.Parameters {
-		if param.Name == nil || param.Value == nil || param.LastModifiedDate == nil {
-			continue
+	for _, batch := range batches {
+		res, err := c.callGetParameters(ctx, &ssm.GetParametersInput{
+			Names:          batch,
+			WithDecryption: aws.Bool(true),
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "getting parameters")
 		}
-		params = append(params, parameter{ID: *param.Name, Value: *param.Value, LastUpdate: *param.LastModifiedDate})
+
+		for _, param := range res.Parameters {
+			if param.Name == nil || param.Value == nil || param.LastModifiedDate == nil {
+				continue
+			}
+			params = append(params, parameter{ID: *param.Name, Value: *param.Value, LastUpdate: *param.LastModifiedDate})
+		}
 	}
 	return params, nil
 }
