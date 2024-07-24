@@ -1,3 +1,9 @@
+input ToolchainOpts {
+    name: String
+    limit: Int
+    page: Int
+}
+
 ###### TYPES ######
 """
 Image is returned by the image query.
@@ -10,5 +16,6 @@ type Image {
   kernel: String!
   lastDeployed: Time!
   name: String!
+  toolchains(opts: ToolchainOpts!): [Toolchain!]!
   versionId: String!
 }
