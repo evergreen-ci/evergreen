@@ -29,7 +29,7 @@ type parameter struct {
 }
 
 type parameterStore struct {
-	ssm  *ssmClient
+	ssm  ssmClient
 	opts ParameterStoreOptions
 }
 
@@ -79,7 +79,7 @@ func (p *parameterStore) SetParameter(ctx context.Context, name, value string) e
 // GetParameter gets a parameter from the backing parameter store.
 func (p *parameterStore) GetParameter(ctx context.Context, name string) (string, error) {
 	paramMap, err := p.GetParameters(ctx, []string{name})
-	return paramMap[name], err
+	return paramMap[name], errors.Wrapf(err, "getting parameter '%s'", name)
 }
 
 // GetParameters gets parameters for the given names from the backing parameter store. Parameters
@@ -97,27 +97,31 @@ func (p *parameterStore) GetParameters(ctx context.Context, names []string) (map
 	paramMap := make(map[string]string, len(fullNames))
 	n := 0
 	for _, name := range fullNames {
+		var found bool
 		var param parameter
 		for _, param = range params {
 			if param.ID == name {
+				found = true
 				break
 			}
 		}
-		// Values set in the database override values set in Parameter Store.
-		if param.Value != "" {
-			paramMap[p.basename(name)] = param.Value
-			continue
-		}
-		if cachedParam, ok := parameterCache[name]; ok && !param.LastUpdate.Before(cachedParam.lastRefresh) {
-			paramMap[p.basename(name)] = cachedParam.value
-			continue
+		if found {
+			// Values set in the database override values set in Parameter Store.
+			if param.Value != "" {
+				paramMap[p.basename(name)] = param.Value
+				continue
+			}
+			if cachedParam, ok := parameterCache[name]; ok && !cachedParam.lastRefresh.Before(param.LastUpdate) {
+				paramMap[p.basename(name)] = cachedParam.value
+				continue
+			}
 		}
 		fullNames[n] = name
 		n++
 	}
 	fullNames = fullNames[:n]
 
-	if !p.opts.SSMBackend {
+	if !p.opts.SSMBackend || len(fullNames) == 0 {
 		return paramMap, nil
 	}
 

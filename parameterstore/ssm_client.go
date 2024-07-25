@@ -34,11 +34,16 @@ var (
 	}
 )
 
-type ssmClient struct {
+type ssmClient interface {
+	getParameters(context.Context, []string) ([]parameter, error)
+	putParameter(context.Context, string, string) error
+}
+
+type ssmClientImpl struct {
 	client *ssm.Client
 }
 
-func newSSMClient(ctx context.Context) (*ssmClient, error) {
+func newSSMClient(ctx context.Context) (ssmClient, error) {
 	if cachedClient == nil {
 		config, err := config.LoadDefaultConfig(ctx,
 			config.WithRegion(region),
@@ -49,10 +54,10 @@ func newSSMClient(ctx context.Context) (*ssmClient, error) {
 		cachedClient = ssm.NewFromConfig(config)
 	}
 
-	return &ssmClient{client: cachedClient}, nil
+	return &ssmClientImpl{client: cachedClient}, nil
 }
 
-func (c *ssmClient) getParameters(ctx context.Context, parameters []string) ([]parameter, error) {
+func (c *ssmClientImpl) getParameters(ctx context.Context, parameters []string) ([]parameter, error) {
 	batches := make([][]string, 0, (len(parameters)+maxParametersPerRequest-1)/maxParametersPerRequest)
 	for maxParametersPerRequest < len(parameters) {
 		parameters, batches = parameters[maxParametersPerRequest:], append(batches, parameters[0:maxParametersPerRequest:maxParametersPerRequest])
@@ -79,7 +84,7 @@ func (c *ssmClient) getParameters(ctx context.Context, parameters []string) ([]p
 	return params, nil
 }
 
-func (c *ssmClient) putParameter(ctx context.Context, parameterName, value string) error {
+func (c *ssmClientImpl) putParameter(ctx context.Context, parameterName, value string) error {
 	_, err := c.callPutParameter(ctx, &ssm.PutParameterInput{
 		Name:  aws.String(parameterName),
 		Value: aws.String(value),
@@ -88,7 +93,7 @@ func (c *ssmClient) putParameter(ctx context.Context, parameterName, value strin
 	return errors.Wrapf(err, "setting parameter for '%s'", parameterName)
 }
 
-func (c *ssmClient) callGetParameters(ctx context.Context, input *ssm.GetParametersInput) (*ssm.GetParametersOutput, error) {
+func (c *ssmClientImpl) callGetParameters(ctx context.Context, input *ssm.GetParametersInput) (*ssm.GetParametersOutput, error) {
 	var output *ssm.GetParametersOutput
 	var err error
 
@@ -113,7 +118,7 @@ func (c *ssmClient) callGetParameters(ctx context.Context, input *ssm.GetParamet
 	return output, nil
 }
 
-func (c *ssmClient) callPutParameter(ctx context.Context, input *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
+func (c *ssmClientImpl) callPutParameter(ctx context.Context, input *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
 	var output *ssm.PutParameterOutput
 	var err error
 
@@ -153,4 +158,37 @@ func makeAWSLogMessage(name, client string, args interface{}) message.Fields {
 	}
 
 	return msg
+}
+
+type ssmClientMock struct {
+	parameters map[string]parameter
+	getError   bool
+	putError   bool
+}
+
+func (s *ssmClientMock) getParameters(_ context.Context, names []string) ([]parameter, error) {
+	if s.getError {
+		return nil, errors.New("getParameters error")
+	}
+
+	var result []parameter
+	for _, name := range names {
+		if _, ok := s.parameters[name]; ok {
+			result = append(result, s.parameters[name])
+		}
+	}
+	return result, nil
+}
+
+func (s *ssmClientMock) putParameter(_ context.Context, name, value string) error {
+	if s.putError {
+		return errors.New("putParameter error")
+	}
+
+	if s.parameters == nil {
+		s.parameters = make(map[string]parameter)
+	}
+
+	s.parameters[name] = parameter{ID: name, Value: value, LastUpdate: time.Now()}
+	return nil
 }
