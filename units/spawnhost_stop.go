@@ -67,7 +67,6 @@ func NewSpawnhostStopJob(opts SpawnHostModifyJobOptions, shouldKeepOff bool) amb
 	j.CloudHostModification.UserID = opts.User
 	j.ShouldKeepOff = shouldKeepOff
 	j.CloudHostModification.Source = opts.Source
-	// kim: TODO: check if Amboy will behave fine if I set the zero time here.
 	j.SetTimeInfo(amboy.JobTimeInfo{
 		WaitUntil: opts.WaitUntil,
 	})
