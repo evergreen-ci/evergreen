@@ -2,11 +2,12 @@ package route
 
 import (
 	"context"
-	"net/http"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"net/http"
 )
 
 const firingStatus = "firing"
@@ -48,6 +49,9 @@ func (h *degradedModeHandler) Run(ctx context.Context) gimlet.Responder {
 		if err = flags.Set(ctx); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting service flags"))
 		}
+		grip.Info(message.Fields{
+			"message": "degraded mode has been triggered",
+		})
 	}
 	return gimlet.NewJSONResponse(struct{}{})
 }
