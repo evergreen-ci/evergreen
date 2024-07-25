@@ -253,6 +253,7 @@ func (j *sleepSchedulerJob) makeStopAndStartJobs(ctx context.Context, _ evergree
 	}
 
 	now := time.Now()
+	latestWaitUntil := now.Add(5 * time.Minute)
 
 	var stopJobs []amboy.Job
 	var hostIDsToStop []string
@@ -271,6 +272,10 @@ func (j *sleepSchedulerJob) makeStopAndStartJobs(ctx context.Context, _ evergree
 		hostIDsToStop = make([]string, 0, len(hostsToStop))
 		for i := range hostsToStop {
 			h := hostsToStop[i]
+			waitUntil := now.Add(time.Duration(i) * time.Second)
+			if waitUntil.After(latestWaitUntil) {
+				waitUntil = latestWaitUntil
+			}
 			stopJobs = append(stopJobs, NewSpawnhostStopJob(SpawnHostModifyJobOptions{
 				Host:   &h,
 				Source: evergreen.ModifySpawnHostSleepSchedule,
@@ -279,7 +284,7 @@ func (j *sleepSchedulerJob) makeStopAndStartJobs(ctx context.Context, _ evergree
 				// collectively make a large burst of requests to AWS and hit
 				// rate limits, stagger the requests by adding a slight amount
 				// of delay to each job.
-				WaitUntil: now.Add(time.Duration(i) * time.Second),
+				WaitUntil: waitUntil,
 				Timestamp: ts.Format(TSFormat),
 			}, false))
 			hostIDsToStop = append(hostIDsToStop, h.Id)
@@ -294,6 +299,10 @@ func (j *sleepSchedulerJob) makeStopAndStartJobs(ctx context.Context, _ evergree
 	hostIDsToStart := make([]string, 0, len(hostsToStart))
 	for i := range hostsToStart {
 		h := hostsToStart[i]
+		waitUntil := now.Add(time.Duration(i) * time.Second)
+		if waitUntil.After(latestWaitUntil) {
+			waitUntil = latestWaitUntil
+		}
 		startJobs = append(startJobs, NewSpawnhostStartJob(SpawnHostModifyJobOptions{
 			Host:   &h,
 			Source: evergreen.ModifySpawnHostSleepSchedule,
@@ -302,7 +311,7 @@ func (j *sleepSchedulerJob) makeStopAndStartJobs(ctx context.Context, _ evergree
 			// collectively make a large burst of requests to AWS and hit
 			// rate limits, stagger the requests by adding a slight amount
 			// of delay to each job.
-			WaitUntil: now.Add(time.Duration(i) * time.Second),
+			WaitUntil: waitUntil,
 			Timestamp: ts.Format(TSFormat),
 		}))
 		hostIDsToStart = append(hostIDsToStart, h.Id)
