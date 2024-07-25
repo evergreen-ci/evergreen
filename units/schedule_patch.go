@@ -112,5 +112,4 @@ func addPreviousSingleHostTaskGroupTasks(patchUpdateReq *model.PatchUpdate, proj
 		variantTasks = append(variantTasks, vt)
 	}
 	patchUpdateReq.VariantsTasks = variantTasks
-
 }
