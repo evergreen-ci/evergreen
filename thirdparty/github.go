@@ -332,6 +332,8 @@ func getGithubClient(token, caller string, config retryConfig) *evergreen.GitHub
 	return &githubClient
 }
 
+const defaultGitHubAPIRequestLifetime = 10 * time.Minute
+
 // getInstallationToken creates an installation token using Github app auth.
 // If creating a token fails it will return the legacyToken.
 func getInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
@@ -340,8 +342,7 @@ func getInstallationToken(ctx context.Context, owner, repo string, opts *github.
 		return "", errors.Wrap(err, "getting config")
 	}
 
-	// kim: TODO: determine what is a valid token lifetime.
-	token, err := settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, owner, repo, opts)
+	token, err := settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, opts)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "error creating token",
@@ -349,7 +350,7 @@ func getInstallationToken(ctx context.Context, owner, repo string, opts *github.
 			"owner":   owner,
 			"repo":    repo,
 		}))
-		return "", errors.Wrap(err, "creating token")
+		return "", errors.Wrap(err, "creating installation token")
 	}
 	// TODO: (EVG-19966) Remove once CreateInstallationToken returns an error.
 	if token == "" {
@@ -386,7 +387,7 @@ func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.
 	if err != nil {
 		return "", errors.Wrap(err, "getting evergreen settings")
 	}
-	token, err := settings.CreateInstallationTokenWithDefaultOwnerRepo(ctx, opts)
+	token, err := settings.CreateInstallationTokenWithDefaultOwnerRepo(ctx, defaultGitHubAPIRequestLifetime, opts)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "error creating default token",

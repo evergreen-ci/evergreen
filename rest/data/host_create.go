@@ -192,7 +192,7 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 	}
 
 	// kim: TODO: determine what is a valid token lifetime.
-	appToken, err := settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, pRef.Owner, pRef.Repo, nil)
+	appToken, err := settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, pRef.Owner, pRef.Repo, evergreen.MaxInstallationTokenLifetime, nil)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "creating GitHub app token")
 	}

@@ -91,14 +91,18 @@ func (g *GithubAppAuth) IsGithubAppInstalledOnRepo(ctx context.Context, owner, r
 	return installationID != 0, nil
 }
 
+// MaxInstallationTokenLifetime is the maximum amount of time that an
+// installation token can be used before it expires.
+const MaxInstallationTokenLifetime = time.Hour
+
 // CreateInstallationTokenWithDefaultOwnerRepo returns an installation token when we do not care about
 // the owner/repo that we are calling the GitHub function with (i.e. checking rate limit).
 // It will use the default owner/repo specified in the admin settings and error if it's not set.
-func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.InstallationTokenOptions) (string, error) {
+func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Context, lifetime time.Duration, opts *github.InstallationTokenOptions) (string, error) {
 	if s.AuthConfig.Github == nil || s.AuthConfig.Github.DefaultOwner == "" || s.AuthConfig.Github.DefaultRepo == "" {
 		return "", errors.Errorf("missing GitHub app configuration needed to create installation tokens")
 	}
-	return s.CreateGitHubAppAuth().CreateInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, opts)
+	return s.CreateGitHubAppAuth().CreateInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, lifetime, opts)
 }
 
 // cachedGitHubInstallationToken represents a GitHub installation token that's
@@ -155,7 +159,7 @@ func (c *installationTokenCache) put(installationID int64, installationToken str
 // kim: TODO: modify function inputs to include how long the token must be valid for (e.g. can't
 // expire for another 10 minutes) to determine if it can be taken from the
 // cache.
-func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
+func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo string, lifetime time.Duration, opts *github.InstallationTokenOptions) (string, error) {
 	if g == nil {
 		return "", errors.New("GitHub app is not configured in admin settings")
 	}
@@ -165,7 +169,6 @@ func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo
 		return "", errors.Wrapf(err, "getting installation id for '%s/%s'", owner, repo)
 	}
 
-	const lifetime = 10 * time.Minute
 	token, err := g.getInstallationTokenForID(ctx, installationID, lifetime, opts)
 	if err != nil {
 		return "", errors.Wrapf(err, "getting installation token for '%s/%s'", owner, repo)
