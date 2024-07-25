@@ -113,7 +113,6 @@ func collectHostCountStats() (*hostCountStats, error) {
 }
 
 func (j *hostStatsCollector) statsByDistro() error {
-
 	stats, err := collectHostCountStats()
 
 	if err != nil {
@@ -143,9 +142,7 @@ func (j *hostStatsCollector) statsByProvider() error {
 	}
 
 	j.logger.Info(message.Fields{
-		"report": "host stats by provider",
-		// or we could make providers a map of provider names
-		// (string) to counts, by calling .Map() on the providers value.
+		"report":    "host stats by provider",
 		"providers": providers,
 	})
 

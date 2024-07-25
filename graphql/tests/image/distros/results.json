@@ -1,0 +1,14 @@
+{
+    "data": {
+      "image": {
+        "distros": [
+          {
+            "name": "ubuntu1604-large"
+          },
+          {
+            "name": "ubuntu1604-small"
+          }
+        ]
+      }
+    }
+  }

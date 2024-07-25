@@ -154,11 +154,21 @@ func ByUserRecentlyTerminated(user string, timestamp time.Time) bson.M {
 	}
 }
 
-// IsLive is a query that returns all working hosts started by Evergreen
-func IsLive() bson.M {
+// byActiveForTasks returns a query that finds all task hosts that are active in
+// the cloud provider.
+func byActiveForTasks() bson.M {
 	return bson.M{
 		StartedByKey: evergreen.User,
-		StatusKey:    bson.M{"$in": evergreen.ActiveStatus},
+		StatusKey:    bson.M{"$in": evergreen.ActiveStatuses},
+	}
+}
+
+// byCanOrWillRunTasks returns a query that finds all task hosts that are
+// currently able to or will eventually be able to run tasks.
+func byCanOrWillRunTasks() bson.M {
+	return bson.M{
+		StartedByKey: evergreen.User,
+		StatusKey:    bson.M{"$in": evergreen.IsRunningOrWillRunStatuses},
 	}
 }
 
@@ -225,15 +235,6 @@ func IdleEphemeralGroupedByDistroID(ctx context.Context, env evergreen.Environme
 	return idlehostsByDistroID, nil
 }
 
-func runningHostsQuery(distroID string) bson.M {
-	query := IsLive()
-	if distroID != "" {
-		query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
-	}
-
-	return query
-}
-
 // hostsCanRunTasksQuery produces a query that returns all hosts
 // that are capable of accepting and running tasks.
 func hostsCanRunTasksQuery(distroID string) bson.M {
@@ -288,9 +289,22 @@ func idleHostsQuery(distroID string) bson.M {
 	return query
 }
 
-func CountRunningHosts(ctx context.Context, distroID string) (int, error) {
-	num, err := Count(ctx, runningHostsQuery(distroID))
-	return num, errors.Wrap(err, "counting running hosts")
+// CountActiveDynamicHosts counts the number of task hosts that are active in
+// the cloud provider and can be created dynamically.
+func CountActiveDynamicHosts(ctx context.Context) (int, error) {
+	query := byActiveForTasks()
+	query[ProviderKey] = bson.M{"$in": evergreen.ProviderSpawnable}
+	num, err := Count(ctx, query)
+	return num, errors.Wrap(err, "counting active dynamic task hosts")
+}
+
+// CountActiveDynamicHosts counts the number of task hosts that are active in
+// the cloud provider in a particular distro.
+func CountActiveHostsInDistro(ctx context.Context, distroID string) (int, error) {
+	query := byActiveForTasks()
+	query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
+	num, err := Count(ctx, query)
+	return num, errors.Wrap(err, "counting active task hosts in distro")
 }
 
 // CountHostsCanRunTasks returns the number of hosts that can accept
@@ -301,11 +315,12 @@ func CountHostsCanRunTasks(ctx context.Context, distroID string) (int, error) {
 	return num, errors.Wrap(err, "counting hosts that can run tasks")
 }
 
-func CountAllRunningDynamicHosts(ctx context.Context) (int, error) {
-	query := IsLive()
-	query[ProviderKey] = bson.M{"$in": evergreen.ProviderSpawnable}
-	num, err := Count(ctx, query)
-	return num, errors.Wrap(err, "counting running dynamic hosts")
+// CountHostsCanOrWillRunTasksInDistro counts all task hosts in a distro that
+// can run or will eventually run tasks.
+func CountHostsCanOrWillRunTasksInDistro(ctx context.Context, distroID string) (int, error) {
+	q := byCanOrWillRunTasks()
+	q[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
+	return Count(ctx, q)
 }
 
 // CountIdleStartedTaskHosts returns the count of task hosts that are starting

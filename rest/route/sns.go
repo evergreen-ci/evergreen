@@ -215,7 +215,7 @@ func (sns *ec2SNS) handleInstanceInterruptionWarning(ctx context.Context, instan
 			instanceType = stringVal
 		}
 	}
-	existingHostCount, err := host.CountRunningHosts(ctx, h.Distro.Id)
+	existingHostCount, err := host.CountActiveHostsInDistro(ctx, h.Distro.Id)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":               "database error counting running hosts by distro_id",

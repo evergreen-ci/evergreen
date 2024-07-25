@@ -175,6 +175,7 @@ type ProjectEventLogEntry {
 
 type ProjectEventSettings {
   aliases: [ProjectAlias!]
+  githubAppAuth: GithubAppAuth
   githubWebhooksEnabled: Boolean!
   projectRef: Project
   subscriptions: [GeneralSubscription!]
