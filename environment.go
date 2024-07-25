@@ -297,6 +297,8 @@ type closerOp struct {
 // cachedGitHubSender stores a GitHub sender and the time it was created
 // because GitHub app tokens, and by extension, the senders, will expire
 // one hour after creation.
+// kim: TODO: generalize this to all GitHub requests rather than just GitHub
+// sender.
 type cachedGitHubSender struct {
 	sender send.Sender
 	time   time.Time
@@ -1148,6 +1150,8 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 		"repo":    repo,
 	}))
 
+	// kim: TODO: similar to the sender, may need an in-memory cache for GitHub
+	// installation tokens in general, not just for the GitHub sender.
 	e.githubSenders[owner] = cachedGitHubSender{
 		sender: sender,
 		time:   tokenCreatedAt,

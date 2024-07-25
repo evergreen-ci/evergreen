@@ -3,6 +3,7 @@ package evergreen
 import (
 	"context"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/bradleyfalzon/ghinstallation"
@@ -100,8 +101,60 @@ func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Conte
 	return s.CreateGitHubAppAuth().CreateInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, opts)
 }
 
+// cachedGitHubInstallationToken represents a GitHub installation token that's
+// cached in memory.
+type cachedGitHubInstallationToken struct {
+	installationToken string
+	expiresAt         time.Time
+}
+
+func (c *cachedGitHubInstallationToken) isExpired(lifetime time.Duration) bool {
+	return time.Until(c.expiresAt) < lifetime
+}
+
+// installationTokenCache is a cache mapping the installation ID to the cached
+// GitHub installation token for it.
+type installationTokenCache struct {
+	cache map[int64]cachedGitHubInstallationToken
+	mu    sync.RWMutex
+}
+
+var ghInstallationTokenCache = installationTokenCache{}
+
+// get gets an installation token from the cache by its installation ID. It will
+// not return the token if the remaining duration of the token is less than its
+// lifetime.
+func (c *installationTokenCache) get(installationID int64, lifetime time.Duration) string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	cachedToken, ok := c.cache[installationID]
+	if !ok {
+		return ""
+	}
+	if cachedToken.isExpired(lifetime) {
+		return ""
+	}
+
+	return cachedToken.installationToken
+}
+
+// ghInstallationTokenValidity is how long a GitHub token is valid for.
+const ghInstallationTokenValidity = time.Hour
+
+func (c *installationTokenCache) put(installationID int64, installationToken string, createdAt time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.cache[installationID] = cachedGitHubInstallationToken{
+		installationToken: installationToken,
+		expiresAt:         createdAt.Add(ghInstallationTokenValidity),
+	}
+}
+
 // CreateInstallationToken uses the owner/repo information to request an github app installation id
 // and uses that id to create an installation token.
+// kim: TODO: modify function inputs to include how long the token must be valid for (e.g. can't
+// expire for another 10 minutes) to determine if it can be taken from the
+// cache.
 func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
 	if g == nil {
 		return "", errors.New("GitHub app is not configured in admin settings")
@@ -112,9 +165,10 @@ func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo
 		return "", errors.Wrapf(err, "getting installation id for '%s/%s'", owner, repo)
 	}
 
-	token, err := createInstallationTokenForID(ctx, g, installationID, opts)
+	const lifetime = 10 * time.Minute
+	token, err := g.getInstallationTokenForID(ctx, installationID, lifetime, opts)
 	if err != nil {
-		return "", errors.Wrapf(err, "creating installation token for '%s/%s'", owner, repo)
+		return "", errors.Wrapf(err, "getting installation token for '%s/%s'", owner, repo)
 	}
 
 	return token, nil
@@ -147,6 +201,21 @@ func getInstallationID(ctx context.Context, authFields *GithubAppAuth, owner, re
 
 	return installationID, nil
 
+}
+
+func (g *GithubAppAuth) getInstallationTokenForID(ctx context.Context, installationID int64, lifetime time.Duration, opts *github.InstallationTokenOptions) (string, error) {
+	if cachedToken := ghInstallationTokenCache.get(installationID, lifetime); cachedToken != "" {
+		return cachedToken, nil
+	}
+
+	createdAt := time.Now()
+	token, err := g.createInstallationTokenForID(ctx, installationID, opts)
+	if err != nil {
+		return "", errors.Wrap(err, "creating installation token")
+	}
+	ghInstallationTokenCache.put(installationID, token, createdAt)
+
+	return token, nil
 }
 
 func byAppOwnerRepo(appId int64, owner, repo string) bson.M {
@@ -277,8 +346,8 @@ func getInstallationIDFromGitHub(ctx context.Context, authFields *GithubAppAuth,
 
 // createInstallationTokenForID returns an installation token from GitHub given an installation ID.
 // This function cannot be moved to thirdparty because it is needed to set up the environment.
-func createInstallationTokenForID(ctx context.Context, authFields *GithubAppAuth, installationID int64, opts *github.InstallationTokenOptions) (string, error) {
-	client, err := getGitHubClientForAuth(authFields)
+func (g *GithubAppAuth) createInstallationTokenForID(ctx context.Context, installationID int64, opts *github.InstallationTokenOptions) (string, error) {
+	client, err := getGitHubClientForAuth(g)
 	if err != nil {
 		return "", errors.Wrap(err, "getting GitHub client for token creation")
 	}

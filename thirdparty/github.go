@@ -340,6 +340,7 @@ func getInstallationToken(ctx context.Context, owner, repo string, opts *github.
 		return "", errors.Wrap(err, "getting config")
 	}
 
+	// kim: TODO: determine what is a valid token lifetime.
 	token, err := settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, owner, repo, opts)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{

@@ -191,6 +191,7 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 		return nil, nil, errors.Errorf("project ref '%s' not found", t.Project)
 	}
 
+	// kim: TODO: determine what is a valid token lifetime.
 	appToken, err := settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, pRef.Owner, pRef.Repo, nil)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "creating GitHub app token")
