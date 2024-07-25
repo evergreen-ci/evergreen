@@ -86,6 +86,9 @@ func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId strin
 	return http.StatusOK, nil
 }
 
+// addPreviousSingleHostTaskGroupTasks checks all the tasks in a task group in the patch update
+// and if that task group is a single host task group, it schedules the previous tasks in the
+// task group.
 func addPreviousSingleHostTaskGroupTasks(patchUpdateReq *model.PatchUpdate, project *model.Project) {
 	taskGroupTasksToAddToVariant := map[string]string{}
 	for _, vt := range patchUpdateReq.VariantsTasks {
