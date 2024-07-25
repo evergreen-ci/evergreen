@@ -116,11 +116,6 @@ type PatchUpdate struct {
 	VariantsTasks       []patch.VariantTasks `json:"variants_tasks,omitempty"`
 }
 
-// AddPreviousSingleHostTasksInTaskGroup
-func (p *PatchUpdate) AddPreviousSingleHostTasksInTaskGroup() {
-
-}
-
 // ConfigurePatch validates and creates the updated tasks/variants if given, and updates description if needed.
 // Returns an http status code and error.
 func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.Patch, version *Version, proj *ProjectRef, patchUpdateReq PatchUpdate) (int, error) {
