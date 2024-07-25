@@ -48,28 +48,7 @@ func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId strin
 			return http.StatusInternalServerError, errors.Wrapf(err, "finding project for version '%s'", version.Id)
 		}
 	}
-	taskGroupTasksToAddToVariant := map[string]string{}
-	for _, vt := range patchUpdateReq.VariantsTasks {
-		for _, t := range vt.Tasks {
-			tg := project.FindTaskGroupForTask(t)
-			if tg == nil || tg.MaxHosts != 1 {
-				continue
-			}
-			for _, tgt := range tg.Tasks {
-				if tgt == t {
-					break
-				}
-				taskGroupTasksToAddToVariant[t] = vt.Variant
-			}
-		}
-	}
-	for t, v := range taskGroupTasksToAddToVariant {
-		for _, vt := range patchUpdateReq.VariantsTasks {
-			if vt.Variant == v && !utility.StringSliceContains(vt.Tasks, t) {
-				vt.Tasks = append(vt.Tasks, t)
-			}
-		}
-	}
+	addPreviousSingleHostTaskGroupTasks(&patchUpdateReq, project)
 
 	statusCode, err := model.ConfigurePatch(ctx, env.Settings(), p, version, projectRef, patchUpdateReq)
 	if err != nil {
@@ -105,4 +84,33 @@ func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId strin
 		}
 	}
 	return http.StatusOK, nil
+}
+
+func addPreviousSingleHostTaskGroupTasks(patchUpdateReq *model.PatchUpdate, project *model.Project) {
+	taskGroupTasksToAddToVariant := map[string]string{}
+	for _, vt := range patchUpdateReq.VariantsTasks {
+		for _, t := range vt.Tasks {
+			tg := project.FindTaskGroupForTask(t)
+			if tg == nil || tg.MaxHosts != 1 {
+				continue
+			}
+			for _, tgt := range tg.Tasks {
+				if tgt == t {
+					break
+				}
+				taskGroupTasksToAddToVariant[tgt] = vt.Variant
+			}
+		}
+	}
+	variantTasks := []patch.VariantTasks{}
+	for _, vt := range patchUpdateReq.VariantsTasks {
+		for t, v := range taskGroupTasksToAddToVariant {
+			if vt.Variant == v && !utility.StringSliceContains(vt.Tasks, t) {
+				vt.Tasks = append(vt.Tasks, t)
+			}
+		}
+		variantTasks = append(variantTasks, vt)
+	}
+	patchUpdateReq.VariantsTasks = variantTasks
+
 }

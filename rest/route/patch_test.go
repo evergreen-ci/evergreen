@@ -832,7 +832,27 @@ post:
     params:
       file_location: src/results.json
 
+task_groups:
+  - name: task_group
+    max_hosts: 1
+    tasks:
+      - task_group_task_1
+      - task_group_task_2
+      - task_group_task_3
+
 tasks:
+- name: task_group_task_1
+  commands:
+    - func: "fetch source"
+
+- name: task_group_task_2
+  commands:
+    - func: "fetch source"
+
+- name: task_group_task_3
+  commands:
+    - func: "fetch source"
+
 - name: compile
   depends_on: []
   commands:
@@ -890,6 +910,12 @@ buildvariants:
   - name: passing_test
   - name: failing_test
   - name: timeout_test
+- name: ubuntu_task_group
+  display_name: Ubuntu task group
+  run_on:
+  - ubuntu1404-test
+  tasks:
+  - name: task_group
 - name: ubuntu
   display_name: Ubuntu
   modules: ["render-module"]
@@ -1052,6 +1078,39 @@ buildvariants:
 	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 4)
+
+	// Scheduling a single host task group task should schedule all tasks before it in
+	// the task group
+	patch3 := patch.Patch{
+		Id:                   mgobson.NewObjectId(),
+		Project:              projectRef.Id,
+		Githash:              "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
+		PatchedProjectConfig: config,
+	}
+	assert.NoError(t, patch3.Insert())
+
+	err = util.UnmarshalYAMLWithFallback([]byte(config), &pp)
+	require.NoError(t, err)
+	pp.Id = patch3.Id.Hex()
+	require.NoError(t, pp.Insert())
+	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
+	body = patchTasks{
+		Variants: []variant{{Id: "ubuntu_task_group", Tasks: []string{"task_group_task_2"}}},
+	}
+	jsonBody, err = json.Marshal(&body)
+	assert.NoError(t, err)
+	req, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer(jsonBody))
+	req = gimlet.SetURLVars(req, map[string]string{"patch_id": patch3.Id.Hex()})
+	assert.NoError(t, err)
+	assert.NoError(t, handler.Parse(ctx, req))
+	resp = handler.Run(ctx)
+	respVersion = resp.Data().(model.APIVersion)
+	assert.Equal(t, patch3.Id.Hex(), *respVersion.Id)
+	assert.Equal(t, "", *respVersion.Message)
+	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
+	assert.NoError(t, err)
+	assert.Len(t, tasks, 2)
 }
 
 func TestSchedulePatchActivatesInactiveTasks(t *testing.T) {
