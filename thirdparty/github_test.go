@@ -161,6 +161,18 @@ func (s *githubSuite) TestGetGithubCommitsUntil() {
 	s.Len(githubCommits, 4)
 }
 
+func (s *githubSuite) TestGetInstallationTokenCached() {
+	token, err := getInstallationToken(s.ctx, "evergreen-ci", "sample", nil)
+	s.NoError(err)
+	s.NotZero(token)
+
+	for i := 0; i < 10; i++ {
+		cachedToken, err := getInstallationToken(s.ctx, "evergreen-ci", "sample", nil)
+		s.NoError(err)
+		s.Equal(token, cachedToken, "should return same exact cached token since it is still valid")
+	}
+}
+
 func (s *githubSuite) TestRevokeInstallationToken() {
 	token, err := getInstallationToken(s.ctx, "evergreen-ci", "sample", nil)
 	s.NoError(err)

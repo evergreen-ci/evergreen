@@ -1404,7 +1404,7 @@ func (g *createInstallationToken) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (g *createInstallationToken) Run(ctx context.Context) gimlet.Responder {
-	const lifetime = 30 * time.Minute
+	const lifetime = 50 * time.Minute
 	token, err := g.env.Settings().CreateGitHubAppAuth().CreateInstallationToken(ctx, g.owner, g.repo, lifetime, nil)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", g.owner, g.repo))
@@ -1659,7 +1659,8 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		})
 	}
 
-	token, err := githubAppAuth.CreateInstallationToken(ctx, h.owner, h.repo, evergreen.MaxInstallationTokenLifetime, &github.InstallationTokenOptions{
+	const ghTokenLifetime = 59 * time.Minute
+	token, err := githubAppAuth.CreateInstallationToken(ctx, h.owner, h.repo, ghTokenLifetime, &github.InstallationTokenOptions{
 		Permissions: permissions,
 	})
 	if err != nil {

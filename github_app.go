@@ -91,10 +91,6 @@ func (g *GithubAppAuth) IsGithubAppInstalledOnRepo(ctx context.Context, owner, r
 	return installationID != 0, nil
 }
 
-// MaxInstallationTokenLifetime is the maximum amount of time that an
-// installation token can be used before it expires.
-const MaxInstallationTokenLifetime = time.Hour
-
 // CreateInstallationTokenWithDefaultOwnerRepo returns an installation token when we do not care about
 // the owner/repo that we are calling the GitHub function with (i.e. checking rate limit).
 // It will use the default owner/repo specified in the admin settings and error if it's not set.
@@ -123,11 +119,13 @@ type installationTokenCache struct {
 	mu    sync.RWMutex
 }
 
-var ghInstallationTokenCache = installationTokenCache{}
+var ghInstallationTokenCache = installationTokenCache{
+	cache: make(map[int64]cachedGitHubInstallationToken),
+	mu:    sync.RWMutex{},
+}
 
 // get gets an installation token from the cache by its installation ID. It will
-// not return the token if the remaining duration of the token is less than its
-// lifetime.
+// not return a token if the token will expire before the requested lifetime.
 func (c *installationTokenCache) get(installationID int64, lifetime time.Duration) string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -142,24 +140,32 @@ func (c *installationTokenCache) get(installationID int64, lifetime time.Duratio
 	return cachedToken.installationToken
 }
 
-// ghInstallationTokenValidity is how long a GitHub token is valid for.
-const ghInstallationTokenValidity = time.Hour
+// maxInstallationTokenLifetime is the maximum amount of time that an
+// installation token can be used before it expires.
+const maxInstallationTokenLifetime = time.Hour
 
 func (c *installationTokenCache) put(installationID int64, installationToken string, createdAt time.Time) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.cache[installationID] = cachedGitHubInstallationToken{
 		installationToken: installationToken,
-		expiresAt:         createdAt.Add(ghInstallationTokenValidity),
+		expiresAt:         createdAt.Add(maxInstallationTokenLifetime),
 	}
 }
 
 // CreateInstallationToken uses the owner/repo information to request an github app installation id
 // and uses that id to create an installation token.
-// kim: TODO: modify function inputs to include how long the token must be valid for (e.g. can't
-// expire for another 10 minutes) to determine if it can be taken from the
-// cache.
+// If possible, it will try to use an existing installation token for the app
+// from the cache, unless that cached token will expire before the requested
+// lifetime. For example, if requesting a token that should be valid for the
+// next 30 minutes, this method can return a cached token that is still valid
+// for 45 minutes. However, if the cached token will expire in 5 minutes, it
+// will provide a freshly-generated token.
 func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo string, lifetime time.Duration, opts *github.InstallationTokenOptions) (string, error) {
+	if lifetime >= maxInstallationTokenLifetime {
+		lifetime = maxInstallationTokenLifetime
+	}
+
 	if g == nil {
 		return "", errors.New("GitHub app is not configured in admin settings")
 	}
@@ -216,6 +222,7 @@ func (g *GithubAppAuth) getInstallationTokenForID(ctx context.Context, installat
 	if err != nil {
 		return "", errors.Wrap(err, "creating installation token")
 	}
+
 	ghInstallationTokenCache.put(installationID, token, createdAt)
 
 	return token, nil
