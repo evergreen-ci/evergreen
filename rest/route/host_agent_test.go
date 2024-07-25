@@ -565,7 +565,7 @@ func TestHostNextTask(t *testing.T) {
 			defer cancel()
 
 			colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection,
-				evergreen.ConfigCollection, distro.Collection}
+				evergreen.ConfigCollection, distro.Collection, model.VersionCollection}
 			require.NoError(t, db.ClearCollections(colls...))
 			defer func() {
 				assert.NoError(t, db.ClearCollections(colls...))
@@ -608,6 +608,9 @@ func TestHostNextTask(t *testing.T) {
 				Id:      "exists",
 				Enabled: true,
 			}
+			v := model.Version{
+				Id: versionID,
+			}
 
 			require.NoError(t, d.Insert(ctx))
 			require.NoError(t, task1.Insert())
@@ -618,6 +621,7 @@ func TestHostNextTask(t *testing.T) {
 			require.NoError(t, pref.Insert())
 			require.NoError(t, sampleHost.Insert(ctx))
 			require.NoError(t, tq.Save())
+			require.NoError(t, v.Insert())
 
 			r, ok := makeHostAgentNextTask(env, nil, nil).(*hostAgentNextTask)
 			require.True(t, ok)
@@ -890,6 +894,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 		}
 		So(d.Insert(ctx), ShouldBeNil)
 
+		versionId = "versionId"
 		v := model.Version{
 			Id: versionId,
 		}
@@ -1003,6 +1008,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				Id:        "undispatchedTask",
 				Status:    evergreen.TaskStarted,
 				StartTime: utility.ZeroTime,
+				Version:   versionId,
 			}
 			So(undispatchedTask.Insert(), ShouldBeNil)
 			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)

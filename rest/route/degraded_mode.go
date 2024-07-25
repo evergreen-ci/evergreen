@@ -2,12 +2,13 @@ package route
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"net/http"
 )
 
 const firingStatus = "firing"
