@@ -42,9 +42,9 @@ To set a branch protection rule for the "evergreen" GitHub status, which is used
 9. Save the branch protection rule.
 
 By setting this branch protection rule, the "evergreen" status will be required
-to pass before any changes can be merged into the protected branch. Alternative,
-you can require a single or multiple variants to pass before merging, instead of
-all variants.
+to pass before any changes can be merged into the protected branch.
+Alternatively, you can require a single or multiple variants to pass before
+merging, instead of all variants.
 
 ## Concurrency
 
@@ -118,3 +118,82 @@ might wish to do this if you wish more variants to run in a PR than are actually
 required to merge. For example, there may be long-running tasks which users care
 about only some of the time, and you do not wish to block PRs or merges on those
 tasks, but you still wish them to run automatically.
+
+**Q:** How can I turn off the merge queue to block users from merging?
+
+**A:** Check the "Lock branch" setting in the branch protection rules. There are
+*no changes to make on the Evergreen side.
+
+## Merge Queue Behavior
+
+The merge queue is not trying to merge individual PRs, but groups of PRs. This
+leads to some unintuitive behavior.
+
+Here is a typical sequence of events when a user adds 2 PRs to the merge queue.
+In this case we assume "Minimum pull requests to merge" is set to 1, "Maximum
+pull requests to merge" is set to 5, and "Maximum pull requests to build"
+("Build concurrency") is set to 5.
+
+The diagram names its branches like "main/pr-1", but in reality they are named
+like "gh-readonly-queue/main/pr-1-\<hash\>".
+
+```mermaid
+sequenceDiagram
+    User->>GitHub: Add PR 1 to merge queue
+    Note over GitHub: Create branch main/pr-1
+    GitHub->>Evergreen: Send merge_group webhook
+    Note over Evergreen: Create version for PR 1
+    Evergreen->>GitHub: Clone main/pr-1
+    User->>GitHub: Add PR 2 to merge queue
+    Note over GitHub: Create branch main/pr-2
+    GitHub->>Evergreen: Send merge_group webhook
+    Note over Evergreen: Create version for PR 1 + 2
+    Evergreen->>GitHub: Clone main/pr-2
+    Note over Evergreen: Tasks pass for PR 1
+    Evergreen->>GitHub: Send variant and version statuses for PR 1
+    Note over Evergreen: Tasks pass for PR 1 + 2
+    Evergreen->>GitHub: Send variant and version statuses for PR 1 + 2
+    Note over GitHub: Merge PR 1 + 2
+```
+
+There is some unintuitive behavior to be aware of:
+
+1. If main/pr-1 succeeds and main/pr-2 fails, only main/pr-1 will be merged.
+*But note that merging main/pr-1 waits for main/pr-2 to fail or for the timeout
+to be hit, because the "Maximum pull requests to merge" is set to 5. That is,
+GitHub is conceptualing the fundamental unit of work as the merge group, not the
+PR.*
+2. If main/pr-1 fails and main/pr-2 succeeds, GitHub will remove pr-1 from the
+queue and re-run main/pr-2 (not rebased on pr-1). *This is conceptually similar
+to the above. GitHub is trying to merge a group of PRs, not individual PRs.*
+3. If both succeed, main/pr-2 (rebased on pr-1) will be merged. *But merging
+main/pr-1 waits for main/pr-2 to succeed, because the maximum pull requests to
+merge is set to 5, and, again, GitHub is testing the entire group.*
+
+If, in the branch protection rules, "only merge non-failing pull requests" is
+checked, then the merge will not happen if any of the PRs fail. Otherwise, if
+main/pr-1 is red and main/pr-2 is green, then the latter will be merged, which
+contains both PRs.
+
+The temporary branch gets deleted only after the the PR is merged, or if the PR
+fails the check or is removed from the queue.
+
+The descriptions of the merge queue settings in the repo branch protection rules
+and in the rulesets are differernt, and the ones in the rulesets are more
+accurate. I've provided both in this table:
+
+| Repo Setting | Repo Description | Ruleset Setting | Ruleset Description |
+| --- | --- | --- | --- |
+| Maximum pull requests to build | Limit the number of queued pull requests running at the same time | Build concurrency | Limit the number of queued pull requests requesting checks and workflow runs at the same time. |
+| Minimum pull requests to merge | no description | Minimum group size | The minimum number of PRs that will be merged together in a group. |
+| or after N minutes | no description | Wait time to meet minimum group size | The time merge queue should wait after the first PR is added to the queue for the minimum group size to be met. After this time has elapsed, the minimum group size will be ignored and a smaller group will be merged. |
+| Maximum pull requests to merge | no description | Maximum group size | The maximum number of PRs that will be merged together in a group. |
+| Status check timeout | Time a required status check must report a conclusion to not be considered failed. | Status check timeout | Maximum time for a required status check to report a conclusion. After this much time has elapsed, checks that have not reported a conclusion will be assumed to have failed. |
+
+## Useful Links for Troubleshooting
+
+Here are example links for the 10gen/mongo repository:
+
+* <https://github.com/10gen/mongo/activity?activity_type=merge_queue_merge> : View the branch creations and deletions by clicking the Activity link on the repository main page under the About section.
+* <https://github.com/10gen/mongo/queue/master> : View the queue itself.
+* <https://github.com/10gen/mongo/branches/all?query=gh-readonly> : View the gh-read-only branches.
