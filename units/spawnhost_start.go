@@ -74,6 +74,12 @@ func (j *spawnhostStartJob) Run(ctx context.Context) {
 			// Only log an error if the final job attempt errors. Otherwise, it
 			// may retry and succeed on the next attempt.
 			event.LogHostStartError(j.HostID, string(j.Source), j.Error().Error())
+			grip.Error(message.WrapError(j.Error(), message.Fields{
+				"message": "no attempts remaining to start spawn host",
+				"host_id": j.HostID,
+				"source":  j.Source,
+				"job":     j.ID(),
+			}))
 		}
 	}()
 
