@@ -43,9 +43,11 @@ func (h *degradedModeHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving service flags"))
 	}
-	flags.CPUDegradedModeDisabled = false
-	if err = flags.Set(ctx); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting service flags"))
+	if flags.CPUDegradedModeDisabled {
+		flags.CPUDegradedModeDisabled = false
+		if err = flags.Set(ctx); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting service flags"))
+		}
 	}
 	return gimlet.NewJSONResponse(struct{}{})
 }

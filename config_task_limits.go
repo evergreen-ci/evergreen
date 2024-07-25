@@ -36,6 +36,9 @@ type TaskLimitsConfig struct {
 	// MaxConcurrentLargeParserProjectTasks is the maximum number of tasks with >16MB parser projects that can be running at once.
 	MaxConcurrentLargeParserProjectTasks int `bson:"max_concurrent_large_parser_project_tasks" json:"max_concurrent_large_parser_project_tasks" yaml:"max_concurrent_large_parser_project_tasks"`
 
+	// MaxDegradedModeConcurrentLargeParserProjectTasks is the maximum number of tasks with >16MB parser projects that can be running at once during degraded mode.
+	MaxDegradedModeConcurrentLargeParserProjectTasks int `bson:"max_degraded_mode_concurrent_large_parser_project_tasks" json:"max_degraded_mode_concurrent_large_parser_project_tasks" yaml:"max_degraded_mode_concurrent_large_parser_project_tasks"`
+
 	// MaxDegradedModeParserProjectSize is the maximum parser project size during CPU degraded mode.
 	MaxDegradedModeParserProjectSize int `bson:"max_degraded_mode_parser_project_size" json:"max_degraded_mode_parser_project_size" yaml:"max_degraded_mode_parser_project_size"`
 
@@ -44,14 +47,15 @@ type TaskLimitsConfig struct {
 }
 
 var (
-	maxTasksPerVersionKey                = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxTasksPerVersion")
-	maxIncludesPerVersionKey             = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxIncludesPerVersion")
-	maxHourlyPatchTasksKey               = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxHourlyPatchTasks")
-	maxPendingGeneratedTasks             = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxPendingGeneratedTasks")
-	maxGenerateTaskJSONSize              = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxGenerateTaskJSONSize")
-	maxConcurrentLargeParserProjectTasks = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxConcurrentLargeParserProjectTasks")
-	maxDegradedModeParserProjectSize     = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxDegradedModeParserProjectSize")
-	maxParserProjectSize                 = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxParserProjectSize")
+	maxTasksPerVersionKey                            = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxTasksPerVersion")
+	maxIncludesPerVersionKey                         = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxIncludesPerVersion")
+	maxHourlyPatchTasksKey                           = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxHourlyPatchTasks")
+	maxPendingGeneratedTasks                         = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxPendingGeneratedTasks")
+	maxGenerateTaskJSONSize                          = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxGenerateTaskJSONSize")
+	maxConcurrentLargeParserProjectTasks             = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxConcurrentLargeParserProjectTasks")
+	maxDegradedModeConcurrentLargeParserProjectTasks = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxDegradedModeConcurrentLargeParserProjectTasks")
+	maxDegradedModeParserProjectSize                 = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxDegradedModeParserProjectSize")
+	maxParserProjectSize                             = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxParserProjectSize")
 )
 
 func (c *TaskLimitsConfig) SectionId() string { return "task_limits" }
@@ -76,14 +80,15 @@ func (c *TaskLimitsConfig) Get(ctx context.Context) error {
 func (c *TaskLimitsConfig) Set(ctx context.Context) error {
 	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			maxTasksPerVersionKey:                c.MaxTasksPerVersion,
-			maxIncludesPerVersionKey:             c.MaxIncludesPerVersion,
-			maxPendingGeneratedTasks:             c.MaxPendingGeneratedTasks,
-			maxHourlyPatchTasksKey:               c.MaxHourlyPatchTasks,
-			maxGenerateTaskJSONSize:              c.MaxGenerateTaskJSONSize,
-			maxConcurrentLargeParserProjectTasks: c.MaxConcurrentLargeParserProjectTasks,
-			maxDegradedModeParserProjectSize:     c.MaxDegradedModeParserProjectSize,
-			maxParserProjectSize:                 c.MaxParserProjectSize,
+			maxTasksPerVersionKey:                            c.MaxTasksPerVersion,
+			maxIncludesPerVersionKey:                         c.MaxIncludesPerVersion,
+			maxPendingGeneratedTasks:                         c.MaxPendingGeneratedTasks,
+			maxHourlyPatchTasksKey:                           c.MaxHourlyPatchTasks,
+			maxGenerateTaskJSONSize:                          c.MaxGenerateTaskJSONSize,
+			maxConcurrentLargeParserProjectTasks:             c.MaxConcurrentLargeParserProjectTasks,
+			maxDegradedModeConcurrentLargeParserProjectTasks: c.MaxDegradedModeConcurrentLargeParserProjectTasks,
+			maxDegradedModeParserProjectSize:                 c.MaxDegradedModeParserProjectSize,
+			maxParserProjectSize:                             c.MaxParserProjectSize,
 		},
 	}, options.Update().SetUpsert(true))
 

@@ -385,9 +385,13 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				})
 				return nil
 			}
-			maxConcurrentLargeParserProjTasks := settings.TaskLimits.MaxConcurrentLargeParserProjectTasks
+
 			isDegradedMode := !settings.ServiceFlags.CPUDegradedModeDisabled
-			if isDegradedMode && maxConcurrentLargeParserProjTasks > 0 && taskVersion.ProjectStorageMethod == evergreen.ProjectStorageMethodS3 {
+			maxConcurrentLargeParserProjTasks := settings.TaskLimits.MaxConcurrentLargeParserProjectTasks
+			if isDegradedMode {
+				maxConcurrentLargeParserProjTasks = settings.TaskLimits.MaxDegradedModeConcurrentLargeParserProjectTasks
+			}
+			if maxConcurrentLargeParserProjTasks > 0 && taskVersion.ProjectStorageMethod == evergreen.ProjectStorageMethodS3 {
 				numLargeParserProjectTasks, err := task.CountLargeParserProjectTasks()
 				if err != nil {
 					grip.Warning(message.WrapError(err, message.Fields{
