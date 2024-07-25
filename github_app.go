@@ -101,26 +101,28 @@ func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Conte
 	return s.CreateGitHubAppAuth().CreateInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, lifetime, opts)
 }
 
-// cachedGitHubInstallationToken represents a GitHub installation token that's
+// cachedInstallationToken represents a GitHub installation token that's
 // cached in memory.
-type cachedGitHubInstallationToken struct {
+type cachedInstallationToken struct {
 	installationToken string
 	expiresAt         time.Time
 }
 
-func (c *cachedGitHubInstallationToken) isExpired(lifetime time.Duration) bool {
+func (c *cachedInstallationToken) isExpired(lifetime time.Duration) bool {
 	return time.Until(c.expiresAt) < lifetime
 }
 
 // installationTokenCache is a cache mapping the installation ID to the cached
 // GitHub installation token for it.
 type installationTokenCache struct {
-	cache map[int64]cachedGitHubInstallationToken
+	cache map[int64]cachedInstallationToken
 	mu    sync.RWMutex
 }
 
+// ghInstallationTokenCache is the in-memory instance of the cache for GitHub
+// installation tokens.
 var ghInstallationTokenCache = installationTokenCache{
-	cache: make(map[int64]cachedGitHubInstallationToken),
+	cache: make(map[int64]cachedInstallationToken),
 	mu:    sync.RWMutex{},
 }
 
@@ -147,7 +149,7 @@ const maxInstallationTokenLifetime = time.Hour
 func (c *installationTokenCache) put(installationID int64, installationToken string, createdAt time.Time) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.cache[installationID] = cachedGitHubInstallationToken{
+	c.cache[installationID] = cachedInstallationToken{
 		installationToken: installationToken,
 		expiresAt:         createdAt.Add(maxInstallationTokenLifetime),
 	}
