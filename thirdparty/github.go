@@ -332,7 +332,9 @@ func getGithubClient(token, caller string, config retryConfig) *evergreen.GitHub
 	return &githubClient
 }
 
-const defaultGitHubAPIRequestLifetime = 10 * time.Minute
+// defaultGitHubAPIRequestLifetime is the default amount of time that an
+// installation token is valid for a single GitHub API request.
+const defaultGitHubAPIRequestLifetime = 15 * time.Minute
 
 // getInstallationToken creates an installation token using Github app auth.
 // If creating a token fails it will return the legacyToken.
