@@ -58,7 +58,6 @@ type SpawnHostModifyJobOptions struct {
 }
 
 // NewSpawnhostStopJob returns a job to stop a running spawn host.
-// kim: TODO: refactor into common options
 func NewSpawnhostStopJob(opts SpawnHostModifyJobOptions, shouldKeepOff bool) amboy.Job {
 	j := makeSpawnhostStopJob()
 	j.SetID(fmt.Sprintf("%s.%s.%s.%s", spawnhostStopName, opts.User, opts.Host.Id, opts.Timestamp))
