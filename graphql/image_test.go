@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,6 +34,7 @@ func TestPackages(t *testing.T) {
 	}
 	res, err := config.Resolvers.Image().Packages(ctx, &image, opts)
 	require.NoError(t, err)
-	assert.NotEmpty(t, res)
-	assert.Equal(t, testPackage, *res[0].Name)
+	require.NotEmpty(t, res)
+	require.NotNil(t, res[0])
+	assert.Equal(t, testPackage, utility.FromStringPtr(res[0].Name))
 }

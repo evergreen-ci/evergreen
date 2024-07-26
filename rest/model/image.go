@@ -24,7 +24,7 @@ func (apiPackage *APIPackage) BuildFromService(pkg thirdparty.Package) {
 	apiPackage.Version = utility.ToStringPtr(pkg.Version)
 }
 
-// ToService returns a service layer package using the data from APIPackage
+// ToService returns a service layer package using the data from APIPackage.
 func (apiPackage *APIPackage) ToService() *thirdparty.Package {
 	pkg := thirdparty.Package{}
 	pkg.Name = utility.FromStringPtr(apiPackage.Name)

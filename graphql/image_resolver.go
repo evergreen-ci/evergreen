@@ -16,10 +16,10 @@ func (r *imageResolver) Distros(ctx context.Context, obj *model.APIImage) ([]*mo
 	if obj == nil {
 		return nil, InternalServerError.Send(ctx, "image undefined when attempting to find corresponding distros")
 	}
-	id := utility.FromStringPtr(obj.ID)
-	distros, err := distro.GetDistrosForImage(ctx, id)
+	imageID := utility.FromStringPtr(obj.ID)
+	distros, err := distro.GetDistrosForImage(ctx, imageID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distros for image '%s': '%s'", id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distros for image '%s': '%s'", imageID, err.Error()))
 	}
 	apiDistros := []*model.APIDistro{}
 	for _, d := range distros {
@@ -37,9 +37,10 @@ func (r *imageResolver) Packages(ctx context.Context, obj *model.APIImage, opts 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: '%s'", err.Error()))
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+	opts.AMI = utility.FromStringPtr(obj.AMI)
 	packages, err := c.GetPackages(ctx, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting packages for image '%s': '%s'", *obj.ID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting packages for image '%s': '%s'", utility.FromStringPtr(obj.ID), err.Error()))
 	}
 	apiPackages := []*model.APIPackage{}
 	for _, pkg := range packages {
