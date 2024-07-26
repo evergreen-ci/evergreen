@@ -27,7 +27,3 @@ type Package {
   manager: String!
   version: String!
 }
-
-
-
-

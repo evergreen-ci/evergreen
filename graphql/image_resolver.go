@@ -18,7 +18,7 @@ func (r *imageResolver) Distros(ctx context.Context, obj *model.APIImage) ([]*mo
 	}
 	distros, err := distro.GetDistrosForImage(ctx, *obj.ID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distros for image '%s': '%s'", obj.ID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distros for image '%s': '%s'", *obj.ID, err.Error()))
 	}
 	apiDistros := []*model.APIDistro{}
 	for _, d := range distros {
@@ -40,7 +40,7 @@ func (r *imageResolver) Packages(ctx context.Context, obj *model.APIImage, opts 
 	optsPackages.AMI = utility.FromStringPtr(obj.AMI)
 	packages, err := c.GetPackages(ctx, *optsPackages)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting packages for image '%s': '%s'", obj.ID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting packages for image '%s': '%s'", *obj.ID, err.Error()))
 	}
 	apiPackages := []*model.APIPackage{}
 	for _, pkg := range packages {

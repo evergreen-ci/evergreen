@@ -3,8 +3,8 @@ package graphql
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,15 +21,16 @@ func TestPackages(t *testing.T) {
 	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
 	manager := "pip"
 	testPackage := "Automat"
-	image := thirdparty.Image{
-		AMI: "ami-0f6b89500372d4a06",
+	ami := "ami-0f6b89500372d4a06"
+	image := model.APIImage{
+		AMI: &ami,
 	}
-	opts := PackageOpts{
+	opts := model.APIPackageOpts{
 		Manager: &manager,
 		Name:    &testPackage,
 	}
 	res, err := config.Resolvers.Image().Packages(ctx, &image, opts)
 	require.NoError(t, err)
 	assert.NotEmpty(t, res)
-	assert.Equal(t, res[0].Name, testPackage)
+	assert.Equal(t, testPackage, *res[0].Name)
 }

@@ -81,8 +81,8 @@ func (apiImage *APIImage) BuildFromService(image thirdparty.Image) {
 	apiImage.AMI = utility.ToStringPtr(image.AMI)
 	apiImage.Kernel = utility.ToStringPtr(image.Kernel)
 	apiImage.LastDeployed = image.LastDeployed
-	apiImage.Name = &image.Name
-	apiImage.VersionID = &image.VersionID
+	apiImage.Name = utility.ToStringPtr(image.Name)
+	apiImage.VersionID = utility.ToStringPtr(image.VersionID)
 }
 
 // ToService returns a service layer image using the data from APIImage
