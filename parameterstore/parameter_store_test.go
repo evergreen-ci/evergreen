@@ -386,3 +386,46 @@ func TestGetParameters(t *testing.T) {
 		})
 	})
 }
+
+func TestGetLocalValue(t *testing.T) {
+	t.Run("NotInDatabase", func(t *testing.T) {
+		parameterCache = make(map[string]cachedParameter)
+		_, ok := getLocalValue("not_there", []parameter{{ID: "a"}})
+		assert.False(t, ok)
+	})
+	t.Run("NotInCache", func(t *testing.T) {
+		parameterCache = make(map[string]cachedParameter)
+		_, ok := getLocalValue("a", []parameter{{ID: "a"}})
+		assert.False(t, ok)
+	})
+	t.Run("ValueInDatabase", func(t *testing.T) {
+		parameterCache = make(map[string]cachedParameter)
+		val := "val"
+		res, ok := getLocalValue("a", []parameter{{ID: "a", Value: val}})
+		assert.True(t, ok)
+		assert.Equal(t, val, res)
+	})
+	t.Run("CurrentValueInCache", func(t *testing.T) {
+		id := "a"
+		val := "val"
+		lastUpdated := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+
+		parameterCache = map[string]cachedParameter{
+			id: {value: val, lastRefresh: lastUpdated},
+		}
+		res, ok := getLocalValue(id, []parameter{{ID: id, LastUpdate: lastUpdated}})
+		assert.True(t, ok)
+		assert.Equal(t, val, res)
+	})
+	t.Run("StaleValueInCache", func(t *testing.T) {
+		id := "a"
+		val := "val"
+		lastUpdated := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+
+		parameterCache = map[string]cachedParameter{
+			id: {value: val, lastRefresh: lastUpdated.Add(-time.Second)},
+		}
+		_, ok := getLocalValue(id, []parameter{{ID: id, LastUpdate: lastUpdated}})
+		assert.False(t, ok)
+	})
+}

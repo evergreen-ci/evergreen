@@ -97,24 +97,10 @@ func (p *parameterStore) GetParameters(ctx context.Context, names []string) (map
 	paramMap := make(map[string]string, len(fullNames))
 	n := 0
 	for _, name := range fullNames {
-		var found bool
-		var param parameter
-		for _, param = range params {
-			if param.ID == name {
-				found = true
-				break
-			}
-		}
-		if found {
-			// Values set in the database override values set in Parameter Store.
-			if param.Value != "" {
-				paramMap[p.basename(name)] = param.Value
-				continue
-			}
-			if cachedParam, ok := parameterCache[name]; ok && !cachedParam.lastRefresh.Before(param.LastUpdate) {
-				paramMap[p.basename(name)] = cachedParam.value
-				continue
-			}
+		val, ok := getLocalValue(name, params)
+		if ok {
+			paramMap[p.basename(name)] = val
+			continue
 		}
 		fullNames[n] = name
 		n++
@@ -144,4 +130,27 @@ func (p *parameterStore) prefixedName(name string) string {
 
 func (p *parameterStore) basename(fullName string) string {
 	return strings.TrimPrefix(fullName, p.opts.Prefix+"/")
+}
+
+func getLocalValue(fullName string, params []parameter) (string, bool) {
+	var found bool
+	var param parameter
+	for _, param = range params {
+		if param.ID == fullName {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return "", false
+	}
+
+	// Values set in the database override values set in Parameter Store.
+	if param.Value != "" {
+		return param.Value, true
+	}
+	if cachedParam, ok := parameterCache[fullName]; ok && !cachedParam.lastRefresh.Before(param.LastUpdate) {
+		return cachedParam.value, true
+	}
+	return "", false
 }
