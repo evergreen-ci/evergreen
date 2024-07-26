@@ -101,60 +101,6 @@ func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Conte
 	return s.CreateGitHubAppAuth().CreateInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, lifetime, opts)
 }
 
-// cachedInstallationToken represents a GitHub installation token that's
-// cached in memory.
-type cachedInstallationToken struct {
-	installationToken string
-	expiresAt         time.Time
-}
-
-func (c *cachedInstallationToken) isExpired(lifetime time.Duration) bool {
-	return time.Until(c.expiresAt) < lifetime
-}
-
-// installationTokenCache is a cache mapping the installation ID to the cached
-// GitHub installation token for it.
-type installationTokenCache struct {
-	cache map[int64]cachedInstallationToken
-	mu    sync.RWMutex
-}
-
-// ghInstallationTokenCache is the in-memory instance of the cache for GitHub
-// installation tokens.
-var ghInstallationTokenCache = installationTokenCache{
-	cache: make(map[int64]cachedInstallationToken),
-	mu:    sync.RWMutex{},
-}
-
-// get gets an installation token from the cache by its installation ID. It will
-// not return a token if the token will expire before the requested lifetime.
-func (c *installationTokenCache) get(installationID int64, lifetime time.Duration) string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	cachedToken, ok := c.cache[installationID]
-	if !ok {
-		return ""
-	}
-	if cachedToken.isExpired(lifetime) {
-		return ""
-	}
-
-	return cachedToken.installationToken
-}
-
-// maxInstallationTokenLifetime is the maximum amount of time that an
-// installation token can be used before it expires.
-const maxInstallationTokenLifetime = time.Hour
-
-func (c *installationTokenCache) put(installationID int64, installationToken string, createdAt time.Time) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.cache[installationID] = cachedInstallationToken{
-		installationToken: installationToken,
-		expiresAt:         createdAt.Add(maxInstallationTokenLifetime),
-	}
-}
-
 // CreateInstallationToken uses the owner/repo information to request an github app installation id
 // and uses that id to create an installation token.
 // If possible, it will try to use an existing installation token for the app
@@ -382,4 +328,58 @@ func (g *GithubAppAuth) createInstallationTokenForID(ctx context.Context, instal
 func (g *GithubAppAuth) RedactPrivateKey() *GithubAppAuth {
 	g.PrivateKey = []byte(RedactedValue)
 	return g
+}
+
+// cachedInstallationToken represents a GitHub installation token that's
+// cached in memory.
+type cachedInstallationToken struct {
+	installationToken string
+	expiresAt         time.Time
+}
+
+func (c *cachedInstallationToken) isExpired(lifetime time.Duration) bool {
+	return time.Until(c.expiresAt) < lifetime
+}
+
+// installationTokenCache is a concurrency-safe cache mapping the installation
+// ID to the cached GitHub installation token for it.
+type installationTokenCache struct {
+	cache map[int64]cachedInstallationToken
+	mu    sync.RWMutex
+}
+
+// ghInstallationTokenCache is the in-memory instance of the cache for GitHub
+// installation tokens.
+var ghInstallationTokenCache = installationTokenCache{
+	cache: make(map[int64]cachedInstallationToken),
+	mu:    sync.RWMutex{},
+}
+
+// get gets an installation token from the cache by its installation ID. It will
+// not return a token if the token will expire before the requested lifetime.
+func (c *installationTokenCache) get(installationID int64, lifetime time.Duration) string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	cachedToken, ok := c.cache[installationID]
+	if !ok {
+		return ""
+	}
+	if cachedToken.isExpired(lifetime) {
+		return ""
+	}
+
+	return cachedToken.installationToken
+}
+
+// maxInstallationTokenLifetime is the maximum amount of time that an
+// installation token can be used before it expires.
+const maxInstallationTokenLifetime = time.Hour
+
+func (c *installationTokenCache) put(installationID int64, installationToken string, createdAt time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.cache[installationID] = cachedInstallationToken{
+		installationToken: installationToken,
+		expiresAt:         createdAt.Add(maxInstallationTokenLifetime),
+	}
 }
