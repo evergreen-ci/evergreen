@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/utility"
 )
 
 // Distros is the resolver for the distros field.
@@ -15,9 +16,10 @@ func (r *imageResolver) Distros(ctx context.Context, obj *model.APIImage) ([]*mo
 	if obj == nil {
 		return nil, InternalServerError.Send(ctx, "image undefined when attempting to find corresponding distros")
 	}
-	distros, err := distro.GetDistrosForImage(ctx, *obj.ID)
+	id := utility.FromStringPtr(obj.ID)
+	distros, err := distro.GetDistrosForImage(ctx, id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distros for image '%s': '%s'", *obj.ID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distros for image '%s': '%s'", id, err.Error()))
 	}
 	apiDistros := []*model.APIDistro{}
 	for _, d := range distros {
