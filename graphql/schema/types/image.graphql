@@ -1,9 +1,9 @@
 ###### INPUTS ######
 input PackageOpts {
-    name: String
-    manager: String
-    limit: Int
-    page: Int
+  name: String
+  manager: String
+  limit: Int
+  page: Int
 }
 
 ###### TYPES ######
@@ -23,9 +23,9 @@ type Image {
 }
 
 type Package {
-    name: String!
-    manager: String!
-    version: String!
+  name: String!
+  manager: String!
+  version: String!
 }
 
 

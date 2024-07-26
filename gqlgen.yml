@@ -139,7 +139,7 @@ models:
   IceCreamSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIceCreamSettings
   Image: 
-    model: github.com/evergreen-ci/evergreen/thirdparty.Image
+    model: github.com/evergreen-ci/evergreen/rest/model.APIImage
   InstanceTag:
     model: github.com/evergreen-ci/evergreen/model/host.Tag
   InstanceTagInput:
@@ -179,7 +179,9 @@ models:
   OomTrackerInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.APIOomTrackerInfo
   Package: 
-    model: github.com/evergreen-ci/evergreen/thirdparty.Package
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPackage
+  PackageOpts: 
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPackageOpts
   Parameter:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
   ParameterInput:

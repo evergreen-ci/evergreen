@@ -1025,7 +1025,7 @@ func (r *queryResolver) Version(ctx context.Context, versionID string) (*restMod
 }
 
 // Image is the resolver for the image field returning information about an image including kernel, version, ami, name, and last deployed time.
-func (r *queryResolver) Image(ctx context.Context, imageID string) (*thirdparty.Image, error) {
+func (r *queryResolver) Image(ctx context.Context, imageID string) (*restModel.APIImage, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: '%s'", err.Error()))
@@ -1035,7 +1035,9 @@ func (r *queryResolver) Image(ctx context.Context, imageID string) (*thirdparty.
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting image info: '%s'", err.Error()))
 	}
-	return result, nil
+	apiImage := restModel.APIImage{}
+	apiImage.BuildFromService(*result)
+	return &apiImage, nil
 }
 
 // Images is the resolver for the images field.

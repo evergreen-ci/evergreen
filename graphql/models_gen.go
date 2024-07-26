@@ -224,13 +224,6 @@ type NewDistroPayload struct {
 	NewDistroID string `json:"newDistroId"`
 }
 
-type PackageOpts struct {
-	Name    *string `json:"name,omitempty"`
-	Manager *string `json:"manager,omitempty"`
-	Limit   *int    `json:"limit,omitempty"`
-	Page    *int    `json:"page,omitempty"`
-}
-
 // PatchConfigure is the input to the schedulePatch mutation.
 // It contains information about how a user has configured their patch (e.g. name, tasks to run, etc).
 type PatchConfigure struct {

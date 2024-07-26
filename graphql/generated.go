@@ -533,7 +533,7 @@ type ComplexityRoot struct {
 		Kernel       func(childComplexity int) int
 		LastDeployed func(childComplexity int) int
 		Name         func(childComplexity int) int
-		Packages     func(childComplexity int, opts PackageOpts) int
+		Packages     func(childComplexity int, opts model.APIPackageOpts) int
 		VersionID    func(childComplexity int) int
 	}
 
@@ -1685,9 +1685,9 @@ type HostAllocatorSettingsResolver interface {
 	Version(ctx context.Context, obj *model.APIHostAllocatorSettings) (HostAllocatorVersion, error)
 }
 type ImageResolver interface {
-	Distros(ctx context.Context, obj *thirdparty.Image) ([]*model.APIDistro, error)
+	Distros(ctx context.Context, obj *model.APIImage) ([]*model.APIDistro, error)
 
-	Packages(ctx context.Context, obj *thirdparty.Image, opts PackageOpts) ([]*thirdparty.Package, error)
+	Packages(ctx context.Context, obj *model.APIImage, opts model.APIPackageOpts) ([]*model.APIPackage, error)
 }
 type IssueLinkResolver interface {
 	JiraTicket(ctx context.Context, obj *model.APIIssueLink) (*thirdparty.JiraTicket, error)
@@ -1859,7 +1859,7 @@ type QueryResolver interface {
 	TaskNamesForBuildVariant(ctx context.Context, projectIdentifier string, buildVariant string) ([]string, error)
 	HasVersion(ctx context.Context, patchID string) (bool, error)
 	Version(ctx context.Context, versionID string) (*model.APIVersion, error)
-	Image(ctx context.Context, imageID string) (*thirdparty.Image, error)
+	Image(ctx context.Context, imageID string) (*model.APIImage, error)
 	Images(ctx context.Context) ([]string, error)
 }
 type RepoSettingsResolver interface {
@@ -3916,7 +3916,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Image.Packages(childComplexity, args["opts"].(PackageOpts)), true
+		return e.complexity.Image.Packages(childComplexity, args["opts"].(model.APIPackageOpts)), true
 
 	case "Image.versionId":
 		if e.complexity.Image.VersionID == nil {
@@ -10133,10 +10133,10 @@ func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, r
 func (ec *executionContext) field_Image_packages_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 PackageOpts
+	var arg0 model.APIPackageOpts
 	if tmp, ok := rawArgs["opts"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
-		arg0, err = ec.unmarshalNPackageOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPackageOpts(ctx, tmp)
+		arg0, err = ec.unmarshalNPackageOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPackageOpts(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -24955,7 +24955,7 @@ func (ec *executionContext) fieldContext_IceCreamSettings_schedulerHost(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Image_id(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
+func (ec *executionContext) _Image_id(ctx context.Context, field graphql.CollectedField, obj *model.APIImage) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Image_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -24981,9 +24981,9 @@ func (ec *executionContext) _Image_id(ctx context.Context, field graphql.Collect
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Image_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -24999,7 +24999,7 @@ func (ec *executionContext) fieldContext_Image_id(_ context.Context, field graph
 	return fc, nil
 }
 
-func (ec *executionContext) _Image_ami(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
+func (ec *executionContext) _Image_ami(ctx context.Context, field graphql.CollectedField, obj *model.APIImage) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Image_ami(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -25025,9 +25025,9 @@ func (ec *executionContext) _Image_ami(ctx context.Context, field graphql.Collec
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Image_ami(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -25043,7 +25043,7 @@ func (ec *executionContext) fieldContext_Image_ami(_ context.Context, field grap
 	return fc, nil
 }
 
-func (ec *executionContext) _Image_distros(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
+func (ec *executionContext) _Image_distros(ctx context.Context, field graphql.CollectedField, obj *model.APIImage) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Image_distros(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -25151,7 +25151,7 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Image_kernel(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
+func (ec *executionContext) _Image_kernel(ctx context.Context, field graphql.CollectedField, obj *model.APIImage) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Image_kernel(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -25177,9 +25177,9 @@ func (ec *executionContext) _Image_kernel(ctx context.Context, field graphql.Col
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Image_kernel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -25195,7 +25195,7 @@ func (ec *executionContext) fieldContext_Image_kernel(_ context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _Image_lastDeployed(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
+func (ec *executionContext) _Image_lastDeployed(ctx context.Context, field graphql.CollectedField, obj *model.APIImage) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Image_lastDeployed(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -25239,7 +25239,7 @@ func (ec *executionContext) fieldContext_Image_lastDeployed(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Image_name(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
+func (ec *executionContext) _Image_name(ctx context.Context, field graphql.CollectedField, obj *model.APIImage) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Image_name(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -25265,9 +25265,9 @@ func (ec *executionContext) _Image_name(ctx context.Context, field graphql.Colle
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Image_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -25283,7 +25283,7 @@ func (ec *executionContext) fieldContext_Image_name(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _Image_packages(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
+func (ec *executionContext) _Image_packages(ctx context.Context, field graphql.CollectedField, obj *model.APIImage) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Image_packages(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -25297,7 +25297,7 @@ func (ec *executionContext) _Image_packages(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Image().Packages(rctx, obj, fc.Args["opts"].(PackageOpts))
+		return ec.resolvers.Image().Packages(rctx, obj, fc.Args["opts"].(model.APIPackageOpts))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -25309,9 +25309,9 @@ func (ec *executionContext) _Image_packages(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*thirdparty.Package)
+	res := resTmp.([]*model.APIPackage)
 	fc.Result = res
-	return ec.marshalNPackage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐPackageᚄ(ctx, field.Selections, res)
+	return ec.marshalNPackage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPackageᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Image_packages(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -25346,7 +25346,7 @@ func (ec *executionContext) fieldContext_Image_packages(ctx context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _Image_versionId(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Image) (ret graphql.Marshaler) {
+func (ec *executionContext) _Image_versionId(ctx context.Context, field graphql.CollectedField, obj *model.APIImage) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Image_versionId(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -25372,9 +25372,9 @@ func (ec *executionContext) _Image_versionId(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Image_versionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -34415,7 +34415,7 @@ func (ec *executionContext) fieldContext_OomTrackerInfo_pids(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _Package_name(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Package) (ret graphql.Marshaler) {
+func (ec *executionContext) _Package_name(ctx context.Context, field graphql.CollectedField, obj *model.APIPackage) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Package_name(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -34441,9 +34441,9 @@ func (ec *executionContext) _Package_name(ctx context.Context, field graphql.Col
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Package_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -34459,7 +34459,7 @@ func (ec *executionContext) fieldContext_Package_name(_ context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _Package_manager(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Package) (ret graphql.Marshaler) {
+func (ec *executionContext) _Package_manager(ctx context.Context, field graphql.CollectedField, obj *model.APIPackage) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Package_manager(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -34485,9 +34485,9 @@ func (ec *executionContext) _Package_manager(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Package_manager(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -34503,7 +34503,7 @@ func (ec *executionContext) fieldContext_Package_manager(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Package_version(ctx context.Context, field graphql.CollectedField, obj *thirdparty.Package) (ret graphql.Marshaler) {
+func (ec *executionContext) _Package_version(ctx context.Context, field graphql.CollectedField, obj *model.APIPackage) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Package_version(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -34529,9 +34529,9 @@ func (ec *executionContext) _Package_version(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Package_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -47420,9 +47420,9 @@ func (ec *executionContext) _Query_image(ctx context.Context, field graphql.Coll
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*thirdparty.Image)
+	res := resTmp.(*model.APIImage)
 	fc.Result = res
-	return ec.marshalOImage2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐImage(ctx, field.Selections, res)
+	return ec.marshalOImage2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIImage(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_image(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -71225,8 +71225,8 @@ func (ec *executionContext) unmarshalInputNotificationsInput(ctx context.Context
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputPackageOpts(ctx context.Context, obj interface{}) (PackageOpts, error) {
-	var it PackageOpts
+func (ec *executionContext) unmarshalInputPackageOpts(ctx context.Context, obj interface{}) (model.APIPackageOpts, error) {
+	var it model.APIPackageOpts
 	asMap := map[string]interface{}{}
 	for k, v := range obj.(map[string]interface{}) {
 		asMap[k] = v
@@ -71255,14 +71255,14 @@ func (ec *executionContext) unmarshalInputPackageOpts(ctx context.Context, obj i
 			it.Manager = data
 		case "limit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Limit = data
 		case "page":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			data, err := ec.unmarshalOInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -78120,7 +78120,7 @@ func (ec *executionContext) _IceCreamSettings(ctx context.Context, sel ast.Selec
 
 var imageImplementors = []string{"Image"}
 
-func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, obj *thirdparty.Image) graphql.Marshaler {
+func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, obj *model.APIImage) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, imageImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -79661,7 +79661,7 @@ func (ec *executionContext) _OomTrackerInfo(ctx context.Context, sel ast.Selecti
 
 var packageImplementors = []string{"Package"}
 
-func (ec *executionContext) _Package(ctx context.Context, sel ast.SelectionSet, obj *thirdparty.Package) graphql.Marshaler {
+func (ec *executionContext) _Package(ctx context.Context, sel ast.SelectionSet, obj *model.APIPackage) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, packageImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -91628,7 +91628,7 @@ func (ec *executionContext) marshalNOverallocatedRule2githubᚗcomᚋevergreen�
 	return v
 }
 
-func (ec *executionContext) marshalNPackage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐPackageᚄ(ctx context.Context, sel ast.SelectionSet, v []*thirdparty.Package) graphql.Marshaler {
+func (ec *executionContext) marshalNPackage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPackageᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIPackage) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -91652,7 +91652,7 @@ func (ec *executionContext) marshalNPackage2ᚕᚖgithubᚗcomᚋevergreenᚑci�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNPackage2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐPackage(ctx, sel, v[i])
+			ret[i] = ec.marshalNPackage2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPackage(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -91672,7 +91672,7 @@ func (ec *executionContext) marshalNPackage2ᚕᚖgithubᚗcomᚋevergreenᚑci�
 	return ret
 }
 
-func (ec *executionContext) marshalNPackage2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐPackage(ctx context.Context, sel ast.SelectionSet, v *thirdparty.Package) graphql.Marshaler {
+func (ec *executionContext) marshalNPackage2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPackage(ctx context.Context, sel ast.SelectionSet, v *model.APIPackage) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -91682,7 +91682,7 @@ func (ec *executionContext) marshalNPackage2ᚖgithubᚗcomᚋevergreenᚑciᚋe
 	return ec._Package(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNPackageOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPackageOpts(ctx context.Context, v interface{}) (PackageOpts, error) {
+func (ec *executionContext) unmarshalNPackageOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPackageOpts(ctx context.Context, v interface{}) (model.APIPackageOpts, error) {
 	res, err := ec.unmarshalInputPackageOpts(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -95010,7 +95010,7 @@ func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) marshalOImage2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐImage(ctx context.Context, sel ast.SelectionSet, v *thirdparty.Image) graphql.Marshaler {
+func (ec *executionContext) marshalOImage2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIImage(ctx context.Context, sel ast.SelectionSet, v *model.APIImage) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
