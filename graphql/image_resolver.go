@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/utility"
 )
 
 // Distros is the resolver for the distros field.
@@ -30,15 +29,13 @@ func (r *imageResolver) Distros(ctx context.Context, obj *model.APIImage) ([]*mo
 }
 
 // Packages is the resolver for the packages field.
-func (r *imageResolver) Packages(ctx context.Context, obj *model.APIImage, opts model.APIPackageOpts) ([]*model.APIPackage, error) {
+func (r *imageResolver) Packages(ctx context.Context, obj *model.APIImage, opts thirdparty.PackageFilterOptions) ([]*model.APIPackage, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: '%s'", err.Error()))
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
-	optsPackages := opts.ToService()
-	optsPackages.AMI = utility.FromStringPtr(obj.AMI)
-	packages, err := c.GetPackages(ctx, *optsPackages)
+	packages, err := c.GetPackages(ctx, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting packages for image '%s': '%s'", *obj.ID, err.Error()))
 	}

@@ -537,7 +537,7 @@ type ComplexityRoot struct {
 		Kernel       func(childComplexity int) int
 		LastDeployed func(childComplexity int) int
 		Name         func(childComplexity int) int
-		Packages     func(childComplexity int, opts model.APIPackageOpts) int
+		Packages     func(childComplexity int, opts thirdparty.PackageFilterOptions) int
 		VersionID    func(childComplexity int) int
 	}
 
@@ -1692,7 +1692,7 @@ type HostAllocatorSettingsResolver interface {
 type ImageResolver interface {
 	Distros(ctx context.Context, obj *model.APIImage) ([]*model.APIDistro, error)
 
-	Packages(ctx context.Context, obj *model.APIImage, opts model.APIPackageOpts) ([]*model.APIPackage, error)
+	Packages(ctx context.Context, obj *model.APIImage, opts thirdparty.PackageFilterOptions) ([]*model.APIPackage, error)
 }
 type IssueLinkResolver interface {
 	JiraTicket(ctx context.Context, obj *model.APIIssueLink) (*thirdparty.JiraTicket, error)
@@ -3929,7 +3929,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Image.Packages(childComplexity, args["opts"].(model.APIPackageOpts)), true
+		return e.complexity.Image.Packages(childComplexity, args["opts"].(thirdparty.PackageFilterOptions)), true
 
 	case "Image.versionId":
 		if e.complexity.Image.VersionID == nil {
@@ -10159,10 +10159,10 @@ func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, r
 func (ec *executionContext) field_Image_packages_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 model.APIPackageOpts
+	var arg0 thirdparty.PackageFilterOptions
 	if tmp, ok := rawArgs["opts"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
-		arg0, err = ec.unmarshalNPackageOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPackageOpts(ctx, tmp)
+		arg0, err = ec.unmarshalNPackageOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐPackageFilterOptions(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -25306,9 +25306,9 @@ func (ec *executionContext) _Image_lastDeployed(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.(time.Time)
+	res := resTmp.(*time.Time)
 	fc.Result = res
-	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Image_lastDeployed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -25382,7 +25382,7 @@ func (ec *executionContext) _Image_packages(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Image().Packages(rctx, obj, fc.Args["opts"].(model.APIPackageOpts))
+		return ec.resolvers.Image().Packages(rctx, obj, fc.Args["opts"].(thirdparty.PackageFilterOptions))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -71414,8 +71414,8 @@ func (ec *executionContext) unmarshalInputNotificationsInput(ctx context.Context
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputPackageOpts(ctx context.Context, obj interface{}) (model.APIPackageOpts, error) {
-	var it model.APIPackageOpts
+func (ec *executionContext) unmarshalInputPackageOpts(ctx context.Context, obj interface{}) (thirdparty.PackageFilterOptions, error) {
+	var it thirdparty.PackageFilterOptions
 	asMap := map[string]interface{}{}
 	for k, v := range obj.(map[string]interface{}) {
 		asMap[k] = v
@@ -71430,14 +71430,14 @@ func (ec *executionContext) unmarshalInputPackageOpts(ctx context.Context, obj i
 		switch k {
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Name = data
 		case "manager":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("manager"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -91919,7 +91919,7 @@ func (ec *executionContext) marshalNPackage2ᚖgithubᚗcomᚋevergreenᚑciᚋe
 	return ec._Package(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNPackageOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPackageOpts(ctx context.Context, v interface{}) (model.APIPackageOpts, error) {
+func (ec *executionContext) unmarshalNPackageOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐPackageFilterOptions(ctx context.Context, v interface{}) (thirdparty.PackageFilterOptions, error) {
 	res, err := ec.unmarshalInputPackageOpts(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }

@@ -181,7 +181,7 @@ models:
   Package: 
     model: github.com/evergreen-ci/evergreen/rest/model.APIPackage
   PackageOpts: 
-    model: github.com/evergreen-ci/evergreen/rest/model.APIPackageOpts
+    model: github.com/evergreen-ci/evergreen/thirdparty.PackageFilterOptions
   Parameter:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
   ParameterInput:

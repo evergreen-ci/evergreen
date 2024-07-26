@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,9 +26,10 @@ func TestPackages(t *testing.T) {
 	image := model.APIImage{
 		AMI: &ami,
 	}
-	opts := model.APIPackageOpts{
-		Manager: &manager,
-		Name:    &testPackage,
+	opts := thirdparty.PackageFilterOptions{
+		AMI:     ami,
+		Manager: manager,
+		Name:    testPackage,
 	}
 	res, err := config.Resolvers.Image().Packages(ctx, &image, opts)
 	require.NoError(t, err)
