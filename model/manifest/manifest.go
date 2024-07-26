@@ -1,5 +1,7 @@
 package manifest
 
+import "fmt"
+
 const Collection = "manifest"
 
 // Manifest is a representation of the modules associated with a version.
@@ -41,4 +43,9 @@ type Module struct {
 	Owner string `json:"owner" bson:"owner"`
 	// The url to the GitHub API call to that specific commit.
 	URL string `json:"url" bson:"url"`
+}
+
+// CreateName creates a name based on owner, repo and branch
+func (m Module) CreateName() string {
+	return fmt.Sprintf("%s_%s", m.Owner, m.Repo)
 }

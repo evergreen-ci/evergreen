@@ -18,8 +18,10 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/userdata"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -418,6 +420,12 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 			return "", errors.Wrap(err, "creating commands to load task data")
 		}
 		if h.ProvisionOptions.TaskId != "" {
+			// Do not return if populate github token fails. If the repo
+			// is not private, cloning the repo will still work.
+			// Either way, we should still spin up the host even if we can't
+			// fetch the data.
+			_ = h.PopulateGithubToken(ctx)
+
 			// We have to run this in the Cygwin shell in order for git clone to
 			// use the correct SSH key. Additionally, since this can take a long
 			// time to download all the task data, user data may time out this
@@ -1038,6 +1046,74 @@ func (h *Host) SpawnHostSetupCommands(settings *evergreen.Settings) (string, err
 	return h.spawnHostSetupConfigDirCommands(conf), nil
 }
 
+// PopulateGithubToken adds a read-only token for owner/repo associated with the task
+// to h.ProvisionOptions
+func (h *Host) PopulateGithubToken(ctx context.Context) error {
+	p := h.ProvisionOptions
+	if p.TaskId == "" {
+		return errors.New("missing task id")
+	}
+	if p.FetchOpts == nil || p.FetchOpts.ProjectOwner == "" || p.FetchOpts.ProjectRepo == "" {
+		grip.Warning(message.Fields{
+			"message": "missing project owner or repo when populating token for spawn host",
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+			"task_id": p.TaskId,
+		})
+		return errors.New("missing project owner or project repo")
+	}
+
+	opts := &github.InstallationTokenOptions{
+		Permissions: &github.InstallationPermissions{
+			Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
+		},
+	}
+
+	token, err := thirdparty.GetInstallationToken(ctx, p.FetchOpts.ProjectOwner, p.FetchOpts.ProjectRepo, opts)
+	if err != nil {
+		return errors.Wrap(err, "getting installation token")
+	}
+
+	h.ProvisionOptions.FetchOpts.GithubAppToken = token
+
+	// populate module tokens
+	if len(p.FetchOpts.ModuleTokens) == 0 {
+		return nil
+	}
+
+	moduleTokens := make([]string, 0, len(p.FetchOpts.Modules))
+	for _, module := range p.FetchOpts.Modules {
+		if module.Owner == "" || module.Repo == "" {
+			grip.Warning(message.Fields{
+				"message": "missing module owner or repo when populating token for spawn host",
+				"host_id": h.Id,
+				"distro":  h.Distro.Id,
+				"task_id": p.TaskId,
+				"owner":   module.Owner,
+				"repo":    module.Repo,
+			})
+			continue
+		}
+		token, err := thirdparty.GetInstallationToken(ctx, module.Owner, module.Repo, opts)
+		moduleName := module.CreateName()
+		if err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "getting installation token for module",
+				"host_id": h.Id,
+				"distro":  h.Distro.Id,
+				"task_id": p.TaskId,
+				"owner":   module.Owner,
+				"repo":    module.Repo,
+				"module":  moduleName,
+			}))
+			continue
+		}
+		moduleTokens = append(moduleTokens, fmt.Sprintf("%s:%s", moduleName, token))
+	}
+	h.ProvisionOptions.FetchOpts.ModuleTokens = moduleTokens
+	return nil
+}
+
 // spawnHostSetupConfigDirCommands the shell script that sets up the
 // config directory on a spawn host. In particular, it makes the client binary
 // directory, puts both the evergreen yaml and the client into it, and attempts
@@ -1102,7 +1178,7 @@ func (h *Host) spawnHostConfig(settings *evergreen.Settings) ([]byte, error) {
 // SpawnHostGetTaskDataCommand returns the command that fetches the task data
 // for a spawn host.
 func (h *Host) SpawnHostGetTaskDataCommand() []string {
-	return []string{
+	s := []string{
 		// We can't use the absolute path for the binary because we always run
 		// it in a Cygwin context on Windows.
 		h.AgentBinary(),
@@ -1115,6 +1191,21 @@ func (h *Host) SpawnHostGetTaskDataCommand() []string {
 		// Windows shortcut.
 		"--dir", h.Distro.WorkDir,
 	}
+
+	if f := h.ProvisionOptions.FetchOpts; f != nil {
+		if f.GithubAppToken != "" || f.ModuleTokens != nil {
+			s = append(s, "--use-app-token")
+		}
+		if f.GithubAppToken != "" {
+			s = append(s, "--token", f.GithubAppToken)
+		}
+		if f.ModuleTokens != nil {
+			s = append(s, "-m", strings.Join(f.ModuleTokens, " -m"))
+		}
+
+	}
+
+	return s
 }
 
 // SpawnHostPullTaskSyncCommand returns the command that pulls the task sync

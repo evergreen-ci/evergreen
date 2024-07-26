@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -883,6 +884,15 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 		if t, err = task.FindOneId(*spawnHostInput.TaskID); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task %s: %s", *spawnHostInput.TaskID, err.Error()))
 		}
+		if t != nil {
+			p, modules, err := getProjectAndModulesForTask(ctx, evergreen.GetEnvironment().Settings(), t)
+			if err != nil || p == nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for task `%s`: %s", t.Project, err.Error()))
+			}
+			options.ProjectOwner = p.Owner
+			options.ProjectRepo = p.Repo
+			options.ProjectModules = modules
+		}
 	}
 
 	if utility.FromBoolPtr(spawnHostInput.UseProjectSetupScript) {
@@ -909,6 +919,53 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 	return options, nil
 }
 
+// GetProjectAndModulesForTask returns the project ref and modules for a task
+func getProjectAndModulesForTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) (*model.ProjectRef, []manifest.Module, error) {
+	if t == nil {
+		return nil, nil, errors.New("task is nil")
+	}
+	projectRef, err := model.FindBranchProjectRef(t.Project)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "finding project ref")
+	}
+
+	v, err := model.VersionFindOne(model.VersionById(t.Version))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "finding version")
+	}
+	pp, err := model.ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
+	if err != nil || pp == nil {
+		return nil, nil, errors.Wrap(err, "finding project ref")
+	}
+	// Then fetch each of the modules
+	project, err := model.TranslateProject(pp)
+	if err != nil || project == nil {
+		return nil, nil, errors.Wrap(err, "translating project")
+	}
+	variant := project.FindBuildVariant(t.BuildVariant)
+	if variant == nil {
+		return nil, nil, errors.Wrapf(err, "finding build variant '%s' in config", t.BuildVariant)
+	}
+
+	var manifestModules []manifest.Module
+	for _, moduleName := range variant.Modules {
+		module, err := project.GetModuleByName(moduleName)
+		if err != nil || module == nil {
+			return nil, nil, errors.Errorf("variant refers to a module '%s' that doesn't exist", moduleName)
+		}
+		owner, repo, err := module.GetOwnerAndRepo()
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
+		}
+		manifestModules = append(manifestModules, manifest.Module{
+			Owner: owner,
+			Repo:  repo,
+		})
+	}
+
+	return projectRef, manifestModules, nil
+
+}
 func getProjectMetadata(ctx context.Context, projectId *string, patchId *string) (*restModel.APIProjectRef, error) {
 	projectRef, err := model.FindMergedProjectRef(*projectId, *patchId, false)
 	if err != nil {

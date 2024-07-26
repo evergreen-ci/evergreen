@@ -3,11 +3,13 @@ package units
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -115,6 +117,21 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 		if err := j.host.CheckTaskDataFetched(checkCtx, j.env); err != nil {
 			j.AddRetryableError(errors.Wrap(err, "checking if task data is fetched yet"))
 			return
+		}
+		// once task data is fetched, we no longer need the github token. Revoke it here
+		// in case something went wrong and it's still around.
+		if f := j.host.ProvisionOptions.FetchOpts; f != nil {
+			_ = thirdparty.RevokeInstallationToken(ctx, f.GithubAppToken)
+			if f.ModuleTokens != nil {
+				for _, token := range f.ModuleTokens {
+					parts := strings.Split(token, ":")
+					if len(parts) != 2 {
+						grip.Warningf("invalid module token format, can't revoke")
+						continue
+					}
+					_ = thirdparty.RevokeInstallationToken(ctx, parts[1])
+				}
+			}
 		}
 	}
 

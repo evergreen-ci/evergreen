@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/robfig/cron"
@@ -304,6 +305,9 @@ type ProvisionOptions struct {
 	// artifacts for the given task.
 	TaskId string `bson:"task_id" json:"task_id"`
 
+	//FetchOps contains data needed to fetch task data
+	FetchOpts *FetchOpts `bson:"fetch_options,omitempty" json:"fetch_options,omitempty"`
+
 	// TaskSync, if set along with TaskId, will fetch the task's sync data on
 	// the spawn host instead of fetching the source and artifacts. This is
 	TaskSync bool `bson:"task_sync" json:"task_sync"`
@@ -313,6 +317,22 @@ type ProvisionOptions struct {
 
 	// SetupScript runs after other host provisioning is done (i.e. loading task data/artifacts).
 	SetupScript string `bson:"setup_script" json:"setup_script"`
+}
+
+// FetchOpts is a struct that holds data needed for fetching source and artifacts for a task.
+type FetchOpts struct {
+	// ProjectRepo is the repository of the project associated with the task.
+	ProjectRepo string `bson:"project_repo" json:"project_repo"`
+	// ProjectOwner is the owner of the project associated with the task.
+	ProjectOwner string `bson:"project_owner" json:"project_owner"`
+	// Modules is a list of modules associated with the task.
+	Modules []manifest.Module `bson:"modules" json:"modules"`
+
+	// GithubAppToken is the token used to fetch task data from Github.
+	GithubAppToken string `bson:"github_app_token" json:"github_app_token"`
+	// ModuleTokens is a list of github tokens for each module associated with the task
+	// in the format 'moduleOwner_moduleRepo:token'
+	ModuleTokens []string `bson:"module_tokens" json:"module_tokens"`
 }
 
 // SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.

@@ -3,6 +3,7 @@ package cloud
 import (
 	"context"
 	"encoding/base64"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -11,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -144,6 +146,21 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 	})
+	if h.ProvisionOptions != nil && h.ProvisionOptions.FetchOpts != nil {
+		f := h.ProvisionOptions.FetchOpts
+		_ = thirdparty.RevokeInstallationToken(ctx, f.GithubAppToken)
+		if h.ProvisionOptions.FetchOpts.ModuleTokens != nil {
+			for _, token := range f.ModuleTokens {
+				parts := strings.Split(token, ":")
+				if len(parts) != 2 {
+					grip.Warningf("invalid module token format, can't revoke")
+					continue
+				}
+				_ = thirdparty.RevokeInstallationToken(ctx, parts[1])
+			}
+		}
+
+	}
 
 	return h, nil
 }

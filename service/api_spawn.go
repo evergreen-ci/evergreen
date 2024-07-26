@@ -66,6 +66,8 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 		KeyName:      hostRequest.PublicKey,
 		Region:       hostRequest.Region,
 		TaskID:       "",
+		ProjectRepo:  "",
+		ProjectOwner: "",
 		UserData:     "",
 		InstanceTags: nil,
 		InstanceType: "",

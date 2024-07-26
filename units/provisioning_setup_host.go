@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -487,6 +488,10 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		}
 
 		if j.host.ProvisionOptions.OwnerId != "" && j.host.ProvisionOptions.TaskId != "" {
+			err := j.host.PopulateGithubToken(ctx)
+			if err != nil {
+				return errors.Wrap(err, "populating GitHub token")
+			}
 			grip.Info(message.Fields{
 				"message": "fetching data for task on host",
 				"task":    j.host.ProvisionOptions.TaskId,
@@ -502,6 +507,20 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 				"host_id":   j.host.Id,
 				"job":       j.ID(),
 			}))
+			if f := j.host.ProvisionOptions.FetchOpts; f != nil {
+				_ = thirdparty.RevokeInstallationToken(ctx, f.GithubAppToken)
+				if f.ModuleTokens != nil {
+					for _, token := range f.ModuleTokens {
+						parts := strings.Split(token, ":")
+						if len(parts) != 2 {
+							grip.Warningf("invalid module token format, can't revoke")
+							continue
+						}
+						_ = thirdparty.RevokeInstallationToken(ctx, parts[1])
+					}
+				}
+			}
+
 		}
 		if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.SetupScript != "" {
 			// Asynchronously run the task data setup script, since the task

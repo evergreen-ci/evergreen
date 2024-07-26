@@ -162,7 +162,7 @@ func (s *githubSuite) TestGetGithubCommitsUntil() {
 }
 
 func (s *githubSuite) TestRevokeInstallationToken() {
-	token, err := getInstallationToken(s.ctx, "evergreen-ci", "sample", nil)
+	token, err := GetInstallationToken(s.ctx, "evergreen-ci", "sample", nil)
 	s.NoError(err)
 	s.NotEmpty(token)
 
