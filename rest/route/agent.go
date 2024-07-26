@@ -424,7 +424,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	const ghTokenLifetime = 50 * time.Minute
-	appToken, err := h.settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, pRef.Owner, pRef.Repo, ghTokenLifetime, nil)
+	appToken, err := h.settings.CreateGitHubAppAuth().CreateCachedInstallationToken(ctx, pRef.Owner, pRef.Repo, ghTokenLifetime, nil)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "creating GitHub app token"))
 	}
@@ -1405,7 +1405,7 @@ func (g *createInstallationToken) Parse(ctx context.Context, r *http.Request) er
 
 func (g *createInstallationToken) Run(ctx context.Context) gimlet.Responder {
 	const lifetime = 50 * time.Minute
-	token, err := g.env.Settings().CreateGitHubAppAuth().CreateInstallationToken(ctx, g.owner, g.repo, lifetime, nil)
+	token, err := g.env.Settings().CreateGitHubAppAuth().CreateCachedInstallationToken(ctx, g.owner, g.repo, lifetime, nil)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", g.owner, g.repo))
 	}
@@ -1659,8 +1659,10 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		})
 	}
 
-	const ghTokenLifetime = 59 * time.Minute
-	token, err := githubAppAuth.CreateInstallationToken(ctx, h.owner, h.repo, ghTokenLifetime, &github.InstallationTokenOptions{
+	// This cannot use a cached token because if the token was shared, it
+	// wouldn't be possible to revoke them without causing revoking tokens that
+	// other tasks could be using.
+	token, err := githubAppAuth.CreateInstallationToken(ctx, h.owner, h.repo, &github.InstallationTokenOptions{
 		Permissions: permissions,
 	})
 	if err != nil {

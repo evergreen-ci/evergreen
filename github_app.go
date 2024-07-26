@@ -98,18 +98,20 @@ func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Conte
 	if s.AuthConfig.Github == nil || s.AuthConfig.Github.DefaultOwner == "" || s.AuthConfig.Github.DefaultRepo == "" {
 		return "", errors.Errorf("missing GitHub app configuration needed to create installation tokens")
 	}
-	return s.CreateGitHubAppAuth().CreateInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, lifetime, opts)
+	return s.CreateGitHubAppAuth().CreateCachedInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, lifetime, opts)
 }
 
-// CreateInstallationToken uses the owner/repo information to request an github app installation id
+// CreateCachedInstallationToken uses the owner/repo information to request an github app installation id
 // and uses that id to create an installation token.
 // If possible, it will try to use an existing installation token for the app
 // from the cache, unless that cached token will expire before the requested
 // lifetime. For example, if requesting a token that should be valid for the
 // next 30 minutes, this method can return a cached token that is still valid
 // for 45 minutes. However, if the cached token will expire in 5 minutes, it
-// will provide a freshly-generated token.
-func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo string, lifetime time.Duration, opts *github.InstallationTokenOptions) (string, error) {
+// will provide a freshly-generated token. Also take special care if revoking a
+// token returned from this method - revoking the token will cause other GitHub
+// operations reusing the same token to fail.
+func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner, repo string, lifetime time.Duration, opts *github.InstallationTokenOptions) (string, error) {
 	if lifetime >= maxInstallationTokenLifetime {
 		lifetime = maxInstallationTokenLifetime
 	}
@@ -124,8 +126,22 @@ func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo
 	}
 
 	token, err := g.getInstallationToken(ctx, installationID, lifetime, opts)
+
+	return token, errors.Wrapf(err, "getting installation token for '%s/%s'", owner, repo)
+}
+
+// CreateInstallationToken creates an installation token for the given
+// owner/repo. This is never cached, and should only be used in scenarios where
+// the token can be revoked at any time.
+func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
+	installationID, err := getInstallationID(ctx, g, owner, repo)
 	if err != nil {
-		return "", errors.Wrapf(err, "getting installation token for '%s/%s'", owner, repo)
+		return "", errors.Wrapf(err, "getting installation id for '%s/%s'", owner, repo)
+	}
+
+	token, err := g.createInstallationTokenForID(ctx, installationID, opts)
+	if err != nil {
+		return "", errors.Wrapf(err, "creating installation token for '%s/%s'", owner, repo)
 	}
 
 	return token, nil
@@ -167,7 +183,7 @@ func (g *GithubAppAuth) getInstallationToken(ctx context.Context, installationID
 
 	createdAt := time.Now()
 	token, err := g.createInstallationTokenForID(ctx, installationID, opts)
-	if err != nil {
+	if err != nil || token == "" {
 		return "", errors.Wrap(err, "creating installation token")
 	}
 
