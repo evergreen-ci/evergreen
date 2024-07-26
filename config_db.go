@@ -10,8 +10,9 @@ import (
 )
 
 var (
-	ConfigCollection = "admin"
-	ConfigDocID      = "global"
+	ConfigCollection       = "admin"
+	ConfigDocID            = "global"
+	parameterStoreConfigID = "parameter_store"
 )
 
 //nolint:unused

@@ -3,6 +3,7 @@ package evergreen
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 
 	"github.com/evergreen-ci/evergreen/parameterstore"
 	"github.com/pkg/errors"
@@ -65,50 +66,61 @@ func NewConfigSections() ConfigSections {
 }
 
 func (c *ConfigSections) populateSections(ctx context.Context) error {
-	missingSections, err := c.getSSMParameters(ctx)
-	if err != nil {
+	parameterStoreConfig := ParameterStoreConfig{}
+	if err := parameterStoreConfig.Get(ctx); err != nil {
+		return errors.Wrap(err, "getting parameter store configuration")
+	}
+	c.Sections[parameterStoreConfigID] = &parameterStoreConfig
+
+	if err := c.getSSMParameters(ctx); err != nil {
 		return errors.Wrap(err, "getting SSM parameters")
 	}
 
 	// Fill in missing sections from the database.
 	// TODO (DEVPROD-8038): Remove this once all parameters have been migrated to Parameter Store.
-	return errors.Wrap(c.getDBParameters(ctx, missingSections), "getting database parameters")
+	return errors.Wrap(c.getDBParameters(ctx), "getting database parameters")
 }
 
-func (c *ConfigSections) getSSMParameters(ctx context.Context) ([]string, error) {
-	parameterStoreOpts, err := GetParameterStoreOpts(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting Parameter Store options")
-	}
-
-	parameterStore, err := parameterstore.NewParameterStore(ctx, parameterStoreOpts)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting Parameter Store client")
-	}
+func (c *ConfigSections) getSSMParameters(ctx context.Context) error {
 	var sectionNames []string
 	for section := range c.Sections {
-		sectionNames = append(sectionNames, section)
+		if reflect.ValueOf(section).Elem().IsZero() {
+			sectionNames = append(sectionNames, section)
+		}
+	}
+
+	parameterStore, err := parameterstore.NewParameterStore(ctx, parameterstore.ParameterStoreOptions{
+		Database:   GetEnvironment().DB(),
+		Prefix:     c.Sections[parameterStoreConfigID].(*ParameterStoreConfig).Prefix,
+		SSMBackend: c.Sections[parameterStoreConfigID].(*ParameterStoreConfig).SSMBackend,
+	})
+	if err != nil {
+		return errors.Wrap(err, "getting Parameter Store client")
 	}
 	ssmSections, err := parameterStore.GetParameters(ctx, sectionNames)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting parameters from SSM")
+		return errors.Wrap(err, "getting parameters from SSM")
 	}
 
 	catcher := grip.NewBasicCatcher()
-	var missingSections []string
 	for name, section := range c.Sections {
 		ssmSection, ok := ssmSections[name]
-		if !ok {
-			missingSections = append(missingSections, name)
-			continue
+		if ok {
+			catcher.Wrapf(json.Unmarshal([]byte(ssmSection), section), "unmarshalling SSM section ID '%s'", name)
 		}
-		catcher.Wrapf(json.Unmarshal([]byte(ssmSection), section), "unmarshalling SSM section ID '%s'", name)
 	}
-	return missingSections, catcher.Resolve()
+	return catcher.Resolve()
 }
 
-func (c *ConfigSections) getDBParameters(ctx context.Context, sections []string) error {
-	rawSections, err := getSectionsBSON(ctx, sections)
+func (c *ConfigSections) getDBParameters(ctx context.Context) error {
+	var sectionNames []string
+	for section := range c.Sections {
+		if reflect.ValueOf(section).Elem().IsZero() {
+			sectionNames = append(sectionNames, section)
+		}
+	}
+
+	rawSections, err := getSectionsBSON(ctx, sectionNames)
 	if err != nil {
 		return errors.Wrap(err, "getting raw sections")
 	}

@@ -18,7 +18,7 @@ type ParameterStoreConfig struct {
 }
 
 // SectionId returns the ID of this config section.
-func (c *ParameterStoreConfig) SectionId() string { return "parameter_store" }
+func (c *ParameterStoreConfig) SectionId() string { return parameterStoreConfigID }
 
 // Get populates the config from the database.
 func (c *ParameterStoreConfig) Get(ctx context.Context) error {
