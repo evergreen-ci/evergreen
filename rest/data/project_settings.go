@@ -473,10 +473,16 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	// This section does not support repo-level at this time.
 	case model.ProjectPageGithubAppSettingsSection:
 		mergedSection.Id = mergedBeforeRef.Id
-		if changes.GithubAppAuth.AppID != int(before.GitHubAppAuth.AppID) ||
-			utility.FromStringPtr(changes.GithubAppAuth.PrivateKey) != string(before.GitHubAppAuth.PrivateKey) {
-			if err = mergedSection.SetGithubAppCredentials(int64(changes.GithubAppAuth.AppID), []byte(utility.FromStringPtr(changes.GithubAppAuth.PrivateKey))); err != nil {
-				return nil, errors.Wrap(err, "updating GitHub app credentials")
+
+		appIDChanged := changes.GithubAppAuth.AppID != int(before.GitHubAppAuth.AppID)
+		privateKeyChanged := utility.FromStringPtr(changes.GithubAppAuth.PrivateKey) != string(before.GitHubAppAuth.PrivateKey)
+		privateKeyRedacted := utility.FromStringPtr(changes.GithubAppAuth.PrivateKey) == evergreen.RedactedValue
+
+		if appIDChanged || privateKeyChanged {
+			if !privateKeyRedacted {
+				if err = mergedSection.SetGithubAppCredentials(int64(changes.GithubAppAuth.AppID), []byte(utility.FromStringPtr(changes.GithubAppAuth.PrivateKey))); err != nil {
+					return nil, errors.Wrap(err, "updating GitHub app credentials")
+				}
 			}
 		}
 		mergedSection.GitHubDynamicTokenPermissionGroups = mergedBeforeRef.GitHubDynamicTokenPermissionGroups
