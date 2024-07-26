@@ -1,0 +1,19 @@
+{
+  "project_ref": [
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox"
+    },
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    }
+  ],
+  "github_app_auth": [
+    {
+      "_id": "sandbox_project_id",
+      "app_id": 12345,
+      "private_key": "secret"
+    }
+  ]
+}

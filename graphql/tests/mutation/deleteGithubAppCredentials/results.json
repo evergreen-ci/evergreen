@@ -1,0 +1,31 @@
+{
+  "tests": [
+    {
+      "query_file": "success.graphql",
+      "result": {
+        "data": {
+          "deleteGithubAppCredentials": {
+            "oldAppId": 12345
+          }
+        }
+      }
+    },
+    {
+      "query_file": "fail_nonexistent_github_app.graphql",
+      "result": {
+        "data": {
+          "deleteGithubAppCredentials": null
+        },
+        "errors": [
+          {
+            "message": "project 'spruce' does not have a GitHub app defined",
+            "path": ["deleteGithubAppCredentials"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
