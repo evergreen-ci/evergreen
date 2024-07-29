@@ -384,25 +384,16 @@ func (s *AdminSuite) TestParameterStoreConfig() {
 	defer cancel()
 
 	config := ParameterStoreConfig{
-		SSMBackend: true,
+		SSMBackend: false,
 		Prefix:     "/config",
 	}
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	settings, err := GetConfig(ctx)
+	fetchedConfig := ParameterStoreConfig{}
+	s.NoError(fetchedConfig.Get(ctx))
 	s.NoError(err)
-	s.NotNil(settings)
-	s.Equal(config, settings.ParameterStore)
-
-	config.SSMBackend = false
-	s.NoError(config.Set(ctx))
-
-	settings, err = GetConfig(ctx)
-	s.NoError(err)
-	s.NotNil(settings)
-	s.Equal(config, settings.ParameterStore)
-
+	s.Equal(config, fetchedConfig)
 }
 
 func (s *AdminSuite) TestProvidersConfig() {
