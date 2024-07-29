@@ -83,7 +83,7 @@ func TestGetPackages(t *testing.T) {
 		Limit:   limit,
 		Manager: manager,
 	}
-	result, err := c.getPackages(ctx, opts)
+	result, err := c.GetPackages(ctx, opts)
 	require.NoError(t, err)
 	require.Len(t, result, limit)
 	for i := 0; i < limit; i++ {
@@ -99,7 +99,7 @@ func TestGetPackages(t *testing.T) {
 		Name:    "Automat",
 		Manager: manager,
 	}
-	result, err = c.getPackages(ctx, opts)
+	result, err = c.GetPackages(ctx, opts)
 	require.NoError(t, err)
 	require.Len(t, result, 1)
 	assert.Equal(result[0].Name, name)
@@ -110,16 +110,16 @@ func TestGetPackages(t *testing.T) {
 		AMI:  ami,
 		Name: "blahblahblah",
 	}
-	result, err = c.getPackages(ctx, opts)
+	result, err = c.GetPackages(ctx, opts)
 	require.NoError(t, err)
 	assert.Empty(result)
 
 	// Verify that there are no errors with PackageFilterOptions only including the AMI.
-	_, err = c.getPackages(ctx, PackageFilterOptions{AMI: ami})
+	_, err = c.GetPackages(ctx, PackageFilterOptions{AMI: ami})
 	require.NoError(t, err)
 
 	// Verify that there is an error with no AMI provided.
-	_, err = c.getPackages(ctx, PackageFilterOptions{})
+	_, err = c.GetPackages(ctx, PackageFilterOptions{})
 	require.Error(t, err)
 }
 

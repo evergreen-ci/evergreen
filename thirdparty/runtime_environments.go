@@ -94,8 +94,8 @@ type PackageFilterOptions struct {
 	Manager string // Filter by the package manager (ex. pip).
 }
 
-// getPackages returns a list of packages from the corresponding AMI and filters in opts.
-func (c *RuntimeEnvironmentsClient) getPackages(ctx context.Context, opts PackageFilterOptions) ([]Package, error) {
+// GetPackages returns a list of packages from the corresponding AMI and filters in opts.
+func (c *RuntimeEnvironmentsClient) GetPackages(ctx context.Context, opts PackageFilterOptions) ([]Package, error) {
 	if opts.AMI == "" {
 		return nil, errors.New("no AMI provided")
 	}
