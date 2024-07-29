@@ -1,0 +1,38 @@
+{
+    "distro": [
+        {
+            "name": "ubuntu1604-large",
+            "image_id": "ubuntu1604"
+        },
+        {
+            "name": "ubuntu1604-small",
+            "image_id": "ubuntu1604"
+        }
+    ],
+    "tasks": [
+        {
+          "_id": "task_a",
+          "branch": "spruce",
+          "distro": "ubunut1604-small",
+          "finish_time": { "$date": "2020-03-18T14:27:01.090Z" }
+        },
+        {
+            "_id": "task_b",
+            "branch": "spruce",
+            "distro": "ubunut1604-large",
+            "finish_time": { "$date": "2020-04-01T14:27:01.090Z" }
+        },
+        {
+            "_id": "task_c",
+            "branch": "spruce",
+            "distro": "ubuntu2204-large",
+            "finish_time": { "$date": "2020-05-09T14:27:01.090Z" }
+        }
+    ],
+    "project_ref": [
+        {
+            "_id": "spruce",
+            "identifier": "spruce"
+        }
+    ]
+}

@@ -1,0 +1,7 @@
+{
+  image(imageId: "ubuntu1604") {
+    latestTask {
+        id
+    }
+  }
+}

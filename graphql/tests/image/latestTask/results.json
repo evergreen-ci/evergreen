@@ -1,0 +1,14 @@
+{
+    "tests": [
+      {
+        "query_file": "latestTask.graphql",
+        "result": {
+          "data": {
+            "task": {
+              "id": "task_b"
+            }
+          }
+        }
+      }
+    ]
+  }
