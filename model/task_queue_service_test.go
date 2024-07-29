@@ -655,18 +655,22 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 		s.Require().NoError(t.Insert())
 	}
 	taskVersion1 := &Version{
-		Id: "version_1",
+		Id:                   "version_1",
+		ProjectStorageMethod: evergreen.ProjectStorageMethodS3,
 	}
 	taskVersion2 := &Version{
-		Id: "5d8cd23da4cf4747f4210333",
+		Id: "version_2",
 	}
 	taskVersion3 := &Version{
-		Id: "5d88953e2a60ed61eefe9561",
+		Id: "5d8cd23da4cf4747f4210333",
 	}
 	taskVersion4 := &Version{
-		Id: "version",
+		Id: "5d88953e2a60ed61eefe9561",
 	}
 	taskVersion5 := &Version{
+		Id: "version",
+	}
+	taskVersion6 := &Version{
 		Id: "",
 	}
 	s.Require().NoError(taskVersion1.Insert())
@@ -674,6 +678,7 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 	s.Require().NoError(taskVersion3.Insert())
 	s.Require().NoError(taskVersion4.Insert())
 	s.Require().NoError(taskVersion5.Insert())
+	s.Require().NoError(taskVersion6.Insert())
 
 	s.taskQueue = TaskQueue{
 		Distro: distroID,
@@ -1734,6 +1739,131 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupOrdering() {
 		next := service.FindNextTask(ctx, spec, utility.ZeroTime)
 		s.Require().NotNil(next)
 		s.Equal(expectedOrder[i], next.Id)
+	}
+}
+
+func (s *taskDAGDispatchServiceSuite) TestInProgressSingleHostTaskGroupLimits() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.Require().NoError(db.ClearCollections(task.Collection, evergreen.ConfigCollection))
+
+	settings := evergreen.TaskLimitsConfig{
+		MaxDegradedModeConcurrentLargeParserProjectTasks: 1,
+	}
+	s.Require().NoError(settings.Set(ctx))
+
+	items := []TaskQueueItem{}
+
+	sampleS3Task := task.Task{
+		Id:                         "sample_s3_task",
+		Version:                    "version_1",
+		Project:                    "project_1",
+		Status:                     evergreen.TaskStarted,
+		CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3,
+	}
+	s.Require().NoError(sampleS3Task.Insert())
+
+	for i := 0; i < 5; i++ {
+		ID := fmt.Sprintf("%d", i)
+		items = append(items, TaskQueueItem{
+			Id:            ID,
+			Group:         "group_1",
+			BuildVariant:  "variant_1",
+			Version:       "version_1",
+			Project:       "project_1",
+			GroupMaxHosts: 1,
+		})
+		t := task.Task{
+			Id:                         ID,
+			TaskGroup:                  "group_1",
+			BuildVariant:               "variant_1",
+			Version:                    "version_1",
+			TaskGroupMaxHosts:          1,
+			Project:                    "project_1",
+			StartTime:                  utility.ZeroTime,
+			FinishTime:                 utility.ZeroTime,
+			CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3,
+		}
+		s.Require().NoError(t.Insert())
+	}
+	s.taskQueue = TaskQueue{
+		Distro: "distro_1",
+		Queue:  items,
+	}
+
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.Require().NoError(err)
+
+	spec := TaskSpec{
+		Group:        "group_1",
+		BuildVariant: "variant_1",
+		Version:      "version_1",
+		Project:      "project_1",
+	}
+
+	for i := 0; i < 5; i++ {
+		next := service.FindNextTask(ctx, spec, utility.ZeroTime)
+		s.Require().NotNil(next)
+	}
+}
+
+func (s *taskDAGDispatchServiceSuite) TestNewSingleHostTaskGroupLimits() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.Require().NoError(db.ClearCollections(task.Collection, evergreen.ConfigCollection))
+
+	settings := evergreen.TaskLimitsConfig{
+		MaxDegradedModeConcurrentLargeParserProjectTasks: 1,
+	}
+	s.Require().NoError(settings.Set(ctx))
+
+	items := []TaskQueueItem{}
+
+	sampleS3Task := task.Task{
+		Id:                         "sample_s3_task",
+		Version:                    "version_1",
+		Project:                    "project_1",
+		Status:                     evergreen.TaskStarted,
+		CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3,
+	}
+	s.Require().NoError(sampleS3Task.Insert())
+
+	for i := 0; i < 5; i++ {
+		ID := fmt.Sprintf("%d", i)
+		items = append(items, TaskQueueItem{
+			Id:            ID,
+			Group:         "group_1",
+			BuildVariant:  "variant_1",
+			Version:       "version_1",
+			Project:       "project_1",
+			GroupMaxHosts: 1,
+		})
+		t := task.Task{
+			Id:                         ID,
+			TaskGroup:                  "group_1",
+			BuildVariant:               "variant_1",
+			Version:                    "version_1",
+			TaskGroupMaxHosts:          1,
+			Project:                    "project_1",
+			StartTime:                  utility.ZeroTime,
+			FinishTime:                 utility.ZeroTime,
+			CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3,
+		}
+		s.Require().NoError(t.Insert())
+	}
+	s.taskQueue = TaskQueue{
+		Distro: "distro_1",
+		Queue:  items,
+	}
+
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.Require().NoError(err)
+	spec := TaskSpec{}
+	for i := 0; i < 5; i++ {
+		next := service.FindNextTask(ctx, spec, utility.ZeroTime)
+		s.Require().Nil(next)
 	}
 }
 

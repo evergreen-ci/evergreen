@@ -51,7 +51,8 @@ func (h *degradedModeHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting service flags"))
 		}
 		grip.Info(message.Fields{
-			"message": "degraded mode has been triggered",
+			"message": "CPU degraded mode has been triggered",
+			"route":   "/degraded_mode",
 		})
 	}
 	return gimlet.NewJSONResponse(struct{}{})

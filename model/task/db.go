@@ -124,7 +124,7 @@ var (
 	IsEssentialToSucceedKey                = bsonutil.MustHaveTag(Task{}, "IsEssentialToSucceed")
 	HasAnnotationsKey                      = bsonutil.MustHaveTag(Task{}, "HasAnnotations")
 	NumNextTaskDispatchesKey               = bsonutil.MustHaveTag(Task{}, "NumNextTaskDispatches")
-	ProjectStorageMethodKey                = bsonutil.MustHaveTag(Task{}, "ProjectStorageMethod")
+	CachedProjectStorageMethodKey          = bsonutil.MustHaveTag(Task{}, "CachedProjectStorageMethod")
 )
 
 var (
@@ -3071,7 +3071,7 @@ func CountLargeParserProjectTasks() (int, error) {
 		StatusKey: bson.M{
 			"$in": evergreen.TaskInProgressStatuses,
 		},
-		ProjectStorageMethodKey: evergreen.ProjectStorageMethodS3,
+		CachedProjectStorageMethodKey: evergreen.ProjectStorageMethodS3,
 	}))
 }
 

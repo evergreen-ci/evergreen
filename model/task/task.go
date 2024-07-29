@@ -323,9 +323,9 @@ type Task struct {
 	// host or in a container. This is used to determine if the task seems to be stuck.
 	NumNextTaskDispatches int `bson:"num_next_task_dispatches" json:"num_next_task_dispatches"`
 
-	// ProjectStorageMethod describes how the parser project for this task's version is
-	// stored. If this is empty, the default storage method is StorageMethodDB.
-	ProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"project_storage_method" json:"project_storage_method,omitempty"`
+	// CachedProjectStorageMethod is a cached value how the parser project for this task's version was
+	// stored at the time this task was created. If this is empty, the default storage method is StorageMethodDB.
+	CachedProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"cached_project_storage_method" json:"cached_project_storage_method,omitempty"`
 }
 
 // GeneratedJSONFiles represent files used by a task for generate.tasks to update the project YAML.

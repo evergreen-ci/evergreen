@@ -33,16 +33,16 @@ type TaskLimitsConfig struct {
 	// MaxGenerateTaskJSONSize is the maximum size of a JSON file in MB that can be specified in the GenerateTasks command.
 	MaxGenerateTaskJSONSize int `bson:"max_generate_task_json_size" json:"max_generate_task_json_size" yaml:"max_generate_task_json_size"`
 
-	// MaxConcurrentLargeParserProjectTasks is the maximum number of tasks with >16MB parser projects that can be running at once.
+	// MaxConcurrentLargeParserProjectTasks is the maximum number of tasks with parser projects stored in S3 that can be running at once.
 	MaxConcurrentLargeParserProjectTasks int `bson:"max_concurrent_large_parser_project_tasks" json:"max_concurrent_large_parser_project_tasks" yaml:"max_concurrent_large_parser_project_tasks"`
 
-	// MaxDegradedModeConcurrentLargeParserProjectTasks is the maximum number of tasks with >16MB parser projects that can be running at once during degraded mode.
+	// MaxDegradedModeConcurrentLargeParserProjectTasks is the maximum number of tasks with parser projects stored in S3 that can be running at once during CPU degraded mode.
 	MaxDegradedModeConcurrentLargeParserProjectTasks int `bson:"max_degraded_mode_concurrent_large_parser_project_tasks" json:"max_degraded_mode_concurrent_large_parser_project_tasks" yaml:"max_degraded_mode_concurrent_large_parser_project_tasks"`
 
 	// MaxDegradedModeParserProjectSize is the maximum parser project size during CPU degraded mode.
 	MaxDegradedModeParserProjectSize int `bson:"max_degraded_mode_parser_project_size" json:"max_degraded_mode_parser_project_size" yaml:"max_degraded_mode_parser_project_size"`
 
-	// MaxParserProjectSize is the maximum allowed parser project size.
+	// MaxParserProjectSize is the maximum allowed size for parser projects that are stored in S3.
 	MaxParserProjectSize int `bson:"max_parser_project_size" json:"max_parser_project_size" yaml:"max_parser_project_size"`
 }
 
