@@ -191,7 +191,7 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 		return nil, nil, errors.Errorf("project ref '%s' not found", t.Project)
 	}
 
-	const ghTokenLifetime = 59 * time.Minute
+	const ghTokenLifetime = 50 * time.Minute
 	appToken, err := settings.CreateGitHubAppAuth().CreateCachedInstallationToken(ctx, pRef.Owner, pRef.Repo, ghTokenLifetime, nil)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "creating GitHub app token")
