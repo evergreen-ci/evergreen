@@ -1,0 +1,29 @@
+query {
+  projectEvents(projectIdentifier: "spruce") {
+    eventLogEntries {
+      user
+      timestamp
+      before {
+        projectRef {
+          branch
+        }
+        githubAppAuth {
+          appId
+          privateKey
+        }
+        githubWebhooksEnabled
+      }
+      after {
+        projectRef {
+          branch
+        }
+        githubAppAuth {
+          appId
+          privateKey
+        }
+        githubWebhooksEnabled
+      }
+    }
+    count
+  }
+}

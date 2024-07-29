@@ -111,8 +111,13 @@ func (p *ProjectChangeEvents) RedactGitHubPrivateKey() {
 			continue
 		}
 		if len(changeEvent.After.GitHubAppAuth.PrivateKey) > 0 && len(changeEvent.Before.GitHubAppAuth.PrivateKey) > 0 {
-			changeEvent.After.GitHubAppAuth.PrivateKey = []byte(evergreen.RedactedAfterValue)
-			changeEvent.Before.GitHubAppAuth.PrivateKey = []byte(evergreen.RedactedBeforeValue)
+			if string(changeEvent.After.GitHubAppAuth.PrivateKey) == string(changeEvent.Before.GitHubAppAuth.PrivateKey) {
+				changeEvent.After.GitHubAppAuth.RedactPrivateKey()
+				changeEvent.Before.GitHubAppAuth.RedactPrivateKey()
+			} else {
+				changeEvent.After.GitHubAppAuth.PrivateKey = []byte(evergreen.RedactedAfterValue)
+				changeEvent.Before.GitHubAppAuth.PrivateKey = []byte(evergreen.RedactedBeforeValue)
+			}
 		} else if len(changeEvent.After.GitHubAppAuth.PrivateKey) > 0 {
 			changeEvent.After.GitHubAppAuth.RedactPrivateKey()
 		} else if len(changeEvent.Before.GitHubAppAuth.PrivateKey) > 0 {
