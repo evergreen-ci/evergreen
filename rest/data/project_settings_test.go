@@ -503,6 +503,23 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Equal(t, githubAppFromDB.AppID, int64(12345))
 			assert.Equal(t, githubAppFromDB.PrivateKey, []byte("my_new_secret"))
 
+			// Should not update if the private key string is {REDACTED}.
+			apiChanges = &restModel.APIProjectSettings{
+				GithubAppAuth: restModel.APIGithubAppAuth{
+					AppID:      67890,
+					PrivateKey: utility.ToStringPtr(evergreen.RedactedValue),
+				},
+			}
+			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGithubAppSettingsSection, false, "me")
+			assert.NoError(t, err)
+			assert.NotNil(t, settings)
+
+			githubAppFromDB, err = model.FindOneGithubAppAuth(ref.Id)
+			assert.NoError(t, err)
+			require.NotNil(t, githubAppFromDB)
+			assert.Equal(t, githubAppFromDB.AppID, int64(12345))
+			assert.Equal(t, githubAppFromDB.PrivateKey, []byte("my_new_secret"))
+
 			// Should be able to clear GitHub app credentials.
 			apiChanges = &restModel.APIProjectSettings{
 				GithubAppAuth: restModel.APIGithubAppAuth{

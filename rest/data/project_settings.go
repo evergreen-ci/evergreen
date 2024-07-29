@@ -479,6 +479,9 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		privateKeyRedacted := utility.FromStringPtr(changes.GithubAppAuth.PrivateKey) == evergreen.RedactedValue
 
 		if appIDChanged || privateKeyChanged {
+			// The UI only ever sees the private key as the {REDACTED} string and will include it in calls to
+			// this function. To avoid overwriting the actual private key, we should not update the credentials
+			// if the private key is equal to the {REDACTED} placeholder.
 			if !privateKeyRedacted {
 				if err = mergedSection.SetGithubAppCredentials(int64(changes.GithubAppAuth.AppID), []byte(utility.FromStringPtr(changes.GithubAppAuth.PrivateKey))); err != nil {
 					return nil, errors.Wrap(err, "updating GitHub app credentials")
