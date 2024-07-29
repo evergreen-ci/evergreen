@@ -39,6 +39,7 @@ func NewConfigSections() ConfigSections {
 		&LoggerConfig{},
 		&NewRelicConfig{},
 		&NotifyConfig{},
+		&ParameterStoreConfig{},
 		&PodLifecycleConfig{},
 		&ProjectCreationConfig{},
 		&RepoTrackerConfig{},
@@ -66,11 +67,9 @@ func NewConfigSections() ConfigSections {
 }
 
 func (c *ConfigSections) populateSections(ctx context.Context) error {
-	parameterStoreConfig := ParameterStoreConfig{}
-	if err := parameterStoreConfig.Get(ctx); err != nil {
+	if err := c.Sections[parameterStoreConfigID].Get(ctx); err != nil {
 		return errors.Wrap(err, "getting parameter store configuration")
 	}
-	c.Sections[parameterStoreConfigID] = &parameterStoreConfig
 
 	if err := c.getSSMParameters(ctx); err != nil {
 		return errors.Wrap(err, "getting SSM parameters")
@@ -83,9 +82,9 @@ func (c *ConfigSections) populateSections(ctx context.Context) error {
 
 func (c *ConfigSections) getSSMParameters(ctx context.Context) error {
 	var sectionNames []string
-	for section := range c.Sections {
+	for id, section := range c.Sections {
 		if reflect.ValueOf(section).Elem().IsZero() {
-			sectionNames = append(sectionNames, section)
+			sectionNames = append(sectionNames, id)
 		}
 	}
 
@@ -114,9 +113,9 @@ func (c *ConfigSections) getSSMParameters(ctx context.Context) error {
 
 func (c *ConfigSections) getDBParameters(ctx context.Context) error {
 	var sectionNames []string
-	for section := range c.Sections {
+	for id, section := range c.Sections {
 		if reflect.ValueOf(section).Elem().IsZero() {
-			sectionNames = append(sectionNames, section)
+			sectionNames = append(sectionNames, id)
 		}
 	}
 

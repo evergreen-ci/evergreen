@@ -88,7 +88,7 @@ type Settings struct {
 	LogPath             string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
 	NewRelic            NewRelicConfig            `yaml:"newrelic" bson:"newrelic" json:"newrelic" id:"newrelic"`
 	Notify              NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
-	ParameterStore      ParameterStoreConfig      `yaml:"parameter_store" bson:"parameter_store" json:"parameter_store"`
+	ParameterStore      ParameterStoreConfig      `yaml:"parameter_store" bson:"parameter_store" json:"parameter_store" id:"parameter_store"`
 	Plugins             PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
 	PluginsNew          util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
 	PodLifecycle        PodLifecycleConfig        `yaml:"pod_lifecycle" bson:"pod_lifecycle" json:"pod_lifecycle" id:"pod_lifecycle"`

@@ -231,6 +231,10 @@ func MockConfig() *evergreen.Settings {
 				SenderAddress: "from",
 			},
 		},
+		ParameterStore: evergreen.ParameterStoreConfig{
+			SSMBackend: false,
+			Prefix:     "/config",
+		},
 		Plugins: map[string]map[string]interface{}{"k4": {"k5": "v5"}},
 		PodLifecycle: evergreen.PodLifecycleConfig{
 			MaxParallelPodRequests:      2000,

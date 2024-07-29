@@ -10,11 +10,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// ParameterStoreConfig configures Parameter Store. If not SSMBackend data will be stored in the database
-// and not Parameter Store.
+// ParameterStoreConfig configures Parameter Store.
 type ParameterStoreConfig struct {
-	SSMBackend bool   `yaml:"ssm_backend" bson:"ssm_backend" json:"ssm_backend"`
-	Prefix     string `yaml:"prefix" bson:"prefix" json:"prefix"`
+	// SSMBackend determines if the backing datastore with be SSM Parameter Store or the database.
+	SSMBackend bool `yaml:"ssm_backend" bson:"ssm_backend" json:"ssm_backend"`
+	// Prefix is prepended to parameter names in storage.
+	Prefix string `yaml:"prefix" bson:"prefix" json:"prefix"`
 }
 
 // SectionId returns the ID of this config section.

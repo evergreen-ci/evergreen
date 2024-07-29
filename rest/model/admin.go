@@ -28,6 +28,7 @@ func NewConfigModel() *APIAdminSettings {
 		LoggerConfig:        &APILoggerConfig{},
 		NewRelic:            &APINewRelicConfig{},
 		Notify:              &APINotifyConfig{},
+		ParameterStore:      &APIParameterStoreConfig{},
 		Plugins:             map[string]map[string]interface{}{},
 		PodLifecycle:        &APIPodLifecycleConfig{},
 		ProjectCreation:     &APIProjectCreationConfig{},
@@ -77,6 +78,7 @@ type APIAdminSettings struct {
 	LogPath             *string                           `json:"log_path,omitempty"`
 	NewRelic            *APINewRelicConfig                `json:"newrelic,omitempty"`
 	Notify              *APINotifyConfig                  `json:"notify,omitempty"`
+	ParameterStore      *APIParameterStoreConfig          `json:"parameter_store,omitempty"`
 	Plugins             map[string]map[string]interface{} `json:"plugins,omitempty"`
 	PodLifecycle        *APIPodLifecycleConfig            `json:"pod_lifecycle,omitempty"`
 	PprofPort           *string                           `json:"pprof_port,omitempty"`
@@ -196,6 +198,11 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 			return errors.Wrap(err, "converting container pools config to API model")
 		}
 		as.ContainerPools = &containerPoolsConfig
+		parameterStore := APIParameterStoreConfig{}
+		if err = parameterStore.BuildFromService(v.ParameterStore); err != nil {
+			return errors.Wrap(err, "converting parameter store config to API model")
+		}
+		as.ParameterStore = &parameterStore
 	default:
 		return errors.Errorf("programmatic error: expected admin settings but got type %T", h)
 	}
@@ -1148,6 +1155,29 @@ func (a *APIOwnerRepo) ToService() (interface{}, error) {
 	res.Owner = utility.FromStringPtr(a.Owner)
 	res.Repo = utility.FromStringPtr(a.Repo)
 	return res, nil
+}
+
+type APIParameterStoreConfig struct {
+	SSMBackend bool    `json:"ssm_backend"`
+	Prefix     *string `json:"prefix"`
+}
+
+func (a *APIParameterStoreConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.ParameterStoreConfig:
+		a.SSMBackend = v.SSMBackend
+		a.Prefix = utility.ToStringPtr(v.Prefix)
+	default:
+		return errors.Errorf("programmatic error: expected Parameter Store config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIParameterStoreConfig) ToService() (interface{}, error) {
+	return evergreen.ParameterStoreConfig{
+		SSMBackend: a.SSMBackend,
+		Prefix:     utility.FromStringPtr(a.Prefix),
+	}, nil
 }
 
 type APIProjectCreationConfig struct {
