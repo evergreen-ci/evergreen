@@ -1,7 +1,7 @@
 {
     "tests": [
       {
-        "query_file": "latestTask.graphql",
+        "query_file": "latest_task.graphql",
         "result": {
           "data": {
             "task": {
