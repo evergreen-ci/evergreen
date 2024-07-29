@@ -390,10 +390,10 @@ func (s *AdminSuite) TestParameterStoreConfig() {
 
 	err := config.Set(ctx)
 	s.NoError(err)
-	fetchedConfig := ParameterStoreConfig{}
-	s.NoError(fetchedConfig.Get(ctx))
+	settings, err := GetConfig(ctx)
 	s.NoError(err)
-	s.Equal(config, fetchedConfig)
+	s.NotNil(settings)
+	s.Equal(config, settings.ParameterStore)
 }
 
 func (s *AdminSuite) TestProvidersConfig() {

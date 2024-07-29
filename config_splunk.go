@@ -46,7 +46,7 @@ func (c *SplunkConfig) Set(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "getting Parameter Store client")
 	}
-	return errors.Wrapf(parameterStore.SetParameter(ctx, c.SectionId(), string(data)), "setting config section '%s' in Parameter Store", c.SectionId())
+	return errors.Wrapf(parameterStore.SetParameter(ctx, adminParameterName(c.SectionId()), string(data)), "setting config section '%s' in Parameter Store", c.SectionId())
 }
 
 func (c *SplunkConfig) ValidateAndDefault() error { return nil }
