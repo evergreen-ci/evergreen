@@ -337,7 +337,7 @@ func GetPatchedProjectConfig(ctx context.Context, settings *evergreen.Settings, 
 	if p.ProjectStorageMethod != "" {
 		// If the patch has been created but not finalized, it has either
 		// already saved the project config as a string (if any) or stored
-		// the parser project document (i.e. CachedProjectStorageMethod). Since
+		// the parser project document (i.e. ProjectStorageMethod). Since
 		// the project config is optional, the patch may be created and have
 		// already evaluated the patched project config, but there simply
 		// was none. Therefore, this is a valid way to check and get the

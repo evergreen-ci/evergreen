@@ -439,6 +439,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 							"function":   "FindNextTask",
 							"message":    "problem finding task in db",
 							"task_id":    item.Id,
+							"group":      item.Group,
 							"distro_id":  d.distroID,
 						}))
 						return nil
@@ -449,6 +450,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 							"function":   "FindNextTask",
 							"message":    "task from db not found",
 							"task_id":    item.Id,
+							"group":      item.Group,
 							"distro_id":  d.distroID,
 						})
 						return nil
