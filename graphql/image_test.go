@@ -34,7 +34,7 @@ func TestPackages(t *testing.T) {
 	}
 	res, err := config.Resolvers.Image().Packages(ctx, &image, opts)
 	require.NoError(t, err)
-	require.NotEmpty(t, res)
+	assert.Len(t, res, 1)
 	require.NotNil(t, res[0])
 	assert.Equal(t, testPackage, utility.FromStringPtr(res[0].Name))
 }

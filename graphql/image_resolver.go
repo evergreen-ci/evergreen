@@ -13,9 +13,6 @@ import (
 
 // Distros is the resolver for the distros field.
 func (r *imageResolver) Distros(ctx context.Context, obj *model.APIImage) ([]*model.APIDistro, error) {
-	if obj == nil {
-		return nil, InternalServerError.Send(ctx, "image undefined when attempting to find corresponding distros")
-	}
 	imageID := utility.FromStringPtr(obj.ID)
 	distros, err := distro.GetDistrosForImage(ctx, imageID)
 	if err != nil {
