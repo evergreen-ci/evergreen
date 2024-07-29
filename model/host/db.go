@@ -1624,7 +1624,7 @@ func FindHostsScheduledToStop(ctx context.Context) ([]Host, error) {
 
 // PreStartThreshold is how long in advance Evergreen can check for hosts that
 // are scheduled to start up soon.
-const PreStartThreshold = 5 * time.Minute
+const PreStartThreshold = 10 * time.Minute
 
 // FindHostsToSleep finds all unexpirable hosts that are due to start soon due
 // to their sleep schedule settings.
