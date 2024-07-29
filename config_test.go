@@ -379,6 +379,32 @@ func (s *AdminSuite) TestPodLifecycleConfig() {
 	s.Equal(config, settings.PodLifecycle)
 }
 
+func (s *AdminSuite) TestParameterStoreConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config := ParameterStoreConfig{
+		SSMBackend: true,
+		Prefix:     "/config",
+	}
+
+	err := config.Set(ctx)
+	s.NoError(err)
+	settings, err := GetConfig(ctx)
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.ParameterStore)
+
+	config.SSMBackend = false
+	s.NoError(config.Set(ctx))
+
+	settings, err = GetConfig(ctx)
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.ParameterStore)
+
+}
+
 func (s *AdminSuite) TestProvidersConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

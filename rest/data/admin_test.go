@@ -130,6 +130,8 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.HostInit.ProvisioningThrottle, settingsFromConnector.HostInit.ProvisioningThrottle)
 	s.EqualValues(testSettings.HostInit.CloudStatusBatchSize, settingsFromConnector.HostInit.CloudStatusBatchSize)
 	s.EqualValues(testSettings.HostInit.MaxTotalDynamicHosts, settingsFromConnector.HostInit.MaxTotalDynamicHosts)
+	s.EqualValues(testSettings.ParameterStore.SSMBackend, settingsFromConnector.ParameterStore.SSMBackend)
+	s.EqualValues(testSettings.ParameterStore.Prefix, settingsFromConnector.ParameterStore.Prefix)
 	s.EqualValues(testSettings.PodLifecycle.MaxParallelPodRequests, settingsFromConnector.PodLifecycle.MaxParallelPodRequests)
 	s.EqualValues(testSettings.PodLifecycle.MaxPodDefinitionCleanupRate, settingsFromConnector.PodLifecycle.MaxPodDefinitionCleanupRate)
 	s.EqualValues(testSettings.PodLifecycle.MaxSecretCleanupRate, settingsFromConnector.PodLifecycle.MaxSecretCleanupRate)
