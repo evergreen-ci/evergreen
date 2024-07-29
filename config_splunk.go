@@ -13,7 +13,7 @@ type SplunkConfig struct {
 	SplunkConnectionInfo send.SplunkConnectionInfo `json:"splunk_connection_info" yaml:"splunk_connection_info"`
 }
 
-func (c *SplunkConfig) SectionId() string { return adminParameterName("splunk") }
+func (c *SplunkConfig) SectionId() string { return "splunk" }
 
 func (c *SplunkConfig) Get(ctx context.Context) error {
 	parameterStoreOpts, err := GetParameterStoreOpts(ctx)
@@ -25,7 +25,7 @@ func (c *SplunkConfig) Get(ctx context.Context) error {
 		return errors.Wrap(err, "getting Parameter Store client")
 	}
 
-	data, err := parameterStore.GetParameter(ctx, c.SectionId())
+	data, err := parameterStore.GetParameter(ctx, adminParameterName(c.SectionId()))
 	if err != nil {
 		return errors.Wrapf(err, "getting config section '%s' from Parameter Store", c.SectionId())
 	}

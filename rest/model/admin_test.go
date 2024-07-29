@@ -141,7 +141,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.IncomingBufferFactor, apiSettings.LoggerConfig.Buffer.IncomingBufferFactor)
 	assert.EqualValues(testSettings.Notify.SES.SenderAddress, utility.FromStringPtr(apiSettings.Notify.SES.SenderAddress))
 	assert.EqualValues(testSettings.ParameterStore.SSMBackend, apiSettings.ParameterStore.SSMBackend)
-	assert.EqualValues(testSettings.ParameterStore.Prefix, apiSettings.ParameterStore.Prefix)
+	assert.EqualValues(testSettings.ParameterStore.Prefix, utility.FromStringPtr(apiSettings.ParameterStore.Prefix))
 	assert.EqualValues(testSettings.PodLifecycle.MaxParallelPodRequests, apiSettings.PodLifecycle.MaxParallelPodRequests)
 	assert.EqualValues(testSettings.PodLifecycle.MaxPodDefinitionCleanupRate, apiSettings.PodLifecycle.MaxPodDefinitionCleanupRate)
 	assert.EqualValues(testSettings.PodLifecycle.MaxSecretCleanupRate, apiSettings.PodLifecycle.MaxSecretCleanupRate)

@@ -84,7 +84,7 @@ func (c *ConfigSections) getSSMParameters(ctx context.Context) error {
 	var sectionNames []string
 	for id, section := range c.Sections {
 		if reflect.ValueOf(section).Elem().IsZero() {
-			sectionNames = append(sectionNames, id)
+			sectionNames = append(sectionNames, adminParameterName(id))
 		}
 	}
 
