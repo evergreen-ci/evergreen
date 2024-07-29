@@ -94,18 +94,25 @@ func (s *installationSuite) TestGetInstallationID() {
 	s.Error(err)
 }
 
-func (s *installationSuite) TestGetInstallationToken() {
-	now := time.Now()
+func (s *installationSuite) TestCreateCachedInstallationToken() {
+	installation := GitHubAppInstallation{
+		Owner:          "evergreen-ci",
+		Repo:           "evergreen",
+		AppID:          1234,
+		InstallationID: 5678,
+	}
+	s.NoError(installation.Upsert(s.ctx))
+
 	const (
-		installationID    = 1234
 		installationToken = "installation_token"
 		lifetime          = time.Minute
 	)
+	ghInstallationTokenCache.put(installation.InstallationID, installationToken, time.Now())
 
-	ghInstallationTokenCache.put(installationID, installationToken, now)
-
-	authFields := GithubAppAuth{}
-	token, err := authFields.getInstallationToken(s.ctx, installationID, lifetime, nil)
+	authFields := GithubAppAuth{
+		AppID: installation.AppID,
+	}
+	token, err := authFields.CreateCachedInstallationToken(s.ctx, installation.Owner, installation.Repo, lifetime, nil)
 	s.Require().NoError(err)
 	s.Equal(token, installationToken, "should return cached token since it is still valid for at least %s", lifetime)
 }

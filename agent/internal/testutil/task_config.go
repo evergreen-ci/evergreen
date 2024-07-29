@@ -20,7 +20,10 @@ func MakeTaskConfigFromModelData(ctx context.Context, settings *evergreen.Settin
 		return nil, errors.Wrap(err, "getting global GitHub OAuth token")
 	}
 
-	appToken, err := settings.CreateGitHubAppAuth().CreateCachedInstallationToken(ctx, data.ProjectRef.Owner, data.ProjectRef.Repo, 30*time.Minute, nil)
+	// Arbitrarily pick a long lifetime for the app token so that it's valid for
+	// the entire test duration.
+	const appTokenLifetime = 30 * time.Minute
+	appToken, err := settings.CreateGitHubAppAuth().CreateCachedInstallationToken(ctx, data.ProjectRef.Owner, data.ProjectRef.Repo, appTokenLifetime, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating GitHub app token")
 	}

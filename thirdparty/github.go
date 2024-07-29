@@ -362,7 +362,10 @@ func getInstallationToken(ctx context.Context, owner, repo string, opts *github.
 	return token, nil
 }
 
-// RevokeInstallationToken revokes an installation token.
+// RevokeInstallationToken revokes an installation token. Take care to make sure
+// that the token being revoked is not cached - Evergreen sometimes caches
+// tokens for reuse (e.g. for making GitHub API calls), and revoking a cached
+// token could cause running GitHub operations to fail.
 func RevokeInstallationToken(ctx context.Context, token string) error {
 	caller := "RevokeInstallationToken"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
@@ -389,7 +392,7 @@ func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.
 	if err != nil {
 		return "", errors.Wrap(err, "getting evergreen settings")
 	}
-	token, err := settings.CreateInstallationTokenWithDefaultOwnerRepo(ctx, defaultGitHubAPIRequestLifetime, opts)
+	token, err := settings.CreateCachedInstallationTokenWithDefaultOwnerRepo(ctx, defaultGitHubAPIRequestLifetime, opts)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "error creating default token",

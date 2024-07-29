@@ -91,10 +91,13 @@ func (g *GithubAppAuth) IsGithubAppInstalledOnRepo(ctx context.Context, owner, r
 	return installationID != 0, nil
 }
 
-// CreateInstallationTokenWithDefaultOwnerRepo returns an installation token when we do not care about
-// the owner/repo that we are calling the GitHub function with (i.e. checking rate limit).
-// It will use the default owner/repo specified in the admin settings and error if it's not set.
-func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Context, lifetime time.Duration, opts *github.InstallationTokenOptions) (string, error) {
+// CreateCachedInstallationTokenWithDefaultOwnerRepo is the same as
+// CreateCachedInstallationToken but specifically returns an installation token
+// from a default owner/repo. This is useful for scenarios when we do not care
+// about the owner/repo that we are calling the GitHub function with (i.e.
+// checking rate limit). It will use the default owner/repo specified in the
+// admin settings and error if it's not set.
+func (s *Settings) CreateCachedInstallationTokenWithDefaultOwnerRepo(ctx context.Context, lifetime time.Duration, opts *github.InstallationTokenOptions) (string, error) {
 	if s.AuthConfig.Github == nil || s.AuthConfig.Github.DefaultOwner == "" || s.AuthConfig.Github.DefaultRepo == "" {
 		return "", errors.Errorf("missing GitHub app configuration needed to create installation tokens")
 	}
@@ -125,7 +128,17 @@ func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner
 		return "", errors.Wrapf(err, "getting installation id for '%s/%s'", owner, repo)
 	}
 
-	token, err := g.getInstallationToken(ctx, installationID, lifetime, opts)
+	if cachedToken := ghInstallationTokenCache.get(installationID, lifetime); cachedToken != "" {
+		return cachedToken, nil
+	}
+
+	createdAt := time.Now()
+	token, err := g.createInstallationTokenForID(ctx, installationID, opts)
+	if err != nil {
+		return "", errors.Wrap(err, "creating installation token")
+	}
+
+	ghInstallationTokenCache.put(installationID, token, createdAt)
 
 	return token, errors.Wrapf(err, "getting installation token for '%s/%s'", owner, repo)
 }
@@ -174,22 +187,6 @@ func getInstallationID(ctx context.Context, authFields *GithubAppAuth, owner, re
 
 	return installationID, nil
 
-}
-
-func (g *GithubAppAuth) getInstallationToken(ctx context.Context, installationID int64, lifetime time.Duration, opts *github.InstallationTokenOptions) (string, error) {
-	if cachedToken := ghInstallationTokenCache.get(installationID, lifetime); cachedToken != "" {
-		return cachedToken, nil
-	}
-
-	createdAt := time.Now()
-	token, err := g.createInstallationTokenForID(ctx, installationID, opts)
-	if err != nil || token == "" {
-		return "", errors.Wrap(err, "creating installation token")
-	}
-
-	ghInstallationTokenCache.put(installationID, token, createdAt)
-
-	return token, nil
 }
 
 func byAppOwnerRepo(appId int64, owner, repo string) bson.M {

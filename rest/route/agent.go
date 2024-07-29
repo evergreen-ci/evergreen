@@ -1660,8 +1660,8 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	}
 
 	// This cannot use a cached token because if the token was shared, it
-	// wouldn't be possible to revoke them without causing revoking tokens that
-	// other tasks could be using.
+	// wouldn't be possible to revoke them without revoking tokens that other
+	// tasks could be using.
 	token, err := githubAppAuth.CreateInstallationToken(ctx, h.owner, h.repo, &github.InstallationTokenOptions{
 		Permissions: permissions,
 	})
