@@ -1699,8 +1699,8 @@ type HostAllocatorSettingsResolver interface {
 type ImageResolver interface {
 	Distros(ctx context.Context, obj *model.APIImage) ([]*model.APIDistro, error)
 
-	Toolchains(ctx context.Context, obj *model.APIImage, opts thirdparty.ToolchainFilterOptions) ([]*model.APIToolchain, error)
 	Packages(ctx context.Context, obj *model.APIImage, opts thirdparty.PackageFilterOptions) ([]*model.APIPackage, error)
+	Toolchains(ctx context.Context, obj *model.APIImage, opts thirdparty.ToolchainFilterOptions) ([]*model.APIToolchain, error)
 }
 type IssueLinkResolver interface {
 	JiraTicket(ctx context.Context, obj *model.APIIssueLink) (*thirdparty.JiraTicket, error)
@@ -25425,69 +25425,6 @@ func (ec *executionContext) fieldContext_Image_name(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _Image_toolchains(ctx context.Context, field graphql.CollectedField, obj *model.APIImage) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Image_toolchains(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Image().Toolchains(rctx, obj, fc.Args["opts"].(thirdparty.ToolchainFilterOptions))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.APIToolchain)
-	fc.Result = res
-	return ec.marshalNToolchain2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIToolchainᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Image_toolchains(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Image",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "name":
-				return ec.fieldContext_Toolchain_name(ctx, field)
-			case "path":
-				return ec.fieldContext_Toolchain_path(ctx, field)
-			case "version":
-				return ec.fieldContext_Toolchain_version(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Toolchain", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Image_toolchains_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Image_packages(ctx context.Context, field graphql.CollectedField, obj *model.APIImage) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Image_packages(ctx, field)
 	if err != nil {
@@ -25545,6 +25482,69 @@ func (ec *executionContext) fieldContext_Image_packages(ctx context.Context, fie
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Image_packages_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Image_toolchains(ctx context.Context, field graphql.CollectedField, obj *model.APIImage) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Image_toolchains(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Image().Toolchains(rctx, obj, fc.Args["opts"].(thirdparty.ToolchainFilterOptions))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIToolchain)
+	fc.Result = res
+	return ec.marshalNToolchain2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIToolchainᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Image_toolchains(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Image",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_Toolchain_name(ctx, field)
+			case "path":
+				return ec.fieldContext_Toolchain_path(ctx, field)
+			case "version":
+				return ec.fieldContext_Toolchain_version(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Toolchain", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Image_toolchains_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -47706,10 +47706,10 @@ func (ec *executionContext) fieldContext_Query_image(ctx context.Context, field 
 				return ec.fieldContext_Image_lastDeployed(ctx, field)
 			case "name":
 				return ec.fieldContext_Image_name(ctx, field)
-			case "toolchains":
-				return ec.fieldContext_Image_toolchains(ctx, field)
 			case "packages":
 				return ec.fieldContext_Image_packages(ctx, field)
+			case "toolchains":
+				return ec.fieldContext_Image_toolchains(ctx, field)
 			case "versionId":
 				return ec.fieldContext_Image_versionId(ctx, field)
 			}
@@ -78713,7 +78713,7 @@ func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "toolchains":
+		case "packages":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -78722,7 +78722,7 @@ func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, ob
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Image_toolchains(ctx, field, obj)
+				res = ec._Image_packages(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -78749,7 +78749,7 @@ func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "packages":
+		case "toolchains":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -78758,7 +78758,7 @@ func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, ob
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Image_packages(ctx, field, obj)
+				res = ec._Image_toolchains(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

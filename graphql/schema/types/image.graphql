@@ -25,8 +25,8 @@ type Image {
   kernel: String!
   lastDeployed: Time!
   name: String!
-  toolchains(opts: ToolchainOpts!): [Toolchain!]!
   packages(opts: PackageOpts!): [Package!]!
+  toolchains(opts: ToolchainOpts!): [Toolchain!]!
   versionId: String!
 }
 
