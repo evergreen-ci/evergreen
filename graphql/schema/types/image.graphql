@@ -6,6 +6,13 @@ input PackageOpts {
   page: Int
 }
 
+input ToolchainOpts {
+  name: String
+  limit: Int
+  page: Int
+}
+
+
 ###### TYPES ######
 """
 Image is returned by the image query.
@@ -19,11 +26,18 @@ type Image {
   lastDeployed: Time!
   name: String!
   packages(opts: PackageOpts!): [Package!]!
+  toolchains(opts: ToolchainOpts!): [Toolchain!]!
   versionId: String!
 }
 
 type Package {
   name: String!
   manager: String!
+  version: String!
+}
+
+type Toolchain {
+  name: String!
+  path: String!
   version: String!
 }

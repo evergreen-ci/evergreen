@@ -48,6 +48,27 @@ func (r *imageResolver) Packages(ctx context.Context, obj *model.APIImage, opts 
 	return apiPackages, nil
 }
 
+// Toolchains is the resolver for the toolchains field.
+func (r *imageResolver) Toolchains(ctx context.Context, obj *model.APIImage, opts thirdparty.ToolchainFilterOptions) ([]*model.APIToolchain, error) {
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: '%s'", err.Error()))
+	}
+	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+	opts.AMI = utility.FromStringPtr(obj.AMI)
+	toolchains, err := c.GetToolchains(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting toolchains for image '%s': '%s'", utility.FromStringPtr(obj.ID), err.Error()))
+	}
+	apiToolchains := []*model.APIToolchain{}
+	for _, toolchain := range toolchains {
+		apiToolchain := model.APIToolchain{}
+		apiToolchain.BuildFromService(toolchain)
+		apiToolchains = append(apiToolchains, &apiToolchain)
+	}
+	return apiToolchains, nil
+}
+
 // Image returns ImageResolver implementation.
 func (r *Resolver) Image() ImageResolver { return &imageResolver{r} }
 
