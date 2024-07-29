@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
@@ -25,6 +26,23 @@ func (r *imageResolver) Distros(ctx context.Context, obj *model.APIImage) ([]*mo
 		apiDistros = append(apiDistros, &apiDistro)
 	}
 	return apiDistros, nil
+}
+
+// LatestTask is the resolver for the latestTask field.
+func (r *imageResolver) LatestTask(ctx context.Context, obj *model.APIImage) (*model.APITask, error) {
+	imageID := utility.FromStringPtr(obj.ID)
+	latestTask, err := task.GetLatestTaskFromImage(ctx, imageID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting latest task for image '%s': '%s'", imageID, err.Error()))
+	}
+	apiLatestTask := &model.APITask{}
+	err = apiLatestTask.BuildFromService(ctx, latestTask, &model.APITaskArgs{
+		IncludeAMI: true,
+	})
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building API task from service: %s", err.Error()))
+	}
+	return apiLatestTask, nil
 }
 
 // Packages is the resolver for the packages field.
