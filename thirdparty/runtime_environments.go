@@ -94,8 +94,8 @@ type PackageFilterOptions struct {
 	Manager string // Filter by the package manager (ex. pip).
 }
 
-// getPackages returns a list of packages from the corresponding AMI and filters in opts.
-func (c *RuntimeEnvironmentsClient) getPackages(ctx context.Context, opts PackageFilterOptions) ([]Package, error) {
+// GetPackages returns a list of packages from the corresponding AMI and filters in opts.
+func (c *RuntimeEnvironmentsClient) GetPackages(ctx context.Context, opts PackageFilterOptions) ([]Package, error) {
 	if opts.AMI == "" {
 		return nil, errors.New("no AMI provided")
 	}
@@ -247,8 +247,8 @@ type ToolchainFilterOptions struct {
 	Version string // Filter by the version (ex. go1.8.7).
 }
 
-// getToolchains returns a list of toolchains from the AMI and filters in the ToolchainFilterOptions.
-func (c *RuntimeEnvironmentsClient) getToolchains(ctx context.Context, opts ToolchainFilterOptions) ([]Toolchain, error) {
+// GetToolchains returns a list of toolchains from the AMI and filters in the ToolchainFilterOptions.
+func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts ToolchainFilterOptions) ([]Toolchain, error) {
 	if opts.AMI == "" {
 		return nil, errors.New("no AMI provided")
 	}

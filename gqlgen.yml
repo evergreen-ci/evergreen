@@ -139,7 +139,7 @@ models:
   IceCreamSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIceCreamSettings
   Image: 
-    model: github.com/evergreen-ci/evergreen/thirdparty.Image
+    model: github.com/evergreen-ci/evergreen/rest/model.APIImage
   InstanceTag:
     model: github.com/evergreen-ci/evergreen/model/host.Tag
   InstanceTagInput:
@@ -178,6 +178,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APINotificationPreferences
   OomTrackerInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.APIOomTrackerInfo
+  Package: 
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPackage
+  PackageOpts: 
+    model: github.com/evergreen-ci/evergreen/thirdparty.PackageFilterOptions
   Parameter:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
   ParameterInput:
@@ -435,6 +439,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
   ContainerResourcesInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
+  Toolchain: 
+    model: github.com/evergreen-ci/evergreen/rest/model.APIToolchain
+  ToolchainOpts: 
+    model: github.com/evergreen-ci/evergreen/thirdparty.ToolchainFilterOptions
   TriggerAlias:
     model: github.com/evergreen-ci/evergreen/rest/model.APITriggerDefinition
   TriggerAliasInput:

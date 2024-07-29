@@ -281,6 +281,8 @@ Fields:
 -   `modules`: A list of the module names.
     It corresponds to the [modules defined](Project-Configuration-Files#modules)
     and declares what can be used in the [git.get_project](Project-Commands#gitgetproject) command.
+    These can be [expansions](Project-Configuration-Files#expansions) but we won't be extending this to
+    non-module related build variant fields ([context](../decisions/2024-07-18_allow_module_expansions)).
 -   `tasks`: a list of tasks to run, referenced either by task name or by tags.
     Tasks listed here can also include other task-level fields, such as
     `batchtime`, `cron`, `activate`, `depends_on`, and `run_on`. We can also
@@ -469,9 +471,9 @@ Fields:
 (note: all fields can be expanded by project variables with the exception of `auto_update`)
 
 -   `name`: alias to refer to the module
--   `branch`: the branch of the module to use in the project
+-   `branch`: the branch of the module to use in the project. These can be [expansions](Project-Configuration-Files#expansions)
 -   `repo`: the git repository of the module
--   `prefix`: the path prefix to use for the module
+-   `prefix`: the path prefix to use for the module. These can be [expansions](Project-Configuration-Files#expansions)
 -   `ref`: the git commit hash to use for the module in the project (if
     not specified, defaults to the latest revision that existed at the
     time of the Evergreen version creation)
