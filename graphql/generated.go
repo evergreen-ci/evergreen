@@ -536,6 +536,7 @@ type ComplexityRoot struct {
 		ID           func(childComplexity int) int
 		Kernel       func(childComplexity int) int
 		LastDeployed func(childComplexity int) int
+		LatestTask   func(childComplexity int) int
 		Name         func(childComplexity int) int
 		Packages     func(childComplexity int, opts thirdparty.PackageFilterOptions) int
 		Toolchains   func(childComplexity int, opts thirdparty.ToolchainFilterOptions) int
@@ -1698,6 +1699,8 @@ type HostAllocatorSettingsResolver interface {
 }
 type ImageResolver interface {
 	Distros(ctx context.Context, obj *model.APIImage) ([]*model.APIDistro, error)
+
+	LatestTask(ctx context.Context, obj *model.APIImage) (*model.APITask, error)
 
 	Packages(ctx context.Context, obj *model.APIImage, opts thirdparty.PackageFilterOptions) ([]*model.APIPackage, error)
 	Toolchains(ctx context.Context, obj *model.APIImage, opts thirdparty.ToolchainFilterOptions) ([]*model.APIToolchain, error)
@@ -3919,6 +3922,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Image.LastDeployed(childComplexity), true
+
+	case "Image.latestTask":
+		if e.complexity.Image.LatestTask == nil {
+			break
+		}
+
+		return e.complexity.Image.LatestTask(childComplexity), true
 
 	case "Image.name":
 		if e.complexity.Image.Name == nil {
@@ -25376,6 +25386,199 @@ func (ec *executionContext) fieldContext_Image_lastDeployed(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Image_latestTask(ctx context.Context, field graphql.CollectedField, obj *model.APIImage) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Image_latestTask(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Image().LatestTask(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APITask)
+	fc.Result = res
+	return ec.marshalOTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITask(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Image",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
+			case "aborted":
+				return ec.fieldContext_Task_aborted(ctx, field)
+			case "abortInfo":
+				return ec.fieldContext_Task_abortInfo(ctx, field)
+			case "activated":
+				return ec.fieldContext_Task_activated(ctx, field)
+			case "activatedBy":
+				return ec.fieldContext_Task_activatedBy(ctx, field)
+			case "activatedTime":
+				return ec.fieldContext_Task_activatedTime(ctx, field)
+			case "ami":
+				return ec.fieldContext_Task_ami(ctx, field)
+			case "annotation":
+				return ec.fieldContext_Task_annotation(ctx, field)
+			case "baseStatus":
+				return ec.fieldContext_Task_baseStatus(ctx, field)
+			case "baseTask":
+				return ec.fieldContext_Task_baseTask(ctx, field)
+			case "blocked":
+				return ec.fieldContext_Task_blocked(ctx, field)
+			case "buildId":
+				return ec.fieldContext_Task_buildId(ctx, field)
+			case "buildVariant":
+				return ec.fieldContext_Task_buildVariant(ctx, field)
+			case "buildVariantDisplayName":
+				return ec.fieldContext_Task_buildVariantDisplayName(ctx, field)
+			case "canAbort":
+				return ec.fieldContext_Task_canAbort(ctx, field)
+			case "canDisable":
+				return ec.fieldContext_Task_canDisable(ctx, field)
+			case "canModifyAnnotation":
+				return ec.fieldContext_Task_canModifyAnnotation(ctx, field)
+			case "canOverrideDependencies":
+				return ec.fieldContext_Task_canOverrideDependencies(ctx, field)
+			case "canRestart":
+				return ec.fieldContext_Task_canRestart(ctx, field)
+			case "canSchedule":
+				return ec.fieldContext_Task_canSchedule(ctx, field)
+			case "canSetPriority":
+				return ec.fieldContext_Task_canSetPriority(ctx, field)
+			case "canSync":
+				return ec.fieldContext_Task_canSync(ctx, field)
+			case "canUnschedule":
+				return ec.fieldContext_Task_canUnschedule(ctx, field)
+			case "containerAllocatedTime":
+				return ec.fieldContext_Task_containerAllocatedTime(ctx, field)
+			case "createTime":
+				return ec.fieldContext_Task_createTime(ctx, field)
+			case "dependsOn":
+				return ec.fieldContext_Task_dependsOn(ctx, field)
+			case "details":
+				return ec.fieldContext_Task_details(ctx, field)
+			case "dispatchTime":
+				return ec.fieldContext_Task_dispatchTime(ctx, field)
+			case "displayName":
+				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayOnly":
+				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayTask":
+				return ec.fieldContext_Task_displayTask(ctx, field)
+			case "distroId":
+				return ec.fieldContext_Task_distroId(ctx, field)
+			case "estimatedStart":
+				return ec.fieldContext_Task_estimatedStart(ctx, field)
+			case "execution":
+				return ec.fieldContext_Task_execution(ctx, field)
+			case "executionTasks":
+				return ec.fieldContext_Task_executionTasks(ctx, field)
+			case "executionTasksFull":
+				return ec.fieldContext_Task_executionTasksFull(ctx, field)
+			case "expectedDuration":
+				return ec.fieldContext_Task_expectedDuration(ctx, field)
+			case "failedTestCount":
+				return ec.fieldContext_Task_failedTestCount(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
+			case "files":
+				return ec.fieldContext_Task_files(ctx, field)
+			case "generatedBy":
+				return ec.fieldContext_Task_generatedBy(ctx, field)
+			case "generatedByName":
+				return ec.fieldContext_Task_generatedByName(ctx, field)
+			case "generateTask":
+				return ec.fieldContext_Task_generateTask(ctx, field)
+			case "hasCedarResults":
+				return ec.fieldContext_Task_hasCedarResults(ctx, field)
+			case "hostId":
+				return ec.fieldContext_Task_hostId(ctx, field)
+			case "imageId":
+				return ec.fieldContext_Task_imageId(ctx, field)
+			case "ingestTime":
+				return ec.fieldContext_Task_ingestTime(ctx, field)
+			case "isPerfPluginEnabled":
+				return ec.fieldContext_Task_isPerfPluginEnabled(ctx, field)
+			case "latestExecution":
+				return ec.fieldContext_Task_latestExecution(ctx, field)
+			case "logs":
+				return ec.fieldContext_Task_logs(ctx, field)
+			case "minQueuePosition":
+				return ec.fieldContext_Task_minQueuePosition(ctx, field)
+			case "order":
+				return ec.fieldContext_Task_order(ctx, field)
+			case "patch":
+				return ec.fieldContext_Task_patch(ctx, field)
+			case "patchNumber":
+				return ec.fieldContext_Task_patchNumber(ctx, field)
+			case "pod":
+				return ec.fieldContext_Task_pod(ctx, field)
+			case "priority":
+				return ec.fieldContext_Task_priority(ctx, field)
+			case "project":
+				return ec.fieldContext_Task_project(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Task_projectId(ctx, field)
+			case "projectIdentifier":
+				return ec.fieldContext_Task_projectIdentifier(ctx, field)
+			case "requester":
+				return ec.fieldContext_Task_requester(ctx, field)
+			case "resetWhenFinished":
+				return ec.fieldContext_Task_resetWhenFinished(ctx, field)
+			case "revision":
+				return ec.fieldContext_Task_revision(ctx, field)
+			case "scheduledTime":
+				return ec.fieldContext_Task_scheduledTime(ctx, field)
+			case "spawnHostLink":
+				return ec.fieldContext_Task_spawnHostLink(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Task_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_Task_status(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
+			case "taskGroup":
+				return ec.fieldContext_Task_taskGroup(ctx, field)
+			case "taskGroupMaxHosts":
+				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "taskLogs":
+				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "tests":
+				return ec.fieldContext_Task_tests(ctx, field)
+			case "timeTaken":
+				return ec.fieldContext_Task_timeTaken(ctx, field)
+			case "totalTestCount":
+				return ec.fieldContext_Task_totalTestCount(ctx, field)
+			case "versionMetadata":
+				return ec.fieldContext_Task_versionMetadata(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
 	}
 	return fc, nil
@@ -47704,6 +47907,8 @@ func (ec *executionContext) fieldContext_Query_image(ctx context.Context, field 
 				return ec.fieldContext_Image_kernel(ctx, field)
 			case "lastDeployed":
 				return ec.fieldContext_Image_lastDeployed(ctx, field)
+			case "latestTask":
+				return ec.fieldContext_Image_latestTask(ctx, field)
 			case "name":
 				return ec.fieldContext_Image_name(ctx, field)
 			case "packages":
@@ -78708,6 +78913,39 @@ func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "latestTask":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Image_latestTask(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "name":
 			out.Values[i] = ec._Image_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

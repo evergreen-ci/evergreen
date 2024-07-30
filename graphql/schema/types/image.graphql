@@ -24,6 +24,7 @@ type Image {
   distros: [Distro!]!
   kernel: String!
   lastDeployed: Time!
+  latestTask: Task
   name: String!
   packages(opts: PackageOpts!): [Package!]!
   toolchains(opts: ToolchainOpts!): [Toolchain!]!
