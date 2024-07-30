@@ -619,9 +619,9 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 			maxHosts = 2
 		}
 
-		ID := fmt.Sprintf("%d", i)
+		id := fmt.Sprintf("%d", i)
 		items = append(items, TaskQueueItem{
-			Id:            ID,
+			Id:            id,
 			Group:         group,
 			BuildVariant:  variant,
 			Version:       version,
@@ -641,7 +641,7 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 		}
 
 		t := task.Task{
-			Id:                ID,
+			Id:                id,
 			DistroId:          distroID,
 			StartTime:         utility.ZeroTime,
 			TaskGroup:         group,
@@ -1696,9 +1696,9 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupOrdering() {
 	groupIndexes := []int{2, 0, 4, 1, 3}
 
 	for i := 0; i < 5; i++ {
-		ID := fmt.Sprintf("%d", i)
+		id := fmt.Sprintf("%d", i)
 		items = append(items, TaskQueueItem{
-			Id:            ID,
+			Id:            id,
 			Group:         "group_1",
 			BuildVariant:  "variant_1",
 			Version:       "version_1",
@@ -1707,7 +1707,7 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupOrdering() {
 			GroupIndex:    groupIndexes[i],
 		})
 		t := task.Task{
-			Id:                ID,
+			Id:                id,
 			TaskGroup:         "group_1",
 			BuildVariant:      "variant_1",
 			Version:           "version_1",
@@ -1765,9 +1765,9 @@ func (s *taskDAGDispatchServiceSuite) TestInProgressSingleHostTaskGroupLimits() 
 	s.Require().NoError(sampleS3Task.Insert())
 
 	for i := 0; i < 5; i++ {
-		ID := fmt.Sprintf("%d", i)
+		id := fmt.Sprintf("%d", i)
 		items = append(items, TaskQueueItem{
-			Id:            ID,
+			Id:            id,
 			Group:         "group_1",
 			BuildVariant:  "variant_1",
 			Version:       "version_1",
@@ -1775,7 +1775,7 @@ func (s *taskDAGDispatchServiceSuite) TestInProgressSingleHostTaskGroupLimits() 
 			GroupMaxHosts: 1,
 		})
 		t := task.Task{
-			Id:                         ID,
+			Id:                         id,
 			TaskGroup:                  "group_1",
 			BuildVariant:               "variant_1",
 			Version:                    "version_1",
@@ -1831,9 +1831,9 @@ func (s *taskDAGDispatchServiceSuite) TestNewSingleHostTaskGroupLimits() {
 	s.Require().NoError(sampleS3Task.Insert())
 
 	for i := 0; i < 5; i++ {
-		ID := fmt.Sprintf("%d", i)
+		id := fmt.Sprintf("%d", i)
 		items = append(items, TaskQueueItem{
-			Id:            ID,
+			Id:            id,
 			Group:         "group_1",
 			BuildVariant:  "variant_1",
 			Version:       "version_1",
@@ -1841,7 +1841,7 @@ func (s *taskDAGDispatchServiceSuite) TestNewSingleHostTaskGroupLimits() {
 			GroupMaxHosts: 1,
 		})
 		t := task.Task{
-			Id:                         ID,
+			Id:                         id,
 			TaskGroup:                  "group_1",
 			BuildVariant:               "variant_1",
 			Version:                    "version_1",
