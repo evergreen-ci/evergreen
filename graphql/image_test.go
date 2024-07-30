@@ -95,8 +95,7 @@ func TestDistros(t *testing.T) {
 	res, err := config.Resolvers.Image().Distros(ctx, &image)
 	require.NoError(t, err)
 	require.Len(t, res, 2)
-	distroNames := []string{}
-	distroNames = append(distroNames, *res[0].Name, *res[1].Name)
+	distroNames := []string{*res[0].Name, utility.FromStringPtr(res[1].Name)}
 	assert.Contains(t, distroNames, "ubuntu1604-small")
 	assert.Contains(t, distroNames, "ubuntu1604-large")
 }
@@ -144,5 +143,6 @@ func TestLatestTask(t *testing.T) {
 	}
 	res, err := config.Resolvers.Image().LatestTask(ctx, &image)
 	require.NoError(t, err)
-	assert.Equal(t, *res.Id, "task_b")
+	require.NotNil(t, res)
+	assert.Equal(t, utility.FromStringPtr(res.Id), "task_b")
 }
