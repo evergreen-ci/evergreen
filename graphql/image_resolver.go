@@ -35,6 +35,9 @@ func (r *imageResolver) Events(ctx context.Context, obj *model.APIImage, limit i
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: '%s'", err.Error()))
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+	if obj == nil {
+		return nil, InternalServerError.Send(ctx, "nil image provided")
+	}
 	opts := thirdparty.EventHistoryOptions{
 		Image: utility.FromStringPtr(obj.ID),
 		Page:  page,
@@ -42,7 +45,7 @@ func (r *imageResolver) Events(ctx context.Context, obj *model.APIImage, limit i
 	}
 	imageEvents, err := c.GetEvents(ctx, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting events for imate '%s': '%s'", imageEvents, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting events for image '%s': '%s'", imageEvents, err.Error()))
 	}
 	apiImageEvents := []*model.APIImageEvent{}
 	for _, imageEvent := range imageEvents {

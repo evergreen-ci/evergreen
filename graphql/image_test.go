@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -71,13 +72,21 @@ func TestEvents(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestEvents")
 	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
+
+	// Returns the correct number of events according to the limit.
 	imageID := "amazon2"
-	image := model.APIImage{
+	image1 := model.APIImage{
 		ID: &imageID,
 	}
-	res, err := config.Resolvers.Image().Events(ctx, &image, 10, 0)
+	res, err := config.Resolvers.Image().Events(ctx, &image1, 5, 0)
 	require.NoError(t, err)
-	assert.NotEmpty(t, res)
+	assert.Len(t, res, 5)
+
+	// Errors when nil image provided.
+	image2 := model.APIImage{}
+	_, err = config.Resolvers.Image().Events(ctx, &image2, 5, 0)
+	grip.Debug(err)
+	require.Error(t, err)
 }
 
 func TestDistros(t *testing.T) {
