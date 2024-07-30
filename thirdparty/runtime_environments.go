@@ -30,17 +30,11 @@ const (
 )
 
 const (
-	PackagesType   = "Packages"
-	ToolchainsType = "Toolchains"
-	OSType         = "OS"
+	OSType = "OS"
 
 	OSNameField      = "PRETTY_NAME"
 	OSKernelField    = "Kernel"
 	OSVersionIDField = "VERSION_ID"
-
-	// AddedImageEntryAction   = "ADDED"
-	// UpdatedImageEntryAction = "UPDATED"
-	// DeletedImageEntryAction = "DELETED"
 )
 
 type RuntimeEnvironmentsClient struct {
