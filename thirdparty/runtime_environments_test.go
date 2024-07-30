@@ -169,7 +169,7 @@ func TestGetToolchains(t *testing.T) {
 		AMI:   ami,
 		Limit: 10,
 	}
-	result, err := c.getToolchains(ctx, opts)
+	result, err := c.GetToolchains(ctx, opts)
 	require.NoError(t, err)
 	assert.Len(result, 10)
 
@@ -183,7 +183,7 @@ func TestGetToolchains(t *testing.T) {
 		Name:    name,
 		Version: version,
 	}
-	result, err = c.getToolchains(ctx, opts)
+	result, err = c.GetToolchains(ctx, opts)
 	require.NoError(t, err)
 	require.NotEmpty(t, result)
 	require.Len(t, result, 1)
@@ -197,12 +197,12 @@ func TestGetToolchains(t *testing.T) {
 		Limit: 5,
 		Name:  "blahblahblah",
 	}
-	result, err = c.getToolchains(ctx, opts)
+	result, err = c.GetToolchains(ctx, opts)
 	require.NoError(t, err)
 	assert.Empty(result)
 
 	// Verify that we receive an error when an AMI is not provided.
-	_, err = c.getToolchains(ctx, ToolchainFilterOptions{})
+	_, err = c.GetToolchains(ctx, ToolchainFilterOptions{})
 	require.Error(t, err)
 }
 

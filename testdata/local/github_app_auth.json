@@ -1,0 +1,1 @@
+{ "_id": "spruce", "app_id": 12345, "private_key": { "$binary": { "base64": "c2VjcmV0", "subType": "00" } } }

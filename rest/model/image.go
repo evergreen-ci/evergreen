@@ -35,6 +35,32 @@ func (apiPackage *APIPackage) ToService() *thirdparty.Package {
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// APIToolchain is the model to be returned by the API whenever toolchains are fetched.
+
+type APIToolchain struct {
+	Name    *string `json:"name"`
+	Path    *string `json:"path"`
+	Version *string `json:"version"`
+}
+
+// BuildFromService converts from service level thirdparty.Toolchain to an APIToolchain.
+func (apiToolchain *APIToolchain) BuildFromService(toolchain thirdparty.Toolchain) {
+	apiToolchain.Name = utility.ToStringPtr(toolchain.Name)
+	apiToolchain.Path = utility.ToStringPtr(toolchain.Manager)
+	apiToolchain.Version = utility.ToStringPtr(toolchain.Version)
+}
+
+// ToService returns a service layer toolchain using the data from APIToolchain.
+func (apiToolchain *APIToolchain) ToService() *thirdparty.Toolchain {
+	toolchain := thirdparty.Toolchain{}
+	toolchain.Name = utility.FromStringPtr(apiToolchain.Name)
+	toolchain.Manager = utility.FromStringPtr(apiToolchain.Path)
+	toolchain.Version = utility.FromStringPtr(apiToolchain.Version)
+	return &toolchain
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // APIImage is the model to be returned by the API whenever images are fetched.
 
 type APIImage struct {
