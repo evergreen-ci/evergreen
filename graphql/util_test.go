@@ -353,7 +353,107 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 	assert.Equal(t, versionsMatchingTasksMap["v3"], true)
 
 }
+func TestIsPatchAuthorForTask(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
+		"TrueWhenUserIsPatchAuthor": func(ctx context.Context, t *testing.T) {
+			versionAndPatchID := bson.NewObjectId()
+			patch := patch.Patch{
+				Id:     versionAndPatchID,
+				Author: "basic_user",
+			}
+			assert.NoError(t, patch.Insert())
+			task := restModel.APITask{ProjectId: utility.ToStringPtr("random_project_id"), Version: utility.ToStringPtr(versionAndPatchID.Hex()), Requester: utility.ToStringPtr(evergreen.PatchVersionRequester)}
+			isPatchAuthor, err := isPatchAuthorForTask(ctx, &task)
+			assert.NoError(t, err)
+			assert.True(t, isPatchAuthor)
+		},
+		"FalseWhenUserIsNotPatchAuthor": func(ctx context.Context, t *testing.T) {
+			versionAndPatchID := bson.NewObjectId()
+			patch := patch.Patch{
+				Id:     versionAndPatchID,
+				Author: "someone_else",
+			}
+			assert.NoError(t, patch.Insert())
+			task := restModel.APITask{ProjectId: utility.ToStringPtr("random_project_id"), Version: utility.ToStringPtr(versionAndPatchID.Hex()), Requester: utility.ToStringPtr(evergreen.PatchVersionRequester)}
+			isPatchAuthor, err := isPatchAuthorForTask(ctx, &task)
+			assert.NoError(t, err)
+			assert.False(t, isPatchAuthor)
+		},
+		"FalseWhenTaskRequesterIsNotPatchVersionRequester": func(ctx context.Context, t *testing.T) {
+			versionAndPatchID := bson.NewObjectId()
+			patch := patch.Patch{
+				Id:     versionAndPatchID,
+				Author: "basic_user",
+			}
+			assert.NoError(t, patch.Insert())
+			task := restModel.APITask{ProjectId: utility.ToStringPtr("random_project_id"), Version: utility.ToStringPtr(versionAndPatchID.Hex()), Requester: utility.ToStringPtr(evergreen.TriggerRequester)}
+			isPatchAuthor, err := isPatchAuthorForTask(ctx, &task)
+			assert.NoError(t, err)
+			assert.False(t, isPatchAuthor)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(user.Collection, evergreen.RoleCollection, evergreen.ScopeCollection, annotations.Collection, task.Collection, patch.Collection))
+			usr := user.DBUser{
+				Id: "basic_user",
+			}
+			assert.NoError(t, usr.Insert())
+			ctx := gimlet.AttachUser(context.Background(), &usr)
+			tCase(ctx, t)
+		})
+	}
+}
 
+func TestHasLogViewPermission(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, userWithRole gimlet.User, userWithoutRole gimlet.User){
+		"TrueWhenUserHasRequiredPermission": func(ctx context.Context, t *testing.T, userWithRole gimlet.User, userWithoutRole gimlet.User) {
+			ctx = gimlet.AttachUser(ctx, userWithRole)
+			task := restModel.APITask{ProjectId: utility.ToStringPtr("project_id_belonging_to_user"), Version: utility.ToStringPtr("random_version_id")}
+			hasAccess := hasLogViewPermission(ctx, &task)
+			assert.True(t, hasAccess)
+		},
+		"FalseWhenUserDoesNotHaveRequiredPermission": func(ctx context.Context, t *testing.T, userWithRole gimlet.User, userWithoutRole gimlet.User) {
+			ctx = gimlet.AttachUser(ctx, userWithoutRole)
+			task := restModel.APITask{ProjectId: utility.ToStringPtr("project_id_belonging_to_user"), Version: utility.ToStringPtr("random_version_id")}
+			hasAccess := hasLogViewPermission(ctx, &task)
+			assert.False(t, hasAccess)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(user.Collection, evergreen.RoleCollection, evergreen.ScopeCollection, annotations.Collection, task.Collection, patch.Collection))
+			userWithoutRole := user.DBUser{
+				Id: "basic_user",
+			}
+			assert.NoError(t, userWithoutRole.Insert())
+			userWithRole := user.DBUser{
+				Id: "usr_with_log_view_role",
+			}
+			assert.NoError(t, userWithRole.Insert())
+			ctx := gimlet.AttachUser(context.Background(), &userWithRole)
+			env := evergreen.GetEnvironment()
+			roleManager := env.RoleManager()
+			projectScope := gimlet.Scope{
+				ID:        "projectScopeID",
+				Name:      "project scope",
+				Type:      evergreen.ProjectResourceType,
+				Resources: []string{"project_id_belonging_to_user"},
+			}
+			err := roleManager.AddScope(projectScope)
+
+			logViewRole := gimlet.Role{
+				ID:          "view_log",
+				Scope:       projectScope.ID,
+				Permissions: map[string]int{evergreen.PermissionLogs: evergreen.LogsView.Value},
+			}
+			require.NoError(t, roleManager.UpdateRole(logViewRole))
+
+			require.NoError(t, userWithRole.AddRole("view_log"))
+			require.NoError(t, err)
+
+			tCase(ctx, t, &userWithRole, &userWithoutRole)
+		})
+	}
+}
 func TestHasAnnotationPermission(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
 		"TrueWhenUserHasRequiredLevelAndIsNotPatchOwner": func(ctx context.Context, t *testing.T) {
