@@ -2,7 +2,11 @@ package graphql
 
 import (
 	"testing"
+	"time"
 
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -74,4 +78,86 @@ func TestEvents(t *testing.T) {
 	res, err := config.Resolvers.Image().Events(ctx, &image, 10, 0)
 	require.NoError(t, err)
 	assert.NotEmpty(t, res)
+}
+
+func TestDistros(t *testing.T) {
+	setupPermissions(t)
+	require.NoError(t, db.ClearCollections(distro.Collection), "unable to clear distro collection")
+	config := New("/graphql")
+	ctx := getContext(t)
+	testConfig := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestDistros")
+	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
+	d1 := &distro.Distro{
+		Id:      "ubuntu1604-large",
+		ImageID: "ubuntu1604",
+	}
+	require.NoError(t, d1.Insert(ctx))
+	d2 := &distro.Distro{
+		Id:      "ubuntu1604-small",
+		ImageID: "ubuntu1604",
+	}
+	require.NoError(t, d2.Insert(ctx))
+	d3 := &distro.Distro{
+		Id:      "rhel82-small",
+		ImageID: "rhel82",
+	}
+	require.NoError(t, d3.Insert(ctx))
+	imageID := "ubuntu1604"
+	image := model.APIImage{
+		ID: &imageID,
+	}
+	res, err := config.Resolvers.Image().Distros(ctx, &image)
+	require.NoError(t, err)
+	require.Len(t, res, 2)
+	distroNames := []string{*res[0].Name, utility.FromStringPtr(res[1].Name)}
+	assert.Contains(t, distroNames, "ubuntu1604-small")
+	assert.Contains(t, distroNames, "ubuntu1604-large")
+}
+
+func TestLatestTask(t *testing.T) {
+	setupPermissions(t)
+	require.NoError(t, db.ClearCollections(distro.Collection, task.Collection),
+		"unable to clear distro and task collections")
+	config := New("/graphql")
+	ctx := getContext(t)
+	testConfig := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestLatestTask")
+	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
+	d1 := &distro.Distro{
+		Id:      "ubuntu1604-large",
+		ImageID: "ubuntu1604",
+	}
+	require.NoError(t, d1.Insert(ctx))
+	d2 := &distro.Distro{
+		Id:      "ubuntu1604-small",
+		ImageID: "ubuntu1604",
+	}
+	require.NoError(t, d2.Insert(ctx))
+	taskA := &task.Task{
+		Id:         "task_a",
+		DistroId:   "ubuntu1604-small",
+		FinishTime: time.Date(2023, time.February, 1, 10, 30, 15, 0, time.UTC),
+	}
+	require.NoError(t, taskA.Insert())
+	taskB := &task.Task{
+		Id:         "task_b",
+		DistroId:   "ubuntu1604-large",
+		FinishTime: time.Date(2023, time.March, 1, 10, 30, 15, 0, time.UTC),
+	}
+	require.NoError(t, taskB.Insert())
+	taskC := &task.Task{
+		Id:         "task_c",
+		DistroId:   "ubuntu2204-large",
+		FinishTime: time.Date(2023, time.April, 1, 10, 30, 15, 0, time.UTC),
+	}
+	require.NoError(t, taskC.Insert())
+	imageID := "ubuntu1604"
+	image := model.APIImage{
+		ID: &imageID,
+	}
+	res, err := config.Resolvers.Image().LatestTask(ctx, &image)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, utility.FromStringPtr(res.Id), "task_b")
 }

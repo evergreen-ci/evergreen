@@ -151,7 +151,12 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 // stopInitialHost inspects the initial host's status and stops it if the host is still running.
 func (j *volumeMigrationJob) stopInitialHost(ctx context.Context) {
 	ts := utility.RoundPartOfMinute(1).Format(TSFormat)
-	stopJob := NewSpawnhostStopJob(j.initialHost, false, evergreen.ModifySpawnHostManual, evergreen.User, ts)
+	stopJob := NewSpawnhostStopJob(SpawnHostModifyJobOptions{
+		Host:      j.initialHost,
+		Source:    evergreen.ModifySpawnHostManual,
+		User:      j.ModifyOptions.UserName,
+		Timestamp: ts,
+	}, false)
 	err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), stopJob)
 	if err != nil {
 		j.AddRetryableError(err)

@@ -52,7 +52,7 @@ func (m *CloudHostModification) modifyHost(ctx context.Context, op func(ctx cont
 	}
 
 	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(m.hostAttributes(m.host)...)
+	span.SetAttributes(m.hostAttributes()...)
 
 	mgrOpts, err := cloud.GetManagerOptions(m.host.Distro)
 	if err != nil {
@@ -66,7 +66,7 @@ func (m *CloudHostModification) modifyHost(ctx context.Context, op func(ctx cont
 	return op(ctx, cloudManager, m.host, m.UserID)
 }
 
-func (m *CloudHostModification) hostAttributes(h *host.Host) []attribute.KeyValue {
+func (m *CloudHostModification) hostAttributes() []attribute.KeyValue {
 	return []attribute.KeyValue{
 		attribute.String(evergreen.HostIDOtelAttribute, m.host.Id),
 		attribute.String(evergreen.DistroIDOtelAttribute, m.host.Distro.Id),

@@ -37,6 +37,7 @@ type Image {
   events(limit: Int!, page: Int!): [ImageEvent!]!
   kernel: String!
   lastDeployed: Time!
+  latestTask: Task
   name: String!
   packages(opts: PackageOpts!): [Package!]!
   toolchains(opts: ToolchainOpts!): [Toolchain!]!
