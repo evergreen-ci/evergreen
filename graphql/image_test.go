@@ -60,3 +60,18 @@ func TestToolchains(t *testing.T) {
 	require.NotNil(t, res[0])
 	assert.Equal(t, testToolchain, utility.FromStringPtr(res[0].Name))
 }
+
+func TestEvents(t *testing.T) {
+	config := New("/graphql")
+	ctx := getContext(t)
+	testConfig := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestEvents")
+	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
+	imageID := "amazon2"
+	image := model.APIImage{
+		ID: &imageID,
+	}
+	res, err := config.Resolvers.Image().Events(ctx, &image, 10, 0)
+	require.NoError(t, err)
+	assert.NotEmpty(t, res)
+}

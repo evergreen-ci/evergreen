@@ -265,21 +265,21 @@ func TestGetEvents(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, config, "TestGetEvents")
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
-	// Verify that getEvents errors when not provided the required distro field.
-	_, err := c.getEvents(ctx, EventHistoryOptions{})
+	// Verify that GetEvents errors when not provided the required distro field.
+	_, err := c.GetEvents(ctx, EventHistoryOptions{})
 	assert.Error(err)
 
-	// Verify that getEvents errors with missing limit.
-	_, err = c.getEvents(ctx, EventHistoryOptions{Image: "ubuntu2204"})
+	// Verify that GetEvents errors with missing limit.
+	_, err = c.GetEvents(ctx, EventHistoryOptions{Image: "ubuntu2204"})
 	assert.Error(err)
 
-	// Verify that getEvents functions correctly with page and limit and returns in chronological order.
+	// Verify that GetEvents functions correctly with page and limit and returns in chronological order.
 	opts := EventHistoryOptions{
 		Image: "ubuntu2204",
 		Page:  0,
 		Limit: 5,
 	}
-	result, err := c.getEvents(ctx, opts)
+	result, err := c.GetEvents(ctx, opts)
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
 	assert.Len(result, 5)
