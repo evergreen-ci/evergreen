@@ -22,8 +22,7 @@ merge, like you would have to without the queue.
 1. From <https://spruce.mongodb.com/>, from the More drop down, select Project Settings.
 2. Select your project from the project dropdown.
 3. From the GitHub & Commit Queue section, set the Commit Queue to Enabled.
-4. For the merge queue type, select the GitHub radio button.
-5. Add variant and task tags or regexes for the variants and tasks you wish to run when a pull request is added to the queue.
+4. Add variant and task tags or regexes for the variants and tasks you wish to run when a pull request is added to the queue.
 
 ### Turn on the GitHub merge queue
 
@@ -55,6 +54,9 @@ if they have a different merge queue title. This title is the title of the
 HEAD PR of a merge group, but the merge group could contain multiple PRs. Note
 that GitHub merges all commits from each PR before adding that PR to a version,
 so a given version has as many commits in it as there are PRs in it.
+
+See the [Merge Queue Behavior](#merge-queue-behavior) section for more details
+about how merge queue concurrency works.
 
 ## Additional Resources
 
@@ -122,7 +124,32 @@ tasks, but you still wish them to run automatically.
 **Q:** How can I turn off the merge queue to block users from merging?
 
 **A:** Check the "Lock branch" setting in the branch protection rules. There are
-*no changes to make on the Evergreen side.
+no changes to make on the Evergreen side.
+
+**Q:** Can I see the patch or patches associated with my merge attempt?
+
+**A:** GitHub abstracts the process of making builds from the queue. There might
+be many builds associated with your patch, and it might not be obvious when
+GitHub decided to make them. To see the behavior of the queue, you can look at
+the Activity page, accessible from under the About section of a repo, and limit
+the user to "GitHub Merge Queue[bot]", e.g.,
+<https://github.com/10gen/mongo/activity?actor=github-merge-queue%5Bbot%5D>. On
+the Evergreen side, you can click on More -> Project Patches, and look for
+patches prepended "GitHub Merge Queue:", e.g.,
+<https://spruce.mongodb.com/project/mongodb-mongo-master/patches>.
+
+**Q:** What does it mean if GitHub times out my merge queue request in my PR?
+
+**A:** There is a setting called "Status check timeout" in the branch protection rules
+or rulesets. This setting is the maximum time for a required status check to
+report succcess or failed. This is *not* the same as the makespan of an
+Evergreen version, for two reasons:
+
+1. Makespan does not start until the version starts running, but there is time
+in between when GitHub sends a webhook and when the version starts running. If
+Evergreen is under load, it might not schedule the version for some time.
+2. The status checks might be configured to listen for variant statuses, not
+version statuses.
 
 ## Merge Queue Behavior
 
@@ -161,7 +188,7 @@ There is some unintuitive behavior to be aware of:
 1. If main/pr-1 succeeds and main/pr-2 fails, only main/pr-1 will be merged.
 *But note that merging main/pr-1 waits for main/pr-2 to fail or for the timeout
 to be hit, because the "Maximum pull requests to merge" is set to 5. That is,
-GitHub is conceptualing the fundamental unit of work as the merge group, not the
+GitHub conceptualizes the fundamental unit of work as the merge group, not the
 PR.*
 2. If main/pr-1 fails and main/pr-2 succeeds, GitHub will remove pr-1 from the
 queue and re-run main/pr-2 (not rebased on pr-1). *This is conceptually similar
@@ -178,9 +205,12 @@ contains both PRs.
 The temporary branch gets deleted only after the the PR is merged, or if the PR
 fails the check or is removed from the queue.
 
-The descriptions of the merge queue settings in the repo branch protection rules
-and in the rulesets are differernt, and the ones in the rulesets are more
-accurate. I've provided both in this table:
+## Merge Queue Settings
+
+GitHub's merge queue docs and UI hints can be confusing. The descriptions of the
+merge queue settings in the repo branch protection rules and in the rulesets are
+different, and the ones in the rulesets are more accurate. See the table below
+for a comparison.
 
 | Repo Setting | Repo Description | Ruleset Setting | Ruleset Description |
 | --- | --- | --- | --- |
@@ -196,4 +226,4 @@ Here are example links for the 10gen/mongo repository:
 
 * <https://github.com/10gen/mongo/activity?actor=github-merge-queue%5Bbot%5D> : View the branch creations and deletions by clicking the Activity link on the repository main page under the About section.
 * <https://github.com/10gen/mongo/queue/master> : View the queue itself.
-* <https://github.com/10gen/mongo/branches/all?query=gh-readonly> : View the gh-read-only branches.
+* <https://github.com/10gen/mongo/branches/all?query=gh-readonly> : View the active merge queue branches.
