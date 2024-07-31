@@ -153,6 +153,7 @@ func makeAWSLogMessage(name, client string, args interface{}) message.Fields {
 
 	argMap := make(map[string]interface{})
 	if err := mapstructure.Decode(args, &argMap); err == nil {
+		delete(argMap, "Value")
 		msg["args"] = argMap
 	} else {
 		msg["args"] = fmt.Sprintf("%+v", args)
