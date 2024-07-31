@@ -81,7 +81,7 @@ func TestEvents(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, res, 5)
 
-	// Does not return the same events in different pages
+	// Does not return the same events in different pages.
 	allAMIAfter := map[string]struct{}{}
 	for _, event := range res {
 		allAMIAfter[utility.FromStringPtr(event.AMIAfter)] = struct{}{}
