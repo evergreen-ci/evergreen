@@ -2122,6 +2122,10 @@ func MarkTasksReset(ctx context.Context, taskIds []string, caller string) error 
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	// kim: NOTE: this just adds the execution task's parent DisplayTaskId, it
+	// doesn't actually add the display task itself to the list. See if this
+	// potentially causes a bug if we maybe only reset the execution task and
+	// not the display task.
 	tasks, err = task.AddParentDisplayTasks(tasks)
 	if err != nil {
 		return errors.WithStack(err)

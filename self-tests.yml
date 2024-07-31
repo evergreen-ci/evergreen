@@ -766,6 +766,47 @@ tasks:
     name: build-darwin-unsigned_arm64
     tags: ["build-unsigned"]
 
+  - name: kim-et0
+    tags: ["kim-ets"]
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            sleep 1
+            echo "hello ${task_name} ${execution}"
+            exit 0
+  - name: kim-et1
+    tags: ["kim-ets"]
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            sleep 10
+            echo "hello ${task_name} ${execution}"
+            exit 0
+  - name: kim-et2
+    tags: ["kim-ets"]
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            sleep 20
+            echo "hello ${task_name} ${execution}"
+            exit 0
+  - name: kim-et3
+    tags: ["kim-ets"]
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            sleep 30
+            echo "hello ${task_name} ${execution}"
+            exit 0
+
 #######################################
 #            Buildvariants            #
 #######################################
@@ -791,6 +832,11 @@ buildvariants:
       - name: test-cloud
       - name: "js-test"
       - name: generate-api-docs
+      - name: ".kim-ets"
+    display_tasks:
+      - name: kim-dt
+        execution_tasks:
+        - ".kim-ets"
 
   - name: race-detector
     display_name: Race Detector
