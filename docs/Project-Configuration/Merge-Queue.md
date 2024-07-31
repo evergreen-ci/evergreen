@@ -128,15 +128,16 @@ no changes to make on the Evergreen side.
 
 **Q:** Can I see the patch or patches associated with my merge attempt?
 
-**A:** GitHub abstracts the process of making builds from the queue. There might
-be many builds associated with your patch, and it might not be obvious when
-GitHub decided to make them. To see the behavior of the queue, you can look at
-the Activity page, accessible from under the About section of a repo, and limit
-the user to "GitHub Merge Queue[bot]", e.g.,
+**A:** GitHub abstracts the process of making builds from the queue. There might be
+many builds (which Evergreen calls versions) associated with your PR, and it
+might not be obvious when GitHub decided to make them. To see the behavior of
+the queue, you can look at the Activity page, accessible from under the About
+section of a repo, and limit the user to "GitHub Merge Queue[bot]", e.g.,
 <https://github.com/10gen/mongo/activity?actor=github-merge-queue%5Bbot%5D>. On
 the Evergreen side, you can click on More -> Project Patches, and look for
 patches prepended "GitHub Merge Queue:", e.g.,
-<https://spruce.mongodb.com/project/mongodb-mongo-master/patches>.
+<https://spruce.mongodb.com/project/mongodb-mongo-master/patches>. There is not
+a way, however, to map directly from a GitHub PR to its patches.
 
 **Q:** What does it mean if GitHub times out my merge queue request in my PR?
 
