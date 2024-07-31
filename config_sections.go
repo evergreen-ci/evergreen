@@ -83,6 +83,10 @@ func (c *ConfigSections) populateSections(ctx context.Context) error {
 func (c *ConfigSections) getSSMParameters(ctx context.Context) error {
 	var sectionNames []string
 	for id, section := range c.Sections {
+		// TODO (DEVPROD-8038): Remove this once all parameters have been migrated to Parameter Store.
+		if id != (&SplunkConfig{}).SectionId() {
+			continue
+		}
 		if reflect.ValueOf(section).Elem().IsZero() {
 			sectionNames = append(sectionNames, adminParameterName(id))
 		}

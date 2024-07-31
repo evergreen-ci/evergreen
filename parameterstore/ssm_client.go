@@ -86,9 +86,10 @@ func (c *ssmClientImpl) getParameters(ctx context.Context, parameters []string) 
 
 func (c *ssmClientImpl) putParameter(ctx context.Context, parameterName, value string) error {
 	_, err := c.callPutParameter(ctx, &ssm.PutParameterInput{
-		Name:  aws.String(parameterName),
-		Value: aws.String(value),
-		Type:  types.ParameterTypeSecureString,
+		Name:      aws.String(parameterName),
+		Value:     aws.String(value),
+		Type:      types.ParameterTypeSecureString,
+		Overwrite: aws.Bool(true),
 	})
 	return errors.Wrapf(err, "setting parameter for '%s'", parameterName)
 }
