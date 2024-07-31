@@ -194,6 +194,6 @@ accurate. I've provided both in this table:
 
 Here are example links for the 10gen/mongo repository:
 
-* <https://github.com/10gen/mongo/activity?activity_type=merge_queue_merge> : View the branch creations and deletions by clicking the Activity link on the repository main page under the About section.
+* <https://github.com/10gen/mongo/activity?actor=github-merge-queue%5Bbot%5D> : View the branch creations and deletions by clicking the Activity link on the repository main page under the About section.
 * <https://github.com/10gen/mongo/queue/master> : View the queue itself.
 * <https://github.com/10gen/mongo/branches/all?query=gh-readonly> : View the gh-read-only branches.
