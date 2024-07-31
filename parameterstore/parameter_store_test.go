@@ -46,7 +46,7 @@ func TestSetParameter(t *testing.T) {
 			p := parameterStore{opts: opts}
 			name := "name"
 			val := "val"
-			_, err := db.Collection(collection).InsertOne(ctx, parameter{ID: name, Value: val})
+			_, err := db.Collection(Collection).InsertOne(ctx, parameter{ID: name, Value: val})
 			require.NoError(t, err)
 
 			newVal := "newVal"
@@ -96,7 +96,7 @@ func TestSetParameter(t *testing.T) {
 			name := "name"
 			val := "val"
 			lastUpdate := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-			_, err := db.Collection(collection).InsertOne(ctx, parameter{ID: name, LastUpdate: lastUpdate})
+			_, err := db.Collection(Collection).InsertOne(ctx, parameter{ID: name, LastUpdate: lastUpdate})
 			require.NoError(t, err)
 
 			opts := ParameterStoreOptions{
@@ -150,7 +150,7 @@ func TestSetParameter(t *testing.T) {
 				p.prefixedName(name): {value: val, lastRefresh: lastUpdate},
 			}
 
-			_, err := db.Collection(collection).InsertOne(ctx, parameter{ID: name, LastUpdate: lastUpdate})
+			_, err := db.Collection(Collection).InsertOne(ctx, parameter{ID: name, LastUpdate: lastUpdate})
 			require.NoError(t, err)
 
 			newVal := "newVal"
@@ -211,7 +211,7 @@ func TestGetParameters(t *testing.T) {
 			}
 			p := parameterStore{opts: opts}
 			param := parameter{ID: "/config/a", Value: "value"}
-			_, err := db.Collection(collection).InsertOne(ctx, param)
+			_, err := db.Collection(Collection).InsertOne(ctx, param)
 			require.NoError(t, err)
 
 			paramMap, err := p.GetParameters(ctx, []string{p.basename(param.ID)})
@@ -232,7 +232,7 @@ func TestGetParameters(t *testing.T) {
 			}
 			p := parameterStore{opts: opts}
 			param := parameter{ID: "/config/a"}
-			_, err := db.Collection(collection).InsertOne(ctx, param)
+			_, err := db.Collection(Collection).InsertOne(ctx, param)
 			require.NoError(t, err)
 
 			paramMap, err := p.GetParameters(ctx, []string{p.basename(param.ID)})
@@ -267,7 +267,7 @@ func TestGetParameters(t *testing.T) {
 			}
 			p := parameterStore{opts: opts}
 			param := parameter{ID: "/config/a", Value: "value"}
-			_, err := db.Collection(collection).InsertOne(ctx, param)
+			_, err := db.Collection(Collection).InsertOne(ctx, param)
 			require.NoError(t, err)
 
 			res, err := p.GetParameters(ctx, []string{p.basename(param.ID)})
@@ -295,7 +295,7 @@ func TestGetParameters(t *testing.T) {
 			parameterCache = map[string]cachedParameter{
 				param.ID: {value: val, lastRefresh: lastUpdate.Add(time.Second)},
 			}
-			_, err := db.Collection(collection).InsertOne(ctx, param)
+			_, err := db.Collection(Collection).InsertOne(ctx, param)
 			require.NoError(t, err)
 
 			res, err := p.GetParameters(ctx, []string{p.basename(param.ID)})
@@ -313,7 +313,7 @@ func TestGetParameters(t *testing.T) {
 
 			lastUpdate := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 			param := parameter{ID: "/config/a", LastUpdate: lastUpdate}
-			_, err := db.Collection(collection).InsertOne(ctx, param)
+			_, err := db.Collection(Collection).InsertOne(ctx, param)
 			require.NoError(t, err)
 
 			val := "val"
@@ -369,7 +369,7 @@ func TestGetParameters(t *testing.T) {
 
 			lastUpdate := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 			param := parameter{ID: "/config/a", LastUpdate: lastUpdate}
-			_, err := db.Collection(collection).InsertOne(ctx, param)
+			_, err := db.Collection(Collection).InsertOne(ctx, param)
 			require.NoError(t, err)
 
 			val := "val"

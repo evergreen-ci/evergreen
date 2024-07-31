@@ -41,7 +41,7 @@ func TestFind(t *testing.T) {
 		{ID: "c"},
 	}
 	for _, param := range params {
-		_, err := db.Collection(collection).InsertOne(ctx, param)
+		_, err := db.Collection(Collection).InsertOne(ctx, param)
 		require.NoError(t, err)
 	}
 
@@ -64,7 +64,7 @@ func TestSetLocalValue(t *testing.T) {
 	defer func() { require.NoError(t, db.Drop(ctx)) }()
 
 	param := parameter{ID: "a"}
-	_, err := db.Collection(collection).InsertOne(ctx, param)
+	_, err := db.Collection(Collection).InsertOne(ctx, param)
 	require.NoError(t, err)
 
 	p := parameterStore{}
@@ -86,7 +86,7 @@ func TestSetLastUpdate(t *testing.T) {
 	defer func() { require.NoError(t, db.Drop(ctx)) }()
 
 	param := parameter{ID: "a", Value: "val"}
-	_, err := db.Collection(collection).InsertOne(ctx, param)
+	_, err := db.Collection(Collection).InsertOne(ctx, param)
 	require.NoError(t, err)
 
 	p := parameterStore{}

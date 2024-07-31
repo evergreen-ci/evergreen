@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	collection = "parameters"
+	Collection = "parameters"
 
 	idKey         = bsonutil.MustHaveTag(parameter{}, "ID")
 	lastUpdateKey = bsonutil.MustHaveTag(parameter{}, "LastUpdate")
@@ -19,7 +19,7 @@ var (
 )
 
 func (p *parameterStore) find(ctx context.Context, names []string) ([]parameter, error) {
-	cur, err := p.opts.Database.Collection(collection).Find(ctx, bson.M{idKey: bson.M{"$in": names}})
+	cur, err := p.opts.Database.Collection(Collection).Find(ctx, bson.M{idKey: bson.M{"$in": names}})
 	if err != nil {
 		return nil, errors.Wrap(err, "getting cursor for parameters")
 	}
@@ -31,7 +31,7 @@ func (p *parameterStore) find(ctx context.Context, names []string) ([]parameter,
 }
 
 func (p *parameterStore) setLocalValue(ctx context.Context, name, value string) error {
-	_, err := p.opts.Database.Collection(collection).UpdateOne(
+	_, err := p.opts.Database.Collection(Collection).UpdateOne(
 		ctx,
 		bson.M{idKey: name},
 		bson.M{"$set": bson.M{valueKey: value}}, options.Update().SetUpsert(true),
@@ -41,7 +41,7 @@ func (p *parameterStore) setLocalValue(ctx context.Context, name, value string) 
 
 // SetLastUpdate sets the time a parameter has last been updated in its backing data source.
 func (p *parameterStore) SetLastUpdate(ctx context.Context, name string, updated time.Time) error {
-	_, err := p.opts.Database.Collection(collection).UpdateOne(
+	_, err := p.opts.Database.Collection(Collection).UpdateOne(
 		ctx,
 		bson.M{idKey: name},
 		bson.M{"$set": bson.M{lastUpdateKey: updated}}, options.Update().SetUpsert(true),

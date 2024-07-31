@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/parameterstore"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -49,7 +50,7 @@ func TestAdminRouteSuiteWithDB(t *testing.T) {
 
 func (s *AdminRouteSuite) SetupSuite() {
 	// test getting the route handler
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.EventCollection, model.ProjectRefCollection), "clearing collections")
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, parameterstore.Collection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.EventCollection, model.ProjectRefCollection), "clearing collections")
 	b := &build.Build{
 		Id:      "buildtest",
 		Status:  evergreen.BuildStarted,

@@ -321,6 +321,11 @@ func GetConfig(ctx context.Context) (*Settings, error) {
 
 // UpdateConfig updates all evergreen settings documents in the DB.
 func UpdateConfig(ctx context.Context, config *Settings) error {
+	// Update the parameter store configuration first so subsequent sections go to the right place.
+	if err := config.ParameterStore.Set(ctx); err != nil {
+		return errors.Wrap(err, "setting Parameter Store configuration")
+	}
+
 	// update the root config document
 	if err := config.Set(ctx); err != nil {
 		return err
@@ -337,7 +342,10 @@ func UpdateConfig(ctx context.Context, config *Settings) error {
 		if sectionId == "" { // no 'id' tag means this is a simple field that we can skip
 			continue
 		}
-
+		// We've already updated the parameter store configuration.
+		if sectionId == parameterStoreConfigID {
+			continue
+		}
 		// get the property name and find its value within the settings struct
 		propName := valConfig.Type().Field(i).Name
 		propVal := valConfig.FieldByName(propName)
