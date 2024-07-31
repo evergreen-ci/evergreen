@@ -50,11 +50,12 @@ func (c *ParameterStoreConfig) Set(ctx context.Context) error {
 	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
 }
 
-// ValidateAndDefault validates the tracer configuration.
+// ValidateAndDefault validates the parameter store configuration.
 func (c *ParameterStoreConfig) ValidateAndDefault() error {
 	return nil
 }
 
+// GetParameterStoreOpts returns a [parameterstore.ParameterStoreOptions] populated with the configured options.
 func GetParameterStoreOpts(ctx context.Context) (parameterstore.ParameterStoreOptions, error) {
 	var config = ParameterStoreConfig{}
 	if err := config.Get(ctx); err != nil {

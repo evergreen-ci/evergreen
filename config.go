@@ -343,7 +343,7 @@ func UpdateConfig(ctx context.Context, config *Settings) error {
 			continue
 		}
 		// We've already updated the parameter store configuration.
-		if sectionId == parameterStoreConfigID {
+		if sectionId == "parameter_store" {
 			continue
 		}
 		// get the property name and find its value within the settings struct
