@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -74,7 +73,7 @@ func TestEvents(t *testing.T) {
 	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
 
 	// Returns the correct number of events according to the limit.
-	imageID := "amazon2"
+	imageID := "ubuntu2204"
 	image1 := model.APIImage{
 		ID: &imageID,
 	}
@@ -82,11 +81,23 @@ func TestEvents(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, res, 5)
 
-	// Errors when nil image provided.
+	// Does not return the same events in different pages
+	allAMIAfter := map[string]struct{}{}
+	for _, event := range res {
+		allAMIAfter[utility.FromStringPtr(event.AMIAfter)] = struct{}{}
+	}
+	res2, err := config.Resolvers.Image().Events(ctx, &image1, 5, 1)
+	require.NoError(t, err)
+	assert.Len(t, res2, 5)
+	for _, event := range res2 {
+		allAMIAfter[utility.FromStringPtr(event.AMIAfter)] = struct{}{}
+	}
+	assert.Len(t, allAMIAfter, 10)
+
+	// Errors when no image provided.
 	image2 := model.APIImage{}
 	_, err = config.Resolvers.Image().Events(ctx, &image2, 5, 0)
-	grip.Debug(err)
-	require.Error(t, err)
+	assert.Error(t, err)
 }
 
 func TestDistros(t *testing.T) {
