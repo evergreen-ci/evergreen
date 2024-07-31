@@ -3,6 +3,7 @@ package evergreen
 import (
 	"context"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/bradleyfalzon/ghinstallation"
@@ -90,19 +91,34 @@ func (g *GithubAppAuth) IsGithubAppInstalledOnRepo(ctx context.Context, owner, r
 	return installationID != 0, nil
 }
 
-// CreateInstallationTokenWithDefaultOwnerRepo returns an installation token when we do not care about
-// the owner/repo that we are calling the GitHub function with (i.e. checking rate limit).
-// It will use the default owner/repo specified in the admin settings and error if it's not set.
-func (s *Settings) CreateInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.InstallationTokenOptions) (string, error) {
+// CreateCachedInstallationTokenWithDefaultOwnerRepo is the same as
+// CreateCachedInstallationToken but specifically returns an installation token
+// from a default owner/repo. This is useful for scenarios when we do not care
+// about the owner/repo that we are calling the GitHub function with (i.e.
+// checking rate limit). It will use the default owner/repo specified in the
+// admin settings and error if it's not set.
+func (s *Settings) CreateCachedInstallationTokenWithDefaultOwnerRepo(ctx context.Context, lifetime time.Duration, opts *github.InstallationTokenOptions) (string, error) {
 	if s.AuthConfig.Github == nil || s.AuthConfig.Github.DefaultOwner == "" || s.AuthConfig.Github.DefaultRepo == "" {
 		return "", errors.Errorf("missing GitHub app configuration needed to create installation tokens")
 	}
-	return s.CreateGitHubAppAuth().CreateInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, opts)
+	return s.CreateGitHubAppAuth().CreateCachedInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, lifetime, opts)
 }
 
-// CreateInstallationToken uses the owner/repo information to request an github app installation id
+// CreateCachedInstallationToken uses the owner/repo information to request an github app installation id
 // and uses that id to create an installation token.
-func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
+// If possible, it will try to use an existing installation token for the app
+// from the cache, unless that cached token will expire before the requested
+// lifetime. For example, if requesting a token that should be valid for the
+// next 30 minutes, this method can return a cached token that is still valid
+// for 45 minutes. However, if the cached token will expire in 5 minutes, it
+// will provide a freshly-generated token. Also take special care if revoking a
+// token returned from this method - revoking the token will cause other GitHub
+// operations reusing the same token to fail.
+func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner, repo string, lifetime time.Duration, opts *github.InstallationTokenOptions) (string, error) {
+	if lifetime >= maxInstallationTokenLifetime {
+		lifetime = maxInstallationTokenLifetime
+	}
+
 	if g == nil {
 		return "", errors.New("GitHub app is not configured in admin settings")
 	}
@@ -112,7 +128,31 @@ func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo
 		return "", errors.Wrapf(err, "getting installation id for '%s/%s'", owner, repo)
 	}
 
-	token, err := createInstallationTokenForID(ctx, g, installationID, opts)
+	if cachedToken := ghInstallationTokenCache.get(installationID, lifetime); cachedToken != "" {
+		return cachedToken, nil
+	}
+
+	createdAt := time.Now()
+	token, err := g.createInstallationTokenForID(ctx, installationID, opts)
+	if err != nil {
+		return "", errors.Wrap(err, "creating installation token")
+	}
+
+	ghInstallationTokenCache.put(installationID, token, createdAt)
+
+	return token, errors.Wrapf(err, "getting installation token for '%s/%s'", owner, repo)
+}
+
+// CreateInstallationToken creates an installation token for the given
+// owner/repo. This is never cached, and should only be used in scenarios where
+// the token can be revoked at any time.
+func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
+	installationID, err := getInstallationID(ctx, g, owner, repo)
+	if err != nil {
+		return "", errors.Wrapf(err, "getting installation id for '%s/%s'", owner, repo)
+	}
+
+	token, err := g.createInstallationTokenForID(ctx, installationID, opts)
 	if err != nil {
 		return "", errors.Wrapf(err, "creating installation token for '%s/%s'", owner, repo)
 	}
@@ -277,8 +317,8 @@ func getInstallationIDFromGitHub(ctx context.Context, authFields *GithubAppAuth,
 
 // createInstallationTokenForID returns an installation token from GitHub given an installation ID.
 // This function cannot be moved to thirdparty because it is needed to set up the environment.
-func createInstallationTokenForID(ctx context.Context, authFields *GithubAppAuth, installationID int64, opts *github.InstallationTokenOptions) (string, error) {
-	client, err := getGitHubClientForAuth(authFields)
+func (g *GithubAppAuth) createInstallationTokenForID(ctx context.Context, installationID int64, opts *github.InstallationTokenOptions) (string, error) {
+	client, err := getGitHubClientForAuth(g)
 	if err != nil {
 		return "", errors.Wrap(err, "getting GitHub client for token creation")
 	}
@@ -301,4 +341,58 @@ func createInstallationTokenForID(ctx context.Context, authFields *GithubAppAuth
 func (g *GithubAppAuth) RedactPrivateKey() *GithubAppAuth {
 	g.PrivateKey = []byte(RedactedValue)
 	return g
+}
+
+// cachedInstallationToken represents a GitHub installation token that's
+// cached in memory.
+type cachedInstallationToken struct {
+	installationToken string
+	expiresAt         time.Time
+}
+
+func (c *cachedInstallationToken) isExpired(lifetime time.Duration) bool {
+	return time.Until(c.expiresAt) < lifetime
+}
+
+// installationTokenCache is a concurrency-safe cache mapping the installation
+// ID to the cached GitHub installation token for it.
+type installationTokenCache struct {
+	cache map[int64]cachedInstallationToken
+	mu    sync.RWMutex
+}
+
+// ghInstallationTokenCache is the in-memory instance of the cache for GitHub
+// installation tokens.
+var ghInstallationTokenCache = installationTokenCache{
+	cache: make(map[int64]cachedInstallationToken),
+	mu:    sync.RWMutex{},
+}
+
+// get gets an installation token from the cache by its installation ID. It will
+// not return a token if the token will expire before the requested lifetime.
+func (c *installationTokenCache) get(installationID int64, lifetime time.Duration) string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	cachedToken, ok := c.cache[installationID]
+	if !ok {
+		return ""
+	}
+	if cachedToken.isExpired(lifetime) {
+		return ""
+	}
+
+	return cachedToken.installationToken
+}
+
+// maxInstallationTokenLifetime is the maximum amount of time that an
+// installation token can be used before it expires.
+const maxInstallationTokenLifetime = time.Hour
+
+func (c *installationTokenCache) put(installationID int64, installationToken string, createdAt time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.cache[installationID] = cachedInstallationToken{
+		installationToken: installationToken,
+		expiresAt:         createdAt.Add(maxInstallationTokenLifetime),
+	}
 }

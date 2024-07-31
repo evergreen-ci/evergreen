@@ -3,6 +3,7 @@ package evergreen
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
@@ -91,4 +92,27 @@ func (s *installationSuite) TestGetInstallationID() {
 
 	_, err = getInstallationID(s.ctx, authFields, "", "")
 	s.Error(err)
+}
+
+func (s *installationSuite) TestCreateCachedInstallationToken() {
+	installation := GitHubAppInstallation{
+		Owner:          "evergreen-ci",
+		Repo:           "evergreen",
+		AppID:          1234,
+		InstallationID: 5678,
+	}
+	s.NoError(installation.Upsert(s.ctx))
+
+	const (
+		installationToken = "installation_token"
+		lifetime          = time.Minute
+	)
+	ghInstallationTokenCache.put(installation.InstallationID, installationToken, time.Now())
+
+	authFields := GithubAppAuth{
+		AppID: installation.AppID,
+	}
+	token, err := authFields.CreateCachedInstallationToken(s.ctx, installation.Owner, installation.Repo, lifetime, nil)
+	s.Require().NoError(err)
+	s.Equal(token, installationToken, "should return cached token since it is still valid for at least %s", lifetime)
 }

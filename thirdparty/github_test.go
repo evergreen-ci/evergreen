@@ -161,8 +161,40 @@ func (s *githubSuite) TestGetGithubCommitsUntil() {
 	s.Len(githubCommits, 4)
 }
 
-func (s *githubSuite) TestRevokeInstallationToken() {
+func (s *githubSuite) TestGetInstallationTokenCached() {
 	token, err := getInstallationToken(s.ctx, "evergreen-ci", "sample", nil)
+	s.NoError(err)
+	s.NotZero(token)
+
+	for i := 0; i < 10; i++ {
+		cachedToken, err := getInstallationToken(s.ctx, "evergreen-ci", "sample", nil)
+		s.NoError(err)
+		s.Equal(token, cachedToken, "should return same exact cached token since it is still valid")
+	}
+}
+
+// getInstallationTokenNoCache is the same as getInstallationToken but it always
+// returns a fresh token rather than a cached token.
+func getInstallationTokenNoCache(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return "", errors.Wrap(err, "getting config")
+	}
+
+	token, err := settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, owner, repo, opts)
+	if err != nil {
+		return "", errors.Wrap(err, "creating installation token")
+	}
+
+	return token, nil
+}
+
+func (s *githubSuite) TestRevokeInstallationToken() {
+	// Most GitHub API operations cache tokens for reuse to reduce the rate at
+	// which Evergreen requests installation tokens. However, this test is
+	// intentionally testing revokation, and revoking the cached token will
+	// cause other tests to fail when they attempt to use the cached token.
+	token, err := getInstallationTokenNoCache(s.ctx, "evergreen-ci", "sample", nil)
 	s.NoError(err)
 	s.NotEmpty(token)
 
