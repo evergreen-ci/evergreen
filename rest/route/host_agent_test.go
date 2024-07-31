@@ -34,6 +34,7 @@ const hostSecret = "secret"
 func TestHostNextTask(t *testing.T) {
 	distroID := "testDistro"
 	buildID := "buildId"
+	versionID := "versionId"
 	task1 := task.Task{
 		Id:        "task1",
 		Execution: 5,
@@ -42,6 +43,7 @@ func TestHostNextTask(t *testing.T) {
 		BuildId:   buildID,
 		Project:   "exists",
 		StartTime: utility.ZeroTime,
+		Version:   versionID,
 	}
 	task2 := task.Task{
 		Id:        "task2",
@@ -50,6 +52,7 @@ func TestHostNextTask(t *testing.T) {
 		Project:   "exists",
 		BuildId:   buildID,
 		StartTime: utility.ZeroTime,
+		Version:   versionID,
 	}
 	task3 := task.Task{
 		Id:        "task3",
@@ -58,6 +61,7 @@ func TestHostNextTask(t *testing.T) {
 		Project:   "exists",
 		BuildId:   buildID,
 		StartTime: utility.ZeroTime,
+		Version:   versionID,
 	}
 	task4 := task.Task{
 		Id:        "another",
@@ -66,6 +70,7 @@ func TestHostNextTask(t *testing.T) {
 		Project:   "exists",
 		StartTime: utility.ZeroTime,
 		BuildId:   buildID,
+		Version:   versionID,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -203,7 +208,7 @@ func TestHostNextTask(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					require.NoError(t, db.ClearCollections(host.Collection, distro.Collection))
+					require.NoError(t, db.ClearCollections(host.Collection, distro.Collection, model.VersionCollection))
 					h := host.Host{
 						Id: "id",
 						Distro: distro.Distro{
@@ -222,8 +227,12 @@ func TestHostNextTask(t *testing.T) {
 						Status:           evergreen.HostRunning,
 						NeedsReprovision: host.ReprovisionToNew,
 					}
+					v := model.Version{
+						Id: versionID,
+					}
 					require.NoError(t, h.Insert(ctx))
 					require.NoError(t, h.Distro.Insert(ctx))
+					require.NoError(t, v.Insert())
 					handler := hostAgentNextTask{
 						env: env,
 					}
@@ -556,7 +565,7 @@ func TestHostNextTask(t *testing.T) {
 			defer cancel()
 
 			colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection,
-				evergreen.ConfigCollection, distro.Collection}
+				evergreen.ConfigCollection, distro.Collection, model.VersionCollection}
 			require.NoError(t, db.ClearCollections(colls...))
 			defer func() {
 				assert.NoError(t, db.ClearCollections(colls...))
@@ -599,6 +608,9 @@ func TestHostNextTask(t *testing.T) {
 				Id:      "exists",
 				Enabled: true,
 			}
+			v := model.Version{
+				Id: versionID,
+			}
 
 			require.NoError(t, d.Insert(ctx))
 			require.NoError(t, task1.Insert())
@@ -609,6 +621,7 @@ func TestHostNextTask(t *testing.T) {
 			require.NoError(t, pref.Insert())
 			require.NoError(t, sampleHost.Insert(ctx))
 			require.NoError(t, tq.Save())
+			require.NoError(t, v.Insert())
 
 			r, ok := makeHostAgentNextTask(env, nil, nil).(*hostAgentNextTask)
 			require.True(t, ok)
@@ -868,7 +881,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 		settings := distro.DispatcherSettings{
 			Version: evergreen.DispatcherVersionRevisedWithDependencies,
 		}
-		colls := []string{distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection}
+		colls := []string{distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection, model.VersionCollection}
 		require.NoError(t, db.ClearCollections(colls...))
 		defer func() {
 			assert.NoError(t, db.ClearCollections(colls...))
@@ -880,6 +893,12 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 			DispatcherSettings: settings,
 		}
 		So(d.Insert(ctx), ShouldBeNil)
+
+		versionId = "versionId"
+		v := model.Version{
+			Id: versionId,
+		}
+		So(v.Insert(), ShouldBeNil)
 
 		taskGroupInfo := model.TaskGroupInfo{
 			Name:  "",
@@ -916,6 +935,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 			Activated: true,
 			Project:   "exists",
 			StartTime: utility.ZeroTime,
+			Version:   versionId,
 		}
 		task2 := task.Task{
 			Id:        "task2",
@@ -923,6 +943,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 			Activated: true,
 			Project:   "exists",
 			StartTime: utility.ZeroTime,
+			Version:   versionId,
 		}
 		pref := &model.ProjectRef{
 			Id:      "exists",
@@ -987,6 +1008,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				Id:        "undispatchedTask",
 				Status:    evergreen.TaskStarted,
 				StartTime: utility.ZeroTime,
+				Version:   versionId,
 			}
 			So(undispatchedTask.Insert(), ShouldBeNil)
 			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
@@ -1044,6 +1066,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				Project:   "exists",
 				Activated: true,
 				StartTime: utility.ZeroTime,
+				Version:   versionId,
 			}
 			So(t1.Insert(), ShouldBeNil)
 			t2 := task.Task{
@@ -1052,6 +1075,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				Project:   "exists",
 				Activated: true,
 				StartTime: utility.ZeroTime,
+				Version:   versionId,
 			}
 			So(t2.Insert(), ShouldBeNil)
 
@@ -1082,7 +1106,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				RunningTask:             "task1",
 				RunningTaskGroup:        "group1",
 				RunningTaskBuildVariant: "variant1",
-				RunningTaskVersion:      "version1",
+				RunningTaskVersion:      versionId,
 				RunningTaskProject:      "exists",
 				Distro: distro.Distro{
 					Id: "d1",
@@ -1098,7 +1122,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				RunningTask:             "",
 				RunningTaskGroup:        "",
 				RunningTaskBuildVariant: "",
-				RunningTaskVersion:      "",
+				RunningTaskVersion:      versionId,
 				RunningTaskProject:      "",
 				Distro: distro.Distro{
 					Id: d.Id,
@@ -1114,7 +1138,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				Activated:         true,
 				TaskGroup:         "group1",
 				BuildVariant:      "variant1",
-				Version:           "version1",
+				Version:           versionId,
 				Project:           "exists",
 				TaskGroupMaxHosts: 1,
 			}
@@ -1125,7 +1149,7 @@ func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.
 				Activated:         true,
 				TaskGroup:         "group2",
 				BuildVariant:      "variant1",
-				Version:           "version1",
+				Version:           versionId,
 				Project:           "exists",
 				TaskGroupMaxHosts: 1,
 			}
