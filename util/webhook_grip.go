@@ -109,6 +109,7 @@ func (w *EvergreenWebhook) request() (*http.Request, error) {
 }
 
 type evergreenWebhookLogger struct {
+	client *http.Client
 	*send.Base
 }
 
@@ -142,9 +143,11 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 		minDelay = time.Duration(raw.MinDelayMS) * time.Millisecond
 	}
 
-	client := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(client)
-
+	client := w.client
+	if client == nil {
+		client = utility.GetHTTPClient()
+		defer utility.PutHTTPClient(client)
+	}
 	return utility.Retry(context.Background(), func() (bool, error) {
 		req, err := raw.request()
 		if err != nil {
