@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/parameterstore"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip/level"
@@ -33,7 +34,7 @@ func TestDataConnectorSuite(t *testing.T) {
 func (s *AdminDataSuite) SetupSuite() {
 	s.env = &mock.Environment{}
 	s.Require().NoError(s.env.Configure(context.Background()))
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.EventCollection, model.ProjectRefCollection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, parameterstore.Collection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.EventCollection, model.ProjectRefCollection))
 	b := &build.Build{
 		Id:      "buildtest",
 		Status:  evergreen.BuildStarted,

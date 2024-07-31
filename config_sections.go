@@ -103,7 +103,7 @@ func (c *ConfigSections) getSSMParameters(ctx context.Context) error {
 
 	catcher := grip.NewBasicCatcher()
 	for name, section := range c.Sections {
-		ssmSection, ok := ssmSections[name]
+		ssmSection, ok := ssmSections[adminParameterName(name)]
 		if ok {
 			catcher.Wrapf(json.Unmarshal([]byte(ssmSection), section), "unmarshalling SSM section ID '%s'", name)
 		}
