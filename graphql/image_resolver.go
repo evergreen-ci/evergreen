@@ -36,7 +36,7 @@ func (r *imageResolver) Events(ctx context.Context, obj *model.APIImage, limit i
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	if obj == nil {
-		return nil, InternalServerError.Send(ctx, "nil image provided")
+		return nil, InternalServerError.Send(ctx, "image not provided")
 	}
 	opts := thirdparty.EventHistoryOptions{
 		Image: utility.FromStringPtr(obj.ID),

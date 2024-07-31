@@ -67,7 +67,7 @@ type APIImageEventEntry struct {
 	Name   *string                          `json:"name"`
 	Before *string                          `json:"before"`
 	After  *string                          `json:"after"`
-	Type   thirdparty.ImageEventType        `json:"image_event_type"`
+	Type   thirdparty.ImageEventType        `json:"type"`
 	Action thirdparty.ImageEventEntryAction `json:"action"`
 }
 

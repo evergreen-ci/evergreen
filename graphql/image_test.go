@@ -74,29 +74,28 @@ func TestEvents(t *testing.T) {
 
 	// Returns the correct number of events according to the limit.
 	imageID := "ubuntu2204"
-	image1 := model.APIImage{
+	image := model.APIImage{
 		ID: &imageID,
 	}
-	res, err := config.Resolvers.Image().Events(ctx, &image1, 5, 0)
+	res, err := config.Resolvers.Image().Events(ctx, &image, 5, 0)
 	require.NoError(t, err)
 	assert.Len(t, res, 5)
 
 	// Does not return the same events in different pages.
-	allAMIAfter := map[string]struct{}{}
+	eventAMIs := []string{}
 	for _, event := range res {
-		allAMIAfter[utility.FromStringPtr(event.AMIAfter)] = struct{}{}
+		eventAMIs = append(eventAMIs, utility.FromStringPtr(event.AMIAfter))
 	}
-	res2, err := config.Resolvers.Image().Events(ctx, &image1, 5, 1)
+	res, err = config.Resolvers.Image().Events(ctx, &image, 5, 1)
 	require.NoError(t, err)
-	assert.Len(t, res2, 5)
-	for _, event := range res2 {
-		allAMIAfter[utility.FromStringPtr(event.AMIAfter)] = struct{}{}
+	assert.Len(t, res, 5)
+	for _, event := range res {
+		assert.False(t, utility.StringSliceContains(eventAMIs, utility.FromStringPtr(event.AMIAfter)))
 	}
-	assert.Len(t, allAMIAfter, 10)
 
 	// Errors when no image provided.
-	image2 := model.APIImage{}
-	_, err = config.Resolvers.Image().Events(ctx, &image2, 5, 0)
+	image = model.APIImage{}
+	_, err = config.Resolvers.Image().Events(ctx, &image, 5, 0)
 	assert.Error(t, err)
 }
 
