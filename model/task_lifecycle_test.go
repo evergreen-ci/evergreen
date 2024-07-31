@@ -2532,6 +2532,80 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 	}
 }
 
+func TestMarkEndWithDisplayTaskResetWhenFinished(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, host.Collection))
+
+	const (
+		etID      = "execution_task_id"
+		dtID      = "display_task_id"
+		buildID   = "build_id"
+		versionID = "version_id"
+		hostID    = "host_id"
+	)
+	et := task.Task{
+		Id:            etID,
+		DisplayTaskId: utility.ToStringPtr(dtID),
+		Status:        evergreen.TaskStarted,
+		BuildId:       buildID,
+		Version:       versionID,
+		HostId:        hostID,
+	}
+	assert.NoError(t, et.Insert())
+	dt := task.Task{
+		Id:                dtID,
+		DisplayOnly:       true,
+		ExecutionTasks:    []string{etID},
+		BuildId:           buildID,
+		Version:           versionID,
+		Status:            evergreen.TaskStarted,
+		ResetWhenFinished: true,
+	}
+	assert.NoError(t, dt.Insert())
+	b := build.Build{
+		Id:     buildID,
+		Status: evergreen.BuildStarted,
+	}
+	assert.NoError(t, b.Insert())
+	v := Version{
+		Id:     versionID,
+		Status: evergreen.VersionStarted,
+	}
+	assert.NoError(t, v.Insert())
+	h := host.Host{
+		Id:     hostID,
+		Status: evergreen.HostRunning,
+	}
+	assert.NoError(t, h.Insert(ctx))
+
+	assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, &et, "", time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}, false))
+
+	restartedDisplayTask, err := task.FindOneId(dtID)
+	assert.NoError(t, err)
+	require.NotZero(t, restartedDisplayTask)
+	assert.Equal(t, evergreen.TaskUndispatched, restartedDisplayTask.Status, "display task should restart when execution task finishes")
+	assert.Equal(t, 1, restartedDisplayTask.Execution, "execution number should have incremented")
+
+	originalDisplayTask, err := task.FindOneOldByIdAndExecution(dtID, 0)
+	assert.NoError(t, err)
+	require.NotZero(t, originalDisplayTask)
+	assert.Equal(t, evergreen.TaskSucceeded, originalDisplayTask.Status, "original display task should be successful")
+
+	restartedExecTask, err := task.FindOneId(etID)
+	assert.NoError(t, err)
+	require.NotZero(t, restartedExecTask)
+	assert.Equal(t, evergreen.TaskUndispatched, restartedExecTask.Status, "execution task should restart when it finishes")
+	assert.Equal(t, 1, restartedExecTask.Execution, "execution number should have incremented")
+
+	originalExecTask, err := task.FindOneOldByIdAndExecution(etID, 0)
+	assert.NoError(t, err)
+	require.NotZero(t, originalExecTask)
+	assert.Equal(t, evergreen.TaskSucceeded, originalExecTask.Status, "original execution task should be successful")
+
+}
+
 func TestTryResetTask(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
