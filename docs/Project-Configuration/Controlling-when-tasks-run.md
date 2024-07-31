@@ -4,8 +4,8 @@ There are three ways to control the scheduling of builds/tasks on a project's wa
 
 In short:\
 **Cron:** activates builds/tasks on existing mainline commits based on a specified schedule.\
-**BatchTime:** sets an interval of time in minutes that Evergreen should wait before activating builds/tasks.\
-**Periodic builds:** creates a _new version_ with specified variants/tasks at a specified interval, regardless of commit activity.
+**Batch Time:** sets an interval of time in minutes that Evergreen should wait before activating builds/tasks. It will only activate the build/tasks for latest commit.\
+**Periodic Builds:** creates a _new version_ with specified variants/tasks at a specified interval, regardless of commit activity.
 
 Cron and batchtime cannot be combined.
 
@@ -13,7 +13,7 @@ Cron and batchtime cannot be combined.
 
 Cron activates build variants or tasks on existing mainline commits based on a specified schedule using UTC timezone and [cron syntax](https://crontab.guru/) or descriptors such as [@daily](https://pkg.go.dev/github.com/robfig/cron). For example, if set up to run daily, it’ll activate the most recent build variant at that time daily (it will not create any new tasks, only activate existing ones). This is ideal for activating tasks/variants based on regular intervals tied to project commit activity.
 
-Cron can be specified in the buildvariants section in the project config file on a build variant or task level.
+Cron can be specified in the buildvariants section in the project configuration file on a build variant or task level.
 
 #### Example
 
@@ -34,9 +34,9 @@ buildvariants:
 
 Batchtime sets an interval of time in minutes that Evergreen should wait before activating a version/task/variant. This is ideal for delaying activation of versions/tasks/variants to batch them together, reducing the frequency of activations and managing resource usage.
 
-A default batch time can be set on the project page (under general settings) for the interval of time (in minutes) that Evergreen should wait in between activating the latest version.
+A default batch time can be set on the project page [under general settings](../Project-Configuration/Project-and-Distro-Settings/#general-project-settings) for the interval of time (in minutes) that Evergreen should wait in between activating the latest version.
 
-Batchtime can also be specified in the buildvariants section in the project config file on a build variant or task level.
+Batchtime can also be specified at the top level of the project configuration file or in the buildvariants section in the project configuration file on a build variant or task level.
 
 #### Example
 
