@@ -482,9 +482,8 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 
 	ppConf := env.Settings().Providers.AWS.ParserProject
 	bucket, err := pail.NewS3BucketWithHTTPClient(c, pail.S3Options{
-		Name:        ppConf.Bucket,
-		Region:      endpoints.UsEast1RegionID,
-		Credentials: pail.CreateAWSCredentials(ppConf.Key, ppConf.Secret, ""),
+		Name:   ppConf.Bucket,
+		Region: endpoints.UsEast1RegionID,
 	})
 	require.NoError(t, err)
 	defer func() {
