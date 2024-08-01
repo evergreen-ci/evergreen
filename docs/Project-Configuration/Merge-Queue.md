@@ -231,3 +231,10 @@ version statuses.
 
 For more information on GitHub's merge queue feature and how to customize its
 settings, refer to the [official GitHub documentation](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue).
+
+## For Evergreen Developers
+
+To troubleshoot why a merge group version is not being created, find the `event
+= merge_group` message in Splunk. You can then search for the values of the
+`head_sha` and `msg_id` properties to track merge intent creation and the amboy
+job, as well as find the branch that Evergreen will clone for that project.
