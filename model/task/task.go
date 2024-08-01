@@ -1473,15 +1473,19 @@ func ByBeforeMidwayTaskFromIds(t1Id, t2Id string) (*Task, error) {
 // the scheduler queue.
 // If you pass an empty string as an argument to this function, this operation
 // will select tasks from all distros.
-func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) (int, error) {
+func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) ([]Task, error) {
 	query := schedulableHostTasksQuery()
 
 	if err := addApplicableDistroFilter(ctx, distroID, DistroIdKey, query); err != nil {
-		return 0, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	query[ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}
 
+	tasks, err := FindAll(db.Query(query))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding matching tasks")
+	}
 	update := bson.M{
 		"$set": bson.M{
 			PriorityKey:  evergreen.DisabledTaskPriority,
@@ -1491,12 +1495,14 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) (i
 
 	// Force the query to use 'distro_1_status_1_activated_1_priority_1_override_dependencies_1_unattainable_dependency_1'
 	// instead of defaulting to 'status_1_depends_on.status_1_depends_on.unattainable_1'.
-	info, err := UpdateAllWithHint(ctx, query, update, ActivatedTasksByDistroIndex)
+	_, err = UpdateAllWithHint(ctx, query, update, ActivatedTasksByDistroIndex)
 	if err != nil {
-		return 0, errors.Wrap(err, "unscheduling stale underwater tasks")
+		return nil, errors.Wrap(err, "unscheduling stale underwater tasks")
 	}
-
-	return info.Updated, nil
+	for _, modifiedTask := range tasks {
+		event.LogTaskPriority(modifiedTask.Id, modifiedTask.Execution, evergreen.UnderwaterTaskUnscheduler, evergreen.DisabledTaskPriority)
+	}
+	return tasks, nil
 }
 
 // DeactivateStepbackTask deactivates and aborts the matching stepback task.
