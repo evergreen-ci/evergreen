@@ -19,6 +19,8 @@ import (
 // fetches the needed task and project and calls the service function to
 // set the proper fields when reseting the task.
 type taskRestartHandler struct {
+	// If set for a display task, restarts only failed execution tasks. When
+	// used with a non-display task, this parameter has no effect.
 	FailedOnly bool `json:"failed_only"`
 
 	taskId   string
@@ -36,8 +38,8 @@ func makeTaskRestartHandler() gimlet.RouteHandler {
 //	@Tags			tasks
 //	@Router			/tasks/{task_id}/restart [post]
 //	@Security		Api-User || Api-Key
-//	@Param			task_id		path		string	true	"task ID"
-//	@Param			failed_only	query		string	false	"For a display task, restarts only failed execution tasks. When used with a non-display task, this parameter has no effect."
+//	@Param			task_id		path		string				true	"task ID"
+//	@Param			{object}	body		taskRestartHandler	false "parameters"
 //	@Success		200			{object}	model.APITask
 func (trh *taskRestartHandler) Factory() gimlet.RouteHandler {
 	return &taskRestartHandler{}
