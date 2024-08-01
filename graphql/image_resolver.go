@@ -28,6 +28,31 @@ func (r *imageResolver) Distros(ctx context.Context, obj *model.APIImage) ([]*mo
 	return apiDistros, nil
 }
 
+// Events is the resolver for the events field.
+func (r *imageResolver) Events(ctx context.Context, obj *model.APIImage, limit int, page int) ([]*model.APIImageEvent, error) {
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: '%s'", err.Error()))
+	}
+	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+	opts := thirdparty.EventHistoryOptions{
+		Image: utility.FromStringPtr(obj.ID),
+		Page:  page,
+		Limit: limit,
+	}
+	imageEvents, err := c.GetEvents(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting events for image '%s': '%s'", imageEvents, err.Error()))
+	}
+	apiImageEvents := []*model.APIImageEvent{}
+	for _, imageEvent := range imageEvents {
+		apiImageEvent := model.APIImageEvent{}
+		apiImageEvent.BuildFromService(imageEvent)
+		apiImageEvents = append(apiImageEvents, &apiImageEvent)
+	}
+	return apiImageEvents, nil
+}
+
 // LatestTask is the resolver for the latestTask field.
 func (r *imageResolver) LatestTask(ctx context.Context, obj *model.APIImage) (*model.APITask, error) {
 	imageID := utility.FromStringPtr(obj.ID)

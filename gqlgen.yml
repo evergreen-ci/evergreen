@@ -140,6 +140,14 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIceCreamSettings
   Image: 
     model: github.com/evergreen-ci/evergreen/rest/model.APIImage
+  ImageEvent:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIImageEvent 
+  ImageEventEntry:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIImageEventEntry
+  ImageEventEntryAction:
+    model: github.com/evergreen-ci/evergreen/thirdparty.ImageEventEntryAction
+  ImageEventType:
+    model: github.com/evergreen-ci/evergreen/thirdparty.ImageEventType
   InstanceTag:
     model: github.com/evergreen-ci/evergreen/model/host.Tag
   InstanceTagInput:

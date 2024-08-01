@@ -533,6 +533,7 @@ type ComplexityRoot struct {
 	Image struct {
 		AMI          func(childComplexity int) int
 		Distros      func(childComplexity int) int
+		Events       func(childComplexity int, limit int, page int) int
 		ID           func(childComplexity int) int
 		Kernel       func(childComplexity int) int
 		LastDeployed func(childComplexity int) int
@@ -541,6 +542,21 @@ type ComplexityRoot struct {
 		Packages     func(childComplexity int, opts thirdparty.PackageFilterOptions) int
 		Toolchains   func(childComplexity int, opts thirdparty.ToolchainFilterOptions) int
 		VersionID    func(childComplexity int) int
+	}
+
+	ImageEvent struct {
+		AMIAfter  func(childComplexity int) int
+		AMIBefore func(childComplexity int) int
+		Entries   func(childComplexity int) int
+		Timestamp func(childComplexity int) int
+	}
+
+	ImageEventEntry struct {
+		Action func(childComplexity int) int
+		After  func(childComplexity int) int
+		Before func(childComplexity int) int
+		Name   func(childComplexity int) int
+		Type   func(childComplexity int) int
 	}
 
 	InstanceTag struct {
@@ -1699,6 +1715,7 @@ type HostAllocatorSettingsResolver interface {
 }
 type ImageResolver interface {
 	Distros(ctx context.Context, obj *model.APIImage) ([]*model.APIDistro, error)
+	Events(ctx context.Context, obj *model.APIImage, limit int, page int) ([]*model.APIImageEvent, error)
 
 	LatestTask(ctx context.Context, obj *model.APIImage) (*model.APITask, error)
 
@@ -3902,6 +3919,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Image.Distros(childComplexity), true
 
+	case "Image.events":
+		if e.complexity.Image.Events == nil {
+			break
+		}
+
+		args, err := ec.field_Image_events_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Image.Events(childComplexity, args["limit"].(int), args["page"].(int)), true
+
 	case "Image.id":
 		if e.complexity.Image.ID == nil {
 			break
@@ -3967,6 +3996,69 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Image.VersionID(childComplexity), true
+
+	case "ImageEvent.amiAfter":
+		if e.complexity.ImageEvent.AMIAfter == nil {
+			break
+		}
+
+		return e.complexity.ImageEvent.AMIAfter(childComplexity), true
+
+	case "ImageEvent.amiBefore":
+		if e.complexity.ImageEvent.AMIBefore == nil {
+			break
+		}
+
+		return e.complexity.ImageEvent.AMIBefore(childComplexity), true
+
+	case "ImageEvent.entries":
+		if e.complexity.ImageEvent.Entries == nil {
+			break
+		}
+
+		return e.complexity.ImageEvent.Entries(childComplexity), true
+
+	case "ImageEvent.timestamp":
+		if e.complexity.ImageEvent.Timestamp == nil {
+			break
+		}
+
+		return e.complexity.ImageEvent.Timestamp(childComplexity), true
+
+	case "ImageEventEntry.action":
+		if e.complexity.ImageEventEntry.Action == nil {
+			break
+		}
+
+		return e.complexity.ImageEventEntry.Action(childComplexity), true
+
+	case "ImageEventEntry.after":
+		if e.complexity.ImageEventEntry.After == nil {
+			break
+		}
+
+		return e.complexity.ImageEventEntry.After(childComplexity), true
+
+	case "ImageEventEntry.before":
+		if e.complexity.ImageEventEntry.Before == nil {
+			break
+		}
+
+		return e.complexity.ImageEventEntry.Before(childComplexity), true
+
+	case "ImageEventEntry.name":
+		if e.complexity.ImageEventEntry.Name == nil {
+			break
+		}
+
+		return e.complexity.ImageEventEntry.Name(childComplexity), true
+
+	case "ImageEventEntry.type":
+		if e.complexity.ImageEventEntry.Type == nil {
+			break
+		}
+
+		return e.complexity.ImageEventEntry.Type(childComplexity), true
 
 	case "InstanceTag.canBeModified":
 		if e.complexity.InstanceTag.CanBeModified == nil {
@@ -10205,6 +10297,30 @@ func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, r
 		}
 	}
 	args["access"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Image_events_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["limit"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["page"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["page"] = arg1
 	return args, nil
 }
 
@@ -25303,6 +25419,71 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _Image_events(ctx context.Context, field graphql.CollectedField, obj *model.APIImage) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Image_events(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Image().Events(rctx, obj, fc.Args["limit"].(int), fc.Args["page"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIImageEvent)
+	fc.Result = res
+	return ec.marshalNImageEvent2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIImageEventᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Image_events(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Image",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "entries":
+				return ec.fieldContext_ImageEvent_entries(ctx, field)
+			case "timestamp":
+				return ec.fieldContext_ImageEvent_timestamp(ctx, field)
+			case "amiBefore":
+				return ec.fieldContext_ImageEvent_amiBefore(ctx, field)
+			case "amiAfter":
+				return ec.fieldContext_ImageEvent_amiAfter(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ImageEvent", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Image_events_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Image_kernel(ctx context.Context, field graphql.CollectedField, obj *model.APIImage) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Image_kernel(ctx, field)
 	if err != nil {
@@ -25793,6 +25974,411 @@ func (ec *executionContext) fieldContext_Image_versionId(_ context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImageEvent_entries(ctx context.Context, field graphql.CollectedField, obj *model.APIImageEvent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImageEvent_entries(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Entries, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIImageEventEntry)
+	fc.Result = res
+	return ec.marshalNImageEventEntry2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIImageEventEntryᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImageEvent_entries(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImageEvent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_ImageEventEntry_name(ctx, field)
+			case "after":
+				return ec.fieldContext_ImageEventEntry_after(ctx, field)
+			case "before":
+				return ec.fieldContext_ImageEventEntry_before(ctx, field)
+			case "type":
+				return ec.fieldContext_ImageEventEntry_type(ctx, field)
+			case "action":
+				return ec.fieldContext_ImageEventEntry_action(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ImageEventEntry", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImageEvent_timestamp(ctx context.Context, field graphql.CollectedField, obj *model.APIImageEvent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImageEvent_timestamp(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Timestamp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImageEvent_timestamp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImageEvent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImageEvent_amiBefore(ctx context.Context, field graphql.CollectedField, obj *model.APIImageEvent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImageEvent_amiBefore(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AMIBefore, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImageEvent_amiBefore(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImageEvent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImageEvent_amiAfter(ctx context.Context, field graphql.CollectedField, obj *model.APIImageEvent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImageEvent_amiAfter(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AMIAfter, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImageEvent_amiAfter(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImageEvent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImageEventEntry_name(ctx context.Context, field graphql.CollectedField, obj *model.APIImageEventEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImageEventEntry_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImageEventEntry_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImageEventEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImageEventEntry_after(ctx context.Context, field graphql.CollectedField, obj *model.APIImageEventEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImageEventEntry_after(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.After, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImageEventEntry_after(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImageEventEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImageEventEntry_before(ctx context.Context, field graphql.CollectedField, obj *model.APIImageEventEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImageEventEntry_before(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Before, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImageEventEntry_before(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImageEventEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImageEventEntry_type(ctx context.Context, field graphql.CollectedField, obj *model.APIImageEventEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImageEventEntry_type(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(thirdparty.ImageEventType)
+	fc.Result = res
+	return ec.marshalNImageEventType2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐImageEventType(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImageEventEntry_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImageEventEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ImageEventType does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImageEventEntry_action(ctx context.Context, field graphql.CollectedField, obj *model.APIImageEventEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImageEventEntry_action(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Action, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(thirdparty.ImageEventEntryAction)
+	fc.Result = res
+	return ec.marshalNImageEventEntryAction2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐImageEventEntryAction(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImageEventEntry_action(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImageEventEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ImageEventEntryAction does not have child fields")
 		},
 	}
 	return fc, nil
@@ -47903,6 +48489,8 @@ func (ec *executionContext) fieldContext_Query_image(ctx context.Context, field 
 				return ec.fieldContext_Image_ami(ctx, field)
 			case "distros":
 				return ec.fieldContext_Image_distros(ctx, field)
+			case "events":
+				return ec.fieldContext_Image_events(ctx, field)
 			case "kernel":
 				return ec.fieldContext_Image_kernel(ctx, field)
 			case "lastDeployed":
@@ -78903,6 +79491,42 @@ func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "events":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Image_events(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "kernel":
 			out.Values[i] = ec._Image_kernel(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -79027,6 +79651,116 @@ func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, ob
 			out.Values[i] = ec._Image_versionId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var imageEventImplementors = []string{"ImageEvent"}
+
+func (ec *executionContext) _ImageEvent(ctx context.Context, sel ast.SelectionSet, obj *model.APIImageEvent) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, imageEventImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ImageEvent")
+		case "entries":
+			out.Values[i] = ec._ImageEvent_entries(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "timestamp":
+			out.Values[i] = ec._ImageEvent_timestamp(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "amiBefore":
+			out.Values[i] = ec._ImageEvent_amiBefore(ctx, field, obj)
+		case "amiAfter":
+			out.Values[i] = ec._ImageEvent_amiAfter(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var imageEventEntryImplementors = []string{"ImageEventEntry"}
+
+func (ec *executionContext) _ImageEventEntry(ctx context.Context, sel ast.SelectionSet, obj *model.APIImageEventEntry) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, imageEventEntryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ImageEventEntry")
+		case "name":
+			out.Values[i] = ec._ImageEventEntry_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "after":
+			out.Values[i] = ec._ImageEventEntry_after(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "before":
+			out.Values[i] = ec._ImageEventEntry_before(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "type":
+			out.Values[i] = ec._ImageEventEntry_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "action":
+			out.Values[i] = ec._ImageEventEntry_action(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -91859,6 +92593,140 @@ func (ec *executionContext) marshalNIceCreamSettings2githubᚗcomᚋevergreenᚑ
 func (ec *executionContext) unmarshalNIceCreamSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIIceCreamSettings(ctx context.Context, v interface{}) (model.APIIceCreamSettings, error) {
 	res, err := ec.unmarshalInputIceCreamSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNImageEvent2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIImageEventᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIImageEvent) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNImageEvent2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIImageEvent(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNImageEvent2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIImageEvent(ctx context.Context, sel ast.SelectionSet, v *model.APIImageEvent) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ImageEvent(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNImageEventEntry2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIImageEventEntry(ctx context.Context, sel ast.SelectionSet, v model.APIImageEventEntry) graphql.Marshaler {
+	return ec._ImageEventEntry(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNImageEventEntry2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIImageEventEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIImageEventEntry) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNImageEventEntry2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIImageEventEntry(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalNImageEventEntryAction2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐImageEventEntryAction(ctx context.Context, v interface{}) (thirdparty.ImageEventEntryAction, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := thirdparty.ImageEventEntryAction(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNImageEventEntryAction2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐImageEventEntryAction(ctx context.Context, sel ast.SelectionSet, v thirdparty.ImageEventEntryAction) graphql.Marshaler {
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNImageEventType2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐImageEventType(ctx context.Context, v interface{}) (thirdparty.ImageEventType, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := thirdparty.ImageEventType(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNImageEventType2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐImageEventType(ctx context.Context, sel ast.SelectionSet, v thirdparty.ImageEventType) graphql.Marshaler {
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) marshalNInstanceTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTag(ctx context.Context, sel ast.SelectionSet, v host.Tag) graphql.Marshaler {

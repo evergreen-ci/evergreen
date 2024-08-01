@@ -1,3 +1,15 @@
+###### ENUMS ######
+enum ImageEventType {
+  PACKAGE
+  TOOLCHAIN
+}
+
+enum ImageEventEntryAction {
+  ADDED
+  UPDATED
+  DELETED
+}
+
 ###### INPUTS ######
 input PackageOpts {
   name: String
@@ -22,6 +34,7 @@ type Image {
   id: String!
   ami: String!
   distros: [Distro!]!
+  events(limit: Int!, page: Int!): [ImageEvent!]!
   kernel: String!
   lastDeployed: Time!
   latestTask: Task
@@ -41,4 +54,19 @@ type Toolchain {
   name: String!
   path: String!
   version: String!
+}
+
+type ImageEvent {
+  entries: [ImageEventEntry!]!
+  timestamp: Time!
+  amiBefore: String
+  amiAfter: String!
+}
+
+type ImageEventEntry {
+  name: String!
+  after: String!
+  before: String!
+  type: ImageEventType!
+  action: ImageEventEntryAction!
 }

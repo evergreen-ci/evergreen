@@ -65,6 +65,35 @@ func TestToolchains(t *testing.T) {
 	assert.Equal(t, testToolchain, utility.FromStringPtr(res[0].Name))
 }
 
+func TestEvents(t *testing.T) {
+	config := New("/graphql")
+	ctx := getContext(t)
+	testConfig := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestEvents")
+	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
+
+	// Returns the correct number of events according to the limit.
+	imageID := "ubuntu2204"
+	image := model.APIImage{
+		ID: &imageID,
+	}
+	res, err := config.Resolvers.Image().Events(ctx, &image, 5, 0)
+	require.NoError(t, err)
+	assert.Len(t, res, 5)
+
+	// Does not return the same events in different pages.
+	firstPageAMIs := []string{}
+	for _, event := range res {
+		firstPageAMIs = append(firstPageAMIs, utility.FromStringPtr(event.AMIAfter))
+	}
+	res, err = config.Resolvers.Image().Events(ctx, &image, 5, 1)
+	require.NoError(t, err)
+	assert.Len(t, res, 5)
+	for _, event := range res {
+		assert.False(t, utility.StringSliceContains(firstPageAMIs, utility.FromStringPtr(event.AMIAfter)))
+	}
+}
+
 func TestDistros(t *testing.T) {
 	setupPermissions(t)
 	require.NoError(t, db.ClearCollections(distro.Collection), "unable to clear distro collection")

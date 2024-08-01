@@ -26,10 +26,11 @@ func (apiPackage *APIPackage) BuildFromService(pkg thirdparty.Package) {
 
 // ToService returns a service layer package using the data from APIPackage.
 func (apiPackage *APIPackage) ToService() *thirdparty.Package {
-	pkg := thirdparty.Package{}
-	pkg.Name = utility.FromStringPtr(apiPackage.Name)
-	pkg.Manager = utility.FromStringPtr(apiPackage.Manager)
-	pkg.Version = utility.FromStringPtr(apiPackage.Version)
+	pkg := thirdparty.Package{
+		Name:    utility.FromStringPtr(apiPackage.Name),
+		Manager: utility.FromStringPtr(apiPackage.Manager),
+		Version: utility.FromStringPtr(apiPackage.Version),
+	}
 	return &pkg
 }
 
@@ -52,11 +53,82 @@ func (apiToolchain *APIToolchain) BuildFromService(toolchain thirdparty.Toolchai
 
 // ToService returns a service layer toolchain using the data from APIToolchain.
 func (apiToolchain *APIToolchain) ToService() *thirdparty.Toolchain {
-	toolchain := thirdparty.Toolchain{}
-	toolchain.Name = utility.FromStringPtr(apiToolchain.Name)
-	toolchain.Manager = utility.FromStringPtr(apiToolchain.Path)
-	toolchain.Version = utility.FromStringPtr(apiToolchain.Version)
+	toolchain := thirdparty.Toolchain{
+		Name:    utility.FromStringPtr(apiToolchain.Name),
+		Manager: utility.FromStringPtr(apiToolchain.Path),
+		Version: utility.FromStringPtr(apiToolchain.Version),
+	}
 	return &toolchain
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// APIImageEventEntry is the model to be returned by the API whenever image event entries are fetched.
+
+type APIImageEventEntry struct {
+	Name   *string                          `json:"name"`
+	Before *string                          `json:"before"`
+	After  *string                          `json:"after"`
+	Type   thirdparty.ImageEventType        `json:"type"`
+	Action thirdparty.ImageEventEntryAction `json:"action"`
+}
+
+// BuildFromService converts from service level thirdparty.ImageEventEntry to an APIImageEventEntry.
+func (apiImageEventEntry *APIImageEventEntry) BuildFromService(imageEventEntry thirdparty.ImageEventEntry) {
+	apiImageEventEntry.Name = utility.ToStringPtr(imageEventEntry.Name)
+	apiImageEventEntry.Before = utility.ToStringPtr(imageEventEntry.Before)
+	apiImageEventEntry.After = utility.ToStringPtr(imageEventEntry.After)
+	apiImageEventEntry.Type = imageEventEntry.Type
+	apiImageEventEntry.Action = imageEventEntry.Action
+}
+
+// ToService returns a service layer image event entry using the data from APIImageEventEntry.
+func (apiImageEventEntry *APIImageEventEntry) ToService() *thirdparty.ImageEventEntry {
+	imageEventEntry := thirdparty.ImageEventEntry{
+		Name:   utility.FromStringPtr(apiImageEventEntry.Name),
+		Before: utility.FromStringPtr(apiImageEventEntry.Before),
+		After:  utility.FromStringPtr(apiImageEventEntry.After),
+		Type:   apiImageEventEntry.Type,
+		Action: apiImageEventEntry.Action,
+	}
+	return &imageEventEntry
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// APIImageEvent is the model to be returned by the API whenever image events are fetched.
+
+type APIImageEvent struct {
+	Entries   []APIImageEventEntry `json:"entries"`
+	Timestamp *time.Time           `json:"timestamp"`
+	AMIBefore *string              `json:"ami_before"`
+	AMIAfter  *string              `json:"ami_after"`
+}
+
+// BuildFromService converts from service level thirdparty.ImageEvent to an APIImageEvent.
+func (apiImageEvent *APIImageEvent) BuildFromService(imageEvent thirdparty.ImageEvent) {
+	for _, imageEventEntry := range imageEvent.Entries {
+		apiImageEventEntry := APIImageEventEntry{}
+		apiImageEventEntry.BuildFromService(imageEventEntry)
+		apiImageEvent.Entries = append(apiImageEvent.Entries, apiImageEventEntry)
+	}
+	apiImageEvent.Timestamp = utility.ToTimePtr(imageEvent.Timestamp)
+	apiImageEvent.AMIBefore = utility.ToStringPtr(imageEvent.AMIBefore)
+	apiImageEvent.AMIAfter = utility.ToStringPtr(imageEvent.AMIAfter)
+}
+
+// ToService returns a service layer image event using the data from APIImageEvent.
+func (apiImage *APIImageEvent) ToService() *thirdparty.ImageEvent {
+	imageEvent := thirdparty.ImageEvent{
+		Timestamp: utility.FromTimePtr(apiImage.Timestamp),
+		AMIBefore: utility.FromStringPtr(apiImage.AMIBefore),
+		AMIAfter:  utility.FromStringPtr(apiImage.AMIAfter),
+	}
+	for _, apiImageEventEntry := range apiImage.Entries {
+		imageEventEntry := apiImageEventEntry.ToService()
+		imageEvent.Entries = append(imageEvent.Entries, *imageEventEntry)
+	}
+	return &imageEvent
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -84,12 +156,13 @@ func (apiImage *APIImage) BuildFromService(image thirdparty.Image) {
 
 // ToService returns a service layer image using the data from APIImage.
 func (apiImage *APIImage) ToService() *thirdparty.Image {
-	image := thirdparty.Image{}
-	image.ID = utility.FromStringPtr(apiImage.ID)
-	image.AMI = utility.FromStringPtr(apiImage.AMI)
-	image.Kernel = utility.FromStringPtr(apiImage.Kernel)
-	image.LastDeployed = utility.FromTimePtr(apiImage.LastDeployed)
-	image.Name = utility.FromStringPtr(apiImage.Name)
-	image.VersionID = utility.FromStringPtr(apiImage.VersionID)
+	image := thirdparty.Image{
+		ID:           utility.FromStringPtr(apiImage.ID),
+		AMI:          utility.FromStringPtr(apiImage.AMI),
+		Kernel:       utility.FromStringPtr(apiImage.Kernel),
+		LastDeployed: utility.FromTimePtr(apiImage.LastDeployed),
+		Name:         utility.FromStringPtr(apiImage.Name),
+		VersionID:    utility.FromStringPtr(apiImage.VersionID),
+	}
 	return &image
 }
