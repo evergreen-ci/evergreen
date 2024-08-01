@@ -339,8 +339,6 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 	if !t.IsFinished() {
 		// this is to disallow terminating running tasks via the UI
 		if utility.StringSliceContains(evergreen.UserTriggeredOrigins, origin) {
-			grip.Debugf("Unsatisfiable '%s' reset request on '%s' (status: '%s')",
-				user, t.Id, t.Status)
 			if t.DisplayOnly {
 				execTasks := map[string]string{}
 				for _, et := range t.ExecutionTasks {
@@ -2122,10 +2120,6 @@ func MarkTasksReset(ctx context.Context, taskIds []string, caller string) error 
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	// kim: NOTE: this just adds the execution task's parent DisplayTaskId, it
-	// doesn't actually add the display task itself to the list. See if this
-	// potentially causes a bug if we maybe only reset the execution task and
-	// not the display task.
 	tasks, err = task.AddParentDisplayTasks(tasks)
 	if err != nil {
 		return errors.WithStack(err)
@@ -2508,6 +2502,7 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 
 		updatedDisplayTask, err = tryUpdateDisplayTaskAtomically(*originalDisplayTask)
 		if err == nil {
+			t.DisplayTask = updatedDisplayTask
 			break
 		}
 
@@ -2683,7 +2678,7 @@ func checkResetSingleHostTaskGroup(ctx context.Context, t *task.Task, caller str
 // checkResetDisplayTask attempts to reset all tasks that are under the same
 // parent display task as t once all tasks under the display task are finished
 // running.
-func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, user, origin string, t *task.Task) error {
+func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, user, origin string, t *task.Task) (theErr error) {
 	if !t.ResetWhenFinished && !t.ResetFailedWhenFinished {
 		return nil
 	}
@@ -2700,7 +2695,7 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, use
 			hasFailedExecTask = true
 		}
 	}
-	if !t.ResetWhenFinished && t.ResetFailedWhenFinished && !hasFailedExecTask {
+	if t.IsRestartFailedOnly() && !hasFailedExecTask {
 		// Do not reset the display task if the execution tasks have all
 		// succeeded because it's only supposed to reset on failure.
 		return nil

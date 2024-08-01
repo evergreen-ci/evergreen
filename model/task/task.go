@@ -3339,7 +3339,7 @@ func CheckUsersPatchTaskLimit(requester, username string, includeDisplayAndTaskG
 }
 
 func FindExecTasksToReset(t *Task) ([]string, error) {
-	if t.ResetWhenFinished || !t.ResetFailedWhenFinished {
+	if !t.IsRestartFailedOnly() {
 		return t.ExecutionTasks, nil
 	}
 
