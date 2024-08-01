@@ -6,7 +6,8 @@
       },
       "githash": "123",
       "branch": "spruce",
-      "author": "bob.smith"
+      "author": "bob.smith",
+      "status": "failed"
     },
     {
       "_id": {
