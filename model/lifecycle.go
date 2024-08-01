@@ -1164,41 +1164,40 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 	}
 
 	t := &task.Task{
-		Id:                         id,
-		Secret:                     utility.RandomString(),
-		DisplayName:                buildVarTask.Name,
-		BuildId:                    creationInfo.Build.Id,
-		BuildVariant:               creationInfo.BuildVariant.Name,
-		BuildVariantDisplayName:    creationInfo.BuildVariant.DisplayName,
-		CreateTime:                 creationInfo.TaskCreateTime,
-		IngestTime:                 time.Now(),
-		ScheduledTime:              utility.ZeroTime,
-		StartTime:                  utility.ZeroTime, // Certain time fields must be initialized
-		FinishTime:                 utility.ZeroTime, // to our own utility.ZeroTime value (which is
-		DispatchTime:               utility.ZeroTime, // Unix epoch 0, not Go's time.Time{})
-		LastHeartbeat:              utility.ZeroTime,
-		Status:                     evergreen.TaskUndispatched,
-		Activated:                  activateTask,
-		ActivatedTime:              activatedTime,
-		RevisionOrderNumber:        creationInfo.Version.RevisionOrderNumber,
-		Requester:                  creationInfo.Version.Requester,
-		ParentPatchID:              creationInfo.Build.ParentPatchID,
-		StepbackInfo:               &task.StepbackInfo{},
-		ParentPatchNumber:          creationInfo.Build.ParentPatchNumber,
-		Version:                    creationInfo.Version.Id,
-		Revision:                   creationInfo.Version.Revision,
-		Project:                    creationInfo.Project.Identifier,
-		Priority:                   buildVarTask.Priority,
-		GenerateTask:               creationInfo.Project.IsGenerateTask(buildVarTask.Name),
-		TriggerID:                  creationInfo.Version.TriggerID,
-		TriggerType:                creationInfo.Version.TriggerType,
-		TriggerEvent:               creationInfo.Version.TriggerEvent,
-		CommitQueueMerge:           buildVarTask.CommitQueueMerge,
-		IsGithubCheck:              isGithubCheck,
-		ActivatedBy:                creationInfo.Version.AuthorID, // this will be overridden if the task was activated by stepback
-		DisplayTaskId:              utility.ToStringPtr(""),       // this will be overridden if the task is an execution task
-		IsEssentialToSucceed:       creationInfo.ActivatedTasksAreEssentialToSucceed && activateTask,
-		CachedProjectStorageMethod: creationInfo.Version.ProjectStorageMethod,
+		Id:                      id,
+		Secret:                  utility.RandomString(),
+		DisplayName:             buildVarTask.Name,
+		BuildId:                 creationInfo.Build.Id,
+		BuildVariant:            creationInfo.BuildVariant.Name,
+		BuildVariantDisplayName: creationInfo.BuildVariant.DisplayName,
+		CreateTime:              creationInfo.TaskCreateTime,
+		IngestTime:              time.Now(),
+		ScheduledTime:           utility.ZeroTime,
+		StartTime:               utility.ZeroTime, // Certain time fields must be initialized
+		FinishTime:              utility.ZeroTime, // to our own utility.ZeroTime value (which is
+		DispatchTime:            utility.ZeroTime, // Unix epoch 0, not Go's time.Time{})
+		LastHeartbeat:           utility.ZeroTime,
+		Status:                  evergreen.TaskUndispatched,
+		Activated:               activateTask,
+		ActivatedTime:           activatedTime,
+		RevisionOrderNumber:     creationInfo.Version.RevisionOrderNumber,
+		Requester:               creationInfo.Version.Requester,
+		ParentPatchID:           creationInfo.Build.ParentPatchID,
+		StepbackInfo:            &task.StepbackInfo{},
+		ParentPatchNumber:       creationInfo.Build.ParentPatchNumber,
+		Version:                 creationInfo.Version.Id,
+		Revision:                creationInfo.Version.Revision,
+		Project:                 creationInfo.Project.Identifier,
+		Priority:                buildVarTask.Priority,
+		GenerateTask:            creationInfo.Project.IsGenerateTask(buildVarTask.Name),
+		TriggerID:               creationInfo.Version.TriggerID,
+		TriggerType:             creationInfo.Version.TriggerType,
+		TriggerEvent:            creationInfo.Version.TriggerEvent,
+		CommitQueueMerge:        buildVarTask.CommitQueueMerge,
+		IsGithubCheck:           isGithubCheck,
+		ActivatedBy:             creationInfo.Version.AuthorID, // this will be overridden if the task was activated by stepback
+		DisplayTaskId:           utility.ToStringPtr(""),       // this will be overridden if the task is an execution task
+		IsEssentialToSucceed:    creationInfo.ActivatedTasksAreEssentialToSucceed && activateTask,
 	}
 
 	if err := t.SetGenerateTasksEstimations(ctx); err != nil {

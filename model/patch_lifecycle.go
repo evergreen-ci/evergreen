@@ -617,25 +617,24 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	}
 
 	patchVersion := &Version{
-		Id:                   p.Id.Hex(),
-		CreateTime:           time.Now(),
-		Identifier:           p.Project,
-		Revision:             p.Githash,
-		Author:               p.Author,
-		Message:              p.Description,
-		BuildIds:             []string{},
-		BuildVariants:        []VersionBuildStatus{},
-		Status:               evergreen.VersionCreated,
-		Requester:            requester,
-		ParentPatchID:        p.Triggers.ParentPatch,
-		ParentPatchNumber:    parentPatchNumber,
-		ProjectStorageMethod: p.ProjectStorageMethod,
-		Branch:               projectRef.Branch,
-		RevisionOrderNumber:  p.PatchNumber,
-		AuthorID:             p.Author,
-		Parameters:           params,
-		Activated:            utility.TruePtr(),
-		AuthorEmail:          authorEmail,
+		Id:                  p.Id.Hex(),
+		CreateTime:          time.Now(),
+		Identifier:          p.Project,
+		Revision:            p.Githash,
+		Author:              p.Author,
+		Message:             p.Description,
+		BuildIds:            []string{},
+		BuildVariants:       []VersionBuildStatus{},
+		Status:              evergreen.VersionCreated,
+		Requester:           requester,
+		ParentPatchID:       p.Triggers.ParentPatch,
+		ParentPatchNumber:   parentPatchNumber,
+		Branch:              projectRef.Branch,
+		RevisionOrderNumber: p.PatchNumber,
+		AuthorID:            p.Author,
+		Parameters:          params,
+		Activated:           utility.TruePtr(),
+		AuthorEmail:         authorEmail,
 	}
 
 	mfst, err := constructManifest(patchVersion, projectRef, project.Modules, githubOauthToken)
@@ -753,6 +752,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if err = task.UpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, numActivatedTasks, true); err != nil {
 		return nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
 	}
+
+	patchVersion.ProjectStorageMethod = p.ProjectStorageMethod
 
 	env := evergreen.GetEnvironment()
 	mongoClient := env.Client()
