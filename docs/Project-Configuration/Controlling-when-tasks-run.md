@@ -1,10 +1,10 @@
-# Controlling when tasks run
+# Controlling When a Task Runs
 
 There are three ways to control the scheduling of builds/tasks on a project's waterfall page.
 
 In short:\
 **Cron:** activates builds/tasks on existing mainline commits based on a specified schedule.\
-**Batch Time:** sets an interval of time in minutes that Evergreen should wait before activating builds/tasks. It will only activate the build/tasks for latest commit.\
+**Batchtime:** sets an interval of time in minutes that Evergreen should wait before activating builds/tasks. It will only activate the build/tasks for latest commit.\
 **Periodic Builds:** creates a _new version_ with specified variants/tasks at a specified interval, regardless of commit activity.
 
 Cron and batchtime cannot be combined.
@@ -30,7 +30,7 @@ buildvariants:
     cron: @daily # overrides build variant cron
 ```
 
-### BatchTime
+### Batchtime
 
 Batchtime sets an interval of time in minutes that Evergreen should wait before activating a version/task/variant. This is ideal for delaying activation of versions/tasks/variants to batch them together, reducing the frequency of activations and managing resource usage.
 
