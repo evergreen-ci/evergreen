@@ -3339,9 +3339,10 @@ func CheckUsersPatchTaskLimit(requester, username string, includeDisplayAndTaskG
 }
 
 func FindExecTasksToReset(t *Task) ([]string, error) {
-	if !t.ResetFailedWhenFinished {
+	if t.ResetWhenFinished || !t.ResetFailedWhenFinished {
 		return t.ExecutionTasks, nil
 	}
+
 	failedExecTasks, err := FindWithFields(FailedTasksByIds(t.ExecutionTasks), IdKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieving failed execution tasks")
