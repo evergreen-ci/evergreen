@@ -62,7 +62,7 @@ func validateFileSize(files []json.RawMessage, maxSizeInMB int) error {
 		fileSize += len(f)
 	}
 	if fileSize > maxSize {
-		return errors.Errorf("JSON is %d MB, which exceeds maximum of %d MB", fileSize, maxSize)
+		return errors.Errorf("JSON is %d bytes, which exceeds maximum of %d bytes", fileSize, maxSize)
 	}
 	return nil
 }
