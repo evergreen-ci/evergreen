@@ -15,6 +15,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 )
 
 const (
@@ -51,6 +52,7 @@ func newSSMClient(ctx context.Context) (ssmClient, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "loading AWS config")
 		}
+		otelaws.AppendMiddlewares(&config.APIOptions)
 		cachedClient = ssm.NewFromConfig(config)
 	}
 
