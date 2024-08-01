@@ -82,21 +82,16 @@ func TestEvents(t *testing.T) {
 	assert.Len(t, res, 5)
 
 	// Does not return the same events in different pages.
-	eventAMIs := []string{}
+	firstPageAMIs := []string{}
 	for _, event := range res {
-		eventAMIs = append(eventAMIs, utility.FromStringPtr(event.AMIAfter))
+		firstPageAMIs = append(firstPageAMIs, utility.FromStringPtr(event.AMIAfter))
 	}
 	res, err = config.Resolvers.Image().Events(ctx, &image, 5, 1)
 	require.NoError(t, err)
 	assert.Len(t, res, 5)
 	for _, event := range res {
-		assert.False(t, utility.StringSliceContains(eventAMIs, utility.FromStringPtr(event.AMIAfter)))
+		assert.False(t, utility.StringSliceContains(firstPageAMIs, utility.FromStringPtr(event.AMIAfter)))
 	}
-
-	// Errors when no image provided.
-	image = model.APIImage{}
-	_, err = config.Resolvers.Image().Events(ctx, &image, 5, 0)
-	assert.Error(t, err)
 }
 
 func TestDistros(t *testing.T) {

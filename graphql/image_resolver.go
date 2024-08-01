@@ -35,9 +35,6 @@ func (r *imageResolver) Events(ctx context.Context, obj *model.APIImage, limit i
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: '%s'", err.Error()))
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
-	if obj == nil {
-		return nil, InternalServerError.Send(ctx, "image not provided")
-	}
 	opts := thirdparty.EventHistoryOptions{
 		Image: utility.FromStringPtr(obj.ID),
 		Page:  page,

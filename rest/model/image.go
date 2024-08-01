@@ -26,10 +26,11 @@ func (apiPackage *APIPackage) BuildFromService(pkg thirdparty.Package) {
 
 // ToService returns a service layer package using the data from APIPackage.
 func (apiPackage *APIPackage) ToService() *thirdparty.Package {
-	pkg := thirdparty.Package{}
-	pkg.Name = utility.FromStringPtr(apiPackage.Name)
-	pkg.Manager = utility.FromStringPtr(apiPackage.Manager)
-	pkg.Version = utility.FromStringPtr(apiPackage.Version)
+	pkg := thirdparty.Package{
+		Name:    utility.FromStringPtr(apiPackage.Name),
+		Manager: utility.FromStringPtr(apiPackage.Manager),
+		Version: utility.FromStringPtr(apiPackage.Version),
+	}
 	return &pkg
 }
 
@@ -52,10 +53,11 @@ func (apiToolchain *APIToolchain) BuildFromService(toolchain thirdparty.Toolchai
 
 // ToService returns a service layer toolchain using the data from APIToolchain.
 func (apiToolchain *APIToolchain) ToService() *thirdparty.Toolchain {
-	toolchain := thirdparty.Toolchain{}
-	toolchain.Name = utility.FromStringPtr(apiToolchain.Name)
-	toolchain.Manager = utility.FromStringPtr(apiToolchain.Path)
-	toolchain.Version = utility.FromStringPtr(apiToolchain.Version)
+	toolchain := thirdparty.Toolchain{
+		Name:    utility.FromStringPtr(apiToolchain.Name),
+		Manager: utility.FromStringPtr(apiToolchain.Path),
+		Version: utility.FromStringPtr(apiToolchain.Version),
+	}
 	return &toolchain
 }
 
@@ -154,12 +156,13 @@ func (apiImage *APIImage) BuildFromService(image thirdparty.Image) {
 
 // ToService returns a service layer image using the data from APIImage.
 func (apiImage *APIImage) ToService() *thirdparty.Image {
-	image := thirdparty.Image{}
-	image.ID = utility.FromStringPtr(apiImage.ID)
-	image.AMI = utility.FromStringPtr(apiImage.AMI)
-	image.Kernel = utility.FromStringPtr(apiImage.Kernel)
-	image.LastDeployed = utility.FromTimePtr(apiImage.LastDeployed)
-	image.Name = utility.FromStringPtr(apiImage.Name)
-	image.VersionID = utility.FromStringPtr(apiImage.VersionID)
+	image := thirdparty.Image{
+		ID:           utility.FromStringPtr(apiImage.ID),
+		AMI:          utility.FromStringPtr(apiImage.AMI),
+		Kernel:       utility.FromStringPtr(apiImage.Kernel),
+		LastDeployed: utility.FromTimePtr(apiImage.LastDeployed),
+		Name:         utility.FromStringPtr(apiImage.Name),
+		VersionID:    utility.FromStringPtr(apiImage.VersionID),
+	}
 	return &image
 }
