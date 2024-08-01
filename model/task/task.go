@@ -253,12 +253,14 @@ type Task struct {
 
 	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running. This is typically to deal with tasks that should be
-	// reset but cannot do so yet because they're currently running.
+	// reset but cannot do so yet because they're currently running. This and
+	// ResetFailedWhenFinished are mutually exclusive settings.
 	ResetWhenFinished bool `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
 	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running and only reset if it fails. This is typically to deal
 	// with tasks that should be reset on failure but cannot do so yet because
-	// they're currently running.
+	// they're currently running. This and ResetWhenFinished are mutually
+	// exclusive settings.
 	ResetFailedWhenFinished bool `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
 	// NumAutomaticRestarts is the number of times the task has been programmatically restarted via a failed agent command.
 	NumAutomaticRestarts int `bson:"num_automatic_restarts,omitempty" json:"num_automatic_restarts,omitempty"`
@@ -3211,12 +3213,16 @@ func (t *Task) SetResetWhenFinished(caller string) error {
 	if err := updateSchedulingLimitForResetWhenFinished(t, caller); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
+	t.ResetFailedWhenFinished = false
 	t.ResetWhenFinished = true
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
+			"$unset": bson.M{
+				ResetFailedWhenFinishedKey: 1,
+			},
 			"$set": bson.M{
 				ResetWhenFinishedKey: true,
 			},
@@ -3242,6 +3248,9 @@ func (t *Task) SetResetWhenFinishedWithInc() error {
 			IsAutomaticRestartKey: bson.M{"$ne": true},
 		},
 		bson.M{
+			"$unset": bson.M{
+				ResetFailedWhenFinishedKey: 1,
+			},
 			"$set": bson.M{
 				ResetWhenFinishedKey:  true,
 				IsAutomaticRestartKey: true,
@@ -3263,12 +3272,16 @@ func (t *Task) SetResetFailedWhenFinished(caller string) error {
 	if err := updateSchedulingLimitForResetWhenFinished(t, caller); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
+	t.ResetWhenFinished = false
 	t.ResetFailedWhenFinished = true
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
+			"$unset": bson.M{
+				ResetWhenFinishedKey: 1,
+			},
 			"$set": bson.M{
 				ResetFailedWhenFinishedKey: true,
 			},

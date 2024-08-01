@@ -2868,11 +2868,16 @@ func abortAndMarkResetTasks(ctx context.Context, filter bson.M, taskIDs []string
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(
 		ctx,
 		filter,
-		bson.M{"$set": bson.M{
-			AbortedKey:           true,
-			AbortInfoKey:         AbortInfo{User: caller},
-			ResetWhenFinishedKey: true,
-		}},
+		bson.M{
+			"$set": bson.M{
+				AbortedKey:           true,
+				AbortInfoKey:         AbortInfo{User: caller},
+				ResetWhenFinishedKey: true,
+			},
+			"$unset": bson.M{
+				ResetFailedWhenFinishedKey: 1,
+			},
+		},
 	)
 
 	return err
