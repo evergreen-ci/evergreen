@@ -62,15 +62,16 @@ func validateFileSize(files []json.RawMessage, maxSizeInMB int) error {
 		fileSize += len(f)
 	}
 	if fileSize > maxSize {
-		return errors.Errorf("JSON is %d MB, which exceeds maximum of %d MB", fileSize, maxSize)
+		return errors.Errorf("JSON is %d bytes, which exceeds maximum of %d bytes", fileSize, maxSize)
 	}
 	return nil
 }
 
 func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := data.GenerateTasks(h.taskID, h.files); err != nil {
+	if err := data.GenerateTasks(ctx, h.env.Settings(), h.taskID, h.files); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "generating tasks for task '%s'", h.taskID))
 	}
+
 	t, err := task.FindOneId(h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting task '%s'", h.taskID))
