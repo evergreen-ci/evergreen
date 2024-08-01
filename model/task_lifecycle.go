@@ -2458,7 +2458,7 @@ func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t
 				return errors.Wrap(err, "marking display task for reset")
 			}
 		}
-		return errors.Wrap(checkResetDisplayTask(ctx, settings, user, origin, &taskToReset), "checking display task reset")
+		return errors.Wrap(checkResetDisplayTask(ctx, settings, user, origin, &taskToReset), "checking and resetting display task")
 	}
 
 	return errors.Wrap(TryResetTask(ctx, settings, t.Id, user, origin, detail), "resetting task")
@@ -2691,11 +2691,21 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, use
 	if err != nil {
 		return errors.Wrapf(err, "getting execution tasks for display task '%s'", t.Id)
 	}
+	hasFailedExecTask := false
 	for _, execTask := range execTasks {
 		if !execTask.IsFinished() && !execTask.Blocked() && execTask.Activated {
 			return nil // all tasks not finished
 		}
+		if execTask.Status == evergreen.TaskFailed {
+			hasFailedExecTask = true
+		}
 	}
+	if !t.ResetWhenFinished && t.ResetFailedWhenFinished && !hasFailedExecTask {
+		// Do not reset the display task if the execution tasks have all
+		// succeeded because it's only supposed to reset on failure.
+		return nil
+	}
+
 	details := &t.Details
 	// Assign task end details to indicate system failure if we receive no valid details
 	if details.IsEmpty() && !t.IsFinished() {

@@ -254,7 +254,11 @@ type Task struct {
 	// ResetWhenFinished indicates that a task should be reset once it is
 	// finished running. This is typically to deal with tasks that should be
 	// reset but cannot do so yet because they're currently running.
-	ResetWhenFinished       bool `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
+	ResetWhenFinished bool `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
+	// ResetWhenFinished indicates that a task should be reset once it is
+	// finished running and only reset if it fails. This is typically to deal
+	// with tasks that should be reset on failure but cannot do so yet because
+	// they're currently running.
 	ResetFailedWhenFinished bool `bson:"reset_failed_when_finished,omitempty" json:"reset_failed_when_finished,omitempty"`
 	// NumAutomaticRestarts is the number of times the task has been programmatically restarted via a failed agent command.
 	NumAutomaticRestarts int `bson:"num_automatic_restarts,omitempty" json:"num_automatic_restarts,omitempty"`

@@ -2210,8 +2210,8 @@ func TestDisplayTaskRestart(t *testing.T) {
 	defer cancel()
 
 	assert := assert.New(t)
-	displayTasks := []string{"displayTask"}
-	allTasks := []string{"displayTask", "task5", "task6"}
+	displayTasks := []string{"displayTask1"}
+	allTasks := []string{"displayTask1", "task5", "task6"}
 
 	// test restarting a version
 	assert.NoError(resetTaskData())
@@ -2239,13 +2239,13 @@ func TestDisplayTaskRestart(t *testing.T) {
 
 	// test that restarting a task correctly resets the task and archives it
 	assert.NoError(resetTaskData())
-	assert.NoError(resetTask(ctx, "displayTask", "caller"))
+	assert.NoError(resetTask(ctx, "displayTask1", "caller"))
 	archivedTasks, err := task.FindOldWithDisplayTasks(nil)
 	assert.NoError(err)
 	assert.Len(archivedTasks, 3)
 	foundDisplayTask := false
 	for _, ot := range archivedTasks {
-		if ot.OldTaskId == "displayTask" {
+		if ot.OldTaskId == "displayTask1" {
 			foundDisplayTask = true
 		}
 	}
@@ -2261,7 +2261,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 
 	// Test that restarting a display task with restartFailed correctly resets failed tasks.
 	assert.NoError(resetTaskData())
-	dt, err := task.FindOneId("displayTask")
+	dt, err := task.FindOneId("displayTask1")
 	assert.NoError(err)
 	assert.NoError(dt.SetResetFailedWhenFinished("caller"))
 
@@ -2309,40 +2309,87 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	settings := testutil.TestConfig()
-	assert.NoError(t, resetTaskData())
-	et, err := task.FindOneId("task5")
-	assert.NoError(t, err)
-	require.NotNil(t, et)
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, settings *evergreen.Settings){
+		"ResettingExecutionTaskResetsDisplayTask": func(ctx context.Context, t *testing.T, settings *evergreen.Settings) {
+			et, err := task.FindOneId("task5")
+			assert.NoError(t, err)
+			require.NotNil(t, et)
 
-	// restarting execution tasks should restart display task
-	assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, et, "caller", evergreen.StepbackTaskActivator, false, nil))
-	dt, err := task.FindOneId("displayTask")
-	assert.NoError(t, err)
-	require.NotNil(t, dt)
-	assert.Equal(t, dt.Status, evergreen.TaskUndispatched)
-	assert.Equal(t, dt.Execution, 1)
-	assert.False(t, dt.ResetWhenFinished)
+			// restarting execution tasks should restart display task
+			assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, et, "caller", evergreen.StepbackTaskActivator, false, nil))
+			dt, err := task.FindOneId("displayTask1")
+			assert.NoError(t, err)
+			require.NotNil(t, dt)
+			assert.Equal(t, evergreen.TaskUndispatched, dt.Status)
+			assert.Equal(t, 1, dt.Execution)
+			assert.False(t, dt.ResetWhenFinished)
 
-	dbUser, err := user.FindOneById("caller")
-	assert.NoError(t, err)
-	require.NotNil(t, dbUser)
-	assert.Equal(t, dbUser.NumScheduledPatchTasks, 2)
+			dbUser, err := user.FindOneById("caller")
+			assert.NoError(t, err)
+			require.NotNil(t, dbUser)
+			assert.Equal(t, len(dt.ExecutionTasks), dbUser.NumScheduledPatchTasks)
+		},
+		"ResettingFinishedDisplayTaskResetsExecutionTasks": func(ctx context.Context, t *testing.T, settings *evergreen.Settings) {
+			dt, err := task.FindOneId("displayTask1")
+			assert.NoError(t, err)
+			require.NotNil(t, dt)
 
-	// restarting display task should mark the display task for restart if it's not complete
-	// ResetFailedWhenFinished should be set to true if failedOnly is passed in
-	assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, dt, "caller", evergreen.StepbackTaskActivator, true, nil))
-	dt, err = task.FindOneId("displayTask")
-	assert.NoError(t, err)
-	require.NotNil(t, dt)
-	assert.Equal(t, dt.Status, evergreen.TaskUndispatched)
-	assert.Equal(t, dt.Execution, 1)
-	assert.True(t, dt.ResetFailedWhenFinished)
+			assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, dt, "caller", evergreen.StepbackTaskActivator, true, nil))
+			dt, err = task.FindOneId("displayTask1")
+			assert.NoError(t, err)
+			require.NotNil(t, dt)
+			assert.Equal(t, evergreen.TaskUndispatched, dt.Status)
+			assert.Equal(t, 1, dt.Execution)
+			assert.False(t, dt.ResetFailedWhenFinished, "should not mark to reset failed tasks when display task was already finished")
 
-	dbUser, err = user.FindOneById("caller")
-	assert.NoError(t, err)
-	require.NotNil(t, dbUser)
-	assert.Equal(t, dbUser.NumScheduledPatchTasks, 4)
+			failedExecTask, err := task.FindOneId("task6")
+			assert.NoError(t, err)
+			require.NotNil(t, failedExecTask)
+			assert.Equal(t, evergreen.TaskUndispatched, failedExecTask.Status, "failed execution task should be reset")
+
+			successfulExecTask, err := task.FindOneId("task5")
+			assert.NoError(t, err)
+			require.NotNil(t, successfulExecTask)
+			assert.Equal(t, evergreen.TaskSucceeded, successfulExecTask.Status, "successful execution task should not be reset")
+
+			dbUser, err := user.FindOneById("caller")
+			assert.NoError(t, err)
+			require.NotNil(t, dbUser)
+			assert.Equal(t, len(dt.ExecutionTasks), dbUser.NumScheduledPatchTasks)
+
+			assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, dt, "caller", evergreen.StepbackTaskActivator, true, nil))
+			dt, err = task.FindOneId("displayTask1")
+			assert.NoError(t, err)
+			require.NotNil(t, dt)
+			assert.Equal(t, evergreen.TaskUndispatched, dt.Status)
+			assert.Equal(t, 1, dt.Execution)
+			assert.True(t, dt.ResetFailedWhenFinished, "should mark to reset failed tasks when display task is unfinished")
+		},
+		"ResettingFailedTasksInSuccessfulDisplayTaskShouldNotReset": func(ctx context.Context, t *testing.T, settings *evergreen.Settings) {
+			dt, err := task.FindOneId("displayTask2")
+			assert.NoError(t, err)
+			require.NotNil(t, dt)
+
+			assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, dt, "caller", evergreen.StepbackTaskActivator, true, nil))
+			dt, err = task.FindOneId("displayTask2")
+			assert.NoError(t, err)
+			require.NotNil(t, dt)
+			assert.Equal(t, evergreen.TaskSucceeded, dt.Status, "display task should not reset because all execution tasks succeeded")
+			assert.Equal(t, 0, dt.Execution, "should not reset to new execution because all execution tasks succeeded")
+
+			et, err := task.FindOneId("task7")
+			assert.NoError(t, err)
+			require.NotNil(t, et)
+			assert.Equal(t, evergreen.TaskSucceeded, et.Status, "successful execution task should not be reset")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			settings := testutil.TestConfig()
+			assert.NoError(t, resetTaskData())
+
+			tCase(ctx, t, settings)
+		})
+	}
 }
 
 func resetTaskData() error {
@@ -2442,7 +2489,7 @@ func resetTaskData() error {
 		DisplayName:   "task5",
 		BuildId:       build3.Id,
 		Version:       v.Id,
-		DisplayTaskId: utility.ToStringPtr("displayTask"),
+		DisplayTaskId: utility.ToStringPtr("displayTask1"),
 		Status:        evergreen.TaskSucceeded,
 		Activated:     true,
 		DispatchTime:  time.Now(),
@@ -2461,7 +2508,7 @@ func resetTaskData() error {
 		DisplayName:   "task6",
 		BuildId:       build3.Id,
 		Version:       v.Id,
-		DisplayTaskId: utility.ToStringPtr("displayTask"),
+		DisplayTaskId: utility.ToStringPtr("displayTask1"),
 		Status:        evergreen.TaskFailed,
 		Activated:     true,
 		DispatchTime:  time.Now(),
@@ -2469,9 +2516,23 @@ func resetTaskData() error {
 	if err := task6.Insert(); err != nil {
 		return err
 	}
-	displayTask := &task.Task{
-		Id:             "displayTask",
-		DisplayName:    "displayTask",
+	task7 := &task.Task{
+		Id:            "task7",
+		DisplayName:   "task7",
+		BuildId:       build3.Id,
+		Version:       v.Id,
+		DisplayTaskId: utility.ToStringPtr("displayTask2"),
+		Status:        evergreen.TaskSucceeded,
+		Activated:     true,
+		DispatchTime:  time.Now(),
+	}
+	if err := task7.Insert(); err != nil {
+		return err
+	}
+	displayTask1 := &task.Task{
+		Id:             "displayTask1",
+		DisplayName:    "displayTask1",
+		Execution:      0,
 		Requester:      evergreen.PatchVersionRequester,
 		BuildId:        build3.Id,
 		Version:        v.Id,
@@ -2482,10 +2543,27 @@ func resetTaskData() error {
 		Activated:      true,
 		DispatchTime:   time.Now(),
 	}
-	if err := displayTask.Insert(); err != nil {
+	if err := displayTask1.Insert(); err != nil {
 		return err
 	}
 	if err := UpdateDisplayTaskForTask(task5); err != nil {
+		return err
+	}
+	displayTask2 := &task.Task{
+		Id:             "displayTask2",
+		DisplayName:    "displayTask2",
+		Execution:      0,
+		Requester:      evergreen.PatchVersionRequester,
+		BuildId:        build3.Id,
+		Version:        v.Id,
+		DisplayTaskId:  utility.ToStringPtr(""),
+		DisplayOnly:    true,
+		ExecutionTasks: []string{task7.Id},
+		Status:         evergreen.TaskSucceeded,
+		Activated:      true,
+		DispatchTime:   time.Now(),
+	}
+	if err := displayTask2.Insert(); err != nil {
 		return err
 	}
 	return nil
