@@ -729,11 +729,11 @@ func (t *taskTriggers) taskRuntimeChange(sub *event.Subscription) (*notification
 	return t.generate(sub, fmt.Sprintf("changed in runtime by %.1f%% (over threshold of %s%%)", percentChange, percentString), "")
 }
 
-// isValidFailedTaskStatus only matches task statuses that should be triggered for failure.
-// For example, it excludes  setup failures.
+// isValidFailedTaskStatus only matches task display statuses that should
+// trigger failed task notifications. For example, it excludes setup
+// failures.
 func isValidFailedTaskStatus(status string) bool {
-	return status == evergreen.TaskFailed || status == evergreen.TaskSystemFailed ||
-		status == evergreen.TaskSystemUnresponse || status == evergreen.TaskTimedOut || status == evergreen.TaskTestTimedOut
+	return evergreen.IsFailedTaskStatus(status) && status != evergreen.TaskSetupFailed
 }
 
 func isTestStatusRegression(oldStatus, newStatus string) bool {
