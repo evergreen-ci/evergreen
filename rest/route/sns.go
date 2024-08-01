@@ -687,7 +687,7 @@ func makeSSMSNS(env evergreen.Environment, queue amboy.Queue) gimlet.RouteHandle
 }
 
 func (sns *ssmSNS) Factory() gimlet.RouteHandler {
-	return &ecsSNS{
+	return &ssmSNS{
 		baseSNS: makeBaseSNS(sns.env, sns.queue),
 	}
 }
