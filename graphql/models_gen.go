@@ -73,6 +73,16 @@ type DeleteDistroPayload struct {
 	DeletedDistroID string `json:"deletedDistroId"`
 }
 
+// DeleteGithubAppCredentialsInput is the input to the deleteGithubAppCredentials mutation.
+type DeleteGithubAppCredentialsInput struct {
+	ProjectID string `json:"projectId"`
+}
+
+// DeleteGithubAppCredentialsPayload is returned by the deleteGithubAppCredentials mutation.
+type DeleteGithubAppCredentialsPayload struct {
+	OldAppID int `json:"oldAppId"`
+}
+
 type Dependency struct {
 	BuildVariant   string         `json:"buildVariant"`
 	MetStatus      MetStatus      `json:"metStatus"`

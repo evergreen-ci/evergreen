@@ -266,9 +266,6 @@ func (h *hostAgentNextTask) prepareHostForAgentExit(ctx context.Context, params 
 	case evergreen.HostQuarantined:
 		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
-		if err := params.host.StopAgentMonitor(ctx, h.env); err != nil {
-			return true, errors.Wrap(err, "stopping agent monitor")
-		}
 
 		if err := params.host.SetNeedsAgentDeploy(ctx, true); err != nil {
 			return true, errors.Wrap(err, "marking host as needing agent or agent monitor deploy")
@@ -808,21 +805,6 @@ func handleReprovisioning(ctx context.Context, env evergreen.Environment, h *hos
 		return apimodels.NextTaskResponse{}, nil
 	}
 
-	stopCtx, stopCancel := context.WithTimeout(ctx, 30*time.Second)
-	defer stopCancel()
-	if err := h.StopAgentMonitor(stopCtx, env); err != nil {
-		// Stopping the agent monitor should not stop reprovisioning as long as
-		// the host is not currently running a task.
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "problem stopping agent monitor for reprovisioning",
-			"host_id":       h.Id,
-			"operation":     "next_task",
-			"revision":      evergreen.BuildRevision,
-			"agent":         evergreen.AgentVersion,
-			"current_agent": h.AgentRevision,
-		}))
-	}
-
 	if err := prepareForReprovision(ctx, env, h); err != nil {
 		return apimodels.NextTaskResponse{}, err
 	}
@@ -1305,19 +1287,6 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			}))
 		}
 
-		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-		defer cancel()
-		if err = currentHost.StopAgentMonitor(ctx, h.env); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"message":       "problem stopping agent monitor",
-				"host_id":       currentHost.Id,
-				"operation":     "end_task",
-				"revision":      evergreen.BuildRevision,
-				"agent":         evergreen.AgentVersion,
-				"current_agent": currentHost.AgentRevision,
-			}))
-			return gimlet.MakeJSONInternalErrorResponder(err)
-		}
 		endTaskResp.ShouldExit = true
 	}
 
@@ -1349,12 +1318,6 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 func prepareHostForAgentExit(ctx context.Context, params agentExitParams, env evergreen.Environment) (shouldExit bool, err error) {
 	switch params.host.Status {
 	case evergreen.HostQuarantined:
-		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-		defer cancel()
-		if err := params.host.StopAgentMonitor(ctx, env); err != nil {
-			return true, errors.Wrap(err, "stopping agent monitor")
-		}
-
 		if err := params.host.SetNeedsAgentDeploy(ctx, true); err != nil {
 			return true, errors.Wrap(err, "marking host as needing agent or agent monitor deploy")
 		}

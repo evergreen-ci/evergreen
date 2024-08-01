@@ -52,6 +52,7 @@ type monitor struct {
 	// Monitor args
 	credentialsPath string
 	clientPath      string
+	hostID          string
 	cloudProvider   string
 	distroID        string
 	shellPath       string
@@ -154,14 +155,24 @@ func agentMonitor() cli.Command {
 			},
 		),
 		Action: func(c *cli.Context) error {
-			comm, err := client.NewCommunicator(c.Parent().String(agentAPIServerURLFlagName))
+			apiServerURL := c.Parent().String(agentAPIServerURLFlagName)
+			hostID := c.Parent().String(agentHostIDFlagName)
+			hostSecret := c.Parent().String(agentHostSecretFlagName)
+			if hostID == "" || hostSecret == "" {
+				return errors.New("host ID and host secret must be set")
+			}
+			comm, err := client.NewCommunicator(apiServerURL)
 			if err != nil {
 				return errors.Wrap(err, "initializing communicator")
 			}
+			comm.SetHostID(hostID)
+			comm.SetHostSecret(hostSecret)
+
 			m := &monitor{
 				comm:            comm,
 				credentialsPath: c.String(credentialsPathFlagName),
 				clientPath:      c.String(clientPathFlagName),
+				hostID:          hostID,
 				distroID:        c.String(distroIDFlagName),
 				cloudProvider:   c.Parent().String(agentCloudProviderFlagName),
 				shellPath:       c.String(shellPathFlagName),
@@ -425,11 +436,32 @@ func (m *monitor) runAgent(ctx context.Context, retry utility.RetryOptions) erro
 	return errors.Wrapf(err, "agent exited with code %d", exitCode)
 }
 
+var errAgentMonitorShouldExit = errors.New("host's agent monitor should exit")
+
 // runMonitor runs the monitor loop. It fetches the agent, starts it, and
 // repeats when the agent terminates.
 func (m *monitor) run(ctx context.Context) {
 	for {
 		if err := utility.Retry(ctx, func() (bool, error) {
+			// Check the host health before actually starting a new agent. If
+			// the host is in a state where it cannot run tasks (e.g.
+			// indefinitely for quarantined hosts, or permanently for terminated
+			// hosts), the agent cannot run tasks anyways.
+			healthCheck, err := m.getHostHealth(ctx)
+			if err != nil {
+				return true, errors.Wrap(err, "checking host health")
+			}
+
+			if healthCheck.shouldExit {
+				grip.Info(message.Fields{
+					"message":     "host status indicates it should exit, shutting down",
+					"host_id":     m.hostID,
+					"host_status": healthCheck.status,
+					"distro_id":   m.distroID,
+				})
+				return false, errAgentMonitorShouldExit
+			}
+
 			clientURLs, err := m.comm.GetClientURLs(ctx, m.distroID)
 			if err != nil {
 				return true, errors.Wrap(err, "retrieving client URLs")
@@ -468,7 +500,48 @@ func (m *monitor) run(ctx context.Context) {
 				grip.Warning(errors.Wrap(err, "context cancelled while running monitor"))
 				return
 			}
+			if errors.Is(err, errAgentMonitorShouldExit) {
+				return
+			}
 			grip.Error(errors.Wrapf(err, "managing agent"))
 		}
+	}
+}
+
+type hostHealthCheck struct {
+	shouldExit bool
+	status     string
+}
+
+func (m *monitor) getHostHealth(ctx context.Context) (hostHealthCheck, error) {
+	apiHost, err := m.comm.PostHostIsUp(ctx, "")
+	if err != nil {
+		return hostHealthCheck{
+			shouldExit: false,
+		}, errors.Wrap(err, "getting host to check its status")
+	}
+
+	status := utility.FromStringPtr(apiHost.Status)
+
+	if utility.FromStringPtr(apiHost.NeedsReprovision) != "" {
+		// If the host needs to reprovision, the agent monitor has to stop to
+		// allow the reprovisioning to happen.
+		return hostHealthCheck{
+			shouldExit: true,
+			status:     status,
+		}, nil
+	}
+
+	switch status {
+	case evergreen.HostBuilding, evergreen.HostStarting, evergreen.HostRunning:
+		return hostHealthCheck{
+			shouldExit: false,
+			status:     status,
+		}, nil
+	default:
+		return hostHealthCheck{
+			shouldExit: true,
+			status:     status,
+		}, nil
 	}
 }

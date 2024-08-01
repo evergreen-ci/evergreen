@@ -253,8 +253,9 @@ func VersionBySystemRequesterOrdered(projectId string, startOrder int) db.Q {
 	return db.Query(q).Sort([]string{"-" + VersionRevisionOrderNumberKey})
 }
 
-// VersionByMostRecentNonIgnored finds all non-ignored versions within a project,
-// ordered by most recently created to oldest, before a given time.
+// VersionByMostRecentNonIgnored finds all non-ignored mainline commit versions
+// within a project, ordered by most recently created to oldest, before a given
+// time.
 func VersionByMostRecentNonIgnored(projectId string, ts time.Time) db.Q {
 	return db.Query(
 		bson.M{

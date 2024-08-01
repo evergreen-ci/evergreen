@@ -14,18 +14,27 @@ import (
 	"github.com/pkg/errors"
 )
 
+type ImageEventEntryAction string
+
 const (
-	PackagesType   = "Packages"
-	ToolchainsType = "Toolchains"
-	OSType         = "OS"
+	ImageEventEntryActionAdded   ImageEventEntryAction = "ADDED"
+	ImageEventEntryActionUpdated ImageEventEntryAction = "UPDATED"
+	ImageEventEntryActionDeleted ImageEventEntryAction = "DELETED"
+)
+
+type ImageEventType string
+
+const (
+	ImageEventTypePackages   ImageEventType = "Packages"
+	ImageEventTypeToolchains ImageEventType = "Toolchains"
+)
+
+const (
+	OSType = "OS"
 
 	OSNameField      = "PRETTY_NAME"
 	OSKernelField    = "Kernel"
 	OSVersionIDField = "VERSION_ID"
-
-	AddedImageEntryAction   = "ADDED"
-	UpdatedImageEntryAction = "UPDATED"
-	DeletedImageEntryAction = "DELETED"
 )
 
 type RuntimeEnvironmentsClient struct {
@@ -94,8 +103,8 @@ type PackageFilterOptions struct {
 	Manager string // Filter by the package manager (ex. pip).
 }
 
-// getPackages returns a list of packages from the corresponding AMI and filters in opts.
-func (c *RuntimeEnvironmentsClient) getPackages(ctx context.Context, opts PackageFilterOptions) ([]Package, error) {
+// GetPackages returns a list of packages from the corresponding AMI and filters in opts.
+func (c *RuntimeEnvironmentsClient) GetPackages(ctx context.Context, opts PackageFilterOptions) ([]Package, error) {
 	if opts.AMI == "" {
 		return nil, errors.New("no AMI provided")
 	}
@@ -107,7 +116,7 @@ func (c *RuntimeEnvironmentsClient) getPackages(ctx context.Context, opts Packag
 	}
 	params.Set("name", opts.Name)
 	params.Set("manager", opts.Manager)
-	params.Set("type", PackagesType)
+	params.Set("type", string(ImageEventTypePackages))
 	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
@@ -191,7 +200,7 @@ type ImageDiffOptions struct {
 type ImageDiffChange struct {
 	Name    string
 	Manager string
-	Type    string
+	Type    ImageEventType
 	Removed string
 	Added   string
 }
@@ -224,7 +233,7 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts Image
 	}
 	filteredChanges := []ImageDiffChange{}
 	for _, c := range changes {
-		if c.Type == PackagesType || c.Type == ToolchainsType {
+		if c.Type == ImageEventTypePackages || c.Type == ImageEventTypeToolchains {
 			filteredChanges = append(filteredChanges, c)
 		}
 	}
@@ -247,8 +256,8 @@ type ToolchainFilterOptions struct {
 	Version string // Filter by the version (ex. go1.8.7).
 }
 
-// getToolchains returns a list of toolchains from the AMI and filters in the ToolchainFilterOptions.
-func (c *RuntimeEnvironmentsClient) getToolchains(ctx context.Context, opts ToolchainFilterOptions) ([]Toolchain, error) {
+// GetToolchains returns a list of toolchains from the AMI and filters in the ToolchainFilterOptions.
+func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts ToolchainFilterOptions) ([]Toolchain, error) {
 	if opts.AMI == "" {
 		return nil, errors.New("no AMI provided")
 	}
@@ -260,7 +269,7 @@ func (c *RuntimeEnvironmentsClient) getToolchains(ctx context.Context, opts Tool
 	}
 	params.Set("name", opts.Name)
 	params.Set("version", opts.Version)
-	params.Set("type", ToolchainsType)
+	params.Set("type", string(ImageEventTypeToolchains))
 	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
@@ -335,10 +344,10 @@ func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts ImageHi
 // ImageEventEntry represents a change to the image.
 type ImageEventEntry struct {
 	Name   string
-	After  string
 	Before string
-	Type   string
-	Action string
+	After  string
+	Type   ImageEventType
+	Action ImageEventEntryAction
 }
 
 // ImageEvent contains information about changes to an image when the AMI changes.
@@ -349,7 +358,7 @@ type ImageEvent struct {
 	AMIAfter  string
 }
 
-// EventHistoryOptions represents the filtering arguments for getEvents. Image and Limit are required arguments.
+// EventHistoryOptions represents the filtering arguments for GetEvents. Image and Limit are required arguments.
 type EventHistoryOptions struct {
 	Image string
 	Page  int
@@ -365,13 +374,14 @@ func stringToTime(timeInitial string) (time.Time, error) {
 	return time.Unix(timestamp, 0), nil
 }
 
-// Image stores information about an image including its name, version ID, kernel, AMI, and its last deployed time.
+// Image stores information about an image including its AMI, ID, kernel, last deployed time, name, and version ID.
 type Image struct {
-	Name         string
-	VersionID    string
+	ID           string
+	AMI          string
 	Kernel       string
 	LastDeployed time.Time
-	AMI          string
+	Name         string
+	VersionID    string
 }
 
 // getNameFromOSInfo uses the provided AMI and name (exact match) arguments to filter the image information.
@@ -436,8 +446,8 @@ func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID st
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting OSInfo '%s' field for image: '%s'", OSVersionIDField, imageID)
 	}
-
 	return &Image{
+		ID:           imageID,
 		AMI:          latestImageHistory.AMI,
 		Kernel:       kernel,
 		LastDeployed: timestamp,
@@ -448,13 +458,13 @@ func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID st
 
 // buildImageEventEntry make an ImageEventEntry given an ImageDiffChange.
 func buildImageEventEntry(diff ImageDiffChange) (*ImageEventEntry, error) {
-	action := ""
+	var action ImageEventEntryAction
 	if diff.Added != "" && diff.Removed != "" {
-		action = UpdatedImageEntryAction
+		action = ImageEventEntryActionUpdated
 	} else if diff.Added != "" {
-		action = AddedImageEntryAction
+		action = ImageEventEntryActionAdded
 	} else if diff.Removed != "" {
-		action = DeletedImageEntryAction
+		action = ImageEventEntryActionDeleted
 	} else {
 		return nil, errors.New("neither added nor removed")
 	}
@@ -468,8 +478,8 @@ func buildImageEventEntry(diff ImageDiffChange) (*ImageEventEntry, error) {
 	return &entry, nil
 }
 
-// getEvents returns information about the changes between AMIs that occurred on the image.
-func (c *RuntimeEnvironmentsClient) getEvents(ctx context.Context, opts EventHistoryOptions) ([]ImageEvent, error) {
+// GetEvents returns information about the changes between AMIs that occurred on the image.
+func (c *RuntimeEnvironmentsClient) GetEvents(ctx context.Context, opts EventHistoryOptions) ([]ImageEvent, error) {
 	if opts.Limit == 0 {
 		return nil, errors.New("no limit provided")
 	}

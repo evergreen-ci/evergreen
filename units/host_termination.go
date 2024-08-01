@@ -390,17 +390,8 @@ func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context, old
 	}
 
 	if cloudInfo.Status == cloud.StatusTerminated {
-		grip.Warning(message.Fields{
-			"message":      "attempted to terminate an already terminated host",
-			"state_reason": cloudInfo.StateReason,
-			"theory":       "external termination",
-			"host_id":      j.host.Id,
-			"provider":     j.host.Distro.Provider,
-			"job_type":     j.Type().Name,
-			"job":          j.ID(),
-		})
 		catcher := grip.NewBasicCatcher()
-		catcher.New("host is already terminated in the cloud")
+		catcher.Errorf("host is already terminated in the cloud: '%s'", cloudInfo.StateReason)
 		catcher.Wrap(j.host.Terminate(ctx, evergreen.User, "cloud provider indicated that host was already terminated"), "marking host as terminated")
 		return catcher.Resolve()
 	}

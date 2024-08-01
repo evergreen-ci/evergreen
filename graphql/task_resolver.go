@@ -558,6 +558,10 @@ func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (stri
 
 // TaskLogs is the resolver for the taskLogs field.
 func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*TaskLogs, error) {
+	canView := hasLogViewPermission(ctx, obj)
+	if !canView {
+		return nil, Forbidden.Send(ctx, "insufficient permission for viewing task logs")
+	}
 	// Let the individual TaskLogs resolvers handle fetching logs for the task
 	// We can avoid the overhead of fetching task logs that we will not view
 	// and we can avoid handling errors that we will not see

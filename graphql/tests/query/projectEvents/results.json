@@ -13,8 +13,12 @@
                   "projectRef": {
                     "branch": "master"
                   },
+                  "githubAppAuth": {
+                    "appId": 12345,
+                    "privateKey": "{REDACTED_BEFORE}"
+                  },
                   "githubWebhooksEnabled": false,
-                   "vars": {
+                  "vars": {
                     "vars": {
                       "hello": "world"
                     }
@@ -24,12 +28,52 @@
                   "projectRef": {
                     "branch": "main"
                   },
+                  "githubAppAuth": {
+                    "appId": 67890,
+                    "privateKey": "{REDACTED_AFTER}"
+                  },
                   "githubWebhooksEnabled": true,
                   "vars": {
                     "vars": {
                       "hello": "universe"
                     }
                   }
+                }
+              }
+            ],
+            "count": 1
+          }
+        }
+      }
+    },
+    {
+      "query_file": "no_changes.graphql",
+      "result": {
+        "data": {
+          "projectEvents": {
+            "eventLogEntries": [
+              {
+                "user": "bob.smith",
+                "timestamp": "2020-03-03T10:46:00.709-05:00",
+                "before": {
+                  "projectRef": {
+                    "branch": "main"
+                  },
+                  "githubAppAuth": {
+                    "appId": 11111,
+                    "privateKey": "{REDACTED}"
+                  },
+                  "githubWebhooksEnabled": false
+                },
+                "after": {
+                  "projectRef": {
+                    "branch": "main"
+                  },
+                  "githubAppAuth": {
+                    "appId": 11111,
+                    "privateKey": "{REDACTED}"
+                  },
+                  "githubWebhooksEnabled": false
                 }
               }
             ],

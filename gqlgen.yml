@@ -98,6 +98,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIFinderSettings
   GeneralSubscription:
     model: github.com/evergreen-ci/evergreen/rest/model.APISubscription
+  GithubAppAuth:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubAppAuth
+  GithubAppAuthInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIGithubAppAuth
   GithubCheckSubscriber:
     model: github.com/evergreen-ci/evergreen/rest/model.APIGithubCheckSubscriber
   GitHubDynamicTokenPermissionGroupInput:
@@ -135,7 +139,15 @@ models:
   IceCreamSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIceCreamSettings
   Image: 
-    model: github.com/evergreen-ci/evergreen/thirdparty.Image
+    model: github.com/evergreen-ci/evergreen/rest/model.APIImage
+  ImageEvent:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIImageEvent 
+  ImageEventEntry:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIImageEventEntry
+  ImageEventEntryAction:
+    model: github.com/evergreen-ci/evergreen/thirdparty.ImageEventEntryAction
+  ImageEventType:
+    model: github.com/evergreen-ci/evergreen/thirdparty.ImageEventType
   InstanceTag:
     model: github.com/evergreen-ci/evergreen/model/host.Tag
   InstanceTagInput:
@@ -174,6 +186,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APINotificationPreferences
   OomTrackerInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.APIOomTrackerInfo
+  Package: 
+    model: github.com/evergreen-ci/evergreen/rest/model.APIPackage
+  PackageOpts: 
+    model: github.com/evergreen-ci/evergreen/thirdparty.PackageFilterOptions
   Parameter:
     model: github.com/evergreen-ci/evergreen/rest/model.APIParameter
   ParameterInput:
@@ -258,6 +274,8 @@ models:
       aliases:
         resolver: true
       subscriptions:
+        resolver: true
+      githubAppAuth:
         resolver: true
   ProjectSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
@@ -429,6 +447,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
   ContainerResourcesInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerResources
+  Toolchain: 
+    model: github.com/evergreen-ci/evergreen/rest/model.APIToolchain
+  ToolchainOpts: 
+    model: github.com/evergreen-ci/evergreen/thirdparty.ToolchainFilterOptions
   TriggerAlias:
     model: github.com/evergreen-ci/evergreen/rest/model.APITriggerDefinition
   TriggerAliasInput:

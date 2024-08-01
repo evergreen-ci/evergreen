@@ -400,7 +400,7 @@ func backport() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
-			ac, _, err := conf.getLegacyClients()
+			ac, rc, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "setting up legacy Evergreen client")
 			}
@@ -448,7 +448,7 @@ func backport() cli.Command {
 			}
 			if shouldFinalize {
 				patchId := backportPatch.Id.Hex()
-				shouldContinue, err := checkForLargeNumFinalizedTasks(ac, patchParams, patchId)
+				shouldContinue, err := checkForLargeNumFinalizedTasks(ctx, client, rc, patchParams, patchId)
 				if err != nil {
 					return err
 				}

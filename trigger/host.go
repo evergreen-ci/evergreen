@@ -148,7 +148,7 @@ func (t *hostTriggers) generateTemporaryExemptionExpiration(sub *event.Subscript
 	var err error
 	switch sub.Subscriber.Type {
 	case event.EmailSubscriberType:
-		payload, err = t.templateData.hostEmailPayload(expiringHostTemporaryExemptionEmailSubject, expiringHostEmailBody, t.Attributes())
+		payload, err = t.templateData.hostEmailPayload(expiringHostTemporaryExemptionEmailSubject, expiringHostTemporaryExemptionEmailBody, t.Attributes())
 	case event.SlackSubscriberType:
 		payload, err = t.templateData.hostSlackPayload(expiringHostTemporaryExemptionSlackBody, expiringHostTemporaryExemptionSlackAttachmentTitle)
 	default:

@@ -763,8 +763,8 @@ type TaskIdConfig struct {
 
 // TVPair is a helper type for mapping bv/task pairs to ids.
 type TVPair struct {
-	Variant  string
-	TaskName string
+	Variant  string `json:"variant"`
+	TaskName string `json:"task_name"`
 }
 
 type TVPairSet []TVPair

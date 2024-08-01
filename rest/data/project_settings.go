@@ -470,13 +470,32 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if err = parsley.ValidateFilters(mergedSection.ParsleyFilters); err != nil {
 			return nil, errors.Wrap(err, "invalid Parsley filters")
 		}
+	// This section does not support repo-level at this time.
 	case model.ProjectPageGithubAppSettingsSection:
+		mergedSection.Id = mergedBeforeRef.Id
+
+		appIDChanged := changes.GithubAppAuth.AppID != int(before.GitHubAppAuth.AppID)
+		privateKeyChanged := utility.FromStringPtr(changes.GithubAppAuth.PrivateKey) != string(before.GitHubAppAuth.PrivateKey)
+		privateKeyRedacted := utility.FromStringPtr(changes.GithubAppAuth.PrivateKey) == evergreen.RedactedValue
+
+		if appIDChanged || privateKeyChanged {
+			// The UI only ever sees the private key as the {REDACTED} string and will include it in calls to
+			// this function. To avoid overwriting the actual private key, we should not update the credentials
+			// if the private key is equal to the {REDACTED} placeholder.
+			if !privateKeyRedacted {
+				if err = mergedSection.SetGithubAppCredentials(int64(changes.GithubAppAuth.AppID), []byte(utility.FromStringPtr(changes.GithubAppAuth.PrivateKey))); err != nil {
+					return nil, errors.Wrap(err, "updating GitHub app credentials")
+				}
+			}
+		}
 		mergedSection.GitHubDynamicTokenPermissionGroups = mergedBeforeRef.GitHubDynamicTokenPermissionGroups
-		if err := mergedSection.ValidateGitHubPermissionGroups(); err != nil {
+		if err = mergedSection.ValidateGitHubPermissionGroups(); err != nil {
 			return nil, errors.Wrap(err, "invalid GitHub permission group by requester")
 		}
+		modified = true
+	// This section does not support repo-level at this time.
 	case model.ProjectPageGithubPermissionsSection:
-		if err := mergedSection.ValidateGitHubPermissionGroups(); err != nil {
+		if err = mergedSection.ValidateGitHubPermissionGroups(); err != nil {
 			return nil, errors.Wrap(err, "invalid GitHub permission groups")
 		}
 	}
@@ -493,6 +512,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		} else {
 			catcher.Add(model.LogProjectModified(projectId, userId, before, after))
 			after.Vars = *after.Vars.RedactPrivateVars() // ensure that we're not returning private variables back to the UI
+			after.GitHubAppAuth = *after.GitHubAppAuth.RedactPrivateKey()
 			res, err = restModel.DbProjectSettingsToRestModel(*after)
 			if err != nil {
 				catcher.Wrapf(err, "converting project settings")

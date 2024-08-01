@@ -8,7 +8,6 @@ import (
 	// this *must* be included in the binary so that the legacy
 	// plugins are built into the binary.
 	_ "github.com/evergreen-ci/evergreen/plugin"
-	"github.com/pkg/errors"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/operations"
@@ -17,13 +16,9 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/urfave/cli"
-	"go.uber.org/automaxprocs/maxprocs"
 )
 
 func main() {
-	_, err := maxprocs.Set()
-	grip.EmergencyFatal(errors.Wrap(err, "setting max procs"))
-
 	// this is where the main action of the program starts. The
 	// command line interface is managed by the cli package and
 	// its objects/structures. This, plus the basic configuration

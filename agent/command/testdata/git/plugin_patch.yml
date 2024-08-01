@@ -1,26 +1,27 @@
 batch_time: 180
 
 tasks:
-    - name: testtask1
-      commands:
-        - command: git.get_project
-          params:
-            directory: src
-            token: ${github}
+  - name: testtask1
+    commands:
+      - command: git.get_project
+        params:
+          directory: src
+          token: ${github}
+          is_oauth: true
 
 modules:
-- name: enterprise
-  owner: 10gen
-  repo: mongo-enterprise-modules
-  prefix: src/mongo/db/modules
-  branch: v2.6
+  - name: enterprise
+    owner: 10gen
+    repo: mongo-enterprise-modules
+    prefix: src/mongo/db/modules
+    branch: v2.6
 
 buildvariants:
-- name: linux-64
-  display_name: Linux 64-bit
-  modules:
-    - enterprise
-  test_flags: --continue-on-failure
-  expansions:
-    blah: "blah"
-  push: true
+  - name: linux-64
+    display_name: Linux 64-bit
+    modules:
+      - enterprise
+    test_flags: --continue-on-failure
+    expansions:
+      blah: "blah"
+    push: true

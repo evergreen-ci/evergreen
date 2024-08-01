@@ -1,27 +1,35 @@
 query {
-    projectEvents(projectIdentifier: "sandbox") {
-        eventLogEntries {
-            user
-            timestamp
-            before {
-                projectRef {
-                    branch
-                }
-                githubWebhooksEnabled
-                 vars{
-                    vars
-                }
-            }
-            after {
-                projectRef {
-                    branch
-                }
-                githubWebhooksEnabled  
-                vars{
-                    vars
-                }
-            }
+  projectEvents(projectIdentifier: "sandbox") {
+    eventLogEntries {
+      user
+      timestamp
+      before {
+        projectRef {
+          branch
         }
-        count
+        githubAppAuth {
+          appId
+          privateKey
+        }
+        githubWebhooksEnabled
+        vars {
+          vars
+        }
+      }
+      after {
+        projectRef {
+          branch
+        }
+        githubAppAuth {
+          appId
+          privateKey
+        }
+        githubWebhooksEnabled
+        vars {
+          vars
+        }
+      }
     }
+    count
+  }
 }

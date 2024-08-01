@@ -56,6 +56,7 @@ func getMockProjectSettings() model.ProjectSettings {
 				GitClone:      nil,
 			},
 		},
+		GitHubAppAuth:      evergreen.GithubAppAuth{},
 		GithubHooksEnabled: true,
 		Vars: model.ProjectVars{
 			Id:          projectId,
@@ -145,6 +146,10 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		s.NoError(vars.Insert())
 		before := getMockProjectSettings()
 		after := getMockProjectSettings()
+		after.GitHubAppAuth = evergreen.GithubAppAuth{
+			AppID:      12345,
+			PrivateKey: []byte("secret"),
+		}
 		after.GithubHooksEnabled = false
 		after.ProjectRef.WorkstationConfig.SetupCommands = []model.WorkstationSetupCommand{}
 		after.Vars = model.ProjectVars{
@@ -211,8 +216,10 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 		s.Len(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands, 0)
 		s.Equal(eventLog.Before.Vars.Vars["hello"], "world")
 		s.Equal(eventLog.After.Vars.Vars["hello"], "another_world")
-		s.Equal(eventLog.After.Vars.Vars["world"], "{REDACTED_AFTER}")
-		s.Equal(eventLog.Before.Vars.Vars["world"], "{REDACTED_BEFORE}")
+		s.Equal(eventLog.After.Vars.Vars["world"], evergreen.RedactedAfterValue)
+		s.Equal(eventLog.Before.Vars.Vars["world"], evergreen.RedactedBeforeValue)
+		s.Equal(utility.FromStringPtr(eventLog.Before.GithubAppAuth.PrivateKey), "")
+		s.Equal(utility.FromStringPtr(eventLog.After.GithubAppAuth.PrivateKey), evergreen.RedactedValue)
 	}
 
 	// No error for empty events

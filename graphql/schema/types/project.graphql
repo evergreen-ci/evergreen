@@ -44,6 +44,20 @@ type SetLastRevisionPayload {
   mergeBaseRevision: String!
 }
 
+"""
+DeleteGithubAppCredentialsInput is the input to the deleteGithubAppCredentials mutation.
+"""
+input DeleteGithubAppCredentialsInput {
+  projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
+}
+
+"""
+DeleteGithubAppCredentialsPayload is returned by the deleteGithubAppCredentials mutation.
+"""
+type DeleteGithubAppCredentialsPayload {
+  oldAppId: Int!
+}
+
 input ProjectAliasInput {
   id: String!
   alias: String!
@@ -189,6 +203,11 @@ input PromoteVarsToRepoInput {
   varNames: [String!]!
 }
 
+input GithubAppAuthInput {
+  appId: Int!
+  privateKey: String!
+}
+
 ###### TYPES ######
 """
 GroupedProjects is the return value for the projects & viewableProjectRefs queries.
@@ -329,4 +348,9 @@ type ParsleyFilter {
   expression: String!
   caseSensitive: Boolean!
   exactMatch: Boolean!
+}
+
+type GithubAppAuth {
+  appId: Int
+  privateKey: String
 }

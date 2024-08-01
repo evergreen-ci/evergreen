@@ -65,6 +65,7 @@ type Mutation {
   copyProject(project: CopyProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
   deactivateStepbackTask(opts: DeactivateStepbackTaskInput!): Boolean!
   defaultSectionToRepo(opts: DefaultSectionToRepoInput!): String
+  deleteGithubAppCredentials(opts: DeleteGithubAppCredentialsInput!): DeleteGithubAppCredentialsPayload
   deleteProject(projectId: String! @requireProjectAdmin): Boolean!
   detachProjectFromRepo(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
   forceRepotrackerRun(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Boolean!

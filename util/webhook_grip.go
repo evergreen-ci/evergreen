@@ -144,6 +144,10 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 	}
 
 	client := w.client
+	if client == nil {
+		client = utility.GetHTTPClient()
+		defer utility.PutHTTPClient(client)
+	}
 	return utility.Retry(context.Background(), func() (bool, error) {
 		req, err := raw.request()
 		if err != nil {
@@ -153,11 +157,6 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		req = req.WithContext(ctx)
-
-		if client == nil {
-			client = utility.GetHTTPClient()
-			defer utility.PutHTTPClient(client)
-		}
 
 		resp, err := client.Do(req)
 		msgFields := message.Fields{

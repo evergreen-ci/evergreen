@@ -85,6 +85,7 @@ func TestSleepSchedulerJob(t *testing.T) {
 			for ji := range q.JobInfo(ctx) {
 				numJobs++
 				if ji.Type.Name == spawnhostStopName {
+					assert.False(t, utility.IsZeroTime(ji.Time.WaitUntil))
 					for hostID := range expectedHostsToStop {
 						if strings.Contains(ji.ID, hostID) {
 							expectedHostsToStop[hostID] = true
@@ -148,6 +149,7 @@ func TestSleepSchedulerJob(t *testing.T) {
 			for ji := range q.JobInfo(ctx) {
 				numJobs++
 				if ji.Type.Name == spawnhostStartName {
+					assert.False(t, utility.IsZeroTime(ji.Time.WaitUntil))
 					for hostID := range expectedHostsToStart {
 						if strings.Contains(ji.ID, hostID) {
 							expectedHostsToStart[hostID] = true

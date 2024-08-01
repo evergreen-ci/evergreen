@@ -1,0 +1,7 @@
+mutation {
+  deleteGithubAppCredentials(opts:  {
+     projectId: "sandbox_project_id"
+  }) {
+    oldAppId
+  }
+}

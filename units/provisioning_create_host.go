@@ -139,15 +139,14 @@ func (j *createHostJob) Run(ctx context.Context) {
 	}
 
 	if j.host.IsSubjectToHostCreationThrottle() {
-		var numHosts int
-		numHosts, err = host.CountRunningHosts(ctx, j.host.Distro.Id)
+		distroActiveHosts, err := host.CountActiveHostsInDistro(ctx, j.host.Distro.Id)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "counting existing host pool size for distro '%s'", j.host.Distro.Id))
 			return
 		}
 
 		removeHostIntent := false
-		if numHosts > j.host.Distro.HostAllocatorSettings.MaximumHosts {
+		if distroActiveHosts > j.host.Distro.HostAllocatorSettings.MaximumHosts {
 			grip.Info(message.Fields{
 				"host_id":   j.HostID,
 				"attempt":   j.RetryInfo().CurrentAttempt,
@@ -158,18 +157,17 @@ func (j *createHostJob) Run(ctx context.Context) {
 				"max_hosts": j.host.Distro.HostAllocatorSettings.MaximumHosts,
 			})
 			removeHostIntent = true
-
 		}
 
-		allRunningDynamicHosts, err := host.CountAllRunningDynamicHosts(ctx)
+		allActiveDynamicHosts, err := host.CountActiveDynamicHosts(ctx)
 		j.AddError(err)
+
 		lowHostNumException := false
-		if numHosts < 10 {
+		if distroActiveHosts < 10 {
 			lowHostNumException = true
 		}
 
-		if allRunningDynamicHosts > hostInit.MaxTotalDynamicHosts && !lowHostNumException {
-
+		if allActiveDynamicHosts > hostInit.MaxTotalDynamicHosts && !lowHostNumException {
 			grip.Info(message.Fields{
 				"host_id":                 j.HostID,
 				"attempt":                 j.RetryInfo().CurrentAttempt,
@@ -177,11 +175,10 @@ func (j *createHostJob) Run(ctx context.Context) {
 				"job":                     j.ID(),
 				"provider":                j.host.Provider,
 				"message":                 "not provisioning host to respect max_total_dynamic_hosts",
-				"total_dynamic_hosts":     allRunningDynamicHosts,
+				"total_dynamic_hosts":     allActiveDynamicHosts,
 				"max_total_dynamic_hosts": hostInit.MaxTotalDynamicHosts,
 			})
 			removeHostIntent = true
-
 		}
 
 		if removeHostIntent {
@@ -216,15 +213,18 @@ func (j *createHostJob) Run(ctx context.Context) {
 	}
 
 	defer func() {
-		if j.IsLastAttempt() && j.HasErrors() && (j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) && j.host.SpawnOptions.SpawnedByTask {
+		if j.IsLastAttempt() && j.HasErrors() && (j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) {
 			grip.Error(message.WrapError(j.Error(), message.Fields{
 				"message": "no attempts remaining to create host",
 				"outcome": "giving up on creating this host",
 				"host_id": j.HostID,
 				"distro":  j.host.Distro.Id,
 			}))
-			if err := task.AddHostCreateDetails(j.host.StartedBy, j.host.Id, j.host.SpawnOptions.TaskExecutionNumber, j.Error()); err != nil {
-				j.AddError(errors.Wrapf(err, "adding host create error details"))
+
+			if j.host.SpawnOptions.SpawnedByTask {
+				if err := task.AddHostCreateDetails(j.host.StartedBy, j.host.Id, j.host.SpawnOptions.TaskExecutionNumber, j.Error()); err != nil {
+					j.AddError(errors.Wrapf(err, "adding host create error details"))
+				}
 			}
 		}
 	}()
@@ -239,19 +239,19 @@ func (j *createHostJob) selfThrottle(ctx context.Context, hostInit evergreen.Hos
 		return true
 	}
 
-	distroRunningHosts, err := host.CountRunningHosts(ctx, j.host.Distro.Id)
+	distroActiveHosts, err := host.CountActiveHostsInDistro(ctx, j.host.Distro.Id)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "counting host pool size for distro '%s'", j.host.Distro.Id))
 		return true
 	}
 
-	runningHosts, err := host.CountAllRunningDynamicHosts(ctx)
+	allActiveDynamicHosts, err := host.CountActiveDynamicHosts(ctx)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "counting size of entire host pool"))
 		return true
 	}
 
-	if distroRunningHosts < runningHosts/100 || distroRunningHosts < j.host.Distro.HostAllocatorSettings.MinimumHosts {
+	if distroActiveHosts < allActiveDynamicHosts/100 || distroActiveHosts < j.host.Distro.HostAllocatorSettings.MinimumHosts {
 		return false
 	} else if numProv >= hostInit.HostThrottle {
 		reason := "host creation throttle"

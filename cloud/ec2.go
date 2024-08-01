@@ -995,7 +995,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, shouldKeepO
 			if info.Status == StatusStopped {
 				return false, nil
 			}
-			return true, errors.Errorf("host is not stopped, current status is '%s' becauase '%s'", info.Status, info.StateReason)
+			return true, errors.Errorf("host is not stopped, current status is '%s' because '%s'", info.Status, info.StateReason)
 		}, utility.RetryOptions{
 			MaxAttempts: checkSuccessAttempts,
 			MinDelay:    checkSuccessInitPeriod,
@@ -1045,7 +1045,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 			if info.Status == StatusRunning {
 				return false, nil
 			}
-			return true, errors.New("host is not started")
+			return true, errors.Errorf("host is not started, current status is '%s' because '%s'", info.Status, info.StateReason)
 		}, utility.RetryOptions{
 			MaxAttempts: checkSuccessAttempts,
 			MinDelay:    checkSuccessInitPeriod,
