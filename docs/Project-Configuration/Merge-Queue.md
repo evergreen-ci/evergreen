@@ -45,7 +45,7 @@ to pass before any changes can be merged into the protected branch.
 Alternatively, you can require a single or multiple variants to pass before
 merging, instead of all variants.
 
-## Concurrency
+## Merge Queue Behavior
 
 Concurrency is on by default for the GitHub merge queue. If there are multiple
 PRs in the queue, your PR might be tested with other commits. This means that
@@ -55,18 +55,11 @@ HEAD PR of a merge group, but the merge group could contain multiple PRs. Note
 that GitHub merges all commits from each PR before adding that PR to a version,
 so a given version has as many commits in it as there are PRs in it.
 
-See the [Merge Queue Behavior](#merge-queue-behavior) section for more details
-about how merge queue concurrency works.
-
-## Merge Queue Behavior
-
 The merge queue is not trying to merge individual PRs, but groups of PRs. This
-leads to some unintuitive behavior.
-
-Here is a typical sequence of events when a user adds 2 PRs to the merge queue.
-In this case we assume "Minimum pull requests to merge" is set to 1, "Maximum
-pull requests to merge" is set to 5, and "Maximum pull requests to build"
-("Build concurrency") is set to 5.
+leads to some unintuitive behavior. Here is a typical sequence of events when a
+user adds 2 PRs to the merge queue.  In this case we assume "Minimum pull
+requests to merge" is set to 1, "Maximum pull requests to merge" is set to 5,
+and "Maximum pull requests to build" ("Build concurrency") is set to 5.
 
 The diagram names its branches like "main/pr-1", but in reality they are named
 like "gh-readonly-queue/main/pr-1-\<hash\>".
