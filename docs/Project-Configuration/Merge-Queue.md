@@ -21,7 +21,7 @@ merge, like you would have to without the queue.
 
 1. From <https://spruce.mongodb.com/>, from the More drop down, select Project Settings.
 2. Select your project from the project dropdown.
-3. From the GitHub & Commit Queue section, set the Commit Queue to Enabled.
+3. From the GitHub section, set the Merge Queue to Enabled.
 4. Add variant and task tags or regexes for the variants and tasks you wish to run when a pull request is added to the queue.
 
 ### Turn on the GitHub merge queue
@@ -107,7 +107,10 @@ merge is set to 5, and, again, GitHub is testing the entire group.*
 If, in the branch protection rules, "only merge non-failing pull requests" is
 checked, then the merge will not happen if any of the PRs fail. Otherwise, if
 main/pr-1 is red and main/pr-2 is green, then the latter will be merged, which
-contains both PRs.
+contains both PRs. Note that, although this says "pull requests," it's really
+about merge queue behavior. All pull requests must pass the branch protection
+rules before they can be added to the merge queue. This setting is only about
+the behavior once they're in the merge queue.
 
 The temporary branch gets deleted only after the the PR is merged, or if the PR
 fails the check or is removed from the queue.
