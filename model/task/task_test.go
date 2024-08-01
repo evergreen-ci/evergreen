@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"strconv"
 	"testing"
 	"time"
@@ -28,6 +29,8 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
+
+func init() { testutil.Setup() }
 
 var (
 	oneMs = time.Millisecond
@@ -1482,8 +1485,9 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	}
 	assert.NoError(t2.Insert())
 
-	_, err := UnscheduleStaleUnderwaterHostTasks(ctx, "")
+	tasks, err := UnscheduleStaleUnderwaterHostTasks(ctx, "")
 	assert.NoError(err)
+	require.Len(t, tasks, 2)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(err)
 	assert.False(dbTask.Activated)
@@ -1619,8 +1623,9 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
 	}
 	require.NoError(t, d.Insert(ctx))
 
-	_, err := UnscheduleStaleUnderwaterHostTasks(ctx, "d0")
+	tasks, err := UnscheduleStaleUnderwaterHostTasks(ctx, "d0")
 	assert.NoError(t, err)
+	require.Len(t, tasks, 1)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(t, err)
 	assert.False(t, dbTask.Activated)
@@ -1651,12 +1656,13 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
 	}
 	require.NoError(t, d.Insert(ctx))
 
-	_, err := UnscheduleStaleUnderwaterHostTasks(ctx, "d0")
+	tasks, err := UnscheduleStaleUnderwaterHostTasks(ctx, "d0")
 	assert.NoError(t, err)
 	dbTask, err := FindOneId("t1")
 	assert.NoError(t, err)
 	assert.False(t, dbTask.Activated)
 	assert.EqualValues(t, -1, dbTask.Priority)
+	require.Len(t, tasks, 1)
 }
 
 func TestGetRecentTaskStats(t *testing.T) {
