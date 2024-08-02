@@ -3,7 +3,6 @@ package task
 import (
 	"context"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"strconv"
 	"testing"
 	"time"
@@ -29,8 +28,6 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
-
-func init() { testutil.Setup() }
 
 var (
 	oneMs = time.Millisecond

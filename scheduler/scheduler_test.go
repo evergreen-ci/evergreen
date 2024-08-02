@@ -2,7 +2,13 @@ package scheduler
 
 import (
 	"context"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
@@ -69,6 +75,76 @@ func TestSpawnHosts(t *testing.T) {
 			}
 		})
 	})
+}
+
+func TestUnderwaterUnschedule(t *testing.T) {
+	assert := assert.New(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	require.NoError(t, db.ClearCollections(task.Collection, distro.Collection, build.Collection, model.VersionCollection))
+
+	t1 := task.Task{
+		Id:            "t1",
+		Status:        evergreen.TaskUndispatched,
+		Activated:     true,
+		Priority:      0,
+		ActivatedTime: time.Time{},
+		DistroId:      "d",
+		BuildId:       "b",
+		Version:       "v",
+	}
+	assert.NoError(t1.Insert())
+
+	t2 := task.Task{
+		Id:            "t2",
+		Status:        evergreen.TaskUndispatched,
+		Activated:     true,
+		Priority:      0,
+		ActivatedTime: time.Time{},
+		DistroId:      "d",
+		BuildId:       "b",
+		Version:       "v",
+	}
+	assert.NoError(t2.Insert())
+
+	d := distro.Distro{
+		Id: "d",
+	}
+	b := build.Build{
+		Id:        "b",
+		Activated: true,
+		Status:    evergreen.BuildStarted,
+		Version:   "v",
+	}
+	v := model.Version{
+		Id:     "v",
+		Status: evergreen.VersionStarted,
+	}
+	assert.NoError(d.Insert(ctx))
+	assert.NoError(b.Insert())
+	assert.NoError(v.Insert())
+
+	err := underwaterUnschedule(ctx, "d")
+	assert.NoError(err)
+
+	foundBuild, err := build.FindOneId(b.Id)
+	assert.NoError(err)
+	require.NotNil(t, foundBuild)
+	foundVersion, err := model.VersionFindOneId(v.Id)
+	assert.NoError(err)
+	require.NotNil(t, foundVersion)
+	foundT1, err := task.FindOneId(t1.Id)
+	assert.NoError(err)
+	require.NotNil(t, foundT1)
+	foundT2, err := task.FindOneId(t2.Id)
+	assert.NoError(err)
+	require.NotNil(t, foundT2)
+	assert.False(foundBuild.Activated)
+	assert.Equal(foundVersion.Status, evergreen.VersionSucceeded)
+	assert.Equal(foundT1.Priority, evergreen.DisabledTaskPriority)
+	assert.Equal(foundT2.Priority, evergreen.DisabledTaskPriority)
 }
 
 func (s *SchedulerSuite) TestSpawnHostsParents() {
