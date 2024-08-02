@@ -340,6 +340,11 @@ func underwaterUnschedule(ctx context.Context, distroID string) error {
 			if err = model.UpdateBuildAndVersionStatusForTask(ctx, &modifiedTask); err != nil {
 				return errors.Wrapf(err, "updating build and version status for task '%s'", modifiedTask.Id)
 			}
+			if modifiedTask.IsPartOfDisplay() {
+				if err = model.UpdateDisplayTaskForTask(&modifiedTask); err != nil {
+					return errors.Wrap(err, "updating parent display task")
+				}
+			}
 		}
 		grip.Info(message.Fields{
 			"message":  "unscheduled stale tasks",

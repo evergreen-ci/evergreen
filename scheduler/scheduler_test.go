@@ -109,6 +109,57 @@ func TestUnderwaterUnschedule(t *testing.T) {
 	}
 	assert.NoError(t2.Insert())
 
+	t3 := task.Task{
+		Id:            "t3",
+		Status:        evergreen.TaskUndispatched,
+		Activated:     true,
+		Priority:      0,
+		ActivatedTime: time.Now(),
+		DistroId:      "d",
+		BuildId:       "b",
+		Version:       "v",
+	}
+	assert.NoError(t3.Insert())
+
+	dt := task.Task{
+		Id:             "dt",
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"et1", "et2"},
+		Status:         evergreen.TaskStarted,
+		Activated:      true,
+		Priority:       0,
+		ActivatedTime:  time.Now(),
+		DistroId:       "d",
+		BuildId:        "b",
+		Version:        "v",
+	}
+	assert.NoError(dt.Insert())
+	execTasks := []task.Task{
+		{
+			Id:            "et1",
+			Status:        evergreen.TaskSucceeded,
+			Activated:     true,
+			Priority:      0,
+			ActivatedTime: time.Time{},
+			DistroId:      "d",
+			BuildId:       "b",
+			Version:       "v",
+		},
+		{
+			Id:            "et2",
+			Status:        evergreen.TaskUndispatched,
+			Activated:     true,
+			Priority:      0,
+			ActivatedTime: time.Time{},
+			DistroId:      "d",
+			BuildId:       "b",
+			Version:       "v",
+		},
+	}
+	for _, et := range execTasks {
+		assert.NoError(et.Insert())
+	}
+
 	d := distro.Distro{
 		Id: "d",
 	}
@@ -141,10 +192,22 @@ func TestUnderwaterUnschedule(t *testing.T) {
 	foundT2, err := task.FindOneId(t2.Id)
 	assert.NoError(err)
 	require.NotNil(t, foundT2)
-	assert.False(foundBuild.Activated)
-	assert.Equal(foundVersion.Status, evergreen.VersionSucceeded)
+	foundT3, err := task.FindOneId(t3.Id)
+	assert.NoError(err)
+	require.NotNil(t, foundT3)
+
+	assert.Equal(foundVersion.Status, evergreen.VersionStarted)
 	assert.Equal(foundT1.Priority, evergreen.DisabledTaskPriority)
 	assert.Equal(foundT2.Priority, evergreen.DisabledTaskPriority)
+	assert.Equal(foundT3.Priority, int64(0))
+	assert.False(foundT1.Activated)
+	assert.False(foundT2.Activated)
+	assert.True(foundT3.Activated)
+
+	foundDisplayTask, err := task.FindOneId(dt.Id)
+	assert.NoError(err)
+	require.NotNil(t, foundDisplayTask)
+	assert.Equal(foundDisplayTask.Status, evergreen.TaskSucceeded)
 }
 
 func (s *SchedulerSuite) TestSpawnHostsParents() {
