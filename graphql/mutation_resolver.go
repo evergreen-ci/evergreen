@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"runtime/debug"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -35,6 +36,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 	werrors "github.com/pkg/errors"
 )
 
@@ -1332,6 +1334,11 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 	}
 	err := modifyVersionHandler(ctx, versionID, modifications)
 	if err != nil {
+		errString := err.Error()
+		// Return a user-friendly message if a user surpasses scheduling limits.
+		if strings.Contains(errString, evergreen.TaskSchedulingLimitError) {
+			return nil, errors.New(errString[strings.LastIndex(errString, ":")+1:])
+		}
 		return nil, err
 	}
 	versions := []*restModel.APIVersion{}
