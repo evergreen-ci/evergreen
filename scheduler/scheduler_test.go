@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type SchedulerSuite struct {
@@ -84,6 +85,8 @@ func TestUnderwaterUnschedule(t *testing.T) {
 	defer cancel()
 
 	require.NoError(t, db.ClearCollections(task.Collection, distro.Collection, build.Collection, model.VersionCollection))
+	require.NoError(t, db.EnsureIndex(task.Collection,
+		mongo.IndexModel{Keys: task.ActivatedTasksByDistroIndex}))
 
 	t1 := task.Task{
 		Id:            "t1",
