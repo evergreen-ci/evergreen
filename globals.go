@@ -249,6 +249,10 @@ const (
 	// responsible for monitoring container tasks that have not dispatched but
 	// have waiting for a long time since their activation.
 	StaleContainerTaskMonitor = "stale-container-task-monitor"
+	// UnderwaterTaskUnscheduler is the caller associated with unscheduling
+	// and disabling tasks older than the task.UnschedulableThreshold from
+	// their distro queue.
+	UnderwaterTaskUnscheduler = "underwater-task-unscheduler"
 
 	// Restart Types
 	RestartVersions = "versions"
