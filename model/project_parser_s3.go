@@ -3,6 +3,7 @@ package model
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
@@ -80,9 +81,18 @@ func (s *ParserProjectS3Storage) UpsertOne(ctx context.Context, pp *ParserProjec
 	if err != nil {
 		return errors.Wrap(err, "getting config")
 	}
+	isDegradedMode := !config.ServiceFlags.CPUDegradedModeDisabled
 	maxSize := config.TaskLimits.MaxParserProjectSize
-	if maxSize > 0 && parserProjectLen > maxSize {
-		return errors.Errorf("parser project exceeds the system limit (%v > %v bytes).", parserProjectLen, maxSize)
+	if isDegradedMode {
+		maxSize = config.TaskLimits.MaxDegradedModeParserProjectSize
+	}
+	if maxSize > 0 && parserProjectLen > maxSize*1024*1024 {
+		serviceMode := "standard"
+		if isDegradedMode {
+			serviceMode = "degraded"
+		}
+		errMsg := fmt.Sprintf("parser project exceeds the %s system limit (%v > %v bytes).", serviceMode, parserProjectLen, maxSize)
+		return errors.New(errMsg)
 	}
 	return s.UpsertOneBSON(ctx, pp.Id, bsonPP)
 }

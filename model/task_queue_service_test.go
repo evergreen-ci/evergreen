@@ -224,7 +224,7 @@ func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies(
 		Queue:  items,
 	}
 
-	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	service, err := newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
 	s.NoError(err)
 	s.Equal("distro_1", service.distroID)
 	s.Equal(60*time.Second, service.ttl)
@@ -252,7 +252,7 @@ func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies(
 	items = append(items, item5, item1)
 	s.taskQueue.Queue = items
 
-	err = service.rebuild(s.taskQueue.Queue)
+	err = service.rebuild(ctx, s.taskQueue.Queue)
 	s.Require().NoError(err)
 
 	// "external_task5" can now be dispatched as its dependency "taskgroup_task3" has completed successfully.
@@ -488,7 +488,7 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 		Queue:  items,
 	}
 
-	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	service, err := newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
 	s.NoError(err)
 	s.Equal("distro_1", service.distroID)
 	s.Equal(60*time.Second, service.ttl)
@@ -516,7 +516,7 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 	items = append(items, item1, item3, item4)
 	s.taskQueue.Queue = items
 
-	err = service.rebuild(s.taskQueue.Queue)
+	err = service.rebuild(ctx, s.taskQueue.Queue)
 	s.Require().NoError(err)
 
 	// Only "task4" can be dispatched - the other 2 tasks cannot be dispatched as they have unmet dependencies.
@@ -537,7 +537,7 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 	items = append(items, item1, item3)
 	s.taskQueue.Queue = items
 
-	err = service.rebuild(s.taskQueue.Queue)
+	err = service.rebuild(ctx, s.taskQueue.Queue)
 	s.Require().NoError(err)
 
 	// Only "task3" can be dispatched - the remaining task cannot be dispatched as it has an unmet dependency.
@@ -556,7 +556,7 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 	items = append(items, item1)
 	s.taskQueue.Queue = items
 
-	err = service.rebuild(s.taskQueue.Queue)
+	err = service.rebuild(ctx, s.taskQueue.Queue)
 	s.Require().NoError(err)
 
 	// Finally, "task1" can be dispatched - all 3 of its dependencies have been satisfied.
@@ -568,8 +568,7 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 }
 
 func (s *taskDAGDispatchServiceSuite) SetupTest() {
-	s.Require().NoError(db.ClearCollections(task.Collection))
-	s.Require().NoError(db.ClearCollections(host.Collection))
+	s.Require().NoError(db.ClearCollections(task.Collection, host.Collection, VersionCollection))
 	items := []TaskQueueItem{}
 	var group string
 	var variant string
@@ -620,9 +619,9 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 			maxHosts = 2
 		}
 
-		ID := fmt.Sprintf("%d", i)
+		id := fmt.Sprintf("%d", i)
 		items = append(items, TaskQueueItem{
-			Id:            ID,
+			Id:            id,
 			Group:         group,
 			BuildVariant:  variant,
 			Version:       version,
@@ -642,7 +641,7 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 		}
 
 		t := task.Task{
-			Id:                ID,
+			Id:                id,
 			DistroId:          distroID,
 			StartTime:         utility.ZeroTime,
 			TaskGroup:         group,
@@ -655,6 +654,31 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 		}
 		s.Require().NoError(t.Insert())
 	}
+	taskVersion1 := &Version{
+		Id:                   "version_1",
+		ProjectStorageMethod: evergreen.ProjectStorageMethodS3,
+	}
+	taskVersion2 := &Version{
+		Id: "version_2",
+	}
+	taskVersion3 := &Version{
+		Id: "5d8cd23da4cf4747f4210333",
+	}
+	taskVersion4 := &Version{
+		Id: "5d88953e2a60ed61eefe9561",
+	}
+	taskVersion5 := &Version{
+		Id: "version",
+	}
+	taskVersion6 := &Version{
+		Id: "",
+	}
+	s.Require().NoError(taskVersion1.Insert())
+	s.Require().NoError(taskVersion2.Insert())
+	s.Require().NoError(taskVersion3.Insert())
+	s.Require().NoError(taskVersion4.Insert())
+	s.Require().NoError(taskVersion5.Insert())
+	s.Require().NoError(taskVersion6.Insert())
 
 	s.taskQueue = TaskQueue{
 		Distro: distroID,
@@ -663,7 +687,10 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 }
 
 func (s *taskDAGDispatchServiceSuite) TestConstructor() {
-	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	service, err := newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
 	s.NoError(err)
 	s.Equal("distro_1", service.distroID)
 	s.Equal(60*time.Second, service.ttl)
@@ -815,7 +842,7 @@ func (s *taskDAGDispatchServiceSuite) TestSelfEdge() {
 		},
 	}
 
-	dispatcher, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	dispatcher, err := newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
 	s.NoError(err)
 
 	nextTask := dispatcher.FindNextTask(ctx, TaskSpec{}, time.Time{})
@@ -849,7 +876,7 @@ func (s *taskDAGDispatchServiceSuite) TestDependencyCycle() {
 		{Id: "t2"},
 	}}
 
-	dispatcher, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	dispatcher, err := newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
 	s.NoError(err)
 
 	nextTask := dispatcher.FindNextTask(ctx, TaskSpec{}, time.Time{})
@@ -976,7 +1003,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 		Queue:  items,
 	}
 
-	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	service, err := newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
 	s.NoError(err)
 
 	spec := TaskSpec{}
@@ -1003,10 +1030,10 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 		Queue:  items,
 	}
 
-	service, err = newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	service, err = newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
 	s.NoError(err)
 
-	err = service.rebuild(s.taskQueue.Queue)
+	err = service.rebuild(ctx, s.taskQueue.Queue)
 	s.Require().NoError(err)
 
 	next = service.FindNextTask(ctx, spec, utility.ZeroTime)
@@ -1042,7 +1069,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 		Queue:  items,
 	}
 
-	service, err = newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	service, err = newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
 	s.NoError(err)
 
 	// There is no Node for the <to> task.Id: "5" in the task_queue.
@@ -1078,7 +1105,7 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 
 	spec = TaskSpec{}
 
-	service, err = newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	service, err = newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
 	s.NoError(err)
 
 	next = service.FindNextTask(ctx, spec, utility.ZeroTime)
@@ -1094,7 +1121,7 @@ func (s *taskDAGDispatchServiceSuite) TestNextTaskForDefaultTaskSpec() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	service, err := newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
 	spec := TaskSpec{}
 	s.NoError(err)
 	next := service.FindNextTask(ctx, spec, utility.ZeroTime)
@@ -1221,7 +1248,7 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 	}
 
 	s.taskQueue.Queue = items
-	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	service, err := newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
 	s.NoError(err)
 	spec := TaskSpec{
 		Group:        "group_1",
@@ -1250,7 +1277,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	service, e := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	service, e := newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
 	s.NoError(e)
 	var spec TaskSpec
 	var next *TaskQueueItem
@@ -1503,7 +1530,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskForOutdatedHostAMI() {
 		Queue:  items,
 	}
 
-	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	service, err := newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
 	s.NoError(err)
 	item := service.FindNextTask(ctx, TaskSpec{}, amiUpdateTime)
 	s.Equal(item.Id, t2.Id)
@@ -1530,7 +1557,7 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupTasksRunningHostsVersusMaxHos
 	}
 	s.Require().NoError(h1.Insert(ctx))
 
-	service, e := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	service, e := newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
 	s.NoError(e)
 
 	spec := TaskSpec{}
@@ -1572,7 +1599,7 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
 	)
 	s.Require().NoError(err)
 
-	service, e := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	service, e := newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
 	s.Require().NoError(e)
 	var spec TaskSpec
 	var next *TaskQueueItem
@@ -1629,7 +1656,7 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
 	s.Require().NoError(err)
 
 	// Rebuild the dispatcher service's in-memory state.
-	err = service.rebuild(s.taskQueue.Queue)
+	err = service.rebuild(ctx, s.taskQueue.Queue)
 	s.Require().NoError(err)
 
 	// Now task "1" can be dispatched!
@@ -1672,9 +1699,9 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupOrdering() {
 	groupIndexes := []int{2, 0, 4, 1, 3}
 
 	for i := 0; i < 5; i++ {
-		ID := fmt.Sprintf("%d", i)
+		id := fmt.Sprintf("%d", i)
 		items = append(items, TaskQueueItem{
-			Id:            ID,
+			Id:            id,
 			Group:         "group_1",
 			BuildVariant:  "variant_1",
 			Version:       "version_1",
@@ -1683,7 +1710,7 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupOrdering() {
 			GroupIndex:    groupIndexes[i],
 		})
 		t := task.Task{
-			Id:                ID,
+			Id:                id,
 			TaskGroup:         "group_1",
 			BuildVariant:      "variant_1",
 			Version:           "version_1",
@@ -1700,7 +1727,7 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupOrdering() {
 		}
 	}
 
-	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	service, err := newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
 	s.Require().NoError(err)
 
 	spec := TaskSpec{
@@ -1715,6 +1742,131 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupOrdering() {
 		next := service.FindNextTask(ctx, spec, utility.ZeroTime)
 		s.Require().NotNil(next)
 		s.Equal(expectedOrder[i], next.Id)
+	}
+}
+
+func (s *taskDAGDispatchServiceSuite) TestInProgressSingleHostTaskGroupLimits() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.Require().NoError(db.ClearCollections(task.Collection, evergreen.ConfigCollection))
+
+	settings := evergreen.TaskLimitsConfig{
+		MaxDegradedModeConcurrentLargeParserProjectTasks: 1,
+	}
+	s.Require().NoError(settings.Set(ctx))
+
+	items := []TaskQueueItem{}
+
+	sampleS3Task := task.Task{
+		Id:                         "sample_s3_task",
+		Version:                    "version_1",
+		Project:                    "project_1",
+		Status:                     evergreen.TaskStarted,
+		CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3,
+	}
+	s.Require().NoError(sampleS3Task.Insert())
+
+	for i := 0; i < 5; i++ {
+		id := fmt.Sprintf("%d", i)
+		items = append(items, TaskQueueItem{
+			Id:            id,
+			Group:         "group_1",
+			BuildVariant:  "variant_1",
+			Version:       "version_1",
+			Project:       "project_1",
+			GroupMaxHosts: 1,
+		})
+		t := task.Task{
+			Id:                         id,
+			TaskGroup:                  "group_1",
+			BuildVariant:               "variant_1",
+			Version:                    "version_1",
+			TaskGroupMaxHosts:          1,
+			Project:                    "project_1",
+			StartTime:                  utility.ZeroTime,
+			FinishTime:                 utility.ZeroTime,
+			CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3,
+		}
+		s.Require().NoError(t.Insert())
+	}
+	s.taskQueue = TaskQueue{
+		Distro: "distro_1",
+		Queue:  items,
+	}
+
+	service, err := newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
+	s.Require().NoError(err)
+
+	spec := TaskSpec{
+		Group:        "group_1",
+		BuildVariant: "variant_1",
+		Version:      "version_1",
+		Project:      "project_1",
+	}
+
+	for i := 0; i < 5; i++ {
+		next := service.FindNextTask(ctx, spec, utility.ZeroTime)
+		s.Require().NotNil(next)
+	}
+}
+
+func (s *taskDAGDispatchServiceSuite) TestNewSingleHostTaskGroupLimits() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.Require().NoError(db.ClearCollections(task.Collection, evergreen.ConfigCollection))
+
+	settings := evergreen.TaskLimitsConfig{
+		MaxDegradedModeConcurrentLargeParserProjectTasks: 1,
+	}
+	s.Require().NoError(settings.Set(ctx))
+
+	items := []TaskQueueItem{}
+
+	sampleS3Task := task.Task{
+		Id:                         "sample_s3_task",
+		Version:                    "version_1",
+		Project:                    "project_1",
+		Status:                     evergreen.TaskStarted,
+		CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3,
+	}
+	s.Require().NoError(sampleS3Task.Insert())
+
+	for i := 0; i < 5; i++ {
+		id := fmt.Sprintf("%d", i)
+		items = append(items, TaskQueueItem{
+			Id:            id,
+			Group:         "group_1",
+			BuildVariant:  "variant_1",
+			Version:       "version_1",
+			Project:       "project_1",
+			GroupMaxHosts: 1,
+		})
+		t := task.Task{
+			Id:                         id,
+			TaskGroup:                  "group_1",
+			BuildVariant:               "variant_1",
+			Version:                    "version_1",
+			TaskGroupMaxHosts:          1,
+			Project:                    "project_1",
+			StartTime:                  utility.ZeroTime,
+			FinishTime:                 utility.ZeroTime,
+			CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3,
+		}
+		s.Require().NoError(t.Insert())
+	}
+	s.taskQueue = TaskQueue{
+		Distro: "distro_1",
+		Queue:  items,
+	}
+
+	service, err := newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
+	s.Require().NoError(err)
+	spec := TaskSpec{}
+	for i := 0; i < 5; i++ {
+		next := service.FindNextTask(ctx, spec, utility.ZeroTime)
+		s.Require().Nil(next)
 	}
 }
 
@@ -1844,7 +1996,7 @@ func (s *taskDAGDispatchServiceSuite) TestGenerateTaskLimits() {
 		Queue:  items,
 	}
 
-	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	service, err := newDistroTaskDAGDispatchService(ctx, s.taskQueue, time.Minute)
 	s.NoError(err)
 	spec := TaskSpec{}
 
@@ -1859,7 +2011,7 @@ func (s *taskDAGDispatchServiceSuite) TestGenerateTaskLimits() {
 	// Fake a refresh of the in-memory queue.
 	items = []TaskQueueItem{item1, item3}
 	s.taskQueue.Queue = items
-	s.Require().NoError(service.rebuild(s.taskQueue.Queue))
+	s.Require().NoError(service.rebuild(ctx, s.taskQueue.Queue))
 
 	next = service.FindNextTask(ctx, spec, utility.ZeroTime)
 	s.Require().NotNil(next)
