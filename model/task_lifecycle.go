@@ -2502,7 +2502,6 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 
 		updatedDisplayTask, err = tryUpdateDisplayTaskAtomically(*originalDisplayTask)
 		if err == nil {
-			t.DisplayTask = updatedDisplayTask
 			break
 		}
 
