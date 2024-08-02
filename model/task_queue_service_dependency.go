@@ -33,6 +33,7 @@ type basicCachedDAGDispatcherImpl struct {
 	taskGroups  map[string]schedulableUnit // map[compositeGroupID(TaskQueueItem.Group, TaskQueueItem.BuildVariant, TaskQueueItem.Project, TaskQueueItem.Version)]schedulableUnit
 	ttl         time.Duration
 	lastUpdated time.Time
+	settings    *evergreen.Settings
 }
 
 // schedulableUnit represents a unit of tasks that must be kept together in the queue because they
@@ -50,14 +51,14 @@ type schedulableUnit struct {
 }
 
 // newDistroTaskDAGDispatchService creates a basicCachedDAGDispatcherImpl from a slice of TaskQueueItems.
-func newDistroTaskDAGDispatchService(taskQueue TaskQueue, ttl time.Duration) (*basicCachedDAGDispatcherImpl, error) {
+func newDistroTaskDAGDispatchService(ctx context.Context, taskQueue TaskQueue, ttl time.Duration) (*basicCachedDAGDispatcherImpl, error) {
 	d := &basicCachedDAGDispatcherImpl{
 		distroID: taskQueue.Distro,
 		ttl:      ttl,
 	}
 
 	if taskQueue.Length() != 0 {
-		if err := d.rebuild(taskQueue.Queue); err != nil {
+		if err := d.rebuild(ctx, taskQueue.Queue); err != nil {
 			return nil, errors.Wrapf(err, "creating distro DAG task dispatch service for distro '%s'", taskQueue.Distro)
 		}
 	}
@@ -75,7 +76,7 @@ func (d *basicCachedDAGDispatcherImpl) CreatedAt() time.Time {
 	return d.lastUpdated
 }
 
-func (d *basicCachedDAGDispatcherImpl) Refresh() error {
+func (d *basicCachedDAGDispatcherImpl) Refresh(ctx context.Context) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -89,7 +90,7 @@ func (d *basicCachedDAGDispatcherImpl) Refresh() error {
 	}
 
 	taskQueueItems := taskQueue.Queue
-	if err := d.rebuild(taskQueueItems); err != nil {
+	if err := d.rebuild(ctx, taskQueueItems); err != nil {
 		return errors.Wrapf(err, "building the directed graph for distro '%s'", d.distroID)
 	}
 
@@ -153,7 +154,7 @@ func (d *basicCachedDAGDispatcherImpl) addEdge(fromID string, toID string) error
 	return nil
 }
 
-func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
+func (d *basicCachedDAGDispatcherImpl) rebuild(ctx context.Context, items []TaskQueueItem) error {
 	d.graph = multi.NewDirectedGraph()
 	d.sorted = []graph.Node{}
 	d.itemNodeMap = map[string]graph.Node{}     // map[TaskQueueItem.Id]Node
@@ -237,6 +238,12 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 		})
 	}
 
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting admin settings")
+	}
+
+	d.settings = settings
 	d.sorted = sorted
 	d.lastUpdated = time.Now()
 
@@ -275,18 +282,6 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 		}
 
 		item := d.getItemByNodeID(node.ID()) // item is a *TaskQueueItem sourced from d.nodeItemMap, which is a map[node.ID()]*TaskQueueItem.
-
-		settings, err := evergreen.GetConfig(ctx)
-		if err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"dispatcher": DAGDispatcher,
-				"function":   "FindNextTask",
-				"message":    "problem getting evergreen settings",
-				"task_id":    item.Id,
-				"distro_id":  d.distroID,
-			}))
-			continue
-		}
 
 		// TODO Consider checking if the state of any task has changed, which could unblock later tasks in the queue.
 		// Currently, we just wait for the dispatcher's in-memory queue to refresh.
@@ -334,7 +329,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 			}
 
 			// Skip the task if it's estimated to create more tasks than the generate task limit.
-			generateTasksLimit := settings.TaskLimits.MaxPendingGeneratedTasks
+			generateTasksLimit := d.settings.TaskLimits.MaxPendingGeneratedTasks
 			tasksToGenerate := utility.FromIntPtr(nextTaskFromDB.EstimatedNumGeneratedTasks)
 			if generateTasksLimit > 0 && tasksToGenerate > 0 {
 				pendingGenerateTasks, err := task.GetPendingGenerateTasks(ctx)
@@ -363,7 +358,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				}
 			}
 
-			shouldContinue, shouldReturn := checkMaxConcurrentLargeParserProjectTasks(settings, nextTaskFromDB, d.distroID)
+			shouldContinue, shouldReturn := checkMaxConcurrentLargeParserProjectTasks(d.settings, nextTaskFromDB, d.distroID)
 			if shouldReturn {
 				return nil
 			}
@@ -455,7 +450,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 						})
 						return nil
 					}
-					shouldContinue, shouldReturn := checkMaxConcurrentLargeParserProjectTasks(settings, nextTaskFromDB, d.distroID)
+					shouldContinue, shouldReturn := checkMaxConcurrentLargeParserProjectTasks(d.settings, nextTaskFromDB, d.distroID)
 					if shouldReturn {
 						return nil
 					}
