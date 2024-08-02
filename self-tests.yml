@@ -421,6 +421,13 @@ functions:
           set -o xtrace
           rm evergreen/bin/output.*
           rm evergreen/bin/jstests/*.xml
+  
+  write-repo-name-to-downstream_expansions.yaml-for-pine:
+    - command: shell.exec
+      params: 
+        script: |
+          touch downstream_expansions.yaml
+          echo "pine_repo_name: evergreen" | tee downstream_expansions.yaml
 
 #######################################
 #                Tasks                #
@@ -721,6 +728,12 @@ tasks:
           permissions: public-read
           display_name: swagger.json (latest)
           patchable: false
+  - name: write-and-set-downstream-expansions
+    commands: 
+      - func: write-repo-name-to-downstream_expansions.yaml-for-pine
+      - command: downstream_expansions.set
+        params: 
+          file: downstream_expansions.yaml
   - <<: *build-and-push-client
     name: build-linux_amd64
     tags: ["build"]
@@ -791,6 +804,7 @@ buildvariants:
       - name: test-cloud
       - name: "js-test"
       - name: generate-api-docs
+      - name: write-and-set-downstream-expansions
 
   - name: race-detector
     display_name: Race Detector
