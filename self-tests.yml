@@ -426,8 +426,8 @@ functions:
     - command: shell.exec
       params: 
         script: |
-          touch downstream_expansions.yaml
-          echo "pine_repo_name: evergreen" | tee downstream_expansions.yaml
+          touch downstream_expansions_pine.yaml
+          echo "pine_repo_name: evergreen" | tee downstream_expansions_pine.yaml
 
 #######################################
 #                Tasks                #
@@ -728,12 +728,12 @@ tasks:
           permissions: public-read
           display_name: swagger.json (latest)
           patchable: false
-  - name: write-downstream-expansions-pine
+  - name: write-downstream-expansions-for-pine
     commands: 
       - func: write-downstream-expansions-for-pine
       - command: downstream_expansions.set
         params: 
-          file: downstream_expansions.yaml
+          file: downstream_expansions_pine.yaml
   - <<: *build-and-push-client
     name: build-linux_amd64
     tags: ["build"]
@@ -804,7 +804,7 @@ buildvariants:
       - name: test-cloud
       - name: "js-test"
       - name: generate-api-docs
-      - name: write-downstream-expansions-pine
+      - name: write-downstream-expansions-for-pine
 
   - name: race-detector
     display_name: Race Detector
