@@ -25,7 +25,7 @@ Evergreen does not have a limit on how large task timeouts can be. For different
 
 ## Include Limits
 
-We limit included files to 35 based on this [investigation](https://jira.mongodb.org/browse/DEVPROD-3509) about GitHub usage. 
+We have a limit of 35 [included files](../Project-Configuration/Project-Configuration-Files/#Include) per project based on this [investigation](https://jira.mongodb.org/browse/DEVPROD-3509) about GitHub usage. 
 
 ## YAML configuration size
 
