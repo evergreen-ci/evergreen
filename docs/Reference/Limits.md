@@ -12,7 +12,7 @@ Exceptions can be requested on a case-by-case which will be granted based on [ou
 
 ## Task Limits
 
-Evergreen limits tasks per version to 40,000. This includes both selected and unselected tasks. 
+Evergreen limits tasks per version to 50,000. This includes both selected and unselected tasks. 
 
 ## Task Scheduling Limits
 
@@ -25,7 +25,7 @@ Evergreen does not have a limit on how large task timeouts can be. For different
 
 ## Include Limits
 
-There is an [investigation](https://jira.mongodb.org/browse/DEVPROD-3509) to figure out how many include files we want to let users put in their project configuration. The current limit is 50.
+We limit included files to 25 based on this [investigation](https://jira.mongodb.org/browse/DEVPROD-3509) about GitHub usage. 
 
 ## YAML configuration size
 
