@@ -70,7 +70,40 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	ids := []string{}
+	t, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+	initialHosts, err := host.FindHostsSpawnedByTask(ctx, h.taskID, t.Execution)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding hosts spawned by task '%s'", h.taskID))
+	}
+	numInitialHosts := len(initialHosts)
 	for i := 0; i < numHosts; i++ {
+		// If there are an unexpected number of host intents, log a message and continue.
+		spawnedHosts, err := host.FindHostsSpawnedByTask(ctx, h.taskID, t.Execution)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding hosts spawned by task '%s'", h.taskID))
+		}
+
+		if len(spawnedHosts) != numInitialHosts+i {
+			grip.Debug(message.Fields{
+				"message":            "unexpected number of host.create intents",
+				"task_id":            h.taskID,
+				"task_execution":     t.Execution,
+				"expected_num_hosts": numInitialHosts + i,
+				"actual_num_hosts":   len(spawnedHosts),
+			})
+
+			continue
+		}
+
 		intentHost, err := data.MakeHost(ctx, h.env, h.taskID, "", "", h.createHost, h.distro)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating intent host"))
