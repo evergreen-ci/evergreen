@@ -328,6 +328,9 @@ func MockConfig() *evergreen.Settings {
 						SecretPrefix: "secret_prefix",
 					},
 				},
+				ParameterStore: evergreen.ParameterStoreConfig{
+					Prefix: "/prefix",
+				},
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",

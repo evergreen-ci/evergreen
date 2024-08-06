@@ -180,6 +180,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.ExecutionRole, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.ExecutionRole))
 	assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.LogRegion, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.LogRegion))
 	assert.EqualValues(testSettings.Providers.AWS.Pod.ECS.LogGroup, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.LogGroup))
+	assert.EqualValues(testSettings.Providers.AWS.ParameterStore.Prefix, utility.FromStringPtr(apiSettings.Providers.AWS.ParameterStore.Prefix))
 	require.Len(apiSettings.Providers.AWS.Pod.ECS.Clusters, len(testSettings.Providers.AWS.Pod.ECS.Clusters))
 	for i, cluster := range testSettings.Providers.AWS.Pod.ECS.Clusters {
 		assert.EqualValues(cluster.Name, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.Clusters[i].Name))

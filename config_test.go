@@ -391,6 +391,9 @@ func (s *AdminSuite) TestProvidersConfig() {
 					Key:    "aws",
 				},
 			},
+			ParameterStore: ParameterStoreConfig{
+				Prefix: "/evergreen",
+			},
 		},
 		Docker: DockerConfig{
 			APIVersion: "docker_version",

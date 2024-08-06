@@ -1399,6 +1399,7 @@ type APIAWSConfig struct {
 	AllowedRegions       []*string                 `json:"allowed_regions"`
 	MaxVolumeSizePerUser *int                      `json:"max_volume_size"`
 	Pod                  *APIAWSPodConfig          `json:"pod"`
+	ParameterStore       APIParameterStoreConfig   `json:"parameter_store"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h interface{}) error {
@@ -1458,6 +1459,8 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		var pod APIAWSPodConfig
 		pod.BuildFromService(v.Pod)
 		a.Pod = &pod
+
+		a.ParameterStore.BuildFromService(v.ParameterStore)
 	default:
 		return errors.Errorf("programmatic error: expected AWS config but got type %T", h)
 	}
@@ -1578,6 +1581,8 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		return nil, errors.Wrap(err, "converting ECS configuration to service model")
 	}
 	config.Pod = *pod
+
+	config.ParameterStore = a.ParameterStore.ToService()
 
 	return config, nil
 }
@@ -2757,4 +2762,18 @@ func (a *APIRuntimeEnvironmentsConfig) ToService() (interface{}, error) {
 		BaseURL: utility.FromStringPtr(a.BaseURL),
 		APIKey:  utility.FromStringPtr(a.APIKey),
 	}, nil
+}
+
+type APIParameterStoreConfig struct {
+	Prefix *string `json:"prefix"`
+}
+
+func (a *APIParameterStoreConfig) BuildFromService(ps evergreen.ParameterStoreConfig) {
+	a.Prefix = utility.ToStringPtr(ps.Prefix)
+}
+
+func (a *APIParameterStoreConfig) ToService() evergreen.ParameterStoreConfig {
+	return evergreen.ParameterStoreConfig{
+		Prefix: utility.FromStringPtr(a.Prefix),
+	}
 }
