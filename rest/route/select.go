@@ -47,6 +47,7 @@ func makeSelectTestsHandler() gimlet.RouteHandler {
 //	@Router			/select/tests [post]
 //	@Param			{object}	body	SelectTestsRequest	true	"Select tests request"
 //	@Security		Api-User || Api-Key
+//	@Success		200	{object}	SelectTestsRequest
 func (t *selectTestsHandler) Factory() gimlet.RouteHandler {
 	return &selectTestsHandler{}
 }

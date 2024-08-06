@@ -131,6 +131,7 @@ func makeChangeStatusForBuild() gimlet.RouteHandler {
 //	@Tags			builds
 //	@Router			/builds/{build_id} [patch]
 //	@Security		Api-User || Api-Key
+//	@Param			build_id	path		string						true	"the build ID"
 //	@Param			{object}	body		buildChangeStatusHandler	true	"parameters"
 //	@Success		200			{object}	model.APIBuild
 func (b *buildChangeStatusHandler) Factory() gimlet.RouteHandler {
