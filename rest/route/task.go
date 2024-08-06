@@ -149,7 +149,7 @@ func makeModifyTaskRoute() gimlet.RouteHandler {
 //	@Tags			tasks
 //	@Router			/tasks/{task_id} [patch]
 //	@Security		Api-User || Api-Key
-//	@Param			task_id		path		string	true	"task ID"
+//	@Param			task_id		path		string						true	"task ID"
 //	@Param			{object}	body		taskExecutionPatchHandler	true	"parameters"
 //	@Success		200			{object}	model.APITask
 func (tep *taskExecutionPatchHandler) Factory() gimlet.RouteHandler {

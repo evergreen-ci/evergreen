@@ -598,8 +598,8 @@ func makeGetDistroClientURLs(env evergreen.Environment) gimlet.RouteHandler {
 //	@Description	Returns the URLs for downloading the Evergreen client for a distro.
 //	@Tags			distros
 //	@Router			/distros/{distro_id}/client_urls [get]
-//	@Param			distro_id	path		string	true	"distro ID"
-//	@Success		200	{array}	string	"The URLs for downloading the Evergreen client"
+//	@Param			distro_id	path	string	true	"distro ID"
+//	@Success		200			{array}	string	"The URLs for downloading the Evergreen client"
 func (rh *distroClientURLsGetHandler) Factory() gimlet.RouteHandler {
 	return &distroClientURLsGetHandler{
 		env: rh.env,
