@@ -263,6 +263,7 @@ func makeUserPatchHandler(url string) gimlet.RouteHandler {
 //	@Tags			patches
 //	@Router			/users/{user_id}/patches [get]
 //	@Security		Api-User || Api-Key
+//	@Param			user_id		path	string	true	"the user's ID"
 //	@Param			project_id	path	string	true	"the project ID"
 //	@Param			start_at	query	string	false	"The create_time of the patch to start at in the pagination. Defaults to now"
 //	@Param			limit		query	int		false	"The number of patches to be returned per page of pagination. Defaults to 100"
