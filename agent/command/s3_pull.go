@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -46,7 +46,7 @@ func (c *s3Base) createBucket(client *http.Client, conf *internal.TaskConfig) er
 
 	opts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(conf.TaskSync.Key, conf.TaskSync.Secret, ""),
-		Region:      endpoints.UsEast1RegionID,
+		Region:      evergreen.DefaultEC2Region,
 		Name:        conf.TaskSync.Bucket,
 		MaxRetries:  utility.ToIntPtr(int(c.MaxRetries)),
 		Permissions: pail.S3PermissionsPrivate,

@@ -3,7 +3,7 @@ package taskoutput
 import (
 	"context"
 
-	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -11,10 +11,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func newBucket(ctx context.Context, config evergreen.BucketConfig, creds *credentials.Credentials) (pail.Bucket, error) {
+func newBucket(ctx context.Context, config evergreen.BucketConfig, creds aws.CredentialsProvider) (pail.Bucket, error) {
 	switch config.Type {
 	case evergreen.BucketTypeS3:
-		return pail.NewS3Bucket(pail.S3Options{
+		return pail.NewS3Bucket(ctx, pail.S3Options{
 			Name:        config.Name,
 			Credentials: creds,
 			Region:      evergreen.DefaultEC2Region,

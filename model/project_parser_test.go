@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
@@ -2046,7 +2045,7 @@ func TestParserProjectStorage(t *testing.T) {
 	ppConf := env.Settings().Providers.AWS.ParserProject
 	bucket, err := pail.NewS3BucketWithHTTPClient(c, pail.S3Options{
 		Name:   ppConf.Bucket,
-		Region: endpoints.UsEast1RegionID,
+		Region: evergreen.DefaultEC2Region,
 	})
 	require.NoError(t, err)
 	defer func() {

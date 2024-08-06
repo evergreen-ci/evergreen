@@ -83,6 +83,7 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 		return errors.New("AWS key and secret must not be empty")
 	}
 
+	// kim: TODO: rewrite all of this to use SDK v2
 	defaultCreds := credentials.NewStaticCredentialsFromCreds(credentials.Value{
 		AccessKeyID:     key,
 		SecretAccessKey: secret,

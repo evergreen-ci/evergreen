@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/pkg/errors"
@@ -25,7 +24,7 @@ func newGeneratedJSONS3Storage(ppConf evergreen.ParserProjectS3Config) (*generat
 	b, err := pail.NewS3MultiPartBucket(pail.S3Options{
 		Name:   ppConf.Bucket,
 		Prefix: ppConf.GeneratedJSONPrefix,
-		Region: endpoints.UsEast1RegionID,
+		Region: evergreen.DefaultEC2Region,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "setting up S3 multipart bucket")

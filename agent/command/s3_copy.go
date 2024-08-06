@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/aws/aws-sdk-go/service/s3"
+	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
@@ -125,13 +125,13 @@ func (c *s3copy) validate() error {
 			catcher.New("S3 destination path cannot be blank")
 		}
 		if s3CopyFile.Permissions == "" {
-			s3CopyFile.Permissions = s3.BucketCannedACLPublicRead
+			s3CopyFile.Permissions = s3Types.BucketCannedACLPublicRead
 		}
 		if s3CopyFile.Source.Region == "" {
-			s3CopyFile.Source.Region = endpoints.UsEast1RegionID
+			s3CopyFile.Source.Region = evergreen.DefaultEC2Region
 		}
 		if s3CopyFile.Destination.Region == "" {
-			s3CopyFile.Destination.Region = endpoints.UsEast1RegionID
+			s3CopyFile.Destination.Region = evergreen.DefaultEC2Region
 		}
 		// make sure both buckets are valid
 		if err := validateS3BucketName(s3CopyFile.Source.Bucket); err != nil {

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	awsECS "github.com/aws/aws-sdk-go-v2/service/ecs"
 	ecsTypes "github.com/aws/aws-sdk-go-v2/service/ecs/types"
-	"github.com/aws/aws-sdk-go/aws"
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -187,7 +187,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 				TaskDefinitionPrefix: "task_definition_prefix",
 				TaskRole:             "task_role",
 				ExecutionRole:        "execution_role",
-				LogRegion:            "us-east-1",
+				LogRegion:            evergreen.DefaultEC2Region,
 				LogGroup:             "log_group",
 			}
 			env.EvergreenSettings.Providers.AWS.Pod.SecretsManager = evergreen.SecretsManagerConfig{

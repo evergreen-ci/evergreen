@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/aws/aws-sdk-go/service/s3"
+	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
@@ -170,7 +170,7 @@ func (s3pc *s3put) validate() error {
 	if s3pc.isMulti() && filepath.IsAbs(s3pc.LocalFile) {
 		catcher.New("cannot use absolute path with local files include filter")
 	}
-	if s3pc.Visibility == artifact.Signed && (s3pc.Permissions == s3.BucketCannedACLPublicRead || s3pc.Permissions == s3.BucketCannedACLPublicReadWrite) {
+	if s3pc.Visibility == artifact.Signed && (s3pc.Permissions == s3Types.BucketCannedACLPublicRead || s3pc.Permissions == s3Types.BucketCannedACLPublicReadWrite) {
 		catcher.New("visibility: signed should not be combined with permissions: public-read or permissions: public-read-write")
 	}
 
@@ -179,7 +179,7 @@ func (s3pc *s3put) validate() error {
 	}
 
 	if s3pc.Region == "" {
-		s3pc.Region = endpoints.UsEast1RegionID
+		s3pc.Region = evergreen.DefaultEC2Region
 	}
 
 	// make sure the bucket is valid
@@ -559,7 +559,7 @@ func (s3pc *s3put) isPrivate(visibility string) bool {
 
 func (s3pc *s3put) isPublic() bool {
 	return (s3pc.Visibility == "" || s3pc.Visibility == artifact.Public) &&
-		(s3pc.Permissions == s3.BucketCannedACLPublicRead || s3pc.Permissions == s3.BucketCannedACLPublicReadWrite)
+		(s3pc.Permissions == s3Types.BucketCannedACLPublicRead || s3pc.Permissions == s3Types.BucketCannedACLPublicReadWrite)
 }
 
 func (s3pc *s3put) remoteFileExists(remoteName string) (bool, error) {
@@ -573,11 +573,13 @@ func (s3pc *s3put) remoteFileExists(remoteName string) (bool, error) {
 	}
 	_, err := pail.GetHeadObject(requestParams)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == notFoundError {
-			return false, nil
-		} else {
-			return false, errors.Wrapf(err, "getting head object for remote file '%s'", remoteName)
+		var smithyErr smithy.APIError
+		if errors.As(err, &smithyErr) {
+			if smithyErr.ErrorCode() == notFoundError {
+				return false, nil
+			}
 		}
+		return false, errors.Wrapf(err, "getting head object for remote file '%s'", remoteName)
 	}
 	return true, nil
 }
