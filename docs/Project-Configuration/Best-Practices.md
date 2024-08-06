@@ -30,7 +30,7 @@ Use [task tags](Project-Configuration-Files#task-and-variant-tags) to reduce rep
 
 ## Expansions
 
-Be cautious about Evergreen's [expansion syntax](../Project-Configuration/Project-Configuration-Files#expansions).
+Be cautious about Evergreen's [expansion syntax](Project-Configuration-Files#expansions).
 
 Evergreen chose an expansion syntax that unfortunately conflicts with bash. This means that you cannot do something like this.
 
