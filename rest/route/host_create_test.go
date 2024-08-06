@@ -375,11 +375,6 @@ func TestHostCreateDocker(t *testing.T) {
 	assert.NoError(err)
 	require.Len(hosts, 3)
 	assert.Equal(h.DockerOptions.Command, hosts[1].DockerOptions.Command)
-
-	// assert.Equal(http.StatusOK, handler.Run(ctx).Status())
-	// hosts, err = host.Find(ctx, bson.M{})
-	// assert.NoError(err)
-	// require.Len(hosts, 3)
 }
 
 func TestGetDockerLogs(t *testing.T) {
