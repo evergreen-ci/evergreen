@@ -3,7 +3,6 @@ package cloud
 import (
 	"context"
 	"encoding/base64"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -149,15 +148,9 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 	if h.ProvisionOptions != nil && h.ProvisionOptions.FetchOpts != nil {
 		f := h.ProvisionOptions.FetchOpts
 		_ = thirdparty.RevokeInstallationToken(ctx, f.GithubAppToken)
-		if h.ProvisionOptions.FetchOpts.ModuleTokens != nil {
-			for _, token := range f.ModuleTokens {
-				parts := strings.Split(token, ":")
-				if len(parts) != 2 {
-					grip.Warningf("invalid module token format, can't revoke")
-					continue
-				}
-				_ = thirdparty.RevokeInstallationToken(ctx, parts[1])
-			}
+
+		for _, token := range f.ModuleTokens {
+			_ = thirdparty.RevokeInstallationToken(ctx, token)
 		}
 
 	}

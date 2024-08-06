@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/robfig/cron"
@@ -326,13 +325,18 @@ type FetchOpts struct {
 	// ProjectOwner is the owner of the project associated with the task.
 	ProjectOwner string `bson:"project_owner" json:"project_owner"`
 	// Modules is a list of modules associated with the task.
-	Modules []manifest.Module `bson:"modules" json:"modules"`
+	Modules []ProjectModule `bson:"modules" json:"modules"`
 
 	// GithubAppToken is the token used to fetch task data from Github.
 	GithubAppToken string `bson:"github_app_token" json:"github_app_token"`
 	// ModuleTokens is a list of github tokens for each module associated with the task
 	// in the format 'moduleOwner_moduleRepo:token'
-	ModuleTokens []string `bson:"module_tokens" json:"module_tokens"`
+	ModuleTokens map[string]string `bson:"module_tokens" json:"module_tokens"`
+}
+type ProjectModule struct {
+	Name  string `bson:"name" plugin:"expand"`
+	Repo  string `bson:"repo"  plugin:"expand"`
+	Owner string `bson:"owner"  plugin:"expand"`
 }
 
 // SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.

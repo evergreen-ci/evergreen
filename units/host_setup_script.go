@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -118,21 +117,14 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 			j.AddRetryableError(errors.Wrap(err, "checking if task data is fetched yet"))
 			return
 		}
-		// once task data is fetched, we no longer need the github token. Revoke it here
+		// Once task data is fetched, we no longer need the github token. Revoke it here
 		// in case something went wrong and it's still around.
 		if f := j.host.ProvisionOptions.FetchOpts; f != nil {
-			_ = thirdparty.RevokeInstallationToken(ctx, f.GithubAppToken)
-			if f.ModuleTokens != nil {
-				for _, token := range f.ModuleTokens {
-					parts := strings.Split(token, ":")
-					if len(parts) != 2 {
-						grip.Warningf("invalid module token format, can't revoke")
-						continue
-					}
-					_ = thirdparty.RevokeInstallationToken(ctx, parts[1])
-				}
+			for _, token := range f.ModuleTokens {
+				_ = thirdparty.RevokeInstallationToken(ctx, token)
 			}
 		}
+
 	}
 
 	// Do not retry after the setup script executes and fails because there's no

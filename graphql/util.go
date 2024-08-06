@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -920,7 +919,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 }
 
 // GetProjectAndModulesForTask returns the project ref and modules for a task
-func getProjectAndModulesForTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) (*model.ProjectRef, []manifest.Module, error) {
+func getProjectAndModulesForTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) (*model.ProjectRef, []host.ProjectModule, error) {
 	if t == nil {
 		return nil, nil, errors.New("task is nil")
 	}
@@ -947,7 +946,7 @@ func getProjectAndModulesForTask(ctx context.Context, settings *evergreen.Settin
 		return nil, nil, errors.Wrapf(err, "finding build variant '%s' in config", t.BuildVariant)
 	}
 
-	var manifestModules []manifest.Module
+	var modules []host.ProjectModule
 	for _, moduleName := range variant.Modules {
 		module, err := project.GetModuleByName(moduleName)
 		if err != nil || module == nil {
@@ -957,13 +956,14 @@ func getProjectAndModulesForTask(ctx context.Context, settings *evergreen.Settin
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 		}
-		manifestModules = append(manifestModules, manifest.Module{
+		modules = append(modules, host.ProjectModule{
+			Name:  moduleName,
 			Owner: owner,
 			Repo:  repo,
 		})
 	}
 
-	return projectRef, manifestModules, nil
+	return projectRef, modules, nil
 
 }
 func getProjectMetadata(ctx context.Context, projectId *string, patchId *string) (*restModel.APIProjectRef, error) {

@@ -1059,6 +1059,8 @@ func (h *Host) PopulateGithubToken(ctx context.Context) error {
 			"host_id": h.Id,
 			"distro":  h.Distro.Id,
 			"task_id": p.TaskId,
+			"owner":   p.FetchOpts.ProjectOwner,
+			"repo":    p.FetchOpts.ProjectRepo,
 		})
 		return errors.New("missing project owner or project repo")
 	}
@@ -1077,11 +1079,11 @@ func (h *Host) PopulateGithubToken(ctx context.Context) error {
 	h.ProvisionOptions.FetchOpts.GithubAppToken = token
 
 	// populate module tokens
-	if len(p.FetchOpts.ModuleTokens) == 0 {
+	if len(p.FetchOpts.Modules) == 0 {
 		return nil
 	}
 
-	moduleTokens := make([]string, 0, len(p.FetchOpts.Modules))
+	moduleTokens := map[string]string{}
 	for _, module := range p.FetchOpts.Modules {
 		if module.Owner == "" || module.Repo == "" {
 			grip.Warning(message.Fields{
@@ -1095,7 +1097,6 @@ func (h *Host) PopulateGithubToken(ctx context.Context) error {
 			continue
 		}
 		token, err := thirdparty.GetInstallationToken(ctx, module.Owner, module.Repo, opts)
-		moduleName := module.CreateName()
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"message": "getting installation token for module",
@@ -1104,11 +1105,11 @@ func (h *Host) PopulateGithubToken(ctx context.Context) error {
 				"task_id": p.TaskId,
 				"owner":   module.Owner,
 				"repo":    module.Repo,
-				"module":  moduleName,
+				"module":  module.Name,
 			}))
 			continue
 		}
-		moduleTokens = append(moduleTokens, fmt.Sprintf("%s:%s", moduleName, token))
+		moduleTokens[module.Name] = token
 	}
 	h.ProvisionOptions.FetchOpts.ModuleTokens = moduleTokens
 	return nil
@@ -1200,9 +1201,10 @@ func (h *Host) SpawnHostGetTaskDataCommand() []string {
 			s = append(s, "--token", f.GithubAppToken)
 		}
 		if f.ModuleTokens != nil {
-			s = append(s, "-m", strings.Join(f.ModuleTokens, " -m"))
+			for module, token := range f.ModuleTokens {
+				s = append(s, "-m", fmt.Sprintf("%s:%s", module, token))
+			}
 		}
-
 	}
 
 	return s

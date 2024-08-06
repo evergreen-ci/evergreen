@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -63,27 +62,31 @@ func (apiOpts *APIProvisionOptions) BuildFromService(opts host.ProvisionOptions)
 // /hosts the yaml tags are used by hostCreate() when parsing the params from a
 // file.
 type HostRequestOptions struct {
-	DistroID              string            `json:"distro" yaml:"distro"`
-	TaskID                string            `json:"task" yaml:"task"`
-	ProjectRepo           string            `bson:"project_repo" json:"project_repo"`
-	ProjectOwner          string            `bson:"project_owner" json:"project_owner"`
-	ProjectModules        []manifest.Module `bson:"project_modules" json:"project_modules"`
-	TaskSync              bool              `json:"task_sync" yaml:"task_sync"`
-	Region                string            `json:"region" yaml:"region"`
-	KeyName               string            `json:"keyname" yaml:"key"`
-	UserData              string            `json:"userdata" yaml:"userdata_file"`
-	SetupScript           string            `json:"setup_script" yaml:"setup_file"`
-	UseProjectSetupScript bool              `json:"use_setup_script_path" yaml:"use_setup_script_path"`
-	Tag                   string            `yaml:"tag"`
-	InstanceTags          []host.Tag        `json:"instance_tags" yaml:"instance_tags"`
-	InstanceType          string            `json:"instance_type" yaml:"type"`
-	NoExpiration          bool              `json:"no_expiration" yaml:"no-expire"`
+	DistroID              string     `json:"distro" yaml:"distro"`
+	TaskID                string     `json:"task" yaml:"task"`
+	TaskSync              bool       `json:"task_sync" yaml:"task_sync"`
+	Region                string     `json:"region" yaml:"region"`
+	KeyName               string     `json:"keyname" yaml:"key"`
+	UserData              string     `json:"userdata" yaml:"userdata_file"`
+	SetupScript           string     `json:"setup_script" yaml:"setup_file"`
+	UseProjectSetupScript bool       `json:"use_setup_script_path" yaml:"use_setup_script_path"`
+	Tag                   string     `yaml:"tag"`
+	InstanceTags          []host.Tag `json:"instance_tags" yaml:"instance_tags"`
+	InstanceType          string     `json:"instance_type" yaml:"type"`
+	NoExpiration          bool       `json:"no_expiration" yaml:"no-expire"`
 	host.SleepScheduleOptions
 	IsVirtualWorkstation bool       `json:"is_virtual_workstation" yaml:"is_virtual_workstation"`
 	IsCluster            bool       `json:"is_cluster" yaml:"is_cluster"`
 	HomeVolumeSize       int        `json:"home_volume_size" yaml:"home_volume_size"`
 	HomeVolumeID         string     `json:"home_volume_id" yaml:"home_volume_id"`
 	Expiration           *time.Time `json:"expiration" yaml:"expiration"`
+
+	// The project information for the task. Fetching it when the host request
+	// options are build instead of using the task id to fetch it when the host is
+	// created saves a few db calls.
+	ProjectRepo    string               `bson:"project_repo" json:"project_repo"`
+	ProjectOwner   string               `bson:"project_owner" json:"project_owner"`
+	ProjectModules []host.ProjectModule `bson:"project_modules" json:"project_modules"`
 }
 
 type DistroInfo struct {

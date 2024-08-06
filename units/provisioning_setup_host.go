@@ -508,16 +508,8 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 				"job":       j.ID(),
 			}))
 			if f := j.host.ProvisionOptions.FetchOpts; f != nil {
-				_ = thirdparty.RevokeInstallationToken(ctx, f.GithubAppToken)
-				if f.ModuleTokens != nil {
-					for _, token := range f.ModuleTokens {
-						parts := strings.Split(token, ":")
-						if len(parts) != 2 {
-							grip.Warningf("invalid module token format, can't revoke")
-							continue
-						}
-						_ = thirdparty.RevokeInstallationToken(ctx, parts[1])
-					}
+				for _, token := range f.ModuleTokens {
+					_ = thirdparty.RevokeInstallationToken(ctx, token)
 				}
 			}
 

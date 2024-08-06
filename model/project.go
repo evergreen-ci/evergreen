@@ -473,13 +473,6 @@ func (m Module) GetOwnerAndRepo() (string, string, error) {
 	return m.Owner, m.Repo, nil
 }
 
-// CreateName creates a name based on owner, repo and branch
-func (m Module) CreateName() string {
-	_, _, _ = thirdparty.ParseGitUrl(m.Repo)
-
-	return fmt.Sprintf("%s_%s", m.Owner, m.Repo)
-}
-
 type ModuleList []Module
 
 func (l *ModuleList) IsIdentical(m manifest.Manifest) bool {

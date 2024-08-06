@@ -62,7 +62,7 @@ func Fetch() cli.Command {
 			},
 			cli.BoolFlag{
 				Name:  useAppTokenName,
-				Usage: "when using a token, use this to indicate that the token is for a github app and not an oauth token",
+				Usage: "when using a token, use this to indicate that the token is for a GitHub app and not an oauth token",
 			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(moduleTokensName, "m"),
@@ -326,7 +326,7 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 		}
 		// Do not error if the module token doesn't exist. If the repo is
 		// public, it can be cloned without a token.
-		moduleToken := moduleTokens[module.CreateName()]
+		moduleToken := moduleTokens[module.Name]
 
 		// use the project token if the module token is not specified
 		if moduleToken == "" {
