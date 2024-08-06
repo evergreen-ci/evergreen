@@ -1053,7 +1053,10 @@ func (h *Host) PopulateGithubToken(ctx context.Context) error {
 	if p.TaskId == "" {
 		return errors.New("missing task id")
 	}
-	if p.FetchOpts == nil || p.FetchOpts.ProjectOwner == "" || p.FetchOpts.ProjectRepo == "" {
+	if p.FetchOpts == nil {
+		return errors.New("missing fetch opts")
+	}
+	if p.FetchOpts.ProjectOwner == "" || p.FetchOpts.ProjectRepo == "" {
 		grip.Warning(message.Fields{
 			"message": "missing project owner or repo when populating token for spawn host",
 			"host_id": h.Id,
