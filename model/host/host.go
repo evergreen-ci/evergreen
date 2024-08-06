@@ -2620,7 +2620,7 @@ func FindAllHostsSpawnedByTasks(ctx context.Context) ([]Host, error) {
 	return hosts, nil
 }
 
-// FindHostsSpawnedByTask finds hosts spawned by the `createhost` command scoped to a given task.
+// FindHostsSpawnedByTask finds hosts spawned by the `create.host` command scoped to a given task.
 func FindHostsSpawnedByTask(ctx context.Context, taskID string, execution int) ([]Host, error) {
 	taskIDKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskIDKey)
 	taskExecutionNumberKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskExecutionNumberKey)
@@ -2632,6 +2632,22 @@ func FindHostsSpawnedByTask(ctx context.Context, taskID string, execution int) (
 	hosts, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding hosts spawned by task '%s' for execution %d", taskID, execution)
+	}
+	return hosts, nil
+}
+
+// NumHostIntentsByTask returns the number of host intents created by `create.host` command for a given task.
+func FindHostIntentsByTask(ctx context.Context, taskID string, execution int) ([]Host, error) {
+	taskIDKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskIDKey)
+	taskExecutionNumberKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskExecutionNumberKey)
+	query := bson.M{
+		StatusKey:              bson.M{"$in": evergreen.IsRunningOrWillRunStatuses},
+		taskIDKey:              taskID,
+		taskExecutionNumberKey: execution,
+	}
+	hosts, err := Find(ctx, query)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding host intents created by task '%s' for execution %d", taskID, execution)
 	}
 	return hosts, nil
 }

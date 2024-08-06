@@ -284,6 +284,16 @@ func TestMakeHost(t *testing.T) {
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-west-1"))
 	assert.Equal(ec2Settings2.AMI, "ami-987654")
+
+	hosts, err := host.Find(ctx, bson.M{})
+	assert.NoError(err)
+	require.Len(hosts, 7)
+
+	assert.Equal(http.StatusOK, handler.Run(ctx).Status())
+
+	hosts, err = host.Find(ctx, bson.M{})
+	assert.NoError(err)
+	require.Len(hosts, 7)
 }
 
 func TestHostCreateDocker(t *testing.T) {
@@ -326,7 +336,7 @@ func TestHostCreateDocker(t *testing.T) {
 	require.NoError(d.Insert(ctx))
 
 	sampleTask := &task.Task{
-		Id: handler.taskID,
+		Id: "task-id",
 	}
 	require.NoError(sampleTask.Insert())
 
@@ -343,6 +353,7 @@ func TestHostCreateDocker(t *testing.T) {
 	}
 	c.Registry.Name = "myregistry"
 	handler.createHost = c
+	handler.taskID = sampleTask.Id
 
 	foundDistro, err := distro.GetHostCreateDistro(ctx, c)
 	require.NoError(err)
@@ -364,6 +375,11 @@ func TestHostCreateDocker(t *testing.T) {
 	assert.NoError(err)
 	require.Len(hosts, 3)
 	assert.Equal(h.DockerOptions.Command, hosts[1].DockerOptions.Command)
+
+	// assert.Equal(http.StatusOK, handler.Run(ctx).Status())
+	// hosts, err = host.Find(ctx, bson.M{})
+	// assert.NoError(err)
+	// require.Len(hosts, 3)
 }
 
 func TestGetDockerLogs(t *testing.T) {
