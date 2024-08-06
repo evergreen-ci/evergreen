@@ -336,7 +336,7 @@ func TestHostCreateDocker(t *testing.T) {
 	require.NoError(d.Insert(ctx))
 
 	sampleTask := &task.Task{
-		Id: "task-id",
+		Id: handler.taskID,
 	}
 	require.NoError(sampleTask.Insert())
 
@@ -353,7 +353,6 @@ func TestHostCreateDocker(t *testing.T) {
 	}
 	c.Registry.Name = "myregistry"
 	handler.createHost = c
-	handler.taskID = sampleTask.Id
 
 	foundDistro, err := distro.GetHostCreateDistro(ctx, c)
 	require.NoError(err)
