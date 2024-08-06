@@ -83,7 +83,7 @@ func TestGetPackages(t *testing.T) {
 		Limit:   limit,
 		Manager: manager,
 	}
-	result, err := c.getPackages(ctx, opts)
+	result, err := c.GetPackages(ctx, opts)
 	require.NoError(t, err)
 	require.Len(t, result, limit)
 	for i := 0; i < limit; i++ {
@@ -99,7 +99,7 @@ func TestGetPackages(t *testing.T) {
 		Name:    "Automat",
 		Manager: manager,
 	}
-	result, err = c.getPackages(ctx, opts)
+	result, err = c.GetPackages(ctx, opts)
 	require.NoError(t, err)
 	require.Len(t, result, 1)
 	assert.Equal(result[0].Name, name)
@@ -110,16 +110,16 @@ func TestGetPackages(t *testing.T) {
 		AMI:  ami,
 		Name: "blahblahblah",
 	}
-	result, err = c.getPackages(ctx, opts)
+	result, err = c.GetPackages(ctx, opts)
 	require.NoError(t, err)
 	assert.Empty(result)
 
 	// Verify that there are no errors with PackageFilterOptions only including the AMI.
-	_, err = c.getPackages(ctx, PackageFilterOptions{AMI: ami})
+	_, err = c.GetPackages(ctx, PackageFilterOptions{AMI: ami})
 	require.NoError(t, err)
 
 	// Verify that there is an error with no AMI provided.
-	_, err = c.getPackages(ctx, PackageFilterOptions{})
+	_, err = c.GetPackages(ctx, PackageFilterOptions{})
 	require.Error(t, err)
 }
 
@@ -169,7 +169,7 @@ func TestGetToolchains(t *testing.T) {
 		AMI:   ami,
 		Limit: 10,
 	}
-	result, err := c.getToolchains(ctx, opts)
+	result, err := c.GetToolchains(ctx, opts)
 	require.NoError(t, err)
 	assert.Len(result, 10)
 
@@ -183,7 +183,7 @@ func TestGetToolchains(t *testing.T) {
 		Name:    name,
 		Version: version,
 	}
-	result, err = c.getToolchains(ctx, opts)
+	result, err = c.GetToolchains(ctx, opts)
 	require.NoError(t, err)
 	require.NotEmpty(t, result)
 	require.Len(t, result, 1)
@@ -197,12 +197,12 @@ func TestGetToolchains(t *testing.T) {
 		Limit: 5,
 		Name:  "blahblahblah",
 	}
-	result, err = c.getToolchains(ctx, opts)
+	result, err = c.GetToolchains(ctx, opts)
 	require.NoError(t, err)
 	assert.Empty(result)
 
 	// Verify that we receive an error when an AMI is not provided.
-	_, err = c.getToolchains(ctx, ToolchainFilterOptions{})
+	_, err = c.GetToolchains(ctx, ToolchainFilterOptions{})
 	require.Error(t, err)
 }
 
@@ -265,21 +265,21 @@ func TestGetEvents(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, config, "TestGetEvents")
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
-	// Verify that getEvents errors when not provided the required distro field.
-	_, err := c.getEvents(ctx, EventHistoryOptions{})
+	// Verify that GetEvents errors when not provided the required distro field.
+	_, err := c.GetEvents(ctx, EventHistoryOptions{})
 	assert.Error(err)
 
-	// Verify that getEvents errors with missing limit.
-	_, err = c.getEvents(ctx, EventHistoryOptions{Image: "ubuntu2204"})
+	// Verify that GetEvents errors with missing limit.
+	_, err = c.GetEvents(ctx, EventHistoryOptions{Image: "ubuntu2204"})
 	assert.Error(err)
 
-	// Verify that getEvents functions correctly with page and limit and returns in chronological order.
+	// Verify that GetEvents functions correctly with page and limit and returns in chronological order.
 	opts := EventHistoryOptions{
 		Image: "ubuntu2204",
 		Page:  0,
 		Limit: 5,
 	}
-	result, err := c.getEvents(ctx, opts)
+	result, err := c.GetEvents(ctx, opts)
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
 	assert.Len(result, 5)

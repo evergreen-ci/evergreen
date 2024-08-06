@@ -639,6 +639,10 @@ Admin Settings
 										<input type="number" ng-model="Settings.task_limits.max_concurrent_large_parser_project_tasks">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
+										<label>Max CPU Degraded Mode Concurrent Large Parser Project Tasks</label>
+										<input type="number" ng-model="Settings.task_limits.max_degraded_mode_concurrent_large_parser_project_tasks">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<label>Max Parser Project Size (MB)</label>
 										<input type="number" ng-model="Settings.task_limits.max_parser_project_size">
 									</md-input-container>
@@ -1841,6 +1845,10 @@ Admin Settings
 										<input type="text" ng-model="Settings.providers.aws.persistent_dns.domain">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
+										<label>Generated JSON Files S3 Prefix</label>
+										<input type="text" ng-model="Settings.providers.aws.parser_project.generated_json_prefix">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Default Security Group</label>
 										<input type="text" ng-model="Settings.providers.aws.default_security_group">
 									</md-input-container>

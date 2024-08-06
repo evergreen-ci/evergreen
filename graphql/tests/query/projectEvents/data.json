@@ -3,6 +3,10 @@
     {
       "_id": "sandbox_project_id",
       "identifier": "sandbox"
+    },
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
     }
   ],
   "project_vars": [
@@ -65,6 +69,49 @@
               "hello": "universe"
             }
           }
+        }
+      }
+    },
+    {
+      "_id": "2a3b7bb857e85a21ceb53cf9",
+      "r_type": "PROJECT",
+      "processed_at": {
+        "$date": "2020-03-03T15:46:29.961Z"
+      },
+      "ts": {
+        "$date": "2020-03-03T15:46:00.709Z"
+      },
+      "r_id": "spruce",
+      "e_type": "PROJECT_MODIFIED",
+      "data": {
+        "user": "bob.smith",
+        "before": {
+          "proj_ref": {
+            "_id": "spruce",
+            "identifier": "spruce",
+            "owner_name": "evergreen-ci",
+            "repo_name": "spruce",
+            "branch_name": "main"
+          },
+          "github_app_auth": {
+            "app_id": 11111,
+            "private_key": "secret"
+          },
+          "github_hooks_enabled": false
+        },
+        "after": {
+          "proj_ref": {
+            "_id": "spruce",
+            "identifier": "spruce",
+            "owner_name": "evergreen-ci",
+            "repo_name": "spruce",
+            "branch_name": "main"
+          },
+          "github_app_auth": {
+            "app_id": 11111,
+            "private_key": "secret"
+          },
+          "github_hooks_enabled": false
         }
       }
     }

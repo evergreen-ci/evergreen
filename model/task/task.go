@@ -322,6 +322,10 @@ type Task struct {
 	// NumNextTaskDispatches is the number of times the task has been dispatched to run on a
 	// host or in a container. This is used to determine if the task seems to be stuck.
 	NumNextTaskDispatches int `bson:"num_next_task_dispatches" json:"num_next_task_dispatches"`
+
+	// CachedProjectStorageMethod is a cached value how the parser project for this task's version was
+	// stored at the time this task was created. If this is empty, the default storage method is StorageMethodDB.
+	CachedProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"cached_project_storage_method" json:"cached_project_storage_method,omitempty"`
 }
 
 // GeneratedJSONFiles represent files used by a task for generate.tasks to update the project YAML.
@@ -1473,15 +1477,19 @@ func ByBeforeMidwayTaskFromIds(t1Id, t2Id string) (*Task, error) {
 // the scheduler queue.
 // If you pass an empty string as an argument to this function, this operation
 // will select tasks from all distros.
-func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) (int, error) {
+func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) ([]Task, error) {
 	query := schedulableHostTasksQuery()
 
 	if err := addApplicableDistroFilter(ctx, distroID, DistroIdKey, query); err != nil {
-		return 0, errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	query[ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}
 
+	tasks, err := FindAll(db.Query(query))
+	if err != nil {
+		return nil, errors.Wrap(err, "finding matching tasks")
+	}
 	update := bson.M{
 		"$set": bson.M{
 			PriorityKey:  evergreen.DisabledTaskPriority,
@@ -1491,12 +1499,14 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) (i
 
 	// Force the query to use 'distro_1_status_1_activated_1_priority_1_override_dependencies_1_unattainable_dependency_1'
 	// instead of defaulting to 'status_1_depends_on.status_1_depends_on.unattainable_1'.
-	info, err := UpdateAllWithHint(ctx, query, update, ActivatedTasksByDistroIndex)
+	_, err = UpdateAllWithHint(ctx, query, update, ActivatedTasksByDistroIndex)
 	if err != nil {
-		return 0, errors.Wrap(err, "unscheduling stale underwater tasks")
+		return nil, errors.Wrap(err, "unscheduling stale underwater tasks")
 	}
-
-	return info.Updated, nil
+	for _, modifiedTask := range tasks {
+		event.LogTaskPriority(modifiedTask.Id, modifiedTask.Execution, evergreen.UnderwaterTaskUnscheduler, evergreen.DisabledTaskPriority)
+	}
+	return tasks, nil
 }
 
 // DeactivateStepbackTask deactivates and aborts the matching stepback task.

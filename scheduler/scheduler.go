@@ -328,17 +328,31 @@ func generateIntentHost(d distro.Distro, pool *evergreen.ContainerPool) (*host.H
 
 // pass the empty string to unschedule all distros.
 func underwaterUnschedule(ctx context.Context, distroID string) error {
-	num, err := task.UnscheduleStaleUnderwaterHostTasks(ctx, distroID)
+	modifiedTasks, err := task.UnscheduleStaleUnderwaterHostTasks(ctx, distroID)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	grip.InfoWhen(num > 0, message.Fields{
-		"message": "unscheduled stale tasks",
-		"distro":  distroID,
-		"runner":  RunnerName,
-		"count":   num,
-	})
+	if len(modifiedTasks) > 0 {
+		taskIDs := make([]string, 0, len(modifiedTasks))
+		for _, modifiedTask := range modifiedTasks {
+			taskIDs = append(taskIDs, modifiedTask.Id)
+			if err = model.UpdateBuildAndVersionStatusForTask(ctx, &modifiedTask); err != nil {
+				return errors.Wrapf(err, "updating build and version status for task '%s'", modifiedTask.Id)
+			}
+			if modifiedTask.IsPartOfDisplay() {
+				if err = model.UpdateDisplayTaskForTask(&modifiedTask); err != nil {
+					return errors.Wrap(err, "updating parent display task")
+				}
+			}
+		}
+		grip.Info(message.Fields{
+			"message":  "unscheduled stale tasks",
+			"distro":   distroID,
+			"runner":   RunnerName,
+			"task_ids": taskIDs,
+		})
+	}
 
 	return nil
 }

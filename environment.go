@@ -371,6 +371,7 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 
 	opts := options.Client().ApplyURI(settings.Url).SetWriteConcern(settings.WriteConcernSettings.Resolve()).
 		SetReadConcern(settings.ReadConcernSettings.Resolve()).
+		SetTimeout(5 * time.Minute).
 		SetConnectTimeout(5 * time.Second).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 
@@ -1126,7 +1127,7 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 	// If githubSender does not exist or has expired, create one, add it to the cache, then return it.
 
 	tokenCreatedAt := time.Now()
-	token, err := e.settings.CreateGitHubAppAuth().CreateInstallationToken(e.ctx, owner, repo, nil)
+	token, err := e.settings.CreateGitHubAppAuth().CreateCachedInstallationToken(e.ctx, owner, repo, maxInstallationTokenLifetime, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting installation token")
 	}

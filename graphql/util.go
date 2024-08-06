@@ -1341,17 +1341,8 @@ func getProjectPermissionLevel(projectPermission ProjectPermission, access Acces
 	return permission, level, nil
 }
 
-func hasAnnotationPermission(ctx context.Context, obj *restModel.APITask, requiredLevel int) (bool, error) {
+func isPatchAuthorForTask(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	authUser := gimlet.GetUser(ctx)
-	permissions := gimlet.PermissionOpts{
-		Resource:      *obj.ProjectId,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionAnnotations,
-		RequiredLevel: requiredLevel,
-	}
-	if authUser.HasPermission(permissions) {
-		return true, nil
-	}
 	if utility.StringSliceContains(evergreen.PatchRequesters, utility.FromStringPtr(obj.Requester)) {
 		p, err := patch.FindOneId(utility.FromStringPtr(obj.Version))
 		if err != nil {
@@ -1365,6 +1356,31 @@ func hasAnnotationPermission(ctx context.Context, obj *restModel.APITask, requir
 		}
 	}
 	return false, nil
+}
+
+func hasLogViewPermission(ctx context.Context, obj *restModel.APITask) bool {
+	authUser := gimlet.GetUser(ctx)
+	permissions := gimlet.PermissionOpts{
+		Resource:      *obj.ProjectId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionLogs,
+		RequiredLevel: evergreen.LogsView.Value,
+	}
+	return authUser.HasPermission(permissions)
+}
+
+func hasAnnotationPermission(ctx context.Context, obj *restModel.APITask, requiredLevel int) (bool, error) {
+	authUser := gimlet.GetUser(ctx)
+	permissions := gimlet.PermissionOpts{
+		Resource:      *obj.ProjectId,
+		ResourceType:  evergreen.ProjectResourceType,
+		Permission:    evergreen.PermissionAnnotations,
+		RequiredLevel: requiredLevel,
+	}
+	if authUser.HasPermission(permissions) {
+		return true, nil
+	}
+	return isPatchAuthorForTask(ctx, obj)
 }
 
 func annotationPermissionHelper(ctx context.Context, taskID string, execution *int) error {

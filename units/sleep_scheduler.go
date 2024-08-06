@@ -252,6 +252,9 @@ func (j *sleepSchedulerJob) makeStopAndStartJobs(ctx context.Context, _ evergree
 		return nil, errors.Wrap(err, "checking if sleep schedule is enabled")
 	}
 
+	now := time.Now()
+	latestWaitUntil := now.Add(5 * time.Minute)
+
 	var stopJobs []amboy.Job
 	var hostIDsToStop []string
 	if !flags.SleepScheduleDisabled {
@@ -269,7 +272,21 @@ func (j *sleepSchedulerJob) makeStopAndStartJobs(ctx context.Context, _ evergree
 		hostIDsToStop = make([]string, 0, len(hostsToStop))
 		for i := range hostsToStop {
 			h := hostsToStop[i]
-			stopJobs = append(stopJobs, NewSpawnhostStopJob(&h, false, evergreen.ModifySpawnHostSleepSchedule, sleepScheduleUser, ts.Format(TSFormat)))
+			waitUntil := now.Add(time.Duration(i) * time.Second)
+			if waitUntil.After(latestWaitUntil) {
+				waitUntil = latestWaitUntil
+			}
+			stopJobs = append(stopJobs, NewSpawnhostStopJob(SpawnHostModifyJobOptions{
+				Host:   &h,
+				Source: evergreen.ModifySpawnHostSleepSchedule,
+				User:   sleepScheduleUser,
+				// To reduce the likelihood that sleep schedule hosts
+				// collectively make a large burst of requests to AWS and hit
+				// rate limits, stagger the requests by adding a slight amount
+				// of delay to each job.
+				WaitUntil: waitUntil,
+				Timestamp: ts.Format(TSFormat),
+			}, false))
 			hostIDsToStop = append(hostIDsToStop, h.Id)
 		}
 	}
@@ -282,7 +299,21 @@ func (j *sleepSchedulerJob) makeStopAndStartJobs(ctx context.Context, _ evergree
 	hostIDsToStart := make([]string, 0, len(hostsToStart))
 	for i := range hostsToStart {
 		h := hostsToStart[i]
-		startJobs = append(startJobs, NewSpawnhostStartJob(&h, evergreen.ModifySpawnHostSleepSchedule, sleepScheduleUser, ts.Format(TSFormat)))
+		waitUntil := now.Add(time.Duration(i) * time.Second)
+		if waitUntil.After(latestWaitUntil) {
+			waitUntil = latestWaitUntil
+		}
+		startJobs = append(startJobs, NewSpawnhostStartJob(SpawnHostModifyJobOptions{
+			Host:   &h,
+			Source: evergreen.ModifySpawnHostSleepSchedule,
+			User:   sleepScheduleUser,
+			// To reduce the likelihood that sleep schedule hosts
+			// collectively make a large burst of requests to AWS and hit
+			// rate limits, stagger the requests by adding a slight amount
+			// of delay to each job.
+			WaitUntil: waitUntil,
+			Timestamp: ts.Format(TSFormat),
+		}))
 		hostIDsToStart = append(hostIDsToStart, h.Id)
 	}
 

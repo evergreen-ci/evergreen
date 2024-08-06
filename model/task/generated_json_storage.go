@@ -27,7 +27,7 @@ func GetGeneratedJSONFileStorage(settings *evergreen.Settings, method evergreen.
 	switch method {
 	case "", evergreen.ProjectStorageMethodDB:
 		return generatedJSONDBStorage{}, nil
-	case method:
+	case evergreen.ProjectStorageMethodS3:
 		return newGeneratedJSONS3Storage(settings.Providers.AWS.ParserProject)
 	default:
 		return nil, errors.Errorf("unrecognized generated JSON storage method '%s'", method)
@@ -76,7 +76,7 @@ func GeneratedJSONInsertWithS3Fallback(ctx context.Context, settings *evergreen.
 	}
 
 	grip.Info(message.Fields{
-		"message":            "successfully upserted generated JSON files into S3 as fallback due to document size limitation",
+		"message":            "successfully inserted generated JSON files into S3 as fallback due to document size limitation",
 		"task_id":            t.Id,
 		"old_storage_method": method,
 		"new_storage_method": newMethod,

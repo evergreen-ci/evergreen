@@ -495,10 +495,16 @@ func (s *taskSuite) TestFailure() {
 	s.NoError(err)
 	s.Nil(n)
 
-	s.data.Status = evergreen.TaskFailed
-	n, err = s.t.taskFailure(&s.subs[2])
-	s.NoError(err)
-	s.NotNil(n)
+	for _, status := range evergreen.TaskFailureStatuses {
+		s.data.Status = status
+		n, err = s.t.taskFailure(&s.subs[2])
+		s.NoError(err)
+		if status == evergreen.TaskSetupFailed {
+			s.Nil(n, "should not notify for setup failure")
+		} else {
+			s.NotNil(n, "should notify for failed status '%s'", status)
+		}
+	}
 }
 
 func (s *taskSuite) TestOutcome() {
@@ -512,10 +518,16 @@ func (s *taskSuite) TestOutcome() {
 	s.NoError(err)
 	s.NotNil(n)
 
-	s.data.Status = evergreen.TaskFailed
-	n, err = s.t.taskOutcome(&s.subs[0])
-	s.NoError(err)
-	s.NotNil(n)
+	for _, status := range evergreen.TaskFailureStatuses {
+		s.data.Status = status
+		n, err = s.t.taskFailure(&s.subs[0])
+		s.NoError(err)
+		if status == evergreen.TaskSetupFailed {
+			s.Nil(n, "should not notify for setup failure")
+		} else {
+			s.NotNil(n, "should notify for failed status '%s'", status)
+		}
+	}
 }
 
 func (s *taskSuite) TestFailedOrBlocked() {
