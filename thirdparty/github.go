@@ -340,15 +340,33 @@ func getGithubClient(token, caller string, config retryConfig) *evergreen.GitHub
 // installation token is valid for a single GitHub API request.
 const defaultGitHubAPIRequestLifetime = 15 * time.Minute
 
-// GetInstallationToken creates an installation token using Github app auth.
+// getCachedInstallationToken creates an installation token using Github app auth.
+// If possible, it will try to use an existing installation token for the app from the cache.
+// This should be used for all internal evergreen github operations.
 // If creating a token fails it will return the legacyToken.
+func getCachedInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
+	return installationToken(ctx, owner, repo, opts, true)
+}
+
+// GetInstallationToken creates an installation token using Github app auth.
+// It will not try to use the cache. This should only be used if there is a reason why a
+// cached token should not be used. If creating a token fails it will return the legacyToken.
 func GetInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, error) {
+	return installationToken(ctx, owner, repo, opts, false)
+}
+
+func installationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions, useCached bool) (string, error) {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return "", errors.Wrap(err, "getting config")
 	}
+	var token string
+	if useCached {
+		token, err = settings.CreateGitHubAppAuth().CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, opts)
+	} else {
+		token, err = settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, owner, repo, opts)
+	}
 
-	token, err := settings.CreateGitHubAppAuth().CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, opts)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "error creating token",
@@ -362,7 +380,6 @@ func GetInstallationToken(ctx context.Context, owner, repo string, opts *github.
 	if token == "" {
 		return "", missingTokenError
 	}
-
 	return token, nil
 }
 
@@ -444,7 +461,7 @@ func getCommits(ctx context.Context, token, owner, repo, ref string, until time.
 
 	if token == "" {
 		var err error
-		token, err = GetInstallationToken(ctx, owner, repo, nil)
+		token, err = getCachedInstallationToken(ctx, owner, repo, nil)
 		if err != nil {
 			return nil, 0, errors.Wrap(err, "getting installation token")
 		}
@@ -528,7 +545,7 @@ func getFile(ctx context.Context, token, owner, repo, path, ref string) (*github
 
 	if token == "" {
 		var err error
-		token, err = GetInstallationToken(ctx, owner, repo, nil)
+		token, err = getCachedInstallationToken(ctx, owner, repo, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting installation token")
 		}
@@ -689,7 +706,7 @@ func getCommitComparison(ctx context.Context, token, owner, repo, baseRevision, 
 	span := trace.SpanFromContext(ctx)
 	if token == "" {
 		var err error
-		token, err = GetInstallationToken(ctx, owner, repo, nil)
+		token, err = getCachedInstallationToken(ctx, owner, repo, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting installation token")
 		}
@@ -752,7 +769,7 @@ func commitEvent(ctx context.Context, token, owner, repo, githash string) (*gith
 
 	if token == "" {
 		var err error
-		token, err = GetInstallationToken(ctx, owner, repo, nil)
+		token, err = getCachedInstallationToken(ctx, owner, repo, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting installation token")
 		}
@@ -833,7 +850,7 @@ func commitDiff(ctx context.Context, token, owner, repo, sha string) (string, er
 
 	if token == "" {
 		var err error
-		token, err = GetInstallationToken(ctx, owner, repo, nil)
+		token, err = getCachedInstallationToken(ctx, owner, repo, nil)
 		if err != nil {
 			return "", errors.Wrap(err, "getting installation token")
 		}
@@ -893,7 +910,7 @@ func branchEvent(ctx context.Context, token, owner, repo, branch string) (*githu
 
 	if token == "" {
 		var err error
-		token, err = GetInstallationToken(ctx, owner, repo, nil)
+		token, err = getCachedInstallationToken(ctx, owner, repo, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting installation token")
 		}
@@ -1089,7 +1106,7 @@ func taggedCommit(ctx context.Context, token, owner, repo, tag string) (string, 
 
 	if token == "" {
 		var err error
-		token, err = GetInstallationToken(ctx, owner, repo, nil)
+		token, err = getCachedInstallationToken(ctx, owner, repo, nil)
 		if err != nil {
 			return "", errors.Wrap(err, "getting installation token")
 		}
@@ -1143,7 +1160,7 @@ func getObjectTag(ctx context.Context, token, owner, repo, sha string) (*github.
 
 	if token == "" {
 		var err error
-		token, err = GetInstallationToken(ctx, owner, repo, nil)
+		token, err = getCachedInstallationToken(ctx, owner, repo, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting installation token")
 		}
@@ -1196,7 +1213,7 @@ func userInTeam(ctx context.Context, token string, teams []string, org, user, ow
 
 	if token == "" {
 		var err error
-		token, err = GetInstallationToken(ctx, owner, repo, nil)
+		token, err = getCachedInstallationToken(ctx, owner, repo, nil)
 		if err != nil {
 			return false, errors.Wrap(err, "getting installation token")
 		}
@@ -1529,7 +1546,7 @@ func userHasWritePermission(ctx context.Context, token, owner, repo, username st
 
 	if token == "" {
 		var err error
-		token, err = GetInstallationToken(ctx, owner, repo, nil)
+		token, err = getCachedInstallationToken(ctx, owner, repo, nil)
 		if err != nil {
 			return false, errors.Wrap(err, "getting installation token")
 		}
@@ -1609,7 +1626,7 @@ func getPRMergeBase(ctx context.Context, token string, data GithubPatch) (string
 
 	if token == "" {
 		var err error
-		token, err = GetInstallationToken(ctx, data.BaseOwner, data.BaseRepo, nil)
+		token, err = getCachedInstallationToken(ctx, data.BaseOwner, data.BaseRepo, nil)
 		if err != nil {
 			return "", errors.Wrap(err, "getting installation token")
 		}
@@ -1659,7 +1676,7 @@ func getCommit(ctx context.Context, token, owner, repo, sha string) (*github.Rep
 
 	if token == "" {
 		var err error
-		token, err = GetInstallationToken(ctx, owner, repo, nil)
+		token, err = getCachedInstallationToken(ctx, owner, repo, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting installation token")
 		}
@@ -1712,7 +1729,7 @@ func getPullRequest(ctx context.Context, token, baseOwner, baseRepo string, prNu
 
 	if token == "" {
 		var err error
-		token, err = GetInstallationToken(ctx, baseOwner, baseRepo, nil)
+		token, err = getCachedInstallationToken(ctx, baseOwner, baseRepo, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting installation token")
 		}
@@ -1762,7 +1779,7 @@ func pullRequestDiff(ctx context.Context, token string, gh GithubPatch) (string,
 
 	if token == "" {
 		var err error
-		token, err = GetInstallationToken(ctx, gh.BaseOwner, gh.BaseRepo, nil)
+		token, err = getCachedInstallationToken(ctx, gh.BaseOwner, gh.BaseRepo, nil)
 		if err != nil {
 			return "", nil, errors.Wrap(err, "getting installation token")
 		}
@@ -1991,7 +2008,7 @@ func postComment(ctx context.Context, token, owner, repo string, prNum int, comm
 
 	if token == "" {
 		var err error
-		token, err = GetInstallationToken(ctx, owner, repo, nil)
+		token, err = getCachedInstallationToken(ctx, owner, repo, nil)
 		if err != nil {
 			return errors.Wrap(err, "getting installation token")
 		}
@@ -2048,7 +2065,7 @@ func GetBranchProtectionRules(ctx context.Context, token, owner, repo, branch st
 
 	if token == "" {
 		var err error
-		token, err = GetInstallationToken(ctx, owner, repo, nil)
+		token, err = getCachedInstallationToken(ctx, owner, repo, nil)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting installation token")
 		}
@@ -2107,7 +2124,7 @@ func CreateCheckRun(ctx context.Context, owner, repo, headSHA, uiBase string, ta
 	))
 	defer span.End()
 
-	token, err := GetInstallationToken(ctx, owner, repo, nil)
+	token, err := getCachedInstallationToken(ctx, owner, repo, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting installation token")
 	}
@@ -2165,7 +2182,7 @@ func UpdateCheckRun(ctx context.Context, owner, repo, uiBase string, checkRunID 
 		Output:     output,
 	}
 
-	token, err := GetInstallationToken(ctx, owner, repo, nil)
+	token, err := getCachedInstallationToken(ctx, owner, repo, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting installation token")
 	}
@@ -2231,7 +2248,7 @@ func ListCheckRunCheckSuite(ctx context.Context, owner, repo string, checkSuiteI
 	))
 	defer span.End()
 
-	token, err := GetInstallationToken(ctx, owner, repo, nil)
+	token, err := getCachedInstallationToken(ctx, owner, repo, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting installation token")
 	}
@@ -2263,7 +2280,7 @@ func GetCheckRun(ctx context.Context, owner, repo string, checkRunID int64) (*gi
 	))
 	defer span.End()
 
-	token, err := GetInstallationToken(ctx, owner, repo, nil)
+	token, err := getCachedInstallationToken(ctx, owner, repo, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting installation token")
 	}
