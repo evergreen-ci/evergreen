@@ -25,16 +25,16 @@ type ssmClient interface {
 	DeleteParametersSimple(context.Context, *ssm.DeleteParametersInput) ([]string, error)
 	// DeleteParameters deletes the specified parameters. Parameter Store limits
 	// how many parameters can be deleted per call, so implementations are
-	// expected to handle batching. The returned output slice contains the
+	// expected to handle batching transparently. The returned output slice contains the
 	// output of each batched request.
 	DeleteParameters(context.Context, *ssm.DeleteParametersInput) ([]*ssm.DeleteParametersOutput, error)
 	// GetParametersSimple is the same as GetParameters but only returns the
 	// parameter information rather than the full output.
 	GetParametersSimple(context.Context, *ssm.GetParametersInput) ([]ssmTypes.Parameter, error)
 	// GetParameters retrieves the specified parameters. Parameter Store
-	// limits how many parameters can be retrieved per call, so implementation
-	// must handle batching. The returned output slice contains the output of
-	// each batched request.
+	// limits how many parameters can be retrieved per call, so implementations
+	// must handle batching transparently. The returned output slice contains
+	// the output of each batched request.
 	GetParameters(context.Context, *ssm.GetParametersInput) ([]*ssm.GetParametersOutput, error)
 }
 
@@ -88,14 +88,15 @@ func (c *ssmClientImpl) DeleteParametersSimple(ctx context.Context, input *ssm.D
 }
 
 func (c *ssmClientImpl) DeleteParameters(ctx context.Context, input *ssm.DeleteParametersInput) ([]*ssm.DeleteParametersOutput, error) {
-	const maxParamsPerRequest = 10
-	return retryBatchSSMOp(ctx, input.Names, maxParamsPerRequest, c.client, input, func(names []string, input *ssm.DeleteParametersInput) *ssm.DeleteParametersInput {
-		batchInput := *input
-		batchInput.Names = names
-		return &batchInput
-	}, func(ctx context.Context, client *ssm.Client, input *ssm.DeleteParametersInput) (*ssm.DeleteParametersOutput, error) {
+	// TODO (DEVPROD-9391): follow-up PR should handle batching requests due
+	// to limit of 10 parameters per API call.
+	output, err := retrySSMOp(ctx, c.client, input, func(ctx context.Context, client *ssm.Client, input *ssm.DeleteParametersInput) (*ssm.DeleteParametersOutput, error) {
 		return client.DeleteParameters(ctx, input)
 	}, "DeleteParameters")
+	if err != nil {
+		return nil, err
+	}
+	return []*ssm.DeleteParametersOutput{output}, nil
 }
 
 func (c *ssmClientImpl) GetParametersSimple(ctx context.Context, input *ssm.GetParametersInput) ([]ssmTypes.Parameter, error) {
@@ -112,47 +113,15 @@ func (c *ssmClientImpl) GetParametersSimple(ctx context.Context, input *ssm.GetP
 }
 
 func (c *ssmClientImpl) GetParameters(ctx context.Context, input *ssm.GetParametersInput) ([]*ssm.GetParametersOutput, error) {
-	const maxParamsPerRequest = 10
-	return retryBatchSSMOp(ctx, input.Names, maxParamsPerRequest, c.client, input, func(names []string, input *ssm.GetParametersInput) *ssm.GetParametersInput {
-		batchInput := *input
-		batchInput.Names = names
-		return &batchInput
-	}, func(ctx context.Context, client *ssm.Client, input *ssm.GetParametersInput) (*ssm.GetParametersOutput, error) {
+	// TODO (DEVPROD-9391): follow-up PR should handle batching requests due
+	// to limit of 10 parameters per API call.
+	output, err := retrySSMOp(ctx, c.client, input, func(ctx context.Context, client *ssm.Client, input *ssm.GetParametersInput) (*ssm.GetParametersOutput, error) {
 		return client.GetParameters(ctx, input)
 	}, "GetParameters")
-}
-
-// retryBatchSSMOp runs an SSM operation with retries and handles batching for
-// SSM API methods that have a limit on the number of parameters that can be
-// queried at once.
-func retryBatchSSMOp[Input interface{}, Output interface{}](ctx context.Context, names []string, maxParamsPerRequest int, client *ssm.Client, input Input, makeBatchInput func(names []string, input Input) Input, op func(ctx context.Context, client *ssm.Client, input Input) (Output, error), opName string) ([]Output, error) {
-	batches := makeParamNameBatches(names, maxParamsPerRequest)
-
-	var outputs []Output
-	for _, batch := range batches {
-		batchInput := makeBatchInput(batch, input)
-		output, err := retrySSMOp(ctx, client, batchInput, op, opName)
-		if err != nil {
-			return nil, err
-		}
-		outputs = append(outputs, output)
+	if err != nil {
+		return nil, err
 	}
-	return outputs, nil
-}
-
-// makeParamNameBatches partitions names into batches with at most
-// maxParamsPerBatch in each batch. This is to handle batching SSM requests that
-// limit the number of parameters that can be queried/modified in a single API
-// call.
-func makeParamNameBatches(paramNames []string, maxParamsPerBatch int) [][]string {
-	// kim: TODO: unit test that this batching works as intended.
-	var batches [][]string
-	for len(paramNames) > maxParamsPerBatch {
-		batches = append(batches, paramNames[0:maxParamsPerBatch:maxParamsPerBatch])
-		paramNames = paramNames[maxParamsPerBatch:]
-	}
-	batches = append(batches, paramNames)
-	return batches
+	return []*ssm.GetParametersOutput{output}, nil
 }
 
 // retrySSMOp runs a single SSM operation with retries.
@@ -182,9 +151,10 @@ func ssmDefaultRetryOptions() utility.RetryOptions {
 	}
 }
 
-// makeAWSLogMessage logs a structured message for an SSM API call. Callers must
-// take extra precaution to ensure that this does not log any sensitive values
-// (e.g. the parameter value in plaintext).
+// makeAWSLogMessage logs a structured message for an SSM API call. If used to
+// trace API call inputs/outputs, callers must take extra precaution to ensure
+// that this does not log any sensitive values (e.g. the parameter value in
+// plaintext).
 func makeAWSLogMessage(name, client string, args interface{}) message.Fields {
 	msg := message.Fields{
 		"message":  "AWS API call",
@@ -195,7 +165,8 @@ func makeAWSLogMessage(name, client string, args interface{}) message.Fields {
 	argMap := make(map[string]interface{})
 	if err := mapstructure.Decode(args, &argMap); err == nil {
 		// Avoid logging the plaintext value of the parameter for PutParameter's
-		// input.
+		// input. This is not a comprehensive solution to redacting sensitive
+		// values, and only works specifically for PutParameter.
 		if _, ok := argMap["Value"]; ok {
 			argMap["Value"] = "{REDACTED}"
 		}
