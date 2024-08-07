@@ -191,7 +191,7 @@ type ApiTaskEndDetail struct {
 func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
 	at.Status = utility.ToStringPtr(t.Status)
 	at.Type = utility.ToStringPtr(t.Type)
-	// Update this condition DEVPROD-9694
+	// Update this condition in DEVPROD-9694.
 	if t.Description == "" {
 		at.Description = utility.ToStringPtr(t.FailingCommand)
 	} else {
