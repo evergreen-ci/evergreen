@@ -19,6 +19,19 @@
           }
         }
       }
+    },
+    {
+      "query_file": "failing_command_and_description.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "details": {
+              "failingCommand": "a failing command",
+              "description": "a description"
+            }
+          }
+        }
+      }
     }
   ]
 }
