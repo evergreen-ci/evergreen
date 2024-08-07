@@ -7,8 +7,7 @@ import (
 
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type JIRANotificationsConfig struct {
@@ -30,25 +29,15 @@ type JIRANotificationsCustomField struct {
 func (c *JIRANotificationsConfig) SectionId() string { return "jira_notifications" }
 
 func (c *JIRANotificationsConfig) Get(ctx context.Context) error {
-	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
-	if err := res.Err(); err != nil {
-		if err == mongo.ErrNoDocuments {
-			*c = JIRANotificationsConfig{}
-			return nil
-		}
-		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
-	}
-
-	if err := res.Decode(&c); err != nil {
-		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
-	}
-
-	return nil
+	return getConfigSection(ctx, c)
 }
 
 func (c *JIRANotificationsConfig) Set(ctx context.Context) error {
-	_, err := GetEnvironment().DB().Collection(ConfigCollection).ReplaceOne(ctx, byId(c.SectionId()), c, options.Replace().SetUpsert(true))
-	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
+	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
+		"$set": bson.M{
+			"custom_fields": c.CustomFields,
+		}}), "updating config section '%s'", c.SectionId(),
+	)
 }
 
 func (c *JIRANotificationsConfig) ValidateAndDefault() error {

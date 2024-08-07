@@ -6,8 +6,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const defaultHostThrottle = 32
@@ -23,33 +21,18 @@ type HostInitConfig struct {
 func (c *HostInitConfig) SectionId() string { return "hostinit" }
 
 func (c *HostInitConfig) Get(ctx context.Context) error {
-	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
-	if err := res.Err(); err != nil {
-		if err == mongo.ErrNoDocuments {
-			*c = HostInitConfig{}
-			return nil
-		}
-		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
-	}
-
-	if err := res.Decode(&c); err != nil {
-		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
-	}
-
-	return nil
+	return getConfigSection(ctx, c)
 }
 
 func (c *HostInitConfig) Set(ctx context.Context) error {
-	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
+	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
 			hostInitHostThrottleKey:         c.HostThrottle,
 			hostInitProvisioningThrottleKey: c.ProvisioningThrottle,
 			hostInitCloudStatusBatchSizeKey: c.CloudStatusBatchSize,
 			hostInitMaxTotalDynamicHostsKey: c.MaxTotalDynamicHosts,
-		},
-	}, options.Update().SetUpsert(true))
-
-	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
+		}}), "updating config section '%s'", c.SectionId(),
+	)
 }
 
 func (c *HostInitConfig) ValidateAndDefault() error {

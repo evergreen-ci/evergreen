@@ -21,8 +21,6 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"gopkg.in/yaml.v3"
@@ -115,25 +113,13 @@ type Settings struct {
 func (c *Settings) SectionId() string { return ConfigDocID }
 
 func (c *Settings) Get(ctx context.Context) error {
-	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
-	if err := res.Err(); err != nil {
-		if err == mongo.ErrNoDocuments {
-			*c = Settings{}
-			return nil
-		}
-		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
-	}
-	if err := res.Decode(&c); err != nil {
-		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
-	}
-
-	return nil
+	return getConfigSection(ctx, c)
 }
 
 // Set saves the global fields in the configuration (i.e. those that are not
 // ConfigSections).
 func (c *Settings) Set(ctx context.Context) error {
-	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
+	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
 			apiUrlKey:             c.ApiUrl,
 			awsInstanceRoleKey:    c.AWSInstanceRole,
@@ -159,10 +145,8 @@ func (c *Settings) Set(ctx context.Context) error {
 			sshKeyPairsKey:        c.SSHKeyPairs,
 			spawnhostKey:          c.Spawnhost,
 			shutdownWaitKey:       c.ShutdownWaitSeconds,
-		},
-	}, options.Update().SetUpsert(true))
-
-	return errors.Wrapf(err, "updating section '%s'", c.SectionId())
+		}}), "updating config section '%s'", c.SectionId(),
+	)
 }
 
 func (c *Settings) ValidateAndDefault() error {

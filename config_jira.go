@@ -7,8 +7,6 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // JiraConfig stores auth info for interacting with Atlassian Jira.
@@ -35,34 +33,19 @@ type JiraOAuth1Config struct {
 func (c *JiraConfig) SectionId() string { return "jira" }
 
 func (c *JiraConfig) Get(ctx context.Context) error {
-	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
-	if err := res.Err(); err != nil {
-		if err == mongo.ErrNoDocuments {
-			*c = JiraConfig{}
-			return nil
-		}
-		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
-	}
-
-	if err := res.Decode(&c); err != nil {
-		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
-	}
-
-	return nil
+	return getConfigSection(ctx, c)
 }
 
 func (c *JiraConfig) Set(ctx context.Context) error {
-	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
+	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
 			"host":            c.Host,
 			"basic_auth":      c.BasicAuthConfig,
 			"oauth1":          c.OAuth1Config,
 			"default_project": c.DefaultProject,
 			"email":           c.Email,
-		},
-	}, options.Update().SetUpsert(true))
-
-	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
+		}}), "updating config section '%s'", c.SectionId(),
+	)
 }
 
 func (c *JiraConfig) ValidateAndDefault() error {

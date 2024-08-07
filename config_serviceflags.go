@@ -5,8 +5,6 @@ import (
 
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // ServiceFlags holds the state of each of the runner/API processes
@@ -54,23 +52,11 @@ type ServiceFlags struct {
 func (c *ServiceFlags) SectionId() string { return "service_flags" }
 
 func (c *ServiceFlags) Get(ctx context.Context) error {
-	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
-	if err := res.Err(); err != nil {
-		if err == mongo.ErrNoDocuments {
-			*c = ServiceFlags{}
-			return nil
-		}
-		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
-	}
-
-	if err := res.Decode(&c); err != nil {
-		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
-	}
-	return nil
+	return getConfigSection(ctx, c)
 }
 
 func (c *ServiceFlags) Set(ctx context.Context) error {
-	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
+	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
 			taskDispatchKey:                    c.TaskDispatchDisabled,
 			hostInitKey:                        c.HostInitDisabled,
@@ -108,10 +94,8 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			sleepScheduleBetaTestDisabledKey:   c.SleepScheduleBetaTestDisabled,
 			systemFailedTaskRestartDisabledKey: c.SystemFailedTaskRestartDisabled,
 			cpuDegradedModeDisabledKey:         c.CPUDegradedModeDisabled,
-		},
-	}, options.Update().SetUpsert(true))
-
-	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
+		}}), "updating config section '%s'", c.SectionId(),
+	)
 }
 
 func (c *ServiceFlags) ValidateAndDefault() error { return nil }

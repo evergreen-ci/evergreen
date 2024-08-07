@@ -2,11 +2,13 @@ package evergreen
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -172,6 +174,42 @@ func getSectionsBSON(ctx context.Context, ids []string, includeOverrides bool) (
 	}
 
 	return append(docs, missingDocs...), nil
+}
+
+func getConfigSection(ctx context.Context, section ConfigSection) error {
+	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(section.SectionId()))
+	if err := res.Err(); err != nil {
+		if err != mongo.ErrNoDocuments {
+			return errors.Wrapf(err, "getting local config section '%s'", section.SectionId())
+		}
+	} else {
+		if err := res.Decode(section); err != nil {
+			return errors.Wrapf(err, "decoding local config section '%s'", section.SectionId())
+		}
+		return nil
+	}
+
+	res = GetEnvironment().ConfigDB().Collection(ConfigCollection).FindOne(ctx, byId(section.SectionId()))
+	if err := res.Err(); err != nil {
+		if err != mongo.ErrNoDocuments {
+			return errors.Wrapf(err, "getting shared config section '%s'", section.SectionId())
+		}
+		section = reflect.Zero(reflect.TypeOf(section)).Interface().(ConfigSection)
+		return nil
+	}
+
+	return errors.Wrapf(res.Decode(section), "decoding shared config section '%s'", section.SectionId())
+}
+
+func setConfigSection(ctx context.Context, sectionID string, update bson.M) error {
+	_, err := GetEnvironment().ConfigDB().Collection(ConfigCollection).UpdateOne(
+		ctx,
+		byId(sectionID),
+		update,
+		options.Update().SetUpsert(true),
+	)
+
+	return errors.Wrapf(err, "updating config section '%s'", sectionID)
 }
 
 // SetBanner sets the text of the Evergreen site-wide banner. Setting a blank
