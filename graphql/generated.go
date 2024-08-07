@@ -788,6 +788,7 @@ type ComplexityRoot struct {
 		CreateTime              func(childComplexity int) int
 		Description             func(childComplexity int) int
 		Duration                func(childComplexity int) int
+		GeneratedTaskCounts     func(childComplexity int) int
 		Githash                 func(childComplexity int) int
 		Hidden                  func(childComplexity int) int
 		Id                      func(childComplexity int) int
@@ -1347,14 +1348,15 @@ type ComplexityRoot struct {
 	}
 
 	TaskEndDetail struct {
-		Description func(childComplexity int) int
-		DiskDevices func(childComplexity int) int
-		OOMTracker  func(childComplexity int) int
-		Status      func(childComplexity int) int
-		TimedOut    func(childComplexity int) int
-		TimeoutType func(childComplexity int) int
-		TraceID     func(childComplexity int) int
-		Type        func(childComplexity int) int
+		Description    func(childComplexity int) int
+		DiskDevices    func(childComplexity int) int
+		FailingCommand func(childComplexity int) int
+		OOMTracker     func(childComplexity int) int
+		Status         func(childComplexity int) int
+		TimedOut       func(childComplexity int) int
+		TimeoutType    func(childComplexity int) int
+		TraceID        func(childComplexity int) int
+		Type           func(childComplexity int) int
 	}
 
 	TaskEventLogData struct {
@@ -1584,6 +1586,7 @@ type ComplexityRoot struct {
 		Errors                   func(childComplexity int) int
 		ExternalLinksForMetadata func(childComplexity int) int
 		FinishTime               func(childComplexity int) int
+		GeneratedTaskCounts      func(childComplexity int) int
 		GitTags                  func(childComplexity int) int
 		Id                       func(childComplexity int) int
 		Ignored                  func(childComplexity int) int
@@ -1799,6 +1802,7 @@ type PatchResolver interface {
 	CommitQueuePosition(ctx context.Context, obj *model.APIPatch) (*int, error)
 
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
+	GeneratedTaskCounts(ctx context.Context, obj *model.APIPatch) (map[string]interface{}, error)
 
 	PatchTriggerAliases(ctx context.Context, obj *model.APIPatch) ([]*model.APIPatchTriggerDefinition, error)
 	Project(ctx context.Context, obj *model.APIPatch) (*PatchProject, error)
@@ -2008,6 +2012,8 @@ type VersionResolver interface {
 	ChildVersions(ctx context.Context, obj *model.APIVersion) ([]*model.APIVersion, error)
 
 	ExternalLinksForMetadata(ctx context.Context, obj *model.APIVersion) ([]*ExternalLinkForMetadata, error)
+
+	GeneratedTaskCounts(ctx context.Context, obj *model.APIVersion) (map[string]interface{}, error)
 
 	IsPatch(ctx context.Context, obj *model.APIVersion) (bool, error)
 	Manifest(ctx context.Context, obj *model.APIVersion) (*Manifest, error)
@@ -5447,6 +5453,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Patch.Duration(childComplexity), true
 
+	case "Patch.generatedTaskCounts":
+		if e.complexity.Patch.GeneratedTaskCounts == nil {
+			break
+		}
+
+		return e.complexity.Patch.GeneratedTaskCounts(childComplexity), true
+
 	case "Patch.githash":
 		if e.complexity.Patch.Githash == nil {
 			break
@@ -8515,6 +8528,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TaskEndDetail.DiskDevices(childComplexity), true
 
+	case "TaskEndDetail.failingCommand":
+		if e.complexity.TaskEndDetail.FailingCommand == nil {
+			break
+		}
+
+		return e.complexity.TaskEndDetail.FailingCommand(childComplexity), true
+
 	case "TaskEndDetail.oomTracker":
 		if e.complexity.TaskEndDetail.OOMTracker == nil {
 			break
@@ -9607,6 +9627,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Version.FinishTime(childComplexity), true
+
+	case "Version.generatedTaskCounts":
+		if e.complexity.Version.GeneratedTaskCounts == nil {
+			break
+		}
+
+		return e.complexity.Version.GeneratedTaskCounts(childComplexity), true
 
 	case "Version.gitTags":
 		if e.complexity.Version.GitTags == nil {
@@ -16087,6 +16114,8 @@ func (ec *executionContext) fieldContext_CommitQueueItem_patch(_ context.Context
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -28150,6 +28179,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -28269,6 +28300,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(_ context
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -29965,6 +29998,8 @@ func (ec *executionContext) fieldContext_Mutation_enqueuePatch(ctx context.Conte
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -30086,6 +30121,8 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -30207,6 +30244,8 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -34374,6 +34413,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -36377,6 +36418,8 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -36590,6 +36633,50 @@ func (ec *executionContext) fieldContext_Patch_duration(_ context.Context, field
 				return ec.fieldContext_PatchDuration_timeTaken(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PatchDuration", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Patch_generatedTaskCounts(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Patch().GeneratedTaskCounts(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(map[string]interface{})
+	fc.Result = res
+	return ec.marshalNMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Patch_generatedTaskCounts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Patch",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Map does not have child fields")
 		},
 	}
 	return fc, nil
@@ -37553,6 +37640,8 @@ func (ec *executionContext) fieldContext_Patch_versionFull(_ context.Context, fi
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -38382,6 +38471,8 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -46431,6 +46522,8 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -48381,6 +48474,8 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -55343,6 +55438,8 @@ func (ec *executionContext) fieldContext_Task_details(_ context.Context, field g
 			switch field.Name {
 			case "description":
 				return ec.fieldContext_TaskEndDetail_description(ctx, field)
+			case "failingCommand":
+				return ec.fieldContext_TaskEndDetail_failingCommand(ctx, field)
 			case "oomTracker":
 				return ec.fieldContext_TaskEndDetail_oomTracker(ctx, field)
 			case "status":
@@ -56811,6 +56908,8 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -57920,6 +58019,8 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(_ context.Context,
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -58369,6 +58470,47 @@ func (ec *executionContext) _TaskEndDetail_description(ctx context.Context, fiel
 }
 
 func (ec *executionContext) fieldContext_TaskEndDetail_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskEndDetail",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskEndDetail_failingCommand(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskEndDetail_failingCommand(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FailingCommand, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskEndDetail_failingCommand(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskEndDetail",
 		Field:      field,
@@ -63671,6 +63813,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(_ context.Conte
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -65215,6 +65359,8 @@ func (ec *executionContext) fieldContext_Version_baseVersion(_ context.Context, 
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -65498,6 +65644,8 @@ func (ec *executionContext) fieldContext_Version_childVersions(_ context.Context
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -65727,6 +65875,50 @@ func (ec *executionContext) fieldContext_Version_finishTime(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Version_generatedTaskCounts(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Version_generatedTaskCounts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Version().GeneratedTaskCounts(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(map[string]interface{})
+	fc.Result = res
+	return ec.marshalNMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Version_generatedTaskCounts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Map does not have child fields")
 		},
 	}
 	return fc, nil
@@ -66126,6 +66318,8 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -66233,6 +66427,8 @@ func (ec *executionContext) fieldContext_Version_previousVersion(_ context.Conte
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -81629,6 +81825,42 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "generatedTaskCounts":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_generatedTaskCounts(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "githash":
 			out.Values[i] = ec._Patch_githash(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -87888,6 +88120,8 @@ func (ec *executionContext) _TaskEndDetail(ctx context.Context, sel ast.Selectio
 			out.Values[i] = graphql.MarshalString("TaskEndDetail")
 		case "description":
 			out.Values[i] = ec._TaskEndDetail_description(ctx, field, obj)
+		case "failingCommand":
+			out.Values[i] = ec._TaskEndDetail_failingCommand(ctx, field, obj)
 		case "oomTracker":
 			out.Values[i] = ec._TaskEndDetail_oomTracker(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -90002,6 +90236,42 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "finishTime":
 			out.Values[i] = ec._Version_finishTime(ctx, field, obj)
+		case "generatedTaskCounts":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_generatedTaskCounts(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "gitTags":
 			out.Values[i] = ec._Version_gitTags(ctx, field, obj)
 		case "ignored":

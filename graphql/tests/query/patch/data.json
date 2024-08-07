@@ -27,5 +27,82 @@
       "_id": "evergreen",
       "identifier": "evergreen"
     }
+  ],
+  "tasks": [
+    {
+      "_id": "t1",
+      "display_name": "t1",
+      "branch": "spruce",
+      "version": "older_version",
+      "build_variant": "ubuntu1804",
+      "generate_task": true,
+      "estimated_num_activated_generated_tasks": 10
+    },
+    {
+      "_id": "t2",
+      "display_name": "t2",
+      "branch": "spruce",
+      "version": "older_version",
+      "build_variant": "ubuntu1804",
+      "generate_task": true
+    },
+    {
+      "_id": "t3",
+      "display_name": "t3",
+      "branch": "spruce",
+      "version": "older_version",
+      "build_variant": "ubuntu1804"
+    }
+  ],
+  "parser_projects": [
+    {
+      "_id": "older_version",
+      "tasks": [
+        {
+          "name": "t1",
+          "commands": [
+            {
+              "command": "generate.tasks"
+            }
+          ]
+        },
+        {
+          "name": "t2",
+          "commands": [
+            {
+              "command": "generate.tasks"
+            }
+          ]
+        },
+        {
+          "name": "t3",
+          "commands": [
+            {
+              "command": "shell.exec"
+            }
+          ]
+        }
+      ],
+      "buildvariants": [
+        {
+          "name": "ubuntu1804",
+          "display_name": "Ubuntu 18.04",
+          "run_on": [
+            "ubuntu1804-test"
+          ],
+          "tasks": [
+            {
+              "name": "t1"
+            },
+            {
+              "name": "t2"
+            },
+            {
+              "name": "t3"
+            }
+          ]
+        }
+      ]
+    }
   ]
 }

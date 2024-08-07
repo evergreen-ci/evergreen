@@ -1,0 +1,14 @@
+query {
+  task1: task(taskId: "taskity_task") {
+    details {
+      failingCommand
+      description
+    }
+  }
+  task2: task(taskId: "taskity_task_2") {
+    details {
+      failingCommand
+      description
+    }
+  }
+}

@@ -68,6 +68,7 @@ type Patch {
   createTime: Time
   description: String!
   duration: PatchDuration
+  generatedTaskCounts: Map!
   githash: String!
   hidden: Boolean!
   moduleCodeChanges: [ModuleCodeChange!]!

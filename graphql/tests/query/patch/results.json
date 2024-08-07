@@ -7,7 +7,11 @@
           "patch": {
             "id": "5dd2e89cd1fe07048e43bc8f",
             "author": "bob.smith",
-            "githash": "123"
+            "githash": "123",
+            "generatedTaskCounts": {
+              "ubuntu1804-t1": 10,
+              "ubuntu1804-t2": 0
+            }
           }
         }
       }
