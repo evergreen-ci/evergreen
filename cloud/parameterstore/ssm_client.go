@@ -68,7 +68,6 @@ func newSSMClient(ctx context.Context, region string) (ssmClient, error) {
 	return &ssmClientImpl{client: c}, nil
 }
 
-// kim: TODO: test manually
 func (c *ssmClientImpl) PutParameter(ctx context.Context, input *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
 	return retrySSMOp(ctx, c.client, input, func(ctx context.Context, client *ssm.Client, input *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
 		return client.PutParameter(ctx, input)
@@ -112,9 +111,6 @@ func (c *ssmClientImpl) GetParametersSimple(ctx context.Context, input *ssm.GetP
 	return params, nil
 }
 
-// kim: TODO: test manually
-// kim: TODO: write simple helper to wrap this and just return the
-// ssm.Parameters.
 func (c *ssmClientImpl) GetParameters(ctx context.Context, input *ssm.GetParametersInput) ([]*ssm.GetParametersOutput, error) {
 	const maxParamsPerRequest = 10
 	return retryBatchSSMOp(ctx, input.Names, maxParamsPerRequest, c.client, input, func(names []string, input *ssm.GetParametersInput) *ssm.GetParametersInput {
@@ -145,9 +141,11 @@ func retryBatchSSMOp[Input interface{}, Output interface{}](ctx context.Context,
 }
 
 // makeParamNameBatches partitions names into batches with at most
-// maxParamsPerBatch in each batch.
+// maxParamsPerBatch in each batch. This is to handle batching SSM requests that
+// limit the number of parameters that can be queried/modified in a single API
+// call.
 func makeParamNameBatches(paramNames []string, maxParamsPerBatch int) [][]string {
-	// kim: TODO: double-check/test that this batching works as intended.
+	// kim: TODO: unit test that this batching works as intended.
 	var batches [][]string
 	for len(paramNames) > maxParamsPerBatch {
 		batches = append(batches, paramNames[0:maxParamsPerBatch:maxParamsPerBatch])
