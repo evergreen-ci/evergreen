@@ -28,7 +28,7 @@ func (h *adminGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *adminGetHandler) Run(ctx context.Context) gimlet.Responder {
-	settings, err := evergreen.GetConfig(ctx)
+	settings, err := evergreen.GetSharedConfig(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
 	}

@@ -231,6 +231,13 @@ func (e *Environment) DB() *mongo.Database {
 	return e.MongoClient.Database(e.DatabaseName)
 }
 
+func (e *Environment) ConfigDB() *mongo.Database {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.MongoClient.Database(e.DatabaseName)
+}
+
 func (e *Environment) JasperManager() jasper.Manager {
 	e.mu.RLock()
 	defer e.mu.RUnlock()

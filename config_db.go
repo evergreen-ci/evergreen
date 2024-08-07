@@ -3,6 +3,7 @@ package evergreen
 import (
 	"context"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -131,18 +132,46 @@ func byIDs(ids []string) bson.M {
 	return bson.M{idKey: bson.M{"$in": ids}}
 }
 
-func getSectionsBSON(ctx context.Context, ids []string) ([]bson.Raw, error) {
-	cur, err := GetEnvironment().DB().Collection(ConfigCollection).Find(ctx, byIDs(ids))
+func getSectionsBSON(ctx context.Context, ids []string, includeOverrides bool) ([]bson.Raw, error) {
+	missingIDs := ids
+	docs := make([]bson.Raw, 0, len(ids))
+	if includeOverrides {
+		cur, err := GetEnvironment().DB().Collection(ConfigCollection).Find(ctx, byIDs(ids))
+		if err != nil {
+			return nil, errors.Wrap(err, "finding local configuration sections")
+		}
+
+		if err := cur.All(ctx, &docs); err != nil {
+			return nil, errors.Wrap(err, "iterating cursor for local configuration sections")
+		}
+
+		var docIDs []string
+		for _, doc := range docs {
+			id, err := doc.LookupErr("_id")
+			if err != nil {
+				continue
+			}
+			idString, ok := id.StringValueOK()
+			if !ok {
+				continue
+			}
+			docIDs = append(docIDs, idString)
+		}
+
+		missingIDs, _ = utility.StringSliceSymmetricDifference(ids, docIDs)
+	}
+
+	cur, err := GetEnvironment().ConfigDB().Collection(ConfigCollection).Find(ctx, byIDs(missingIDs))
 	if err != nil {
-		return nil, errors.Wrap(err, "finding configuration sections")
+		return nil, errors.Wrap(err, "finding shared configuration sections")
 	}
 
-	var docs = make([]bson.Raw, 0, len(ids))
-	if err := cur.All(ctx, &docs); err != nil {
-		return nil, errors.Wrap(err, "getting configuration sections")
+	missingDocs := make([]bson.Raw, 0, len(missingIDs))
+	if err := cur.All(ctx, &missingDocs); err != nil {
+		return nil, errors.Wrap(err, "iterating cursor for shared configuration sections")
 	}
 
-	return docs, nil
+	return append(docs, missingDocs...), nil
 }
 
 // SetBanner sets the text of the Evergreen site-wide banner. Setting a blank

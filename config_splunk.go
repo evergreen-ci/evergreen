@@ -17,7 +17,7 @@ type SplunkConfig struct {
 func (c *SplunkConfig) SectionId() string { return "splunk" }
 
 func (c *SplunkConfig) Get(ctx context.Context) error {
-	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
+	res := GetEnvironment().ConfigDB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
 		if err != mongo.ErrNoDocuments {
 			return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
@@ -34,7 +34,7 @@ func (c *SplunkConfig) Get(ctx context.Context) error {
 }
 
 func (c *SplunkConfig) Set(ctx context.Context) error {
-	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
+	_, err := GetEnvironment().ConfigDB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			"url":     c.SplunkConnectionInfo.ServerURL,
 			"token":   c.SplunkConnectionInfo.Token,

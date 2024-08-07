@@ -106,6 +106,7 @@ type Environment interface {
 	Session() db.Session
 	Client() *mongo.Client
 	DB() *mongo.Database
+	ConfigDB() *mongo.Database
 
 	// The Environment provides access to several amboy queues for
 	// processing background work in the context of the Evergreen
@@ -267,6 +268,7 @@ type envState struct {
 	settings                *Settings
 	dbName                  string
 	client                  *mongo.Client
+	configClient            *mongo.Client
 	mu                      sync.RWMutex
 	clientConfig            *ClientConfig
 	closers                 []closerOp
@@ -458,6 +460,13 @@ func (e *envState) DB() *mongo.Database {
 	defer e.mu.RUnlock()
 
 	return e.client.Database(e.dbName)
+}
+
+func (e *envState) ConfigDB() *mongo.Database {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.configClient.Database(e.dbName)
 }
 
 func (e *envState) createLocalQueue(ctx context.Context, tracer trace.Tracer) error {

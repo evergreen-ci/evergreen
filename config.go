@@ -273,12 +273,24 @@ func NewSettings(filename string) (*Settings, error) {
 	return settings, nil
 }
 
-// GetConfig returns the Evergreen config document. If no document is
-// present in the DB, it will return the defaults.
-// Use Settings() to get the cached settings object.
+// GetConfig returns the complete Evergreen configuration which is comprised of the shared
+// configuration from the config database with overrides from the local [ConfigCollection]
+// collection. Use [GetSharedConfig] to get a configuration that reflects only the shared
+// configuration.
 func GetConfig(ctx context.Context) (*Settings, error) {
+	return getSettings(ctx, true)
+}
+
+// GetSharedConfig returns only the Evergreen configuration which is shared among all instances
+// reading from a single config database. Use [GetConfig] to get a complete configuration that
+// includes overrides from the local database.
+func GetSharedConfig(ctx context.Context) (*Settings, error) {
+	return getSettings(ctx, false)
+}
+
+func getSettings(ctx context.Context, includeOverrides bool) (*Settings, error) {
 	config := NewConfigSections()
-	if err := config.populateSections(ctx); err != nil {
+	if err := config.populateSections(ctx, includeOverrides); err != nil {
 		return nil, errors.Wrap(err, "populating sections")
 	}
 
@@ -311,11 +323,7 @@ func GetConfig(ctx context.Context) (*Settings, error) {
 		propVal.Set(sectionVal)
 	}
 
-	if catcher.HasErrors() {
-		return nil, errors.WithStack(catcher.Resolve())
-	}
-	return baseConfig, nil
-
+	return baseConfig, catcher.Resolve()
 }
 
 // UpdateConfig updates all evergreen settings documents in the DB.
