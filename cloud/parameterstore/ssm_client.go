@@ -17,13 +17,24 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 )
 
-var ()
-
 type ssmClient interface {
+	// PutParameter puts a parameter into Parameter Store.
 	PutParameter(context.Context, *ssm.PutParameterInput) (*ssm.PutParameterOutput, error)
+	// DeleteParametersSimple is the same as DeleteParameters but only returns
+	// the names of the deleted parameters rather than the full output.
 	DeleteParametersSimple(context.Context, *ssm.DeleteParametersInput) ([]string, error)
+	// DeleteParameters deletes the specified parameters. Parameter Store limits
+	// how many parameters can be deleted per call, so implementations are
+	// expected to handle batching. The returned output slice contains the
+	// output of each batched request.
 	DeleteParameters(context.Context, *ssm.DeleteParametersInput) ([]*ssm.DeleteParametersOutput, error)
+	// GetParametersSimple is the same as GetParameters but only returns the
+	// parameter information rather than the full output.
 	GetParametersSimple(context.Context, *ssm.GetParametersInput) ([]ssmTypes.Parameter, error)
+	// GetParameters retrieves the specified parameters. Parameter Store
+	// limits how many parameters can be retrieved per call, so implementation
+	// must handle batching. The returned output slice contains the output of
+	// each batched request.
 	GetParameters(context.Context, *ssm.GetParametersInput) ([]*ssm.GetParametersOutput, error)
 }
 
@@ -59,39 +70,9 @@ func newSSMClient(ctx context.Context, region string) (ssmClient, error) {
 
 // kim: TODO: test manually
 func (c *ssmClientImpl) PutParameter(ctx context.Context, input *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
-	// Name:      aws.String(parameterName),
-	// Value:     aws.String(value),
-	// Type:      types.ParameterTypeSecureString,
-	// Overwrite: aws.Bool(true),
-	return c.putParameter(ctx, input)
-}
-
-func (c *ssmClientImpl) putParameter(ctx context.Context, input *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
 	return retrySSMOp(ctx, c.client, input, func(ctx context.Context, client *ssm.Client, input *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
 		return client.PutParameter(ctx, input)
 	}, "PutParameter")
-	// var output *ssm.PutParameterOutput
-	// var err error
-	//
-	// err = utility.Retry(
-	//     ctx,
-	//     func() (bool, error) {
-	//         msg := makeAWSLogMessage("PutParameter", fmt.Sprintf("%T", c), input)
-	//         output, err = c.client.PutParameter(ctx, input)
-	//         if err != nil {
-	//             var apiErr smithy.APIError
-	//             if errors.As(err, &apiErr) {
-	//                 grip.Debug(message.WrapError(apiErr, msg))
-	//             }
-	//             return true, err
-	//         }
-	//         grip.Info(msg)
-	//         return false, nil
-	//     }, ssmDefaultRetryOptions())
-	// if err != nil {
-	//     return nil, err
-	// }
-	// return output, nil
 }
 
 func (c *ssmClientImpl) DeleteParametersSimple(ctx context.Context, input *ssm.DeleteParametersInput) ([]string, error) {
@@ -116,33 +97,6 @@ func (c *ssmClientImpl) DeleteParameters(ctx context.Context, input *ssm.DeleteP
 	}, func(ctx context.Context, client *ssm.Client, input *ssm.DeleteParametersInput) (*ssm.DeleteParametersOutput, error) {
 		return client.DeleteParameters(ctx, input)
 	}, "DeleteParameters")
-	// kim: TODO: needs pagination, wait for generic method
-	// return retrySSMOp(ctx, c.client, input, func(ctx context.Context, client *ssm.Client, input *ssm.DeleteParametersInput) (*ssm.DeleteParametersOutput, error) {
-	//     return client.DeleteParameters(ctx, input)
-	// }, "DeleteParameters")
-	// var output *ssm.DeleteParametersOutput
-	// var err error
-	//
-	// err = utility.Retry(
-	//     ctx,
-	//     func() (bool, error) {
-	//         msg := makeAWSLogMessage("PutParameter", fmt.Sprintf("%T", c), input)
-	//         output, err = c.client.DeleteParameters(ctx, input)
-	//         if err != nil {
-	//             var apiErr smithy.APIError
-	//             if errors.As(err, &apiErr) {
-	//                 grip.Debug(message.WrapError(apiErr, msg))
-	//             }
-	//             return true, err
-	//         }
-	//         grip.Info(msg)
-	//         return false, nil
-	//     }, ssmDefaultRetryOptions())
-	// if err != nil {
-	//     return nil, err
-	// }
-	//
-	// return output, nil
 }
 
 func (c *ssmClientImpl) GetParametersSimple(ctx context.Context, input *ssm.GetParametersInput) ([]ssmTypes.Parameter, error) {
@@ -170,86 +124,13 @@ func (c *ssmClientImpl) GetParameters(ctx context.Context, input *ssm.GetParamet
 	}, func(ctx context.Context, client *ssm.Client, input *ssm.GetParametersInput) (*ssm.GetParametersOutput, error) {
 		return client.GetParameters(ctx, input)
 	}, "GetParameters")
-	// paramNames := input.Names
-	// const maxParametersPerRequest = 10
-	// // Batching parameters to avoid exceeding the maximum number of parameters
-	// // in a single request.
-	// // kim: TODO: check if pagination works.
-	// // kim: TODO: convert pagination to generic function so that other functions
-	// // can also paginate.
-	// // kim: TODO: break batching into its own PR.
-	// var batches [][]string
-	// for maxParametersPerRequest < len(paramNames) {
-	//     batches = append(batches, paramNames[0:maxParametersPerRequest:maxParametersPerRequest])
-	//     paramNames = paramNames[maxParametersPerRequest:]
-	// }
-	// batches = append(batches, paramNames)
-	//
-	// allOutputs := make([]ssm.GetParametersOutput, 0, len(batches))
-	// for _, batch := range batches {
-	//     batchInput := *input
-	//     batchInput.Names = batch
-	//     output, err := c.getParameters(ctx, &batchInput)
-	//     if err != nil {
-	//         return nil, err
-	//     }
-	//     allOutputs = append(allOutputs, *output)
-	// }
-	//
-	// return allOutputs, nil
-
-	// var params []parameter
-	// for _, batch := range batches {
-	//     res, err := c.callGetParameters(ctx, &ssm.GetParametersInput{
-	//         Names:          batch,
-	//         WithDecryption: aws.Bool(true),
-	//     })
-	//     if err != nil {
-	//         return nil, errors.Wrap(err, "getting parameters")
-	//     }
-	//
-	//     for _, param := range res.Parameters {
-	//         if param.Name == nil || param.Value == nil || param.LastModifiedDate == nil {
-	//             continue
-	//         }
-	//         params = append(params, parameter{ID: *param.Name, Value: *param.Value, LastUpdate: *param.LastModifiedDate})
-	//     }
-	// }
-	// return params, nil
 }
-
-// func (c *ssmClientImpl) getParameters(ctx context.Context, input *ssm.GetParametersInput) (*ssm.GetParametersOutput, error) {
-//     return retrySSMOp(ctx, c.client, input, func(ctx context.Context, client *ssm.Client, input *ssm.GetParametersInput) (*ssm.GetParametersOutput, error) {
-//         return client.GetParameters(ctx, input)
-//     }, "GetParameters")
-//     // var output *ssm.GetParametersOutput
-//     // var err error
-//     // err = utility.Retry(
-//     //     ctx,
-//     //     func() (bool, error) {
-//     //         msg := makeAWSLogMessage("GetParameters", fmt.Sprintf("%T", c), input)
-//     //         output, err = c.client.GetParameters(ctx, input)
-//     //         if err != nil {
-//     //             var apiErr smithy.APIError
-//     //             if errors.As(err, &apiErr) {
-//     //                 grip.Debug(message.WrapError(apiErr, msg))
-//     //             }
-//     //             return true, err
-//     //         }
-//     //         grip.Info(msg)
-//     //         return false, nil
-//     //     }, ssmDefaultRetryOptions())
-//     // if err != nil {
-//     //     return nil, err
-//     // }
-//     // return output, nil
-// }
 
 // retryBatchSSMOp runs an SSM operation with retries and handles batching for
 // SSM API methods that have a limit on the number of parameters that can be
 // queried at once.
-func retryBatchSSMOp[Input interface{}, Output interface{}](ctx context.Context, paramNames []string, maxParamsPerRequest int, client *ssm.Client, input Input, makeBatchInput func(names []string, input Input) Input, op func(ctx context.Context, client *ssm.Client, input Input) (Output, error), opName string) ([]Output, error) {
-	batches := makeBatches(paramNames, maxParamsPerRequest)
+func retryBatchSSMOp[Input interface{}, Output interface{}](ctx context.Context, names []string, maxParamsPerRequest int, client *ssm.Client, input Input, makeBatchInput func(names []string, input Input) Input, op func(ctx context.Context, client *ssm.Client, input Input) (Output, error), opName string) ([]Output, error) {
+	batches := makeParamNameBatches(names, maxParamsPerRequest)
 
 	var outputs []Output
 	for _, batch := range batches {
@@ -263,11 +144,12 @@ func retryBatchSSMOp[Input interface{}, Output interface{}](ctx context.Context,
 	return outputs, nil
 }
 
-// makeBatches partitions paramNames into batches of at most maxParamsPerBatch.
-func makeBatches(paramNames []string, maxParamsPerBatch int) [][]string {
+// makeParamNameBatches partitions names into batches with at most
+// maxParamsPerBatch in each batch.
+func makeParamNameBatches(paramNames []string, maxParamsPerBatch int) [][]string {
 	// kim: TODO: double-check/test that this batching works as intended.
 	var batches [][]string
-	for maxParamsPerBatch < len(paramNames) {
+	for len(paramNames) > maxParamsPerBatch {
 		batches = append(batches, paramNames[0:maxParamsPerBatch:maxParamsPerBatch])
 		paramNames = paramNames[maxParamsPerBatch:]
 	}
@@ -309,15 +191,13 @@ func makeAWSLogMessage(name, client string, args interface{}) message.Fields {
 	msg := message.Fields{
 		"message":  "AWS API call",
 		"api_name": name,
-		"client":   fmt.Sprintf("%T", client),
+		"client":   client,
 	}
 
 	argMap := make(map[string]interface{})
 	if err := mapstructure.Decode(args, &argMap); err == nil {
 		// Avoid logging the plaintext value of the parameter for PutParameter's
 		// input.
-		// kim: TODO: double-check if this really redacts the value for both get
-		// and put.
 		if _, ok := argMap["Value"]; ok {
 			argMap["Value"] = "{REDACTED}"
 		}
