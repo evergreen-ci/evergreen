@@ -156,6 +156,7 @@ enum RequiredStatus {
 
 type TaskEndDetail {
   description: String
+  failingCommand: String
   oomTracker: OomTrackerInfo!
   status: String!
   timedOut: Boolean
