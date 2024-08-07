@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -145,15 +144,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 	})
-	if h.ProvisionOptions != nil && h.ProvisionOptions.FetchOpts != nil {
-		f := h.ProvisionOptions.FetchOpts
-		_ = thirdparty.RevokeInstallationToken(ctx, f.GithubAppToken)
-
-		for _, token := range f.ModuleTokens {
-			_ = thirdparty.RevokeInstallationToken(ctx, token)
-		}
-
-	}
+	h.RevokeGithubTokens(ctx)
 
 	return h, nil
 }

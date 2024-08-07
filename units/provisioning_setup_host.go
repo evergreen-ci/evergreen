@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -488,7 +487,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		}
 
 		if j.host.ProvisionOptions.OwnerId != "" && j.host.ProvisionOptions.TaskId != "" {
-			err := j.host.PopulateGithubToken(ctx)
+			err := j.host.PopulateGithubTokens(ctx)
 			if err != nil {
 				return errors.Wrap(err, "populating GitHub token")
 			}
@@ -507,12 +506,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 				"host_id":   j.host.Id,
 				"job":       j.ID(),
 			}))
-			if f := j.host.ProvisionOptions.FetchOpts; f != nil {
-				for _, token := range f.ModuleTokens {
-					_ = thirdparty.RevokeInstallationToken(ctx, token)
-				}
-			}
-
+			j.host.RevokeGithubTokens(ctx)
 		}
 		if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.SetupScript != "" {
 			// Asynchronously run the task data setup script, since the task

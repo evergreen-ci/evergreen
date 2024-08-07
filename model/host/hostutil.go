@@ -424,7 +424,7 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 			// is not private, cloning the repo will still work.
 			// Either way, we should still spin up the host even if we can't
 			// fetch the data.
-			_ = h.PopulateGithubToken(ctx)
+			_ = h.PopulateGithubTokens(ctx)
 
 			// We have to run this in the Cygwin shell in order for git clone to
 			// use the correct SSH key. Additionally, since this can take a long
@@ -1046,9 +1046,9 @@ func (h *Host) SpawnHostSetupCommands(settings *evergreen.Settings) (string, err
 	return h.spawnHostSetupConfigDirCommands(conf), nil
 }
 
-// PopulateGithubToken adds a read-only token for owner/repo associated with the task
+// PopulateGithubTokens adds a read-only token for owner/repo associated with the task
 // to h.ProvisionOptions
-func (h *Host) PopulateGithubToken(ctx context.Context) error {
+func (h *Host) PopulateGithubTokens(ctx context.Context) error {
 	p := h.ProvisionOptions
 	if p.TaskId == "" {
 		return errors.New("missing task id")
@@ -1108,6 +1108,19 @@ func (h *Host) PopulateGithubToken(ctx context.Context) error {
 	}
 	h.ProvisionOptions.FetchOpts.ModuleTokens = moduleTokens
 	return nil
+}
+
+// RevokeGithubTokens revokes the github tokens associated with the task
+func (h *Host) RevokeGithubTokens(ctx context.Context) {
+	if h.ProvisionOptions != nil && h.ProvisionOptions.FetchOpts != nil {
+		f := h.ProvisionOptions.FetchOpts
+		_ = thirdparty.RevokeInstallationToken(ctx, f.GithubAppToken)
+
+		for _, token := range f.ModuleTokens {
+			_ = thirdparty.RevokeInstallationToken(ctx, token)
+		}
+
+	}
 }
 
 // spawnHostSetupConfigDirCommands the shell script that sets up the

@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -119,12 +118,7 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 		}
 		// Once task data is fetched, we no longer need the github token. Revoke it here
 		// in case something went wrong and it's still around.
-		if f := j.host.ProvisionOptions.FetchOpts; f != nil {
-			for _, token := range f.ModuleTokens {
-				_ = thirdparty.RevokeInstallationToken(ctx, token)
-			}
-		}
-
+		j.host.RevokeGithubTokens(ctx)
 	}
 
 	// Do not retry after the setup script executes and fails because there's no
