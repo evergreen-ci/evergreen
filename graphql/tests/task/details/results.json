@@ -24,14 +24,20 @@
       "query_file": "failing_command_and_description.graphql",
       "result": {
         "data": {
-          "task": {
+          "task1": {
             "details": {
               "failingCommand": "a failing command",
               "description": "a description"
             }
+          },
+          "task2": {
+            "details": {
+              "failingCommand": "a failing command",
+              "description": "a failing command"
+            }
           }
         }
-      }
+      } 
     }
   ]
 }
