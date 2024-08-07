@@ -193,7 +193,7 @@ func TestCLIFetchSource(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(testTask, ShouldNotBeNil)
 
-		err = fetchSource(ctx, ac, rc, comm, "", testTask.Id, "", false)
+		err = fetchSource(ctx, ac, rc, comm, "", testTask.Id, "", false, map[string]string{}, false)
 		So(err, ShouldBeNil)
 
 		fileStat, err := os.Stat("./source-patch-1_sample/README.md")

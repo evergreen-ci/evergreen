@@ -735,6 +735,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		appToken, err := comm.CreateInstallationToken(ctx, td, opts.owner, opts.repo)
 		if err == nil {
 			opts.token = appToken
+			opts.method = cloneMethodAccessToken
 		} else {
 			// If a token cannot be created, fallback to the legacy global token.
 			opts.method = cloneMethodOAuth

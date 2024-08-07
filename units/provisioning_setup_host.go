@@ -487,6 +487,10 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		}
 
 		if j.host.ProvisionOptions.OwnerId != "" && j.host.ProvisionOptions.TaskId != "" {
+			err := j.host.PopulateGithubTokens(ctx)
+			if err != nil {
+				return errors.Wrap(err, "populating GitHub token")
+			}
 			grip.Info(message.Fields{
 				"message": "fetching data for task on host",
 				"task":    j.host.ProvisionOptions.TaskId,
@@ -502,6 +506,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 				"host_id":   j.host.Id,
 				"job":       j.ID(),
 			}))
+			j.host.RevokeGithubTokens(ctx)
 		}
 		if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.SetupScript != "" {
 			// Asynchronously run the task data setup script, since the task

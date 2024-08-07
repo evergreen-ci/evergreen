@@ -144,6 +144,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 	})
+	h.RevokeGithubTokens(ctx)
 
 	return h, nil
 }
