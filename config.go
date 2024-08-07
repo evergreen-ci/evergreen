@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/logger"
+	"github.com/mongodb/anser/apm"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -21,6 +22,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"gopkg.in/yaml.v3"
@@ -680,10 +682,27 @@ func (rc ReadConcern) Resolve() *readconcern.ReadConcern {
 
 type DBSettings struct {
 	Url                  string       `yaml:"url"`
+	SharedURL            string       `yaml:"shared_url"`
 	DB                   string       `yaml:"db"`
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 	ReadConcernSettings  ReadConcern  `yaml:"read_concern"`
 	AWSAuthEnabled       bool         `yaml:"aws_auth_enabled"`
+}
+
+func (s *DBSettings) mongoSettings() *options.ClientOptions {
+	opts := options.Client().ApplyURI(s.Url).SetWriteConcern(s.WriteConcernSettings.Resolve()).
+		SetReadConcern(s.ReadConcernSettings.Resolve()).
+		SetTimeout(5 * time.Minute).
+		SetConnectTimeout(5 * time.Second).
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
+
+	if s.AWSAuthEnabled {
+		opts.SetAuth(options.Credential{
+			AuthMechanism: awsAuthMechanism,
+			AuthSource:    mongoExternalAuthSource,
+		})
+	}
+	return opts
 }
 
 // supported banner themes in Evergreen

@@ -51,12 +51,13 @@ const (
 	subscriptionTypeFlag      = "subscription-type"
 	errorOnWarningsFlagName   = "error-on-warnings"
 
-	dbUrlFlagName      = "url"
-	dbAWSAuthFlagName  = "mongo-aws-auth"
-	dbNameFlagName     = "db"
-	dbWriteNumFlagName = "w"
-	dbWmodeFlagName    = "wmode"
-	dbRmodeFlagName    = "rmode"
+	dbUrlFlagName       = "url"
+	sharedDBUrlFlagName = "shared-db-url"
+	dbAWSAuthFlagName   = "mongo-aws-auth"
+	dbNameFlagName      = "db"
+	dbWriteNumFlagName  = "w"
+	dbWmodeFlagName     = "wmode"
+	dbRmodeFlagName     = "rmode"
 
 	jsonFlagName = "json"
 )
@@ -223,6 +224,10 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 			Name:  dbUrlFlagName,
 			Usage: "Database URL(s). For a replica set, list all members separated by a comma.",
 			Value: evergreen.DefaultDatabaseURL,
+		},
+		cli.StringFlag{
+			Name:  sharedDBUrlFlagName,
+			Usage: "Database URL(s) for the shared database. For a replica set, list all members separated by a comma.",
 		},
 		cli.BoolFlag{
 			Name:   dbAWSAuthFlagName,

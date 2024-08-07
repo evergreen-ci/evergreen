@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/units"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -44,13 +45,15 @@ func parseDB(c *cli.Context) *evergreen.DBSettings {
 	}
 	url := c.String(dbUrlFlagName)
 	awsAuthEnabled := c.Bool(dbAWSAuthFlagName)
-	envUrl := os.Getenv(evergreen.MongodbUrl)
+	envUrl := os.Getenv(evergreen.MongodbURL)
 	if url == evergreen.DefaultDatabaseURL && envUrl != "" {
 		url = envUrl
 	}
+
 	return &evergreen.DBSettings{
-		Url: url,
-		DB:  c.String(dbNameFlagName),
+		Url:       url,
+		SharedURL: util.CoalesceString(c.String(sharedDBUrlFlagName), os.Getenv(evergreen.SharedMongoURL)),
+		DB:        c.String(dbNameFlagName),
 		WriteConcernSettings: evergreen.WriteConcern{
 			W:     c.Int(dbWriteNumFlagName),
 			WMode: c.String(dbWmodeFlagName),

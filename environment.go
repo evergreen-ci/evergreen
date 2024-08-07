@@ -106,7 +106,7 @@ type Environment interface {
 	Session() db.Session
 	Client() *mongo.Client
 	DB() *mongo.Database
-	ConfigDB() *mongo.Database
+	SharedDB() *mongo.Database
 
 	// The Environment provides access to several amboy queues for
 	// processing background work in the context of the Evergreen
@@ -268,7 +268,7 @@ type envState struct {
 	settings                *Settings
 	dbName                  string
 	client                  *mongo.Client
-	configClient            *mongo.Client
+	sharedDBClient          *mongo.Client
 	mu                      sync.RWMutex
 	clientConfig            *ClientConfig
 	closers                 []closerOp
@@ -371,23 +371,17 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 	ctx, span := tracer.Start(ctx, "InitDB")
 	defer span.End()
 
-	opts := options.Client().ApplyURI(settings.Url).SetWriteConcern(settings.WriteConcernSettings.Resolve()).
-		SetReadConcern(settings.ReadConcernSettings.Resolve()).
-		SetTimeout(5 * time.Minute).
-		SetConnectTimeout(5 * time.Second).
-		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
-
-	if settings.AWSAuthEnabled {
-		opts.SetAuth(options.Credential{
-			AuthMechanism: awsAuthMechanism,
-			AuthSource:    mongoExternalAuthSource,
-		})
-	}
-
 	var err error
-	e.client, err = mongo.Connect(ctx, opts)
+	e.client, err = mongo.Connect(ctx, settings.mongoSettings())
 	if err != nil {
 		return errors.Wrap(err, "connecting to the Evergreen DB")
+	}
+
+	if settings.SharedURL != "" {
+		e.sharedDBClient, err = mongo.Connect(ctx, settings.mongoSettings().ApplyURI(settings.SharedURL))
+		if err != nil {
+			return errors.Wrap(err, "connecting to the shared Evergreen database")
+		}
 	}
 
 	return nil
@@ -462,11 +456,14 @@ func (e *envState) DB() *mongo.Database {
 	return e.client.Database(e.dbName)
 }
 
-func (e *envState) ConfigDB() *mongo.Database {
+func (e *envState) SharedDB() *mongo.Database {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	return e.configClient.Database(e.dbName)
+	if e.sharedDBClient != nil {
+		return e.sharedDBClient.Database(e.dbName)
+	}
+	return e.DB()
 }
 
 func (e *envState) createLocalQueue(ctx context.Context, tracer trace.Tracer) error {

@@ -231,7 +231,7 @@ func (e *Environment) DB() *mongo.Database {
 	return e.MongoClient.Database(e.DatabaseName)
 }
 
-func (e *Environment) ConfigDB() *mongo.Database {
+func (e *Environment) SharedDB() *mongo.Database {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 

@@ -204,7 +204,8 @@ const (
 
 	// Env vars
 	EvergreenHome           = "EVGHOME"
-	MongodbUrl              = "MONGO_URL"
+	MongodbURL              = "MONGO_URL"
+	SharedMongoURL          = "SHARED_MONGO_URL"
 	MongoAWSAuthEnabled     = "MONGO_AWS_AUTH"
 	EvergreenVersionID      = "EVG_VERSION_ID"
 	EvergreenClientS3Bucket = "EVG_CLIENT_S3_BUCKET"
