@@ -282,7 +282,7 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 
 	endDetail := s.mockCommunicator.EndTaskResult.Detail
 	s.Equal(evergreen.TaskSucceeded, endDetail.Status, "the task should succeed")
-	s.Empty(endDetail.Description, "should not set description when it's not defined by the user")
+	s.Empty(endDetail.Description, "should not set description when it's not defined by the user or system failure")
 	s.Empty(endDetail.FailingCommand, "should not include end task failing command for successful task")
 }
 
