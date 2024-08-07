@@ -1157,31 +1157,20 @@ func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status str
 }
 
 func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, status, description, failureType string, failureMetadataTagsToAdd []string) {
-	var isDefaultDescription bool
 	currCmd := tc.getCurrentCommand()
-	if currCmd != nil {
-		// If there is no explicit user-defined description or failure type,
+	if currCmd != nil && failureType == "" {
+		// If there is no explicit user-defined failure type,
 		// infer that information from the last command that ran.
-		if description == "" {
-			description = currCmd.FullDisplayName()
-			isDefaultDescription = true
-		}
-		if failureType == "" {
-			failureType = currCmd.Type()
-		}
+		failureType = currCmd.Type()
 	}
 
 	detail.Status = status
+	detail.Description = description
 	if status != evergreen.TaskSucceeded {
+		detail.FailingCommand = currCmd.FullDisplayName()
 		detail.Type = failureType
-		detail.Description = description
 		detail.FailureMetadataTags = utility.UniqueStrings(append(currCmd.FailureMetadataTags(), failureMetadataTagsToAdd...))
 		tc.setFailingCommand(currCmd)
-	}
-	if !isDefaultDescription {
-		// If there's an explicit user-defined description, always set that
-		// description.
-		detail.Description = description
 	}
 
 	detail.OtherFailingCommands = tc.getOtherFailingCommands()

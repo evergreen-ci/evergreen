@@ -169,6 +169,8 @@ type ApiTaskEndDetail struct {
 	Type *string `json:"type"`
 	// Description of the final status of this task.
 	Description *string `json:"desc"`
+	// Command which indiciates the task failure.
+	FailingCommand *string `json:"failing_command"`
 	// PostErrored is true when the post command errored.
 	PostErrored bool `json:"post_errored"`
 	// FailureMetadataTags contains the metadata tags associated with the
@@ -190,6 +192,7 @@ func (at *ApiTaskEndDetail) BuildFromService(t apimodels.TaskEndDetail) error {
 	at.Status = utility.ToStringPtr(t.Status)
 	at.Type = utility.ToStringPtr(t.Type)
 	at.Description = utility.ToStringPtr(t.Description)
+	at.FailingCommand = utility.ToStringPtr(t.FailingCommand)
 	at.PostErrored = t.PostErrored
 	at.TimedOut = t.TimedOut
 	at.TimeoutType = utility.ToStringPtr(t.TimeoutType)
@@ -218,6 +221,7 @@ func (ad *ApiTaskEndDetail) ToService() apimodels.TaskEndDetail {
 		Status:               utility.FromStringPtr(ad.Status),
 		Type:                 utility.FromStringPtr(ad.Type),
 		Description:          utility.FromStringPtr(ad.Description),
+		FailingCommand:       utility.FromStringPtr(ad.FailingCommand),
 		PostErrored:          ad.PostErrored,
 		FailureMetadataTags:  ad.FailureMetadataTags,
 		OtherFailingCommands: failingCmds,

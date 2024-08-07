@@ -94,7 +94,7 @@ func (s *CommandSuite) TestPreErrorFailsWithSetup() {
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal(evergreen.TaskFailed, detail.Status)
 	s.Equal(evergreen.CommandTypeSetup, detail.Type)
-	s.Contains(detail.Description, "shell.exec")
+	s.Contains(detail.FailingCommand, "shell.exec")
 	s.False(detail.TimedOut)
 
 	taskData := s.mockCommunicator.EndTaskResult.TaskData

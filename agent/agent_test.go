@@ -282,7 +282,8 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 
 	endDetail := s.mockCommunicator.EndTaskResult.Detail
 	s.Equal(evergreen.TaskSucceeded, endDetail.Status, "the task should succeed")
-	s.Empty(endDetail.Description, "should not include end task failure description for successful task")
+	s.Empty(endDetail.Description, "should not set description when it's not defined by the user")
+	s.Empty(endDetail.FailingCommand, "should not include end task failing command for successful task")
 }
 
 func (s *AgentSuite) TestFinishTaskWithNormalCompletedTask() {
@@ -310,6 +311,7 @@ func (s *AgentSuite) TestFinishTaskWithAbnormallyCompletedTask() {
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "task that failed due to non-task-related reasons should record the final status")
 	s.Equal(evergreen.CommandTypeSystem, s.mockCommunicator.EndTaskResult.Detail.Type)
 	s.NotEmpty(s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.Equal(s.mockCommunicator.EndTaskResult.Detail.FailingCommand, "initial task setup")
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Task encountered unexpected task lifecycle system failure",
@@ -818,7 +820,8 @@ post:
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
-	s.Equal("'shell.exec' (step 1 of 1) in block 'post'", s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.Equal("'shell.exec' (step 1 of 1) in block 'post'", s.mockCommunicator.EndTaskResult.Detail.FailingCommand)
+	s.Empty(s.mockCommunicator.EndTaskResult.Detail.Description, "should not set description when it's not defined by the user or system failure")
 	s.True(s.mockCommunicator.EndTaskResult.Detail.TimedOut)
 	s.EqualValues(globals.PostTimeout, s.mockCommunicator.EndTaskResult.Detail.TimeoutType)
 	s.Equal(time.Second, s.mockCommunicator.EndTaskResult.Detail.TimeoutDuration)
@@ -874,7 +877,8 @@ post:
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
-	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Description, "should not include command failure description for a successful task")
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Description, "should not set description when it's not defined by the user or system failure")
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.FailingCommand, "should not include failing command for a successful task")
 	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Type, "should not include command failure type for a successful task")
 	s.Empty(s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "failure metadata tags should not be set when task succeeds")
 	s.Require().Len(s.mockCommunicator.EndTaskResult.Detail.OtherFailingCommands, 1)
@@ -930,10 +934,11 @@ post:
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
-	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Description, "should not include command failure description for a successful task")
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Description, "should not set description when it's not defined by the user or system failure")
 	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Type, "should not include command failure type for a successful task")
 	s.Empty(s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "failure metadata tags should not be set if task succeeds")
 	s.Empty(s.mockCommunicator.EndTaskResult.Detail.OtherFailingCommands, "should not include other failing commands for a successful task")
+	s.Empty(s.mockCommunicator.EndTaskResult.Detail.FailingCommand, "should not include failing command for a successful task")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -985,7 +990,7 @@ post:
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
-	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description, "should show main block command as the failing command if both main and post block commands fail")
+	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.FailingCommand, "should show main block command as the failing command if both main and post block commands fail")
 	s.True(s.mockCommunicator.EndTaskResult.Detail.TimedOut, "should show main block command hitting timeout")
 	s.ElementsMatch([]string{"failure_tag0"}, s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "failure tags should be set for failing main task command")
 	s.Require().Len(s.mockCommunicator.EndTaskResult.Detail.OtherFailingCommands, 1)
@@ -1039,7 +1044,7 @@ post:
 
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
-	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.Equal("'shell.exec' (step 1 of 1)", s.mockCommunicator.EndTaskResult.Detail.FailingCommand)
 	s.ElementsMatch([]string{"failure_tag0"}, s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "failure tags should be set for failing main task command")
 	s.Empty(s.mockCommunicator.EndTaskResult.Detail.OtherFailingCommands, "should not include other failing commands when post command succeeds")
 
@@ -1208,10 +1213,10 @@ func (s *AgentSuite) TestEndTaskResponse() {
 	s.tc.setCurrentCommand(factory())
 
 	const systemFailureDescription = "failure message"
-	s.T().Run("TaskFailingWithCurrentCommandOverridesEmptyDescription", func(t *testing.T) {
+	s.T().Run("TaskFailingWithCurrentCommandDoesNotOverrideDescription", func(t *testing.T) {
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, "")
 		s.Equal(evergreen.TaskFailed, detail.Status)
-		s.Contains(detail.Description, s.tc.getCurrentCommand().FullDisplayName())
+		s.Empty(detail.Description, "the description should be empty if it's not defined by the user and there is no system failure")
 	})
 	s.T().Run("TaskFailingWithCurrentCommandIsOverriddenBySystemFailureDescription", func(t *testing.T) {
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, systemFailureDescription)
@@ -1231,6 +1236,7 @@ func (s *AgentSuite) TestEndTaskResponse() {
 		s.True(detail.TimedOut)
 		s.Equal(evergreen.TaskSucceeded, detail.Status)
 		s.Equal(systemFailureDescription, detail.Description)
+		s.Empty(detail.FailingCommand, "failing command should be empty if the task succeeded")
 	})
 	s.T().Run("TaskWithUserDefinedTaskStatusAndDescriptionOverridesDescription", func(t *testing.T) {
 		s.tc.userEndTaskResp = &triggerEndTaskResp{
