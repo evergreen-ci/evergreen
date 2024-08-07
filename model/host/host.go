@@ -329,8 +329,7 @@ type FetchOpts struct {
 
 	// GithubAppToken is the token used to fetch task data from Github.
 	GithubAppToken string `bson:"github_app_token" json:"github_app_token"`
-	// ModuleTokens is a list of github tokens for each module associated with the task
-	// in the format 'moduleOwner_moduleRepo:token'
+	// ModuleTokens is a map of module names to their respective tokens.
 	ModuleTokens map[string]string `bson:"module_tokens" json:"module_tokens"`
 }
 type ProjectModule struct {

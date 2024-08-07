@@ -1057,14 +1057,6 @@ func (h *Host) PopulateGithubToken(ctx context.Context) error {
 		return errors.New("missing fetch opts")
 	}
 	if p.FetchOpts.ProjectOwner == "" || p.FetchOpts.ProjectRepo == "" {
-		grip.Warning(message.Fields{
-			"message": "missing project owner or repo when populating token for spawn host",
-			"host_id": h.Id,
-			"distro":  h.Distro.Id,
-			"task_id": p.TaskId,
-			"owner":   p.FetchOpts.ProjectOwner,
-			"repo":    p.FetchOpts.ProjectRepo,
-		})
 		return errors.New("missing project owner or project repo")
 	}
 
