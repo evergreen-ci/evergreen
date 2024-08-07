@@ -69,9 +69,9 @@ func newSSMClient(ctx context.Context, region string) (ssmClient, error) {
 }
 
 func (c *ssmClientImpl) PutParameter(ctx context.Context, input *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
-	return retrySSMOp(ctx, c.client, input, func(ctx context.Context, client *ssm.Client, input *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
+	return retrySSMClientOp(ctx, "PutParameter", c.client, input, func(ctx context.Context, client *ssm.Client, input *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
 		return client.PutParameter(ctx, input)
-	}, "PutParameter")
+	})
 }
 
 func (c *ssmClientImpl) DeleteParametersSimple(ctx context.Context, input *ssm.DeleteParametersInput) ([]string, error) {
@@ -90,9 +90,9 @@ func (c *ssmClientImpl) DeleteParametersSimple(ctx context.Context, input *ssm.D
 func (c *ssmClientImpl) DeleteParameters(ctx context.Context, input *ssm.DeleteParametersInput) ([]*ssm.DeleteParametersOutput, error) {
 	// TODO (DEVPROD-9391): follow-up PR should handle batching requests due
 	// to limit of 10 parameters per API call.
-	output, err := retrySSMOp(ctx, c.client, input, func(ctx context.Context, client *ssm.Client, input *ssm.DeleteParametersInput) (*ssm.DeleteParametersOutput, error) {
+	output, err := retrySSMClientOp(ctx, "DeleteParameters", c.client, input, func(ctx context.Context, client *ssm.Client, input *ssm.DeleteParametersInput) (*ssm.DeleteParametersOutput, error) {
 		return client.DeleteParameters(ctx, input)
-	}, "DeleteParameters")
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -115,23 +115,23 @@ func (c *ssmClientImpl) GetParametersSimple(ctx context.Context, input *ssm.GetP
 func (c *ssmClientImpl) GetParameters(ctx context.Context, input *ssm.GetParametersInput) ([]*ssm.GetParametersOutput, error) {
 	// TODO (DEVPROD-9391): follow-up PR should handle batching requests due
 	// to limit of 10 parameters per API call.
-	output, err := retrySSMOp(ctx, c.client, input, func(ctx context.Context, client *ssm.Client, input *ssm.GetParametersInput) (*ssm.GetParametersOutput, error) {
+	output, err := retrySSMClientOp(ctx, "GetParameters", c.client, input, func(ctx context.Context, client *ssm.Client, input *ssm.GetParametersInput) (*ssm.GetParametersOutput, error) {
 		return client.GetParameters(ctx, input)
-	}, "GetParameters")
+	})
 	if err != nil {
 		return nil, err
 	}
 	return []*ssm.GetParametersOutput{output}, nil
 }
 
-// retrySSMOp runs a single SSM operation with retries.
-func retrySSMOp[Input interface{}, Output interface{}](ctx context.Context, client *ssm.Client, input Input, op func(ctx context.Context, client *ssm.Client, input Input) (Output, error), opName string) (Output, error) {
+// retrySSMClientOp runs a single SSM operation with retries.
+func retrySSMClientOp[Input interface{}, Output interface{}](ctx context.Context, opName string, client *ssm.Client, input Input, clientOp func(ctx context.Context, client *ssm.Client, input Input) (Output, error)) (Output, error) {
 	var output Output
 	var err error
 
 	err = utility.Retry(ctx, func() (bool, error) {
 		msg := makeAWSLogMessage(opName, fmt.Sprintf("%T", client), input)
-		output, err = op(ctx, client, input)
+		output, err = clientOp(ctx, client, input)
 		if err != nil {
 			return true, err
 		}
