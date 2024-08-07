@@ -17,20 +17,28 @@ type SplunkConfig struct {
 func (c *SplunkConfig) SectionId() string { return "splunk" }
 
 func (c *SplunkConfig) Get(ctx context.Context) error {
-	res := GetEnvironment().ConfigDB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
+	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
 	if err := res.Err(); err != nil {
 		if err != mongo.ErrNoDocuments {
-			return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
+			return errors.Wrapf(err, "getting local config section '%s'", c.SectionId())
+		}
+	} else {
+		if err := res.Decode(&c); err != nil {
+			return errors.Wrapf(err, "decoding local config section '%s'", c.SectionId())
+		}
+		return nil
+	}
+
+	res = GetEnvironment().ConfigDB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
+	if err := res.Err(); err != nil {
+		if err != mongo.ErrNoDocuments {
+			return errors.Wrapf(err, "getting shared config section '%s'", c.SectionId())
 		}
 		*c = SplunkConfig{}
 		return nil
 	}
 
-	if err := res.Decode(&c); err != nil {
-		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
-	}
-
-	return nil
+	return errors.Wrapf(res.Decode(&c), "decoding shared config section '%s'", c.SectionId())
 }
 
 func (c *SplunkConfig) Set(ctx context.Context) error {
