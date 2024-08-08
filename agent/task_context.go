@@ -352,6 +352,9 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 
 	// Set AWS credentials for task output buckets.
 	awsCreds := pail.CreateAWSCredentials(taskConfig.TaskOutput.Key, taskConfig.TaskOutput.Secret, "")
+	if taskConfig.Task.TaskOutputInfo == nil {
+		return nil, errors.New("agent retrieved a task with no task output info")
+	}
 	taskConfig.Task.TaskOutputInfo.TaskLogs.AWSCredentials = awsCreds
 	taskConfig.Task.TaskOutputInfo.TestLogs.AWSCredentials = awsCreds
 
