@@ -1399,7 +1399,7 @@ type APIAWSConfig struct {
 	AllowedRegions       []*string                 `json:"allowed_regions"`
 	MaxVolumeSizePerUser *int                      `json:"max_volume_size"`
 	Pod                  *APIAWSPodConfig          `json:"pod"`
-	ParameterStore       APIParameterStoreConfig   `json:"parameter_store"`
+	ParameterStore       *APIParameterStoreConfig  `json:"parameter_store"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h interface{}) error {
@@ -1460,7 +1460,9 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		pod.BuildFromService(v.Pod)
 		a.Pod = &pod
 
-		a.ParameterStore.BuildFromService(v.ParameterStore)
+		var ps APIParameterStoreConfig
+		ps.BuildFromService(v.ParameterStore)
+		a.ParameterStore = &ps
 	default:
 		return errors.Errorf("programmatic error: expected AWS config but got type %T", h)
 	}
@@ -2773,6 +2775,9 @@ func (a *APIParameterStoreConfig) BuildFromService(ps evergreen.ParameterStoreCo
 }
 
 func (a *APIParameterStoreConfig) ToService() evergreen.ParameterStoreConfig {
+	if a == nil {
+		return evergreen.ParameterStoreConfig{}
+	}
 	return evergreen.ParameterStoreConfig{
 		Prefix: utility.FromStringPtr(a.Prefix),
 	}

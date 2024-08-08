@@ -102,6 +102,8 @@ type AWSConfig struct {
 	// Pod represents configuration for using pods in AWS.
 	Pod AWSPodConfig `bson:"pod" json:"pod" yaml:"pod"`
 
+	// ParameterStore represents configuration for using AWS SSM Parameter
+	// Store.
 	ParameterStore ParameterStoreConfig `bson:"parameter_store" json:"parameter_store" yaml:"parameter_store"`
 }
 
