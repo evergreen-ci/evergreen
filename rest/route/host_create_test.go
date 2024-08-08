@@ -340,8 +340,10 @@ func TestCreateHostRoute(t *testing.T) {
 	// Calling create host route multiple times should not create more hosts than number requested.
 	hosts, err := host.FindHostIntentsByTask(ctx, sampleTask.Id, sampleTask.Execution)
 	assert.NoError(err)
-	assert.Len(hosts, 5)
+	assert.Len(hosts, 0)
 
+	assert.Equal(http.StatusOK, handler.Run(ctx).Status())
+	assert.Equal(http.StatusOK, handler.Run(ctx).Status())
 	assert.Equal(http.StatusOK, handler.Run(ctx).Status())
 
 	hosts, err = host.FindHostIntentsByTask(ctx, sampleTask.Id, sampleTask.Execution)
