@@ -284,16 +284,69 @@ func TestMakeHost(t *testing.T) {
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-west-1"))
 	assert.Equal(ec2Settings2.AMI, "ami-987654")
+}
 
-	hosts, err := host.Find(ctx, bson.M{})
+func TestCreateHostRoute(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection))
+
+	env := &mock.Environment{}
+	assert.NoError(env.Configure(ctx))
+	var err error
+	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
+		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
+			return queue.NewLocalLimitedSize(2, 1048), nil
+		}}})
 	assert.NoError(err)
-	require.Len(hosts, 7)
+
+	handler := hostCreateHandler{}
+
+	d := distro.Distro{
+		Id:       "archlinux-test",
+		Aliases:  []string{"archlinux-alias"},
+		Provider: evergreen.ProviderNameEc2OnDemand,
+		ProviderSettingsList: []*birch.Document{birch.NewDocument(
+			birch.EC.String("ami", "ami-123456"),
+			birch.EC.String("region", "us-east-1"),
+			birch.EC.String("instance_type", "t1.micro"),
+			birch.EC.String("subnet_id", "subnet-12345678"),
+			birch.EC.SliceString("security_group_ids", []string{"abcdef"}),
+		)},
+	}
+	require.NoError(d.Insert(ctx))
+
+	sampleTask := &task.Task{
+		Id:        "task-id",
+		Execution: 0,
+	}
+	require.NoError(sampleTask.Insert())
+
+	// spawn an evergreen distro
+	c := apimodels.CreateHost{
+		Distro:              "archlinux-test",
+		CloudProvider:       "ec2",
+		NumHosts:            "5",
+		Scope:               "task",
+		SetupTimeoutSecs:    600,
+		TeardownTimeoutSecs: 21600,
+	}
+	handler.createHost = c
+	handler.taskID = "task-id"
+
+	// Calling create host route multiple times should not create more hosts than number requested.
+	hosts, err := host.FindHostIntentsByTask(ctx, sampleTask.Id, sampleTask.Execution)
+	assert.NoError(err)
+	assert.Len(hosts, 5)
 
 	assert.Equal(http.StatusOK, handler.Run(ctx).Status())
 
-	hosts, err = host.Find(ctx, bson.M{})
+	hosts, err = host.FindHostIntentsByTask(ctx, sampleTask.Id, sampleTask.Execution)
 	assert.NoError(err)
-	require.Len(hosts, 7)
+	assert.Len(hosts, 5)
 }
 
 func TestHostCreateDocker(t *testing.T) {
