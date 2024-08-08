@@ -58,6 +58,7 @@
   "parser_projects": [
     {
       "_id": "5dd2e89cd1fe07048e43bc8f",
+      "display_name": "spruce",
       "tasks": [
         {
           "name": "t1",
