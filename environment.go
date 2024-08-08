@@ -372,13 +372,13 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 	defer span.End()
 
 	var err error
-	e.client, err = mongo.Connect(ctx, settings.mongoSettings())
+	e.client, err = mongo.Connect(ctx, settings.mongoOptions())
 	if err != nil {
 		return errors.Wrap(err, "connecting to the Evergreen DB")
 	}
 
 	if settings.SharedURL != "" {
-		e.sharedDBClient, err = mongo.Connect(ctx, settings.mongoSettings().ApplyURI(settings.SharedURL))
+		e.sharedDBClient, err = mongo.Connect(ctx, settings.mongoOptions().ApplyURI(settings.SharedURL))
 		if err != nil {
 			return errors.Wrap(err, "connecting to the shared Evergreen database")
 		}

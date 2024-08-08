@@ -268,7 +268,7 @@ func GetConfig(ctx context.Context) (*Settings, error) {
 }
 
 // GetSharedConfig returns only the Evergreen configuration which is shared among all instances
-// reading from a single config database. Use [GetConfig] to get a complete configuration that
+// reading from a single shared database. Use [GetConfig] to get a complete configuration that
 // includes overrides from the local database.
 func GetSharedConfig(ctx context.Context) (*Settings, error) {
 	return getSettings(ctx, false)
@@ -309,7 +309,10 @@ func getSettings(ctx context.Context, includeOverrides bool) (*Settings, error) 
 		propVal.Set(sectionVal)
 	}
 
-	return baseConfig, catcher.Resolve()
+	if catcher.HasErrors() {
+		return nil, errors.WithStack(catcher.Resolve())
+	}
+	return baseConfig, nil
 }
 
 // UpdateConfig updates all evergreen settings documents in the DB.
@@ -689,7 +692,7 @@ type DBSettings struct {
 	AWSAuthEnabled       bool         `yaml:"aws_auth_enabled"`
 }
 
-func (s *DBSettings) mongoSettings() *options.ClientOptions {
+func (s *DBSettings) mongoOptions() *options.ClientOptions {
 	opts := options.Client().ApplyURI(s.Url).SetWriteConcern(s.WriteConcernSettings.Resolve()).
 		SetReadConcern(s.ReadConcernSettings.Resolve()).
 		SetTimeout(5 * time.Minute).
