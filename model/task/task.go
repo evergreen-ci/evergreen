@@ -1598,10 +1598,11 @@ func (t *Task) SetAborted(reason AbortInfo) error {
 
 func taskAbortUpdate(reason AbortInfo) bson.M {
 	return bson.M{
-		AbortedKey:            true,
-		AbortInfoKey:          reason,
-		ResetWhenFinishedKey:  false,
-		IsAutomaticRestartKey: false,
+		AbortedKey:                 true,
+		AbortInfoKey:               reason,
+		ResetWhenFinishedKey:       false,
+		ResetFailedWhenFinishedKey: false,
+		IsAutomaticRestartKey:      false,
 	}
 }
 
