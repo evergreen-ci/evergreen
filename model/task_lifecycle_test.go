@@ -2768,7 +2768,6 @@ func TestTryResetTask(t *testing.T) {
 				So(testTask.Status, ShouldNotEqual, evergreen.TaskUndispatched)
 			})
 			Convey("system failed tasks should reset if they haven't reached the admin setting limit", func() {
-				fmt.Println("START OF TEST")
 				detail.Type = evergreen.CommandTypeSystem
 				So(TryResetTask(ctx, settings, systemFailedTask.Id, userName, "", detail), ShouldBeNil)
 				systemFailedTask, err = task.FindOne(db.Query(task.ById(systemFailedTask.Id)))
@@ -2776,7 +2775,6 @@ func TestTryResetTask(t *testing.T) {
 				So(systemFailedTask.Status, ShouldEqual, evergreen.TaskUndispatched)
 			})
 			Convey("system failed tasks should not reset if they've reached the admin setting limit", func() {
-				fmt.Println("SHOULD NOT RESET")
 				detail.Type = evergreen.CommandTypeSystem
 				So(TryResetTask(ctx, settings, anotherSystemFailedTask.Id, userName, "", detail), ShouldBeNil)
 				anotherSystemFailedTask, err = task.FindOne(db.Query(task.ById(systemFailedTask.Id)))
