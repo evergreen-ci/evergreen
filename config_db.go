@@ -163,6 +163,10 @@ func getSectionsBSON(ctx context.Context, ids []string, includeOverrides bool) (
 		missingIDs, _ = utility.StringSliceSymmetricDifference(ids, docIDs)
 	}
 
+	if GetEnvironment().SharedDB() == nil {
+		return docs, nil
+	}
+
 	cur, err := GetEnvironment().SharedDB().Collection(ConfigCollection).Find(ctx, byIDs(missingIDs))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding shared configuration sections")
@@ -181,6 +185,10 @@ func getConfigSection(ctx context.Context, section ConfigSection) error {
 	if err := res.Err(); err != nil {
 		if err != mongo.ErrNoDocuments {
 			return errors.Wrapf(err, "getting local config section '%s'", section.SectionId())
+		}
+		if GetEnvironment().SharedDB() == nil {
+			section = reflect.Zero(reflect.TypeOf(section)).Interface().(ConfigSection)
+			return nil
 		}
 	} else {
 		if err := res.Decode(section); err != nil {
@@ -202,7 +210,11 @@ func getConfigSection(ctx context.Context, section ConfigSection) error {
 }
 
 func setConfigSection(ctx context.Context, sectionID string, update bson.M) error {
-	_, err := GetEnvironment().SharedDB().Collection(ConfigCollection).UpdateOne(
+	db := GetEnvironment().SharedDB()
+	if db == nil {
+		db = GetEnvironment().DB()
+	}
+	_, err := db.Collection(ConfigCollection).UpdateOne(
 		ctx,
 		byId(sectionID),
 		update,

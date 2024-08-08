@@ -461,9 +461,9 @@ func (e *envState) SharedDB() *mongo.Database {
 	defer e.mu.RUnlock()
 
 	if e.sharedDBClient != nil {
-		return e.sharedDBClient.Database(e.dbName)
+		e.sharedDBClient.Database(e.dbName)
 	}
-	return e.DB()
+	return nil
 }
 
 func (e *envState) createLocalQueue(ctx context.Context, tracer trace.Tracer) error {
