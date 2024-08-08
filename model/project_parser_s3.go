@@ -19,8 +19,8 @@ type ParserProjectS3Storage struct {
 }
 
 // NewParserProjectS3Storage sets up access to parser projects stored in S3.
-func NewParserProjectS3Storage(ppConf evergreen.ParserProjectS3Config) (*ParserProjectS3Storage, error) {
-	b, err := pail.NewS3MultiPartBucket(pail.S3Options{
+func NewParserProjectS3Storage(ctx context.Context, ppConf evergreen.ParserProjectS3Config) (*ParserProjectS3Storage, error) {
+	b, err := pail.NewS3MultiPartBucket(ctx, pail.S3Options{
 		Name:   ppConf.Bucket,
 		Prefix: ppConf.Prefix,
 		Region: evergreen.DefaultEC2Region,

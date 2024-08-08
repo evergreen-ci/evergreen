@@ -20,8 +20,8 @@ type generatedJSONS3Storage struct {
 // newGeneratedJSONS3Storage sets up access to generated JSON files stored in
 // S3. If this returns a non-nil GeneratedJSONFileStorage, callers are expected
 // to call Close when they are finished with it.
-func newGeneratedJSONS3Storage(ppConf evergreen.ParserProjectS3Config) (*generatedJSONS3Storage, error) {
-	b, err := pail.NewS3MultiPartBucket(pail.S3Options{
+func newGeneratedJSONS3Storage(ctx context.Context, ppConf evergreen.ParserProjectS3Config) (*generatedJSONS3Storage, error) {
+	b, err := pail.NewS3MultiPartBucket(ctx, pail.S3Options{
 		Name:   ppConf.Bucket,
 		Prefix: ppConf.GeneratedJSONPrefix,
 		Region: evergreen.DefaultEC2Region,

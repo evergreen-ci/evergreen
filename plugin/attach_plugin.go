@@ -1,6 +1,9 @@
 package plugin
 
 import (
+	"context"
+	"time"
+
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -37,15 +40,15 @@ func (ap *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 				Position: PageLeft,
 				PanelHTML: "<div ng-include=\"'/static/plugins/attach/partials/task_files_panel.html'\" " +
 					"ng-init='entries=plugins.attach' ng-show='plugins.attach.length'></div>",
-				DataFunc: func(context UIContext) (interface{}, error) {
-					if context.Task == nil {
+				DataFunc: func(uiCtx UIContext) (interface{}, error) {
+					if uiCtx.Task == nil {
 						return nil, nil
 					}
 					var err error
-					taskId := context.Task.Id
-					t := context.Task
-					if context.Task.OldTaskId != "" {
-						taskId = context.Task.OldTaskId
+					taskId := uiCtx.Task.Id
+					t := uiCtx.Task
+					if uiCtx.Task.OldTaskId != "" {
+						taskId = uiCtx.Task.OldTaskId
 						t, err = task.FindOneId(taskId)
 						if err != nil {
 							return nil, errors.Wrap(err, "error retrieving task")
@@ -56,15 +59,18 @@ func (ap *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 						files := []displayTaskFiles{}
 						for _, execTaskID := range t.ExecutionTasks {
 							var execTaskFiles []artifact.File
-							execTaskFiles, err = artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: execTaskID, Execution: context.Task.Execution}})
+							execTaskFiles, err = artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: execTaskID, Execution: uiCtx.Task.Execution}})
 							if err != nil {
 								return nil, err
 							}
-							hasUser := context.User.(*user.DBUser) != nil
+							hasUser := uiCtx.User.(*user.DBUser) != nil
 							var strippedFiles []artifact.File
-							strippedFiles, err = artifact.StripHiddenFiles(execTaskFiles, hasUser)
+
+							ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+							defer cancel()
+							strippedFiles, err = artifact.StripHiddenFiles(ctx, execTaskFiles, hasUser)
 							if err != nil {
-								return nil, errors.Wrap(err, "error signing urls")
+								return nil, errors.Wrap(err, "signing urls")
 							}
 							var execTask *task.Task
 							execTask, err = task.FindOneId(execTaskID)
@@ -85,15 +91,17 @@ func (ap *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 						return files, nil
 					}
 
-					files, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskId, Execution: context.Task.Execution}})
+					files, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskId, Execution: uiCtx.Task.Execution}})
 					if err != nil {
 						return nil, err
 					}
-					hasUser := context.User.(*user.DBUser) != nil
+					hasUser := uiCtx.User.(*user.DBUser) != nil
 
-					strippedFiles, err := artifact.StripHiddenFiles(files, hasUser)
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+					strippedFiles, err := artifact.StripHiddenFiles(ctx, files, hasUser)
 					if err != nil {
-						return nil, errors.Wrap(err, "error signing urls")
+						return nil, errors.Wrap(err, "signing urls")
 					}
 					return strippedFiles, nil
 				},
@@ -103,20 +111,22 @@ func (ap *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 				Position: PageLeft,
 				PanelHTML: "<div ng-include=\"'/static/plugins/attach/partials/build_files_panel.html'\" " +
 					"ng-init='filesByTask=plugins.attach' ng-show='plugins.attach.length'></div>",
-				DataFunc: func(context UIContext) (interface{}, error) {
-					if context.Build == nil {
+				DataFunc: func(uiCtx UIContext) (interface{}, error) {
+					if uiCtx.Build == nil {
 						return nil, nil
 					}
-					taskArtifactFiles, err := artifact.FindAll(artifact.ByBuildId(context.Build.Id))
+					taskArtifactFiles, err := artifact.FindAll(artifact.ByBuildId(uiCtx.Build.Id))
 					if err != nil {
 						return nil, errors.Wrap(err, "error finding artifact files for build")
 					}
 					for i := range taskArtifactFiles {
 						// remove hidden files if the user isn't logged in
-						hasUser := context.User.(*user.DBUser) != nil
-						taskArtifactFiles[i].Files, err = artifact.StripHiddenFiles(taskArtifactFiles[i].Files, hasUser)
+						hasUser := uiCtx.User.(*user.DBUser) != nil
+						ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+						defer cancel()
+						taskArtifactFiles[i].Files, err = artifact.StripHiddenFiles(ctx, taskArtifactFiles[i].Files, hasUser)
 						if err != nil {
-							return nil, errors.Wrap(err, "error singing urls")
+							return nil, errors.Wrap(err, "signing urls")
 						}
 					}
 					return taskArtifactFiles, nil

@@ -49,7 +49,7 @@ func TestGeneratedJSONStorage(t *testing.T) {
 		t.Run("StorageMethod"+methodName, func(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsk *Task){
 				"FindReturnsNilErrorAndResultForTaskWithNoGeneratedJSON": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk *Task) {
-					filesStorage, err := GetGeneratedJSONFileStorage(env.Settings(), storageMethod)
+					filesStorage, err := GetGeneratedJSONFileStorage(ctx, env.Settings(), storageMethod)
 					require.NoError(t, err)
 
 					files, err := filesStorage.Find(ctx, tsk)
@@ -57,7 +57,7 @@ func TestGeneratedJSONStorage(t *testing.T) {
 					assert.Empty(t, files)
 				},
 				"InsertStoresGeneratedJSONFiles": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk *Task) {
-					fileStorage, err := GetGeneratedJSONFileStorage(env.Settings(), storageMethod)
+					fileStorage, err := GetGeneratedJSONFileStorage(ctx, env.Settings(), storageMethod)
 					require.NoError(t, err)
 
 					files := GeneratedJSONFiles{`{"key0": "value0"}`, `{"key1": "value1"}`}
@@ -69,7 +69,7 @@ func TestGeneratedJSONStorage(t *testing.T) {
 					assert.Equal(t, files, storedFiles)
 				},
 				"InsertNoopsForExistingGeneratedJSONFiles": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk *Task) {
-					fileStorage, err := GetGeneratedJSONFileStorage(env.Settings(), storageMethod)
+					fileStorage, err := GetGeneratedJSONFileStorage(ctx, env.Settings(), storageMethod)
 					require.NoError(t, err)
 
 					files := GeneratedJSONFiles{`{"key": "value"}`}

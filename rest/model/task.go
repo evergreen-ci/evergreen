@@ -477,7 +477,7 @@ func (at *APITask) BuildFromService(ctx context.Context, t *task.Task, args *API
 		}
 	}
 	if args.IncludeArtifacts {
-		if err := at.getArtifacts(); err != nil {
+		if err := at.getArtifacts(ctx); err != nil {
 			return errors.Wrap(err, "getting artifacts")
 		}
 	}
@@ -620,7 +620,7 @@ func (at *APITask) ToService() (*task.Task, error) {
 	return st, nil
 }
 
-func (at *APITask) getArtifacts() error {
+func (at *APITask) getArtifacts(ctx context.Context) error {
 	var err error
 	var entries []artifact.Entry
 	if at.DisplayOnly {
@@ -640,8 +640,10 @@ func (at *APITask) getArtifacts() error {
 	env := evergreen.GetEnvironment()
 	for _, entry := range entries {
 		var strippedFiles []artifact.File
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
 		// The route requires a user, so hasUser is always true.
-		strippedFiles, err = artifact.StripHiddenFiles(entry.Files, true)
+		strippedFiles, err = artifact.StripHiddenFiles(ctx, entry.Files, true)
 		if err != nil {
 			return err
 		}
