@@ -187,7 +187,7 @@ func getConfigSection(ctx context.Context, section ConfigSection) error {
 			return errors.Wrapf(err, "getting local config section '%s'", section.SectionId())
 		}
 		if GetEnvironment().SharedDB() == nil {
-			section = reflect.Zero(reflect.TypeOf(section)).Interface().(ConfigSection)
+			reflect.ValueOf(&section).Elem().Set(reflect.New(reflect.ValueOf(section).Elem().Type()))
 			return nil
 		}
 	} else {
@@ -202,7 +202,7 @@ func getConfigSection(ctx context.Context, section ConfigSection) error {
 		if err != mongo.ErrNoDocuments {
 			return errors.Wrapf(err, "getting shared config section '%s'", section.SectionId())
 		}
-		section = reflect.Zero(reflect.TypeOf(section)).Interface().(ConfigSection)
+		reflect.ValueOf(&section).Elem().Set(reflect.New(reflect.ValueOf(section).Elem().Type()))
 		return nil
 	}
 
