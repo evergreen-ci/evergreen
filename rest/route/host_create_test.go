@@ -370,6 +370,10 @@ func TestHostCreateHandler(t *testing.T) {
 	hosts, err = host.FindHostsSpawnedByTask(ctx, sampleTask.Id, sampleTask.Execution, createdOrCreatingHostStatuses)
 	assert.NoError(err)
 	assert.Len(hosts, 5)
+
+	// Error if there are more hosts than initially requested.
+	handler.createHost.NumHosts = "1"
+	assert.Equal(http.StatusBadRequest, handler.Run(ctx).Status())
 }
 
 func TestHostCreateDocker(t *testing.T) {
