@@ -339,8 +339,6 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 	if !t.IsFinished() {
 		// this is to disallow terminating running tasks via the UI
 		if utility.StringSliceContains(evergreen.UserTriggeredOrigins, origin) {
-			grip.Debugf("Unsatisfiable '%s' reset request on '%s' (status: '%s')",
-				user, t.Id, t.Status)
 			if t.DisplayOnly {
 				execTasks := map[string]string{}
 				for _, et := range t.ExecutionTasks {
@@ -2454,7 +2452,7 @@ func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t
 				return errors.Wrap(err, "marking display task for reset")
 			}
 		}
-		return errors.Wrap(checkResetDisplayTask(ctx, settings, user, origin, &taskToReset), "checking display task reset")
+		return errors.Wrap(checkResetDisplayTask(ctx, settings, user, origin, &taskToReset), "checking and resetting display task")
 	}
 
 	return errors.Wrap(TryResetTask(ctx, settings, t.Id, user, origin, detail), "resetting task")
@@ -2679,7 +2677,7 @@ func checkResetSingleHostTaskGroup(ctx context.Context, t *task.Task, caller str
 // checkResetDisplayTask attempts to reset all tasks that are under the same
 // parent display task as t once all tasks under the display task are finished
 // running.
-func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, user, origin string, t *task.Task) error {
+func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, user, origin string, t *task.Task) (theErr error) {
 	if !t.ResetWhenFinished && !t.ResetFailedWhenFinished {
 		return nil
 	}
@@ -2687,11 +2685,21 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, use
 	if err != nil {
 		return errors.Wrapf(err, "getting execution tasks for display task '%s'", t.Id)
 	}
+	hasFailedExecTask := false
 	for _, execTask := range execTasks {
 		if !execTask.IsFinished() && !execTask.Blocked() && execTask.Activated {
 			return nil // all tasks not finished
 		}
+		if execTask.Status == evergreen.TaskFailed {
+			hasFailedExecTask = true
+		}
 	}
+	if t.IsRestartFailedOnly() && !hasFailedExecTask {
+		// Do not reset the display task if the execution tasks have all
+		// succeeded because it's only supposed to reset on failure.
+		return nil
+	}
+
 	details := &t.Details
 	// Assign task end details to indicate system failure if we receive no valid details
 	if details.IsEmpty() && !t.IsFinished() {

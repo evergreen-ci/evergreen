@@ -305,9 +305,6 @@ func VersionFindByIds(ids []string) ([]Version, error) {
 func VersionFind(query db.Q) ([]Version, error) {
 	versions := []Version{}
 	err := db.FindAllQ(VersionCollection, query, &versions)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
 	return versions, err
 }
 

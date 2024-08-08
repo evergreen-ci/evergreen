@@ -90,10 +90,11 @@ for your host, **please pick and complete one before the beta test period ends**
 feature and will take effect on _all_ unexpirable hosts except those that have been granted a permanent exemption, so
 please make sure to complete one of the options above**. If you do not do any of the three options, a default sleep
 schedule will be automatically set for your unexpirable host when the beta test ends - the default is that the host will
-be set to a schedule where it'll be running 8am-8pm Mon-Fri in the time zone you've set in your Spruce preferences.
-Furthermore, if you have a host that's stopped and don't pick any sleep schedule for it by the end of the beta test
-period, it will still be assigned a sleep schedule. In addition, those hosts will be be [kept off](#keeping-a-host-off).
-Once you manually turn the host back on, the sleep schedule will begin taking effect.
+be set to a schedule where it'll be running 8am-8pm Mon-Fri in the time zone you've set in your Spruce preferences (or
+Eastern Time if you don't have any time zone set). Furthermore, if you have a host that's stopped and don't pick any
+sleep schedule for it by the end of the beta test period, it will still be assigned a sleep schedule. In addition, those
+hosts will be be [kept off](#keeping-a-host-off). Once you manually turn the host back on, the sleep schedule will begin
+taking effect.
 
 ### Option 1: Sleep Schedule {#sleep-schedule}
 
@@ -191,11 +192,7 @@ Host <your_persistent_dns_name>
 
 **Q: How do I choose the time zone when setting a sleep schedule?**
 
-A: The sleep schedule's time zone is inherited from the time zone in your [Spruce user
-preferences](https://spruce.mongodb.com/preferences/profile). If you'd like to change your sleep schedule's time zone,
-update your time zone under your Spruce preferences, then edit the host to set a sleep schedule. Once
-[DEVPROD-8685](https://jira.mongodb.org/browse/DEVPROD-8685) is complete, you'll be able to set a time zone on your
-sleep schedule to override the default from your Spruce preferences.
+A: You can pick a time zone from the edit host modal by selecting it from the dropdown.
 
 ---
 

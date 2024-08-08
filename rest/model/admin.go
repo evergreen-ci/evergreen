@@ -1399,6 +1399,7 @@ type APIAWSConfig struct {
 	AllowedRegions       []*string                 `json:"allowed_regions"`
 	MaxVolumeSizePerUser *int                      `json:"max_volume_size"`
 	Pod                  *APIAWSPodConfig          `json:"pod"`
+	ParameterStore       *APIParameterStoreConfig  `json:"parameter_store"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h interface{}) error {
@@ -1458,6 +1459,10 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		var pod APIAWSPodConfig
 		pod.BuildFromService(v.Pod)
 		a.Pod = &pod
+
+		var ps APIParameterStoreConfig
+		ps.BuildFromService(v.ParameterStore)
+		a.ParameterStore = &ps
 	default:
 		return errors.Errorf("programmatic error: expected AWS config but got type %T", h)
 	}
@@ -1578,6 +1583,8 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		return nil, errors.Wrap(err, "converting ECS configuration to service model")
 	}
 	config.Pod = *pod
+
+	config.ParameterStore = a.ParameterStore.ToService()
 
 	return config, nil
 }
@@ -2047,6 +2054,7 @@ type APIServiceFlags struct {
 	SleepScheduleBetaTestDisabled   bool `json:"sleep_schedule_beta_test_disabled"`
 	SystemFailedTaskRestartDisabled bool `json:"system_failed_task_restart_disabled"`
 	DegradedModeDisabled            bool `json:"cpu_degraded_mode_disabled"`
+	ParameterStoreDisabled          bool `json:"parameter_store_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2365,6 +2373,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.SleepScheduleBetaTestDisabled = v.SleepScheduleBetaTestDisabled
 		as.SystemFailedTaskRestartDisabled = v.SystemFailedTaskRestartDisabled
 		as.DegradedModeDisabled = v.CPUDegradedModeDisabled
+		as.ParameterStoreDisabled = v.ParameterStoreDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2410,6 +2419,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		SleepScheduleBetaTestDisabled:   as.SleepScheduleBetaTestDisabled,
 		SystemFailedTaskRestartDisabled: as.SystemFailedTaskRestartDisabled,
 		CPUDegradedModeDisabled:         as.DegradedModeDisabled,
+		ParameterStoreDisabled:          as.ParameterStoreDisabled,
 	}, nil
 }
 
@@ -2757,4 +2767,21 @@ func (a *APIRuntimeEnvironmentsConfig) ToService() (interface{}, error) {
 		BaseURL: utility.FromStringPtr(a.BaseURL),
 		APIKey:  utility.FromStringPtr(a.APIKey),
 	}, nil
+}
+
+type APIParameterStoreConfig struct {
+	Prefix *string `json:"prefix"`
+}
+
+func (a *APIParameterStoreConfig) BuildFromService(ps evergreen.ParameterStoreConfig) {
+	a.Prefix = utility.ToStringPtr(ps.Prefix)
+}
+
+func (a *APIParameterStoreConfig) ToService() evergreen.ParameterStoreConfig {
+	if a == nil {
+		return evergreen.ParameterStoreConfig{}
+	}
+	return evergreen.ParameterStoreConfig{
+		Prefix: utility.FromStringPtr(a.Prefix),
+	}
 }

@@ -58,10 +58,11 @@ type TaskTestResultsInfo struct {
 // TaskEndDetail contains data sent from the agent to the API server after each task run.
 // This should be used to store data relating to what happened when the task ran
 type TaskEndDetail struct {
-	Status      string `bson:"status,omitempty" json:"status,omitempty"`
-	Type        string `bson:"type,omitempty" json:"type,omitempty"`
-	PostErrored bool   `bson:"post_errored,omitempty" json:"post_errored,omitempty"`
-	Description string `bson:"desc,omitempty" json:"desc,omitempty"`
+	Status         string `bson:"status,omitempty" json:"status,omitempty"`
+	Type           string `bson:"type,omitempty" json:"type,omitempty"`
+	PostErrored    bool   `bson:"post_errored,omitempty" json:"post_errored,omitempty"`
+	Description    string `bson:"desc,omitempty" json:"desc,omitempty"`
+	FailingCommand string `bson:"failing_command,omitempty" json:"failing_command,omitempty"`
 	// FailureMetadataTags are user metadata tags associated with the
 	// command that caused the task to fail.
 	FailureMetadataTags []string `bson:"failure_metadata_tags,omitempty" json:"failure_metadata_tags,omitempty"`

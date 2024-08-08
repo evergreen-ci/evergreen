@@ -204,9 +204,6 @@ func FindBuildsByVersions(versionIds []string) ([]Build, error) {
 func Find(query db.Q) ([]Build, error) {
 	builds := []Build{}
 	err := db.FindAllQ(Collection, query, &builds)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
 	return builds, err
 }
 

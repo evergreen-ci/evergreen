@@ -84,6 +84,10 @@ type AWSConfig struct {
 
 	// Pod represents configuration for using pods in AWS.
 	Pod AWSPodConfig `bson:"pod" json:"pod" yaml:"pod"`
+
+	// ParameterStore represents configuration for using AWS SSM Parameter
+	// Store.
+	ParameterStore ParameterStoreConfig `bson:"parameter_store" json:"parameter_store" yaml:"parameter_store"`
 }
 
 type S3Credentials struct {
@@ -331,4 +335,10 @@ const (
 // DockerConfig stores auth info for Docker.
 type DockerConfig struct {
 	APIVersion string `bson:"api_version" json:"api_version" yaml:"api_version"`
+}
+
+// ParameterStoreConfig stores configuration for using SSM Parameter Store.
+type ParameterStoreConfig struct {
+	// Prefix is the Parameter Store path prefix for the Evergreen application.
+	Prefix string
 }

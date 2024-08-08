@@ -220,7 +220,12 @@ func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 
 	// Copy over the status details
 	result.StatusDetails.TimedOut = task.Details.TimedOut
-	result.StatusDetails.TimeoutStage = task.Details.Description
+	// TODO DEVPROD-9694: Stop storing failing command in Description
+	if task.Details.Description == "" {
+		result.StatusDetails.TimeoutStage = task.Details.FailingCommand
+	} else {
+		result.StatusDetails.TimeoutStage = task.Details.Description
+	}
 
 	// Copy over the test results
 	result.Tests = make(taskStatusByTest, len(task.LocalTestResults))

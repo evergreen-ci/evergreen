@@ -1347,14 +1347,15 @@ type ComplexityRoot struct {
 	}
 
 	TaskEndDetail struct {
-		Description func(childComplexity int) int
-		DiskDevices func(childComplexity int) int
-		OOMTracker  func(childComplexity int) int
-		Status      func(childComplexity int) int
-		TimedOut    func(childComplexity int) int
-		TimeoutType func(childComplexity int) int
-		TraceID     func(childComplexity int) int
-		Type        func(childComplexity int) int
+		Description    func(childComplexity int) int
+		DiskDevices    func(childComplexity int) int
+		FailingCommand func(childComplexity int) int
+		OOMTracker     func(childComplexity int) int
+		Status         func(childComplexity int) int
+		TimedOut       func(childComplexity int) int
+		TimeoutType    func(childComplexity int) int
+		TraceID        func(childComplexity int) int
+		Type           func(childComplexity int) int
 	}
 
 	TaskEventLogData struct {
@@ -8514,6 +8515,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TaskEndDetail.DiskDevices(childComplexity), true
+
+	case "TaskEndDetail.failingCommand":
+		if e.complexity.TaskEndDetail.FailingCommand == nil {
+			break
+		}
+
+		return e.complexity.TaskEndDetail.FailingCommand(childComplexity), true
 
 	case "TaskEndDetail.oomTracker":
 		if e.complexity.TaskEndDetail.OOMTracker == nil {
@@ -55343,6 +55351,8 @@ func (ec *executionContext) fieldContext_Task_details(_ context.Context, field g
 			switch field.Name {
 			case "description":
 				return ec.fieldContext_TaskEndDetail_description(ctx, field)
+			case "failingCommand":
+				return ec.fieldContext_TaskEndDetail_failingCommand(ctx, field)
 			case "oomTracker":
 				return ec.fieldContext_TaskEndDetail_oomTracker(ctx, field)
 			case "status":
@@ -58369,6 +58379,47 @@ func (ec *executionContext) _TaskEndDetail_description(ctx context.Context, fiel
 }
 
 func (ec *executionContext) fieldContext_TaskEndDetail_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskEndDetail",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskEndDetail_failingCommand(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskEndDetail_failingCommand(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FailingCommand, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskEndDetail_failingCommand(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskEndDetail",
 		Field:      field,
@@ -87888,6 +87939,8 @@ func (ec *executionContext) _TaskEndDetail(ctx context.Context, sel ast.Selectio
 			out.Values[i] = graphql.MarshalString("TaskEndDetail")
 		case "description":
 			out.Values[i] = ec._TaskEndDetail_description(ctx, field, obj)
+		case "failingCommand":
+			out.Values[i] = ec._TaskEndDetail_failingCommand(ctx, field, obj)
 		case "oomTracker":
 			out.Values[i] = ec._TaskEndDetail_oomTracker(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

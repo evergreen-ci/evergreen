@@ -328,6 +328,9 @@ func MockConfig() *evergreen.Settings {
 						SecretPrefix: "secret_prefix",
 					},
 				},
+				ParameterStore: evergreen.ParameterStoreConfig{
+					Prefix: "/prefix",
+				},
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",
@@ -368,6 +371,7 @@ func MockConfig() *evergreen.Settings {
 			SleepScheduleDisabled:           true,
 			SystemFailedTaskRestartDisabled: true,
 			CPUDegradedModeDisabled:         true,
+			ParameterStoreDisabled:          true,
 		},
 		SleepSchedule: evergreen.SleepScheduleConfig{
 			PermanentlyExemptHosts: []string{"host0", "host1"},
