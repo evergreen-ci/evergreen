@@ -145,10 +145,13 @@ func retrySSMClientOp[Input interface{}, Output interface{}](ctx context.Context
 	return output, nil
 }
 
+const defaultSSMMaxRetries = 9
+const defaultSSMMinDelay = time.Second
+
 func ssmDefaultRetryOptions() utility.RetryOptions {
 	return utility.RetryOptions{
-		MaxAttempts: 9,
-		MinDelay:    time.Second,
+		MaxAttempts: defaultSSMMaxRetries,
+		MinDelay:    defaultSSMMinDelay,
 	}
 }
 
