@@ -33,7 +33,7 @@ func ResourceTypeKeyIs(key string) bson.M {
 func Find(query db.Q) ([]EventLogEntry, error) {
 	events := []EventLogEntry{}
 	err := db.FindAllQ(EventCollection, query, &events)
-	if err != nil || adb.ResultsNotFound(err) {
+	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -48,7 +48,7 @@ func FindPaginatedWithTotalCount(query db.Q, limit, page int) ([]EventLogEntry, 
 	}
 
 	err := db.FindAllQ(EventCollection, query, &events)
-	if err != nil || adb.ResultsNotFound(err) {
+	if err != nil {
 		return nil, 0, errors.WithStack(err)
 	}
 

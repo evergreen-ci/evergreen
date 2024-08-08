@@ -358,9 +358,6 @@ func FindOneId(id string) (*Patch, error) {
 func Find(query db.Q) ([]Patch, error) {
 	patches := []Patch{}
 	err := db.FindAllQ(Collection, query, &patches)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
 	return patches, err
 }
 
