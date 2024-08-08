@@ -286,8 +286,8 @@ func TestMakeHost(t *testing.T) {
 	assert.Equal(ec2Settings2.AMI, "ami-987654")
 }
 
-func TestCreateHostRoute(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func TestHostCreateHandler(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	assert := assert.New(t)
@@ -325,28 +325,49 @@ func TestCreateHostRoute(t *testing.T) {
 	}
 	require.NoError(sampleTask.Insert())
 
-	// spawn an evergreen distro
 	c := apimodels.CreateHost{
 		Distro:              "archlinux-test",
 		CloudProvider:       "ec2",
-		NumHosts:            "5",
+		NumHosts:            "3",
 		Scope:               "task",
+		Subnet:              "sub",
+		AMI:                 "ami",
+		InstanceType:        "instance-type",
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,
 	}
+	foundDistro, err := distro.GetHostCreateDistro(ctx, c)
+	require.NoError(err)
+
 	handler.createHost = c
+	handler.distro = *foundDistro
+	handler.env = env
 	handler.taskID = "task-id"
 
-	// Calling create host route multiple times should not create more hosts than number requested.
-	hosts, err := host.FindHostIntentsByTask(ctx, sampleTask.Id, sampleTask.Execution)
+	hosts, err := host.FindHostsSpawnedByTask(ctx, sampleTask.Id, sampleTask.Execution, append(evergreen.IsRunningOrWillRunStatuses, evergreen.HostUninitialized))
 	assert.NoError(err)
 	assert.Len(hosts, 0)
 
 	assert.Equal(http.StatusOK, handler.Run(ctx).Status())
+
+	// Properly creates correct number of hosts.
+	hosts, err = host.FindHostsSpawnedByTask(ctx, sampleTask.Id, sampleTask.Execution, createdOrCreatingHostStatuses)
+	assert.NoError(err)
+	assert.Len(hosts, 3)
+
+	// Calling create host route multiple times should not create more hosts than number requested.
 	assert.Equal(http.StatusOK, handler.Run(ctx).Status())
 	assert.Equal(http.StatusOK, handler.Run(ctx).Status())
 
-	hosts, err = host.FindHostIntentsByTask(ctx, sampleTask.Id, sampleTask.Execution)
+	hosts, err = host.FindHostsSpawnedByTask(ctx, sampleTask.Id, sampleTask.Execution, createdOrCreatingHostStatuses)
+	assert.NoError(err)
+	assert.Len(hosts, 3)
+
+	// If a partial amount of hosts were initially created, retry should create the rest.
+	handler.createHost.NumHosts = "5"
+	assert.Equal(http.StatusOK, handler.Run(ctx).Status())
+
+	hosts, err = host.FindHostsSpawnedByTask(ctx, sampleTask.Id, sampleTask.Execution, createdOrCreatingHostStatuses)
 	assert.NoError(err)
 	assert.Len(hosts, 5)
 }

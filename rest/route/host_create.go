@@ -22,6 +22,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+var createdOrCreatingHostStatuses = append(evergreen.IsRunningOrWillRunStatuses, evergreen.HostUninitialized)
+
 type hostCreateHandler struct {
 	taskID     string
 	createHost apimodels.CreateHost
@@ -80,7 +82,7 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	initialHosts, err := host.FindHostIntentsByTask(ctx, h.taskID, t.Execution)
+	initialHosts, err := host.FindHostsSpawnedByTask(ctx, h.taskID, t.Execution, createdOrCreatingHostStatuses)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding hosts spawned by task '%s'", h.taskID))
 	}
@@ -90,14 +92,14 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		ids = append(ids, host.Id)
 	}
 
-	// no-op if the number of hosts requested is the same as the number of host intents already created from retries.
+	// No-op if the number of hosts created/about to create is the same as the number of hosts already requested.
 	if numInitialHosts == numHosts {
 		return gimlet.NewJSONResponse(ids)
 	} else if numInitialHosts > numHosts {
 		// Should never create more hosts than the amount requested.
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("cannot reduce number of hosts from %d to %d", numInitialHosts, numHosts),
+			Message:    fmt.Sprintf("Evergreen created %d hosts when %d were requested", numInitialHosts, numHosts),
 		})
 	}
 
