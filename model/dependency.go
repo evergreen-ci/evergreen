@@ -91,6 +91,30 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 		return true, nil
 	}
 
+	// For a task group task inside a single host task group, the previous
+	// tasks in the task group are implicit dependencies of the current task.
+	if tg := di.Project.FindTaskGroupForTask(pair.TaskName); tg != nil && tg.MaxHosts == 1 {
+		catcher := grip.NewBasicCatcher()
+		for _, t := range tg.Tasks {
+			// When we reach the current task, stop recursing.
+			if t == pair.TaskName {
+				break
+			}
+			_, err := di.handle(TVPair{pair.Variant, t}, activationInfo, generatedVariants, false)
+			catcher.Wrapf(err, "task group '%s' in variant '%s' contains unschedulable task '%s'", pair.TaskName, pair.Variant, t)
+		}
+
+		// If any of the previous tasks in the task group are unschedulable, return false.
+		// And unschedule everything.
+		if catcher.HasErrors() {
+			di.included[pair] = false
+			for _, p := range tg.Tasks {
+				di.included[TVPair{pair.Variant, p}] = false
+			}
+			return false, catcher.Resolve()
+		}
+	}
+
 	// we must load the BuildVariantTaskUnit for the task/variant pair,
 	// since it contains the full scope of dependency information
 	bvt := di.Project.FindTaskForVariant(pair.TaskName, pair.Variant)

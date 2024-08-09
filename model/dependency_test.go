@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -61,6 +62,158 @@ func TestDependencyBSON(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestIncludeDependenciesForTaskGroups(t *testing.T) {
+	testCases := map[string]func(t *testing.T, p *Project){
+		"SingleHostTaskGroup/SchedulesPreviousTasks": func(t *testing.T, p *Project) {
+			pairs, err := IncludeDependencies(p, []TVPair{{"v1", "tg1t2"}}, evergreen.PatchVersionRequester, nil)
+			require.NoError(t, err)
+			assert.Len(t, pairs, 2)
+			assert.Contains(t, pairs, TVPair{"v1", "tg1t1"})
+			assert.Contains(t, pairs, TVPair{"v1", "tg1t2"})
+
+		},
+		"SingleHostTaskGroup/SchedulesAllTasks": func(t *testing.T, p *Project) {
+			pairs, err := IncludeDependencies(p, []TVPair{{"v1", "tg1t4"}}, evergreen.PatchVersionRequester, nil)
+			require.NoError(t, err)
+			assert.Len(t, pairs, 3)
+			assert.Contains(t, pairs, TVPair{"v1", "tg1t1"})
+			assert.Contains(t, pairs, TVPair{"v1", "tg1t2"})
+			assert.NotContains(t, pairs, TVPair{"v1", "tg1t3"}) // tg1t3 is diabled.
+			assert.Contains(t, pairs, TVPair{"v1", "tg1t4"})
+		},
+		"SingleHostTaskGroup/FirstTaskSchedulesNoOtherTasks": func(t *testing.T, p *Project) {
+			pairs, err := IncludeDependencies(p, []TVPair{{"v1", "tg1t1"}}, evergreen.PatchVersionRequester, nil)
+			require.NoError(t, err)
+			assert.Len(t, pairs, 1)
+			assert.Contains(t, pairs, TVPair{"v1", "tg1t1"})
+		},
+		"SingleHostTaskGroup/TaskGroupTaskAsDependencyIsIncluded": func(t *testing.T, p *Project) {
+			pairs, err := IncludeDependencies(p, []TVPair{{"v1", "t2"}}, evergreen.PatchVersionRequester, nil)
+			require.NoError(t, err)
+			assert.Len(t, pairs, 3)
+			assert.Contains(t, pairs, TVPair{"v1", "t2"})
+			assert.Contains(t, pairs, TVPair{"v1", "tg1t1"})
+			assert.Contains(t, pairs, TVPair{"v1", "tg1t2"})
+
+			// The variant selector should not affect the result.
+			pairs, err = IncludeDependencies(p, []TVPair{{"v1", "t3"}}, evergreen.PatchVersionRequester, nil)
+			require.NoError(t, err)
+			assert.Len(t, pairs, 3)
+			assert.Contains(t, pairs, TVPair{"v1", "t3"})
+			assert.Contains(t, pairs, TVPair{"v1", "tg1t1"})
+			assert.Contains(t, pairs, TVPair{"v1", "tg1t2"})
+		},
+		"SingleHostTaskGroup/InvalidVariantShouldBeIgnored": func(t *testing.T, p *Project) {
+			pairs, err := IncludeDependencies(p, []TVPair{{"v1", "t4"}}, evergreen.PatchVersionRequester, nil)
+			require.NoError(t, err)
+			assert.Len(t, pairs, 1)
+			assert.Contains(t, pairs, TVPair{"v1", "t4"})
+		},
+		"SingleHostTaskGroup/AcrossVariantsStillSchedulePrevious": func(t *testing.T, p *Project) {
+			pairs, err := IncludeDependencies(p, []TVPair{{"v1", "t7"}}, evergreen.PatchVersionRequester, nil)
+			require.NoError(t, err)
+			assert.Len(t, pairs, 3)
+			assert.Contains(t, pairs, TVPair{"v1", "t7"})
+			assert.Contains(t, pairs, TVPair{"v2", "tg3t1"})
+			assert.Contains(t, pairs, TVPair{"v2", "tg3t2"})
+		},
+		"SingleHostTaskGroup/WithADisabledPreviousTask": func(t *testing.T, p *Project) {
+			pairs, err := IncludeDependencies(p, []TVPair{{"v1", "t7"}}, evergreen.PatchVersionRequester, nil)
+			require.NoError(t, err)
+			assert.Len(t, pairs, 3)
+			assert.Contains(t, pairs, TVPair{"v1", "t7"})
+			assert.Contains(t, pairs, TVPair{"v2", "tg3t1"})
+			assert.Contains(t, pairs, TVPair{"v2", "tg3t2"})
+		},
+		"MultiHostTaskGroup/ShouldNotSchedulePreviousTasks": func(t *testing.T, p *Project) {
+			pairs, err := IncludeDependencies(p, []TVPair{{"v1", "t5"}}, evergreen.PatchVersionRequester, nil)
+			require.NoError(t, err)
+			assert.Len(t, pairs, 2)
+			assert.Contains(t, pairs, TVPair{"v1", "t5"})
+			assert.Contains(t, pairs, TVPair{"v1", "tg2t2"})
+		},
+		"MultiHostTaskGroup/AllVariantsSelectorWorks": func(t *testing.T, p *Project) {
+			pairs, err := IncludeDependencies(p, []TVPair{{"v1", "t6"}}, evergreen.PatchVersionRequester, nil)
+			require.NoError(t, err)
+			assert.Len(t, pairs, 2)
+			assert.Contains(t, pairs, TVPair{"v1", "t6"})
+			assert.Contains(t, pairs, TVPair{"v1", "tg2t1"})
+		},
+	}
+	for name, tC := range testCases {
+		t.Run(name, func(t *testing.T) {
+			parserProject := &ParserProject{
+				Tasks: []parserTask{
+					{Name: "t1"},
+					{Name: "t2", DependsOn: parserDependencies{{TaskSelector: taskSelector{
+						Name: "tg1t2",
+					}}}},
+					{Name: "t3", DependsOn: parserDependencies{{TaskSelector: taskSelector{
+						Name:    "tg1t2",
+						Variant: &variantSelector{StringSelector: "v1"},
+					}}}},
+					{Name: "t4", DependsOn: parserDependencies{{TaskSelector: taskSelector{
+						Name:    "tg1t2",
+						Variant: &variantSelector{StringSelector: "v2"},
+					}}}},
+					{Name: "t5", DependsOn: parserDependencies{{TaskSelector: taskSelector{
+						Name: "tg2t2",
+					}}}},
+					{Name: "t6", DependsOn: parserDependencies{{TaskSelector: taskSelector{
+						Name:    "tg2t1",
+						Variant: &variantSelector{StringSelector: AllVariants},
+					}}}},
+					{Name: "t7", DependsOn: parserDependencies{{TaskSelector: taskSelector{
+						Name:    "tg3t2",
+						Variant: &variantSelector{StringSelector: AllVariants},
+					}}}},
+					{Name: "tg1t1"},
+					{Name: "tg1t2"},
+					{Name: "tg1t3", Disable: utility.TruePtr()},
+					{Name: "tg1t4"},
+					{Name: "tg2t1"},
+					{Name: "tg2t2"},
+					{Name: "tg2t3"},
+					{Name: "tg3t1"},
+					{Name: "tg3t2"},
+				},
+				BuildVariants: []parserBV{
+					{Name: "v1", Tasks: []parserBVTaskUnit{
+						{Name: "t1"},
+						{Name: "t2"},
+						{Name: "t3"},
+						{Name: "t4"},
+						{Name: "t5"},
+						{Name: "t6"},
+						{Name: "t7"},
+						{Name: "tg1t1"},
+						{Name: "tg1t2"},
+						{Name: "tg1t3"},
+						{Name: "tg1t4"},
+						{Name: "tg2t1"},
+						{Name: "tg2t2"},
+						{Name: "tg2t3"},
+					}},
+					{Name: "v2", Tasks: []parserBVTaskUnit{
+						{Name: "t1"},
+						{Name: "tg3t1"},
+						{Name: "tg3t2"},
+					}},
+				},
+				TaskGroups: []parserTaskGroup{
+					{Name: "tg1", Tasks: []string{"tg1t1", "tg1t2", "tg1t3", "tg1t4"}, MaxHosts: 1},
+					{Name: "tg2", Tasks: []string{"tg2t1", "tg2t2", "tg2t3"}, MaxHosts: 2},
+					{Name: "tg3", Tasks: []string{"tg3t1", "tg3t2"}, MaxHosts: 1},
+				},
+			}
+			p, err := TranslateProject(parserProject)
+			require.NoError(t, err)
+			require.NotNil(t, p)
+			tC(t, p)
+		})
+	}
 }
 
 func TestIncludeDependencies(t *testing.T) {
