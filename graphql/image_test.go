@@ -25,22 +25,21 @@ func TestPackages(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestPackages")
 	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
-	manager := "pip"
-	testPackage := "Automat"
 	ami := "ami-0f6b89500372d4a06"
 	image := model.APIImage{
 		AMI: &ami,
 	}
 	opts := thirdparty.PackageFilterOptions{
-		AMI:     ami,
-		Manager: manager,
-		Name:    testPackage,
+		AMI:  ami,
+		Name: "python3-automat",
 	}
 	res, err := config.Resolvers.Image().Packages(ctx, &image, opts)
 	require.NoError(t, err)
-	require.Len(t, res, 1)
-	require.NotNil(t, res[0])
-	assert.Equal(t, testPackage, utility.FromStringPtr(res[0].Name))
+	require.Len(t, res.Packages, 1)
+	require.NotNil(t, res.Packages[0])
+	assert.Equal(t, utility.FromStringPtr(res.Packages[0].Name), "python3-automat")
+	assert.Equal(t, res.FilteredCount, 1)
+	assert.Equal(t, res.TotalCount, 1618)
 }
 
 func TestToolchains(t *testing.T) {
@@ -49,20 +48,22 @@ func TestToolchains(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestToolchains")
 	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
-	testToolchain := "golang"
 	ami := "ami-0f6b89500372d4a06"
 	image := model.APIImage{
 		AMI: &ami,
 	}
 	opts := thirdparty.ToolchainFilterOptions{
 		AMI:   ami,
-		Limit: 5,
+		Name:  "golang",
+		Limit: 1,
 	}
 	res, err := config.Resolvers.Image().Toolchains(ctx, &image, opts)
 	require.NoError(t, err)
-	require.Len(t, res, 5)
-	require.NotNil(t, res[0])
-	assert.Equal(t, testToolchain, utility.FromStringPtr(res[0].Name))
+	require.Len(t, res.Toolchains, 1)
+	require.NotNil(t, res.Toolchains[0])
+	assert.Equal(t, utility.FromStringPtr(res.Toolchains[0].Name), "golang")
+	assert.Equal(t, res.FilteredCount, 33)
+	assert.Equal(t, res.TotalCount, 49)
 }
 
 func TestEvents(t *testing.T) {
