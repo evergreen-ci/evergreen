@@ -104,6 +104,13 @@ func TestIncludeDependenciesForTaskGroups(t *testing.T) {
 			assert.Contains(t, pairs, TVPair{"v1", "t3"})
 			assert.Contains(t, pairs, TVPair{"v1", "tg1t1"})
 			assert.Contains(t, pairs, TVPair{"v1", "tg1t2"})
+
+			// The task group being defined by tg4 should not affect the result.
+			pairs, err = IncludeDependencies(p, []TVPair{{"v1", "tg4"}}, evergreen.PatchVersionRequester, nil)
+			require.NoError(t, err)
+			assert.Len(t, pairs, 2)
+			assert.Contains(t, pairs, TVPair{"v1", "tg4t1"})
+			assert.Contains(t, pairs, TVPair{"v1", "tg4t2"})
 		},
 		"SingleHostTaskGroup/InvalidVariantShouldBeIgnored": func(t *testing.T, p *Project) {
 			pairs, err := IncludeDependencies(p, []TVPair{{"v1", "t4"}}, evergreen.PatchVersionRequester, nil)
@@ -126,6 +133,13 @@ func TestIncludeDependenciesForTaskGroups(t *testing.T) {
 			assert.Contains(t, pairs, TVPair{"v1", "t7"})
 			assert.Contains(t, pairs, TVPair{"v2", "tg3t1"})
 			assert.Contains(t, pairs, TVPair{"v2", "tg3t2"})
+		},
+		"SingleHostTaskGroup/ScheduleTaskGroup": func(t *testing.T, p *Project) {
+			pairs, err := IncludeDependencies(p, []TVPair{{"v1", "tg4"}}, evergreen.PatchVersionRequester, nil)
+			require.NoError(t, err)
+			assert.Len(t, pairs, 2)
+			assert.Contains(t, pairs, TVPair{"v1", "tg4t1"})
+			assert.Contains(t, pairs, TVPair{"v1", "tg4t2"})
 		},
 		"MultiHostTaskGroup/ShouldNotSchedulePreviousTasks": func(t *testing.T, p *Project) {
 			pairs, err := IncludeDependencies(p, []TVPair{{"v1", "t5"}}, evergreen.PatchVersionRequester, nil)
@@ -178,6 +192,8 @@ func TestIncludeDependenciesForTaskGroups(t *testing.T) {
 					{Name: "tg2t3"},
 					{Name: "tg3t1"},
 					{Name: "tg3t2"},
+					{Name: "tg4t1"},
+					{Name: "tg4t2"},
 				},
 				BuildVariants: []parserBV{
 					{Name: "v1", Tasks: []parserBVTaskUnit{
@@ -188,24 +204,20 @@ func TestIncludeDependenciesForTaskGroups(t *testing.T) {
 						{Name: "t5"},
 						{Name: "t6"},
 						{Name: "t7"},
-						{Name: "tg1t1"},
-						{Name: "tg1t2"},
-						{Name: "tg1t3"},
-						{Name: "tg1t4"},
-						{Name: "tg2t1"},
-						{Name: "tg2t2"},
-						{Name: "tg2t3"},
+						{Name: "tg1"},
+						{Name: "tg2"},
+						{Name: "tg4"},
 					}},
 					{Name: "v2", Tasks: []parserBVTaskUnit{
 						{Name: "t1"},
-						{Name: "tg3t1"},
-						{Name: "tg3t2"},
+						{Name: "tg3"},
 					}},
 				},
 				TaskGroups: []parserTaskGroup{
 					{Name: "tg1", Tasks: []string{"tg1t1", "tg1t2", "tg1t3", "tg1t4"}, MaxHosts: 1},
 					{Name: "tg2", Tasks: []string{"tg2t1", "tg2t2", "tg2t3"}, MaxHosts: 2},
 					{Name: "tg3", Tasks: []string{"tg3t1", "tg3t2"}, MaxHosts: 1},
+					{Name: "tg4", Tasks: []string{"tg4t1", "tg4t2"}, MaxHosts: 1},
 				},
 			}
 			p, err := TranslateProject(parserProject)
