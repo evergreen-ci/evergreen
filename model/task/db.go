@@ -2726,8 +2726,8 @@ func enableDisabledTasks(taskIDs []string) error {
 			PriorityKey: evergreen.DisabledTaskPriority,
 		},
 		bson.M{
-			"$unset": bson.M{
-				PriorityKey: 1,
+			"$set": bson.M{
+				PriorityKey: 0,
 			},
 		})
 	return err
