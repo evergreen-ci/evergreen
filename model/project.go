@@ -1234,14 +1234,6 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 // FindTaskGroupForTask returns a specific task group from a project
 // that contains the given task.
 func (p *Project) FindTaskGroupForTask(name string) *TaskGroup {
-	for _, tg := range p.TaskGroups {
-		for _, t := range tg.Tasks {
-			if t == name {
-				return &tg
-			}
-		}
-	}
-
 	for _, bv := range p.BuildVariants {
 		for _, t := range bv.Tasks {
 			if t.TaskGroup != nil {
@@ -1250,6 +1242,14 @@ func (p *Project) FindTaskGroupForTask(name string) *TaskGroup {
 						return t.TaskGroup
 					}
 				}
+			}
+		}
+	}
+
+	for _, tg := range p.TaskGroups {
+		for _, t := range tg.Tasks {
+			if t == name {
+				return &tg
 			}
 		}
 	}
