@@ -1785,3 +1785,99 @@ which a build variant's `depends_on` overrides the task definition's
 - Tasks listed under a build variant.
 - The build variant definition.
 - The task definition.
+
+#### Specific Activation Override Hierarchy
+`activate`, `cron`, and `batchtime` are called _specific activation conditions_ because Evergreen will only activate a
+task if certain conditions are met. For instance, Evergreen will only activate a task with `cron` set when the cron time
+elapses. But if multiple of them are set simultaneously (or they're even configured in a conflicting way), which
+condition does Evergreen respect? This section exists to demystify how they interact with one another.
+
+Specific activation conditions can be defined at different levels of the configuration. These levels are (from least
+granular to most granular configuration level):
+
+1. Project settings (only applicable for `batchtime`)
+2. Top-level key in the YAML (only applicable for `batchtime`)
+3. Build variant definition
+4. Task in the build variant list
+
+The general rule is this: _The most granular configuration defined is the one that prevents a task from activating. Any
+specific activation conditions defined at a less granular configuration level are overridden in favor of more granular
+configuration._ Some examples:
+
+```yaml
+batchtime: 240      # 4 hours
+buildvariants:
+  - name: bv1
+    batchtime: 1    # bv1's batchtime is 1 minute because the build variant definition is more granular than the top-level batchtime.
+  - name: bv2       # bv2's batchtime is 4 hours because it uses the top-level batchtime.
+```
+
+```yaml
+batchtime: 1            # 1 minute
+buildvariants:
+  - name: bv1
+    cron: "0 4 * * *"   # bv1 activates when the cron elapses at 4 AM. The top-level batchtime is ignored.
+  - name: bv2           # bv2's batchtime is 1 minute because it uses the top-level batchtime.
+```
+
+```yaml
+buildvariants:
+  - name: bv1
+    cron: "0 4 * * *"       # bv1 activates at 4 AM
+    tasks:
+      - name: task1
+        cron: "0 5 * * *"   # task1 does not activate until its cron elapses at 5 AM. The build variant cron is ignored.
+      - name: task2         # task2 activates at 4 AM when bv1's cron elapses.
+```
+
+```yaml
+buildvariants:
+  - name: bv1
+    cron: "0 4 * * *"           # Activate at 4 AM
+    tasks:
+      - name: task1
+        activate: false         # task1 will not activate automatically, even when bv1's cron elapses at 4 AM.
+      - name: task2             # task2 activates at 4 AM when bv1's cron elapses.
+```
+
+###### activate: true Special Case
+Most of the time, `activate` is used to prevent a task from automatically activating, so it's typically set to false.
+`activate: true` can be used but it will _only_ override a batchtime setting defined in the project settings or at the
+top level of the YAML. For example:
+
+```yaml
+batchtime: 10080    # Batchtime of 1 week
+buildvariant:
+  - name: bv1
+    activate: true  # bv1 activates immediately even though batchtime is defined above
+    tasks:
+      - name: task1 # task1 activates immediately because bv1 has activate: true
+```
+
+In the example above, the bv1 will activate even if the top-level batchtime has not elapsed yet.
+
+However, remember that `activate: true` is _only_ usable for the purpose of overriding batchtime at the top level or
+project settings. It cannot be used to override an explicit `cron` or `batchtime` setting. For example:
+
+```yaml
+buildvariants:
+  - name: bv1
+    batchtime: 60   # Batchtime of 1 hour
+    activate: true  # bv1 will respect the batchtime of 1 hour, so bv1 will not activate unless batchtime elapses
+  - name: bv2
+    cron: "0 4 * * *"   # bv2 activates at 4 AM
+    activate: true      # bv2 will respect the cron setting, so bv2 will not activate until 4 AM
+```
+
+If `activate: true` and `activate: false` are used in different levels (i.e. one in the build variant, one in the task
+under the build variant), then `activate: false` will take precedence and `activate: true` will be ignored because
+`activate: true` can only override project settings or top-level batchtime. For example:
+
+```yaml
+buildvariants:
+  - name: bv1
+    activate: false     # bv1 will not activate
+    tasks:
+      - name: task1
+        activate: true  # task1 will not activate because build variant has activate: false
+```
