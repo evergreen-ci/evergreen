@@ -640,8 +640,6 @@ func (at *APITask) getArtifacts(ctx context.Context) error {
 	env := evergreen.GetEnvironment()
 	for _, entry := range entries {
 		var strippedFiles []artifact.File
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
 		// The route requires a user, so hasUser is always true.
 		strippedFiles, err = artifact.StripHiddenFiles(ctx, entry.Files, true)
 		if err != nil {
