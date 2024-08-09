@@ -7,9 +7,11 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -99,6 +101,13 @@ func TestDistros(t *testing.T) {
 	require.NoError(t, db.ClearCollections(distro.Collection), "unable to clear distro collection")
 	config := New("/graphql")
 	ctx := getContext(t)
+
+	usr, err := user.GetOrCreateUser(apiUser, "User Name", "testuser@mongodb.com", "access_token", "refresh_token", []string{})
+	require.NoError(t, err)
+	require.NotNil(t, usr)
+	ctx = gimlet.AttachUser(ctx, usr)
+	require.NotNil(t, ctx)
+
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestDistros")
 	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
@@ -117,16 +126,33 @@ func TestDistros(t *testing.T) {
 		ImageID: "rhel82",
 	}
 	require.NoError(t, d3.Insert(ctx))
+	d4 := &distro.Distro{
+		Id:        "ubuntu1604-admin",
+		ImageID:   "ubuntu1604",
+		AdminOnly: true,
+	}
+	require.NoError(t, d4.Insert(ctx))
 	imageID := "ubuntu1604"
 	image := model.APIImage{
 		ID: &imageID,
 	}
+	// Call distros resolver when user is not an admin.
 	res, err := config.Resolvers.Image().Distros(ctx, &image)
 	require.NoError(t, err)
 	require.Len(t, res, 2)
-	distroNames := []string{*res[0].Name, utility.FromStringPtr(res[1].Name)}
+	distroNames := []string{utility.FromStringPtr(res[0].Name), utility.FromStringPtr(res[1].Name)}
 	assert.Contains(t, distroNames, "ubuntu1604-small")
 	assert.Contains(t, distroNames, "ubuntu1604-large")
+
+	// Call distros resolver when user is an admin.
+	require.NoError(t, usr.AddRole("superuser"))
+	res, err = config.Resolvers.Image().Distros(ctx, &image)
+	require.NoError(t, err)
+	require.Len(t, res, 3)
+	distroNames = []string{utility.FromStringPtr(res[0].Name), utility.FromStringPtr(res[1].Name), utility.FromStringPtr(res[2].Name)}
+	assert.Contains(t, distroNames, "ubuntu1604-small")
+	assert.Contains(t, distroNames, "ubuntu1604-large")
+	assert.Contains(t, distroNames, "ubuntu1604-admin")
 }
 
 func TestLatestTask(t *testing.T) {
