@@ -72,7 +72,6 @@ func TestIncludeDependenciesForTaskGroups(t *testing.T) {
 			assert.Len(t, pairs, 2)
 			assert.Contains(t, pairs, TVPair{"v1", "tg1t1"})
 			assert.Contains(t, pairs, TVPair{"v1", "tg1t2"})
-
 		},
 		"SingleHostTaskGroup/SchedulesAllTasks": func(t *testing.T, p *Project) {
 			pairs, err := IncludeDependencies(p, []TVPair{{"v1", "tg1t4"}}, evergreen.PatchVersionRequester, nil)
