@@ -77,7 +77,6 @@ type s3put struct {
 	// to the matched file name when multiple files are uploaded.
 	ResourceDisplayName string `mapstructure:"display_name" plugin:"expand"`
 
-	// kim: TODO: manually test pre-signing if possible
 	// Visibility determines who can see file links in the UI.
 	// Visibility can be set to either:
 	//  "private", which allows logged-in users to see the file;

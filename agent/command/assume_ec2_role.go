@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -83,6 +84,7 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 
 	assumeRoleCreds := credentials.NewStaticCredentialsProvider(key, secret, "")
 	assumeRoleClient := sts.New(sts.Options{
+		Region:      evergreen.DefaultEC2Region,
 		Credentials: assumeRoleCreds,
 	})
 	stsCreds := stscreds.NewAssumeRoleProvider(assumeRoleClient, r.RoleARN, func(opts *stscreds.AssumeRoleOptions) {
