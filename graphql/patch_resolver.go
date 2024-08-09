@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -13,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // AuthorDisplayName is the resolver for the authorDisplayName field.
@@ -101,6 +103,49 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 	timeTaken, makespan := task.GetFormattedTimeSpent(tasks)
 
 	return makePatchDuration(timeTaken, makespan), nil
+}
+
+// GeneratedTaskCounts is the resolver for the generatedTaskCounts field.
+func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.APIPatch) (map[string]interface{}, error) {
+	patchID := utility.FromStringPtr(obj.Id)
+	p, err := patch.FindOneId(patchID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding patch with id: `%s`: %s", patchID, err.Error()))
+	}
+	if p == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Patch does not exist: `%s`", patchID))
+	}
+	proj, _, err := model.FindAndTranslateProjectForPatch(ctx, evergreen.GetEnvironment().Settings(), p)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project config for patch '%s': %s", patchID, err.Error()))
+	}
+
+	generatorTasks := proj.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
+
+	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromPatchProject(ctx, evergreen.GetEnvironment().Settings(), p)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting project variants and tasks for patch %s: %s", p.Id.Hex(), err.Error()))
+	}
+	res := map[string]interface{}{}
+	for _, buildVariant := range patchProjectVariantsAndTasks.Variants {
+		for _, taskUnit := range buildVariant.Tasks {
+			if _, ok := generatorTasks[taskUnit.Name]; ok {
+				dbTask, err := task.FindOne(db.Query(bson.M{
+					task.ProjectKey:      proj.DisplayName,
+					task.BuildVariantKey: buildVariant.Name,
+					task.DisplayNameKey:  taskUnit.Name,
+					task.GenerateTaskKey: true,
+				}).Sort([]string{"-" + task.CreateTimeKey}))
+				if err != nil {
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task with variant '%s' and name '%s': %s", buildVariant.Name, taskUnit.Name, err.Error()))
+				}
+				if dbTask != nil {
+					res[fmt.Sprintf("%s-%s", buildVariant.Name, taskUnit.Name)] = utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks)
+				}
+			}
+		}
+	}
+	return res, nil
 }
 
 // PatchTriggerAliases is the resolver for the patchTriggerAliases field.

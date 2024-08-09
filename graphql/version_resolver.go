@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	werrors "github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // BaseTaskStatuses is the resolver for the baseTaskStatuses field.
@@ -158,6 +159,31 @@ func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *res
 		}
 	}
 	return externalLinks, nil
+}
+
+// GeneratedTaskCounts is the resolver for the generatedTaskCounts field.
+func (r *versionResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.APIVersion) (map[string]interface{}, error) {
+	versionID := utility.FromStringPtr(obj.Id)
+	v, err := model.VersionFindOneId(*obj.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding version with id: `%s`: %s", versionID, err.Error()))
+	}
+	if v == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Version does not exist: `%s`", versionID))
+	}
+
+	res := map[string]interface{}{}
+	versionGeneratorTasks, err := task.Find(bson.M{
+		task.VersionKey:      versionID,
+		task.GenerateTaskKey: true,
+	})
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding generator tasks from version: `%s`: %s", versionID, err.Error()))
+	}
+	for _, generatorTask := range versionGeneratorTasks {
+		res[generatorTask.Id] = utility.FromIntPtr(generatorTask.EstimatedNumActivatedGeneratedTasks)
+	}
+	return res, nil
 }
 
 // IsPatch is the resolver for the isPatch field.

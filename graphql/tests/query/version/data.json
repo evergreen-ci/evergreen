@@ -49,5 +49,25 @@
       "_id": "evergreen",
       "identifier": "evergreen"
     }
+  ],
+  "tasks": [
+    {
+      "_id": "t1",
+      "branch": "spruce",
+      "version": "spruce_a7906eed65f88ae436ddb5c19096969f198a9efe",
+      "generate_task": true,
+      "estimated_num_activated_generated_tasks": 10
+    },
+    {
+      "_id": "t2",
+      "branch": "spruce",
+      "version": "spruce_a7906eed65f88ae436ddb5c19096969f198a9efe",
+      "generate_task": true
+    },
+    {
+      "_id": "t3",
+      "branch": "spruce",
+      "version": "spruce_a7906eed65f88ae436ddb5c19096969f198a9efe"
+    }
   ]
 }

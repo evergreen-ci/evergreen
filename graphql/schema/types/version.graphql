@@ -49,6 +49,7 @@ type Version {
   errors: [String!]!
   externalLinksForMetadata: [ExternalLinkForMetadata!]!
   finishTime: Time
+  generatedTaskCounts: Map!
   gitTags: [GitTag!]
   ignored: Boolean!
   isPatch: Boolean!
