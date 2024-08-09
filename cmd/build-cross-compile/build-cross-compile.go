@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+const macGOOS = "darwin"
+
 func main() {
 	var (
 		arch      string
@@ -77,8 +79,14 @@ func main() {
 	if tmpdir := os.Getenv("TMPDIR"); tmpdir != "" {
 		cmd.Env = append(cmd.Env, "TMPDIR="+strings.Replace(tmpdir, `\`, `\\`, -1))
 	}
-	// Disable cgo so that the compiled binary is statically linked.
-	cmd.Env = append(cmd.Env, "CGO_ENABLED=0")
+	// Disable cgo so that the compiled binary is statically linked. This is useful for systems lacking
+	// libc support. macOS is excluded because it will have libc support and cgo is needed for gopsutil on macOS.
+	// Always set it explicitly because the default varies. See https://pkg.go.dev/cmd/cgo#hdr-Using_cgo_with_the_go_command.
+	if system == macGOOS {
+		cmd.Env = append(cmd.Env, "CGO_ENABLED=1")
+	} else {
+		cmd.Env = append(cmd.Env, "CGO_ENABLED=0")
+	}
 
 	goos := "GOOS=" + system
 	goarch := "GOARCH=" + arch
