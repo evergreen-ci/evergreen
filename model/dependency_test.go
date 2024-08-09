@@ -118,15 +118,7 @@ func TestIncludeDependenciesForTaskGroups(t *testing.T) {
 			assert.Len(t, pairs, 1)
 			assert.Contains(t, pairs, TVPair{"v1", "t4"})
 		},
-		"SingleHostTaskGroup/AcrossVariantsStillSchedulePrevious": func(t *testing.T, p *Project) {
-			pairs, err := IncludeDependencies(p, []TVPair{{"v1", "t7"}}, evergreen.PatchVersionRequester, nil)
-			require.NoError(t, err)
-			assert.Len(t, pairs, 3)
-			assert.Contains(t, pairs, TVPair{"v1", "t7"})
-			assert.Contains(t, pairs, TVPair{"v2", "tg3t1"})
-			assert.Contains(t, pairs, TVPair{"v2", "tg3t2"})
-		},
-		"SingleHostTaskGroup/WithADisabledPreviousTask": func(t *testing.T, p *Project) {
+		"SingleHostTaskGroup/WithADependencyOnATaskGroup": func(t *testing.T, p *Project) {
 			pairs, err := IncludeDependencies(p, []TVPair{{"v1", "t7"}}, evergreen.PatchVersionRequester, nil)
 			require.NoError(t, err)
 			assert.Len(t, pairs, 3)
