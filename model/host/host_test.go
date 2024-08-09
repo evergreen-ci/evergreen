@@ -3094,12 +3094,12 @@ func TestFindHostsSpawnedByTasks(t *testing.T) {
 	assert.Equal(found[1].Id, "4")
 	assert.Equal(found[2].Id, "7")
 
-	found, err = FindHostsSpawnedByTask(ctx, "task_1", 0)
+	found, err = FindHostsSpawnedByTask(ctx, "task_1", 0, []string{evergreen.HostRunning})
 	assert.NoError(err)
 	assert.Len(found, 1)
 	assert.Equal(found[0].Id, "1")
 
-	found, err = FindHostsSpawnedByTask(ctx, "task_1", 1)
+	found, err = FindHostsSpawnedByTask(ctx, "task_1", 1, []string{evergreen.HostRunning})
 	assert.NoError(err)
 	assert.Len(found, 1)
 	assert.Equal(found[0].Id, "7")

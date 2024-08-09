@@ -43,7 +43,7 @@ func ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
 	}
 
 	catcher := grip.NewBasicCatcher()
-	hostsSpawnedByTask, err := host.FindHostsSpawnedByTask(ctx, t.Id, t.Execution)
+	hostsSpawnedByTask, err := host.FindHostsSpawnedByTask(ctx, t.Id, t.Execution, []string{evergreen.HostRunning})
 	catcher.Add(err)
 	hostsSpawnedByBuild, err := host.FindHostsSpawnedByBuild(ctx, t.BuildId)
 	catcher.Add(err)
