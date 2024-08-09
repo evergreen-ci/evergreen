@@ -87,11 +87,18 @@ func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string
 	return filteredImages, nil
 }
 
+// APIPackageResponse represents a response from the /rest/api/v1/ami/packages route.
+type APIPackageResponse struct {
+	Packages      []Package `json:"data"`
+	FilteredCount int       `json:"filtered_count"`
+	TotalCount    int       `json:"total_count"`
+}
+
 // Package represents a package's information.
 type Package struct {
-	Name    string
-	Version string
-	Manager string
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Manager string `json:"manager"`
 }
 
 // PackageFilterOptions represents the filtering arguments, each of which is optional except the AMI.
@@ -104,20 +111,18 @@ type PackageFilterOptions struct {
 }
 
 // GetPackages returns a list of packages from the corresponding AMI and filters in opts.
-func (c *RuntimeEnvironmentsClient) GetPackages(ctx context.Context, opts PackageFilterOptions) ([]Package, error) {
+func (c *RuntimeEnvironmentsClient) GetPackages(ctx context.Context, opts PackageFilterOptions) (*APIPackageResponse, error) {
 	if opts.AMI == "" {
 		return nil, errors.New("no AMI provided")
 	}
 	params := url.Values{}
-	params.Set("ami", opts.AMI)
+	params.Set("id", opts.AMI)
 	params.Set("page", strconv.Itoa(opts.Page))
 	if opts.Limit != 0 {
 		params.Set("limit", strconv.Itoa(opts.Limit))
 	}
-	params.Set("name", opts.Name)
-	params.Set("manager", opts.Manager)
-	params.Set("type", string(ImageEventTypePackages))
-	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
+	params.Set("data_name", opts.Name)
+	apiURL := fmt.Sprintf("%s/rest/api/v1/ami/packages?%s", c.BaseURL, params.Encode())
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return nil, err
@@ -133,7 +138,7 @@ func (c *RuntimeEnvironmentsClient) GetPackages(ctx context.Context, opts Packag
 		msg, _ := io.ReadAll(resp.Body)
 		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
 	}
-	packages := []Package{}
+	packages := &APIPackageResponse{}
 	if err := gimlet.GetJSON(resp.Body, &packages); err != nil {
 		return nil, errors.Wrap(err, "decoding http body")
 	}
@@ -240,11 +245,18 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts Image
 	return filteredChanges, nil
 }
 
+// APIPackageResponse represents a response from the /rest/api/v1/ami/toolchains route.
+type APIToolchainResponse struct {
+	Toolchains    []Toolchain `json:"data"`
+	FilteredCount int         `json:"filtered_count"`
+	TotalCount    int         `json:"total_count"`
+}
+
 // Toolchain represents a toolchain's information.
 type Toolchain struct {
-	Name    string
-	Version string
-	Manager string
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Manager string `json:"manager"`
 }
 
 // ToolchainFilterOptions represents the filtering arguments, each of which is optional except for the AMI.
@@ -257,20 +269,18 @@ type ToolchainFilterOptions struct {
 }
 
 // GetToolchains returns a list of toolchains from the AMI and filters in the ToolchainFilterOptions.
-func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts ToolchainFilterOptions) ([]Toolchain, error) {
+func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts ToolchainFilterOptions) (*APIToolchainResponse, error) {
 	if opts.AMI == "" {
 		return nil, errors.New("no AMI provided")
 	}
 	params := url.Values{}
-	params.Set("ami", opts.AMI)
+	params.Set("id", opts.AMI)
 	params.Set("page", strconv.Itoa(opts.Page))
 	if opts.Limit != 0 {
 		params.Set("limit", strconv.Itoa(opts.Limit))
 	}
-	params.Set("name", opts.Name)
-	params.Set("version", opts.Version)
-	params.Set("type", string(ImageEventTypeToolchains))
-	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
+	params.Set("data_name", opts.Name)
+	apiURL := fmt.Sprintf("%s/rest/api/v1/ami/toolchains?%s", c.BaseURL, params.Encode())
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return nil, err
@@ -286,7 +296,7 @@ func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts Tool
 		msg, _ := io.ReadAll(resp.Body)
 		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
 	}
-	var toolchains []Toolchain
+	toolchains := &APIToolchainResponse{}
 	if err := gimlet.GetJSON(resp.Body, &toolchains); err != nil {
 		return nil, errors.Wrap(err, "decoding http body")
 	}

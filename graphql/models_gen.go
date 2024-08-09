@@ -234,6 +234,12 @@ type NewDistroPayload struct {
 	NewDistroID string `json:"newDistroId"`
 }
 
+type PackagesPayload struct {
+	Packages      []*model.APIPackage `json:"packages"`
+	FilteredCount int                 `json:"filteredCount"`
+	TotalCount    int                 `json:"totalCount"`
+}
+
 // PatchConfigure is the input to the schedulePatch mutation.
 // It contains information about how a user has configured their patch (e.g. name, tasks to run, etc).
 type PatchConfigure struct {
@@ -491,6 +497,12 @@ type TestFilterOptions struct {
 type TestSortOptions struct {
 	SortBy    TestSortCategory `json:"sortBy"`
 	Direction SortDirection    `json:"direction"`
+}
+
+type ToolchainsPayload struct {
+	Toolchains    []*model.APIToolchain `json:"toolchains"`
+	FilteredCount int                   `json:"filteredCount"`
+	TotalCount    int                   `json:"totalCount"`
 }
 
 type UpdateParsleySettingsInput struct {

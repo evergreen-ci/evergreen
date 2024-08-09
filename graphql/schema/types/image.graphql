@@ -24,7 +24,6 @@ input ToolchainOpts {
   page: Int
 }
 
-
 ###### TYPES ######
 """
 Image is returned by the image query.
@@ -39,15 +38,27 @@ type Image {
   lastDeployed: Time!
   latestTask: Task
   name: String!
-  packages(opts: PackageOpts!): [Package!]!
-  toolchains(opts: ToolchainOpts!): [Toolchain!]!
+  packages(opts: PackageOpts!): PackagesPayload!
+  toolchains(opts: ToolchainOpts!): ToolchainsPayload!
   versionId: String!
+}
+
+type PackagesPayload {
+  packages: [Package!]!
+  filteredCount: Int!
+  totalCount: Int!
 }
 
 type Package {
   name: String!
   manager: String!
   version: String!
+}
+
+type ToolchainsPayload {
+  toolchains: [Toolchain!]!
+  filteredCount: Int!
+  totalCount: Int!
 }
 
 type Toolchain {
