@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
 
@@ -32,23 +31,6 @@ func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId strin
 	if projectRef == nil {
 		return http.StatusInternalServerError, errors.Errorf("project '%s' for version '%s' not found", p.Project, p.Version)
 	}
-	var project *model.Project
-	if version == nil {
-		githubOauthToken, err := env.Settings().GetGithubOauthToken()
-		if err != nil {
-			return http.StatusInternalServerError, errors.Wrap(err, "getting GitHub OAuth token")
-		}
-		project, _, err = model.GetPatchedProject(ctx, env.Settings(), p, githubOauthToken)
-		if err != nil {
-			return http.StatusInternalServerError, errors.Wrapf(err, "finding project for patch '%s'", p.Id.Hex())
-		}
-	} else {
-		project, err = model.FindProjectFromVersionID(version.Id)
-		if err != nil {
-			return http.StatusInternalServerError, errors.Wrapf(err, "finding project for version '%s'", version.Id)
-		}
-	}
-	addPreviousSingleHostTaskGroupTasks(&patchUpdateReq, project)
 
 	statusCode, err := model.ConfigurePatch(ctx, env.Settings(), p, version, projectRef, patchUpdateReq)
 	if err != nil {
@@ -84,35 +66,4 @@ func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId strin
 		}
 	}
 	return http.StatusOK, nil
-}
-
-// addPreviousSingleHostTaskGroupTasks checks all the tasks in a task group in the patch update
-// and if that task group is a single host task group, it schedules the previous tasks in the
-// task group.
-func addPreviousSingleHostTaskGroupTasks(patchUpdateReq *model.PatchUpdate, project *model.Project) {
-	taskGroupTasksToAddToVariant := map[string]string{}
-	for _, vt := range patchUpdateReq.VariantsTasks {
-		for _, t := range vt.Tasks {
-			tg := project.FindTaskGroupForTask(t)
-			if tg == nil || tg.MaxHosts != 1 {
-				continue
-			}
-			for _, tgt := range tg.Tasks {
-				if tgt == t {
-					break
-				}
-				taskGroupTasksToAddToVariant[tgt] = vt.Variant
-			}
-		}
-	}
-	variantTasks := []patch.VariantTasks{}
-	for _, vt := range patchUpdateReq.VariantsTasks {
-		for t, v := range taskGroupTasksToAddToVariant {
-			if vt.Variant == v && !utility.StringSliceContains(vt.Tasks, t) {
-				vt.Tasks = append(vt.Tasks, t)
-			}
-		}
-		variantTasks = append(variantTasks, vt)
-	}
-	patchUpdateReq.VariantsTasks = variantTasks
 }
