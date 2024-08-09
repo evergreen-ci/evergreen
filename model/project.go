@@ -1233,22 +1233,33 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 
 // FindTaskGroupForTask returns a specific task group from a project
 // that contains the given task.
-func (p *Project) FindTaskGroupForTask(name string) *TaskGroup {
-	for _, bv := range p.BuildVariants {
-		for _, t := range bv.Tasks {
-			if t.TaskGroup != nil {
-				for _, tg := range t.TaskGroup.Tasks {
-					if tg == name {
-						return t.TaskGroup
-					}
-				}
+func (p *Project) FindTaskGroupForTask(bvName, taskName string) *TaskGroup {
+	tgWithTask := map[string]TaskGroup{}
+	for _, tg := range p.TaskGroups {
+		for _, t := range tg.Tasks {
+			if t == taskName {
+				tgWithTask[tg.Name] = tg
+				fmt.Println("===", tg.Name, "===")
 			}
 		}
 	}
 
-	for _, tg := range p.TaskGroups {
-		for _, t := range tg.Tasks {
-			if t == name {
+	for _, bv := range p.BuildVariants {
+		if bv.Name != bvName {
+			continue
+		}
+		for _, t := range bv.Tasks {
+			// Check inline task groups.
+			if t.TaskGroup != nil {
+				for _, tg := range t.TaskGroup.Tasks {
+					if tg == taskName {
+						return t.TaskGroup
+					}
+				}
+				continue
+			}
+			// Check if the an already found task group contains the task.
+			if tg, ok := tgWithTask[t.Name]; ok {
 				return &tg
 			}
 		}

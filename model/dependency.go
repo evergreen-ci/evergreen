@@ -93,7 +93,7 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 
 	// For a task group task inside a single host task group, the previous
 	// tasks in the task group are implicit dependencies of the current task.
-	if tg := di.Project.FindTaskGroupForTask(pair.TaskName); tg != nil && tg.MaxHosts == 1 {
+	if tg := di.Project.FindTaskGroupForTask(pair.Variant, pair.TaskName); tg != nil && tg.MaxHosts == 1 {
 		catcher := grip.NewBasicCatcher()
 		for _, t := range tg.Tasks {
 			// When we reach the current task, stop recursing.
@@ -256,7 +256,11 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 						if projectTask.IsDisabled() || projectTask.SkipOnRequester(di.requester) {
 							continue
 						}
-						deps = append(deps, TVPair{TaskName: t.Name, Variant: v.Name})
+						if !t.IsGroup {
+							deps = append(deps, TVPair{TaskName: t.Name, Variant: v.Name})
+						} else {
+							deps = append(deps, TVPair{TaskName: d.Name, Variant: v.Name})
+						}
 					}
 				}
 			}
