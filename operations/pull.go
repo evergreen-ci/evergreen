@@ -75,7 +75,7 @@ func Pull() cli.Command {
 				Permissions: pail.S3PermissionsBucketOwnerRead,
 				Verbose:     true,
 			}
-			bucket, err := pail.NewS3ArchiveBucketWithHTTPClient(httpClient, opts)
+			bucket, err := pail.NewS3ArchiveBucketWithHTTPClient(ctx, httpClient, opts)
 			if err != nil {
 				return errors.Wrap(err, "setting up S3 bucket")
 			}

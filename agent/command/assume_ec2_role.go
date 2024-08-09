@@ -81,7 +81,7 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 		return errors.New("AWS key and secret must not be empty")
 	}
 
-	assumeRoleCreds := credentials.NewStaticCredentials(key, secret, "")
+	assumeRoleCreds := credentials.NewStaticCredentialsProvider(key, secret, "")
 	assumeRoleClient := sts.New(sts.Options{
 		Credentials: assumeRoleCreds,
 	})

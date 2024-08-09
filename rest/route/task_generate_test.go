@@ -111,7 +111,7 @@ func TestGenerateExecuteWithLargeFileInS3(t *testing.T) {
 	defer utility.PutHTTPClient(c)
 
 	ppConf := env.Settings().Providers.AWS.ParserProject
-	bucket, err := pail.NewS3BucketWithHTTPClient(c, pail.S3Options{
+	bucket, err := pail.NewS3BucketWithHTTPClient(ctx, c, pail.S3Options{
 		Name:   ppConf.Bucket,
 		Region: evergreen.DefaultEC2Region,
 	})

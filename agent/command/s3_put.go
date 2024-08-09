@@ -77,6 +77,7 @@ type s3put struct {
 	// to the matched file name when multiple files are uploaded.
 	ResourceDisplayName string `mapstructure:"display_name" plugin:"expand"`
 
+	// kim: TODO: manually test pre-signing if possible
 	// Visibility determines who can see file links in the UI.
 	// Visibility can be set to either:
 	//  "private", which allows logged-in users to see the file;
@@ -170,7 +171,7 @@ func (s3pc *s3put) validate() error {
 	if s3pc.isMulti() && filepath.IsAbs(s3pc.LocalFile) {
 		catcher.New("cannot use absolute path with local files include filter")
 	}
-	if s3pc.Visibility == artifact.Signed && (s3pc.Permissions == s3Types.BucketCannedACLPublicRead || s3pc.Permissions == s3Types.BucketCannedACLPublicReadWrite) {
+	if s3pc.Visibility == artifact.Signed && (s3pc.Permissions == string(s3Types.BucketCannedACLPublicRead) || s3pc.Permissions == string(s3Types.BucketCannedACLPublicReadWrite)) {
 		catcher.New("visibility: signed should not be combined with permissions: public-read or permissions: public-read-write")
 	}
 
@@ -293,7 +294,7 @@ func (s3pc *s3put) Execute(ctx context.Context,
 	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout
 	defer utility.PutHTTPClient(httpClient)
-	if err := s3pc.createPailBucket(httpClient); err != nil {
+	if err := s3pc.createPailBucket(ctx, httpClient); err != nil {
 		return errors.Wrap(err, "connecting to S3")
 	}
 
@@ -415,7 +416,7 @@ retryLoop:
 				fpath = filepath.Join(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), fpath)
 
 				if s3pc.skipExistingBool {
-					exists, err := s3pc.remoteFileExists(remoteName)
+					exists, err := s3pc.remoteFileExists(ctx, remoteName)
 					if err != nil {
 						return errors.Wrapf(err, "checking if file '%s' exists", remoteName)
 					}
@@ -534,7 +535,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 	return nil
 }
 
-func (s3pc *s3put) createPailBucket(httpClient *http.Client) error {
+func (s3pc *s3put) createPailBucket(ctx context.Context, httpClient *http.Client) error {
 	if s3pc.bucket != nil {
 		return nil
 	}
@@ -545,7 +546,7 @@ func (s3pc *s3put) createPailBucket(httpClient *http.Client) error {
 		Permissions: pail.S3Permissions(s3pc.Permissions),
 		ContentType: s3pc.ContentType,
 	}
-	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(httpClient, opts)
+	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(ctx, httpClient, opts)
 	s3pc.bucket = bucket
 	return err
 }
@@ -559,10 +560,11 @@ func (s3pc *s3put) isPrivate(visibility string) bool {
 
 func (s3pc *s3put) isPublic() bool {
 	return (s3pc.Visibility == "" || s3pc.Visibility == artifact.Public) &&
-		(s3pc.Permissions == s3Types.BucketCannedACLPublicRead || s3pc.Permissions == s3Types.BucketCannedACLPublicReadWrite)
+		(s3pc.Permissions == string(s3Types.BucketCannedACLPublicRead) || s3pc.Permissions == string(s3Types.BucketCannedACLPublicReadWrite))
 }
 
-func (s3pc *s3put) remoteFileExists(remoteName string) (bool, error) {
+// kim: TODO: manually test skip_existing
+func (s3pc *s3put) remoteFileExists(ctx context.Context, remoteName string) (bool, error) {
 	requestParams := pail.PreSignRequestParams{
 		Bucket:          s3pc.Bucket,
 		FileKey:         remoteName,
@@ -571,7 +573,7 @@ func (s3pc *s3put) remoteFileExists(remoteName string) (bool, error) {
 		AwsSessionToken: s3pc.AwsSessionToken,
 		Region:          s3pc.Region,
 	}
-	_, err := pail.GetHeadObject(requestParams)
+	_, err := pail.GetHeadObject(ctx, requestParams)
 	if err != nil {
 		var smithyErr smithy.APIError
 		if errors.As(err, &smithyErr) {

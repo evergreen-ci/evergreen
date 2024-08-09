@@ -44,7 +44,7 @@ func main() {
 		Permissions: pail.S3PermissionsPublicRead,
 		Verbose:     true,
 	}
-	bucket, err := pail.NewS3Bucket(opts)
+	bucket, err := pail.NewS3Bucket(ctx, opts)
 	if err != nil {
 		grip.EmergencyFatal("could not initialize bucket")
 	}
