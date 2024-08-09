@@ -14,13 +14,21 @@ import (
 
 // Distros is the resolver for the distros field.
 func (r *imageResolver) Distros(ctx context.Context, obj *model.APIImage) ([]*model.APIDistro, error) {
+	usr := mustHaveUser(ctx)
 	imageID := utility.FromStringPtr(obj.ID)
 	distros, err := distro.GetDistrosForImage(ctx, imageID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distros for image '%s': '%s'", imageID, err.Error()))
 	}
+
+	userHasDistroCreatePermission := userHasDistroCreatePermission(usr)
+
 	apiDistros := []*model.APIDistro{}
 	for _, d := range distros {
+		// Omit admin-only distros if user lacks permissions.
+		if d.AdminOnly && !userHasDistroCreatePermission {
+			continue
+		}
 		apiDistro := model.APIDistro{}
 		apiDistro.BuildFromService(d)
 		apiDistros = append(apiDistros, &apiDistro)
