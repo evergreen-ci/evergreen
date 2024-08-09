@@ -286,6 +286,89 @@ func TestMakeHost(t *testing.T) {
 	assert.Equal(ec2Settings2.AMI, "ami-987654")
 }
 
+func TestHostCreateHandler(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection))
+
+	env := &mock.Environment{}
+	assert.NoError(env.Configure(ctx))
+
+	handler := hostCreateHandler{}
+	d := distro.Distro{
+		Id:       "archlinux-test",
+		Aliases:  []string{"archlinux-alias"},
+		Provider: evergreen.ProviderNameEc2OnDemand,
+		ProviderSettingsList: []*birch.Document{birch.NewDocument(
+			birch.EC.String("ami", "ami-123456"),
+			birch.EC.String("region", "us-east-1"),
+			birch.EC.String("instance_type", "t1.micro"),
+			birch.EC.String("subnet_id", "subnet-12345678"),
+			birch.EC.SliceString("security_group_ids", []string{"abcdef"}),
+		)},
+	}
+	require.NoError(d.Insert(ctx))
+
+	sampleTask := &task.Task{
+		Id:        "task-id",
+		Execution: 0,
+	}
+	require.NoError(sampleTask.Insert())
+
+	c := apimodels.CreateHost{
+		Distro:              "archlinux-test",
+		CloudProvider:       "ec2",
+		NumHosts:            "3",
+		Scope:               "task",
+		Subnet:              "sub",
+		AMI:                 "ami",
+		InstanceType:        "instance-type",
+		SetupTimeoutSecs:    600,
+		TeardownTimeoutSecs: 21600,
+	}
+	foundDistro, err := distro.GetHostCreateDistro(ctx, c)
+	require.NoError(err)
+
+	handler.createHost = c
+	handler.distro = *foundDistro
+	handler.env = env
+	handler.taskID = "task-id"
+
+	hosts, err := host.FindHostsSpawnedByTask(ctx, sampleTask.Id, sampleTask.Execution, append(evergreen.IsRunningOrWillRunStatuses, evergreen.HostUninitialized))
+	assert.NoError(err)
+	assert.Len(hosts, 0)
+
+	assert.Equal(http.StatusOK, handler.Run(ctx).Status())
+
+	// Properly creates correct number of hosts.
+	hosts, err = host.FindHostsSpawnedByTask(ctx, sampleTask.Id, sampleTask.Execution, createdOrCreatingHostStatuses)
+	assert.NoError(err)
+	assert.Len(hosts, 3)
+
+	// Calling create host route multiple times should not create more hosts than number requested.
+	assert.Equal(http.StatusOK, handler.Run(ctx).Status())
+	assert.Equal(http.StatusOK, handler.Run(ctx).Status())
+
+	hosts, err = host.FindHostsSpawnedByTask(ctx, sampleTask.Id, sampleTask.Execution, createdOrCreatingHostStatuses)
+	assert.NoError(err)
+	assert.Len(hosts, 3)
+
+	// If a partial amount of hosts were initially created, retry should create the rest.
+	handler.createHost.NumHosts = "5"
+	assert.Equal(http.StatusOK, handler.Run(ctx).Status())
+
+	hosts, err = host.FindHostsSpawnedByTask(ctx, sampleTask.Id, sampleTask.Execution, createdOrCreatingHostStatuses)
+	assert.NoError(err)
+	assert.Len(hosts, 5)
+
+	// Error if there are more hosts than initially requested.
+	handler.createHost.NumHosts = "1"
+	assert.Equal(http.StatusBadRequest, handler.Run(ctx).Status())
+}
+
 func TestHostCreateDocker(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
