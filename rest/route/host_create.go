@@ -22,7 +22,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var createdOrCreatingHostStatuses = append(evergreen.IsRunningOrWillRunStatuses, evergreen.HostUninitialized)
+var createdOrCreatingHostStatuses = append([]string{evergreen.HostUninitialized}, evergreen.IsRunningOrWillRunStatuses...)
 
 type hostCreateHandler struct {
 	taskID     string

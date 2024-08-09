@@ -296,15 +296,8 @@ func TestHostCreateHandler(t *testing.T) {
 
 	env := &mock.Environment{}
 	assert.NoError(env.Configure(ctx))
-	var err error
-	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
-		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
-			return queue.NewLocalLimitedSize(2, 1048), nil
-		}}})
-	assert.NoError(err)
 
 	handler := hostCreateHandler{}
-
 	d := distro.Distro{
 		Id:       "archlinux-test",
 		Aliases:  []string{"archlinux-alias"},
