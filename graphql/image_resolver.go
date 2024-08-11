@@ -78,20 +78,20 @@ func (r *imageResolver) Packages(ctx context.Context, obj *model.APIImage, opts 
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	opts.AMI = utility.FromStringPtr(obj.AMI)
-	data, err := c.GetPackages(ctx, opts)
+	res, err := c.GetPackages(ctx, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting packages for image '%s': '%s'", utility.FromStringPtr(obj.ID), err.Error()))
 	}
 	apiPackages := []*model.APIPackage{}
-	for _, pkg := range data.Packages {
+	for _, pkg := range res.Data {
 		apiPackage := model.APIPackage{}
 		apiPackage.BuildFromService(pkg)
 		apiPackages = append(apiPackages, &apiPackage)
 	}
 	return &PackagesPayload{
-		Packages:      apiPackages,
-		FilteredCount: data.FilteredCount,
-		TotalCount:    data.TotalCount,
+		Data:          apiPackages,
+		FilteredCount: res.FilteredCount,
+		TotalCount:    res.TotalCount,
 	}, nil
 }
 
@@ -103,20 +103,20 @@ func (r *imageResolver) Toolchains(ctx context.Context, obj *model.APIImage, opt
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	opts.AMI = utility.FromStringPtr(obj.AMI)
-	data, err := c.GetToolchains(ctx, opts)
+	res, err := c.GetToolchains(ctx, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting toolchains for image '%s': '%s'", utility.FromStringPtr(obj.ID), err.Error()))
 	}
 	apiToolchains := []*model.APIToolchain{}
-	for _, toolchain := range data.Toolchains {
+	for _, toolchain := range res.Data {
 		apiToolchain := model.APIToolchain{}
 		apiToolchain.BuildFromService(toolchain)
 		apiToolchains = append(apiToolchains, &apiToolchain)
 	}
 	return &ToolchainsPayload{
-		Toolchains:    apiToolchains,
-		FilteredCount: data.FilteredCount,
-		TotalCount:    data.TotalCount,
+		Data:          apiToolchains,
+		FilteredCount: res.FilteredCount,
+		TotalCount:    res.TotalCount,
 	}, nil
 }
 

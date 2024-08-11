@@ -759,8 +759,8 @@ type ComplexityRoot struct {
 	}
 
 	PackagesPayload struct {
+		Data          func(childComplexity int) int
 		FilteredCount func(childComplexity int) int
-		Packages      func(childComplexity int) int
 		TotalCount    func(childComplexity int) int
 	}
 
@@ -1504,8 +1504,8 @@ type ComplexityRoot struct {
 	}
 
 	ToolchainsPayload struct {
+		Data          func(childComplexity int) int
 		FilteredCount func(childComplexity int) int
-		Toolchains    func(childComplexity int) int
 		TotalCount    func(childComplexity int) int
 	}
 
@@ -5320,19 +5320,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Package.Version(childComplexity), true
 
+	case "PackagesPayload.data":
+		if e.complexity.PackagesPayload.Data == nil {
+			break
+		}
+
+		return e.complexity.PackagesPayload.Data(childComplexity), true
+
 	case "PackagesPayload.filteredCount":
 		if e.complexity.PackagesPayload.FilteredCount == nil {
 			break
 		}
 
 		return e.complexity.PackagesPayload.FilteredCount(childComplexity), true
-
-	case "PackagesPayload.packages":
-		if e.complexity.PackagesPayload.Packages == nil {
-			break
-		}
-
-		return e.complexity.PackagesPayload.Packages(childComplexity), true
 
 	case "PackagesPayload.totalCount":
 		if e.complexity.PackagesPayload.TotalCount == nil {
@@ -9214,19 +9214,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Toolchain.Version(childComplexity), true
 
+	case "ToolchainsPayload.data":
+		if e.complexity.ToolchainsPayload.Data == nil {
+			break
+		}
+
+		return e.complexity.ToolchainsPayload.Data(childComplexity), true
+
 	case "ToolchainsPayload.filteredCount":
 		if e.complexity.ToolchainsPayload.FilteredCount == nil {
 			break
 		}
 
 		return e.complexity.ToolchainsPayload.FilteredCount(childComplexity), true
-
-	case "ToolchainsPayload.toolchains":
-		if e.complexity.ToolchainsPayload.Toolchains == nil {
-			break
-		}
-
-		return e.complexity.ToolchainsPayload.Toolchains(childComplexity), true
 
 	case "ToolchainsPayload.totalCount":
 		if e.complexity.ToolchainsPayload.TotalCount == nil {
@@ -25910,8 +25910,8 @@ func (ec *executionContext) fieldContext_Image_packages(ctx context.Context, fie
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "packages":
-				return ec.fieldContext_PackagesPayload_packages(ctx, field)
+			case "data":
+				return ec.fieldContext_PackagesPayload_data(ctx, field)
 			case "filteredCount":
 				return ec.fieldContext_PackagesPayload_filteredCount(ctx, field)
 			case "totalCount":
@@ -25973,8 +25973,8 @@ func (ec *executionContext) fieldContext_Image_toolchains(ctx context.Context, f
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "toolchains":
-				return ec.fieldContext_ToolchainsPayload_toolchains(ctx, field)
+			case "data":
+				return ec.fieldContext_ToolchainsPayload_data(ctx, field)
 			case "filteredCount":
 				return ec.fieldContext_ToolchainsPayload_filteredCount(ctx, field)
 			case "totalCount":
@@ -35659,8 +35659,8 @@ func (ec *executionContext) fieldContext_Package_version(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _PackagesPayload_packages(ctx context.Context, field graphql.CollectedField, obj *PackagesPayload) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PackagesPayload_packages(ctx, field)
+func (ec *executionContext) _PackagesPayload_data(ctx context.Context, field graphql.CollectedField, obj *PackagesPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PackagesPayload_data(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -35673,7 +35673,7 @@ func (ec *executionContext) _PackagesPayload_packages(ctx context.Context, field
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Packages, nil
+		return obj.Data, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -35690,7 +35690,7 @@ func (ec *executionContext) _PackagesPayload_packages(ctx context.Context, field
 	return ec.marshalNPackage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPackageᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_PackagesPayload_packages(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_PackagesPayload_data(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "PackagesPayload",
 		Field:      field,
@@ -62829,8 +62829,8 @@ func (ec *executionContext) fieldContext_Toolchain_version(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _ToolchainsPayload_toolchains(ctx context.Context, field graphql.CollectedField, obj *ToolchainsPayload) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ToolchainsPayload_toolchains(ctx, field)
+func (ec *executionContext) _ToolchainsPayload_data(ctx context.Context, field graphql.CollectedField, obj *ToolchainsPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ToolchainsPayload_data(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -62843,7 +62843,7 @@ func (ec *executionContext) _ToolchainsPayload_toolchains(ctx context.Context, f
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Toolchains, nil
+		return obj.Data, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -62860,7 +62860,7 @@ func (ec *executionContext) _ToolchainsPayload_toolchains(ctx context.Context, f
 	return ec.marshalNToolchain2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIToolchainᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ToolchainsPayload_toolchains(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ToolchainsPayload_data(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ToolchainsPayload",
 		Field:      field,
@@ -81639,8 +81639,8 @@ func (ec *executionContext) _PackagesPayload(ctx context.Context, sel ast.Select
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("PackagesPayload")
-		case "packages":
-			out.Values[i] = ec._PackagesPayload_packages(ctx, field, obj)
+		case "data":
+			out.Values[i] = ec._PackagesPayload_data(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -89561,8 +89561,8 @@ func (ec *executionContext) _ToolchainsPayload(ctx context.Context, sel ast.Sele
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ToolchainsPayload")
-		case "toolchains":
-			out.Values[i] = ec._ToolchainsPayload_toolchains(ctx, field, obj)
+		case "data":
+			out.Values[i] = ec._ToolchainsPayload_data(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

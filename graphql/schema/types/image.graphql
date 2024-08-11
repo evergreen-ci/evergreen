@@ -44,7 +44,7 @@ type Image {
 }
 
 type PackagesPayload {
-  packages: [Package!]!
+  data: [Package!]!
   filteredCount: Int!
   totalCount: Int!
 }
@@ -56,7 +56,7 @@ type Package {
 }
 
 type ToolchainsPayload {
-  toolchains: [Toolchain!]!
+  data: [Toolchain!]!
   filteredCount: Int!
   totalCount: Int!
 }

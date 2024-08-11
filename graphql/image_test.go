@@ -35,9 +35,9 @@ func TestPackages(t *testing.T) {
 	}
 	res, err := config.Resolvers.Image().Packages(ctx, &image, opts)
 	require.NoError(t, err)
-	require.Len(t, res.Packages, 1)
-	require.NotNil(t, res.Packages[0])
-	assert.Equal(t, utility.FromStringPtr(res.Packages[0].Name), "python3-automat")
+	require.Len(t, res.Data, 1)
+	require.NotNil(t, res.Data[0])
+	assert.Equal(t, utility.FromStringPtr(res.Data[0].Name), "python3-automat")
 	assert.Equal(t, res.FilteredCount, 1)
 	assert.Equal(t, res.TotalCount, 1618)
 }
@@ -59,9 +59,9 @@ func TestToolchains(t *testing.T) {
 	}
 	res, err := config.Resolvers.Image().Toolchains(ctx, &image, opts)
 	require.NoError(t, err)
-	require.Len(t, res.Toolchains, 1)
-	require.NotNil(t, res.Toolchains[0])
-	assert.Equal(t, utility.FromStringPtr(res.Toolchains[0].Name), "golang")
+	require.Len(t, res.Data, 1)
+	require.NotNil(t, res.Data[0])
+	assert.Equal(t, utility.FromStringPtr(res.Data[0].Name), "golang")
 	assert.Equal(t, res.FilteredCount, 33)
 	assert.Equal(t, res.TotalCount, 49)
 }

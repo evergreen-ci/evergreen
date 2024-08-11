@@ -83,7 +83,7 @@ func TestGetPackages(t *testing.T) {
 	result, err := c.GetPackages(ctx, opts)
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Len(t, result.Packages, 10)
+	require.Len(t, result.Data, 10)
 	assert.Equal(result.FilteredCount, 1538)
 	assert.Equal(result.TotalCount, 1538)
 
@@ -97,8 +97,8 @@ func TestGetPackages(t *testing.T) {
 	result, err = c.GetPackages(ctx, opts)
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Len(t, result.Packages, 1)
-	assert.Equal(result.Packages[0].Name, "Automat")
+	require.Len(t, result.Data, 1)
+	assert.Equal(result.Data[0].Name, "Automat")
 	assert.Equal(result.FilteredCount, 1)
 	assert.Equal(result.TotalCount, 1538)
 
@@ -112,7 +112,7 @@ func TestGetPackages(t *testing.T) {
 	result, err = c.GetPackages(ctx, opts)
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	assert.Empty(result.Packages)
+	assert.Empty(result.Data)
 	assert.Equal(result.FilteredCount, 0)
 	assert.Equal(result.TotalCount, 1538)
 
@@ -174,7 +174,7 @@ func TestGetToolchains(t *testing.T) {
 	result, err := c.GetToolchains(ctx, opts)
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	assert.Len(result.Toolchains, 10)
+	assert.Len(result.Data, 10)
 	assert.Equal(result.FilteredCount, 41)
 	assert.Equal(result.TotalCount, 41)
 
@@ -189,10 +189,10 @@ func TestGetToolchains(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, result)
 	require.NotNil(t, result)
-	require.Len(t, result.Toolchains, 3)
-	assert.Equal(result.Toolchains[0].Name, "nodejs")
-	assert.Equal(result.Toolchains[1].Name, "nodejs")
-	assert.Equal(result.Toolchains[2].Name, "nodejs")
+	require.Len(t, result.Data, 3)
+	assert.Equal(result.Data[0].Name, "nodejs")
+	assert.Equal(result.Data[1].Name, "nodejs")
+	assert.Equal(result.Data[2].Name, "nodejs")
 	assert.Equal(result.FilteredCount, 3)
 	assert.Equal(result.TotalCount, 41)
 
@@ -206,7 +206,7 @@ func TestGetToolchains(t *testing.T) {
 	result, err = c.GetToolchains(ctx, opts)
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	assert.Empty(result.Toolchains)
+	assert.Empty(result.Data)
 	assert.Equal(result.FilteredCount, 0)
 	assert.Equal(result.TotalCount, 41)
 

@@ -89,7 +89,7 @@ func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string
 
 // APIPackageResponse represents a response from the /rest/api/v1/ami/packages route.
 type APIPackageResponse struct {
-	Packages      []Package `json:"data"`
+	Data          []Package `json:"data"`
 	FilteredCount int       `json:"filtered_count"`
 	TotalCount    int       `json:"total_count"`
 }
@@ -247,7 +247,7 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts Image
 
 // APIPackageResponse represents a response from the /rest/api/v1/ami/toolchains route.
 type APIToolchainResponse struct {
-	Toolchains    []Toolchain `json:"data"`
+	Data          []Toolchain `json:"data"`
 	FilteredCount int         `json:"filtered_count"`
 	TotalCount    int         `json:"total_count"`
 }

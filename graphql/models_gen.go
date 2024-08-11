@@ -235,7 +235,7 @@ type NewDistroPayload struct {
 }
 
 type PackagesPayload struct {
-	Packages      []*model.APIPackage `json:"packages"`
+	Data          []*model.APIPackage `json:"data"`
 	FilteredCount int                 `json:"filteredCount"`
 	TotalCount    int                 `json:"totalCount"`
 }
@@ -500,7 +500,7 @@ type TestSortOptions struct {
 }
 
 type ToolchainsPayload struct {
-	Toolchains    []*model.APIToolchain `json:"toolchains"`
+	Data          []*model.APIToolchain `json:"data"`
 	FilteredCount int                   `json:"filteredCount"`
 	TotalCount    int                   `json:"totalCount"`
 }
