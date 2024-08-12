@@ -562,7 +562,6 @@ func (s3pc *s3put) isPublic() bool {
 		(s3pc.Permissions == string(s3Types.BucketCannedACLPublicRead) || s3pc.Permissions == string(s3Types.BucketCannedACLPublicReadWrite))
 }
 
-// kim: TODO: manually test skip_existing
 func (s3pc *s3put) remoteFileExists(ctx context.Context, remoteName string) (bool, error) {
 	requestParams := pail.PreSignRequestParams{
 		Bucket:          s3pc.Bucket,
