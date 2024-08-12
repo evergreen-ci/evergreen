@@ -110,10 +110,10 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.
 	patchID := utility.FromStringPtr(obj.Id)
 	p, err := patch.FindOneId(patchID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding patch with id: `%s`: %s", patchID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch with id '%s': %s", patchID, err.Error()))
 	}
 	if p == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Patch does not exist: `%s`", patchID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' does not exist", patchID))
 	}
 	proj, _, err := model.FindAndTranslateProjectForPatch(ctx, evergreen.GetEnvironment().Settings(), p)
 	if err != nil {
@@ -124,7 +124,7 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.
 
 	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromPatchProject(ctx, evergreen.GetEnvironment().Settings(), p)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting project variants and tasks for patch %s: %s", p.Id.Hex(), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project variants and tasks for patch '%s': %s", p.Id.Hex(), err.Error()))
 	}
 	res := map[string]interface{}{}
 	for _, buildVariant := range patchProjectVariantsAndTasks.Variants {

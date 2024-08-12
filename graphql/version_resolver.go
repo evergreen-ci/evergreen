@@ -164,12 +164,12 @@ func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *res
 // GeneratedTaskCounts is the resolver for the generatedTaskCounts field.
 func (r *versionResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.APIVersion) (map[string]interface{}, error) {
 	versionID := utility.FromStringPtr(obj.Id)
-	v, err := model.VersionFindOneId(*obj.Id)
+	v, err := model.VersionFindOneId(versionID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding version with id: `%s`: %s", versionID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version with id '%s': %s", versionID, err.Error()))
 	}
 	if v == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Version does not exist: `%s`", versionID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' does not exist", versionID))
 	}
 
 	res := map[string]interface{}{}
@@ -178,7 +178,7 @@ func (r *versionResolver) GeneratedTaskCounts(ctx context.Context, obj *restMode
 		task.GenerateTaskKey: true,
 	})
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while finding generator tasks from version: `%s`: %s", versionID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding generator tasks from version '%s': %s", versionID, err.Error()))
 	}
 	for _, generatorTask := range versionGeneratorTasks {
 		res[generatorTask.Id] = utility.FromIntPtr(generatorTask.EstimatedNumActivatedGeneratedTasks)
