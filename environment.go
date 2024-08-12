@@ -461,7 +461,7 @@ func (e *envState) SharedDB() *mongo.Database {
 	defer e.mu.RUnlock()
 
 	if e.sharedDBClient != nil {
-		e.sharedDBClient.Database(e.dbName)
+		return e.sharedDBClient.Database(e.dbName)
 	}
 	return nil
 }
