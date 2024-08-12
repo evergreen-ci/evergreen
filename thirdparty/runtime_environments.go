@@ -245,7 +245,7 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts Image
 	return filteredChanges, nil
 }
 
-// APIPackageResponse represents a response from the /rest/api/v1/ami/toolchains route.
+// APIToolchainResponse represents a response from the /rest/api/v1/ami/toolchains route.
 type APIToolchainResponse struct {
 	Data          []Toolchain `json:"data"`
 	FilteredCount int         `json:"filtered_count"`

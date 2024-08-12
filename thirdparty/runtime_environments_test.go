@@ -73,7 +73,7 @@ func TestGetPackages(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, config, "TestGetPackages")
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
-	// Verify that there are no errors with ToolchainFilterOptions including the AMI and limit.
+	// Verify that we can get package data with limit and page.
 	ami := "ami-0e12ef25a5f7712a4"
 	opts := PackageFilterOptions{
 		AMI:   ami,
@@ -165,7 +165,7 @@ func TestGetToolchains(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, config, "TestGetToolchains")
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
-	// Verify that there are no errors with ToolchainFilterOptions including the AMI and limit.
+	// Verify that we can get toolchain data with limit and page.
 	ami := "ami-016662ab459a49e9d"
 	opts := ToolchainFilterOptions{
 		AMI:   ami,
