@@ -22,6 +22,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+var createdOrCreatingHostStatuses = append([]string{evergreen.HostUninitialized}, evergreen.IsRunningOrWillRunStatuses...)
+
 type hostCreateHandler struct {
 	taskID     string
 	createHost apimodels.CreateHost
@@ -70,7 +72,38 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	ids := []string{}
-	for i := 0; i < numHosts; i++ {
+	t, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+	initialHosts, err := host.FindHostsSpawnedByTask(ctx, h.taskID, t.Execution, createdOrCreatingHostStatuses)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding hosts spawned by task '%s'", h.taskID))
+	}
+	numInitialHosts := len(initialHosts)
+
+	for _, host := range initialHosts {
+		ids = append(ids, host.Id)
+	}
+
+	// No-op if the number of hosts created/about to create is the same as the number of hosts already requested.
+	if numInitialHosts == numHosts {
+		return gimlet.NewJSONResponse(ids)
+	} else if numInitialHosts > numHosts {
+		// Should never create more hosts than the amount requested.
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("Evergreen created %d hosts when %d were requested", numInitialHosts, numHosts),
+		})
+	}
+
+	for i := 0; i < (numHosts - numInitialHosts); i++ {
 		intentHost, err := data.MakeHost(ctx, h.env, h.taskID, "", "", h.createHost, h.distro)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "creating intent host"))

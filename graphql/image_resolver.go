@@ -14,13 +14,21 @@ import (
 
 // Distros is the resolver for the distros field.
 func (r *imageResolver) Distros(ctx context.Context, obj *model.APIImage) ([]*model.APIDistro, error) {
+	usr := mustHaveUser(ctx)
 	imageID := utility.FromStringPtr(obj.ID)
 	distros, err := distro.GetDistrosForImage(ctx, imageID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distros for image '%s': '%s'", imageID, err.Error()))
 	}
+
+	userHasDistroCreatePermission := userHasDistroCreatePermission(usr)
+
 	apiDistros := []*model.APIDistro{}
 	for _, d := range distros {
+		// Omit admin-only distros if user lacks permissions.
+		if d.AdminOnly && !userHasDistroCreatePermission {
+			continue
+		}
 		apiDistro := model.APIDistro{}
 		apiDistro.BuildFromService(d)
 		apiDistros = append(apiDistros, &apiDistro)
@@ -29,7 +37,7 @@ func (r *imageResolver) Distros(ctx context.Context, obj *model.APIImage) ([]*mo
 }
 
 // Events is the resolver for the events field.
-func (r *imageResolver) Events(ctx context.Context, obj *model.APIImage, limit int, page int) ([]*model.APIImageEvent, error) {
+func (r *imageResolver) Events(ctx context.Context, obj *model.APIImage, limit int, page int) (*ImageEventsPayload, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: '%s'", err.Error()))
@@ -50,7 +58,11 @@ func (r *imageResolver) Events(ctx context.Context, obj *model.APIImage, limit i
 		apiImageEvent.BuildFromService(imageEvent)
 		apiImageEvents = append(apiImageEvents, &apiImageEvent)
 	}
-	return apiImageEvents, nil
+
+	return &ImageEventsPayload{
+		Count:           len(apiImageEvents),
+		EventLogEntries: apiImageEvents,
+	}, nil
 }
 
 // LatestTask is the resolver for the latestTask field.

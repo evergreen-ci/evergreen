@@ -2620,12 +2620,12 @@ func FindAllHostsSpawnedByTasks(ctx context.Context) ([]Host, error) {
 	return hosts, nil
 }
 
-// FindHostsSpawnedByTask finds hosts spawned by the `createhost` command scoped to a given task.
-func FindHostsSpawnedByTask(ctx context.Context, taskID string, execution int) ([]Host, error) {
+// FindHostsSpawnedByTask finds hosts spawned by the `host.create` command scoped to a given task.
+func FindHostsSpawnedByTask(ctx context.Context, taskID string, execution int, statuses []string) ([]Host, error) {
 	taskIDKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskIDKey)
 	taskExecutionNumberKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskExecutionNumberKey)
 	query := bson.M{
-		StatusKey:              evergreen.HostRunning,
+		StatusKey:              bson.M{"$in": statuses},
 		taskIDKey:              taskID,
 		taskExecutionNumberKey: execution,
 	}
