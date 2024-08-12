@@ -81,6 +81,7 @@ func TestEvents(t *testing.T) {
 	}
 	res, err := config.Resolvers.Image().Events(ctx, &image, 5, 0)
 	require.NoError(t, err)
+	require.NotNil(t, res)
 	assert.Len(t, res.EventLogEntries, 5)
 	assert.Equal(t, res.Count, 5)
 
@@ -91,6 +92,7 @@ func TestEvents(t *testing.T) {
 	}
 	res, err = config.Resolvers.Image().Events(ctx, &image, 5, 1)
 	require.NoError(t, err)
+	require.NotNil(t, res)
 	assert.Len(t, res.EventLogEntries, 5)
 	assert.Equal(t, res.Count, 5)
 	for _, event := range res.EventLogEntries {

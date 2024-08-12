@@ -58,10 +58,9 @@ func (r *imageResolver) Events(ctx context.Context, obj *model.APIImage, limit i
 		apiImageEvent.BuildFromService(imageEvent)
 		apiImageEvents = append(apiImageEvents, &apiImageEvent)
 	}
-	count := len(apiImageEvents)
 
 	return &ImageEventsPayload{
-		Count:           count,
+		Count:           len(apiImageEvents),
 		EventLogEntries: apiImageEvents,
 	}, nil
 }
