@@ -127,7 +127,7 @@ func (c *ssmClientImpl) GetParameters(ctx context.Context, input *ssm.GetParamet
 func retryBatchSSMClientOp[Input interface{}, Output interface{}](ctx context.Context, paramNames []string, client *ssm.Client, input Input, makeBatchInput func(paramNames []string, input Input) Input, op func(ctx context.Context, client *ssm.Client, input Input) (Output, error), opName string) ([]Output, error) {
 	// This limitation comes from the SSM docs.
 	const maxParamsPerRequest = 10
-	batches := makeParamNameBatches(paramNames, maxParamsPerRequest)
+	batches := utility.MakeSliceBatches(paramNames, maxParamsPerRequest)
 
 	var outputs []Output
 	for _, batch := range batches {
@@ -139,29 +139,6 @@ func retryBatchSSMClientOp[Input interface{}, Output interface{}](ctx context.Co
 		outputs = append(outputs, output)
 	}
 	return outputs, nil
-}
-
-// makeParamNameBatches partitions names into batches with at most
-// maxParamsPerBatch in each batch. This is to handle batching SSM requests that
-// limit the number of parameters that can be queried/modified in a single API
-// call.
-func makeParamNameBatches(paramNames []string, maxParamsPerBatch int) [][]string {
-	if len(paramNames) == 0 {
-		return nil
-	}
-	if maxParamsPerBatch <= 0 {
-		maxParamsPerBatch = 1
-	}
-
-	remainingParamNames := paramNames
-	var batches [][]string
-	for len(remainingParamNames) > maxParamsPerBatch {
-		batches = append(batches, remainingParamNames[0:maxParamsPerBatch:maxParamsPerBatch])
-		remainingParamNames = remainingParamNames[maxParamsPerBatch:]
-	}
-	batches = append(batches, remainingParamNames)
-
-	return batches
 }
 
 // retrySSMClientOp runs a single SSM operation with retries.
