@@ -2502,6 +2502,8 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 
 		updatedDisplayTask, err = tryUpdateDisplayTaskAtomically(*originalDisplayTask)
 		if err == nil {
+			// Update the cached display task in case it's used later on.
+			t.DisplayTask = updatedDisplayTask
 			break
 		}
 
