@@ -23,7 +23,7 @@ require (
 	github.com/evergreen-ci/cocoa v0.0.0-20240523192623-2e730fcd1784
 	github.com/evergreen-ci/gimlet v0.0.0-20240426164856-8c2db742f7b0
 	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa
-	github.com/evergreen-ci/pail v0.0.0-20240808162451-ba76772cf567
+	github.com/evergreen-ci/pail v0.0.0-20240812165850-4ccf32c50e99
 	github.com/evergreen-ci/poplar v0.0.0-20240809150814-63d58cd28568
 	github.com/evergreen-ci/shrub v0.0.0-20231121224157-600e066f9de6
 	github.com/evergreen-ci/timber v0.0.0-20240509150854-9d66df03b40e
