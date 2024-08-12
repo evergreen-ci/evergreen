@@ -189,6 +189,18 @@ type ImageEventsPayload struct {
 	EventLogEntries []*model.APIImageEvent `json:"eventLogEntries"`
 }
 
+type ImagePackagesPayload struct {
+	Data          []*model.APIPackage `json:"data"`
+	FilteredCount int                 `json:"filteredCount"`
+	TotalCount    int                 `json:"totalCount"`
+}
+
+type ImageToolchainsPayload struct {
+	Data          []*model.APIToolchain `json:"data"`
+	FilteredCount int                   `json:"filteredCount"`
+	TotalCount    int                   `json:"totalCount"`
+}
+
 type MainlineCommitVersion struct {
 	RolledUpVersions []*model.APIVersion `json:"rolledUpVersions,omitempty"`
 	Version          *model.APIVersion   `json:"version,omitempty"`
