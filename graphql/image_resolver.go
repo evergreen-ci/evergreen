@@ -83,7 +83,7 @@ func (r *imageResolver) LatestTask(ctx context.Context, obj *model.APIImage) (*m
 }
 
 // Packages is the resolver for the packages field.
-func (r *imageResolver) Packages(ctx context.Context, obj *model.APIImage, opts thirdparty.PackageFilterOptions) (*PackagesPayload, error) {
+func (r *imageResolver) Packages(ctx context.Context, obj *model.APIImage, opts thirdparty.PackageFilterOptions) (*ImagePackagesPayload, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: '%s'", err.Error()))
@@ -100,7 +100,7 @@ func (r *imageResolver) Packages(ctx context.Context, obj *model.APIImage, opts 
 		apiPackage.BuildFromService(pkg)
 		apiPackages = append(apiPackages, &apiPackage)
 	}
-	return &PackagesPayload{
+	return &ImagePackagesPayload{
 		Data:          apiPackages,
 		FilteredCount: res.FilteredCount,
 		TotalCount:    res.TotalCount,
@@ -108,7 +108,7 @@ func (r *imageResolver) Packages(ctx context.Context, obj *model.APIImage, opts 
 }
 
 // Toolchains is the resolver for the toolchains field.
-func (r *imageResolver) Toolchains(ctx context.Context, obj *model.APIImage, opts thirdparty.ToolchainFilterOptions) (*ToolchainsPayload, error) {
+func (r *imageResolver) Toolchains(ctx context.Context, obj *model.APIImage, opts thirdparty.ToolchainFilterOptions) (*ImageToolchainsPayload, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: '%s'", err.Error()))
@@ -125,7 +125,7 @@ func (r *imageResolver) Toolchains(ctx context.Context, obj *model.APIImage, opt
 		apiToolchain.BuildFromService(toolchain)
 		apiToolchains = append(apiToolchains, &apiToolchain)
 	}
-	return &ToolchainsPayload{
+	return &ImageToolchainsPayload{
 		Data:          apiToolchains,
 		FilteredCount: res.FilteredCount,
 		TotalCount:    res.TotalCount,

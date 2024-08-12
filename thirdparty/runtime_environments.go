@@ -87,6 +87,56 @@ func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string
 	return filteredImages, nil
 }
 
+// OSInfoFilterOptions represents the filtering options for GetOSInfo. Each argument is optional except for the AMI field.
+type OSInfoFilterOptions struct {
+	AMI   string
+	Name  string
+	Page  int
+	Limit int
+}
+
+// OSInfo stores operating system information.
+type OSInfo struct {
+	Version string `json:"version"`
+	Name    string `json:"name"`
+}
+
+// GetOSInfo returns a list of operating system information for an AMI.
+func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFilterOptions) ([]OSInfo, error) {
+	if opts.AMI == "" {
+		return nil, errors.New("no AMI provided")
+	}
+	params := url.Values{}
+	params.Set("ami", opts.AMI)
+	params.Set("page", strconv.Itoa(opts.Page))
+	if opts.Limit != 0 {
+		params.Set("limit", strconv.Itoa(opts.Limit))
+	}
+	params.Set("type", OSType)
+	params.Set("name", opts.Name)
+	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("Content-Type", "application/json")
+	request.Header.Add("Api-Key", c.APIKey)
+	resp, err := c.Client.Do(request)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		msg, _ := io.ReadAll(resp.Body)
+		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+	}
+	osInfo := []OSInfo{}
+	if err := gimlet.GetJSON(resp.Body, &osInfo); err != nil {
+		return nil, errors.Wrap(err, "decoding http body")
+	}
+	return osInfo, nil
+}
+
 // APIPackageResponse represents a response from the /rest/api/v1/ami/packages route.
 type APIPackageResponse struct {
 	Data          []Package `json:"data"`
@@ -145,106 +195,6 @@ func (c *RuntimeEnvironmentsClient) GetPackages(ctx context.Context, opts Packag
 	return packages, nil
 }
 
-// OSInfoFilterOptions represents the filtering options for GetOSInfo. Each argument is optional except for the AMI field.
-type OSInfoFilterOptions struct {
-	AMI   string
-	Name  string
-	Page  int
-	Limit int
-}
-
-// OSInfo stores operating system information.
-type OSInfo struct {
-	Version string `json:"version"`
-	Name    string `json:"name"`
-}
-
-// GetOSInfo returns a list of operating system information for an AMI.
-func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFilterOptions) ([]OSInfo, error) {
-	if opts.AMI == "" {
-		return nil, errors.New("no AMI provided")
-	}
-	params := url.Values{}
-	params.Set("ami", opts.AMI)
-	params.Set("page", strconv.Itoa(opts.Page))
-	if opts.Limit != 0 {
-		params.Set("limit", strconv.Itoa(opts.Limit))
-	}
-	params.Set("type", OSType)
-	params.Set("name", opts.Name)
-	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-Key", c.APIKey)
-	resp, err := c.Client.Do(request)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		msg, _ := io.ReadAll(resp.Body)
-		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
-	}
-	osInfo := []OSInfo{}
-	if err := gimlet.GetJSON(resp.Body, &osInfo); err != nil {
-		return nil, errors.Wrap(err, "decoding http body")
-	}
-	return osInfo, nil
-}
-
-// ImageDiffOptions represents the arguments for getImageDiff. AMIBefore is the starting AMI, and AMIAfter is the ending AMI.
-type ImageDiffOptions struct {
-	AMIBefore string
-	AMIAfter  string
-}
-
-// ImageDiffChange represents a change between two AMIs.
-type ImageDiffChange struct {
-	Name    string
-	Manager string
-	Type    ImageEventType
-	Removed string
-	Added   string
-}
-
-// getImageDiff returns a list of package and toolchain changes that occurred between the provided AMIs.
-func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts ImageDiffOptions) ([]ImageDiffChange, error) {
-	params := url.Values{}
-	params.Set("ami", opts.AMIBefore)
-	params.Set("ami2", opts.AMIAfter)
-	params.Set("limit", "1000000000") // Artificial limit set high because API has default limit of 10.
-	apiURL := fmt.Sprintf("%s/rest/api/v1/imageDiffs?%s", c.BaseURL, params.Encode())
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-Key", c.APIKey)
-	resp, err := c.Client.Do(request)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		msg, _ := io.ReadAll(resp.Body)
-		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
-	}
-	changes := []ImageDiffChange{}
-	if err := gimlet.GetJSON(resp.Body, &changes); err != nil {
-		return nil, errors.Wrap(err, "decoding http body")
-	}
-	filteredChanges := []ImageDiffChange{}
-	for _, c := range changes {
-		if c.Type == ImageEventTypePackages || c.Type == ImageEventTypeToolchains {
-			filteredChanges = append(filteredChanges, c)
-		}
-	}
-	return filteredChanges, nil
-}
-
 // APIToolchainResponse represents a response from the /rest/api/v1/ami/toolchains route.
 type APIToolchainResponse struct {
 	Data          []Toolchain `json:"data"`
@@ -301,6 +251,56 @@ func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts Tool
 		return nil, errors.Wrap(err, "decoding http body")
 	}
 	return toolchains, nil
+}
+
+// ImageDiffOptions represents the arguments for getImageDiff. AMIBefore is the starting AMI, and AMIAfter is the ending AMI.
+type ImageDiffOptions struct {
+	AMIBefore string
+	AMIAfter  string
+}
+
+// ImageDiffChange represents a change between two AMIs.
+type ImageDiffChange struct {
+	Name    string
+	Manager string
+	Type    ImageEventType
+	Removed string
+	Added   string
+}
+
+// getImageDiff returns a list of package and toolchain changes that occurred between the provided AMIs.
+func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts ImageDiffOptions) ([]ImageDiffChange, error) {
+	params := url.Values{}
+	params.Set("ami", opts.AMIBefore)
+	params.Set("ami2", opts.AMIAfter)
+	params.Set("limit", "1000000000") // Artificial limit set high because API has default limit of 10.
+	apiURL := fmt.Sprintf("%s/rest/api/v1/imageDiffs?%s", c.BaseURL, params.Encode())
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("Content-Type", "application/json")
+	request.Header.Add("Api-Key", c.APIKey)
+	resp, err := c.Client.Do(request)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		msg, _ := io.ReadAll(resp.Body)
+		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+	}
+	changes := []ImageDiffChange{}
+	if err := gimlet.GetJSON(resp.Body, &changes); err != nil {
+		return nil, errors.Wrap(err, "decoding http body")
+	}
+	filteredChanges := []ImageDiffChange{}
+	for _, c := range changes {
+		if c.Type == ImageEventTypePackages || c.Type == ImageEventTypeToolchains {
+			filteredChanges = append(filteredChanges, c)
+		}
+	}
+	return filteredChanges, nil
 }
 
 // ImageHistoryInfo represents information about an image with its AMI and creation date.

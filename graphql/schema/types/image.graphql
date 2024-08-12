@@ -38,12 +38,12 @@ type Image {
   lastDeployed: Time!
   latestTask: Task
   name: String!
-  packages(opts: PackageOpts!): PackagesPayload!
-  toolchains(opts: ToolchainOpts!): ToolchainsPayload!
+  packages(opts: PackageOpts!): ImagePackagesPayload!
+  toolchains(opts: ToolchainOpts!): ImageToolchainsPayload!
   versionId: String!
 }
 
-type PackagesPayload {
+type ImagePackagesPayload {
   data: [Package!]!
   filteredCount: Int!
   totalCount: Int!
@@ -55,7 +55,7 @@ type Package {
   version: String!
 }
 
-type ToolchainsPayload {
+type ImageToolchainsPayload {
   data: [Toolchain!]!
   filteredCount: Int!
   totalCount: Int!
