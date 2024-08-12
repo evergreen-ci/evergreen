@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/evergreen-ci/certdepot"
@@ -960,6 +961,35 @@ func (h *Host) CheckTaskDataFetched(ctx context.Context, env evergreen.Environme
 func (h *Host) WithAgentMonitor(ctx context.Context, env evergreen.Environment, handleAgentMonitor func(procs []jasper.Process) error) error {
 	return h.withTaggedProcs(ctx, env, evergreen.AgentMonitorTag, func(procs []jasper.Process) error {
 		return handleAgentMonitor(procs)
+	})
+}
+
+// StopAgentMonitor stops the agent monitor (if it is running) on the host via
+// its Jasper service. On legacy hosts, this is a no-op.
+// TODO (DEVPROD-9348): this can be removed once all agent monitors have rolled
+// over to the newest version since on the new version, they stop themselves
+// when they're not in a healthy state.
+func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) error {
+	if (h.Distro.LegacyBootstrap() && h.NeedsReprovision != ReprovisionToLegacy) || h.NeedsReprovision == ReprovisionToNew {
+		return nil
+	}
+
+	return h.WithAgentMonitor(ctx, env, func(procs []jasper.Process) error {
+		catcher := grip.NewBasicCatcher()
+		var numRunning int
+		for _, proc := range procs {
+			if proc.Running(ctx) {
+				numRunning++
+				catcher.Wrapf(proc.Signal(ctx, syscall.SIGTERM), "signalling agent monitor process with ID '%s'", proc.ID())
+			}
+		}
+		grip.WarningWhen(numRunning > 1, message.Fields{
+			"message": fmt.Sprintf("host should be running at most one agent monitor, but found %d", len(procs)),
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+		})
+
+		return catcher.Resolve()
 	})
 }
 
