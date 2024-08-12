@@ -89,8 +89,7 @@ func (c *ssmClientImpl) DeleteParametersSimple(ctx context.Context, input *ssm.D
 }
 
 func (c *ssmClientImpl) DeleteParameters(ctx context.Context, input *ssm.DeleteParametersInput) ([]*ssm.DeleteParametersOutput, error) {
-	const maxParamsPerRequest = 10
-	return retryBatchSSMClientOp(ctx, input.Names, maxParamsPerRequest, c.client, input, func(paramNames []string, input *ssm.DeleteParametersInput) *ssm.DeleteParametersInput {
+	return retryBatchSSMClientOp(ctx, input.Names, c.client, input, func(paramNames []string, input *ssm.DeleteParametersInput) *ssm.DeleteParametersInput {
 		batchInput := *input
 		batchInput.Names = paramNames
 		return &batchInput
@@ -113,8 +112,7 @@ func (c *ssmClientImpl) GetParametersSimple(ctx context.Context, input *ssm.GetP
 }
 
 func (c *ssmClientImpl) GetParameters(ctx context.Context, input *ssm.GetParametersInput) ([]*ssm.GetParametersOutput, error) {
-	const maxParamsPerRequest = 10
-	return retryBatchSSMClientOp(ctx, input.Names, maxParamsPerRequest, c.client, input, func(paramNames []string, input *ssm.GetParametersInput) *ssm.GetParametersInput {
+	return retryBatchSSMClientOp(ctx, input.Names, c.client, input, func(paramNames []string, input *ssm.GetParametersInput) *ssm.GetParametersInput {
 		batchInput := *input
 		batchInput.Names = paramNames
 		return &batchInput
@@ -126,7 +124,9 @@ func (c *ssmClientImpl) GetParameters(ctx context.Context, input *ssm.GetParamet
 // retryBatchSSMClientOp runs an SSM operation with retries and handles batching for
 // SSM API methods that have a limit on the number of parameters that can be
 // queried at once.
-func retryBatchSSMClientOp[Input interface{}, Output interface{}](ctx context.Context, paramNames []string, maxParamsPerRequest int, client *ssm.Client, input Input, makeBatchInput func(paramNames []string, input Input) Input, op func(ctx context.Context, client *ssm.Client, input Input) (Output, error), opName string) ([]Output, error) {
+func retryBatchSSMClientOp[Input interface{}, Output interface{}](ctx context.Context, paramNames []string, client *ssm.Client, input Input, makeBatchInput func(paramNames []string, input Input) Input, op func(ctx context.Context, client *ssm.Client, input Input) (Output, error), opName string) ([]Output, error) {
+	// This limitation comes from the SSM docs.
+	const maxParamsPerRequest = 10
 	batches := makeParamNameBatches(paramNames, maxParamsPerRequest)
 
 	var outputs []Output
