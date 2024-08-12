@@ -1262,7 +1262,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		if _, err := prepareHostForAgentExit(ctx, agentExitParams{
 			host:       currentHost,
 			remoteAddr: h.remoteAddr,
-		}, h.env); err != nil {
+		}); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "could not prepare host for agent to exit",
 				"host_id":       currentHost.Id,
@@ -1315,7 +1315,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 // hosts, as the host may continue running, but it must stop all agent-related
 // activity for now. For a terminated host, the host should already have been
 // terminated but is nonetheless alive, so terminate it again.
-func prepareHostForAgentExit(ctx context.Context, params agentExitParams, env evergreen.Environment) (shouldExit bool, err error) {
+func prepareHostForAgentExit(ctx context.Context, params agentExitParams) (shouldExit bool, err error) {
 	switch params.host.Status {
 	case evergreen.HostQuarantined:
 		if err := params.host.SetNeedsAgentDeploy(ctx, true); err != nil {

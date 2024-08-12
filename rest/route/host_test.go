@@ -1165,9 +1165,12 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
 			require.NoError(t, db.ClearCollections(host.Collection))
 
-			rh, ok := makeHostIsUpPostHandler().(*hostIsUpPostHandler)
+			rh, ok := makeHostIsUpPostHandler(env).(*hostIsUpPostHandler)
 			require.True(t, ok)
 
 			h := &host.Host{
