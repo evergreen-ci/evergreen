@@ -37,7 +37,7 @@ func (r *imageResolver) Distros(ctx context.Context, obj *model.APIImage) ([]*mo
 }
 
 // Events is the resolver for the events field.
-func (r *imageResolver) Events(ctx context.Context, obj *model.APIImage, limit int, page int) ([]*model.APIImageEvent, error) {
+func (r *imageResolver) Events(ctx context.Context, obj *model.APIImage, limit int, page int) (*ImageEventsPayload, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: '%s'", err.Error()))
@@ -58,7 +58,12 @@ func (r *imageResolver) Events(ctx context.Context, obj *model.APIImage, limit i
 		apiImageEvent.BuildFromService(imageEvent)
 		apiImageEvents = append(apiImageEvents, &apiImageEvent)
 	}
-	return apiImageEvents, nil
+	count := len(apiImageEvents)
+
+	return &ImageEventsPayload{
+		Count:           count,
+		EventLogEntries: apiImageEvents,
+	}, nil
 }
 
 // LatestTask is the resolver for the latestTask field.

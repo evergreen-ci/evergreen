@@ -85,13 +85,13 @@ func TestEvents(t *testing.T) {
 
 	// Does not return the same events in different pages.
 	firstPageAMIs := []string{}
-	for _, event := range res {
+	for _, event := range res.EventLogEntries {
 		firstPageAMIs = append(firstPageAMIs, utility.FromStringPtr(event.AMIAfter))
 	}
 	res, err = config.Resolvers.Image().Events(ctx, &image, 5, 1)
 	require.NoError(t, err)
 	assert.Len(t, res, 5)
-	for _, event := range res {
+	for _, event := range res.EventLogEntries {
 		assert.False(t, utility.StringSliceContains(firstPageAMIs, utility.FromStringPtr(event.AMIAfter)))
 	}
 }

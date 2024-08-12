@@ -34,7 +34,7 @@ type Image {
   id: String!
   ami: String!
   distros: [Distro!]!
-  events(limit: Int!, page: Int!): [ImageEvent!]!
+  events(limit: Int!, page: Int!): ImageEventsPayload!
   kernel: String!
   lastDeployed: Time!
   latestTask: Task
@@ -61,6 +61,11 @@ type ImageEvent {
   timestamp: Time!
   amiBefore: String
   amiAfter: String!
+}
+
+type ImageEventsPayload {
+  count: Int!
+  eventLogEntries: [ImageEvent!]!
 }
 
 type ImageEventEntry {
