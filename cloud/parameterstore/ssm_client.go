@@ -70,9 +70,9 @@ func newSSMClient(ctx context.Context, region string) (ssmClient, error) {
 }
 
 func (c *ssmClientImpl) PutParameter(ctx context.Context, input *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
-	return retrySSMClientOp(ctx, "PutParameter", c.client, input, func(ctx context.Context, client *ssm.Client, input *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
+	return retrySSMClientOp(ctx, c.client, input, func(ctx context.Context, client *ssm.Client, input *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
 		return client.PutParameter(ctx, input)
-	})
+	}, "PutParameter")
 }
 
 func (c *ssmClientImpl) DeleteParametersSimple(ctx context.Context, input *ssm.DeleteParametersInput) ([]string, error) {
@@ -89,15 +89,13 @@ func (c *ssmClientImpl) DeleteParametersSimple(ctx context.Context, input *ssm.D
 }
 
 func (c *ssmClientImpl) DeleteParameters(ctx context.Context, input *ssm.DeleteParametersInput) ([]*ssm.DeleteParametersOutput, error) {
-	// TODO (DEVPROD-9391): follow-up PR should handle batching requests due
-	// to limit of 10 parameters per API call.
-	output, err := retrySSMClientOp(ctx, "DeleteParameters", c.client, input, func(ctx context.Context, client *ssm.Client, input *ssm.DeleteParametersInput) (*ssm.DeleteParametersOutput, error) {
+	return retryBatchSSMClientOp(ctx, input.Names, c.client, input, func(paramNames []string, input *ssm.DeleteParametersInput) *ssm.DeleteParametersInput {
+		batchInput := *input
+		batchInput.Names = paramNames
+		return &batchInput
+	}, func(ctx context.Context, client *ssm.Client, input *ssm.DeleteParametersInput) (*ssm.DeleteParametersOutput, error) {
 		return client.DeleteParameters(ctx, input)
-	})
-	if err != nil {
-		return nil, err
-	}
-	return []*ssm.DeleteParametersOutput{output}, nil
+	}, "DeleteParameters")
 }
 
 func (c *ssmClientImpl) GetParametersSimple(ctx context.Context, input *ssm.GetParametersInput) ([]ssmTypes.Parameter, error) {
@@ -114,19 +112,37 @@ func (c *ssmClientImpl) GetParametersSimple(ctx context.Context, input *ssm.GetP
 }
 
 func (c *ssmClientImpl) GetParameters(ctx context.Context, input *ssm.GetParametersInput) ([]*ssm.GetParametersOutput, error) {
-	// TODO (DEVPROD-9391): follow-up PR should handle batching requests due
-	// to limit of 10 parameters per API call.
-	output, err := retrySSMClientOp(ctx, "GetParameters", c.client, input, func(ctx context.Context, client *ssm.Client, input *ssm.GetParametersInput) (*ssm.GetParametersOutput, error) {
+	return retryBatchSSMClientOp(ctx, input.Names, c.client, input, func(paramNames []string, input *ssm.GetParametersInput) *ssm.GetParametersInput {
+		batchInput := *input
+		batchInput.Names = paramNames
+		return &batchInput
+	}, func(ctx context.Context, client *ssm.Client, input *ssm.GetParametersInput) (*ssm.GetParametersOutput, error) {
 		return client.GetParameters(ctx, input)
-	})
-	if err != nil {
-		return nil, err
+	}, "GetParameters")
+}
+
+// retryBatchSSMClientOp runs an SSM operation with retries and handles batching for
+// SSM API methods that have a limit on the number of parameters that can be
+// queried at once.
+func retryBatchSSMClientOp[Input interface{}, Output interface{}](ctx context.Context, paramNames []string, client *ssm.Client, input Input, makeBatchInput func(paramNames []string, input Input) Input, op func(ctx context.Context, client *ssm.Client, input Input) (Output, error), opName string) ([]Output, error) {
+	// This limitation comes from the SSM docs.
+	const maxParamsPerRequest = 10
+	batches := utility.MakeSliceBatches(paramNames, maxParamsPerRequest)
+
+	var outputs []Output
+	for _, batch := range batches {
+		batchInput := makeBatchInput(batch, input)
+		output, err := retrySSMClientOp(ctx, client, batchInput, op, opName)
+		if err != nil {
+			return nil, err
+		}
+		outputs = append(outputs, output)
 	}
-	return []*ssm.GetParametersOutput{output}, nil
+	return outputs, nil
 }
 
 // retrySSMClientOp runs a single SSM operation with retries.
-func retrySSMClientOp[Input interface{}, Output interface{}](ctx context.Context, opName string, client *ssm.Client, input Input, clientOp func(ctx context.Context, client *ssm.Client, input Input) (Output, error)) (Output, error) {
+func retrySSMClientOp[Input interface{}, Output interface{}](ctx context.Context, client *ssm.Client, input Input, clientOp func(ctx context.Context, client *ssm.Client, input Input) (Output, error), opName string) (Output, error) {
 	var output Output
 	var err error
 
