@@ -1062,6 +1062,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.True(t, ok, resp.Data())
 			require.NotZero(t, apiHost)
 			assert.Equal(t, instanceID, utility.FromStringPtr(apiHost.Id))
+			assert.Equal(t, evergreen.HostStarting, utility.FromStringPtr(apiHost.Status))
 
 			dbIntentHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
@@ -1071,6 +1072,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, realHost)
 			assert.Equal(t, realHost.Status, evergreen.HostStarting, "intent host should be converted to real host when it's up")
+			assert.False(t, realHost.NeedsNewAgentMonitor)
 		},
 		"ConvertsFailedIntentHostToDecommissionedRealHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host) {
 			h.Status = evergreen.HostBuildingFailed
@@ -1086,13 +1088,12 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			resp := rh.Run(ctx)
 
 			require.NotZero(t, resp)
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			apiHost, ok := resp.Data().(*restmodel.APIHost)
 			require.True(t, ok, resp.Data())
 			require.NotZero(t, apiHost)
 			assert.Equal(t, instanceID, utility.FromStringPtr(apiHost.Id))
-			assert.NotZero(t, resp)
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, evergreen.HostDecommissioned, utility.FromStringPtr(apiHost.Status))
 
 			dbIntentHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
@@ -1102,6 +1103,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, realHost)
 			assert.Equal(t, evergreen.HostDecommissioned, realHost.Status, "host that fails to build should be decommissioned when it comes up")
+			assert.False(t, realHost.NeedsNewAgentMonitor)
 		},
 		"ConvertsTerminatedHostIntoDecommissionedRealHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host) {
 			h.Status = evergreen.HostTerminated
@@ -1116,13 +1118,12 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			resp := rh.Run(ctx)
 
 			require.NotZero(t, resp)
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			apiHost, ok := resp.Data().(*restmodel.APIHost)
 			require.True(t, ok, resp.Data())
 			require.NotZero(t, apiHost)
 			assert.Equal(t, instanceID, utility.FromStringPtr(apiHost.Id))
-			assert.NotZero(t, resp)
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, evergreen.HostDecommissioned, utility.FromStringPtr(apiHost.Status))
 
 			dbIntentHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
@@ -1132,6 +1133,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, realHost)
 			assert.Equal(t, realHost.Status, evergreen.HostDecommissioned, "already-terminated intent host should be decommissioned when it's up")
+			assert.False(t, realHost.NeedsNewAgentMonitor)
 		},
 		"NoopsForNonIntentHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host) {
 			instanceID := generateFakeEC2InstanceID()
@@ -1152,13 +1154,73 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			require.True(t, ok, resp.Data())
 			require.NotZero(t, apiHost)
 			assert.Equal(t, instanceID, utility.FromStringPtr(apiHost.Id))
-			assert.NotZero(t, resp)
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, evergreen.HostStarting, utility.FromStringPtr(apiHost.Status))
 
 			dbHost, err := host.FindOneId(ctx, instanceID)
 			require.NoError(t, err)
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostStarting, dbHost.Status, "host should not be modified if it's not an intent host")
+			assert.False(t, dbHost.NeedsNewAgentMonitor)
+		},
+		"MarksHostAsNeedingNewAgentMonitorForReprovisioning": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host) {
+			instanceID := generateFakeEC2InstanceID()
+			h.Id = instanceID
+			h.Status = evergreen.HostProvisioning
+			h.NeedsReprovision = host.ReprovisionToNew
+			h.NeedsNewAgentMonitor = false
+			require.NoError(t, h.Insert(ctx))
+
+			rh.params = restmodel.APIHostIsUpOptions{
+				HostID: instanceID,
+			}
+
+			resp := rh.Run(ctx)
+
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			apiHost, ok := resp.Data().(*restmodel.APIHost)
+			require.True(t, ok, resp.Data())
+			require.NotZero(t, apiHost)
+			assert.Equal(t, instanceID, utility.FromStringPtr(apiHost.Id))
+			assert.Equal(t, evergreen.HostProvisioning, utility.FromStringPtr(apiHost.Status))
+			assert.EqualValues(t, host.ReprovisionToNew, utility.FromStringPtr(apiHost.NeedsReprovision))
+
+			dbHost, err := host.FindOneId(ctx, instanceID)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostProvisioning, dbHost.Status)
+			assert.Equal(t, host.ReprovisionToNew, dbHost.NeedsReprovision)
+			assert.True(t, dbHost.NeedsNewAgentMonitor, "should mark a host whose agent monitor is about to shut down as needing a new agent monitor")
+		},
+		"DoesNotMarkQuarantinedHostAsReadyForReprovisioning": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host) {
+			instanceID := generateFakeEC2InstanceID()
+			h.Id = instanceID
+			h.Status = evergreen.HostQuarantined
+			h.NeedsReprovision = host.ReprovisionToNew
+			h.NeedsNewAgentMonitor = false
+			require.NoError(t, h.Insert(ctx))
+
+			rh.params = restmodel.APIHostIsUpOptions{
+				HostID: instanceID,
+			}
+
+			resp := rh.Run(ctx)
+
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			apiHost, ok := resp.Data().(*restmodel.APIHost)
+			require.True(t, ok, resp.Data())
+			require.NotZero(t, apiHost)
+			assert.Equal(t, instanceID, utility.FromStringPtr(apiHost.Id))
+			assert.Equal(t, evergreen.HostQuarantined, utility.FromStringPtr(apiHost.Status))
+			assert.EqualValues(t, host.ReprovisionToNew, utility.FromStringPtr(apiHost.NeedsReprovision))
+
+			dbHost, err := host.FindOneId(ctx, instanceID)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
+			assert.Equal(t, host.ReprovisionToNew, dbHost.NeedsReprovision)
+			assert.False(t, dbHost.NeedsNewAgentMonitor, "should not mark a host as needing new agent monitor if it's quarantined")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
