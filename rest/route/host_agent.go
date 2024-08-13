@@ -805,24 +805,6 @@ func handleReprovisioning(ctx context.Context, env evergreen.Environment, h *hos
 		return apimodels.NextTaskResponse{}, nil
 	}
 
-	// TODO (DEVPROD-9348): this can be removed once all agent monitors have
-	// rolled over to the newest version since on the new version, they stop
-	// themselves when they're not in a healthy state.
-	stopCtx, stopCancel := context.WithTimeout(ctx, 30*time.Second)
-	defer stopCancel()
-	if err := h.StopAgentMonitor(stopCtx, env); err != nil {
-		// Stopping the agent monitor should not stop reprovisioning as long as
-		// the host is not currently running a task.
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "problem stopping agent monitor for reprovisioning",
-			"host_id":       h.Id,
-			"operation":     "next_task",
-			"revision":      evergreen.BuildRevision,
-			"agent":         evergreen.AgentVersion,
-			"current_agent": h.AgentRevision,
-		}))
-	}
-
 	if err := prepareForReprovision(ctx, env, h); err != nil {
 		return apimodels.NextTaskResponse{}, err
 	}
@@ -1336,12 +1318,6 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 func prepareHostForAgentExit(ctx context.Context, params agentExitParams) (shouldExit bool, err error) {
 	switch params.host.Status {
 	case evergreen.HostQuarantined:
-		// TODO (DEVPROD-9348): this can be removed once all agent monitors have
-		// rolled over to the newest version since on the new version, they stop
-		// themselves when they're not in a healthy state.
-		if err := params.host.StopAgentMonitor(ctx, h.env); err != nil {
-			return true, errors.Wrap(err, "stopping agent monitor")
-		}
 		if err := params.host.SetNeedsAgentDeploy(ctx, true); err != nil {
 			return true, errors.Wrap(err, "marking host as needing agent or agent monitor deploy")
 		}
