@@ -966,14 +966,9 @@ func (h *Host) WithAgentMonitor(ctx context.Context, env evergreen.Environment, 
 
 // StopAgentMonitor stops the agent monitor (if it is running) on the host via
 // its Jasper service. On legacy hosts, this is a no-op.
-// Stopping the agent monitor manually like this is only necessary for legacy
-// reasons. There are some static hosts that have been quarantined for a long
-// time, and they could have very old versions of the agent monitor running on
-// them. Newer versions of the agent monitor shut themselves down when
-// appropriate, making this operation unnecessary. However, we have no guarantee
-// on how long ago hosts were quarantined and when they might be unquarantined,
-// meaning we can't get rid of this unless we know every single static host has
-// is running a relatively recent version of the agent monitor.
+// TODO (DEVPROD-9348): this can be removed once all agent monitors have rolled
+// over to the newest version since on the new version, they stop themselves
+// when they're not in a healthy state.
 func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) error {
 	if (h.Distro.LegacyBootstrap() && h.NeedsReprovision != ReprovisionToLegacy) || h.NeedsReprovision == ReprovisionToNew {
 		return nil
