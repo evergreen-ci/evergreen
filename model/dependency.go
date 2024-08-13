@@ -106,9 +106,9 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 			catcher.Wrapf(err, "task group '%s' in variant '%s' contains unschedulable task '%s'", pair.TaskName, pair.Variant, t)
 		}
 
-		// If any of the previous tasks in the task group are unschedulable, return false.
-		// And unschedule everything.
 		if catcher.HasErrors() {
+			// If any of the previous tasks in the task group are unschedulable,
+			// unschedule everything in the single host task group.
 			di.included[pair] = false
 			for _, p := range tg.Tasks {
 				di.included[TVPair{Variant: pair.Variant, TaskName: p}] = false

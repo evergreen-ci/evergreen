@@ -1234,34 +1234,38 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 // FindTaskGroupForTask returns a specific task group from a project
 // that contains the given task.
 func (p *Project) FindTaskGroupForTask(bvName, taskName string) *TaskGroup {
+	// First, map all task groups that contain the given task.
 	tgWithTask := map[string]TaskGroup{}
 	for _, tg := range p.TaskGroups {
 		for _, t := range tg.Tasks {
 			if t == taskName {
 				tgWithTask[tg.Name] = tg
-				fmt.Println("===", tg.Name, "===")
 			}
 		}
 	}
 
-	for _, bv := range p.BuildVariants {
-		if bv.Name != bvName {
+	// Second, find the build variant in question.
+	var bv BuildVariant
+	for _, pbv := range p.BuildVariants {
+		if pbv.Name == bvName {
+			bv = pbv
+			break
+		}
+	}
+
+	// Third, loop through the build variant's task units, which may be an inline task group
+	// or a reference to a defined task group.
+	for _, t := range bv.Tasks {
+		// Check inline task groups.
+		if t.TaskGroup != nil {
+			if utility.StringSliceContains(t.TaskGroup.Tasks, taskName) {
+				return t.TaskGroup
+			}
 			continue
 		}
-		for _, t := range bv.Tasks {
-			// Check inline task groups.
-			if t.TaskGroup != nil {
-				for _, tg := range t.TaskGroup.Tasks {
-					if tg == taskName {
-						return t.TaskGroup
-					}
-				}
-				continue
-			}
-			// Check if the an already found task group contains the task.
-			if tg, ok := tgWithTask[t.Name]; ok {
-				return &tg
-			}
+		// Check if the task group is in the map of task groups with the task.
+		if tg, ok := tgWithTask[t.Name]; ok {
+			return &tg
 		}
 	}
 
