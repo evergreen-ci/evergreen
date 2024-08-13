@@ -159,7 +159,7 @@ func Fetch() cli.Command {
 func parseModuleTokens(moduleTokens []string) map[string]string {
 	moduleTokensMap := make(map[string]string)
 	for _, token := range moduleTokens {
-		// parse the string formatted as 'moduleOwner_moduleRepo:token'
+		// parse the string formatted as 'moduleName:token'
 		parts := strings.Split(token, ":")
 		if len(parts) != 2 {
 			grip.Warningf("invalid module token format")

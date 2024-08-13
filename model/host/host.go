@@ -315,12 +315,6 @@ type ProvisionOptions struct {
 	SetupScript string `bson:"setup_script" json:"setup_script"`
 }
 
-// type ProjectModule struct {
-// 	Name  string `bson:"name" plugin:"expand"`
-// 	Repo  string `bson:"repo"  plugin:"expand"`
-// 	Owner string `bson:"owner"  plugin:"expand"`
-// }
-
 // SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
 type SpawnOptions struct {
 	// TimeoutTeardown is the time that this host should be torn down. In most cases, a host
