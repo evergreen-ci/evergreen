@@ -96,8 +96,8 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 	if tg := di.Project.FindTaskGroupForTask(pair.Variant, pair.TaskName); tg != nil && tg.MaxHosts == 1 {
 		catcher := grip.NewBasicCatcher()
 		for _, t := range tg.Tasks {
-			// When we reach the current task, stop recursing.
 			if t == pair.TaskName {
+				// When we reach the current task, stop looping.
 				break
 			}
 			_, err := di.handle(TVPair{Variant: pair.Variant, TaskName: t}, activationInfo, generatedVariants, false)
