@@ -80,13 +80,6 @@ type HostRequestOptions struct {
 	HomeVolumeSize       int        `json:"home_volume_size" yaml:"home_volume_size"`
 	HomeVolumeID         string     `json:"home_volume_id" yaml:"home_volume_id"`
 	Expiration           *time.Time `json:"expiration" yaml:"expiration"`
-
-	// The project information needed to fetch task data. Fetching it when the host request
-	// options are built instead of using the task id to fetch it when the host is
-	// created saves a few db calls.
-	ProjectRepo    string               `bson:"project_repo" json:"project_repo"`
-	ProjectOwner   string               `bson:"project_owner" json:"project_owner"`
-	ProjectModules []host.ProjectModule `bson:"project_modules" json:"project_modules"`
 }
 
 type DistroInfo struct {

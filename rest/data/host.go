@@ -272,12 +272,7 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 		SleepScheduleOptions:  options.SleepScheduleOptions,
 		UseProjectSetupScript: options.UseProjectSetupScript,
 		ProvisionOptions: &host.ProvisionOptions{
-			TaskId: options.TaskID,
-			FetchOpts: &host.FetchOpts{
-				ProjectRepo:  options.ProjectRepo,
-				ProjectOwner: options.ProjectOwner,
-				Modules:      options.ProjectModules,
-			},
+			TaskId:      options.TaskID,
 			TaskSync:    options.TaskSync,
 			SetupScript: options.SetupScript,
 			OwnerId:     user.Id,

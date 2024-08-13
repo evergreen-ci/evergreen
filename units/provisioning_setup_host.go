@@ -487,10 +487,6 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 		}
 
 		if j.host.ProvisionOptions.OwnerId != "" && j.host.ProvisionOptions.TaskId != "" {
-			err := j.host.PopulateGithubTokens(ctx)
-			if err != nil {
-				return errors.Wrap(err, "populating GitHub token")
-			}
 			grip.Info(message.Fields{
 				"message": "fetching data for task on host",
 				"task":    j.host.ProvisionOptions.TaskId,
@@ -579,7 +575,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context) error {
 	if j.host.ProvisionOptions.TaskSync {
 		cmd = strings.Join(j.host.SpawnHostPullTaskSyncCommand(), " ")
 	} else {
-		cmd = strings.Join(j.host.SpawnHostGetTaskDataCommand(), " ")
+		cmd = strings.Join(j.host.SpawnHostGetTaskDataCommand(ctx), " ")
 	}
 	var output string
 	var err error
