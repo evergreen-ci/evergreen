@@ -1116,23 +1116,19 @@ func (h *Host) SpawnHostGetTaskDataCommand(ctx context.Context, githubAppToken s
 		"--dir", h.Distro.WorkDir,
 	}
 
-	if h.ProvisionOptions.TaskId != "" {
-		if githubAppToken != "" || moduleTokens != nil {
-			s = append(s, "--use-app-token")
-			s = append(s, "--revoke-tokens")
-		}
-
-		if githubAppToken != "" {
-			s = append(s, "--token", githubAppToken)
-		}
-
-		if moduleTokens != nil {
-			for _, moduleToken := range moduleTokens {
-				s = append(s, "-m", moduleToken)
-			}
-		}
-
+	if githubAppToken != "" || moduleTokens != nil {
+		s = append(s, "--use-app-token")
+		s = append(s, "--revoke-tokens")
 	}
+
+	if githubAppToken != "" {
+		s = append(s, "--token", githubAppToken)
+	}
+
+	for _, moduleToken := range moduleTokens {
+		s = append(s, "-m", moduleToken)
+	}
+
 	return s
 }
 

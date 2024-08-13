@@ -103,7 +103,11 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 			Message:    errors.Wrap(err, "generating Jasper credentials").Error(),
 		}
 	}
-	githubAppToken, moduleTokens := units.GetGithubTokensForTask(h.ProvisionOptions.TaskId, ctx)
+	var githubAppToken string
+	var moduleTokens []string
+	if h.ProvisionOptions.TaskId != "" {
+		githubAppToken, moduleTokens = units.GetGithubTokensForTask(h.ProvisionOptions.TaskId, ctx)
+	}
 	script, err := h.GenerateUserDataProvisioningScript(ctx, env.Settings(), creds, githubAppToken, moduleTokens)
 	if err != nil {
 		return "", gimlet.ErrorResponse{

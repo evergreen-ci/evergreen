@@ -52,6 +52,23 @@ func TestCurlCommand(t *testing.T) {
 	assert.Equal(expected, cmd)
 }
 
+func TestSpawnHostGetTaskDataCommand(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	h := &Host{
+		Id: "host_id",
+		ProvisionOptions: &ProvisionOptions{
+			TaskId: "task_id",
+		},
+		Distro: distro.Distro{
+			WorkDir: "/some/directory",
+		},
+	}
+	expected := []string{"/home/evergreen", "-c", "/home/.evergreen.yml", "fetch", "-t", "task_id", "--source", "--artifacts", "--dir", "/some/directory", "--use-app-token", "--revoke-tokens", "--token", "gh_something_token", "-m", "module:gh_module_token", "-m", "module2:gh_module2_token"}
+	cmd := h.SpawnHostGetTaskDataCommand(ctx, "gh_something_token", []string{"module:gh_module_token", "module2:gh_module2_token"})
+	assert.Equal(t, expected, cmd)
+}
+
 func TestCurlCommandWithRetry(t *testing.T) {
 	env := &mock.Environment{
 		EvergreenSettings: &evergreen.Settings{
@@ -217,7 +234,7 @@ func TestJasperCommands(t *testing.T) {
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 
-			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds)
+			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds, "", []string{})
 			require.NoError(t, err)
 
 			assertStringContainsOrderedSubstrings(t, script, expectedCmds)
@@ -275,7 +292,7 @@ func TestJasperCommands(t *testing.T) {
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 
-			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds)
+			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds, "", []string{})
 			require.NoError(t, err)
 
 			assertStringContainsOrderedSubstrings(t, script, expectedCmds)
@@ -447,7 +464,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 				markDone,
 			)
 
-			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds)
+			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds, "", []string{})
 			require.NoError(t, err)
 
 			assertStringContainsOrderedSubstrings(t, script, expectedCmds)
@@ -495,7 +512,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 				markDone,
 			)
 
-			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds)
+			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds, "", []string{})
 			require.NoError(t, err)
 
 			assertStringContainsOrderedSubstrings(t, script, expectedCmds)
