@@ -146,6 +146,90 @@ func TestFindProject(t *testing.T) {
 
 }
 
+func TestFindTaskGroupForTask(t *testing.T) {
+	parserProject := &ParserProject{
+		Tasks: []parserTask{
+			{Name: "t1"},
+			{Name: "t2"},
+			{Name: "tg1t1"},
+			{Name: "tg1t2"},
+			{Name: "tg1t3"},
+			{Name: "tg1t4"},
+			{Name: "tg2t1"},
+			{Name: "tg2t2"},
+			{Name: "tg3t1"},
+			{Name: "tg3t2"},
+			{Name: "tg4t1"},
+			{Name: "tg4t2"},
+		},
+		BuildVariants: []parserBV{
+			{Name: "v1", Tasks: []parserBVTaskUnit{
+				{Name: "t1"},
+				{Name: "t2"},
+				{Name: "tg1t1"},
+				{Name: "tg1t2"},
+				{Name: "tg1t3"},
+				{Name: "tg1t4"},
+				{Name: "tg3"},
+				{Name: "tg4", TaskGroup: &parserTaskGroup{
+					Name:  "tg4",
+					Tasks: []string{"tg4t1", "tg4t2"},
+				}},
+			}},
+			{Name: "v2", Tasks: []parserBVTaskUnit{
+				{Name: "t1"},
+				{Name: "tg2t1"},
+				{Name: "tg2t2"},
+			}},
+		},
+		TaskGroups: []parserTaskGroup{
+			{Name: "tg1", Tasks: []string{"tg1t1", "tg1t2", "tg1t3", "tg1t4"}},
+			{Name: "tg2", Tasks: []string{"tg2t1", "tg2t2"}},
+			{Name: "tg3", Tasks: []string{"tg3t1", "tg3t2"}},
+		},
+	}
+	p, err := TranslateProject(parserProject)
+	require.NoError(t, err)
+	assert.NotNil(t, p)
+
+	t.Run("NotFoundTaskGroupWhenDefinedIndividually", func(t *testing.T) {
+		tg1Tasks := []string{"tg1t1", "tg1t2", "tg1t3", "tg1t4"}
+		for _, task := range tg1Tasks {
+			tg := p.FindTaskGroupForTask("v1", task)
+			require.Nil(t, tg, "finding task group for task %s", task)
+		}
+
+		tg2Tasks := []string{"tg2t1", "tg2t2"}
+		for _, task := range tg2Tasks {
+			tg := p.FindTaskGroupForTask("v2", task)
+			require.Nil(t, tg, "finding task group for task %s", task)
+		}
+	})
+
+	t.Run("FindsTaskGroupWhenDefinedAsATaskGroup", func(t *testing.T) {
+		tg3Tasks := []string{"tg3t1", "tg3t2"}
+		for _, task := range tg3Tasks {
+			tg := p.FindTaskGroupForTask("v1", task)
+			require.NotNil(t, tg, "finding task group for task %s", task)
+			assert.Equal(t, "tg3", tg.Name)
+		}
+	})
+
+	t.Run("FindsTaskGroupWhenDefinedInline", func(t *testing.T) {
+		tg4Tasks := []string{"tg4t1", "tg4t2"}
+		for _, task := range tg4Tasks {
+			tg := p.FindTaskGroupForTask("v1", task)
+			require.NotNil(t, tg, "finding task group for task %s", task)
+			assert.Equal(t, "tg4", tg.Name)
+		}
+	})
+
+	t.Run("ReturnsNilForNonTaskGroupTask", func(t *testing.T) {
+		tg := p.FindTaskGroupForTask("v1", "t1")
+		assert.Nil(t, tg)
+	})
+}
+
 func TestGetVariantMappings(t *testing.T) {
 
 	Convey("With a project", t, func() {
