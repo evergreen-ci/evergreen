@@ -308,7 +308,7 @@ Fields:
     commits. For example, if you specify a task with `cron: '@daily'`, Evergreen
     will check that task once per day. If the most recent mainline commit is
     inactive, Evergreen will activate it. In this way, cron is tied more closely
-    to project commit activity. For more on the differences between cron, batchtime and [periodic builds](Project-and-Distro-Settings#periodic-builds), see [controlling when tasks run](../Project-Configuration/#controlling-when-tasks-run).
+    to project commit activity. For more on the differences between cron, batchtime and [periodic builds](Project-and-Distro-Settings#periodic-builds), see [controlling when tasks run](Controlling-when-tasks-run).
 -   `task_group`: a [task group](#task-groups)
     may be defined directly inline or using YAML aliases on a build
     variant task. This is an alternative to referencing a task group
@@ -629,7 +629,7 @@ To cause a task to not run at all, set `disable: true`.
 
 Can also set activate, batchtime or cron on tasks or build variants, detailed
 [here](#build-variants). For more on controlling scheduling of tasks, see 
-[controlling when tasks run](../Project-Configuration/#controlling-when-tasks-run)
+[controlling when tasks run](Controlling-when-tasks-run)
 
 If there are conflicting settings defined at different levels, the order of
 priority is defined [here](#task-fields-override-hierarchy).
@@ -1788,7 +1788,7 @@ which a build variant's `depends_on` overrides the task definition's
 
 #### Specific Activation Override Hierarchy
 `activate`, `cron`, and `batchtime` are called _specific activation conditions_ because Evergreen will only activate a
-task if certain conditions are met. For instance, Evergreen will only activate a task that has `cron` set when the cron
+task if certain conditions are met (see [detailed docs for more info](Controlling-when-tasks-run.md)). For instance, Evergreen will only activate a task that has `cron` set when the cron
 time elapses. But if multiple specific activation conditions are set simultaneously (or they're configured with
 conflicting conditions), which specific activation condition does Evergreen respect? This section exists to demystify
 how they interact with one another.
