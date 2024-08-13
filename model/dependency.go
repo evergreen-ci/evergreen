@@ -100,7 +100,7 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 			if t == pair.TaskName {
 				break
 			}
-			_, err := di.handle(TVPair{pair.Variant, t}, activationInfo, generatedVariants, false)
+			_, err := di.handle(TVPair{Variant: pair.Variant, TaskName: t}, activationInfo, generatedVariants, false)
 			catcher.Wrapf(err, "task group '%s' in variant '%s' contains unschedulable task '%s'", pair.TaskName, pair.Variant, t)
 		}
 
@@ -109,7 +109,7 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 		if catcher.HasErrors() {
 			di.included[pair] = false
 			for _, p := range tg.Tasks {
-				di.included[TVPair{pair.Variant, p}] = false
+				di.included[TVPair{Variant: pair.Variant, TaskName: p}] = false
 			}
 			return false, catcher.Resolve()
 		}
