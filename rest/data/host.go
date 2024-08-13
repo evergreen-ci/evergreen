@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
@@ -104,7 +103,8 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 			Message:    errors.Wrap(err, "generating Jasper credentials").Error(),
 		}
 	}
-	script, err := h.GenerateUserDataProvisioningScript(ctx, env.Settings(), creds)
+	githubAppToken, moduleTokens := units.GetGithubTokensForTask(h.ProvisionOptions.TaskId, ctx)
+	script, err := h.GenerateUserDataProvisioningScript(ctx, env.Settings(), creds, githubAppToken, moduleTokens)
 	if err != nil {
 		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -304,7 +304,7 @@ func PostHostIsUp(ctx context.Context, params restmodel.APIHostIsUpOptions) (*re
 		}
 	}
 
-	var apiHost model.APIHost
+	var apiHost restmodel.APIHost
 	apiHost.BuildFromService(h, nil)
 	return &apiHost, nil
 }

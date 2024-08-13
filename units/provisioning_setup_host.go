@@ -12,11 +12,16 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -575,7 +580,8 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context) error {
 	if j.host.ProvisionOptions.TaskSync {
 		cmd = strings.Join(j.host.SpawnHostPullTaskSyncCommand(), " ")
 	} else {
-		cmd = strings.Join(j.host.SpawnHostGetTaskDataCommand(ctx), " ")
+		githubAppToken, moduleTokens := GetGithubTokensForTask(j.host.ProvisionOptions.TaskId, ctx)
+		cmd = strings.Join(j.host.SpawnHostGetTaskDataCommand(ctx, githubAppToken, moduleTokens), " ")
 	}
 	var output string
 	var err error
@@ -832,4 +838,58 @@ func parseLsblkOutput(lsblkOutput string) ([]blockDevice, error) {
 	}
 
 	return devices.BlockDevices, nil
+}
+
+// GetGithubTokensForTask returns a read-only token for owner/repo associated with the task
+// and a read-only token for each module associated with the task.
+func GetGithubTokensForTask(taskId string, ctx context.Context) (string, []string) {
+	// Do not error at any point while trying to populate github tokens
+	// because if the repo is not private, cloning the repo will still work.
+	// Either way, we should still spin up the host even if we can't
+	// fetch the data.
+
+	// get the owner, repo and modules from the version manifest
+	var projectOwner, projectRepo string
+	var modules map[string]*manifest.Module
+	t, err := task.FindOneId(taskId)
+	if err != nil && t != nil {
+		// versions from pr patches won't have project owner and repo
+		mfest, err := manifest.FindFromVersion(t.Version, t.Project, t.Revision, t.Requester)
+		if err != nil {
+			modules = mfest.Modules
+		}
+		p, err := model.FindMergedProjectRef(t.Project, t.Version, false)
+		if err != nil {
+			projectOwner = p.Owner
+			projectRepo = p.Repo
+		}
+	}
+	var githubAppToken string
+	var moduleTokens []string
+	settings, err := evergreen.GetConfig(ctx)
+	opts := &github.InstallationTokenOptions{
+		Permissions: &github.InstallationPermissions{
+			Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
+		},
+	}
+
+	if projectOwner != "" && projectRepo != "" {
+		// Ignore any errors because if the repo is not private, cloning the repo will still work.
+		// Either way, we should still spin up the host even if we can't fetch the data.
+		githubAppToken, _ = settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, projectOwner, projectRepo, opts)
+
+	}
+
+	if modules != nil {
+		for moduleName, module := range modules {
+			if module.Repo == "" {
+				_, module.Repo, _ = thirdparty.ParseGitUrl(module.URL)
+			}
+			if module.Owner != "" && module.Repo != "" {
+				token, _ := settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, module.Owner, module.Repo, opts)
+				moduleTokens = append(moduleTokens, fmt.Sprintf("%s:%s", moduleName, token))
+			}
+		}
+	}
+	return githubAppToken, moduleTokens
 }

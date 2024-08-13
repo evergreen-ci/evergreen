@@ -16,15 +16,10 @@ import (
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/userdata"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/manifest"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -399,7 +394,7 @@ func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 // is provisioning in user data. If, for some reason, this script gets
 // interrupted, there's no guarantee that it will succeed if run again, since we
 // cannot enforce idempotency on the setup script.
-func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings *evergreen.Settings, creds *certdepot.Credentials) (string, error) {
+func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings *evergreen.Settings, creds *certdepot.Credentials, githubAppToken string, moduleTokens []string) (string, error) {
 	var err error
 	checkProvisioningStarted := h.CheckUserDataProvisioningStartedCommand()
 
@@ -433,7 +428,7 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 			if h.ProvisionOptions.TaskSync {
 				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostPullTaskSyncCommand(), " ")}
 			} else {
-				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(ctx), " ")}
+				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(ctx, githubAppToken, moduleTokens), " ")}
 			}
 			var getTaskDataCmd string
 			getTaskDataCmd, err = h.buildLocalJasperClientRequest(
@@ -1106,7 +1101,7 @@ func (h *Host) spawnHostConfig(settings *evergreen.Settings) ([]byte, error) {
 
 // SpawnHostGetTaskDataCommand returns the command that fetches the task data
 // for a spawn host.
-func (h *Host) SpawnHostGetTaskDataCommand(ctx context.Context) []string {
+func (h *Host) SpawnHostGetTaskDataCommand(ctx context.Context, githubAppToken string, moduleTokens []string) []string {
 	s := []string{
 		// We can't use the absolute path for the binary because we always run
 		// it in a Cygwin context on Windows.
@@ -1122,7 +1117,6 @@ func (h *Host) SpawnHostGetTaskDataCommand(ctx context.Context) []string {
 	}
 
 	if h.ProvisionOptions.TaskId != "" {
-		githubAppToken, moduleTokens := getGithubTokensForTask(h.ProvisionOptions.TaskId, ctx)
 		if githubAppToken != "" || moduleTokens != nil {
 			s = append(s, "--use-app-token")
 			s = append(s, "--revoke-tokens")
@@ -1140,60 +1134,6 @@ func (h *Host) SpawnHostGetTaskDataCommand(ctx context.Context) []string {
 
 	}
 	return s
-}
-
-// getGithubTokensForTask returns a read-only token for owner/repo associated with the task
-// and a read-only token for each module associated with the task.
-func getGithubTokensForTask(taskId string, ctx context.Context) (string, []string) {
-	// Do not error at any point while trying to populate github tokens
-	// because if the repo is not private, cloning the repo will still work.
-	// Either way, we should still spin up the host even if we can't
-	// fetch the data.
-
-	// get the owner, repo and modules from the version manifest
-	var projectOwner, projectRepo string
-	var modules map[string]*manifest.Module
-	t, err := task.FindOneId(taskId)
-	if err != nil && t != nil {
-		// versions from pr patches won't have project owner and repo
-		mfest, err := manifest.FindFromVersion(t.Version, t.Project, t.Revision, t.Requester)
-		if err != nil {
-			modules = mfest.Modules
-		}
-		p, err := model.FindMergedProjectRef(t.Project, t.Version, false)
-		if err != nil {
-			projectOwner = p.Owner
-			projectRepo = p.Repo
-		}
-	}
-	var githubAppToken string
-	var moduleTokens []string
-	settings, err := evergreen.GetConfig(ctx)
-	opts := &github.InstallationTokenOptions{
-		Permissions: &github.InstallationPermissions{
-			Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
-		},
-	}
-
-	if projectOwner != "" && projectRepo != "" {
-		// Ignore any errors because if the repo is not private, cloning the repo will still work.
-		// Either way, we should still spin up the host even if we can't fetch the data.
-		githubAppToken, _ = settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, projectOwner, projectRepo, opts)
-
-	}
-
-	if modules != nil {
-		for moduleName, module := range modules {
-			if module.Repo == "" {
-				_, module.Repo, _ = thirdparty.ParseGitUrl(module.URL)
-			}
-			if module.Owner != "" && module.Repo != "" {
-				token, _ := settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, module.Owner, module.Repo, opts)
-				moduleTokens = append(moduleTokens, fmt.Sprintf("%s:%s", moduleName, token))
-			}
-		}
-	}
-	return githubAppToken, moduleTokens
 }
 
 // SpawnHostPullTaskSyncCommand returns the command that pulls the task sync
