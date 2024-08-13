@@ -98,6 +98,8 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 		for _, t := range tg.Tasks {
 			if t == pair.TaskName {
 				// When we reach the current task, stop looping.
+				// The current task being handled by the current
+				// invocation of this function.
 				break
 			}
 			_, err := di.handle(TVPair{Variant: pair.Variant, TaskName: t}, activationInfo, generatedVariants, false)
