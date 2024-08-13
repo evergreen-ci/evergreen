@@ -1066,7 +1066,13 @@ func (h *Host) PopulateGithubTokens(ctx context.Context) error {
 		},
 	}
 
-	token, err := thirdparty.GetInstallationToken(ctx, p.FetchOpts.ProjectOwner, p.FetchOpts.ProjectRepo, opts)
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting config")
+	}
+
+	token, err := settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, p.FetchOpts.ProjectOwner, p.FetchOpts.ProjectRepo, opts)
+
 	if err != nil {
 		return errors.Wrap(err, "getting installation token")
 	}
@@ -1091,7 +1097,7 @@ func (h *Host) PopulateGithubTokens(ctx context.Context) error {
 			})
 			continue
 		}
-		token, err := thirdparty.GetInstallationToken(ctx, module.Owner, module.Repo, opts)
+		token, err := settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, module.Owner, module.Repo, opts)
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"message": "getting installation token for module",
@@ -1108,19 +1114,6 @@ func (h *Host) PopulateGithubTokens(ctx context.Context) error {
 	}
 	h.ProvisionOptions.FetchOpts.ModuleTokens = moduleTokens
 	return nil
-}
-
-// RevokeGithubTokens revokes the github tokens associated with the task
-func (h *Host) RevokeGithubTokens(ctx context.Context) {
-	if h.ProvisionOptions != nil && h.ProvisionOptions.FetchOpts != nil {
-		f := h.ProvisionOptions.FetchOpts
-		_ = thirdparty.RevokeInstallationToken(ctx, f.GithubAppToken)
-
-		for _, token := range f.ModuleTokens {
-			_ = thirdparty.RevokeInstallationToken(ctx, token)
-		}
-
-	}
 }
 
 // spawnHostSetupConfigDirCommands the shell script that sets up the

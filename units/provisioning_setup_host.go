@@ -506,7 +506,6 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 				"host_id":   j.host.Id,
 				"job":       j.ID(),
 			}))
-			j.host.RevokeGithubTokens(ctx)
 		}
 		if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.SetupScript != "" {
 			// Asynchronously run the task data setup script, since the task

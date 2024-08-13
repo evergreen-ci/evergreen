@@ -116,9 +116,6 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 			j.AddRetryableError(errors.Wrap(err, "checking if task data is fetched yet"))
 			return
 		}
-		// Once task data is fetched, we no longer need the github token. Revoke it here
-		// in case something went wrong and it's still around.
-		j.host.RevokeGithubTokens(ctx)
 	}
 
 	// Do not retry after the setup script executes and fails because there's no
