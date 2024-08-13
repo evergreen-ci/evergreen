@@ -308,7 +308,7 @@ Fields:
     commits. For example, if you specify a task with `cron: '@daily'`, Evergreen
     will check that task once per day. If the most recent mainline commit is
     inactive, Evergreen will activate it. In this way, cron is tied more closely
-    to project commit activity. For more on the differences between cron, batchtime and [periodic builds](Project-and-Distro-Settings#periodic-builds), see [controlling when tasks run](../Project-Configuration/#controlling-when-tasks-run).
+    to project commit activity. For more on the differences between cron, batchtime and [periodic builds](Project-and-Distro-Settings#periodic-builds), see [controlling when tasks run](../Project-Configuration/controlling-when-tasks-run).
 -   `task_group`: a [task group](#task-groups)
     may be defined directly inline or using YAML aliases on a build
     variant task. This is an alternative to referencing a task group
@@ -629,7 +629,7 @@ To cause a task to not run at all, set `disable: true`.
 
 Can also set activate, batchtime or cron on tasks or build variants, detailed
 [here](#build-variants). For more on controlling scheduling of tasks, see 
-[controlling when tasks run](../Project-Configuration/#controlling-when-tasks-run)
+[controlling when tasks run](../Project-Configuration/controlling-when-tasks-run)
 
 If there are conflicting settings defined at different levels, the order of
 priority is defined [here](#task-fields-override-hierarchy).
