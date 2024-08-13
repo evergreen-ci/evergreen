@@ -540,6 +540,25 @@ func (c *communicatorImpl) GetEstimatedGeneratedTasks(ctx context.Context, patch
 	return utility.FromIntPtr(numTasksToFinalize.NumTasksToFinalize), nil
 }
 
+func (c *communicatorImpl) RevokeGitHubDynamicAccessTokens(ctx context.Context, taskId string, tokens []string) error {
+	info := requestInfo{
+		method: http.MethodDelete,
+		path:   fmt.Sprintf("tasks/%s/revoke_github_dynamic_access_tokens", taskId),
+	}
+
+	resp, err := c.request(ctx, info, tokens)
+	if err != nil {
+		return errors.Wrap(err, "revoking github dynamic access token")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return util.RespErrorf(resp, "revoking github dynamic access token")
+	}
+
+	return nil
+}
+
 func (c *communicatorImpl) GetUiV2URL(ctx context.Context) (string, error) {
 	info := requestInfo{
 		method: http.MethodGet,

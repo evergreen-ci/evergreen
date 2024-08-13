@@ -42,6 +42,7 @@ func Fetch() cli.Command {
 		tokenFlagName     = "token"
 		useAppTokenName   = "use-app-token"
 		moduleTokensName  = "module_tokens"
+		revokeTokensName  = "revoke-tokens"
 	)
 
 	return cli.Command{
@@ -63,6 +64,11 @@ func Fetch() cli.Command {
 			cli.BoolFlag{
 				Name:  useAppTokenName,
 				Usage: "when using a token, use this to indicate that the token is for a GitHub app and not an oauth token",
+			},
+
+			cli.BoolFlag{
+				Name:  revokeTokensName,
+				Usage: "revoke all github tokens passed in when fetching is complete",
 			},
 			cli.StringSliceFlag{
 				Name:  joinFlagNames(moduleTokensName, "m"),
@@ -106,6 +112,7 @@ func Fetch() cli.Command {
 			shallow := c.Bool(shallowFlagName)
 			token := c.String(tokenFlagName)
 			useAppToken := c.Bool(useAppTokenName)
+			revokeTokens := c.Bool(revokeTokensName)
 			moduleTokens := c.StringSlice(moduleTokensName)
 
 			moduleTokensMap := parseModuleTokens(moduleTokens)
@@ -141,6 +148,9 @@ func Fetch() cli.Command {
 				}
 			}
 
+			if revokeTokens {
+				revokeFetchTokens(client, taskID, token, moduleTokensMap)
+			}
 			return nil
 		},
 	}
@@ -223,20 +233,20 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 }
 
 type cloneOptions struct {
-	owner        string
-	repository   string
-	revision     string
-	rootDir      string
-	branch       string
-	token        string
-	depth        uint
-	is_app_token bool
+	owner      string
+	repository string
+	revision   string
+	rootDir    string
+	branch     string
+	token      string
+	depth      uint
+	isAppToken bool
 }
 
 func clone(opts cloneOptions) error {
 	var cloneArgs []string
 	// clone the repo first
-	if opts.is_app_token {
+	if opts.isAppToken {
 		cloneArgs = []string{"clone", thirdparty.FormGitURLForApp("github.com", opts.owner, opts.repository, opts.token)}
 	} else {
 		cloneArgs = []string{"clone", thirdparty.FormGitURL("github.com", opts.owner, opts.repository, opts.token)}
@@ -299,14 +309,14 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 	cloneDir, token string, useAppToken bool, moduleTokens map[string]string, mfest *manifest.Manifest) error {
 	// Fetch the outermost repo for the task
 	err := clone(cloneOptions{
-		owner:        project.Owner,
-		repository:   project.Repo,
-		revision:     task.Revision,
-		rootDir:      cloneDir,
-		branch:       project.Branch,
-		depth:        defaultCloneDepth,
-		token:        token,
-		is_app_token: useAppToken,
+		owner:      project.Owner,
+		repository: project.Repo,
+		revision:   task.Revision,
+		rootDir:    cloneDir,
+		branch:     project.Branch,
+		depth:      defaultCloneDepth,
+		token:      token,
+		isAppToken: useAppToken,
 	})
 
 	if err != nil {
@@ -357,12 +367,12 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 			return errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 		}
 		err = clone(cloneOptions{
-			owner:        owner,
-			repository:   repo,
-			revision:     revision,
-			rootDir:      filepath.ToSlash(moduleBase),
-			token:        moduleToken,
-			is_app_token: useAppToken,
+			owner:      owner,
+			repository: repo,
+			revision:   revision,
+			rootDir:    filepath.ToSlash(moduleBase),
+			token:      moduleToken,
+			isAppToken: useAppToken,
 		})
 		if err != nil {
 			return err
@@ -408,6 +418,16 @@ func applyPatch(patch *service.RestPatch, rootCloneDir string, conf *model.Proje
 			return err
 		}
 	}
+	return nil
+}
+
+func revokeFetchTokens(comm client.Communicator, taskId, token string, moduleTokensMap map[string]string) error {
+	tokens := []string{token}
+	for _, moduleToken := range moduleTokensMap {
+		tokens = append(tokens, moduleToken)
+	}
+	_ = comm.RevokeGitHubDynamicAccessTokens(context.Background(), taskId, tokens)
+
 	return nil
 }
 

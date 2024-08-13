@@ -304,7 +304,7 @@ type ProvisionOptions struct {
 	// artifacts for the given task.
 	TaskId string `bson:"task_id" json:"task_id"`
 
-	//FetchOps contains data needed to fetch task data
+	// FetchOps contains data needed to fetch task data
 	FetchOpts *FetchOpts `bson:"fetch_options,omitempty" json:"fetch_options,omitempty"`
 
 	// TaskSync, if set along with TaskId, will fetch the task's sync data on

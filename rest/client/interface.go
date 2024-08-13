@@ -145,6 +145,9 @@ type Communicator interface {
 
 	// GetEstimatedGeneratedTasks returns the estimated number of generated tasks to be created by an unfinalized patch.
 	GetEstimatedGeneratedTasks(context.Context, string, []model.TVPair) (int, error)
+
+	// RevokeGitHubDynamicAccessToken revokes the given GitHub dynamic access tokens.
+	RevokeGitHubDynamicAccessTokens(ctx context.Context, taskID string, tokens []string) error
 }
 
 // GetTaskLogsOptions are the options for fetching task logs for a given task.

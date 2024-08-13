@@ -1204,6 +1204,7 @@ func (h *Host) SpawnHostGetTaskDataCommand() []string {
 	if f := h.ProvisionOptions.FetchOpts; f != nil {
 		if f.GithubAppToken != "" || f.ModuleTokens != nil {
 			s = append(s, "--use-app-token")
+			s = append(s, "--revoke-tokens")
 		}
 		if f.GithubAppToken != "" {
 			s = append(s, "--token", f.GithubAppToken)
