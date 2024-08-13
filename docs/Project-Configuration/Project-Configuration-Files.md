@@ -1788,7 +1788,7 @@ which a build variant's `depends_on` overrides the task definition's
 
 #### Specific Activation Override Hierarchy
 `activate`, `cron`, and `batchtime` are called _specific activation conditions_ because Evergreen will only activate a
-task if certain conditions are met (see [detailed docs for more info](Controlling-when-tasks-run.md)). For instance, Evergreen will only activate a task that has `cron` set when the cron
+task if certain conditions are met (see [detailed docs for more info](Controlling-when-tasks-run)). For instance, Evergreen will only activate a task that has `cron` set when the cron
 time elapses. But if multiple specific activation conditions are set simultaneously (or they're configured with
 conflicting conditions), which specific activation condition does Evergreen respect? This section exists to demystify
 how they interact with one another.
