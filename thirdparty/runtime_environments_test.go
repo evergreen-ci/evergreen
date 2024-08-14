@@ -73,46 +73,48 @@ func TestGetPackages(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, config, "TestGetPackages")
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
-	// Verify that we filter correctly by limit and manager.
-	manager := "pip"
+	// Verify that we can get package data with limit and page.
 	ami := "ami-0e12ef25a5f7712a4"
-	limit := 10
 	opts := PackageFilterOptions{
-		AMI:     ami,
-		Page:    0,
-		Limit:   limit,
-		Manager: manager,
+		AMI:   ami,
+		Page:  0,
+		Limit: 10,
 	}
 	result, err := c.GetPackages(ctx, opts)
 	require.NoError(t, err)
-	require.Len(t, result, limit)
-	for i := 0; i < limit; i++ {
-		assert.Contains(result[i].Manager, manager)
-	}
+	require.NotNil(t, result)
+	require.Len(t, result.Data, 10)
+	assert.Equal(result.FilteredCount, 1538)
+	assert.Equal(result.TotalCount, 1538)
 
-	// Verify that we filter correctly by both manager and name.
-	name := "Automat"
+	// Verify that we filter correctly by name.
 	opts = PackageFilterOptions{
-		AMI:     ami,
-		Page:    0,
-		Limit:   5,
-		Name:    "Automat",
-		Manager: manager,
+		AMI:   ami,
+		Page:  0,
+		Limit: 5,
+		Name:  "Automat",
 	}
 	result, err = c.GetPackages(ctx, opts)
 	require.NoError(t, err)
-	require.Len(t, result, 1)
-	assert.Equal(result[0].Name, name)
-	assert.Contains(result[0].Manager, manager)
+	require.NotNil(t, result)
+	require.Len(t, result.Data, 1)
+	assert.Equal(result.Data[0].Name, "Automat")
+	assert.Equal(result.FilteredCount, 1)
+	assert.Equal(result.TotalCount, 1538)
 
-	// Verify that there are no results for fake package name.
+	// Verify that there are no results for a nonexistent package.
 	opts = PackageFilterOptions{
-		AMI:  ami,
-		Name: "blahblahblah",
+		AMI:   ami,
+		Page:  0,
+		Limit: 5,
+		Name:  "xyz",
 	}
 	result, err = c.GetPackages(ctx, opts)
 	require.NoError(t, err)
-	assert.Empty(result)
+	require.NotNil(t, result)
+	assert.Empty(result.Data)
+	assert.Equal(result.FilteredCount, 0)
+	assert.Equal(result.TotalCount, 1538)
 
 	// Verify that there are no errors with PackageFilterOptions only including the AMI.
 	_, err = c.GetPackages(ctx, PackageFilterOptions{AMI: ami})
@@ -120,6 +122,65 @@ func TestGetPackages(t *testing.T) {
 
 	// Verify that there is an error with no AMI provided.
 	_, err = c.GetPackages(ctx, PackageFilterOptions{})
+	require.Error(t, err)
+}
+
+func TestGetToolchains(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert := assert.New(t)
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config, "TestGetToolchains")
+	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+
+	// Verify that we can get toolchain data with limit and page.
+	ami := "ami-016662ab459a49e9d"
+	opts := ToolchainFilterOptions{
+		AMI:   ami,
+		Limit: 10,
+	}
+	result, err := c.GetToolchains(ctx, opts)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Len(result.Data, 10)
+	assert.Equal(result.FilteredCount, 41)
+	assert.Equal(result.TotalCount, 41)
+
+	// Verify that we filter correctly by name.
+	opts = ToolchainFilterOptions{
+		AMI:   ami,
+		Page:  0,
+		Limit: 5,
+		Name:  "nodejs",
+	}
+	result, err = c.GetToolchains(ctx, opts)
+	require.NoError(t, err)
+	require.NotEmpty(t, result)
+	require.NotNil(t, result)
+	require.Len(t, result.Data, 3)
+	assert.Equal(result.Data[0].Name, "nodejs")
+	assert.Equal(result.Data[1].Name, "nodejs")
+	assert.Equal(result.Data[2].Name, "nodejs")
+	assert.Equal(result.FilteredCount, 3)
+	assert.Equal(result.TotalCount, 41)
+
+	// Verify that we receive no results for a nonexistent toolchain.
+	opts = ToolchainFilterOptions{
+		AMI:   ami,
+		Page:  0,
+		Limit: 5,
+		Name:  "xyz",
+	}
+	result, err = c.GetToolchains(ctx, opts)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Empty(result.Data)
+	assert.Equal(result.FilteredCount, 0)
+	assert.Equal(result.TotalCount, 41)
+
+	// Verify that we receive an error when an AMI is not provided.
+	_, err = c.GetToolchains(ctx, ToolchainFilterOptions{})
 	require.Error(t, err)
 }
 
@@ -152,58 +213,6 @@ func TestGetImageDiff(t *testing.T) {
 	result, err = c.getImageDiff(ctx, opts)
 	require.NoError(t, err)
 	assert.Empty(result)
-}
-
-func TestGetToolchains(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert := assert.New(t)
-	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGetToolchains")
-	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
-
-	// Verify that there are no errors with ToolchainFilterOptions including the AMI and limit.
-	ami := "ami-016662ab459a49e9d"
-	opts := ToolchainFilterOptions{
-		AMI:   ami,
-		Limit: 10,
-	}
-	result, err := c.GetToolchains(ctx, opts)
-	require.NoError(t, err)
-	assert.Len(result, 10)
-
-	// Verify that we filter correctly by name and version.
-	name := "nodejs"
-	version := "toolchain_version_v16.17.0"
-	opts = ToolchainFilterOptions{
-		AMI:     ami,
-		Page:    0,
-		Limit:   5,
-		Name:    name,
-		Version: version,
-	}
-	result, err = c.GetToolchains(ctx, opts)
-	require.NoError(t, err)
-	require.NotEmpty(t, result)
-	require.Len(t, result, 1)
-	assert.Equal(result[0].Name, name)
-	assert.Equal(result[0].Version, version)
-
-	// Verify that we receive no results for a fake toolchain.
-	opts = ToolchainFilterOptions{
-		AMI:   ami,
-		Page:  0,
-		Limit: 5,
-		Name:  "blahblahblah",
-	}
-	result, err = c.GetToolchains(ctx, opts)
-	require.NoError(t, err)
-	assert.Empty(result)
-
-	// Verify that we receive an error when an AMI is not provided.
-	_, err = c.GetToolchains(ctx, ToolchainFilterOptions{})
-	require.Error(t, err)
 }
 
 func TestGetHistory(t *testing.T) {

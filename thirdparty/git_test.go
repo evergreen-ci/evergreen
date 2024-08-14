@@ -127,6 +127,12 @@ func TestParseGitUrl(t *testing.T) {
 	assert.Error(err)
 	assert.Equal("evergreen-ci", owner)
 	assert.Equal("", repo)
+
+	httpsUrl = "https://api.github.com/repos/evergreen-ci/sample/commits/somecommit"
+	owner, repo, err = ParseGitUrl(httpsUrl)
+	assert.NoError(err)
+	assert.Equal("evergreen-ci", owner)
+	assert.Equal("sample", repo)
 }
 
 func TestGetPatchSummariesByCommit(t *testing.T) {

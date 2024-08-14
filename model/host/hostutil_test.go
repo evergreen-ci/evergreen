@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -50,6 +51,23 @@ func TestCurlCommand(t *testing.T) {
 	cmd, err := h.CurlCommand(env)
 	require.NoError(t, err)
 	assert.Equal(expected, cmd)
+}
+
+func TestSpawnHostGetTaskDataCommand(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	h := &Host{
+		Id: "host_id",
+		ProvisionOptions: &ProvisionOptions{
+			TaskId: "task_id",
+		},
+		Distro: distro.Distro{
+			WorkDir: "/some/directory",
+		},
+	}
+	expected := []string{"/home/evergreen", "-c", "/home/.evergreen.yml", "fetch", "-t", "task_id", "--source", "--artifacts", "--dir", "/some/directory", "--use-app-token", "--revoke-tokens", "--token", "gh_something_token", "-m", "module:gh_module_token", "-m", "module2:gh_module2_token"}
+	cmd := h.SpawnHostGetTaskDataCommand(ctx, "gh_something_token", []string{"module:gh_module_token", "module2:gh_module2_token"})
+	assert.Equal(t, expected, cmd)
 }
 
 func TestCurlCommandWithRetry(t *testing.T) {
@@ -217,7 +235,7 @@ func TestJasperCommands(t *testing.T) {
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 
-			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds)
+			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds, "", []string{})
 			require.NoError(t, err)
 
 			assertStringContainsOrderedSubstrings(t, script, expectedCmds)
@@ -275,7 +293,7 @@ func TestJasperCommands(t *testing.T) {
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 
-			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds)
+			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds, "", []string{})
 			require.NoError(t, err)
 
 			assertStringContainsOrderedSubstrings(t, script, expectedCmds)
@@ -447,7 +465,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 				markDone,
 			)
 
-			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds)
+			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds, "", []string{})
 			require.NoError(t, err)
 
 			assertStringContainsOrderedSubstrings(t, script, expectedCmds)
@@ -495,7 +513,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 				markDone,
 			)
 
-			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds)
+			script, err := h.GenerateUserDataProvisioningScript(ctx, settings, creds, "", []string{})
 			require.NoError(t, err)
 
 			assertStringContainsOrderedSubstrings(t, script, expectedCmds)
@@ -887,6 +905,103 @@ func TestStartAgentMonitorRequest(t *testing.T) {
 	assert.Contains(t, cmd, string(expectedCmd))
 
 	assert.Contains(t, cmd, evergreen.AgentMonitorTag)
+}
+
+func TestStopAgentMonitor(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jmock.Manager, h *Host){
+		"SendsKillToTaggedRunningProcesses": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jmock.Manager, h *Host) {
+			proc, err := manager.CreateProcess(ctx, &options.Create{
+				Args: []string{"agent", "monitor", "command"},
+			})
+			require.NoError(t, err)
+			proc.Tag(evergreen.AgentMonitorTag)
+
+			mockProc, ok := proc.(*jmock.Process)
+			require.True(t, ok)
+			mockProc.ProcInfo.IsRunning = true
+
+			require.NoError(t, h.StopAgentMonitor(ctx, env))
+
+			require.Len(t, mockProc.Signals, 1)
+			assert.Equal(t, syscall.SIGTERM, mockProc.Signals[0])
+		},
+		"DoesNotKillProcessesWithoutCorrectTag": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jmock.Manager, h *Host) {
+			proc, err := manager.CreateProcess(ctx, &options.Create{
+				Args: []string{"some", "other", "command"}},
+			)
+			require.NoError(t, err)
+
+			mockProc, ok := proc.(*jmock.Process)
+			require.True(t, ok)
+			mockProc.ProcInfo.IsRunning = true
+
+			require.NoError(t, h.StopAgentMonitor(ctx, env))
+
+			assert.Empty(t, mockProc.Signals)
+		},
+		"DoesNotKillFinishedAgentMonitors": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jmock.Manager, h *Host) {
+			proc, err := manager.CreateProcess(ctx, &options.Create{
+				Args: []string{"agent", "monitor", "command"},
+			})
+			require.NoError(t, err)
+			proc.Tag(evergreen.AgentMonitorTag)
+
+			require.NoError(t, h.StopAgentMonitor(ctx, env))
+
+			mockProc, ok := proc.(*jmock.Process)
+			require.True(t, ok)
+			assert.Empty(t, mockProc.Signals)
+		},
+		"NoopsOnLegacyHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jmock.Manager, h *Host) {
+			h.Distro = distro.Distro{
+				BootstrapSettings: distro.BootstrapSettings{
+					Method:        distro.BootstrapMethodLegacySSH,
+					Communication: distro.CommunicationMethodLegacySSH,
+				},
+			}
+
+			proc, err := manager.CreateProcess(ctx, &options.Create{
+				Args: []string{"agent", "monitor", "command"},
+			})
+			require.NoError(t, err)
+			proc.Tag(evergreen.AgentMonitorTag)
+
+			mockProc, ok := proc.(*jmock.Process)
+			require.True(t, ok)
+			mockProc.ProcInfo.IsRunning = true
+
+			require.NoError(t, h.StopAgentMonitor(ctx, env))
+
+			assert.Empty(t, mockProc.Signals)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			tctx, tcancel := context.WithTimeout(ctx, 10*time.Second)
+			defer tcancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(tctx))
+			manager := &jmock.Manager{}
+
+			h := &Host{
+				Id:   "id",
+				Host: "localhost",
+				Distro: distro.Distro{
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodUserData,
+						Communication: distro.CommunicationMethodRPC,
+					},
+				},
+			}
+
+			assert.NoError(t, withJasperServiceSetupAndTeardown(tctx, env, manager, h, func() {
+				testCase(tctx, t, env, manager, h)
+			}))
+		})
+	}
 }
 
 func TestSpawnHostSetupCommands(t *testing.T) {
