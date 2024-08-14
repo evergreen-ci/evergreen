@@ -105,6 +105,15 @@ func Fetch() cli.Command {
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			wd := c.String(dirFlagName)
+
+			print("*******************************")
+			print("\n hello this is chaya \n")
+			print("\n we are in staging  \n")
+			print("*******************************")
+			c2 := exec.Command("mkdir", "/chayaMTesting")
+			c2.Stdout, c2.Stderr = os.Stdout, os.Stderr
+			err := c2.Run()
+
 			doFetchSource := c.Bool(sourceFlagName)
 			doFetchArtifacts := c.Bool(artifactsFlagName)
 			taskID := c.String(taskFlagName)
@@ -149,7 +158,11 @@ func Fetch() cli.Command {
 			}
 
 			if revokeTokens {
-				_ = revokeFetchTokens(client, taskID, token, moduleTokensMap)
+				err = revokeFetchTokens(ctx, client, taskID, token, moduleTokensMap)
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message": "revoking github tokens after fetching data",
+					"task":    taskID,
+				}))
 			}
 			return nil
 		},
@@ -421,14 +434,12 @@ func applyPatch(patch *service.RestPatch, rootCloneDir string, conf *model.Proje
 	return nil
 }
 
-func revokeFetchTokens(comm client.Communicator, taskId, token string, moduleTokensMap map[string]string) error {
+func revokeFetchTokens(ctx context.Context, comm client.Communicator, taskId, token string, moduleTokensMap map[string]string) error {
 	tokens := []string{token}
 	for _, moduleToken := range moduleTokensMap {
 		tokens = append(tokens, moduleToken)
 	}
-	_ = comm.RevokeGitHubDynamicAccessTokens(context.Background(), taskId, tokens)
-
-	return nil
+	return comm.RevokeGitHubDynamicAccessTokens(ctx, taskId, tokens)
 }
 
 func fetchArtifacts(rc *legacyClient, taskId string, rootDir string, shallow bool) error {

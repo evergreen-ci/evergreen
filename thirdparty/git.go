@@ -271,6 +271,8 @@ func ParseGitUrl(url string) (string, string, error) {
 		url = strings.TrimPrefix(url, httpsPrefix)
 		split := strings.Split(url, "/")
 		if len(split) != 3 {
+			// this covers the case of a GitHub API URL of the form
+			// https://api.github.com/repos/<owner>/<repo>
 			if split[0] == "api.github.com" && len(split) > 3 {
 				return split[2], split[3], nil
 			}

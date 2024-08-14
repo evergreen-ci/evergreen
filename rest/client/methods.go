@@ -543,7 +543,7 @@ func (c *communicatorImpl) GetEstimatedGeneratedTasks(ctx context.Context, patch
 func (c *communicatorImpl) RevokeGitHubDynamicAccessTokens(ctx context.Context, taskId string, tokens []string) error {
 	info := requestInfo{
 		method: http.MethodDelete,
-		path:   fmt.Sprintf("tasks/%s/revoke_github_dynamic_access_tokens", taskId),
+		path:   fmt.Sprintf("tasks/%s/github_dynamic_access_tokens", taskId),
 	}
 
 	resp, err := c.request(ctx, info, tokens)

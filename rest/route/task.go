@@ -386,22 +386,22 @@ func (rh *generatedTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(apiTaskInfos)
 }
 
-// DELETE /rest/v2/task/{task_id}/github_dynamic_access_token
+// DELETE /rest/v2/task/{task_id}/github_dynamic_access_tokens
 // This route is used to revoke user-used GitHub access token for a task.
-type revokeGitHubDynamicAccessTokens struct {
+type deleteGitHubDynamicAccessTokens struct {
 	taskID string
 	Tokens []string `json:"tokens"`
 }
 
-func makeRevokeGitHubDynamicAccessTokens() gimlet.RouteHandler {
-	return &revokeGitHubDynamicAccessTokens{}
+func makeDeleteGitHubDynamicAccessTokens() gimlet.RouteHandler {
+	return &deleteGitHubDynamicAccessTokens{}
 }
 
-func (h *revokeGitHubDynamicAccessTokens) Factory() gimlet.RouteHandler {
-	return &revokeGitHubDynamicAccessTokens{}
+func (h *deleteGitHubDynamicAccessTokens) Factory() gimlet.RouteHandler {
+	return &deleteGitHubDynamicAccessTokens{}
 }
 
-func (h *revokeGitHubDynamicAccessTokens) Parse(ctx context.Context, r *http.Request) error {
+func (h *deleteGitHubDynamicAccessTokens) Parse(ctx context.Context, r *http.Request) error {
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task_id")
 	}
@@ -416,7 +416,7 @@ func (h *revokeGitHubDynamicAccessTokens) Parse(ctx context.Context, r *http.Req
 	return nil
 }
 
-func (h *revokeGitHubDynamicAccessTokens) Run(ctx context.Context) gimlet.Responder {
+func (h *deleteGitHubDynamicAccessTokens) Run(ctx context.Context) gimlet.Responder {
 	catcher := grip.NewBasicCatcher()
 
 	for i, token := range h.Tokens {
