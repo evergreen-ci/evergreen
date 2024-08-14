@@ -105,15 +105,6 @@ func Fetch() cli.Command {
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			wd := c.String(dirFlagName)
-
-			print("*******************************")
-			print("\n hello this is chaya \n")
-			print("\n we are in staging  \n")
-			print("*******************************")
-			c2 := exec.Command("mkdir", "/chayaMTesting")
-			c2.Stdout, c2.Stderr = os.Stdout, os.Stderr
-			err := c2.Run()
-
 			doFetchSource := c.Bool(sourceFlagName)
 			doFetchArtifacts := c.Bool(artifactsFlagName)
 			taskID := c.String(taskFlagName)
