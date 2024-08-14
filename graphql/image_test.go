@@ -21,6 +21,30 @@ func init() {
 	testutil.Setup()
 }
 
+func TestOperatingSystem(t *testing.T) {
+	config := New("/graphql")
+	ctx := getContext(t)
+	testConfig := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestOperatingSystem")
+	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
+	ami := "ami-0f6b89500372d4a06"
+	image := model.APIImage{
+		AMI: &ami,
+	}
+	opts := thirdparty.OSInfoFilterOptions{
+		AMI:  ami,
+		Name: "Kernel",
+	}
+	res, err := config.Resolvers.Image().OperatingSystem(ctx, &image, opts)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	require.Len(t, res.Data, 1)
+	require.NotNil(t, res.Data[0])
+	assert.Equal(t, utility.FromStringPtr(res.Data[0].Name), "Kernel")
+	assert.Equal(t, res.FilteredCount, 1)
+	assert.Equal(t, res.TotalCount, 13)
+}
+
 func TestPackages(t *testing.T) {
 	config := New("/graphql")
 	ctx := getContext(t)

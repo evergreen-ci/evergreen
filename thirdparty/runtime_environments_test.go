@@ -36,32 +36,54 @@ func TestGetOSInfo(t *testing.T) {
 	_, err := c.GetOSInfo(ctx, OSInfoFilterOptions{})
 	assert.Error(err)
 
-	// Verify that we correctly filter only providing the AMI.
+	// Verify that we can get OS data for a given AMI.
+	ami := "ami-0e12ef25a5f7712a4"
 	opts := OSInfoFilterOptions{
-		AMI: "ami-0e12ef25a5f7712a4",
+		AMI: ami,
 	}
 	result, err := c.GetOSInfo(ctx, opts)
 	require.NoError(t, err)
-	assert.NotEmpty(result)
+	require.NotNil(t, result)
+	assert.NotEmpty(result.Data)
+	assert.Equal(result.FilteredCount, 18)
+	assert.Equal(result.TotalCount, 18)
 
-	// Verify that we correctly filter by AMI and limit.
+	// Verify that we can get OS data with limit and page.
 	opts = OSInfoFilterOptions{
-		AMI:   "ami-0e12ef25a5f7712a4",
+		AMI:   ami,
 		Page:  0,
 		Limit: 10,
 	}
 	result, err = c.GetOSInfo(ctx, opts)
 	require.NoError(t, err)
-	assert.Len(result, 10)
+	require.NotNil(t, result)
+	assert.Len(result.Data, 10)
+	assert.Equal(result.FilteredCount, 18)
+	assert.Equal(result.TotalCount, 18)
 
-	// Verify that we correctly filter by AMI and name.
+	// Verify that we filter correctly by name.
 	opts = OSInfoFilterOptions{
-		AMI:  "ami-0f6b89500372d4a06",
+		AMI:  ami,
 		Name: "Kernel",
 	}
 	result, err = c.GetOSInfo(ctx, opts)
 	require.NoError(t, err)
-	assert.NotEmpty(result)
+	require.NotNil(t, result)
+	assert.NotEmpty(result.Data, 10)
+	assert.Equal(result.FilteredCount, 1)
+	assert.Equal(result.TotalCount, 18)
+
+	// Verify that there are no results for nonexistent OS field.
+	opts = OSInfoFilterOptions{
+		AMI:  ami,
+		Name: "blahblahblah",
+	}
+	result, err = c.GetOSInfo(ctx, opts)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Empty(result.Data)
+	assert.Equal(result.FilteredCount, 0)
+	assert.Equal(result.TotalCount, 18)
 }
 
 func TestGetPackages(t *testing.T) {

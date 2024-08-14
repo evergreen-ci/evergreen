@@ -82,6 +82,31 @@ func (r *imageResolver) LatestTask(ctx context.Context, obj *model.APIImage) (*m
 	return apiLatestTask, nil
 }
 
+// OperatingSystem is the resolver for the operatingSystem field.
+func (r *imageResolver) OperatingSystem(ctx context.Context, obj *model.APIImage, opts thirdparty.OSInfoFilterOptions) (*ImageOperatingSystemPayload, error) {
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: '%s'", err.Error()))
+	}
+	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+	opts.AMI = utility.FromStringPtr(obj.AMI)
+	res, err := c.GetOSInfo(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting operating system information for image '%s': '%s'", utility.FromStringPtr(obj.ID), err.Error()))
+	}
+	apiOSData := []*model.APIOSInfo{}
+	for _, pkg := range res.Data {
+		apiOSInfo := model.APIOSInfo{}
+		apiOSInfo.BuildFromService(pkg)
+		apiOSData = append(apiOSData, &apiOSInfo)
+	}
+	return &ImageOperatingSystemPayload{
+		Data:          apiOSData,
+		FilteredCount: res.FilteredCount,
+		TotalCount:    res.TotalCount,
+	}, nil
+}
+
 // Packages is the resolver for the packages field.
 func (r *imageResolver) Packages(ctx context.Context, obj *model.APIImage, opts thirdparty.PackageFilterOptions) (*ImagePackagesPayload, error) {
 	config, err := evergreen.GetConfig(ctx)
