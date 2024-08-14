@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/service/s3"
+	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
@@ -358,7 +358,7 @@ func TestSignedUrlVisibility(t *testing.T) {
 			Bucket:        "bucket",
 			BuildVariants: []string{},
 			ContentType:   "content-type",
-			Permissions:   s3.BucketCannedACLPublicRead,
+			Permissions:   string(s3Types.BucketCannedACLPublicRead),
 			RemoteFile:    "remote",
 			Visibility:    vis,
 		}
@@ -404,7 +404,7 @@ func TestContentTypeSaved(t *testing.T) {
 		Bucket:        "bucket",
 		BuildVariants: []string{},
 		ContentType:   "content-type",
-		Permissions:   s3.BucketCannedACLPublicRead,
+		Permissions:   string(s3Types.BucketCannedACLPublicRead),
 		RemoteFile:    "remote",
 		Visibility:    "",
 	}
@@ -466,7 +466,7 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 				ContentType:                   "content-type",
 				LocalFilesIncludeFilter:       []string{"*"},
 				LocalFilesIncludeFilterPrefix: localFilesIncludeFilterPrefix,
-				Permissions:                   s3.BucketCannedACLPublicRead,
+				Permissions:                   string(s3Types.BucketCannedACLPublicRead),
 				RemoteFile:                    "remote",
 			}
 			require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0755))
@@ -526,7 +526,7 @@ func TestFileUploadNaming(t *testing.T) {
 		BuildVariants:                 []string{},
 		ContentType:                   "content-type",
 		LocalFilesIncludeFilter:       []string{"*"},
-		Permissions:                   s3.BucketCannedACLPublicRead,
+		Permissions:                   string(s3Types.BucketCannedACLPublicRead),
 		LocalFilesIncludeFilterPrefix: "",
 		RemoteFile:                    "remote",
 	}
@@ -606,7 +606,7 @@ func TestPreservePath(t *testing.T) {
 		BuildVariants:           []string{},
 		ContentType:             "content-type",
 		LocalFilesIncludeFilter: []string{"*"},
-		Permissions:             s3.BucketCannedACLPublicRead,
+		Permissions:             string(s3Types.BucketCannedACLPublicRead),
 		RemoteFile:              "remote",
 		PreservePath:            "true",
 	}

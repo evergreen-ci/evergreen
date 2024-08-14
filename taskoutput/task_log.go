@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/log"
@@ -43,7 +43,7 @@ type TaskLogOutput struct {
 	Version      int                    `bson:"version" json:"version"`
 	BucketConfig evergreen.BucketConfig `bson:"bucket_config" json:"bucket_config"`
 
-	AWSCredentials *credentials.Credentials `bson:"-" json:"-"`
+	AWSCredentials aws.CredentialsProvider `bson:"-" json:"-"`
 }
 
 // ID returns the unique identifier of the task log output type.

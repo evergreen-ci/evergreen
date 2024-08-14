@@ -36,7 +36,7 @@ func (c *s3Push) Execute(ctx context.Context, comm client.Communicator, logger c
 	httpClient := utility.GetDefaultHTTPRetryableClient()
 	defer utility.PutHTTPClient(httpClient)
 
-	if err := c.createBucket(httpClient, conf); err != nil {
+	if err := c.createBucket(ctx, httpClient, conf); err != nil {
 		return errors.Wrap(err, "creating S3 task bucket")
 	}
 

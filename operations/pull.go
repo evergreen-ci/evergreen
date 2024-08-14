@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -71,11 +71,11 @@ func Pull() cli.Command {
 			opts := pail.S3Options{
 				Name:        creds.Bucket,
 				Credentials: pail.CreateAWSCredentials(creds.Key, creds.Secret, ""),
-				Region:      endpoints.UsEast1RegionID,
+				Region:      evergreen.DefaultEC2Region,
 				Permissions: pail.S3PermissionsBucketOwnerRead,
 				Verbose:     true,
 			}
-			bucket, err := pail.NewS3ArchiveBucketWithHTTPClient(httpClient, opts)
+			bucket, err := pail.NewS3ArchiveBucketWithHTTPClient(ctx, httpClient, opts)
 			if err != nil {
 				return errors.Wrap(err, "setting up S3 bucket")
 			}

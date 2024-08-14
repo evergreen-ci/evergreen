@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -97,7 +97,7 @@ func (c *s3get) validateParams() error {
 	}
 
 	if c.Region == "" {
-		c.Region = endpoints.UsEast1RegionID
+		c.Region = evergreen.DefaultEC2Region
 	}
 
 	// make sure the bucket is valid
@@ -163,7 +163,7 @@ func (c *s3get) Execute(ctx context.Context,
 	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout
 	defer utility.PutHTTPClient(httpClient)
-	err := c.createPailBucket(httpClient)
+	err := c.createPailBucket(ctx, httpClient)
 	if err != nil {
 		return errors.Wrap(err, "creating S3 bucket")
 	}
@@ -282,13 +282,13 @@ func (c *s3get) get(ctx context.Context) error {
 	return nil
 }
 
-func (c *s3get) createPailBucket(httpClient *http.Client) error {
+func (c *s3get) createPailBucket(ctx context.Context, httpClient *http.Client) error {
 	opts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken),
 		Region:      c.Region,
 		Name:        c.Bucket,
 	}
-	bucket, err := pail.NewS3BucketWithHTTPClient(httpClient, opts)
+	bucket, err := pail.NewS3BucketWithHTTPClient(ctx, httpClient, opts)
 	c.bucket = bucket
 	return err
 }
