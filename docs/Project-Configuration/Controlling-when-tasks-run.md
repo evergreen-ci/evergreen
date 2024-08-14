@@ -12,7 +12,8 @@ In short:
 
 **Periodic Builds:** creates a _new version_ with specified variants/tasks at a specified interval, regardless of commit activity.
 
-Cron and batchtime cannot be combined.
+If more than one is set, more specific details on how these features interact with each other are found
+[here](Project-Configuration-Files#specific-activation-override-hierarchy).
 
 ### Activate
 `activate: false` prevents a build variant or task from activating automatically. This can be specified in the
