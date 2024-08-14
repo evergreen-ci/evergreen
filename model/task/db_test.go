@@ -2146,17 +2146,30 @@ func TestActivateTasksUpdate(t *testing.T) {
 	})
 
 	t.Run("DisabledTask", func(t *testing.T) {
-		require.NoError(t, db.Clear(Collection))
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		require.NoError(t, db.ClearCollections(Collection, distro.Collection))
 
 		t0 := Task{
-			Id:       "t0",
-			Priority: evergreen.DisabledTaskPriority,
+			Id:                "t0",
+			Status:            evergreen.TaskUndispatched,
+			Priority:          evergreen.DisabledTaskPriority,
+			ExecutionPlatform: ExecutionPlatformHost,
+			DistroId:          "d",
+		}
+		d := distro.Distro{
+			Id: "d",
 		}
 
+		require.NoError(t, d.Insert(ctx))
 		require.NoError(t, t0.Insert())
 		assert.NoError(t, activateTasks([]string{t0.Id}, caller, activationTime))
-		dbTask, err := FindOneId(t0.Id)
+
+		tasks, err := FindHostSchedulable(ctx, "d")
+		require.NoError(t, err)
+		require.Len(t, tasks, 1)
 		assert.NoError(t, err)
+		dbTask := tasks[0]
 		assert.True(t, dbTask.Activated)
 		assert.Equal(t, caller, dbTask.ActivatedBy)
 		assert.True(t, activationTime.Equal(dbTask.ActivatedTime))

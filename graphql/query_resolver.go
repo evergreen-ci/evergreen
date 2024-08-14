@@ -394,31 +394,6 @@ func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.A
 	if apiPatch == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
 	}
-
-	if evergreen.IsFinishedVersionStatus(*apiPatch.Status) {
-		statuses, err := task.GetTaskStatusesByVersion(ctx, patchID)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task statuses for patch: %s", err.Error()))
-		}
-
-		if len(apiPatch.ChildPatches) > 0 {
-			for _, cp := range apiPatch.ChildPatches {
-				childPatchStatuses, err := task.GetTaskStatusesByVersion(ctx, *cp.Id)
-				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task statuses for child patch: %s", err.Error()))
-				}
-				statuses = append(statuses, childPatchStatuses...)
-			}
-		}
-
-		// If theres an aborted task we should set the patch status to aborted if there are no other failures
-		if utility.StringSliceContains(statuses, evergreen.TaskAborted) {
-			if len(utility.StringSliceIntersection(statuses, evergreen.TaskFailureStatuses)) == 0 {
-				apiPatch.Status = utility.ToStringPtr(evergreen.VersionAborted)
-			}
-		}
-	}
-
 	return apiPatch, nil
 }
 

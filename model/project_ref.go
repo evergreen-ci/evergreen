@@ -140,6 +140,10 @@ type ProjectRef struct {
 
 	// GitHubPermissionGroupByRequester is a mapping of requester type to the user defined GitHub permission groups above.
 	GitHubPermissionGroupByRequester map[string]string `bson:"github_token_permission_by_requester,omitempty" json:"github_token_permission_by_requester,omitempty" yaml:"github_token_permission_by_requester,omitempty"`
+
+	// ParameterStoreEnabled is a temporary feature flag to enable/disable
+	// Parameter Store for storing project secrets.
+	ParameterStoreEnabled bool `bson:"parameter_store_enabled,omitempty" json:"parameter_store_enabled,omitempty" yaml:"parameter_store_enabled,omitempty"`
 }
 
 // GitHubDynamicTokenPermissionGroup is a permission group for GitHub dynamic access tokens.

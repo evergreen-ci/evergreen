@@ -45,3 +45,7 @@ Evergreen has a 100MB system limit on patch size (the diff size for the changes)
 Evergreen does not have a limit for Parsley file sizes. However, you will encounter a limit based on the browser that you are using. As of April 4, 2022 the limits are:
 
 In V8 (used by Chrome and Node), the maximum length is 229 - 24 (~1GiB). On 32-bit systems, the maximum length is 228 - 16 (~512MiB). In Firefox, the maximum length is 230 - 2 (~2GiB). Before Firefox 65, the maximum length was 228 - 1 (~512MiB). In Safari, the maximum length is 231 - 1 (~4GiB).
+
+## Task queue wait time limits
+
+A task may wait in its distro queue for at most 7 days, at which point the task is marked "underwater" and will automatically be unscheduled and disabled.

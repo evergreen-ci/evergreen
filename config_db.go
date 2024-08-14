@@ -98,6 +98,8 @@ var (
 	sleepScheduleBetaTestDisabledKey   = bsonutil.MustHaveTag(ServiceFlags{}, "SleepScheduleBetaTestDisabled")
 	systemFailedTaskRestartDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "SystemFailedTaskRestartDisabled")
 	cpuDegradedModeDisabledKey         = bsonutil.MustHaveTag(ServiceFlags{}, "CPUDegradedModeDisabled")
+	parameterStoreDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "ParameterStoreDisabled")
+
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
 

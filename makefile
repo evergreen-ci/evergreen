@@ -7,7 +7,7 @@ packages += db util plugin units graphql thirdparty thirdparty-docker auth sched
 packages += model-annotations model-patch model-artifact model-host model-pod model-pod-definition model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult model-log model-testlog model-parsley
 packages += model-commitqueue model-cache
 packages += rest-client rest-data rest-route rest-model trigger model-alertrecord model-notification model-taskstats model-reliability
-packages += taskoutput
+packages += taskoutput cloud-parameterstore
 lintOnlyPackages := api apimodels testutil model-manifest model-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json rest
 lintOnlyPackages += smoke-internal smoke-internal-host smoke-internal-container smoke-internal-agentmonitor smoke-internal-endpoint
 testOnlyPackages := service-graphql smoke-internal-host smoke-internal-container smoke-internal-agentmonitor smoke-internal-endpoint # has only test files so can't undergo all operations
@@ -92,9 +92,8 @@ windowsBinaries := $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(pl
 clientBinaries := $(macOSBinaries) $(linuxBinaries) $(windowsBinaries)
 
 clientSource := cmd/evergreen/evergreen.go
-uiFiles := $(shell find public/static -not -path "./public/static/app" -name "*.js" -o -name "*.css" -o -name "*.html")
 
-staticArtifacts :=  ./public ./service/templates
+staticArtifacts := ./public ./service/templates
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 currentHash := $(shell git rev-parse HEAD)
@@ -243,8 +242,8 @@ $(buildDir)/macnotary:$(buildDir)/sign-executable
 $(clientBuildDir)/%/.signed:$(buildDir)/sign-executable $(clientBuildDir)/%/$(unixBinaryBasename) $(buildDir)/macnotary
 	./$< sign --client $(buildDir)/macnotary --executable $(@D)/$(unixBinaryBasename) --server-url $(NOTARY_SERVER_URL) --bundle-id $(EVERGREEN_BUNDLE_ID)
 	touch $@
-$(buildDir)/static_assets.tgz:$(buildDir)/make-tarball $(uiFiles)
-	./$< --name $@ --prefix static_assets $(foreach item,$(staticArtifacts),--item $(item)) --exclude "public/node_modules" --exclude "clients/.cache"
+$(buildDir)/static_assets.tgz:$(buildDir)/make-tarball $(staticArtifacts)
+	./$< --name $@ --prefix static_assets $(foreach item,$(staticArtifacts),--item $(item)) --exclude "public/node_modules"
 local: $(buildDir)/static_assets.tgz $(clientBinaries)
 # end main build
 

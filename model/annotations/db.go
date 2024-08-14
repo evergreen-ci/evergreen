@@ -45,9 +45,6 @@ func FindOne(query db.Q) (*TaskAnnotation, error) {
 func Find(query db.Q) ([]TaskAnnotation, error) {
 	annotations := []TaskAnnotation{}
 	err := db.FindAllQ(Collection, query, &annotations)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
 	if err != nil {
 		return nil, errors.Wrap(err, "finding task annotations")
 	}

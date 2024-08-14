@@ -841,9 +841,6 @@ func GetRecentTasks(period time.Duration) ([]Task, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "getting recently-finished tasks")
 	}
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
 
 	return tasks, nil
 }
@@ -1487,9 +1484,6 @@ func FindOneIdWithFields(id string, projected ...string) (*Task, error) {
 func findAllTaskIDs(q db.Q) ([]string, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, q, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
 	if err != nil {
 		return nil, errors.Wrap(err, "finding tasks")
 	}
@@ -1536,9 +1530,6 @@ func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
 	q := db.Query(ByVersion(versionId)).WithFields(IdKey, DependsOnKey)
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, q, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task IDs for version '%s'", versionId)
 	}
@@ -1601,9 +1592,6 @@ func FindOld(filter bson.M) ([]Task, error) {
 	}
 	query := db.Query(filter)
 	err := db.FindAllQ(OldCollection, query, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
 
 	return tasks, err
 }
@@ -1614,9 +1602,6 @@ func FindOldWithDisplayTasks(filter bson.M) ([]Task, error) {
 	tasks := []Task{}
 	query := db.Query(filter)
 	err := db.FindAllQ(OldCollection, query, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
 
 	return tasks, err
 }
@@ -1671,11 +1656,8 @@ func Find(filter bson.M) ([]Task, error) {
 	}
 	query := db.Query(filter)
 	err := db.FindAllQ(Collection, query, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
 
-	return tasks, nil
+	return tasks, err
 }
 
 func FindWithFields(filter bson.M, fields ...string) ([]Task, error) {
@@ -1686,11 +1668,8 @@ func FindWithFields(filter bson.M, fields ...string) ([]Task, error) {
 	}
 	query := db.Query(filter).WithFields(fields...)
 	err := db.FindAllQ(Collection, query, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
 
-	return tasks, nil
+	return tasks, err
 }
 
 func FindWithSort(filter bson.M, sort []string) ([]Task, error) {
@@ -1701,20 +1680,14 @@ func FindWithSort(filter bson.M, sort []string) ([]Task, error) {
 	}
 	query := db.Query(filter).Sort(sort)
 	err := db.FindAllQ(Collection, query, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
 
-	return tasks, nil
+	return tasks, err
 }
 
 // Find returns really all tasks that satisfy the query.
 func FindAll(query db.Q) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, query, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
 	return tasks, err
 }
 
@@ -1722,9 +1695,6 @@ func FindAll(query db.Q) ([]Task, error) {
 func FindAllOld(query db.Q) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(OldCollection, query, &tasks)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
 	return tasks, err
 }
 
@@ -2756,8 +2726,8 @@ func enableDisabledTasks(taskIDs []string) error {
 			PriorityKey: evergreen.DisabledTaskPriority,
 		},
 		bson.M{
-			"$unset": bson.M{
-				PriorityKey: 1,
+			"$set": bson.M{
+				PriorityKey: 0,
 			},
 		})
 	return err
@@ -2869,11 +2839,16 @@ func abortAndMarkResetTasks(ctx context.Context, filter bson.M, taskIDs []string
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(
 		ctx,
 		filter,
-		bson.M{"$set": bson.M{
-			AbortedKey:           true,
-			AbortInfoKey:         AbortInfo{User: caller},
-			ResetWhenFinishedKey: true,
-		}},
+		bson.M{
+			"$set": bson.M{
+				AbortedKey:           true,
+				AbortInfoKey:         AbortInfo{User: caller},
+				ResetWhenFinishedKey: true,
+			},
+			"$unset": bson.M{
+				ResetFailedWhenFinishedKey: 1,
+			},
+		},
 	)
 
 	return err
