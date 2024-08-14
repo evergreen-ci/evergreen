@@ -400,7 +400,8 @@ func (a *Agent) finishPrevTask(ctx context.Context, nextTask *apimodels.NextTask
 
 	if shouldRunSetupGroup(nextTask, tc) {
 		shouldSetupGroup = true
-		// kim: NOTE: this clears the task directory for the next task
+		// kim: NOTE: this clears the task directory for the next task (either
+		// new task group or standalone task)
 		taskDirectory = ""
 		a.runTeardownGroupCommands(ctx, tc)
 	}
@@ -455,18 +456,17 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "setting up logger producer"))
 	}
 
-	// kim: TODO: simplify this logic a little
-	if !tc.ranSetupGroup {
-		taskDirectory, err = a.createTaskDirectory(tc, "")
-		if err != nil {
-			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task directory"))
-		}
-	} else if _, err := os.Stat(taskDirectory); os.IsNotExist(err) {
-		// kim: NOTE: if possible, warn about this in the task logs.
-		tc.logger.Execution().Info("Task directory does not exist for task group (possibly because it was deleted), re-creating it.")
+	var taskGroupTaskDirMissing bool
+	if tc.ranSetupGroup {
+		// kim: TODO: test task group manually
+		_, err := os.Stat(taskDirectory)
+		taskGroupTaskDirMissing = os.IsNotExist(err)
+		tc.logger.Execution().Info("Task directory was already created by a previous task group task, but is missing for this task group task (possibly because it was deleted by a previous task group task), re-creating it.")
+	}
+	if !tc.ranSetupGroup || taskGroupTaskDirMissing {
 		taskDirectory, err = a.createTaskDirectory(tc, taskDirectory)
 		if err != nil {
-			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "re-creating task directory"))
+			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task directory"))
 		}
 	}
 	tc.taskConfig.WorkDir = taskDirectory
