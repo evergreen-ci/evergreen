@@ -3,11 +3,19 @@ package fakeparameter
 import (
 	"context"
 	"fmt"
+<<<<<<< HEAD
+=======
+	"sync"
+>>>>>>> d3028f45e (DEVPROD-9403: create parameter manager and cache)
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/db"
+<<<<<<< HEAD
+=======
+	"github.com/evergreen-ci/utility"
+>>>>>>> d3028f45e (DEVPROD-9403: create parameter manager and cache)
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +33,11 @@ func TestParameterManager(t *testing.T) {
 		dbParam, err := FindOneID(ctx, p.Name)
 		require.NoError(t, err)
 		require.NotZero(t, dbParam)
+<<<<<<< HEAD
 		assert.Equal(t, p.Name, dbParam.ID)
+=======
+		assert.Equal(t, p.Name, dbParam.Name)
+>>>>>>> d3028f45e (DEVPROD-9403: create parameter manager and cache)
 		assert.Equal(t, p.Value, dbParam.Value)
 	}
 	// checkParam checks that the input parameter matches the expected values
@@ -233,4 +245,69 @@ func TestParameterManager(t *testing.T) {
 			}
 		})
 	}
+<<<<<<< HEAD
+=======
+
+	t.Run("ConcurrentReadsAndWritesAreSafeAndReachEventualConsistency", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		pm := parameterstore.NewParameterManager("prefix", true, NewFakeSSMClient(), evergreen.GetEnvironment().DB())
+		const basename = "basename"
+		const fullName = "/prefix/basename"
+
+		var wg sync.WaitGroup
+		startOps := make(chan struct{})
+
+		for i := 0; i < 100; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-startOps
+				// Each writer puts a new random string in the DB. One of these
+				// will eventually be the last write, and that's the persistent
+				// value in a steady state.
+				_, err := pm.Put(ctx, basename, utility.RandomString())
+				assert.NoError(t, err)
+			}()
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-startOps
+				for j := 0; j < 10; j++ {
+					// Each reader reads the random strings from the DB and they
+					// get cached. While this is happening, the value will be
+					// fluctuating because there are concurrent writes, so the
+					// cached value for the parameter will be fluctuating as
+					// well.
+					_, err := pm.Get(ctx, basename)
+					assert.NoError(t, err)
+				}
+			}()
+		}
+
+		close(startOps)
+
+		wg.Wait()
+
+		dbParam, err := FindOneID(ctx, fullName)
+		require.NoError(t, err)
+		require.NotZero(t, dbParam)
+
+		params, err := pm.Get(ctx, basename)
+		require.NoError(t, err)
+		require.Len(t, params, 1)
+		assert.Equal(t, params[0].Name, dbParam.Name)
+		assert.Equal(t, params[0].Basename, basename)
+		// After the readers and writers are all finished and there's no more
+		// modifications being made to the parameter, the parameter returned
+		// from the ParameterManager must match the final value that was last
+		// written to the DB. This is necessary to prove that, even with a
+		// cache, it eventually reflects the most up-to-date value from the DB.
+		// If this is ever flaky, that means the caching logic is faulty because
+		// it returned a stale value.
+		assert.Equal(t, params[0].Value, dbParam.Value, "value returned from Get should agree with persisted value even after several concurrent reads/writes")
+	})
+>>>>>>> d3028f45e (DEVPROD-9403: create parameter manager and cache)
 }

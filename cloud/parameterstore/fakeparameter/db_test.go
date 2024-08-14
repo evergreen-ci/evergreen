@@ -25,7 +25,7 @@ func TestFindOneID(t *testing.T) {
 		"FindsExistingParameter": func(ctx context.Context, t *testing.T, p *FakeParameter) {
 			require.NoError(t, p.Insert(ctx))
 
-			dbParam, err := FindOneID(ctx, p.ID)
+			dbParam, err := FindOneID(ctx, p.Name)
 			require.NoError(t, err)
 			require.NotZero(t, dbParam)
 			assert.Equal(t, p, dbParam)
@@ -42,7 +42,7 @@ func TestFindOneID(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection))
 
 			p := FakeParameter{
-				ID:          "id",
+				Name:        "id",
 				Value:       "value",
 				LastUpdated: utility.BSONTime(time.Now()),
 			}
