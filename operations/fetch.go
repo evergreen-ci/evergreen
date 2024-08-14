@@ -149,7 +149,7 @@ func Fetch() cli.Command {
 			}
 
 			if revokeTokens {
-				revokeFetchTokens(client, taskID, token, moduleTokensMap)
+				_ = revokeFetchTokens(client, taskID, token, moduleTokensMap)
 			}
 			return nil
 		},

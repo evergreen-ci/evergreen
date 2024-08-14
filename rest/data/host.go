@@ -105,7 +105,7 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 	}
 	var githubAppToken string
 	var moduleTokens []string
-	if h.ProvisionOptions.TaskId != "" {
+	if h.ProvisionOptions != nil && h.ProvisionOptions.TaskId != "" {
 		githubAppToken, moduleTokens = units.GetGithubTokensForTask(h.ProvisionOptions.TaskId, ctx)
 	}
 	script, err := h.GenerateUserDataProvisioningScript(ctx, env.Settings(), creds, githubAppToken, moduleTokens)
