@@ -14,13 +14,6 @@ import (
 // running. This exists a safety mechanism against accidentally calling this
 // logic in non-testing environment. For tests, this should always be overridden
 // to "test".
-// kim: NOTE: can't do ClientType trick like for Secrets Manager because the
-// production code will still import this package. May have to manually set PS
-// implementation somehow. May be annoying to have to pass in PS implementation
-// to all dependent code though. Possibly can have a compromise with something
-// like Amboy queues pluggable implementations. Can set fake implementation in
-// mock.Environment.Configure() (which is called manually in tests) and
-// testutil.NewEnvironment() (which is init'd by _test.go files).
 var ExecutionEnvironmentType = "production"
 
 func init() {
