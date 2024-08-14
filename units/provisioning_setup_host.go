@@ -847,13 +847,10 @@ func GetGithubTokensForTask(taskId string, ctx context.Context) (string, []strin
 	// because if the repo is not private, cloning the repo will still work.
 	// Either way, we should still spin up the host even if we can't
 	// fetch the data.
-
-	// get the owner, repo and modules from the version manifest
 	var projectOwner, projectRepo string
 	var modules map[string]*manifest.Module
 	t, err := task.FindOneId(taskId)
 	if err != nil && t != nil {
-		// versions from pr patches won't have project owner and repo
 		mfest, err := manifest.FindFromVersion(t.Version, t.Project, t.Revision, t.Requester)
 		if err != nil {
 			modules = mfest.Modules
