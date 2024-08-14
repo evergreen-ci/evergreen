@@ -250,9 +250,9 @@ won't have any sleep schedule set and Evergreen will not stop/start your host ac
 permanent exemption from setting a sleep schedule would allow your host to be kept on 24/7.
 
 **If the sleep schedule feature does not impact your regular workflow, it's recommended to first try that out or set up
-[the auto-sleep script](#host-auto-sleep-script).** User who only occasionally need their host to stay on (e.g. to run a
-one-off test overnight) can set [temporary exemptions](#temporary-exemptions) when needed. If the feature negatively
-impacts your workflow on the host, you can request a permanent exemption.
+[the auto-sleep script](#host-auto-sleep-script).** User who only occasionally need their host to stay on (e.g. to
+occasionally run a one-off test overnight) can set [temporary exemptions](#temporary-exemptions) when needed. If the
+feature negatively impacts your workflow on the host, you can request a permanent exemption.
 
 If you'd like to request a permanent exemption, please file a DEVPROD ticket with the title "Permanent Exemption
 Request" and set Evergreen App as the Dev Prod service. In it, please include your host ID and a brief description of
