@@ -12,7 +12,7 @@ import (
 )
 
 func TestGetSectionsBSON(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	defer func(client *mongo.Client) {
@@ -40,7 +40,7 @@ func TestGetSectionsBSON(t *testing.T) {
 		defer func() { require.NoError(t, GetEnvironment().SharedDB().Collection(ConfigCollection).Drop(ctx)) }()
 
 		config := NotifyConfig{BufferTargetPerInterval: 1}
-		_, err := GetEnvironment().DB().Collection(ConfigCollection).InsertOne(ctx, struct {
+		_, err := GetEnvironment().SharedDB().Collection(ConfigCollection).InsertOne(ctx, struct {
 			ID           string `bson:"_id"`
 			NotifyConfig `bson:",inline"`
 		}{ID: config.SectionId(), NotifyConfig: config})
@@ -53,11 +53,10 @@ func TestGetSectionsBSON(t *testing.T) {
 }
 
 func TestGetConfigSection(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	t.Run("NilSharedDB", func(t *testing.T) {
-
 		t.Run("ConfigDocumentExists", func(t *testing.T) {
 			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
 			defer func() { require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx)) }()
@@ -91,8 +90,8 @@ func TestGetConfigSection(t *testing.T) {
 		GetEnvironment().(*envState).sharedDBClient = GetEnvironment().(*envState).client
 
 		t.Run("ConfigDocumentExists", func(t *testing.T) {
-			require.NoError(t, GetEnvironment().SharedDB().Collection(ConfigCollection).Drop(ctx))
-			defer func() { require.NoError(t, GetEnvironment().SharedDB().Collection(ConfigCollection).Drop(ctx)) }()
+			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
+			defer func() { require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx)) }()
 
 			config := NotifyConfig{BufferTargetPerInterval: 1}
 			_, err := GetEnvironment().DB().Collection(ConfigCollection).InsertOne(ctx, struct {
@@ -118,7 +117,7 @@ func TestGetConfigSection(t *testing.T) {
 }
 
 func TestSetConfigSection(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	t.Run("AlreadyExists", func(t *testing.T) {

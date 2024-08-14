@@ -18,7 +18,6 @@ import (
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
-	"github.com/mongodb/anser/apm"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -29,8 +28,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -372,13 +369,13 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 	defer span.End()
 
 	var err error
-	e.client, err = mongo.Connect(ctx, settings.mongoOptions())
+	e.client, err = mongo.Connect(ctx, settings.mongoOptions(settings.DB))
 	if err != nil {
 		return errors.Wrap(err, "connecting to the Evergreen DB")
 	}
 
 	if settings.SharedURL != "" {
-		e.sharedDBClient, err = mongo.Connect(ctx, settings.mongoOptions().ApplyURI(settings.SharedURL))
+		e.sharedDBClient, err = mongo.Connect(ctx, settings.mongoOptions(settings.SharedURL))
 		if err != nil {
 			return errors.Wrap(err, "connecting to the shared Evergreen database")
 		}
@@ -395,24 +392,7 @@ func (e *envState) createRemoteQueues(ctx context.Context, tracer trace.Tracer) 
 	if url == "" {
 		url = DefaultAmboyDatabaseURL
 	}
-
-	opts := options.Client().
-		ApplyURI(url).
-		SetTimeout(10 * time.Second).
-		SetConnectTimeout(5 * time.Second).
-		SetReadPreference(readpref.Primary()).
-		SetReadConcern(e.settings.Database.ReadConcernSettings.Resolve()).
-		SetWriteConcern(e.settings.Database.WriteConcernSettings.Resolve()).
-		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false)))
-
-	if e.settings.Database.AWSAuthEnabled {
-		opts.SetAuth(options.Credential{
-			AuthMechanism: awsAuthMechanism,
-			AuthSource:    mongoExternalAuthSource,
-		})
-	}
-
-	client, err := mongo.Connect(ctx, opts)
+	client, err := mongo.Connect(ctx, e.settings.Database.mongoOptions(url))
 	if err != nil {
 		return errors.Wrap(err, "connecting to the Amboy database")
 	}

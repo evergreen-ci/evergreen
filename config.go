@@ -692,8 +692,8 @@ type DBSettings struct {
 	AWSAuthEnabled       bool         `yaml:"aws_auth_enabled"`
 }
 
-func (s *DBSettings) mongoOptions() *options.ClientOptions {
-	opts := options.Client().ApplyURI(s.Url).SetWriteConcern(s.WriteConcernSettings.Resolve()).
+func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
+	opts := options.Client().ApplyURI(url).SetWriteConcern(s.WriteConcernSettings.Resolve()).
 		SetReadConcern(s.ReadConcernSettings.Resolve()).
 		SetTimeout(5 * time.Minute).
 		SetConnectTimeout(5 * time.Second).
