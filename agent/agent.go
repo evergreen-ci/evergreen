@@ -456,14 +456,19 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "setting up logger producer"))
 	}
 
-	var taskGroupTaskDirMissing bool
+	var recreateTaskDir bool
 	if tc.ranSetupGroup {
 		// kim: TODO: test task group manually
-		_, err := os.Stat(taskDirectory)
-		taskGroupTaskDirMissing = os.IsNotExist(err)
-		tc.logger.Execution().Info("Task directory was already created by a previous task group task, but is missing for this task group task (possibly because it was deleted by a previous task group task), re-creating it.")
+		if _, err := os.Stat(taskDirectory); os.IsNotExist(err) {
+			recreateTaskDir = true
+			tc.logger.Execution().Info("Task directory was already created by a previous task group task, but is missing for this task group task (possibly because it was deleted by a previous task group task), re-creating it.")
+		}
+		if _, err := os.Stat(filepath.Join(taskDirectory, "tmp")); os.IsNotExist(err) {
+			recreateTaskDir = true
+			tc.logger.Execution().Info("Task temporary directory was already created by a previous task group task, but is missing for this task group task (possibly because it was deleted by a previous task group task), re-creating it.")
+		}
 	}
-	if !tc.ranSetupGroup || taskGroupTaskDirMissing {
+	if !tc.ranSetupGroup || recreateTaskDir {
 		taskDirectory, err = a.createTaskDirectory(tc, taskDirectory)
 		if err != nil {
 			return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task directory"))

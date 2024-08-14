@@ -16,8 +16,9 @@ import (
 )
 
 // createTaskDirectory makes a directory for the agent to execute the current
-// task within. If taskDir is specified, it will create that task directory;
-// otherwise, it will generate a new task directory.
+// task within and a temporary directory within that new directory. If taskDir
+// is specified, it will create that task directory; otherwise, it will create
+// a new task directory based on the current task data.
 func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, error) {
 	if taskDir == "" {
 		h := md5.New()
@@ -41,6 +42,8 @@ func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, er
 	}
 
 	tmpDir := filepath.Join(taskDir, "tmp")
+	tc.logger.Execution().Infof("Making new temporary directory '%s' for task execution.", tmpDir)
+
 	if err := os.MkdirAll(tmpDir, 0777); err != nil {
 		tc.logger.Execution().Warning(errors.Wrapf(err, "creating task temporary directory '%s'", tmpDir))
 	}
