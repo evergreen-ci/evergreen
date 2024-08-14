@@ -433,9 +433,7 @@ func setReadyForReprovisioning(ctx context.Context, env evergreen.Environment, h
 			return errors.Wrap(err, "marking host as needing reprovisioning and needing a new agent monitor")
 		}
 
-		if err := units.EnqueueHostReprovisioningJob(ctx, env, h); err != nil {
-			return errors.Wrap(err, "enqueueing job to reprovision host")
-		}
+		return errors.Wrap(units.EnqueueHostReprovisioningJob(ctx, env, h), "enqueueing job to reprovision host")
 	}
 
 	return nil
