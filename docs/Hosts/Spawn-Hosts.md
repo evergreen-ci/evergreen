@@ -66,6 +66,9 @@ during your working hours, while also stopping the host when it's not being acti
 they're not being used is important to ensure that hosts are being efficiently utilized and to avoid over-spending on
 idle long-lived hosts.
 
+Note that stopping the host during off hours means **shutting down the host**, not hibernating the host. If needed, see
+[the FAQ](#faq) for more info.
+
 **While this feature is being rolled out, please [choose and complete one of the three options](#beta-testing) for your
 unexpirable host(s). You must complete one of the options before the beta test ends at 11 am (Eastern Time) on Tuesday
 September 3. If you do not take any action, a default schedule will be set on your behalf for your unexpirable host(s)
@@ -189,6 +192,13 @@ Host <your_persistent_dns_name>
     User <ssh_username>
     Hostname <your_persistent_dns_name>
 ```
+
+Q: Can I have my host hibernate instead of shut down for the schedule?
+
+A: Evergreen's hosts do not currently support hibernation, they can only shut down. This means that the host will lose
+current machine state (e.g. tmux sessions) when it turns off. Supporting hibernation may eventually be explored as
+future work. In the meantime, if your workflow is significantly impacted by the host turning on and off regularly on a
+schedule, you can [request a permanent exemption](#permanent-exemption).
 
 **Q: How do I choose the time zone when setting a sleep schedule?**
 
