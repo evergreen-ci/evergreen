@@ -7,4 +7,4 @@ If you don't already have a github app, reach out to the IT team for help obtain
 ## Saving an app id and key
 
 To get started, save your app ID and app Key in your project settings in the GitHub App Settings tab
-![save app id and key](docs/UI/github-app-id-and-key.png.png)
+![save app id and key](github-app-id-and-key.png.png)
