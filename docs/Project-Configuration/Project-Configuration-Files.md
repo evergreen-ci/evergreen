@@ -628,8 +628,7 @@ To cause a task to not run at all, set `disable: true`.
     dependencies.
 
 Can also set activate, batchtime or cron on tasks or build variants, detailed
-[here](#build-variants). For more on controlling scheduling of tasks, see 
-[controlling when tasks run](Controlling-when-tasks-run)
+[here](Controlling-when-tasks-run).
 
 If there are conflicting settings defined at different levels, the order of
 priority is defined [here](#task-fields-override-hierarchy).
