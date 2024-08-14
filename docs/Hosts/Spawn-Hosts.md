@@ -197,8 +197,8 @@ Q: Can I have my host hibernate instead of shut down for the schedule?
 
 A: Evergreen's hosts do not currently support hibernation, they can only shut down. This means that the host will lose
 current machine state (e.g. tmux sessions) when it turns off. Supporting hibernation may eventually be explored as
-future work. In the meantime, if your workflow is significantly impacted by the host turning on and off regularly on a
-schedule, you can [request a permanent exemption](#permanent-exemption).
+future work. In the meantime, if your workflow is significantly impacted by the host shutting down and rebooting
+regularly on a schedule, you can [request a permanent exemption](#permanent-exemption).
 
 **Q: How do I choose the time zone when setting a sleep schedule?**
 
