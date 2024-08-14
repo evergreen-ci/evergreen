@@ -582,7 +582,11 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context) error {
 	} else {
 		// Do not error when trying to populate github tokens because if the repo is not private, cloning the repo will still work.
 		// Additionally, we should still spin up the host even if we can't fetch the data
-		githubAppToken, moduleTokens, _ := GetGithubTokensForTask(ctx, j.host.ProvisionOptions.TaskId)
+		githubAppToken, moduleTokens, err := GetGithubTokensForTask(ctx, j.host.ProvisionOptions.TaskId)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "error getting GitHub tokens for fetching data for task",
+			"task":    j.host.ProvisionOptions.TaskId,
+		}))
 		cmd = strings.Join(j.host.SpawnHostGetTaskDataCommand(ctx, githubAppToken, moduleTokens), " ")
 	}
 	var output string
@@ -854,12 +858,12 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 	if err == nil && t != nil {
 		mfest, err := manifest.FindFromVersion(t.Version, t.Project, t.Revision, t.Requester)
 		catcher.Add(err)
-		if err == nil && mfest != nil {
+		if mfest != nil {
 			modules = mfest.Modules
 		}
 		p, err := model.FindMergedProjectRef(t.Project, t.Version, false)
 		catcher.Add(err)
-		if err == nil && p != nil {
+		if p != nil {
 			projectOwner = p.Owner
 			projectRepo = p.Repo
 		}
@@ -874,7 +878,7 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 		},
 	}
 
-	if projectOwner != "" && projectRepo != "" && err == nil {
+	if projectOwner != "" && projectRepo != "" && err == nil && settings != nil {
 		// Ignore any errors because if the repo is not private, cloning the repo will still work.
 		// Either way, we should still spin up the host even if we can't fetch the data.
 		githubAppToken, err = settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, projectOwner, projectRepo, opts)

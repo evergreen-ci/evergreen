@@ -387,7 +387,7 @@ func (rh *generatedTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 // DELETE /rest/v2/task/{task_id}/github_dynamic_access_tokens
-// This route is used to revoke user-used GitHub access token for a task.
+// This route is used to revoke GitHub access tokens used for fetching task data.
 type deleteGitHubDynamicAccessTokens struct {
 	taskID string
 	Tokens []string `json:"tokens"`
@@ -426,7 +426,6 @@ func (h *deleteGitHubDynamicAccessTokens) Run(ctx context.Context) gimlet.Respon
 	}
 
 	if catcher.HasErrors() {
-
 		return gimlet.MakeJSONInternalErrorResponder(catcher.Resolve())
 	}
 

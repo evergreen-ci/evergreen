@@ -151,7 +151,7 @@ func Fetch() cli.Command {
 			if revokeTokens {
 				err = revokeFetchTokens(ctx, client, taskID, token, moduleTokensMap)
 				grip.Warning(message.WrapError(err, message.Fields{
-					"message": "revoking github tokens after fetching data",
+					"message": "could not revoke GitHub tokens after fetching data",
 					"task":    taskID,
 				}))
 			}
@@ -163,7 +163,7 @@ func Fetch() cli.Command {
 func parseModuleTokens(moduleTokens []string) map[string]string {
 	moduleTokensMap := make(map[string]string)
 	for _, token := range moduleTokens {
-		// parse the string formatted as 'moduleName:token'
+		// Parse the string formatted as 'moduleName:token'.
 		parts := strings.Split(token, ":")
 		if len(parts) != 2 {
 			grip.Warningf("invalid module token format")

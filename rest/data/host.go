@@ -108,7 +108,11 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 	if h.ProvisionOptions != nil && h.ProvisionOptions.TaskId != "" {
 		// Do not error when trying to populate github tokens because if the repo is not private, cloning the repo will still work.
 		// Additionally, we should still spin up the host even if we can't fetch the data.
-		githubAppToken, moduleTokens, _ = units.GetGithubTokensForTask(ctx, h.ProvisionOptions.TaskId)
+		githubAppToken, moduleTokens, err = units.GetGithubTokensForTask(ctx, h.ProvisionOptions.TaskId)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "error getting GitHub tokens for fetching data for task",
+			"task":    h.ProvisionOptions.TaskId,
+		}))
 	}
 	script, err := h.GenerateUserDataProvisioningScript(ctx, env.Settings(), creds, githubAppToken, moduleTokens)
 	if err != nil {

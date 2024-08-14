@@ -548,12 +548,12 @@ func (c *communicatorImpl) RevokeGitHubDynamicAccessTokens(ctx context.Context, 
 
 	resp, err := c.request(ctx, info, tokens)
 	if err != nil {
-		return errors.Wrap(err, "revoking github dynamic access token")
+		return errors.Wrap(err, "revoking GitHub dynamic access token")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return util.RespErrorf(resp, "revoking github dynamic access token")
+		return util.RespErrorf(resp, "revoking GitHub dynamic access token")
 	}
 
 	return nil
