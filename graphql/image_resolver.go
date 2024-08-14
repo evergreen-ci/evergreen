@@ -95,9 +95,9 @@ func (r *imageResolver) OperatingSystem(ctx context.Context, obj *model.APIImage
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting operating system information for image '%s': '%s'", utility.FromStringPtr(obj.ID), err.Error()))
 	}
 	apiOSData := []*model.APIOSInfo{}
-	for _, pkg := range res.Data {
+	for _, osInfo := range res.Data {
 		apiOSInfo := model.APIOSInfo{}
-		apiOSInfo.BuildFromService(pkg)
+		apiOSInfo.BuildFromService(osInfo)
 		apiOSData = append(apiOSData, &apiOSInfo)
 	}
 	return &ImageOperatingSystemPayload{
