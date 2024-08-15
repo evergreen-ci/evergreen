@@ -40,9 +40,9 @@ func TestOperatingSystem(t *testing.T) {
 	require.NotNil(t, res)
 	require.Len(t, res.Data, 1)
 	require.NotNil(t, res.Data[0])
-	assert.Equal(t, utility.FromStringPtr(res.Data[0].Name), "Kernel")
-	assert.Equal(t, res.FilteredCount, 1)
-	assert.Equal(t, res.TotalCount, 13)
+	assert.Equal(t, "Kernel", utility.FromStringPtr(res.Data[0].Name))
+	assert.Equal(t, 1, res.FilteredCount)
+	assert.Equal(t, 13, res.TotalCount)
 }
 
 func TestPackages(t *testing.T) {
@@ -63,9 +63,9 @@ func TestPackages(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, res.Data, 1)
 	require.NotNil(t, res.Data[0])
-	assert.Equal(t, utility.FromStringPtr(res.Data[0].Name), "python3-automat")
-	assert.Equal(t, res.FilteredCount, 1)
-	assert.Equal(t, res.TotalCount, 1618)
+	assert.Equal(t, "python3-automat", utility.FromStringPtr(res.Data[0].Name))
+	assert.Equal(t, 1, res.FilteredCount)
+	assert.Equal(t, 1618, res.TotalCount)
 }
 
 func TestToolchains(t *testing.T) {
@@ -87,9 +87,9 @@ func TestToolchains(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, res.Data, 1)
 	require.NotNil(t, res.Data[0])
-	assert.Equal(t, utility.FromStringPtr(res.Data[0].Name), "golang")
-	assert.Equal(t, res.FilteredCount, 33)
-	assert.Equal(t, res.TotalCount, 49)
+	assert.Equal(t, "golang", utility.FromStringPtr(res.Data[0].Name))
+	assert.Equal(t, 33, res.FilteredCount)
+	assert.Equal(t, 49, res.TotalCount)
 }
 
 func TestEvents(t *testing.T) {
@@ -108,7 +108,7 @@ func TestEvents(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Len(t, res.EventLogEntries, 5)
-	assert.Equal(t, res.Count, 5)
+	assert.Equal(t, 5, res.Count)
 
 	// Does not return the same events in different pages.
 	firstPageAMIs := []string{}
@@ -119,7 +119,7 @@ func TestEvents(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Len(t, res.EventLogEntries, 5)
-	assert.Equal(t, res.Count, 5)
+	assert.Equal(t, 5, res.Count)
 	for _, event := range res.EventLogEntries {
 		assert.False(t, utility.StringSliceContains(firstPageAMIs, utility.FromStringPtr(event.AMIAfter)))
 	}
@@ -228,5 +228,5 @@ func TestLatestTask(t *testing.T) {
 	res, err := config.Resolvers.Image().LatestTask(ctx, &image)
 	require.NoError(t, err)
 	require.NotNil(t, res)
-	assert.Equal(t, utility.FromStringPtr(res.Id), "task_b")
+	assert.Equal(t, "task_b", utility.FromStringPtr(res.Id))
 }
