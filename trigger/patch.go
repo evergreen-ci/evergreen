@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -243,7 +244,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 			},
 		)
 	} else {
-		data.githubContext = "evergreen"
+		data.githubContext = thirdparty.GithubStatusDefaultContext
 		data.URL = versionLink(
 			versionLinkInput{
 				uiBase:    t.uiConfig.Url,
