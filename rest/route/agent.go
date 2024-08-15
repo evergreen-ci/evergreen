@@ -1592,8 +1592,7 @@ func (h *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Requ
 	if err != nil {
 		return errors.Wrap(err, "reading body")
 	}
-	// If the body is an empty json object or a null json object, we want to set allPermissions to true.
-	if string(body) == "{}" || string(body) == "null" {
+	if len(body) == 0 || string(body) == "{}" {
 		h.allPermissions = true
 		return nil
 	}
