@@ -1042,7 +1042,7 @@ func UpdateBlockedDependencies(ctx context.Context, dependencies []task.Task) er
 		dependencyIDs = append(dependencyIDs, dep.Id)
 	}
 
-	dependentTasks, err := task.FindAllUnmarkedDependenciesToBlock(dependencies, false)
+	dependentTasks, err := task.FindAllDependencyTasksToModify(dependencies, false)
 	if err != nil {
 		return errors.Wrapf(err, "getting all tasks depending on tasks")
 	}
@@ -1089,7 +1089,7 @@ func UpdateUnblockedDependencies(ctx context.Context, dependencies []task.Task) 
 		dependencyIDs = append(dependencyIDs, dep.Id)
 	}
 
-	blockedTasks, err := task.FindAllUnmarkedDependenciesToBlock(dependencies, true)
+	blockedTasks, err := task.FindAllDependencyTasksToModify(dependencies, true)
 	if err != nil {
 		return errors.Wrapf(err, "getting all tasks depending on tasks")
 	}

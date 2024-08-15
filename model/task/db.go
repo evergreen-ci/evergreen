@@ -2633,15 +2633,18 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 	return pipeline, nil
 }
 
-// FindAllUnmarkedDependenciesToBlock finds tasks that depend on one of the
-// given tasks. For each task dependency, it finds those that have not been
-// marked unattainable and currently have a status that would block the task
-// from running.
+// FindAllDependencyTasksToModify finds tasks that depend on one of the
+// given tasks. The isUnblocking parameter indicates whether we are fetching
+// tasks to unblock them, and if so, for each dependency, all dependency tasks
+// that have been marked unattainable will be retrieved. Otherwise, we are
+// fetching tasks to block them ,and for each task dependency, it finds those
+// that have not been marked unattainable and currently have a status that would
+// block the task from running.
+//
 // This must find tasks in smaller chunks to avoid the 16 MB query size limit -
 // if the number of tasks is large, a single query could be too large and the DB
 // will reject it.
-// TODO update this comment
-func FindAllUnmarkedDependenciesToBlock(tasks []Task, isUnblocking bool) ([]Task, error) {
+func FindAllDependencyTasksToModify(tasks []Task, isUnblocking bool) ([]Task, error) {
 	if len(tasks) == 0 {
 		return nil, nil
 	}
