@@ -2071,8 +2071,7 @@ func TestGithubPermissionGroups(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(orgGroup[0].Name, intersection.Name)
 
-		// Fields that were set on orgGroup[0].
-		assert.Nil(intersection.Permissions)
+		assert.True(intersection.HasNoPermissions())
 	})
 
 	t.Run("Intersection of two no permissions should return no permissions", func(t *testing.T) {
