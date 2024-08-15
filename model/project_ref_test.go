@@ -1998,6 +1998,12 @@ func TestGithubPermissionGroups(t *testing.T) {
 			Name:           "all-permissions-2",
 			AllPermissions: true,
 		},
+		{
+			Name: "other-permissions",
+			Permissions: github.InstallationPermissions{
+				Contents: utility.ToStringPtr("read"),
+			},
+		},
 	}
 	orgRequesters := map[string]string{
 		evergreen.PatchVersionRequester: "some-group",
@@ -2125,6 +2131,20 @@ func TestGithubPermissionGroups(t *testing.T) {
 
 		// An unspecified field.
 		assert.Nil(intersection.Permissions.Emails)
+	})
+
+	t.Run("Intersection of permissions that result in no permissions should return no permissions", func(t *testing.T) {
+		intersection, err := orgGroup[1].Intersection(orgGroup[6])
+		require.NoError(err)
+		assert.True(intersection.HasNoPermissions())
+
+		assert.Nil(intersection.Permissions.Administration)
+		assert.Nil(intersection.Permissions.Actions)
+		assert.Nil(intersection.Permissions.Contents)
+		assert.Nil(intersection.Permissions.Followers)
+		assert.Nil(intersection.Permissions.Checks)
+		assert.Nil(intersection.Permissions.Metadata)
+		assert.Nil(intersection.Permissions.OrganizationAdministration)
 	})
 
 	t.Run("Intersection of permissions with invalid permissions should return an error", func(t *testing.T) {
