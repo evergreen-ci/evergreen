@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/aws/aws-sdk-go/service/s3"
+	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
@@ -125,13 +125,13 @@ func (c *s3copy) validate() error {
 			catcher.New("S3 destination path cannot be blank")
 		}
 		if s3CopyFile.Permissions == "" {
-			s3CopyFile.Permissions = s3.BucketCannedACLPublicRead
+			s3CopyFile.Permissions = string(s3Types.BucketCannedACLPublicRead)
 		}
 		if s3CopyFile.Source.Region == "" {
-			s3CopyFile.Source.Region = endpoints.UsEast1RegionID
+			s3CopyFile.Source.Region = evergreen.DefaultEC2Region
 		}
 		if s3CopyFile.Destination.Region == "" {
-			s3CopyFile.Destination.Region = endpoints.UsEast1RegionID
+			s3CopyFile.Destination.Region = evergreen.DefaultEC2Region
 		}
 		// make sure both buckets are valid
 		if err := validateS3BucketName(s3CopyFile.Source.Bucket); err != nil {
@@ -237,7 +237,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 			Permissions: pail.S3Permissions(s3CopyReq.S3Permissions),
 		}
 
-		srcBucket, err := pail.NewS3MultiPartBucketWithHTTPClient(client, srcOpts)
+		srcBucket, err := pail.NewS3MultiPartBucketWithHTTPClient(ctx, client, srcOpts)
 		if err != nil {
 			catcher := grip.NewBasicCatcher()
 			catcher.Wrap(err, "initializing S3 source bucket")
@@ -263,7 +263,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 			Name:        s3CopyReq.S3DestinationBucket,
 			Permissions: pail.S3Permissions(s3CopyReq.S3Permissions),
 		}
-		destBucket, err := pail.NewS3MultiPartBucket(destOpts)
+		destBucket, err := pail.NewS3MultiPartBucket(ctx, destOpts)
 		if err != nil {
 			catcher := grip.NewBasicCatcher()
 			catcher.Wrap(err, "initializing S3 destination bucket")

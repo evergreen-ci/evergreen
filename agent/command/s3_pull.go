@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -35,7 +35,7 @@ func (c *s3Base) expandParams(conf *internal.TaskConfig) error {
 	return errors.Wrap(util.ExpandValues(c, &conf.Expansions), "applying expansions")
 }
 
-func (c *s3Base) createBucket(client *http.Client, conf *internal.TaskConfig) error {
+func (c *s3Base) createBucket(ctx context.Context, client *http.Client, conf *internal.TaskConfig) error {
 	if c.bucket != nil {
 		return nil
 	}
@@ -46,13 +46,13 @@ func (c *s3Base) createBucket(client *http.Client, conf *internal.TaskConfig) er
 
 	opts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(conf.TaskSync.Key, conf.TaskSync.Secret, ""),
-		Region:      endpoints.UsEast1RegionID,
+		Region:      evergreen.DefaultEC2Region,
 		Name:        conf.TaskSync.Bucket,
 		MaxRetries:  utility.ToIntPtr(int(c.MaxRetries)),
 		Permissions: pail.S3PermissionsPrivate,
 	}
 
-	bucket, err := pail.NewS3ArchiveBucketWithHTTPClient(client, opts)
+	bucket, err := pail.NewS3ArchiveBucketWithHTTPClient(ctx, client, opts)
 	if err != nil {
 		return errors.Wrap(err, "initializing bucket")
 	}
@@ -115,7 +115,7 @@ func (c *s3Pull) Execute(ctx context.Context, comm client.Communicator, logger c
 	httpClient.Timeout = 0
 	defer utility.PutHTTPClient(httpClient)
 
-	if err := c.createBucket(httpClient, conf); err != nil {
+	if err := c.createBucket(ctx, httpClient, conf); err != nil {
 		return errors.Wrap(err, "creating S3 task bucket")
 	}
 

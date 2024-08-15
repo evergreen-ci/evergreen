@@ -12,8 +12,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -382,4 +384,50 @@ func (rh *generatedTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(apiTaskInfos)
+}
+
+// DELETE /rest/v2/task/{task_id}/github_dynamic_access_tokens
+// This route is used to revoke GitHub access tokens used for fetching task data.
+type deleteGitHubDynamicAccessTokens struct {
+	taskID string
+	Tokens []string `json:"tokens"`
+}
+
+func makeDeleteGitHubDynamicAccessTokens() gimlet.RouteHandler {
+	return &deleteGitHubDynamicAccessTokens{}
+}
+
+func (h *deleteGitHubDynamicAccessTokens) Factory() gimlet.RouteHandler {
+	return &deleteGitHubDynamicAccessTokens{}
+}
+
+func (h *deleteGitHubDynamicAccessTokens) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task_id")
+	}
+
+	if err := utility.ReadJSON(r.Body, &h.Tokens); err != nil {
+		return errors.Wrapf(err, "reading token JSON request body for task '%s'", h.taskID)
+	}
+
+	if len(h.Tokens) == 0 {
+		return errors.New("no token to redact")
+	}
+	return nil
+}
+
+func (h *deleteGitHubDynamicAccessTokens) Run(ctx context.Context) gimlet.Responder {
+	catcher := grip.NewBasicCatcher()
+
+	for i, token := range h.Tokens {
+		if err := thirdparty.RevokeInstallationToken(ctx, token); err != nil {
+			catcher.Wrapf(err, "revoking token %d for task '%s'", i, h.taskID)
+		}
+	}
+
+	if catcher.HasErrors() {
+		return gimlet.MakeJSONInternalErrorResponder(catcher.Resolve())
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
 }

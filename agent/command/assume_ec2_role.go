@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
-	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -78,45 +78,37 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 	key := conf.EC2Keys[0].Key
 	secret := conf.EC2Keys[0].Secret
 
-	// Error if key or secret are blank
 	if key == "" || secret == "" {
 		return errors.New("AWS key and secret must not be empty")
 	}
 
-	defaultCreds := credentials.NewStaticCredentialsFromCreds(credentials.Value{
-		AccessKeyID:     key,
-		SecretAccessKey: secret,
+	assumeRoleCreds := credentials.NewStaticCredentialsProvider(key, secret, "")
+	assumeRoleClient := sts.New(sts.Options{
+		Region:      evergreen.DefaultEC2Region,
+		Credentials: assumeRoleCreds,
 	})
-
-	session1 := session.Must(session.NewSession(&aws.Config{
-		Credentials: defaultCreds,
-	}))
-
-	creds := stscreds.NewCredentials(session1, r.RoleARN, func(arp *stscreds.AssumeRoleProvider) {
-		arp.RoleSessionName = strconv.Itoa(int(time.Now().Unix()))
-		// External ID is a combination of project ID and requester, since mainline commits might have higher trust
-		arp.ExternalID = utility.ToStringPtr(fmt.Sprintf("%s-%s", conf.ProjectRef.Id, conf.Task.Requester))
+	stsCreds := stscreds.NewAssumeRoleProvider(assumeRoleClient, r.RoleARN, func(opts *stscreds.AssumeRoleOptions) {
+		opts.RoleSessionName = strconv.Itoa(int(time.Now().Unix()))
+		// External ID is a combination of project ID and requester to avoid the
+		// confused deputy problem. Mainline commits might have higher trust
+		// than patches.
+		opts.ExternalID = utility.ToStringPtr(fmt.Sprintf("%s-%s", conf.ProjectRef.Id, conf.Task.Requester))
 		if r.Policy != "" {
-			arp.Policy = utility.ToStringPtr(r.Policy)
+			opts.Policy = utility.ToStringPtr(r.Policy)
 		}
 		if r.DurationSeconds != 0 {
-			arp.Duration = time.Duration(r.DurationSeconds) * time.Second
+			opts.Duration = time.Duration(r.DurationSeconds) * time.Second
 		}
 	})
 
-	credValues, err := creds.Get()
+	creds, err := stsCreds.Retrieve(ctx)
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.Wrap(err, "retrieving sts credentials")
 	}
 
-	expTime, err := creds.ExpiresAt()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	conf.NewExpansions.Put(globals.AWSAccessKeyId, credValues.AccessKeyID)
-	conf.NewExpansions.Put(globals.AWSSecretAccessKey, credValues.SecretAccessKey)
-	conf.NewExpansions.Put(globals.AWSSessionToken, credValues.SessionToken)
-	conf.NewExpansions.Put(globals.AWSRoleExpiration, expTime.String())
+	conf.NewExpansions.Put(globals.AWSAccessKeyId, creds.AccessKeyID)
+	conf.NewExpansions.Put(globals.AWSSecretAccessKey, creds.SecretAccessKey)
+	conf.NewExpansions.Put(globals.AWSSessionToken, creds.SessionToken)
+	conf.NewExpansions.Put(globals.AWSRoleExpiration, creds.Expires.String())
 	return nil
 }

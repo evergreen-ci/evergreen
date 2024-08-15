@@ -395,7 +395,7 @@ func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 // is provisioning in user data. If, for some reason, this script gets
 // interrupted, there's no guarantee that it will succeed if run again, since we
 // cannot enforce idempotency on the setup script.
-func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings *evergreen.Settings, creds *certdepot.Credentials) (string, error) {
+func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings *evergreen.Settings, creds *certdepot.Credentials, githubAppToken string, moduleTokens []string) (string, error) {
 	var err error
 	checkProvisioningStarted := h.CheckUserDataProvisioningStartedCommand()
 
@@ -429,7 +429,7 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 			if h.ProvisionOptions.TaskSync {
 				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostPullTaskSyncCommand(), " ")}
 			} else {
-				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
+				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(ctx, githubAppToken, moduleTokens), " ")}
 			}
 			var getTaskDataCmd string
 			getTaskDataCmd, err = h.buildLocalJasperClientRequest(
@@ -1136,8 +1136,8 @@ func (h *Host) spawnHostConfig(settings *evergreen.Settings) ([]byte, error) {
 
 // SpawnHostGetTaskDataCommand returns the command that fetches the task data
 // for a spawn host.
-func (h *Host) SpawnHostGetTaskDataCommand() []string {
-	return []string{
+func (h *Host) SpawnHostGetTaskDataCommand(ctx context.Context, githubAppToken string, moduleTokens []string) []string {
+	s := []string{
 		// We can't use the absolute path for the binary because we always run
 		// it in a Cygwin context on Windows.
 		h.AgentBinary(),
@@ -1150,6 +1150,21 @@ func (h *Host) SpawnHostGetTaskDataCommand() []string {
 		// Windows shortcut.
 		"--dir", h.Distro.WorkDir,
 	}
+
+	if githubAppToken != "" || moduleTokens != nil {
+		s = append(s, "--use-app-token")
+		s = append(s, "--revoke-tokens")
+	}
+
+	if githubAppToken != "" {
+		s = append(s, "--token", githubAppToken)
+	}
+
+	for _, moduleToken := range moduleTokens {
+		s = append(s, "-m", moduleToken)
+	}
+
+	return s
 }
 
 // SpawnHostPullTaskSyncCommand returns the command that pulls the task sync

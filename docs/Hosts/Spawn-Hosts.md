@@ -66,6 +66,9 @@ during your working hours, while also stopping the host when it's not being acti
 they're not being used is important to ensure that hosts are being efficiently utilized and to avoid over-spending on
 idle long-lived hosts.
 
+Note that stopping the host during off hours means **shutting down the host**, not hibernating the host. If needed, see
+[the FAQ](#faq) for more info.
+
 **While this feature is being rolled out, please [choose and complete one of the three options](#beta-testing) for your
 unexpirable host(s). You must complete one of the options before the beta test ends at 11 am (Eastern Time) on Tuesday
 September 3. If you do not take any action, a default schedule will be set on your behalf for your unexpirable host(s)
@@ -83,8 +86,8 @@ for your host, **please pick and complete one before the beta test period ends**
    the sleep schedule beta test.
 2. [Option 2](#host-auto-sleep-script): Set up a local script on your host to automatically stop/start your host based
    on your own activity within the host. This is a separate but accepted alternative to the sleep schedule.
-3. [Option 3](#permanent-exemption): If you have a special reason that your host cannot use 1 or 2, you
-   can request a permanent exemption for your host.
+3. [Option 3](#permanent-exemption): If you have a reason that your host cannot use 1 or 2, you can request a permanent
+   exemption for your host.
 
 **The beta test period will end on September 3, at which point the sleep schedule will stop being an opt-in
 feature and will take effect on _all_ unexpirable hosts except those that have been granted a permanent exemption, so
@@ -190,6 +193,14 @@ Host <your_persistent_dns_name>
     Hostname <your_persistent_dns_name>
 ```
 
+Q: Can I have my host hibernate instead of shut down for the schedule?
+
+A: Evergreen's hosts do not currently support hibernation, they can only shut down. This means that the host will lose
+current machine state (e.g. tmux sessions) when it turns off. Supporting hibernation may eventually be explored as
+future work in [DEVPROD-8579](https://jira.mongodb.org/browse/DEVPROD-8579). In the meantime, if your workflow is
+significantly impacted by the host shutting down and rebooting regularly on a schedule, you can [request a permanent
+exemption](#permanent-exemption).
+
 **Q: How do I choose the time zone when setting a sleep schedule?**
 
 A: You can pick a time zone from the edit host modal by selecting it from the dropdown.
@@ -233,22 +244,20 @@ permanent exemption request, please:
 
 ### Option 3: Requesting a Permanent Exemption {#permanent-exemption}
 
-If for some reason your host cannot use a sleep schedule at all, you can request that your host be permanently exempt
-from the sleep schedule feature. If your host is permanently exempt, it won't have any sleep schedule set and Evergreen
-will not stop/start your host according to a recurring sleep schedule. A permanent exemption from setting a sleep
-schedule would allow your host to be kept on 24/7.
+If for some reason your host cannot use a sleep schedule at all or your regular workflow is impacted by using it, you
+can request that your host be permanently exempt from the sleep schedule feature. If your host is permanently exempt, it
+won't have any sleep schedule set and Evergreen will not stop/start your host according to a recurring sleep schedule. A
+permanent exemption from setting a sleep schedule would allow your host to be kept on 24/7.
 
-**Requesting a permanent exemption is not recommended unless you have set up [the auto-sleep
-script](#host-auto-sleep-script) (and want it to substitute for a recurring sleep schedule) or you have a particular
-reason that your host must be kept on at all times.** This is because keeping hosts on 24/7 is not an efficient use of
-AWS resources since the host incurs costs to run while it's not being actively used. In addition, users who only
-occasionally need their host to be kept on for an extended period of time can set [temporary
-exemptions](#temporary-exemptions) when needed.
+**If the sleep schedule feature does not impact your regular workflow, it's recommended to first try that out or set up
+[the auto-sleep script](#host-auto-sleep-script).** User who only occasionally need their host to stay on (e.g. to
+occasionally run a one-off test overnight) can set [temporary exemptions](#temporary-exemptions) when needed. If the
+feature negatively impacts your workflow on the host, you can request a permanent exemption.
 
 If you'd like to request a permanent exemption, please file a DEVPROD ticket with the title "Permanent Exemption
-Request" and set Evergreen App as the Dev Prod service. In it, please include your host ID and an explanation of why
-you'd like your host to be permanently exempt from the sleep schedule (and if relevant, why the other options are not
-suitable for your usage).
+Request" and set Evergreen App as the Dev Prod service. In it, please include your host ID and a brief description of
+why you'd like your host to be permanently exempt from the sleep schedule (and if relevant, why the other options are
+not suitable for your usage).
 
 If you're using the host auto-sleep script as a replacement for the sleep schedule and would like to get a permanent
 exemption for the host, please follow the instructions

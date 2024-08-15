@@ -1,6 +1,7 @@
 package artifact
 
 import (
+	"context"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -65,8 +66,9 @@ type File struct {
 	ContentType string `json:"content_type" bson:"content_type"`
 }
 
-// StripHiddenFiles is a helper for only showing users the files they are allowed to see.
-func StripHiddenFiles(files []File, hasUser bool) ([]File, error) {
+// StripHiddenFiles is a helper for only showing users the files they are
+// allowed to see. It also pre-signs file URLs.
+func StripHiddenFiles(ctx context.Context, files []File, hasUser bool) ([]File, error) {
 	publicFiles := []File{}
 	for _, file := range files {
 		switch {
@@ -75,7 +77,7 @@ func StripHiddenFiles(files []File, hasUser bool) ([]File, error) {
 		case (file.Visibility == Private || file.Visibility == Signed) && !hasUser:
 			continue
 		case file.Visibility == Signed && hasUser:
-			link, err := presignFile(file)
+			link, err := presignFile(ctx, file)
 			if err != nil {
 				return nil, errors.Wrapf(err, "presigning url for file '%s'", file.Name)
 			}
@@ -88,7 +90,7 @@ func StripHiddenFiles(files []File, hasUser bool) ([]File, error) {
 	return publicFiles, nil
 }
 
-func presignFile(file File) (string, error) {
+func presignFile(ctx context.Context, file File) (string, error) {
 	if file.AwsSecret == "" || file.AwsKey == "" || file.Bucket == "" || file.FileKey == "" {
 		return "", errors.New("AWS secret, AWS key, S3 bucket, or file key missing")
 	}
@@ -107,7 +109,7 @@ func presignFile(file File) (string, error) {
 		AwsKey:    file.AwsKey,
 		AwsSecret: file.AwsSecret,
 	}
-	return pail.PreSign(requestParams)
+	return pail.PreSign(ctx, requestParams)
 }
 
 func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {

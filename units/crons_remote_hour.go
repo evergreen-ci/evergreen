@@ -47,8 +47,6 @@ func (j *cronsRemoteHourJob) Run(ctx context.Context) {
 
 	ops := []amboy.QueueOperation{
 		PopulateCacheHistoricalTaskDataJob(2),
-		PopulateHostProvisioningConversionJobs(j.env),
-		PopulateHostRestartJasperJobs(j.env),
 		PopulateSpawnhostExpirationCheckJob(),
 		PopulateCloudCleanupJob(j.env),
 		PopulateVolumeExpirationCheckJob(),

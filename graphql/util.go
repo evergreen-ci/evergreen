@@ -53,7 +53,7 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	hasUser := gimlet.GetUser(ctx) != nil
-	strippedFiles, err := artifact.StripHiddenFiles(taskFiles, hasUser)
+	strippedFiles, err := artifact.StripHiddenFiles(ctx, taskFiles, hasUser)
 	if err != nil {
 		return nil, err
 	}
