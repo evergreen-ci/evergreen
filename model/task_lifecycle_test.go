@@ -7450,7 +7450,7 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 	assert.NoError(b.Insert())
 	assert.NoError(b2.Insert())
 
-	assert.NoError(UpdateUnblockedDependencies(ctx, &tasks[0]))
+	assert.NoError(UpdateUnblockedDependencies(ctx, []task.Task{tasks[0]}))
 
 	// this task should still be marked blocked because t1 is unattainable
 	dbTask2, err := task.FindOneId(tasks[2].Id)

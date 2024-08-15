@@ -2640,7 +2640,8 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 // This must find tasks in smaller chunks to avoid the 16 MB query size limit -
 // if the number of tasks is large, a single query could be too large and the DB
 // will reject it.
-func FindAllUnmarkedDependenciesToBlock(tasks []Task) ([]Task, error) {
+// TODO update this comment
+func FindAllUnmarkedDependenciesToBlock(tasks []Task, isUnblocking bool) ([]Task, error) {
 	if len(tasks) == 0 {
 		return nil, nil
 	}
@@ -2651,12 +2652,15 @@ func FindAllUnmarkedDependenciesToBlock(tasks []Task) ([]Task, error) {
 
 	for i, t := range tasks {
 		okStatusSet := []string{AllStatuses, t.Status}
+		elemMatchQuery := bson.M{DependencyTaskIdKey: t.Id}
+		if isUnblocking {
+			elemMatchQuery[DependencyUnattainableKey] = true
+		} else {
+			elemMatchQuery[DependencyStatusKey] = bson.M{"$nin": okStatusSet}
+			elemMatchQuery[DependencyUnattainableKey] = false
+		}
 		unmatchedDep = append(unmatchedDep, bson.M{
-			DependsOnKey: bson.M{"$elemMatch": bson.M{
-				DependencyTaskIdKey:       t.Id,
-				DependencyStatusKey:       bson.M{"$nin": okStatusSet},
-				DependencyUnattainableKey: false,
-			}},
+			DependsOnKey: bson.M{"$elemMatch": elemMatchQuery},
 		})
 
 		if i == len(tasks)-1 || len(unmatchedDep) >= maxTasksPerQuery {
@@ -2676,17 +2680,6 @@ func FindAllUnmarkedDependenciesToBlock(tasks []Task) ([]Task, error) {
 	}
 
 	return allTasks, nil
-}
-
-func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
-	query := db.Query(bson.M{
-		DependsOnKey: bson.M{"$elemMatch": bson.M{
-			DependencyTaskIdKey:       t.Id,
-			DependencyUnattainableKey: true,
-		},
-		}},
-	)
-	return FindAll(query)
 }
 
 func activateTasks(taskIDs []string, caller string, activationTime time.Time) error {
