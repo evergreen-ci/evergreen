@@ -102,10 +102,10 @@ type OSInfo struct {
 
 // OSInfoFilterOptions represents the filtering options for GetOSInfo. Each argument is optional except for the AMI field.
 type OSInfoFilterOptions struct {
-	AMI   string
-	Name  string
-	Page  int
-	Limit int
+	AMI   string `json:"-"`
+	Name  string `json:"-"`
+	Page  int    `json:"-"`
+	Limit int    `json:"-"`
 }
 
 // GetOSInfo returns a list of operating system information for an AMI.
@@ -159,11 +159,11 @@ type Package struct {
 
 // PackageFilterOptions represents the filtering arguments, each of which is optional except the AMI.
 type PackageFilterOptions struct {
-	AMI     string
-	Page    int
-	Limit   int
-	Name    string // Filter by the name of the package.
-	Manager string // Filter by the package manager (ex. pip).
+	AMI     string `json:"-"`
+	Page    int    `json:"-"`
+	Limit   int    `json:"-"`
+	Name    string `json:"-"` // Filter by the name of the package.
+	Manager string `json:"-"` // Filter by the package manager (ex. pip).
 }
 
 // GetPackages returns a list of packages from the corresponding AMI and filters in opts.
@@ -217,11 +217,11 @@ type Toolchain struct {
 
 // ToolchainFilterOptions represents the filtering arguments, each of which is optional except for the AMI.
 type ToolchainFilterOptions struct {
-	AMI     string
-	Page    int
-	Limit   int
-	Name    string // Filter by the name of the toolchain (ex. golang).
-	Version string // Filter by the version (ex. go1.8.7).
+	AMI     string `json:"-"`
+	Page    int    `json:"-"`
+	Limit   int    `json:"-"`
+	Name    string `json:"-"` // Filter by the name of the toolchain (ex. golang).
+	Version string `json:"-"` // Filter by the version (ex. go1.8.7).
 }
 
 // GetToolchains returns a list of toolchains from the AMI and filters in the ToolchainFilterOptions.
@@ -317,9 +317,9 @@ type ImageHistoryInfo struct {
 
 // ImageHistoryFilter represents the filtering arguments for getHistory. The ImageID field is required and the other fields are optional.
 type ImageHistoryFilterOptions struct {
-	ImageID string
-	Page    int
-	Limit   int
+	ImageID string `json:"-"`
+	Page    int    `json:"-"`
+	Limit   int    `json:"-"`
 }
 
 // getHistory returns a list of images with their AMI and creation date corresponding to the provided distro in the order of most recently
@@ -376,9 +376,9 @@ type ImageEvent struct {
 
 // EventHistoryOptions represents the filtering arguments for GetEvents. Image and Limit are required arguments.
 type EventHistoryOptions struct {
-	Image string
-	Page  int
-	Limit int
+	Image string `json:"-"`
+	Page  int    `json:"-"`
+	Limit int    `json:"-"`
 }
 
 // stringToTime converts a string representing time to type time.Time.
