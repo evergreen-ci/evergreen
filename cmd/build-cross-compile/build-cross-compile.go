@@ -9,7 +9,10 @@ import (
 	"strings"
 )
 
-const macGOOS = "darwin"
+const (
+	macGOOS       = "darwin"
+	macMinVersion = "10.14"
+)
 
 func main() {
 	var (
@@ -84,6 +87,9 @@ func main() {
 	// Always set it explicitly because the default varies. See https://pkg.go.dev/cmd/cgo#hdr-Using_cgo_with_the_go_command.
 	if system == macGOOS {
 		cmd.Env = append(cmd.Env, "CGO_ENABLED=1")
+		cmd.Env = append(cmd.Env, fmt.Sprintf("CGO_LDFLAGS=-mmacosx-version-min=%s", macMinVersion))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("CGO_CFLAGS=-mmacosx-version-min=%s", macMinVersion))
+		cmd.Args = append(cmd.Args, "-installsuffix=evergreen")
 	} else {
 		cmd.Env = append(cmd.Env, "CGO_ENABLED=0")
 	}
