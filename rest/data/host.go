@@ -292,7 +292,7 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 }
 
 // PostHostIsUp indicates to the app server that a host is up.
-func PostHostIsUp(ctx context.Context, params restmodel.APIHostIsUpOptions) (*restmodel.APIHost, error) {
+func PostHostIsUp(ctx context.Context, env evergreen.Environment, params restmodel.APIHostIsUpOptions) (*restmodel.APIHost, error) {
 	h, err := host.FindOneByIdOrTag(ctx, params.HostID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -312,6 +312,19 @@ func PostHostIsUp(ctx context.Context, params restmodel.APIHostIsUpOptions) (*re
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "fixing intent host").Error(),
 		}
+	}
+
+	if err := setReadyForReprovisioning(ctx, env, h); err != nil {
+		// It's okay to continue even if this errors because if the host needs
+		// to reprovision, the agent monitor will eventually shut itself down or
+		// stop communicating with the app server. At that point, the host will
+		// be ready to reprovision.
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "could not mark host as needing new agent monitor for reprovisioning",
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+			"status":  h.Status,
+		}))
 	}
 
 	var apiHost restmodel.APIHost
@@ -411,6 +424,27 @@ func transitionIntentHostToDecommissioned(ctx context.Context, env evergreen.Env
 		"distro":     hostToDecommission.Distro.Id,
 		"old_status": oldStatus,
 	})
+
+	return nil
+}
+
+// setReadyForReprovisioning marks the host as ready to reprovision. This does
+// not modify quarantined hosts, because quarantined hosts cannot be
+// reprovisioned (and are therefore not ready to reprovision). If a quarantined
+// host needs to reprovision, it will automatically do so when it's brought out
+// of quarantine.
+func setReadyForReprovisioning(ctx context.Context, env evergreen.Environment, h *host.Host) error {
+	if h.NeedsReprovision == host.ReprovisionNone {
+		return nil
+	}
+
+	if utility.StringSliceContains([]string{evergreen.HostProvisioning, evergreen.HostRunning}, h.Status) {
+		if err := h.MarkAsReprovisioning(ctx); err != nil {
+			return errors.Wrap(err, "marking host as needing reprovisioning and needing a new agent monitor")
+		}
+
+		return errors.Wrap(units.EnqueueHostReprovisioningJob(ctx, env, h), "enqueueing job to reprovision host")
+	}
 
 	return nil
 }

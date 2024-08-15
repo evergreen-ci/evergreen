@@ -412,14 +412,15 @@ func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Res
 
 type hostIsUpPostHandler struct {
 	params model.APIHostIsUpOptions
+	env    evergreen.Environment
 }
 
-func makeHostIsUpPostHandler() gimlet.RouteHandler {
-	return &hostIsUpPostHandler{}
+func makeHostIsUpPostHandler(env evergreen.Environment) gimlet.RouteHandler {
+	return &hostIsUpPostHandler{env: env}
 }
 
 func (rh *hostIsUpPostHandler) Factory() gimlet.RouteHandler {
-	return &hostIsUpPostHandler{}
+	return &hostIsUpPostHandler{env: rh.env}
 }
 
 func (rh *hostIsUpPostHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -430,7 +431,7 @@ func (rh *hostIsUpPostHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (rh *hostIsUpPostHandler) Run(ctx context.Context) gimlet.Responder {
-	apiHost, err := data.PostHostIsUp(ctx, rh.params)
+	apiHost, err := data.PostHostIsUp(ctx, rh.env, rh.params)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
