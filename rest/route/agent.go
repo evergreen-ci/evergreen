@@ -1634,6 +1634,8 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		})
 	}
 	requesterPermissionGroup, _ := p.GetGitHubPermissionGroup(t.Requester)
+	// If the requester has no permissions, they should not be able to create a token.
+	// GitHub interprets an empty token as having all permissions.
 	if requesterPermissionGroup.HasNoPermissions() {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
