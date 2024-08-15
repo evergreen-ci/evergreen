@@ -1669,7 +1669,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", h.owner, h.repo))
 	}
 	if token == "" {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("no installation token returned for '%s/%s'", h.owner, h.repo))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("no installation token returned for '%s/%s'", h.owner, h.repo))
 	}
 
 	return gimlet.NewJSONResponse(&apimodels.Token{
