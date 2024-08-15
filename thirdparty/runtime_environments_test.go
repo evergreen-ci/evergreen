@@ -15,7 +15,7 @@ func TestGetImageNames(t *testing.T) {
 
 	assert := assert.New(t)
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGetImageNames")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	result, err := c.GetImageNames(ctx)
 	assert.NoError(err)
@@ -29,7 +29,7 @@ func TestGetOSInfo(t *testing.T) {
 
 	assert := assert.New(t)
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGetOSInfo")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
 	// Verify that providing no AMI produces an error.
@@ -92,7 +92,7 @@ func TestGetPackages(t *testing.T) {
 
 	assert := assert.New(t)
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGetPackages")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
 	// Verify that we can get package data with limit and page.
@@ -153,7 +153,7 @@ func TestGetToolchains(t *testing.T) {
 
 	assert := assert.New(t)
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGetToolchains")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
 	// Verify that we can get toolchain data with limit and page.
@@ -212,7 +212,7 @@ func TestGetImageDiff(t *testing.T) {
 
 	assert := assert.New(t)
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGetImageDiff")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
 	// Verify that getImageDiff correctly returns Toolchain/Package changes for a pair of sample AMIs.
@@ -243,7 +243,7 @@ func TestGetHistory(t *testing.T) {
 
 	assert := assert.New(t)
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGetHistory")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
 	// Verify that getHistory errors when not provided the required imageid field.
@@ -273,7 +273,7 @@ func TestGetImageInfo(t *testing.T) {
 
 	assert := assert.New(t)
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGetImageInfo")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
 	result, err := c.GetImageInfo(ctx, "ubuntu2204")
@@ -293,7 +293,7 @@ func TestGetEvents(t *testing.T) {
 	assert := assert.New(t)
 	config := testutil.TestConfig()
 
-	testutil.ConfigureIntegrationTest(t, config, "TestGetEvents")
+	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
 	// Verify that GetEvents errors when not provided the required distro field.
