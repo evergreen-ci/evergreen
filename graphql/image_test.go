@@ -7,9 +7,11 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,22 +27,21 @@ func TestPackages(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestPackages")
 	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
-	manager := "pip"
-	testPackage := "Automat"
 	ami := "ami-0f6b89500372d4a06"
 	image := model.APIImage{
 		AMI: &ami,
 	}
 	opts := thirdparty.PackageFilterOptions{
-		AMI:     ami,
-		Manager: manager,
-		Name:    testPackage,
+		AMI:  ami,
+		Name: "python3-automat",
 	}
 	res, err := config.Resolvers.Image().Packages(ctx, &image, opts)
 	require.NoError(t, err)
-	require.Len(t, res, 1)
-	require.NotNil(t, res[0])
-	assert.Equal(t, testPackage, utility.FromStringPtr(res[0].Name))
+	require.Len(t, res.Data, 1)
+	require.NotNil(t, res.Data[0])
+	assert.Equal(t, utility.FromStringPtr(res.Data[0].Name), "python3-automat")
+	assert.Equal(t, res.FilteredCount, 1)
+	assert.Equal(t, res.TotalCount, 1618)
 }
 
 func TestToolchains(t *testing.T) {
@@ -49,20 +50,22 @@ func TestToolchains(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestToolchains")
 	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
-	testToolchain := "golang"
 	ami := "ami-0f6b89500372d4a06"
 	image := model.APIImage{
 		AMI: &ami,
 	}
 	opts := thirdparty.ToolchainFilterOptions{
 		AMI:   ami,
-		Limit: 5,
+		Name:  "golang",
+		Limit: 1,
 	}
 	res, err := config.Resolvers.Image().Toolchains(ctx, &image, opts)
 	require.NoError(t, err)
-	require.Len(t, res, 5)
-	require.NotNil(t, res[0])
-	assert.Equal(t, testToolchain, utility.FromStringPtr(res[0].Name))
+	require.Len(t, res.Data, 1)
+	require.NotNil(t, res.Data[0])
+	assert.Equal(t, utility.FromStringPtr(res.Data[0].Name), "golang")
+	assert.Equal(t, res.FilteredCount, 33)
+	assert.Equal(t, res.TotalCount, 49)
 }
 
 func TestEvents(t *testing.T) {
@@ -79,17 +82,21 @@ func TestEvents(t *testing.T) {
 	}
 	res, err := config.Resolvers.Image().Events(ctx, &image, 5, 0)
 	require.NoError(t, err)
-	assert.Len(t, res, 5)
+	require.NotNil(t, res)
+	assert.Len(t, res.EventLogEntries, 5)
+	assert.Equal(t, res.Count, 5)
 
 	// Does not return the same events in different pages.
 	firstPageAMIs := []string{}
-	for _, event := range res {
+	for _, event := range res.EventLogEntries {
 		firstPageAMIs = append(firstPageAMIs, utility.FromStringPtr(event.AMIAfter))
 	}
 	res, err = config.Resolvers.Image().Events(ctx, &image, 5, 1)
 	require.NoError(t, err)
-	assert.Len(t, res, 5)
-	for _, event := range res {
+	require.NotNil(t, res)
+	assert.Len(t, res.EventLogEntries, 5)
+	assert.Equal(t, res.Count, 5)
+	for _, event := range res.EventLogEntries {
 		assert.False(t, utility.StringSliceContains(firstPageAMIs, utility.FromStringPtr(event.AMIAfter)))
 	}
 }
@@ -99,6 +106,13 @@ func TestDistros(t *testing.T) {
 	require.NoError(t, db.ClearCollections(distro.Collection), "unable to clear distro collection")
 	config := New("/graphql")
 	ctx := getContext(t)
+
+	usr, err := user.GetOrCreateUser(apiUser, "User Name", "testuser@mongodb.com", "access_token", "refresh_token", []string{})
+	require.NoError(t, err)
+	require.NotNil(t, usr)
+	ctx = gimlet.AttachUser(ctx, usr)
+	require.NotNil(t, ctx)
+
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestDistros")
 	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
@@ -117,16 +131,33 @@ func TestDistros(t *testing.T) {
 		ImageID: "rhel82",
 	}
 	require.NoError(t, d3.Insert(ctx))
+	d4 := &distro.Distro{
+		Id:        "ubuntu1604-admin",
+		ImageID:   "ubuntu1604",
+		AdminOnly: true,
+	}
+	require.NoError(t, d4.Insert(ctx))
 	imageID := "ubuntu1604"
 	image := model.APIImage{
 		ID: &imageID,
 	}
+	// Call distros resolver when user is not an admin.
 	res, err := config.Resolvers.Image().Distros(ctx, &image)
 	require.NoError(t, err)
 	require.Len(t, res, 2)
-	distroNames := []string{*res[0].Name, utility.FromStringPtr(res[1].Name)}
+	distroNames := []string{utility.FromStringPtr(res[0].Name), utility.FromStringPtr(res[1].Name)}
 	assert.Contains(t, distroNames, "ubuntu1604-small")
 	assert.Contains(t, distroNames, "ubuntu1604-large")
+
+	// Call distros resolver when user is an admin.
+	require.NoError(t, usr.AddRole("superuser"))
+	res, err = config.Resolvers.Image().Distros(ctx, &image)
+	require.NoError(t, err)
+	require.Len(t, res, 3)
+	distroNames = []string{utility.FromStringPtr(res[0].Name), utility.FromStringPtr(res[1].Name), utility.FromStringPtr(res[2].Name)}
+	assert.Contains(t, distroNames, "ubuntu1604-small")
+	assert.Contains(t, distroNames, "ubuntu1604-large")
+	assert.Contains(t, distroNames, "ubuntu1604-admin")
 }
 
 func TestLatestTask(t *testing.T) {

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/pkg/errors"
@@ -20,11 +19,11 @@ type ParserProjectS3Storage struct {
 }
 
 // NewParserProjectS3Storage sets up access to parser projects stored in S3.
-func NewParserProjectS3Storage(ppConf evergreen.ParserProjectS3Config) (*ParserProjectS3Storage, error) {
-	b, err := pail.NewS3MultiPartBucket(pail.S3Options{
+func NewParserProjectS3Storage(ctx context.Context, ppConf evergreen.ParserProjectS3Config) (*ParserProjectS3Storage, error) {
+	b, err := pail.NewS3MultiPartBucket(ctx, pail.S3Options{
 		Name:   ppConf.Bucket,
 		Prefix: ppConf.Prefix,
-		Region: endpoints.UsEast1RegionID,
+		Region: evergreen.DefaultEC2Region,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "setting up S3 multipart bucket")

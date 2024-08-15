@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/evergreen-ci/certdepot"
@@ -394,7 +395,7 @@ func (h *Host) JasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 // is provisioning in user data. If, for some reason, this script gets
 // interrupted, there's no guarantee that it will succeed if run again, since we
 // cannot enforce idempotency on the setup script.
-func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings *evergreen.Settings, creds *certdepot.Credentials) (string, error) {
+func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings *evergreen.Settings, creds *certdepot.Credentials, githubAppToken string, moduleTokens []string) (string, error) {
 	var err error
 	checkProvisioningStarted := h.CheckUserDataProvisioningStartedCommand()
 
@@ -428,7 +429,7 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 			if h.ProvisionOptions.TaskSync {
 				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostPullTaskSyncCommand(), " ")}
 			} else {
-				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(), " ")}
+				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(ctx, githubAppToken, moduleTokens), " ")}
 			}
 			var getTaskDataCmd string
 			getTaskDataCmd, err = h.buildLocalJasperClientRequest(
@@ -963,6 +964,40 @@ func (h *Host) WithAgentMonitor(ctx context.Context, env evergreen.Environment, 
 	})
 }
 
+// StopAgentMonitor stops the agent monitor (if it is running) on the host via
+// its Jasper service. On legacy hosts, this is a no-op.
+// Stopping the agent monitor manually like this is only necessary for legacy
+// reasons. There are some static hosts that have been quarantined for a long
+// time, and they could have very old versions of the agent monitor running on
+// them. Newer versions of the agent monitor shut themselves down when
+// appropriate, making this operation unnecessary. However, we have no guarantee
+// on how long ago hosts were quarantined and when they might be unquarantined,
+// meaning we can't get rid of this unless we know every single static host has
+// is running a relatively recent version of the agent monitor.
+func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) error {
+	if (h.Distro.LegacyBootstrap() && h.NeedsReprovision != ReprovisionToLegacy) || h.NeedsReprovision == ReprovisionToNew {
+		return nil
+	}
+
+	return h.WithAgentMonitor(ctx, env, func(procs []jasper.Process) error {
+		catcher := grip.NewBasicCatcher()
+		var numRunning int
+		for _, proc := range procs {
+			if proc.Running(ctx) {
+				numRunning++
+				catcher.Wrapf(proc.Signal(ctx, syscall.SIGTERM), "signalling agent monitor process with ID '%s'", proc.ID())
+			}
+		}
+		grip.WarningWhen(numRunning > 1, message.Fields{
+			"message": fmt.Sprintf("host should be running at most one agent monitor, but found %d", len(procs)),
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+		})
+
+		return catcher.Resolve()
+	})
+}
+
 // AgentCommand returns the arguments to start the agent. If executablePath is not specified, it
 // will be assumed to be in the regular place (only pass this for container distros)
 func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string) []string {
@@ -1101,8 +1136,8 @@ func (h *Host) spawnHostConfig(settings *evergreen.Settings) ([]byte, error) {
 
 // SpawnHostGetTaskDataCommand returns the command that fetches the task data
 // for a spawn host.
-func (h *Host) SpawnHostGetTaskDataCommand() []string {
-	return []string{
+func (h *Host) SpawnHostGetTaskDataCommand(ctx context.Context, githubAppToken string, moduleTokens []string) []string {
+	s := []string{
 		// We can't use the absolute path for the binary because we always run
 		// it in a Cygwin context on Windows.
 		h.AgentBinary(),
@@ -1115,6 +1150,21 @@ func (h *Host) SpawnHostGetTaskDataCommand() []string {
 		// Windows shortcut.
 		"--dir", h.Distro.WorkDir,
 	}
+
+	if githubAppToken != "" || moduleTokens != nil {
+		s = append(s, "--use-app-token")
+		s = append(s, "--revoke-tokens")
+	}
+
+	if githubAppToken != "" {
+		s = append(s, "--token", githubAppToken)
+	}
+
+	for _, moduleToken := range moduleTokens {
+		s = append(s, "-m", moduleToken)
+	}
+
+	return s
 }
 
 // SpawnHostPullTaskSyncCommand returns the command that pulls the task sync

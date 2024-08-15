@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -38,13 +38,13 @@ func main() {
 	defer utility.PutHTTPClient(client)
 
 	opts := pail.S3Options{
-		Region:      endpoints.UsEast1RegionID,
+		Region:      evergreen.DefaultEC2Region,
 		Name:        bucketName,
 		MaxRetries:  utility.ToIntPtr(10),
 		Permissions: pail.S3PermissionsPublicRead,
 		Verbose:     true,
 	}
-	bucket, err := pail.NewS3Bucket(opts)
+	bucket, err := pail.NewS3Bucket(ctx, opts)
 	if err != nil {
 		grip.EmergencyFatal("could not initialize bucket")
 	}

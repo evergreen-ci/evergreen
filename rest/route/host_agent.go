@@ -134,10 +134,10 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if checkHostHealth(h.host) {
-		shouldExit, err := h.prepareHostForAgentExit(ctx, agentExitParams{
+		shouldExit, err := prepareHostForAgentExit(ctx, agentExitParams{
 			host:       h.host,
 			remoteAddr: h.remoteAddr,
-		})
+		}, h.env)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "could not prepare host for agent to exit",
@@ -253,58 +253,6 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 
 	setNextTask(nextTask, &nextTaskResponse)
 	return gimlet.NewJSONResponse(nextTaskResponse)
-}
-
-// prepareHostForAgentExit prepares a host to stop running tasks on the host.
-// For a quarantined host, it shuts down the agent and agent monitor to prevent
-// it from running further tasks. This is especially important for quarantining
-// hosts, as the host may continue running, but it must stop all agent-related
-// activity for now. For a terminated host, the host should already have been
-// terminated but is nonetheless alive, so terminate it again.
-func (h *hostAgentNextTask) prepareHostForAgentExit(ctx context.Context, params agentExitParams) (shouldExit bool, err error) {
-	switch params.host.Status {
-	case evergreen.HostQuarantined:
-		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-		defer cancel()
-
-		if err := params.host.SetNeedsAgentDeploy(ctx, true); err != nil {
-			return true, errors.Wrap(err, "marking host as needing agent or agent monitor deploy")
-		}
-
-		return true, nil
-	case evergreen.HostTerminated:
-		// The host should already be terminated but somehow the agent is still
-		// alive in the cloud. If the host was terminated very recently, it may
-		// simply need time for the cloud instance to actually be terminated and
-		// fully cleaned up. If this message logs, that means there is a
-		// mismatch between either:
-		// 1. What Evergreen believes is this host's state (terminated) and the
-		//    cloud instance's actual state (not terminated). This is a bug.
-		// 2. The cloud instance's status and the actual liveliness of the host.
-		//    There are some cases where the agent is still checking in for a
-		//    long time after the cloud provider says the instance is already
-		//    terminated. There's no bug on our side, so this log is harmless.
-		if time.Since(params.host.TerminationTime) > 10*time.Minute {
-			msg := message.Fields{
-				"message":    "DB-cloud state mismatch - host has been marked terminated in the DB but the host's agent is still running",
-				"host_id":    params.host.Id,
-				"distro":     params.host.Distro.Id,
-				"remote":     params.remoteAddr,
-				"request_id": gimlet.GetRequestID(ctx),
-			}
-			grip.Warning(msg)
-		}
-		return true, nil
-	case evergreen.HostDecommissioned:
-		return true, nil
-	default:
-		return false, nil
-	}
-}
-
-type agentExitParams struct {
-	host       *host.Host
-	remoteAddr string
 }
 
 // assignNextAvailableTask gets the next task from the queue and sets the running task field
@@ -803,6 +751,21 @@ func handleReprovisioning(ctx context.Context, env evergreen.Environment, h *hos
 	}
 	if !utility.StringSliceContains([]string{evergreen.HostProvisioning, evergreen.HostRunning}, h.Status) {
 		return apimodels.NextTaskResponse{}, nil
+	}
+
+	stopCtx, stopCancel := context.WithTimeout(ctx, 30*time.Second)
+	defer stopCancel()
+	if err := h.StopAgentMonitor(stopCtx, env); err != nil {
+		// Stopping the agent monitor should not stop reprovisioning as long as
+		// the host is not currently running a task.
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "problem stopping agent monitor for reprovisioning",
+			"host_id":       h.Id,
+			"host_status":   h.Status,
+			"revision":      evergreen.BuildRevision,
+			"agent":         evergreen.AgentVersion,
+			"current_agent": h.AgentRevision,
+		}))
 	}
 
 	if err := prepareForReprovision(ctx, env, h); err != nil {
@@ -1309,6 +1272,11 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(endTaskResp)
 }
 
+type agentExitParams struct {
+	host       *host.Host
+	remoteAddr string
+}
+
 // prepareHostForAgentExit prepares a host to stop running tasks on the host.
 // For a quarantined host, it shuts down the agent and agent monitor to prevent
 // it from running further tasks. This is especially important for quarantining
@@ -1318,6 +1286,16 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 func prepareHostForAgentExit(ctx context.Context, params agentExitParams) (shouldExit bool, err error) {
 	switch params.host.Status {
 	case evergreen.HostQuarantined:
+		if err := params.host.StopAgentMonitor(ctx, env); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       "problem stopping agent monitor for quarantine",
+				"host_id":       params.host.Id,
+				"host_status":   params.host.Status,
+				"revision":      evergreen.BuildRevision,
+				"agent":         evergreen.AgentVersion,
+				"current_agent": params.host.AgentRevision,
+			}))
+		}
 		if err := params.host.SetNeedsAgentDeploy(ctx, true); err != nil {
 			return true, errors.Wrap(err, "marking host as needing agent or agent monitor deploy")
 		}

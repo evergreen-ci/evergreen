@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -150,7 +150,7 @@ type LoggerConfig struct {
 	Agent              []LogOpts
 	Task               []LogOpts
 	SendToGlobalSender bool
-	AWSCredentials     *credentials.Credentials
+	AWSCredentials     aws.CredentialsProvider
 	RedactorOpts       redactor.RedactionOptions
 }
 

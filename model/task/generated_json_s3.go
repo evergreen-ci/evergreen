@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/pkg/errors"
@@ -21,11 +20,11 @@ type generatedJSONS3Storage struct {
 // newGeneratedJSONS3Storage sets up access to generated JSON files stored in
 // S3. If this returns a non-nil GeneratedJSONFileStorage, callers are expected
 // to call Close when they are finished with it.
-func newGeneratedJSONS3Storage(ppConf evergreen.ParserProjectS3Config) (*generatedJSONS3Storage, error) {
-	b, err := pail.NewS3MultiPartBucket(pail.S3Options{
+func newGeneratedJSONS3Storage(ctx context.Context, ppConf evergreen.ParserProjectS3Config) (*generatedJSONS3Storage, error) {
+	b, err := pail.NewS3MultiPartBucket(ctx, pail.S3Options{
 		Name:   ppConf.Bucket,
 		Prefix: ppConf.GeneratedJSONPrefix,
-		Region: endpoints.UsEast1RegionID,
+		Region: evergreen.DefaultEC2Region,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "setting up S3 multipart bucket")

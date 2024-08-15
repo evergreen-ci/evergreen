@@ -170,7 +170,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 
 	}
 	for _, entry := range entries {
-		strippedFiles, err := artifact.StripHiddenFiles(entry.Files, true)
+		strippedFiles, err := artifact.StripHiddenFiles(r.Context(), entry.Files, true)
 		if err != nil {
 			msg := fmt.Sprintf("Error getting artifact files for task '%s'", srcTask.Id)
 			grip.Error(message.WrapError(err, message.Fields{

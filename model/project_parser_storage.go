@@ -44,7 +44,7 @@ func GetParserProjectStorage(ctx context.Context, settings *evergreen.Settings, 
 		if settingsFromDB.ServiceFlags.LargeParserProjectsDisabled {
 			return nil, errors.New("large parser projects are disabled")
 		}
-		return NewParserProjectS3Storage(settings.Providers.AWS.ParserProject)
+		return NewParserProjectS3Storage(ctx, settings.Providers.AWS.ParserProject)
 	default:
 		return nil, errors.Errorf("unrecognized parser project storage method '%s'", method)
 	}
