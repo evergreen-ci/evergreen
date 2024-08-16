@@ -632,7 +632,7 @@ doesn't work for patches -- hashes will need to be specified in the revisions se
 
 ## github.generate_token
 
-This github.generate_token command will use the github app saved in your [project settings](Github-Integrations#dynamic-github-access-tokens) to dynamically generate a short lived github access token. 
+This github.generate_token command will use the github app saved in your [project settings](Github-Integrations#dynamic-github-access-tokens) to dynamically generate a short lived github access token. If you run into any issues, please see the [FAQ](../FAQ.md#dynamic-github-access-tokens).
 
 Parameters:
 -   `owner`: The account owner of the repository. This will be used to find the installation ID for the app that the token will be generated from. This is an optional field that will default to the project's owner. 
