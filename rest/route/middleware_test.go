@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -474,6 +475,13 @@ func TestTaskAuthMiddleware(t *testing.T) {
 	rw = httptest.NewRecorder()
 	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 	assert.NotEqual(http.StatusOK, rw.Code)
+
+	assert.NoError(task.UpdateOne(bson.M{"_id": "completedTask"}, bson.M{"$set": bson.M{"finish_time": time.Now().Add(-30 * time.Minute)}}))
+
+	r.Header.Set(evergreen.TaskHeader, "completedTask")
+	rw = httptest.NewRecorder()
+	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.Equal(http.StatusOK, rw.Code)
 
 }
 

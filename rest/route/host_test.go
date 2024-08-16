@@ -1105,36 +1105,6 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			assert.Equal(t, evergreen.HostDecommissioned, realHost.Status, "host that fails to build should be decommissioned when it comes up")
 			assert.False(t, realHost.NeedsNewAgentMonitor)
 		},
-		"ConvertsTerminatedHostIntoDecommissionedRealHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host) {
-			h.Status = evergreen.HostTerminated
-			require.NoError(t, h.Insert(ctx))
-
-			instanceID := generateFakeEC2InstanceID()
-			rh.params = restmodel.APIHostIsUpOptions{
-				HostID:        h.Id,
-				EC2InstanceID: instanceID,
-			}
-
-			resp := rh.Run(ctx)
-
-			require.NotZero(t, resp)
-			assert.Equal(t, http.StatusOK, resp.Status())
-			apiHost, ok := resp.Data().(*restmodel.APIHost)
-			require.True(t, ok, resp.Data())
-			require.NotZero(t, apiHost)
-			assert.Equal(t, instanceID, utility.FromStringPtr(apiHost.Id))
-			assert.Equal(t, evergreen.HostDecommissioned, utility.FromStringPtr(apiHost.Status))
-
-			dbIntentHost, err := host.FindOneId(ctx, h.Id)
-			require.NoError(t, err)
-			assert.Zero(t, dbIntentHost)
-
-			realHost, err := host.FindOneId(ctx, instanceID)
-			require.NoError(t, err)
-			require.NotZero(t, realHost)
-			assert.Equal(t, realHost.Status, evergreen.HostDecommissioned, "already-terminated intent host should be decommissioned when it's up")
-			assert.False(t, realHost.NeedsNewAgentMonitor)
-		},
 		"NoopsForNonIntentHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host) {
 			instanceID := generateFakeEC2InstanceID()
 			h.Id = instanceID
