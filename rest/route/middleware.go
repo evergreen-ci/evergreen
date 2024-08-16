@@ -59,8 +59,7 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 
 	user := gimlet.GetUser(ctx)
 
-	if opCtx.ProjectRef != nil && opCtx.ProjectRef.IsPrivate() && user == nil {
-		// Project is private and user is not authorized so return not found
+	if opCtx.ProjectRef != nil && user == nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "project not found",

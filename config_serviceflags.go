@@ -35,7 +35,6 @@ type ServiceFlags struct {
 	BackgroundReauthDisabled        bool `bson:"background_reauth_disabled" json:"background_reauth_disabled"`
 	BackgroundCleanupDisabled       bool `bson:"background_cleanup_disabled" json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `bson:"cloud_cleanup_disabled" json:"cloud_cleanup_disabled"`
-	LegacyUIPublicAccessDisabled    bool `bson:"legacy_ui_public_access_disabled" json:"legacy_ui_public_access_disabled"`
 	GlobalGitHubTokenDisabled       bool `bson:"global_github_token_disabled" json:"global_github_token_disabled"`
 	SleepScheduleDisabled           bool `bson:"sleep_schedule_disabled" json:"sleep_schedule_disabled"`
 	SleepScheduleBetaTestDisabled   bool `bson:"sleep_schedule_beta_test_disabled" json:"sleep_schedule_beta_test_disabled"`
@@ -102,7 +101,6 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			backgroundCleanupDisabledKey:       c.BackgroundCleanupDisabled,
 			backgroundReauthDisabledKey:        c.BackgroundReauthDisabled,
 			cloudCleanupDisabledKey:            c.CloudCleanupDisabled,
-			legacyUIPublicAccessDisabledKey:    c.LegacyUIPublicAccessDisabled,
 			globalGitHubTokenDisabledKey:       c.GlobalGitHubTokenDisabled,
 			unrecognizedPodCleanupDisabledKey:  c.UnrecognizedPodCleanupDisabled,
 			sleepScheduleDisabledKey:           c.SleepScheduleDisabled,

@@ -69,7 +69,7 @@ func MustHaveRESTContext(r *http.Request) *model.Context {
 }
 
 func needsLogin(next http.HandlerFunc) http.HandlerFunc {
-	return requireUser(false, next, nil)
+	return requireUser(next, nil)
 }
 
 // GetRESTv1App attaches a router at the given root that hooks up REST endpoint URIs to be

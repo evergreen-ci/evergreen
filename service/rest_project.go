@@ -31,13 +31,15 @@ func (restapi restAPI) getProjectIds(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	u := gimlet.GetUser(ctx)
 	projects := []string{}
-	for _, r := range refs {
-		if r.Enabled && (!r.IsPrivate() || u != nil) {
-			projects = append(projects, r.Id)
+	if u := gimlet.GetUser(ctx); u != nil {
+		for _, r := range refs {
+			if r.Enabled {
+				projects = append(projects, r.Id)
+			}
 		}
 	}
+
 	gimlet.WriteJSON(w, struct {
 		Projects []string `json:"projects"`
 	}{projects})

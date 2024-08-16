@@ -239,8 +239,6 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 // hard-coded routes as well as those belonging to plugins.
 func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	needsLogin := gimlet.WrapperMiddleware(uis.requireLogin)
-	needsLoginToggleable := gimlet.WrapperMiddleware(uis.requireLoginToggleable)
-	needsLoginToggleableRedirect := gimlet.WrapperMiddleware(uis.redirectLoginToggleable)
 	needsLoginNoRedirect := gimlet.WrapperMiddleware(uis.requireLoginStatusUnauthorized)
 	needsContext := gimlet.WrapperMiddleware(uis.loadCtx)
 	allowsCORS := gimlet.WrapperMiddleware(uis.setCORSHeaders)
@@ -293,13 +291,13 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/graphql/query").Wrap(allowsCORS, needsLoginNoRedirect).Handler(graphql.Handler(uis.Settings.ApiUrl)).Post().Get()
 
 	// Waterfall pages
-	app.AddRoute("/").Wrap(needsLoginToggleableRedirect, needsContext).Handler(uis.mainlineCommitsRedirect).Get().Head()
-	app.AddRoute("/waterfall").Wrap(needsLoginToggleableRedirect, needsContext).Handler(uis.waterfallPage).Get()
-	app.AddRoute("/waterfall/{project_id}").Wrap(needsLoginToggleableRedirect, needsContext, viewTasks).Handler(uis.waterfallPage).Get()
+	app.AddRoute("/").Wrap(needsLogin, needsContext).Handler(uis.mainlineCommitsRedirect).Get().Head()
+	app.AddRoute("/waterfall").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.waterfallPage).Get()
+	app.AddRoute("/waterfall/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.waterfallPage).Get()
 
 	// Task page (and related routes)
-	app.AddRoute("/task/{task_id}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.taskPage).Get()
-	app.AddRoute("/task/{task_id}/{execution}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.taskPage).Get()
+	app.AddRoute("/task/{task_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskPage).Get()
+	app.AddRoute("/task/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskPage).Get()
 	app.AddRoute("/tasks/{task_id}").Wrap(needsLogin, needsContext, editTasks).Handler(uis.taskModify).Put()
 	app.AddRoute("/json/task_log/{task_id}").Wrap(needsLogin, needsContext, viewLogs).Handler(uis.taskLog).Get()
 	app.AddRoute("/json/task_log/{task_id}/{execution}").Wrap(needsLogin, needsContext, viewLogs).Handler(uis.taskLog).Get()
@@ -315,15 +313,15 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/test_log/{task_id}/{task_execution}/{test_name}").Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
 
 	// Build page
-	app.AddRoute("/build/{build_id}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.buildPage).Get()
+	app.AddRoute("/build/{build_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.buildPage).Get()
 	app.AddRoute("/builds/{build_id}").Wrap(needsLogin, needsContext, editTasks).Handler(uis.modifyBuild).Put()
-	app.AddRoute("/json/build_history/{build_id}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.buildHistory).Get()
+	app.AddRoute("/json/build_history/{build_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.buildHistory).Get()
 
 	// Version page
-	app.AddRoute("/version/{version_id}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.versionPage).Get()
+	app.AddRoute("/version/{version_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.versionPage).Get()
 	app.AddRoute("/version/{version_id}").Wrap(needsLogin, needsContext, editTasks).Handler(uis.modifyVersion).Put()
-	app.AddRoute("/json/version_history/{version_id}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.versionHistory).Get()
-	app.AddRoute("/version/{project_id}/{revision}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.versionFind).Get()
+	app.AddRoute("/json/version_history/{version_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.versionHistory).Get()
+	app.AddRoute("/version/{project_id}/{revision}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.versionFind).Get()
 
 	// Hosts
 	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.hostsPage).Get()
@@ -353,16 +351,16 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}").Wrap(needsLogin, needsContext, &route.EventLogPermissionsMiddleware{}).Handler(uis.fullEventLogs).Get()
 
 	// Task History
-	app.AddRoute("/task_history/{task_name}").Wrap(needsLoginToggleable, needsContext).Handler(uis.taskHistoryPage).Get()
-	app.AddRoute("/task_history/{project_id}/{task_name}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.taskHistoryPage).Get()
-	app.AddRoute("/task_history/{project_id}/{task_name}/pickaxe").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.taskHistoryPickaxe).Get()
+	app.AddRoute("/task_history/{task_name}").Wrap(needsLogin, needsContext).Handler(uis.taskHistoryPage).Get()
+	app.AddRoute("/task_history/{project_id}/{task_name}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskHistoryPage).Get()
+	app.AddRoute("/task_history/{project_id}/{task_name}/pickaxe").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskHistoryPickaxe).Get()
 
 	// History Drawer Endpoints
-	app.AddRoute("/history/tasks/2/{version_id}/{window}/{variant}/{display_name}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.taskHistoryDrawer).Get()
-	app.AddRoute("/history/versions/{version_id}/{window}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.versionHistoryDrawer).Get()
+	app.AddRoute("/history/tasks/2/{version_id}/{window}/{variant}/{display_name}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.taskHistoryDrawer).Get()
+	app.AddRoute("/history/versions/{version_id}/{window}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.versionHistoryDrawer).Get()
 
 	// Variant History
-	app.AddRoute("/build_variant/{project_id}/{variant}").Wrap(needsLoginToggleable, needsContext, viewTasks).Handler(uis.variantHistory).Get()
+	app.AddRoute("/build_variant/{project_id}/{variant}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.variantHistory).Get()
 
 	// Task queues
 	app.AddRoute("/task_queue/{distro}/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.taskQueue).Get()

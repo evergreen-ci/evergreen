@@ -1503,6 +1503,23 @@ func FindAllMergedTrackedProjectRefs() ([]ProjectRef, error) {
 	return addLoggerAndRepoSettingsToProjects(projectRefs)
 }
 
+// FindAllMergedEnabledTrackedProjectRefs returns all enabled project refs in the db
+// that are currently being tracked (i.e. their project files
+// still exist and the project is not hidden).
+func FindAllMergedEnabledTrackedProjectRefs() ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+	q := db.Query(bson.M{
+		ProjectRefHiddenKey:  bson.M{"$ne": true},
+		ProjectRefEnabledKey: true,
+	})
+	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
+	if err != nil {
+		return nil, err
+	}
+
+	return addLoggerAndRepoSettingsToProjects(projectRefs)
+}
+
 func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error) {
 	repoRefs := map[string]*RepoRef{} // cache repoRefs by id
 	for i, pRef := range pRefs {
