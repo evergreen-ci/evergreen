@@ -632,7 +632,7 @@ doesn't work for patches -- hashes will need to be specified in the revisions se
 
 ## github.generate_token
 
-This github.generate_token command will use the github app saved in your [project settings](Github-Integrations#dynamic-github-access-tokens) to dynamically generate a short lived github access token. If you run into any issues, please see the [FAQ](../FAQ.md#dynamic-github-access-tokens).
+The github.generate_token command will use the github app saved in your [project settings](Github-Integrations#dynamic-github-access-tokens) to dynamically generate a short lived github access token. If you run into any issues, please see the [FAQ](../FAQ.md#dynamic-github-access-tokens).
 
 Parameters:
 -   `owner`: The account owner of the repository. This will be used to find the installation ID for the app that the token will be generated from. This is an optional field that will default to the project's owner. 
@@ -648,7 +648,7 @@ For an example of how to generate a token and use that token to clone a reposito
     owner: sample-owner # optional
     repo: sample-repo # optional
     expansion_name: generated_token
-    permissions: 
+    permissions:  # optional
         contents: read
 - command: shell.exec
   params:
@@ -673,41 +673,41 @@ Generated access tokens have a lifespan of one hour. Therefore, for long running
 The following yaml provides a visual breakdown of token scopes. 
 
 ``` yaml
-  task_groups:
-    - name: task_group_name
-      setup_group:
+task_groups:
+  - name: task_group_name
+    setup_group:
       - command:  github.generate_token
         params:
           expansion_name: setup_group_token
-      setup_task:
+    setup_task:
       - command:  github.generate_token
         params:
           expansion_name: setup_task_token
-      tasks:
+    tasks:
       - task1
       - task2
 
-  tasks:
+tasks:
     - name: task1
       commands:
-         - command:  github.generate_token
-           params:
-             expansion_name: task1_token
-         - command: shell.exec
-           params:
-            script: |
-              ## ${setup_group_token} is in scope (and one shared token for all tasks in the group)
-              ## setup_task_token is in scope (and a fresh token for this task)
-              ## task1_token is in scope
-            
+        - command:  github.generate_token
+          params:
+            expansion_name: task1_token
+        - command: shell.exec
+          params:
+          script: |
+            ## ${setup_group_token} is in scope (and one shared token for all tasks in the group)
+            ## setup_task_token is in scope (and a fresh token for this task)
+            ## task1_token is in scope
+        
     - name: task2
       commands:
         - command: shell.exec
           params:
-            script: |
-              ## setup_group_token is in scope (and one shared token for all tasks in the group)
-              ## setup_task_token is in scope (and a fresh token for this task)
-              ## task1_token is **out of** scope (and will be revoked and the expansion undefined)
+          script: |
+            ## setup_group_token is in scope (and one shared token for all tasks in the group)
+            ## setup_task_token is in scope (and a fresh token for this task)
+            ## task1_token is **out of** scope (and will be revoked and the expansion undefined)
 ```
 
 ## gotest.parse_files
