@@ -1656,7 +1656,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	} else if intersection.HasNoPermissions() {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
-			Message:    "the intersection of the requester's permissions and provided permissions does not have permission to create a token",
+			Message:    "the intersection of the project setting's requester permissions and provided permissions does not have any permissions to create a token",
 		})
 	}
 
