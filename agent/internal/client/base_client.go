@@ -275,7 +275,16 @@ func (c *baseCommunicator) GetProject(ctx context.Context, taskData TaskData) (*
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting parser project").Error())
 	}
-	respBytes, err := io.ReadAll(resp.Body)
+	defer resp.Body.Close()
+
+	// Retry reading body since it may error on certain distros for certain go versions.
+	respBytes := []byte{}
+	for i := 0; i < c.retry.MaxAttempts; i++ {
+		respBytes, err = io.ReadAll(resp.Body)
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
 		return nil, errors.Wrap(err, "reading parser project from response")
 	}
