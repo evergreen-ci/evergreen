@@ -489,12 +489,12 @@ func buildImageEventEntry(diff ImageDiffChange) (*ImageEventEntry, error) {
 	}
 
 	var eventType ImageEventType
-	if diff.Type == APITypePackages {
+	if diff.Type == APITypeOS {
+		eventType = ImageEventTypeOperatingSystem
+	} else if diff.Type == APITypePackages {
 		eventType = ImageEventTypePackage
 	} else if diff.Type == APITypeToolchains {
 		eventType = ImageEventTypeToolchain
-	} else if diff.Type == APITypeOS {
-		eventType = ImageEventTypeOperatingSystem
 	} else {
 		return nil, errors.New(fmt.Sprintf("item '%s' has unrecognized event type '%s'", diff.Name, diff.Type))
 	}
