@@ -1634,6 +1634,14 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		})
 	}
 	requesterPermissionGroup, _ := p.GetGitHubPermissionGroup(t.Requester)
+	// If the requester has no permissions, they should not be able to create a token.
+	// GitHub interprets an empty token as having all permissions.
+	if requesterPermissionGroup.HasNoPermissions() {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "requester does not have permission to create a token",
+		})
+	}
 	intersection, err := requesterPermissionGroup.Intersection(model.GitHubDynamicTokenPermissionGroup{
 		Permissions:    h.permissions,
 		AllPermissions: h.allPermissions,
@@ -1645,6 +1653,11 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	permissions := &intersection.Permissions
 	if intersection.AllPermissions {
 		permissions = nil
+	} else if intersection.HasNoPermissions() {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "the intersection of the project setting's requester permissions and provided permissions does not have any permissions to create a token",
+		})
 	}
 
 	// The token also should use the project's GitHub app.
