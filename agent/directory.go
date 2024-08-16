@@ -34,7 +34,7 @@ func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, er
 		taskDir = filepath.Join(a.opts.WorkingDirectory, dirName)
 	}
 
-	tc.logger.Execution().Infof("Making new directory '%s' for task execution.", taskDir)
+	tc.logger.Execution().Infof("Making directory '%s' for task execution.", taskDir)
 
 	if err := os.MkdirAll(taskDir, 0777); err != nil {
 		tc.logger.Execution().Error(errors.Wrapf(err, "creating task directory '%s'", taskDir))
@@ -42,7 +42,7 @@ func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, er
 	}
 
 	tmpDir := filepath.Join(taskDir, "tmp")
-	tc.logger.Execution().Infof("Making new temporary directory '%s' for task execution.", tmpDir)
+	tc.logger.Execution().Infof("Making temporary directory '%s' for task execution.", tmpDir)
 
 	if err := os.MkdirAll(tmpDir, 0777); err != nil {
 		tc.logger.Execution().Warning(errors.Wrapf(err, "creating task temporary directory '%s'", tmpDir))
