@@ -1089,26 +1089,26 @@ func UpdateUnblockedDependencies(ctx context.Context, dependencies []task.Task) 
 		dependencyIDs = append(dependencyIDs, dep.Id)
 	}
 
-	blockedTasks, err := task.FindAllDependencyTasksToModify(dependencies, true)
+	tasksToUnblock, err := task.FindAllDependencyTasksToModify(dependencies, true)
 	if err != nil {
 		return errors.Wrapf(err, "getting all tasks depending on tasks")
 	}
-	if len(blockedTasks) == 0 {
+	if len(tasksToUnblock) == 0 {
 		return nil
 	}
 
-	blockedTasks, err = task.MarkAllForUnattainableDependencies(ctx, blockedTasks, dependencyIDs, false)
+	tasksToUnblock, err = task.MarkAllForUnattainableDependencies(ctx, tasksToUnblock, dependencyIDs, false)
 	if err != nil {
 		return errors.Wrap(err, "marking unattainable dependencies for tasks")
 	}
 
-	if err = UpdateUnblockedDependencies(ctx, blockedTasks); err != nil {
+	if err = UpdateUnblockedDependencies(ctx, tasksToUnblock); err != nil {
 		return errors.Wrap(err, "updating many unblocked dependencies recursively")
 	}
 
 	buildIDsSet := make(map[string]struct{})
 	var buildIDs []string
-	for _, dependentTask := range blockedTasks {
+	for _, dependentTask := range tasksToUnblock {
 		buildID := dependentTask.BuildId
 		if _, ok := buildIDsSet[buildID]; ok {
 			continue
@@ -2143,8 +2143,8 @@ func MarkTasksReset(ctx context.Context, taskIds []string, caller string) error 
 	}
 
 	catcher := grip.NewBasicCatcher()
+	catcher.Wrapf(UpdateUnblockedDependencies(ctx, tasks), "clearing unattainable dependencies for tasks")
 	for _, t := range tasks {
-		catcher.Wrapf(UpdateUnblockedDependencies(ctx, []task.Task{t}), "clearing unattainable dependencies for task '%s'", t.Id)
 		catcher.Wrapf(t.MarkDependenciesFinished(ctx, false), "marking direct dependencies unfinished for task '%s'", t.Id)
 	}
 
