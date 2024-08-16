@@ -30,8 +30,6 @@ const (
 )
 
 const (
-	OSType = "OS"
-
 	OSNameField      = "PRETTY_NAME"
 	OSKernelField    = "Kernel"
 	OSVersionIDField = "VERSION_ID"
