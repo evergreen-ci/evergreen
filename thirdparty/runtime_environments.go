@@ -30,8 +30,6 @@ const (
 )
 
 const (
-	OSType = "OS"
-
 	OSNameField      = "PRETTY_NAME"
 	OSKernelField    = "Kernel"
 	OSVersionIDField = "VERSION_ID"
@@ -87,12 +85,11 @@ func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string
 	return filteredImages, nil
 }
 
-// OSInfoFilterOptions represents the filtering options for GetOSInfo. Each argument is optional except for the AMI field.
-type OSInfoFilterOptions struct {
-	AMI   string
-	Name  string
-	Page  int
-	Limit int
+// OSInfoResponse represents a response from the /rest/api/v1/ami/os route.
+type OSInfoResponse struct {
+	Data          []OSInfo `json:"data"`
+	FilteredCount int      `json:"filtered_count"`
+	TotalCount    int      `json:"total_count"`
 }
 
 // OSInfo stores operating system information.
@@ -101,20 +98,27 @@ type OSInfo struct {
 	Name    string `json:"name"`
 }
 
+// OSInfoFilterOptions represents the filtering options for GetOSInfo. Each argument is optional except for the AMI field.
+type OSInfoFilterOptions struct {
+	AMI   string `json:"-"`
+	Name  string `json:"-"`
+	Page  int    `json:"-"`
+	Limit int    `json:"-"`
+}
+
 // GetOSInfo returns a list of operating system information for an AMI.
-func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFilterOptions) ([]OSInfo, error) {
+func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFilterOptions) (*OSInfoResponse, error) {
 	if opts.AMI == "" {
 		return nil, errors.New("no AMI provided")
 	}
 	params := url.Values{}
-	params.Set("ami", opts.AMI)
+	params.Set("id", opts.AMI)
 	params.Set("page", strconv.Itoa(opts.Page))
 	if opts.Limit != 0 {
 		params.Set("limit", strconv.Itoa(opts.Limit))
 	}
-	params.Set("type", OSType)
-	params.Set("name", opts.Name)
-	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
+	params.Set("data_name", opts.Name)
+	apiURL := fmt.Sprintf("%s/rest/api/v1/ami/os?%s", c.BaseURL, params.Encode())
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return nil, err
@@ -130,7 +134,7 @@ func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFi
 		msg, _ := io.ReadAll(resp.Body)
 		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
 	}
-	osInfo := []OSInfo{}
+	osInfo := &OSInfoResponse{}
 	if err := gimlet.GetJSON(resp.Body, &osInfo); err != nil {
 		return nil, errors.Wrap(err, "decoding http body")
 	}
@@ -153,11 +157,11 @@ type Package struct {
 
 // PackageFilterOptions represents the filtering arguments, each of which is optional except the AMI.
 type PackageFilterOptions struct {
-	AMI     string
-	Page    int
-	Limit   int
-	Name    string // Filter by the name of the package.
-	Manager string // Filter by the package manager (ex. pip).
+	AMI     string `json:"-"`
+	Page    int    `json:"-"`
+	Limit   int    `json:"-"`
+	Name    string `json:"-"` // Filter by the name of the package.
+	Manager string `json:"-"` // Filter by the package manager (ex. pip).
 }
 
 // GetPackages returns a list of packages from the corresponding AMI and filters in opts.
@@ -211,11 +215,11 @@ type Toolchain struct {
 
 // ToolchainFilterOptions represents the filtering arguments, each of which is optional except for the AMI.
 type ToolchainFilterOptions struct {
-	AMI     string
-	Page    int
-	Limit   int
-	Name    string // Filter by the name of the toolchain (ex. golang).
-	Version string // Filter by the version (ex. go1.8.7).
+	AMI     string `json:"-"`
+	Page    int    `json:"-"`
+	Limit   int    `json:"-"`
+	Name    string `json:"-"` // Filter by the name of the toolchain (ex. golang).
+	Version string `json:"-"` // Filter by the version (ex. go1.8.7).
 }
 
 // GetToolchains returns a list of toolchains from the AMI and filters in the ToolchainFilterOptions.
@@ -311,9 +315,9 @@ type ImageHistoryInfo struct {
 
 // ImageHistoryFilter represents the filtering arguments for getHistory. The ImageID field is required and the other fields are optional.
 type ImageHistoryFilterOptions struct {
-	ImageID string
-	Page    int
-	Limit   int
+	ImageID string `json:"-"`
+	Page    int    `json:"-"`
+	Limit   int    `json:"-"`
 }
 
 // getHistory returns a list of images with their AMI and creation date corresponding to the provided distro in the order of most recently
@@ -370,9 +374,9 @@ type ImageEvent struct {
 
 // EventHistoryOptions represents the filtering arguments for GetEvents. Image and Limit are required arguments.
 type EventHistoryOptions struct {
-	Image string
-	Page  int
-	Limit int
+	Image string `json:"-"`
+	Page  int    `json:"-"`
+	Limit int    `json:"-"`
 }
 
 // stringToTime converts a string representing time to type time.Time.
@@ -404,12 +408,12 @@ func (c *RuntimeEnvironmentsClient) getNameFromOSInfo(ctx context.Context, ami s
 	if err != nil {
 		return "", errors.Wrap(err, "getting OS info")
 	}
-	if len(result) == 0 {
+	if len(result.Data) == 0 {
 		return "", errors.Errorf("OS information name '%s' not found for distro", opts.Name)
-	} else if len(result) > 1 {
+	} else if len(result.Data) > 1 {
 		return "", errors.Errorf("multiple results found for OS information name '%s'", opts.Name)
 	}
-	return result[0].Version, nil
+	return result.Data[0].Version, nil
 }
 
 // getLatestImageHistory returns the latest AMI and timestamp given the provided imageId.
