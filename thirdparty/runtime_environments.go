@@ -25,11 +25,16 @@ const (
 type ImageEventType string
 
 const (
-	ImageEventTypePackages   ImageEventType = "Packages"
-	ImageEventTypeToolchains ImageEventType = "Toolchains"
+	ImageEventTypeOperatingSystem ImageEventType = "OPERATING_SYSTEM"
+	ImageEventTypePackage         ImageEventType = "PACKAGE"
+	ImageEventTypeToolchain       ImageEventType = "TOOLCHAIN"
 )
 
 const (
+	APITypeOS         = "OS"
+	APITypePackages   = "Packages"
+	APITypeToolchains = "Toolchains"
+
 	OSNameField      = "PRETTY_NAME"
 	OSKernelField    = "Kernel"
 	OSVersionIDField = "VERSION_ID"
@@ -267,7 +272,7 @@ type ImageDiffOptions struct {
 type ImageDiffChange struct {
 	Name    string
 	Manager string
-	Type    ImageEventType
+	Type    string
 	Removed string
 	Added   string
 }
@@ -300,7 +305,7 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts Image
 	}
 	filteredChanges := []ImageDiffChange{}
 	for _, c := range changes {
-		if c.Type == ImageEventTypePackages || c.Type == ImageEventTypeToolchains {
+		if c.Type == APITypeOS || c.Type == APITypePackages || c.Type == APITypeToolchains {
 			filteredChanges = append(filteredChanges, c)
 		}
 	}
@@ -472,22 +477,34 @@ func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID st
 
 // buildImageEventEntry make an ImageEventEntry given an ImageDiffChange.
 func buildImageEventEntry(diff ImageDiffChange) (*ImageEventEntry, error) {
-	var action ImageEventEntryAction
+	var eventAction ImageEventEntryAction
 	if diff.Added != "" && diff.Removed != "" {
-		action = ImageEventEntryActionUpdated
+		eventAction = ImageEventEntryActionUpdated
 	} else if diff.Added != "" {
-		action = ImageEventEntryActionAdded
+		eventAction = ImageEventEntryActionAdded
 	} else if diff.Removed != "" {
-		action = ImageEventEntryActionDeleted
+		eventAction = ImageEventEntryActionDeleted
 	} else {
-		return nil, errors.New("neither added nor removed")
+		return nil, errors.New(fmt.Sprintf("item '%s' was neither added nor removed", diff.Name))
 	}
+
+	var eventType ImageEventType
+	if diff.Type == APITypePackages {
+		eventType = ImageEventTypePackage
+	} else if diff.Type == APITypeToolchains {
+		eventType = ImageEventTypeToolchain
+	} else if diff.Type == APITypeOS {
+		eventType = ImageEventTypeOperatingSystem
+	} else {
+		return nil, errors.New(fmt.Sprintf("item '%s' has unrecognized event type '%s'", diff.Name, diff.Type))
+	}
+
 	entry := ImageEventEntry{
 		Name:   diff.Name,
 		After:  diff.Added,
 		Before: diff.Removed,
-		Type:   diff.Type,
-		Action: action,
+		Type:   eventType,
+		Action: eventAction,
 	}
 	return &entry, nil
 }

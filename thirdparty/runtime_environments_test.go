@@ -224,7 +224,7 @@ func TestGetImageDiff(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(result)
 	for _, change := range result {
-		assert.True(change.Type == "Toolchains" || change.Type == "Packages")
+		assert.True(change.Type == APITypeOS || change.Type == APITypePackages || change.Type == APITypeToolchains)
 	}
 
 	// Verify that getImageDiff finds no differences between the same AMI.
@@ -314,7 +314,52 @@ func TestGetEvents(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(result)
 	assert.Len(result, 5)
+
+	// Verify that timestamps are in chronological order.
 	for i := 0; i < len(result)-1; i++ {
 		assert.Greater(result[i].Timestamp, result[i+1].Timestamp)
 	}
+
+	// Verify that entry fields have been correctly transformed to use our custom enums.
+	for _, r := range result {
+		for _, entry := range r.Entries {
+			assert.True(entry.Action == ImageEventEntryActionAdded || entry.Action == ImageEventEntryActionDeleted || entry.Action == ImageEventEntryActionUpdated)
+			assert.True(entry.Type == ImageEventTypeOperatingSystem || entry.Type == ImageEventTypePackage || entry.Type == ImageEventTypeToolchain)
+		}
+	}
+}
+
+func TestBuildImageEventEntry(t *testing.T) {
+	diff := ImageDiffChange{
+		Type:    APITypeOS,
+		Removed: "",
+		Added:   "1.0",
+	}
+	result, err := buildImageEventEntry(diff)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, ImageEventEntryActionAdded, result.Action)
+	assert.Equal(t, ImageEventTypeOperatingSystem, result.Type)
+
+	diff = ImageDiffChange{
+		Type:    APITypePackages,
+		Removed: "1.0",
+		Added:   "",
+	}
+	result, err = buildImageEventEntry(diff)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, ImageEventEntryActionDeleted, result.Action)
+	assert.Equal(t, ImageEventTypePackage, result.Type)
+
+	diff = ImageDiffChange{
+		Type:    APITypeToolchains,
+		Removed: "1.0",
+		Added:   "2.0",
+	}
+	result, err = buildImageEventEntry(diff)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, ImageEventEntryActionUpdated, result.Action)
+	assert.Equal(t, ImageEventTypeToolchain, result.Type)
 }
