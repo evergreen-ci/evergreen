@@ -400,8 +400,6 @@ func (a *Agent) finishPrevTask(ctx context.Context, nextTask *apimodels.NextTask
 
 	if shouldRunSetupGroup(nextTask, tc) {
 		shouldSetupGroup = true
-		// kim: NOTE: this clears the task directory for the next task (either
-		// new task group or standalone task)
 		taskDirectory = ""
 		a.runTeardownGroupCommands(ctx, tc)
 	}
@@ -458,14 +456,14 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 
 	var recreateTaskDir bool
 	if tc.ranSetupGroup {
-		// kim: TODO: test task group manually
 		if _, err := os.Stat(taskDirectory); os.IsNotExist(err) {
 			recreateTaskDir = true
-			tc.logger.Execution().Info("Task directory was already created by a previous task group task, but is missing for this task group task (possibly because it was deleted by a previous task group task), re-creating it.")
+			tc.logger.Execution().Infof("Task directory '%s' was already created by a previous task group task, but is missing for this task group task (possibly because it was deleted by a command in a previous task group task), re-creating it.", taskDirectory)
 		}
-		if _, err := os.Stat(filepath.Join(taskDirectory, "tmp")); os.IsNotExist(err) {
+		tmpDir := filepath.Join(taskDirectory, "tmp")
+		if _, err := os.Stat(tmpDir); os.IsNotExist(err) {
 			recreateTaskDir = true
-			tc.logger.Execution().Info("Task temporary directory was already created by a previous task group task, but is missing for this task group task (possibly because it was deleted by a previous task group task), re-creating it.")
+			tc.logger.Execution().Infof("Task temporary directory '%s' was already created by a previous task group task, but is missing for this task group task (possibly because it was deleted by a command in a previous task group task), re-creating it.", tmpDir)
 		}
 	}
 	if !tc.ranSetupGroup || recreateTaskDir {
