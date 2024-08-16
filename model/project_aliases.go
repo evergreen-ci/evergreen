@@ -252,6 +252,12 @@ func ConstructMergedAliasesByPrecedence(projectRef *ProjectRef, projectConfig *P
 	aliasesToReturn := map[string]ProjectAliases{}
 	for _, alias := range projectAliases {
 		aliasName := alias.Alias
+
+		// Don't include github checks aliases if github checks are disabled
+		if !utility.FromBoolPtr(projectRef.GithubChecksEnabled) && aliasName == evergreen.GithubChecksAlias {
+			continue
+		}
+
 		if IsPatchAlias(aliasName) {
 			aliasName = patchAliasKey
 		}
@@ -268,6 +274,12 @@ func ConstructMergedAliasesByPrecedence(projectRef *ProjectRef, projectConfig *P
 		}
 		for _, alias := range repoAliases {
 			aliasName := alias.Alias
+
+			// Don't include github checks aliases if github checks are disabled
+			if !utility.FromBoolPtr(projectRef.GithubChecksEnabled) && aliasName == evergreen.GithubChecksAlias {
+				continue
+			}
+
 			if IsPatchAlias(aliasName) {
 				aliasName = patchAliasKey
 			}
