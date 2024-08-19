@@ -264,17 +264,17 @@ func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts Tool
 
 // ImageDiffOptions represents the arguments for getImageDiff. AMIBefore is the starting AMI, and AMIAfter is the ending AMI.
 type ImageDiffOptions struct {
-	AMIBefore string
-	AMIAfter  string
+	AMIBefore string `json:"-"`
+	AMIAfter  string `json:"-"`
 }
 
 // ImageDiffChange represents a change between two AMIs.
 type ImageDiffChange struct {
-	Name    string
-	Manager string
-	Type    string
-	Removed string
-	Added   string
+	Name    string `json:"name"`
+	Manager string `json:"manager"`
+	Type    string `json:"type"`
+	Removed string `json:"removed"`
+	Added   string `json:"added"`
 }
 
 // getImageDiff returns a list of package and toolchain changes that occurred between the provided AMIs.

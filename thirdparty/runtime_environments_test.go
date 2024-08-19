@@ -320,7 +320,7 @@ func TestGetEvents(t *testing.T) {
 		assert.Greater(result[i].Timestamp, result[i+1].Timestamp)
 	}
 
-	// Verify that entry fields have been correctly transformed to use our custom enums.
+	// Verify that entries have been correctly transformed to use our custom enums.
 	for _, r := range result {
 		for _, entry := range r.Entries {
 			assert.True(entry.Action == ImageEventEntryActionAdded || entry.Action == ImageEventEntryActionDeleted || entry.Action == ImageEventEntryActionUpdated)
