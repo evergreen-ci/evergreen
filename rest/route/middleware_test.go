@@ -780,39 +780,38 @@ func TestProjectViewPermission(t *testing.T) {
 	}
 	assert.NoError(db.ClearCollections(evergreen.RoleCollection, evergreen.ScopeCollection, model.ProjectRefCollection))
 	require.NoError(db.CreateCollections(evergreen.ScopeCollection))
-	role1 := gimlet.Role{
-		ID:          "r1",
-		Scope:       "proj1",
+	restrictedRole := gimlet.Role{
+		ID:          "restricted_role",
+		Scope:       "restricted_scope",
 		Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksView.Value},
 	}
-	assert.NoError(env.RoleManager().UpdateRole(role1))
-	defaultRole := gimlet.Role{
-		ID:          evergreen.UnauthedUserRoles[0],
-		Scope:       "all",
+	assert.NoError(env.RoleManager().UpdateRole(restrictedRole))
+	unrestrictedRole := gimlet.Role{
+		ID:          "default_role",
+		Scope:       "unrestricted_scope",
 		Permissions: map[string]int{evergreen.PermissionTasks: evergreen.TasksView.Value},
 	}
-	assert.NoError(env.RoleManager().UpdateRole(defaultRole))
-	scope1 := gimlet.Scope{
-		ID:        "proj1",
-		Resources: []string{"proj1"},
+	assert.NoError(env.RoleManager().UpdateRole(unrestrictedRole))
+	restrictedScope := gimlet.Scope{
+		ID:        "restricted_scope",
+		Resources: []string{"restrictedProject"},
 		Type:      "project",
 	}
-	assert.NoError(env.RoleManager().AddScope(scope1))
-	scopeAll := gimlet.Scope{
-		ID:        "all",
-		Resources: []string{"proj1", "proj2"},
+	assert.NoError(env.RoleManager().AddScope(restrictedScope))
+	unrestrictedScope := gimlet.Scope{
+		ID:        "unrestricted_scope",
+		Resources: []string{"unrestrictedProject"},
 		Type:      "project",
 	}
-	assert.NoError(env.RoleManager().AddScope(scopeAll))
-	proj1 := model.ProjectRef{
-		Id: "proj1",
+	assert.NoError(env.RoleManager().AddScope(unrestrictedScope))
+	restrictedProject := model.ProjectRef{
+		Id: "restrictedProject",
 	}
-	proj2 := model.ProjectRef{
-		Id:      "proj2",
-		Private: utility.FalsePtr(),
+	unrestrictedProject := model.ProjectRef{
+		Id: "unrestrictedProject",
 	}
-	assert.NoError(proj1.Insert())
-	assert.NoError(proj2.Insert())
+	assert.NoError(restrictedProject.Insert())
+	assert.NoError(unrestrictedProject.Insert())
 	permissionMiddleware := RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
 	checkPermission := func(rw http.ResponseWriter, r *http.Request) {
 		permissionMiddleware.ServeHTTP(rw, r, counterFunc)
@@ -820,8 +819,8 @@ func TestProjectViewPermission(t *testing.T) {
 	authenticator := gimlet.NewBasicAuthenticator(nil, nil)
 	opts, err := gimlet.NewBasicUserOptions("user")
 	require.NoError(err)
-	user := gimlet.NewBasicUser(opts.Name("name").Email("email").Password("password").Key("key").RoleManager(env.RoleManager()))
-	um, err := gimlet.NewBasicUserManager([]gimlet.BasicUser{*user}, env.RoleManager())
+
+	um, err := gimlet.NewBasicUserManager([]gimlet.BasicUser{}, env.RoleManager())
 	assert.NoError(err)
 	authHandler := gimlet.NewAuthenticationHandler(authenticator, um)
 	req := httptest.NewRequest(http.MethodGet, "http://foo.com/bar", nil)
@@ -832,44 +831,49 @@ func TestProjectViewPermission(t *testing.T) {
 	assert.Equal(http.StatusNotFound, rw.Code)
 	assert.Equal(0, counter)
 
-	// public project should return 200 even with no user
-	req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj2"})
-	rw = httptest.NewRecorder()
-	authHandler.ServeHTTP(rw, req, checkPermission)
-	assert.Equal(http.StatusOK, rw.Code)
-	assert.Equal(1, counter)
-
-	// private project with no user attached should 401
-	req = gimlet.SetURLVars(req, map[string]string{"project_id": "proj1"})
+	// project with no user attached should 401
+	req = gimlet.SetURLVars(req, map[string]string{"project_id": "restrictedProject"})
 	rw = httptest.NewRecorder()
 	authHandler.ServeHTTP(rw, req, checkPermission)
 	assert.Equal(http.StatusUnauthorized, rw.Code)
-	assert.Equal(1, counter)
+	assert.Equal(0, counter)
 
 	// attach a user, but with no permissions yet
-	ctx = gimlet.AttachUser(req.Context(), user)
+	usr := gimlet.NewBasicUser(opts.Name("name").Email("email").Password("password").Key("key").RoleManager(env.RoleManager()))
+	ctx = gimlet.AttachUser(req.Context(), usr)
 	req = req.WithContext(ctx)
 	rw = httptest.NewRecorder()
 	authHandler.ServeHTTP(rw, req, checkPermission)
 	assert.Equal(http.StatusUnauthorized, rw.Code)
-	assert.Equal(1, counter)
+	assert.Equal(0, counter)
 
-	// give user the right permissions
+	// giving user permissions to unrestrictedProjects only should fail
 	opts, err = gimlet.NewBasicUserOptions("user")
 	require.NoError(err)
-	user = gimlet.NewBasicUser(opts.Name("name").Email("email").Password("password").Key("key").Roles(role1.ID).RoleManager(env.RoleManager()))
-	_, err = um.GetOrCreateUser(user)
+	usr = gimlet.NewBasicUser(opts.Name("name").Email("email").Password("password").Key("key").
+		Roles(unrestrictedRole.ID).RoleManager(env.RoleManager()))
+	_, err = um.GetOrCreateUser(usr)
 	assert.NoError(err)
-	ctx = gimlet.AttachUser(req.Context(), user)
+	ctx = gimlet.AttachUser(req.Context(), usr)
+	req = req.WithContext(ctx)
+	rw = httptest.NewRecorder()
+	authHandler.ServeHTTP(rw, req, checkPermission)
+	assert.Equal(http.StatusUnauthorized, rw.Code)
+
+	// give user permissions to both projects
+	usr = gimlet.NewBasicUser(opts.Name("name").Email("email").Password("password").Key("key").
+		Roles(unrestrictedRole.ID, restrictedRole.ID).RoleManager(env.RoleManager()))
+	_, err = um.GetOrCreateUser(usr)
+	assert.NoError(err)
+	ctx = gimlet.AttachUser(req.Context(), usr)
 	req = req.WithContext(ctx)
 	rw = httptest.NewRecorder()
 	authHandler.ServeHTTP(rw, req, checkPermission)
 	assert.Equal(http.StatusOK, rw.Code)
-	assert.Equal(2, counter)
+	assert.Equal(1, counter)
 }
 
 func TestEventLogPermission(t *testing.T) {
-	//setup
 	assert := assert.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -919,8 +923,7 @@ func TestEventLogPermission(t *testing.T) {
 	}
 	assert.NoError(env.RoleManager().AddScope(scope3))
 	proj1 := model.ProjectRef{
-		Id:      "proj1",
-		Private: utility.TruePtr(),
+		Id: "proj1",
 	}
 	assert.NoError(proj1.Insert())
 	distro1 := distro.Distro{
@@ -940,7 +943,7 @@ func TestEventLogPermission(t *testing.T) {
 	authHandler := gimlet.NewAuthenticationHandler(authenticator, um)
 	req := httptest.NewRequest(http.MethodGet, "http://foo.com/bar", nil)
 
-	// no user + private project should 401
+	// no user should 401
 	rw := httptest.NewRecorder()
 	req = gimlet.SetURLVars(req, map[string]string{"resource_type": event.EventResourceTypeProject, "resource_id": proj1.Id})
 	authHandler.ServeHTTP(rw, req, checkPermission)
