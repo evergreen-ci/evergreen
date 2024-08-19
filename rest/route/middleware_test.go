@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -440,11 +441,17 @@ func TestTaskAuthMiddleware(t *testing.T) {
 		Id:     "task1",
 		Secret: "abcdef",
 	}
+	completedTask := task.Task{
+		Id:     "completedTask",
+		Secret: "abcdef",
+		Status: evergreen.TaskSucceeded,
+	}
 	host1 := &host.Host{
 		Id:     "host1",
 		Secret: "abcdef",
 	}
 	assert.NoError(task1.Insert())
+	assert.NoError(completedTask.Insert())
 	assert.NoError(host1.Insert(ctx))
 	m := NewTaskAuthMiddleware()
 	r := &http.Request{
@@ -459,10 +466,33 @@ func TestTaskAuthMiddleware(t *testing.T) {
 	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 	assert.Equal(http.StatusConflict, rw.Code)
 
+	r.Header.Set(evergreen.TaskSecretHeader, "ghijkl")
+	rw = httptest.NewRecorder()
+	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.Equal(http.StatusConflict, rw.Code)
+
 	r.Header.Set(evergreen.TaskSecretHeader, "abcdef")
 	rw = httptest.NewRecorder()
 	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 	assert.Equal(http.StatusOK, rw.Code)
+
+	r.Header.Set(evergreen.TaskHeader, "completedTask")
+	rw = httptest.NewRecorder()
+	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.NotEqual(http.StatusOK, rw.Code)
+
+	assert.NoError(task.UpdateOne(bson.M{task.IdKey: "completedTask"}, bson.M{"$set": bson.M{task.FinishTimeKey: time.Now().Add(-30 * time.Minute)}}))
+	r.Header.Set(evergreen.TaskHeader, "completedTask")
+	rw = httptest.NewRecorder()
+	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.Equal(http.StatusOK, rw.Code)
+
+	assert.NoError(task.UpdateOne(bson.M{task.IdKey: "completedTask"}, bson.M{"$set": bson.M{task.FinishTimeKey: time.Now().Add(-90 * time.Minute)}}))
+	r.Header.Set(evergreen.TaskHeader, "completedTask")
+	rw = httptest.NewRecorder()
+	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.Equal(http.StatusUnauthorized, rw.Code)
+
 }
 
 func TestHostAuthMiddleware(t *testing.T) {
@@ -510,7 +540,17 @@ func TestHostAuthMiddleware(t *testing.T) {
 			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 			assert.NotEqual(t, http.StatusOK, rw.Code)
 		},
-		// "": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {},
+		"FailsWithTerminatedHost": func(t *testing.T, h *host.Host, rw *httptest.ResponseRecorder) {
+			assert.NoError(t, h.SetStatus(ctx, evergreen.HostTerminated, "", ""))
+			r := &http.Request{
+				Header: http.Header{
+					evergreen.HostHeader:       []string{h.Id},
+					evergreen.HostSecretHeader: []string{h.Secret},
+				},
+			}
+			m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+			assert.NotEqual(t, http.StatusOK, rw.Code)
+		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			require.NoError(t, db.Clear(host.Collection))
