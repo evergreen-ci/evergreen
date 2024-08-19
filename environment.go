@@ -372,6 +372,7 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 	opts := options.Client().ApplyURI(settings.Url).SetWriteConcern(settings.WriteConcernSettings.Resolve()).
 		SetReadConcern(settings.ReadConcernSettings.Resolve()).
 		SetTimeout(5 * time.Minute).
+		SetSocketTimeout(5 * time.Minute).
 		SetConnectTimeout(5 * time.Second).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 
