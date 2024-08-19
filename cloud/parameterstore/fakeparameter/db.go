@@ -28,7 +28,7 @@ func FindOneID(ctx context.Context, id string) (*FakeParameter, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "finding parameter by ID")
+		return nil, errors.Wrapf(err, "finding parameter '%s'", id)
 	}
 	return &p, nil
 }
