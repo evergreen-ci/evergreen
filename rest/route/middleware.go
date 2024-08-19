@@ -593,62 +593,35 @@ func updateHostAccessTime(ctx context.Context, h *host.Host) {
 }
 
 func RequiresProjectPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
-	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "unable to get default roles",
-			"op":      "middleware",
-		}))
-	}
-
 	opts := gimlet.RequiresPermissionMiddlewareOpts{
 		RM:            evergreen.GetEnvironment().RoleManager(),
 		PermissionKey: permission,
 		ResourceType:  evergreen.ProjectResourceType,
 		RequiredLevel: level.Value,
 		ResourceFunc:  urlVarsToProjectScopes,
-		DefaultRoles:  defaultRoles,
 	}
 
 	return gimlet.RequiresPermission(opts)
 }
 
 func RequiresDistroPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
-	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "unable to get default roles",
-			"op":      "middleware",
-		}))
-	}
-
 	opts := gimlet.RequiresPermissionMiddlewareOpts{
 		RM:            evergreen.GetEnvironment().RoleManager(),
 		PermissionKey: permission,
 		ResourceType:  evergreen.DistroResourceType,
 		RequiredLevel: level.Value,
 		ResourceFunc:  urlVarsToDistroScopes,
-		DefaultRoles:  defaultRoles,
 	}
 	return gimlet.RequiresPermission(opts)
 }
 
 func RequiresSuperUserPermission(permission string, level evergreen.PermissionLevel) gimlet.Middleware {
-	defaultRoles, err := evergreen.GetEnvironment().RoleManager().GetRoles(evergreen.UnauthedUserRoles)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "unable to get default roles",
-			"op":      "middleware",
-		}))
-	}
-
 	opts := gimlet.RequiresPermissionMiddlewareOpts{
 		RM:            evergreen.GetEnvironment().RoleManager(),
 		PermissionKey: permission,
 		ResourceType:  evergreen.SuperUserResourceType,
 		RequiredLevel: level.Value,
 		ResourceFunc:  superUserResource,
-		DefaultRoles:  defaultRoles,
 	}
 	return gimlet.RequiresPermission(opts)
 }

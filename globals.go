@@ -1185,7 +1185,6 @@ type PermissionLevel struct {
 }
 
 var (
-	UnauthedUserRoles  = []string{"unauthorized_project"}
 	ValidResourceTypes = []string{SuperUserResourceType, ProjectResourceType, DistroResourceType}
 	// SuperUserPermissions resource ID.
 	SuperUserPermissionsID = "super_user"
