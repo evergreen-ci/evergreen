@@ -275,12 +275,17 @@ func (c *baseCommunicator) GetProject(ctx context.Context, taskData TaskData) (*
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting parser project").Error())
 	}
-	respBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrap(err, "reading parser project from response")
-	}
+	defer resp.Body.Close()
 
-	return model.GetProjectFromBSON(respBytes)
+	// Retry reading body since it may error on certain distros for certain go versions.
+	for i := 0; i < c.retry.MaxAttempts; i++ {
+		respBytes, err := io.ReadAll(resp.Body)
+		if err == nil {
+			return model.GetProjectFromBSON(respBytes)
+
+		}
+	}
+	return nil, errors.Wrap(err, "reading parser project from response")
 }
 
 func (c *baseCommunicator) GetExpansions(ctx context.Context, taskData TaskData) (util.Expansions, error) {
