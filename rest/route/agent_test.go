@@ -769,9 +769,9 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing task_id")
 		},
-		"ParseSucceedsOnNilBody": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken, env *mock.Environment) {
+		"ParseSucceedsOnNullBody": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken, env *mock.Environment) {
 			url := fmt.Sprintf(route, taskID, owner, repo)
-			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
+			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader([]byte("null")))
 			require.NoError(t, err)
 
 			options := map[string]string{"owner": owner, "repo": repo, "task_id": taskID}
