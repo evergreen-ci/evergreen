@@ -496,7 +496,7 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 		}))
 		return
 	}
-	if t.FinishTime.Before(time.Now().Add(-1*completedTaskValidityWindow)) && utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
+	if time.Since(t.FinishTime) > completedTaskValidityWindow && utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    fmt.Sprintf("task '%s' cannot make requests in a completed state", taskID),

@@ -466,6 +466,11 @@ func TestTaskAuthMiddleware(t *testing.T) {
 	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 	assert.Equal(http.StatusConflict, rw.Code)
 
+	r.Header.Set(evergreen.TaskSecretHeader, "ghijkl")
+	rw = httptest.NewRecorder()
+	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.Equal(http.StatusConflict, rw.Code)
+
 	r.Header.Set(evergreen.TaskSecretHeader, "abcdef")
 	rw = httptest.NewRecorder()
 	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
@@ -476,12 +481,17 @@ func TestTaskAuthMiddleware(t *testing.T) {
 	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 	assert.NotEqual(http.StatusOK, rw.Code)
 
-	assert.NoError(task.UpdateOne(bson.M{"_id": "completedTask"}, bson.M{"$set": bson.M{"finish_time": time.Now().Add(-30 * time.Minute)}}))
-
+	assert.NoError(task.UpdateOne(bson.M{task.IdKey: "completedTask"}, bson.M{"$set": bson.M{task.FinishTimeKey: time.Now().Add(-30 * time.Minute)}}))
 	r.Header.Set(evergreen.TaskHeader, "completedTask")
 	rw = httptest.NewRecorder()
 	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 	assert.Equal(http.StatusOK, rw.Code)
+
+	assert.NoError(task.UpdateOne(bson.M{task.IdKey: "completedTask"}, bson.M{"$set": bson.M{task.FinishTimeKey: time.Now().Add(-90 * time.Minute)}}))
+	r.Header.Set(evergreen.TaskHeader, "completedTask")
+	rw = httptest.NewRecorder()
+	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.Equal(http.StatusUnauthorized, rw.Code)
 
 }
 
