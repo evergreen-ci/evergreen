@@ -6,8 +6,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // ExecutionEnvironmentType is the type of environment in which the code is
@@ -40,5 +42,12 @@ type FakeParameter struct {
 // Insert inserts a single parameter into the fake parameter store.
 func (p *FakeParameter) Insert(ctx context.Context) error {
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertOne(ctx, p)
+	return err
+}
+
+// Upsert inserts a single parameter into the fake parameter store or replaces
+// an one if one with the same ID already exists.
+func (p *FakeParameter) Upsert(ctx context.Context) error {
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).ReplaceOne(ctx, bson.M{IDKey: p.ID}, p, options.Replace().SetUpsert(true))
 	return err
 }

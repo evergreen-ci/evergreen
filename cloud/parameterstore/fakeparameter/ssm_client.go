@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	ssmTypes "github.com/aws/aws-sdk-go-v2/service/ssm/types"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/evergreen-ci/utility"
 )
 
@@ -38,8 +39,14 @@ func (c *FakeSSMClient) PutParameter(ctx context.Context, input *ssm.PutParamete
 		Value:       value,
 		LastUpdated: time.Now(),
 	}
-	if err := p.Insert(ctx); err != nil {
-		return nil, errors.Wrap(err, "inserting fake parameter")
+	if aws.BoolValue(input.Overwrite) {
+		if err := p.Upsert(ctx); err != nil {
+			return nil, errors.Wrap(err, "upserting fake parameter")
+		}
+	} else {
+		if err := p.Insert(ctx); err != nil {
+			return nil, errors.Wrap(err, "inserting fake parameter")
+		}
 	}
 
 	return &ssm.PutParameterOutput{}, nil

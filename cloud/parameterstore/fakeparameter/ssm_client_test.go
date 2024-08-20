@@ -40,6 +40,57 @@ func TestFakeSSMClient(t *testing.T) {
 			assert.Equal(t, p.Value, dbParam.Value)
 			assert.WithinDuration(t, time.Now(), dbParam.LastUpdated, time.Second, "last updated time should be bumped")
 		},
+		"PutParameterFailsWithExistingParameterAndWithoutOverwrite": func(ctx context.Context, t *testing.T, c *FakeSSMClient, params []FakeParameter) {
+			p := params[0]
+			input := &ssm.PutParameterInput{
+				Name:      utility.ToStringPtr(p.ID),
+				Value:     utility.ToStringPtr(p.Value),
+				Overwrite: utility.ToBoolPtr(false),
+			}
+			output, err := c.PutParameter(ctx, input)
+			require.NoError(t, err)
+			require.NotZero(t, output)
+
+			dbParam, err := FindOneID(ctx, p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbParam)
+			assert.Equal(t, p.ID, dbParam.ID)
+			assert.Equal(t, p.Value, dbParam.Value)
+			assert.WithinDuration(t, time.Now(), dbParam.LastUpdated, time.Second, "last updated time should be bumped")
+
+			input.Value = utility.ToStringPtr("new_value")
+			output, err = c.PutParameter(ctx, input)
+			assert.Error(t, err)
+			assert.Zero(t, output)
+
+			dbParam, err = FindOneID(ctx, p.ID)
+			require.NoError(t, err)
+			require.NotZero(t, dbParam)
+			assert.Equal(t, p.ID, dbParam.ID)
+			assert.Equal(t, p.Value, dbParam.Value)
+			assert.WithinDuration(t, time.Now(), dbParam.LastUpdated, time.Second, "last updated time should be bumped")
+		},
+		"PutParameterReplacesExistingParameterWithOverwrite": func(ctx context.Context, t *testing.T, c *FakeSSMClient, params []FakeParameter) {
+			for i := 0; i < 3; i++ {
+				p := params[0]
+				newValue := fmt.Sprintf("%s-%d", p.Value, i)
+				input := &ssm.PutParameterInput{
+					Name:      utility.ToStringPtr(p.ID),
+					Value:     utility.ToStringPtr(newValue),
+					Overwrite: utility.ToBoolPtr(true),
+				}
+				output, err := c.PutParameter(ctx, input)
+				require.NoError(t, err)
+				require.NotZero(t, output)
+
+				dbParam, err := FindOneID(ctx, p.ID)
+				require.NoError(t, err)
+				require.NotZero(t, dbParam)
+				assert.Equal(t, p.ID, dbParam.ID)
+				assert.Equal(t, newValue, dbParam.Value)
+				assert.WithinDuration(t, time.Now(), dbParam.LastUpdated, time.Second, "last updated time should be bumped")
+			}
+		},
 		"PutParameterFailsWithInvalidInput": func(ctx context.Context, t *testing.T, c *FakeSSMClient, params []FakeParameter) {
 			input := &ssm.PutParameterInput{}
 			output, err := c.PutParameter(ctx, input)
