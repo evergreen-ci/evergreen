@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -472,6 +473,8 @@ func NewTaskAuthMiddleware() gimlet.Middleware {
 
 type TaskAuthMiddleware struct{}
 
+const completedTaskValidityWindow = time.Hour
+
 func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	vars := gimlet.GetVars(r)
 	taskID, ok := vars["task_id"]
@@ -485,14 +488,21 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 			return
 		}
 	}
-	if code, err := data.CheckTaskSecret(taskID, r); err != nil {
+	t, code, err := data.CheckTaskSecret(taskID, r)
+	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    errors.Wrapf(err, "checking secret for task '%s'", taskID).Error(),
 		}))
 		return
 	}
-
+	if time.Since(t.FinishTime) > completedTaskValidityWindow && utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    fmt.Sprintf("task '%s' cannot make requests in a completed state", taskID),
+		}))
+		return
+	}
 	podID, ok := gimlet.GetVars(r)["pod_id"]
 	if !ok {
 		podID = r.Header.Get(evergreen.PodHeader)

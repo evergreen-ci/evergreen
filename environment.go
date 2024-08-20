@@ -372,6 +372,10 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 	opts := options.Client().ApplyURI(settings.Url).SetWriteConcern(settings.WriteConcernSettings.Resolve()).
 		SetReadConcern(settings.ReadConcernSettings.Resolve()).
 		SetTimeout(5 * time.Minute).
+		// SetSocketTimeout will be deprecated in future Go driver releases, though at the time being there
+		// isn't any other way to enforce a time limit on how long the client waits when trying to R/W data
+		// over a connection, so we are including it until Go driver finalizes their timeout API.
+		SetSocketTimeout(5 * time.Minute).
 		SetConnectTimeout(5 * time.Second).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 

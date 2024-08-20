@@ -1,5 +1,6 @@
 ###### ENUMS ######
 enum ImageEventType {
+  OPERATING_SYSTEM
   PACKAGE
   TOOLCHAIN
 }

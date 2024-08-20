@@ -7,7 +7,7 @@ packages += db util plugin units graphql thirdparty thirdparty-docker auth sched
 packages += model-annotations model-patch model-artifact model-host model-pod model-pod-definition model-pod-dispatcher model-build model-event model-task model-user model-distro model-manifest model-testresult model-log model-testlog model-parsley
 packages += model-commitqueue model-cache
 packages += rest-client rest-data rest-route rest-model trigger model-alertrecord model-notification model-taskstats model-reliability
-packages += taskoutput cloud-parameterstore
+packages += taskoutput cloud-parameterstore cloud-parameterstore-fakeparameter
 lintOnlyPackages := api apimodels testutil model-manifest model-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json rest
 lintOnlyPackages += smoke-internal smoke-internal-host smoke-internal-container smoke-internal-agentmonitor smoke-internal-endpoint
 testOnlyPackages := service-graphql smoke-internal-host smoke-internal-container smoke-internal-agentmonitor smoke-internal-endpoint # has only test files so can't undergo all operations
@@ -319,7 +319,7 @@ testArgs += -timeout=$(TEST_TIMEOUT)
 else
 testArgs += -timeout=10m
 endif
-testArgs += -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test"
+testArgs += -ldflags="$(ldFlags) -X=github.com/evergreen-ci/evergreen/testutil.ExecutionEnvironmentType=test -X=github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter.ExecutionEnvironmentType=test"
 #  targets to run any tests in the top-level package
 $(buildDir):
 	mkdir -p $@
