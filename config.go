@@ -41,6 +41,11 @@ var (
 	AgentVersion = "2024-08-07"
 )
 
+const (
+	mongoTimeout        = 5 * time.Minute
+	mongoConnectTimeout = 5 * time.Minute
+)
+
 // ConfigSection defines a sub-document in the evergreen config
 // any config sections must also be added to the registry in config_sections.go.
 type ConfigSection interface {
@@ -695,8 +700,8 @@ type DBSettings struct {
 func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
 	opts := options.Client().ApplyURI(url).SetWriteConcern(s.WriteConcernSettings.Resolve()).
 		SetReadConcern(s.ReadConcernSettings.Resolve()).
-		SetTimeout(5 * time.Minute).
-		SetConnectTimeout(5 * time.Second).
+		SetTimeout(mongoTimeout).
+		SetConnectTimeout(mongoConnectTimeout).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 
 	if s.AWSAuthEnabled {
