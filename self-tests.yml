@@ -505,6 +505,9 @@ tasks:
   - <<: *run-go-test-suite-with-docker
     tags: ["db"]
     name: test-cloud
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-cloud-parameterstore-fakeparameter
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-cloud-userdata
