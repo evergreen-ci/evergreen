@@ -369,7 +369,7 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 	defer span.End()
 
 	var err error
-	e.client, err = mongo.Connect(ctx, settings.mongoOptions(settings.DB))
+	e.client, err = mongo.Connect(ctx, settings.mongoOptions(settings.Url))
 	if err != nil {
 		return errors.Wrap(err, "connecting to the Evergreen DB")
 	}
