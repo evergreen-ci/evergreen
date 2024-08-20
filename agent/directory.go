@@ -15,35 +15,40 @@ import (
 	"github.com/pkg/errors"
 )
 
-// createTaskDirectory makes a directory for the agent to execute
-// the current task within. It changes the necessary variables
-// so that all of the agent's operations will use this folder.
-func (a *Agent) createTaskDirectory(tc *taskContext) (string, error) {
-	h := md5.New()
+// createTaskDirectory makes a directory for the agent to execute the current
+// task within and a temporary directory within that new directory. If taskDir
+// is specified, it will create that task directory; otherwise, it will create
+// a new task directory based on the current task data.
+func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, error) {
+	if taskDir == "" {
+		h := md5.New()
 
-	_, err := h.Write([]byte(
-		fmt.Sprintf("%s_%d_%d", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, os.Getpid())))
-	if err != nil {
-		tc.logger.Execution().Error(errors.Wrap(err, "creating task directory name"))
+		_, err := h.Write([]byte(
+			fmt.Sprintf("%s_%d_%d", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, os.Getpid())))
+		if err != nil {
+			tc.logger.Execution().Error(errors.Wrap(err, "creating task directory name"))
+			return "", err
+		}
+
+		dirName := hex.EncodeToString(h.Sum(nil))
+		taskDir = filepath.Join(a.opts.WorkingDirectory, dirName)
+	}
+
+	tc.logger.Execution().Infof("Making task directory '%s' for task execution.", taskDir)
+
+	if err := os.MkdirAll(taskDir, 0777); err != nil {
+		tc.logger.Execution().Error(errors.Wrapf(err, "creating task directory '%s'", taskDir))
 		return "", err
 	}
 
-	dirName := hex.EncodeToString(h.Sum(nil))
-	newDir := filepath.Join(a.opts.WorkingDirectory, dirName)
+	tmpDir := filepath.Join(taskDir, "tmp")
+	tc.logger.Execution().Infof("Making task temporary directory '%s' for task execution.", tmpDir)
 
-	tc.logger.Execution().Infof("Making new directory '%s' for task execution.", newDir)
-
-	if err = os.MkdirAll(newDir, 0777); err != nil {
-		tc.logger.Execution().Error(errors.Wrapf(err, "creating task directory '%s'", newDir))
-		return "", err
-	}
-
-	tmpDir := filepath.Join(newDir, "tmp")
-	if err = os.MkdirAll(tmpDir, 0777); err != nil {
+	if err := os.MkdirAll(tmpDir, 0777); err != nil {
 		tc.logger.Execution().Warning(errors.Wrapf(err, "creating task temporary directory '%s'", tmpDir))
 	}
 
-	return newDir, nil
+	return taskDir, nil
 }
 
 // removeTaskDirectory removes the folder the agent created for the task it

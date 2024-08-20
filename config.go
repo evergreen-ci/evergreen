@@ -38,7 +38,7 @@ var (
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2024-08-15"
+	AgentVersion = "2024-08-20a"
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -699,9 +699,9 @@ type BannerTheme string
 
 const (
 	Announcement BannerTheme = "announcement"
-	Information              = "information"
-	Warning                  = "warning"
-	Important                = "important"
+	Information  BannerTheme = "information"
+	Warning      BannerTheme = "warning"
+	Important    BannerTheme = "important"
 )
 
 func IsValidBannerTheme(input string) (bool, BannerTheme) {

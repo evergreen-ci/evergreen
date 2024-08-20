@@ -186,6 +186,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APINotificationPreferences
   OomTrackerInfo:
     model: github.com/evergreen-ci/evergreen/rest/model.APIOomTrackerInfo
+  OSInfo:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIOSInfo
+  OperatingSystemOpts:
+    model: github.com/evergreen-ci/evergreen/thirdparty.OSInfoFilterOptions
   Package: 
     model: github.com/evergreen-ci/evergreen/rest/model.APIPackage
   PackageOpts: 

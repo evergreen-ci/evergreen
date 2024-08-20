@@ -75,6 +75,9 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 	if secret != h.Secret {
 		return nil, http.StatusUnauthorized, errors.Errorf("invalid host secret for host '%s'", hostId)
 	}
+	if h.Status == evergreen.HostTerminated {
+		return nil, http.StatusUnauthorized, errors.Errorf("host '%s' cannot make requests in a terminated state", hostId)
+	}
 
 	// if the task is attached to the context, check host-task relationship
 	var t *task.Task

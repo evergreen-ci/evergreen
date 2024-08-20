@@ -273,6 +273,27 @@ func (p *GitHubDynamicTokenPermissionGroup) Intersection(other GitHubDynamicToke
 	return intersectionGroup, nil
 }
 
+// HasNoPermissions tests if the group has no permissions.
+func (p *GitHubDynamicTokenPermissionGroup) HasNoPermissions() bool {
+	if p.AllPermissions {
+		return false
+	}
+
+	perms := reflect.ValueOf(&p.Permissions).Elem()
+	for i := 0; i < perms.NumField(); i++ {
+		permPtr, ok := perms.Field(i).Interface().(*string)
+		if !ok {
+			continue
+		}
+		perm := utility.FromStringPtr(permPtr)
+		if perm != "" {
+			return false
+		}
+	}
+
+	return true
+}
+
 type ProjectHealthView string
 
 const (

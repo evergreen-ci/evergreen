@@ -478,12 +478,15 @@ func TestCheckTaskSecret(t *testing.T) {
 			evergreen.TaskHeader: []string{"task1"},
 		},
 	}
-	code, err := CheckTaskSecret("task1", r)
+	dbTask, code, err := CheckTaskSecret("task1", r)
 	assert.Error(err)
 	assert.Equal(http.StatusConflict, code)
+	assert.Nil(dbTask)
 
 	r.Header.Set(evergreen.TaskSecretHeader, "abcdef")
-	code, err = CheckTaskSecret("task1", r)
+	dbTask, code, err = CheckTaskSecret("task1", r)
 	assert.NoError(err)
 	assert.Equal(http.StatusOK, code)
+	assert.NotNil(dbTask)
+
 }

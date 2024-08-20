@@ -364,7 +364,7 @@ func fixProvisioningIntentHost(ctx context.Context, h *host.Host, instanceID str
 	switch h.Status {
 	case evergreen.HostBuilding:
 		return errors.Wrap(transitionIntentHostToStarting(ctx, env, h, instanceID), "starting intent host that actually succeeded")
-	case evergreen.HostBuildingFailed, evergreen.HostDecommissioned, evergreen.HostTerminated:
+	case evergreen.HostBuildingFailed, evergreen.HostDecommissioned:
 		return errors.Wrap(transitionIntentHostToDecommissioned(ctx, env, h, instanceID), "decommissioning intent host")
 	default:
 		return errors.Errorf("logical error: intent host is in state '%s', which should be impossible when host is up and provisioning", h.Status)

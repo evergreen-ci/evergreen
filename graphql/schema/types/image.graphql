@@ -1,5 +1,6 @@
 ###### ENUMS ######
 enum ImageEventType {
+  OPERATING_SYSTEM
   PACKAGE
   TOOLCHAIN
 }
@@ -11,6 +12,12 @@ enum ImageEventEntryAction {
 }
 
 ###### INPUTS ######
+input OperatingSystemOpts {
+  name: String
+  limit: Int
+  page: Int
+}
+
 input PackageOpts {
   name: String
   manager: String
@@ -38,9 +45,21 @@ type Image {
   lastDeployed: Time!
   latestTask: Task
   name: String!
+  operatingSystem(opts: OperatingSystemOpts!): ImageOperatingSystemPayload!
   packages(opts: PackageOpts!): ImagePackagesPayload!
   toolchains(opts: ToolchainOpts!): ImageToolchainsPayload!
   versionId: String!
+}
+
+type ImageOperatingSystemPayload {
+  data: [OSInfo!]!
+  filteredCount: Int!
+  totalCount: Int!
+}
+
+type OSInfo {
+  name: String!
+  version: String!
 }
 
 type ImagePackagesPayload {

@@ -1508,7 +1508,7 @@ func (s *AgentSuite) TestFinishPrevTaskWithSameTaskGroupButDifferentTaskExecutio
 	s.Empty(taskDirectory)
 }
 
-func (s *AgentSuite) TestGeneralPreviousTaskCleanupAndNextTaskSetupSucceeds() {
+func (s *AgentSuite) TestPreviousTaskCleanupAndNextTaskSetupSucceeds() {
 	nextTask := &apimodels.NextTaskResponse{}
 	s.setupRunTask(defaultProjYml)
 	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, s.tc)
@@ -1530,7 +1530,8 @@ func (s *AgentSuite) TestGeneralPreviousTaskCleanupAndNextTaskSetupSucceeds() {
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Current command set to initial task setup (system).",
-		"Making new directory",
+		"Making task directory",
+		"Making task temporary directory",
 		"Task logger initialized",
 		"Execution logger initialized.",
 		"System logger initialized.",
@@ -1538,36 +1539,39 @@ func (s *AgentSuite) TestGeneralPreviousTaskCleanupAndNextTaskSetupSucceeds() {
 	}, []string{panicLog})
 }
 
-func (s *AgentSuite) TestGeneralPreviousTaskCleanupAndNextTaskSetupSucceedsWithTasksInSameTaskGroup() {
-	const taskGroup = "this_is_a_task_group"
+func (s *AgentSuite) TestPreviousTaskCleanupAndNextTaskSetupSucceedsWithTasksInSameTaskGroup() {
+	const taskGroup = "task_group_name"
 	projYml := `
 buildvariants:
   - name: mock_build_variant
     tasks:
-      - this_is_a_task_group
+      - task_group_name
 
 tasks:
-  - name: this_is_a_task_name
+  - name: tg_task0
     commands:
       - command: shell.exec
         params:
           script: exit 0
-  - name: this_is_another_task_name
+  - name: tg_task1
     commands:
       - command: shell.exec
         params:
           script: exit 0
 
 task_groups:
-  - name: this_is_a_task_group
+  - name: task_group_name
     tasks:
-      - this_is_a_task_name
-      - this_is_another_task_name
+      - tg_task0
+      - tg_task1
 `
 	s.setupRunTask(projYml)
 
 	// Fake out the data so that the previous task already set up the task
-	// group, and next task is part of the same task group.
+	// group, made the task group directory, and the next task is part of the
+	// same task group.
+	_, err := s.a.createTaskDirectory(s.tc, s.tc.taskConfig.WorkDir)
+	s.Require().NoError(err)
 	s.tc.ranSetupGroup = true
 	s.tc.taskConfig.Task.TaskGroup = taskGroup
 	s.tc.taskConfig.TaskGroup = s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
@@ -1597,7 +1601,79 @@ task_groups:
 		"Starting task 'task_id', execution 0.",
 	}, []string{
 		panicLog,
-		"Making new directory",
+		"Making task directory",
+		"Making task temporary directory",
+	})
+}
+
+func (s *AgentSuite) TestPreviousTaskCleanupAndNextTaskSetupRecreatesMissingTaskTemporaryDirectoryWithTasksInSameTaskGroup() {
+	const taskGroup = "task_group_name"
+	projYml := `
+buildvariants:
+  - name: mock_build_variant
+    tasks:
+      - task_group_name
+
+tasks:
+  - name: tg_task0
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+  - name: tg_task1
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+
+task_groups:
+  - name: task_group_name
+    tasks:
+      - tg_task0
+      - tg_task1
+`
+	s.setupRunTask(projYml)
+
+	// Fake out the data so that the previous task already set up the task
+	// group and the next task is part of the same task group. However, the task
+	// group's temporary directory is missing for the next task.
+	_, err := os.Stat(s.tc.taskConfig.WorkDir)
+	s.NoError(err, "task working directory should exist")
+	_, err = os.Stat(filepath.Join(s.tc.taskConfig.WorkDir, "tmp"))
+	s.True(os.IsNotExist(err), "task temporary directory should be missing")
+	s.tc.ranSetupGroup = true
+	s.tc.taskConfig.Task.TaskGroup = taskGroup
+	s.tc.taskConfig.TaskGroup = s.tc.taskConfig.Project.FindTaskGroup(taskGroup)
+	s.Require().NotNil(s.tc.taskConfig.TaskGroup, "task group should be defined in project")
+	nextTask := &apimodels.NextTaskResponse{
+		TaskGroup: taskGroup,
+	}
+
+	// Fake out a situation where the previous task deleted the task group's
+	// temporary directory.
+
+	shouldSetupGroup, taskDirectory := s.a.finishPrevTask(s.ctx, nextTask, s.tc)
+	s.False(shouldSetupGroup, "should not set up task directory again for task in same task group")
+	s.Equal(s.tc.taskConfig.WorkDir, taskDirectory, "task directory should carry over to next task since it's part of the same task group")
+
+	tc, shouldExit, err := s.a.setupTask(s.ctx, s.ctx, s.tc, nextTask, shouldSetupGroup, taskDirectory)
+	s.False(shouldExit)
+	s.NoError(err)
+
+	s.Require().NotZero(tc)
+	s.Require().NotZero(tc.taskConfig)
+	s.Equal(taskDirectory, tc.taskConfig.WorkDir, "should reuse same working directory for task in same task group")
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Making task temporary directory",
+		"Current command set to initial task setup (system).",
+		"Task logger initialized",
+		"Execution logger initialized.",
+		"System logger initialized.",
+		"Starting task 'task_id', execution 0.",
+	}, []string{
+		panicLog,
 	})
 }
 
