@@ -698,10 +698,10 @@ type DBSettings struct {
 type BannerTheme string
 
 const (
-	Announcement BannerTheme = "announcement"
-	Information              = "information"
-	Warning                  = "warning"
-	Important                = "important"
+	Announcement    BannerTheme = "announcement"
+	Information     BannerTheme = "information"
+	Warning         BannerTheme = "warning"
+	Important       BannerTheme = "important"
 )
 
 func IsValidBannerTheme(input string) (bool, BannerTheme) {
