@@ -195,7 +195,7 @@ func (j *githubStatusRefreshJob) sendBuildStatuses() {
 		Ref:   j.patch.GithubPatchData.HeadHash,
 	}
 	for _, b := range j.builds {
-		status.Context = fmt.Sprintf("%s/%s", evergreenContext, b.BuildVariant)
+		status.Context = fmt.Sprintf("%s/%s", thirdparty.GithubStatusDefaultContext, b.BuildVariant)
 		status.URL = b.GetURL(j.urlBase)
 
 		switch b.Status {
@@ -235,7 +235,7 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 
 	status := &message.GithubStatus{
 		URL:     j.patch.GetURL(j.urlBase),
-		Context: evergreenContext,
+		Context: thirdparty.GithubStatusDefaultContext,
 		Owner:   j.patch.GithubPatchData.BaseOwner,
 		Repo:    j.patch.GithubPatchData.BaseRepo,
 		Ref:     j.patch.GithubPatchData.HeadHash,

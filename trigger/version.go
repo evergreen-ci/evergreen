@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -151,7 +152,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		PastTenseStatus:   versionStatus,
 		apiModel:          &api,
 		githubState:       message.GithubStatePending,
-		githubContext:     "evergreen",
+		githubContext:     thirdparty.GithubStatusDefaultContext,
 		githubDescription: evergreen.PRTasksRunningDescription,
 	}
 	if t.data.GithubCheckStatus != "" {

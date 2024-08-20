@@ -30,8 +30,6 @@ const (
 	githubUpdateTypePushToCommitQueue     = "commit-queue-push"
 	githubUpdateTypeDeleteFromCommitQueue = "commit-queue-delete"
 	githubUpdateTypeProcessingError       = "processing-error"
-
-	evergreenContext = "evergreen"
 )
 
 const (
@@ -206,13 +204,13 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 
 	} else if j.UpdateType == githubUpdateTypeNewPatch {
 		status.URL = fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", j.urlBase, j.FetchID)
-		status.Context = evergreenContext
+		status.Context = thirdparty.GithubStatusDefaultContext
 		status.State = message.GithubStatePending
 		status.Description = "preparing to run tasks"
 
 	} else if j.UpdateType == githubUpdateTypeRequestAuth {
 		status.URL = fmt.Sprintf("%s/patch/%s", j.urlBase, j.FetchID)
-		status.Context = evergreenContext
+		status.Context = thirdparty.GithubStatusDefaultContext
 		status.Description = "patch must be manually authorized"
 		status.State = message.GithubStateFailure
 

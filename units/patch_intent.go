@@ -566,39 +566,14 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context
 		Caller:    j.Name,
 	}
 
-	rules, err := thirdparty.GetEvergreenBranchProtectionRules(ctx, "", p.GithubMergeData.Org, p.GithubMergeData.Repo, p.GithubMergeData.BaseBranch)
-	// We might have permission to send statuses but not to get branch
-	// protection rules, so log the error, but don't return it.
-	grip.Error(message.WrapError(err, message.Fields{
-		"job":      j.ID(),
-		"job_type": j.Type,
-		"message":  "failed to get branch protection rules",
-		"org":      p.GithubMergeData.Org,
-		"repo":     p.GithubMergeData.Repo,
-		"branch":   p.GithubMergeData.BaseBranch,
-	}))
-	// If we don't find any rules, send the default.
-	if len(rules) == 0 {
-		grip.Debug(message.Fields{
-			"job":      j.ID(),
-			"job_type": j.Type,
-			"message":  "could not find branch protection rules, sending default status",
-			"org":      p.GithubMergeData.Org,
-			"repo":     p.GithubMergeData.Repo,
-			"branch":   p.GithubMergeData.BaseBranch,
-			"project":  p.Project,
-		})
-		input.Context = "evergreen"
-		catcher.Wrap(thirdparty.SendPendingStatusToGithub(ctx, input, j.env.Settings().Ui.Url), "failed to send pending status to GitHub")
-	} else {
-		for i, rule := range rules {
-			// Limit statuses to 10
-			if i >= 10 {
-				break
-			}
-			input.Context = rule
-			catcher.Wrap(thirdparty.SendPendingStatusToGithub(ctx, input, j.env.Settings().Ui.Url), "failed to send pending status to GitHub")
+	rules := j.getEvergreenBranchProtectionRulesForStatuses(ctx, p.GithubMergeData.Org, p.GithubMergeData.Repo, p.GithubMergeData.BaseBranch)
+	for i, rule := range rules {
+		// Limit statuses to 10
+		if i >= 10 {
+			break
 		}
+		input.Context = rule
+		catcher.Wrap(thirdparty.SendPendingStatusToGithub(ctx, input, j.env.Settings().Ui.Url), "failed to send pending status to GitHub")
 	}
 
 	return catcher.Resolve()
@@ -1342,7 +1317,7 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 	var update amboy.Job
 	if j.IntentType == patch.GithubIntentType {
 		update = NewGithubStatusUpdateJobForProcessingError(
-			evergreenContext,
+			thirdparty.GithubStatusDefaultContext,
 			patchDoc.GithubPatchData.BaseOwner,
 			patchDoc.GithubPatchData.BaseRepo,
 			patchDoc.GithubPatchData.HeadHash,
@@ -1350,7 +1325,7 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 		)
 	} else if j.IntentType == patch.GithubMergeIntentType {
 		update = NewGithubStatusUpdateJobForProcessingError(
-			evergreenContext,
+			thirdparty.GithubStatusDefaultContext,
 			patchDoc.GithubMergeData.Org,
 			patchDoc.GithubMergeData.Repo,
 			patchDoc.GithubMergeData.HeadSHA,
@@ -1365,17 +1340,11 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 	j.AddError(update.Error())
 }
 
-// sendGitHubSuccessMessages sends a successful status to Github with the given message for all
+// sendGitHubSuccessMessages sends a successful status to GitHub with the given message for all
 // branch protection rules configured for the given project.
 func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, patchDoc *patch.Patch, projectRef *model.ProjectRef, msg string) {
-	rules, err := thirdparty.GetEvergreenBranchProtectionRules(ctx, "", projectRef.Owner, projectRef.Repo, projectRef.Branch)
-	if err != nil {
-		j.AddError(errors.Wrapf(err, "getting branch protection rules for %s/%s/%s", projectRef.Owner, projectRef.Repo, projectRef.Branch))
-		return
-	}
-	// If the base evergreen context is not one of the rules, add it.
-	uniqueRules := utility.UniqueStrings(append(rules, evergreenContext))
-	for _, rule := range uniqueRules {
+	rules := j.getEvergreenBranchProtectionRulesForStatuses(ctx, patchDoc.GithubPatchData.BaseOwner, projectRef.Repo, projectRef.Branch)
+	for _, rule := range rules {
 		update := NewGithubStatusUpdateJobWithSuccessMessage(
 			rule,
 			patchDoc.GithubPatchData.BaseOwner,
@@ -1386,4 +1355,22 @@ func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, pa
 		update.Run(ctx)
 		j.AddError(update.Error())
 	}
+}
+
+// getEvergreenBranchProtectionRulesForStatuses returns the rules we want to send Evergreen statuses for.
+// If we don't find rules, we'll send the status default context. We log the error but don't
+// return it, because we might have permission to send statuses but not to get branch protection rules.
+func (j *patchIntentProcessor) getEvergreenBranchProtectionRulesForStatuses(ctx context.Context, owner, repo, branch string) []string {
+	rules, err := thirdparty.GetEvergreenBranchProtectionRules(ctx, "", owner, repo, branch)
+	grip.Error(message.WrapError(err, message.Fields{
+		"job":      j.ID(),
+		"job_type": j.Type,
+		"message":  "failed to get branch protection rules",
+		"org":      owner,
+		"repo":     repo,
+		"branch":   branch,
+		"patch":    j.PatchID.Hex(),
+	}))
+
+	return utility.UniqueStrings(append(rules, thirdparty.GithubStatusDefaultContext))
 }

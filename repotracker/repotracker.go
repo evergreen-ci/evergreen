@@ -483,7 +483,7 @@ func addGithubCheckSubscriptions(ctx context.Context, v *model.Version) error {
 		Ref:       v.Revision,
 		Desc:      "version created",
 		Caller:    RunnerName,
-		Context:   "evergreen",
+		Context:   thirdparty.GithubStatusDefaultContext,
 	}
 	err := thirdparty.SendPendingStatusToGithub(ctx, input, "")
 	if err != nil {
