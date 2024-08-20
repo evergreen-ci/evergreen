@@ -66,7 +66,7 @@ to have Evergreen run tests using a different project file located
 elsewhere, or if they move the config file. The batch time corresponds
 to the interval of time (in minutes) that Evergreen should wait in
 between activating the latest version. For more on batch time and how 
-it differs from cron and [periodic builds](Project-and-Distro-Settings#periodic-builds), see [controlling when tasks run](../Project-Configuration/#controlling-when-tasks-run).
+it differs from cron and [periodic builds](Project-and-Distro-Settings#periodic-builds), see [controlling when tasks run](Controlling-when-tasks-run).
 
 Admins can modify which GitHub repository the project points to and
 change the owner, repository name, or branch that is to be tracked by
@@ -397,7 +397,7 @@ what should be run periodically, and how often. **This is different than build v
 a build variant cron activates build variants on _existing waterfall commits_ based on the cron you specify
 (so if you want it to run daily, it’ll activate the most recent build variant at that time daily),
 whereas a new periodic build will be created each interval regardless of whether there are new commits. For 
-more on those differences, see [controlling when tasks run](../Project-Configuration/#controlling-when-tasks-run). 
+more on those differences, see [controlling when tasks run](Controlling-when-tasks-run). 
 
 Options:
 

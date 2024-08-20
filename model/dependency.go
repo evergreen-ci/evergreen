@@ -91,6 +91,32 @@ func (di *dependencyIncluder) handle(pair TVPair, activationInfo *specificActiva
 		return true, nil
 	}
 
+	// For a task group task inside a single host task group, the previous
+	// tasks in the task group are implicit dependencies of the current task.
+	if tg := di.Project.FindTaskGroupForTask(pair.Variant, pair.TaskName); tg != nil && tg.MaxHosts == 1 {
+		catcher := grip.NewBasicCatcher()
+		for _, t := range tg.Tasks {
+			if t == pair.TaskName {
+				// When we reach the current task, stop looping.
+				// The current task being handled by the current
+				// invocation of this function.
+				break
+			}
+			_, err := di.handle(TVPair{Variant: pair.Variant, TaskName: t}, activationInfo, generatedVariants, false)
+			catcher.Wrapf(err, "task group '%s' in variant '%s' contains unschedulable task '%s'", pair.TaskName, pair.Variant, t)
+		}
+
+		if catcher.HasErrors() {
+			// If any of the previous tasks in the task group are unschedulable,
+			// unschedule everything in the single host task group.
+			di.included[pair] = false
+			for _, p := range tg.Tasks {
+				di.included[TVPair{Variant: pair.Variant, TaskName: p}] = false
+			}
+			return false, catcher.Resolve()
+		}
+	}
+
 	// we must load the BuildVariantTaskUnit for the task/variant pair,
 	// since it contains the full scope of dependency information
 	bvt := di.Project.FindTaskForVariant(pair.TaskName, pair.Variant)
@@ -232,7 +258,11 @@ func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnit
 						if projectTask.IsDisabled() || projectTask.SkipOnRequester(di.requester) {
 							continue
 						}
-						deps = append(deps, TVPair{TaskName: t.Name, Variant: v.Name})
+						if !t.IsGroup {
+							deps = append(deps, TVPair{TaskName: t.Name, Variant: v.Name})
+						} else {
+							deps = append(deps, TVPair{TaskName: d.Name, Variant: v.Name})
+						}
 					}
 				}
 			}

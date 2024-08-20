@@ -9,6 +9,30 @@ import (
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// APIOSInfo is the model to be returned by the API whenever OS information is fetched.
+
+type APIOSInfo struct {
+	Name    *string `json:"name"`
+	Version *string `json:"version"`
+}
+
+// BuildFromService converts from service level thirdparty.OSInfo to an APIOSInfo.
+func (apiOSInfo *APIOSInfo) BuildFromService(osInfo thirdparty.OSInfo) {
+	apiOSInfo.Name = utility.ToStringPtr(osInfo.Name)
+	apiOSInfo.Version = utility.ToStringPtr(osInfo.Version)
+}
+
+// ToService returns a service layer OS info using the data from APIOSInfo.
+func (apiOSInfo *APIOSInfo) ToService() *thirdparty.OSInfo {
+	osInfo := thirdparty.OSInfo{
+		Name:    utility.FromStringPtr(apiOSInfo.Name),
+		Version: utility.FromStringPtr(apiOSInfo.Version),
+	}
+	return &osInfo
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // APIPackage is the model to be returned by the API whenever packages are fetched.
 
 type APIPackage struct {

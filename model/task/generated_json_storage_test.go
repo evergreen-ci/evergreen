@@ -6,7 +6,6 @@ import (
 	"path"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -30,9 +29,9 @@ func TestGeneratedJSONStorage(t *testing.T) {
 	defer utility.PutHTTPClient(c)
 
 	ppConf := env.Settings().Providers.AWS.ParserProject
-	bucket, err := pail.NewS3BucketWithHTTPClient(c, pail.S3Options{
+	bucket, err := pail.NewS3BucketWithHTTPClient(ctx, c, pail.S3Options{
 		Name:   ppConf.Bucket,
-		Region: endpoints.UsEast1RegionID,
+		Region: evergreen.DefaultEC2Region,
 	})
 	require.NoError(t, err)
 	defer func() {
@@ -50,7 +49,7 @@ func TestGeneratedJSONStorage(t *testing.T) {
 		t.Run("StorageMethod"+methodName, func(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsk *Task){
 				"FindReturnsNilErrorAndResultForTaskWithNoGeneratedJSON": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk *Task) {
-					filesStorage, err := GetGeneratedJSONFileStorage(env.Settings(), storageMethod)
+					filesStorage, err := GetGeneratedJSONFileStorage(ctx, env.Settings(), storageMethod)
 					require.NoError(t, err)
 
 					files, err := filesStorage.Find(ctx, tsk)
@@ -58,7 +57,7 @@ func TestGeneratedJSONStorage(t *testing.T) {
 					assert.Empty(t, files)
 				},
 				"InsertStoresGeneratedJSONFiles": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk *Task) {
-					fileStorage, err := GetGeneratedJSONFileStorage(env.Settings(), storageMethod)
+					fileStorage, err := GetGeneratedJSONFileStorage(ctx, env.Settings(), storageMethod)
 					require.NoError(t, err)
 
 					files := GeneratedJSONFiles{`{"key0": "value0"}`, `{"key1": "value1"}`}
@@ -70,7 +69,7 @@ func TestGeneratedJSONStorage(t *testing.T) {
 					assert.Equal(t, files, storedFiles)
 				},
 				"InsertNoopsForExistingGeneratedJSONFiles": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk *Task) {
-					fileStorage, err := GetGeneratedJSONFileStorage(env.Settings(), storageMethod)
+					fileStorage, err := GetGeneratedJSONFileStorage(ctx, env.Settings(), storageMethod)
 					require.NoError(t, err)
 
 					files := GeneratedJSONFiles{`{"key": "value"}`}

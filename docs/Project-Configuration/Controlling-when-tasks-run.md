@@ -1,13 +1,27 @@
 # Controlling When a Task Runs
 
-There are three ways to control the scheduling of builds/tasks on a project's waterfall page.
+There are multiple ways to control the scheduling of builds/tasks on a project's waterfall page.
 
-In short:\
-**Cron:** activates builds/tasks on existing mainline commits based on a specified schedule.\
-**Batchtime:** sets an interval of time in minutes that Evergreen should wait before activating builds/tasks. It will only activate the build/tasks for latest commit.\
+In short:
+
+**Activate**: if set to false, prevents Evergreen from automatically activating a task. It can still be manually activated by a user. If set to true, it can override batchtime in the project settings.
+
+**Cron:** activates builds/tasks on existing mainline commits based on a specified schedule.
+
+**Batchtime:** sets an interval of time in minutes that Evergreen should wait before activating builds/tasks. It will only activate the build/tasks for latest commit.
+
 **Periodic Builds:** creates a _new version_ with specified variants/tasks at a specified interval, regardless of commit activity.
 
-Cron and batchtime cannot be combined.
+If more than one is set, more specific details on how these features interact with each other are found
+[here](Project-Configuration-Files#specific-activation-override-hierarchy).
+
+### Activate
+`activate: false` prevents a build variant or task from activating automatically. This can be specified in the
+buildvariants section of the project configuration file on a build variant or a task within the build variant.
+
+`activate: true` is a special flag that is only usable for the purpose of overriding a batchtime defined in the project
+settings. Instead of using the project settings batchtime, the build variant or task will activate immediately. It does
+not have any other effect.
 
 ### Cron
 

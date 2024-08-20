@@ -598,7 +598,9 @@ const (
 	ProviderNameStatic      = "static"
 	ProviderNameMock        = "mock"
 
-	// DefaultEC2Region is the default region where hosts should be spawned.
+	// DefaultEC2Region is the default region where hosts should be spawned and
+	// general Evergreen operations occur in AWS if no particular region is
+	// specified.
 	DefaultEC2Region = "us-east-1"
 	// DefaultEBSType is Amazon's default EBS type.
 	DefaultEBSType = "gp3"

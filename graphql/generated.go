@@ -531,17 +531,18 @@ type ComplexityRoot struct {
 	}
 
 	Image struct {
-		AMI          func(childComplexity int) int
-		Distros      func(childComplexity int) int
-		Events       func(childComplexity int, limit int, page int) int
-		ID           func(childComplexity int) int
-		Kernel       func(childComplexity int) int
-		LastDeployed func(childComplexity int) int
-		LatestTask   func(childComplexity int) int
-		Name         func(childComplexity int) int
-		Packages     func(childComplexity int, opts thirdparty.PackageFilterOptions) int
-		Toolchains   func(childComplexity int, opts thirdparty.ToolchainFilterOptions) int
-		VersionID    func(childComplexity int) int
+		AMI             func(childComplexity int) int
+		Distros         func(childComplexity int) int
+		Events          func(childComplexity int, limit int, page int) int
+		ID              func(childComplexity int) int
+		Kernel          func(childComplexity int) int
+		LastDeployed    func(childComplexity int) int
+		LatestTask      func(childComplexity int) int
+		Name            func(childComplexity int) int
+		OperatingSystem func(childComplexity int, opts thirdparty.OSInfoFilterOptions) int
+		Packages        func(childComplexity int, opts thirdparty.PackageFilterOptions) int
+		Toolchains      func(childComplexity int, opts thirdparty.ToolchainFilterOptions) int
+		VersionID       func(childComplexity int) int
 	}
 
 	ImageEvent struct {
@@ -557,6 +558,29 @@ type ComplexityRoot struct {
 		Before func(childComplexity int) int
 		Name   func(childComplexity int) int
 		Type   func(childComplexity int) int
+	}
+
+	ImageEventsPayload struct {
+		Count           func(childComplexity int) int
+		EventLogEntries func(childComplexity int) int
+	}
+
+	ImageOperatingSystemPayload struct {
+		Data          func(childComplexity int) int
+		FilteredCount func(childComplexity int) int
+		TotalCount    func(childComplexity int) int
+	}
+
+	ImagePackagesPayload struct {
+		Data          func(childComplexity int) int
+		FilteredCount func(childComplexity int) int
+		TotalCount    func(childComplexity int) int
+	}
+
+	ImageToolchainsPayload struct {
+		Data          func(childComplexity int) int
+		FilteredCount func(childComplexity int) int
+		TotalCount    func(childComplexity int) int
 	}
 
 	InstanceTag struct {
@@ -747,6 +771,11 @@ type ComplexityRoot struct {
 		SpawnHostOutcomeID    func(childComplexity int) int
 	}
 
+	OSInfo struct {
+		Name    func(childComplexity int) int
+		Version func(childComplexity int) int
+	}
+
 	OomTrackerInfo struct {
 		Detected func(childComplexity int) int
 		Pids     func(childComplexity int) int
@@ -788,6 +817,7 @@ type ComplexityRoot struct {
 		CreateTime              func(childComplexity int) int
 		Description             func(childComplexity int) int
 		Duration                func(childComplexity int) int
+		GeneratedTaskCounts     func(childComplexity int) int
 		Githash                 func(childComplexity int) int
 		Hidden                  func(childComplexity int) int
 		Id                      func(childComplexity int) int
@@ -1585,6 +1615,7 @@ type ComplexityRoot struct {
 		Errors                   func(childComplexity int) int
 		ExternalLinksForMetadata func(childComplexity int) int
 		FinishTime               func(childComplexity int) int
+		GeneratedTaskCounts      func(childComplexity int) int
 		GitTags                  func(childComplexity int) int
 		Id                       func(childComplexity int) int
 		Ignored                  func(childComplexity int) int
@@ -1716,12 +1747,13 @@ type HostAllocatorSettingsResolver interface {
 }
 type ImageResolver interface {
 	Distros(ctx context.Context, obj *model.APIImage) ([]*model.APIDistro, error)
-	Events(ctx context.Context, obj *model.APIImage, limit int, page int) ([]*model.APIImageEvent, error)
+	Events(ctx context.Context, obj *model.APIImage, limit int, page int) (*ImageEventsPayload, error)
 
 	LatestTask(ctx context.Context, obj *model.APIImage) (*model.APITask, error)
 
-	Packages(ctx context.Context, obj *model.APIImage, opts thirdparty.PackageFilterOptions) ([]*model.APIPackage, error)
-	Toolchains(ctx context.Context, obj *model.APIImage, opts thirdparty.ToolchainFilterOptions) ([]*model.APIToolchain, error)
+	OperatingSystem(ctx context.Context, obj *model.APIImage, opts thirdparty.OSInfoFilterOptions) (*ImageOperatingSystemPayload, error)
+	Packages(ctx context.Context, obj *model.APIImage, opts thirdparty.PackageFilterOptions) (*ImagePackagesPayload, error)
+	Toolchains(ctx context.Context, obj *model.APIImage, opts thirdparty.ToolchainFilterOptions) (*ImageToolchainsPayload, error)
 }
 type IssueLinkResolver interface {
 	JiraTicket(ctx context.Context, obj *model.APIIssueLink) (*thirdparty.JiraTicket, error)
@@ -1800,6 +1832,7 @@ type PatchResolver interface {
 	CommitQueuePosition(ctx context.Context, obj *model.APIPatch) (*int, error)
 
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
+	GeneratedTaskCounts(ctx context.Context, obj *model.APIPatch) (map[string]interface{}, error)
 
 	PatchTriggerAliases(ctx context.Context, obj *model.APIPatch) ([]*model.APIPatchTriggerDefinition, error)
 	Project(ctx context.Context, obj *model.APIPatch) (*PatchProject, error)
@@ -2009,6 +2042,8 @@ type VersionResolver interface {
 	ChildVersions(ctx context.Context, obj *model.APIVersion) ([]*model.APIVersion, error)
 
 	ExternalLinksForMetadata(ctx context.Context, obj *model.APIVersion) ([]*ExternalLinkForMetadata, error)
+
+	GeneratedTaskCounts(ctx context.Context, obj *model.APIVersion) (map[string]interface{}, error)
 
 	IsPatch(ctx context.Context, obj *model.APIVersion) (bool, error)
 	Manifest(ctx context.Context, obj *model.APIVersion) (*Manifest, error)
@@ -3967,6 +4002,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Image.Name(childComplexity), true
 
+	case "Image.operatingSystem":
+		if e.complexity.Image.OperatingSystem == nil {
+			break
+		}
+
+		args, err := ec.field_Image_operatingSystem_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Image.OperatingSystem(childComplexity, args["opts"].(thirdparty.OSInfoFilterOptions)), true
+
 	case "Image.packages":
 		if e.complexity.Image.Packages == nil {
 			break
@@ -4060,6 +4107,83 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ImageEventEntry.Type(childComplexity), true
+
+	case "ImageEventsPayload.count":
+		if e.complexity.ImageEventsPayload.Count == nil {
+			break
+		}
+
+		return e.complexity.ImageEventsPayload.Count(childComplexity), true
+
+	case "ImageEventsPayload.eventLogEntries":
+		if e.complexity.ImageEventsPayload.EventLogEntries == nil {
+			break
+		}
+
+		return e.complexity.ImageEventsPayload.EventLogEntries(childComplexity), true
+
+	case "ImageOperatingSystemPayload.data":
+		if e.complexity.ImageOperatingSystemPayload.Data == nil {
+			break
+		}
+
+		return e.complexity.ImageOperatingSystemPayload.Data(childComplexity), true
+
+	case "ImageOperatingSystemPayload.filteredCount":
+		if e.complexity.ImageOperatingSystemPayload.FilteredCount == nil {
+			break
+		}
+
+		return e.complexity.ImageOperatingSystemPayload.FilteredCount(childComplexity), true
+
+	case "ImageOperatingSystemPayload.totalCount":
+		if e.complexity.ImageOperatingSystemPayload.TotalCount == nil {
+			break
+		}
+
+		return e.complexity.ImageOperatingSystemPayload.TotalCount(childComplexity), true
+
+	case "ImagePackagesPayload.data":
+		if e.complexity.ImagePackagesPayload.Data == nil {
+			break
+		}
+
+		return e.complexity.ImagePackagesPayload.Data(childComplexity), true
+
+	case "ImagePackagesPayload.filteredCount":
+		if e.complexity.ImagePackagesPayload.FilteredCount == nil {
+			break
+		}
+
+		return e.complexity.ImagePackagesPayload.FilteredCount(childComplexity), true
+
+	case "ImagePackagesPayload.totalCount":
+		if e.complexity.ImagePackagesPayload.TotalCount == nil {
+			break
+		}
+
+		return e.complexity.ImagePackagesPayload.TotalCount(childComplexity), true
+
+	case "ImageToolchainsPayload.data":
+		if e.complexity.ImageToolchainsPayload.Data == nil {
+			break
+		}
+
+		return e.complexity.ImageToolchainsPayload.Data(childComplexity), true
+
+	case "ImageToolchainsPayload.filteredCount":
+		if e.complexity.ImageToolchainsPayload.FilteredCount == nil {
+			break
+		}
+
+		return e.complexity.ImageToolchainsPayload.FilteredCount(childComplexity), true
+
+	case "ImageToolchainsPayload.totalCount":
+		if e.complexity.ImageToolchainsPayload.TotalCount == nil {
+			break
+		}
+
+		return e.complexity.ImageToolchainsPayload.TotalCount(childComplexity), true
 
 	case "InstanceTag.canBeModified":
 		if e.complexity.InstanceTag.CanBeModified == nil {
@@ -5273,6 +5397,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Notifications.SpawnHostOutcomeID(childComplexity), true
 
+	case "OSInfo.name":
+		if e.complexity.OSInfo.Name == nil {
+			break
+		}
+
+		return e.complexity.OSInfo.Name(childComplexity), true
+
+	case "OSInfo.version":
+		if e.complexity.OSInfo.Version == nil {
+			break
+		}
+
+		return e.complexity.OSInfo.Version(childComplexity), true
+
 	case "OomTrackerInfo.detected":
 		if e.complexity.OomTrackerInfo.Detected == nil {
 			break
@@ -5447,6 +5585,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Patch.Duration(childComplexity), true
+
+	case "Patch.generatedTaskCounts":
+		if e.complexity.Patch.GeneratedTaskCounts == nil {
+			break
+		}
+
+		return e.complexity.Patch.GeneratedTaskCounts(childComplexity), true
 
 	case "Patch.githash":
 		if e.complexity.Patch.Githash == nil {
@@ -9616,6 +9761,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Version.FinishTime(childComplexity), true
 
+	case "Version.generatedTaskCounts":
+		if e.complexity.Version.GeneratedTaskCounts == nil {
+			break
+		}
+
+		return e.complexity.Version.GeneratedTaskCounts(childComplexity), true
+
 	case "Version.gitTags":
 		if e.complexity.Version.GitTags == nil {
 			break
@@ -10070,6 +10222,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputMetadataLinkInput,
 		ec.unmarshalInputMoveProjectInput,
 		ec.unmarshalInputNotificationsInput,
+		ec.unmarshalInputOperatingSystemOpts,
 		ec.unmarshalInputPackageOpts,
 		ec.unmarshalInputParameterInput,
 		ec.unmarshalInputParsleyFilterInput,
@@ -10329,6 +10482,21 @@ func (ec *executionContext) field_Image_events_args(ctx context.Context, rawArgs
 		}
 	}
 	args["page"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Image_operatingSystem_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 thirdparty.OSInfoFilterOptions
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+		arg0, err = ec.unmarshalNOperatingSystemOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐOSInfoFilterOptions(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["opts"] = arg0
 	return args, nil
 }
 
@@ -16095,6 +16263,8 @@ func (ec *executionContext) fieldContext_CommitQueueItem_patch(_ context.Context
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -25453,9 +25623,9 @@ func (ec *executionContext) _Image_events(ctx context.Context, field graphql.Col
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.APIImageEvent)
+	res := resTmp.(*ImageEventsPayload)
 	fc.Result = res
-	return ec.marshalNImageEvent2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIImageEventᚄ(ctx, field.Selections, res)
+	return ec.marshalNImageEventsPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐImageEventsPayload(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Image_events(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -25466,16 +25636,12 @@ func (ec *executionContext) fieldContext_Image_events(ctx context.Context, field
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "entries":
-				return ec.fieldContext_ImageEvent_entries(ctx, field)
-			case "timestamp":
-				return ec.fieldContext_ImageEvent_timestamp(ctx, field)
-			case "amiBefore":
-				return ec.fieldContext_ImageEvent_amiBefore(ctx, field)
-			case "amiAfter":
-				return ec.fieldContext_ImageEvent_amiAfter(ctx, field)
+			case "count":
+				return ec.fieldContext_ImageEventsPayload_count(ctx, field)
+			case "eventLogEntries":
+				return ec.fieldContext_ImageEventsPayload_eventLogEntries(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type ImageEvent", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type ImageEventsPayload", field.Name)
 		},
 	}
 	defer func() {
@@ -25817,6 +25983,69 @@ func (ec *executionContext) fieldContext_Image_name(_ context.Context, field gra
 	return fc, nil
 }
 
+func (ec *executionContext) _Image_operatingSystem(ctx context.Context, field graphql.CollectedField, obj *model.APIImage) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Image_operatingSystem(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Image().OperatingSystem(rctx, obj, fc.Args["opts"].(thirdparty.OSInfoFilterOptions))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ImageOperatingSystemPayload)
+	fc.Result = res
+	return ec.marshalNImageOperatingSystemPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐImageOperatingSystemPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Image_operatingSystem(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Image",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "data":
+				return ec.fieldContext_ImageOperatingSystemPayload_data(ctx, field)
+			case "filteredCount":
+				return ec.fieldContext_ImageOperatingSystemPayload_filteredCount(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_ImageOperatingSystemPayload_totalCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ImageOperatingSystemPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Image_operatingSystem_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Image_packages(ctx context.Context, field graphql.CollectedField, obj *model.APIImage) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Image_packages(ctx, field)
 	if err != nil {
@@ -25843,9 +26072,9 @@ func (ec *executionContext) _Image_packages(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.APIPackage)
+	res := resTmp.(*ImagePackagesPayload)
 	fc.Result = res
-	return ec.marshalNPackage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPackageᚄ(ctx, field.Selections, res)
+	return ec.marshalNImagePackagesPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐImagePackagesPayload(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Image_packages(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -25856,14 +26085,14 @@ func (ec *executionContext) fieldContext_Image_packages(ctx context.Context, fie
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "name":
-				return ec.fieldContext_Package_name(ctx, field)
-			case "manager":
-				return ec.fieldContext_Package_manager(ctx, field)
-			case "version":
-				return ec.fieldContext_Package_version(ctx, field)
+			case "data":
+				return ec.fieldContext_ImagePackagesPayload_data(ctx, field)
+			case "filteredCount":
+				return ec.fieldContext_ImagePackagesPayload_filteredCount(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_ImagePackagesPayload_totalCount(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type Package", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type ImagePackagesPayload", field.Name)
 		},
 	}
 	defer func() {
@@ -25906,9 +26135,9 @@ func (ec *executionContext) _Image_toolchains(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.APIToolchain)
+	res := resTmp.(*ImageToolchainsPayload)
 	fc.Result = res
-	return ec.marshalNToolchain2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIToolchainᚄ(ctx, field.Selections, res)
+	return ec.marshalNImageToolchainsPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐImageToolchainsPayload(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Image_toolchains(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -25919,14 +26148,14 @@ func (ec *executionContext) fieldContext_Image_toolchains(ctx context.Context, f
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "name":
-				return ec.fieldContext_Toolchain_name(ctx, field)
-			case "path":
-				return ec.fieldContext_Toolchain_path(ctx, field)
-			case "version":
-				return ec.fieldContext_Toolchain_version(ctx, field)
+			case "data":
+				return ec.fieldContext_ImageToolchainsPayload_data(ctx, field)
+			case "filteredCount":
+				return ec.fieldContext_ImageToolchainsPayload_filteredCount(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_ImageToolchainsPayload_totalCount(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type Toolchain", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type ImageToolchainsPayload", field.Name)
 		},
 	}
 	defer func() {
@@ -26387,6 +26616,522 @@ func (ec *executionContext) fieldContext_ImageEventEntry_action(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type ImageEventEntryAction does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImageEventsPayload_count(ctx context.Context, field graphql.CollectedField, obj *ImageEventsPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImageEventsPayload_count(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Count, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImageEventsPayload_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImageEventsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImageEventsPayload_eventLogEntries(ctx context.Context, field graphql.CollectedField, obj *ImageEventsPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImageEventsPayload_eventLogEntries(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EventLogEntries, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIImageEvent)
+	fc.Result = res
+	return ec.marshalNImageEvent2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIImageEventᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImageEventsPayload_eventLogEntries(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImageEventsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "entries":
+				return ec.fieldContext_ImageEvent_entries(ctx, field)
+			case "timestamp":
+				return ec.fieldContext_ImageEvent_timestamp(ctx, field)
+			case "amiBefore":
+				return ec.fieldContext_ImageEvent_amiBefore(ctx, field)
+			case "amiAfter":
+				return ec.fieldContext_ImageEvent_amiAfter(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ImageEvent", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImageOperatingSystemPayload_data(ctx context.Context, field graphql.CollectedField, obj *ImageOperatingSystemPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImageOperatingSystemPayload_data(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Data, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIOSInfo)
+	fc.Result = res
+	return ec.marshalNOSInfo2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOSInfoᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImageOperatingSystemPayload_data(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImageOperatingSystemPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_OSInfo_name(ctx, field)
+			case "version":
+				return ec.fieldContext_OSInfo_version(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type OSInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImageOperatingSystemPayload_filteredCount(ctx context.Context, field graphql.CollectedField, obj *ImageOperatingSystemPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImageOperatingSystemPayload_filteredCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FilteredCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImageOperatingSystemPayload_filteredCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImageOperatingSystemPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImageOperatingSystemPayload_totalCount(ctx context.Context, field graphql.CollectedField, obj *ImageOperatingSystemPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImageOperatingSystemPayload_totalCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImageOperatingSystemPayload_totalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImageOperatingSystemPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImagePackagesPayload_data(ctx context.Context, field graphql.CollectedField, obj *ImagePackagesPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImagePackagesPayload_data(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Data, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIPackage)
+	fc.Result = res
+	return ec.marshalNPackage2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPackageᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImagePackagesPayload_data(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImagePackagesPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_Package_name(ctx, field)
+			case "manager":
+				return ec.fieldContext_Package_manager(ctx, field)
+			case "version":
+				return ec.fieldContext_Package_version(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Package", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImagePackagesPayload_filteredCount(ctx context.Context, field graphql.CollectedField, obj *ImagePackagesPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImagePackagesPayload_filteredCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FilteredCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImagePackagesPayload_filteredCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImagePackagesPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImagePackagesPayload_totalCount(ctx context.Context, field graphql.CollectedField, obj *ImagePackagesPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImagePackagesPayload_totalCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImagePackagesPayload_totalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImagePackagesPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImageToolchainsPayload_data(ctx context.Context, field graphql.CollectedField, obj *ImageToolchainsPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImageToolchainsPayload_data(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Data, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIToolchain)
+	fc.Result = res
+	return ec.marshalNToolchain2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIToolchainᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImageToolchainsPayload_data(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImageToolchainsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_Toolchain_name(ctx, field)
+			case "path":
+				return ec.fieldContext_Toolchain_path(ctx, field)
+			case "version":
+				return ec.fieldContext_Toolchain_version(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Toolchain", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImageToolchainsPayload_filteredCount(ctx context.Context, field graphql.CollectedField, obj *ImageToolchainsPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImageToolchainsPayload_filteredCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FilteredCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImageToolchainsPayload_filteredCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImageToolchainsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImageToolchainsPayload_totalCount(ctx context.Context, field graphql.CollectedField, obj *ImageToolchainsPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImageToolchainsPayload_totalCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImageToolchainsPayload_totalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImageToolchainsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -28158,6 +28903,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_rolledUpVersions(
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -28277,6 +29024,8 @@ func (ec *executionContext) fieldContext_MainlineCommitVersion_version(_ context
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -29973,6 +30722,8 @@ func (ec *executionContext) fieldContext_Mutation_enqueuePatch(ctx context.Conte
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -30094,6 +30845,8 @@ func (ec *executionContext) fieldContext_Mutation_setPatchVisibility(ctx context
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -30215,6 +30968,8 @@ func (ec *executionContext) fieldContext_Mutation_schedulePatch(ctx context.Cont
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -34382,6 +35137,8 @@ func (ec *executionContext) fieldContext_Mutation_restartVersions(ctx context.Co
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -35378,6 +36135,94 @@ func (ec *executionContext) _Notifications_spawnHostOutcomeId(ctx context.Contex
 func (ec *executionContext) fieldContext_Notifications_spawnHostOutcomeId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Notifications",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OSInfo_name(ctx context.Context, field graphql.CollectedField, obj *model.APIOSInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OSInfo_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OSInfo_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OSInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OSInfo_version(ctx context.Context, field graphql.CollectedField, obj *model.APIOSInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OSInfo_version(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Version, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OSInfo_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OSInfo",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -36385,6 +37230,8 @@ func (ec *executionContext) fieldContext_Patch_childPatches(_ context.Context, f
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -36598,6 +37445,50 @@ func (ec *executionContext) fieldContext_Patch_duration(_ context.Context, field
 				return ec.fieldContext_PatchDuration_timeTaken(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PatchDuration", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Patch_generatedTaskCounts(ctx context.Context, field graphql.CollectedField, obj *model.APIPatch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Patch().GeneratedTaskCounts(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(map[string]interface{})
+	fc.Result = res
+	return ec.marshalNMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Patch_generatedTaskCounts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Patch",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Map does not have child fields")
 		},
 	}
 	return fc, nil
@@ -37561,6 +38452,8 @@ func (ec *executionContext) fieldContext_Patch_versionFull(_ context.Context, fi
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -38390,6 +39283,8 @@ func (ec *executionContext) fieldContext_Patches_patches(_ context.Context, fiel
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -46439,6 +47334,8 @@ func (ec *executionContext) fieldContext_Query_patch(ctx context.Context, field 
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -48389,6 +49286,8 @@ func (ec *executionContext) fieldContext_Query_version(ctx context.Context, fiel
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -48507,6 +49406,8 @@ func (ec *executionContext) fieldContext_Query_image(ctx context.Context, field 
 				return ec.fieldContext_Image_latestTask(ctx, field)
 			case "name":
 				return ec.fieldContext_Image_name(ctx, field)
+			case "operatingSystem":
+				return ec.fieldContext_Image_operatingSystem(ctx, field)
 			case "packages":
 				return ec.fieldContext_Image_packages(ctx, field)
 			case "toolchains":
@@ -56821,6 +57722,8 @@ func (ec *executionContext) fieldContext_Task_patch(_ context.Context, field gra
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -57930,6 +58833,8 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(_ context.Context,
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -63722,6 +64627,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(_ context.Conte
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -65266,6 +66173,8 @@ func (ec *executionContext) fieldContext_Version_baseVersion(_ context.Context, 
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -65549,6 +66458,8 @@ func (ec *executionContext) fieldContext_Version_childVersions(_ context.Context
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -65778,6 +66689,50 @@ func (ec *executionContext) fieldContext_Version_finishTime(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Version_generatedTaskCounts(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Version_generatedTaskCounts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Version().GeneratedTaskCounts(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(map[string]interface{})
+	fc.Result = res
+	return ec.marshalNMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Version_generatedTaskCounts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Version",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Map does not have child fields")
 		},
 	}
 	return fc, nil
@@ -66177,6 +67132,8 @@ func (ec *executionContext) fieldContext_Version_patch(_ context.Context, field 
 				return ec.fieldContext_Patch_description(ctx, field)
 			case "duration":
 				return ec.fieldContext_Patch_duration(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Patch_generatedTaskCounts(ctx, field)
 			case "githash":
 				return ec.fieldContext_Patch_githash(ctx, field)
 			case "hidden":
@@ -66284,6 +67241,8 @@ func (ec *executionContext) fieldContext_Version_previousVersion(_ context.Conte
 				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
 			case "finishTime":
 				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
 			case "gitTags":
 				return ec.fieldContext_Version_gitTags(ctx, field)
 			case "ignored":
@@ -72506,6 +73465,47 @@ func (ec *executionContext) unmarshalInputNotificationsInput(ctx context.Context
 				return it, err
 			}
 			it.SpawnHostOutcome = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputOperatingSystemOpts(ctx context.Context, obj interface{}) (thirdparty.OSInfoFilterOptions, error) {
+	var it thirdparty.OSInfoFilterOptions
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "limit", "page"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "limit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Limit = data
+		case "page":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Page = data
 		}
 	}
 
@@ -79626,6 +80626,42 @@ func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "operatingSystem":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Image_operatingSystem(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "packages":
 			field := field
 
@@ -79810,6 +80846,197 @@ func (ec *executionContext) _ImageEventEntry(ctx context.Context, sel ast.Select
 			}
 		case "action":
 			out.Values[i] = ec._ImageEventEntry_action(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var imageEventsPayloadImplementors = []string{"ImageEventsPayload"}
+
+func (ec *executionContext) _ImageEventsPayload(ctx context.Context, sel ast.SelectionSet, obj *ImageEventsPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, imageEventsPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ImageEventsPayload")
+		case "count":
+			out.Values[i] = ec._ImageEventsPayload_count(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "eventLogEntries":
+			out.Values[i] = ec._ImageEventsPayload_eventLogEntries(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var imageOperatingSystemPayloadImplementors = []string{"ImageOperatingSystemPayload"}
+
+func (ec *executionContext) _ImageOperatingSystemPayload(ctx context.Context, sel ast.SelectionSet, obj *ImageOperatingSystemPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, imageOperatingSystemPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ImageOperatingSystemPayload")
+		case "data":
+			out.Values[i] = ec._ImageOperatingSystemPayload_data(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "filteredCount":
+			out.Values[i] = ec._ImageOperatingSystemPayload_filteredCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCount":
+			out.Values[i] = ec._ImageOperatingSystemPayload_totalCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var imagePackagesPayloadImplementors = []string{"ImagePackagesPayload"}
+
+func (ec *executionContext) _ImagePackagesPayload(ctx context.Context, sel ast.SelectionSet, obj *ImagePackagesPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, imagePackagesPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ImagePackagesPayload")
+		case "data":
+			out.Values[i] = ec._ImagePackagesPayload_data(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "filteredCount":
+			out.Values[i] = ec._ImagePackagesPayload_filteredCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCount":
+			out.Values[i] = ec._ImagePackagesPayload_totalCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var imageToolchainsPayloadImplementors = []string{"ImageToolchainsPayload"}
+
+func (ec *executionContext) _ImageToolchainsPayload(ctx context.Context, sel ast.SelectionSet, obj *ImageToolchainsPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, imageToolchainsPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ImageToolchainsPayload")
+		case "data":
+			out.Values[i] = ec._ImageToolchainsPayload_data(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "filteredCount":
+			out.Values[i] = ec._ImageToolchainsPayload_filteredCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCount":
+			out.Values[i] = ec._ImageToolchainsPayload_totalCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -81204,6 +82431,50 @@ func (ec *executionContext) _Notifications(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var oSInfoImplementors = []string{"OSInfo"}
+
+func (ec *executionContext) _OSInfo(ctx context.Context, sel ast.SelectionSet, obj *model.APIOSInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, oSInfoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OSInfo")
+		case "name":
+			out.Values[i] = ec._OSInfo_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "version":
+			out.Values[i] = ec._OSInfo_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var oomTrackerInfoImplementors = []string{"OomTrackerInfo"}
 
 func (ec *executionContext) _OomTrackerInfo(ctx context.Context, sel ast.SelectionSet, obj *model.APIOomTrackerInfo) graphql.Marshaler {
@@ -81657,6 +82928,42 @@ func (ec *executionContext) _Patch(ctx context.Context, sel ast.SelectionSet, ob
 					}
 				}()
 				res = ec._Patch_duration(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "generatedTaskCounts":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Patch_generatedTaskCounts(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -90055,6 +91362,42 @@ func (ec *executionContext) _Version(ctx context.Context, sel ast.SelectionSet, 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "finishTime":
 			out.Values[i] = ec._Version_finishTime(ctx, field, obj)
+		case "generatedTaskCounts":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Version_generatedTaskCounts(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "gitTags":
 			out.Values[i] = ec._Version_gitTags(ctx, field, obj)
 		case "ignored":
@@ -92782,6 +94125,62 @@ func (ec *executionContext) marshalNImageEventType2githubᚗcomᚋevergreenᚑci
 	return res
 }
 
+func (ec *executionContext) marshalNImageEventsPayload2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐImageEventsPayload(ctx context.Context, sel ast.SelectionSet, v ImageEventsPayload) graphql.Marshaler {
+	return ec._ImageEventsPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNImageEventsPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐImageEventsPayload(ctx context.Context, sel ast.SelectionSet, v *ImageEventsPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ImageEventsPayload(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNImageOperatingSystemPayload2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐImageOperatingSystemPayload(ctx context.Context, sel ast.SelectionSet, v ImageOperatingSystemPayload) graphql.Marshaler {
+	return ec._ImageOperatingSystemPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNImageOperatingSystemPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐImageOperatingSystemPayload(ctx context.Context, sel ast.SelectionSet, v *ImageOperatingSystemPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ImageOperatingSystemPayload(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNImagePackagesPayload2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐImagePackagesPayload(ctx context.Context, sel ast.SelectionSet, v ImagePackagesPayload) graphql.Marshaler {
+	return ec._ImagePackagesPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNImagePackagesPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐImagePackagesPayload(ctx context.Context, sel ast.SelectionSet, v *ImagePackagesPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ImagePackagesPayload(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNImageToolchainsPayload2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐImageToolchainsPayload(ctx context.Context, sel ast.SelectionSet, v ImageToolchainsPayload) graphql.Marshaler {
+	return ec._ImageToolchainsPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNImageToolchainsPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐImageToolchainsPayload(ctx context.Context, sel ast.SelectionSet, v *ImageToolchainsPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ImageToolchainsPayload(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNInstanceTag2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚋhostᚐTag(ctx context.Context, sel ast.SelectionSet, v host.Tag) graphql.Marshaler {
 	return ec._InstanceTag(ctx, sel, &v)
 }
@@ -93390,8 +94789,67 @@ func (ec *executionContext) marshalNNewDistroPayload2ᚖgithubᚗcomᚋevergreen
 	return ec._NewDistroPayload(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNOSInfo2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOSInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIOSInfo) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNOSInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOSInfo(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNOSInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOSInfo(ctx context.Context, sel ast.SelectionSet, v *model.APIOSInfo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._OSInfo(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNOomTrackerInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIOomTrackerInfo(ctx context.Context, sel ast.SelectionSet, v model.APIOomTrackerInfo) graphql.Marshaler {
 	return ec._OomTrackerInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNOperatingSystemOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐOSInfoFilterOptions(ctx context.Context, v interface{}) (thirdparty.OSInfoFilterOptions, error) {
+	res, err := ec.unmarshalInputOperatingSystemOpts(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNOverallocatedRule2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐOverallocatedRule(ctx context.Context, v interface{}) (OverallocatedRule, error) {

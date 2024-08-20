@@ -40,6 +40,9 @@ func Fetch() cli.Command {
 		shallowFlagName   = "shallow"
 		noPatchFlagName   = "patch"
 		tokenFlagName     = "token"
+		useAppTokenName   = "use-app-token"
+		moduleTokensName  = "module_tokens"
+		revokeTokensName  = "revoke-tokens"
 	)
 
 	return cli.Command{
@@ -57,6 +60,19 @@ func Fetch() cli.Command {
 			cli.StringFlag{
 				Name:  joinFlagNames(tokenFlagName, "k"),
 				Usage: "GitHub API token",
+			},
+			cli.BoolFlag{
+				Name:  useAppTokenName,
+				Usage: "when using a token, use this to indicate that the token is for a GitHub app and not an oauth token",
+			},
+
+			cli.BoolFlag{
+				Name:  revokeTokensName,
+				Usage: "revoke all github tokens passed in when fetching is complete",
+			},
+			cli.StringSliceFlag{
+				Name:  joinFlagNames(moduleTokensName, "m"),
+				Usage: "When using an app token with modules, specify the token for each module in the format 'moduleOwner_moduleRepo:token'",
 			},
 			cli.BoolFlag{
 				Name:  sourceFlagName,
@@ -95,6 +111,11 @@ func Fetch() cli.Command {
 			noPatch := c.Bool(noPatchFlagName)
 			shallow := c.Bool(shallowFlagName)
 			token := c.String(tokenFlagName)
+			useAppToken := c.Bool(useAppTokenName)
+			revokeTokens := c.Bool(revokeTokensName)
+			moduleTokens := c.StringSlice(moduleTokensName)
+
+			moduleTokensMap := parseModuleTokens(moduleTokens)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -116,7 +137,7 @@ func Fetch() cli.Command {
 			}
 
 			if doFetchSource {
-				if err = fetchSource(ctx, ac, rc, client, wd, taskID, token, noPatch); err != nil {
+				if err = fetchSource(ctx, ac, rc, client, wd, taskID, token, useAppToken, moduleTokensMap, noPatch); err != nil {
 					return err
 				}
 			}
@@ -127,9 +148,31 @@ func Fetch() cli.Command {
 				}
 			}
 
+			if revokeTokens {
+				err = revokeFetchTokens(ctx, client, taskID, token, moduleTokensMap)
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message": "could not revoke GitHub tokens after fetching data",
+					"task":    taskID,
+				}))
+			}
 			return nil
 		},
 	}
+}
+
+func parseModuleTokens(moduleTokens []string) map[string]string {
+	moduleTokensMap := make(map[string]string)
+	for _, token := range moduleTokens {
+		// Parse the string formatted as 'moduleName:token'.
+		parts := strings.Split(token, ":")
+		if len(parts) != 2 {
+			grip.Warningf("invalid module token format")
+			continue
+		}
+		moduleTokensMap[parts[0]] = parts[1]
+	}
+
+	return moduleTokensMap
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -137,7 +180,7 @@ func Fetch() cli.Command {
 // Implementation details (legacy)
 
 func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communicator,
-	rootPath, taskId, token string, noPatch bool) error {
+	rootPath, taskId, token string, useAppToken bool, moduleTokens map[string]string, noPatch bool) error {
 	task, err := rc.GetTask(taskId)
 	if err != nil {
 		return err
@@ -179,7 +222,7 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 		}
 	}
 	cloneDir = filepath.Join(rootPath, cloneDir)
-	err = cloneSource(task, pRef, project, cloneDir, token, mfest)
+	err = cloneSource(task, pRef, project, cloneDir, token, useAppToken, moduleTokens, mfest)
 	if err != nil {
 		return err
 	}
@@ -201,11 +244,18 @@ type cloneOptions struct {
 	branch     string
 	token      string
 	depth      uint
+	isAppToken bool
 }
 
 func clone(opts cloneOptions) error {
+	var cloneArgs []string
 	// clone the repo first
-	cloneArgs := []string{"clone", thirdparty.FormGitURL("github.com", opts.owner, opts.repository, opts.token)}
+	if opts.isAppToken {
+		cloneArgs = []string{"clone", thirdparty.FormGitURLForApp("github.com", opts.owner, opts.repository, opts.token)}
+	} else {
+		cloneArgs = []string{"clone", thirdparty.FormGitURL("github.com", opts.owner, opts.repository, opts.token)}
+	}
+
 	if opts.depth > 0 {
 		cloneArgs = append(cloneArgs, "--depth", fmt.Sprintf("%d", opts.depth))
 	}
@@ -260,7 +310,7 @@ func clone(opts cloneOptions) error {
 }
 
 func cloneSource(task *service.RestTask, project *model.ProjectRef, config *model.Project,
-	cloneDir, token string, mfest *manifest.Manifest) error {
+	cloneDir, token string, useAppToken bool, moduleTokens map[string]string, mfest *manifest.Manifest) error {
 	// Fetch the outermost repo for the task
 	err := clone(cloneOptions{
 		owner:      project.Owner,
@@ -270,6 +320,7 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 		branch:     project.Branch,
 		depth:      defaultCloneDepth,
 		token:      token,
+		isAppToken: useAppToken,
 	})
 
 	if err != nil {
@@ -287,6 +338,15 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 		if err != nil || module == nil {
 			return errors.Errorf("variant refers to a module '%s' that doesn't exist", moduleName)
 		}
+		// Do not error if the module token doesn't exist. If the repo is
+		// public, it can be cloned without a token.
+		moduleToken := moduleTokens[module.Name]
+
+		// use the project token if the module token is not specified
+		if moduleToken == "" {
+			moduleToken = token
+		}
+
 		revision := module.Branch
 		if mfest != nil {
 			mfestModule, ok := mfest.Modules[moduleName]
@@ -315,7 +375,8 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 			repository: repo,
 			revision:   revision,
 			rootDir:    filepath.ToSlash(moduleBase),
-			token:      token,
+			token:      moduleToken,
+			isAppToken: useAppToken,
 		})
 		if err != nil {
 			return err
@@ -362,6 +423,14 @@ func applyPatch(patch *service.RestPatch, rootCloneDir string, conf *model.Proje
 		}
 	}
 	return nil
+}
+
+func revokeFetchTokens(ctx context.Context, comm client.Communicator, taskId, token string, moduleTokensMap map[string]string) error {
+	tokens := []string{token}
+	for _, moduleToken := range moduleTokensMap {
+		tokens = append(tokens, moduleToken)
+	}
+	return comm.RevokeGitHubDynamicAccessTokens(ctx, taskId, tokens)
 }
 
 func fetchArtifacts(rc *legacyClient, taskId string, rootDir string, shallow bool) error {

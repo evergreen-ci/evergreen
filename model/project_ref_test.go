@@ -1998,6 +1998,12 @@ func TestGithubPermissionGroups(t *testing.T) {
 			Name:           "all-permissions-2",
 			AllPermissions: true,
 		},
+		{
+			Name: "other-permissions",
+			Permissions: github.InstallationPermissions{
+				Contents: utility.ToStringPtr("read"),
+			},
+		},
 	}
 	orgRequesters := map[string]string{
 		evergreen.PatchVersionRequester: "some-group",
@@ -2071,7 +2077,16 @@ func TestGithubPermissionGroups(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(orgGroup[0].Name, intersection.Name)
 
-		// Fields that were set on orgGroup[0].
+		assert.True(intersection.HasNoPermissions())
+	})
+
+	t.Run("Intersection of two no permissions should return no permissions", func(t *testing.T) {
+		intersection, err := orgGroup[2].Intersection(orgGroup[2])
+		require.NoError(err)
+		assert.Equal(orgGroup[2].Name, intersection.Name)
+		assert.True(intersection.HasNoPermissions())
+
+		// Specified fields.
 		assert.Nil(intersection.Permissions.Administration)
 		assert.Nil(intersection.Permissions.Actions)
 		assert.Nil(intersection.Permissions.Contents)
@@ -2082,6 +2097,54 @@ func TestGithubPermissionGroups(t *testing.T) {
 
 		// An unspecified field.
 		assert.Nil(intersection.Permissions.Emails)
+
+		intersection, err = noPermissionsGitHubTokenPermissionGroup.Intersection(orgGroup[2])
+		require.NoError(err)
+		assert.Equal(noPermissionsGitHubTokenPermissionGroup.Name, intersection.Name)
+		assert.True(intersection.HasNoPermissions())
+
+		// Specified fields.
+		assert.Nil(intersection.Permissions.Administration)
+		assert.Nil(intersection.Permissions.Actions)
+		assert.Nil(intersection.Permissions.Contents)
+		assert.Nil(intersection.Permissions.Followers)
+		assert.Nil(intersection.Permissions.Checks)
+		assert.Nil(intersection.Permissions.Metadata)
+		assert.Nil(intersection.Permissions.OrganizationAdministration)
+
+		// An unspecified field.
+		assert.Nil(intersection.Permissions.Emails)
+
+		intersection, err = noPermissionsGitHubTokenPermissionGroup.Intersection(noPermissionsGitHubTokenPermissionGroup)
+		require.NoError(err)
+		assert.Equal(noPermissionsGitHubTokenPermissionGroup.Name, intersection.Name)
+		assert.True(intersection.HasNoPermissions())
+
+		// Specified fields.
+		assert.Nil(intersection.Permissions.Administration)
+		assert.Nil(intersection.Permissions.Actions)
+		assert.Nil(intersection.Permissions.Contents)
+		assert.Nil(intersection.Permissions.Followers)
+		assert.Nil(intersection.Permissions.Checks)
+		assert.Nil(intersection.Permissions.Metadata)
+		assert.Nil(intersection.Permissions.OrganizationAdministration)
+
+		// An unspecified field.
+		assert.Nil(intersection.Permissions.Emails)
+	})
+
+	t.Run("Intersection of permissions that result in no permissions should return no permissions", func(t *testing.T) {
+		intersection, err := orgGroup[1].Intersection(orgGroup[6])
+		require.NoError(err)
+		assert.True(intersection.HasNoPermissions())
+
+		assert.Nil(intersection.Permissions.Administration)
+		assert.Nil(intersection.Permissions.Actions)
+		assert.Nil(intersection.Permissions.Contents)
+		assert.Nil(intersection.Permissions.Followers)
+		assert.Nil(intersection.Permissions.Checks)
+		assert.Nil(intersection.Permissions.Metadata)
+		assert.Nil(intersection.Permissions.OrganizationAdministration)
 	})
 
 	t.Run("Intersection of permissions with invalid permissions should return an error", func(t *testing.T) {
@@ -2109,6 +2172,21 @@ func TestGithubPermissionGroups(t *testing.T) {
 		intersection, err := orgGroup[4].Intersection(orgGroup[5])
 		require.NoError(err)
 		assert.True(intersection.AllPermissions)
+	})
+
+	t.Run("Group defined with no permissions should return true for has no permissions", func(t *testing.T) {
+		assert.True(orgGroup[2].HasNoPermissions())
+	})
+
+	t.Run("Group defined with some permissions should return false for has no permissions", func(t *testing.T) {
+		assert.False(orgGroup[0].HasNoPermissions())
+		assert.False(orgGroup[1].HasNoPermissions())
+		assert.False(orgGroup[3].HasNoPermissions())
+		assert.False(orgGroup[4].HasNoPermissions())
+	})
+
+	t.Run("No permission group should return true for has no permissions", func(t *testing.T) {
+		assert.True(noPermissionsGitHubTokenPermissionGroup.HasNoPermissions())
 	})
 }
 

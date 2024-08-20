@@ -62,17 +62,17 @@ var UnblockedGithubStatuses = []string{
 }
 
 var githubWritePermissions = []string{
-	"admin",
-	"write",
+	GithubPermissionAdmin,
+	GithubPermissionWrite,
 }
 
 // AllGithubPermissions is an ascending slice of GitHub
 // permissions where the first element is the lowest
 // permission and the last element is the highest.
 var allGitHubPermissions = []string{
-	"read",
-	"write",
-	"admin",
+	GithubPermissionRead,
+	GithubPermissionWrite,
+	GithubPermissionAdmin,
 }
 
 const (
@@ -98,6 +98,10 @@ const (
 	githubCheckRunTimedOut       = "timed_out"
 	githubCheckRunActionRequired = "action_required"
 	githubCheckRunCompleted      = "completed"
+
+	GithubPermissionRead  = "read"
+	GithubPermissionWrite = "write"
+	GithubPermissionAdmin = "admin"
 )
 
 var (

@@ -25,12 +25,15 @@ const (
 type ImageEventType string
 
 const (
-	ImageEventTypePackages   ImageEventType = "Packages"
-	ImageEventTypeToolchains ImageEventType = "Toolchains"
+	ImageEventTypeOperatingSystem ImageEventType = "OPERATING_SYSTEM"
+	ImageEventTypePackage         ImageEventType = "PACKAGE"
+	ImageEventTypeToolchain       ImageEventType = "TOOLCHAIN"
 )
 
 const (
-	OSType = "OS"
+	APITypeOS         = "OS"
+	APITypePackages   = "Packages"
+	APITypeToolchains = "Toolchains"
 
 	OSNameField      = "PRETTY_NAME"
 	OSKernelField    = "Kernel"
@@ -87,65 +90,11 @@ func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string
 	return filteredImages, nil
 }
 
-// Package represents a package's information.
-type Package struct {
-	Name    string
-	Version string
-	Manager string
-}
-
-// PackageFilterOptions represents the filtering arguments, each of which is optional except the AMI.
-type PackageFilterOptions struct {
-	AMI     string
-	Page    int
-	Limit   int
-	Name    string // Filter by the name of the package.
-	Manager string // Filter by the package manager (ex. pip).
-}
-
-// GetPackages returns a list of packages from the corresponding AMI and filters in opts.
-func (c *RuntimeEnvironmentsClient) GetPackages(ctx context.Context, opts PackageFilterOptions) ([]Package, error) {
-	if opts.AMI == "" {
-		return nil, errors.New("no AMI provided")
-	}
-	params := url.Values{}
-	params.Set("ami", opts.AMI)
-	params.Set("page", strconv.Itoa(opts.Page))
-	if opts.Limit != 0 {
-		params.Set("limit", strconv.Itoa(opts.Limit))
-	}
-	params.Set("name", opts.Name)
-	params.Set("manager", opts.Manager)
-	params.Set("type", string(ImageEventTypePackages))
-	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-Key", c.APIKey)
-	resp, err := c.Client.Do(request)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		msg, _ := io.ReadAll(resp.Body)
-		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
-	}
-	packages := []Package{}
-	if err := gimlet.GetJSON(resp.Body, &packages); err != nil {
-		return nil, errors.Wrap(err, "decoding http body")
-	}
-	return packages, nil
-}
-
-// OSInfoFilterOptions represents the filtering options for GetOSInfo. Each argument is optional except for the AMI field.
-type OSInfoFilterOptions struct {
-	AMI   string
-	Name  string
-	Page  int
-	Limit int
+// OSInfoResponse represents a response from the /rest/api/v1/ami/os route.
+type OSInfoResponse struct {
+	Data          []OSInfo `json:"data"`
+	FilteredCount int      `json:"filtered_count"`
+	TotalCount    int      `json:"total_count"`
 }
 
 // OSInfo stores operating system information.
@@ -154,20 +103,27 @@ type OSInfo struct {
 	Name    string `json:"name"`
 }
 
+// OSInfoFilterOptions represents the filtering options for GetOSInfo. Each argument is optional except for the AMI field.
+type OSInfoFilterOptions struct {
+	AMI   string `json:"-"`
+	Name  string `json:"-"`
+	Page  int    `json:"-"`
+	Limit int    `json:"-"`
+}
+
 // GetOSInfo returns a list of operating system information for an AMI.
-func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFilterOptions) ([]OSInfo, error) {
+func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFilterOptions) (*OSInfoResponse, error) {
 	if opts.AMI == "" {
 		return nil, errors.New("no AMI provided")
 	}
 	params := url.Values{}
-	params.Set("ami", opts.AMI)
+	params.Set("id", opts.AMI)
 	params.Set("page", strconv.Itoa(opts.Page))
 	if opts.Limit != 0 {
 		params.Set("limit", strconv.Itoa(opts.Limit))
 	}
-	params.Set("type", OSType)
-	params.Set("name", opts.Name)
-	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
+	params.Set("data_name", opts.Name)
+	apiURL := fmt.Sprintf("%s/rest/api/v1/ami/os?%s", c.BaseURL, params.Encode())
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return nil, err
@@ -183,26 +139,142 @@ func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFi
 		msg, _ := io.ReadAll(resp.Body)
 		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
 	}
-	osInfo := []OSInfo{}
+	osInfo := &OSInfoResponse{}
 	if err := gimlet.GetJSON(resp.Body, &osInfo); err != nil {
 		return nil, errors.Wrap(err, "decoding http body")
 	}
 	return osInfo, nil
 }
 
+// APIPackageResponse represents a response from the /rest/api/v1/ami/packages route.
+type APIPackageResponse struct {
+	Data          []Package `json:"data"`
+	FilteredCount int       `json:"filtered_count"`
+	TotalCount    int       `json:"total_count"`
+}
+
+// Package represents a package's information.
+type Package struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Manager string `json:"manager"`
+}
+
+// PackageFilterOptions represents the filtering arguments, each of which is optional except the AMI.
+type PackageFilterOptions struct {
+	AMI     string `json:"-"`
+	Page    int    `json:"-"`
+	Limit   int    `json:"-"`
+	Name    string `json:"-"` // Filter by the name of the package.
+	Manager string `json:"-"` // Filter by the package manager (ex. pip).
+}
+
+// GetPackages returns a list of packages from the corresponding AMI and filters in opts.
+func (c *RuntimeEnvironmentsClient) GetPackages(ctx context.Context, opts PackageFilterOptions) (*APIPackageResponse, error) {
+	if opts.AMI == "" {
+		return nil, errors.New("no AMI provided")
+	}
+	params := url.Values{}
+	params.Set("id", opts.AMI)
+	params.Set("page", strconv.Itoa(opts.Page))
+	if opts.Limit != 0 {
+		params.Set("limit", strconv.Itoa(opts.Limit))
+	}
+	params.Set("data_name", opts.Name)
+	apiURL := fmt.Sprintf("%s/rest/api/v1/ami/packages?%s", c.BaseURL, params.Encode())
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("Content-Type", "application/json")
+	request.Header.Add("Api-Key", c.APIKey)
+	resp, err := c.Client.Do(request)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		msg, _ := io.ReadAll(resp.Body)
+		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+	}
+	packages := &APIPackageResponse{}
+	if err := gimlet.GetJSON(resp.Body, &packages); err != nil {
+		return nil, errors.Wrap(err, "decoding http body")
+	}
+	return packages, nil
+}
+
+// APIToolchainResponse represents a response from the /rest/api/v1/ami/toolchains route.
+type APIToolchainResponse struct {
+	Data          []Toolchain `json:"data"`
+	FilteredCount int         `json:"filtered_count"`
+	TotalCount    int         `json:"total_count"`
+}
+
+// Toolchain represents a toolchain's information.
+type Toolchain struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Manager string `json:"manager"`
+}
+
+// ToolchainFilterOptions represents the filtering arguments, each of which is optional except for the AMI.
+type ToolchainFilterOptions struct {
+	AMI     string `json:"-"`
+	Page    int    `json:"-"`
+	Limit   int    `json:"-"`
+	Name    string `json:"-"` // Filter by the name of the toolchain (ex. golang).
+	Version string `json:"-"` // Filter by the version (ex. go1.8.7).
+}
+
+// GetToolchains returns a list of toolchains from the AMI and filters in the ToolchainFilterOptions.
+func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts ToolchainFilterOptions) (*APIToolchainResponse, error) {
+	if opts.AMI == "" {
+		return nil, errors.New("no AMI provided")
+	}
+	params := url.Values{}
+	params.Set("id", opts.AMI)
+	params.Set("page", strconv.Itoa(opts.Page))
+	if opts.Limit != 0 {
+		params.Set("limit", strconv.Itoa(opts.Limit))
+	}
+	params.Set("data_name", opts.Name)
+	apiURL := fmt.Sprintf("%s/rest/api/v1/ami/toolchains?%s", c.BaseURL, params.Encode())
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("Content-Type", "application/json")
+	request.Header.Add("Api-Key", c.APIKey)
+	resp, err := c.Client.Do(request)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		msg, _ := io.ReadAll(resp.Body)
+		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+	}
+	toolchains := &APIToolchainResponse{}
+	if err := gimlet.GetJSON(resp.Body, &toolchains); err != nil {
+		return nil, errors.Wrap(err, "decoding http body")
+	}
+	return toolchains, nil
+}
+
 // ImageDiffOptions represents the arguments for getImageDiff. AMIBefore is the starting AMI, and AMIAfter is the ending AMI.
 type ImageDiffOptions struct {
-	AMIBefore string
-	AMIAfter  string
+	AMIBefore string `json:"-"`
+	AMIAfter  string `json:"-"`
 }
 
 // ImageDiffChange represents a change between two AMIs.
 type ImageDiffChange struct {
-	Name    string
-	Manager string
-	Type    ImageEventType
-	Removed string
-	Added   string
+	Name    string `json:"name"`
+	Manager string `json:"manager"`
+	Type    string `json:"type"`
+	Removed string `json:"removed"`
+	Added   string `json:"added"`
 }
 
 // getImageDiff returns a list of package and toolchain changes that occurred between the provided AMIs.
@@ -233,64 +305,11 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts Image
 	}
 	filteredChanges := []ImageDiffChange{}
 	for _, c := range changes {
-		if c.Type == ImageEventTypePackages || c.Type == ImageEventTypeToolchains {
+		if c.Type == APITypeOS || c.Type == APITypePackages || c.Type == APITypeToolchains {
 			filteredChanges = append(filteredChanges, c)
 		}
 	}
 	return filteredChanges, nil
-}
-
-// Toolchain represents a toolchain's information.
-type Toolchain struct {
-	Name    string
-	Version string
-	Manager string
-}
-
-// ToolchainFilterOptions represents the filtering arguments, each of which is optional except for the AMI.
-type ToolchainFilterOptions struct {
-	AMI     string
-	Page    int
-	Limit   int
-	Name    string // Filter by the name of the toolchain (ex. golang).
-	Version string // Filter by the version (ex. go1.8.7).
-}
-
-// GetToolchains returns a list of toolchains from the AMI and filters in the ToolchainFilterOptions.
-func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts ToolchainFilterOptions) ([]Toolchain, error) {
-	if opts.AMI == "" {
-		return nil, errors.New("no AMI provided")
-	}
-	params := url.Values{}
-	params.Set("ami", opts.AMI)
-	params.Set("page", strconv.Itoa(opts.Page))
-	if opts.Limit != 0 {
-		params.Set("limit", strconv.Itoa(opts.Limit))
-	}
-	params.Set("name", opts.Name)
-	params.Set("version", opts.Version)
-	params.Set("type", string(ImageEventTypeToolchains))
-	apiURL := fmt.Sprintf("%s/rest/api/v1/image?%s", c.BaseURL, params.Encode())
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add("Api-Key", c.APIKey)
-	resp, err := c.Client.Do(request)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		msg, _ := io.ReadAll(resp.Body)
-		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
-	}
-	var toolchains []Toolchain
-	if err := gimlet.GetJSON(resp.Body, &toolchains); err != nil {
-		return nil, errors.Wrap(err, "decoding http body")
-	}
-	return toolchains, nil
 }
 
 // ImageHistoryInfo represents information about an image with its AMI and creation date.
@@ -301,9 +320,9 @@ type ImageHistoryInfo struct {
 
 // ImageHistoryFilter represents the filtering arguments for getHistory. The ImageID field is required and the other fields are optional.
 type ImageHistoryFilterOptions struct {
-	ImageID string
-	Page    int
-	Limit   int
+	ImageID string `json:"-"`
+	Page    int    `json:"-"`
+	Limit   int    `json:"-"`
 }
 
 // getHistory returns a list of images with their AMI and creation date corresponding to the provided distro in the order of most recently
@@ -360,9 +379,9 @@ type ImageEvent struct {
 
 // EventHistoryOptions represents the filtering arguments for GetEvents. Image and Limit are required arguments.
 type EventHistoryOptions struct {
-	Image string
-	Page  int
-	Limit int
+	Image string `json:"-"`
+	Page  int    `json:"-"`
+	Limit int    `json:"-"`
 }
 
 // stringToTime converts a string representing time to type time.Time.
@@ -394,12 +413,12 @@ func (c *RuntimeEnvironmentsClient) getNameFromOSInfo(ctx context.Context, ami s
 	if err != nil {
 		return "", errors.Wrap(err, "getting OS info")
 	}
-	if len(result) == 0 {
+	if len(result.Data) == 0 {
 		return "", errors.Errorf("OS information name '%s' not found for distro", opts.Name)
-	} else if len(result) > 1 {
+	} else if len(result.Data) > 1 {
 		return "", errors.Errorf("multiple results found for OS information name '%s'", opts.Name)
 	}
-	return result[0].Version, nil
+	return result.Data[0].Version, nil
 }
 
 // getLatestImageHistory returns the latest AMI and timestamp given the provided imageId.
@@ -458,22 +477,35 @@ func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID st
 
 // buildImageEventEntry make an ImageEventEntry given an ImageDiffChange.
 func buildImageEventEntry(diff ImageDiffChange) (*ImageEventEntry, error) {
-	var action ImageEventEntryAction
+	var eventAction ImageEventEntryAction
 	if diff.Added != "" && diff.Removed != "" {
-		action = ImageEventEntryActionUpdated
+		eventAction = ImageEventEntryActionUpdated
 	} else if diff.Added != "" {
-		action = ImageEventEntryActionAdded
+		eventAction = ImageEventEntryActionAdded
 	} else if diff.Removed != "" {
-		action = ImageEventEntryActionDeleted
+		eventAction = ImageEventEntryActionDeleted
 	} else {
-		return nil, errors.New("neither added nor removed")
+		return nil, errors.New(fmt.Sprintf("item '%s' was neither added nor removed", diff.Name))
 	}
+
+	var eventType ImageEventType
+	switch diff.Type {
+	case APITypeOS:
+		eventType = ImageEventTypeOperatingSystem
+	case APITypePackages:
+		eventType = ImageEventTypePackage
+	case APITypeToolchains:
+		eventType = ImageEventTypeToolchain
+	default:
+		return nil, errors.New(fmt.Sprintf("item '%s' has unrecognized event type '%s'", diff.Name, diff.Type))
+	}
+
 	entry := ImageEventEntry{
 		Name:   diff.Name,
 		After:  diff.Added,
 		Before: diff.Removed,
-		Type:   diff.Type,
-		Action: action,
+		Type:   eventType,
+		Action: eventAction,
 	}
 	return &entry, nil
 }

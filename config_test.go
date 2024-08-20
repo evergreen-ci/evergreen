@@ -150,7 +150,7 @@ func (s *AdminSuite) TestBanner() {
 	settings, err = GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
-	s.Equal(Important, string(settings.BannerTheme))
+	s.Equal(Important, settings.BannerTheme)
 }
 
 func (s *AdminSuite) TestBaseConfig() {

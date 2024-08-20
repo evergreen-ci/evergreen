@@ -308,7 +308,7 @@ Fields:
     commits. For example, if you specify a task with `cron: '@daily'`, Evergreen
     will check that task once per day. If the most recent mainline commit is
     inactive, Evergreen will activate it. In this way, cron is tied more closely
-    to project commit activity. For more on the differences between cron, batchtime and [periodic builds](Project-and-Distro-Settings#periodic-builds), see [controlling when tasks run](../Project-Configuration/#controlling-when-tasks-run).
+    to project commit activity. For more on the differences between cron, batchtime and [periodic builds](Project-and-Distro-Settings#periodic-builds), see [controlling when tasks run](Controlling-when-tasks-run).
 -   `task_group`: a [task group](#task-groups)
     may be defined directly inline or using YAML aliases on a build
     variant task. This is an alternative to referencing a task group
@@ -628,8 +628,7 @@ To cause a task to not run at all, set `disable: true`.
     dependencies.
 
 Can also set activate, batchtime or cron on tasks or build variants, detailed
-[here](#build-variants). For more on controlling scheduling of tasks, see 
-[controlling when tasks run](../Project-Configuration/#controlling-when-tasks-run)
+[here](Controlling-when-tasks-run).
 
 If there are conflicting settings defined at different levels, the order of
 priority is defined [here](#task-fields-override-hierarchy).
@@ -1785,3 +1784,102 @@ which a build variant's `depends_on` overrides the task definition's
 - Tasks listed under a build variant.
 - The build variant definition.
 - The task definition.
+
+#### Specific Activation Override Hierarchy
+`activate`, `cron`, and `batchtime` are called _specific activation conditions_ because Evergreen will only activate a
+task if certain conditions are met (see [detailed docs for more info](Controlling-when-tasks-run)). For instance, Evergreen will only activate a task that has `cron` set when the cron
+time elapses. But if multiple specific activation conditions are set simultaneously (or they're configured with
+conflicting conditions), which specific activation condition does Evergreen respect? This section exists to demystify
+how they interact with one another.
+
+Specific activation conditions can be defined at different levels of the configuration. These levels are (from least
+granular to most granular configuration level):
+
+1. Project settings (only applicable to `batchtime`)
+2. Build variant definition
+3. Task in the build variant list
+
+The general rule is this: _The most granular configuration defined is the condition that Evergreen uses to decide when
+to activate a task. Any specific activation conditions defined at a less granular configuration level are overridden in
+favor of more granular configuration._ In the levels listed above, levels lower on the list override levels higher on
+the list.
+
+Some examples:
+
+```yaml
+# Project settings have batchtime of 4 hours.
+buildvariants:
+  - name: bv1
+    batchtime: 10    # bv1's batchtime is 10 minutes because the build variant definition is more granular than the project settings.
+  - name: bv2       # bv2's batchtime is 4 hours because it uses the batchtime from the project settings.
+```
+
+```yaml
+# Project settings have a batchtime of 5 minutes.
+buildvariants:
+  - name: bv1
+    cron: "0 4 * * *"   # bv1 activates at 4 AM. The batchtime in the project settings is ignored.
+  - name: bv2           # bv2's batchtime is 5 minutes because it uses the batchtime from the project settings.
+```
+
+```yaml
+buildvariants:
+  - name: bv1
+    cron: "0 4 * * *"       # bv1 activates at 4 AM.
+    tasks:
+      - name: task1
+        cron: "0 5 * * *"   # task1 does not activate until its cron elapses at 5 AM. The build variant cron is ignored.
+      - name: task2         # task2 activates at 4 AM when bv1's cron elapses.
+```
+
+```yaml
+buildvariants:
+  - name: bv1
+    cron: "0 4 * * *"           # bv1 activates at 4 AM.
+    tasks:
+      - name: task1
+        activate: false         # task1 will not activate automatically, even when bv1's cron elapses at 4 AM.
+      - name: task2             # task2 activates at 4 AM when bv1's cron elapses.
+```
+
+##### activate: true Special Case
+Most of the time, `activate` is used to prevent a task from automatically activating, so if it's used, it's typically
+set to false. `activate: true` can be used but it has only one use case. It will _only_ override a batchtime setting
+defined in the project settings. For example:
+
+```yaml
+# Project settings have a batchtime of 1 week.
+buildvariant:
+  - name: bv1
+    activate: true  # bv1 activates immediately even though batchtime is defined in the project settings.
+    tasks:
+      - name: task1 # task1 activates immediately because bv1 has activate: true.
+```
+
+In the example above, the bv1 will activate even if the batchtime in the project settings has not elapsed yet.
+
+However, remember that `activate: true` is _only_ usable for the purpose of overriding batchtime in the project
+settings. It cannot be used to override an explicit cron or batchtime setting. For example:
+
+```yaml
+buildvariants:
+  - name: bv1
+    batchtime: 60   # Batchtime of 1 hour
+    activate: true  # bv1 will respect the batchtime of 1 hour, so bv1 will not activate unless batchtime elapses.
+  - name: bv2
+    cron: "0 4 * * *"   # bv2 activates at 4 AM.
+    activate: true      # bv2 will respect the cron setting, so bv2 will not activate until 4 AM.
+```
+
+If `activate: true` and `activate: false` are used in different levels (i.e. one in the build variant, one in the task
+under the build variant), then `activate: false` will take precedence and `activate: true` will be ignored because
+`activate: true` can only override project settings. For example:
+
+```yaml
+buildvariants:
+  - name: bv1
+    activate: false     # bv1 will not activate.
+    tasks:
+      - name: task1
+        activate: true  # task1 will not activate because build variant has activate: false.
+```

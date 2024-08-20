@@ -78,9 +78,9 @@ func FindTasksByProjectAndCommit(opts task.GetTasksByProjectAndCommitOptions) ([
 	return res, nil
 }
 
-func CheckTaskSecret(taskID string, r *http.Request) (int, error) {
-	_, code, err := serviceModel.ValidateTask(taskID, true, r)
-	return code, errors.Wrapf(err, "invalid task '%s'", taskID)
+func CheckTaskSecret(taskID string, r *http.Request) (*task.Task, int, error) {
+	t, code, err := serviceModel.ValidateTask(taskID, true, r)
+	return t, code, errors.Wrapf(err, "invalid task '%s'", taskID)
 }
 
 func FindTask(taskID string) (*task.Task, error) {

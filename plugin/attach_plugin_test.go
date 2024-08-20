@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -16,9 +17,12 @@ func TestFileVisibility(t *testing.T) {
 type TestFileVisibilitySuite struct {
 	files []artifact.File
 	suite.Suite
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func (s *TestFileVisibilitySuite) SetupTest() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.files = []artifact.File{
 		{Name: "Private", Visibility: artifact.Private},
 		{Name: "Public", Visibility: artifact.Public},
@@ -28,8 +32,12 @@ func (s *TestFileVisibilitySuite) SetupTest() {
 	}
 }
 
+func (s *TestFileVisibilitySuite) TearDownTest() {
+	s.cancel()
+}
+
 func (s *TestFileVisibilitySuite) TestFileVisibilityWithoutUser() {
-	stripped, err := artifact.StripHiddenFiles(s.files, false)
+	stripped, err := artifact.StripHiddenFiles(s.ctx, s.files, false)
 	s.Require().NoError(err)
 	s.Len(s.files, 5)
 
@@ -40,7 +48,7 @@ func (s *TestFileVisibilitySuite) TestFileVisibilityWithoutUser() {
 
 func (s *TestFileVisibilitySuite) TestFileVisibilityWithUser() {
 	hasUser := &user.DBUser{} != nil
-	stripped, err := artifact.StripHiddenFiles(s.files, hasUser)
+	stripped, err := artifact.StripHiddenFiles(s.ctx, s.files, hasUser)
 	s.Require().NoError(err)
 	s.Len(s.files, 5)
 

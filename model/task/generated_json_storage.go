@@ -23,12 +23,12 @@ type GeneratedJSONFileStorage interface {
 // GetGeneratedJSONFileStorage returns the generated JSON file storage mechanism
 // to access the persistent copy of it. Users of the returned
 // GeneratedJSONFileStorage must call Close once they are finished using it.
-func GetGeneratedJSONFileStorage(settings *evergreen.Settings, method evergreen.ParserProjectStorageMethod) (GeneratedJSONFileStorage, error) {
+func GetGeneratedJSONFileStorage(ctx context.Context, settings *evergreen.Settings, method evergreen.ParserProjectStorageMethod) (GeneratedJSONFileStorage, error) {
 	switch method {
 	case "", evergreen.ProjectStorageMethodDB:
 		return generatedJSONDBStorage{}, nil
 	case evergreen.ProjectStorageMethodS3:
-		return newGeneratedJSONS3Storage(settings.Providers.AWS.ParserProject)
+		return newGeneratedJSONS3Storage(ctx, settings.Providers.AWS.ParserProject)
 	default:
 		return nil, errors.Errorf("unrecognized generated JSON storage method '%s'", method)
 	}
@@ -37,7 +37,7 @@ func GetGeneratedJSONFileStorage(settings *evergreen.Settings, method evergreen.
 // GeneratedJSONFind is a convenience wrapper to insert all generated
 // JSON files for the given task to persistent storage.
 func GeneratedJSONFind(ctx context.Context, settings *evergreen.Settings, t *Task) (GeneratedJSONFiles, error) {
-	fileStorage, err := GetGeneratedJSONFileStorage(settings, t.GeneratedJSONStorageMethod)
+	fileStorage, err := GetGeneratedJSONFileStorage(ctx, settings, t.GeneratedJSONStorageMethod)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting generated JSON file storage")
 	}
@@ -47,7 +47,7 @@ func GeneratedJSONFind(ctx context.Context, settings *evergreen.Settings, t *Tas
 // GeneratedJSONInsert is a convenience wrapper to insert all generated JSON
 // files for the given task to persistent storage.
 func GeneratedJSONInsert(ctx context.Context, settings *evergreen.Settings, t *Task, files GeneratedJSONFiles, method evergreen.ParserProjectStorageMethod) error {
-	fileStorage, err := GetGeneratedJSONFileStorage(settings, method)
+	fileStorage, err := GetGeneratedJSONFileStorage(ctx, settings, method)
 	if err != nil {
 		return errors.Wrap(err, "getting generated JSON file storage")
 	}

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/service/s3"
+	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/jpillora/backoff"
@@ -55,12 +55,12 @@ func validateS3BucketName(bucket string) error {
 
 func validS3Permissions(perm string) bool {
 	perms := []string{
-		string(s3.BucketCannedACLPrivate),
-		string(s3.BucketCannedACLPublicRead),
-		string(s3.BucketCannedACLPublicReadWrite),
-		string(s3.BucketCannedACLAuthenticatedRead),
-		string(s3.ObjectCannedACLBucketOwnerRead),
-		string(s3.ObjectCannedACLBucketOwnerFullControl),
+		string(s3Types.BucketCannedACLPrivate),
+		string(s3Types.BucketCannedACLPublicRead),
+		string(s3Types.BucketCannedACLPublicReadWrite),
+		string(s3Types.BucketCannedACLAuthenticatedRead),
+		string(s3Types.ObjectCannedACLBucketOwnerRead),
+		string(s3Types.ObjectCannedACLBucketOwnerFullControl),
 	}
 
 	return utility.StringSliceContains(perms, perm)

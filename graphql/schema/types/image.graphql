@@ -1,5 +1,6 @@
 ###### ENUMS ######
 enum ImageEventType {
+  OPERATING_SYSTEM
   PACKAGE
   TOOLCHAIN
 }
@@ -11,6 +12,12 @@ enum ImageEventEntryAction {
 }
 
 ###### INPUTS ######
+input OperatingSystemOpts {
+  name: String
+  limit: Int
+  page: Int
+}
+
 input PackageOpts {
   name: String
   manager: String
@@ -24,7 +31,6 @@ input ToolchainOpts {
   page: Int
 }
 
-
 ###### TYPES ######
 """
 Image is returned by the image query.
@@ -34,20 +40,44 @@ type Image {
   id: String!
   ami: String!
   distros: [Distro!]!
-  events(limit: Int!, page: Int!): [ImageEvent!]!
+  events(limit: Int!, page: Int!): ImageEventsPayload!
   kernel: String!
   lastDeployed: Time!
   latestTask: Task
   name: String!
-  packages(opts: PackageOpts!): [Package!]!
-  toolchains(opts: ToolchainOpts!): [Toolchain!]!
+  operatingSystem(opts: OperatingSystemOpts!): ImageOperatingSystemPayload!
+  packages(opts: PackageOpts!): ImagePackagesPayload!
+  toolchains(opts: ToolchainOpts!): ImageToolchainsPayload!
   versionId: String!
+}
+
+type ImageOperatingSystemPayload {
+  data: [OSInfo!]!
+  filteredCount: Int!
+  totalCount: Int!
+}
+
+type OSInfo {
+  name: String!
+  version: String!
+}
+
+type ImagePackagesPayload {
+  data: [Package!]!
+  filteredCount: Int!
+  totalCount: Int!
 }
 
 type Package {
   name: String!
   manager: String!
   version: String!
+}
+
+type ImageToolchainsPayload {
+  data: [Toolchain!]!
+  filteredCount: Int!
+  totalCount: Int!
 }
 
 type Toolchain {
@@ -61,6 +91,11 @@ type ImageEvent {
   timestamp: Time!
   amiBefore: String
   amiAfter: String!
+}
+
+type ImageEventsPayload {
+  count: Int!
+  eventLogEntries: [ImageEvent!]!
 }
 
 type ImageEventEntry {

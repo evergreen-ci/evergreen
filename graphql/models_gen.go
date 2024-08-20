@@ -184,6 +184,29 @@ type HostsResponse struct {
 	TotalHostsCount    int              `json:"totalHostsCount"`
 }
 
+type ImageEventsPayload struct {
+	Count           int                    `json:"count"`
+	EventLogEntries []*model.APIImageEvent `json:"eventLogEntries"`
+}
+
+type ImageOperatingSystemPayload struct {
+	Data          []*model.APIOSInfo `json:"data"`
+	FilteredCount int                `json:"filteredCount"`
+	TotalCount    int                `json:"totalCount"`
+}
+
+type ImagePackagesPayload struct {
+	Data          []*model.APIPackage `json:"data"`
+	FilteredCount int                 `json:"filteredCount"`
+	TotalCount    int                 `json:"totalCount"`
+}
+
+type ImageToolchainsPayload struct {
+	Data          []*model.APIToolchain `json:"data"`
+	FilteredCount int                   `json:"filteredCount"`
+	TotalCount    int                   `json:"totalCount"`
+}
+
 type MainlineCommitVersion struct {
 	RolledUpVersions []*model.APIVersion `json:"rolledUpVersions,omitempty"`
 	Version          *model.APIVersion   `json:"version,omitempty"`

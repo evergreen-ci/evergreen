@@ -34,16 +34,16 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2024-07-23"
+	ClientVersion = "2024-08-15"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2024-08-07"
+	AgentVersion = "2024-08-19"
 )
 
 const (
 	mongoTimeout        = 5 * time.Minute
-	mongoConnectTimeout = 5 * time.Minute
+	mongoConnectTimeout = 5 * time.Second
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -702,6 +702,10 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
 		SetReadConcern(s.ReadConcernSettings.Resolve()).
 		SetTimeout(mongoTimeout).
 		SetConnectTimeout(mongoConnectTimeout).
+		// SetSocketTimeout will be deprecated in future Go driver releases, though at the time being there
+		// isn't any other way to enforce a time limit on how long the client waits when trying to R/W data
+		// over a connection, so we are including it until Go driver finalizes their timeout API.
+		SetSocketTimeout(mongoTimeout).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 
 	if s.AWSAuthEnabled {
@@ -718,9 +722,9 @@ type BannerTheme string
 
 const (
 	Announcement BannerTheme = "announcement"
-	Information              = "information"
-	Warning                  = "warning"
-	Important                = "important"
+	Information  BannerTheme = "information"
+	Warning      BannerTheme = "warning"
+	Important    BannerTheme = "important"
 )
 
 func IsValidBannerTheme(input string) (bool, BannerTheme) {

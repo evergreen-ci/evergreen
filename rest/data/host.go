@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
@@ -104,7 +103,18 @@ func GenerateHostProvisioningScript(ctx context.Context, env evergreen.Environme
 			Message:    errors.Wrap(err, "generating Jasper credentials").Error(),
 		}
 	}
-	script, err := h.GenerateUserDataProvisioningScript(ctx, env.Settings(), creds)
+	var githubAppToken string
+	var moduleTokens []string
+	if h.ProvisionOptions != nil && h.ProvisionOptions.TaskId != "" {
+		// Do not error when trying to populate github tokens because if the repo is not private, cloning the repo will still work.
+		// Additionally, we should still spin up the host even if we can't fetch the data.
+		githubAppToken, moduleTokens, err = units.GetGithubTokensForTask(ctx, h.ProvisionOptions.TaskId)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "error getting GitHub tokens for fetching data for task",
+			"task":    h.ProvisionOptions.TaskId,
+		}))
+	}
+	script, err := h.GenerateUserDataProvisioningScript(ctx, env.Settings(), creds, githubAppToken, moduleTokens)
 	if err != nil {
 		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -282,7 +292,7 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 }
 
 // PostHostIsUp indicates to the app server that a host is up.
-func PostHostIsUp(ctx context.Context, params restmodel.APIHostIsUpOptions) (*restmodel.APIHost, error) {
+func PostHostIsUp(ctx context.Context, env evergreen.Environment, params restmodel.APIHostIsUpOptions) (*restmodel.APIHost, error) {
 	h, err := host.FindOneByIdOrTag(ctx, params.HostID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -304,7 +314,20 @@ func PostHostIsUp(ctx context.Context, params restmodel.APIHostIsUpOptions) (*re
 		}
 	}
 
-	var apiHost model.APIHost
+	if err := setReadyForReprovisioning(ctx, env, h); err != nil {
+		// It's okay to continue even if this errors because if the host needs
+		// to reprovision, the agent monitor will eventually shut itself down or
+		// stop communicating with the app server. At that point, the host will
+		// be ready to reprovision.
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "could not mark host as needing new agent monitor for reprovisioning",
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+			"status":  h.Status,
+		}))
+	}
+
+	var apiHost restmodel.APIHost
 	apiHost.BuildFromService(h, nil)
 	return &apiHost, nil
 }
@@ -341,7 +364,7 @@ func fixProvisioningIntentHost(ctx context.Context, h *host.Host, instanceID str
 	switch h.Status {
 	case evergreen.HostBuilding:
 		return errors.Wrap(transitionIntentHostToStarting(ctx, env, h, instanceID), "starting intent host that actually succeeded")
-	case evergreen.HostBuildingFailed, evergreen.HostDecommissioned, evergreen.HostTerminated:
+	case evergreen.HostBuildingFailed, evergreen.HostDecommissioned:
 		return errors.Wrap(transitionIntentHostToDecommissioned(ctx, env, h, instanceID), "decommissioning intent host")
 	default:
 		return errors.Errorf("logical error: intent host is in state '%s', which should be impossible when host is up and provisioning", h.Status)
@@ -401,6 +424,27 @@ func transitionIntentHostToDecommissioned(ctx context.Context, env evergreen.Env
 		"distro":     hostToDecommission.Distro.Id,
 		"old_status": oldStatus,
 	})
+
+	return nil
+}
+
+// setReadyForReprovisioning marks the host as ready to reprovision. This does
+// not modify quarantined hosts, because quarantined hosts cannot be
+// reprovisioned (and are therefore not ready to reprovision). If a quarantined
+// host needs to reprovision, it will automatically do so when it's brought out
+// of quarantine.
+func setReadyForReprovisioning(ctx context.Context, env evergreen.Environment, h *host.Host) error {
+	if h.NeedsReprovision == host.ReprovisionNone {
+		return nil
+	}
+
+	if utility.StringSliceContains([]string{evergreen.HostProvisioning, evergreen.HostRunning}, h.Status) {
+		if err := h.MarkAsReprovisioning(ctx); err != nil {
+			return errors.Wrap(err, "marking host as needing reprovisioning and needing a new agent monitor")
+		}
+
+		return errors.Wrap(units.EnqueueHostReprovisioningJob(ctx, env, h), "enqueueing job to reprovision host")
+	}
 
 	return nil
 }

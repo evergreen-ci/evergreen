@@ -1592,7 +1592,8 @@ func (h *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Requ
 	if err != nil {
 		return errors.Wrap(err, "reading body")
 	}
-	if len(body) == 0 || string(body) == "{}" {
+	// If the body is an empty json object or a null json object, we want to set allPermissions to true.
+	if string(body) == "{}" || string(body) == "null" {
 		h.allPermissions = true
 		return nil
 	}
@@ -1634,6 +1635,14 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		})
 	}
 	requesterPermissionGroup, _ := p.GetGitHubPermissionGroup(t.Requester)
+	// If the requester has no permissions, they should not be able to create a token.
+	// GitHub interprets an empty token as having all permissions.
+	if requesterPermissionGroup.HasNoPermissions() {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "requester does not have permission to create a token",
+		})
+	}
 	intersection, err := requesterPermissionGroup.Intersection(model.GitHubDynamicTokenPermissionGroup{
 		Permissions:    h.permissions,
 		AllPermissions: h.allPermissions,
@@ -1645,6 +1654,11 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	permissions := &intersection.Permissions
 	if intersection.AllPermissions {
 		permissions = nil
+	} else if intersection.HasNoPermissions() {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "the intersection of the project setting's requester permissions and provided permissions does not have any permissions to create a token",
+		})
 	}
 
 	// The token also should use the project's GitHub app.
@@ -1669,7 +1683,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", h.owner, h.repo))
 	}
 	if token == "" {
-		return gimlet.MakeJSONErrorResponder(errors.Errorf("no installation token returned for '%s/%s'", h.owner, h.repo))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("no installation token returned for '%s/%s'", h.owner, h.repo))
 	}
 
 	return gimlet.NewJSONResponse(&apimodels.Token{
@@ -1677,7 +1691,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	})
 }
 
-// DELETE /rest/v2/task/{task_id}/github_dynamic_access_token
+// DELETE /rest/v2/task/{task_id}/github_dynamic_access_tokens
 // This route is used to revoke user-used GitHub access token for a task.
 type revokeGitHubDynamicAccessToken struct {
 	taskID string

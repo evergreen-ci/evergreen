@@ -505,6 +505,9 @@ tasks:
   - <<: *run-go-test-suite-with-docker
     tags: ["db"]
     name: test-cloud
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-cloud-parameterstore-fakeparameter
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-cloud-userdata
@@ -752,9 +755,11 @@ tasks:
   - <<: *build-and-push-client
     name: build-darwin_amd64
     tags: ["build"]
+    run_on: macos-14-arm64
   - <<: *build-and-push-client
     name: build-darwin_arm64
     tags: ["build"]
+    run_on: macos-14-arm64
   - <<: *tar-and-push-static-assets
     name: tar-and-push-static-assets
     tags: ["build"]
@@ -768,6 +773,7 @@ tasks:
   - <<: *build-and-push-client
     name: build-darwin-staging_amd64
     tags: ["build-staging"]
+    run_on: macos-14-arm64
   - <<: *tar-and-push-static-assets
     name: tar-and-push-static-assets-staging
     tags: ["build-staging"]
@@ -775,9 +781,11 @@ tasks:
   - <<: *build-and-push-client
     name: build-darwin-unsigned_amd64
     tags: ["build-unsigned"]
+    run_on: macos-14-arm64
   - <<: *build-and-push-client
     name: build-darwin-unsigned_arm64
     tags: ["build-unsigned"]
+    run_on: macos-14-arm64
 
 #######################################
 #            Buildvariants            #

@@ -15,7 +15,7 @@ func TestGetImageNames(t *testing.T) {
 
 	assert := assert.New(t)
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGetImageNames")
+	testutil.ConfigureIntegrationTest(t, config, t.Name())
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	result, err := c.GetImageNames(ctx)
 	assert.NoError(err)
@@ -29,39 +29,61 @@ func TestGetOSInfo(t *testing.T) {
 
 	assert := assert.New(t)
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGetOSInfo")
+	testutil.ConfigureIntegrationTest(t, config, t.Name())
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
 	// Verify that providing no AMI produces an error.
 	_, err := c.GetOSInfo(ctx, OSInfoFilterOptions{})
 	assert.Error(err)
 
-	// Verify that we correctly filter only providing the AMI.
+	// Verify that we can get OS data for a given AMI.
+	ami := "ami-0e12ef25a5f7712a4"
 	opts := OSInfoFilterOptions{
-		AMI: "ami-0e12ef25a5f7712a4",
+		AMI: ami,
 	}
 	result, err := c.GetOSInfo(ctx, opts)
 	require.NoError(t, err)
-	assert.NotEmpty(result)
+	require.NotNil(t, result)
+	assert.NotEmpty(result.Data)
+	assert.Equal(18, result.FilteredCount)
+	assert.Equal(18, result.TotalCount)
 
-	// Verify that we correctly filter by AMI and limit.
+	// Verify that we can get OS data with limit and page.
 	opts = OSInfoFilterOptions{
-		AMI:   "ami-0e12ef25a5f7712a4",
+		AMI:   ami,
 		Page:  0,
 		Limit: 10,
 	}
 	result, err = c.GetOSInfo(ctx, opts)
 	require.NoError(t, err)
-	assert.Len(result, 10)
+	require.NotNil(t, result)
+	assert.Len(result.Data, 10)
+	assert.Equal(18, result.FilteredCount)
+	assert.Equal(18, result.TotalCount)
 
-	// Verify that we correctly filter by AMI and name.
+	// Verify that we filter correctly by name.
 	opts = OSInfoFilterOptions{
-		AMI:  "ami-0f6b89500372d4a06",
+		AMI:  ami,
 		Name: "Kernel",
 	}
 	result, err = c.GetOSInfo(ctx, opts)
 	require.NoError(t, err)
-	assert.NotEmpty(result)
+	require.NotNil(t, result)
+	assert.NotEmpty(result.Data, 10)
+	assert.Equal(1, result.FilteredCount)
+	assert.Equal(18, result.TotalCount)
+
+	// Verify that there are no results for nonexistent OS field.
+	opts = OSInfoFilterOptions{
+		AMI:  ami,
+		Name: "blahblahblah",
+	}
+	result, err = c.GetOSInfo(ctx, opts)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Empty(result.Data)
+	assert.Equal(0, result.FilteredCount)
+	assert.Equal(18, result.TotalCount)
 }
 
 func TestGetPackages(t *testing.T) {
@@ -70,49 +92,51 @@ func TestGetPackages(t *testing.T) {
 
 	assert := assert.New(t)
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGetPackages")
+	testutil.ConfigureIntegrationTest(t, config, t.Name())
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
-	// Verify that we filter correctly by limit and manager.
-	manager := "pip"
+	// Verify that we can get package data with limit and page.
 	ami := "ami-0e12ef25a5f7712a4"
-	limit := 10
 	opts := PackageFilterOptions{
-		AMI:     ami,
-		Page:    0,
-		Limit:   limit,
-		Manager: manager,
+		AMI:   ami,
+		Page:  0,
+		Limit: 10,
 	}
 	result, err := c.GetPackages(ctx, opts)
 	require.NoError(t, err)
-	require.Len(t, result, limit)
-	for i := 0; i < limit; i++ {
-		assert.Contains(result[i].Manager, manager)
-	}
+	require.NotNil(t, result)
+	require.Len(t, result.Data, 10)
+	assert.Equal(1538, result.FilteredCount)
+	assert.Equal(1538, result.TotalCount)
 
-	// Verify that we filter correctly by both manager and name.
-	name := "Automat"
+	// Verify that we filter correctly by name.
 	opts = PackageFilterOptions{
-		AMI:     ami,
-		Page:    0,
-		Limit:   5,
-		Name:    "Automat",
-		Manager: manager,
+		AMI:   ami,
+		Page:  0,
+		Limit: 5,
+		Name:  "Automat",
 	}
 	result, err = c.GetPackages(ctx, opts)
 	require.NoError(t, err)
-	require.Len(t, result, 1)
-	assert.Equal(result[0].Name, name)
-	assert.Contains(result[0].Manager, manager)
+	require.NotNil(t, result)
+	require.Len(t, result.Data, 1)
+	assert.Equal("Automat", result.Data[0].Name)
+	assert.Equal(1, result.FilteredCount)
+	assert.Equal(1538, result.TotalCount)
 
-	// Verify that there are no results for fake package name.
+	// Verify that there are no results for a nonexistent package.
 	opts = PackageFilterOptions{
-		AMI:  ami,
-		Name: "blahblahblah",
+		AMI:   ami,
+		Page:  0,
+		Limit: 5,
+		Name:  "xyz",
 	}
 	result, err = c.GetPackages(ctx, opts)
 	require.NoError(t, err)
-	assert.Empty(result)
+	require.NotNil(t, result)
+	assert.Empty(result.Data)
+	assert.Equal(0, result.FilteredCount)
+	assert.Equal(1538, result.TotalCount)
 
 	// Verify that there are no errors with PackageFilterOptions only including the AMI.
 	_, err = c.GetPackages(ctx, PackageFilterOptions{AMI: ami})
@@ -123,13 +147,72 @@ func TestGetPackages(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestGetToolchains(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert := assert.New(t)
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config, t.Name())
+	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+
+	// Verify that we can get toolchain data with limit and page.
+	ami := "ami-016662ab459a49e9d"
+	opts := ToolchainFilterOptions{
+		AMI:   ami,
+		Limit: 10,
+	}
+	result, err := c.GetToolchains(ctx, opts)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Len(result.Data, 10)
+	assert.Equal(41, result.FilteredCount)
+	assert.Equal(41, result.TotalCount)
+
+	// Verify that we filter correctly by name.
+	opts = ToolchainFilterOptions{
+		AMI:   ami,
+		Page:  0,
+		Limit: 5,
+		Name:  "nodejs",
+	}
+	result, err = c.GetToolchains(ctx, opts)
+	require.NoError(t, err)
+	require.NotEmpty(t, result)
+	require.NotNil(t, result)
+	require.Len(t, result.Data, 3)
+	assert.Equal("nodejs", result.Data[0].Name)
+	assert.Equal("nodejs", result.Data[1].Name)
+	assert.Equal("nodejs", result.Data[2].Name)
+	assert.Equal(3, result.FilteredCount)
+	assert.Equal(41, result.TotalCount)
+
+	// Verify that we receive no results for a nonexistent toolchain.
+	opts = ToolchainFilterOptions{
+		AMI:   ami,
+		Page:  0,
+		Limit: 5,
+		Name:  "xyz",
+	}
+	result, err = c.GetToolchains(ctx, opts)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Empty(result.Data)
+	assert.Equal(0, result.FilteredCount)
+	assert.Equal(41, result.TotalCount)
+
+	// Verify that we receive an error when an AMI is not provided.
+	_, err = c.GetToolchains(ctx, ToolchainFilterOptions{})
+	require.Error(t, err)
+}
+
 func TestGetImageDiff(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	assert := assert.New(t)
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGetImageDiff")
+	testutil.ConfigureIntegrationTest(t, config, t.Name())
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
 	// Verify that getImageDiff correctly returns Toolchain/Package changes for a pair of sample AMIs.
@@ -141,7 +224,7 @@ func TestGetImageDiff(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(result)
 	for _, change := range result {
-		assert.True(change.Type == "Toolchains" || change.Type == "Packages")
+		assert.True(change.Type == APITypeOS || change.Type == APITypePackages || change.Type == APITypeToolchains)
 	}
 
 	// Verify that getImageDiff finds no differences between the same AMI.
@@ -154,65 +237,13 @@ func TestGetImageDiff(t *testing.T) {
 	assert.Empty(result)
 }
 
-func TestGetToolchains(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert := assert.New(t)
-	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGetToolchains")
-	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
-
-	// Verify that there are no errors with ToolchainFilterOptions including the AMI and limit.
-	ami := "ami-016662ab459a49e9d"
-	opts := ToolchainFilterOptions{
-		AMI:   ami,
-		Limit: 10,
-	}
-	result, err := c.GetToolchains(ctx, opts)
-	require.NoError(t, err)
-	assert.Len(result, 10)
-
-	// Verify that we filter correctly by name and version.
-	name := "nodejs"
-	version := "toolchain_version_v16.17.0"
-	opts = ToolchainFilterOptions{
-		AMI:     ami,
-		Page:    0,
-		Limit:   5,
-		Name:    name,
-		Version: version,
-	}
-	result, err = c.GetToolchains(ctx, opts)
-	require.NoError(t, err)
-	require.NotEmpty(t, result)
-	require.Len(t, result, 1)
-	assert.Equal(result[0].Name, name)
-	assert.Equal(result[0].Version, version)
-
-	// Verify that we receive no results for a fake toolchain.
-	opts = ToolchainFilterOptions{
-		AMI:   ami,
-		Page:  0,
-		Limit: 5,
-		Name:  "blahblahblah",
-	}
-	result, err = c.GetToolchains(ctx, opts)
-	require.NoError(t, err)
-	assert.Empty(result)
-
-	// Verify that we receive an error when an AMI is not provided.
-	_, err = c.GetToolchains(ctx, ToolchainFilterOptions{})
-	require.Error(t, err)
-}
-
 func TestGetHistory(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	assert := assert.New(t)
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGetHistory")
+	testutil.ConfigureIntegrationTest(t, config, t.Name())
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
 	// Verify that getHistory errors when not provided the required imageid field.
@@ -232,7 +263,7 @@ func TestGetHistory(t *testing.T) {
 	}
 	result, err = c.getHistory(ctx, opts)
 	require.NoError(t, err)
-	assert.NotEmpty(t, result)
+	assert.NotEmpty(result)
 	assert.Len(result, 15)
 }
 
@@ -242,7 +273,7 @@ func TestGetImageInfo(t *testing.T) {
 
 	assert := assert.New(t)
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGetImageInfo")
+	testutil.ConfigureIntegrationTest(t, config, t.Name())
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
 	result, err := c.GetImageInfo(ctx, "ubuntu2204")
@@ -262,7 +293,7 @@ func TestGetEvents(t *testing.T) {
 	assert := assert.New(t)
 	config := testutil.TestConfig()
 
-	testutil.ConfigureIntegrationTest(t, config, "TestGetEvents")
+	testutil.ConfigureIntegrationTest(t, config, t.Name())
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
 	// Verify that GetEvents errors when not provided the required distro field.
@@ -281,9 +312,54 @@ func TestGetEvents(t *testing.T) {
 	}
 	result, err := c.GetEvents(ctx, opts)
 	require.NoError(t, err)
-	assert.NotEmpty(t, result)
+	assert.NotEmpty(result)
 	assert.Len(result, 5)
+
+	// Verify that timestamps are in chronological order.
 	for i := 0; i < len(result)-1; i++ {
 		assert.Greater(result[i].Timestamp, result[i+1].Timestamp)
 	}
+
+	// Verify that entries have been correctly transformed to use our custom enums.
+	for _, r := range result {
+		for _, entry := range r.Entries {
+			assert.True(entry.Action == ImageEventEntryActionAdded || entry.Action == ImageEventEntryActionDeleted || entry.Action == ImageEventEntryActionUpdated)
+			assert.True(entry.Type == ImageEventTypeOperatingSystem || entry.Type == ImageEventTypePackage || entry.Type == ImageEventTypeToolchain)
+		}
+	}
+}
+
+func TestBuildImageEventEntry(t *testing.T) {
+	diff := ImageDiffChange{
+		Type:    APITypeOS,
+		Removed: "",
+		Added:   "1.0",
+	}
+	result, err := buildImageEventEntry(diff)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, ImageEventEntryActionAdded, result.Action)
+	assert.Equal(t, ImageEventTypeOperatingSystem, result.Type)
+
+	diff = ImageDiffChange{
+		Type:    APITypePackages,
+		Removed: "1.0",
+		Added:   "",
+	}
+	result, err = buildImageEventEntry(diff)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, ImageEventEntryActionDeleted, result.Action)
+	assert.Equal(t, ImageEventTypePackage, result.Type)
+
+	diff = ImageDiffChange{
+		Type:    APITypeToolchains,
+		Removed: "1.0",
+		Added:   "2.0",
+	}
+	result, err = buildImageEventEntry(diff)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, ImageEventEntryActionUpdated, result.Action)
+	assert.Equal(t, ImageEventTypeToolchain, result.Type)
 }
