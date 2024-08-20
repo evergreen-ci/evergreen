@@ -549,6 +549,9 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*task.Task,
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "getting project")
 	}
+	if project == nil {
+		return nil, nil, nil, errors.Errorf("project for task '%s' not found", tc.task.ID)
+	}
 
 	taskModel, err := a.comm.GetTask(ctx, tc.task)
 	if err != nil {

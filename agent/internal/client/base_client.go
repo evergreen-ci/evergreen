@@ -278,11 +278,11 @@ func (c *baseCommunicator) GetProject(ctx context.Context, taskData TaskData) (*
 	defer resp.Body.Close()
 
 	// Retry reading body since it may error on certain distros for certain go versions.
+	var respBytes []byte
 	for i := 0; i < c.retry.MaxAttempts; i++ {
-		respBytes, err := io.ReadAll(resp.Body)
+		respBytes, err = io.ReadAll(resp.Body)
 		if err == nil {
 			return model.GetProjectFromBSON(respBytes)
-
 		}
 	}
 	return nil, errors.Wrap(err, "reading parser project from response")
