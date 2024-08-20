@@ -398,6 +398,8 @@ func TestFindMergedAliasesFromProjectRepoOrProjectConfig(t *testing.T) {
 				} else if a.Alias == evergreen.GitTagAlias {
 					assert.Equal(t, a.ProjectID, pRef.RepoRefId)
 					assert.Equal(t, a.Source, AliasSourceRepo)
+				} else if a.Alias == evergreen.GithubChecksAlias {
+					assert.Equal(t, a.Source, AliasSourceRepo)
 				} else {
 					assert.Equal(t, a.Source, AliasSourceConfig)
 				}

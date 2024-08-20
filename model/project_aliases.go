@@ -254,7 +254,7 @@ func ConstructMergedAliasesByPrecedence(projectRef *ProjectRef, projectConfig *P
 		aliasName := alias.Alias
 
 		// Don't include github checks aliases if github checks are disabled
-		if !utility.FromBoolPtr(projectRef.GithubChecksEnabled) && aliasName == evergreen.GithubChecksAlias {
+		if projectRef != nil && !utility.FromBoolPtr(projectRef.GithubChecksEnabled) && aliasName == evergreen.GithubChecksAlias {
 			continue
 		}
 
@@ -276,7 +276,7 @@ func ConstructMergedAliasesByPrecedence(projectRef *ProjectRef, projectConfig *P
 			aliasName := alias.Alias
 
 			// Don't include github checks aliases if github checks are disabled
-			if !utility.FromBoolPtr(projectRef.GithubChecksEnabled) && aliasName == evergreen.GithubChecksAlias {
+			if projectRef != nil && !utility.FromBoolPtr(projectRef.GithubChecksEnabled) && aliasName == evergreen.GithubChecksAlias {
 				continue
 			}
 
