@@ -136,6 +136,11 @@ func byIDs(ids []string) bson.M {
 	return bson.M{idKey: bson.M{"$in": ids}}
 }
 
+// getSectionsBSON returns the config documents from the database as a slice of [bson.Raw].
+// Configuration is always fetched from the shared database. If includeOverrides is true
+// the config documents are first fetched from the local database and only fetched from
+// the shared database when they're missing from the local database. This means that a
+// local documents will override the same document from the shared database.
 func getSectionsBSON(ctx context.Context, ids []string, includeOverrides bool) ([]bson.Raw, error) {
 	missingIDs := ids
 	docs := make([]bson.Raw, 0, len(ids))
@@ -182,6 +187,10 @@ func getSectionsBSON(ctx context.Context, ids []string, includeOverrides bool) (
 	return append(docs, missingDocs...), nil
 }
 
+// getConfigSection fetches a section from the database and deserializes it into the provided
+// section. If the document is present in the local database its value is used. Otherwise,
+// the document is fetched from the shared database. If the document is missing the value
+// of section is reset to its zero value.
 func getConfigSection(ctx context.Context, section ConfigSection) error {
 	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(section.SectionId()))
 	if err := res.Err(); err != nil {
