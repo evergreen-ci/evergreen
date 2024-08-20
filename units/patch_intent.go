@@ -1317,7 +1317,7 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 	var update amboy.Job
 	if j.IntentType == patch.GithubIntentType {
 		update = NewGithubStatusUpdateJobForProcessingError(
-			evergreenContext,
+			thirdparty.GithubStatusDefaultContext,
 			patchDoc.GithubPatchData.BaseOwner,
 			patchDoc.GithubPatchData.BaseRepo,
 			patchDoc.GithubPatchData.HeadHash,
@@ -1325,7 +1325,7 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 		)
 	} else if j.IntentType == patch.GithubMergeIntentType {
 		update = NewGithubStatusUpdateJobForProcessingError(
-			evergreenContext,
+			thirdparty.GithubStatusDefaultContext,
 			patchDoc.GithubMergeData.Org,
 			patchDoc.GithubMergeData.Repo,
 			patchDoc.GithubMergeData.HeadSHA,
@@ -1358,7 +1358,7 @@ func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, pa
 }
 
 // getEvergreenBranchProtectionRulesForStatuses returns the rules we want to send Evergreen statuses for.
-// If we don't find rules, we'll send the status default "evergreen" context. We log the error but don't
+// If we don't find rules, we'll send the status default context. We log the error but don't
 // return it, because we might have permission to send statuses but not to get branch protection rules.
 func (j *patchIntentProcessor) getEvergreenBranchProtectionRulesForStatuses(ctx context.Context, owner, repo, branch string) []string {
 	rules, err := thirdparty.GetEvergreenBranchProtectionRules(ctx, "", owner, repo, branch)
@@ -1369,7 +1369,8 @@ func (j *patchIntentProcessor) getEvergreenBranchProtectionRulesForStatuses(ctx 
 		"org":      owner,
 		"repo":     repo,
 		"branch":   branch,
+		"patch":    j.PatchID.Hex(),
 	}))
 
-	return utility.UniqueStrings(append(rules, evergreenContext))
+	return utility.UniqueStrings(append(rules, thirdparty.GithubStatusDefaultContext))
 }
