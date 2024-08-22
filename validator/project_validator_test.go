@@ -1729,6 +1729,44 @@ func TestCheckTaskRuns(t *testing.T) {
 	})
 }
 
+func TestValidateTimeoutLimits(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	project := &model.Project{
+		Tasks: []model.ProjectTask{
+			{
+				Name:            "task",
+				ExecTimeoutSecs: 10,
+			},
+		},
+	}
+
+	t.Run("SucceedsWithTimeoutBelowLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			TaskLimits: evergreen.TaskLimitsConfig{
+				MaxTaskSecs: 100,
+			},
+		}
+		assert.Empty(t, validateTimeoutLimits(ctx, settings, project, &model.ProjectRef{}, false))
+	})
+	t.Run("FailsWithTimeoutExceedingLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{
+			TaskLimits: evergreen.TaskLimitsConfig{
+				MaxTaskSecs: 1,
+			},
+		}
+		errs := validateTimeoutLimits(ctx, settings, project, &model.ProjectRef{}, false)
+		require.Len(t, errs, 1)
+		assert.Equal(t, Error, errs[0].Level)
+		assert.Contains(t, "task 'task' exec timeout (10) exceeds maximum limit (1)", errs[0].Message)
+	})
+	t.Run("SucceedsWithNoMaxTimeoutLimit", func(t *testing.T) {
+		settings := &evergreen.Settings{}
+		assert.Empty(t, validateTimeoutLimits(ctx, settings, project, &model.ProjectRef{}, false))
+	})
+}
+
 func TestValidateIncludeLimits(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
