@@ -231,6 +231,10 @@ func (e *Environment) DB() *mongo.Database {
 	return e.MongoClient.Database(e.DatabaseName)
 }
 
+func (e *Environment) SharedDB() *mongo.Database {
+	return nil
+}
+
 func (e *Environment) JasperManager() jasper.Manager {
 	e.mu.RLock()
 	defer e.mu.RUnlock()

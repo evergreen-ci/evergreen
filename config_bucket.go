@@ -7,8 +7,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type BucketType string
@@ -58,34 +56,15 @@ func (c *BucketConfig) validate() error {
 func (*BucketsConfig) SectionId() string { return "buckets" }
 
 func (c *BucketsConfig) Get(ctx context.Context) error {
-	coll := GetEnvironment().DB().Collection(ConfigCollection)
-
-	res := coll.FindOne(ctx, byId(c.SectionId()))
-	if err := res.Err(); err != nil {
-		if err == mongo.ErrNoDocuments {
-			*c = BucketsConfig{}
-			return nil
-		}
-		return errors.Wrapf(err, "retrieving section %s", c.SectionId())
-	}
-
-	if err := res.Decode(c); err != nil {
-		return errors.Wrap(err, "decoding result")
-	}
-
-	return nil
+	return getConfigSection(ctx, c)
 }
 
 func (c *BucketsConfig) Set(ctx context.Context) error {
-	coll := GetEnvironment().DB().Collection(ConfigCollection)
-
-	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
+	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
 			bucketsConfigLogBucketKey: c.LogBucket,
-		},
-	}, options.Update().SetUpsert(true))
-
-	return errors.Wrapf(err, "updating section %s", c.SectionId())
+		}}), "updating config section '%s'", c.SectionId(),
+	)
 }
 
 func (c *BucketsConfig) ValidateAndDefault() error {

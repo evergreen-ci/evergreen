@@ -2,10 +2,13 @@ package evergreen
 
 import (
 	"context"
+	"reflect"
 
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -133,18 +136,106 @@ func byIDs(ids []string) bson.M {
 	return bson.M{idKey: bson.M{"$in": ids}}
 }
 
-func getSectionsBSON(ctx context.Context, ids []string) ([]bson.Raw, error) {
-	cur, err := GetEnvironment().DB().Collection(ConfigCollection).Find(ctx, byIDs(ids))
+// getSectionsBSON returns the config documents from the database as a slice of [bson.Raw].
+// Configuration is always fetched from the shared database. If includeOverrides is true
+// the config documents are first fetched from the local database and only fetched from
+// the shared database when they're missing from the local database. This means that a
+// local documents will override the same document from the shared database.
+func getSectionsBSON(ctx context.Context, ids []string, includeOverrides bool) ([]bson.Raw, error) {
+	missingIDs := ids
+	docs := make([]bson.Raw, 0, len(ids))
+	if includeOverrides {
+		cur, err := GetEnvironment().DB().Collection(ConfigCollection).Find(ctx, byIDs(ids))
+		if err != nil {
+			return nil, errors.Wrap(err, "finding local configuration sections")
+		}
+
+		if err := cur.All(ctx, &docs); err != nil {
+			return nil, errors.Wrap(err, "iterating cursor for local configuration sections")
+		}
+
+		var docIDs []string
+		for _, doc := range docs {
+			id, err := doc.LookupErr("_id")
+			if err != nil {
+				continue
+			}
+			idString, ok := id.StringValueOK()
+			if !ok {
+				continue
+			}
+			docIDs = append(docIDs, idString)
+		}
+
+		missingIDs, _ = utility.StringSliceSymmetricDifference(ids, docIDs)
+	}
+
+	if GetEnvironment().SharedDB() == nil || len(missingIDs) == 0 {
+		return docs, nil
+	}
+
+	cur, err := GetEnvironment().SharedDB().Collection(ConfigCollection).Find(ctx, byIDs(missingIDs))
 	if err != nil {
-		return nil, errors.Wrap(err, "finding configuration sections")
+		return nil, errors.Wrap(err, "finding shared configuration sections")
 	}
 
-	var docs = make([]bson.Raw, 0, len(ids))
-	if err := cur.All(ctx, &docs); err != nil {
-		return nil, errors.Wrap(err, "getting configuration sections")
+	missingDocs := make([]bson.Raw, 0, len(missingIDs))
+	if err := cur.All(ctx, &missingDocs); err != nil {
+		return nil, errors.Wrap(err, "iterating cursor for shared configuration sections")
 	}
 
-	return docs, nil
+	return append(docs, missingDocs...), nil
+}
+
+// getConfigSection fetches a section from the database and deserializes it into the provided
+// section. If the document is present in the local database its value is used. Otherwise,
+// the document is fetched from the shared database. If the document is missing the value
+// of section is reset to its zero value.
+func getConfigSection(ctx context.Context, section ConfigSection) error {
+	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(section.SectionId()))
+	if err := res.Err(); err != nil {
+		if err != mongo.ErrNoDocuments {
+			return errors.Wrapf(err, "getting local config section '%s'", section.SectionId())
+		}
+		// No document is present in the local database and the shared database is not configured.
+		if GetEnvironment().SharedDB() == nil {
+			// Reset the section to its zero value.
+			reflect.ValueOf(section).Elem().Set(reflect.New(reflect.ValueOf(section).Elem().Type()).Elem())
+			return nil
+		}
+	} else {
+		if err := res.Decode(section); err != nil {
+			return errors.Wrapf(err, "decoding local config section '%s'", section.SectionId())
+		}
+		return nil
+	}
+
+	res = GetEnvironment().SharedDB().Collection(ConfigCollection).FindOne(ctx, byId(section.SectionId()))
+	if err := res.Err(); err != nil {
+		if err != mongo.ErrNoDocuments {
+			return errors.Wrapf(err, "getting shared config section '%s'", section.SectionId())
+		}
+		// Reset the section to its zero value.
+		reflect.ValueOf(section).Elem().Set(reflect.New(reflect.ValueOf(section).Elem().Type()).Elem())
+		return nil
+	}
+
+	return errors.Wrapf(res.Decode(section), "decoding shared config section '%s'", section.SectionId())
+}
+
+func setConfigSection(ctx context.Context, sectionID string, update bson.M) error {
+	db := GetEnvironment().SharedDB()
+	if db == nil {
+		db = GetEnvironment().DB()
+	}
+	_, err := db.Collection(ConfigCollection).UpdateOne(
+		ctx,
+		byId(sectionID),
+		update,
+		options.Update().SetUpsert(true),
+	)
+
+	return errors.Wrapf(err, "updating config section '%s'", sectionID)
 }
 
 // SetBanner sets the text of the Evergreen site-wide banner. Setting a blank

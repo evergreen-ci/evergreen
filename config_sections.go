@@ -62,13 +62,13 @@ func NewConfigSections() ConfigSections {
 	return ConfigSections{Sections: sectionMap}
 }
 
-func (c *ConfigSections) populateSections(ctx context.Context) error {
+func (c *ConfigSections) populateSections(ctx context.Context, includeOverrides bool) error {
 	sectionIDs := make([]string, 0, len(c.Sections))
 	for sectionID := range c.Sections {
 		sectionIDs = append(sectionIDs, sectionID)
 	}
 
-	rawSections, err := getSectionsBSON(ctx, sectionIDs)
+	rawSections, err := getSectionsBSON(ctx, sectionIDs, includeOverrides)
 	if err != nil {
 		return errors.Wrap(err, "getting raw sections")
 	}

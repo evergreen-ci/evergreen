@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/logger"
+	"github.com/mongodb/anser/apm"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -21,7 +22,6 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
@@ -34,11 +34,16 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2024-08-15"
+	ClientVersion = "2024-08-20"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
 	AgentVersion = "2024-08-20a"
+)
+
+const (
+	mongoTimeout        = 5 * time.Minute
+	mongoConnectTimeout = 5 * time.Second
 )
 
 // ConfigSection defines a sub-document in the evergreen config
@@ -115,25 +120,13 @@ type Settings struct {
 func (c *Settings) SectionId() string { return ConfigDocID }
 
 func (c *Settings) Get(ctx context.Context) error {
-	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
-	if err := res.Err(); err != nil {
-		if err == mongo.ErrNoDocuments {
-			*c = Settings{}
-			return nil
-		}
-		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
-	}
-	if err := res.Decode(&c); err != nil {
-		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
-	}
-
-	return nil
+	return getConfigSection(ctx, c)
 }
 
 // Set saves the global fields in the configuration (i.e. those that are not
 // ConfigSections).
 func (c *Settings) Set(ctx context.Context) error {
-	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
+	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
 			apiUrlKey:             c.ApiUrl,
 			awsInstanceRoleKey:    c.AWSInstanceRole,
@@ -159,10 +152,8 @@ func (c *Settings) Set(ctx context.Context) error {
 			sshKeyPairsKey:        c.SSHKeyPairs,
 			spawnhostKey:          c.Spawnhost,
 			shutdownWaitKey:       c.ShutdownWaitSeconds,
-		},
-	}, options.Update().SetUpsert(true))
-
-	return errors.Wrapf(err, "updating section '%s'", c.SectionId())
+		}}), "updating config section '%s'", c.SectionId(),
+	)
 }
 
 func (c *Settings) ValidateAndDefault() error {
@@ -273,12 +264,24 @@ func NewSettings(filename string) (*Settings, error) {
 	return settings, nil
 }
 
-// GetConfig returns the Evergreen config document. If no document is
-// present in the DB, it will return the defaults.
-// Use Settings() to get the cached settings object.
+// GetConfig returns the complete Evergreen configuration which is comprised of the shared
+// configuration from the config database with overrides from the local [ConfigCollection]
+// collection. Use [GetSharedConfig] to get a configuration that reflects only the shared
+// configuration.
 func GetConfig(ctx context.Context) (*Settings, error) {
+	return getSettings(ctx, true)
+}
+
+// GetSharedConfig returns only the Evergreen configuration which is shared among all instances
+// reading from a single shared database. Use [GetConfig] to get a complete configuration that
+// includes overrides from the local database.
+func GetSharedConfig(ctx context.Context) (*Settings, error) {
+	return getSettings(ctx, false)
+}
+
+func getSettings(ctx context.Context, includeOverrides bool) (*Settings, error) {
 	config := NewConfigSections()
-	if err := config.populateSections(ctx); err != nil {
+	if err := config.populateSections(ctx, includeOverrides); err != nil {
 		return nil, errors.Wrap(err, "populating sections")
 	}
 
@@ -315,7 +318,6 @@ func GetConfig(ctx context.Context) (*Settings, error) {
 		return nil, errors.WithStack(catcher.Resolve())
 	}
 	return baseConfig, nil
-
 }
 
 // UpdateConfig updates all evergreen settings documents in the DB.
@@ -688,10 +690,31 @@ func (rc ReadConcern) Resolve() *readconcern.ReadConcern {
 
 type DBSettings struct {
 	Url                  string       `yaml:"url"`
+	SharedURL            string       `yaml:"shared_url"`
 	DB                   string       `yaml:"db"`
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 	ReadConcernSettings  ReadConcern  `yaml:"read_concern"`
 	AWSAuthEnabled       bool         `yaml:"aws_auth_enabled"`
+}
+
+func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
+	opts := options.Client().ApplyURI(url).SetWriteConcern(s.WriteConcernSettings.Resolve()).
+		SetReadConcern(s.ReadConcernSettings.Resolve()).
+		SetTimeout(mongoTimeout).
+		SetConnectTimeout(mongoConnectTimeout).
+		// SetSocketTimeout will be deprecated in future Go driver releases, though at the time being there
+		// isn't any other way to enforce a time limit on how long the client waits when trying to R/W data
+		// over a connection, so we are including it until Go driver finalizes their timeout API.
+		SetSocketTimeout(mongoTimeout).
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
+
+	if s.AWSAuthEnabled {
+		opts.SetAuth(options.Credential{
+			AuthMechanism: awsAuthMechanism,
+			AuthSource:    mongoExternalAuthSource,
+		})
+	}
+	return opts
 }
 
 // supported banner themes in Evergreen

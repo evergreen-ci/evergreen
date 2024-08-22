@@ -6,8 +6,6 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // HostJasperConfig represents the configuration of the Jasper service running
@@ -31,33 +29,19 @@ var (
 func (c *HostJasperConfig) SectionId() string { return "host_jasper" }
 
 func (c *HostJasperConfig) Get(ctx context.Context) error {
-	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(c.SectionId()))
-	if err := res.Err(); err != nil {
-		if err == mongo.ErrNoDocuments {
-			*c = HostJasperConfig{}
-			return nil
-		}
-		return errors.Wrapf(err, "getting config section '%s'", c.SectionId())
-	}
-
-	if err := res.Decode(&c); err != nil {
-		return errors.Wrapf(err, "decoding config section '%s'", c.SectionId())
-	}
-
-	return nil
+	return getConfigSection(ctx, c)
 }
 
 func (c *HostJasperConfig) Set(ctx context.Context) error {
-	_, err := GetEnvironment().DB().Collection(ConfigCollection).UpdateOne(ctx, byId(c.SectionId()), bson.M{
+	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
 			hostJasperBinaryNameKey:       c.BinaryName,
 			hostJasperDownloadFileNameKey: c.DownloadFileName,
 			hostJasperPortKey:             c.Port,
 			hostJasperURLKey:              c.URL,
 			hostJasperVersionKey:          c.Version,
-		},
-	}, options.Update().SetUpsert(true))
-	return errors.Wrapf(err, "updating config section '%s'", c.SectionId())
+		}}), "updating config section '%s'", c.SectionId(),
+	)
 }
 
 func (c *HostJasperConfig) ValidateAndDefault() error {

@@ -18,7 +18,6 @@ import (
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
-	"github.com/mongodb/anser/apm"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -29,8 +28,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -106,6 +103,7 @@ type Environment interface {
 	Session() db.Session
 	Client() *mongo.Client
 	DB() *mongo.Database
+	SharedDB() *mongo.Database
 
 	// The Environment provides access to several amboy queues for
 	// processing background work in the context of the Evergreen
@@ -267,6 +265,7 @@ type envState struct {
 	settings                *Settings
 	dbName                  string
 	client                  *mongo.Client
+	sharedDBClient          *mongo.Client
 	mu                      sync.RWMutex
 	clientConfig            *ClientConfig
 	closers                 []closerOp
@@ -369,27 +368,17 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 	ctx, span := tracer.Start(ctx, "InitDB")
 	defer span.End()
 
-	opts := options.Client().ApplyURI(settings.Url).SetWriteConcern(settings.WriteConcernSettings.Resolve()).
-		SetReadConcern(settings.ReadConcernSettings.Resolve()).
-		SetTimeout(5 * time.Minute).
-		// SetSocketTimeout will be deprecated in future Go driver releases, though at the time being there
-		// isn't any other way to enforce a time limit on how long the client waits when trying to R/W data
-		// over a connection, so we are including it until Go driver finalizes their timeout API.
-		SetSocketTimeout(5 * time.Minute).
-		SetConnectTimeout(5 * time.Second).
-		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
-
-	if settings.AWSAuthEnabled {
-		opts.SetAuth(options.Credential{
-			AuthMechanism: awsAuthMechanism,
-			AuthSource:    mongoExternalAuthSource,
-		})
-	}
-
 	var err error
-	e.client, err = mongo.Connect(ctx, opts)
+	e.client, err = mongo.Connect(ctx, settings.mongoOptions(settings.Url))
 	if err != nil {
 		return errors.Wrap(err, "connecting to the Evergreen DB")
+	}
+
+	if settings.SharedURL != "" {
+		e.sharedDBClient, err = mongo.Connect(ctx, settings.mongoOptions(settings.SharedURL))
+		if err != nil {
+			return errors.Wrap(err, "connecting to the shared Evergreen database")
+		}
 	}
 
 	return nil
@@ -403,24 +392,7 @@ func (e *envState) createRemoteQueues(ctx context.Context, tracer trace.Tracer) 
 	if url == "" {
 		url = DefaultAmboyDatabaseURL
 	}
-
-	opts := options.Client().
-		ApplyURI(url).
-		SetTimeout(10 * time.Second).
-		SetConnectTimeout(5 * time.Second).
-		SetReadPreference(readpref.Primary()).
-		SetReadConcern(e.settings.Database.ReadConcernSettings.Resolve()).
-		SetWriteConcern(e.settings.Database.WriteConcernSettings.Resolve()).
-		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false)))
-
-	if e.settings.Database.AWSAuthEnabled {
-		opts.SetAuth(options.Credential{
-			AuthMechanism: awsAuthMechanism,
-			AuthSource:    mongoExternalAuthSource,
-		})
-	}
-
-	client, err := mongo.Connect(ctx, opts)
+	client, err := mongo.Connect(ctx, e.settings.Database.mongoOptions(url))
 	if err != nil {
 		return errors.Wrap(err, "connecting to the Amboy database")
 	}
@@ -462,6 +434,16 @@ func (e *envState) DB() *mongo.Database {
 	defer e.mu.RUnlock()
 
 	return e.client.Database(e.dbName)
+}
+
+func (e *envState) SharedDB() *mongo.Database {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	if e.sharedDBClient != nil {
+		return e.sharedDBClient.Database(e.dbName)
+	}
+	return nil
 }
 
 func (e *envState) createLocalQueue(ctx context.Context, tracer trace.Tracer) error {
