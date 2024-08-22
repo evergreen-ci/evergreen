@@ -12,7 +12,7 @@ import (
 	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const (

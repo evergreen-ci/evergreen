@@ -16,10 +16,9 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 const (
@@ -215,7 +214,7 @@ func IdleEphemeralGroupedByDistroID(ctx context.Context, env evergreen.Environme
 			"$group": bson.M{
 				"_id":                             "$" + bsonutil.GetDottedKeyName(DistroKey, distro.IdKey),
 				HostsByDistroRunningHostsCountKey: bson.M{"$sum": 1},
-				HostsByDistroIdleHostsKey:         bson.M{"$push": bson.M{"$cond": []interface{}{bson.M{"$eq": []interface{}{"$running_task", primitive.Undefined{}}}, "$$ROOT", primitive.Undefined{}}}},
+				HostsByDistroIdleHostsKey:         bson.M{"$push": bson.M{"$cond": []interface{}{bson.M{"$eq": []interface{}{"$running_task", bson.Undefined{}}}, "$$ROOT", bson.Undefined{}}}},
 			},
 		},
 		{
@@ -872,8 +871,8 @@ func MarkStaleBuildingAsFailed(ctx context.Context, distroID string) error {
 // === DB Logic ===
 
 // FindOne gets one Host for the given query.
-func FindOne(ctx context.Context, query bson.M, options ...*options.FindOneOptions) (*Host, error) {
-	res := evergreen.GetEnvironment().DB().Collection(Collection).FindOne(ctx, query, options...)
+func FindOne(ctx context.Context, query bson.M, opts ...options.Lister[options.FindOneOptions]) (*Host, error) {
+	res := evergreen.GetEnvironment().DB().Collection(Collection).FindOne(ctx, query, opts...)
 	if err := res.Err(); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
@@ -918,8 +917,8 @@ func FindOneByIdOrTag(ctx context.Context, id string) (*Host, error) {
 	return host, nil
 }
 
-func Find(ctx context.Context, query bson.M, options ...*options.FindOptions) ([]Host, error) {
-	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Find(ctx, query, options...)
+func Find(ctx context.Context, query bson.M, opts ...options.Lister[options.FindOptions]) ([]Host, error) {
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Find(ctx, query, opts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding hosts")
 	}
@@ -933,8 +932,8 @@ func Find(ctx context.Context, query bson.M, options ...*options.FindOptions) ([
 
 // Aggregate performs the aggregation pipeline on the host collection and returns the resulting hosts.
 // Implement the aggregation directly if the result of the pipeline is not an array of hosts.
-func Aggregate(ctx context.Context, pipeline []bson.M, options ...*options.AggregateOptions) ([]Host, error) {
-	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline, options...)
+func Aggregate(ctx context.Context, pipeline []bson.M, opts ...options.Lister[options.AggregateOptions]) ([]Host, error) {
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Aggregate(ctx, pipeline, opts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating hosts")
 	}
@@ -947,7 +946,7 @@ func Aggregate(ctx context.Context, pipeline []bson.M, options ...*options.Aggre
 }
 
 // Count returns the number of hosts that satisfy the given query.
-func Count(ctx context.Context, query bson.M, opts ...*options.CountOptions) (int, error) {
+func Count(ctx context.Context, query bson.M, opts ...options.Lister[options.CountOptions]) (int, error) {
 	res, err := evergreen.GetEnvironment().DB().Collection(Collection).CountDocuments(ctx, query, opts...)
 	return int(res), errors.Wrap(err, "getting host count")
 }
@@ -997,14 +996,14 @@ func UpsertOne(ctx context.Context, query bson.M, update bson.M) (*mongo.UpdateR
 }
 
 // DeleteOne removes a single host matching the filter from the hosts collection.
-func DeleteOne(ctx context.Context, filter bson.M, options ...*options.DeleteOptions) error {
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteOne(ctx, filter, options...)
+func DeleteOne(ctx context.Context, filter bson.M, opts ...options.Lister[options.DeleteOptions]) error {
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteOne(ctx, filter, opts...)
 	return errors.Wrap(err, "deleting host")
 }
 
 // DeleteMany removes all hosts matching the filter from the hosts collection.
-func DeleteMany(ctx context.Context, filter bson.M, options ...*options.DeleteOptions) error {
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteMany(ctx, filter, options...)
+func DeleteMany(ctx context.Context, filter bson.M, opts ...options.Lister[options.DeleteOptions]) error {
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteMany(ctx, filter, opts...)
 	return errors.Wrap(err, "deleting hosts")
 }
 
@@ -1431,7 +1430,7 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 	}
 	defer sess.EndSession(ctx)
 
-	replaceHost := func(sessCtx mongo.SessionContext) (interface{}, error) {
+	replaceHost := func(sessCtx context.Context) (interface{}, error) {
 		if err := RemoveStrict(sessCtx, env, idToRemove); err != nil {
 			return nil, errors.Wrapf(err, "removing old host '%s'", idToRemove)
 		}

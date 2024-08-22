@@ -18,12 +18,14 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+
+	// TODO-mongo-driver
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"gopkg.in/yaml.v3"
 )
 

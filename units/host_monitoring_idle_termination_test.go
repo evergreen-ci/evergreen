@@ -18,7 +18,7 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func numIdleHostsFound(ctx context.Context, env evergreen.Environment, t *testing.T) (int, []string) {

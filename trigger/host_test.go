@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func TestHostTriggers(t *testing.T) {

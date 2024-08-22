@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 const Collection = "testresults"

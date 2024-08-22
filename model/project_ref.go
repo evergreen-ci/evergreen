@@ -37,7 +37,7 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/robfig/cron"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // ProjectRef contains Evergreen project-related settings which can be set

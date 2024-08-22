@@ -15,8 +15,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 // IdTimeLayout is used time time.Time.Format() to produce timestamps for our ids.
@@ -345,7 +345,7 @@ func (b Builds) InsertMany(ctx context.Context, ordered bool) error {
 	if len(b) == 0 {
 		return nil
 	}
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, b.getPayload(), &options.InsertManyOptions{Ordered: &ordered})
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, b.getPayload(), options.InsertMany().SetOrdered(ordered))
 	return errors.Wrap(err, "bulk inserting builds")
 }
 

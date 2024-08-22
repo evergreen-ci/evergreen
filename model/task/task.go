@@ -27,9 +27,8 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
@@ -3017,7 +3016,7 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 	}
 	defer session.EndSession(ctx)
 
-	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
+	txFunc := func(sessCtx context.Context) (interface{}, error) {
 		var err error
 		if len(archivedTasks) > 0 {
 			oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)

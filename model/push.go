@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const PushlogCollection = "pushes"

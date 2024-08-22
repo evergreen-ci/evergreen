@@ -14,8 +14,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 const Collection = "pod_dispatchers"
@@ -91,7 +90,7 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 	defer session.EndSession(ctx)
 
 	pd := &PodDispatcher{}
-	allocateDispatcher := func(sessCtx mongo.SessionContext) (interface{}, error) {
+	allocateDispatcher := func(sessCtx context.Context) (interface{}, error) {
 		groupID := GetGroupID(t)
 		if err := env.DB().Collection(Collection).FindOne(sessCtx, ByGroupID(groupID)).Decode(pd); err != nil && !adb.ResultsNotFound(err) {
 			return nil, errors.Wrap(err, "checking for existing pod dispatcher")

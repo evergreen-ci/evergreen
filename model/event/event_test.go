@@ -12,7 +12,7 @@ import (
 	amboyRegistry "github.com/mongodb/amboy/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type eventSuite struct {

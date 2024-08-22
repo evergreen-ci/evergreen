@@ -8,9 +8,9 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 var (
@@ -86,8 +86,8 @@ func FindOneId(ctx context.Context, id string) (*Distro, error) {
 	return FindOne(ctx, ById(id))
 }
 
-func FindOne(ctx context.Context, query bson.M, options ...*options.FindOneOptions) (*Distro, error) {
-	res := evergreen.GetEnvironment().DB().Collection(Collection).FindOne(ctx, query, options...)
+func FindOne(ctx context.Context, query bson.M, opts ...options.Lister[options.FindOneOptions]) (*Distro, error) {
+	res := evergreen.GetEnvironment().DB().Collection(Collection).FindOne(ctx, query, opts...)
 	if err := res.Err(); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
@@ -102,8 +102,8 @@ func FindOne(ctx context.Context, query bson.M, options ...*options.FindOneOptio
 	return d, nil
 }
 
-func Find(ctx context.Context, query bson.M, options ...*options.FindOptions) ([]Distro, error) {
-	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Find(ctx, query, options...)
+func Find(ctx context.Context, query bson.M, opts ...options.Lister[options.FindOptions]) ([]Distro, error) {
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Find(ctx, query, opts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding distros")
 	}

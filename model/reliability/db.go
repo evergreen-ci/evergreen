@@ -24,7 +24,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/evergreen-ci/utility"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // DateBoundaries returns the date boundaries when splitting the period between 'start' and 'end' in groups of 'numDays' days.

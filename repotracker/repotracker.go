@@ -23,7 +23,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 const (
@@ -1007,8 +1007,9 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	}
 	v.ProjectStorageMethod = ppStorageMethod
 
-	txFunc := func(sessCtx mongo.SessionContext) error {
-		err := sessCtx.StartTransaction()
+	txFunc := func(sessCtx context.Context) error {
+		sess := mongo.SessionFromContext(sessCtx)
+		err := sess.StartTransaction()
 		if err != nil {
 			return errors.Wrap(err, "starting transaction")
 		}
@@ -1020,7 +1021,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				"cause":   "can't insert version",
 				"version": v.Id,
 			}))
-			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
+			if abortErr := sess.AbortTransaction(sessCtx); abortErr != nil {
 				return errors.Wrap(abortErr, "aborting transaction")
 			}
 			return errors.Wrapf(err, "inserting version '%s'", v.Id)
@@ -1033,7 +1034,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 					"cause":   "can't insert project config",
 					"version": v.Id,
 				}))
-				if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
+				if abortErr := sess.AbortTransaction(sessCtx); abortErr != nil {
 					return errors.Wrap(abortErr, "aborting transaction")
 				}
 				return errors.Wrapf(err, "inserting project config '%s'", v.Id)
@@ -1046,7 +1047,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				"cause":   "can't insert builds",
 				"version": v.Id,
 			}))
-			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
+			if abortErr := sess.AbortTransaction(sessCtx); abortErr != nil {
 				return errors.Wrap(abortErr, "aborting transaction")
 			}
 
@@ -1059,19 +1060,19 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				"cause":   "can't insert tasks",
 				"version": v.Id,
 			}))
-			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
+			if abortErr := sess.AbortTransaction(sessCtx); abortErr != nil {
 				return errors.Wrap(abortErr, "aborting transaction")
 			}
 			return errors.Wrap(err, "inserting tasks")
 		}
-		err = sessCtx.CommitTransaction(sessCtx)
+		err = sess.CommitTransaction(sessCtx)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "aborting transaction",
 				"cause":   "unable to commit transaction",
 				"version": v.Id,
 			}))
-			if abortErr := sessCtx.AbortTransaction(sessCtx); abortErr != nil {
+			if abortErr := sess.AbortTransaction(sessCtx); abortErr != nil {
 				return errors.Wrap(abortErr, "aborting transaction")
 			}
 
@@ -1092,7 +1093,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 // If we error in aborting transaction, we create a new session and start again.
 // If we abort successfully and the error is a transient transaction error, we retry using the same session.
-func transactionWithRetries(ctx context.Context, versionId string, sessionFunc func(sessCtx mongo.SessionContext) error) error {
+func transactionWithRetries(ctx context.Context, versionId string, sessionFunc func(sessCtx context.Context) error) error {
 	const retryCount = 5
 	const minBackoffInterval = 1 * time.Second
 	const maxBackoffInterval = 60 * time.Second

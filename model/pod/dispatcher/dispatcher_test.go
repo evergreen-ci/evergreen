@@ -17,7 +17,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson/primitive"
 )
 
 func TestUpsertAtomically(t *testing.T) {

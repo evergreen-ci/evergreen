@@ -25,7 +25,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func TestFindOneProjectRef(t *testing.T) {

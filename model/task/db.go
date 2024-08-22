@@ -14,8 +14,8 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -2974,7 +2974,7 @@ func getGenerateTasksEstimation(ctx context.Context, project, buildVariant, disp
 	coll := evergreen.GetEnvironment().DB().Collection(Collection)
 	dbCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	cursor, err := coll.Aggregate(dbCtx, pipeline, &options.AggregateOptions{Hint: DurationIndex})
+	cursor, err := coll.Aggregate(dbCtx, pipeline, options.Aggregate().SetHint(DurationIndex))
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating generate tasks estimations")
 	}

@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // SchedulerConfig holds relevant settings for the scheduler process.

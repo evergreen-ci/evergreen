@@ -19,12 +19,12 @@ require (
 	github.com/docker/go-connections v0.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evergreen-ci/birch v0.0.0-20220401151432-c792c3d8e0eb
-	github.com/evergreen-ci/certdepot v0.0.0-20220408180137-e70afe67cc1b
+	github.com/evergreen-ci/certdepot v0.0.0-20240826171539-ecce3117638b
 	github.com/evergreen-ci/cocoa v0.0.0-20240523192623-2e730fcd1784
-	github.com/evergreen-ci/gimlet v0.0.0-20240426164856-8c2db742f7b0
+	github.com/evergreen-ci/gimlet v0.0.0-20240822210219-7b6025d55663
 	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa
-	github.com/evergreen-ci/pail v0.0.0-20240812165850-4ccf32c50e99
-	github.com/evergreen-ci/poplar v0.0.0-20240809150814-63d58cd28568
+	github.com/evergreen-ci/pail v0.0.0-20240827190122-14f8ea6682f7
+	github.com/evergreen-ci/poplar v0.0.0-20240827180934-84db74d6081b
 	github.com/evergreen-ci/shrub v0.0.0-20231121224157-600e066f9de6
 	github.com/evergreen-ci/timber v0.0.0-20240509150854-9d66df03b40e
 	github.com/evergreen-ci/utility v0.0.0-20240812204255-c58f66487604
@@ -40,8 +40,8 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/mongodb/amboy v0.0.0-20240718152556-3b1827bc7168
-	github.com/mongodb/anser v0.0.0-20231019191251-2a589a5299e6
+	github.com/mongodb/amboy v0.0.0-20240827200447-ab4f8138c6f1
+	github.com/mongodb/anser v0.0.0-20240828131644-c185029c01a1
 	github.com/mongodb/grip v0.0.0-20240213223901-f906268d82b9
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.15.0
@@ -52,7 +52,6 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli v1.22.15
 	github.com/vektah/gqlparser/v2 v2.5.16
-	go.mongodb.org/mongo-driver v1.16.1
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.21.1
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.21.1
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.46.1
@@ -138,7 +137,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
-	github.com/klauspost/compress v1.13.6 // indirect
+	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/klauspost/pgzip v1.2.6
 	github.com/lestrrat-go/backoff/v2 v2.0.8 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.0 // indirect
@@ -149,7 +148,7 @@ require (
 	github.com/lufia/plan9stats v0.0.0-20231016141302-07b5767bb0ed // indirect
 	github.com/mattn/go-xmpp v0.0.1 // indirect
 	github.com/mholt/archiver/v3 v3.5.1
-	github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809 // indirect
+	github.com/mongodb/ftdc v0.0.0-20240827140352-f76d3c066734 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	github.com/okta/okta-jwt-verifier-golang v1.3.1 // indirect
@@ -167,7 +166,7 @@ require (
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/slack-go/slack v0.12.3 // indirect
 	github.com/smarty/assertions v1.15.0 // indirect
-	github.com/square/certstrap v1.2.0 // indirect
+	github.com/square/certstrap v1.3.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/trivago/tgo v1.0.7 // indirect
@@ -208,6 +207,7 @@ require (
 )
 
 require (
+	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.3 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.10 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.15 // indirect
@@ -222,5 +222,7 @@ require (
 	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
+	go.mongodb.org/mongo-driver/v2 v2.0.0-beta1 // indirect
+	go.step.sm/crypto v0.31.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 )

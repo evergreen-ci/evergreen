@@ -21,10 +21,10 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readconcern"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/v2/mongo/writeconcern"
 	"gopkg.in/yaml.v3"
 )
 
@@ -650,22 +650,18 @@ type WriteConcern struct {
 }
 
 func (wc WriteConcern) Resolve() *writeconcern.WriteConcern {
-	opts := []writeconcern.Option{}
+	test := &writeconcern.WriteConcern{}
+	if wc.WMode == "majority" {
+		test = writeconcern.Majority()
+	} else if wc.W > 0 {
+		test.W = wc.W
+	}
 
 	if wc.J {
-		opts = append(opts, writeconcern.J(true))
-	}
-	if wc.WMode == "majority" {
-		opts = append(opts, writeconcern.WMajority())
-	} else if wc.W > 0 {
-		opts = append(opts, writeconcern.W(wc.W))
+		test.Journal = utility.TruePtr()
 	}
 
-	if wc.WTimeout > 0 {
-		opts = append(opts, writeconcern.WTimeout(time.Duration(wc.WTimeout)*time.Millisecond))
-	}
-
-	return writeconcern.New().WithOptions(opts...)
+	return test
 }
 
 type ReadConcern struct {
@@ -697,7 +693,7 @@ type DBSettings struct {
 	AWSAuthEnabled       bool         `yaml:"aws_auth_enabled"`
 }
 
-func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
+func (s *DBSettings) mongoOptions(url string) *options.ClientOptionsBuilder {
 	opts := options.Client().ApplyURI(url).SetWriteConcern(s.WriteConcernSettings.Resolve()).
 		SetReadConcern(s.ReadConcernSettings.Resolve()).
 		SetTimeout(mongoTimeout).
@@ -705,7 +701,7 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
 		// SetSocketTimeout will be deprecated in future Go driver releases, though at the time being there
 		// isn't any other way to enforce a time limit on how long the client waits when trying to R/W data
 		// over a connection, so we are including it until Go driver finalizes their timeout API.
-		SetSocketTimeout(mongoTimeout).
+		// SetSocketTimeout(mongoTimeout).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 
 	if s.AWSAuthEnabled {

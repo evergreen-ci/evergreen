@@ -13,8 +13,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const (
@@ -119,7 +118,7 @@ func Find(id string) (*Notification, error) {
 func FindByEventID(id string) ([]Notification, error) {
 	notifications := []Notification{}
 	query := db.Query(bson.M{
-		idKey: primitive.Regex{Pattern: fmt.Sprintf("^%s-", id)},
+		idKey: bson.Regex{Pattern: fmt.Sprintf("^%s-", id)},
 	},
 	)
 

@@ -5,7 +5,7 @@ import (
 
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // HostJasperConfig represents the configuration of the Jasper service running

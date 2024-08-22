@@ -6,9 +6,10 @@ import (
 	"io"
 
 	"github.com/evergreen-ci/evergreen"
+	// TODO-mongo-driver
 	"github.com/evergreen-ci/pail"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // ParserProjectS3Storage implements the ParserProjectStorage interface to
