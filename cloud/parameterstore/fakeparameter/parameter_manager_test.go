@@ -29,7 +29,7 @@ func TestParameterManager(t *testing.T) {
 		assert.Equal(t, p.Value, dbParam.Value)
 	}
 	// checkParam checks that the input parameter matches the expected values
-	// and that it matches the document in the DB.
+	// and that it matches a corresponding document in the DB.
 	checkParam := func(ctx context.Context, t *testing.T, p *parameterstore.Parameter, name, basename, value string) {
 		require.NotZero(t, p)
 		assert.Equal(t, name, p.Name)

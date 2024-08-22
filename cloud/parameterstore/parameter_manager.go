@@ -30,17 +30,17 @@ type Parameter struct {
 // parameters in AWS Systems Manager Parameter Store. It supports caching to
 // optimize parameter retrieval.
 type ParameterManager struct {
-	prefix         string
+	pathPrefix     string
 	cachingEnabled bool
 	ssmClient      SSMClient
 	db             *mongo.Database
 }
 
 // NewParameterManager creates a new ParameterManager instance.
-func NewParameterManager(prefix string, cachingEnabled bool, ssmClient SSMClient, db *mongo.Database) *ParameterManager {
-	prefix = fmt.Sprintf("/%s/", strings.TrimPrefix(strings.TrimSuffix(prefix, "/"), "/"))
+func NewParameterManager(pathPrefix string, cachingEnabled bool, ssmClient SSMClient, db *mongo.Database) *ParameterManager {
+	pathPrefix = fmt.Sprintf("/%s/", strings.TrimPrefix(strings.TrimSuffix(pathPrefix, "/"), "/"))
 	return &ParameterManager{
-		prefix:         prefix,
+		pathPrefix:     pathPrefix,
 		cachingEnabled: cachingEnabled,
 		ssmClient:      ssmClient,
 		db:             db,
@@ -174,14 +174,14 @@ func (pm *ParameterManager) Delete(ctx context.Context, names ...string) error {
 // getPrefixedName returns the parameter name with the common parameter prefix
 // to ensure it is a full path rather than a basename.
 func (pm *ParameterManager) getPrefixedName(basename string) string {
-	if pm.prefix == "" {
+	if pm.pathPrefix == "" {
 		return basename
 	}
-	if strings.HasPrefix(basename, pm.prefix) {
+	if strings.HasPrefix(basename, pm.pathPrefix) {
 		return basename
 	}
-	prefix := strings.TrimSuffix(strings.TrimPrefix(pm.prefix, "/"), "/")
-	return fmt.Sprintf("/%s/%s", prefix, strings.TrimPrefix(basename, "/"))
+	pathPrefix := strings.TrimSuffix(strings.TrimPrefix(pm.pathPrefix, "/"), "/")
+	return fmt.Sprintf("/%s/%s", pathPrefix, strings.TrimPrefix(basename, "/"))
 }
 
 // getBasename returns the parameter basename without any intermediate paths.
