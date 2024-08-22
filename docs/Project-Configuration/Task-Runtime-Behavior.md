@@ -150,7 +150,8 @@ clean up the task directory.
 ## Task Timeouts
 
 Tasks are not allowed to run forever, so all commands that run for a task are
-subject to (configurable) timeouts. If a command hits a timeout, that command
+subject to (configurable) timeouts. However, tasks cannot be configured to have a timeout 
+greater than 86400 seconds (24 hours). If a command hits a timeout, that command
 will stop with an error. Furthermore, if that command can cause the task to fail
 and that command is in `pre`, `setup_task`, `setup_group`, or the main task
 block, it will skip forward to running the `timeout` block and will eventually
