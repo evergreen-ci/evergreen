@@ -16,13 +16,15 @@ import (
 // Parameter represents a parameter kept in Parameter Store.
 type Parameter struct {
 	// Name is the full name of the parameter, including its path. This is a
-	// unique identifier.
+	// unique identifier. For example, the full name could be
+	// /evergreen/path/to/my-parameter.
 	Name string `bson:"-" json:"-" yaml:"-"`
 	// Basename is the parameter's name without any hierarchical paths. For
 	// example, if the full name including the path is
-	// /evergreen/prefix/my-parameter, the basename is my-parameter.
+	// /evergreen/path/to/my-parameter, the basename is my-parameter.
 	Basename string `bson:"-" json:"-" yaml:"-"`
-	// Value is the parameter's plaintext value.
+	// Value is the parameter's plaintext value. This value should never be
+	// persisted in the DB.
 	Value string `bson:"-" json:"-" yaml:"-"`
 }
 
@@ -30,7 +32,13 @@ type Parameter struct {
 // parameters in AWS Systems Manager Parameter Store. It supports caching to
 // optimize parameter retrieval.
 type ParameterManager struct {
-	pathPrefix     string
+	// pathPrefix is the prefix path in the Parameter Store hierarchy. If set,
+	// all parameters should be stored under this prefix.
+	pathPrefix string
+	// cachingEnabled indicates whether parameter caching is enabled. If
+	// enabled, the cache will reduce the number of reads from Parameter Store
+	// by only fetching directly from Parameter Store if the value is missing
+	// from the cache or is stale.
 	cachingEnabled bool
 	ssmClient      SSMClient
 	db             *mongo.Database
@@ -38,7 +46,9 @@ type ParameterManager struct {
 
 // NewParameterManager creates a new ParameterManager instance.
 func NewParameterManager(pathPrefix string, cachingEnabled bool, ssmClient SSMClient, db *mongo.Database) *ParameterManager {
-	pathPrefix = fmt.Sprintf("/%s/", strings.TrimPrefix(strings.TrimSuffix(pathPrefix, "/"), "/"))
+	if pathPrefix != "" {
+		pathPrefix = fmt.Sprintf("/%s/", strings.TrimPrefix(strings.TrimSuffix(pathPrefix, "/"), "/"))
+	}
 	return &ParameterManager{
 		pathPrefix:     pathPrefix,
 		cachingEnabled: cachingEnabled,
@@ -48,8 +58,6 @@ func NewParameterManager(pathPrefix string, cachingEnabled bool, ssmClient SSMCl
 }
 
 // Put adds or updates a parameter. This returns the created parameter.
-// kim: TODO: test in fakeparameters package once fake PS client is available
-// (to avoid cyclical dependency).
 func (pm *ParameterManager) Put(ctx context.Context, name, value string) (*Parameter, error) {
 	fullName := pm.getPrefixedName(name)
 	if _, err := pm.ssmClient.PutParameter(ctx, &ssm.PutParameterInput{
@@ -74,8 +82,6 @@ func (pm *ParameterManager) Put(ctx context.Context, name, value string) (*Param
 // Get retrieves the parameters given by the provided name(s). If some
 // parameters cannot be found, they will not be returned. Use GetStrict to both
 // get the parameters and validate that all the requested parameters were found.
-// kim: TODO: test in fakeparameters package once fake PS client is available
-// (to avoid cyclical dependency).
 func (pm *ParameterManager) Get(ctx context.Context, names ...string) ([]Parameter, error) {
 	if len(names) == 0 {
 		return nil, nil
@@ -112,8 +118,6 @@ func (pm *ParameterManager) Get(ctx context.Context, names ...string) ([]Paramet
 
 // GetStrict is the same as Get but verifies that all the requested parameter
 // names were found before returning the result.
-// kim: TODO: test in fakeparameters package once fake PS client is available
-// (to avoid cyclical dependency).
 func (pm *ParameterManager) GetStrict(ctx context.Context, names ...string) ([]Parameter, error) {
 	fullNames := make([]string, 0, len(names))
 	for _, name := range names {
@@ -147,8 +151,6 @@ func (pm *ParameterManager) GetStrict(ctx context.Context, names ...string) ([]P
 }
 
 // Delete deletes the parameters given by the provided name(s).
-// kim: TODO: test in fakeparameters package once fake PS client is available
-// (to avoid cyclical dependency).
 func (pm *ParameterManager) Delete(ctx context.Context, names ...string) error {
 	if len(names) == 0 {
 		return nil
