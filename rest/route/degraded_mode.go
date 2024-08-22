@@ -6,8 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -45,15 +43,9 @@ func (h *degradedModeHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving service flags"))
 	}
-	if flags.CPUDegradedModeDisabled {
-		flags.CPUDegradedModeDisabled = false
-		if err = flags.Set(ctx); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting service flags"))
-		}
-		grip.Info(message.Fields{
-			"message": "CPU degraded mode has been triggered",
-			"route":   "/degraded_mode",
-		})
+	flags.CPUDegradedModeDisabled = false
+	if err = flags.Set(ctx); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting service flags"))
 	}
 	return gimlet.NewJSONResponse(struct{}{})
 }

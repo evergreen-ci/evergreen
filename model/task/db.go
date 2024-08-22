@@ -124,7 +124,6 @@ var (
 	IsEssentialToSucceedKey                = bsonutil.MustHaveTag(Task{}, "IsEssentialToSucceed")
 	HasAnnotationsKey                      = bsonutil.MustHaveTag(Task{}, "HasAnnotations")
 	NumNextTaskDispatchesKey               = bsonutil.MustHaveTag(Task{}, "NumNextTaskDispatches")
-	CachedProjectStorageMethodKey          = bsonutil.MustHaveTag(Task{}, "CachedProjectStorageMethod")
 )
 
 var (
@@ -3035,16 +3034,6 @@ func GetPendingGenerateTasks(ctx context.Context) (int, error) {
 	} else {
 		return results[0].NumPendingGenerateTasks, nil
 	}
-}
-
-// CountLargeParserProjectTasks counts the number of tasks running with parser projects stored in s3.
-func CountLargeParserProjectTasks() (int, error) {
-	return Count(db.Query(bson.M{
-		StatusKey: bson.M{
-			"$in": evergreen.TaskInProgressStatuses,
-		},
-		CachedProjectStorageMethodKey: evergreen.ProjectStorageMethodS3,
-	}))
 }
 
 // GetLatestTaskFromImage retrieves the latest task from all the distros corresponding to the imageID.
