@@ -7,9 +7,9 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	ssmTypes "github.com/aws/aws-sdk-go-v2/service/ssm/types"
-	"github.com/aws/aws-sdk-go/aws"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -37,7 +37,6 @@ type ParameterManager struct {
 }
 
 // NewParameterManager creates a new ParameterManager instance.
-// kim: TODO: add test
 func NewParameterManager(prefix string, cachingEnabled bool, ssmClient SSMClient, db *mongo.Database) *ParameterManager {
 	prefix = fmt.Sprintf("/%s/", strings.TrimPrefix(strings.TrimSuffix(prefix, "/"), "/"))
 	return &ParameterManager{
@@ -100,11 +99,11 @@ func (pm *ParameterManager) Get(ctx context.Context, names ...string) ([]Paramet
 
 	params := make([]Parameter, 0, len(ssmParams))
 	for _, p := range ssmParams {
-		name := aws.StringValue(p.Name)
+		name := aws.ToString(p.Name)
 		params = append(params, Parameter{
 			Name:     name,
 			Basename: pm.getBasename(name),
-			Value:    aws.StringValue(p.Value),
+			Value:    aws.ToString(p.Value),
 		})
 	}
 
