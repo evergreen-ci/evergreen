@@ -36,12 +36,14 @@ type taskContext struct {
 	postErrored          bool
 	logger               client.LoggerProducer
 	task                 client.TaskData
-	ranSetupGroup        bool
-	taskConfig           *internal.TaskConfig
-	timeout              timeoutInfo
-	oomTracker           jasper.OOMTracker
-	traceID              string
-	diskDevices          []string
+	// ranSetupGroup is true during task setup if the task is a new standalone
+	// task or if it's the first task in a task group.
+	ranSetupGroup bool
+	taskConfig    *internal.TaskConfig
+	timeout       timeoutInfo
+	oomTracker    jasper.OOMTracker
+	traceID       string
+	diskDevices   []string
 	// taskCleanups and taskGroupCleanups store the cleanup commands for the
 	// task and setup group, respectively.
 	taskCleanups       []internal.CommandCleanup

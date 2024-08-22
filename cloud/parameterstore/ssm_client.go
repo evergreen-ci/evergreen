@@ -18,7 +18,9 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 )
 
-type ssmClient interface {
+// SSMClient is an interface to interact with AWS Systems Manager (SSM)
+// Parameter Store.
+type SSMClient interface {
 	// PutParameter puts a parameter into Parameter Store.
 	PutParameter(context.Context, *ssm.PutParameterInput) (*ssm.PutParameterOutput, error)
 	// DeleteParametersSimple is the same as DeleteParameters but only returns
@@ -26,8 +28,8 @@ type ssmClient interface {
 	DeleteParametersSimple(context.Context, *ssm.DeleteParametersInput) ([]string, error)
 	// DeleteParameters deletes the specified parameters. Parameter Store limits
 	// how many parameters can be deleted per call, so implementations are
-	// expected to handle batching transparently. The returned output slice contains the
-	// output of each batched request.
+	// expected to handle batching transparently. The returned output slice
+	// contains the output of each batched request.
 	DeleteParameters(context.Context, *ssm.DeleteParametersInput) ([]*ssm.DeleteParametersOutput, error)
 	// GetParametersSimple is the same as GetParameters but only returns the
 	// parameter information rather than the full output.
@@ -48,7 +50,7 @@ type ssmClientImpl struct {
 // region.
 var configCache map[string]*aws.Config = make(map[string]*aws.Config)
 
-func newSSMClient(ctx context.Context, region string) (ssmClient, error) {
+func newSSMClient(ctx context.Context, region string) (*ssmClientImpl, error) {
 	if region == "" {
 		region = "us-east-1"
 	}
@@ -150,6 +152,7 @@ func retrySSMClientOp[Input interface{}, Output interface{}](ctx context.Context
 		msg := makeAWSLogMessage(opName, fmt.Sprintf("%T", client), input)
 		output, err = clientOp(ctx, client, input)
 		if err != nil {
+			grip.Debug(message.WrapError(err, msg))
 			return true, err
 		}
 		grip.Info(msg)

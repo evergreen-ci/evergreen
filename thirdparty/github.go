@@ -39,6 +39,7 @@ const (
 
 	GithubInvestigation        = "Github API Limit Investigation"
 	PRDiffTooLargeErrorMessage = "the diff exceeded the maximum"
+	GithubStatusDefaultContext = "evergreen"
 )
 
 const (
@@ -2028,7 +2029,7 @@ func GetEvergreenBranchProtectionRules(ctx context.Context, token, owner, repo, 
 func getRulesWithEvergreenPrefix(rules []string) []string {
 	rulesWithEvergreenPrefix := []string{}
 	for _, rule := range rules {
-		if strings.HasPrefix(rule, "evergreen") {
+		if strings.HasPrefix(rule, GithubStatusDefaultContext) {
 			rulesWithEvergreenPrefix = append(rulesWithEvergreenPrefix, rule)
 		}
 	}
