@@ -292,7 +292,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Waterfall pages
 	app.AddRoute("/").Wrap(needsLogin, needsContext).Handler(uis.mainlineCommitsRedirect).Get().Head()
-	app.AddRoute("/waterfall").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.waterfallPage).Get()
+	app.AddRoute("/waterfall").Wrap(needsLogin, needsContext).Handler(uis.waterfallPage).Get()
 	app.AddRoute("/waterfall/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.waterfallPage).Get()
 
 	// Task page (and related routes)
