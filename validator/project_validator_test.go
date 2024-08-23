@@ -1745,7 +1745,7 @@ func TestValidateTimeoutLimits(t *testing.T) {
 	t.Run("SucceedsWithTimeoutBelowLimit", func(t *testing.T) {
 		settings := &evergreen.Settings{
 			TaskLimits: evergreen.TaskLimitsConfig{
-				MaxTaskSecs: 100,
+				MaxExecTimeoutSecs: 100,
 			},
 		}
 		assert.Empty(t, validateTimeoutLimits(ctx, settings, project, &model.ProjectRef{}, false))
@@ -1753,7 +1753,7 @@ func TestValidateTimeoutLimits(t *testing.T) {
 	t.Run("FailsWithTimeoutExceedingLimit", func(t *testing.T) {
 		settings := &evergreen.Settings{
 			TaskLimits: evergreen.TaskLimitsConfig{
-				MaxTaskSecs: 1,
+				MaxExecTimeoutSecs: 1,
 			},
 		}
 		errs := validateTimeoutLimits(ctx, settings, project, &model.ProjectRef{}, false)

@@ -42,8 +42,8 @@ type TaskLimitsConfig struct {
 	// MaxParserProjectSize is the maximum allowed parser project size.
 	MaxParserProjectSize int `bson:"max_parser_project_size" json:"max_parser_project_size" yaml:"max_parser_project_size"`
 
-	// MaxTaskSecs is the maximum number of seconds a task can run and set their timeout to.
-	MaxTaskSecs int `bson:"max_task_secs" json:"max_task_secs" yaml:"max_task_secs"`
+	// MaxExecTimeoutSecs is the maximum number of seconds a task can run and set their timeout to.
+	MaxExecTimeoutSecs int `bson:"max_exec_timeout_secs" json:"max_exec_timeout_secs" yaml:"max_exec_timeout_secs"`
 }
 
 var (
@@ -55,7 +55,7 @@ var (
 	maxConcurrentLargeParserProjectTasks = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxConcurrentLargeParserProjectTasks")
 	maxDegradedModeParserProjectSize     = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxDegradedModeParserProjectSize")
 	maxParserProjectSize                 = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxParserProjectSize")
-	maxTaskSecs                          = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxTaskSecs")
+	MaxExecTimeoutSecs                   = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxExecTimeoutSecs")
 )
 
 func (c *TaskLimitsConfig) SectionId() string { return "task_limits" }
@@ -88,7 +88,7 @@ func (c *TaskLimitsConfig) Set(ctx context.Context) error {
 			maxConcurrentLargeParserProjectTasks: c.MaxConcurrentLargeParserProjectTasks,
 			maxDegradedModeParserProjectSize:     c.MaxDegradedModeParserProjectSize,
 			maxParserProjectSize:                 c.MaxParserProjectSize,
-			maxTaskSecs:                          c.MaxTaskSecs,
+			MaxExecTimeoutSecs:                   c.MaxExecTimeoutSecs,
 		},
 	}, options.Update().SetUpsert(true))
 

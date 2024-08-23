@@ -120,6 +120,7 @@ type AgentSetupData struct {
 	TaskOutput             evergreen.S3Credentials `json:"task_output"`
 	EC2Keys                []evergreen.EC2Key      `json:"ec2_keys"`
 	TraceCollectorEndpoint string                  `json:"trace_collector_endpoint"`
+	ExecTimeoutLimit       int                     `json:"exec_timeout_limit"`
 }
 
 // NextTaskResponse represents the response sent back when an agent asks for a next task

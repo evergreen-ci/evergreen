@@ -90,6 +90,7 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		TaskOutput:        h.settings.Providers.AWS.TaskOutput,
 		TaskSync:          h.settings.Providers.AWS.TaskSync,
 		EC2Keys:           h.settings.Providers.AWS.EC2Keys,
+		ExecTimeoutLimit:  h.settings.TaskLimits.MaxExecTimeoutSecs,
 	}
 	if h.settings.Tracer.Enabled {
 		data.TraceCollectorEndpoint = h.settings.Tracer.CollectorEndpoint

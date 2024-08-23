@@ -54,6 +54,7 @@ type TaskConfig struct {
 	CedarTestResultsID string
 	TaskGroup          *model.TaskGroup
 	CommandCleanups    []CommandCleanup
+	ExecTimeoutLimit   int
 
 	mu sync.RWMutex
 }

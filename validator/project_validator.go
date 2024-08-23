@@ -1019,11 +1019,11 @@ func checkRunOn(runOnHasDistro, runOnHasContainer bool, runOn []string) []Valida
 
 func validateTimeoutLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {
 	errs := ValidationErrors{}
-	if settings.TaskLimits.MaxTaskSecs > 0 {
+	if settings.TaskLimits.MaxExecTimeoutSecs > 0 {
 		for _, task := range project.Tasks {
-			if task.ExecTimeoutSecs > settings.TaskLimits.MaxTaskSecs {
+			if task.ExecTimeoutSecs > settings.TaskLimits.MaxExecTimeoutSecs {
 				errs = append(errs, ValidationError{
-					Message: fmt.Sprintf("task '%s' exec timeout (%d) exceeds maximum limit (%d)", task.Name, task.ExecTimeoutSecs, settings.TaskLimits.MaxTaskSecs),
+					Message: fmt.Sprintf("task '%s' exec timeout (%d) exceeds maximum limit (%d)", task.Name, task.ExecTimeoutSecs, settings.TaskLimits.MaxExecTimeoutSecs),
 					Level:   Error,
 				})
 			}
