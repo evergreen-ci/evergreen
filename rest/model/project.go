@@ -233,8 +233,8 @@ func (t *APIProjectBanner) ToService() model.ProjectBanner {
 }
 
 func (t *APIProjectBanner) BuildFromService(h model.ProjectBanner) {
-	t.Theme = h.Theme
-	t.Text = utility.ToStringPtr(strings.ToLower(h.Text))
+	t.Theme = strings.ToLower(h.Theme)
+	t.Text = utility.ToStringPtr(h.Text)
 }
 
 func (bd *APIPeriodicBuildDefinition) ToService() model.PeriodicBuildDefinition {
