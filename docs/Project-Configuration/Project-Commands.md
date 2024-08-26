@@ -611,7 +611,7 @@ Parameters:
 
 The parameters for each module are:
 
--   `name`: the name of the module
+-   `name`: the name of the module 
 -   `owner`: the github owner of the module
 -   `repo`: the repo of the module
 -   `prefix`: the subdirectory to clone the repository in. It will be
@@ -629,6 +629,86 @@ The hash used for a module during cloning is determined by the following hierarc
 - For both commits and patches, the next default is to the `<module_name>` set in revisions for the command.
 - For commits, if this is not available, the next default is to ref, and then to branch. *Note that this
 doesn't work for patches -- hashes will need to be specified in the revisions section of the command.*
+
+## github.generate_token
+
+The github.generate_token command will use the github app saved in your [project settings](Github-Integrations#dynamic-github-access-tokens) to dynamically generate a short lived github access token. If you run into any issues, please see the [FAQ](../FAQ.md#dynamic-github-access-tokens).
+
+Parameters:
+-   `owner`: The account owner of the repository. This will be used to find the installation ID for the app that the token will be generated from. This is an optional field that will default to the project's owner. 
+-   `repo`: The name of the repository without the .git extension. This will be used to find the installation ID for the app that the token will be generated from. This is an optional field that will default to the project's repository. 
+-   `expansion_name`: The name for the expansion the token will be saved in.
+-   `permissions`: By default, the token will have the full permissions of the GitHub app that it's generated from. If you want the token to have less permissions, specify which permissions it should be restricted to. Permissions can also be restricted in project settings. For more on how to set that up and how it interacts with the permissions defined here, please see [here](Github-Integrations#dynamic-github-access-tokens). For a list of available permission types and levels, please take a look at `properties of permissions` in [the github documentation](https://docs.github.com/en/rest/apps/apps?apiVersion=2022-11-28#create-an-installation-access-token-for-an-app).
+
+For an example of how to generate a token and use that token to clone a repository, please see below. (Please check if [git.get_project](#gitget_project) or [modules](Project-Configuration-Files#modules) work for your use case before cloning manually).
+
+``` yaml
+- command: github.generate_token
+  params:
+    owner: sample-owner # optional
+    repo: sample-repo # optional
+    expansion_name: generated_token
+    permissions:  # optional
+        contents: read
+- command: shell.exec
+  params:
+    script: |
+      git clone https://x-access-token:${generated_token}@github.com/sample-owner/sample-repo.git
+```
+
+_While an owner and repository is used when generating a token from a github app (the project owner and repository being the default), you cannot rely on the token being restricted to that repository, as it may have the power to access other repositories in the org as well._ 
+
+### Token Lifespan 
+
+Generated access tokens have a lifespan of one hour. Therefore, for long running tasks we recommend generating a token right before it's needed. A token will also be revoked and the expansion will be removed if it goes out of scope. 
+
+### Token Scope 
+
+#### Regular Tasks 
+-   Tokens created in any part of the task will be scoped to that task. It will be revoked at the end up the task after the post task commands have finished running. 
+#### Task Groups
+-   Tokens created by individual tasks in a task group (including setup_task and teardown_task) will be scoped to that specific task. 
+-   Tokens created by `setup_group` in [task groups](Project-Configuration-Files#task-groups) will be scoped to the entire task group and revoked after `teardown_group` commands have finished running. However, we recommend against generating a single GitHub token for an entire task group. The token may reach its one hour limit and no longer be valid when needed. Shorter token scopes also enhances security.
+
+The following yaml provides a visual breakdown of token scopes. 
+
+``` yaml
+task_groups:
+  - name: task_group_name
+    setup_group:
+      - command:  github.generate_token
+        params:
+          expansion_name: setup_group_token
+    setup_task:
+      - command:  github.generate_token
+        params:
+          expansion_name: setup_task_token
+    tasks:
+      - task1
+      - task2
+
+tasks:
+    - name: task1
+      commands:
+        - command:  github.generate_token
+          params:
+            expansion_name: task1_token
+        - command: shell.exec
+          params:
+          script: |
+            ## ${setup_group_token} is in scope (and one shared token for all tasks in the group)
+            ## setup_task_token is in scope (and a fresh token for this task)
+            ## task1_token is in scope
+        
+    - name: task2
+      commands:
+        - command: shell.exec
+          params:
+          script: |
+            ## setup_group_token is in scope (and one shared token for all tasks in the group)
+            ## setup_task_token is in scope (and a fresh token for this task)
+            ## task1_token is **out of** scope (and will be revoked and the expansion undefined)
+```
 
 ## gotest.parse_files
 
