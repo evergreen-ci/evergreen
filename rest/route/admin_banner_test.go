@@ -54,7 +54,7 @@ func TestSetBanner(t *testing.T) {
 	// test changing the theme
 	body = model.APIBanner{
 		Text:  utility.ToStringPtr("banner is changing again"),
-		Theme: utility.ToStringPtr("important"),
+		Theme: utility.ToStringPtr("IMPORTANT"),
 	}
 	jsonBody, err = json.Marshal(&body)
 	assert.NoError(err)
