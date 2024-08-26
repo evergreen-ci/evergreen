@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -233,7 +234,7 @@ func (t *APIProjectBanner) ToService() model.ProjectBanner {
 
 func (t *APIProjectBanner) BuildFromService(h model.ProjectBanner) {
 	t.Theme = h.Theme
-	t.Text = utility.ToStringPtr(h.Text)
+	t.Text = utility.ToStringPtr(strings.ToLower(h.Text))
 }
 
 func (bd *APIPeriodicBuildDefinition) ToService() model.PeriodicBuildDefinition {
