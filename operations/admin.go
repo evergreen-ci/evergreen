@@ -82,7 +82,7 @@ func adminSetBanner() cli.Command {
 		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().Parent().String(confFlagName)
-			themeName := c.String(themeFlagName)
+			themeName := strings.ToUpper(c.String(themeFlagName))
 			msgContent := c.String(messageFlagName)
 
 			var theme evergreen.BannerTheme
