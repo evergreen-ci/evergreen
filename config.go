@@ -721,23 +721,23 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
 type BannerTheme string
 
 const (
-	Announcement BannerTheme = "announcement"
-	Information  BannerTheme = "information"
-	Warning      BannerTheme = "warning"
-	Important    BannerTheme = "important"
+	Announcement BannerTheme = "ANNOUNCEMENT"
+	Information  BannerTheme = "INFORMATION"
+	Warning      BannerTheme = "WARNING"
+	Important    BannerTheme = "IMPORTANT"
 )
 
 func IsValidBannerTheme(input string) (bool, BannerTheme) {
 	switch input {
 	case "":
 		return true, ""
-	case "announcement":
+	case "ANNOUNCEMENT":
 		return true, Announcement
-	case "information":
+	case "INFORMATION":
 		return true, Information
-	case "warning":
+	case "WARNING":
 		return true, Warning
-	case "important":
+	case "IMPORTANT":
 		return true, Important
 	default:
 		return false, ""

@@ -11,16 +11,19 @@ function setBanner() {
   $("#bannerText").html(jiraLinkify(text, window.JiraHost));
   switch (theme) {
     case "important":
+    case "IMPORTANT":
       $("#bannerIcon").append("<i class='fa fa-exclamation'></i>");
       $("#bannerIcon").addClass("banner-icon-important");
       $("#bannerBack").addClass("banner-text-important");
       break;
     case "warning":
+    case "WARNING":
       $("#bannerIcon").append("<i class='fa fa-exclamation-triangle'></i>");
       $("#bannerIcon").addClass("banner-icon-warning");
       $("#bannerBack").addClass("banner-text-warning");
       break;
     case "information":
+    case "INFORMATION":
       $("#bannerIcon").append("<i class='fa fa-info-circle'></i>");
       $("#bannerIcon").addClass("banner-icon-information");
       $("#bannerBack").addClass("banner-text-information");
