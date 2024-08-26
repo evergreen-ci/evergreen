@@ -557,8 +557,8 @@ within an allotted time, set the key `exec_timeout_secs` on the overall project
 or on a specific task to set the maximum allowed length of execution time. Exec timeout only
 applies to commands that run in `pre`, `setup_group`, `setup_task`, and the main
 task commands; it does not apply to the `post`, `teardown_task`, and
-`teardown_group` blocks. This timeout defaults to 6 hours. `exec_timeout_secs`
-can only be set on the project or on a task as seen in below example. 
+`teardown_group` blocks. This timeout defaults to 6 hours, and cannot be set above 24 hours.
+`exec_timeout_secs` can only be set on the project or on a task as seen in below example. 
 It cannot be set on functions or build variant tasks.
 
 You can also set `exec_timeout_secs` using [timeout.update](Project-Commands#timeoutupdate).

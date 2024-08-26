@@ -176,6 +176,7 @@ var projectSettingsValidators = []projectSettingsValidator{
 	validateContainers,
 	validateProjectLimits,
 	validateIncludeLimits,
+	validateTimeoutLimits,
 }
 
 // These validators have the potential to be very long, and may not be fully run unless specified.
@@ -1014,6 +1015,21 @@ func checkRunOn(runOnHasDistro, runOnHasContainer bool, runOn []string) []Valida
 		}}
 	}
 	return nil
+}
+
+func validateTimeoutLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {
+	errs := ValidationErrors{}
+	if settings.TaskLimits.MaxExecTimeoutSecs > 0 {
+		for _, task := range project.Tasks {
+			if task.ExecTimeoutSecs > settings.TaskLimits.MaxExecTimeoutSecs {
+				errs = append(errs, ValidationError{
+					Message: fmt.Sprintf("task '%s' exec timeout (%d) exceeds maximum limit (%d)", task.Name, task.ExecTimeoutSecs, settings.TaskLimits.MaxExecTimeoutSecs),
+					Level:   Error,
+				})
+			}
+		}
+	}
+	return errs
 }
 
 func validateIncludeLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {
