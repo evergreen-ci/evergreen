@@ -53187,14 +53187,11 @@ func (ec *executionContext) _SleepSchedule_isBetaTester(ctx context.Context, fie
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SleepSchedule_isBetaTester(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -87176,9 +87173,6 @@ func (ec *executionContext) _SleepSchedule(ctx context.Context, sel ast.Selectio
 			}
 		case "isBetaTester":
 			out.Values[i] = ec._SleepSchedule_isBetaTester(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "nextStartTime":
 			out.Values[i] = ec._SleepSchedule_nextStartTime(ctx, field, obj)
 		case "nextStopTime":
