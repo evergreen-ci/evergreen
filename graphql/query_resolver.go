@@ -963,6 +963,41 @@ func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectIde
 	return buildVariantTasks, nil
 }
 
+// Waterfall is the resolver for the waterfall field.
+func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions) (*Waterfall, error) {
+	projectId, err := model.GetIdForProject(options.ProjectIdentifier)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding project with id: '%s'", options.ProjectIdentifier))
+	}
+	limit := model.DefaultWaterfallVersionLimit
+	if utility.FromIntPtr(options.Limit) != 0 {
+		limit = utility.FromIntPtr(options.Limit)
+	}
+	requesters := options.Requesters
+	if len(requesters) == 0 {
+		requesters = evergreen.SystemVersionRequesterTypes
+	}
+
+	opts := model.WaterfallOptions{
+		Limit:      limit,
+		Requesters: requesters,
+	}
+
+	buildVariants, err := model.GetWaterfallBuildVariants(ctx, projectId, opts)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("getting activated versions: %s", err.Error()))
+	}
+
+	bv := []*model.WaterfallBuildVariant{}
+	for _, b := range buildVariants {
+		bv = append(bv, &b)
+	}
+
+	return &Waterfall{
+		BuildVariants: bv,
+	}, nil
+}
+
 // HasVersion is the resolver for the hasVersion field.
 func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, error) {
 	v, err := model.VersionFindOne(model.VersionById(patchID))

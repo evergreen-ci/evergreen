@@ -90,6 +90,9 @@ type Query {
   mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits # Has directive on MainlineCommitsOptions.
   taskNamesForBuildVariant(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW), buildVariant: String!): [String!]
 
+  # waterfall
+  waterfall(options: WaterfallOptions!): Waterfall 
+
   # version
   hasVersion(patchId: String!): Boolean!
   version(versionId: String! @requireProjectAccess(permission: TASKS, access: VIEW)): Version!

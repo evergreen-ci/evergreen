@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+	model1 "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -582,6 +583,16 @@ type VersionTiming struct {
 type VolumeHost struct {
 	VolumeID string `json:"volumeId"`
 	HostID   string `json:"hostId"`
+}
+
+type Waterfall struct {
+	BuildVariants []*model1.WaterfallBuildVariant `json:"buildVariants"`
+}
+
+type WaterfallOptions struct {
+	Limit             *int     `json:"limit,omitempty"`
+	ProjectIdentifier string   `json:"projectIdentifier"`
+	Requesters        []string `json:"requesters,omitempty"`
 }
 
 type AccessLevel string
