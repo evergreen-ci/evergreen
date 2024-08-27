@@ -917,7 +917,7 @@ buildvariants:
         activate: false
     expansions:
       GOROOT: /opt/golang/go1.20
-      notary_client_url: https://github.com/10gen/macos-notary-client/releases/download/v3.8.3/darwin_arm64.zip
+      notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.8.3/darwin_arm64.zip
     display_tasks:
       - name: build-and-push
         execution_tasks:
