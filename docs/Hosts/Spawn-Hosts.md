@@ -164,7 +164,7 @@ Host <your_persistent_dns_name>
     Hostname <your_persistent_dns_name>
 ```
 
-Q: Can I have my host hibernate instead of shut down for the schedule?
+**Q: Can I have my host hibernate instead of shut down for the schedule?**
 
 A: Evergreen's hosts do not currently support hibernation, they can only shut down. This means that the host will lose
 current machine state (e.g. tmux sessions) when it turns off. Supporting hibernation may eventually be explored as
