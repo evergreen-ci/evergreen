@@ -47,6 +47,9 @@ type ParameterManager struct {
 // NewParameterManager creates a new ParameterManager instance.
 func NewParameterManager(pathPrefix string, cachingEnabled bool, ssmClient SSMClient, db *mongo.Database) *ParameterManager {
 	if pathPrefix != "" {
+		// Ensure the prefix has a leading slash to make it an absolute path in
+		// the hierarchy and a trailing slash to separate it from the remaining
+		// name.
 		pathPrefix = fmt.Sprintf("/%s/", strings.TrimPrefix(strings.TrimSuffix(pathPrefix, "/"), "/"))
 	}
 	return &ParameterManager{
