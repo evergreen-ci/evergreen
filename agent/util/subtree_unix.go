@@ -26,10 +26,16 @@ const (
 // bookkeeping up-front.
 func TrackProcess(key string, pid int, logger grip.Journaler) {}
 
+type KillSpawnedProcsOptions struct {
+	Key              string
+	WorkingDirectory string
+	LastKillTime     time.Time
+}
+
 // KillSpawnedProcs kills processes that descend from the agent and waits
 // for them to terminate.
-func KillSpawnedProcs(ctx context.Context, key, workingDir string, logger grip.Journaler) error {
-	pidsToKill, err := getPIDsToKill(ctx, key, workingDir, logger)
+func KillSpawnedProcs(ctx context.Context, opts KillSpawnedProcsOptions, logger grip.Journaler) error {
+	pidsToKill, err := getPIDsToKill(ctx, opts.Key, opts.WorkingDirectory, opts.LastKillTime)
 	if err != nil {
 		return errors.Wrap(err, "getting list of PIDs to kill")
 	}
@@ -56,7 +62,7 @@ func KillSpawnedProcs(ctx context.Context, key, workingDir string, logger grip.J
 
 }
 
-func getPIDsToKill(ctx context.Context, key, workingDir string, logger grip.Journaler) ([]int, error) {
+func getPIDsToKill(ctx context.Context, key, workingDir string, lastKillTime time.Time) ([]int, error) {
 	var pidsToKill []int
 
 	processes, err := psAllProcesses(ctx)
@@ -69,7 +75,9 @@ func getPIDsToKill(ctx context.Context, key, workingDir string, logger grip.Jour
 			continue
 		}
 
-		if !envHasMarkers(key, process.env) && !commandInWorkingDir(process.command, workingDir) {
+		// If the command is not in the working directory, not marked by its environmental variables
+		// and started before the last kill time, we should skip it.
+		if !commandInWorkingDir(process.command, workingDir) && !envHasMarkers(key, process.env) && process.time.Before(lastKillTime) {
 			continue
 		}
 
@@ -150,6 +158,7 @@ func waitForExit(ctx context.Context, pidsToWait []int) ([]int, error) {
 
 type process struct {
 	pid     int
+	time    time.Time
 	command string
 	env     []string
 }
@@ -157,18 +166,19 @@ type process struct {
 func psAllProcesses(ctx context.Context) ([]process, error) {
 	/*
 		Usage of ps for extracting environment variables:
-		e: print the environment of the process (VAR1=FOO VAR2=BAR ...)
-		-A: list *all* processes, not just ones that we own
-		-o: print output according to the given format. We supply 'pid=,command=' to
-		print the pid and command columns without headers
+		e: print the environment of the process (VAR1=FOO VAR2=BAR ...). This does not work on the latest versions
+		of macos (v14).
+		-A: list *all* processes, not just ones that we own.
+		-o: print output according to the given format. We supply 'pid=,lstart=,command=' to
+		print the pid, the time the process started, and command columns without headers.
 
-		Each line of output has a format with the pid, command, and environment, e.g.:
-		1084 foo.sh PATH=/usr/bin/sbin TMPDIR=/tmp LOGNAME=xxx
+		Each line of output has a format with the pid, lstart, command, and environment, e.g.:
+		1084 Sat Aug 24 18:38:00 2024     foo.sh PATH=/usr/bin/sbin TMPDIR=/tmp LOGNAME=xxx
 	*/
 	psCtx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
-	args := []string{"e", "-A", "-o", "pid=,command="}
+	args := []string{"e", "-A", "-o", "pid=,lstart=,command="}
 	out, err := exec.CommandContext(psCtx, "ps", args...).CombinedOutput()
 	if err != nil {
 		// If the context's deadline was exceeded we conclude the process blocked
@@ -188,8 +198,10 @@ func parsePs(psOutput string) []process {
 		if len(line) == 0 {
 			continue
 		}
+		// line format:
+		// pid weekday month day time year command [env]
 		splitLine := strings.Fields(line)
-		if len(splitLine) < 2 {
+		if len(splitLine) < 7 {
 			continue
 		}
 
@@ -199,18 +211,24 @@ func parsePs(psOutput string) []process {
 			continue
 		}
 
-		command := splitLine[1]
+		t, err := time.ParseInLocation("Mon Jan _2 15:04:05 2006", strings.Join(splitLine[1:6], " "), time.Local)
+		if err != nil {
+			continue
+		}
+
+		command := splitLine[6]
 
 		// arguments to the command will be included in the process.env, but it's good enough for our purposes.
 		var env []string
-		if len(splitLine) > 2 {
-			env = splitLine[2:]
+		if len(splitLine) > 7 {
+			env = splitLine[6:]
 		}
 
 		processes = append(processes, process{
 			pid:     pid,
 			command: command,
 			env:     env,
+			time:    t,
 		})
 	}
 

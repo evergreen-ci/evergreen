@@ -9,7 +9,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,6 +35,15 @@ func TestGetPIDsToKill(t *testing.T) {
 		defer os.Setenv(MarkerAgentPID, agentPID)
 	}
 
+	// This command should not be in the list of PID's to clean up.
+	longRunningCommnad := exec.CommandContext(ctx, "sleep", strconv.Itoa(timeoutSecs))
+	require.NoError(t, longRunningCommnad.Start())
+	longRunningCommandPID := longRunningCommnad.Process.Pid
+
+	// This is simulating some other process that is not part of the task and is long running.
+	time.Sleep(2 * time.Second)
+	lastKillTime := time.Now()
+
 	inEvergreenCmd := exec.CommandContext(ctx, "sleep", strconv.Itoa(timeoutSecs))
 	inEvergreenCmd.Env = append(inEvergreenCmd.Env, fmt.Sprintf("%s=true", MarkerInEvergreen))
 	require.NoError(t, inEvergreenCmd.Start())
@@ -49,12 +60,13 @@ func TestGetPIDsToKill(t *testing.T) {
 		// Since the processes run in the background, we have to poll them until
 		// they actually start, at which point they should appear in the listed
 		// PIDs.
-		pids, err := getPIDsToKill(ctx, "", filepath.Dir(fullSleepPath), grip.GetDefaultJournaler())
+		pids, err := getPIDsToKill(ctx, "", filepath.Dir(fullSleepPath), lastKillTime)
 		require.NoError(t, err)
 
 		var (
 			foundInEvergreenPID  bool
 			foundInWorkingDirPID bool
+			foundLongRunningPID  bool // This command should not be in the list of PID's to clean up.
 		)
 		for _, pid := range pids {
 			if pid == inEvergreenPID {
@@ -63,11 +75,21 @@ func TestGetPIDsToKill(t *testing.T) {
 			if pid == inWorkingDirPID {
 				foundInWorkingDirPID = true
 			}
-			if foundInEvergreenPID && foundInWorkingDirPID {
+			if pid == longRunningCommandPID {
+				foundLongRunningPID = true
+			}
+			if foundInEvergreenPID && foundInWorkingDirPID && foundLongRunningPID {
 				break
 			}
 		}
-		return foundInEvergreenPID && foundInWorkingDirPID
+
+		// If this is a macos build, proccesses only linked by environment
+		// variables will not be found and should be excluded.
+		if strings.HasPrefix(runtime.GOOS, "darwin") {
+			foundInEvergreenPID = true
+		}
+
+		return foundInEvergreenPID && foundInWorkingDirPID && !foundLongRunningPID
 	}, timeoutSecs*time.Second, 100*time.Millisecond, "in Evergreen process (pid %d) and in working directory process (pid %d) both should have eventually appeared in the listed PID")
 }
 
@@ -77,7 +99,7 @@ func TestKillSpawnedProcs(t *testing.T) {
 			expiredContext, cancel := context.WithTimeout(ctx, -time.Second)
 			defer cancel()
 
-			err := KillSpawnedProcs(expiredContext, "", "", grip.GetDefaultJournaler())
+			err := KillSpawnedProcs(expiredContext, KillSpawnedProcsOptions{}, grip.GetDefaultJournaler())
 			assert.Error(t, err)
 			assert.Equal(t, ErrPSTimeout, errors.Cause(err))
 		},
@@ -85,12 +107,12 @@ func TestKillSpawnedProcs(t *testing.T) {
 			cancelledContext, cancel := context.WithCancel(ctx)
 			cancel()
 
-			err := KillSpawnedProcs(cancelledContext, "", "", grip.GetDefaultJournaler())
+			err := KillSpawnedProcs(cancelledContext, KillSpawnedProcsOptions{}, grip.GetDefaultJournaler())
 			assert.Error(t, err)
 			assert.NotEqual(t, ErrPSTimeout, errors.Cause(err))
 		},
 		"SucceedsWithNoContextError": func(ctx context.Context, t *testing.T) {
-			err := KillSpawnedProcs(ctx, "", "", grip.GetDefaultJournaler())
+			err := KillSpawnedProcs(ctx, KillSpawnedProcsOptions{}, grip.GetDefaultJournaler())
 			assert.NoError(t, err)
 		},
 	} {
