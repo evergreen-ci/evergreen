@@ -77,7 +77,7 @@ func getPIDsToKill(ctx context.Context, key, workingDir string, lastKillTime tim
 
 		// If the command is from the working directory, has the env markers, or was made after the last kill time
 		// we should kill it.
-		if commandInWorkingDir(process.command, workingDir) || envHasMarkers(key, process.env) && process.time.After(lastKillTime) {
+		if commandInWorkingDir(process.command, workingDir) || envHasMarkers(key, process.env) || process.time.After(lastKillTime) {
 			pidsToKill = append(pidsToKill, process.pid)
 		}
 	}
