@@ -152,10 +152,11 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 	}
 
 	a := &Agent{
-		opts:           opts,
-		comm:           comm,
-		jasper:         jpm,
-		setEndTaskResp: func(*triggerEndTaskResp) {},
+		opts:             opts,
+		comm:             comm,
+		jasper:           jpm,
+		setEndTaskResp:   func(*triggerEndTaskResp) {},
+		lastKillProcTime: time.Now(),
 	}
 
 	a.closers = append(a.closers, closerOp{
