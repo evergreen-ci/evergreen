@@ -119,6 +119,10 @@ func (pm *ParameterManager) Get(ctx context.Context, names ...string) ([]Paramet
 // GetStrict is the same as Get but verifies that all the requested parameter
 // names were found before returning the result.
 func (pm *ParameterManager) GetStrict(ctx context.Context, names ...string) ([]Parameter, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+
 	fullNames := make([]string, 0, len(names))
 	for _, name := range names {
 		fullNames = append(fullNames, pm.getPrefixedName(name))
