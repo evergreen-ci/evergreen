@@ -20,7 +20,7 @@ func TestParameterCache(t *testing.T) {
 				lastUpdated: now,
 			}
 			pc.put(cp)
-			rec := parameterRecord{
+			rec := ParameterRecord{
 				Name:        cp.name,
 				LastUpdated: now,
 			}
@@ -43,7 +43,7 @@ func TestParameterCache(t *testing.T) {
 			}
 			pc.put(newerCachedParam)
 
-			rec := parameterRecord{
+			rec := ParameterRecord{
 				Name:        "name",
 				LastUpdated: now.Add(-time.Hour),
 			}
@@ -66,7 +66,7 @@ func TestParameterCache(t *testing.T) {
 			}
 			pc.put(olderCachedParam)
 
-			rec := parameterRecord{
+			rec := ParameterRecord{
 				Name:        "name",
 				LastUpdated: now.Add(-time.Hour),
 			}
@@ -82,7 +82,7 @@ func TestParameterCache(t *testing.T) {
 				lastUpdated: now,
 			}
 			pc.put(cp)
-			rec := parameterRecord{
+			rec := ParameterRecord{
 				Name:        cp.name,
 				LastUpdated: now.Add(time.Hour),
 			}
@@ -109,9 +109,9 @@ func TestParameterCache(t *testing.T) {
 					lastUpdated: now,
 				},
 			}
-			recs := make([]parameterRecord, 0, len(cps))
+			recs := make([]ParameterRecord, 0, len(cps))
 			for i := 0; i < len(cps); i++ {
-				recs = append(recs, parameterRecord{
+				recs = append(recs, ParameterRecord{
 					Name:        fmt.Sprintf(cps[i].name),
 					LastUpdated: now,
 				})
@@ -140,10 +140,10 @@ func TestParameterCache(t *testing.T) {
 			pc.put(cp0)
 			pc.put(cp1)
 
-			found, notFound := pc.get(parameterRecord{
+			found, notFound := pc.get(ParameterRecord{
 				Name:        cp0.name,
 				LastUpdated: now.Add(time.Hour),
-			}, parameterRecord{
+			}, ParameterRecord{
 				Name:        cp1.name,
 				LastUpdated: now,
 			})
@@ -151,7 +151,7 @@ func TestParameterCache(t *testing.T) {
 			assert.ElementsMatch(t, []string{cp0.name}, notFound, "should return an entry when parameter record indicates it's up-to-date")
 		},
 		"GetParameterNotInCacheReturnsNotFound": func(t *testing.T, pc *parameterCache) {
-			found, notFound := pc.get(parameterRecord{
+			found, notFound := pc.get(ParameterRecord{
 				Name:        "nonexistent",
 				LastUpdated: time.Now(),
 			})
@@ -182,7 +182,7 @@ func TestParameterCache(t *testing.T) {
 				go func() {
 					defer wg.Done()
 					<-startOps
-					found, notFound := pc.get(parameterRecord{
+					found, notFound := pc.get(ParameterRecord{
 						Name:        name,
 						LastUpdated: now.Add(100 * time.Hour),
 					})
@@ -195,7 +195,7 @@ func TestParameterCache(t *testing.T) {
 
 			wg.Wait()
 
-			found, notFound := pc.get(parameterRecord{
+			found, notFound := pc.get(ParameterRecord{
 				Name:        name,
 				LastUpdated: now,
 			})

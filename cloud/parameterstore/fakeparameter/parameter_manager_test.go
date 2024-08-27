@@ -3,19 +3,13 @@ package fakeparameter
 import (
 	"context"
 	"fmt"
-<<<<<<< HEAD
-=======
 	"sync"
->>>>>>> d3028f45e (DEVPROD-9403: create parameter manager and cache)
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/db"
-<<<<<<< HEAD
-=======
 	"github.com/evergreen-ci/utility"
->>>>>>> d3028f45e (DEVPROD-9403: create parameter manager and cache)
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,11 +27,7 @@ func TestParameterManager(t *testing.T) {
 		dbParam, err := FindOneID(ctx, p.Name)
 		require.NoError(t, err)
 		require.NotZero(t, dbParam)
-<<<<<<< HEAD
-		assert.Equal(t, p.Name, dbParam.ID)
-=======
 		assert.Equal(t, p.Name, dbParam.Name)
->>>>>>> d3028f45e (DEVPROD-9403: create parameter manager and cache)
 		assert.Equal(t, p.Value, dbParam.Value)
 	}
 	// checkParam checks that the input parameter matches the expected values
@@ -54,7 +44,9 @@ func TestParameterManager(t *testing.T) {
 		"CachingDisabled": func() *parameterstore.ParameterManager {
 			return parameterstore.NewParameterManager("prefix", false, NewFakeSSMClient(), evergreen.GetEnvironment().DB())
 		},
-		// TODO (DEVPROD-9403): test same conditions pass with caching enabled.
+		"CachingEnabled": func() *parameterstore.ParameterManager {
+			return parameterstore.NewParameterManager("prefix", true, NewFakeSSMClient(), evergreen.GetEnvironment().DB())
+		},
 	} {
 		t.Run(managerTestName, func(t *testing.T) {
 			for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, pm *parameterstore.ParameterManager){
@@ -245,8 +237,6 @@ func TestParameterManager(t *testing.T) {
 			}
 		})
 	}
-<<<<<<< HEAD
-=======
 
 	t.Run("ConcurrentReadsAndWritesAreSafeAndReachEventualConsistency", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -309,5 +299,4 @@ func TestParameterManager(t *testing.T) {
 		// it returned a stale value.
 		assert.Equal(t, params[0].Value, dbParam.Value, "value returned from Get should agree with persisted value even after several concurrent reads/writes")
 	})
->>>>>>> d3028f45e (DEVPROD-9403: create parameter manager and cache)
 }

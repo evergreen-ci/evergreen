@@ -12,20 +12,19 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// collection holds metadata information about parameters.
-const collection = "parameter_records"
+// Collection holds metadata information about parameters.
+const Collection = "parameter_records"
 
 var (
-	nameKey        = bsonutil.MustHaveTag(parameterRecord{}, "Name")
-	lastUpdatedKey = bsonutil.MustHaveTag(parameterRecord{}, "LastUpdated")
+	nameKey        = bsonutil.MustHaveTag(ParameterRecord{}, "Name")
+	lastUpdatedKey = bsonutil.MustHaveTag(ParameterRecord{}, "LastUpdated")
 )
 
-// bumpParameterRecord bumps the parameter record to indicate that the parameter
+// BumpParameterRecord bumps the parameter record to indicate that the parameter
 // was changed. information. This will not modify if the record exists and its
 // most recent update is more recent than lastUpdated.
-// kim: TODO: test
-func bumpParameterRecord(ctx context.Context, db *mongo.Database, name string, lastUpdated time.Time) error {
-	res, err := db.Collection(collection).UpdateOne(ctx, bson.M{
+func BumpParameterRecord(ctx context.Context, db *mongo.Database, name string, lastUpdated time.Time) error {
+	res, err := db.Collection(Collection).UpdateOne(ctx, bson.M{
 		nameKey: name,
 		// Ensure that the latest parameter update wins (i.e. the update can
 		// only bump it forward in time and it can never go backwards).
@@ -41,16 +40,16 @@ func bumpParameterRecord(ctx context.Context, db *mongo.Database, name string, l
 	if err != nil {
 		return err
 	}
-	if res.ModifiedCount == 0 {
-		return errors.Errorf("parameter record '%s' not updated", name)
+	if res.ModifiedCount == 0 && res.UpsertedCount == 0 {
+		return errors.Errorf("parameter record '%s' not upserted or modified", name)
 	}
 	return nil
 }
 
-// findOneID finds one parameter record by its parameter name.
-func findOneID(ctx context.Context, db *mongo.Database, name string) (*parameterRecord, error) {
-	var p parameterRecord
-	err := db.Collection(collection).FindOne(ctx, bson.M{nameKey: name}).Decode(&p)
+// FindOneID finds one parameter record by its parameter name.
+func FindOneID(ctx context.Context, db *mongo.Database, name string) (*ParameterRecord, error) {
+	var p ParameterRecord
+	err := db.Collection(Collection).FindOne(ctx, bson.M{nameKey: name}).Decode(&p)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -60,14 +59,13 @@ func findOneID(ctx context.Context, db *mongo.Database, name string) (*parameter
 	return &p, nil
 }
 
-// findByIDs finds all parameter records by their parameter names.
-// kim: TODO: test
-func findByIDs(ctx context.Context, db *mongo.Database, names ...string) ([]parameterRecord, error) {
+// FindByIDs finds all parameter records by their parameter names.
+func FindByIDs(ctx context.Context, db *mongo.Database, names ...string) ([]ParameterRecord, error) {
 	if len(names) == 0 {
 		return nil, nil
 	}
-	params := []parameterRecord{}
-	cur, err := db.Collection(collection).Find(ctx, bson.M{nameKey: bson.M{"$in": names}})
+	params := []ParameterRecord{}
+	cur, err := db.Collection(Collection).Find(ctx, bson.M{nameKey: bson.M{"$in": names}})
 	if err != nil {
 		return nil, err
 	}

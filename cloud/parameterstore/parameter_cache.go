@@ -47,7 +47,7 @@ func (cp *cachedParameter) export() Parameter {
 // get gets the cached parameters for the given parameter records. It returns
 // the cached parameter only if the parameter record indicates that the cached
 // parameter is up-to-date.
-func (pc *parameterCache) get(records ...parameterRecord) (found []cachedParameter, notFound []string) {
+func (pc *parameterCache) get(records ...ParameterRecord) (found []cachedParameter, notFound []string) {
 	pc.mu.RLock()
 	defer pc.mu.RUnlock()
 
