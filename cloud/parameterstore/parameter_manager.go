@@ -104,15 +104,6 @@ func (pm *ParameterManager) Put(ctx context.Context, name, value string) (*Param
 // Get retrieves the parameters given by the provided name(s). If some
 // parameters cannot be found, they will not be returned. Use GetStrict to both
 // get the parameters and validate that all the requested parameters were found.
-// kim: TODO: test externally (and verify cache contents during testing):
-// - Getting nonexistent parameter (get nonexistent)
-// - Getting partially nonexistent parameters (get existing and nonexistent)
-// - Getting partially cached parameters (get existing + uncached, existing +
-// cached, and nonexistent)
-// - Getting parameter that was cached but later deleted (put, get, del, get)
-// - Getting parameter that was cached, deleted, and then later recreated (put,
-// get, del, put, get)
-// - Getting parameter that was cached multiple times (put, get, put, get)
 func (pm *ParameterManager) Get(ctx context.Context, names ...string) ([]Parameter, error) {
 	if len(names) == 0 {
 		return nil, nil
