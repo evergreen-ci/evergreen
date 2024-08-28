@@ -100,6 +100,7 @@ type Environment interface {
 	Context() (context.Context, context.CancelFunc)
 
 	Session() db.Session
+	ContextSession(ctx context.Context) db.Session
 	Client() *mongo.Client
 	DB() *mongo.Database
 	SharedDB() *mongo.Database

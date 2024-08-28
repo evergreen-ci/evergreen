@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"time"
@@ -26,6 +27,7 @@ var (
 
 type SessionFactory interface {
 	GetSession() (db.Session, db.Database, error)
+	GetContextSession(context.Context) (db.Session, db.Database, error)
 }
 
 type shimFactoryImpl struct {
@@ -47,6 +49,19 @@ func (s *shimFactoryImpl) GetSession() (db.Session, db.Database, error) {
 	}
 
 	session := s.env.Session()
+	if session == nil {
+		return nil, nil, errors.New("session is not defined")
+	}
+
+	return session, session.DB(s.db), nil
+}
+
+func (s *shimFactoryImpl) GetContextSession(ctx context.Context) (db.Session, db.Database, error) {
+	if s.env == nil {
+		return nil, nil, errors.New("undefined environment")
+	}
+
+	session := s.env.ContextSession(ctx)
 	if session == nil {
 		return nil, nil, errors.New("session is not defined")
 	}
@@ -297,7 +312,6 @@ func WriteGridFile(fsPrefix, name string, source io.Reader) error {
 	env := evergreen.GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
-	// TODO-mongo-driver
 	bucket, err := pail.NewGridFSBucketWithClient(ctx, env.Client(), pail.GridFSOptions{
 		Database: env.DB().Name(),
 		Name:     fsPrefix,
@@ -354,7 +368,10 @@ func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 // AggregateWithMaxTime runs aggregate and specifies a max query time which
 // ensures the query won't go on indefinitely when the request is cancelled.
 func AggregateWithMaxTime(collection string, pipeline interface{}, out interface{}, maxTime time.Duration) error {
-	session, database, err := GetGlobalSessionFactory().GetSession()
+	ctx, cancel := context.WithTimeout(context.Background(), maxTime)
+	defer cancel()
+
+	session, database, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "establishing DB connection")
 		grip.Error(err)
@@ -362,6 +379,5 @@ func AggregateWithMaxTime(collection string, pipeline interface{}, out interface
 	}
 	defer session.Close()
 
-	// TODO-mongo-driver: re-implement maxtime by passing context to the GetSession above.
 	return database.C(collection).Pipe(pipeline).All(out)
 }
