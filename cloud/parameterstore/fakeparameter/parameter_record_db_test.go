@@ -124,7 +124,9 @@ func TestParameterRecordFindByIDs(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment){
 		"ReturnsNoResultsWhenNotFound": func(ctx context.Context, t *testing.T, env *mock.Environment) {
-			parameterstore.FindByIDs(ctx, env.DB(), "nonexistent0", "nonexistent1")
+			foundParams, err := parameterstore.FindByIDs(ctx, env.DB(), "nonexistent0", "nonexistent1")
+			assert.NoError(t, err)
+			assert.Empty(t, foundParams)
 		},
 		"ReturnsPartiallyFoundRecords": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 			const name = "name"
