@@ -9,6 +9,11 @@ import (
 	"strings"
 )
 
+const (
+	macGOOS       = "darwin"
+	macMinVersion = "10.14"
+)
+
 func main() {
 	var (
 		arch      string
@@ -77,8 +82,21 @@ func main() {
 	if tmpdir := os.Getenv("TMPDIR"); tmpdir != "" {
 		cmd.Env = append(cmd.Env, "TMPDIR="+strings.Replace(tmpdir, `\`, `\\`, -1))
 	}
-	// Disable cgo so that the compiled binary is statically linked.
-	cmd.Env = append(cmd.Env, "CGO_ENABLED=0")
+	// Disable cgo so that the compiled binary is statically linked. This is useful for systems lacking
+	// libc support. macOS is excluded because it will have libc support and cgo is needed for gopsutil on macOS.
+	// Always set it explicitly because the default varies. See https://pkg.go.dev/cmd/cgo#hdr-Using_cgo_with_the_go_command.
+	if system == macGOOS {
+		cmd.Env = append(cmd.Env, "CGO_ENABLED=1")
+		// Specify the minimum OS version the build should target. This is necessary
+		// for clang to produce a binary that can run on older versions of macOS.
+		// This method for passing build arguments through cgo to clang is suggested
+		// at https://github.com/golang/go/issues/18400#issuecomment-270414574.
+		cmd.Env = append(cmd.Env, fmt.Sprintf("CGO_LDFLAGS=-mmacosx-version-min=%s", macMinVersion))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("CGO_CFLAGS=-mmacosx-version-min=%s", macMinVersion))
+		cmd.Args = append(cmd.Args, "-installsuffix=evergreen")
+	} else {
+		cmd.Env = append(cmd.Env, "CGO_ENABLED=0")
+	}
 
 	goos := "GOOS=" + system
 	goarch := "GOARCH=" + arch
