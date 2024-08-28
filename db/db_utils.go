@@ -362,5 +362,6 @@ func AggregateWithMaxTime(collection string, pipeline interface{}, out interface
 	}
 	defer session.Close()
 
-	return database.C(collection).Pipe(pipeline).MaxTime(maxTime).All(out)
+	// TODO-mongo-driver: re-implement maxtime by passing context to the GetSession above.
+	return database.C(collection).Pipe(pipeline).All(out)
 }

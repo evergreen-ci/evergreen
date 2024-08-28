@@ -88,6 +88,7 @@ func FindOneQ(collection string, q Q, out interface{}) error {
 	}
 	defer session.Close()
 
+	// TODO-mongo-driver: re-implement maxtime by passing context to the GetSession above.
 	return db.C(collection).
 		Find(q.filter).
 		Select(q.projection).
@@ -95,7 +96,7 @@ func FindOneQ(collection string, q Q, out interface{}) error {
 		Skip(q.skip).
 		Limit(1).
 		Hint(q.hint).
-		MaxTime(q.maxTime).
+		// MaxTime(q.maxTime).
 		One(out)
 }
 
@@ -107,6 +108,7 @@ func FindAllQ(collection string, q Q, out interface{}) error {
 	}
 	defer session.Close()
 
+	// TODO-mongo-driver: same as above
 	return db.C(collection).
 		Find(q.filter).
 		Select(q.projection).
@@ -114,7 +116,7 @@ func FindAllQ(collection string, q Q, out interface{}) error {
 		Skip(q.skip).
 		Limit(q.limit).
 		Hint(q.hint).
-		MaxTime(q.maxTime).
+		// MaxTime(q.maxTime).
 		All(out)
 }
 

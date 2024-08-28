@@ -391,7 +391,28 @@ func (e *envState) createRemoteQueues(ctx context.Context, tracer trace.Tracer) 
 	if url == "" {
 		url = DefaultAmboyDatabaseURL
 	}
+<<<<<<< HEAD
 	client, err := mongo.Connect(ctx, e.settings.Database.mongoOptions(url))
+=======
+
+	opts := options.Client().
+		ApplyURI(url).
+		SetTimeout(10 * time.Second).
+		SetConnectTimeout(5 * time.Second).
+		SetReadPreference(readpref.Primary()).
+		SetReadConcern(e.settings.Database.ReadConcernSettings.Resolve()).
+		SetWriteConcern(e.settings.Database.WriteConcernSettings.Resolve()).
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false)))
+
+	if e.settings.Database.AWSAuthEnabled {
+		opts.SetAuth(options.Credential{
+			AuthMechanism: awsAuthMechanism,
+			AuthSource:    mongoExternalAuthSource,
+		})
+	}
+
+	client, err := mongo.Connect(opts)
+>>>>>>> a8bf6d028 (feat: update libraries to mostly use mongo-driver v2 beta)
 	if err != nil {
 		return errors.Wrap(err, "connecting to the Amboy database")
 	}

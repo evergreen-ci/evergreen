@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
 )
 
 func init() {
@@ -71,8 +70,8 @@ func TestDeleteTestLogsWithLimit(t *testing.T) {
 	})
 	t.Run("QueryValidation", func(t *testing.T) {
 		require.NoError(t, db.Clear(TestLogCollection))
-		require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(now.Add(time.Hour)).Hex()}))
-		require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(now.Add(-time.Hour)).Hex()}))
+		require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": bson.NewObjectIDFromTimestamp(now.Add(time.Hour)).Hex()}))
+		require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": bson.NewObjectIDFromTimestamp(now.Add(-time.Hour)).Hex()}))
 
 		num, err := db.Count(TestLogCollection, bson.M{})
 		require.NoError(t, err)
