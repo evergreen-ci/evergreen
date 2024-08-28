@@ -178,7 +178,6 @@ func getAmboyQueueOptions(dbURI string, db *mongo.Database) queue.MongoDBQueueOp
 	dbOpts := queue.DefaultMongoDBOptions()
 	dbOpts.URI = dbURI
 	dbOpts.DB = db.Name()
-	// TODO-mongo-driver
 	dbOpts.Client = db.Client()
 	dbOpts.Collection = evergreen.DefaultAmboyQueueName
 	dbOpts.Format = amboy.BSON2

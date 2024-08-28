@@ -367,6 +367,22 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 	ctx, span := tracer.Start(ctx, "InitDB")
 	defer span.End()
 
+<<<<<<< HEAD
+=======
+	opts := options.Client().ApplyURI(settings.Url).SetWriteConcern(settings.WriteConcernSettings.Resolve()).
+		SetReadConcern(settings.ReadConcernSettings.Resolve()).
+		SetTimeout(5 * time.Minute).
+		SetConnectTimeout(5 * time.Second).
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
+
+	if settings.AWSAuthEnabled {
+		opts.SetAuth(options.Credential{
+			AuthMechanism: awsAuthMechanism,
+			AuthSource:    mongoExternalAuthSource,
+		})
+	}
+
+>>>>>>> d4d685a79 (fix: remove todo comments)
 	var err error
 	e.client, err = mongo.Connect(settings.mongoOptions(settings.Url))
 	if err != nil {
@@ -1064,6 +1080,13 @@ func (e *envState) Session() db.Session {
 	defer e.mu.RUnlock()
 
 	return db.WrapClient(e.ctx, e.client).Clone()
+}
+
+func (e *envState) ContextSession(ctx context.Context) db.Session {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return db.WrapClient(ctx, e.client).Clone()
 }
 
 func (e *envState) ClientConfig() *ClientConfig {

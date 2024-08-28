@@ -93,7 +93,6 @@ func (e *Environment) Configure(ctx context.Context) error {
 		ApplyURI(e.EvergreenSettings.Database.Url).
 		SetWriteConcern(e.EvergreenSettings.Database.WriteConcernSettings.Resolve()).
 		SetReadConcern(e.EvergreenSettings.Database.ReadConcernSettings.Resolve()).
-		// TODO-mongo-driver
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false))))
 
 	if err != nil {

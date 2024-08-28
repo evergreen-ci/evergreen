@@ -20,7 +20,6 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/birch"
 
-	// TODO-mongo-driver
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"

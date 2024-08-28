@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 
-	// TODO-mongo-driver
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"

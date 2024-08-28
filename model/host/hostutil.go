@@ -14,7 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	// TODO-mongo-driver
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/userdata"
