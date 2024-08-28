@@ -386,6 +386,10 @@ Parameters:
 
 This command will also send an external ID in the form
 `<project_id>-<requester>`. This cannot be modified by the user.
+Evergreen's account ID can be found on the 
+[wiki page](https://wiki.corp.mongodb.com/display/SYSENG/AWS+Accounts+Overview) 
+under `Kernel-Build` and can be used in a trust policy to allow only Evergreen 
+to assume your roles.
 
 ## expansions.update
 
