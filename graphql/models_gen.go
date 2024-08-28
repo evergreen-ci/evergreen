@@ -587,6 +587,7 @@ type VolumeHost struct {
 
 type Waterfall struct {
 	BuildVariants []*model1.WaterfallBuildVariant `json:"buildVariants"`
+	Versions      []*model.APIVersion             `json:"versions"`
 }
 
 type WaterfallOptions struct {

@@ -983,9 +983,23 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		Requesters: requesters,
 	}
 
-	buildVariants, err := model.GetWaterfallBuildVariants(ctx, projectId, opts)
+	versions, err := model.GetWaterfallVersions(ctx, projectId, opts)
+
+	// TODO DEVPROD-10179: Add check to ensure each version has tasks that match filter...
+	// Something like this: https://github.com/evergreen-ci/evergreen/blob/bf8f12ec2eefe61f0cf9bcc594924c7be8f91d1b/graphql/query_resolver.go#L869-L938
+	// We should also be able to add a check to the version's build_variant_status field in case of a build variant filter (TODO DEVPROD-10178).
+	// For now, without filters it is guaranteed that `limit` matching versions have been returned.
+
+	buildVariants, err := model.GetWaterfallBuildVariants(ctx, projectId, versions)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("getting activated versions: %s", err.Error()))
+	}
+
+	apiVersions := []*restModel.APIVersion{}
+	for _, v := range versions {
+		apiVersion := restModel.APIVersion{}
+		apiVersion.BuildFromService(v)
+		apiVersions = append(apiVersions, &apiVersion)
 	}
 
 	bv := []*model.WaterfallBuildVariant{}
@@ -995,6 +1009,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	return &Waterfall{
 		BuildVariants: bv,
+		Versions:      apiVersions,
 	}, nil
 }
 

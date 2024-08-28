@@ -25,4 +25,5 @@ type WaterfallBuildVariant {
 
 type Waterfall {
   buildVariants: [WaterfallBuildVariant!]!
+  versions: [Version!]!
 }
