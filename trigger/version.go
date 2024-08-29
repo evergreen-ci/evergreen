@@ -163,7 +163,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		finishTime = time.Now() // this might be true for GitHub check statuses
 	}
 	slackColor := evergreenFailColor
-	if evergreen.IsSuccessfulVersionStatus(data.PastTenseStatus) {
+	if data.PastTenseStatus == evergreen.VersionSucceeded {
 		data.PastTenseStatus = "succeeded"
 		slackColor = evergreenSuccessColor
 		data.githubState = message.GithubStateSuccess
@@ -240,7 +240,7 @@ func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification
 }
 
 func (t *versionTriggers) versionSuccess(sub *event.Subscription) (*notification.Notification, error) {
-	if !evergreen.IsSuccessfulVersionStatus(t.data.Status) || t.event.EventType == event.VersionChildrenCompletion {
+	if !(t.data.Status == evergreen.VersionSucceeded) || t.event.EventType == event.VersionChildrenCompletion {
 		return nil, nil
 	}
 
@@ -301,7 +301,7 @@ func (t *versionTriggers) versionFamilyFailure(sub *event.Subscription) (*notifi
 }
 
 func (t *versionTriggers) versionFamilySuccess(sub *event.Subscription) (*notification.Notification, error) {
-	if !evergreen.IsSuccessfulVersionStatus(t.data.Status) || t.event.EventType != event.VersionChildrenCompletion {
+	if !(t.data.Status == evergreen.VersionSucceeded) || t.event.EventType != event.VersionChildrenCompletion {
 		return nil, nil
 	}
 

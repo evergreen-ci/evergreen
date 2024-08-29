@@ -101,7 +101,7 @@ func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Not
 			return nil, nil
 		}
 
-		successOutcome := evergreen.IsSuccessfulVersionStatus(ps) && evergreen.IsSuccessfulVersionStatus(t.data.Status)
+		successOutcome := ps == evergreen.VersionSucceeded && t.data.Status == evergreen.VersionSucceeded
 		failureOutcome := (ps == evergreen.VersionFailed) && (t.data.Status == evergreen.VersionFailed)
 		anyOutcome := ps == patchAllOutcomes
 
@@ -168,7 +168,7 @@ func finalizeChildPatch(sub *event.Subscription) error {
 }
 
 func (t *patchTriggers) patchSuccess(sub *event.Subscription) (*notification.Notification, error) {
-	if !evergreen.IsSuccessfulVersionStatus(t.data.Status) || t.event.EventType == event.PatchChildrenCompletion {
+	if !(t.data.Status == evergreen.VersionSucceeded) || t.event.EventType == event.PatchChildrenCompletion {
 		return nil, nil
 	}
 
@@ -261,7 +261,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		finishTime = time.Now()
 	}
 
-	if evergreen.IsSuccessfulVersionStatus(collectiveStatus) {
+	if collectiveStatus == evergreen.VersionSucceeded {
 		data.PastTenseStatus = "succeeded"
 		slackColor = evergreenSuccessColor
 		data.githubState = message.GithubStateSuccess

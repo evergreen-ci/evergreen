@@ -173,7 +173,7 @@ func (j *githubStatusRefreshJob) sendChildPatchStatuses() error {
 
 func getGithubStateAndDescriptionForPatch(p *patch.Patch) (message.GithubState, string) {
 	var state message.GithubState
-	if evergreen.IsSuccessfulVersionStatus(p.Status) {
+	if p.Status == evergreen.VersionSucceeded {
 		state = message.GithubStateSuccess
 	} else if p.Status == evergreen.VersionFailed {
 		state = message.GithubStateFailure
