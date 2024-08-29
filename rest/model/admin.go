@@ -325,7 +325,6 @@ type APIAmboyConfig struct {
 	GroupBackgroundCreateFrequencyMinutes int                        `json:"group_background_create_frequency"`
 	GroupPruneFrequencyMinutes            int                        `json:"group_prune_frequency"`
 	GroupTTLMinutes                       int                        `json:"group_ttl"`
-	RequireRemotePriority                 bool                       `json:"require_remote_priority"`
 	LockTimeoutMinutes                    int                        `json:"lock_timeout_minutes"`
 	SampleSize                            int                        `json:"sample_size"`
 	Retry                                 APIAmboyRetryConfig        `json:"retry,omitempty"`

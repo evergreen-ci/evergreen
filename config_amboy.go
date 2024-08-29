@@ -73,7 +73,6 @@ var (
 	amboyGroupBackgroundCreateFrequencyMinutesKey = bsonutil.MustHaveTag(AmboyConfig{}, "GroupBackgroundCreateFrequencyMinutes")
 	amboyGroupPruneFrequencyMinutesKey            = bsonutil.MustHaveTag(AmboyConfig{}, "GroupPruneFrequencyMinutes")
 	amboyGroupTTLMinutesKey                       = bsonutil.MustHaveTag(AmboyConfig{}, "GroupTTLMinutes")
-	amboyRequireRemotePriorityKey                 = bsonutil.MustHaveTag(AmboyConfig{}, "RequireRemotePriority")
 	amboyLockTimeoutMinutesKey                    = bsonutil.MustHaveTag(AmboyConfig{}, "LockTimeoutMinutes")
 	amboySampleSizeKey                            = bsonutil.MustHaveTag(AmboyConfig{}, "SampleSize")
 	amboyRetryKey                                 = bsonutil.MustHaveTag(AmboyConfig{}, "Retry")
