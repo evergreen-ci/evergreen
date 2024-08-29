@@ -779,6 +779,10 @@ func TestRenameUser(t *testing.T) {
 			assert.Equal(t, newUsrFromDb.PatchNumber, 8)
 			assert.Equal(t, 12, newUsrFromDb.Settings.GithubUser.UID)
 
+			hosts, err := host.Find(ctx, host.ByUserWithUnterminatedStatus("new_me"))
+			assert.NoError(t, err)
+			assert.Len(t, hosts, 1)
+
 			volumes, err := host.FindVolumesByUser("new_me")
 			assert.NoError(t, err)
 			assert.Len(t, volumes, 1)
