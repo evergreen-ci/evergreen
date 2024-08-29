@@ -306,12 +306,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(requireUser, submitPatch).Handler(as.deletePatchModule).Delete()
 	app.PrefixRoute("/patches").Route("/{patchId:\\w+}/modules").Wrap(requireUser, submitPatch).Handler(as.updatePatchModule).Post()
 
-	// SpawnHosts
-	app.Route().Prefix("/spawn").Wrap(requireUser).Route("/{instance_id:[\\w_\\-\\@]+}/").Handler(as.hostInfo).Get()
-	app.Route().Prefix("/spawn").Wrap(requireUser).Route("/{instance_id:[\\w_\\-\\@]+}/").Handler(as.modifyHost).Post()
-	app.Route().Prefix("/spawns").Wrap(requireUser).Route("/").Handler(as.requestHost).Put()
-	app.Route().Prefix("/spawns").Wrap(requireUser).Route("/{user}/").Handler(as.hostsInfoForUser).Get()
-	app.Route().Prefix("/spawns").Wrap(requireUser).Route("/distros/list/").Handler(as.listDistros).Get()
+	// Dockerfile
 	app.AddRoute("/dockerfile").Wrap().Handler(getDockerfile).Get()
 
 	return app
