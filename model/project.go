@@ -1214,13 +1214,33 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 // FindTaskGroupForTask returns a specific task group from a project
 // that contains the given task.
 func (p *Project) FindTaskGroupForTask(bvName, taskName string) *TaskGroup {
+	// First, map all task groups that contain the given task.
+	tgWithTask := map[string]TaskGroup{}
 	for _, tg := range p.TaskGroups {
 		for _, t := range tg.Tasks {
 			if t == taskName {
-				return &tg
+				tgWithTask[tg.Name] = tg
 			}
 		}
 	}
+
+	// Second, find the build variant in question.
+	var bv BuildVariant
+	for _, pbv := range p.BuildVariants {
+		if pbv.Name == bvName {
+			bv = pbv
+			break
+		}
+	}
+
+	// Third, loop through the build variant's task units.
+	for _, t := range bv.Tasks {
+		// Check if the task group is in the map of task groups with the task.
+		if tg, ok := tgWithTask[t.Name]; ok {
+			return &tg
+		}
+	}
+
 	return nil
 }
 
