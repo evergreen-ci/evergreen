@@ -531,15 +531,6 @@ func ByPreviousCommit(buildVariant, displayName, project, requester string, orde
 
 // ByRevisionOrderNumber returns a query for a given task with requester,
 // build variant, display name, project and revision order number (aka 'order').
-func ByRevisionOrderNumber(buildVariant, displayName, project, requester string, order int) bson.M {
-	return bson.M{
-		RequesterKey:           requester,
-		BuildVariantKey:        buildVariant,
-		DisplayNameKey:         displayName,
-		ProjectKey:             project,
-		RevisionOrderNumberKey: order,
-	}
-}
 
 func ByVersionsForNameAndVariant(versions, displayNames []string, buildVariant string) bson.M {
 	return bson.M{

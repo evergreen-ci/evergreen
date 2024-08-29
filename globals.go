@@ -432,14 +432,6 @@ var TaskNonGenericFailureStatuses = []string{
 	TaskSystemTimedOut,
 }
 
-var TaskSystemFailures = []string{
-	TaskSystemFailed,
-	TaskTimedOut,
-	TaskSystemUnresponse,
-	TaskSystemTimedOut,
-	TaskTestTimedOut,
-}
-
 // TaskFailureStatuses represent all the ways that a completed task can fail,
 // inclusive of display statuses such as system failures.
 var TaskFailureStatuses = append([]string{TaskFailed}, TaskNonGenericFailureStatuses...)
@@ -499,9 +491,6 @@ const (
 	// ModifySpawnHostManual means the spawn host is being modified by the
 	// automatic sleep schedule.
 	ModifySpawnHostSleepSchedule ModifySpawnHostSource = "sleep_schedule"
-	// ModifySpawnHostManual means the spawn host is being modified by a
-	// user-owned sleep script.
-	ModifySpawnHostSleepScript ModifySpawnHostSource = "script"
 )
 
 // Common OTEL constants and attribute keys
@@ -658,19 +647,6 @@ var (
 
 	ProviderContainer = []string{
 		ProviderNameDocker,
-	}
-
-	// ProviderSpotEc2Type includes all cloud provider types that manage EC2
-	// spot instances.
-	ProviderSpotEc2Type = []string{
-		ProviderNameEc2Fleet,
-	}
-
-	// ProviderEc2Type includes all cloud provider types that manage EC2
-	// instances.
-	ProviderEc2Type = []string{
-		ProviderNameEc2Fleet,
-		ProviderNameEc2OnDemand,
 	}
 )
 
@@ -1195,13 +1171,13 @@ var (
 	PermissionDistroCreate  = "distro_create"
 	PermissionRoleModify    = "modify_roles"
 	// Project permissions.
-	PermissionProjectSettings  = "project_settings"
-	PermissionProjectVariables = "project_variables"
-	PermissionGitTagVersions   = "project_git_tags"
-	PermissionTasks            = "project_tasks"
-	PermissionAnnotations      = "project_task_annotations"
-	PermissionPatches          = "project_patches"
-	PermissionLogs             = "project_logs"
+	PermissionProjectSettings = "project_settings"
+
+	PermissionGitTagVersions = "project_git_tags"
+	PermissionTasks          = "project_tasks"
+	PermissionAnnotations    = "project_task_annotations"
+	PermissionPatches        = "project_patches"
+	PermissionLogs           = "project_logs"
 	// Distro permissions.
 	PermissionDistroSettings = "distro_settings"
 	PermissionHosts          = "distro_hosts"

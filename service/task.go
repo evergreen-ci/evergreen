@@ -32,8 +32,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-var NumTasksToSearchForTestNames = 10
-
 type uiTaskData struct {
 	Id                   string                  `json:"id"`
 	DisplayName          string                  `json:"display_name"`

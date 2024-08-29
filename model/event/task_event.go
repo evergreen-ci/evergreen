@@ -204,9 +204,6 @@ func LogManyTasksBlocked(ctx context.Context, data []TaskBlockedData) {
 }
 
 // LogTaskBlocked updates the DB with a task blocked event.
-func LogTaskBlocked(taskId string, execution int, blockedOn string) {
-	logTaskEvent(taskId, TaskBlocked, TaskEventData{Execution: execution, BlockedOn: blockedOn})
-}
 
 // LogTaskActivated updates the DB with a task activated event.
 func LogTaskActivated(taskId string, execution int, userId string) {

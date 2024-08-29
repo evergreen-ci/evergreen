@@ -20,8 +20,7 @@ const (
 	TestDir = "config_test"
 	// TestSettings contains the default admin settings suitable for testing
 	// that depends on the global environment.
-	TestSettings               = "evg_settings.yml"
-	testSettingsWithAuthTokens = "evg_settings_with_3rd_party_defaults.yml"
+	TestSettings = "evg_settings.yml"
 )
 
 func init() {

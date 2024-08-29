@@ -83,30 +83,6 @@ type sender struct {
 }
 
 // NewSender creates a new log sender backed by an Evergreen log service.
-func NewSender(ctx context.Context, name string, svc LogService, opts SenderOptions) (send.Sender, error) {
-	if err := opts.validate(); err != nil {
-		return nil, err
-	}
-
-	ctx, cancel := context.WithCancel(ctx)
-	s := &sender{
-		ctx:    ctx,
-		cancel: cancel,
-		opts:   opts,
-		svc:    svc,
-		Base:   send.NewBase(name),
-	}
-
-	if err := s.SetErrorHandler(send.ErrorHandlerFromSender(s.opts.Local)); err != nil {
-		return nil, errors.Wrap(err, "setting default error handler")
-	}
-
-	if opts.FlushInterval > 0 {
-		go s.timedFlush()
-	}
-
-	return s, nil
-}
 
 // Send sends the given message to the Evergreen log service. This function
 // buffers the messages until the maximum allowed buffer size is reached, at

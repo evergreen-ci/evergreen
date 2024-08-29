@@ -144,18 +144,6 @@ func FindOneByToken(token string) (*DBUser, error) {
 }
 
 // FindOneByDisplayName gets a DBUser by their display name.
-func FindOneByDisplayName(displayName string) (*DBUser, error) {
-	u := &DBUser{}
-	query := db.Query(bson.M{DispNameKey: displayName})
-	err := db.FindOneQ(Collection, query, u)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "finding user by display name")
-	}
-	return u, nil
-}
 
 // FindByGithubUID finds a user with the given GitHub UID.
 func FindByGithubUID(uid int) (*DBUser, error) {

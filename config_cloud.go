@@ -325,8 +325,7 @@ type SecretsManagerConfig struct {
 type AWSClientType string
 
 const (
-	// AWSClientTypeBasic is the standard implementation of an AWS client.
-	AWSClientTypeBasic AWSClientType = ""
+
 	// AWSClientTypeMock is the mock implementation of an AWS client for testing
 	// purposes only. This should never be used in production.
 	AWSClientTypeMock AWSClientType = "mock"

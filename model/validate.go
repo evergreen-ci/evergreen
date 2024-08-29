@@ -18,8 +18,8 @@ type (
 )
 
 const (
-	ApiTaskKey    apiTaskKey    = 0
-	ApiHostKey    apiHostKey    = 0
+	ApiTaskKey apiTaskKey = 0
+
 	ApiProjectKey apiProjectKey = 0
 )
 

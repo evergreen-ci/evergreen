@@ -59,8 +59,8 @@ const (
 	RoleCollection  = "roles"
 	ScopeCollection = "scopes"
 
-	awsAuthMechanism        = "MONGODB-AWS"
-	awsSessionToken         = "AWS_SESSION_TOKEN"
+	awsAuthMechanism = "MONGODB-AWS"
+
 	mongoExternalAuthSource = "$external"
 
 	s3ClientsPrefix = "evergreen/clients"
