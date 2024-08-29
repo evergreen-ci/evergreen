@@ -11,19 +11,15 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
@@ -333,111 +329,6 @@ func (s *AdminRouteSuite) TestRestartTasksRoute() {
 	s.True(ok)
 	s.True(len(model.ItemsRestarted) > 0)
 	s.Nil(model.ItemsErrored)
-}
-
-func (s *AdminRouteSuite) TestRestartVersionsRoute() {
-	s.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection, patch.Collection))
-
-	handler := &restartHandler{
-		restartType: evergreen.RestartVersions,
-	}
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
-
-	startTime := time.Date(2017, time.June, 12, 11, 0, 0, 0, time.Local)
-	endTime := time.Date(2017, time.June, 12, 13, 0, 0, 0, time.Local)
-	projectRef := &model.ProjectRef{
-		Id: "my-project",
-		CommitQueue: model.CommitQueueParams{
-			Enabled:    utility.TruePtr(),
-			MergeQueue: model.MergeQueueEvergreen,
-		},
-		Enabled: true,
-		Owner:   "me",
-		Repo:    "my-repo",
-		Branch:  "my-branch",
-	}
-	s.NoError(projectRef.Insert())
-	cq := &commitqueue.CommitQueue{ProjectID: projectRef.Id}
-	s.NoError(commitqueue.InsertQueue(cq))
-	patches := []patch.Patch{
-		{ // patch: within time frame, failed
-			Id:          mgobson.NewObjectId(),
-			PatchNumber: 1,
-			Project:     projectRef.Id,
-			StartTime:   startTime.Add(30 * time.Minute),
-			FinishTime:  endTime.Add(30 * time.Minute),
-			Status:      evergreen.VersionFailed,
-			Alias:       evergreen.CommitQueueAlias,
-			Author:      "me",
-			GithubPatchData: thirdparty.GithubPatch{
-				PRNumber: 123,
-			},
-		},
-		{ // within time frame, not failed
-			Id:          mgobson.NewObjectId(),
-			PatchNumber: 2,
-			Project:     projectRef.Id,
-			StartTime:   startTime.Add(30 * time.Minute),
-			FinishTime:  endTime.Add(30 * time.Minute),
-			Status:      evergreen.VersionSucceeded,
-			Alias:       evergreen.CommitQueueAlias,
-		},
-	}
-	for _, p := range patches {
-		s.NoError(p.Insert())
-	}
-	// test that invalid time range errors
-	body := struct {
-		StartTime time.Time `json:"start_time"`
-		EndTime   time.Time `json:"end_time"`
-		DryRun    bool      `json:"dry_run"`
-	}{endTime, startTime, false}
-	jsonBody, err := json.Marshal(&body)
-	s.NoError(err)
-	buffer := bytes.NewBuffer(jsonBody)
-	request, err := http.NewRequest(http.MethodPost, "/admin/restart/versions", buffer)
-	s.NoError(err)
-	s.Error(handler.Parse(ctx, request))
-
-	// dry run, valid request
-	body = struct {
-		StartTime time.Time `json:"start_time"`
-		EndTime   time.Time `json:"end_time"`
-		DryRun    bool      `json:"dry_run"`
-	}{startTime, endTime, true}
-	jsonBody, err = json.Marshal(&body)
-	s.NoError(err)
-	buffer = bytes.NewBuffer(jsonBody)
-	request, err = http.NewRequest(http.MethodPost, "/admin/restart/versions", buffer)
-	s.NoError(err)
-	s.NoError(handler.Parse(ctx, request))
-	resp := handler.Run(ctx)
-	s.NotNil(resp)
-	model, ok := resp.Data().(*restModel.RestartResponse)
-	s.True(ok)
-	s.Len(model.ItemsRestarted, 1)
-	s.Equal(model.ItemsRestarted[0], patches[0].Id.Hex())
-	s.Empty(model.ItemsErrored)
-
-	// test a valid request
-	body = struct {
-		StartTime time.Time `json:"start_time"`
-		EndTime   time.Time `json:"end_time"`
-		DryRun    bool      `json:"dry_run"`
-	}{startTime, endTime, false}
-	jsonBody, err = json.Marshal(&body)
-	s.NoError(err)
-	buffer = bytes.NewBuffer(jsonBody)
-	request, err = http.NewRequest(http.MethodPost, "/admin/restart/versions", buffer)
-	s.NoError(err)
-	s.NoError(handler.Parse(ctx, request))
-	resp = handler.Run(ctx)
-	s.NotNil(resp)
-	model, ok = resp.Data().(*restModel.RestartResponse)
-	s.True(ok)
-	s.Len(model.ItemsRestarted, 1)
-	s.Equal(model.ItemsRestarted[0], patches[0].Id.Hex())
-	s.Empty(model.ItemsErrored)
 }
 
 func (s *AdminRouteSuite) TestAdminEventRoute() {
