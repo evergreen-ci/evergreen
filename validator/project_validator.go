@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -158,7 +157,6 @@ var projectConfigErrorValidators = []projectConfigValidator{
 // a level of Warning ValidationLevel or Notice ValidationLevel.
 var projectWarningValidators = []projectValidator{
 	checkTaskGroups,
-	checkProjectFields,
 	checkTaskRuns,
 	checkModules,
 	checkTasks,
@@ -819,15 +817,6 @@ func validateBVFields(project *model.Project) ValidationErrors {
 func validateProjectFields(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
-	if project.BatchTime < 0 {
-		errs = append(errs,
-			ValidationError{
-				Level:   Error,
-				Message: "'batchtime' must be non-negative",
-			},
-		)
-	}
-
 	if project.CommandType != "" {
 		if !utility.StringSliceContains(evergreen.ValidCommandTypes, project.CommandType) {
 			errs = append(errs,
@@ -838,24 +827,6 @@ func validateProjectFields(project *model.Project) ValidationErrors {
 			)
 		}
 	}
-	return errs
-}
-
-func checkProjectFields(project *model.Project) ValidationErrors {
-	errs := ValidationErrors{}
-
-	if project.BatchTime > math.MaxInt32 {
-		// Error level is warning for backwards compatibility with
-		// existing projects. This value will be capped at MaxInt32
-		// in ProjectRef.getBatchTime()
-		errs = append(errs,
-			ValidationError{
-				Message: fmt.Sprintf("'batchtime' should not exceed %d", math.MaxInt32),
-				Level:   Warning,
-			},
-		)
-	}
-
 	return errs
 }
 

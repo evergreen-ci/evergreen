@@ -83,7 +83,6 @@ type ParserProject struct {
 	PreErrorFailsTask  *bool                      `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
 	PostErrorFailsTask *bool                      `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
 	OomTracker         *bool                      `yaml:"oom_tracker,omitempty" bson:"oom_tracker,omitempty"`
-	BatchTime          *int                       `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
 	Owner              *string                    `yaml:"owner,omitempty" bson:"owner,omitempty"`
 	Repo               *string                    `yaml:"repo,omitempty" bson:"repo,omitempty"`
 	RemotePath         *string                    `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
@@ -1009,7 +1008,6 @@ func TranslateProject(pp *ParserProject) (*Project, error) {
 		PreErrorFailsTask:  utility.FromBoolPtr(pp.PreErrorFailsTask),
 		PostErrorFailsTask: utility.FromBoolPtr(pp.PostErrorFailsTask),
 		OomTracker:         utility.FromBoolTPtr(pp.OomTracker), // oom tracker is true by default
-		BatchTime:          utility.FromIntPtr(pp.BatchTime),
 		Identifier:         utility.FromStringPtr(pp.Identifier),
 		DisplayName:        utility.FromStringPtr(pp.DisplayName),
 		CommandType:        utility.FromStringPtr(pp.CommandType),
