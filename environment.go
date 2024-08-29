@@ -1116,6 +1116,9 @@ func (e *envState) GetGitHubSender(owner, repo string, createInstallationToken C
 
 	tokenCreatedAt := time.Now()
 	token, err := createInstallationToken(e.ctx, owner, repo)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating GitHub app installation token")
+	}
 	sender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
 		Token:       token,
 		MinDelay:    GithubRetryMinDelay,
