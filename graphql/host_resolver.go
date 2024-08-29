@@ -37,14 +37,7 @@ func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*ti
 
 // Events is the resolver for the events field.
 func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, hostTag *string, limit *int, page *int) (*HostEvents, error) {
-	h, err := host.FindOneByIdOrTag(ctx, utility.FromStringPtr(obj.Id))
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
-	}
-	if h == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", utility.FromStringPtr(obj.Id)))
-	}
-	events, count, err := event.MostRecentPaginatedHostEvents(h.Id, h.Tag, *limit, *page)
+	events, count, err := event.MostRecentPaginatedHostEvents(utility.FromStringPtr(obj.Id), utility.FromStringPtr(hostTag), *limit, *page)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host events: %s", err.Error()))
 	}
