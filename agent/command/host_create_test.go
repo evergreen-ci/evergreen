@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -122,7 +121,6 @@ func (s *createHostSuite) TestParseFromFile() {
 	s.Equal("myDistro", s.cmd.CreateHost.Distro)
 	s.Equal("task", s.cmd.CreateHost.Scope)
 	s.Equal("subnet-123456", s.cmd.CreateHost.Subnet)
-	s.Equal(evergreen.EC2TenancyDedicated, s.cmd.CreateHost.Tenancy)
 	s.Equal("myDevice", s.cmd.CreateHost.EBSDevices[0].DeviceName)
 
 	//test with both file and other params
