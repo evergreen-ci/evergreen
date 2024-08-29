@@ -69,12 +69,6 @@ func (d *basicCachedDAGDispatcherImpl) Type() string {
 	return evergreen.DispatcherVersionRevisedWithDependencies
 }
 
-func (d *basicCachedDAGDispatcherImpl) CreatedAt() time.Time {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-	return d.lastUpdated
-}
-
 func (d *basicCachedDAGDispatcherImpl) Refresh() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()

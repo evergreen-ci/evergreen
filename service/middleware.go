@@ -128,21 +128,8 @@ func (uis *UIServer) GetSettings() evergreen.Settings {
 // requireUser takes a request handler and returns a wrapped version which verifies that requests
 // request are authenticated before proceeding. For a request which is not authenticated, it will
 // execute the onFail handler. If onFail is nil, a simple "unauthorized" error will be sent.
-// If skipWithToggle is true, the request for an authenticated user will be skipped if our admin flags
-// dictate that we should enable public project access (i.e. if LegacyUIPublicAccessDisabled is false).
-func requireUser(skipWithToggle bool, onSuccess, onFail http.HandlerFunc) http.HandlerFunc {
+func requireUser(onSuccess, onFail http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if skipWithToggle {
-			flags, err := evergreen.GetServiceFlags(r.Context())
-			if err != nil {
-				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving admin settings")))
-				return
-			}
-			if !flags.LegacyUIPublicAccessDisabled {
-				onSuccess(w, r)
-				return
-			}
-		}
 		if user := gimlet.GetUser(r.Context()); user == nil {
 			if onFail != nil {
 				onFail(w, r)
@@ -156,19 +143,11 @@ func requireUser(skipWithToggle bool, onSuccess, onFail http.HandlerFunc) http.H
 }
 
 func (uis *UIServer) requireLogin(next http.HandlerFunc) http.HandlerFunc {
-	return requireUser(false, next, uis.RedirectToLogin)
-}
-
-func (uis *UIServer) requireLoginToggleable(next http.HandlerFunc) http.HandlerFunc {
-	return requireUser(true, next, nil)
-}
-
-func (uis *UIServer) redirectLoginToggleable(next http.HandlerFunc) http.HandlerFunc {
-	return requireUser(true, next, uis.RedirectToLogin)
+	return requireUser(next, uis.RedirectToLogin)
 }
 
 func (uis *UIServer) requireLoginStatusUnauthorized(next http.HandlerFunc) http.HandlerFunc {
-	return requireUser(false, next, nil)
+	return requireUser(next, nil)
 }
 
 func (uis *UIServer) setCORSHeaders(next http.HandlerFunc) http.HandlerFunc {
@@ -258,18 +237,18 @@ func (uis *UIServer) RedirectToLogin(w http.ResponseWriter, r *http.Request) {
 // If the project is private but the user is not logged in, redirects to the login page.
 func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		projCtx, err := uis.LoadProjectContext(w, r)
+		usr := gimlet.GetUser(r.Context())
+		if usr == nil {
+			uis.RedirectToLogin(w, r)
+			return
+		}
+		projCtx, err := uis.loadProjectContext(w, r)
 		if err != nil {
 			// Some database lookup failed when fetching the data - log it
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading project context"))
 			return
 		}
-		usr := gimlet.GetUser(r.Context())
-		if projCtx.ProjectRef != nil && projCtx.ProjectRef.IsPrivate() {
-			if usr == nil {
-				uis.RedirectToLogin(w, r)
-				return
-			}
+		if projCtx.ProjectRef != nil {
 			opts := gimlet.PermissionOpts{
 				Resource:      projCtx.ProjectRef.Id,
 				ResourceType:  evergreen.ProjectResourceType,
@@ -282,40 +261,27 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 
-		if usr == nil && projCtx.Patch != nil {
-			uis.RedirectToLogin(w, r)
-			return
-		}
-
 		r = setUIRequestContext(r, projCtx)
-
 		next(w, r)
 	}
 }
 
-// populateProjectRefs loads all project refs into the context. If includePrivate is true,
-// all available projects will be included, otherwise only public projects will be loaded.
-func (pc *projectContext) populateProjectRefs(includePrivate bool, user gimlet.User) error {
-	allProjs, err := model.FindAllMergedTrackedProjectRefs()
+// populateProjectRefs loads all enabled project refs into the context.
+func (pc *projectContext) populateProjectRefs() error {
+	allProjs, err := model.FindAllMergedEnabledTrackedProjectRefs()
 	if err != nil {
 		return err
 	}
 	pc.AllProjects = make([]restModel.UIProjectFields, 0, len(allProjs))
-	// User is not logged in, so only include public projects.
 	for _, p := range allProjs {
-		if !p.Enabled {
-			continue
+		uiProj := restModel.UIProjectFields{
+			DisplayName: p.DisplayName,
+			Identifier:  p.Identifier,
+			Id:          p.Id,
+			Repo:        p.Repo,
+			Owner:       p.Owner,
 		}
-		if !p.IsPrivate() || includePrivate {
-			uiProj := restModel.UIProjectFields{
-				DisplayName: p.DisplayName,
-				Identifier:  p.Identifier,
-				Id:          p.Id,
-				Repo:        p.Repo,
-				Owner:       p.Owner,
-			}
-			pc.AllProjects = append(pc.AllProjects, uiProj)
-		}
+		pc.AllProjects = append(pc.AllProjects, uiProj)
 	}
 	return nil
 }
@@ -345,13 +311,8 @@ func (uis *UIServer) getRequestProjectId(r *http.Request) string {
 // LoadProjectContext builds a projectContext from vars in the request's URL.
 // This is done by reading in specific variables and inferring other required
 // context variables when necessary (e.g. loading a project based on the task).
-func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request) (projectContext, error) {
-	dbUser := gimlet.GetUser(r.Context())
-	if dbUser == nil {
-		dbUser = &user.DBUser{
-			SystemRoles: evergreen.UnauthedUserRoles,
-		}
-	}
+func (uis *UIServer) loadProjectContext(rw http.ResponseWriter, r *http.Request) (projectContext, error) {
+	dbUser := MustHaveUser(r)
 
 	vars := gimlet.GetVars(r)
 	taskId := vars["task_id"]
@@ -360,7 +321,7 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	patchId := vars["patch_id"]
 
 	pc := projectContext{AuthRedirect: uis.env.UserManager().IsRedirect()}
-	err := pc.populateProjectRefs(dbUser != nil, dbUser)
+	err := pc.populateProjectRefs()
 	if err != nil {
 		return pc, err
 	}

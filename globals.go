@@ -627,11 +627,10 @@ type EC2Tenancy string
 const (
 	EC2TenancyDefault   EC2Tenancy = "default"
 	EC2TenancyDedicated EC2Tenancy = "dedicated"
-	EC2TenancyHost      EC2Tenancy = "host"
 )
 
 // ValidEC2Tenancies represents valid EC2 tenancy values.
-var ValidEC2Tenancies = []EC2Tenancy{EC2TenancyDefault, EC2TenancyDedicated, EC2TenancyHost}
+var ValidEC2Tenancies = []EC2Tenancy{EC2TenancyDefault, EC2TenancyDedicated}
 
 // IsValidEC2Tenancy returns if the given EC2 tenancy is valid.
 func IsValidEC2Tenancy(tenancy EC2Tenancy) bool {
@@ -1186,7 +1185,6 @@ type PermissionLevel struct {
 }
 
 var (
-	UnauthedUserRoles  = []string{"unauthorized_project"}
 	ValidResourceTypes = []string{SuperUserResourceType, ProjectResourceType, DistroResourceType}
 	// SuperUserPermissions resource ID.
 	SuperUserPermissionsID = "super_user"
