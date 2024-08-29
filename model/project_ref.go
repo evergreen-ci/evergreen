@@ -53,7 +53,6 @@ type ProjectRef struct {
 	RemotePath             string              `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
 	DisplayName            string              `bson:"display_name" json:"display_name,omitempty" yaml:"display_name"`
 	Enabled                bool                `bson:"enabled,omitempty" json:"enabled,omitempty" yaml:"enabled"`
-	Private                *bool               `bson:"private,omitempty" json:"private,omitempty" yaml:"private"`
 	Restricted             *bool               `bson:"restricted,omitempty" json:"restricted,omitempty" yaml:"restricted"`
 	Owner                  string              `bson:"owner_name" json:"owner_name" yaml:"owner"`
 	Repo                   string              `bson:"repo_name" json:"repo_name" yaml:"repo"`
@@ -448,7 +447,6 @@ var (
 	ProjectRefRepoKey                               = bsonutil.MustHaveTag(ProjectRef{}, "Repo")
 	ProjectRefBranchKey                             = bsonutil.MustHaveTag(ProjectRef{}, "Branch")
 	ProjectRefEnabledKey                            = bsonutil.MustHaveTag(ProjectRef{}, "Enabled")
-	ProjectRefPrivateKey                            = bsonutil.MustHaveTag(ProjectRef{}, "Private")
 	ProjectRefRestrictedKey                         = bsonutil.MustHaveTag(ProjectRef{}, "Restricted")
 	ProjectRefBatchTimeKey                          = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
 	ProjectRefIdentifierKey                         = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
@@ -659,7 +657,6 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 	}
 	// Ensure that any new project is originally explicitly disabled and set to private.
 	p.Enabled = false
-	p.Private = utility.TruePtr()
 
 	// if a hidden project exists for this configuration, use that ID
 	if p.Owner != "" && p.Repo != "" && p.Branch != "" {
@@ -1482,26 +1479,20 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 	return res, nil
 }
 
-func FindFirstProjectRef() (*ProjectRef, error) {
-	projectRefSlice := []ProjectRef{}
-	pipeline := projectRefPipelineForValueIsBool(ProjectRefPrivateKey, RepoRefPrivateKey, false)
-	pipeline = append(pipeline, bson.M{"$sort": bson.M{ProjectRefDisplayNameKey: -1}}, bson.M{"$limit": 1})
-	err := db.Aggregate(
-		ProjectRefCollection,
-		pipeline,
-		&projectRefSlice,
-	)
-
+// FindDefaultProjectRef returns an unrestricted project to use as a default for contexts.
+func FindDefaultProjectRef() (*ProjectRef, error) {
+	projectRefs, err := FindAllMergedEnabledTrackedProjectRefs()
 	if err != nil {
-		return nil, errors.Wrap(err, "aggregating project ref")
+		return nil, errors.Wrap(err, "finding all project refs")
 	}
 
-	if len(projectRefSlice) == 0 {
-		return nil, errors.New("No project found in FindFirstProjectRef")
+	for _, pRef := range projectRefs {
+		if pRef.IsRestricted() {
+			continue
+		}
+		return &pRef, nil
 	}
-	projectRef := projectRefSlice[0]
-
-	return &projectRef, nil
+	return nil, errors.New("no projects available")
 }
 
 // FindAllMergedTrackedProjectRefs returns all project refs in the db
@@ -2146,11 +2137,6 @@ func (p *ProjectRef) CanEnableCommitQueue() (bool, error) {
 // Upsert updates the project ref in the db if an entry already exists,
 // overwriting the existing ref. If no project ref exists, a new one is created.
 func (p *ProjectRef) Upsert() error {
-	if p.Private == nil {
-		// Projects are private by default unless they've been specially made
-		// public.
-		p.Private = utility.TruePtr()
-	}
 	_, err := db.Upsert(ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, p)
 	return err
 }
@@ -3406,21 +3392,6 @@ func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
 		return "", errors.New("upstream project not found")
 	}
 	return upstreamProject.DisplayName, nil
-}
-
-// projectRefPipelineForValueIsBool is an aggregation pipeline to find projects that have the projectKey
-// explicitly set to the val, OR that default to the repo, which has the repoKey explicitly set to the val.
-// Should not be used with project enabled field.
-func projectRefPipelineForValueIsBool(projectKey, repoKey string, val bool) []bson.M {
-	return []bson.M{
-		lookupRepoStep,
-		{"$match": bson.M{
-			"$or": []bson.M{
-				{projectKey: val},
-				{projectKey: nil, bsonutil.GetDottedKeyName("repo_ref", repoKey): val},
-			},
-		}},
-	}
 }
 
 // projectRefPipelineForMatchingTrigger is an aggregation pipeline to find projects that are

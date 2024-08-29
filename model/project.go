@@ -65,9 +65,6 @@ type Project struct {
 	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 	TimeoutSecs        int                        `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
 
-	// Flag that indicates a project as requiring user authentication
-	Private bool `yaml:"private,omitempty" bson:"private"`
-
 	// Number of includes in the project cached for validation
 	NumIncludes int `yaml:"-" bson:"-"`
 }

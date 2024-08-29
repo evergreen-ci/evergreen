@@ -1384,7 +1384,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 				DeactivatePrevious:    utility.FalsePtr(),
 				RemotePath:            "path.yml",
 				TaskSync:              TaskSyncOptions{ConfigEnabled: utility.TruePtr()},
-				Private:               utility.TruePtr(),
 				Restricted:            utility.FalsePtr(),
 				Admins:                []string{"annie"},
 				PRTestingEnabled:      utility.TruePtr(),
@@ -3522,20 +3521,25 @@ func TestFindFirstProjectRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection))
 
 	var err error
+	projectRef := ProjectRef{
+		Id:         "restricted",
+		Restricted: utility.TruePtr(),
+		Enabled:    true,
+	}
+	assert.NoError(t, projectRef.Insert())
+
 	assert.NotPanics(t, func() {
-		_, err = FindFirstProjectRef()
+		_, err = FindDefaultProjectRef()
 	}, "Should not panic if there are no matching projects")
 	assert.Error(t, err, "Should return error if there are no matching projects")
 
-	projectRef := ProjectRef{
-		Id:        "p1",
-		RepoRefId: "my_repo",
-		Private:   utility.FalsePtr(),
+	projectRef = ProjectRef{
+		Id:      "p1",
+		Enabled: true,
 	}
-
 	assert.NoError(t, projectRef.Insert())
 
-	resultRef, err := FindFirstProjectRef()
+	resultRef, err := FindDefaultProjectRef()
 	assert.NoError(t, err)
 	assert.Equal(t, "p1", resultRef.Id)
 }
@@ -3781,7 +3785,6 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		Id:               "iden_",
 		Identifier:       "identifier",
 		PRTestingEnabled: utility.TruePtr(),
-		Private:          utility.TruePtr(),
 	}
 	assert.NoError(projectRef.Insert())
 	projectRef, err := FindBranchProjectRef("identifier")
@@ -3829,7 +3832,6 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(t, projectRef)
 	assert.True(utility.FromBoolPtr(projectRef.Restricted))
-	assert.True(utility.FromBoolPtr(projectRef.Private))
 
 	// Verify that GitHub dynamic token permission groups are saved correctly.
 	update = &ProjectRef{
