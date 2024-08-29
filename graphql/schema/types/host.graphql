@@ -44,6 +44,11 @@ type Host {
   distro: DistroInfo
   distroId: String
   elapsed: Time # running task start time
+  events(
+    hostTag: String = ""
+    limit: Int = 0
+    page: Int = 0
+  ): HostEvents!
   expiration: Time
   hostUrl: String!
   homeVolume: Volume

@@ -24,7 +24,7 @@ type Query {
     hostTag: String = ""
     limit: Int = 0
     page: Int = 0
-  ): HostEvents!
+  ): HostEvents! @deprecated(reason: "Use host.events instead.")
   hosts(
     hostId: String = ""
     distroId: String = ""
