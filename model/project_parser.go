@@ -437,8 +437,6 @@ type parserBVTaskUnit struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
-	// TaskGroup is set if an inline task group is defined on the build variant config.
-	TaskGroup *parserTaskGroup `yaml:"task_group,omitempty" bson:"task_group,omitempty"`
 	// CreateCheckRun will create a check run on GitHub if set.
 	CreateCheckRun *CheckRun `yaml:"create_check_run,omitempty" bson:"create_check_run,omitempty"`
 }
@@ -1339,32 +1337,28 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 	for _, pbvt := range pbv.Tasks {
 		// Evaluate each task against both the task and task group selectors
 		// only error if both selectors error because each task should only be found
-		// in one or the other.  Skip selector checking if task group is defined
-		// directly on the build variant task.
+		// in one or the other.
 		var names, unmatchedCriteriaFromTasks, unmatchedCriteriaFromTaskGroups, temp []string
 		isGroup := false
-		if pbvt.TaskGroup != nil {
-			names = append(names, pbvt.Name)
-			isGroup = true
-		} else {
-			var taskSelectorErr, taskGroupSelectorErr error
-			if tse != nil {
-				temp, unmatchedCriteriaFromTasks, taskSelectorErr = tse.evalSelector(ParseSelector(pbvt.Name))
+
+		var taskSelectorErr, taskGroupSelectorErr error
+		if tse != nil {
+			temp, unmatchedCriteriaFromTasks, taskSelectorErr = tse.evalSelector(ParseSelector(pbvt.Name))
+			names = append(names, temp...)
+		}
+		if tgse != nil {
+			temp, unmatchedCriteriaFromTaskGroups, taskGroupSelectorErr = tgse.evalSelector(ParseSelector(pbvt.Name))
+			if len(temp) > 0 {
 				names = append(names, temp...)
-			}
-			if tgse != nil {
-				temp, unmatchedCriteriaFromTaskGroups, taskGroupSelectorErr = tgse.evalSelector(ParseSelector(pbvt.Name))
-				if len(temp) > 0 {
-					names = append(names, temp...)
-					isGroup = true
-				}
-			}
-			if taskSelectorErr != nil && taskGroupSelectorErr != nil {
-				evalErrs = append(evalErrs, taskSelectorErr, taskGroupSelectorErr)
-				unmatchedSelectors = append(unmatchedSelectors, pbvt.Name)
-				continue
+				isGroup = true
 			}
 		}
+		if taskSelectorErr != nil && taskGroupSelectorErr != nil {
+			evalErrs = append(evalErrs, taskSelectorErr, taskGroupSelectorErr)
+			unmatchedSelectors = append(unmatchedSelectors, pbvt.Name)
+			continue
+		}
+
 		initialUnmatchedCriteriaLen := len(unmatchedCriteriaFromTasks)
 		for _, unmatchedTask := range unmatchedCriteriaFromTasks {
 			if utility.StringSliceContains(unmatchedCriteriaFromTaskGroups, unmatchedTask) {
@@ -1451,32 +1445,6 @@ func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskU
 		CreateCheckRun:   bvt.CreateCheckRun,
 	}
 	res.AllowedRequesters = bvt.AllowedRequesters
-	if bvt.TaskGroup != nil {
-		res.TaskGroup = &TaskGroup{
-			Name:                     bvt.Name,
-			SetupGroup:               bvt.TaskGroup.SetupGroup,
-			SetupGroupCanFailTask:    bvt.TaskGroup.SetupGroupCanFailTask,
-			TeardownGroup:            bvt.TaskGroup.TeardownGroup,
-			TeardownGroupTimeoutSecs: bvt.TaskGroup.TeardownGroupTimeoutSecs,
-			SetupGroupTimeoutSecs:    bvt.TaskGroup.SetupGroupTimeoutSecs,
-			SetupTask:                bvt.TaskGroup.SetupTask,
-			SetupTaskTimeoutSecs:     bvt.TaskGroup.SetupTaskTimeoutSecs,
-			SetupTaskCanFailTask:     bvt.TaskGroup.SetupTaskCanFailTask,
-			TeardownTask:             bvt.TaskGroup.TeardownTask,
-			TeardownTaskCanFailTask:  bvt.TaskGroup.TeardownTaskCanFailTask,
-			TeardownTaskTimeoutSecs:  bvt.TaskGroup.TeardownTaskTimeoutSecs,
-			Tags:                     bvt.TaskGroup.Tags,
-			Tasks:                    bvt.TaskGroup.Tasks,
-			MaxHosts:                 bvt.TaskGroup.MaxHosts,
-			Timeout:                  bvt.TaskGroup.Timeout,
-			ShareProcs:               bvt.TaskGroup.ShareProcs,
-		}
-		if bvt.TaskGroup.MaxHosts == -1 {
-			res.TaskGroup.MaxHosts = len(bvt.TaskGroup.Tasks)
-		} else if bvt.TaskGroup.MaxHosts < 1 {
-			res.TaskGroup.MaxHosts = 1
-		}
-	}
 	if res.Priority == 0 {
 		res.Priority = pt.Priority
 	}

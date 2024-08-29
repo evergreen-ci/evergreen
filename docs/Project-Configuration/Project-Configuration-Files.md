@@ -309,10 +309,6 @@ Fields:
     will check that task once per day. If the most recent mainline commit is
     inactive, Evergreen will activate it. In this way, cron is tied more closely
     to project commit activity. For more on the differences between cron, batchtime and [periodic builds](Project-and-Distro-Settings#periodic-builds), see [controlling when tasks run](Controlling-when-tasks-run).
--   `task_group`: a [task group](#task-groups)
-    may be defined directly inline or using YAML aliases on a build
-    variant task. This is an alternative to referencing a task group
-    defined in `task_groups` under the tasks of a given build variant.
 -   `tags`: optional list of tags to group the build variant for alias definitions (explained [here](#task-and-variant-tags))
 -   Build variants support [all options that limit when a task will run](#limiting-when-a-task-or-variant-will-run)
     (`allowed_requesters`, `patch_only`, `patchable`, `disable`, etc.). If set for the

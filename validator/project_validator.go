@@ -901,11 +901,6 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 	for _, buildVariant := range project.BuildVariants {
 		buildVariantTasks := map[string]bool{}
 		for _, task := range buildVariant.Tasks {
-			if task.TaskGroup != nil {
-				for _, taskGroupTask := range task.TaskGroup.Tasks {
-					errs = append(errs, validateBuildVariantTaskNames(taskGroupTask, buildVariant.Name, allTaskNames, taskGroupTaskSet)...)
-				}
-			}
 			errs = append(errs, validateBuildVariantTaskNames(task.Name, buildVariant.Name, allTaskNames, taskGroupTaskSet)...)
 			if _, ok := taskGroupTaskSet[task.Name]; ok {
 				errs = append(errs,
@@ -1777,15 +1772,7 @@ func validateParameters(p *model.Project) ValidationErrors {
 
 func validateTaskGroups(p *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
-	taskGroups := p.TaskGroups
-	for _, bv := range p.BuildVariants {
-		for _, t := range bv.Tasks {
-			if t.TaskGroup != nil {
-				taskGroups = append(taskGroups, *t.TaskGroup)
-			}
-		}
-	}
-	for _, tg := range taskGroups {
+	for _, tg := range p.TaskGroups {
 		// validate that there is at least 1 task
 		if len(tg.Tasks) < 1 {
 			errs = append(errs, ValidationError{
@@ -1835,15 +1822,7 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	tasksInTaskGroups := map[string]string{}
 	names := map[string]bool{}
-	taskGroups := p.TaskGroups
-	for _, bv := range p.BuildVariants {
-		for _, t := range bv.Tasks {
-			if t.TaskGroup != nil {
-				taskGroups = append(taskGroups, *t.TaskGroup)
-			}
-		}
-	}
-	for _, tg := range taskGroups {
+	for _, tg := range p.TaskGroups {
 		// validate that teardown group timeout is not over MaxTeardownGroupTimeout
 		if tg.TeardownGroupTimeoutSecs > int(globals.MaxTeardownGroupTimeout.Seconds()) {
 			errs = append(errs, ValidationError{
@@ -1891,10 +1870,7 @@ func validateDuplicateBVTasks(p *model.Project) ValidationErrors {
 		for _, t := range bv.Tasks {
 
 			if t.IsGroup {
-				tg := t.TaskGroup
-				if tg == nil {
-					tg = p.FindTaskGroup(t.Name)
-				}
+				tg := p.FindTaskGroup(t.Name)
 				if tg == nil {
 					continue
 				}
@@ -2123,10 +2099,7 @@ func bvsWithTasksThatCallCommand(p *model.Project, cmd string) (map[string]map[s
 
 		for _, bvtu := range bv.Tasks {
 			if bvtu.IsGroup {
-				tg := bvtu.TaskGroup
-				if tg == nil {
-					tg = p.FindTaskGroup(bvtu.Name)
-				}
+				tg := p.FindTaskGroup(bvtu.Name)
 				if tg == nil {
 					catcher.Errorf("cannot find definition of task group '%s' used in build variant '%s'", bvtu.Name, bv.Name)
 					continue
