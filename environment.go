@@ -365,9 +365,6 @@ func redactSensitiveCollections(command bson.Raw) string {
 }
 
 func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace.Tracer) error {
-	ctx, span := tracer.Start(ctx, "InitDB")
-	defer span.End()
-
 	var err error
 	e.client, err = mongo.Connect(settings.mongoOptions(settings.Url))
 	if err != nil {
