@@ -11,7 +11,6 @@ import (
 	"time"
 
 	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -572,18 +571,5 @@ func (s3pc *s3put) remoteFileExists(ctx context.Context, remoteName string) (boo
 	if err != nil {
 		return false, errors.Wrap(err, "creating S3 bucket")
 	}
-	ok, err := bucket.Exists(ctx, remoteName)
-	if err != nil {
-		var smithyErr smithy.APIError
-		if errors.As(err, &smithyErr) {
-			if smithyErr.ErrorCode() == notFoundError {
-				return false, nil
-			}
-		}
-		return false, errors.Wrapf(err, "getting head object for remote file '%s'", remoteName)
-	}
-	if !ok {
-		return false, nil
-	}
-	return true, nil
+	return bucket.Exists(ctx, remoteName)
 }
