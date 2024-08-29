@@ -273,7 +273,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
 
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestProjectTriggerIntegration")
+	testutil.ConfigureIntegrationTest(t, config)
 	assert.NoError(config.Set(ctx))
 	e := event.EventLogEntry{
 		ID:           "event1",
@@ -403,7 +403,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
 
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestProjectTriggerIntegration")
+	testutil.ConfigureIntegrationTest(t, config)
 	assert.NoError(config.Set(ctx))
 	e := event.EventLogEntry{
 		ID:           "event1",
@@ -536,7 +536,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
 
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestProjectTriggerIntegration")
+	testutil.ConfigureIntegrationTest(t, config)
 	assert.NoError(config.Set(ctx))
 	downstreamProjectRef := model.ProjectRef{
 		Id:         mgobson.NewObjectId().Hex(),

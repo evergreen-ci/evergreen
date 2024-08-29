@@ -122,7 +122,7 @@ func (filter TaskReliabilityFilter) buildMatchStageForTask() bson.M {
 
 // buildDateStageGroupID builds the date of the grouped
 // period the stats document belongs in.
-func (filter TaskReliabilityFilter) buildDateStageGroupID(fieldName string, inputDateFieldName string) interface{} {
+func (filter TaskReliabilityFilter) buildDateStageGroupID(inputDateFieldName string) interface{} {
 	numDays := filter.GroupNumDays
 	inputDateFieldRef := "$" + inputDateFieldName
 	if numDays <= 1 {
@@ -145,7 +145,7 @@ func (filter TaskReliabilityFilter) buildDateStageGroupID(fieldName string, inpu
 
 // buildGroupID builds the _id field for the $group stage corresponding to the GroupBy value.
 func (filter TaskReliabilityFilter) buildGroupID() bson.M {
-	id := bson.M{taskstats.TaskStatsDateKey: filter.buildDateStageGroupID("date", taskstats.DBTaskStatsIDDateKeyFull)}
+	id := bson.M{taskstats.TaskStatsDateKey: filter.buildDateStageGroupID(taskstats.DBTaskStatsIDDateKeyFull)}
 	switch filter.GroupBy {
 	case taskstats.GroupByDistro:
 		id[taskstats.TaskStatsDistroKey] = "$" + taskstats.DBTaskStatsIDDistroKeyFull

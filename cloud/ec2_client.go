@@ -879,14 +879,14 @@ func (c *awsClientImpl) GetKey(ctx context.Context, h *host.Host) (string, error
 		return k.Name, nil
 	}
 
-	newKey, err := c.makeNewKey(ctx, t.Project, h)
+	newKey, err := c.makeNewKey(ctx, t.Project)
 	if err != nil {
 		return "", errors.Wrap(err, "creating new key")
 	}
 	return newKey, nil
 }
 
-func (c *awsClientImpl) makeNewKey(ctx context.Context, project string, h *host.Host) (string, error) {
+func (c *awsClientImpl) makeNewKey(ctx context.Context, project string) (string, error) {
 	name := "evg_auto_" + project
 	_, err := c.DeleteKeyPair(ctx, &ec2.DeleteKeyPairInput{KeyName: aws.String(name)})
 	if err != nil { // error does not indicate a problem, but log anyway for debugging

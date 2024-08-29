@@ -161,7 +161,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 }
 
 func (j *buildingContainerImageJob) tryRequeue(ctx context.Context) {
-	if j.shouldRetry(ctx) && j.env.RemoteQueue().Info().Started {
+	if j.shouldRetry() && j.env.RemoteQueue().Info().Started {
 		job := NewBuildingContainerImageJob(j.env, j.parent, j.DockerOptions, j.Provider)
 		job.UpdateTimeInfo(amboy.JobTimeInfo{
 			WaitUntil: time.Now().Add(time.Second * 10),
@@ -179,6 +179,6 @@ func (j *buildingContainerImageJob) tryRequeue(ctx context.Context) {
 }
 
 // retry if we're under retry limit, and the image isn't built yet
-func (j *buildingContainerImageJob) shouldRetry(ctx context.Context) bool {
+func (j *buildingContainerImageJob) shouldRetry() bool {
 	return j.parent.ContainerBuildAttempt <= containerBuildRetries && !j.parent.ContainerImages[j.DockerOptions.Image]
 }

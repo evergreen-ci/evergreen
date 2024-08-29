@@ -972,13 +972,13 @@ func UpdateAll(ctx context.Context, query bson.M, update bson.M) error {
 }
 
 // InsertOne inserts the host into the hosts collection.
-func InsertOne(ctx context.Context, h *Host, options ...*options.InsertOneOptions) error {
+func InsertOne(ctx context.Context, h *Host) error {
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertOne(ctx, h)
 	return errors.Wrap(err, "inserting host")
 }
 
 // InsertMany inserts the hosts into the hosts collection.
-func InsertMany(ctx context.Context, hosts []Host, options ...*options.InsertManyOptions) error {
+func InsertMany(ctx context.Context, hosts []Host) error {
 	if len(hosts) == 0 {
 		return nil
 	}

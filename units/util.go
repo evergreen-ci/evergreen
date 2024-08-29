@@ -68,11 +68,11 @@ func EnqueueHostReprovisioningJob(ctx context.Context, env evergreen.Environment
 
 	switch h.NeedsReprovision {
 	case host.ReprovisionToLegacy:
-		if err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewConvertHostToLegacyProvisioningJob(env, *h, ts, 0)); err != nil {
+		if err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewConvertHostToLegacyProvisioningJob(env, *h, ts)); err != nil {
 			return errors.Wrap(err, "enqueueing job to reprovision host to legacy")
 		}
 	case host.ReprovisionToNew:
-		if err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewConvertHostToNewProvisioningJob(env, *h, ts, 0)); err != nil {
+		if err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewConvertHostToNewProvisioningJob(env, *h, ts)); err != nil {
 			return errors.Wrap(err, "enqueueing job to reprovision host to new")
 		}
 	case host.ReprovisionRestartJasper:

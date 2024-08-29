@@ -199,7 +199,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 
 			pid := proc.Info(ctx).PID
 
-			agentutil.TrackProcess(conf.Task.Id, pid, logger.System())
+			agentutil.TrackProcess()
 
 			if c.Background {
 				logger.Execution().Debugf("Running process with PID %d in the background.", pid)

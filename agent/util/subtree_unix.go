@@ -24,12 +24,12 @@ const (
 
 // TrackProcess is a noop by default if we don't need to do any special
 // bookkeeping up-front.
-func TrackProcess(key string, pid int, logger grip.Journaler) {}
+func TrackProcess() {}
 
 // KillSpawnedProcs kills processes that descend from the agent and waits
 // for them to terminate.
 func KillSpawnedProcs(ctx context.Context, key, workingDir string, logger grip.Journaler) error {
-	pidsToKill, err := getPIDsToKill(ctx, key, workingDir, logger)
+	pidsToKill, err := getPIDsToKill(ctx, key, workingDir)
 	if err != nil {
 		return errors.Wrap(err, "getting list of PIDs to kill")
 	}
@@ -56,7 +56,7 @@ func KillSpawnedProcs(ctx context.Context, key, workingDir string, logger grip.J
 
 }
 
-func getPIDsToKill(ctx context.Context, key, workingDir string, logger grip.Journaler) ([]int, error) {
+func getPIDsToKill(ctx context.Context, key, workingDir string) ([]int, error) {
 	var pidsToKill []int
 
 	processes, err := psAllProcesses(ctx)

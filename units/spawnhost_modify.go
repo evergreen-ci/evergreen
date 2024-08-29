@@ -119,7 +119,7 @@ func (j *spawnhostModifyJob) Run(ctx context.Context) {
 
 	modifyCloudHost := func(ctx context.Context, mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.ModifyHost(ctx, h, j.ModifyOptions); err != nil {
-			event.LogHostModifyError(h.Id, string(j.Source), err.Error())
+			event.LogHostModifyError(h.Id, err.Error())
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "error modifying spawn host",
 				"host_id":  h.Id,

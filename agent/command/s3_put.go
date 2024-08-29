@@ -466,7 +466,7 @@ retryLoop:
 		return nil
 	}
 
-	err = errors.WithStack(s3pc.attachFiles(ctx, comm, logger, uploadedFiles, s3pc.RemoteFile))
+	err = errors.WithStack(s3pc.attachFiles(ctx, comm, uploadedFiles, s3pc.RemoteFile))
 	if err != nil {
 		return err
 	}
@@ -483,7 +483,7 @@ retryLoop:
 
 // attachTaskFiles is responsible for sending the
 // specified file to the API Server. Does not support multiple file putting.
-func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, localFiles []string, remoteFile string) error {
+func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, localFiles []string, remoteFile string) error {
 	files := []*artifact.File{}
 
 	for _, fn := range localFiles {

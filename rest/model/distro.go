@@ -147,7 +147,7 @@ type APIDispatcherSettings struct {
 }
 
 // BuildFromService converts from service level distro.DispatcherSettings to an APIDispatcherSettings
-func (s *APIDispatcherSettings) BuildFromService(settings distro.DispatcherSettings) {
+func (s *APIDispatcherSettings) BuildFromService() {
 	s.Version = utility.ToStringPtr(evergreen.DispatcherVersionRevisedWithDependencies)
 }
 
@@ -412,7 +412,7 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.HostAllocatorSettings = allocatorSettings
 
 	dispatchSettings := APIDispatcherSettings{}
-	dispatchSettings.BuildFromService(d.DispatcherSettings)
+	dispatchSettings.BuildFromService()
 	apiDistro.DispatcherSettings = dispatchSettings
 
 	homeVolumeSettings := APIHomeVolumeSettings{}

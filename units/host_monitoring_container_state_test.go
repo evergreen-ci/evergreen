@@ -46,7 +46,7 @@ func TestHostMonitoringContainerStateJob(t *testing.T) {
 	assert.NoError(h3.Insert(ctx))
 	assert.NoError(h4.Insert(ctx))
 
-	j := NewHostMonitorContainerStateJob(env, h1, evergreen.ProviderNameDockerMock, "job-1")
+	j := NewHostMonitorContainerStateJob(h1, evergreen.ProviderNameDockerMock, "job-1")
 	assert.False(j.Status().Completed)
 
 	j.Run(ctx)

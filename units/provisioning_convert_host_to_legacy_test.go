@@ -22,7 +22,7 @@ func TestConvertHostToLegacyProvisioningJob(t *testing.T) {
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host){
 		"PopulatesFields": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {
-			j := NewConvertHostToLegacyProvisioningJob(env, *h, "job-id", 0)
+			j := NewConvertHostToLegacyProvisioningJob(env, *h, "job-id")
 
 			info := j.TimeInfo()
 			assert.Equal(t, maxHostReprovisioningJobTime, info.MaxTime)
@@ -38,7 +38,7 @@ func TestConvertHostToLegacyProvisioningJob(t *testing.T) {
 			h.NeedsNewAgent = false
 			require.NoError(t, h.Insert(ctx))
 
-			j := NewConvertHostToLegacyProvisioningJob(env, *h, "job-id", 0)
+			j := NewConvertHostToLegacyProvisioningJob(env, *h, "job-id")
 			convertJob, ok := j.(*convertHostToLegacyProvisioningJob)
 			require.True(t, ok)
 			convertJob.Run(ctx)
@@ -50,7 +50,7 @@ func TestConvertHostToLegacyProvisioningJob(t *testing.T) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert(ctx))
 
-			j := NewConvertHostToLegacyProvisioningJob(env, *h, "job-id", 0)
+			j := NewConvertHostToLegacyProvisioningJob(env, *h, "job-id")
 			convertJob, ok := j.(*convertHostToLegacyProvisioningJob)
 			require.True(t, ok)
 			convertJob.Run(ctx)
@@ -62,7 +62,7 @@ func TestConvertHostToLegacyProvisioningJob(t *testing.T) {
 			h.NeedsReprovision = host.ReprovisionNone
 			require.NoError(t, h.Insert(ctx))
 
-			j := NewConvertHostToLegacyProvisioningJob(env, *h, "job-id", 0)
+			j := NewConvertHostToLegacyProvisioningJob(env, *h, "job-id")
 			convertJob, ok := j.(*convertHostToLegacyProvisioningJob)
 			require.True(t, ok)
 			convertJob.Run(ctx)

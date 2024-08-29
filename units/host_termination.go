@@ -293,7 +293,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		}
 	}
 
-	if err := j.checkAndTerminateCloudHost(ctx, prevStatus); err != nil {
+	if err := j.checkAndTerminateCloudHost(ctx); err != nil {
 		j.AddError(err)
 		return
 	}
@@ -367,7 +367,7 @@ func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) error {
 //
 // If this job is set to skip cloud host termination, it will ignore the cloud
 // host and only mark the host as terminated in the DB .
-func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context, oldStatus string) error {
+func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context) error {
 	if j.SkipCloudHostTermination {
 		return errors.Wrap(j.host.Terminate(ctx, evergreen.User, j.TerminationReason), "marking DB host terminated")
 	}

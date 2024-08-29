@@ -158,7 +158,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "invalid host modify request"))
 	}
 
-	if _, err := data.ModifySpawnHost(ctx, h.env, user, foundHost, *h.options); err != nil {
+	if _, err := data.ModifySpawnHost(ctx, h.env, foundHost, *h.options); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 

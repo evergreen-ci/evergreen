@@ -250,7 +250,7 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath, taskID string, l
 
 			pid := proc.Info(ctx).PID
 
-			agentutil.TrackProcess(taskID, pid, logger.System())
+			agentutil.TrackProcess()
 
 			if c.Background {
 				logger.Execution().Debugf("Running process in the background with pid %d.", pid)
@@ -389,7 +389,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		})
 	}
 
-	err = errors.WithStack(c.runCommand(ctx, conf.Task.Id, c.getProc(ctx, execPath, conf.Task.Id, logger), logger))
+	err = errors.WithStack(c.runCommand(ctx, c.getProc(ctx, execPath, conf.Task.Id, logger), logger))
 
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		logger.System().Debugf("Canceled command '%s', dumping running processes.", c.Name())
@@ -402,7 +402,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 	return err
 }
 
-func (c *subprocessExec) runCommand(ctx context.Context, taskID string, cmd *jasper.Command, logger client.LoggerProducer) error {
+func (c *subprocessExec) runCommand(ctx context.Context, cmd *jasper.Command, logger client.LoggerProducer) error {
 	if c.Silent {
 		logger.Execution().Info("Executing command in silent mode.")
 	}

@@ -11,7 +11,7 @@ import (
 
 func TestClone(t *testing.T) {
 	settings := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, settings, "TestClone")
+	testutil.ConfigureIntegrationTest(t, settings)
 
 	type testCase struct {
 		opts      cloneOptions

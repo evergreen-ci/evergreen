@@ -45,7 +45,7 @@ func TestCommitQueueJob(t *testing.T) {
 
 	env := testutil.NewEnvironment(s.suiteCtx, t)
 	settings := env.Settings()
-	testutil.ConfigureIntegrationTest(t, settings, t.Name())
+	testutil.ConfigureIntegrationTest(t, settings)
 	s.settings = settings
 
 	suite.Run(t, s)
@@ -380,7 +380,7 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 			{Variant: "my-variant", Tasks: []string{"my-task"}},
 		},
 	}
-	testutil.ConfigureIntegrationTest(s.T(), s.settings, s.T().Name())
+	testutil.ConfigureIntegrationTest(s.T(), s.settings)
 	projectConfig, pp, err := updatePatch(s.ctx, s.settings, "", projectRef, patchDoc)
 	s.NoError(err)
 	s.NotEqual("abcdef", patchDoc.Patches[0].Githash)

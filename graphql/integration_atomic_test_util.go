@@ -190,7 +190,7 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 	require.NoError(t, usr.UpdateAPIKey(apiKey))
 
 	require.NoError(t, setupDBIndexes())
-	require.NoError(t, setupDBData(ctx, env, state.DBData, *state))
+	require.NoError(t, setupDBData(ctx, env, state.DBData))
 	require.NoError(t, setupTaskOutputData(ctx, env, state))
 	roleManager := env.RoleManager()
 
@@ -394,7 +394,7 @@ func setupDBIndexes() error {
 	})
 }
 
-func setupDBData(ctx context.Context, env evergreen.Environment, data map[string]json.RawMessage, state AtomicGraphQLState) error {
+func setupDBData(ctx context.Context, env evergreen.Environment, data map[string]json.RawMessage) error {
 	catcher := grip.NewBasicCatcher()
 
 	for coll, d := range data {
@@ -414,7 +414,7 @@ func setupTaskOutputData(ctx context.Context, env evergreen.Environment, state *
 	for taskOutputType, data := range state.TaskOutputData {
 		switch taskOutputType {
 		case taskoutput.TaskLogOutput{}.ID():
-			if err := setupTaskLogData(ctx, env, data); err != nil {
+			if err := setupTaskLogData(ctx, data); err != nil {
 				return errors.Wrap(err, "setting up task log data")
 			}
 		default:
@@ -425,7 +425,7 @@ func setupTaskOutputData(ctx context.Context, env evergreen.Environment, state *
 	return nil
 }
 
-func setupTaskLogData(ctx context.Context, env evergreen.Environment, data json.RawMessage) error {
+func setupTaskLogData(ctx context.Context, data json.RawMessage) error {
 	taskLogs := []struct {
 		TaskID    string                 `json:"task_id"`
 		Execution int                    `json:"execution"`

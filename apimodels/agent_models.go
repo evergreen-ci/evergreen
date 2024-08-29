@@ -204,7 +204,7 @@ func (ted *TaskEndDetail) IsEmpty() bool {
 	return ted == nil || ted.Status == ""
 }
 
-func (ch *CreateHost) validateDocker(ctx context.Context) error {
+func (ch *CreateHost) validateDocker() error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Add(ch.setNumHosts())
@@ -323,7 +323,7 @@ func (ch *CreateHost) Validate(ctx context.Context) error {
 	}
 
 	if ch.CloudProvider == ProviderDocker {
-		return ch.validateDocker(ctx)
+		return ch.validateDocker()
 	}
 
 	return errors.Errorf("cloud provider must be either '%s' or '%s'", ProviderEC2, ProviderDocker)

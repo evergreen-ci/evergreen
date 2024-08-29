@@ -1708,11 +1708,7 @@ func (t *Task) initializeTaskOutputInfo(env evergreen.Environment) (*taskoutput.
 		return nil, false
 	}
 
-	return taskoutput.InitializeTaskOutput(env, taskoutput.TaskOptions{
-		ProjectID: t.Project,
-		TaskID:    t.Id,
-		Execution: t.Execution,
-	}), true
+	return taskoutput.InitializeTaskOutput(env), true
 }
 
 // getTaskOutputSafe returns an instantiation of the task output interface and

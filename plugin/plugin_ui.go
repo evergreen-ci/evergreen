@@ -309,6 +309,6 @@ func (errs *UIDataFunctionError) Error() string {
 	)
 }
 
-func TemplateRoot(name string) string {
+func TemplateRoot() string {
 	return filepath.Join(evergreen.FindEvergreenHome(), "service", "templates")
 }

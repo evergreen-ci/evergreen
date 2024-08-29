@@ -49,7 +49,7 @@ func TestGetPIDsToKill(t *testing.T) {
 		// Since the processes run in the background, we have to poll them until
 		// they actually start, at which point they should appear in the listed
 		// PIDs.
-		pids, err := getPIDsToKill(ctx, "", filepath.Dir(fullSleepPath), grip.GetDefaultJournaler())
+		pids, err := getPIDsToKill(ctx, "", filepath.Dir(fullSleepPath))
 		require.NoError(t, err)
 
 		var (

@@ -476,7 +476,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			// hosts are running tasks in the task group. Only check the number
 			// of hosts running this task group if the task group is new to the
 			// host.
-			if err := checkHostTaskGroupAfterDispatch(ctx, currentHost, nextTask); err != nil {
+			if err := checkHostTaskGroupAfterDispatch(ctx, nextTask); err != nil {
 				grip.Debug(message.Fields{
 					"message":              "failed dispatch task group check due to race, not dispatching",
 					"task_distro_id":       nextTask.DistroId,
@@ -562,7 +562,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 // number of hosts running this task group does not exceed the max after
 // assigning the task to the host. If it exceeds the max host limit, this will
 // return true to indicate that the host should not run this task.
-func checkHostTaskGroupAfterDispatch(ctx context.Context, h *host.Host, t *task.Task) error {
+func checkHostTaskGroupAfterDispatch(ctx context.Context, t *task.Task) error {
 	var minTaskGroupOrderNum int
 	if t.IsPartOfSingleHostTaskGroup() {
 		var err error
@@ -621,7 +621,7 @@ func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, 
 		}
 		defer session.EndSession(ctx)
 
-		if _, err := session.WithTransaction(ctx, dispatchHostTask(env, h, t, time.Now())); err != nil {
+		if _, err := session.WithTransaction(ctx, dispatchHostTask(env, h, t)); err != nil {
 			return err
 		}
 
@@ -647,7 +647,7 @@ func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, 
 	return nil
 }
 
-func dispatchHostTask(env evergreen.Environment, h *host.Host, t *task.Task, dispatchedAt time.Time) func(mongo.SessionContext) (interface{}, error) {
+func dispatchHostTask(env evergreen.Environment, h *host.Host, t *task.Task) func(mongo.SessionContext) (interface{}, error) {
 	return func(sessCtx mongo.SessionContext) (interface{}, error) {
 		if err := h.UpdateRunningTaskWithContext(sessCtx, env, t); err != nil {
 			return nil, errors.Wrapf(err, "updating running task for host '%s' to '%s'", h.Id, t.Id)
@@ -995,7 +995,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 	}
 
 	if isTaskGroupNewToHost(h, t) {
-		if err := checkHostTaskGroupAfterDispatch(ctx, h, t); err != nil {
+		if err := checkHostTaskGroupAfterDispatch(ctx, t); err != nil {
 			if err := undoHostTaskDispatchAtomically(ctx, env, h, t); err != nil {
 				grip.Error(message.WrapError(err, getMessage("could not undo dispatch after task group check failed")))
 				return gimlet.MakeJSONInternalErrorResponder(err)

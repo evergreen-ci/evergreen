@@ -47,7 +47,7 @@ func makeConvertHostToLegacyProvisioningJob() *convertHostToLegacyProvisioningJo
 
 // NewConvertHostToLegacyProvisioningJob converts a host from a legacy provisioned
 // host to a non-legacy provisioned host.
-func NewConvertHostToLegacyProvisioningJob(env evergreen.Environment, h host.Host, id string, attempt int) amboy.Job {
+func NewConvertHostToLegacyProvisioningJob(env evergreen.Environment, h host.Host, id string) amboy.Job {
 	j := makeConvertHostToLegacyProvisioningJob()
 	j.env = env
 	j.host = &h

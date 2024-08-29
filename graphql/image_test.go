@@ -25,7 +25,7 @@ func TestOperatingSystem(t *testing.T) {
 	config := New("/graphql")
 	ctx := getContext(t)
 	testConfig := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
 	ami := "ami-0f6b89500372d4a06"
 	image := model.APIImage{
@@ -49,7 +49,7 @@ func TestPackages(t *testing.T) {
 	config := New("/graphql")
 	ctx := getContext(t)
 	testConfig := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
 	ami := "ami-0f6b89500372d4a06"
 	image := model.APIImage{
@@ -72,7 +72,7 @@ func TestToolchains(t *testing.T) {
 	config := New("/graphql")
 	ctx := getContext(t)
 	testConfig := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
 	ami := "ami-0f6b89500372d4a06"
 	image := model.APIImage{
@@ -96,7 +96,7 @@ func TestEvents(t *testing.T) {
 	config := New("/graphql")
 	ctx := getContext(t)
 	testConfig := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
 
 	// Returns the correct number of events according to the limit.
@@ -138,7 +138,7 @@ func TestDistros(t *testing.T) {
 	require.NotNil(t, ctx)
 
 	testConfig := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
 	d1 := &distro.Distro{
 		Id:      "ubuntu1604-large",
@@ -191,7 +191,7 @@ func TestLatestTask(t *testing.T) {
 	config := New("/graphql")
 	ctx := getContext(t)
 	testConfig := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	require.NoError(t, testConfig.RuntimeEnvironments.Set(ctx))
 	d1 := &distro.Distro{
 		Id:      "ubuntu1604-large",

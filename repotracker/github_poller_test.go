@@ -104,7 +104,7 @@ func createTaskCollections(t *testing.T) {
 
 func TestGetRevisionsSinceWithPaging(t *testing.T) {
 	dropTestDB(t)
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	Convey("When fetching commits from the evergreen repository", t, func() {
 		token, err := testConfig.GetGithubOauthToken()
 		So(err, ShouldBeNil)
@@ -129,7 +129,7 @@ func TestGetRevisionsSince(t *testing.T) {
 	dropTestDB(t)
 	var ghp GithubRepositoryPoller
 
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+	testutil.ConfigureIntegrationTest(t, testConfig)
 
 	// Initialize repo revisions for project
 	_, err := model.GetNewRevisionOrderNumber(projectRef.Id)
@@ -197,7 +197,7 @@ func TestGetRemoteConfig(t *testing.T) {
 	dropTestDB(t)
 	var ghp GithubRepositoryPoller
 
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -248,7 +248,7 @@ func TestGetAllRevisions(t *testing.T) {
 	dropTestDB(t)
 	var ghp GithubRepositoryPoller
 
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+	testutil.ConfigureIntegrationTest(t, testConfig)
 
 	Convey("When fetching recent github revisions (by count) - from a repo "+
 		"containing 3 commits - given a valid Oauth token...", t, func() {
@@ -289,7 +289,7 @@ func TestGetChangedFiles(t *testing.T) {
 	dropTestDB(t)
 	var grp GithubRepositoryPoller
 
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+	testutil.ConfigureIntegrationTest(t, testConfig)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

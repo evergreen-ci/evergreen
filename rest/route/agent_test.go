@@ -100,7 +100,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			require.NoError(t, env.Configure(ctx))
 			env.Settings().LoggerConfig.RedactKeys = []string{"pass", "secret"}
 
-			testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
+			testutil.ConfigureIntegrationTest(t, env.Settings())
 
 			require.NoError(t, db.ClearCollections(host.Collection, task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection, model.ParserProjectCollection))
 
