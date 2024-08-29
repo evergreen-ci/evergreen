@@ -94,7 +94,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Amboy.GroupTTLMinutes, apiSettings.Amboy.GroupTTLMinutes)
 	assert.EqualValues(testSettings.Amboy.LockTimeoutMinutes, apiSettings.Amboy.LockTimeoutMinutes)
 	assert.EqualValues(testSettings.Amboy.SampleSize, apiSettings.Amboy.SampleSize)
-	assert.EqualValues(testSettings.Amboy.RequireRemotePriority, apiSettings.Amboy.RequireRemotePriority)
 	assert.EqualValues(testSettings.Amboy.Retry, apiSettings.Amboy.Retry)
 	require.Equal(len(testSettings.Amboy.NamedQueues), len(apiSettings.Amboy.NamedQueues))
 	for i := range testSettings.Amboy.NamedQueues {
@@ -231,7 +230,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Amboy.GroupDefaultWorkers, dbSettings.Amboy.GroupDefaultWorkers)
 	assert.EqualValues(testSettings.Amboy.GroupBackgroundCreateFrequencyMinutes, dbSettings.Amboy.GroupBackgroundCreateFrequencyMinutes)
 	assert.EqualValues(testSettings.Amboy.GroupPruneFrequencyMinutes, dbSettings.Amboy.GroupPruneFrequencyMinutes)
-	assert.EqualValues(testSettings.Amboy.RequireRemotePriority, dbSettings.Amboy.RequireRemotePriority)
 	assert.EqualValues(testSettings.Amboy.GroupTTLMinutes, dbSettings.Amboy.GroupTTLMinutes)
 	assert.EqualValues(testSettings.Amboy.LockTimeoutMinutes, dbSettings.Amboy.LockTimeoutMinutes)
 	assert.EqualValues(testSettings.Amboy.SampleSize, dbSettings.Amboy.SampleSize)

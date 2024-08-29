@@ -347,7 +347,6 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 		a.GroupBackgroundCreateFrequencyMinutes = v.GroupBackgroundCreateFrequencyMinutes
 		a.GroupPruneFrequencyMinutes = v.GroupPruneFrequencyMinutes
 		a.GroupTTLMinutes = v.GroupTTLMinutes
-		a.RequireRemotePriority = v.RequireRemotePriority
 		a.LockTimeoutMinutes = v.LockTimeoutMinutes
 		a.SampleSize = v.SampleSize
 		if err := a.Retry.BuildFromService(v.Retry); err != nil {
@@ -398,7 +397,6 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		GroupBackgroundCreateFrequencyMinutes: a.GroupBackgroundCreateFrequencyMinutes,
 		GroupPruneFrequencyMinutes:            a.GroupPruneFrequencyMinutes,
 		GroupTTLMinutes:                       a.GroupTTLMinutes,
-		RequireRemotePriority:                 a.RequireRemotePriority,
 		LockTimeoutMinutes:                    a.LockTimeoutMinutes,
 		SampleSize:                            a.SampleSize,
 		Retry:                                 retry,

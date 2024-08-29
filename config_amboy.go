@@ -24,7 +24,6 @@ type AmboyConfig struct {
 	GroupBackgroundCreateFrequencyMinutes int                     `bson:"group_background_create_frequency" json:"group_background_create_frequency" yaml:"group_background_create_frequency"`
 	GroupPruneFrequencyMinutes            int                     `bson:"group_prune_frequency" json:"group_prune_frequency" yaml:"group_prune_frequency"`
 	GroupTTLMinutes                       int                     `bson:"group_ttl" json:"group_ttl" yaml:"group_ttl"`
-	RequireRemotePriority                 bool                    `bson:"require_remote_priority" json:"require_remote_priority" yaml:"require_remote_priority"`
 	LockTimeoutMinutes                    int                     `bson:"lock_timeout_minutes" json:"lock_timeout_minutes" yaml:"lock_timeout_minutes"`
 	SampleSize                            int                     `bson:"sample_size" json:"sample_size" yaml:"sample_size"`
 	Retry                                 AmboyRetryConfig        `bson:"retry" json:"retry" yaml:"retry"`
@@ -100,7 +99,6 @@ func (c *AmboyConfig) Set(ctx context.Context) error {
 			amboyGroupBackgroundCreateFrequencyMinutesKey: c.GroupBackgroundCreateFrequencyMinutes,
 			amboyGroupPruneFrequencyMinutesKey:            c.GroupPruneFrequencyMinutes,
 			amboyGroupTTLMinutesKey:                       c.GroupTTLMinutes,
-			amboyRequireRemotePriorityKey:                 c.RequireRemotePriority,
 			amboyLockTimeoutMinutesKey:                    c.LockTimeoutMinutes,
 			amboySampleSizeKey:                            c.SampleSize,
 			amboyRetryKey:                                 c.Retry,
