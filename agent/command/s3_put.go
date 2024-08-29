@@ -563,16 +563,16 @@ func (s3pc *s3put) isPublic() bool {
 }
 
 func (s3pc *s3put) remoteFileExists(ctx context.Context, remoteName string) (bool, error) {
-	requestParams2 := pail.S3Options{
+	opts := pail.S3Options{
 		Name:        s3pc.Bucket,
 		Credentials: pail.CreateAWSCredentials(s3pc.AwsKey, s3pc.AwsSecret, s3pc.AwsSessionToken),
 		Region:      s3pc.Region,
 	}
-	bucket, err := pail.NewS3Bucket(ctx, requestParams2)
+	bucket, err := pail.NewS3Bucket(ctx, opts)
 	if err != nil {
 		return false, errors.Wrap(err, "creating S3 bucket")
 	}
-	_, err = bucket.Get(ctx, remoteName)
+	ok, err := bucket.Exists(ctx, remoteName)
 	if err != nil {
 		var smithyErr smithy.APIError
 		if errors.As(err, &smithyErr) {
@@ -581,6 +581,9 @@ func (s3pc *s3put) remoteFileExists(ctx context.Context, remoteName string) (boo
 			}
 		}
 		return false, errors.Wrapf(err, "getting head object for remote file '%s'", remoteName)
+	}
+	if !ok {
+		return false, nil
 	}
 	return true, nil
 }
