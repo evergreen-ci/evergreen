@@ -11,8 +11,6 @@ import (
 )
 
 type TaskQueueItemDispatcher interface {
-	FindNextTask(context.Context, string, TaskSpec, time.Time) (*TaskQueueItem, error)
-	Refresh(context.Context, string) error
 	RefreshFindNextTask(context.Context, string, TaskSpec, time.Time) (*TaskQueueItem, error)
 }
 
@@ -20,7 +18,6 @@ type CachedDispatcher interface {
 	Refresh() error
 	FindNextTask(context.Context, TaskSpec, time.Time) *TaskQueueItem
 	Type() string
-	CreatedAt() time.Time
 }
 
 type taskDispatchService struct {
@@ -45,14 +42,6 @@ func NewTaskDispatchAliasService(ttl time.Duration) TaskQueueItemDispatcher {
 	}
 }
 
-func (s *taskDispatchService) FindNextTask(ctx context.Context, distroID string, spec TaskSpec, amiUpdatedTime time.Time) (*TaskQueueItem, error) {
-	distroDispatchService, err := s.ensureQueue(ctx, distroID)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return distroDispatchService.FindNextTask(ctx, spec, amiUpdatedTime), nil
-}
-
 func (s *taskDispatchService) RefreshFindNextTask(ctx context.Context, distroID string, spec TaskSpec, amiUpdatedTime time.Time) (*TaskQueueItem, error) {
 	distroDispatchService, err := s.ensureQueue(ctx, distroID)
 	if err != nil {
@@ -63,19 +52,6 @@ func (s *taskDispatchService) RefreshFindNextTask(ctx context.Context, distroID 
 		return nil, errors.WithStack(err)
 	}
 	return distroDispatchService.FindNextTask(ctx, spec, amiUpdatedTime), nil
-}
-
-func (s *taskDispatchService) Refresh(ctx context.Context, distroID string) error {
-	distroDispatchService, err := s.ensureQueue(ctx, distroID)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	if err := distroDispatchService.Refresh(); err != nil {
-		return errors.WithStack(err)
-	}
-
-	return nil
 }
 
 func (s *taskDispatchService) ensureQueue(ctx context.Context, distroID string) (CachedDispatcher, error) {
