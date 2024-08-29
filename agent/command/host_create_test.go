@@ -37,7 +37,6 @@ func (s *createHostSuite) SetupSuite() {
 	s.conf = &internal.TaskConfig{
 		Expansions: util.Expansions{
 			"subnet_id": "subnet-123456",
-			"tenancy":   string(evergreen.EC2TenancyDedicated),
 		},
 		Task:    task.Task{Id: "mock_id", Secret: "mock_secret"},
 		Project: model.Project{}}
@@ -50,7 +49,6 @@ func (s *createHostSuite) SetupTest() {
 		"distro":    "myDistro",
 		"scope":     "task",
 		"subnet_id": "${subnet_id}",
-		"tenancy":   "${tenancy}",
 	}
 	s.cmd = createHost{}
 }
@@ -92,7 +90,6 @@ func (s *createHostSuite) TestParseFromFile() {
 		"scope":            "task",
 		"subnet_id":        "${subnet_id}",
 		"ebs_block_device": ebsDevice,
-		"tenancy":          "${tenancy}",
 	}
 	//parse from JSON file
 	s.NoError(utility.WriteJSONFile(path, fileContent))
@@ -108,7 +105,6 @@ func (s *createHostSuite) TestParseFromFile() {
 	s.Equal("myDistro", s.cmd.CreateHost.Distro)
 	s.Equal("task", s.cmd.CreateHost.Scope)
 	s.Equal("subnet-123456", s.cmd.CreateHost.Subnet)
-	s.Equal(evergreen.EC2TenancyDedicated, s.cmd.CreateHost.Tenancy)
 	s.Equal("myDevice", s.cmd.CreateHost.EBSDevices[0].DeviceName)
 
 	//parse from YAML file

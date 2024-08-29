@@ -180,7 +180,6 @@ func TestMakeHost(t *testing.T) {
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,
 		Subnet:              "subnet-123456",
-		Tenancy:             evergreen.EC2TenancyDedicated,
 	}
 	handler.createHost = c
 	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
@@ -198,7 +197,6 @@ func TestMakeHost(t *testing.T) {
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
 	assert.Equal("ami-123456", ec2Settings.AMI)
-	assert.Equal(evergreen.EC2TenancyDedicated, ec2Settings.Tenancy)
 	assert.Equal("subnet-123456", ec2Settings.SubnetId)
 	assert.Equal(true, ec2Settings.IsVpc)
 
@@ -207,7 +205,6 @@ func TestMakeHost(t *testing.T) {
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, ""))
 	assert.Equal("ami-123456", ec2Settings2.AMI)
 	assert.Equal("subnet-123456", ec2Settings2.SubnetId)
-	assert.Equal(evergreen.EC2TenancyDedicated, ec2Settings2.Tenancy)
 	assert.Equal(true, ec2Settings2.IsVpc)
 
 	// bring your own ami
@@ -221,7 +218,6 @@ func TestMakeHost(t *testing.T) {
 		InstanceType:        "t1.micro",
 		Subnet:              "subnet-123456",
 		SecurityGroups:      []string{"1234"},
-		Tenancy:             evergreen.EC2TenancyDedicated,
 	}
 	handler.createHost = c
 	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
@@ -240,7 +236,6 @@ func TestMakeHost(t *testing.T) {
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, ""))
 	assert.Equal("ami-654321", ec2Settings2.AMI)
 	assert.Equal("subnet-123456", ec2Settings2.SubnetId)
-	assert.Equal(evergreen.EC2TenancyDedicated, ec2Settings.Tenancy)
 	assert.Equal(true, ec2Settings2.IsVpc)
 
 	// with multiple regions
