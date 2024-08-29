@@ -737,7 +737,6 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		Repo:                             utility.FromStringPtr(p.Repo),
 		Branch:                           utility.FromStringPtr(p.Branch),
 		Enabled:                          utility.FromBoolPtr(p.Enabled),
-		Private:                          utility.BoolPtrCopy(p.Private),
 		Restricted:                       utility.BoolPtrCopy(p.Restricted),
 		BatchTime:                        p.BatchTime,
 		RemotePath:                       utility.FromStringPtr(p.RemotePath),
@@ -867,7 +866,6 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 	p.Branch = utility.ToStringPtr(projectRef.Branch)
 	p.Enabled = utility.ToBoolPtr(projectRef.Enabled)
 	p.Admins = utility.ToStringPtrSlice(projectRef.Admins)
-	p.Private = utility.BoolPtrCopy(projectRef.Private)
 	p.Restricted = utility.BoolPtrCopy(projectRef.Restricted)
 	p.BatchTime = projectRef.BatchTime
 	p.RemotePath = utility.ToStringPtr(projectRef.RemotePath)

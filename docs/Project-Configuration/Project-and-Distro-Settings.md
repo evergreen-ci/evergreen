@@ -104,9 +104,7 @@ Additionally, admins can **Force Repotracker Run** to check for new commits if n
 
 ### Access and Admin Settings
 
-Admins can set a project as private or public. A private project can
-only be seen by logged in users. A public project is viewable to those
-who are not logged in as well. To set a Project Administrator edit the
+To set a Project Administrator edit the
 Admin list (which can only be viewable by Superusers or Project Admins
 for the project) for the project by adding the Evergreen username to the
 list and saving the project settings.
@@ -116,9 +114,7 @@ users have basic access to the project (able to view tasks and logs,
 able to submit patches). If checked, users will by default not have any
 access, and access must be manually granted through an external system
 via the REST API. The default for this setting is to allow logged-in
-users basic access to this project. Note this is different from the
-Private/Public setting above, which restricts access for users that are
-not logged in.
+users basic access to this project. 
 
 ### Variables
 

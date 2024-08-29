@@ -2048,7 +2048,6 @@ type APIServiceFlags struct {
 	BackgroundReauthDisabled        bool `json:"background_reauth_disabled"`
 	BackgroundCleanupDisabled       bool `json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
-	LegacyUIPublicAccessDisabled    bool `json:"legacy_ui_public_access_disabled"`
 	GlobalGitHubTokenDisabled       bool `json:"global_github_token_disabled"`
 	SleepScheduleDisabled           bool `json:"sleep_schedule_disabled"`
 	SleepScheduleBetaTestDisabled   bool `json:"sleep_schedule_beta_test_disabled"`
@@ -2367,7 +2366,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
-		as.LegacyUIPublicAccessDisabled = v.LegacyUIPublicAccessDisabled
 		as.GlobalGitHubTokenDisabled = v.GlobalGitHubTokenDisabled
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
 		as.SleepScheduleBetaTestDisabled = v.SleepScheduleBetaTestDisabled
@@ -2413,7 +2411,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		BackgroundCleanupDisabled:       as.BackgroundCleanupDisabled,
 		BackgroundReauthDisabled:        as.BackgroundReauthDisabled,
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
-		LegacyUIPublicAccessDisabled:    as.LegacyUIPublicAccessDisabled,
 		GlobalGitHubTokenDisabled:       as.GlobalGitHubTokenDisabled,
 		SleepScheduleDisabled:           as.SleepScheduleDisabled,
 		SleepScheduleBetaTestDisabled:   as.SleepScheduleBetaTestDisabled,
