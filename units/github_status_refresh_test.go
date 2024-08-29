@@ -65,13 +65,12 @@ func (s *githubStatusRefreshSuite) SetupTest() {
 	startTime := time.Now().Truncate(time.Millisecond)
 	id := mgobson.NewObjectId()
 	s.patchDoc = &patch.Patch{
-		Id:           id,
-		Version:      id.Hex(),
-		Activated:    true,
-		DisplayNewUI: true,
-		Status:       evergreen.VersionStarted,
-		StartTime:    startTime,
-		FinishTime:   startTime.Add(10 * time.Minute),
+		Id:         id,
+		Version:    id.Hex(),
+		Activated:  true,
+		Status:     evergreen.VersionStarted,
+		StartTime:  startTime,
+		FinishTime: startTime.Add(10 * time.Minute),
 		GithubPatchData: thirdparty.GithubPatch{
 			BaseOwner: "evergreen-ci",
 			BaseRepo:  "evergreen",
@@ -153,7 +152,6 @@ func (s *githubStatusRefreshSuite) TestStatusPending() {
 		Triggers: patch.TriggerInfo{
 			ParentPatch: s.patchDoc.Id.Hex(),
 		},
-		DisplayNewUI: true,
 	}
 	s.NoError(childPatch.Insert())
 	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
@@ -359,7 +357,6 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 		Triggers: patch.TriggerInfo{
 			ParentPatch: s.patchDoc.Id.Hex(),
 		},
-		DisplayNewUI: true,
 	}
 	s.NoError(childPatch.Insert())
 	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
@@ -425,7 +422,6 @@ func (s *githubStatusRefreshSuite) TestStatusFailed() {
 		Triggers: patch.TriggerInfo{
 			ParentPatch: s.patchDoc.Id.Hex(),
 		},
-		DisplayNewUI: true,
 	}
 	s.NoError(childPatch.Insert())
 	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
