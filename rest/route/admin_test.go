@@ -295,7 +295,7 @@ func (s *AdminRouteSuite) TestRestartTasksRoute() {
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
 
 	queue := s.env.LocalQueue()
-	handler := makeRestartRoute(evergreen.RestartTasks, queue)
+	handler := makeRestartRoute(queue)
 
 	s.NotNil(handler)
 
