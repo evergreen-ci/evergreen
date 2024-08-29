@@ -175,7 +175,7 @@ The check run will include a `view more details` link which will link back to th
 
 ## Dynamic Github Access Tokens
 
-Evergreen offers the [github.generate_token](Project-Commands#github_generate_token) project command that dynamically generates a short lived token from a user-provided GitHub app. Before you can use the command you will need to set up your github app in your project settings. This feature is not available as a [repo-level setting](Repo-Level-Settings), it will need to be set up separately for each project where the command will be used.
+Evergreen offers the [github.generate_token](Project-Commands#github_generate_token) project command that dynamically generates a short lived token from a user-provided GitHub app. Before you can use the command you will need to set up your github app in your project settings. This feature is not currently available as a [repo-level setting](Repo-Level-Settings), it needs to be set up separately for each project where the command will be used. However, the feature will be added as part of [DEVPROD-10356](https://jira.mongodb.org/browse/DEVPROD-10356)
 
 If you run into any issues, please see our [FAQ](../FAQ.md#dynamic-github-access-tokens).
 
