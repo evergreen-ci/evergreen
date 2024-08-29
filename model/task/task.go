@@ -2046,12 +2046,6 @@ func activateDeactivatedDependencies(tasksToActivate map[string]Task, taskIDsToA
 					DeactivatedForDependencyKey: false,
 					ActivatedByKey:              caller,
 					ActivatedTimeKey:            time.Now(),
-					// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
-					UnattainableDependencyKey: bson.M{"$cond": bson.M{
-						"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-						"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-						"else": false,
-					}},
 				},
 			},
 		},
@@ -2475,12 +2469,6 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 				LastHeartbeatKey:               utility.ZeroTime,
 				ContainerAllocationAttemptsKey: 0,
 				NumNextTaskDispatchesKey:       0,
-				// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
-				UnattainableDependencyKey: bson.M{"$cond": bson.M{
-					"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-					"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-					"else": false,
-				}},
 			},
 		},
 		{
