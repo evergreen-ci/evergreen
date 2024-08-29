@@ -114,9 +114,6 @@ type s3put struct {
 	base
 }
 
-// NotFound is returned by S3 when an object does not exist.
-const notFoundError = "NotFound"
-
 func s3PutFactory() Command      { return &s3put{} }
 func (s3pc *s3put) Name() string { return "s3.put" }
 
