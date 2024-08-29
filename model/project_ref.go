@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -759,7 +760,7 @@ func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) err
 	if appID == 0 || len(privateKey) == 0 {
 		return errors.New("both app ID and private key must be provided")
 	}
-	auth := evergreen.GithubAppAuth{
+	auth := githubapp.GithubAppAuth{
 		Id:         p.Id,
 		AppID:      appID,
 		PrivateKey: privateKey,
@@ -1866,7 +1867,7 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 // SetTracksPushEvents returns true if the GitHub app is installed on the owner/repo for the given project.
 func SetTracksPushEvents(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 	// Don't return errors because it could cause the project page to break if GitHub is down.
-	hasApp, err := evergreen.GetEnvironment().Settings().CreateGitHubAppAuth().IsGithubAppInstalledOnRepo(ctx, projectRef.Owner, projectRef.Repo)
+	hasApp, err := githubapp.CreateGitHubAppAuth(evergreen.GetEnvironment().Settings()).IsGithubAppInstalledOnRepo(ctx, projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":            "Error verifying GitHub app installation",
@@ -2007,7 +2008,7 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	// Don't error even if there is problem with verifying the GitHub app installation
 	// because a GitHub outage could cause project settings page to not load.
-	hasEvergreenAppInstalled, _ := evergreen.GetEnvironment().Settings().CreateGitHubAppAuth().IsGithubAppInstalledOnRepo(context.Background(), p.Owner, p.Repo)
+	hasEvergreenAppInstalled, _ := githubapp.CreateGitHubAppAuth(evergreen.GetEnvironment().Settings()).IsGithubAppInstalledOnRepo(context.Background(), p.Owner, p.Repo)
 
 	projectVars, err := FindOneProjectVars(p.Id)
 	if err != nil {
@@ -2030,7 +2031,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 		return nil, errors.Wrapf(err, "finding GitHub app for project '%s'", p.Id)
 	}
 	if githubApp == nil {
-		githubApp = &evergreen.GithubAppAuth{}
+		githubApp = &githubapp.GithubAppAuth{}
 	}
 
 	projectSettingsEvent := ProjectSettings{

@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -95,7 +96,7 @@ func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
 	if j.urlBase == "" {
 		return errors.New("url base doesn't exist")
 	}
-	j.sender, err = j.env.GetGitHubSender(j.patch.GithubPatchData.BaseOwner, j.patch.GithubPatchData.BaseRepo)
+	j.sender, err = j.env.GetGitHubSender(j.patch.GithubPatchData.BaseOwner, j.patch.GithubPatchData.BaseRepo, githubapp.CreateGitHubAppAuth(j.env.Settings()).CreateGitHubSenderInstallationToken)
 	if err != nil {
 		return err
 	}

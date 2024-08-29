@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -425,7 +426,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	const ghTokenLifetime = 50 * time.Minute
-	appToken, err := h.settings.CreateGitHubAppAuth().CreateCachedInstallationToken(ctx, pRef.Owner, pRef.Repo, ghTokenLifetime, nil)
+	appToken, err := githubapp.CreateGitHubAppAuth(h.settings).CreateCachedInstallationToken(ctx, pRef.Owner, pRef.Repo, ghTokenLifetime, nil)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "creating GitHub app token"))
 	}
@@ -1406,7 +1407,7 @@ func (g *createInstallationToken) Parse(ctx context.Context, r *http.Request) er
 
 func (g *createInstallationToken) Run(ctx context.Context) gimlet.Responder {
 	const lifetime = 50 * time.Minute
-	token, err := g.env.Settings().CreateGitHubAppAuth().CreateCachedInstallationToken(ctx, g.owner, g.repo, lifetime, nil)
+	token, err := githubapp.CreateGitHubAppAuth(g.env.Settings()).CreateCachedInstallationToken(ctx, g.owner, g.repo, lifetime, nil)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", g.owner, g.repo))
 	}

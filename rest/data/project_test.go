@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -56,7 +57,7 @@ func getMockProjectSettings() model.ProjectSettings {
 				GitClone:      nil,
 			},
 		},
-		GitHubAppAuth:      evergreen.GithubAppAuth{},
+		GitHubAppAuth:      githubapp.GithubAppAuth{},
 		GithubHooksEnabled: true,
 		Vars: model.ProjectVars{
 			Id:          projectId,
@@ -146,7 +147,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		s.NoError(vars.Insert())
 		before := getMockProjectSettings()
 		after := getMockProjectSettings()
-		after.GitHubAppAuth = evergreen.GithubAppAuth{
+		after.GitHubAppAuth = githubapp.GithubAppAuth{
 			AppID:      12345,
 			PrivateKey: []byte("secret"),
 		}

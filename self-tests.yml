@@ -561,6 +561,9 @@ tasks:
     name: test-model-event
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
+    name: test-model-githubapp
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
     name: test-model-host
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]

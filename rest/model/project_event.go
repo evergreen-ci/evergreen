@@ -3,9 +3,9 @@ package model
 import (
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -261,14 +261,14 @@ func (vars *APIProjectVars) IsPrivate(key string) bool {
 	return utility.StringSliceContains(vars.PrivateVarsList, key)
 }
 
-func (g *APIGithubAppAuth) ToService() *evergreen.GithubAppAuth {
-	return &evergreen.GithubAppAuth{
+func (g *APIGithubAppAuth) ToService() *githubapp.GithubAppAuth {
+	return &githubapp.GithubAppAuth{
 		AppID:      int64(g.AppID),
 		PrivateKey: []byte(utility.FromStringPtr(g.PrivateKey)),
 	}
 }
 
-func (g *APIGithubAppAuth) BuildFromService(v evergreen.GithubAppAuth) {
+func (g *APIGithubAppAuth) BuildFromService(v githubapp.GithubAppAuth) {
 	g.AppID = int(v.AppID)
 	g.PrivateKey = utility.ToStringPtr(string(v.PrivateKey))
 }
