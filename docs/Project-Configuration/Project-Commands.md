@@ -799,7 +799,7 @@ EC2 Parameters:
     the distro configuration.
 -   `subnet_id` - Subnet ID for the VPC. Must be set if `ami` is set.
 -   `tenancy` - If set, defines how the hosts are distributed across
-    physical hardware. Can be set to `default`, `dedicated`, or `host`. If not
+    physical hardware. Can be set to `default` or `dedicated`. If not
     set, it uses the `default` (i.e. shared) tenancy.
 -   `userdata_file` - Path to file to load as EC2 user data on boot. May
     set if `distro` is set, which will override the value from the
