@@ -237,22 +237,6 @@ buildvariants:
     patchable: false
   - name: git_tag_release
     git_tag_only: true
-  - name: inline_task_group_1
-    task_group:
-      <<: *example_task_group
-      tasks:
-      - example_task_1
-  - name: inline_task_group_2
-    task_group:
-      share_processes: true
-      max_hosts: 3
-      teardown_group:
-      - command: shell.exec
-        params:
-          script: echo "tearing down group"
-      tasks:
-      - example_task_2
-      - example_task_3
 ```
 
 Fields:
@@ -1395,10 +1379,6 @@ A task group contains arguments to set up and tear down both the entire
 group and each individual task. Tasks in a task group will not run the `pre`
 and `post` blocks in the YAML file; instead, the tasks will run the task group's
 setup and teardown blocks.
-
-Task groups can be configured directly inline inside the config's [build
-variants](#build-variants).
-
 ``` yaml
 task_groups:
   - name: example_task_group
