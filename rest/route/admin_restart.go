@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
-
 	dataModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
@@ -14,10 +12,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-func makeRestartRoute(restartType string, queue amboy.Queue) gimlet.RouteHandler {
+func makeRestartRoute(queue amboy.Queue) gimlet.RouteHandler {
 	return &restartHandler{
-		queue:       queue,
-		restartType: restartType,
+		queue: queue,
 	}
 }
 
@@ -51,12 +48,6 @@ func (h *restartHandler) Parse(ctx context.Context, r *http.Request) error {
 			Message:    "end time cannot be before start time",
 		}
 	}
-	if h.restartType != evergreen.RestartTasks && h.restartType != evergreen.RestartVersions {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "restart type must be tasks or versions",
-		}
-	}
 
 	return nil
 }
@@ -72,14 +63,6 @@ func (h *restartHandler) Run(ctx context.Context) gimlet.Responder {
 		EndTime:            h.EndTime,
 		User:               u.Username(),
 	}
-	if h.restartType == evergreen.RestartVersions {
-		resp, err := data.RestartFailedCommitQueueVersions(opts)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "restarting failed commit queue versions"))
-		}
-		return gimlet.NewJSONResponse(resp)
-	}
-
 	resp, err := data.RestartFailedTasks(ctx, h.queue, opts)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "restarting failed tasks"))
