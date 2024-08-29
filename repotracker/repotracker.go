@@ -745,7 +745,11 @@ func ShellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetad
 		v.CreateTime = createTime
 	} else if metadata.IsAdHoc {
 		v.Id = mgobson.NewObjectId().Hex()
-		v.Requester = evergreen.AdHocRequester
+		if metadata.PeriodicBuildID != "" {
+			v.Requester = evergreen.AdHocRequester
+		} else {
+			v.Requester = evergreen.CreateVersionEndpointRequester
+		}
 		v.CreateTime = time.Now()
 		if metadata.Message != "" {
 			v.Message = metadata.Message

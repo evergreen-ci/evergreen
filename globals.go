@@ -683,14 +683,15 @@ const (
 	DefaultAmboyDatabaseURL = "mongodb://localhost:27017"
 
 	// version requester types
-	PatchVersionRequester       = "patch_request"
-	GithubPRRequester           = "github_pull_request"
-	GitTagRequester             = "git_tag_request"
-	RepotrackerVersionRequester = "gitter_request"
-	TriggerRequester            = "trigger_request"
-	MergeTestRequester          = "merge_test"           // Evergreen commit queue
-	AdHocRequester              = "ad_hoc"               // periodic build or create version endpoint
-	GithubMergeRequester        = "github_merge_request" // GitHub merge queue
+	PatchVersionRequester          = "patch_request"
+	GithubPRRequester              = "github_pull_request"
+	GitTagRequester                = "git_tag_request"
+	RepotrackerVersionRequester    = "gitter_request"
+	TriggerRequester               = "trigger_request"
+	MergeTestRequester             = "merge_test"              // Evergreen commit queue
+	AdHocRequester                 = "ad_hoc"                  // periodic build
+	CreateVersionEndpointRequester = "create_version_endpoint" // create version endpoint
+	GithubMergeRequester           = "github_merge_request"    // GitHub merge queue
 )
 
 // Constants related to requester types.
