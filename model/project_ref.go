@@ -502,11 +502,6 @@ var (
 	containerSecretExternalIDKey   = bsonutil.MustHaveTag(ContainerSecret{}, "ExternalID")
 )
 
-// IsPrivate returns if this project requires the user to be authed to view it.
-func (p *ProjectRef) IsPrivate() bool {
-	return utility.FromBoolTPtr(p.Private)
-}
-
 func (p *ProjectRef) IsRestricted() bool {
 	return utility.FromBoolPtr(p.Restricted)
 }
@@ -1516,6 +1511,23 @@ func FindFirstProjectRef() (*ProjectRef, error) {
 func FindAllMergedTrackedProjectRefs() ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	q := db.Query(bson.M{ProjectRefHiddenKey: bson.M{"$ne": true}})
+	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
+	if err != nil {
+		return nil, err
+	}
+
+	return addLoggerAndRepoSettingsToProjects(projectRefs)
+}
+
+// FindAllMergedEnabledTrackedProjectRefs returns all enabled project refs in the db
+// that are currently being tracked (i.e. their project files
+// still exist and the project is not hidden).
+func FindAllMergedEnabledTrackedProjectRefs() ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+	q := db.Query(bson.M{
+		ProjectRefHiddenKey:  bson.M{"$ne": true},
+		ProjectRefEnabledKey: true,
+	})
 	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err

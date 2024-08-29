@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -33,7 +32,6 @@ func getMockProjectSettings() ProjectSettings {
 		ProjectRef: ProjectRef{
 			Owner:          "admin",
 			Enabled:        true,
-			Private:        utility.TruePtr(),
 			Id:             projectId,
 			Admins:         []string{},
 			PeriodicBuilds: nil,
@@ -86,7 +84,6 @@ func (s *ProjectEventSuite) TestModifyProjectEvent() {
 	s.Equal(before.ProjectRef.Owner, eventData.Before.ProjectRef.Owner)
 	s.Equal(before.ProjectRef.Repo, eventData.Before.ProjectRef.Repo)
 	s.Equal(before.ProjectRef.Enabled, eventData.Before.ProjectRef.Enabled)
-	s.Equal(before.ProjectRef.Private, eventData.Before.ProjectRef.Private)
 	s.Equal(before.ProjectRef.Restricted, eventData.Before.ProjectRef.Restricted)
 	s.Empty(before.ProjectRef.Triggers, eventData.Before.ProjectRef.Triggers)
 	s.Equal(before.ProjectRef.Id, eventData.Before.ProjectRef.Id)

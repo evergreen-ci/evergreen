@@ -113,7 +113,7 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 		return "", http.StatusNotFound, errors.Errorf("project '%s' not found", projectID)
 	}
 	usr := gimlet.GetUser(ctx)
-	if usr == nil && projectRef.IsPrivate() {
+	if usr == nil {
 		return "", http.StatusUnauthorized, errors.New("unauthorized")
 	}
 

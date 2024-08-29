@@ -367,7 +367,6 @@ func MockConfig() *evergreen.Settings {
 			PodAllocatorDisabled:            true,
 			UnrecognizedPodCleanupDisabled:  true,
 			CloudCleanupDisabled:            true,
-			LegacyUIPublicAccessDisabled:    true,
 			SleepScheduleDisabled:           true,
 			SystemFailedTaskRestartDisabled: true,
 			CPUDegradedModeDisabled:         true,
