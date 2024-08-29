@@ -177,7 +177,7 @@ The check run will include a `view more details` link which will link back to th
 
 Evergreen offers the [github.generate_token](Project-Commands#github_generate_token) project command that dynamically generates a short lived token from a user-provided GitHub app. Before you can use the command you will need to set up your github app in your project settings. This feature is not available as a [repo-level setting](Repo-Level-Settings), it will need to be set up separately for each project where the command will be used.
 
-> Note: Adding a GitHub app to your project setting will have no automatic affect on your tasks - `git.get_project` will not automatically start using it. It will simply enable you to use the `github.generate_token` if and when you choose to.
+> Note: Adding a GitHub app to your project setting won't automatically impact your tasks. The `git.get_project` command will not default to it. It will simply enable you to use the `github.generate_token` command if and when you choose to.
 
 If you run into any issues, please see our [FAQ](../FAQ.md#dynamic-github-access-tokens).
 
