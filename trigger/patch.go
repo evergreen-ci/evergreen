@@ -168,7 +168,7 @@ func finalizeChildPatch(sub *event.Subscription) error {
 }
 
 func (t *patchTriggers) patchSuccess(sub *event.Subscription) (*notification.Notification, error) {
-	if !(t.data.Status == evergreen.VersionSucceeded) || t.event.EventType == event.PatchChildrenCompletion {
+	if t.data.Status != evergreen.VersionSucceeded || t.event.EventType == event.PatchChildrenCompletion {
 		return nil, nil
 	}
 

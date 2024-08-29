@@ -240,7 +240,7 @@ func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification
 }
 
 func (t *versionTriggers) versionSuccess(sub *event.Subscription) (*notification.Notification, error) {
-	if !(t.data.Status == evergreen.VersionSucceeded) || t.event.EventType == event.VersionChildrenCompletion {
+	if t.data.Status != evergreen.VersionSucceeded || t.event.EventType == event.VersionChildrenCompletion {
 		return nil, nil
 	}
 
@@ -301,7 +301,7 @@ func (t *versionTriggers) versionFamilyFailure(sub *event.Subscription) (*notifi
 }
 
 func (t *versionTriggers) versionFamilySuccess(sub *event.Subscription) (*notification.Notification, error) {
-	if !(t.data.Status == evergreen.VersionSucceeded) || t.event.EventType != event.VersionChildrenCompletion {
+	if t.data.Status != evergreen.VersionSucceeded || t.event.EventType != event.VersionChildrenCompletion {
 		return nil, nil
 	}
 
