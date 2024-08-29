@@ -36,8 +36,14 @@ func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*ti
 }
 
 // Events is the resolver for the events field.
-func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, hostTag *string, limit *int, page *int) (*HostEvents, error) {
-	events, count, err := event.MostRecentPaginatedHostEvents(utility.FromStringPtr(obj.Id), utility.FromStringPtr(hostTag), *limit, *page)
+func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, hostTag *string, limit *int, page *int, sortDir *SortDirection) (*HostEvents, error) {
+	sort := -1
+	if sortDir != nil {
+		if *sortDir == SortDirectionAsc {
+			sort = 1
+		}
+	}
+	events, count, err := event.MostRecentPaginatedHostEvents(utility.FromStringPtr(obj.Id), utility.FromStringPtr(hostTag), *limit, *page, &sort)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host events: %s", err.Error()))
 	}

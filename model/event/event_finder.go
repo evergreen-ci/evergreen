@@ -125,7 +125,7 @@ func CountUnprocessedEvents() (int, error) {
 // === Queries ===
 
 // Host Events
-func MostRecentHostEvents(id string, tag string, n int) db.Q {
+func MostRecentHostEvents(id string, tag string, n int, sort *int) db.Q {
 	filter := ResourceTypeKeyIs(ResourceTypeHost)
 	if tag != "" {
 		filter[ResourceIdKey] = bson.M{"$in": []string{id, tag}}
@@ -133,13 +133,18 @@ func MostRecentHostEvents(id string, tag string, n int) db.Q {
 		filter[ResourceIdKey] = id
 	}
 
+	if sort != nil {
+		if *sort == 1 {
+			return db.Query(filter).Sort([]string{TimestampKey}).Limit(n)
+		}
+	}
 	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
 }
 
 // MostRecentPaginatedHostEvents returns a limited and paginated list of host events for the given
 // host ID and tag sorted in descending order by timestamp as well as the total number of events.
-func MostRecentPaginatedHostEvents(id string, tag string, limit, page int) ([]EventLogEntry, int, error) {
-	recentHostsQuery := MostRecentHostEvents(id, tag, limit)
+func MostRecentPaginatedHostEvents(id string, tag string, limit, page int, sort *int) ([]EventLogEntry, int, error) {
+	recentHostsQuery := MostRecentHostEvents(id, tag, limit, sort)
 	return FindPaginatedWithTotalCount(recentHostsQuery, limit, page)
 }
 

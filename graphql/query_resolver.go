@@ -238,7 +238,7 @@ func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *
 	if h == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", hostID))
 	}
-	events, count, err := event.MostRecentPaginatedHostEvents(h.Id, h.Tag, *limit, *page)
+	events, count, err := event.MostRecentPaginatedHostEvents(h.Id, h.Tag, *limit, *page, nil)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host events: %s", err.Error()))
 	}

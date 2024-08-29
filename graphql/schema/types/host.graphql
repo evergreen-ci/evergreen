@@ -48,6 +48,7 @@ type Host {
     hostTag: String = ""
     limit: Int = 0
     page: Int = 0
+    sortDir: SortDirection = ASC
   ): HostEvents!
   expiration: Time
   hostUrl: String!

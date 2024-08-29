@@ -1,0 +1,35 @@
+query {
+  host(
+    hostId: "i-0f81a2d39744003dd"
+  ) {
+    events(sortDir: ASC, limit: 1) {
+        eventLogEntries {
+            id
+            resourceType
+            processedAt
+            timestamp
+            eventType
+            data {
+                agentRevision
+                agentBuild
+                agentBuild
+                oldStatus
+                newStatus
+                logs
+                hostname
+                provisioningMethod
+                taskId
+                taskPid
+                taskStatus
+                execution
+                monitorOp
+                user
+                successful
+                duration
+            }
+            resourceId
+            }
+            count
+        }
+    }
+}

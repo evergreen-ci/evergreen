@@ -452,7 +452,7 @@ type ComplexityRoot struct {
 		Distro                func(childComplexity int) int
 		DistroID              func(childComplexity int) int
 		Elapsed               func(childComplexity int) int
-		Events                func(childComplexity int, hostTag *string, limit *int, page *int) int
+		Events                func(childComplexity int, hostTag *string, limit *int, page *int, sortDir *SortDirection) int
 		Expiration            func(childComplexity int) int
 		HomeVolume            func(childComplexity int) int
 		HomeVolumeID          func(childComplexity int) int
@@ -1729,7 +1729,7 @@ type HostResolver interface {
 
 	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
 	Elapsed(ctx context.Context, obj *model.APIHost) (*time.Time, error)
-	Events(ctx context.Context, obj *model.APIHost, hostTag *string, limit *int, page *int) (*HostEvents, error)
+	Events(ctx context.Context, obj *model.APIHost, hostTag *string, limit *int, page *int, sortDir *SortDirection) (*HostEvents, error)
 
 	HomeVolume(ctx context.Context, obj *model.APIHost) (*model.APIVolume, error)
 
@@ -3547,7 +3547,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Host.Events(childComplexity, args["hostTag"].(*string), args["limit"].(*int), args["page"].(*int)), true
+		return e.complexity.Host.Events(childComplexity, args["hostTag"].(*string), args["limit"].(*int), args["page"].(*int), args["sortDir"].(*SortDirection)), true
 
 	case "Host.expiration":
 		if e.complexity.Host.Expiration == nil {
@@ -10505,6 +10505,15 @@ func (ec *executionContext) field_Host_events_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["page"] = arg2
+	var arg3 *SortDirection
+	if tmp, ok := rawArgs["sortDir"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sortDir"))
+		arg3, err = ec.unmarshalOSortDirection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["sortDir"] = arg3
 	return args, nil
 }
 
@@ -22793,7 +22802,7 @@ func (ec *executionContext) _Host_events(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Host().Events(rctx, obj, fc.Args["hostTag"].(*string), fc.Args["limit"].(*int), fc.Args["page"].(*int))
+		return ec.resolvers.Host().Events(rctx, obj, fc.Args["hostTag"].(*string), fc.Args["limit"].(*int), fc.Args["page"].(*int), fc.Args["sortDir"].(*SortDirection))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
