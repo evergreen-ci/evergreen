@@ -13,7 +13,6 @@ import (
 
 type (
 	apiTaskKey    int
-	apiHostKey    int
 	apiProjectKey int
 )
 
