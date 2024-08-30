@@ -69,14 +69,14 @@ long-lived hosts.
 Note that stopping the host during off hours means **shutting down the host**, not hibernating the host. If needed, see
 [the FAQ](#faq) for more info.
 
-**The beta test period for this feature has ended as of 11 am (Eastern Time) September 3, so all users who did not set a
-sleep schedule or request a permanent exemption have been assigned a default schedule. If you'd like your unexpirable
-host to use something other than the default settings, your options are:**
+**The beta test period for this feature has ended as of 11 am (Eastern Time) September 3 2024, so all users who did not
+set a sleep schedule or request a permanent exemption have been assigned a default schedule. If you'd like your
+unexpirable host to use something other than the default settings, your options are:**
 
-1. [Option 1](#sleep-schedule) (Recommended for most users): Set a sleep schedule for each of your existing
+1. [Set a sleep schedule](#sleep-schedule) (Recommended for most users): Set a sleep schedule for each of your existing
    unexpirable hosts on by [pressing the "edit" button on the spawn host page](https://spruce.mongodb.com/spawn/host).
-3. [Option 2](#permanent-exemption): If you have a reason that your host cannot use the sleep schedule, you can request
-   a permanent exemption for your host.
+2. [Permanently exempt your host](#permanent-exemption): If you have a reason that your host cannot use the sleep
+   schedule, you can request a permanent exemption for your host.
 
 ### Option 1: Sleep Schedule {#sleep-schedule}
 
