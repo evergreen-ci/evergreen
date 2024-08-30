@@ -25,6 +25,7 @@ type WaterfallTask struct {
 
 type WaterfallBuild struct {
 	Id          string          `bson:"_id" json:"_id"`
+	Activated   bool            `bson:"activated" json:"activated,omitempty"`
 	DisplayName string          `bson:"display_name" json:"display_name,omitempty"`
 	Version     string          `bson:"version" json:"version,omitempty"`
 	Tasks       []WaterfallTask `bson:"tasks" json:"tasks,omitempty"`

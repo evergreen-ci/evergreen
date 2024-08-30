@@ -990,6 +990,8 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	// We should also be able to add a check to the version's build_variant_status field in case of a build variant filter (TODO DEVPROD-10178).
 	// For now, without filters it is guaranteed that `limit` matching versions have been returned.
 
+	// TODO DEVPROD-10177: Implementing pagination will also allow us to fetch more versions if GetWaterfallVersions does not return enough *activated* versions
+
 	buildVariants, err := model.GetWaterfallBuildVariants(ctx, projectId, versions)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("getting activated versions: %s", err.Error()))

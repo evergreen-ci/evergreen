@@ -1677,6 +1677,7 @@ type ComplexityRoot struct {
 	}
 
 	WaterfallBuild struct {
+		Activated   func(childComplexity int) int
 		DisplayName func(childComplexity int) int
 		Id          func(childComplexity int) int
 		Tasks       func(childComplexity int) int
@@ -10130,6 +10131,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Waterfall.Versions(childComplexity), true
+
+	case "WaterfallBuild.activated":
+		if e.complexity.WaterfallBuild.Activated == nil {
+			break
+		}
+
+		return e.complexity.WaterfallBuild.Activated(childComplexity), true
 
 	case "WaterfallBuild.displayName":
 		if e.complexity.WaterfallBuild.DisplayName == nil {
@@ -69500,6 +69508,47 @@ func (ec *executionContext) fieldContext_WaterfallBuild_id(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _WaterfallBuild_activated(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallBuild) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WaterfallBuild_activated(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Activated, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WaterfallBuild_activated(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WaterfallBuild",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _WaterfallBuild_displayName(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallBuild) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_WaterfallBuild_displayName(ctx, field)
 	if err != nil {
@@ -69769,6 +69818,8 @@ func (ec *executionContext) fieldContext_WaterfallBuildVariant_builds(_ context.
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_WaterfallBuild_id(ctx, field)
+			case "activated":
+				return ec.fieldContext_WaterfallBuild_activated(ctx, field)
 			case "displayName":
 				return ec.fieldContext_WaterfallBuild_displayName(ctx, field)
 			case "version":
@@ -93089,6 +93140,8 @@ func (ec *executionContext) _WaterfallBuild(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "activated":
+			out.Values[i] = ec._WaterfallBuild_activated(ctx, field, obj)
 		case "displayName":
 			out.Values[i] = ec._WaterfallBuild_displayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
