@@ -46,7 +46,6 @@ type Project struct {
 	PreErrorFailsTask  bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
 	PostErrorFailsTask bool                       `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
 	OomTracker         bool                       `yaml:"oom_tracker,omitempty" bson:"oom_tracker"`
-	BatchTime          int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
 	Identifier         string                     `yaml:"identifier,omitempty" bson:"identifier"`
 	DisplayName        string                     `yaml:"display_name,omitempty" bson:"display_name"`
 	CommandType        string                     `yaml:"command_type,omitempty" bson:"command_type"`

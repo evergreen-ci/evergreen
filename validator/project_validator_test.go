@@ -6,7 +6,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"math"
 	"reflect"
 	"runtime"
 	"strings"
@@ -3834,17 +3833,7 @@ func (s *validateProjectFieldSuite) SetupTest() {
 	s.project = model.Project{
 		Identifier:  "identifier",
 		DisplayName: "test",
-		BatchTime:   10,
 	}
-}
-
-func (s *validateProjectFieldSuite) TestBatchTimeValueMustNonNegative() {
-	s.project.BatchTime = -10
-	validationError := validateProjectFields(&s.project)
-
-	s.Len(validationError, 1)
-	s.Contains(validationError[0].Message, "'batchtime' must be non-negative",
-		"Project 'batchtime' must not be negative")
 }
 
 func (s *validateProjectFieldSuite) TestCommandTypes() {
@@ -3872,15 +3861,6 @@ func (s *validateProjectFieldSuite) TestFailOnInvalidCommandType() {
 	s.Len(validationError, 1)
 	s.Contains(validationError[0].Message, "invalid command type: random",
 		"Project 'CommandType' must be valid")
-}
-
-func (s *validateProjectFieldSuite) TestWarnOnLargeBatchTimeValue() {
-	s.project.BatchTime = math.MaxInt32 + 1
-	validationError := checkProjectFields(&s.project)
-
-	s.Len(validationError, 1)
-	s.Equal(validationError[0].Level, Warning,
-		"Large batch time validation error should be a warning")
 }
 
 func TestValidateBVFields(t *testing.T) {
