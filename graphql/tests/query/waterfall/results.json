@@ -1,0 +1,87 @@
+{
+  "tests": [
+    {
+      "query_file": "no_filters.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "buildVariants": [
+              {
+                "id": "enterprise-ubuntu1604-64",
+                "displayName": "Ubuntu 16.04",
+                "builds": [
+                  {
+                    "activated": true,
+                    "id": "evergreen_version1_build",
+                    "tasks": [
+                      {
+                        "displayName": "Some Task",
+                        "id": "task_1",
+                        "status": "success"
+                      },
+                      {
+                        "displayName": "Some Other Task",
+                        "id": "task_2",
+                        "status": "success"
+                      }
+                    ],
+                    "version": "evergreen_version1"
+                  },
+                  {
+                    "activated": true,
+                    "id": "evergreen_version2_build",
+                    "tasks": [
+                      {
+                        "displayName": "Some Task",
+                        "id": "task_3",
+                        "status": "failed"
+                      },
+                      {
+                        "displayName": "Some Other Task",
+                        "id": "task_4",
+                        "status": "success"
+                      }
+                    ],
+                    "version": "evergreen_version2"
+                  }
+                ]
+              }
+            ],
+            "versions": [
+              {
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version5",
+                "revision": "revision5"
+              },
+              {
+                "activated": false,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version4",
+                "revision": "revision4"
+              },
+              {
+                "activated": false,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version3",
+                "revision": "revision3"
+              },
+              {
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version2",
+                "revision": "2c9056df66d42fb1908d52eed096750a91f1f089"
+              },
+              {
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version1",
+                "revision": "revision1"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
