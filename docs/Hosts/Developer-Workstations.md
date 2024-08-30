@@ -29,6 +29,8 @@ workstations can use the same configuration as build hosts, but also have:
   can also opt to stop hosts during vacations and other periods of
   known inactivity.
 
+- Passwordless sudo access for workstation configuration.
+
 Administrators need to configure workstation instances to include the
 [IDE](https://github.com/evergreen-ci/ide), and any other software
 required for development. There is no limit to the number of distinct
