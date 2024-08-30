@@ -45,10 +45,9 @@ type Host {
   distroId: String
   elapsed: Time # running task start time
   events(
-    hostTag: String = ""
     limit: Int = 0
     page: Int = 0
-    sortDir: SortDirection = ASC
+    sortDir: SortDirection = DESC
   ): HostEvents!
   expiration: Time
   hostUrl: String!
