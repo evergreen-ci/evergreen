@@ -81,7 +81,7 @@ func GetWaterfallVersions(ctx context.Context, projectId string, opts WaterfallO
 	return res, nil
 }
 
-// GetWaterfallBuildVariants returns all build variants associated with the specified verisions. Each build variant contains an array of builds sorted by revision and their tasks.
+// GetWaterfallBuildVariants returns all build variants associated with the specified versions. Each build variant contains an array of builds sorted by revision and their tasks.
 func GetWaterfallBuildVariants(ctx context.Context, versions []Version) ([]WaterfallBuildVariant, error) {
 	versionIds := []string{}
 	for _, version := range versions {

@@ -984,6 +984,9 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	}
 
 	versions, err := model.GetWaterfallVersions(ctx, projectId, opts)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("getting versions: %s", err.Error()))
+	}
 
 	// TODO DEVPROD-10179: Add check to ensure each version has tasks that match filter...
 	// Something like this: https://github.com/evergreen-ci/evergreen/blob/bf8f12ec2eefe61f0cf9bcc594924c7be8f91d1b/graphql/query_resolver.go#L869-L938
@@ -994,7 +997,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	buildVariants, err := model.GetWaterfallBuildVariants(ctx, versions)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("getting activated versions: %s", err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("getting waterfall contents: %s", err.Error()))
 	}
 
 	apiVersions := []*restModel.APIVersion{}

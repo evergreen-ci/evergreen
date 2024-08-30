@@ -3009,6 +3009,7 @@ func TestAddNewTasks(t *testing.T) {
 			_, err := addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{b}, "")
 			assert.NoError(t, err)
 			buildTasks, err := task.FindAll(db.Query(bson.M{task.BuildIdKey: "b0"}))
+			assert.NoError(t, err)
 			activatedTasks, err := task.FindAll(db.Query(bson.M{task.ActivatedKey: true}))
 			assert.NoError(t, err)
 			build, err := build.FindOneId("b0")
