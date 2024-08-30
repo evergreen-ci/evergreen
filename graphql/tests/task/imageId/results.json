@@ -1,11 +1,21 @@
 {
     "tests": [
       {
-        "query_file": "image_id.graphql",
+        "query_file": "regular_task.graphql",
         "result": {
           "data": {
             "task": {
               "imageId": "ubuntu1604"
+            }
+          }
+        }
+      },
+      {
+        "query_file": "display_task.graphql",
+        "result": {
+          "data": {
+            "task": {
+              "imageId": ""
             }
           }
         }
