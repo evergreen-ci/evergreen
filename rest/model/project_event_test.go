@@ -21,7 +21,6 @@ func getMockProjectSettings() model.ProjectSettings {
 		ProjectRef: model.ProjectRef{
 			Owner:   "admin",
 			Enabled: true,
-			Private: utility.TruePtr(),
 			Id:      projectId,
 			Admins:  []string{},
 		},

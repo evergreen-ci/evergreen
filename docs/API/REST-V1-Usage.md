@@ -5,9 +5,7 @@
 
 ## A note on authentication
 
-Most of the these REST endpoints do not require authentication to access.
-However, if the task, build, version, etc. that you are attempting to access is part of a private project, auth information is required to access.
-Attempts to load private pages with a public REST call receive a 302 FOUND response. The V2 REST routes will return a 404 if no authentication headers are sent, or if the user is invalid.
+The V2 REST routes will return a 404 if no authentication headers are sent, or if the user is invalid.
 
 The simplest way to do this is to use your `user` and `api_key` fields from the Settings page.
 Authenticated REST access requires setting two headers, `Api-User` and `Api-Key`.
@@ -20,8 +18,6 @@ Authenticated REST access requires setting two headers, `Api-User` and `Api-Key`
 ## Retrieve a list of active project IDs
 
     GET /rest/v1/projects
-
-_Note that you must use API credentials to see private projects._
 
 ### Request
 
@@ -43,8 +39,6 @@ _Note that you must use API credentials to see private projects._
 
     GET /rest/v1/projects/{project_id}
 
-_Note that you must use API credentials to see private projects._
-
 ### Request
 
     curl https://evergreen.example.com/rest/v1/projects/mci
@@ -58,7 +52,6 @@ _Note that you must use API credentials to see private projects._
   "branch_name": "master",
   "repo_kind": "github",
   "enabled": true,
-  "private": false,
   "batch_time": 1200,
   "remote_path": "self-tests.yml",
   "identifier": "mci",

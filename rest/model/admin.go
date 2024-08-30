@@ -325,7 +325,6 @@ type APIAmboyConfig struct {
 	GroupBackgroundCreateFrequencyMinutes int                        `json:"group_background_create_frequency"`
 	GroupPruneFrequencyMinutes            int                        `json:"group_prune_frequency"`
 	GroupTTLMinutes                       int                        `json:"group_ttl"`
-	RequireRemotePriority                 bool                       `json:"require_remote_priority"`
 	LockTimeoutMinutes                    int                        `json:"lock_timeout_minutes"`
 	SampleSize                            int                        `json:"sample_size"`
 	Retry                                 APIAmboyRetryConfig        `json:"retry,omitempty"`
@@ -347,7 +346,6 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 		a.GroupBackgroundCreateFrequencyMinutes = v.GroupBackgroundCreateFrequencyMinutes
 		a.GroupPruneFrequencyMinutes = v.GroupPruneFrequencyMinutes
 		a.GroupTTLMinutes = v.GroupTTLMinutes
-		a.RequireRemotePriority = v.RequireRemotePriority
 		a.LockTimeoutMinutes = v.LockTimeoutMinutes
 		a.SampleSize = v.SampleSize
 		if err := a.Retry.BuildFromService(v.Retry); err != nil {
@@ -398,7 +396,6 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		GroupBackgroundCreateFrequencyMinutes: a.GroupBackgroundCreateFrequencyMinutes,
 		GroupPruneFrequencyMinutes:            a.GroupPruneFrequencyMinutes,
 		GroupTTLMinutes:                       a.GroupTTLMinutes,
-		RequireRemotePriority:                 a.RequireRemotePriority,
 		LockTimeoutMinutes:                    a.LockTimeoutMinutes,
 		SampleSize:                            a.SampleSize,
 		Retry:                                 retry,
@@ -2048,7 +2045,6 @@ type APIServiceFlags struct {
 	BackgroundReauthDisabled        bool `json:"background_reauth_disabled"`
 	BackgroundCleanupDisabled       bool `json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
-	LegacyUIPublicAccessDisabled    bool `json:"legacy_ui_public_access_disabled"`
 	GlobalGitHubTokenDisabled       bool `json:"global_github_token_disabled"`
 	SleepScheduleDisabled           bool `json:"sleep_schedule_disabled"`
 	SleepScheduleBetaTestDisabled   bool `json:"sleep_schedule_beta_test_disabled"`
@@ -2367,7 +2363,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.BackgroundCleanupDisabled = v.BackgroundCleanupDisabled
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
-		as.LegacyUIPublicAccessDisabled = v.LegacyUIPublicAccessDisabled
 		as.GlobalGitHubTokenDisabled = v.GlobalGitHubTokenDisabled
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
 		as.SleepScheduleBetaTestDisabled = v.SleepScheduleBetaTestDisabled
@@ -2413,7 +2408,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		BackgroundCleanupDisabled:       as.BackgroundCleanupDisabled,
 		BackgroundReauthDisabled:        as.BackgroundReauthDisabled,
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
-		LegacyUIPublicAccessDisabled:    as.LegacyUIPublicAccessDisabled,
 		GlobalGitHubTokenDisabled:       as.GlobalGitHubTokenDisabled,
 		SleepScheduleDisabled:           as.SleepScheduleDisabled,
 		SleepScheduleBetaTestDisabled:   as.SleepScheduleBetaTestDisabled,

@@ -154,7 +154,7 @@ func MockConfig() *evergreen.Settings {
 		},
 		AWSInstanceRole: "role",
 		Banner:          "banner",
-		BannerTheme:     "important",
+		BannerTheme:     "IMPORTANT",
 		Buckets: evergreen.BucketsConfig{
 			LogBucket: evergreen.BucketConfig{
 				Name: "logs",
@@ -367,7 +367,6 @@ func MockConfig() *evergreen.Settings {
 			PodAllocatorDisabled:            true,
 			UnrecognizedPodCleanupDisabled:  true,
 			CloudCleanupDisabled:            true,
-			LegacyUIPublicAccessDisabled:    true,
 			SleepScheduleDisabled:           true,
 			SystemFailedTaskRestartDisabled: true,
 			CPUDegradedModeDisabled:         true,

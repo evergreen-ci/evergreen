@@ -38,23 +38,12 @@ func (ra *restV1middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	}
 
 	usr := gimlet.GetUser(ctx)
-
-	if pctx.ProjectRef != nil && pctx.ProjectRef.IsPrivate() && usr == nil {
-		gimlet.WriteTextResponse(rw, http.StatusUnauthorized, "unauthorized")
-		return
-	}
-
-	if pctx.Patch != nil && usr == nil {
+	if usr == nil {
 		gimlet.WriteTextResponse(rw, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
 	r = setRestContext(r, &pctx)
-
-	if pctx.ProjectRef == nil && usr == nil {
-		gimlet.NewRequireAuthHandler().ServeHTTP(rw, r, next)
-		return
-	}
 	next(rw, r)
 }
 
@@ -69,7 +58,7 @@ func MustHaveRESTContext(r *http.Request) *model.Context {
 }
 
 func needsLogin(next http.HandlerFunc) http.HandlerFunc {
-	return requireUser(false, next, nil)
+	return requireUser(next, nil)
 }
 
 // GetRESTv1App attaches a router at the given root that hooks up REST endpoint URIs to be

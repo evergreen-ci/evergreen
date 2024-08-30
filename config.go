@@ -34,11 +34,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2024-08-20"
+	ClientVersion = "2024-08-27"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2024-08-26"
+	AgentVersion = "2024-08-29"
 )
 
 const (
@@ -721,23 +721,23 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
 type BannerTheme string
 
 const (
-	Announcement BannerTheme = "announcement"
-	Information  BannerTheme = "information"
-	Warning      BannerTheme = "warning"
-	Important    BannerTheme = "important"
+	Announcement BannerTheme = "ANNOUNCEMENT"
+	Information  BannerTheme = "INFORMATION"
+	Warning      BannerTheme = "WARNING"
+	Important    BannerTheme = "IMPORTANT"
 )
 
 func IsValidBannerTheme(input string) (bool, BannerTheme) {
 	switch input {
 	case "":
 		return true, ""
-	case "announcement":
+	case "ANNOUNCEMENT":
 		return true, Announcement
-	case "information":
+	case "INFORMATION":
 		return true, Information
-	case "warning":
+	case "WARNING":
 		return true, Warning
-	case "important":
+	case "IMPORTANT":
 		return true, Important
 	default:
 		return false, ""
