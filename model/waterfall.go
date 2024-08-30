@@ -42,6 +42,8 @@ type WaterfallOptions struct {
 	Requesters []string
 }
 
+// GetWaterfallVersions returns `opts.limit` versions for a given project.
+// TODO: It will eventually return `opts.limit` activated versions that also satisfy any given filters.
 func GetWaterfallVersions(ctx context.Context, projectId string, opts WaterfallOptions) ([]Version, error) {
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(opts.Requesters, evergreen.SystemVersionRequesterTypes)
 	if len(invalidRequesters) > 0 {
@@ -79,7 +81,8 @@ func GetWaterfallVersions(ctx context.Context, projectId string, opts WaterfallO
 	return res, nil
 }
 
-func GetWaterfallBuildVariants(ctx context.Context, projectId string, versions []Version) ([]WaterfallBuildVariant, error) {
+// GetWaterfallBuildVariants returns all build variants associated with the specified verisions. Each build variant contains an array of builds sorted by revision and their tasks.
+func GetWaterfallBuildVariants(ctx context.Context, versions []Version) ([]WaterfallBuildVariant, error) {
 	versionIds := []string{}
 	for _, version := range versions {
 		versionIds = append(versionIds, version.Id)

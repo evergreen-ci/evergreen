@@ -627,7 +627,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.NoError(t, tsk.Insert())
 
 	ctx := context.TODO()
-	buildVariants, err := GetWaterfallBuildVariants(ctx, "a_project", []Version{v1, v2, v3, v4})
+	buildVariants, err := GetWaterfallBuildVariants(ctx, []Version{v1, v2, v3, v4})
 	assert.NoError(t, err)
 	assert.Len(t, buildVariants, 3)
 
