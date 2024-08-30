@@ -183,8 +183,6 @@ type Patch struct {
 	GithubPatchData      thirdparty.GithubPatch               `bson:"github_patch_data,omitempty"`
 	GithubMergeData      thirdparty.GithubMergeGroup          `bson:"github_merge_data,omitempty"`
 	GitInfo              *GitMetadata                         `bson:"git_info,omitempty"`
-	// DisplayNewUI is only used when roundtripping the patch via the CLI
-	DisplayNewUI bool `bson:"display_new_ui,omitempty"`
 	// MergeStatus is only used in gitServePatch to send the status of this
 	// patch on the commit queue to the agent
 	MergeStatus string `json:"merge_status"`
@@ -291,9 +289,7 @@ func (p *Patch) GetURL(uiHost string) string {
 		url = uiHost + "/patch/" + p.Id.Hex()
 	}
 
-	if p.DisplayNewUI {
-		url = url + "?redirect_spruce_users=true"
-	}
+	url = url + "?redirect_spruce_users=true"
 
 	return url
 }
