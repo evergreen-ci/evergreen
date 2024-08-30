@@ -364,14 +364,6 @@ func TestSignedUrlVisibility(t *testing.T) {
 		}
 
 		comm := client.NewMock("http://localhost.com")
-		conf := &internal.TaskConfig{
-			Expansions:   util.Expansions{},
-			Task:         task.Task{Id: "mock_id", Secret: "mock_secret"},
-			Project:      model.Project{},
-			BuildVariant: model.BuildVariant{},
-		}
-		logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
-		require.NoError(t, err)
 
 		localFiles := []string{"file1", "file2"}
 		remoteFile := "remote file"
@@ -417,8 +409,6 @@ func TestContentTypeSaved(t *testing.T) {
 		BuildVariant: model.BuildVariant{},
 	}
 	s.taskdata = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
-	require.NoError(t, err)
 
 	localFiles := []string{"file1", "file2"}
 	remoteFile := "remote file"

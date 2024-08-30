@@ -50,7 +50,6 @@ func TestAppendTestLog(t *testing.T) {
 		Task:          "task",
 		TaskExecution: 5,
 	}
-	comm := client.NewMock("url")
 
 	for _, testCase := range []struct {
 		name           string

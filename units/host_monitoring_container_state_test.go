@@ -20,7 +20,6 @@ func TestHostMonitoringContainerStateJob(t *testing.T) {
 	defer cancel()
 	ctx = testutil.TestSpan(ctx, t)
 
-	env := testutil.NewEnvironment(ctx, t)
 	h1 := &host.Host{
 		Id:            "parent-1",
 		Status:        evergreen.HostRunning,
