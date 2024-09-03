@@ -77,7 +77,7 @@ func (pm *ParameterManager) Put(ctx context.Context, name, value string) (*Param
 
 	return &Parameter{
 		Name:     fullName,
-		Basename: pm.getBasename(fullName),
+		Basename: getBasename(fullName),
 		Value:    value,
 	}, nil
 }
@@ -111,7 +111,7 @@ func (pm *ParameterManager) Get(ctx context.Context, names ...string) ([]Paramet
 		name := aws.ToString(p.Name)
 		params = append(params, Parameter{
 			Name:     name,
-			Basename: pm.getBasename(name),
+			Basename: getBasename(name),
 			Value:    aws.ToString(p.Value),
 		})
 	}
@@ -194,7 +194,7 @@ func (pm *ParameterManager) getPrefixedName(basename string) string {
 }
 
 // getBasename returns the parameter basename without any intermediate paths.
-func (pm *ParameterManager) getBasename(name string) string {
+func getBasename(name string) string {
 	idx := strings.LastIndex(name, "/")
 	if idx == -1 {
 		return name

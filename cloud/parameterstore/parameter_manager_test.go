@@ -39,14 +39,14 @@ func TestParameterManager(t *testing.T) {
 				t.Run("ParsesBasenameFromFullNameWithPrefix", func(t *testing.T) {
 					fullName := pm.getPrefixedName("basename")
 					assert.Equal(t, "/prefix/basename", fullName)
-					assert.Equal(t, "basename", pm.getBasename(fullName))
+					assert.Equal(t, "basename", getBasename(fullName))
 				})
 				t.Run("ParsesBasenameFromFullNameWithoutPrefix", func(t *testing.T) {
 					fullName := "/some/other/path/basename"
-					assert.Equal(t, "basename", pm.getBasename(fullName))
+					assert.Equal(t, "basename", getBasename(fullName))
 				})
 				t.Run("ReturnsUnmodifiedBasenameThatIsAlreadyParsed", func(t *testing.T) {
-					assert.Equal(t, "basename", pm.getBasename("basename"))
+					assert.Equal(t, "basename", getBasename("basename"))
 				})
 			})
 		})
