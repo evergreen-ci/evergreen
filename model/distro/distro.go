@@ -422,6 +422,10 @@ func (d *Distro) IsLinux() bool {
 	return strings.Contains(d.Arch, "linux")
 }
 
+func (d *Distro) IsMacOS() bool {
+	return strings.Contains(d.Arch, "darwin")
+}
+
 func (d *Distro) Platform() (string, string) {
 	osAndArch := strings.Split(d.Arch, "_")
 	return osAndArch[0], osAndArch[1]
