@@ -203,6 +203,11 @@ func TestLatestTask(t *testing.T) {
 		ImageID: "ubuntu1604",
 	}
 	require.NoError(t, d2.Insert(ctx))
+	d3 := &distro.Distro{
+		Id:      "ubuntu1804-small",
+		ImageID: "ubuntu1804",
+	}
+	require.NoError(t, d3.Insert(ctx))
 	taskA := &task.Task{
 		Id:         "task_a",
 		DistroId:   "ubuntu1604-small",
@@ -221,12 +226,20 @@ func TestLatestTask(t *testing.T) {
 		FinishTime: time.Date(2023, time.April, 1, 10, 30, 15, 0, time.UTC),
 	}
 	require.NoError(t, taskC.Insert())
-	imageID := "ubuntu1604"
 	image := model.APIImage{
-		ID: &imageID,
+		ID: utility.ToStringPtr("ubuntu1604"),
 	}
+	// Returns latest task that ran on the image.
 	res, err := config.Resolvers.Image().LatestTask(ctx, &image)
 	require.NoError(t, err)
 	require.NotNil(t, res)
 	assert.Equal(t, "task_b", utility.FromStringPtr(res.Id))
+
+	// Returns nil if no task has ever ran on the image.
+	image = model.APIImage{
+		ID: utility.ToStringPtr("ubuntu1804"),
+	}
+	res, err = config.Resolvers.Image().LatestTask(ctx, &image)
+	require.NoError(t, err)
+	assert.Nil(t, res)
 }

@@ -162,20 +162,14 @@ func (apiImage *APIImageEvent) ToService() *thirdparty.ImageEvent {
 type APIImage struct {
 	ID           *string    `json:"id"`
 	AMI          *string    `json:"ami"`
-	Kernel       *string    `json:"kernel"`
 	LastDeployed *time.Time `json:"last_deployed"`
-	Name         *string    `json:"name"`
-	VersionID    *string    `json:"version_id"`
 }
 
 // BuildFromService converts from service level thirdparty.Image to an APIImage.
 func (apiImage *APIImage) BuildFromService(image thirdparty.Image) {
 	apiImage.ID = utility.ToStringPtr(image.ID)
 	apiImage.AMI = utility.ToStringPtr(image.AMI)
-	apiImage.Kernel = utility.ToStringPtr(image.Kernel)
 	apiImage.LastDeployed = utility.ToTimePtr(image.LastDeployed)
-	apiImage.Name = utility.ToStringPtr(image.Name)
-	apiImage.VersionID = utility.ToStringPtr(image.VersionID)
 }
 
 // ToService returns a service layer image using the data from APIImage.
@@ -183,10 +177,7 @@ func (apiImage *APIImage) ToService() *thirdparty.Image {
 	image := thirdparty.Image{
 		ID:           utility.FromStringPtr(apiImage.ID),
 		AMI:          utility.FromStringPtr(apiImage.AMI),
-		Kernel:       utility.FromStringPtr(apiImage.Kernel),
 		LastDeployed: utility.FromTimePtr(apiImage.LastDeployed),
-		Name:         utility.FromStringPtr(apiImage.Name),
-		VersionID:    utility.FromStringPtr(apiImage.VersionID),
 	}
 	return &image
 }
