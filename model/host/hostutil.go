@@ -101,7 +101,6 @@ func (h *Host) curlCommands(env evergreen.Environment, curlArgs string) ([]strin
 		fmt.Sprintf("cd %s", h.Distro.HomeDir()),
 	}
 	if h.Distro.IsMacOS() {
-		// kim: TODO: verify distro.arch is "darwin_amd64"/"darwin_arm64".
 		// Ensure the Evergreen client file is deleted on MacOS hosts before
 		// downloading it again. This is necessary to fix a MacOS-specific issue
 		// where if the host has System Integrity Protection (SIP) enabled and
