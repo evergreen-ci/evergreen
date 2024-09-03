@@ -34,10 +34,6 @@ const (
 	APITypeOS         = "OS"
 	APITypePackages   = "Packages"
 	APITypeToolchains = "Toolchains"
-
-	OSNameField      = "PRETTY_NAME"
-	OSKernelField    = "Kernel"
-	OSVersionIDField = "VERSION_ID"
 )
 
 type RuntimeEnvironmentsClient struct {
@@ -397,28 +393,7 @@ func stringToTime(timeInitial string) (time.Time, error) {
 type Image struct {
 	ID           string
 	AMI          string
-	Kernel       string
 	LastDeployed time.Time
-	Name         string
-	VersionID    string
-}
-
-// getNameFromOSInfo uses the provided AMI and name (exact match) arguments to filter the image information.
-func (c *RuntimeEnvironmentsClient) getNameFromOSInfo(ctx context.Context, ami string, name string) (string, error) {
-	opts := OSInfoFilterOptions{
-		AMI:  ami,
-		Name: fmt.Sprintf("^%s$", name),
-	}
-	result, err := c.GetOSInfo(ctx, opts)
-	if err != nil {
-		return "", errors.Wrap(err, "getting OS info")
-	}
-	if len(result.Data) == 0 {
-		return "", errors.Errorf("OS information name '%s' not found for distro", opts.Name)
-	} else if len(result.Data) > 1 {
-		return "", errors.Errorf("multiple results found for OS information name '%s'", opts.Name)
-	}
-	return result.Data[0].Version, nil
 }
 
 // getLatestImageHistory returns the latest AMI and timestamp given the provided imageId.
@@ -429,7 +404,7 @@ func (c *RuntimeEnvironmentsClient) getLatestImageHistory(ctx context.Context, i
 	}
 	resultHistory, err := c.getHistory(ctx, optsHistory)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting history for image '%s': '%s'", imageID, err.Error())
+		return nil, errors.Wrapf(err, "getting history for image '%s': %s", imageID, err.Error())
 	}
 	if len(resultHistory) == 0 {
 		return nil, errors.Errorf("history for image '%s' not found", imageID)
@@ -451,27 +426,12 @@ func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID st
 	}
 	timestamp, err := stringToTime(latestImageHistory.CreationDate)
 	if err != nil {
-		return nil, errors.Wrap(err, "converting creation time: '%s'")
-	}
-	name, err := c.getNameFromOSInfo(ctx, latestImageHistory.AMI, OSNameField)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting OSInfo '%s' field for image: '%s'", OSNameField, imageID)
-	}
-	kernel, err := c.getNameFromOSInfo(ctx, latestImageHistory.AMI, OSKernelField)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting OSInfo '%s' field for image: '%s'", OSKernelField, imageID)
-	}
-	versionID, err := c.getNameFromOSInfo(ctx, latestImageHistory.AMI, OSVersionIDField)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting OSInfo '%s' field for image: '%s'", OSVersionIDField, imageID)
+		return nil, errors.Wrap(err, "converting creation time")
 	}
 	return &Image{
 		ID:           imageID,
 		AMI:          latestImageHistory.AMI,
-		Kernel:       kernel,
 		LastDeployed: timestamp,
-		Name:         name,
-		VersionID:    versionID,
 	}, nil
 }
 
