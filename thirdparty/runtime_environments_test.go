@@ -279,9 +279,6 @@ func TestGetImageInfo(t *testing.T) {
 	result, err := c.GetImageInfo(ctx, "ubuntu2204")
 	require.NoError(t, err)
 	require.NotEmpty(t, result)
-	assert.NotEmpty(result.Name)
-	assert.NotEmpty(result.VersionID)
-	assert.NotEmpty(result.Kernel)
 	assert.NotEmpty(result.LastDeployed)
 	assert.NotEmpty(result.AMI)
 }

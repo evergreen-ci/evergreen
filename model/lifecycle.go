@@ -696,13 +696,6 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 	for _, tg := range creationInfo.Project.TaskGroups {
 		tgMap[tg.Name] = tg
 	}
-	for _, variant := range creationInfo.Project.BuildVariants {
-		for _, t := range variant.Tasks {
-			if t.TaskGroup != nil {
-				tgMap[t.Name] = *t.TaskGroup
-			}
-		}
-	}
 
 	for _, task := range creationInfo.BuildVariant.Tasks {
 		// Verify that the config isn't malformed.
@@ -1239,10 +1232,7 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 	}
 
 	if buildVarTask.IsPartOfGroup {
-		tg := buildVarTask.TaskGroup
-		if tg == nil {
-			tg = creationInfo.Project.FindTaskGroup(buildVarTask.GroupName)
-		}
+		tg := creationInfo.Project.FindTaskGroup(buildVarTask.GroupName)
 		if tg == nil {
 			return nil, errors.Errorf("finding task group '%s' in project '%s'", buildVarTask.GroupName, creationInfo.Project.Identifier)
 		}

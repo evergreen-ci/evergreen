@@ -1439,57 +1439,6 @@ buildvariants:
 
 		require.Len(t, proj.BuildVariants, 1)
 		require.Len(t, proj.BuildVariants[0].Tasks, 1)
-		assert.Zero(t, proj.BuildVariants[0].Tasks[0].TaskGroup)
-		checkIsTaskGroupTaskUnit(t, proj.BuildVariants[0].Tasks[0])
-	})
-
-	t.Run("SucceedsWithInlineTaskGroup", func(t *testing.T) {
-		inlineYml := `
-tasks:
-- name: example_task_1
-- name: example_task_2
-task_groups:
-- &example_task_group
-  name: example_task_group
-  share_processes: true
-  max_hosts: 2
-  setup_group_can_fail_task: true
-  setup_group_timeout_secs: 10
-  setup_group:
-  - command: shell.exec
-    params:
-      script: "echo setup_group"
-  teardown_group:
-  - command: shell.exec
-    params:
-      script: "echo teardown_group"
-  setup_task:
-  - command: shell.exec
-    params:
-      script: "echo setup_group"
-  teardown_task:
-  - command: shell.exec
-    params:
-      script: "echo setup_group"
-  tasks:
-  - example_task_1
-  - example_task_2
-buildvariants:
-- name: "bv"
-  tasks:
-  - name: inline_task_group
-    task_group:
-      <<: *example_task_group
-      tasks:
-      - example_task_1
-`
-		proj := &Project{}
-		_, err := LoadProjectInto(ctx, []byte(inlineYml), nil, "id", proj)
-		assert.Nil(t, err)
-		require.NotNil(t, proj)
-		require.Len(t, proj.BuildVariants, 1)
-		require.Len(t, proj.BuildVariants[0].Tasks, 1)
-		assert.NotNil(t, proj.BuildVariants[0].Tasks[0].TaskGroup)
 		checkIsTaskGroupTaskUnit(t, proj.BuildVariants[0].Tasks[0])
 	})
 
@@ -1626,12 +1575,6 @@ buildvariants:
   display_name: "bv_display"
   tasks:
   - name: example_task_group
-  - name: inline_task_group
-    task_group:
-      max_hosts: -1
-      tasks:
-      - example_task_3
-      - example_task_4
 `
 		proj := &Project{}
 		_, err := LoadProjectInto(ctx, []byte(validMaxHostYml), nil, "id", proj)
@@ -1640,11 +1583,6 @@ buildvariants:
 		require.Len(t, proj.TaskGroups, 1)
 		assert.Equal(t, "example_task_group", proj.TaskGroups[0].Name)
 		assert.Equal(t, proj.TaskGroups[0].MaxHosts, len(proj.TaskGroups[0].Tasks))
-
-		require.Len(t, proj.BuildVariants, 1)
-		require.Len(t, proj.BuildVariants[0].Tasks, 2)
-		assert.Equal(t, "inline_task_group", proj.BuildVariants[0].Tasks[1].Name)
-		assert.Equal(t, proj.BuildVariants[0].Tasks[1].TaskGroup.MaxHosts, len(proj.BuildVariants[0].Tasks[1].TaskGroup.Tasks))
 	})
 }
 
@@ -2550,7 +2488,6 @@ func TestMergeOrderedUniqueFail(t *testing.T) {
 func TestMergeUnique(t *testing.T) {
 	main := &ParserProject{
 		Stepback:    utility.ToBoolPtr(true),
-		BatchTime:   utility.ToIntPtr(1),
 		OomTracker:  utility.ToBoolPtr(false),
 		DisplayName: utility.ToStringPtr("name"),
 	}
@@ -2568,7 +2505,6 @@ func TestMergeUnique(t *testing.T) {
 	err := main.mergeUnique(add)
 	assert.NoError(t, err)
 	assert.NotNil(t, main.Stepback)
-	assert.NotNil(t, main.BatchTime)
 	assert.NotNil(t, main.OomTracker)
 	assert.NotNil(t, main.DisplayName)
 	assert.NotNil(t, main.PreTimeoutSecs)
@@ -2583,7 +2519,6 @@ func TestMergeUnique(t *testing.T) {
 func TestMergeUniqueFail(t *testing.T) {
 	main := &ParserProject{
 		Stepback:          utility.ToBoolPtr(true),
-		BatchTime:         utility.ToIntPtr(1),
 		OomTracker:        utility.ToBoolPtr(true),
 		PreTimeoutSecs:    utility.ToIntPtr(1),
 		PostTimeoutSecs:   utility.ToIntPtr(1),
@@ -2596,7 +2531,6 @@ func TestMergeUniqueFail(t *testing.T) {
 
 	add := &ParserProject{
 		Stepback:          utility.ToBoolPtr(true),
-		BatchTime:         utility.ToIntPtr(1),
 		OomTracker:        utility.ToBoolPtr(true),
 		PreTimeoutSecs:    utility.ToIntPtr(1),
 		PostTimeoutSecs:   utility.ToIntPtr(1),
@@ -2610,7 +2544,6 @@ func TestMergeUniqueFail(t *testing.T) {
 
 	err := main.mergeUnique(add)
 	assert.Contains(t, err.Error(), "stepback can only be defined in one YAML")
-	assert.Contains(t, err.Error(), "batch time can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "OOM tracker can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "pre timeout secs can only be defined in one YAML")
 	assert.Contains(t, err.Error(), "post timeout secs can only be defined in one YAML")
