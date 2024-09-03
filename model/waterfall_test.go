@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -87,7 +88,7 @@ func TestGetWaterfallVersions(t *testing.T) {
 		})
 	assert.Nil(t, versions)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid requesters '[foo]'")
+	assert.True(t, strings.HasPrefix(err.Error(), "invalid requester"))
 }
 
 func TestGetWaterfallBuildVariants(t *testing.T) {

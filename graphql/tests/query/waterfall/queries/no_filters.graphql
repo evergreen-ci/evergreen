@@ -1,5 +1,5 @@
 {
-  waterfall(options: { projectIdentifier: "spruce" }) {
+  waterfall(options: { projectIdentifier: "spruce-identifier" }) {
     buildVariants {
       builds {
         activated

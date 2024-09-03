@@ -971,6 +971,10 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	}
 	limit := model.DefaultWaterfallVersionLimit
 	if utility.FromIntPtr(options.Limit) != 0 {
+		if utility.FromIntPtr(options.Limit) > model.MaxWaterfallVersionLimit {
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("limit exceeds max limit of %d", model.MaxWaterfallVersionLimit))
+		}
+
 		limit = utility.FromIntPtr(options.Limit)
 	}
 	requesters := options.Requesters
@@ -985,7 +989,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	versions, err := model.GetWaterfallVersions(ctx, projectId, opts)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("getting versions: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall versions: %s", err.Error()))
 	}
 
 	// TODO DEVPROD-10179: Add check to ensure each version has tasks that match filter...
@@ -997,7 +1001,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	buildVariants, err := model.GetWaterfallBuildVariants(ctx, versions)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("getting waterfall contents: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall build variants: %s", err.Error()))
 	}
 
 	apiVersions := []*restModel.APIVersion{}

@@ -38,8 +38,8 @@ type WaterfallBuildVariant struct {
 }
 
 type WaterfallOptions struct {
-	Limit      int
-	Requesters []string
+	Limit      int      `bson:"-" json:"-"`
+	Requesters []string `bson:"-" json:"-"`
 }
 
 // GetWaterfallVersions returns `opts.limit` versions for a given project.
@@ -47,7 +47,7 @@ type WaterfallOptions struct {
 func GetWaterfallVersions(ctx context.Context, projectId string, opts WaterfallOptions) ([]Version, error) {
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(opts.Requesters, evergreen.SystemVersionRequesterTypes)
 	if len(invalidRequesters) > 0 {
-		return nil, errors.Errorf("invalid requesters '%s'", invalidRequesters)
+		return nil, errors.Errorf("invalid requester(s) '%s'; only commit-level requesters can be applied to the waterfall query", invalidRequesters)
 	}
 	match := bson.M{
 		VersionIdentifierKey: projectId,
@@ -60,12 +60,7 @@ func GetWaterfallVersions(ctx context.Context, projectId string, opts WaterfallO
 
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
-	limit := defaultVersionLimit
-	if opts.Limit != 0 {
-		limit = opts.Limit
-	}
-
-	pipeline = append(pipeline, bson.M{"$limit": limit})
+	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 
 	res := []Version{}
 	env := evergreen.GetEnvironment()
@@ -73,8 +68,7 @@ func GetWaterfallVersions(ctx context.Context, projectId string, opts WaterfallO
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating versions")
 	}
-	err = cursor.All(ctx, &res)
-	if err != nil {
+	if err = cursor.All(ctx, &res); err != nil {
 		return nil, err
 	}
 
@@ -83,6 +77,10 @@ func GetWaterfallVersions(ctx context.Context, projectId string, opts WaterfallO
 
 // GetWaterfallBuildVariants returns all build variants associated with the specified versions. Each build variant contains an array of builds sorted by revision and their tasks.
 func GetWaterfallBuildVariants(ctx context.Context, versions []Version) ([]WaterfallBuildVariant, error) {
+	if len(versions) == 0 {
+		return nil, errors.Errorf("no versions specified")
+	}
+
 	versionIds := []string{}
 	for _, version := range versions {
 		versionIds = append(versionIds, version.Id)
@@ -134,7 +132,7 @@ func GetWaterfallBuildVariants(ctx context.Context, versions []Version) ([]Water
 	},
 	})
 	// Sorting builds here guarantees a consistent order in the subsequent $group stage
-	pipeline = append(pipeline, bson.M{"$sort": bson.M{"_id": 1, bsonutil.GetDottedKeyName(buildsKey, build.RevisionOrderNumberKey): -1}})
+	pipeline = append(pipeline, bson.M{"$sort": bson.M{bsonutil.GetDottedKeyName(buildsKey, build.RevisionOrderNumberKey): -1}})
 	pipeline = append(pipeline, bson.M{
 		"$group": bson.M{
 			"_id": "$_id",
@@ -159,8 +157,7 @@ func GetWaterfallBuildVariants(ctx context.Context, versions []Version) ([]Water
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating versions")
 	}
-	err = cursor.All(ctx, &res)
-	if err != nil {
+	if err = cursor.All(ctx, &res); err != nil {
 		return nil, err
 	}
 

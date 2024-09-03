@@ -136,7 +136,7 @@
   "project_ref": [
     {
       "_id": "spruce",
-      "identifier": "spruce"
+      "identifier": "spruce-identifier"
     },
     {
       "_id": "evergreen",
