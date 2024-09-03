@@ -21,8 +21,8 @@ var (
 )
 
 // BumpParameterRecord bumps the parameter record to indicate that the parameter
-// was changed. information. This will not modify if the record exists and its
-// most recent update is more recent than lastUpdated.
+// was changed. information. It will not modify the record if it already exists
+// and its latest update is more recent than lastUpdated.
 func BumpParameterRecord(ctx context.Context, db *mongo.Database, name string, lastUpdated time.Time) error {
 	res, err := db.Collection(Collection).UpdateOne(ctx, bson.M{
 		nameKey: name,
@@ -46,8 +46,8 @@ func BumpParameterRecord(ctx context.Context, db *mongo.Database, name string, l
 	return nil
 }
 
-// FindOneID finds one parameter record by its parameter name.
-func FindOneID(ctx context.Context, db *mongo.Database, name string) (*ParameterRecord, error) {
+// FindOneName finds one parameter record by its parameter name.
+func FindOneName(ctx context.Context, db *mongo.Database, name string) (*ParameterRecord, error) {
 	var p ParameterRecord
 	err := db.Collection(Collection).FindOne(ctx, bson.M{nameKey: name}).Decode(&p)
 	if adb.ResultsNotFound(err) {
@@ -59,8 +59,8 @@ func FindOneID(ctx context.Context, db *mongo.Database, name string) (*Parameter
 	return &p, nil
 }
 
-// FindByIDs finds all parameter records by their parameter names.
-func FindByIDs(ctx context.Context, db *mongo.Database, names ...string) ([]ParameterRecord, error) {
+// FindByNames finds all parameter records by their parameter names.
+func FindByNames(ctx context.Context, db *mongo.Database, names ...string) ([]ParameterRecord, error) {
 	if len(names) == 0 {
 		return nil, nil
 	}

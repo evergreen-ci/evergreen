@@ -28,7 +28,7 @@ func TestBumpParameterRecord(t *testing.T) {
 			lastUpdated := utility.BSONTime(time.Now())
 			require.NoError(t, parameterstore.BumpParameterRecord(ctx, env.DB(), name, lastUpdated))
 
-			rec, err := parameterstore.FindOneID(ctx, env.DB(), name)
+			rec, err := parameterstore.FindOneName(ctx, env.DB(), name)
 			require.NoError(t, err)
 			assert.Equal(t, name, rec.Name)
 			assert.Equal(t, lastUpdated, rec.LastUpdated)
@@ -44,7 +44,7 @@ func TestBumpParameterRecord(t *testing.T) {
 
 			require.NoError(t, parameterstore.BumpParameterRecord(ctx, env.DB(), name, lastUpdated))
 
-			rec, err := parameterstore.FindOneID(ctx, env.DB(), name)
+			rec, err := parameterstore.FindOneName(ctx, env.DB(), name)
 			require.NoError(t, err)
 			assert.Equal(t, name, rec.Name)
 			assert.Equal(t, lastUpdated, rec.LastUpdated, "last updated time should have been updated")
@@ -60,7 +60,7 @@ func TestBumpParameterRecord(t *testing.T) {
 
 			assert.Error(t, parameterstore.BumpParameterRecord(ctx, env.DB(), name, lastUpdated.Add(-time.Hour)))
 
-			rec, err := parameterstore.FindOneID(ctx, env.DB(), name)
+			rec, err := parameterstore.FindOneName(ctx, env.DB(), name)
 			require.NoError(t, err)
 			assert.Equal(t, name, rec.Name)
 			assert.Equal(t, lastUpdated, rec.LastUpdated, "last updated time should not have changed")
@@ -87,7 +87,7 @@ func TestParameterRecordFindOneID(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment){
 		"ReturnsNilWhenNotFound": func(ctx context.Context, t *testing.T, env *mock.Environment) {
-			rec, err := parameterstore.FindOneID(ctx, env.DB(), "nonexistent")
+			rec, err := parameterstore.FindOneName(ctx, env.DB(), "nonexistent")
 			assert.NoError(t, err)
 			assert.Zero(t, rec)
 		},
@@ -99,7 +99,7 @@ func TestParameterRecordFindOneID(t *testing.T) {
 			}
 			require.NoError(t, expectedRec.Insert(ctx, env.DB()))
 
-			rec, err := parameterstore.FindOneID(ctx, env.DB(), name)
+			rec, err := parameterstore.FindOneName(ctx, env.DB(), name)
 			assert.NoError(t, err)
 			require.NotZero(t, rec)
 			assert.Equal(t, expectedRec, *rec)
@@ -124,7 +124,7 @@ func TestParameterRecordFindByIDs(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment){
 		"ReturnsNoResultsWhenNotFound": func(ctx context.Context, t *testing.T, env *mock.Environment) {
-			foundParams, err := parameterstore.FindByIDs(ctx, env.DB(), "nonexistent0", "nonexistent1")
+			foundParams, err := parameterstore.FindByNames(ctx, env.DB(), "nonexistent0", "nonexistent1")
 			assert.NoError(t, err)
 			assert.Empty(t, foundParams)
 		},
@@ -136,13 +136,13 @@ func TestParameterRecordFindByIDs(t *testing.T) {
 			}
 			require.NoError(t, expectedRec.Insert(ctx, env.DB()))
 
-			recs, err := parameterstore.FindByIDs(ctx, env.DB(), name, "nonexistent")
+			recs, err := parameterstore.FindByNames(ctx, env.DB(), name, "nonexistent")
 			assert.NoError(t, err)
 			require.Len(t, recs, 1)
 			assert.Equal(t, expectedRec, recs[0])
 		},
 		"ReturnsNoResultsForNoNames": func(ctx context.Context, t *testing.T, env *mock.Environment) {
-			recs, err := parameterstore.FindByIDs(ctx, env.DB())
+			recs, err := parameterstore.FindByNames(ctx, env.DB())
 			assert.NoError(t, err)
 			assert.Empty(t, recs)
 		},
