@@ -64,7 +64,7 @@ func ChmodCommandWithSudo(script string, sudo bool) []string {
 	return append(args, "chmod", "+x", script)
 }
 
-// CurlCommand returns the command to curl the evergreen client.
+// CurlCommand returns the command to download the evergreen client.
 func (h *Host) CurlCommand(env evergreen.Environment) (string, error) {
 	cmds, err := h.curlCommands(env, "")
 	if err != nil {
