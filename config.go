@@ -702,7 +702,11 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptionsBuilder {
 		// isn't any other way to enforce a time limit on how long the client waits when trying to R/W data
 		// over a connection, so we are including it until Go driver finalizes their timeout API.
 		// SetSocketTimeout(mongoTimeout).
-		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections))).
+		SetBSONOptions(&options.BSONOptions{
+			// TODO-mongo-driver: this option should exist soon.
+			// DecodeObjectIDAsHex: true,
+		})
 
 	if s.AWSAuthEnabled {
 		opts.SetAuth(options.Credential{
