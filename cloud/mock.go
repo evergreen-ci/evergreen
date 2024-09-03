@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -199,8 +200,16 @@ func (m *mockManager) ModifyHost(ctx context.Context, host *host.Host, changes h
 
 	if changes.NoExpiration != nil {
 		expireOnValue := expireInDays(30)
+		var userTimeZone string
+		u, err := user.FindOneById(host.StartedBy)
+		if err != nil {
+			return errors.Wrapf(err, "finding owner '%s' for host '%s'", host.StartedBy, host.Id)
+		}
+		if u == nil {
+			return errors.Errorf("host owner '%s' not found", host.StartedBy)
+		}
 		if *changes.NoExpiration {
-			if err = host.MarkShouldNotExpire(ctx, expireOnValue, evergreen.DefaultUserTimeZone); err != nil {
+			if err = host.MarkShouldNotExpire(ctx, expireOnValue, userTimeZone); err != nil {
 				return errors.Errorf("setting no expiration in DB")
 			}
 		}

@@ -596,10 +596,10 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 	if noExpiration {
 		u, err := user.FindOneById(h.StartedBy)
 		if err != nil {
-			return errors.Wrapf(err, "finding host's user '%s'", h.StartedBy)
+			return errors.Wrapf(err, "finding owner '%s' for host '%s'", h.StartedBy, h.Id)
 		}
 		if u == nil {
-			return errors.Errorf("user '%s' not found", h.StartedBy)
+			return errors.Errorf("host owner '%s' not found", h.StartedBy)
 		}
 		if err := h.MarkShouldNotExpire(ctx, expireOnValue, u.Settings.Timezone); err != nil {
 			return errors.Wrapf(err, "marking host should not expire in DB for host '%s'", h.Id)
@@ -608,7 +608,7 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 		// Use GetInstanceStatus to add/update the cached host data (including
 		// unexpirable host information like persistent DNS names and IP
 		// addresses) if the unexpirable host is running.
-		_, err := m.GetInstanceState(ctx, h)
+		_, err = m.GetInstanceState(ctx, h)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "could not get instance info to assign persistent DNS name",
 			"dashboard":  "evergreen sleep schedule health",

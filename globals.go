@@ -298,10 +298,6 @@ const (
 	DefaultUnexpirableVolumesPerUser = 1
 	DefaultSleepScheduleTimeZone     = "America/New_York"
 
-	// DefaultUserTimeZone is the default time zone for users in Evergreen if
-	// they do not explicitly set one.
-	DefaultUserTimeZone = "America/New_York"
-
 	// host resource tag names
 	TagName             = "name"
 	TagDistro           = "distro"
