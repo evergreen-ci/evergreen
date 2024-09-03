@@ -1,5 +1,4 @@
 enabled: true
-batchtime: 120
 identifier: sample
 
 functions:

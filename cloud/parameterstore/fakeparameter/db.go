@@ -15,7 +15,7 @@ import (
 const Collection = "fake_parameters"
 
 var (
-	IDKey          = bsonutil.MustHaveTag(FakeParameter{}, "ID")
+	NameKey        = bsonutil.MustHaveTag(FakeParameter{}, "Name")
 	ValueKey       = bsonutil.MustHaveTag(FakeParameter{}, "Value")
 	LastUpdatedKey = bsonutil.MustHaveTag(FakeParameter{}, "LastUpdated")
 )
@@ -23,7 +23,7 @@ var (
 // FindOneID finds a single fake parameter by its name.
 func FindOneID(ctx context.Context, id string) (*FakeParameter, error) {
 	var p FakeParameter
-	err := evergreen.GetEnvironment().DB().Collection(Collection).FindOne(ctx, bson.M{IDKey: id}).Decode(&p)
+	err := evergreen.GetEnvironment().DB().Collection(Collection).FindOne(ctx, bson.M{NameKey: id}).Decode(&p)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -39,7 +39,7 @@ func FindByIDs(ctx context.Context, ids ...string) ([]FakeParameter, error) {
 		return nil, nil
 	}
 	params := []FakeParameter{}
-	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Find(ctx, bson.M{IDKey: bson.M{"$in": ids}})
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Find(ctx, bson.M{NameKey: bson.M{"$in": ids}})
 	if err != nil {
 		return nil, errors.Wrap(err, "finding fake parameters by IDs")
 	}
@@ -52,7 +52,7 @@ func FindByIDs(ctx context.Context, ids ...string) ([]FakeParameter, error) {
 // DeleteOneID deletes a fake parameter with the given ID. Returns whether any
 // matching parameter was deleted.
 func DeleteOneID(ctx context.Context, id string) (bool, error) {
-	res, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteOne(ctx, bson.M{IDKey: id})
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteOne(ctx, bson.M{NameKey: id})
 	if err != nil {
 		return false, errors.Wrap(err, "deleting fake parameter by ID")
 	}

@@ -4,6 +4,11 @@
         "_id": "task-1",
         "distro": "ubuntu1604-large",
         "branch": "spruce"
+      },
+      {
+        "_id": "display-task",
+        "branch": "spruce",
+        "display_only": true
       }
     ], 
     "distro": [

@@ -91,10 +91,7 @@ func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
 		newBv := UIBuildVariant{bv.Name, []string{}, []UIDisplayTask{}}
 		for _, task := range bv.Tasks {
 			if task.IsGroup {
-				tg := task.TaskGroup
-				if tg == nil {
-					tg = project.FindTaskGroup(task.Name)
-				}
+				tg := project.FindTaskGroup(task.Name)
 				if tg != nil {
 					newBv.TaskNames = append(newBv.TaskNames, tg.Tasks...)
 				}
