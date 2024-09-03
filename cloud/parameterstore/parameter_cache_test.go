@@ -158,7 +158,7 @@ func TestParameterCache(t *testing.T) {
 			assert.Empty(t, found)
 			assert.ElementsMatch(t, []string{"nonexistent"}, notFound)
 		},
-		"ConcurrentReadAndWritesAreSafeAndReachEventualConsistency": func(t *testing.T, pc *parameterCache) {
+		"ConcurrentReadAndWritesAreSafeAndLastWriteWins": func(t *testing.T, pc *parameterCache) {
 			const name = "name"
 
 			var wg sync.WaitGroup
