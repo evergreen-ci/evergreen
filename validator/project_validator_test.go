@@ -4189,6 +4189,8 @@ tasks:
 task_groups:
 - name: example_task_group
   max_hosts: 4
+  teardown_group:
+  - command: attach.results
   tasks:
   - example_task_1
   - example_task_2
@@ -4198,15 +4200,6 @@ buildvariants:
   display_name: "bv_display"
   tasks:
     - name: example_task_group
-    - name: inline_task_group
-      task_group:
-        share_processes: true
-        max_hosts: 3
-        teardown_group:
-        - command: attach.results
-        tasks:
-        - example_task_1
-        - example_task_2
 `
 	pp, err = model.LoadProjectInto(ctx, []byte(largeMaxHostYml), nil, "", &proj)
 	require.NotNil(t, proj)
@@ -4216,11 +4209,9 @@ buildvariants:
 	require.Len(t, validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "attach.results cannot be used in the group teardown stage")
 	validationErrs = checkTaskGroups(&proj)
-	require.Len(t, validationErrs, 2)
+	require.Len(t, validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "task group 'example_task_group' has max number of hosts 4 greater than the number of tasks 3")
-	assert.Contains(validationErrs[1].Message, "task group 'inline_task_group' has max number of hosts 3 greater than the number of tasks 2")
 	assert.Equal(validationErrs[0].Level, Warning)
-	assert.Equal(validationErrs[1].Level, Warning)
 
 	overMaxTimeoutYml := `
 tasks:
@@ -4236,16 +4227,6 @@ buildvariants:
   display_name: "bv_display"
   tasks:
     - name: example_task_group
-    - name: inline_task_group
-      task_group:
-        share_processes: true
-        teardown_group:
-        - command: shell.exec
-        - command: shell.exec
-          params:
-           script: "echo teardown_group"
-        tasks:
-        - example_task_1
 `
 	pp, err = model.LoadProjectInto(ctx, []byte(overMaxTimeoutYml), nil, "", &proj)
 	require.NotNil(t, proj)

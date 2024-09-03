@@ -141,9 +141,6 @@ type BuildVariantTaskUnit struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
-	// TaskGroup is set if an inline task group is defined on the build variant.
-	TaskGroup *TaskGroup `yaml:"task_group,omitempty" bson:"task_group,omitempty"`
-
 	// CreateCheckRun will create a check run on GitHub if set.
 	CreateCheckRun *CheckRun `yaml:"create_check_run,omitempty" bson:"create_check_run,omitempty"`
 }
@@ -885,11 +882,7 @@ func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, sourceRev, def
 			if t.IsDisabled() || t.SkipOnRequester(v.Requester) {
 				continue
 			}
-			tg := t.TaskGroup
-			if tg == nil {
-				tg = p.FindTaskGroup(t.Name)
-			}
-			if tg != nil {
+			if tg := p.FindTaskGroup(t.Name); tg != nil {
 				for _, groupTask := range tg.Tasks {
 					taskId := generateId(groupTask, projectIdentifier, &bv, rev, v)
 					execTable[TVPair{bv.Name, groupTask}] = util.CleanName(taskId)
@@ -921,13 +914,7 @@ func NewTaskIdConfig(proj *Project, v *Version, tasks TaskVariantPairs, projectI
 	for _, tg := range proj.TaskGroups {
 		tgMap[tg.Name] = tg
 	}
-	for _, variant := range proj.BuildVariants {
-		for _, t := range variant.Tasks {
-			if t.TaskGroup != nil {
-				tgMap[t.Name] = *t.TaskGroup
-			}
-		}
-	}
+
 	execTasksWithTaskGroupTasks := TVPairSet{}
 	for _, vt := range tasks.ExecTasks {
 		if _, ok := tgMap[vt.TaskName]; ok {
@@ -1220,13 +1207,6 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 			return &tg
 		}
 	}
-	for _, bv := range p.BuildVariants {
-		for _, t := range bv.Tasks {
-			if t.TaskGroup != nil && t.Name == name {
-				return t.TaskGroup
-			}
-		}
-	}
 	return nil
 }
 
@@ -1252,16 +1232,8 @@ func (p *Project) FindTaskGroupForTask(bvName, taskName string) *TaskGroup {
 		}
 	}
 
-	// Third, loop through the build variant's task units, which may be an inline task group
-	// or a reference to a defined task group.
+	// Third, loop through the build variant's task units.
 	for _, t := range bv.Tasks {
-		// Check inline task groups.
-		if t.TaskGroup != nil {
-			if utility.StringSliceContains(t.TaskGroup.Tasks, taskName) {
-				return t.TaskGroup
-			}
-			continue
-		}
 		// Check if the task group is in the map of task groups with the task.
 		if tg, ok := tgWithTask[t.Name]; ok {
 			return &tg
@@ -1394,11 +1366,6 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 	for _, tg := range p.TaskGroups {
 		tgMap[tg.Name] = tg
 	}
-	for _, t := range bv.Tasks {
-		if t.TaskGroup != nil {
-			tgMap[t.Name] = *t.TaskGroup
-		}
-	}
 
 	for _, bvt := range bv.Tasks {
 		if bvt.Name == task {
@@ -1458,10 +1425,7 @@ func (p *Project) findBuildVariantsWithTag(tags []string) []string {
 // build variant task unit, and returns the name and tags
 func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string, bool) {
 	if bvt.IsGroup || bvt.IsPartOfGroup {
-		ptg := bvt.TaskGroup
-		if ptg == nil {
-			ptg = p.FindTaskGroup(bvt.Name)
-		}
+		ptg := p.FindTaskGroup(bvt.Name)
 		if ptg == nil {
 			return "", nil, false
 		}
@@ -1619,10 +1583,7 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 // tasksFromGroup returns a slice of the task group's tasks.
 // Settings missing from the group task are populated from the task definition.
 func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVariantTaskUnit {
-	tg := bvTaskGroup.TaskGroup
-	if tg == nil {
-		tg = p.FindTaskGroup(bvTaskGroup.Name)
-	}
+	tg := p.FindTaskGroup(bvTaskGroup.Name)
 	if tg == nil {
 		return nil
 	}
@@ -1653,7 +1614,6 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 			// unit is a task within the task group, not the task group itself.
 			// These are not persisted.
 			IsPartOfGroup:     true,
-			TaskGroup:         bvTaskGroup.TaskGroup,
 			GroupName:         bvTaskGroup.Name,
 			Variant:           bvTaskGroup.Variant,
 			Patchable:         bvTaskGroup.Patchable,
