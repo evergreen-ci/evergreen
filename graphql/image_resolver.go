@@ -72,6 +72,9 @@ func (r *imageResolver) LatestTask(ctx context.Context, obj *model.APIImage) (*m
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting latest task for image '%s': '%s'", imageID, err.Error()))
 	}
+	if latestTask == nil {
+		return nil, nil
+	}
 	apiLatestTask := &model.APITask{}
 	err = apiLatestTask.BuildFromService(ctx, latestTask, &model.APITaskArgs{
 		IncludeAMI: true,
