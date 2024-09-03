@@ -252,6 +252,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
+	if j.user.Settings.UseSpruceOptions.SpruceV1 {
+		patchDoc.DisplayNewUI = true
+	}
+
 	pref, err := model.FindMergedProjectRef(patchDoc.Project, patchDoc.Version, true)
 	if err != nil {
 		return errors.Wrap(err, "finding project for patch")
