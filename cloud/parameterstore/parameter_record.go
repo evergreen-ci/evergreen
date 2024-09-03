@@ -10,7 +10,9 @@ import (
 // ParameterRecord stores metadata information about parameters. This never
 // stores the value of the parameter itself.
 type ParameterRecord struct {
-	// Name is the unique full path identifier for the parameter.
+	// Name is the unique full path identifier for the parameter. The name is
+	// intentionally tagged as the BSON _id to ensure that the parameter's
+	// unique name is the document's unique and primary identifier.
 	Name string `bson:"_id" json:"_id"`
 	// LastUpdated is the time the parameter was most recently updated.
 	LastUpdated time.Time `bson:"last_updated" json:"last_updated"`
