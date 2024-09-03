@@ -35,7 +35,7 @@ func (c *FakeSSMClient) PutParameter(ctx context.Context, input *ssm.PutParamete
 	}
 
 	p := FakeParameter{
-		ID:          name,
+		Name:        name,
 		Value:       value,
 		LastUpdated: time.Now(),
 	}
@@ -133,7 +133,7 @@ func (c *FakeSSMClient) GetParameters(ctx context.Context, input *ssm.GetParamet
 		}
 
 		output.Parameters = append(output.Parameters, ssmTypes.Parameter{
-			Name:             utility.ToStringPtr(p.ID),
+			Name:             utility.ToStringPtr(p.Name),
 			Value:            utility.ToStringPtr(p.Value),
 			LastModifiedDate: utility.ToTimePtr(p.LastUpdated),
 		})

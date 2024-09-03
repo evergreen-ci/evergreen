@@ -25,7 +25,7 @@ func TestParameterManager(t *testing.T) {
 		dbParam, err := FindOneID(ctx, p.Name)
 		require.NoError(t, err)
 		require.NotZero(t, dbParam)
-		assert.Equal(t, p.Name, dbParam.ID)
+		assert.Equal(t, p.Name, dbParam.Name)
 		assert.Equal(t, p.Value, dbParam.Value)
 	}
 	// checkParam checks that the input parameter matches the expected values
