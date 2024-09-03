@@ -112,7 +112,7 @@ func TestParameterCache(t *testing.T) {
 			recs := make([]ParameterRecord, 0, len(cps))
 			for i := 0; i < len(cps); i++ {
 				recs = append(recs, ParameterRecord{
-					Name:        fmt.Sprintf(cps[i].name),
+					Name:        cps[i].name,
 					LastUpdated: now,
 				})
 			}
