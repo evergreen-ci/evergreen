@@ -335,7 +335,7 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 
 ////////////////////////////////////////////////////////////////////////
 //
-// GET /permissions/userse
+// GET /permissions/users
 
 type UsersPermissionsInput struct {
 	// The resource ID
