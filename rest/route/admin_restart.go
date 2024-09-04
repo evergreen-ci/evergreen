@@ -25,15 +25,12 @@ type restartHandler struct {
 	IncludeTestFailed  bool      `json:"include_test_failed"`
 	IncludeSysFailed   bool      `json:"include_sys_failed"`
 	IncludeSetupFailed bool      `json:"include_setup_failed"`
-
-	restartType string
-	queue       amboy.Queue
+	queue              amboy.Queue
 }
 
 func (h *restartHandler) Factory() gimlet.RouteHandler {
 	return &restartHandler{
-		queue:       h.queue,
-		restartType: h.restartType,
+		queue: h.queue,
 	}
 }
 
