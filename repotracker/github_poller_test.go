@@ -72,7 +72,6 @@ func resetProjectRefs() {
 		Branch:      "main",
 		RemotePath:  "commit.txt",
 		Enabled:     true,
-		Private:     utility.FalsePtr(),
 		BatchTime:   60,
 		Hidden:      utility.FalsePtr(),
 	}
@@ -212,7 +211,6 @@ func TestGetRemoteConfig(t *testing.T) {
 				Branch:      "main",
 				RemotePath:  "tests.yml",
 				Enabled:     true,
-				Private:     utility.FalsePtr(),
 				BatchTime:   60,
 				Hidden:      utility.FalsePtr(),
 			}

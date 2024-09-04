@@ -139,12 +139,6 @@ func (pp *ParserProject) mergeUnique(toMerge *ParserProject) error {
 		pp.Stepback = toMerge.Stepback
 	}
 
-	if pp.BatchTime != nil && toMerge.BatchTime != nil {
-		catcher.New("batch time can only be defined in one YAML")
-	} else if toMerge.BatchTime != nil {
-		pp.BatchTime = toMerge.BatchTime
-	}
-
 	if pp.PreTimeoutSecs != nil && toMerge.PreTimeoutSecs != nil {
 		catcher.New("pre timeout secs can only be defined in one YAML")
 	} else if toMerge.PreTimeoutSecs != nil {

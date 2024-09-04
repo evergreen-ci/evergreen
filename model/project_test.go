@@ -171,10 +171,6 @@ func TestFindTaskGroupForTask(t *testing.T) {
 				{Name: "tg1t3"},
 				{Name: "tg1t4"},
 				{Name: "tg3"},
-				{Name: "tg4", TaskGroup: &parserTaskGroup{
-					Name:  "tg4",
-					Tasks: []string{"tg4t1", "tg4t2"},
-				}},
 			}},
 			{Name: "v2", Tasks: []parserBVTaskUnit{
 				{Name: "t1"},
@@ -212,15 +208,6 @@ func TestFindTaskGroupForTask(t *testing.T) {
 			tg := p.FindTaskGroupForTask("v1", task)
 			require.NotNil(t, tg, "finding task group for task %s", task)
 			assert.Equal(t, "tg3", tg.Name)
-		}
-	})
-
-	t.Run("FindsTaskGroupWhenDefinedInline", func(t *testing.T) {
-		tg4Tasks := []string{"tg4t1", "tg4t2"}
-		for _, task := range tg4Tasks {
-			tg := p.FindTaskGroupForTask("v1", task)
-			require.NotNil(t, tg, "finding task group for task %s", task)
-			assert.Equal(t, "tg4", tg.Name)
 		}
 	})
 
@@ -1618,7 +1605,6 @@ func TestFindProjectsSuite(t *testing.T) {
 		projects := []*ProjectRef{
 			{
 				Id:          "projectA",
-				Private:     utility.FalsePtr(),
 				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
@@ -1627,7 +1613,6 @@ func TestFindProjectsSuite(t *testing.T) {
 			},
 			{
 				Id:          "projectB",
-				Private:     utility.TruePtr(),
 				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
@@ -1636,16 +1621,15 @@ func TestFindProjectsSuite(t *testing.T) {
 			},
 			{
 				Id:          "projectC",
-				Private:     utility.TruePtr(),
 				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "mongodb",
 				Repo:        "mongo",
 				Branch:      "main",
 			},
-			{Id: "projectD", Private: utility.FalsePtr()},
-			{Id: "projectE", Private: utility.FalsePtr()},
-			{Id: "projectF", Private: utility.TruePtr()},
+			{Id: "projectD"},
+			{Id: "projectE"},
+			{Id: "projectF"},
 			{Id: projectId},
 		}
 
@@ -1786,7 +1770,6 @@ func (s *FindProjectsSuite) TestGetProjectSettings() {
 	projRef := &ProjectRef{
 		Owner:   "admin",
 		Enabled: true,
-		Private: utility.TruePtr(),
 		Id:      projectId,
 		Admins:  []string{},
 		Repo:    "SomeRepo",
@@ -1800,7 +1783,6 @@ func (s *FindProjectsSuite) TestGetProjectSettingsNoRepo() {
 	projRef := &ProjectRef{
 		Owner:   "admin",
 		Enabled: true,
-		Private: utility.TruePtr(),
 		Id:      projectId,
 		Admins:  []string{},
 	}

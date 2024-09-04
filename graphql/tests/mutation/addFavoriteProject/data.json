@@ -9,7 +9,6 @@
             "branch_name": "main",
             "repo_kind": "github",
             "enabled": false,
-            "private": false,
             "batch_time": 0,
             "remote_path": "self-tests.yml",
             "identifier": "buildhost-test",

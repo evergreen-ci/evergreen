@@ -237,22 +237,6 @@ buildvariants:
     patchable: false
   - name: git_tag_release
     git_tag_only: true
-  - name: inline_task_group_1
-    task_group:
-      <<: *example_task_group
-      tasks:
-      - example_task_1
-  - name: inline_task_group_2
-    task_group:
-      share_processes: true
-      max_hosts: 3
-      teardown_group:
-      - command: shell.exec
-        params:
-          script: echo "tearing down group"
-      tasks:
-      - example_task_2
-      - example_task_3
 ```
 
 Fields:
@@ -309,10 +293,6 @@ Fields:
     will check that task once per day. If the most recent mainline commit is
     inactive, Evergreen will activate it. In this way, cron is tied more closely
     to project commit activity. For more on the differences between cron, batchtime and [periodic builds](Project-and-Distro-Settings#periodic-builds), see [controlling when tasks run](Controlling-when-tasks-run).
--   `task_group`: a [task group](#task-groups)
-    may be defined directly inline or using YAML aliases on a build
-    variant task. This is an alternative to referencing a task group
-    defined in `task_groups` under the tasks of a given build variant.
 -   `tags`: optional list of tags to group the build variant for alias definitions (explained [here](#task-and-variant-tags))
 -   Build variants support [all options that limit when a task will run](#limiting-when-a-task-or-variant-will-run)
     (`allowed_requesters`, `patch_only`, `patchable`, `disable`, etc.). If set for the
@@ -1399,10 +1379,6 @@ A task group contains arguments to set up and tear down both the entire
 group and each individual task. Tasks in a task group will not run the `pre`
 and `post` blocks in the YAML file; instead, the tasks will run the task group's
 setup and teardown blocks.
-
-Task groups can be configured directly inline inside the config's [build
-variants](#build-variants).
-
 ``` yaml
 task_groups:
   - name: example_task_group
