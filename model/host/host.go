@@ -3159,8 +3159,8 @@ func makeExpireOnTag(expireOn string) Tag {
 
 // MarkShouldNotExpire marks a host as one that should not expire
 // and updates its expiration time to avoid early reaping. If the host is marked
-// unexpirable, is missing a sleep schedule, and has no permanent exemption,  it
-// is assigned the default sleep schedule.
+// unexpirable and has invalid/missing sleep schedule settings,  it is assigned
+// the default sleep schedule.
 func (h *Host) MarkShouldNotExpire(ctx context.Context, expireOnValue, userTimeZone string) error {
 	h.NoExpiration = true
 	h.ExpirationTime = time.Now().Add(evergreen.SpawnHostNoExpirationDuration)
