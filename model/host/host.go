@@ -805,7 +805,8 @@ func IsIntentHostId(id string) bool {
 // Clears last running task for hosts that are being moved to running, since this information is likely outdated.
 func (h *Host) SetStatus(ctx context.Context, newStatus, user, logs string) error {
 	var unset bson.M
-	if newStatus == evergreen.HostRunning {
+	switch newStatus {
+	case evergreen.HostRunning:
 		shouldKeepOffKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleShouldKeepOffKey)
 		unset = bson.M{
 			LTCTimeKey:       1,
@@ -816,7 +817,30 @@ func (h *Host) SetStatus(ctx context.Context, newStatus, user, logs string) erro
 			LTCProjectKey:    1,
 			shouldKeepOffKey: 1,
 		}
+	case evergreen.HostQuarantined:
+		// kim: NOTE: if setting static host to quarantined, need to ensure
+		// current task is also cleared/reset using
+		// ClearAndResetStrandedHostTask before clearing the state. That ought
+		// to restart the task group from scratch.
+		// kim: NOTE: on top of fixing stranded current task, need to make sure
+		// single host task group restarts from scratch if it's already pinned
+		// to this host (and isn't currently running a task in the group).
+		// May help to create a quarantine helper function to fix up
+		// prev/current task state and restart as needed. If the prev/current
+		// task state is fixed there, then this logic is not needed.
+		unset = bson.M{
+			// If quarantining, clear previous task information to unpin any
+			// single host task group that might be running on it since it won't
+			// be able to run.
+			LTCTimeKey:    1,
+			LTCTaskKey:    1,
+			LTCGroupKey:   1,
+			LTCBVKey:      1,
+			LTCVersionKey: 1,
+			LTCProjectKey: 1,
+		}
 	}
+
 	return h.setStatusAndFields(ctx, newStatus, nil, nil, unset, user, logs)
 }
 
