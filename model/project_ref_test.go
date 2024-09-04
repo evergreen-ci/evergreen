@@ -3529,7 +3529,7 @@ func TestFindFirstProjectRef(t *testing.T) {
 	assert.NoError(t, projectRef.Insert())
 
 	assert.NotPanics(t, func() {
-		_, err = FindDefaultProjectRef()
+		_, err = FindAnyRestrictedProjectRef()
 	}, "Should not panic if there are no matching projects")
 	assert.Error(t, err, "Should return error if there are no matching projects")
 
@@ -3539,7 +3539,7 @@ func TestFindFirstProjectRef(t *testing.T) {
 	}
 	assert.NoError(t, projectRef.Insert())
 
-	resultRef, err := FindDefaultProjectRef()
+	resultRef, err := FindAnyRestrictedProjectRef()
 	assert.NoError(t, err)
 	assert.Equal(t, "p1", resultRef.Id)
 }

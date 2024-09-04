@@ -1479,8 +1479,9 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 	return res, nil
 }
 
-// FindDefaultProjectRef returns an unrestricted project to use as a default for contexts.
-func FindDefaultProjectRef() (*ProjectRef, error) {
+// FindAnyRestrictedProjectRef returns an unrestricted project to use as a default for contexts.
+// TODO: Investigate removing this in DEVPROD-10469.
+func FindAnyRestrictedProjectRef() (*ProjectRef, error) {
 	projectRefs, err := FindAllMergedEnabledTrackedProjectRefs()
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all project refs")

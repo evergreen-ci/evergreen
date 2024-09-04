@@ -60,7 +60,7 @@ func (ctx *Context) GetProjectRef() (*ProjectRef, error) {
 	// if no project, use the default
 	if ctx.ProjectRef == nil {
 		var err error
-		ctx.ProjectRef, err = FindDefaultProjectRef()
+		ctx.ProjectRef, err = FindAnyRestrictedProjectRef()
 		if err != nil {
 			return nil, errors.Wrap(err, "finding project ref")
 		}
