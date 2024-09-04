@@ -48,8 +48,7 @@ func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, limit
 	apiEventLogPointers := []*restModel.HostAPIEventLogEntry{}
 	for _, e := range events {
 		apiEventLog := restModel.HostAPIEventLogEntry{}
-		err = apiEventLog.BuildFromService(e)
-		if err != nil {
+		if err = apiEventLog.BuildFromService(e); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIEventLogEntry from EventLog: %s", err.Error()))
 		}
 		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
