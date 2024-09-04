@@ -1,0 +1,30 @@
+input WaterfallOptions {
+  limit: Int = 7
+  projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)
+  requesters: [String!]
+}
+
+type WaterfallTask {
+  id: String!
+  status: String!
+  displayName: String!
+}
+
+type WaterfallBuild {
+  id: String!
+  activated: Boolean
+  displayName: String!
+  version: String!
+  tasks: [WaterfallTask!]!
+}
+
+type WaterfallBuildVariant {
+  id: String!
+  displayName: String!
+  builds: [WaterfallBuild!]!
+}
+
+type Waterfall {
+  buildVariants: [WaterfallBuildVariant!]!
+  versions: [Version!]!
+}

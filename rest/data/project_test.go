@@ -47,7 +47,6 @@ func getMockProjectSettings() model.ProjectSettings {
 		ProjectRef: model.ProjectRef{
 			Owner:          "admin",
 			Enabled:        true,
-			Private:        utility.TruePtr(),
 			Id:             projectId,
 			Admins:         []string{},
 			PeriodicBuilds: nil,
@@ -92,7 +91,6 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		projects := []*model.ProjectRef{
 			{
 				Id:          "projectA",
-				Private:     utility.FalsePtr(),
 				Enabled:     true,
 				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
@@ -101,7 +99,6 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			},
 			{
 				Id:          "projectB",
-				Private:     utility.TruePtr(),
 				Enabled:     true,
 				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
@@ -110,16 +107,15 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			},
 			{
 				Id:          "projectC",
-				Private:     utility.TruePtr(),
 				Enabled:     true,
 				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "mongodb",
 				Repo:        "mongo",
 				Branch:      "main",
 			},
-			{Id: "projectD", Private: utility.FalsePtr()},
-			{Id: "projectE", Private: utility.FalsePtr()},
-			{Id: "projectF", Private: utility.TruePtr()},
+			{Id: "projectD"},
+			{Id: "projectE"},
+			{Id: "projectF"},
 			{Id: projectId},
 		}
 
@@ -701,7 +697,6 @@ func TestHideBranch(t *testing.T) {
 		RepoRefId: repo.Id,
 		Enabled:   false,
 		Hidden:    utility.TruePtr(),
-		Private:   utility.TruePtr(),
 	}
 	assert.Equal(t, skeletonProj, *hiddenProj)
 

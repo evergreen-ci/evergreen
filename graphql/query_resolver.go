@@ -238,7 +238,7 @@ func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *
 	if h == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", hostID))
 	}
-	events, count, err := event.MostRecentPaginatedHostEvents(h.Id, h.Tag, *limit, *page)
+	events, count, err := event.MostRecentPaginatedHostEvents(h.Id, h.Tag, *limit, *page, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host events: %s", err.Error()))
 	}
@@ -961,6 +961,65 @@ func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectIde
 		return []string{}, nil
 	}
 	return buildVariantTasks, nil
+}
+
+// Waterfall is the resolver for the waterfall field.
+func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions) (*Waterfall, error) {
+	projectId, err := model.GetIdForProject(options.ProjectIdentifier)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding project with id: '%s'", options.ProjectIdentifier))
+	}
+	limit := model.DefaultWaterfallVersionLimit
+	if limitOpt := utility.FromIntPtr(options.Limit); limitOpt != 0 {
+		if limitOpt > model.MaxWaterfallVersionLimit {
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("limit exceeds max limit of %d", model.MaxWaterfallVersionLimit))
+		}
+
+		limit = limitOpt
+	}
+	requesters := options.Requesters
+	if len(requesters) == 0 {
+		requesters = evergreen.SystemVersionRequesterTypes
+	}
+
+	opts := model.WaterfallOptions{
+		Limit:      limit,
+		Requesters: requesters,
+	}
+
+	versions, err := model.GetWaterfallVersions(ctx, projectId, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall versions: %s", err.Error()))
+	}
+
+	// TODO DEVPROD-10179: Add check to ensure each version has tasks that match filter...
+	// Something like this: https://github.com/evergreen-ci/evergreen/blob/bf8f12ec2eefe61f0cf9bcc594924c7be8f91d1b/graphql/query_resolver.go#L869-L938
+	// We should also be able to add a check to the version's build_variant_status field in case of a build variant filter (TODO DEVPROD-10178).
+	// For now, without filters it is guaranteed that `limit` matching versions have been returned.
+
+	// TODO DEVPROD-10177: Implementing pagination will also allow us to fetch more versions if GetWaterfallVersions does not return enough *activated* versions
+
+	buildVariants, err := model.GetWaterfallBuildVariants(ctx, versions)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall build variants: %s", err.Error()))
+	}
+
+	apiVersions := []*restModel.APIVersion{}
+	for _, v := range versions {
+		apiVersion := restModel.APIVersion{}
+		apiVersion.BuildFromService(v)
+		apiVersions = append(apiVersions, &apiVersion)
+	}
+
+	bv := []*model.WaterfallBuildVariant{}
+	for _, b := range buildVariants {
+		bv = append(bv, &b)
+	}
+
+	return &Waterfall{
+		BuildVariants: bv,
+		Versions:      apiVersions,
+	}, nil
 }
 
 // HasVersion is the resolver for the hasVersion field.

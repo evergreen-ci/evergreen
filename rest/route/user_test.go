@@ -670,7 +670,7 @@ func TestGetUsersForResourceId(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T){
 		"p1": func(t *testing.T) {
 			body := []byte(`{"resource_type": "project", "resource_id":"p1"}`)
-			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/permissions", bytes.NewBuffer(body))
+			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/permissions/users", bytes.NewBuffer(body))
 			require.NoError(t, err)
 			handler := makeGetAllUsersPermissions(rm)
 			assert.NoError(t, handler.Parse(context.TODO(), req))
@@ -689,7 +689,7 @@ func TestGetUsersForResourceId(t *testing.T) {
 		},
 		"p2": func(t *testing.T) {
 			body := []byte(`{"resource_type": "project", "resource_id":"p2"}`)
-			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/permissions", bytes.NewBuffer(body))
+			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/permissions/users", bytes.NewBuffer(body))
 			require.NoError(t, err)
 			handler := makeGetAllUsersPermissions(rm)
 			assert.NoError(t, handler.Parse(context.TODO(), req))
@@ -715,7 +715,7 @@ func TestGetUsersForResourceId(t *testing.T) {
 		},
 		"p3": func(t *testing.T) {
 			body := []byte(`{"resource_type": "project", "resource_id":"p3"}`)
-			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/permissions", bytes.NewBuffer(body))
+			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/permissions/users", bytes.NewBuffer(body))
 			require.NoError(t, err)
 			handler := makeGetAllUsersPermissions(rm)
 			assert.NoError(t, handler.Parse(context.TODO(), req))
