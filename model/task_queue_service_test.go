@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -1809,15 +1810,18 @@ func (s *taskDAGDispatchServiceSuite) TestInProgressSingleHostTaskGroupLimits() 
 }
 
 func (s *taskDAGDispatchServiceSuite) TestNewSingleHostTaskGroupLimits() {
+	defer evergreen.SetEnvironment(evergreen.GetEnvironment())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	s.Require().NoError(db.ClearCollections(task.Collection, evergreen.ConfigCollection))
 
-	settings := evergreen.TaskLimitsConfig{
+	mockEnv := &mock.Environment{}
+	s.Require().NoError(mockEnv.Configure(ctx))
+	mockEnv.EvergreenSettings.TaskLimits = evergreen.TaskLimitsConfig{
 		MaxDegradedModeConcurrentLargeParserProjectTasks: 1,
 	}
-	s.Require().NoError(settings.Set(ctx))
+	evergreen.SetEnvironment(mockEnv)
 
 	items := []TaskQueueItem{}
 
@@ -1868,6 +1872,8 @@ func (s *taskDAGDispatchServiceSuite) TestNewSingleHostTaskGroupLimits() {
 }
 
 func (s *taskDAGDispatchServiceSuite) TestGenerateTaskLimits() {
+	defer evergreen.SetEnvironment(evergreen.GetEnvironment())
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -1878,10 +1884,12 @@ func (s *taskDAGDispatchServiceSuite) TestGenerateTaskLimits() {
 	distroID := "distro_1"
 	items := []TaskQueueItem{}
 
-	settings := evergreen.TaskLimitsConfig{
+	mockEnv := &mock.Environment{}
+	s.Require().NoError(mockEnv.Configure(ctx))
+	mockEnv.EvergreenSettings.TaskLimits = evergreen.TaskLimitsConfig{
 		MaxPendingGeneratedTasks: 6,
 	}
-	s.Require().NoError(settings.Set(ctx))
+	evergreen.SetEnvironment(mockEnv)
 
 	running := task.Task{
 		Id:                         "running",
