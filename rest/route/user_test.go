@@ -262,6 +262,72 @@ func (s *userPermissionPostSuite) TestValidInput() {
 	s.Len(dbUser.Roles(), 1)
 }
 
+func TestProjectSettingsUpdateViewRepo(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection,
+		model.ProjectRefCollection, model.RepoRefCollection))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	rm := env.RoleManager()
+
+	// Setup project and repo data to ensure that repo roles are added.
+	pRef := model.ProjectRef{
+		Id:        "attached",
+		RepoRefId: "myRepo",
+		Enabled:   true,
+	}
+	assert.NoError(t, pRef.Insert())
+	pRef = model.ProjectRef{
+		Id:      "unattached",
+		Enabled: true,
+	}
+	assert.NoError(t, pRef.Insert())
+
+	repoRef := model.RepoRef{model.ProjectRef{
+		Id: "myRepo",
+	}}
+	assert.NoError(t, repoRef.Upsert())
+	scope := gimlet.Scope{
+		ID:        "myRepo_scope",
+		Resources: []string{"myRepo"},
+		Type:      evergreen.ProjectResourceType,
+	}
+	assert.NoError(t, rm.AddScope(scope))
+	newViewRole := gimlet.Role{
+		ID:    model.GetViewRepoRole("myRepo"),
+		Scope: scope.ID,
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value,
+		},
+	}
+	assert.NoError(t, rm.UpdateRole(newViewRole))
+
+	u := user.DBUser{
+		Id:          "me",
+		SystemRoles: []string{},
+	}
+	require.NoError(t, u.Insert())
+
+	// We should add the repo view role for the attached project, and not error because of the unattached project.
+	handler := userPermissionsPostHandler{rm: rm, userID: u.Id}
+	validBody := `{ "resource_type": "project", "resources": ["attached", "unattached"], "permissions": {"project_settings": 20} }`
+	request, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(validBody)))
+	request = gimlet.SetURLVars(request, map[string]string{"user_id": "me"})
+	assert.NoError(t, err)
+	assert.NoError(t, handler.Parse(ctx, request))
+	resp := handler.Run(ctx)
+	assert.Equal(t, http.StatusOK, resp.Status())
+	roles, err := rm.GetAllRoles()
+	assert.NoError(t, err)
+	assert.Len(t, roles, 2)
+	dbUser, err := user.FindOneById(u.Id)
+	assert.NoError(t, err)
+	require.Len(t, dbUser.SystemRoles, 2)
+	assert.Contains(t, dbUser.SystemRoles, roles[0].ID)
+	assert.Contains(t, dbUser.SystemRoles, roles[1].ID)
+	assert.Contains(t, dbUser.SystemRoles, model.GetViewRepoRole("myRepo"))
+}
+
 func TestDeleteUserPermissions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

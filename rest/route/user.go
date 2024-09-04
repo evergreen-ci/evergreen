@@ -210,6 +210,29 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewTextInternalErrorResponse(err.Error())
 	}
 
+	// This is unfortunately very special-casey, but if the user has been granted permission to view/edit
+	// project settings, they also need to be given view access for the repo project, if applicable.
+	if h.permissions.ResourceType == evergreen.ProjectResourceType &&
+		h.permissions.Permissions[evergreen.PermissionProjectSettings] >= evergreen.ProjectSettingsView.Value {
+		repoProjectsUpdated := map[string]bool{}
+		pRefs, err := serviceModel.FindMergedEnabledProjectRefsByIds(h.permissions.Resources...)
+		if err != nil {
+			return gimlet.NewTextInternalErrorResponse(fmt.Sprintf(
+				"problem checking for repos: %s", err))
+		}
+
+		for _, pRef := range pRefs {
+			fmt.Println("repo ref ", pRef.RepoRefId)
+			if pRef.RepoRefId != "" && !repoProjectsUpdated[pRef.RepoRefId] {
+				if err = u.AddRole(serviceModel.GetViewRepoRole(pRef.RepoRefId)); err != nil {
+					return gimlet.NewTextInternalErrorResponse(fmt.Sprintf(
+						"problem updating repo view permission: %s", err.Error()))
+				}
+				repoProjectsUpdated[pRef.RepoRefId] = true
+			}
+		}
+	}
+
 	return gimlet.NewJSONResponse(struct{}{})
 }
 

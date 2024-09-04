@@ -124,18 +124,16 @@ func (r *RepoRef) addPermissions(creator *user.DBUser) error {
 		return errors.Wrapf(err, "adding scope for repo project '%s'", r.Id)
 	}
 	// Create view role for project branch admins
-	if !r.IsRestricted() {
-		newViewRole := gimlet.Role{
-			ID:    GetViewRepoRole(r.Id),
-			Scope: adminScope.ID,
-			Permissions: gimlet.Permissions{
-				evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value,
-			},
-		}
+	newViewRole := gimlet.Role{
+		ID:    GetViewRepoRole(r.Id),
+		Scope: adminScope.ID,
+		Permissions: gimlet.Permissions{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value,
+		},
+	}
 
-		if err := rm.UpdateRole(newViewRole); err != nil {
-			return errors.Wrapf(err, "adding view role for repo project '%s'", r.Id)
-		}
+	if err := rm.UpdateRole(newViewRole); err != nil {
+		return errors.Wrapf(err, "adding view role for repo project '%s'", r.Id)
 	}
 
 	if err := rm.UpdateRole(newAdminRole); err != nil {
