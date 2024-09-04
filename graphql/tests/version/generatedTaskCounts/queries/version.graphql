@@ -7,7 +7,10 @@
     createTime
     errors
     finishTime
-    generatedTaskCounts
+    generatedTaskCounts {
+      taskId
+      estimatedTasks
+    }
     ignored
     message
     order

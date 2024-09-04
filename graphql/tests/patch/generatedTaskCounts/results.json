@@ -8,10 +8,18 @@
             "id": "5dd2e89cd1fe07048e43bc8f",
             "author": "bob.smith",
             "githash": "123",
-            "generatedTaskCounts": {
-              "ubuntu1804-t1": 10,
-              "ubuntu1804-t2": 0
-            }
+            "generatedTaskCoubnts": [
+              {
+                "buildVariantName": "ubuntu1804",
+                "taskName": "t1",
+                "estimatedTasks": 10
+              },
+              {
+                "buildVariantName": "ubuntu1804",
+                "taskName": "t2",
+                "estimatedTasks": 5
+              }
+            ],
           }
         }
       }
