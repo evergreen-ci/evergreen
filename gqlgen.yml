@@ -489,6 +489,12 @@ models:
     model: github.com/evergreen-ci/evergreen/model.VersionToRestart
   Volume:
     model: github.com/evergreen-ci/evergreen/rest/model.APIVolume
+  WaterfallBuild:
+    model: github.com/evergreen-ci/evergreen/model.WaterfallBuild
+  WaterfallBuildVariant:
+    model: github.com/evergreen-ci/evergreen/model.WaterfallBuildVariant
+  WaterfallTask:
+    model: github.com/evergreen-ci/evergreen/model.WaterfallTask
   Webhook:
     model: github.com/evergreen-ci/evergreen/rest/model.APIWebHook
   WebhookHeader:

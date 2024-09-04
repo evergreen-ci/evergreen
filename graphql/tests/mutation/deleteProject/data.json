@@ -25,7 +25,6 @@
       "_id": "happyAbyssinian",
       "identifier": "abyssinianVideos",
       "display_name": "",
-      "private": true,
       "owner_name": "theCat",
       "repo_name": "catGenerator",
       "branch_name": "main",
