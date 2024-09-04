@@ -419,7 +419,7 @@ func (d *Distro) IsWindows() bool {
 	return strings.Contains(d.Arch, "windows")
 }
 
-// IsWindows returns whether or not the distro's hosts run on Linux.
+// IsLinux returns whether or not the distro's hosts run on Linux.
 func (d *Distro) IsLinux() bool {
 	return strings.Contains(d.Arch, "linux")
 }
