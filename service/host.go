@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -302,4 +303,19 @@ func (uis *UIServer) handleBackendError(message string, statusCode int) func(htt
 	return func(w http.ResponseWriter, r *http.Request, err error) {
 		gimlet.WriteTextResponse(w, statusCode, message)
 	}
+}
+
+// returns dockerfle as text
+func getDockerfile(w http.ResponseWriter, r *http.Request) {
+	parts := []string{
+		"ARG BASE_IMAGE",
+		"FROM $BASE_IMAGE",
+		"ARG URL",
+		"ARG EXECUTABLE_SUB_PATH",
+		"ARG BINARY_NAME",
+		"ADD ${URL}/clients/${EXECUTABLE_SUB_PATH} /",
+		"RUN chmod 0777 /${BINARY_NAME}",
+	}
+
+	gimlet.WriteText(w, strings.Join(parts, "\n"))
 }

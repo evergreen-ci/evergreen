@@ -25,7 +25,7 @@ func TestFakeSSMClient(t *testing.T) {
 		"PutParameterSucceeds": func(ctx context.Context, t *testing.T, c *FakeSSMClient, params []FakeParameter) {
 			p := params[0]
 			input := &ssm.PutParameterInput{
-				Name:      utility.ToStringPtr(p.ID),
+				Name:      utility.ToStringPtr(p.Name),
 				Value:     utility.ToStringPtr(p.Value),
 				Overwrite: utility.ToBoolPtr(true),
 			}
@@ -33,17 +33,17 @@ func TestFakeSSMClient(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, output)
 
-			dbParam, err := FindOneID(ctx, p.ID)
+			dbParam, err := FindOneID(ctx, p.Name)
 			require.NoError(t, err)
 			require.NotZero(t, dbParam)
-			assert.Equal(t, p.ID, dbParam.ID)
+			assert.Equal(t, p.Name, dbParam.Name)
 			assert.Equal(t, p.Value, dbParam.Value)
 			assert.WithinDuration(t, time.Now(), dbParam.LastUpdated, time.Second, "last updated time should be bumped")
 		},
 		"PutParameterFailsWithExistingParameterAndWithoutOverwrite": func(ctx context.Context, t *testing.T, c *FakeSSMClient, params []FakeParameter) {
 			p := params[0]
 			input := &ssm.PutParameterInput{
-				Name:      utility.ToStringPtr(p.ID),
+				Name:      utility.ToStringPtr(p.Name),
 				Value:     utility.ToStringPtr(p.Value),
 				Overwrite: utility.ToBoolPtr(false),
 			}
@@ -51,10 +51,10 @@ func TestFakeSSMClient(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, output)
 
-			dbParam, err := FindOneID(ctx, p.ID)
+			dbParam, err := FindOneID(ctx, p.Name)
 			require.NoError(t, err)
 			require.NotZero(t, dbParam)
-			assert.Equal(t, p.ID, dbParam.ID)
+			assert.Equal(t, p.Name, dbParam.Name)
 			assert.Equal(t, p.Value, dbParam.Value)
 			assert.WithinDuration(t, time.Now(), dbParam.LastUpdated, time.Second, "last updated time should be bumped")
 
@@ -63,10 +63,10 @@ func TestFakeSSMClient(t *testing.T) {
 			assert.Error(t, err)
 			assert.Zero(t, output)
 
-			dbParam, err = FindOneID(ctx, p.ID)
+			dbParam, err = FindOneID(ctx, p.Name)
 			require.NoError(t, err)
 			require.NotZero(t, dbParam)
-			assert.Equal(t, p.ID, dbParam.ID)
+			assert.Equal(t, p.Name, dbParam.Name)
 			assert.Equal(t, p.Value, dbParam.Value)
 			assert.WithinDuration(t, time.Now(), dbParam.LastUpdated, time.Second, "last updated time should be bumped")
 		},
@@ -75,7 +75,7 @@ func TestFakeSSMClient(t *testing.T) {
 				p := params[0]
 				newValue := fmt.Sprintf("%s-%d", p.Value, i)
 				input := &ssm.PutParameterInput{
-					Name:      utility.ToStringPtr(p.ID),
+					Name:      utility.ToStringPtr(p.Name),
 					Value:     utility.ToStringPtr(newValue),
 					Overwrite: utility.ToBoolPtr(true),
 				}
@@ -83,10 +83,10 @@ func TestFakeSSMClient(t *testing.T) {
 				require.NoError(t, err)
 				require.NotZero(t, output)
 
-				dbParam, err := FindOneID(ctx, p.ID)
+				dbParam, err := FindOneID(ctx, p.Name)
 				require.NoError(t, err)
 				require.NotZero(t, dbParam)
-				assert.Equal(t, p.ID, dbParam.ID)
+				assert.Equal(t, p.Name, dbParam.Name)
 				assert.Equal(t, newValue, dbParam.Value)
 				assert.WithinDuration(t, time.Now(), dbParam.LastUpdated, time.Second, "last updated time should be bumped")
 			}
@@ -101,7 +101,7 @@ func TestFakeSSMClient(t *testing.T) {
 			paramNames := make([]string, 0, len(params))
 			for _, p := range params {
 				require.NoError(t, p.Insert(ctx))
-				paramNames = append(paramNames, p.ID)
+				paramNames = append(paramNames, p.Name)
 			}
 
 			input := &ssm.DeleteParametersInput{
@@ -125,7 +125,7 @@ func TestFakeSSMClient(t *testing.T) {
 			paramNames := make([]string, 0, len(params))
 			for _, p := range params {
 				require.NoError(t, p.Insert(ctx))
-				paramNames = append(paramNames, p.ID)
+				paramNames = append(paramNames, p.Name)
 			}
 
 			input := &ssm.DeleteParametersInput{
@@ -148,7 +148,7 @@ func TestFakeSSMClient(t *testing.T) {
 		"DeleteParametersWithNonexistentParametersReturnsInvalidParameters": func(ctx context.Context, t *testing.T, c *FakeSSMClient, params []FakeParameter) {
 			paramNames := make([]string, 0, len(params))
 			for _, p := range params {
-				paramNames = append(paramNames, p.ID)
+				paramNames = append(paramNames, p.Name)
 			}
 
 			input := &ssm.DeleteParametersInput{
@@ -170,7 +170,7 @@ func TestFakeSSMClient(t *testing.T) {
 			paramNames := make([]string, 0, len(params))
 			for _, p := range params {
 				require.NoError(t, p.Insert(ctx))
-				paramNames = append(paramNames, p.ID)
+				paramNames = append(paramNames, p.Name)
 			}
 
 			input := &ssm.GetParametersInput{
@@ -181,7 +181,7 @@ func TestFakeSSMClient(t *testing.T) {
 			require.Len(t, outputs, 1)
 			foundParams := outputs[0].Parameters
 			require.Len(t, foundParams, 1)
-			assert.Equal(t, params[0].ID, utility.FromStringPtr(foundParams[0].Name))
+			assert.Equal(t, params[0].Name, utility.FromStringPtr(foundParams[0].Name))
 			assert.Equal(t, params[0].Value, utility.FromStringPtr(foundParams[0].Value))
 			assert.Zero(t, utility.FromTimePtr(foundParams[0].LastModifiedDate), "should not bump last modified date for a get operation")
 		},
@@ -189,7 +189,7 @@ func TestFakeSSMClient(t *testing.T) {
 			paramNames := make([]string, 0, len(params))
 			for _, p := range params {
 				require.NoError(t, p.Insert(ctx))
-				paramNames = append(paramNames, p.ID)
+				paramNames = append(paramNames, p.Name)
 			}
 
 			input := &ssm.GetParametersInput{
@@ -203,11 +203,11 @@ func TestFakeSSMClient(t *testing.T) {
 			for _, foundParam := range foundParams {
 				name := utility.FromStringPtr(foundParam.Name)
 				switch name {
-				case params[0].ID:
+				case params[0].Name:
 					assert.Equal(t, utility.FromStringPtr(foundParam.Value), params[0].Value)
-				case params[1].ID:
+				case params[1].Name:
 					assert.Equal(t, utility.FromStringPtr(foundParam.Value), params[1].Value)
-				case params[2].ID:
+				case params[2].Name:
 					assert.Equal(t, utility.FromStringPtr(foundParam.Value), params[2].Value)
 				default:
 					assert.FailNow(t, "unexpected parameter '%s' returned in results", name)
@@ -218,7 +218,7 @@ func TestFakeSSMClient(t *testing.T) {
 		"GetParametersWithNonexistentParametersReturnsInvalidParameters": func(ctx context.Context, t *testing.T, c *FakeSSMClient, params []FakeParameter) {
 			paramNames := make([]string, 0, len(params))
 			for _, p := range params {
-				paramNames = append(paramNames, p.ID)
+				paramNames = append(paramNames, p.Name)
 			}
 
 			input := &ssm.GetParametersInput{
@@ -246,7 +246,7 @@ func TestFakeSSMClient(t *testing.T) {
 			var params []FakeParameter
 			for i := 0; i < 5; i++ {
 				params = append(params, FakeParameter{
-					ID:    fmt.Sprintf("name-%d", i),
+					Name:  fmt.Sprintf("name-%d", i),
 					Value: fmt.Sprintf("value-%d", i),
 				})
 			}

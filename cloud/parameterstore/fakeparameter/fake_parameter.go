@@ -31,8 +31,8 @@ func init() {
 // FakeParameter is the data model for a fake parameter stored in the DB. This
 // is for testing only.
 type FakeParameter struct {
-	// ID is the unique identifying name for the parameter.
-	ID string `bson:"_id,omitempty"`
+	// Name is the unique identifying name for the parameter.
+	Name string `bson:"_id,omitempty"`
 	// Value is the parameter value.
 	Value string `bson:"value,omitempty"`
 	// LastUpdated is the last time the parameter was updated.
@@ -48,6 +48,6 @@ func (p *FakeParameter) Insert(ctx context.Context) error {
 // Upsert inserts a single parameter into the fake parameter store or replaces
 // an one if one with the same ID already exists.
 func (p *FakeParameter) Upsert(ctx context.Context) error {
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).ReplaceOne(ctx, bson.M{IDKey: p.ID}, p, options.Replace().SetUpsert(true))
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).ReplaceOne(ctx, bson.M{NameKey: p.Name}, p, options.Replace().SetUpsert(true))
 	return err
 }

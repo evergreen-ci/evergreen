@@ -325,7 +325,6 @@ type APIAmboyConfig struct {
 	GroupBackgroundCreateFrequencyMinutes int                        `json:"group_background_create_frequency"`
 	GroupPruneFrequencyMinutes            int                        `json:"group_prune_frequency"`
 	GroupTTLMinutes                       int                        `json:"group_ttl"`
-	RequireRemotePriority                 bool                       `json:"require_remote_priority"`
 	LockTimeoutMinutes                    int                        `json:"lock_timeout_minutes"`
 	SampleSize                            int                        `json:"sample_size"`
 	Retry                                 APIAmboyRetryConfig        `json:"retry,omitempty"`
@@ -347,7 +346,6 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 		a.GroupBackgroundCreateFrequencyMinutes = v.GroupBackgroundCreateFrequencyMinutes
 		a.GroupPruneFrequencyMinutes = v.GroupPruneFrequencyMinutes
 		a.GroupTTLMinutes = v.GroupTTLMinutes
-		a.RequireRemotePriority = v.RequireRemotePriority
 		a.LockTimeoutMinutes = v.LockTimeoutMinutes
 		a.SampleSize = v.SampleSize
 		if err := a.Retry.BuildFromService(v.Retry); err != nil {
@@ -398,7 +396,6 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		GroupBackgroundCreateFrequencyMinutes: a.GroupBackgroundCreateFrequencyMinutes,
 		GroupPruneFrequencyMinutes:            a.GroupPruneFrequencyMinutes,
 		GroupTTLMinutes:                       a.GroupTTLMinutes,
-		RequireRemotePriority:                 a.RequireRemotePriority,
 		LockTimeoutMinutes:                    a.LockTimeoutMinutes,
 		SampleSize:                            a.SampleSize,
 		Retry:                                 retry,
