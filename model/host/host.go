@@ -3162,12 +3162,31 @@ func makeExpireOnTag(expireOn string) Tag {
 // unexpirable, is missing a sleep schedule, and has no permanent exemption,  it
 // is assigned the default sleep schedule.
 func (h *Host) MarkShouldNotExpire(ctx context.Context, expireOnValue, userTimeZone string) error {
+	h.NoExpiration = true
+	h.ExpirationTime = time.Now().Add(evergreen.SpawnHostNoExpirationDuration)
+	h.addTag(makeExpireOnTag(expireOnValue), true)
+	if err := UpdateOne(
+		ctx,
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				NoExpirationKey:   h.NoExpiration,
+				ExpirationTimeKey: h.ExpirationTime,
+				InstanceTagsKey:   h.InstanceTags,
+			},
+		},
+	); err != nil {
+		return err
+	}
+
 	if h.SleepSchedule.Validate() != nil {
-		// If the host doesn't have a sleep schedule at all or has an invalid
-		// one, set it to the default sleep schedule. This is a safety measure
-		// to ensure that a host cannot be made unexpirable without having some
-		// kind of working sleep schedule (or permanent exemption) in place.
-		// kim: TODO: add test
+		// If the host is being made expirable and its sleep schedule is
+		// invalid/missing, set it to the default sleep schedule. This is a
+		// safety measure to ensure that a host cannot be made unexpirable
+		// without having some kind of working sleep schedule (or permanent
+		// exemption) in place.
 		var opts SleepScheduleOptions
 		opts.SetDefaultSchedule()
 		opts.SetDefaultTimeZone(userTimeZone)
@@ -3189,22 +3208,7 @@ func (h *Host) MarkShouldNotExpire(ctx context.Context, expireOnValue, userTimeZ
 		}))
 	}
 
-	h.NoExpiration = true
-	h.ExpirationTime = time.Now().Add(evergreen.SpawnHostNoExpirationDuration)
-	h.addTag(makeExpireOnTag(expireOnValue), true)
-	return UpdateOne(
-		ctx,
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				NoExpirationKey:   h.NoExpiration,
-				ExpirationTimeKey: h.ExpirationTime,
-				InstanceTagsKey:   h.InstanceTags,
-			},
-		},
-	)
+	return nil
 }
 
 // MarkShouldExpire resets a host's expiration to expire like
