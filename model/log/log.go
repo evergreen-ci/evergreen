@@ -11,7 +11,3 @@ type LogLine struct {
 	Timestamp int64
 	Data      string
 }
-
-// StreamFromLogIterator streams log lines from the given iterator to the
-// returned channel. It is the responsibility of the caller to close the
-// iterator.

@@ -1532,10 +1532,6 @@ func (h *Host) UnsetNumAgentCleanupFailures(ctx context.Context) error {
 	return errors.Wrapf(err, "unsetting number of agent cleanup failures for host '%s'", h.Id)
 }
 
-// FindUnexpirableRunningWithoutPersistentDNSName finds unexpirable hosts that
-// are currently running and do not have a persistent DNS name assigned to
-// them.
-
 // isSleepScheduleApplicable returns a query that finds hosts which can use a
 // sleep schedule.
 func isSleepScheduleApplicable(q bson.M) bson.M {

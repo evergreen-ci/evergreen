@@ -143,8 +143,6 @@ func FindOneByToken(token string) (*DBUser, error) {
 	return u, nil
 }
 
-// FindOneByDisplayName gets a DBUser by their display name.
-
 // FindByGithubUID finds a user with the given GitHub UID.
 func FindByGithubUID(uid int) (*DBUser, error) {
 	u := DBUser{}

@@ -55,8 +55,6 @@ type sender struct {
 	*send.Base
 }
 
-// NewSender creates a new log sender backed by an Evergreen log service.
-
 // Send sends the given message to the Evergreen log service. This function
 // buffers the messages until the maximum allowed buffer size is reached, at
 // which point the messages in the buffer are written to persistent storage by
