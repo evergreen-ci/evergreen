@@ -452,6 +452,7 @@ type ComplexityRoot struct {
 		Distro                func(childComplexity int) int
 		DistroID              func(childComplexity int) int
 		Elapsed               func(childComplexity int) int
+		Events                func(childComplexity int, limit *int, page *int, sortDir *SortDirection) int
 		Expiration            func(childComplexity int) int
 		HomeVolume            func(childComplexity int) int
 		HomeVolumeID          func(childComplexity int) int
@@ -1751,6 +1752,7 @@ type HostResolver interface {
 
 	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
 	Elapsed(ctx context.Context, obj *model.APIHost) (*time.Time, error)
+	Events(ctx context.Context, obj *model.APIHost, limit *int, page *int, sortDir *SortDirection) (*HostEvents, error)
 
 	HomeVolume(ctx context.Context, obj *model.APIHost) (*model.APIVolume, error)
 
@@ -3557,6 +3559,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Host.Elapsed(childComplexity), true
+
+	case "Host.events":
+		if e.complexity.Host.Events == nil {
+			break
+		}
+
+		args, err := ec.field_Host_events_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Host.Events(childComplexity, args["limit"].(*int), args["page"].(*int), args["sortDir"].(*SortDirection)), true
 
 	case "Host.expiration":
 		if e.complexity.Host.Expiration == nil {
@@ -10565,6 +10579,39 @@ func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, r
 		}
 	}
 	args["access"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Host_events_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *int
+	if tmp, ok := rawArgs["limit"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["page"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["page"] = arg1
+	var arg2 *SortDirection
+	if tmp, ok := rawArgs["sortDir"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sortDir"))
+		arg2, err = ec.unmarshalOSortDirection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["sortDir"] = arg2
 	return args, nil
 }
 
@@ -22854,6 +22901,67 @@ func (ec *executionContext) fieldContext_Host_elapsed(_ context.Context, field g
 	return fc, nil
 }
 
+func (ec *executionContext) _Host_events(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Host_events(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Host().Events(rctx, obj, fc.Args["limit"].(*int), fc.Args["page"].(*int), fc.Args["sortDir"].(*SortDirection))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*HostEvents)
+	fc.Result = res
+	return ec.marshalNHostEvents2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostEvents(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Host_events(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Host",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "count":
+				return ec.fieldContext_HostEvents_count(ctx, field)
+			case "eventLogEntries":
+				return ec.fieldContext_HostEvents_eventLogEntries(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostEvents", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Host_events_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Host_expiration(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_expiration(ctx, field)
 	if err != nil {
@@ -25346,6 +25454,8 @@ func (ec *executionContext) fieldContext_HostsResponse_hosts(_ context.Context, 
 				return ec.fieldContext_Host_distroId(ctx, field)
 			case "elapsed":
 				return ec.fieldContext_Host_elapsed(ctx, field)
+			case "events":
+				return ec.fieldContext_Host_events(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -32505,6 +32615,8 @@ func (ec *executionContext) fieldContext_Mutation_editSpawnHost(ctx context.Cont
 				return ec.fieldContext_Host_distroId(ctx, field)
 			case "elapsed":
 				return ec.fieldContext_Host_elapsed(ctx, field)
+			case "events":
+				return ec.fieldContext_Host_events(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -32669,6 +32781,8 @@ func (ec *executionContext) fieldContext_Mutation_spawnHost(ctx context.Context,
 				return ec.fieldContext_Host_distroId(ctx, field)
 			case "elapsed":
 				return ec.fieldContext_Host_elapsed(ctx, field)
+			case "events":
+				return ec.fieldContext_Host_events(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -32888,6 +33002,8 @@ func (ec *executionContext) fieldContext_Mutation_updateSpawnHostStatus(ctx cont
 				return ec.fieldContext_Host_distroId(ctx, field)
 			case "elapsed":
 				return ec.fieldContext_Host_elapsed(ctx, field)
+			case "events":
+				return ec.fieldContext_Host_events(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -46956,6 +47072,8 @@ func (ec *executionContext) fieldContext_Query_host(ctx context.Context, field g
 				return ec.fieldContext_Host_distroId(ctx, field)
 			case "elapsed":
 				return ec.fieldContext_Host_elapsed(ctx, field)
+			case "events":
+				return ec.fieldContext_Host_events(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -48019,6 +48137,8 @@ func (ec *executionContext) fieldContext_Query_myHosts(_ context.Context, field 
 				return ec.fieldContext_Host_distroId(ctx, field)
 			case "elapsed":
 				return ec.fieldContext_Host_elapsed(ctx, field)
+			case "events":
+				return ec.fieldContext_Host_events(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -68860,6 +68980,8 @@ func (ec *executionContext) fieldContext_Volume_host(_ context.Context, field gr
 				return ec.fieldContext_Host_distroId(ctx, field)
 			case "elapsed":
 				return ec.fieldContext_Host_elapsed(ctx, field)
+			case "events":
+				return ec.fieldContext_Host_events(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -80523,6 +80645,42 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Host_elapsed(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "events":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_events(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 

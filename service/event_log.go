@@ -40,7 +40,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "host '%s' not found", http.StatusBadRequest)
 			return
 		}
-		loggedEvents, err = event.Find(event.MostRecentHostEvents(h.Id, h.Tag, 5000))
+		loggedEvents, err = event.Find(event.MostRecentHostEvents(h.Id, h.Tag, 5000, false))
 	case event.ResourceTypeAdmin:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
