@@ -132,11 +132,11 @@ func MostRecentHostEvents(id string, tag string, n int, sortAsc bool) db.Q {
 	} else {
 		filter[ResourceIdKey] = id
 	}
-
+	sortMethod := []string{"-" + TimestampKey}
 	if sortAsc {
-		return db.Query(filter).Sort([]string{TimestampKey}).Limit(n)
+		sortMethod = []string{TimestampKey}
 	}
-	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
+	return db.Query(filter).Sort(sortMethod).Limit(n)
 }
 
 // MostRecentPaginatedHostEvents returns a limited and paginated list of host events for the given

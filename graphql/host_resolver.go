@@ -41,7 +41,7 @@ func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, limit
 	if sortDir != nil {
 		sortAsc = *sortDir == SortDirectionAsc
 	}
-	events, count, err := event.MostRecentPaginatedHostEvents(utility.FromStringPtr(obj.Id), utility.FromStringPtr(obj.Tag), *limit, *page, sortAsc)
+	events, count, err := event.MostRecentPaginatedHostEvents(utility.FromStringPtr(obj.Id), utility.FromStringPtr(obj.Tag), utility.FromIntPtr(limit), utility.FromIntPtr(page), sortAsc)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host events: %s", err.Error()))
 	}
@@ -53,11 +53,11 @@ func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, limit
 		}
 		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
 	}
-	hostevents := HostEvents{
+	hostEvents := HostEvents{
 		EventLogEntries: apiEventLogPointers,
 		Count:           count,
 	}
-	return &hostevents, nil
+	return &hostEvents, nil
 }
 
 // HomeVolume is the resolver for the homeVolume field.
