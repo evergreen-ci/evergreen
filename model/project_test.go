@@ -1605,7 +1605,6 @@ func TestFindProjectsSuite(t *testing.T) {
 		projects := []*ProjectRef{
 			{
 				Id:          "projectA",
-				Private:     utility.FalsePtr(),
 				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
@@ -1614,7 +1613,6 @@ func TestFindProjectsSuite(t *testing.T) {
 			},
 			{
 				Id:          "projectB",
-				Private:     utility.TruePtr(),
 				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
@@ -1623,16 +1621,15 @@ func TestFindProjectsSuite(t *testing.T) {
 			},
 			{
 				Id:          "projectC",
-				Private:     utility.TruePtr(),
 				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "mongodb",
 				Repo:        "mongo",
 				Branch:      "main",
 			},
-			{Id: "projectD", Private: utility.FalsePtr()},
-			{Id: "projectE", Private: utility.FalsePtr()},
-			{Id: "projectF", Private: utility.TruePtr()},
+			{Id: "projectD"},
+			{Id: "projectE"},
+			{Id: "projectF"},
 			{Id: projectId},
 		}
 
@@ -1773,7 +1770,6 @@ func (s *FindProjectsSuite) TestGetProjectSettings() {
 	projRef := &ProjectRef{
 		Owner:   "admin",
 		Enabled: true,
-		Private: utility.TruePtr(),
 		Id:      projectId,
 		Admins:  []string{},
 		Repo:    "SomeRepo",
@@ -1787,7 +1783,6 @@ func (s *FindProjectsSuite) TestGetProjectSettingsNoRepo() {
 	projRef := &ProjectRef{
 		Owner:   "admin",
 		Enabled: true,
-		Private: utility.TruePtr(),
 		Id:      projectId,
 		Admins:  []string{},
 	}

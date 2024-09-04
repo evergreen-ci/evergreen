@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -30,7 +29,6 @@ func getTestProjectSettings(projectId string) model.ProjectSettings {
 		ProjectRef: model.ProjectRef{
 			Owner:      "admin",
 			Enabled:    true,
-			Private:    utility.TruePtr(),
 			Identifier: projectId,
 			Admins:     []string{},
 		},

@@ -975,7 +975,6 @@ type ComplexityRoot struct {
 		PatchingDisabled                   func(childComplexity int) int
 		PerfEnabled                        func(childComplexity int) int
 		PeriodicBuilds                     func(childComplexity int) int
-		Private                            func(childComplexity int) int
 		ProjectHealthView                  func(childComplexity int) int
 		RemotePath                         func(childComplexity int) int
 		Repo                               func(childComplexity int) int
@@ -1146,7 +1145,6 @@ type ComplexityRoot struct {
 		PatchingDisabled         func(childComplexity int) int
 		PerfEnabled              func(childComplexity int) int
 		PeriodicBuilds           func(childComplexity int) int
-		Private                  func(childComplexity int) int
 		RemotePath               func(childComplexity int) int
 		Repo                     func(childComplexity int) int
 		RepotrackerDisabled      func(childComplexity int) int
@@ -6448,13 +6446,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.PeriodicBuilds(childComplexity), true
 
-	case "Project.private":
-		if e.complexity.Project.Private == nil {
-			break
-		}
-
-		return e.complexity.Project.Private(childComplexity), true
-
 	case "Project.projectHealthView":
 		if e.complexity.Project.ProjectHealthView == nil {
 			break
@@ -7521,13 +7512,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoRef.PeriodicBuilds(childComplexity), true
-
-	case "RepoRef.private":
-		if e.complexity.RepoRef.Private == nil {
-			break
-		}
-
-		return e.complexity.RepoRef.Private(childComplexity), true
 
 	case "RepoRef.remotePath":
 		if e.complexity.RepoRef.RemotePath == nil {
@@ -22247,8 +22231,6 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(_ context.Cont
 				return ec.fieldContext_Project_perfEnabled(ctx, field)
 			case "periodicBuilds":
 				return ec.fieldContext_Project_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_Project_private(ctx, field)
 			case "projectHealthView":
 				return ec.fieldContext_Project_projectHealthView(ctx, field)
 			case "prTestingEnabled":
@@ -22376,8 +22358,6 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(_ context.Context,
 				return ec.fieldContext_RepoRef_perfEnabled(ctx, field)
 			case "periodicBuilds":
 				return ec.fieldContext_RepoRef_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_RepoRef_private(ctx, field)
 			case "prTestingEnabled":
 				return ec.fieldContext_RepoRef_prTestingEnabled(ctx, field)
 			case "remotePath":
@@ -31231,8 +31211,6 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_perfEnabled(ctx, field)
 			case "periodicBuilds":
 				return ec.fieldContext_Project_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_Project_private(ctx, field)
 			case "projectHealthView":
 				return ec.fieldContext_Project_projectHealthView(ctx, field)
 			case "prTestingEnabled":
@@ -31392,8 +31370,6 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_perfEnabled(ctx, field)
 			case "periodicBuilds":
 				return ec.fieldContext_Project_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_Project_private(ctx, field)
 			case "projectHealthView":
 				return ec.fieldContext_Project_projectHealthView(ctx, field)
 			case "prTestingEnabled":
@@ -31553,8 +31529,6 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_perfEnabled(ctx, field)
 			case "periodicBuilds":
 				return ec.fieldContext_Project_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_Project_private(ctx, field)
 			case "projectHealthView":
 				return ec.fieldContext_Project_projectHealthView(ctx, field)
 			case "prTestingEnabled":
@@ -31714,8 +31688,6 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_perfEnabled(ctx, field)
 			case "periodicBuilds":
 				return ec.fieldContext_Project_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_Project_private(ctx, field)
 			case "projectHealthView":
 				return ec.fieldContext_Project_projectHealthView(ctx, field)
 			case "prTestingEnabled":
@@ -32093,8 +32065,6 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_perfEnabled(ctx, field)
 			case "periodicBuilds":
 				return ec.fieldContext_Project_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_Project_private(ctx, field)
 			case "projectHealthView":
 				return ec.fieldContext_Project_projectHealthView(ctx, field)
 			case "prTestingEnabled":
@@ -34464,8 +34434,6 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_perfEnabled(ctx, field)
 			case "periodicBuilds":
 				return ec.fieldContext_Project_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_Project_private(ctx, field)
 			case "projectHealthView":
 				return ec.fieldContext_Project_projectHealthView(ctx, field)
 			case "prTestingEnabled":
@@ -34785,8 +34753,6 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_perfEnabled(ctx, field)
 			case "periodicBuilds":
 				return ec.fieldContext_Project_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_Project_private(ctx, field)
 			case "projectHealthView":
 				return ec.fieldContext_Project_projectHealthView(ctx, field)
 			case "prTestingEnabled":
@@ -38135,8 +38101,6 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(_ context.Context
 				return ec.fieldContext_Project_perfEnabled(ctx, field)
 			case "periodicBuilds":
 				return ec.fieldContext_Project_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_Project_private(ctx, field)
 			case "projectHealthView":
 				return ec.fieldContext_Project_projectHealthView(ctx, field)
 			case "prTestingEnabled":
@@ -43376,47 +43340,6 @@ func (ec *executionContext) fieldContext_Project_periodicBuilds(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Project_private(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Project_private(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Private, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Project_private(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Project",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Project_projectHealthView(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Project_projectHealthView(ctx, field)
 	if err != nil {
@@ -45301,8 +45224,6 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(_ conte
 				return ec.fieldContext_Project_perfEnabled(ctx, field)
 			case "periodicBuilds":
 				return ec.fieldContext_Project_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_Project_private(ctx, field)
 			case "projectHealthView":
 				return ec.fieldContext_Project_projectHealthView(ctx, field)
 			case "prTestingEnabled":
@@ -45916,8 +45837,6 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(_ context.Co
 				return ec.fieldContext_Project_perfEnabled(ctx, field)
 			case "periodicBuilds":
 				return ec.fieldContext_Project_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_Project_private(ctx, field)
 			case "projectHealthView":
 				return ec.fieldContext_Project_projectHealthView(ctx, field)
 			case "prTestingEnabled":
@@ -47668,8 +47587,6 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_perfEnabled(ctx, field)
 			case "periodicBuilds":
 				return ec.fieldContext_Project_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_Project_private(ctx, field)
 			case "projectHealthView":
 				return ec.fieldContext_Project_projectHealthView(ctx, field)
 			case "prTestingEnabled":
@@ -51100,50 +51017,6 @@ func (ec *executionContext) fieldContext_RepoRef_periodicBuilds(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _RepoRef_private(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RepoRef_private(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Private, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_RepoRef_private(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RepoRef",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _RepoRef_prTestingEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoRef_prTestingEnabled(ctx, field)
 	if err != nil {
@@ -52055,8 +51928,6 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(_ context.Conte
 				return ec.fieldContext_RepoRef_perfEnabled(ctx, field)
 			case "periodicBuilds":
 				return ec.fieldContext_RepoRef_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_RepoRef_private(ctx, field)
 			case "prTestingEnabled":
 				return ec.fieldContext_RepoRef_prTestingEnabled(ctx, field)
 			case "remotePath":
@@ -58167,8 +58038,6 @@ func (ec *executionContext) fieldContext_Task_project(_ context.Context, field g
 				return ec.fieldContext_Project_perfEnabled(ctx, field)
 			case "periodicBuilds":
 				return ec.fieldContext_Project_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_Project_private(ctx, field)
 			case "projectHealthView":
 				return ec.fieldContext_Project_projectHealthView(ctx, field)
 			case "prTestingEnabled":
@@ -67649,8 +67518,6 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(_ context.Conte
 				return ec.fieldContext_Project_perfEnabled(ctx, field)
 			case "periodicBuilds":
 				return ec.fieldContext_Project_periodicBuilds(ctx, field)
-			case "private":
-				return ec.fieldContext_Project_private(ctx, field)
 			case "projectHealthView":
 				return ec.fieldContext_Project_projectHealthView(ctx, field)
 			case "prTestingEnabled":
@@ -75030,7 +74897,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -75254,13 +75121,6 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.PeriodicBuilds = data
-		case "private":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("private"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Private = data
 		case "projectHealthView":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectHealthView"))
 			data, err := ec.unmarshalOProjectHealthView2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐProjectHealthView(ctx, v)
@@ -75685,7 +75545,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "private", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -75867,13 +75727,6 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.PeriodicBuilds = data
-		case "private":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("private"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Private = data
 		case "prTestingEnabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("prTestingEnabled"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -85476,8 +85329,6 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_perfEnabled(ctx, field, obj)
 		case "periodicBuilds":
 			out.Values[i] = ec._Project_periodicBuilds(ctx, field, obj)
-		case "private":
-			out.Values[i] = ec._Project_private(ctx, field, obj)
 		case "projectHealthView":
 			out.Values[i] = ec._Project_projectHealthView(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -87419,11 +87270,6 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "periodicBuilds":
 			out.Values[i] = ec._RepoRef_periodicBuilds(ctx, field, obj)
-		case "private":
-			out.Values[i] = ec._RepoRef_private(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "prTestingEnabled":
 			out.Values[i] = ec._RepoRef_prTestingEnabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

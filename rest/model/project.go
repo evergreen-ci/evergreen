@@ -613,8 +613,6 @@ type APIProjectRef struct {
 	Branch *string `json:"branch_name"`
 	// Whether evergreen is enabled for this project.
 	Enabled *bool `json:"enabled"`
-	// A user must be logged in to view private projects.
-	Private *bool `json:"private"`
 	// Time interval between commits for Evergreen to activate.
 	BatchTime int `json:"batch_time"`
 	// Path to config file in repo.
