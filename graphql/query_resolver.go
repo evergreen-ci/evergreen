@@ -970,12 +970,12 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding project with id: '%s'", options.ProjectIdentifier))
 	}
 	limit := model.DefaultWaterfallVersionLimit
-	if utility.FromIntPtr(options.Limit) != 0 {
-		if utility.FromIntPtr(options.Limit) > model.MaxWaterfallVersionLimit {
+	if limitOpt := utility.FromIntPtr(options.Limit); limitOpt != 0 {
+		if limitOpt > model.MaxWaterfallVersionLimit {
 			return nil, InputValidationError.Send(ctx, fmt.Sprintf("limit exceeds max limit of %d", model.MaxWaterfallVersionLimit))
 		}
 
-		limit = utility.FromIntPtr(options.Limit)
+		limit = limitOpt
 	}
 	requesters := options.Requesters
 	if len(requesters) == 0 {

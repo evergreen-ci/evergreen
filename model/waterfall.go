@@ -42,7 +42,7 @@ type WaterfallOptions struct {
 	Requesters []string `bson:"-" json:"-"`
 }
 
-// GetWaterfallVersions returns `opts.limit` versions for a given project.
+// GetWaterfallVersions returns at most `opts.limit` versions for a given project.
 // TODO: It will eventually return `opts.limit` activated versions that also satisfy any given filters.
 func GetWaterfallVersions(ctx context.Context, projectId string, opts WaterfallOptions) ([]Version, error) {
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(opts.Requesters, evergreen.SystemVersionRequesterTypes)
