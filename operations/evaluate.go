@@ -21,7 +21,7 @@ func Evaluate() cli.Command {
 
 	return cli.Command{
 		Name:  "evaluate",
-		Usage: "reads a project configuration and expands tags and matrix definitions, printing the expanded definitions",
+		Usage: "reads a project configuration and expands tags and included files (excluding module includes), printing the expanded definitions",
 		Flags: addPathFlag(
 			cli.BoolFlag{
 				Name:  taskFlagName,
