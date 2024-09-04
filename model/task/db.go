@@ -3076,5 +3076,5 @@ func GetLatestTaskFromImage(ctx context.Context, imageID string) (*Task, error) 
 		}
 		return &task, nil
 	}
-	return nil, errors.Errorf("no latest task found for image '%s'", imageID)
+	return nil, nil
 }

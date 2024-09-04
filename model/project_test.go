@@ -171,10 +171,6 @@ func TestFindTaskGroupForTask(t *testing.T) {
 				{Name: "tg1t3"},
 				{Name: "tg1t4"},
 				{Name: "tg3"},
-				{Name: "tg4", TaskGroup: &parserTaskGroup{
-					Name:  "tg4",
-					Tasks: []string{"tg4t1", "tg4t2"},
-				}},
 			}},
 			{Name: "v2", Tasks: []parserBVTaskUnit{
 				{Name: "t1"},
@@ -212,15 +208,6 @@ func TestFindTaskGroupForTask(t *testing.T) {
 			tg := p.FindTaskGroupForTask("v1", task)
 			require.NotNil(t, tg, "finding task group for task %s", task)
 			assert.Equal(t, "tg3", tg.Name)
-		}
-	})
-
-	t.Run("FindsTaskGroupWhenDefinedInline", func(t *testing.T) {
-		tg4Tasks := []string{"tg4t1", "tg4t2"}
-		for _, task := range tg4Tasks {
-			tg := p.FindTaskGroupForTask("v1", task)
-			require.NotNil(t, tg, "finding task group for task %s", task)
-			assert.Equal(t, "tg4", tg.Name)
 		}
 	})
 

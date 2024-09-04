@@ -50,7 +50,7 @@ Batchtime sets an interval of time in minutes that Evergreen should wait before 
 
 A default batch time can be set on the project page [under general settings](../Project-Configuration/Project-and-Distro-Settings/#general-project-settings) for the interval of time (in minutes) that Evergreen should wait in between activating the latest version.
 
-Batchtime can also be specified at the top level of the project configuration file or in the buildvariants section in the project configuration file on a build variant or task level.
+Batchtime can also be specified in the buildvariants section in the project configuration file on an entire build variant or for a single task in the build variant task list.
 
 #### Example
 
