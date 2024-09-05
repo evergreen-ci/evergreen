@@ -605,9 +605,9 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 			return errors.Wrapf(err, "marking host should not expire in DB for host '%s'", h.Id)
 		}
 
-		// Use GetInstanceStatus to add/update the cached host data (including
-		// unexpirable host information like persistent DNS names and IP
-		// addresses) if the unexpirable host is running.
+		// Getting the instance status adds/updates the cached host data
+		// (including unexpirable host information like persistent DNS names and
+		// IP addresses) if the unexpirable host is running.
 		_, err = m.GetInstanceState(ctx, h)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "could not get instance info to assign persistent DNS name",
