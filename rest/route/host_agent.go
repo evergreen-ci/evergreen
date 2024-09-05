@@ -1244,9 +1244,6 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	if event.AllRecentHostEventsMatchStatus(ctx, currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
 		msg := "host encountered consecutive system failures"
 		if currentHost.Provider != evergreen.ProviderNameStatic {
-			// kim: NOTE: for some reason, this skips static hosts, but probably
-			// shouldn't. Need to make sure it works for static and non-static
-			// hosts.
 			grip.Error(message.WrapError(units.HandlePoisonedHost(ctx, h.env, currentHost, msg), message.Fields{
 				"message": "unable to disable poisoned host",
 				"host":    currentHost.Id,
