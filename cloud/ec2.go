@@ -594,14 +594,15 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 	}
 
 	if noExpiration {
+		var userTimeZone string
 		u, err := user.FindOneById(h.StartedBy)
 		if err != nil {
 			return errors.Wrapf(err, "finding owner '%s' for host '%s'", h.StartedBy, h.Id)
 		}
-		if u == nil {
-			return errors.Errorf("host owner '%s' not found", h.StartedBy)
+		if u != nil {
+			userTimeZone = u.Settings.Timezone
 		}
-		if err := h.MarkShouldNotExpire(ctx, expireOnValue, u.Settings.Timezone); err != nil {
+		if err := h.MarkShouldNotExpire(ctx, expireOnValue, userTimeZone); err != nil {
 			return errors.Wrapf(err, "marking host should not expire in DB for host '%s'", h.Id)
 		}
 

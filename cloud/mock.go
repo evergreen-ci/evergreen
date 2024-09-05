@@ -201,14 +201,15 @@ func (m *mockManager) ModifyHost(ctx context.Context, host *host.Host, changes h
 	if changes.NoExpiration != nil {
 		expireOnValue := expireInDays(30)
 		if *changes.NoExpiration {
+			var userTimeZone string
 			u, err := user.FindOneById(host.StartedBy)
 			if err != nil {
 				return errors.Wrapf(err, "finding owner '%s' for host '%s'", host.StartedBy, host.Id)
 			}
-			if u == nil {
-				return errors.Errorf("host owner '%s' not found", host.StartedBy)
+			if u != nil {
+				userTimeZone = u.Settings.Timezone
 			}
-			if err = host.MarkShouldNotExpire(ctx, expireOnValue, u.Settings.Timezone); err != nil {
+			if err = host.MarkShouldNotExpire(ctx, expireOnValue, userTimeZone); err != nil {
 				return errors.Errorf("setting no expiration in DB")
 			}
 		} else {
