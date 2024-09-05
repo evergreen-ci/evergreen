@@ -1,17 +1,20 @@
 package model
 
 import (
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+// kim: TODO: since this is the same data model as GitHub App Auth, should
+// probably go into the model/githubapp directory.
+
 var (
-	ghAuthIdKey         = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "Id")
-	ghAuthAppIdKey      = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "AppID")
-	ghAuthPrivateKeyKey = bsonutil.MustHaveTag(evergreen.GithubAppAuth{}, "PrivateKey")
+	ghAuthIdKey         = bsonutil.MustHaveTag(githubapp.GithubAppAuth{}, "Id")
+	ghAuthAppIdKey      = bsonutil.MustHaveTag(githubapp.GithubAppAuth{}, "AppID")
+	ghAuthPrivateKeyKey = bsonutil.MustHaveTag(githubapp.GithubAppAuth{}, "PrivateKey")
 )
 
 const (
@@ -19,8 +22,8 @@ const (
 )
 
 // FindOneGithubAppAuth finds the github app auth for the given project id
-func FindOneGithubAppAuth(projectId string) (*evergreen.GithubAppAuth, error) {
-	githubAppAuth := &evergreen.GithubAppAuth{}
+func FindOneGithubAppAuth(projectId string) (*githubapp.GithubAppAuth, error) {
+	githubAppAuth := &githubapp.GithubAppAuth{}
 	err := db.FindOneQ(GitHubAppAuthCollection, byGithubAppAuthID(projectId), githubAppAuth)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -36,7 +39,7 @@ func byGithubAppAuthID(projectId string) db.Q {
 
 // GetGitHubAppID returns the app id for the given project id
 func GetGitHubAppID(projectId string) (*int64, error) {
-	githubAppAuth := &evergreen.GithubAppAuth{}
+	githubAppAuth := &githubapp.GithubAppAuth{}
 
 	q := byGithubAppAuthID(projectId).WithFields(ghAuthAppIdKey)
 	err := db.FindOneQ(GitHubAppAuthCollection, q, githubAppAuth)
@@ -48,7 +51,7 @@ func GetGitHubAppID(projectId string) (*int64, error) {
 }
 
 // UpsertGithubAppAuth inserts or updates the app auth for the given project id in the database
-func UpsertGithubAppAuth(githubAppAuth *evergreen.GithubAppAuth) error {
+func UpsertGithubAppAuth(githubAppAuth *githubapp.GithubAppAuth) error {
 	_, err := db.Upsert(
 		GitHubAppAuthCollection,
 		bson.M{

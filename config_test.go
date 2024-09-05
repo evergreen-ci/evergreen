@@ -64,30 +64,6 @@ func TestBadInit(t *testing.T) {
 	assert.Nil(settings)
 }
 
-func TestGetGithubSettings(t *testing.T) {
-	assert := assert.New(t)
-
-	settings, err := NewSettings(filepath.Join(FindEvergreenHome(),
-		"testdata", "mci_settings.yml"))
-	assert.NoError(err)
-
-	authFields := settings.CreateGitHubAppAuth()
-	assert.Nil(authFields)
-
-	settings.AuthConfig.Github = &GithubAuthConfig{
-		AppId: 1234,
-	}
-	authFields = settings.CreateGitHubAppAuth()
-	assert.Nil(authFields)
-
-	settings.Expansions[GithubAppPrivateKey] = "key"
-	authFields = settings.CreateGitHubAppAuth()
-	require.NoError(t, err)
-	assert.NotNil(authFields)
-	assert.Equal(int64(1234), authFields.AppID)
-	assert.Equal([]byte("key"), authFields.PrivateKey)
-}
-
 type AdminSuite struct {
 	env              Environment
 	originalEnv      Environment

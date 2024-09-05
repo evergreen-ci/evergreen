@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/cache"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v52/github"
@@ -229,7 +230,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 			return false
 		}
 
-		if index >= evergreen.GitHubMaxRetries {
+		if index >= githubapp.GitHubMaxRetries {
 			return false
 		}
 
@@ -304,7 +305,7 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 // getGithubClient returns a client that provides the given token, retries requests,
 // caches responses, and creates a span for each request.
 // Couple this with a deferred call with Close() to clean up the client.
-func getGithubClient(token, caller string, config retryConfig) *evergreen.GitHubClient {
+func getGithubClient(token, caller string, config retryConfig) *githubapp.GitHubClient {
 	grip.Info(message.Fields{
 		"ticket":  GithubInvestigation,
 		"message": "called getGithubClient",
@@ -327,13 +328,13 @@ func getGithubClient(token, caller string, config retryConfig) *evergreen.GitHub
 		token,
 		githubShouldRetry(caller, config),
 		utility.RetryHTTPDelay(utility.RetryOptions{
-			MaxAttempts: evergreen.GitHubMaxRetries,
-			MinDelay:    evergreen.GitHubRetryMinDelay,
+			MaxAttempts: githubapp.GitHubMaxRetries,
+			MinDelay:    githubapp.GitHubRetryMinDelay,
 		}),
 		httpClient,
 	)
 
-	githubClient := evergreen.GitHubClient{Client: github.NewClient(client)}
+	githubClient := githubapp.GitHubClient{Client: github.NewClient(client)}
 	return &githubClient
 }
 
@@ -349,7 +350,7 @@ func getInstallationToken(ctx context.Context, owner, repo string, opts *github.
 		return "", errors.Wrap(err, "getting config")
 	}
 
-	token, err := settings.CreateGitHubAppAuth().CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, opts)
+	token, err := githubapp.CreateGitHubAppAuth(settings).CreateCachedInstallationToken(ctx, owner, repo, defaultGitHubAPIRequestLifetime, opts)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "error creating token",
@@ -397,7 +398,7 @@ func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.
 	if err != nil {
 		return "", errors.Wrap(err, "getting evergreen settings")
 	}
-	token, err := settings.CreateCachedInstallationTokenWithDefaultOwnerRepo(ctx, defaultGitHubAPIRequestLifetime, opts)
+	token, err := githubapp.CreateCachedInstallationTokenWithDefaultOwnerRepo(ctx, settings, defaultGitHubAPIRequestLifetime, opts)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "error creating default token",
@@ -605,7 +606,7 @@ func SendPendingStatusToGithub(ctx context.Context, input SendGithubStatusInput,
 		Description: input.Desc,
 	}
 
-	sender, err := env.GetGitHubSender(input.Owner, input.Repo)
+	sender, err := env.GetGitHubSender(input.Owner, input.Repo, githubapp.CreateGitHubAppAuth(env.Settings()).CreateGitHubSenderInstallationToken)
 	if err != nil {
 		return errors.Wrap(err, "getting github status sender")
 	}
@@ -980,8 +981,8 @@ func tryGithubPost(ctx context.Context, url string, oauthToken string, data inte
 
 		return false, nil
 	}, utility.RetryOptions{
-		MaxAttempts: evergreen.GitHubMaxRetries,
-		MinDelay:    evergreen.GitHubRetryMinDelay,
+		MaxAttempts: githubapp.GitHubMaxRetries,
+		MinDelay:    githubapp.GitHubRetryMinDelay,
 	})
 
 	if err != nil {
@@ -1865,7 +1866,7 @@ func SendCommitQueueGithubStatus(ctx context.Context, env evergreen.Environment,
 	owner := utility.FromStringPtr(pr.Base.Repo.Owner.Login)
 	repo := utility.FromStringPtr(pr.Base.Repo.Name)
 
-	sender, err := env.GetGitHubSender(owner, repo)
+	sender, err := env.GetGitHubSender(owner, repo, githubapp.CreateGitHubAppAuth(env.Settings()).CreateGitHubSenderInstallationToken)
 	if err != nil {
 		return errors.Wrap(err, "getting github status sender")
 	}
