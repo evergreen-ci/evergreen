@@ -858,7 +858,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 	}
 }
 
-func TestAssignNextAvailableTaskNew(t *testing.T) {
+func TestAssignNextAvailableTask(t *testing.T) {
 	// Each section is a different unit of data (Distro -> Tq)
 	type data struct {
 		Project1 *model.ProjectRef
