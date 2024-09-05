@@ -98,7 +98,6 @@
       "branch_name": "NOBRANCH",
       "repo_kind": "github",
       "enabled": true,
-      "private": false,
       "batch_time": 0,
       "remote_path": ".docker-test.yaml",
       "identifier": "logkeeper",

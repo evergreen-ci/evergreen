@@ -97,7 +97,6 @@ func (s *ProjectEventSuite) TestModifyProjectEvent() {
 	s.Equal(after.ProjectRef.Owner, eventData.After.ProjectRef.Owner)
 	s.Equal(after.ProjectRef.Repo, eventData.After.ProjectRef.Repo)
 	s.Equal(after.ProjectRef.Enabled, eventData.After.ProjectRef.Enabled)
-	s.Equal(after.ProjectRef.Private, eventData.After.ProjectRef.Private)
 	s.Equal(after.ProjectRef.Restricted, eventData.After.ProjectRef.Restricted)
 	s.Empty(after.ProjectRef.Triggers, eventData.After.ProjectRef.Triggers)
 	s.Equal(after.ProjectRef.Id, eventData.After.ProjectRef.Id)

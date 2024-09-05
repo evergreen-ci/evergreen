@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -32,6 +33,31 @@ func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*s
 // Elapsed is the resolver for the elapsed field.
 func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
 	return obj.RunningTask.StartTime, nil
+}
+
+// Events is the resolver for the events field.
+func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, limit *int, page *int, sortDir *SortDirection) (*HostEvents, error) {
+	sortAsc := false
+	if sortDir != nil {
+		sortAsc = *sortDir == SortDirectionAsc
+	}
+	events, count, err := event.MostRecentPaginatedHostEvents(utility.FromStringPtr(obj.Id), utility.FromStringPtr(obj.Tag), utility.FromIntPtr(limit), utility.FromIntPtr(page), sortAsc)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host events: %s", err.Error()))
+	}
+	apiEventLogPointers := []*restModel.HostAPIEventLogEntry{}
+	for _, e := range events {
+		apiEventLog := restModel.HostAPIEventLogEntry{}
+		if err = apiEventLog.BuildFromService(e); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIEventLogEntry from EventLog: %s", err.Error()))
+		}
+		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
+	}
+	hostEvents := HostEvents{
+		EventLogEntries: apiEventLogPointers,
+		Count:           count,
+	}
+	return &hostEvents, nil
 }
 
 // HomeVolume is the resolver for the homeVolume field.

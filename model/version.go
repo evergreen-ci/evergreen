@@ -330,6 +330,7 @@ type VersionMetadata struct {
 }
 
 var (
+	VersionBuildStatusIdKey             = bsonutil.MustHaveTag(VersionBuildStatus{}, "BuildId")
 	VersionBuildStatusVariantKey        = bsonutil.MustHaveTag(VersionBuildStatus{}, "BuildVariant")
 	VersionBuildStatusActivatedKey      = bsonutil.MustHaveTag(VersionBuildStatus{}, "Activated")
 	VersionBuildStatusBatchTimeTasksKey = bsonutil.MustHaveTag(VersionBuildStatus{}, "BatchTimeTasks")
