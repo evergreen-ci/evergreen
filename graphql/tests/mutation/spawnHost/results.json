@@ -14,7 +14,6 @@
                         "sleepSchedule": {
                           "dailyStartTime": "",
                           "dailyStopTime": "",
-                          "isBetaTester": false,
                           "permanentlyExempt": false,
                           "shouldKeepOff": false,
                           "timeZone": "America/New_York",
