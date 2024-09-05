@@ -328,9 +328,9 @@ func TestGetEvents(t *testing.T) {
 
 func TestBuildImageEventEntry(t *testing.T) {
 	diff := ImageDiffChange{
-		Type:    APITypeOS,
-		Removed: "",
-		Added:   "1.0",
+		Type:          APITypeOS,
+		BeforeVersion: "",
+		AfterVersion:  "1.0",
 	}
 	result, err := buildImageEventEntry(diff)
 	require.NoError(t, err)
@@ -339,9 +339,9 @@ func TestBuildImageEventEntry(t *testing.T) {
 	assert.Equal(t, ImageEventTypeOperatingSystem, result.Type)
 
 	diff = ImageDiffChange{
-		Type:    APITypePackages,
-		Removed: "1.0",
-		Added:   "",
+		Type:          APITypePackages,
+		BeforeVersion: "1.0",
+		AfterVersion:  "",
 	}
 	result, err = buildImageEventEntry(diff)
 	require.NoError(t, err)
@@ -350,9 +350,9 @@ func TestBuildImageEventEntry(t *testing.T) {
 	assert.Equal(t, ImageEventTypePackage, result.Type)
 
 	diff = ImageDiffChange{
-		Type:    APITypeToolchains,
-		Removed: "1.0",
-		Added:   "2.0",
+		Type:          APITypeToolchains,
+		BeforeVersion: "1.0",
+		AfterVersion:  "2.0",
 	}
 	result, err = buildImageEventEntry(diff)
 	require.NoError(t, err)
