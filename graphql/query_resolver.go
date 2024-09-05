@@ -985,27 +985,60 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	opts := model.WaterfallOptions{
 		Limit:      limit,
 		Requesters: requesters,
+		MaxOrder:   utility.FromIntPtr(options.MaxOrder),
+		MinOrder:   utility.FromIntPtr(options.MinOrder),
 	}
 
-	versions, err := model.GetWaterfallVersions(ctx, projectId, opts)
+	activeVersions, err := model.GetActiveWaterfallVersions(ctx, projectId, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting active waterfall versions: %s", err.Error()))
+	}
+
+	maxReturnedOrder := activeVersions[0].RevisionOrderNumber
+	minReturnedOrder := activeVersions[len(activeVersions)-1].RevisionOrderNumber
+
+	allVersions, err := model.GetAllWaterfallVersions(ctx, projectId, minReturnedOrder, maxReturnedOrder)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall versions: %s", err.Error()))
 	}
 
 	// TODO DEVPROD-10179: Add check to ensure each version has tasks that match filter...
 	// Something like this: https://github.com/evergreen-ci/evergreen/blob/bf8f12ec2eefe61f0cf9bcc594924c7be8f91d1b/graphql/query_resolver.go#L869-L938
-	// We should also be able to add a check to the version's build_variant_status field in case of a build variant filter (TODO DEVPROD-10178).
-	// For now, without filters it is guaranteed that `limit` matching versions have been returned.
+	// All other filters can be applied in the GetActiveWaterfallVersions pipeline, ensuring `limit` matching versions have been returned.
 
-	// TODO DEVPROD-10177: Implementing pagination will also allow us to fetch more versions if GetWaterfallVersions does not return enough *activated* versions
+	waterfallVersions := []*WaterfallVersion{}
+	i := 0
+	for i < len(allVersions) {
+		if utility.FromBoolPtr(allVersions[i].Activated) == true {
+			apiVersion := restModel.APIVersion{}
+			apiVersion.BuildFromService(allVersions[i])
+			waterfallVersions = append(waterfallVersions, &WaterfallVersion{
+				InactiveVersions: nil,
+				Version:          &apiVersion,
+			})
+			i++
+		} else {
+			inactiveGroup := []*restModel.APIVersion{}
+			for utility.FromBoolPtr(allVersions[i].Activated) == false {
+				apiVersion := restModel.APIVersion{}
+				apiVersion.BuildFromService(allVersions[i])
+				inactiveGroup = append(inactiveGroup, &apiVersion)
+				i++
+			}
+			waterfallVersions = append(waterfallVersions, &WaterfallVersion{
+				InactiveVersions: inactiveGroup,
+				Version:          nil,
+			})
+		}
+	}
 
-	buildVariants, err := model.GetWaterfallBuildVariants(ctx, versions)
+	buildVariants, err := model.GetWaterfallBuildVariants(ctx, activeVersions)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall build variants: %s", err.Error()))
 	}
 
 	apiVersions := []*restModel.APIVersion{}
-	for _, v := range versions {
+	for _, v := range activeVersions {
 		apiVersion := restModel.APIVersion{}
 		apiVersion.BuildFromService(v)
 		apiVersions = append(apiVersions, &apiVersion)
@@ -1016,9 +1049,16 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		bv = append(bv, &b)
 	}
 
+	prevPageOrder := 0
+	if opts.MinOrder != 0 {
+		prevPageOrder = maxReturnedOrder
+	}
+
 	return &Waterfall{
 		BuildVariants: bv,
-		Versions:      apiVersions,
+		NextPageOrder: minReturnedOrder,
+		PrevPageOrder: prevPageOrder,
+		Versions:      waterfallVersions,
 	}, nil
 }
 

@@ -587,13 +587,24 @@ type VolumeHost struct {
 
 type Waterfall struct {
 	BuildVariants []*model1.WaterfallBuildVariant `json:"buildVariants"`
-	Versions      []*model.APIVersion             `json:"versions"`
+	NextPageOrder int                             `json:"nextPageOrder"`
+	PrevPageOrder int                             `json:"prevPageOrder"`
+	Versions      []*WaterfallVersion             `json:"versions"`
 }
 
 type WaterfallOptions struct {
-	Limit             *int     `json:"limit,omitempty"`
+	Limit *int `json:"limit,omitempty"`
+	// Return versions with an order greater than minOrder. Used for paginating backward.
+	MinOrder *int `json:"minOrder,omitempty"`
+	// Return versions with an order lower than maxOrder. Used for paginating forward.
+	MaxOrder          *int     `json:"maxOrder,omitempty"`
 	ProjectIdentifier string   `json:"projectIdentifier"`
 	Requesters        []string `json:"requesters,omitempty"`
+}
+
+type WaterfallVersion struct {
+	InactiveVersions []*model.APIVersion `json:"inactiveVersions,omitempty"`
+	Version          *model.APIVersion   `json:"version,omitempty"`
 }
 
 type AccessLevel string

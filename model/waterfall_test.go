@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetWaterfallVersions(t *testing.T) {
+func TestGetActiveWaterfallVersions(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
 	start := time.Now()
 	p := ProjectRef{
@@ -70,7 +70,7 @@ func TestGetWaterfallVersions(t *testing.T) {
 	assert.NoError(t, v.Insert())
 
 	ctx := context.TODO()
-	versions, err := GetWaterfallVersions(ctx, p.Id, WaterfallOptions{
+	versions, err := GetActiveWaterfallVersions(ctx, p.Id, WaterfallOptions{
 		Limit:      4,
 		Requesters: evergreen.SystemVersionRequesterTypes,
 	})
@@ -81,7 +81,7 @@ func TestGetWaterfallVersions(t *testing.T) {
 	assert.EqualValues(t, "v_3", versions[2].Id)
 	assert.EqualValues(t, "v_4", versions[3].Id)
 
-	versions, err = GetWaterfallVersions(ctx, p.Id,
+	versions, err = GetActiveWaterfallVersions(ctx, p.Id,
 		WaterfallOptions{
 			Limit:      4,
 			Requesters: []string{"foo"},
