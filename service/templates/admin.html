@@ -33,11 +33,11 @@ Admin Settings
 					<div id="divMsg"></div>
 					<div>The following [[items.length]] items will be restarted:</div>
 					<div id="tasksDisplay">
-						<li ng-repeat="item in items" class="link" ng-click="jumpToItem(itemType, item)">[[item]]</li>
+						<li ng-repeat="item in items" class="link" ng-click="jumpToItem(item)">[[item]]</li>
 					</div>
 					<div>
 						<div class="justifyRight">
-							<md-button class="md-raised" ng-click="restartItems(itemType, false)"
+							<md-button class="md-raised" ng-click="restartItems(false)"
 								ng-disabled="disableRestart">Restart</md-button>
 							<md-button class="md-raised" data-dismiss="modal">Cancel</md-button>
 						</div>
@@ -2592,25 +2592,12 @@ Admin Settings
 				<md-card-title>
 					<i class="fa fa-refresh"></i>
 					<md-card-title-text>
-						<span>Restart Tasks/Commit Queue Versions</span>
-						<span class="md-subhead">Restart failed tasks or commit queue versions that started or finished
+						<span>Restart Tasks</span>
+						<span class="md-subhead">Restart failed tasks that started or finished
 							between two times. Uses Eastern timezone regardless of configured timezone.</span>
 					</md-card-title-text>
 				</md-card-title>
 				<md-card-content>
-					<table>
-						<tr>
-							<td>Restart...</td>
-							<td>
-								<md-radio-group data-ng-model="restartType" layout="row" style="margin-left:40px">
-									<md-radio-button data-ng-value="'tasks'" style="width:2%"></md-radio-button>
-									<span>Tasks</span>
-									<md-radio-button class="inline" data-ng-value="'versions'"
-										style="margin-left:40px;width:12%"></md-radio-button><span>Versions</span>
-								</md-radio-group>
-							</td>
-						</tr>
-					</table>
 					<table>
 						<tr>
 							<td>From:</td>
@@ -2629,13 +2616,13 @@ Admin Settings
 					</table>
 				</md-card-content>
 				<md-card-footer class="squeezeTop">
-					<md-checkbox ng-model="restartRed" ng-show="restartType == 'tasks'" style="top: 10px">Red Tasks
+					<md-checkbox ng-model="restartRed" style="top: 10px">Red Tasks
 					</md-checkbox>
-					<md-checkbox ng-model="restartPurple" ng-show="restartType == 'tasks'" style="top: 10px">Purple
+					<md-checkbox ng-model="restartPurple" style="top: 10px">Purple
 						Tasks</md-checkbox>
-					<md-checkbox ng-model="restartLavender" ng-show="restartType == 'tasks'" style="top: 10px">Lavender
+					<md-checkbox ng-model="restartLavender" style="top: 10px">Lavender
 						Tasks</md-checkbox>
-					<md-button class="md-raised" ng-disabled="disableSubmit" ng-click="restartItems(restartType, true)">
+					<md-button class="md-raised" ng-disabled="disableSubmit" ng-click="restartItems(true)">
 						Submit</md-button>
 				</md-card-footer>
 			</md-card>

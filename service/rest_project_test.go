@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/require"
 )
@@ -88,7 +87,6 @@ func TestProjectRoutes(t *testing.T) {
 		private := &model.ProjectRef{
 			Id:      privateId,
 			Enabled: true,
-			Private: utility.TruePtr(),
 			Repo:    "repo1",
 			Admins:  []string{"testuser"},
 		}

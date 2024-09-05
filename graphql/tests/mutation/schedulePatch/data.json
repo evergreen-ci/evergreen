@@ -7,7 +7,6 @@
       "branch_name": "main",
       "repo_kind": "github",
       "enabled": true,
-      "private": false,
       "batch_time": 0,
       "remote_path": "testdata/smoke/project.yml",
       "identifier": "evergreen",
