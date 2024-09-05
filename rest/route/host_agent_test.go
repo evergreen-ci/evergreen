@@ -1263,7 +1263,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.Equal(t, "", h.RunningTask)
 		},
 	} {
-		t.Run(fmt.Sprintf("%s with %s dispatcher settings", tName, evergreen.DispatcherVersionRevisedWithDependencies), func(t *testing.T) {
+		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -1310,7 +1310,15 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			require.NoError(t, data.Host2.Insert(ctx))
 			data.Version1 = &model.Version{Id: "v1"}
 			require.NoError(t, data.Version1.Insert())
-			data.BuildVariant1 = &build.Build{Id: "bv1", BuildVariant: "bv1", Version: data.Version1.Id, Tasks: []build.TaskCache{{Id: "tg1-task1"}, {Id: "tg1-task2"}}}
+			data.BuildVariant1 = &build.Build{
+				Id:           "bv1",
+				BuildVariant: "bv1",
+				Version:      data.Version1.Id,
+				Tasks: []build.TaskCache{
+					{Id: "tg1-task1"},
+					{Id: "tg1-task2"},
+				},
+			}
 			require.NoError(t, data.BuildVariant1.Insert())
 			data.Distro2 = &distro.Distro{
 				Id: "d2",
@@ -1320,7 +1328,8 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			}
 			require.NoError(t, data.Distro2.Insert(ctx))
 			data.Host3 = &host.Host{
-				Id:     "h3",
+				Id: "h3",
+
 				Distro: *data.Distro2,
 				Secret: hostSecret,
 				Status: evergreen.HostRunning,
@@ -1335,7 +1344,17 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			require.NoError(t, data.Host4.Insert(ctx))
 			data.Version2 = &model.Version{Id: "v2"}
 			require.NoError(t, data.Version2.Insert())
-			data.BuildVariant2 = &build.Build{Id: "bv2", BuildVariant: "bv2", Version: data.Version1.Id, Tasks: []build.TaskCache{{Id: "tg2-task1"}, {Id: "task1"}, {Id: "task2"}, {Id: "tg2-task2"}}}
+			data.BuildVariant2 = &build.Build{
+				Id:           "bv2",
+				BuildVariant: "bv2",
+				Version:      data.Version1.Id,
+				Tasks: []build.TaskCache{
+					{Id: "tg2-task1"},
+					{Id: "task1"},
+					{Id: "task2"},
+					{Id: "tg2-task2"},
+				},
+			}
 			require.NoError(t, data.BuildVariant2.Insert())
 			data.Distro3 = &distro.Distro{
 				Id: "d3",
@@ -1360,7 +1379,15 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			require.NoError(t, data.Host6.Insert(ctx))
 			data.Version3 = &model.Version{Id: "v3"}
 			require.NoError(t, data.Version3.Insert())
-			data.BuildVariant3 = &build.Build{Id: "bv3", BuildVariant: "bv3", Version: data.Version3.Id, Tasks: []build.TaskCache{{Id: "task3"}, {Id: "task4"}}}
+			data.BuildVariant3 = &build.Build{
+				Id:           "bv3",
+				BuildVariant: "bv3",
+				Version:      data.Version3.Id,
+				Tasks: []build.TaskCache{
+					{Id: "task3"},
+					{Id: "task4"},
+				},
+			}
 			require.NoError(t, data.BuildVariant3.Insert())
 			tgInfo1 := model.TaskGroupInfo{
 				Name:  "task-group-1",
