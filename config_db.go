@@ -97,7 +97,6 @@ var (
 	globalGitHubTokenDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "GlobalGitHubTokenDisabled")
 	unrecognizedPodCleanupDisabledKey  = bsonutil.MustHaveTag(ServiceFlags{}, "UnrecognizedPodCleanupDisabled")
 	sleepScheduleDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "SleepScheduleDisabled")
-	sleepScheduleBetaTestDisabledKey   = bsonutil.MustHaveTag(ServiceFlags{}, "SleepScheduleBetaTestDisabled")
 	systemFailedTaskRestartDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "SystemFailedTaskRestartDisabled")
 	cpuDegradedModeDisabledKey         = bsonutil.MustHaveTag(ServiceFlags{}, "CPUDegradedModeDisabled")
 	parameterStoreDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "ParameterStoreDisabled")
