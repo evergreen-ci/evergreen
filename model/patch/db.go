@@ -233,10 +233,6 @@ func ByPatchNameStatusesCommitQueuePaginated(ctx context.Context, opts ByPatchNa
 	}
 
 	if len(opts.Statuses) > 0 {
-		// Verify that we're considering the legacy patch status as well; we'll remove this logic in EVG-20032.
-		if len(utility.StringSliceIntersection(opts.Statuses, evergreen.VersionSucceededStatuses)) > 0 {
-			opts.Statuses = utility.UniqueStrings(append(opts.Statuses, evergreen.VersionSucceededStatuses...))
-		}
 		match[StatusKey] = bson.M{"$in": opts.Statuses}
 	}
 	if opts.Author != nil {

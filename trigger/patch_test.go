@@ -234,7 +234,7 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 	childPatchSubSuccess := event.Subscriber{
 		Type: event.RunChildPatchSubscriberType,
 		Target: &event.ChildPatchSubscriber{
-			ParentStatus: "succeeded",
+			ParentStatus: evergreen.VersionSucceeded,
 			ChildPatchId: childPatchId,
 			Requester:    evergreen.TriggerRequester,
 		},
@@ -242,7 +242,7 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 	childPatchSubFailure := event.Subscriber{
 		Type: event.RunChildPatchSubscriberType,
 		Target: &event.ChildPatchSubscriber{
-			ParentStatus: "failed",
+			ParentStatus: evergreen.VersionFailed,
 			ChildPatchId: childPatchId,
 			Requester:    evergreen.TriggerRequester,
 		},

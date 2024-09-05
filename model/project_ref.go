@@ -3276,6 +3276,8 @@ func (c ContainerSecret) Validate() error {
 	return catcher.Resolve()
 }
 
+var validTriggerStatuses = []string{"", AllStatuses, evergreen.VersionSucceeded, evergreen.VersionFailed}
+
 func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
 	if definition.ChildProject == parentProject {
 		return definition, errors.New("a project cannot trigger itself")
@@ -3286,7 +3288,7 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 		return definition, errors.Wrapf(err, "finding child project '%s'", definition.ChildProject)
 	}
 
-	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.LegacyPatchSucceeded, evergreen.VersionSucceeded, evergreen.VersionFailed}, definition.Status) {
+	if !utility.StringSliceContains(validTriggerStatuses, definition.Status) {
 		return definition, errors.Errorf("invalid status: %s", definition.Status)
 	}
 

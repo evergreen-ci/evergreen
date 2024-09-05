@@ -1260,7 +1260,7 @@ func GetCollectiveStatusFromPatchStatuses(statuses []string) string {
 			hasCreated = true
 		case evergreen.VersionFailed:
 			hasFailure = true
-		case evergreen.LegacyPatchSucceeded, evergreen.VersionSucceeded:
+		case evergreen.VersionSucceeded:
 			hasSuccess = true
 		case evergreen.VersionAborted:
 			// Note that we only consider this if the passed in statuses considered display status handling.
