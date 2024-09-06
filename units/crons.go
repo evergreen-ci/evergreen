@@ -92,7 +92,7 @@ func hostMonitoringJobs(ctx context.Context, env evergreen.Environment, ts time.
 
 	jobs := []amboy.Job{NewStrandedTaskCleanupJob(ts.Format(TSFormat))}
 	for _, host := range hosts {
-		jobs = append(jobs, NewHostMonitorExternalStateJob(env, &host, ts.Format(TSFormat)))
+		jobs = append(jobs, NewHostMonitoringCheckJob(env, &host, ts.Format(TSFormat)))
 	}
 	return jobs, nil
 }

@@ -649,9 +649,9 @@ const (
 	// server within this duration. Otherwise, the host will be considered
 	// unhealthy and require manual intervention to investigate why it's
 	// unresponsive.
-	// kim: TODO: determine if this is a reasonable interval or if it might
-	// cause false quarantines too often.
-	MaxStaticHostUnresponsiveInterval = 30 * time.Minute
+	// This timeout is intentionally very conservative to mitigate false
+	// positives when automatically detecting unhealthy static hosts.
+	MaxStaticHostUnresponsiveInterval = 120 * time.Minute
 
 	// provisioningCutoff is the threshold before a host is considered stuck in
 	// provisioning.

@@ -19,11 +19,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-const hostMonitorExternalStateCheckName = "host-monitoring-external-state-check"
+const hostMonitoringCheckName = "host-monitoring-external-state-check"
 
 func init() {
-	registry.AddJobType(hostMonitorExternalStateCheckName, func() amboy.Job {
-		return makeHostMonitorExternalState()
+	registry.AddJobType(hostMonitoringCheckName, func() amboy.Job {
+		return makeHostMonitoringCheckJob()
 	})
 }
 
@@ -31,16 +31,15 @@ type hostMonitorExternalStateCheckJob struct {
 	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
 	job.Base `bson:"base" json:"base" yaml:"base"`
 
-	// cache
 	host *host.Host
 	env  evergreen.Environment
 }
 
-func makeHostMonitorExternalState() *hostMonitorExternalStateCheckJob {
+func makeHostMonitoringCheckJob() *hostMonitorExternalStateCheckJob {
 	j := &hostMonitorExternalStateCheckJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    hostMonitorExternalStateCheckName,
+				Name:    hostMonitoringCheckName,
 				Version: 0,
 			},
 		},
@@ -48,24 +47,21 @@ func makeHostMonitorExternalState() *hostMonitorExternalStateCheckJob {
 	return j
 }
 
-func NewHostMonitorExternalStateJob(env evergreen.Environment, h *host.Host, id string) amboy.Job {
-	job := makeHostMonitorExternalState()
+// NewHostMonitoringCheckJob checks if an unresponsive host is healthy or not.
+func NewHostMonitoringCheckJob(env evergreen.Environment, h *host.Host, id string) amboy.Job {
+	job := makeHostMonitoringCheckJob()
 
 	job.host = h
 	job.HostID = h.Id
 
 	job.env = env
 
-	job.SetID(fmt.Sprintf("%s.%s.%s", hostMonitorExternalStateCheckName, job.HostID, id))
+	job.SetID(fmt.Sprintf("%s.%s.%s", hostMonitoringCheckName, job.HostID, id))
 
 	return job
 }
 
 func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
-	var cancel context.CancelFunc
-
-	ctx, cancel = context.WithCancel(ctx)
-	defer cancel()
 	defer j.MarkComplete()
 
 	flags, err := evergreen.GetServiceFlags(ctx)
@@ -93,8 +89,8 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	// kim: TODO: add auto-quarantine for bad/uncommunicative static host.
 	if j.host.Provider == evergreen.ProviderNameStatic {
+		// kim: TODO: add test to verify it quarantines/clears stranded tasks.
 		j.AddError(j.handleUnresponsiveStaticHost(ctx))
 		return
 	}
@@ -103,6 +99,13 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 	j.AddError(err)
 }
 
+// handleUnresponsiveStaticHost checks if a static host has been unresponsive
+// for a long time and if so, quarantines it. This is an imprecise check,
+// because static hosts do not have a reliable way to verify if they're actually
+// healthy and able to run tasks. That means that in some rare cases, this could
+// produce false positives (e.g. if Evergreen is down for hours, the static
+// hosts can't reach it) and false negatives (because it waits a very long time
+// before declaring a host unhealthy).
 func (j *hostMonitorExternalStateCheckJob) handleUnresponsiveStaticHost(ctx context.Context) error {
 	if j.host.Provider != evergreen.ProviderNameStatic {
 		return nil
@@ -112,6 +115,16 @@ func (j *hostMonitorExternalStateCheckJob) handleUnresponsiveStaticHost(ctx cont
 	if timeSinceLastCommunication < host.MaxStaticHostUnresponsiveInterval {
 		return nil
 	}
+
+	grip.Info(message.Fields{
+		"message":                            "quarantining unresponsive static host",
+		"host_id":                            j.host.Id,
+		"distro_id":                          j.host.Distro.Id,
+		"running_task":                       j.host.RunningTask,
+		"time_since_last_communication_secs": timeSinceLastCommunication.Seconds(),
+		"max_unresponsive_interval_secs":     host.MaxStaticHostUnresponsiveInterval.Seconds(),
+		"job":                                j.ID(),
+	})
 
 	return DisableAndNotifyPoisonedHost(ctx, j.env, j.host, fmt.Sprintf("static host has not communicated with Evergreen for %s", timeSinceLastCommunication.String()))
 }

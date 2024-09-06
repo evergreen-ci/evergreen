@@ -45,7 +45,8 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 // tasks, clears any stranded tasks, and enqueues a job to notify that a host
 // was quarantined.
 // kim: NOTE: make sure this is called whenever quarantining host.
-// kim: TODO: verify that calling this unlocks ByTaskSpec for task dispatching.
+// kim: TODO: add test to verify that calling this unlocks ByTaskSpec for task
+// dispatching.
 func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment, h *host.Host, reason string) error {
 	if utility.StringSliceContains(evergreen.DownHostStatus, h.Status) {
 		return nil

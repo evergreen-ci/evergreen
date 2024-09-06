@@ -53,7 +53,7 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 	mockCloud.Reset()
 	mockCloud.Set(h.Id, mockInstance)
 
-	j := NewHostMonitorExternalStateJob(env, h, "one")
+	j := NewHostMonitoringCheckJob(env, h, "one")
 
 	j.Run(ctx)
 
