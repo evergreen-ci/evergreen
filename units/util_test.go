@@ -23,7 +23,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 	env := &mock.Environment{}
 
 	for testCase, test := range map[string]func(context.Context, *testing.T){
-		"parent with a container running a task": func(ctx context.Context, t *testing.T) {
+		"ParentWithContainerRunningTask": func(ctx context.Context, t *testing.T) {
 			t1 := &task.Task{
 				Id:      "t1",
 				Status:  evergreen.TaskStarted,
@@ -85,7 +85,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.TaskFailed, t1.Status)
 		},
-		"running task": func(ctx context.Context, t *testing.T) {
+		"ClearsStrandedRunningTask": func(ctx context.Context, t *testing.T) {
 			t1 := &task.Task{
 				Id:      "t1",
 				Status:  evergreen.TaskStarted,
@@ -126,7 +126,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.TaskFailed, t1.Status)
 		},
-		"static host": func(ctx context.Context, t *testing.T) {
+		"QuarantinesStaticHost": func(ctx context.Context, t *testing.T) {
 			static := &host.Host{
 				Id:       "static",
 				Status:   evergreen.HostRunning,
@@ -139,7 +139,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostQuarantined, static.Status)
 		},
-		"already decommissioned": func(ctx context.Context, t *testing.T) {
+		"NoopsForAlreadyDecommissioned": func(ctx context.Context, t *testing.T) {
 			decommissioned := &host.Host{
 				Id:     "decommissioned",
 				Status: evergreen.HostDecommissioned,
@@ -151,7 +151,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostDecommissioned, decommissioned.Status)
 		},
-		"already terminated": func(ctx context.Context, t *testing.T) {
+		"NoopsForAlreadyTerminated": func(ctx context.Context, t *testing.T) {
 			terminated := &host.Host{
 				Id:     "terminated",
 				Status: evergreen.HostTerminated,
@@ -176,5 +176,4 @@ func TestHandlePoisonedHost(t *testing.T) {
 		})
 
 	}
-
 }

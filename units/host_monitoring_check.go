@@ -90,7 +90,6 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 	}
 
 	if j.host.Provider == evergreen.ProviderNameStatic {
-		// kim: TODO: add test to verify it quarantines/clears stranded tasks.
 		j.AddError(j.handleUnresponsiveStaticHost(ctx))
 		return
 	}
@@ -108,6 +107,9 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 // before declaring a host unhealthy).
 func (j *hostMonitorExternalStateCheckJob) handleUnresponsiveStaticHost(ctx context.Context) error {
 	if j.host.Provider != evergreen.ProviderNameStatic {
+		return nil
+	}
+	if j.host.Status == evergreen.HostQuarantined {
 		return nil
 	}
 
