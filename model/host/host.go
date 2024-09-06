@@ -3158,12 +3158,14 @@ func makeExpireOnTag(expireOn string) Tag {
 }
 
 // MarkShouldNotExpire marks a host as one that should not expire
-// and updates its expiration time to avoid early reaping.
-func (h *Host) MarkShouldNotExpire(ctx context.Context, expireOnValue string) error {
+// and updates its expiration time to avoid early reaping. If the host is marked
+// unexpirable and has invalid/missing sleep schedule settings,  it is assigned
+// the default sleep schedule.
+func (h *Host) MarkShouldNotExpire(ctx context.Context, expireOnValue, userTimeZone string) error {
 	h.NoExpiration = true
 	h.ExpirationTime = time.Now().Add(evergreen.SpawnHostNoExpirationDuration)
 	h.addTag(makeExpireOnTag(expireOnValue), true)
-	return UpdateOne(
+	if err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: h.Id,
@@ -3175,7 +3177,38 @@ func (h *Host) MarkShouldNotExpire(ctx context.Context, expireOnValue string) er
 				InstanceTagsKey:   h.InstanceTags,
 			},
 		},
-	)
+	); err != nil {
+		return err
+	}
+
+	if h.SleepSchedule.Validate() != nil {
+		// If the host is being made expirable and its sleep schedule is
+		// invalid/missing, set it to the default sleep schedule. This is a
+		// safety measure to ensure that a host cannot be made unexpirable
+		// without having some kind of working sleep schedule (or permanent
+		// exemption) in place.
+		var opts SleepScheduleOptions
+		opts.SetDefaultSchedule()
+		opts.SetDefaultTimeZone(userTimeZone)
+		schedule, err := NewSleepScheduleInfo(opts)
+		if err != nil {
+			return errors.Wrap(err, "creating default sleep schedule for host being marked unexpirable that has invalid schedule")
+		}
+		grip.Info(message.Fields{
+			"message":            "host is being marked unexpirable but has an invalid sleep schedule, setting it to the default sleep schedule",
+			"host_id":            h.Id,
+			"started_by":         h.StartedBy,
+			"old_sleep_schedule": h.SleepSchedule,
+			"new_sleep_schedule": schedule,
+		})
+		grip.Error(message.WrapError(h.UpdateSleepSchedule(ctx, *schedule, time.Now()), message.Fields{
+			"message":    "could not set default sleep schedule for host being marked unexpirable that currently has an invalid schedule",
+			"host_id":    h.Id,
+			"started_by": h.StartedBy,
+		}))
+	}
+
+	return nil
 }
 
 // MarkShouldExpire resets a host's expiration to expire like
