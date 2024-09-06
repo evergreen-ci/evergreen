@@ -77,9 +77,9 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, versions, 4)
 	assert.EqualValues(t, "v_1", versions[0].Id)
-	assert.EqualValues(t, "v_2", versions[1].Id)
-	assert.EqualValues(t, "v_3", versions[2].Id)
-	assert.EqualValues(t, "v_4", versions[3].Id)
+	assert.EqualValues(t, "v_3", versions[1].Id)
+	assert.EqualValues(t, "v_4", versions[2].Id)
+	assert.EqualValues(t, "v_5", versions[3].Id)
 
 	versions, err = GetActiveWaterfallVersions(ctx, p.Id,
 		WaterfallOptions{
@@ -89,6 +89,78 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 	assert.Nil(t, versions)
 	assert.Error(t, err)
 	assert.True(t, strings.HasPrefix(err.Error(), "invalid requester"))
+}
+
+func TestGetAllWaterfallVersions(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
+	start := time.Now()
+	p := ProjectRef{
+		Id:         "a_project",
+		Identifier: "a_project_identifier",
+	}
+	assert.NoError(t, p.Insert())
+
+	v := Version{
+		Id:                  "v_1",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 10,
+		CreateTime:          start,
+		Activated:           utility.TruePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "v_2",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 9,
+		CreateTime:          start.Add(-2 * time.Minute),
+		Activated:           utility.FalsePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "v_3",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 8,
+		CreateTime:          start.Add(-2 * time.Minute),
+		Activated:           utility.TruePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "v_4",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 7,
+		CreateTime:          start.Add(-2 * time.Minute),
+		Activated:           utility.TruePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "v_5",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 6,
+		CreateTime:          start.Add(-2 * time.Minute),
+		Activated:           utility.TruePtr(),
+	}
+	assert.NoError(t, v.Insert())
+
+	ctx := context.TODO()
+	versions, err := GetAllWaterfallVersions(ctx, p.Id, 7, 9)
+	assert.NoError(t, err)
+	assert.Len(t, versions, 3)
+	assert.EqualValues(t, "v_2", versions[0].Id)
+	assert.EqualValues(t, "v_3", versions[1].Id)
+	assert.EqualValues(t, "v_4", versions[2].Id)
+
+	versions, err = GetAllWaterfallVersions(ctx, p.Id, 2, 3)
+	assert.NoError(t, err)
+	assert.Len(t, versions, 0)
+
+	versions, err = GetAllWaterfallVersions(ctx, p.Id, 9, 8)
+	assert.Error(t, err)
+	assert.Nil(t, versions)
 }
 
 func TestGetWaterfallBuildVariants(t *testing.T) {

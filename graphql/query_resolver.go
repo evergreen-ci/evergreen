@@ -982,11 +982,14 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		requesters = evergreen.SystemVersionRequesterTypes
 	}
 
+	maxOrderOpt := utility.FromIntPtr(options.MaxOrder)
+	minOrderOpt := utility.FromIntPtr(options.MinOrder)
+
 	opts := model.WaterfallOptions{
 		Limit:      limit,
 		Requesters: requesters,
-		MaxOrder:   utility.FromIntPtr(options.MaxOrder),
-		MinOrder:   utility.FromIntPtr(options.MinOrder),
+		MaxOrder:   maxOrderOpt,
+		MinOrder:   minOrderOpt,
 	}
 
 	activeVersions, err := model.GetActiveWaterfallVersions(ctx, projectId, opts)
@@ -994,10 +997,17 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting active waterfall versions: %s", err.Error()))
 	}
 
-	maxReturnedOrder := activeVersions[0].RevisionOrderNumber
-	minReturnedOrder := activeVersions[len(activeVersions)-1].RevisionOrderNumber
+	minVersionOrder := minOrderOpt + 1
+	if minReturnedOrder := activeVersions[len(activeVersions)-1].RevisionOrderNumber; minVersionOrder == 0 {
+		minVersionOrder = minReturnedOrder
+	}
 
-	allVersions, err := model.GetAllWaterfallVersions(ctx, projectId, minReturnedOrder, maxReturnedOrder)
+	maxVersionOrder := maxOrderOpt - 1
+	if maxReturnedOrder := activeVersions[0].RevisionOrderNumber; maxOrderOpt == 0 {
+		maxVersionOrder = maxReturnedOrder
+	}
+
+	allVersions, err := model.GetAllWaterfallVersions(ctx, projectId, minVersionOrder, maxVersionOrder)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall versions: %s", err.Error()))
 	}
@@ -1019,7 +1029,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 			i++
 		} else {
 			inactiveGroup := []*restModel.APIVersion{}
-			for utility.FromBoolPtr(allVersions[i].Activated) == false {
+			for i < len(allVersions) && utility.FromBoolPtr(allVersions[i].Activated) == false {
 				apiVersion := restModel.APIVersion{}
 				apiVersion.BuildFromService(allVersions[i])
 				inactiveGroup = append(inactiveGroup, &apiVersion)
@@ -1049,14 +1059,23 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		bv = append(bv, &b)
 	}
 
-	prevPageOrder := 0
-	if opts.MinOrder != 0 {
-		prevPageOrder = maxReturnedOrder
+	prevPageOrder := allVersions[0].RevisionOrderNumber
+	if maxOrderOpt > prevPageOrder {
+		prevPageOrder = maxOrderOpt
+	}
+	nextPageOrder := allVersions[len(allVersions)-1].RevisionOrderNumber
+	if minOrderOpt != 0 && minOrderOpt < nextPageOrder {
+		nextPageOrder = minOrderOpt
+	}
+	fmt.Println(nextPageOrder, allVersions[len(allVersions)-1], minOrderOpt)
+	// If loading base page, there's no prev page to navigate to regardless of max order
+	if maxOrderOpt == 0 && minOrderOpt == 0 {
+		prevPageOrder = 0
 	}
 
 	return &Waterfall{
 		BuildVariants: bv,
-		NextPageOrder: minReturnedOrder,
+		NextPageOrder: nextPageOrder,
 		PrevPageOrder: prevPageOrder,
 		Versions:      waterfallVersions,
 	}, nil
