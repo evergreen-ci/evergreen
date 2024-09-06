@@ -22,9 +22,9 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	project, err := projCtx.GetProject()
 
 	grip.DebugWhen(err != nil || project == nil || projCtx.Version == nil, message.Fields{
-		"message": "error getting project for version page",
-		"project": project,
-		"projCtx": projCtx,
+		"message":            "error getting project for version page",
+		"project_identifier": project.Identifier,
+		"projCtx":            projCtx,
 	})
 
 	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/version/%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id)) {
