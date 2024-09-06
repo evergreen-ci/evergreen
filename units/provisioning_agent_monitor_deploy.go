@@ -348,10 +348,10 @@ func (j *agentMonitorDeployJob) deployMessage() message.Fields {
 		m["reason"] = "flagged for new agent monitor"
 	} else if j.host.LastCommunicationTime.IsZero() {
 		m["reason"] = "new host"
-	} else if sinceLCT > host.MaxUncommunicativeInterval {
+	} else if sinceLCT > host.MaxAgentMonitorUnresponsiveInterval {
 		m["reason"] = "host has exceeded last communication threshold"
-		m["threshold"] = host.MaxUncommunicativeInterval
-		m["threshold_span"] = host.MaxUncommunicativeInterval.String()
+		m["threshold"] = host.MaxAgentMonitorUnresponsiveInterval
+		m["threshold_span"] = host.MaxAgentMonitorUnresponsiveInterval.String()
 		m["last_communication_at"] = sinceLCT
 		m["last_communication_at_time"] = sinceLCT.String()
 	}

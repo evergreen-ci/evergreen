@@ -697,7 +697,7 @@ func FindByTemporaryExemptionsExpiringBetween(ctx context.Context, lowerBound ti
 // either they do not have an agent yet or their agents have not communicated
 // recently.
 func NeedsAgentDeploy(currentTime time.Time) bson.M {
-	cutoffTime := currentTime.Add(-MaxLCTInterval)
+	cutoffTime := currentTime.Add(-MaxAgentUnresponsiveInterval)
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return bson.M{
 		StartedByKey:     evergreen.User,
@@ -742,7 +742,7 @@ func NeedsAgentMonitorDeploy(currentTime time.Time) bson.M {
 			}},
 			{"$or": []bson.M{
 				{LastCommunicationTimeKey: utility.ZeroTime},
-				{LastCommunicationTimeKey: bson.M{"$lte": currentTime.Add(-MaxUncommunicativeInterval)}},
+				{LastCommunicationTimeKey: bson.M{"$lte": currentTime.Add(-MaxAgentMonitorUnresponsiveInterval)}},
 				{LastCommunicationTimeKey: bson.M{"$exists": false}},
 			}},
 		},

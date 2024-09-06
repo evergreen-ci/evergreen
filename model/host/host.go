@@ -628,12 +628,12 @@ type SpawnHostUsage struct {
 }
 
 const (
-	// MaxLCTInterval is the maximum amount of time that can elapse before the
+	// MaxAgentUnresponsiveInterval is the maximum amount of time that can elapse before the
 	// agent is considered dead. Once it has been successfully started (e.g.
 	// once an agent has been deployed from the server), the agent must
 	// regularly contact the server to ensure it is still alive.
-	MaxLCTInterval = 5 * time.Minute
-	// MaxUncommunicativeInterval is the maximum amount of time that can elapse
+	MaxAgentUnresponsiveInterval = 5 * time.Minute
+	// MaxAgentMonitorUnresponsiveInterval is the maximum amount of time that can elapse
 	// before the agent monitor is considered dead. When the host is
 	// provisioning, the agent must contact the app server within this duration
 	// for the agent monitor to be alive (i.e. the agent monitor has
@@ -642,7 +642,16 @@ const (
 	// duration does not elapse. Otherwise, the agent monitor is considered dead
 	// (because it has failed to keep an agent alive that can contact the
 	// server).
-	MaxUncommunicativeInterval = 3 * MaxLCTInterval
+	MaxAgentMonitorUnresponsiveInterval = 15 * time.Minute
+	// MaxStaticHostUnresponsiveInterval is the maximum amount of time that can
+	// elapse before a static host is considered unresponsive and unfixable. If
+	// the host is running and healthy, the agent must regularly contact the app
+	// server within this duration. Otherwise, the host will be considered
+	// unhealthy and require manual intervention to investigate why it's
+	// unresponsive.
+	// kim: TODO: determine if this is a reasonable interval or if it might
+	// cause false quarantines too often.
+	MaxStaticHostUnresponsiveInterval = 30 * time.Minute
 
 	// provisioningCutoff is the threshold before a host is considered stuck in
 	// provisioning.
@@ -1931,10 +1940,10 @@ func (h *Host) IsWaitingForAgent() bool {
 		return true
 	}
 
-	if h.Distro.LegacyBootstrap() && h.LastCommunicationTime.Before(time.Now().Add(-MaxLCTInterval)) {
+	if h.Distro.LegacyBootstrap() && h.LastCommunicationTime.Before(time.Now().Add(-MaxAgentUnresponsiveInterval)) {
 		return true
 	}
-	if !h.Distro.LegacyBootstrap() && h.LastCommunicationTime.Before(time.Now().Add(-MaxUncommunicativeInterval)) {
+	if !h.Distro.LegacyBootstrap() && h.LastCommunicationTime.Before(time.Now().Add(-MaxAgentMonitorUnresponsiveInterval)) {
 		return true
 	}
 
@@ -2302,7 +2311,7 @@ func FindHostsToTerminate(ctx context.Context) ([]Host, error) {
 								{RunningTaskKey: bson.M{"$exists": false}},
 								{LTCTaskKey: ""},
 							},
-							LastCommunicationTimeKey: bson.M{"$lte": now.Add(-MaxUncommunicativeInterval)},
+							LastCommunicationTimeKey: bson.M{"$lte": now.Add(-MaxAgentMonitorUnresponsiveInterval)},
 						}, {
 							// Host is not a user data host so cannot run tasks
 							// until done provisioning.

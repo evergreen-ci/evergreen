@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -93,9 +94,26 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 	}
 
 	// kim: TODO: add auto-quarantine for bad/uncommunicative static host.
+	if j.host.Provider == evergreen.ProviderNameStatic {
+		j.AddError(j.handleUnresponsiveStaticHost(ctx))
+		return
+	}
 
 	_, err = handleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
 	j.AddError(err)
+}
+
+func (j *hostMonitorExternalStateCheckJob) handleUnresponsiveStaticHost(ctx context.Context) error {
+	if j.host.Provider != evergreen.ProviderNameStatic {
+		return nil
+	}
+
+	timeSinceLastCommunication := time.Since(j.host.LastCommunicationTime)
+	if timeSinceLastCommunication < host.MaxStaticHostUnresponsiveInterval {
+		return nil
+	}
+
+	return DisableAndNotifyPoisonedHost(ctx, j.env, j.host, fmt.Sprintf("static host has not communicated with Evergreen for %s", timeSinceLastCommunication.String()))
 }
 
 // handleExternallyTerminatedHost will check if a host from a dynamic provider
