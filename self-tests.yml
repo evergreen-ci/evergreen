@@ -534,7 +534,7 @@ tasks:
     tags: ["db", "test"]
     name: test-trigger
   - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
+    # tags: ["nodb", "test"]
     name: test-util
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -812,6 +812,7 @@ buildvariants:
       - name: "js-test"
       - name: generate-api-docs
       - name: write-downstream-expansions-for-pine
+      - name: kim-shtg
 
   - name: race-detector
     display_name: Race Detector
@@ -925,6 +926,13 @@ buildvariants:
       - name: build-and-push-darwin-unsigned
         execution_tasks:
         - ".build-unsigned"
+
+
+task_groups:
+  - name: kim-shtg
+    max_hosts: 1
+    tasks:
+      - test-util
 
 
 containers:

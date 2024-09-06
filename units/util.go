@@ -70,7 +70,7 @@ func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment
 	// single host task groups. It's possible for only previous task to be set
 	// and current task may not be set, even though task group is still in
 	// progress.
-	return model.ClearAndResetStrandedHostTask(ctx, env.Settings(), h)
+	return model.ClearAndResetStrandedHostTaskOrTaskGroup(ctx, env.Settings(), h)
 }
 
 // EnqueueHostReprovisioningJob enqueues a job to reprovision a host. For hosts

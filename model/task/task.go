@@ -3413,6 +3413,27 @@ func (t *Task) IsPartOfSingleHostTaskGroup() bool {
 	return t.TaskGroup != "" && t.TaskGroupMaxHosts == 1
 }
 
+func (t *Task) IsLastTaskInSingleHostTaskGroup() (bool, error) {
+	if !t.IsPartOfSingleHostTaskGroup() {
+		return false, nil
+	}
+	sortedTGTasks, err := FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+	if err != nil {
+		return false, errors.Wrapf(err, "finding tasks in same task group as '%s'", t.Id)
+	}
+	if len(sortedTGTasks) == 0 {
+		grip.Warning(message.Fields{
+			"message":    "",
+			"task":       t.Id,
+			"build":      t.BuildId,
+			"task_group": t.TaskGroup,
+		})
+		return false, errors.Errorf("task '%s' is part of single host task group but because no tasks were found in its task group", t.Id)
+	}
+	lastTGTask := sortedTGTasks[len(sortedTGTasks)-1]
+	return lastTGTask.Id == t.Id, nil
+}
+
 // HasCheckRun retruns true if the task specifies a check run path.
 func (t *Task) HasCheckRun() bool {
 	return t.CheckRunPath != nil

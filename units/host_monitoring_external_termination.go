@@ -92,6 +92,8 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
+	// kim: TODO: add auto-quarantine for bad/uncommunicative static host.
+
 	_, err = handleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
 	j.AddError(err)
 }

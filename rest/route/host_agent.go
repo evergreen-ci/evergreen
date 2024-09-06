@@ -971,7 +971,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 	}
 
 	if t.IsStuckTask() {
-		if err := model.ClearAndResetStrandedHostTask(ctx, env.Settings(), h); err != nil {
+		if err := model.ClearAndResetStrandedHostTaskOrTaskGroup(ctx, env.Settings(), h); err != nil {
 			grip.Error(message.WrapError(err, getMessage("ending and resetting system failed task")))
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}

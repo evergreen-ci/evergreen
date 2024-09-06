@@ -2306,11 +2306,58 @@ func ClearAndResetStrandedContainerTask(ctx context.Context, settings *evergreen
 	return nil
 }
 
-// ClearAndResetStrandedHostTask clears the host task dispatched to the host due
-// to being stranded on a bad host (e.g. one that has been terminated). It also
-// marks the current task execution as finished and, if possible, a new
-// execution is created to restart the task.
-func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Settings, h *host.Host) error {
+// ClearAndResetStrandedHostTaskOrTaskGroup fixes the host task or a single host
+// task group that's running on the host when the host is in a bad state (e.g.
+// one that has been terminated). If a task is currently assigned to the host,
+// it marks the current task execution as finished and, if possible, a new
+// execution is created to restart the task. If a task group is currently
+// assigned to the host, it attempts to restart the task group.
+func ClearAndResetStrandedHostTaskOrTaskGroup(ctx context.Context, settings *evergreen.Settings, h *host.Host) error {
+	if h.LastGroup != "" && h.RunningTask == "" {
+		// kim: NOTE: after some more investigation, this change is NOT needed.
+		// The last task group lock is only held if the host is marked healthy,
+		// and it wasn't healthy at the time. Correct intervention would be to
+		// quarantine the host, not delete the last	task group lock.
+		// However, clearing the current task from the host is still useful, so
+		// we should still DisableAndNotifyPoisonedHost.
+
+		// kim: TODO: if not currently assigned task, check last task. If that
+		// task is part of a single host task group and that
+		// task was not the last one in the task group, then the task group is
+		// still in progress. In that case, the single host task group is
+		// stranded and has to start over from scratch.
+		prevTask, err := task.FindOneId(h.LastTask)
+		if err != nil {
+			return errors.Wrapf(err, "finding host's previous task group task '%s'", h.LastTask)
+		}
+		if prevTask == nil || prevTask.IsPartOfSingleHostTaskGroup() || prevTask.Status != evergreen.TaskSucceeded {
+			return nil
+		}
+
+		isLastSingleHostTGTask, err := prevTask.IsLastTaskInSingleHostTaskGroup()
+		if err != nil {
+			return errors.Wrapf(err, "checking if previous task '%s' is last task in single host task group", prevTask.Id)
+		}
+		if isLastSingleHostTGTask {
+			return nil
+		}
+
+		// kim: NOTE: it's not necessary to clear last task info because
+		// ByTaskSpec checks host status, but it will help just to be on the
+		// safe side, and doesn't do any arm.
+
+		// The host had a single host task group assigned to it and the task
+		// group is not finished, so the running task group is now stranded on a
+		// bad host. Restart the last task in that ran in the task group in
+		// order to restart the entire task group from scratch.
+		// kim: TODO: refactor into options to pass in
+		// kim: TODO: support special case of reset immediately, do not wait
+		// for task group to finish because it's unable to. In this case, we
+		// have to reset immediately because the host can't finish the task
+		// group.
+		return errors.Wrapf(ResetTaskOrDisplayTask(ctx, settings, prevTask, evergreen.User, evergreen.MonitorPackage, false, &prevTask.Details), "resetting task '%s' from in progress single host task group", prevTask.Id)
+	}
+
 	if h.RunningTask == "" {
 		return nil
 	}
@@ -2678,6 +2725,10 @@ func checkResetSingleHostTaskGroup(ctx context.Context, t *task.Task, caller str
 			caller = evergreen.AutoRestartActivator
 		}
 		if !tgTask.IsFinished() && !tgTask.Blocked() && tgTask.Activated { // task in group still needs to run
+			// kim: NOTE: this prevents a single host task group from restarting
+			// immediately until it's finished, but in the case of a bad static
+			// host, we know the task group can't finish because it's stuck on a
+			// bad host.
 			return nil
 		}
 	}
@@ -2703,6 +2754,9 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, use
 	hasFailedExecTask := false
 	for _, execTask := range execTasks {
 		if !execTask.IsFinished() && !execTask.Blocked() && execTask.Activated {
+			// kim: TODO: similar to task groups, there should be a way to
+			// override this. Not as important as for single host task groups
+			// though.
 			return nil // all tasks not finished
 		}
 		if execTask.Status == evergreen.TaskFailed {
