@@ -21,9 +21,14 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	project, err := projCtx.GetProject()
 
+	identifier := ""
+	if project != nil {
+		identifier = project.Identifier
+	}
+
 	grip.DebugWhen(err != nil || project == nil || projCtx.Version == nil, message.Fields{
 		"message":            "error getting project for version page",
-		"project_identifier": project.Identifier,
+		"project_identifier": identifier,
 		"projCtx":            projCtx,
 	})
 
