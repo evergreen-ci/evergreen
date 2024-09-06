@@ -38,7 +38,12 @@
       "activated": false,
       "author": "mohamed.khelif",
       "status": "created",
-      "order": 3
+      "order": 3,
+      "build_variants_status": {
+        "activated": true,
+        "build_id": "evergreen_version3_build",
+        "build_variant": "lint"
+      }
     },
     {
       "_id": "evergreen_version4",
@@ -122,11 +127,11 @@
       "_id": "task_5",
       "version": "evergreen_version5",
       "status": "success",
-      "display_name": "Some Other Task",
+      "display_name": "Task Number 5",
       "activated": true,
-      "build_variant": "enterprise-ubuntu1604-64",
-      "build_variant_display_name": "Ubuntu 16.04",
-      "build_id": "evergreen_version5_build",
+      "build_variant": "lint",
+      "build_variant_display_name": "Linter",
+      "build_id": "evergreen_version3_build",
       "create_time": {
         "$date": "2020-01-01T00:00:05Z"
       },
@@ -175,9 +180,15 @@
       "version": "evergreen_version2"
     },
     {
-      "_id": "evergreen_version5_build",
-      "build_variant": "enterprise-ubuntu1604-64",
-      "display_name": "Ubuntu 16.04"
+      "_id": "evergreen_version3_build",
+      "build_variant": "lint",
+      "display_name": "Linter",
+      "tasks": [
+        {
+          "id": "task_5"
+        }
+      ],
+      "version": "evergreen_version5"
     }
   ]
 }

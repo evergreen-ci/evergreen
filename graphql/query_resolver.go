@@ -1013,7 +1013,8 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	bv := []*model.WaterfallBuildVariant{}
 	for _, b := range buildVariants {
-		bv = append(bv, &b)
+		bCopy := b
+		bv = append(bv, &bCopy)
 	}
 
 	return &Waterfall{
