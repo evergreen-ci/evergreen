@@ -1220,7 +1220,6 @@ type ComplexityRoot struct {
 	SleepSchedule struct {
 		DailyStartTime         func(childComplexity int) int
 		DailyStopTime          func(childComplexity int) int
-		IsBetaTester           func(childComplexity int) int
 		NextStartTime          func(childComplexity int) int
 		NextStopTime           func(childComplexity int) int
 		PermanentlyExempt      func(childComplexity int) int
@@ -7806,13 +7805,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SleepSchedule.DailyStopTime(childComplexity), true
-
-	case "SleepSchedule.isBetaTester":
-		if e.complexity.SleepSchedule.IsBetaTester == nil {
-			break
-		}
-
-		return e.complexity.SleepSchedule.IsBetaTester(childComplexity), true
 
 	case "SleepSchedule.nextStartTime":
 		if e.complexity.SleepSchedule.NextStartTime == nil {
@@ -23492,8 +23484,6 @@ func (ec *executionContext) fieldContext_Host_sleepSchedule(_ context.Context, f
 				return ec.fieldContext_SleepSchedule_dailyStartTime(ctx, field)
 			case "dailyStopTime":
 				return ec.fieldContext_SleepSchedule_dailyStopTime(ctx, field)
-			case "isBetaTester":
-				return ec.fieldContext_SleepSchedule_isBetaTester(ctx, field)
 			case "nextStartTime":
 				return ec.fieldContext_SleepSchedule_nextStartTime(ctx, field)
 			case "nextStopTime":
@@ -53199,47 +53189,6 @@ func (ec *executionContext) fieldContext_SleepSchedule_dailyStopTime(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _SleepSchedule_isBetaTester(ctx context.Context, field graphql.CollectedField, obj *host.SleepScheduleInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SleepSchedule_isBetaTester(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.IsBetaTester, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SleepSchedule_isBetaTester(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SleepSchedule",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _SleepSchedule_nextStartTime(ctx context.Context, field graphql.CollectedField, obj *host.SleepScheduleInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SleepSchedule_nextStartTime(ctx, field)
 	if err != nil {
@@ -76102,7 +76051,7 @@ func (ec *executionContext) unmarshalInputSleepScheduleInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"dailyStartTime", "dailyStopTime", "isBetaTester", "permanentlyExempt", "shouldKeepOff", "timeZone", "temporarilyExemptUntil", "wholeWeekdaysOff"}
+	fieldsInOrder := [...]string{"dailyStartTime", "dailyStopTime", "permanentlyExempt", "shouldKeepOff", "timeZone", "temporarilyExemptUntil", "wholeWeekdaysOff"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76123,13 +76072,6 @@ func (ec *executionContext) unmarshalInputSleepScheduleInput(ctx context.Context
 				return it, err
 			}
 			it.DailyStopTime = data
-		case "isBetaTester":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isBetaTester"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.IsBetaTester = data
 		case "permanentlyExempt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("permanentlyExempt"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -87964,8 +87906,6 @@ func (ec *executionContext) _SleepSchedule(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "isBetaTester":
-			out.Values[i] = ec._SleepSchedule_isBetaTester(ctx, field, obj)
 		case "nextStartTime":
 			out.Values[i] = ec._SleepSchedule_nextStartTime(ctx, field, obj)
 		case "nextStopTime":
