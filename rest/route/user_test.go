@@ -283,7 +283,7 @@ func TestProjectSettingsUpdateViewRepo(t *testing.T) {
 	}
 	assert.NoError(t, pRef.Insert())
 
-	repoRef := model.RepoRef{model.ProjectRef{
+	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 		Id: "myRepo",
 	}}
 	assert.NoError(t, repoRef.Upsert())
