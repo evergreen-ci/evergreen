@@ -677,9 +677,7 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project, requester stri
 // slice of all of the tasks created, as well as an error if any occurs.
 // The slice of tasks will be in the same order as the project's specified tasks
 // appear in the specified build variant.
-// If tasksToActivate is nil, then all tasks will be activated.
 func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (task.Tasks, error) {
-
 	// The list of tasks we should create.
 	// If tasks are passed in, then use those, otherwise use the default set.
 	tasksToCreate := []BuildVariantTaskUnit{}
@@ -1522,6 +1520,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 
 	newBuildIds := make([]string, 0)
 	newActivatedTaskIds := make([]string, 0)
+	newActivatedTasks := []task.Task{}
 	newBuildStatuses := make([]VersionBuildStatus, 0)
 	numEstimatedActivatedGeneratedTasks := 0
 
@@ -1592,6 +1591,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		for _, t := range tasks {
 			if t.Activated {
 				newActivatedTaskIds = append(newActivatedTaskIds, t.Id)
+				newActivatedTasks = append(newActivatedTasks, *t)
 				numEstimatedActivatedGeneratedTasks += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 			}
 			if evergreen.ShouldConsiderBatchtime(t.Requester) && creationInfo.ActivationInfo.taskHasSpecificActivation(t.BuildVariant, t.DisplayName) {
@@ -1640,7 +1640,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		"version": creationInfo.Version.Id,
 	}))
 
-	return newActivatedTaskIds, errors.WithStack(VersionUpdateOne(
+	err = errors.WithStack(VersionUpdateOne(
 		bson.M{VersionIdKey: creationInfo.Version.Id},
 		bson.M{
 			"$push": bson.M{
@@ -1649,6 +1649,20 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			},
 		},
 	))
+	if err != nil {
+		return nil, errors.Wrap(err, "updating version with new build IDs")
+	}
+
+	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(newActivatedTasks, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting dependencies for activated tasks")
+	}
+
+	if err = task.ActivateTasks(activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
+		return nil, errors.Wrap(err, "activating dependencies for new tasks")
+	}
+
+	return newActivatedTaskIds, nil
 }
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,

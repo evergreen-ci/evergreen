@@ -188,6 +188,52 @@ var (
 			},
 		},
 	}
+	generatedProjectWithNewBuild = GeneratedProject{
+		Tasks: []parserTask{
+			{
+				Name: "task_one",
+				Commands: []PluginCommandConf{
+					{
+						Command: "shell.exec",
+					},
+				},
+				DependsOn: []parserDependency{
+					{TaskSelector: taskSelector{
+						Name: "dependency",
+					}},
+				},
+			},
+			{
+				Name: "dependency",
+
+				Commands: []PluginCommandConf{
+					{
+						Command: "shell.exec",
+					},
+				},
+				DependsOn: []parserDependency{
+					{TaskSelector: taskSelector{
+						Name:    "nested-dependency",
+						Variant: &variantSelector{StringSelector: "*"},
+					}},
+				},
+			},
+		},
+		BuildVariants: []parserBV{
+			{
+				Name: "another_variant",
+				Tasks: parserBVTaskUnits{
+					parserBVTaskUnit{
+						Name: "task_one",
+					},
+					parserBVTaskUnit{
+						Name:     "dependency",
+						Activate: utility.FalsePtr(),
+					},
+				},
+			},
+		},
+	}
 
 	partiallyGeneratedProject = GeneratedProject{
 		Tasks: []parserTask{
@@ -232,6 +278,29 @@ var (
 			},
 		},
 	}
+
+	projYmlTwoBVs = `
+tasks:
+  - name: nested-dependency
+    command:
+      - command: shell.exec
+  - name: say-bye
+    command:
+      - command: shell.exec
+buildvariants:
+  - name: a_variant
+    display_name: Variant Number One
+    run_on:
+    - "arch"
+    tasks:
+    - name: nested-dependency
+  - name: another_variant
+    display_name: Variant Number Two
+    run_on:
+    - "arch"
+    tasks:
+    - name: say-bye
+`
 
 	sampleProjYml = `
 tasks:
@@ -1182,6 +1251,48 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.Equal(4, generatorTask.NumGeneratedTasks)
 }
 
+func (s *GenerateSuite) TestSaveNewTasksWithDependenciesInNewBuilds() {
+	generator := task.Task{
+		Id:          "task_that_called_generate_task",
+		DisplayName: "task_that_called_generate_task",
+		Version:     "version_that_called_generate_task",
+		BuildId:     "sample_build",
+		Activated:   true,
+	}
+	s.NoError(generator.Insert())
+	sampleBuild := build.Build{
+		Id:           "sample_build",
+		BuildVariant: "a_variant",
+		Version:      "version_that_called_generate_task",
+	}
+	v := &Version{
+		Id:            "version_that_called_generate_task",
+		BuildIds:      []string{"sample_build"},
+		BuildVariants: []VersionBuildStatus{},
+	}
+	pp := &ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(projYmlTwoBVs), &pp)
+	s.NoError(err)
+	pp.Id = "version_that_called_generate_task"
+	s.NoError(pp.Insert())
+	s.NoError(sampleBuild.Insert())
+	s.NoError(v.Insert())
+
+	g := generatedProjectWithNewBuild
+	g.Task = &generator
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v, false)
+	s.Require().NoError(err)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
+	s.NoError(err)
+	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+
+	tasks := []task.Task{}
+	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{task.VersionKey: v.Id}), &tasks))
+	s.Require().Len(tasks, 4)
+	for _, t := range tasks {
+		s.Equal(true, t.Activated)
+	}
+}
 func (s *GenerateSuite) TestSaveNewTasksInNewVariantWithCrossVariantDependencyOnExistingUnscheduledTaskInExistingVariant() {
 	// This tests generating a task that depends on a task in a different BV
 	// that has already been defined but is not scheduled. It should scheduled
