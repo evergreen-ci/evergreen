@@ -99,11 +99,7 @@ func ModifyHostStatus(ctx context.Context, env evergreen.Environment, h *host.Ho
 		return "", http.StatusBadRequest, errors.New(DecommissionStaticHostError)
 	}
 
-	// kim: TODO: fix quarantined host state for prev task (single host task
-	// group) and current task.
 	if newStatus == evergreen.HostQuarantined {
-		// kim: TODO: manually test that this fixes prev/running task for
-		// quarantined host.
 		if err := units.DisableAndNotifyPoisonedHost(ctx, env, h, notes); err != nil {
 			return "", http.StatusInternalServerError, errors.Wrap(err, HostUpdateError)
 		}

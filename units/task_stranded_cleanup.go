@@ -74,7 +74,7 @@ func (j *taskStrandedCleanupJob) fixTasksStrandedOnTerminatedHosts(ctx context.C
 		taskIDs = append(taskIDs, h.RunningTask)
 		hostIDs = append(hostIDs, h.Id)
 
-		catcher.Wrapf(model.ClearAndResetStrandedHostTaskOrTaskGroup(ctx, evergreen.GetEnvironment().Settings(), &h), "fixing stranded host task '%s' execution '%d' on host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
+		catcher.Wrapf(model.ClearAndResetStrandedHostTask(ctx, evergreen.GetEnvironment().Settings(), &h), "fixing stranded host task '%s' execution '%d' on host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
 	}
 
 	grip.Info(message.Fields{

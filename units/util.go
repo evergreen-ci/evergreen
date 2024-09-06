@@ -41,17 +41,11 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 	return catcher.Resolve()
 }
 
+// DisableAndNotifyPoisonedHost disables a host so that it cannot run any more
+// tasks, clears any stranded tasks, and enqueues a job to notify that a host
+// was quarantined.
 // kim: NOTE: make sure this is called whenever quarantining host.
-// kim: NOTE: if setting static host to quarantined, need to ensure
-// current task is also cleared/reset using
-// ClearAndResetStrandedHostTask before clearing the state. That ought
-// to restart the task group from scratch.
-// kim: NOTE: on top of fixing stranded current task, need to make sure
-// single host task group restarts from scratch if it's already pinned
-// to this host (and isn't currently running a task in the group).
-// May help to create a quarantine helper function to fix up
-// prev/current task state and restart as needed. If the prev/current
-// task state is fixed there, then this logic is not needed.
+// kim: TODO: verify that calling this unlocks ByTaskSpec for task dispatching.
 func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment, h *host.Host, reason string) error {
 	if utility.StringSliceContains(evergreen.DownHostStatus, h.Status) {
 		return nil
@@ -66,11 +60,7 @@ func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment
 		return errors.Wrap(err, "enqueueing decohost notify job")
 	}
 
-	// kim: TODO: additionally need to clear previous task if possible for
-	// single host task groups. It's possible for only previous task to be set
-	// and current task may not be set, even though task group is still in
-	// progress.
-	return model.ClearAndResetStrandedHostTaskOrTaskGroup(ctx, env.Settings(), h)
+	return model.ClearAndResetStrandedHostTask(ctx, env.Settings(), h)
 }
 
 // EnqueueHostReprovisioningJob enqueues a job to reprovision a host. For hosts

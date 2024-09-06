@@ -4874,7 +4874,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	assert.NoError(v2.Insert())
 
 	settings := testutil.TestConfig()
-	assert.NoError(ClearAndResetStrandedHostTaskOrTaskGroup(ctx, settings, h))
+	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h))
 
 	runningTask, err := task.FindOne(db.Query(task.ById("t")))
 	require.NoError(t, err)
@@ -4889,7 +4889,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	assert.Equal(evergreen.VersionCreated, foundVersion.Status)
 
 	h.RunningTask = "unschedulableTask"
-	assert.NoError(ClearAndResetStrandedHostTaskOrTaskGroup(ctx, settings, h))
+	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h))
 
 	unschedulableTask, err := task.FindOne(db.Query(task.ById("unschedulableTask")))
 	require.NoError(t, err)
@@ -4916,7 +4916,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 
 	h.RunningTask = "t2"
 	assert.NoError(resetTask(ctx, "t2", ""))
-	assert.NoError(ClearAndResetStrandedHostTaskOrTaskGroup(ctx, settings, h))
+	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h))
 	foundTask, err := task.FindOne(db.Query(task.ById("t2")))
 	require.NoError(t, err)
 	// The task should not have been reset twice.
@@ -4970,7 +4970,7 @@ func TestClearAndResetStaleStrandedHostTask(t *testing.T) {
 	assert.NoError(runningTask.Insert())
 
 	settings := testutil.TestConfig()
-	assert.NoError(ClearAndResetStrandedHostTaskOrTaskGroup(ctx, settings, host))
+	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, host))
 	runningTask, err := task.FindOne(db.Query(task.ById("t")))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskFailed, runningTask.Status)
@@ -5032,7 +5032,7 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert())
 	settings := testutil.TestConfig()
-	assert.NoError(t, ClearAndResetStrandedHostTaskOrTaskGroup(ctx, settings, h))
+	assert.NoError(t, ClearAndResetStrandedHostTask(ctx, settings, h))
 	restartedDisplayTask, err := task.FindOne(db.Query(task.ById("dt")))
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskUndispatched, restartedDisplayTask.Status)
@@ -5225,7 +5225,7 @@ func TestClearAndResetExecTask(t *testing.T) {
 	assert.NoError(t, v.Insert())
 
 	settings := testutil.TestConfig()
-	assert.NoError(t, ClearAndResetStrandedHostTaskOrTaskGroup(ctx, settings, h))
+	assert.NoError(t, ClearAndResetStrandedHostTask(ctx, settings, h))
 	restartedDisplayTask, err := task.FindOne(db.Query(task.ById("dt")))
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskUndispatched, restartedDisplayTask.Status)
