@@ -1728,7 +1728,8 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 			bvs = append(bvs, p.findMatchingBuildVariants(bvRegex)...)
 		}
 	}
-	if len(tasks) == 1 && tasks[0] == "all" {
+	isAllTasks := len(tasks) == 1 && tasks[0] == "all"
+	if isAllTasks {
 		tasks = []string{}
 		for _, t := range p.Tasks {
 			tasks = append(tasks, t.Name)
@@ -1751,6 +1752,9 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 			tasks = append(tasks, p.findMatchingProjectTasks(tRegex)...)
 		}
 	}
+	// This is used to remove execution tasks that are part of a display task when
+	// the specified tasks is 'all'.
+	executionTasksToRemove := map[string][]string{}
 	var pairs TaskVariantPairs
 	for _, v := range bvs {
 		for _, t := range tasks {
@@ -1759,8 +1763,21 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 					continue
 				}
 				pairs.ExecTasks = append(pairs.ExecTasks, TVPair{Variant: v, TaskName: t})
-			} else if p.GetDisplayTask(v, t) != nil {
+			} else if dt := p.GetDisplayTask(v, t); dt != nil {
 				pairs.DisplayTasks = append(pairs.DisplayTasks, TVPair{Variant: v, TaskName: t})
+				if isAllTasks {
+					executionTasksToRemove[v] = append(executionTasksToRemove[v], dt.ExecTasks...)
+				}
+			}
+		}
+	}
+	for v, tasksToRemove := range executionTasksToRemove {
+		for _, t := range tasksToRemove {
+			for i, pair := range pairs.ExecTasks {
+				if pair.Variant == v && pair.TaskName == t {
+					pairs.ExecTasks = append(pairs.ExecTasks[:i], pairs.ExecTasks[i+1:]...)
+					break
+				}
 			}
 		}
 	}
