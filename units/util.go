@@ -51,7 +51,7 @@ func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment
 		return nil
 	}
 
-	if canDecommission && h.IsEphemeral() {
+	if canDecommission && h.Provider != evergreen.ProviderNameStatic {
 		if err := h.SetDecommissioned(ctx, evergreen.User, true, reason); err != nil {
 			return errors.Wrap(err, "decommissioning host")
 		}

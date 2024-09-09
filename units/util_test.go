@@ -52,17 +52,20 @@ func TestHandlePoisonedHost(t *testing.T) {
 				Id:            "parent",
 				HasContainers: true,
 				Status:        evergreen.HostRunning,
+				Provider:      evergreen.ProviderNameEc2Fleet,
 			}
 			container1 := &host.Host{
 				Id:       "container1",
 				Status:   evergreen.HostRunning,
 				ParentID: parent.Id,
+				Provider: evergreen.ProviderNameDocker,
 			}
 			container2 := &host.Host{
 				Id:          "container2",
 				Status:      evergreen.HostRunning,
 				ParentID:    parent.Id,
 				RunningTask: t1.Id,
+				Provider:    evergreen.ProviderNameDocker,
 			}
 
 			require.NoError(t, parent.Insert(ctx))
@@ -106,6 +109,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 				Id:          "runningTask",
 				Status:      evergreen.HostRunning,
 				RunningTask: t1.Id,
+				Provider:    evergreen.ProviderNameEc2Fleet,
 			}
 			require.NoError(t, hostRunningTask.Insert(ctx))
 			pp := model.ParserProject{
@@ -141,8 +145,9 @@ func TestHandlePoisonedHost(t *testing.T) {
 		},
 		"NoopsForAlreadyDecommissioned": func(ctx context.Context, t *testing.T) {
 			decommissioned := &host.Host{
-				Id:     "decommissioned",
-				Status: evergreen.HostDecommissioned,
+				Id:       "decommissioned",
+				Status:   evergreen.HostDecommissioned,
+				Provider: evergreen.ProviderNameEc2Fleet,
 			}
 			require.NoError(t, decommissioned.Insert(ctx))
 
@@ -153,8 +158,9 @@ func TestHandlePoisonedHost(t *testing.T) {
 		},
 		"NoopsForAlreadyTerminated": func(ctx context.Context, t *testing.T) {
 			terminated := &host.Host{
-				Id:     "terminated",
-				Status: evergreen.HostTerminated,
+				Id:       "terminated",
+				Status:   evergreen.HostTerminated,
+				Provider: evergreen.ProviderNameEc2Fleet,
 			}
 			require.NoError(t, terminated.Insert(ctx))
 

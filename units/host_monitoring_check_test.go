@@ -121,7 +121,7 @@ func TestHandleUnresponsiveStaticHost(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
 
-			dbTask, err := task.FindOneId(tsk.Id)
+			dbTask, err := task.FindOneIdAndExecution(tsk.Id, tsk.Execution)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)

@@ -152,7 +152,7 @@ func (s *HostsChangeStatusesSuite) TestRunHostQuarantinesStaticHostAndFixesStran
 	s.Equal(evergreen.HostQuarantined, dbHost.Status)
 	s.Zero(dbHost.RunningTask)
 
-	dbTask, err := task.FindOneId(tsk.Id)
+	dbTask, err := task.FindOneIdAndExecution(tsk.Id, tsk.Execution)
 	s.Require().NoError(err)
 	s.Require().NotZero(dbTask)
 	s.Equal(evergreen.TaskFailed, dbTask.Status)
@@ -1037,31 +1037,103 @@ func TestHostFilterGetHandler(t *testing.T) {
 }
 
 func TestDisableHostHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	assert.NoError(t, db.ClearCollections(host.Collection))
-	hostID := "h1"
-	hosts := []host.Host{
-		{
-			Id:     hostID,
-			Status: evergreen.HostRunning,
+	colls := []string{host.Collection, task.Collection, build.Collection, model.VersionCollection}
+	defer func() {
+		assert.NoError(t, db.ClearCollections(colls...))
+	}()
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, h *host.Host, rh *disableHost){
+		"DecommissionsEphemeralHostAndClearsRunningTask": func(ctx context.Context, t *testing.T, h *host.Host, rh *disableHost) {
+			taskID := h.RunningTask
+			taskExec := h.RunningTaskExecution
+			require.NoError(t, h.Insert(ctx))
+			resp := rh.Run(ctx)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			foundHost, err := host.FindOneId(ctx, h.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, foundHost)
+			assert.Equal(t, evergreen.HostDecommissioned, foundHost.Status)
+			assert.Zero(t, foundHost.RunningTask)
+
+			dbTask, err := task.FindOneIdAndExecution(taskID, taskExec)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
 		},
-	}
-	for _, hostToAdd := range hosts {
-		assert.NoError(t, hostToAdd.Insert(ctx))
-	}
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
-	dh := disableHost{
-		hostID: hostID,
-		env:    env,
+		"DecommissionsEphemeralHostWithoutRunningTask": func(ctx context.Context, t *testing.T, h *host.Host, rh *disableHost) {
+			h.RunningTask = ""
+			require.NoError(t, h.Insert(ctx))
+			resp := rh.Run(ctx)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			foundHost, err := host.FindOneId(ctx, h.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, foundHost)
+			assert.Equal(t, evergreen.HostDecommissioned, foundHost.Status)
+		},
+		"QuarantinesStaticHostAndClearsRunningTask": func(ctx context.Context, t *testing.T, h *host.Host, rh *disableHost) {
+			taskID := h.RunningTask
+			taskExec := h.RunningTaskExecution
+			h.Provider = evergreen.ProviderNameStatic
+			require.NoError(t, h.Insert(ctx))
+			resp := rh.Run(ctx)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			foundHost, err := host.FindOneId(ctx, h.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, foundHost)
+			assert.Equal(t, evergreen.HostQuarantined, foundHost.Status)
+
+			dbTask, err := task.FindOneIdAndExecution(taskID, taskExec)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			assert.NoError(t, db.ClearCollections(colls...))
+
+			const hostID = "host_id"
+			v := model.Version{
+				Id:     "version_id",
+				Status: evergreen.VersionStarted,
+			}
+			require.NoError(t, v.Insert())
+			b := build.Build{
+				Id:      "build_id",
+				Version: v.Id,
+				Status:  evergreen.BuildStarted,
+			}
+			require.NoError(t, b.Insert())
+			tsk := task.Task{
+				Id:        "task_id",
+				Execution: 1,
+				BuildId:   b.Id,
+				Version:   v.Id,
+				Status:    evergreen.TaskStarted,
+				HostId:    hostID,
+			}
+			require.NoError(t, tsk.Insert())
+
+			h := host.Host{
+				Id:                   hostID,
+				Status:               evergreen.HostRunning,
+				Provider:             evergreen.ProviderNameEc2Fleet,
+				RunningTask:          tsk.Id,
+				RunningTaskExecution: tsk.Execution,
+			}
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+			rh := disableHost{
+				hostID: hostID,
+				env:    env,
+			}
+
+			tCase(ctx, t, &h, &rh)
+		})
 	}
 
-	responder := dh.Run(context.Background())
-	assert.Equal(t, http.StatusOK, responder.Status())
-	foundHost, err := host.FindOneId(ctx, hostID)
-	assert.NoError(t, err)
-	assert.Equal(t, evergreen.HostDecommissioned, foundHost.Status)
 }
 
 func TestHostIsUpPostHandler(t *testing.T) {
