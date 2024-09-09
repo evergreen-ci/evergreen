@@ -216,7 +216,7 @@ func TestGetImageDiff(t *testing.T) {
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
 	// Verify that getImageDiff correctly returns Toolchain/Package changes for a pair of sample AMIs.
-	opts := ImageDiffOptions{
+	opts := diffFilterOptions{
 		AMIBefore: "ami-029ab576546a58916",
 		AMIAfter:  "ami-02b25f680ad574d33",
 	}
@@ -228,7 +228,7 @@ func TestGetImageDiff(t *testing.T) {
 	}
 
 	// Verify that getImageDiff finds no differences between the same AMI.
-	opts = ImageDiffOptions{
+	opts = diffFilterOptions{
 		AMIBefore: "ami-016662ab459a49e9d",
 		AMIAfter:  "ami-016662ab459a49e9d",
 	}
@@ -247,16 +247,16 @@ func TestGetHistory(t *testing.T) {
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
 	// Verify that getHistory errors when not provided the required imageid field.
-	_, err := c.getHistory(ctx, ImageHistoryFilterOptions{})
+	_, err := c.getHistory(ctx, historyFilterOptions{})
 	assert.Error(err)
 
 	// Verify that getHistory provides images for a distribution.
-	result, err := c.getHistory(ctx, ImageHistoryFilterOptions{ImageID: "ubuntu2204"})
+	result, err := c.getHistory(ctx, historyFilterOptions{ImageID: "ubuntu2204"})
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
 
 	// Verify that getHistory functions correctly with page and limit.
-	opts := ImageHistoryFilterOptions{
+	opts := historyFilterOptions{
 		ImageID: "ubuntu2204",
 		Page:    0,
 		Limit:   15,
@@ -265,22 +265,6 @@ func TestGetHistory(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(result)
 	assert.Len(result, 15)
-}
-
-func TestGetImageInfo(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	assert := assert.New(t)
-	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, t.Name())
-	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
-
-	result, err := c.GetImageInfo(ctx, "ubuntu2204")
-	require.NoError(t, err)
-	require.NotEmpty(t, result)
-	assert.NotEmpty(result.LastDeployed)
-	assert.NotEmpty(result.AMI)
 }
 
 func TestGetEvents(t *testing.T) {
@@ -359,4 +343,20 @@ func TestBuildImageEventEntry(t *testing.T) {
 	require.NotNil(t, result)
 	assert.Equal(t, ImageEventEntryActionUpdated, result.Action)
 	assert.Equal(t, ImageEventTypeToolchain, result.Type)
+}
+
+func TestGetImageInfo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert := assert.New(t)
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config, t.Name())
+	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
+
+	result, err := c.GetImageInfo(ctx, "ubuntu2204")
+	require.NoError(t, err)
+	require.NotEmpty(t, result)
+	assert.NotEmpty(result.LastDeployed)
+	assert.NotEmpty(result.AMI)
 }
