@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"time"
 
@@ -36,6 +35,8 @@ const (
 	APITypeToolchains = "Toolchains"
 )
 
+// RuntimeEnvironmentsClient is a client that can communicate with the Runtime Environments API.
+// Interacting with the API requires an API key.
 type RuntimeEnvironmentsClient struct {
 	Client  *http.Client
 	BaseURL string
@@ -54,7 +55,7 @@ func NewRuntimeEnvironmentsClient(baseURL string, apiKey string) *RuntimeEnviron
 
 // GetImageNames returns a list of strings containing the names of all images from the Runtime Environments API.
 func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string, error) {
-	apiURL := fmt.Sprintf("%s/rest/api/v1/imageList", c.BaseURL)
+	apiURL := fmt.Sprintf("%s/rest/api/v1/ami/list", c.BaseURL)
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return nil, err
@@ -77,14 +78,7 @@ func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string
 	if len(images) == 0 {
 		return nil, errors.New("No corresponding images")
 	}
-	filteredImages := []string{}
-	for _, img := range images {
-		if img != "" {
-			filteredImages = append(filteredImages, img)
-		}
-	}
-	sort.Strings(filteredImages)
-	return filteredImages, nil
+	return images, nil
 }
 
 // OSInfoResponse represents a response from the /rest/api/v1/ami/os route.
@@ -275,14 +269,14 @@ type ImageDiffChange struct {
 	Type          string `json:"type"`
 }
 
-// ImageDiffOptions represents the arguments for getImageDiff. AMIBefore is the starting AMI, and AMIAfter is the ending AMI.
-type ImageDiffOptions struct {
+// diffFilterOptions represents the arguments for getImageDiff. AMIBefore is the starting AMI, and AMIAfter is the ending AMI.
+type diffFilterOptions struct {
 	AMIBefore string `json:"-"`
 	AMIAfter  string `json:"-"`
 }
 
 // getImageDiff returns a list of package and toolchain changes that occurred between the provided AMIs.
-func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts ImageDiffOptions) ([]ImageDiffChange, error) {
+func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts diffFilterOptions) ([]ImageDiffChange, error) {
 	params := url.Values{}
 	params.Set("before_id", opts.AMIBefore)
 	params.Set("after_id", opts.AMIAfter)
@@ -328,8 +322,8 @@ type ImageHistoryInfo struct {
 	CreationDate int    `json:"created_date"`
 }
 
-// ImageHistoryFilter represents the filtering arguments for getHistory. The ImageID field is required and the other fields are optional.
-type ImageHistoryFilterOptions struct {
+// historyFilterOptions represents the filtering arguments for getHistory. The ImageID field is required and the other fields are optional.
+type historyFilterOptions struct {
 	ImageID string `json:"-"`
 	Page    int    `json:"-"`
 	Limit   int    `json:"-"`
@@ -337,7 +331,7 @@ type ImageHistoryFilterOptions struct {
 
 // getHistory returns a list of images with their AMI and creation date corresponding to the provided distro in the order of most recently
 // created.
-func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts ImageHistoryFilterOptions) ([]ImageHistoryInfo, error) {
+func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts historyFilterOptions) ([]ImageHistoryInfo, error) {
 	if opts.ImageID == "" {
 		return nil, errors.New("no image provided")
 	}
@@ -394,6 +388,83 @@ type EventHistoryOptions struct {
 	Limit int    `json:"-"`
 }
 
+// GetEvents returns information about the changes between AMIs that occurred on the image.
+func (c *RuntimeEnvironmentsClient) GetEvents(ctx context.Context, opts EventHistoryOptions) ([]ImageEvent, error) {
+	if opts.Limit == 0 {
+		return nil, errors.New("no limit provided")
+	}
+	optsHistory := historyFilterOptions{
+		ImageID: opts.Image,
+		Page:    opts.Page,
+		// Diffing two AMIs only produces one ImageEvent. We need to add 1 so that the number of returned events is equal to the limit.
+		Limit: opts.Limit + 1,
+	}
+	imageHistory, err := c.getHistory(ctx, optsHistory)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting image history")
+	}
+	result := []ImageEvent{}
+	// Loop through the imageHistory which are in order from most recent to last to populate the
+	// changes between the images. We set the current index i as the AfterAMI and base the timestamp
+	// from the current index i.
+	for i := 0; i < len(imageHistory)-1; i++ {
+		amiBefore := imageHistory[i+1].AMI
+		amiAfter := imageHistory[i].AMI
+		optsImageDiffs := diffFilterOptions{
+			AMIBefore: amiBefore,
+			AMIAfter:  amiAfter,
+		}
+		imageDiffs, err := c.getImageDiff(ctx, optsImageDiffs)
+		if err != nil {
+			return nil, errors.Wrap(err, fmt.Sprintf("getting image diffs between AMIs '%s' and '%s'", amiBefore, amiAfter))
+		}
+		entries := []ImageEventEntry{}
+		for _, diff := range imageDiffs {
+			entry, err := buildImageEventEntry(diff)
+			if err != nil {
+				return nil, errors.Wrap(err, "building image event entry")
+			}
+			entries = append(entries, *entry)
+		}
+		imageEvent := ImageEvent{
+			Entries:   entries,
+			Timestamp: intToTime(imageHistory[i].CreationDate),
+			AMIBefore: amiBefore,
+			AMIAfter:  amiAfter,
+		}
+		result = append(result, imageEvent)
+	}
+	return result, nil
+}
+
+// DistroImage stores information about an image including its AMI, ID, and last deployed time. An example of an
+// image ID would be "ubuntu2204", which would correspond to the distros "ubuntu2204-small" and "ubuntu2204-large".
+type DistroImage struct {
+	ID           string
+	AMI          string
+	LastDeployed time.Time
+}
+
+// GetImageInfo returns basic information about an image.
+func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID string) (*DistroImage, error) {
+	historyOpts := historyFilterOptions{
+		ImageID: imageID,
+		Limit:   1,
+	}
+	amiHistory, err := c.getHistory(ctx, historyOpts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting latest AMI and timestamp")
+	}
+	if len(amiHistory) != 1 {
+		return nil, errors.Errorf("expected exactly 1 history result for image '%s'", imageID)
+	}
+	return &DistroImage{
+		ID:           imageID,
+		AMI:          amiHistory[0].AMI,
+		LastDeployed: intToTime(amiHistory[0].CreationDate),
+	}, nil
+}
+
 // buildImageEventEntry make an ImageEventEntry given an ImageDiffChange.
 func buildImageEventEntry(diff ImageDiffChange) (*ImageEventEntry, error) {
 	var eventAction ImageEventEntryAction
@@ -429,81 +500,7 @@ func buildImageEventEntry(diff ImageDiffChange) (*ImageEventEntry, error) {
 	return &entry, nil
 }
 
-// GetEvents returns information about the changes between AMIs that occurred on the image.
-func (c *RuntimeEnvironmentsClient) GetEvents(ctx context.Context, opts EventHistoryOptions) ([]ImageEvent, error) {
-	if opts.Limit == 0 {
-		return nil, errors.New("no limit provided")
-	}
-	optsHistory := ImageHistoryFilterOptions{
-		ImageID: opts.Image,
-		Page:    opts.Page,
-		// Diffing two AMIs only produces one ImageEvent. We need to add 1 so that the number of returned events is equal to the limit.
-		Limit: opts.Limit + 1,
-	}
-	imageHistory, err := c.getHistory(ctx, optsHistory)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting image history")
-	}
-	result := []ImageEvent{}
-	// Loop through the imageHistory which are in order from most recent to last to populate the
-	// changes between the images. We set the current index i as the AfterAMI and base the timestamp
-	// from the current index i.
-	for i := 0; i < len(imageHistory)-1; i++ {
-		amiBefore := imageHistory[i+1].AMI
-		amiAfter := imageHistory[i].AMI
-		optsImageDiffs := ImageDiffOptions{
-			AMIBefore: amiBefore,
-			AMIAfter:  amiAfter,
-		}
-		imageDiffs, err := c.getImageDiff(ctx, optsImageDiffs)
-		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("getting image diffs between AMIs '%s' and '%s'", amiBefore, amiAfter))
-		}
-		entries := []ImageEventEntry{}
-		for _, diff := range imageDiffs {
-			entry, err := buildImageEventEntry(diff)
-			if err != nil {
-				return nil, errors.Wrap(err, "building image event entry")
-			}
-			entries = append(entries, *entry)
-		}
-		timestamp := time.Unix(int64(imageHistory[i].CreationDate), 0)
-		imageEvent := ImageEvent{
-			Entries:   entries,
-			Timestamp: timestamp,
-			AMIBefore: amiBefore,
-			AMIAfter:  amiAfter,
-		}
-		result = append(result, imageEvent)
-	}
-	return result, nil
-}
-
-// Image stores information about an image including its AMI, ID, and last deployed time.
-type Image struct {
-	ID           string
-	AMI          string
-	LastDeployed time.Time
-}
-
-// GetImageInfo returns basic information about an image.
-func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID string) (*Image, error) {
-	historyOpts := ImageHistoryFilterOptions{
-		ImageID: imageID,
-		Limit:   1,
-	}
-	amiHistory, err := c.getHistory(ctx, historyOpts)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting latest AMI and timestamp")
-	}
-	if len(amiHistory) != 1 {
-		return nil, errors.Errorf("expected exactly 1 history result for image '%s'", imageID)
-	}
-	latestImageHistory := amiHistory[0]
-	timestamp := time.Unix(int64(latestImageHistory.CreationDate), 0)
-	return &Image{
-		ID:           imageID,
-		AMI:          latestImageHistory.AMI,
-		LastDeployed: timestamp,
-	}, nil
+// intToTime converts a int representing a timestamp to time.Time.
+func intToTime(timeInitial int) time.Time {
+	return time.Unix(int64(timeInitial), 0)
 }
