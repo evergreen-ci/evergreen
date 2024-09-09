@@ -454,10 +454,6 @@ func allHostsSpawnedByFinishedBuilds(ctx context.Context) ([]Host, error) {
 
 // ByTaskSpec returns a query that finds all running hosts that are running a
 // task with the given group, buildvariant, project, and version.
-// kim: NOTE: when task execution 2 was stuck unable to dispatch, broken mac
-// host _did_ match this because last task was the same as the current task
-// attempting to be dispatched. This means that it held the lock across task
-// group executions.
 func ByTaskSpec(group, buildVariant, project, version string) bson.M {
 	return bson.M{
 		StatusKey: bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostRunning}},

@@ -41,13 +41,11 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 	return catcher.Resolve()
 }
 
-// DisableAndNotifyPoisonedHost disables a host so that it cannot run any more
-// tasks, clears any stranded tasks, and enqueues a job to notify that a host
-// was disabled. If canDecommission is true and the host is an ephemeral host,
-// it will decommission the host instead of quarantine it.
-// kim: NOTE: make sure this is called whenever quarantining host.
-// kim: TODO: manually verify in staging that calling this unlocks ByTaskSpec
-// for task dispatching.
+// DisableAndNotifyPoisonedHost disables an unhealthy host so that it cannot run
+// any more tasks, clears any tasks that have been straned on it, and enqueues a
+// job to notify that a host was disabled. If canDecommission is true and the
+// host is an ephemeral host, it will decommission the host instead of
+// quarantine it.
 func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment, h *host.Host, canDecommission bool, reason string) error {
 	if utility.StringSliceContains(evergreen.DownHostStatus, h.Status) {
 		return nil
