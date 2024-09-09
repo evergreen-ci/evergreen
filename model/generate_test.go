@@ -1282,7 +1282,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependenciesInNewBuilds() {
 	g.Task = &generator
 	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v, false)
 	s.Require().NoError(err)
-	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
+	p, pp, v, err = g.NewVersion(s.ctx, p, pp, v)
 	s.NoError(err)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
