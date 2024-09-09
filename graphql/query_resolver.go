@@ -1025,13 +1025,6 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall build variants: %s", err.Error()))
 	}
 
-	apiVersions := []*restModel.APIVersion{}
-	for _, v := range activeVersions {
-		apiVersion := restModel.APIVersion{}
-		apiVersion.BuildFromService(v)
-		apiVersions = append(apiVersions, &apiVersion)
-	}
-
 	bv := []*model.WaterfallBuildVariant{}
 	for _, b := range buildVariants {
 		bv = append(bv, &b)
