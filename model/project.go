@@ -1760,7 +1760,7 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 					continue
 				}
 				pairs.ExecTasks = append(pairs.ExecTasks, TVPair{Variant: v, TaskName: t})
-			} else if dt := p.GetDisplayTask(v, t); dt != nil {
+			} else if p.GetDisplayTask(v, t) != nil {
 				pairs.DisplayTasks = append(pairs.DisplayTasks, TVPair{Variant: v, TaskName: t})
 			}
 		}
