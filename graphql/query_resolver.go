@@ -1018,9 +1018,14 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	// Something like this: https://github.com/evergreen-ci/evergreen/blob/bf8f12ec2eefe61f0cf9bcc594924c7be8f91d1b/graphql/query_resolver.go#L869-L938
 	// All other filters can be applied in the GetActiveWaterfallVersions pipeline, ensuring `limit` matching versions have been returned.
 
-	waterfallVersions := groupInactiveVersions(ctx, allVersions)
+	activeVersionIds := []string{}
+	for _, v := range activeVersions {
+		activeVersionIds = append(activeVersionIds, v.Id)
+	}
 
-	buildVariants, err := model.GetWaterfallBuildVariants(ctx, activeVersions)
+	waterfallVersions := groupInactiveVersions(ctx, activeVersionIds, allVersions)
+
+	buildVariants, err := model.GetWaterfallBuildVariants(ctx, activeVersionIds)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall build variants: %s", err.Error()))
 	}

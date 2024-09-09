@@ -133,14 +133,9 @@ func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int
 }
 
 // GetWaterfallBuildVariants returns all build variants associated with the specified versions. Each build variant contains an array of builds sorted by revision and their tasks.
-func GetWaterfallBuildVariants(ctx context.Context, versions []Version) ([]WaterfallBuildVariant, error) {
-	if len(versions) == 0 {
-		return nil, errors.Errorf("no versions specified")
-	}
-
-	versionIds := []string{}
-	for _, version := range versions {
-		versionIds = append(versionIds, version.Id)
+func GetWaterfallBuildVariants(ctx context.Context, versionIds []string) ([]WaterfallBuildVariant, error) {
+	if len(versionIds) == 0 {
+		return nil, errors.Errorf("no version IDs specified")
 	}
 
 	pipeline := []bson.M{{"$match": bson.M{VersionIdKey: bson.M{"$in": versionIds}}}}
