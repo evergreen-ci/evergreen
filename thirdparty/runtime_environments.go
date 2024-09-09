@@ -405,7 +405,7 @@ func (c *RuntimeEnvironmentsClient) GetEvents(ctx context.Context, opts EventHis
 	}
 	result := []ImageEvent{}
 	// Loop through the imageHistory which are in order from most recent to last to populate the
-	// changes between the images. We set the current index i as the AfterAMI and base the timestamp
+	// changes between the images. We set the current index i as the AMIAfter and base the timestamp
 	// from the current index i.
 	for i := 0; i < len(imageHistory)-1; i++ {
 		amiBefore := imageHistory[i+1].AMI

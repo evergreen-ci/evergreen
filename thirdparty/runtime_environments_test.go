@@ -247,16 +247,18 @@ func TestGetHistory(t *testing.T) {
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
 	// Verify that getHistory errors when not provided the required imageid field.
-	_, err := c.getHistory(ctx, historyFilterOptions{})
+	opts := historyFilterOptions{}
+	_, err := c.getHistory(ctx, opts)
 	assert.Error(err)
 
 	// Verify that getHistory provides images for a distribution.
-	result, err := c.getHistory(ctx, historyFilterOptions{ImageID: "ubuntu2204"})
+	opts = historyFilterOptions{ImageID: "ubuntu2204"}
+	result, err := c.getHistory(ctx, opts)
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
 
 	// Verify that getHistory functions correctly with page and limit.
-	opts := historyFilterOptions{
+	opts = historyFilterOptions{
 		ImageID: "ubuntu2204",
 		Page:    0,
 		Limit:   15,
@@ -278,15 +280,17 @@ func TestGetEvents(t *testing.T) {
 	c := NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 
 	// Verify that GetEvents errors when not provided the required distro field.
-	_, err := c.GetEvents(ctx, EventHistoryOptions{})
+	opts := EventHistoryOptions{}
+	_, err := c.GetEvents(ctx, opts)
 	assert.Error(err)
 
 	// Verify that GetEvents errors with missing limit.
-	_, err = c.GetEvents(ctx, EventHistoryOptions{Image: "ubuntu2204"})
+	opts = EventHistoryOptions{Image: "ubuntu2204"}
+	_, err = c.GetEvents(ctx, opts)
 	assert.Error(err)
 
 	// Verify that GetEvents functions correctly with page and limit and returns in chronological order.
-	opts := EventHistoryOptions{
+	opts = EventHistoryOptions{
 		Image: "ubuntu2204",
 		Page:  0,
 		Limit: 5,
