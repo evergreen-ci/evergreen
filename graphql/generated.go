@@ -49247,11 +49247,14 @@ func (ec *executionContext) _Query_waterfall(ctx context.Context, field graphql.
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*Waterfall)
 	fc.Result = res
-	return ec.marshalOWaterfall2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfall(ctx, field.Selections, res)
+	return ec.marshalNWaterfall2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfall(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_waterfall(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -87278,13 +87281,16 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		case "waterfall":
 			field := field
 
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._Query_waterfall(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -98379,6 +98385,20 @@ func (ec *executionContext) unmarshalNVolumeHost2githubᚗcomᚋevergreenᚑci�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNWaterfall2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfall(ctx context.Context, sel ast.SelectionSet, v Waterfall) graphql.Marshaler {
+	return ec._Waterfall(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWaterfall2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfall(ctx context.Context, sel ast.SelectionSet, v *Waterfall) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Waterfall(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNWaterfallBuild2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐWaterfallBuild(ctx context.Context, sel ast.SelectionSet, v model1.WaterfallBuild) graphql.Marshaler {
 	return ec._WaterfallBuild(ctx, sel, &v)
 }
@@ -101433,13 +101453,6 @@ func (ec *executionContext) marshalOVolume2ᚖgithubᚗcomᚋevergreenᚑciᚋev
 		return graphql.Null
 	}
 	return ec._Volume(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOWaterfall2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfall(ctx context.Context, sel ast.SelectionSet, v *Waterfall) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Waterfall(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOWebhookInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebHook(ctx context.Context, v interface{}) (model.APIWebHook, error) {

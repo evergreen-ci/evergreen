@@ -61,11 +61,9 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 		VersionRequesterKey: bson.M{
 			"$in": opts.Requesters,
 		},
-		// TODO: Consider adding an index on requester, identifier, order, activated
 		VersionActivatedKey: true,
 	}
 
-	// Identify whether the operation is paginating. This affects how sort and limit is applied.
 	pagingForward := opts.MaxOrder != 0
 	pagingBackward := opts.MinOrder != 0
 
@@ -90,7 +88,6 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 
 	res := []Version{}
 	env := evergreen.GetEnvironment()
-	// TODO: We might consider adding SetMaxTime to this Aggregate operation
 	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating active versions")

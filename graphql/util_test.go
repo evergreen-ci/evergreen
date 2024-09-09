@@ -513,3 +513,61 @@ func TestHasAnnotationPermission(t *testing.T) {
 		})
 	}
 }
+
+func TestGroupInactiveVersions(t *testing.T) {
+	ctx := context.Background()
+	assert.NoError(t, db.ClearCollections(model.VersionCollection))
+
+	v0 := model.Version{
+		Id:        "0",
+		Activated: utility.ToBoolPtr(false),
+	}
+	v1 := model.Version{
+		Id:        "1",
+		Activated: utility.ToBoolPtr(false),
+	}
+	assert.NoError(t, v1.Insert())
+	v2 := model.Version{
+		Id:        "2",
+		Activated: utility.ToBoolPtr(true),
+	}
+	assert.NoError(t, v2.Insert())
+	v3 := model.Version{
+		Id:        "3",
+		Activated: utility.ToBoolPtr(true),
+	}
+	assert.NoError(t, v3.Insert())
+	v4 := model.Version{
+		Id:        "4",
+		Activated: utility.ToBoolPtr(false),
+	}
+	assert.NoError(t, v4.Insert())
+	v5 := model.Version{
+		Id:        "5",
+		Activated: utility.ToBoolPtr(true),
+	}
+	assert.NoError(t, v5.Insert())
+
+	versions := []model.Version{v0, v1, v2, v3, v4, v5}
+
+	waterfallVersions := groupInactiveVersions(ctx, versions)
+	assert.Len(t, waterfallVersions, 5)
+
+	assert.Nil(t, waterfallVersions[0].Version)
+	assert.Len(t, waterfallVersions[0].InactiveVersions, 2)
+	assert.Equal(t, utility.FromStringPtr(waterfallVersions[0].InactiveVersions[0].Id), v0.Id)
+	assert.Equal(t, utility.FromStringPtr(waterfallVersions[0].InactiveVersions[1].Id), v1.Id)
+
+	assert.Equal(t, utility.FromStringPtr(waterfallVersions[1].Version.Id), v2.Id)
+	assert.Nil(t, waterfallVersions[1].InactiveVersions)
+
+	assert.Equal(t, utility.FromStringPtr(waterfallVersions[2].Version.Id), v3.Id)
+	assert.Nil(t, waterfallVersions[2].InactiveVersions)
+
+	assert.Nil(t, waterfallVersions[3].Version)
+	assert.Len(t, waterfallVersions[3].InactiveVersions, 1)
+	assert.Equal(t, utility.FromStringPtr(waterfallVersions[3].InactiveVersions[0].Id), v4.Id)
+
+	assert.Equal(t, utility.FromStringPtr(waterfallVersions[4].Version.Id), v5.Id)
+	assert.Nil(t, waterfallVersions[4].InactiveVersions)
+}
