@@ -269,6 +269,9 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 		}
 
 		item := d.getItemByNodeID(node.ID()) // item is a *TaskQueueItem sourced from d.nodeItemMap, which is a map[node.ID()]*TaskQueueItem.
+		if item == nil {
+			continue
+		}
 
 		// TODO Consider checking if the state of any task has changed, which could unblock later tasks in the queue.
 		// Currently, we just wait for the dispatcher's in-memory queue to refresh.
