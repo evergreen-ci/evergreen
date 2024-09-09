@@ -958,10 +958,6 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 		"9001_task",
 		"very_task",
 		"another_disabled_task"}, patchDoc.Tasks)
-	s.Len(patchDoc.VariantsTasks, 0)
-	dts := patchDoc.VariantsTasks[0].DisplayTasks
-	s.Len(dts, 1)
-	s.Equal(dts[0].Name, "memes")
 	for _, vt := range patchDoc.VariantsTasks {
 		switch vt.Variant {
 		case "bv_1":
@@ -974,6 +970,7 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 				"very_task",
 			}, vt.Tasks)
 			s.Len(vt.DisplayTasks, 1)
+			s.Equal("memes", vt.DisplayTasks[0].Name)
 		case "bv_2":
 			s.ElementsMatch([]string{
 				"a_task_1",
