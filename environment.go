@@ -29,7 +29,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
-	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -952,12 +951,10 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer t
 	spanLimits.AttributeValueLengthLimit = OtelAttributeMaxLength
 
 	// Set up propagators. This allows traces from the UI to connect to traces from Evergreen.
-	propagatorB3 := b3.New(b3.WithInjectEncoding(b3.B3MultipleHeader | b3.B3SingleHeader))
 	otel.SetTextMapPropagator(
 		propagation.NewCompositeTextMapPropagator(
-			propagatorB3,
 			propagation.TraceContext{},
-			propagation.Baggage{}),
+		),
 	)
 
 	tp := sdktrace.NewTracerProvider(
