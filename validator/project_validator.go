@@ -989,9 +989,11 @@ func validateTimeoutLimits(_ context.Context, settings *evergreen.Settings, proj
 		for _, task := range project.Tasks {
 			if task.ExecTimeoutSecs > settings.TaskLimits.MaxExecTimeoutSecs {
 				errs = append(errs, ValidationError{
-					Message: fmt.Sprintf("task '%s' exec timeout (%d) exceeds maximum limit (%d)", task.Name, task.ExecTimeoutSecs, settings.TaskLimits.MaxExecTimeoutSecs),
-					Level:   Error,
+					Message: fmt.Sprintf("task '%s' exec timeout (%d) is too high and will be set to maximum limit (%d)", task.Name, task.ExecTimeoutSecs, settings.TaskLimits.MaxExecTimeoutSecs),
+					Level:   Warning,
 				})
+
+				task.ExecTimeoutSecs = settings.TaskLimits.MaxExecTimeoutSecs
 			}
 		}
 	}
