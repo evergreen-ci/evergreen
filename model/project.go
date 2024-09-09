@@ -1728,8 +1728,7 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 			bvs = append(bvs, p.findMatchingBuildVariants(bvRegex)...)
 		}
 	}
-	isAllTasks := len(tasks) == 1 && tasks[0] == "all"
-	if isAllTasks {
+	if len(tasks) == 1 && tasks[0] == "all" {
 		tasks = []string{}
 		for _, t := range p.Tasks {
 			tasks = append(tasks, t.Name)
@@ -1762,14 +1761,6 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 				pairs.ExecTasks = append(pairs.ExecTasks, TVPair{Variant: v, TaskName: t})
 			} else if p.GetDisplayTask(v, t) != nil {
 				pairs.DisplayTasks = append(pairs.DisplayTasks, TVPair{Variant: v, TaskName: t})
-			}
-		}
-		// If the selected tasks were 'all', we have to manually add the display tasks
-		// so the execution tasks get grouped together.
-		if isAllTasks {
-			dt := p.FindDisplayTasksForVariant(v)
-			for _, displayTask := range dt {
-				pairs.DisplayTasks = append(pairs.DisplayTasks, TVPair{Variant: v, TaskName: displayTask})
 			}
 		}
 	}
@@ -1915,10 +1906,20 @@ func (p *Project) extractDisplayTasks(pairs TaskVariantPairs) TaskVariantPairs {
 			displayTV := TVPair{Variant: bv.Name, TaskName: dt.Name}
 			execTVPairs := make([]TVPair, 0, len(dt.ExecTasks))
 			for _, et := range dt.ExecTasks {
-				exexTV := TVPair{Variant: bv.Name, TaskName: et}
-				execTaskToDisplayTask[exexTV] = displayTV
-				execTVPairs = append(execTVPairs, exexTV)
+				if len(et) > 0 && et[0] == '.' {
+					// If this execution task starts with a period, it is actually task tag.
+					for _, t := range p.findProjectTasksWithTag([]string{et}) {
+						execTaskToDisplayTask[TVPair{Variant: bv.Name, TaskName: t}] = displayTV
+						execTVPairs = append(execTVPairs, TVPair{Variant: bv.Name, TaskName: t})
+					}
+				} else {
+					// Otherwise, it is really an execution task.
+					exexTV := TVPair{Variant: bv.Name, TaskName: et}
+					execTaskToDisplayTask[exexTV] = displayTV
+					execTVPairs = append(execTVPairs, exexTV)
+				}
 			}
+
 			displayTasksToExecTasks[displayTV] = execTVPairs
 		}
 	}
