@@ -2202,26 +2202,6 @@ func DecommissionHostsWithDistroId(ctx context.Context, distroId string) error {
 	return err
 }
 
-func (h *Host) DisablePoisonedHost(ctx context.Context, logs string) error {
-	if h.Provider == evergreen.ProviderNameStatic {
-		if err := h.SetQuarantined(ctx, evergreen.User, logs); err != nil {
-			return errors.WithStack(err)
-		}
-
-		grip.Error(message.Fields{
-			"host_id":  h.Id,
-			"provider": h.Provider,
-			"distro":   h.Distro.Id,
-			"message":  "host may be poisoned",
-			"action":   "investigate recent provisioning and system failures",
-		})
-
-		return nil
-	}
-
-	return errors.WithStack(h.SetDecommissioned(ctx, evergreen.User, true, logs))
-}
-
 func (h *Host) SetExtId(ctx context.Context) error {
 	return UpdateOne(
 		ctx,

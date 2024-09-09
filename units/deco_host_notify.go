@@ -44,6 +44,8 @@ func makeDecoHostsNotifyJob() *decoHostNotifyJob {
 	return j
 }
 
+// NewDecoHostNotifyJob notifies the relevant team that a static host has been
+// quarantined and needs investigation.
 func NewDecoHostNotifyJob(env evergreen.Environment, h *host.Host, err error, message string) amboy.Job {
 	j := makeDecoHostsNotifyJob()
 	j.env = env

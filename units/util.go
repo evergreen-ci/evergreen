@@ -30,12 +30,12 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 			}
 
 			for i := range containers {
-				catcher.Wrapf(DisableAndNotifyPoisonedHost(ctx, env, &containers[i], reason), "disabling poisoned container '%s' under parent '%s'", containers[i].Id, h.ParentID)
+				catcher.Wrapf(DisableAndNotifyPoisonedHost(ctx, env, &containers[i], true, reason), "disabling poisoned container '%s' under parent '%s'", containers[i].Id, h.ParentID)
 			}
-			catcher.Wrapf(DisableAndNotifyPoisonedHost(ctx, env, parent, reason), "disabling poisoned parent '%s' of container '%s'", h.ParentID, h.Id)
+			catcher.Wrapf(DisableAndNotifyPoisonedHost(ctx, env, parent, true, reason), "disabling poisoned parent '%s' of container '%s'", h.ParentID, h.Id)
 		}
 	} else {
-		catcher.Wrapf(DisableAndNotifyPoisonedHost(ctx, env, h, reason), "disabling poisoned host '%s'", h.Id)
+		catcher.Wrapf(DisableAndNotifyPoisonedHost(ctx, env, h, true, reason), "disabling poisoned host '%s'", h.Id)
 	}
 
 	return catcher.Resolve()
@@ -43,25 +43,31 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 
 // DisableAndNotifyPoisonedHost disables a host so that it cannot run any more
 // tasks, clears any stranded tasks, and enqueues a job to notify that a host
-// was quarantined.
+// was disabled. If canDecommission is true and the host is an ephemeral host,
+// it will decommission the host instead of quarantine it.
 // kim: NOTE: make sure this is called whenever quarantining host.
 // kim: TODO: manually verify in staging that calling this unlocks ByTaskSpec
 // for task dispatching.
-func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment, h *host.Host, reason string) error {
+func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment, h *host.Host, canDecommission bool, reason string) error {
 	if utility.StringSliceContains(evergreen.DownHostStatus, h.Status) {
 		return nil
 	}
 
-	err := h.DisablePoisonedHost(ctx, reason)
-	if err != nil {
-		return errors.Wrap(err, "disabling poisoned host")
+	if canDecommission && h.IsEphemeral() {
+		if err := h.SetDecommissioned(ctx, evergreen.User, true, reason); err != nil {
+			return errors.Wrap(err, "decommissioning host")
+		}
+	} else {
+		if err := h.SetQuarantined(ctx, evergreen.User, reason); err != nil {
+			return errors.Wrap(err, "quarantining host")
+		}
 	}
 
-	if err = amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewDecoHostNotifyJob(env, h, nil, reason)); err != nil {
+	if err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewDecoHostNotifyJob(env, h, nil, reason)); err != nil {
 		return errors.Wrap(err, "enqueueing decohost notify job")
 	}
 
-	return model.ClearAndResetStrandedHostTask(ctx, env.Settings(), h)
+	return errors.Wrap(model.ClearAndResetStrandedHostTask(ctx, env.Settings(), h), "clearing stranded task from host")
 }
 
 // EnqueueHostReprovisioningJob enqueues a job to reprovision a host. For hosts
