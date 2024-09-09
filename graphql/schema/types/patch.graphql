@@ -68,7 +68,7 @@ type Patch {
   createTime: Time
   description: String!
   duration: PatchDuration
-  generatedTaskCounts: Map!
+  generatedTaskCounts: [GeneratedTaskCountResults!]!
   githash: String!
   hidden: Boolean!
   moduleCodeChanges: [ModuleCodeChange!]!
@@ -134,6 +134,13 @@ type ModuleCodeChange {
   fileDiffs: [FileDiff!]!
   htmlLink: String!
   rawLink: String!
+}
+
+type GeneratedTaskCountResults {
+  buildVariantName: String
+  taskName: String
+  taskId: String
+  estimatedTasks: Int!
 }
 
 type FileDiff {
