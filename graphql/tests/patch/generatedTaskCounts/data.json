@@ -33,7 +33,8 @@
       "branch": "spruce",
       "version": "older_version",
       "build_variant": "ubuntu1804",
-      "generate_task": true
+      "generate_task": true,
+      "estimated_num_activated_generated_tasks": 5
     },
     {
       "_id": "t3",

@@ -1027,7 +1027,8 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	bv := []*model.WaterfallBuildVariant{}
 	for _, b := range buildVariants {
-		bv = append(bv, &b)
+		bCopy := b
+		bv = append(bv, &bCopy)
 	}
 
 	// If a max order was specified, use this as the new min and vice versa. If not, take this value from the bounds of the returned versions.

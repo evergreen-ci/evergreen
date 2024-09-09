@@ -117,8 +117,6 @@ variables:
       - func: run-make
         vars: { target: "${task_name}" }
 
-  - &version-constants
-    nodejs_version: "6.11.1"
   - &run-generate-lint
     name: generate-lint
     commands:

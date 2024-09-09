@@ -22,7 +22,6 @@ enum TaskQueueItemType {
 type SleepSchedule {
   dailyStartTime: String!
   dailyStopTime: String!
-  isBetaTester: Boolean
   nextStartTime: Time
   nextStopTime: Time
   permanentlyExempt: Boolean!

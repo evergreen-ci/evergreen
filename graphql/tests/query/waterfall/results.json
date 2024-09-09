@@ -47,6 +47,24 @@
                     "version": "evergreen_version2"
                   }
                 ]
+              },
+              {
+                "builds": [
+                  {
+                    "activated": true,
+                    "id": "evergreen_version3_build",
+                    "tasks": [
+                      {
+                        "displayName": "Task Number 5",
+                        "id": "task_5",
+                        "status": "success"
+                      }
+                    ],
+                    "version": "evergreen_version5"
+                  }
+                ],
+                "displayName": "Linter",
+                "id": "lint"
               }
             ],
             "versions": [
@@ -66,15 +84,18 @@
                     "author": "mohamed.khelif",
                     "id": "evergreen_version4",
                     "order": 44
-                  },
-                  {
-                    "activated": false,
-                    "author": "mohamed.khelif",
-                    "id": "evergreen_version3",
-                    "order": 43
                   }
                 ],
                 "version": null
+              },
+              {
+                "inactiveVersions": null,
+                "version": {
+                  "activated": true,
+                  "author": "mohamed.khelif",
+                  "id": "evergreen_version3",
+                  "order": 43
+                }
               },
               {
                 "inactiveVersions": null,
@@ -134,15 +155,18 @@
                     "author": "mohamed.khelif",
                     "id": "evergreen_version4",
                     "order": 44
-                  },
-                  {
-                    "activated": false,
-                    "author": "mohamed.khelif",
-                    "id": "evergreen_version3",
-                    "order": 43
                   }
                 ],
                 "version": null
+              },
+              {
+                "inactiveVersions": null,
+                "version": {
+                  "activated": true,
+                  "author": "mohamed.khelif",
+                  "id": "evergreen_version3",
+                  "order": 43
+                }
               },
               {
                 "inactiveVersions": null,
@@ -211,15 +235,18 @@
                     "author": "mohamed.khelif",
                     "id": "evergreen_version4",
                     "order": 44
-                  },
-                  {
-                    "activated": false,
-                    "author": "mohamed.khelif",
-                    "id": "evergreen_version3",
-                    "order": 43
                   }
                 ],
                 "version": null
+              },
+              {
+                "inactiveVersions": null,
+                "version": {
+                  "activated": true,
+                  "author": "mohamed.khelif",
+                  "id": "evergreen_version3",
+                  "order": 43
+                }
               }
             ]
           }

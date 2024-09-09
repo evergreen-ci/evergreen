@@ -377,6 +377,13 @@ type ComplexityRoot struct {
 		TriggerData    func(childComplexity int) int
 	}
 
+	GeneratedTaskCountResults struct {
+		BuildVariantName func(childComplexity int) int
+		EstimatedTasks   func(childComplexity int) int
+		TaskID           func(childComplexity int) int
+		TaskName         func(childComplexity int) int
+	}
+
 	GitHubDynamicTokenPermissionGroup struct {
 		Name        func(childComplexity int) int
 		Permissions func(childComplexity int) int
@@ -1220,7 +1227,6 @@ type ComplexityRoot struct {
 	SleepSchedule struct {
 		DailyStartTime         func(childComplexity int) int
 		DailyStopTime          func(childComplexity int) int
-		IsBetaTester           func(childComplexity int) int
 		NextStartTime          func(childComplexity int) int
 		NextStopTime           func(childComplexity int) int
 		PermanentlyExempt      func(childComplexity int) int
@@ -1861,7 +1867,7 @@ type PatchResolver interface {
 	CommitQueuePosition(ctx context.Context, obj *model.APIPatch) (*int, error)
 
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
-	GeneratedTaskCounts(ctx context.Context, obj *model.APIPatch) (map[string]interface{}, error)
+	GeneratedTaskCounts(ctx context.Context, obj *model.APIPatch) ([]*GeneratedTaskCountResults, error)
 
 	PatchTriggerAliases(ctx context.Context, obj *model.APIPatch) ([]*model.APIPatchTriggerDefinition, error)
 	Project(ctx context.Context, obj *model.APIPatch) (*PatchProject, error)
@@ -2073,7 +2079,7 @@ type VersionResolver interface {
 
 	ExternalLinksForMetadata(ctx context.Context, obj *model.APIVersion) ([]*ExternalLinkForMetadata, error)
 
-	GeneratedTaskCounts(ctx context.Context, obj *model.APIVersion) (map[string]interface{}, error)
+	GeneratedTaskCounts(ctx context.Context, obj *model.APIVersion) ([]*GeneratedTaskCountResults, error)
 
 	IsPatch(ctx context.Context, obj *model.APIVersion) (bool, error)
 	Manifest(ctx context.Context, obj *model.APIVersion) (*Manifest, error)
@@ -3298,6 +3304,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.GeneralSubscription.TriggerData(childComplexity), true
+
+	case "GeneratedTaskCountResults.buildVariantName":
+		if e.complexity.GeneratedTaskCountResults.BuildVariantName == nil {
+			break
+		}
+
+		return e.complexity.GeneratedTaskCountResults.BuildVariantName(childComplexity), true
+
+	case "GeneratedTaskCountResults.estimatedTasks":
+		if e.complexity.GeneratedTaskCountResults.EstimatedTasks == nil {
+			break
+		}
+
+		return e.complexity.GeneratedTaskCountResults.EstimatedTasks(childComplexity), true
+
+	case "GeneratedTaskCountResults.taskId":
+		if e.complexity.GeneratedTaskCountResults.TaskID == nil {
+			break
+		}
+
+		return e.complexity.GeneratedTaskCountResults.TaskID(childComplexity), true
+
+	case "GeneratedTaskCountResults.taskName":
+		if e.complexity.GeneratedTaskCountResults.TaskName == nil {
+			break
+		}
+
+		return e.complexity.GeneratedTaskCountResults.TaskName(childComplexity), true
 
 	case "GitHubDynamicTokenPermissionGroup.name":
 		if e.complexity.GitHubDynamicTokenPermissionGroup.Name == nil {
@@ -7813,13 +7847,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SleepSchedule.DailyStopTime(childComplexity), true
-
-	case "SleepSchedule.isBetaTester":
-		if e.complexity.SleepSchedule.IsBetaTester == nil {
-			break
-		}
-
-		return e.complexity.SleepSchedule.IsBetaTester(childComplexity), true
 
 	case "SleepSchedule.nextStartTime":
 		if e.complexity.SleepSchedule.NextStartTime == nil {
@@ -20886,6 +20913,173 @@ func (ec *executionContext) fieldContext_GeneralSubscription_triggerData(_ conte
 	return fc, nil
 }
 
+func (ec *executionContext) _GeneratedTaskCountResults_buildVariantName(ctx context.Context, field graphql.CollectedField, obj *GeneratedTaskCountResults) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneratedTaskCountResults_buildVariantName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BuildVariantName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GeneratedTaskCountResults_buildVariantName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GeneratedTaskCountResults",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GeneratedTaskCountResults_taskName(ctx context.Context, field graphql.CollectedField, obj *GeneratedTaskCountResults) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneratedTaskCountResults_taskName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GeneratedTaskCountResults_taskName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GeneratedTaskCountResults",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GeneratedTaskCountResults_taskId(ctx context.Context, field graphql.CollectedField, obj *GeneratedTaskCountResults) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneratedTaskCountResults_taskId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GeneratedTaskCountResults_taskId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GeneratedTaskCountResults",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GeneratedTaskCountResults_estimatedTasks(ctx context.Context, field graphql.CollectedField, obj *GeneratedTaskCountResults) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneratedTaskCountResults_estimatedTasks(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EstimatedTasks, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GeneratedTaskCountResults_estimatedTasks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GeneratedTaskCountResults",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GitHubDynamicTokenPermissionGroup_name(ctx context.Context, field graphql.CollectedField, obj *model.APIGitHubDynamicTokenPermissionGroup) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GitHubDynamicTokenPermissionGroup_name(ctx, field)
 	if err != nil {
@@ -23527,8 +23721,6 @@ func (ec *executionContext) fieldContext_Host_sleepSchedule(_ context.Context, f
 				return ec.fieldContext_SleepSchedule_dailyStartTime(ctx, field)
 			case "dailyStopTime":
 				return ec.fieldContext_SleepSchedule_dailyStopTime(ctx, field)
-			case "isBetaTester":
-				return ec.fieldContext_SleepSchedule_isBetaTester(ctx, field)
 			case "nextStartTime":
 				return ec.fieldContext_SleepSchedule_nextStartTime(ctx, field)
 			case "nextStopTime":
@@ -37583,9 +37775,9 @@ func (ec *executionContext) _Patch_generatedTaskCounts(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.(map[string]interface{})
+	res := resTmp.([]*GeneratedTaskCountResults)
 	fc.Result = res
-	return ec.marshalNMap2map(ctx, field.Selections, res)
+	return ec.marshalNGeneratedTaskCountResults2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGeneratedTaskCountResultsᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Patch_generatedTaskCounts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -37595,7 +37787,17 @@ func (ec *executionContext) fieldContext_Patch_generatedTaskCounts(_ context.Con
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Map does not have child fields")
+			switch field.Name {
+			case "buildVariantName":
+				return ec.fieldContext_GeneratedTaskCountResults_buildVariantName(ctx, field)
+			case "taskName":
+				return ec.fieldContext_GeneratedTaskCountResults_taskName(ctx, field)
+			case "taskId":
+				return ec.fieldContext_GeneratedTaskCountResults_taskId(ctx, field)
+			case "estimatedTasks":
+				return ec.fieldContext_GeneratedTaskCountResults_estimatedTasks(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GeneratedTaskCountResults", field.Name)
 		},
 	}
 	return fc, nil
@@ -53241,47 +53443,6 @@ func (ec *executionContext) fieldContext_SleepSchedule_dailyStopTime(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _SleepSchedule_isBetaTester(ctx context.Context, field graphql.CollectedField, obj *host.SleepScheduleInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SleepSchedule_isBetaTester(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.IsBetaTester, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SleepSchedule_isBetaTester(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SleepSchedule",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _SleepSchedule_nextStartTime(ctx context.Context, field graphql.CollectedField, obj *host.SleepScheduleInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SleepSchedule_nextStartTime(ctx, field)
 	if err != nil {
@@ -66790,9 +66951,9 @@ func (ec *executionContext) _Version_generatedTaskCounts(ctx context.Context, fi
 		}
 		return graphql.Null
 	}
-	res := resTmp.(map[string]interface{})
+	res := resTmp.([]*GeneratedTaskCountResults)
 	fc.Result = res
-	return ec.marshalNMap2map(ctx, field.Selections, res)
+	return ec.marshalNGeneratedTaskCountResults2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGeneratedTaskCountResultsᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Version_generatedTaskCounts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -66802,7 +66963,17 @@ func (ec *executionContext) fieldContext_Version_generatedTaskCounts(_ context.C
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Map does not have child fields")
+			switch field.Name {
+			case "buildVariantName":
+				return ec.fieldContext_GeneratedTaskCountResults_buildVariantName(ctx, field)
+			case "taskName":
+				return ec.fieldContext_GeneratedTaskCountResults_taskName(ctx, field)
+			case "taskId":
+				return ec.fieldContext_GeneratedTaskCountResults_taskId(ctx, field)
+			case "estimatedTasks":
+				return ec.fieldContext_GeneratedTaskCountResults_estimatedTasks(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GeneratedTaskCountResults", field.Name)
 		},
 	}
 	return fc, nil
@@ -76400,7 +76571,7 @@ func (ec *executionContext) unmarshalInputSleepScheduleInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"dailyStartTime", "dailyStopTime", "isBetaTester", "permanentlyExempt", "shouldKeepOff", "timeZone", "temporarilyExemptUntil", "wholeWeekdaysOff"}
+	fieldsInOrder := [...]string{"dailyStartTime", "dailyStopTime", "permanentlyExempt", "shouldKeepOff", "timeZone", "temporarilyExemptUntil", "wholeWeekdaysOff"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76421,13 +76592,6 @@ func (ec *executionContext) unmarshalInputSleepScheduleInput(ctx context.Context
 				return it, err
 			}
 			it.DailyStopTime = data
-		case "isBetaTester":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isBetaTester"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.IsBetaTester = data
 		case "permanentlyExempt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("permanentlyExempt"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -80329,6 +80493,51 @@ func (ec *executionContext) _GithubCheckSubscriber(ctx context.Context, sel ast.
 			}
 		case "repo":
 			out.Values[i] = ec._GithubCheckSubscriber_repo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var generatedTaskCountResultsImplementors = []string{"GeneratedTaskCountResults"}
+
+func (ec *executionContext) _GeneratedTaskCountResults(ctx context.Context, sel ast.SelectionSet, obj *GeneratedTaskCountResults) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, generatedTaskCountResultsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GeneratedTaskCountResults")
+		case "buildVariantName":
+			out.Values[i] = ec._GeneratedTaskCountResults_buildVariantName(ctx, field, obj)
+		case "taskName":
+			out.Values[i] = ec._GeneratedTaskCountResults_taskName(ctx, field, obj)
+		case "taskId":
+			out.Values[i] = ec._GeneratedTaskCountResults_taskId(ctx, field, obj)
+		case "estimatedTasks":
+			out.Values[i] = ec._GeneratedTaskCountResults_estimatedTasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -88279,8 +88488,6 @@ func (ec *executionContext) _SleepSchedule(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "isBetaTester":
-			out.Values[i] = ec._SleepSchedule_isBetaTester(ctx, field, obj)
 		case "nextStartTime":
 			out.Values[i] = ec._SleepSchedule_nextStartTime(ctx, field, obj)
 		case "nextStopTime":
@@ -94915,6 +95122,60 @@ func (ec *executionContext) marshalNGeneralSubscription2ᚖgithubᚗcomᚋevergr
 		return graphql.Null
 	}
 	return ec._GeneralSubscription(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNGeneratedTaskCountResults2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGeneratedTaskCountResultsᚄ(ctx context.Context, sel ast.SelectionSet, v []*GeneratedTaskCountResults) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNGeneratedTaskCountResults2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGeneratedTaskCountResults(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNGeneratedTaskCountResults2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGeneratedTaskCountResults(ctx context.Context, sel ast.SelectionSet, v *GeneratedTaskCountResults) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GeneratedTaskCountResults(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNGitHubDynamicTokenPermissionGroup2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroup(ctx context.Context, sel ast.SelectionSet, v model.APIGitHubDynamicTokenPermissionGroup) graphql.Marshaler {
