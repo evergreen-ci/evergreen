@@ -211,7 +211,7 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// This is unfortunately very special-casey, but if the user has been granted permission to view/edit
-	// project settings, they also need to be given view access for the repo project, if applicable.
+	// a project that's attached to repo, they also need to be given view access for the repo project
 	if h.permissions.ResourceType == evergreen.ProjectResourceType &&
 		h.permissions.Permissions[evergreen.PermissionProjectSettings] >= evergreen.ProjectSettingsView.Value {
 		repoProjectsUpdated := map[string]bool{}
@@ -222,7 +222,6 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		for _, pRef := range pRefs {
-			fmt.Println("repo ref ", pRef.RepoRefId)
 			if pRef.RepoRefId != "" && !repoProjectsUpdated[pRef.RepoRefId] {
 				if err = u.AddRole(serviceModel.GetViewRepoRole(pRef.RepoRefId)); err != nil {
 					return gimlet.NewTextInternalErrorResponse(fmt.Sprintf(
