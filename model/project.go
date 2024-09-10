@@ -1908,9 +1908,11 @@ func (p *Project) extractDisplayTasks(pairs TaskVariantPairs) TaskVariantPairs {
 			for _, et := range dt.ExecTasks {
 				if len(et) > 0 && et[0] == '.' {
 					// If this execution task starts with a period, it is actually task tag.
-					for _, t := range p.findProjectTasksWithTag([]string{et}) {
-						execTaskToDisplayTask[TVPair{Variant: bv.Name, TaskName: t}] = displayTV
-						execTVPairs = append(execTVPairs, TVPair{Variant: bv.Name, TaskName: t})
+					tagToFind := et[1:]
+					for _, t := range p.findProjectTasksWithTag([]string{tagToFind}) {
+						execTV := TVPair{Variant: bv.Name, TaskName: t}
+						execTaskToDisplayTask[execTV] = displayTV
+						execTVPairs = append(execTVPairs, execTV)
 					}
 				} else {
 					// Otherwise, it is really an execution task.
