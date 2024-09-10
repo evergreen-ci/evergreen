@@ -4,7 +4,11 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -35,13 +39,13 @@ type ParameterManager struct {
 	// pathPrefix is the prefix path in the Parameter Store hierarchy. If set,
 	// all parameters should be stored under this prefix.
 	pathPrefix string
-	// cachingEnabled indicates whether parameter caching is enabled. If
+	// cache holds the in-memory cache of parameters. If parameter caching is
 	// enabled, the cache will reduce the number of reads from Parameter Store
 	// by only fetching directly from Parameter Store if the value is missing
 	// from the cache or is stale.
-	cachingEnabled bool
-	ssmClient      SSMClient
-	db             *mongo.Database
+	cache     *parameterCache
+	ssmClient SSMClient
+	db        *mongo.Database
 }
 
 // NewParameterManager creates a new ParameterManager instance.
@@ -52,16 +56,23 @@ func NewParameterManager(pathPrefix string, cachingEnabled bool, ssmClient SSMCl
 		// name.
 		pathPrefix = fmt.Sprintf("/%s/", strings.TrimPrefix(strings.TrimSuffix(pathPrefix, "/"), "/"))
 	}
-	return &ParameterManager{
-		pathPrefix:     pathPrefix,
-		cachingEnabled: cachingEnabled,
-		ssmClient:      ssmClient,
-		db:             db,
+	pm := ParameterManager{
+		pathPrefix: pathPrefix,
+		ssmClient:  ssmClient,
+		db:         db,
 	}
+	if cachingEnabled {
+		pm.cache = newParameterCache()
+	}
+	return &pm
 }
 
 // Put adds or updates a parameter. This returns the created parameter.
 func (pm *ParameterManager) Put(ctx context.Context, name, value string) (*Parameter, error) {
+	if name == "" {
+		return nil, errors.New("cannot put a parameter with an empty name")
+	}
+
 	fullName := pm.getPrefixedName(name)
 	if _, err := pm.ssmClient.PutParameter(ctx, &ssm.PutParameterInput{
 		Name:      aws.String(fullName),
@@ -73,11 +84,19 @@ func (pm *ParameterManager) Put(ctx context.Context, name, value string) (*Param
 		return nil, errors.Wrapf(err, "putting parameter '%s'", name)
 	}
 
-	// TODO (DEVPROD-9403): update cache as needed.
+	// Regardless of whether caching is enabled or not, still record that the
+	// parameter was changed in case caching gets enabled or a different
+	// ParameterManager instance has caching enabled.
+	if err := BumpParameterRecord(ctx, pm.db, fullName, time.Now()); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "could not bump parameter update timestamp, possibly because it is being concurrently updated",
+			"name":    fullName,
+		}))
+	}
 
 	return &Parameter{
 		Name:     fullName,
-		Basename: pm.getBasename(fullName),
+		Basename: getBasename(fullName),
 		Value:    value,
 	}, nil
 }
@@ -90,30 +109,61 @@ func (pm *ParameterManager) Get(ctx context.Context, names ...string) ([]Paramet
 		return nil, nil
 	}
 
-	// TODO (DEVPROD-9403): use caching if possible before retrieving value from
-	// Parameter Store.
-
 	fullNames := make([]string, 0, len(names))
 	for _, name := range names {
 		fullNames = append(fullNames, pm.getPrefixedName(name))
 	}
 
+	fullNamesToFind := fullNames
+	params := make([]Parameter, 0, len(fullNamesToFind))
+	if pm.isCachingEnabled() {
+		paramRecords, err := FindByNames(ctx, pm.db, fullNames...)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding parameter records for %d parameters", len(fullNamesToFind))
+		}
+		cachedParams, namesNotFound := pm.cache.get(paramRecords...)
+		for _, cachedParam := range cachedParams {
+			params = append(params, cachedParam.export())
+		}
+		fullNamesToFind = namesNotFound
+	}
+
+	if len(fullNamesToFind) == 0 {
+		// Cache found all the parameters.
+		return params, nil
+	}
+
+	// It's important to set the time of retrieval for the cache before actually
+	// retrieving the value from Parameter Store. This is to be on the
+	// conservative side and ensure the cache doesn't return outdated values. If
+	// a parameter is updated in between getting the parameter from Parameter
+	// Store and caching it, the cache will be updated to an already-stale
+	// value, so it should evict the outdated value on the next read, thus
+	// ensuring that the cache reaches eventual consistency with the most
+	// up-to-date value.
+	lastRetrieved := utility.BSONTime(time.Now())
 	ssmParams, err := pm.ssmClient.GetParametersSimple(ctx, &ssm.GetParametersInput{
-		Names:          fullNames,
+		Names:          fullNamesToFind,
 		WithDecryption: aws.Bool(true),
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting %d parameters", len(names))
+		return nil, errors.Wrapf(err, "getting %d parameters", len(fullNames))
 	}
 
-	params := make([]Parameter, 0, len(ssmParams))
+	cachedParams := make([]cachedParameter, 0, len(ssmParams))
 	for _, p := range ssmParams {
 		name := aws.ToString(p.Name)
+		value := aws.ToString(p.Value)
 		params = append(params, Parameter{
 			Name:     name,
-			Basename: pm.getBasename(name),
-			Value:    aws.ToString(p.Value),
+			Basename: getBasename(name),
+			Value:    value,
 		})
+		cachedParams = append(cachedParams, newCachedParameter(name, value, lastRetrieved))
+	}
+
+	if pm.isCachingEnabled() {
+		pm.cache.put(cachedParams...)
 	}
 
 	return params, nil
@@ -131,7 +181,7 @@ func (pm *ParameterManager) GetStrict(ctx context.Context, names ...string) ([]P
 		fullNames = append(fullNames, pm.getPrefixedName(name))
 	}
 
-	params, err := pm.Get(ctx, names...)
+	params, err := pm.Get(ctx, fullNames...)
 	if err != nil {
 		return nil, err
 	}
@@ -172,12 +222,27 @@ func (pm *ParameterManager) Delete(ctx context.Context, names ...string) error {
 		Names: fullNames,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "deleting %d parameters", len(names))
+		return errors.Wrapf(err, "deleting %d parameters", len(fullNames))
 	}
 
-	// TODO (DEVPROD-9403): update cache as needed.
+	for _, fullName := range fullNames {
+		// Regardless of whether caching is enabled or not, still record that
+		// the parameter was changed in case caching gets enabled or a different
+		// ParameterManager instance has caching enabled.
+		if err := BumpParameterRecord(ctx, pm.db, fullName, time.Now()); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "could not bump parameter record last updated timestamp, possibly because it is being concurrently updated",
+				"name":    fullName,
+			}))
+		}
+	}
 
 	return nil
+}
+
+// isCachingEnabled returns whether parameter caching is enabled.
+func (pm *ParameterManager) isCachingEnabled() bool {
+	return pm.cache != nil
 }
 
 // getPrefixedName returns the parameter name with the common parameter prefix
@@ -194,7 +259,7 @@ func (pm *ParameterManager) getPrefixedName(basename string) string {
 }
 
 // getBasename returns the parameter basename without any intermediate paths.
-func (pm *ParameterManager) getBasename(name string) string {
+func getBasename(name string) string {
 	idx := strings.LastIndex(name, "/")
 	if idx == -1 {
 		return name

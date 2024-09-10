@@ -35,7 +35,6 @@ type ServiceFlags struct {
 	CloudCleanupDisabled            bool `bson:"cloud_cleanup_disabled" json:"cloud_cleanup_disabled"`
 	GlobalGitHubTokenDisabled       bool `bson:"global_github_token_disabled" json:"global_github_token_disabled"`
 	SleepScheduleDisabled           bool `bson:"sleep_schedule_disabled" json:"sleep_schedule_disabled"`
-	SleepScheduleBetaTestDisabled   bool `bson:"sleep_schedule_beta_test_disabled" json:"sleep_schedule_beta_test_disabled"`
 	SystemFailedTaskRestartDisabled bool `bson:"system_failed_task_restart_disabled" json:"system_failed_task_restart_disabled"`
 	CPUDegradedModeDisabled         bool `bson:"cpu_degraded_mode_disabled" json:"cpu_degraded_mode_disabled"`
 	ParameterStoreDisabled          bool `bson:"parameter_store_disabled" json:"parameter_store_disabled"`
@@ -90,7 +89,6 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			globalGitHubTokenDisabledKey:       c.GlobalGitHubTokenDisabled,
 			unrecognizedPodCleanupDisabledKey:  c.UnrecognizedPodCleanupDisabled,
 			sleepScheduleDisabledKey:           c.SleepScheduleDisabled,
-			sleepScheduleBetaTestDisabledKey:   c.SleepScheduleBetaTestDisabled,
 			systemFailedTaskRestartDisabledKey: c.SystemFailedTaskRestartDisabled,
 			cpuDegradedModeDisabledKey:         c.CPUDegradedModeDisabled,
 			parameterStoreDisabledKey:          c.ParameterStoreDisabled,

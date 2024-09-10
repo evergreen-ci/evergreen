@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -123,7 +124,7 @@ func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
 // shouldSkipWebhook returns true if the event is from a GitHub app and the app is available for the owner/repo or,
 // the event is from webhooks and the app is not available for the owner/repo.
 func (gh *githubHookApi) shouldSkipWebhook(ctx context.Context, owner, repo string, fromApp bool) bool {
-	hasApp, err := gh.settings.CreateGitHubAppAuth().IsGithubAppInstalledOnRepo(ctx, owner, repo)
+	hasApp, err := githubapp.CreateGitHubAppAuth(gh.settings).IsGithubAppInstalledOnRepo(ctx, owner, repo)
 	if err != nil {
 		hasApp = false
 	}

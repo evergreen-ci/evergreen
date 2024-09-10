@@ -7073,3 +7073,123 @@ func TestGetNextScheduledStartTime(t *testing.T) {
 		t.Run(tName, tCase)
 	}
 }
+
+func TestMarkShouldNotExpire(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	const expireOn = "expire_on"
+	// checkUnexpirable verifies that the expected unexpirable host fields are
+	// set and that it has valid sleep schedule settings.
+	checkUnexpirable := func(t *testing.T, h *Host) {
+		assert.True(t, h.NoExpiration)
+		assert.True(t, h.ExpirationTime.After(time.Now()))
+		assert.ElementsMatch(t, []Tag{
+			{
+				Key:   evergreen.TagExpireOn,
+				Value: expireOn,
+			},
+		}, h.InstanceTags)
+
+		assert.NotZero(t, h.SleepSchedule)
+		assert.NoError(t, h.SleepSchedule.Validate(), "should set a default sleep schedule")
+	}
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, h *Host){
+		"SetsUnexpirableFields": func(ctx context.Context, t *testing.T, h *Host) {
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.MarkShouldNotExpire(ctx, expireOn, time.Local.String()))
+			checkUnexpirable(t, h)
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			checkUnexpirable(t, h)
+			assert.NotZero(t, dbHost.SleepSchedule)
+			assert.NoError(t, dbHost.SleepSchedule.Validate(), "should set a default sleep schedule")
+		},
+		"BumpsExpirationForAlreadyUnexpirableHost": func(ctx context.Context, t *testing.T, h *Host) {
+			h.NoExpiration = true
+			h.ExpirationTime = time.Now().Add(-time.Hour)
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.MarkShouldNotExpire(ctx, expireOn, time.Local.String()))
+			checkUnexpirable(t, h)
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			checkUnexpirable(t, h)
+		},
+		"DoesNotOverrideValidSleepSchedule": func(ctx context.Context, t *testing.T, h *Host) {
+			initialSchedule := SleepScheduleInfo{
+				WholeWeekdaysOff: []time.Weekday{time.Friday, time.Saturday, time.Sunday},
+				TimeZone:         time.Local.String(),
+			}
+			assert.NoError(t, initialSchedule.Validate(), "initial sleep schedule should be valid")
+			h.SleepSchedule = initialSchedule
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.MarkShouldNotExpire(ctx, expireOn, time.Local.String()))
+			checkUnexpirable(t, h)
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			checkUnexpirable(t, h)
+			assert.Equal(t, initialSchedule, dbHost.SleepSchedule, "should not modify existing valid sleep schedule")
+		},
+		"DoesNotOverridePermanentExemptionForHost": func(ctx context.Context, t *testing.T, h *Host) {
+			h.SleepSchedule.PermanentlyExempt = true
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.MarkShouldNotExpire(ctx, expireOn, time.Local.String()))
+			checkUnexpirable(t, h)
+			assert.True(t, h.SleepSchedule.PermanentlyExempt, "should remain permanently exempt from sleep schedule")
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			checkUnexpirable(t, h)
+			assert.True(t, dbHost.SleepSchedule.PermanentlyExempt, "should remain permanently exempt from sleep schedule")
+		},
+		"SetsDefaultSleepScheduleForUnexpirableHostMissingOne": func(ctx context.Context, t *testing.T, h *Host) {
+			h.NoExpiration = true
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.MarkShouldNotExpire(ctx, expireOn, time.Local.String()))
+			checkUnexpirable(t, h)
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			checkUnexpirable(t, h)
+		},
+		"SetsDefaultSleepScheduleForHostWithInvalidSchedule": func(ctx context.Context, t *testing.T, h *Host) {
+			h.NoExpiration = true
+			h.SleepSchedule = SleepScheduleInfo{
+				TimeZone: "foobar",
+			}
+			require.NoError(t, h.Insert(ctx))
+
+			require.NoError(t, h.MarkShouldNotExpire(ctx, expireOn, time.Local.String()))
+			checkUnexpirable(t, h)
+
+			dbHost, err := FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			checkUnexpirable(t, h)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			require.NoError(t, db.ClearCollections(Collection))
+
+			tCase(ctx, t, &Host{Id: "host_id"})
+		})
+	}
+}

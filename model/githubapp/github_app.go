@@ -1,4 +1,4 @@
-package evergreen
+package githubapp
 
 import (
 	"context"
@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/bradleyfalzon/ghinstallation"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/go-github/v52/github"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,18 +18,9 @@ import (
 )
 
 const (
-	GitHubAppCollection = "github_hooks"
-
 	GitHubMaxRetries    = 3
 	GitHubRetryMinDelay = time.Second
 	GitHubRetryMaxDelay = 10 * time.Second
-)
-
-//nolint:megacheck,unused
-var (
-	ownerKey = bsonutil.MustHaveTag(GitHubAppInstallation{}, "Owner")
-	repoKey  = bsonutil.MustHaveTag(GitHubAppInstallation{}, "Repo")
-	appIDKey = bsonutil.MustHaveTag(GitHubAppInstallation{}, "AppID")
 )
 
 var (
@@ -61,18 +52,18 @@ type GithubAppAuth struct {
 
 // CreateGitHubAppAuth returns the app id and app private key if they exist.
 // If the either are not set, it will return nil.
-func (s *Settings) CreateGitHubAppAuth() *GithubAppAuth {
-	if s.AuthConfig.Github == nil || s.AuthConfig.Github.AppId == 0 {
+func CreateGitHubAppAuth(settings *evergreen.Settings) *GithubAppAuth {
+	if settings.AuthConfig.Github == nil || settings.AuthConfig.Github.AppId == 0 {
 		return nil
 	}
 
-	key := s.Expansions[GithubAppPrivateKey]
+	key := settings.Expansions[evergreen.GithubAppPrivateKey]
 	if key == "" {
 		return nil
 	}
 
 	return &GithubAppAuth{
-		AppID:      s.AuthConfig.Github.AppId,
+		AppID:      settings.AuthConfig.Github.AppId,
 		PrivateKey: []byte(key),
 	}
 }
@@ -97,11 +88,11 @@ func (g *GithubAppAuth) IsGithubAppInstalledOnRepo(ctx context.Context, owner, r
 // about the owner/repo that we are calling the GitHub function with (i.e.
 // checking rate limit). It will use the default owner/repo specified in the
 // admin settings and error if it's not set.
-func (s *Settings) CreateCachedInstallationTokenWithDefaultOwnerRepo(ctx context.Context, lifetime time.Duration, opts *github.InstallationTokenOptions) (string, error) {
-	if s.AuthConfig.Github == nil || s.AuthConfig.Github.DefaultOwner == "" || s.AuthConfig.Github.DefaultRepo == "" {
+func CreateCachedInstallationTokenWithDefaultOwnerRepo(ctx context.Context, settings *evergreen.Settings, lifetime time.Duration, opts *github.InstallationTokenOptions) (string, error) {
+	if settings.AuthConfig.Github == nil || settings.AuthConfig.Github.DefaultOwner == "" || settings.AuthConfig.Github.DefaultRepo == "" {
 		return "", errors.Errorf("missing GitHub app configuration needed to create installation tokens")
 	}
-	return s.CreateGitHubAppAuth().CreateCachedInstallationToken(ctx, s.AuthConfig.Github.DefaultOwner, s.AuthConfig.Github.DefaultRepo, lifetime, opts)
+	return CreateGitHubAppAuth(settings).CreateCachedInstallationToken(ctx, settings.AuthConfig.Github.DefaultOwner, settings.AuthConfig.Github.DefaultRepo, lifetime, opts)
 }
 
 // CreateCachedInstallationToken uses the owner/repo information to request an github app installation id
@@ -115,8 +106,8 @@ func (s *Settings) CreateCachedInstallationTokenWithDefaultOwnerRepo(ctx context
 // token returned from this method - revoking the token will cause other GitHub
 // operations reusing the same token to fail.
 func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner, repo string, lifetime time.Duration, opts *github.InstallationTokenOptions) (string, error) {
-	if lifetime >= maxInstallationTokenLifetime {
-		lifetime = maxInstallationTokenLifetime
+	if lifetime >= MaxInstallationTokenLifetime {
+		lifetime = MaxInstallationTokenLifetime
 	}
 
 	if g == nil {
@@ -141,6 +132,12 @@ func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner
 	ghInstallationTokenCache.put(installationID, token, createdAt)
 
 	return token, errors.Wrapf(err, "getting installation token for '%s/%s'", owner, repo)
+}
+
+// CreateCachedInstallationTokenForGitHubSender is a helper that creates a
+// cached installation token for the given owner/repo for the GitHub sender.
+func (g *GithubAppAuth) CreateGitHubSenderInstallationToken(ctx context.Context, owner, repo string) (string, error) {
+	return g.CreateCachedInstallationToken(ctx, owner, repo, MaxInstallationTokenLifetime, nil)
 }
 
 // CreateInstallationToken creates an installation token for the given
@@ -215,7 +212,7 @@ func (h *GitHubAppInstallation) Upsert(ctx context.Context) error {
 		return err
 	}
 
-	_, err := GetEnvironment().DB().Collection(GitHubAppCollection).UpdateOne(
+	_, err := evergreen.GetEnvironment().DB().Collection(GitHubAppCollection).UpdateOne(
 		ctx,
 		byAppOwnerRepo(h.AppID, h.Owner, h.Repo),
 		bson.M{
@@ -235,7 +232,7 @@ func getInstallationIDFromCache(ctx context.Context, app int64, owner, repo stri
 	}
 
 	installation := &GitHubAppInstallation{}
-	res := GetEnvironment().DB().Collection(GitHubAppCollection).FindOne(ctx, byAppOwnerRepo(app, owner, repo))
+	res := evergreen.GetEnvironment().DB().Collection(GitHubAppCollection).FindOne(ctx, byAppOwnerRepo(app, owner, repo))
 	if err := res.Err(); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return 0, nil
@@ -339,7 +336,7 @@ func (g *GithubAppAuth) createInstallationTokenForID(ctx context.Context, instal
 
 // RedactPrivateKey redacts the GitHub app's private key so that it's not exposed via the UI or GraphQL.
 func (g *GithubAppAuth) RedactPrivateKey() *GithubAppAuth {
-	g.PrivateKey = []byte(RedactedValue)
+	g.PrivateKey = []byte(evergreen.RedactedValue)
 	return g
 }
 
@@ -384,15 +381,15 @@ func (c *installationTokenCache) get(installationID int64, lifetime time.Duratio
 	return cachedToken.installationToken
 }
 
-// maxInstallationTokenLifetime is the maximum amount of time that an
+// MaxInstallationTokenLifetime is the maximum amount of time that an
 // installation token can be used before it expires.
-const maxInstallationTokenLifetime = time.Hour
+const MaxInstallationTokenLifetime = time.Hour
 
 func (c *installationTokenCache) put(installationID int64, installationToken string, createdAt time.Time) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.cache[installationID] = cachedInstallationToken{
 		installationToken: installationToken,
-		expiresAt:         createdAt.Add(maxInstallationTokenLifetime),
+		expiresAt:         createdAt.Add(MaxInstallationTokenLifetime),
 	}
 }

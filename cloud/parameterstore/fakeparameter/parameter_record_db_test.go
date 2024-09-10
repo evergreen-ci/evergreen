@@ -80,7 +80,7 @@ func TestBumpParameterRecord(t *testing.T) {
 	}
 }
 
-func TestParameterRecordFindOneID(t *testing.T) {
+func TestParameterRecordFindOneName(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(parameterstore.Collection))
 	}()
@@ -117,7 +117,7 @@ func TestParameterRecordFindOneID(t *testing.T) {
 	}
 }
 
-func TestParameterRecordFindByIDs(t *testing.T) {
+func TestParameterRecordFindByNames(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(parameterstore.Collection))
 	}()

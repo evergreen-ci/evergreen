@@ -24,7 +24,7 @@ func TestHostTerminationJob(t *testing.T) {
 	ctx = testutil.TestSpan(ctx, t)
 
 	checkTerminationEvent := func(t *testing.T, hostID, reason string) {
-		events, err := event.Find(event.MostRecentHostEvents(hostID, "", 50))
+		events, err := event.Find(event.MostRecentHostEvents(hostID, "", 50, false))
 		require.NoError(t, err)
 		require.NotEmpty(t, events)
 		var foundTerminationEvent bool

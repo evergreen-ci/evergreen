@@ -1,13 +1,22 @@
-package evergreen
+package githubapp
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
+
+func init() {
+	testutil.Setup()
+}
 
 type installationSuite struct {
 	ctx    context.Context
@@ -22,7 +31,7 @@ func TestGithubInstallationSuite(t *testing.T) {
 
 func (s *installationSuite) SetupTest() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
-	_, err := GetEnvironment().DB().Collection(GitHubAppCollection).DeleteMany(s.ctx, bson.M{})
+	_, err := evergreen.GetEnvironment().DB().Collection(GitHubAppCollection).DeleteMany(s.ctx, bson.M{})
 	s.NoError(err)
 }
 
@@ -115,4 +124,31 @@ func (s *installationSuite) TestCreateCachedInstallationToken() {
 	token, err := authFields.CreateCachedInstallationToken(s.ctx, installation.Owner, installation.Repo, lifetime, nil)
 	s.Require().NoError(err)
 	s.Equal(token, installationToken, "should return cached token since it is still valid for at least %s", lifetime)
+}
+
+func TestCreateGitHubAppAuth(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+
+	settings := env.Settings()
+	settings.AuthConfig.Github = &evergreen.GithubAuthConfig{}
+	delete(settings.Expansions, evergreen.GithubAppPrivateKey)
+
+	authFields := CreateGitHubAppAuth(settings)
+	assert.Nil(t, authFields)
+
+	settings.AuthConfig.Github = &evergreen.GithubAuthConfig{
+		AppId: 1234,
+	}
+	authFields = CreateGitHubAppAuth(settings)
+	assert.Nil(t, authFields)
+
+	settings.Expansions[evergreen.GithubAppPrivateKey] = "key"
+	authFields = CreateGitHubAppAuth(settings)
+	assert.NotNil(t, authFields)
+	assert.Equal(t, int64(1234), authFields.AppID)
+	assert.Equal(t, []byte("key"), authFields.PrivateKey)
 }

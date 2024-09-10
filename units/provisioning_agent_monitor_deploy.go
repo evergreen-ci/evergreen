@@ -171,7 +171,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err = j.runSetupScript(ctx, &settings); err != nil {
+	if err = j.runSetupScript(ctx); err != nil {
 		j.AddError(err)
 		return
 	}
@@ -260,7 +260,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context) error {
 
 // runSetupScript runs the setup script on the host through the host's Jasper
 // service.
-func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, settings *evergreen.Settings) error {
+func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context) error {
 	if j.host.Distro.Setup == "" {
 		return nil
 	}

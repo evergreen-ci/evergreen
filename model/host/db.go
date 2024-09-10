@@ -120,7 +120,6 @@ var (
 	SleepSchedulePermanentlyExemptKey      = bsonutil.MustHaveTag(SleepScheduleInfo{}, "PermanentlyExempt")
 	SleepScheduleTemporarilyExemptUntilKey = bsonutil.MustHaveTag(SleepScheduleInfo{}, "TemporarilyExemptUntil")
 	SleepScheduleShouldKeepOffKey          = bsonutil.MustHaveTag(SleepScheduleInfo{}, "ShouldKeepOff")
-	SleepScheduleIsBetaTesterKey           = bsonutil.MustHaveTag(SleepScheduleInfo{}, "IsBetaTester")
 )
 
 var (
@@ -1566,7 +1565,6 @@ func isSleepScheduleEnabledQuery(q bson.M, now time.Time) bson.M {
 	sleepSchedulePermanentlyExemptKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepSchedulePermanentlyExemptKey)
 	sleepScheduleTemporarilyExemptUntil := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
 	sleepScheduleShouldKeepOff := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleShouldKeepOffKey)
-	sleepScheduleIsBetaTesterKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleIsBetaTesterKey)
 
 	if _, ok := q[StatusKey]; !ok {
 		// Use all sleep schedule statuses if the query hasn't already specified
@@ -1576,18 +1574,6 @@ func isSleepScheduleEnabledQuery(q bson.M, now time.Time) bson.M {
 
 	q[sleepSchedulePermanentlyExemptKey] = bson.M{"$ne": true}
 	q[sleepScheduleShouldKeepOff] = bson.M{"$ne": true}
-
-	serviceFlagCtx, serviceFlagCancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer serviceFlagCancel()
-	flags, err := evergreen.GetServiceFlags(serviceFlagCtx)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "unable to check if sleep schedule beta test is enabled, falling back to assuming the beta test is enabled",
-		}))
-	}
-	if flags == nil || !flags.SleepScheduleBetaTestDisabled {
-		q[sleepScheduleIsBetaTesterKey] = true
-	}
 
 	notTemporarilyExempt := []bson.M{
 		{
@@ -1755,10 +1741,12 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 			},
 		})
 		catcher.Wrap(err, "marking newly-added hosts as permanently exempt")
-		grip.InfoWhen(res.ModifiedCount > 0, message.Fields{
-			"message":   "marked newly-added hosts as permanently exempt",
-			"num_hosts": res.ModifiedCount,
-		})
+		if res != nil && res.ModifiedCount > 0 {
+			grip.Info(message.Fields{
+				"message":   "marked newly-added hosts as permanently exempt",
+				"num_hosts": res.ModifiedCount,
+			})
+		}
 	}
 
 	res, err := coll.UpdateMany(ctx, isSleepScheduleApplicable(bson.M{

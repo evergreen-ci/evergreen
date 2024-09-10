@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -17,7 +18,7 @@ import (
 
 type ProjectSettings struct {
 	ProjectRef         ProjectRef              `bson:"proj_ref" json:"proj_ref"`
-	GitHubAppAuth      evergreen.GithubAppAuth `bson:"github_app_auth" json:"github_app_auth"`
+	GitHubAppAuth      githubapp.GithubAppAuth `bson:"github_app_auth" json:"github_app_auth"`
 	GithubHooksEnabled bool                    `bson:"github_hooks_enabled" json:"github_hooks_enabled"`
 	Vars               ProjectVars             `bson:"vars" json:"vars"`
 	Aliases            []ProjectAlias          `bson:"aliases" json:"aliases"`

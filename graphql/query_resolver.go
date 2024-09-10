@@ -238,7 +238,7 @@ func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *
 	if h == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", hostID))
 	}
-	events, count, err := event.MostRecentPaginatedHostEvents(h.Id, h.Tag, *limit, *page)
+	events, count, err := event.MostRecentPaginatedHostEvents(h.Id, h.Tag, *limit, *page, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host events: %s", err.Error()))
 	}
@@ -1013,7 +1013,8 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	bv := []*model.WaterfallBuildVariant{}
 	for _, b := range buildVariants {
-		bv = append(bv, &b)
+		bCopy := b
+		bv = append(bv, &bCopy)
 	}
 
 	return &Waterfall{

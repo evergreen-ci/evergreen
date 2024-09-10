@@ -28,7 +28,6 @@ var (
 	RepoRefIdKey             = bsonutil.MustHaveTag(RepoRef{}, "Id")
 	RepoRefOwnerKey          = bsonutil.MustHaveTag(RepoRef{}, "Owner")
 	RepoRefRepoKey           = bsonutil.MustHaveTag(RepoRef{}, "Repo")
-	RepoRefPrivateKey        = bsonutil.MustHaveTag(RepoRef{}, "Private")
 	RepoRefAdminsKey         = bsonutil.MustHaveTag(RepoRef{}, "Admins")
 	RepoRefCommitQueueKey    = bsonutil.MustHaveTag(RepoRef{}, "CommitQueue")
 	RepoRefPeriodicBuildsKey = bsonutil.MustHaveTag(RepoRef{}, "PeriodicBuilds")

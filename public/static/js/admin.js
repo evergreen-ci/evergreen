@@ -565,18 +565,9 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     return "[" + moment(ts, "YYYY-MM-DDTHH:mm:ss").format("lll") + "] ";
   }
 
-  // restartType: tasks or versions
-  $scope.restartItems = function (restartType, dryRun) {
-    if (restartType === "tasks") {
-      var restartTitle = "Tasks";
-    } else if (restartType === "versions") {
-      var restartTitle = "Commit Queue Versions"
-    } else {
-      alert("Please choose an item to restart");
-      return
-    }
+  $scope.restartItems = function (dryRun) {
     if (!$scope.fromDate || !$scope.toDate || !$scope.toTime || !$scope.fromTime) {
-      alert("The from/to date and time must be populated to restart " + restartType);
+      alert("The from/to date and time must be populated to restart tasks");
       return;
     }
     var from = combineDateTime($scope.fromDate, $scope.fromTime);
@@ -587,25 +578,16 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       return;
     }
 
-    if (restartType === "tasks" && !$scope.restartRed && !$scope.restartPurple && !$scope.restartLavender) {
-      alert("No " + restartType + " selected to restart");
+    if (!$scope.restartRed && !$scope.restartPurple && !$scope.restartLavender) {
+      alert("No tasks selected to restart");
       return;
     }
     if (dryRun === false) {
       $scope.disableRestart = true;
-      if (restartType === "tasks") {
-        var successHandler = function (resp) {
-          $("#divMsg").text("The below " + restartType + " have been queued to restart. Feel free to close this popup or inspect the tasks listed.");
-          $scope.disableSubmit = false;
-        }
+      var successHandler = function (resp) {
+        $("#divMsg").text("The below tasks have been queued to restart. Feel free to close this popup or inspect the tasks listed.");
+        $scope.disableSubmit = false;
       }
-      if (restartType === "versions") {
-        var successHandler = function (resp) {
-          $("#divMsg").text("The below " + restartType + " have been re-added to queue. For more information, please inspect the commit queues.");
-          $scope.disableSubmit = false;
-        }
-      }
-
     } else {
       $scope.disableSubmit = true;
       $scope.disableRestart = false;
@@ -613,16 +595,15 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       dryRun = true;
       var successHandler = function (resp) {
         $scope.items = resp.data.items_restarted;
-        $scope.modalTitle = "Restart " + restartTitle;
-        $scope.itemType = restartType;
+        $scope.modalTitle = "Restart Tasks";
         $("#restart-modal").modal("show");
       }
     }
     var errorHandler = function (resp) {
-      notificationService.pushNotification("Error restarting " + restartType + ": " + resp.data.error, "errorHeader");
+      notificationService.pushNotification("Error restarting tasks: " + resp.data.error, "errorHeader");
     }
 
-    mciAdminRestService.restartItems(from, to, dryRun, restartType, $scope.restartRed, $scope.restartPurple, $scope.restartLavender, {
+    mciAdminRestService.restartItems(from, to, dryRun, $scope.restartRed, $scope.restartPurple, $scope.restartLavender, {
       success: successHandler,
       error: errorHandler
     });
@@ -640,13 +621,8 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.$apply();
   }
 
-  // itemType should be task or version
-  $scope.jumpToItem = function (itemType, itemId) {
-    if (itemType === "versions") {
-      window.open("/version/" + itemId);
-    } else {
-      window.open(/task/ + itemId);
-    }
+  $scope.jumpToItem = function (itemId) {
+    window.open(/task/ + itemId);
   }
 
 

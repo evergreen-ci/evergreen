@@ -265,7 +265,7 @@ func (e *Environment) ClientConfig() *evergreen.ClientConfig {
 	return &e.Clients
 }
 
-func (e *Environment) GetGitHubSender(owner, repo string) (send.Sender, error) {
+func (e *Environment) GetGitHubSender(string, string, evergreen.CreateInstallationTokenFunc) (send.Sender, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.InternalSender, nil

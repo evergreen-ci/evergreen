@@ -285,7 +285,6 @@ type Project {
   patchTriggerAliases: [PatchTriggerAlias!]
   perfEnabled: Boolean
   periodicBuilds: [PeriodicBuild!]
-  private: Boolean
   projectHealthView: ProjectHealthView!
   prTestingEnabled: Boolean
   remotePath: String!

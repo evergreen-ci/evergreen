@@ -14,6 +14,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -794,7 +795,7 @@ func TestAttachToNewRepo(t *testing.T) {
 	defer cancel()
 
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
-		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, evergreen.GitHubAppCollection))
+		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, githubapp.GitHubAppCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 	settings := evergreen.Settings{
@@ -832,7 +833,7 @@ func TestAttachToNewRepo(t *testing.T) {
 		SystemRoles: []string{GetViewRepoRole("myRepo")},
 	}
 	assert.NoError(t, u.Insert())
-	installation := evergreen.GitHubAppInstallation{
+	installation := githubapp.GitHubAppInstallation{
 		Owner:          pRef.Owner,
 		Repo:           pRef.Repo,
 		AppID:          1234,
@@ -846,7 +847,7 @@ func TestAttachToNewRepo(t *testing.T) {
 
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
-	newInstallation := evergreen.GitHubAppInstallation{
+	newInstallation := githubapp.GitHubAppInstallation{
 		Owner:          pRef.Owner,
 		Repo:           pRef.Repo,
 		AppID:          1234,
@@ -947,7 +948,7 @@ func TestAttachToRepo(t *testing.T) {
 	}
 	assert.NoError(t, pRef.Insert())
 
-	installation := evergreen.GitHubAppInstallation{
+	installation := githubapp.GitHubAppInstallation{
 		Owner:          pRef.Owner,
 		Repo:           pRef.Repo,
 		AppID:          1234,
@@ -1384,7 +1385,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 				DeactivatePrevious:    utility.FalsePtr(),
 				RemotePath:            "path.yml",
 				TaskSync:              TaskSyncOptions{ConfigEnabled: utility.TruePtr()},
-				Private:               utility.TruePtr(),
 				Restricted:            utility.FalsePtr(),
 				Admins:                []string{"annie"},
 				PRTestingEnabled:      utility.TruePtr(),
@@ -1755,7 +1755,7 @@ func TestSetGithubAppCredentials(t *testing.T) {
 
 func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
-		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection, evergreen.GitHubAppCollection))
+		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection, githubapp.GitHubAppCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1799,7 +1799,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	}
 	assert.NoError(t, doc3.Insert())
 
-	installation := evergreen.GitHubAppInstallation{
+	installation := githubapp.GitHubAppInstallation{
 		Owner:          "mongodb",
 		Repo:           "mongo",
 		AppID:          1234,
@@ -3522,20 +3522,25 @@ func TestFindFirstProjectRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection))
 
 	var err error
+	projectRef := ProjectRef{
+		Id:         "restricted",
+		Restricted: utility.TruePtr(),
+		Enabled:    true,
+	}
+	assert.NoError(t, projectRef.Insert())
+
 	assert.NotPanics(t, func() {
-		_, err = FindFirstProjectRef()
+		_, err = FindAnyRestrictedProjectRef()
 	}, "Should not panic if there are no matching projects")
 	assert.Error(t, err, "Should return error if there are no matching projects")
 
-	projectRef := ProjectRef{
-		Id:        "p1",
-		RepoRefId: "my_repo",
-		Private:   utility.FalsePtr(),
+	projectRef = ProjectRef{
+		Id:      "p1",
+		Enabled: true,
 	}
-
 	assert.NoError(t, projectRef.Insert())
 
-	resultRef, err := FindFirstProjectRef()
+	resultRef, err := FindAnyRestrictedProjectRef()
 	assert.NoError(t, err)
 	assert.Equal(t, "p1", resultRef.Id)
 }
@@ -3781,7 +3786,6 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		Id:               "iden_",
 		Identifier:       "identifier",
 		PRTestingEnabled: utility.TruePtr(),
-		Private:          utility.TruePtr(),
 	}
 	assert.NoError(projectRef.Insert())
 	projectRef, err := FindBranchProjectRef("identifier")
@@ -3829,7 +3833,6 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(t, projectRef)
 	assert.True(utility.FromBoolPtr(projectRef.Restricted))
-	assert.True(utility.FromBoolPtr(projectRef.Private))
 
 	// Verify that GitHub dynamic token permission groups are saved correctly.
 	update = &ProjectRef{
