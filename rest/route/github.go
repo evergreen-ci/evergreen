@@ -448,6 +448,7 @@ func (gh *githubHookApi) handleCheckSuiteRerequested(ctx context.Context, event 
 }
 
 func (gh *githubHookApi) handleMergeGroupChecksRequested(event *github.MergeGroupEvent) gimlet.Responder {
+	catcher := grip.NewBasicCatcher()
 	org := event.GetOrg().GetLogin()
 	repo := event.GetRepo().GetName()
 	branch := strings.TrimPrefix(event.MergeGroup.GetBaseRef(), "refs/heads/")
@@ -475,9 +476,8 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(event *github.MergeGrou
 			"head_sha": event.GetMergeGroup().GetHeadSHA(),
 			"message":  "finding project ref",
 		}))
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding project ref"))
-	}
-	if ref == nil {
+		catcher.Add(errors.Wrap(err, "finding project ref"))
+	} else if ref == nil {
 		grip.Error(message.Fields{
 			"source":   "GitHub hook",
 			"msg_id":   gh.msgID,
@@ -489,25 +489,10 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(event *github.MergeGrou
 			"head_sha": event.GetMergeGroup().GetHeadSHA(),
 			"message":  "no matching project ref",
 		})
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "no matching project ref"))
+		catcher.Add(errors.Wrap(err, "no matching project ref"))
 	}
-	if ref.CommitQueue.MergeQueue == model.MergeQueueGitHub {
-		err = gh.AddIntentForGithubMerge(event)
-	} else {
-		grip.Info(message.Fields{
-			"source":   "GitHub hook",
-			"msg_id":   gh.msgID,
-			"event":    gh.eventType,
-			"org":      org,
-			"repo":     repo,
-			"branch":   branch,
-			"base_sha": event.GetMergeGroup().GetBaseSHA(),
-			"head_sha": event.GetMergeGroup().GetHeadSHA(),
-			"message":  "received merge group event, but project is not set to use GitHub merge queue",
-		})
-		return gimlet.NewJSONResponse(struct{}{})
-	}
-	if err != nil {
+
+	if err := gh.AddIntentForGithubMerge(event); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":   "GitHub hook",
 			"msg_id":   gh.msgID,
@@ -519,7 +504,11 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(event *github.MergeGrou
 			"head_sha": event.GetMergeGroup().GetHeadSHA(),
 			"message":  "adding project intent",
 		}))
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "adding patch intent"))
+		catcher.Add(errors.Wrap(err, "adding patch intent"))
+	}
+
+	if catcher.HasErrors() {
+		return gimlet.NewJSONInternalErrorResponse(catcher.Resolve())
 	}
 	return nil
 }
