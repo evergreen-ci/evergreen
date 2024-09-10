@@ -45,6 +45,8 @@ providers:
         client_type: "mock"
       secrets_manager:
         client_type: "mock"
+    parameter_store:
+      prefix: "/evg-test"
   docker:
     api_version: 1.32
 
