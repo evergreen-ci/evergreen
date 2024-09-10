@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	model1 "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -25239,7 +25240,7 @@ func (ec *executionContext) _HostEventLogEntry_eventType(ctx context.Context, fi
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOHostEventType2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostEventLogEntry_eventType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -25249,7 +25250,7 @@ func (ec *executionContext) fieldContext_HostEventLogEntry_eventType(_ context.C
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type HostEventType does not have child fields")
 		},
 	}
 	return fc, nil
@@ -80032,6 +80033,51 @@ func (ec *executionContext) _GeneralSubscription(ctx context.Context, sel ast.Se
 	return out
 }
 
+var generatedTaskCountResultsImplementors = []string{"GeneratedTaskCountResults"}
+
+func (ec *executionContext) _GeneratedTaskCountResults(ctx context.Context, sel ast.SelectionSet, obj *GeneratedTaskCountResults) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, generatedTaskCountResultsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GeneratedTaskCountResults")
+		case "buildVariantName":
+			out.Values[i] = ec._GeneratedTaskCountResults_buildVariantName(ctx, field, obj)
+		case "taskName":
+			out.Values[i] = ec._GeneratedTaskCountResults_taskName(ctx, field, obj)
+		case "taskId":
+			out.Values[i] = ec._GeneratedTaskCountResults_taskId(ctx, field, obj)
+		case "estimatedTasks":
+			out.Values[i] = ec._GeneratedTaskCountResults_estimatedTasks(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var gitHubDynamicTokenPermissionGroupImplementors = []string{"GitHubDynamicTokenPermissionGroup"}
 
 func (ec *executionContext) _GitHubDynamicTokenPermissionGroup(ctx context.Context, sel ast.SelectionSet, obj *model.APIGitHubDynamicTokenPermissionGroup) graphql.Marshaler {
@@ -80181,51 +80227,6 @@ func (ec *executionContext) _GithubCheckSubscriber(ctx context.Context, sel ast.
 			}
 		case "repo":
 			out.Values[i] = ec._GithubCheckSubscriber_repo(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var generatedTaskCountResultsImplementors = []string{"GeneratedTaskCountResults"}
-
-func (ec *executionContext) _GeneratedTaskCountResults(ctx context.Context, sel ast.SelectionSet, obj *GeneratedTaskCountResults) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, generatedTaskCountResultsImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("GeneratedTaskCountResults")
-		case "buildVariantName":
-			out.Values[i] = ec._GeneratedTaskCountResults_buildVariantName(ctx, field, obj)
-		case "taskName":
-			out.Values[i] = ec._GeneratedTaskCountResults_taskName(ctx, field, obj)
-		case "taskId":
-			out.Values[i] = ec._GeneratedTaskCountResults_taskId(ctx, field, obj)
-		case "estimatedTasks":
-			out.Values[i] = ec._GeneratedTaskCountResults_estimatedTasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -99722,6 +99723,92 @@ func (ec *executionContext) marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 	}
 	return ec._Host(ctx, sel, v)
 }
+
+func (ec *executionContext) unmarshalOHostEventType2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalOHostEventType2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOHostEventType2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	res := graphql.MarshalString(marshalOHostEventType2ᚖstring[*v])
+	return res
+}
+
+var (
+	unmarshalOHostEventType2ᚖstring = map[string]string{
+		"HOST_CREATED":                                     event.EventHostCreated,
+		"HOST_CREATED_ERROR":                               event.EventHostCreatedError,
+		"HOST_STARTED":                                     event.EventHostStarted,
+		"HOST_STOPPED":                                     event.EventHostStopped,
+		"HOST_MODIFIED":                                    event.EventHostModified,
+		"HOST_AGENT_DEPLOYED":                              event.EventHostAgentDeployed,
+		"HOST_AGENT_DEPLOY_FAILED":                         event.EventHostAgentDeployFailed,
+		"HOST_AGENT_MONITOR_DEPLOYED":                      event.EventHostAgentMonitorDeployed,
+		"HOST_AGENT_MONITOR_DEPLOY_FAILED":                 event.EventHostAgentMonitorDeployFailed,
+		"HOST_JASPER_RESTARTING":                           event.EventHostJasperRestarting,
+		"HOST_JASPER_RESTARTED":                            event.EventHostJasperRestarted,
+		"HOST_JASPER_RESTART_ERROR":                        event.EventHostJasperRestartError,
+		"HOST_CONVERTING_PROVISIONING":                     event.EventHostConvertingProvisioning,
+		"HOST_CONVERTED_PROVISIONING":                      event.EventHostConvertedProvisioning,
+		"HOST_CONVERTING_PROVISIONING_ERROR":               event.EventHostConvertingProvisioningError,
+		"HOST_STATUS_CHANGED":                              event.EventHostStatusChanged,
+		"HOST_DNS_NAME_SET":                                event.EventHostDNSNameSet,
+		"HOST_PROVISION_ERROR":                             event.EventHostProvisionError,
+		"HOST_PROVISION_FAILED":                            event.EventHostProvisionFailed,
+		"HOST_PROVISIONED":                                 event.EventHostProvisioned,
+		"HOST_RUNNING_TASK_SET":                            event.EventHostRunningTaskSet,
+		"HOST_RUNNING_TASK_CLEARED":                        event.EventHostRunningTaskCleared,
+		"HOST_TASK_FINISHED":                               event.EventHostTaskFinished,
+		"HOST_TERMINATED_EXTERNALLY":                       event.EventHostTerminatedExternally,
+		"HOST_EXPIRATION_WARNING_SENT":                     event.EventHostExpirationWarningSent,
+		"HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT": event.EventHostTemporaryExemptionExpirationWarningSent,
+		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
+		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
+		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
+		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
+	}
+	marshalOHostEventType2ᚖstring = map[string]string{
+		event.EventHostCreated:                                 "HOST_CREATED",
+		event.EventHostCreatedError:                            "HOST_CREATED_ERROR",
+		event.EventHostStarted:                                 "HOST_STARTED",
+		event.EventHostStopped:                                 "HOST_STOPPED",
+		event.EventHostModified:                                "HOST_MODIFIED",
+		event.EventHostAgentDeployed:                           "HOST_AGENT_DEPLOYED",
+		event.EventHostAgentDeployFailed:                       "HOST_AGENT_DEPLOY_FAILED",
+		event.EventHostAgentMonitorDeployed:                    "HOST_AGENT_MONITOR_DEPLOYED",
+		event.EventHostAgentMonitorDeployFailed:                "HOST_AGENT_MONITOR_DEPLOY_FAILED",
+		event.EventHostJasperRestarting:                        "HOST_JASPER_RESTARTING",
+		event.EventHostJasperRestarted:                         "HOST_JASPER_RESTARTED",
+		event.EventHostJasperRestartError:                      "HOST_JASPER_RESTART_ERROR",
+		event.EventHostConvertingProvisioning:                  "HOST_CONVERTING_PROVISIONING",
+		event.EventHostConvertedProvisioning:                   "HOST_CONVERTED_PROVISIONING",
+		event.EventHostConvertingProvisioningError:             "HOST_CONVERTING_PROVISIONING_ERROR",
+		event.EventHostStatusChanged:                           "HOST_STATUS_CHANGED",
+		event.EventHostDNSNameSet:                              "HOST_DNS_NAME_SET",
+		event.EventHostProvisionError:                          "HOST_PROVISION_ERROR",
+		event.EventHostProvisionFailed:                         "HOST_PROVISION_FAILED",
+		event.EventHostProvisioned:                             "HOST_PROVISIONED",
+		event.EventHostRunningTaskSet:                          "HOST_RUNNING_TASK_SET",
+		event.EventHostRunningTaskCleared:                      "HOST_RUNNING_TASK_CLEARED",
+		event.EventHostTaskFinished:                            "HOST_TASK_FINISHED",
+		event.EventHostTerminatedExternally:                    "HOST_TERMINATED_EXTERNALLY",
+		event.EventHostExpirationWarningSent:                   "HOST_EXPIRATION_WARNING_SENT",
+		event.EventHostTemporaryExemptionExpirationWarningSent: "HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT",
+		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
+		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
+		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
+		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
+	}
+)
 
 func (ec *executionContext) unmarshalOHostSortBy2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostSortBy(ctx context.Context, v interface{}) (*HostSortBy, error) {
 	if v == nil {
