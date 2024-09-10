@@ -6,11 +6,15 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -1731,4 +1735,63 @@ func (h *revokeGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
+}
+
+// DELETE /rest/v2/task/{task_id}/aws/assume_role
+// This route is used to assume an AWS arn role for a task.
+type awsAssumeRole struct {
+	taskID string
+	body   apimodels.AssumeRoleRequest
+
+	env    evergreen.Environment
+	client cloud.AWSClient
+}
+
+func makeAWSAssumeRole(env evergreen.Environment, client cloud.AWSClient) gimlet.RouteHandler {
+	return &awsAssumeRole{env: env, client: client}
+}
+
+func (h *awsAssumeRole) Factory() gimlet.RouteHandler {
+	return &awsAssumeRole{env: h.env, client: h.client}
+}
+
+func (h *awsAssumeRole) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task_id")
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return errors.Wrap(err, "reading body")
+	}
+
+	if err = json.Unmarshal(body, &h.body); err != nil {
+		return errors.Wrapf(err, "reading assume role body for task '%s'", h.taskID)
+	}
+
+	return errors.Wrapf(h.body.Validate(), "validating assume role body for task '%s'", h.taskID)
+}
+
+func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
+	if err := h.client.Create(ctx, evergreen.DefaultEC2Region); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "connecting to AWS"))
+	}
+
+	output, err := h.client.AssumeRole(ctx, &sts.AssumeRoleInput{
+		RoleArn:         &h.body.RoleARN,
+		Policy:          &h.body.Policy,
+		DurationSeconds: &h.body.DurationSeconds,
+		ExternalId:      aws.String(fmt.Sprintf("%s-%s", "project-id", "requester")),
+		RoleSessionName: aws.String(strconv.Itoa(int(time.Now().Unix()))),
+	})
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "assuming role for task '%s'", h.taskID))
+	}
+
+	return gimlet.NewJSONResponse(&apimodels.AssumeRoleResponse{
+		AccessKeyID:     aws.ToString(output.Credentials.AccessKeyId),
+		SecretAccessKey: aws.ToString(output.Credentials.SecretAccessKey),
+		SessionToken:    aws.ToString(output.Credentials.SessionToken),
+		Expiration:      output.Credentials.Expiration.String(),
+	})
 }

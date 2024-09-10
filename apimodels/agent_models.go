@@ -200,6 +200,29 @@ type Token struct {
 	Token string `json:"token"`
 }
 
+type AssumeRoleRequest struct {
+	RoleARN         string `json:"role_arn"`
+	Policy          string `json:"policy"`
+	DurationSeconds int32  `json:"duration_seconds"`
+}
+
+func (ar *AssumeRoleRequest) Validate() error {
+	catcher := grip.NewBasicCatcher()
+
+	catcher.NewWhen(ar.RoleARN == "", "must specify role ARN")
+	// 0 defaults to 15 minutes.
+	catcher.NewWhen(ar.DurationSeconds < 0, "cannot specify a non-positive duration")
+
+	return catcher.Resolve()
+}
+
+type AssumeRoleResponse struct {
+	AccessKeyID     string `json:"access_key_id"`
+	SecretAccessKey string `json:"secret_access_key"`
+	SessionToken    string `json:"session_token"`
+	Expiration      string `json:"expiration"`
+}
+
 func (ted *TaskEndDetail) IsEmpty() bool {
 	return ted == nil || ted.Status == ""
 }
