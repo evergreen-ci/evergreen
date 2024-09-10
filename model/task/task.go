@@ -2668,7 +2668,7 @@ func (t *Task) MarkUnscheduled() error {
 
 }
 
-// MarkAllForUnattainableDependency updates many tasks (taskIDs) to mark a
+// MarkAllForUnattainableDependencies updates many tasks (taskIDs) to mark a
 // subset of all their dependencies (dependencyIDs) as attainable or not. If
 // marking the dependencies unattainable, it creates an event log for each newly
 // blocked task. This returns all the tasks after the update.
