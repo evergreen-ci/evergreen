@@ -289,6 +289,9 @@ func (tc *taskContext) getExecTimeout() time.Duration {
 	tc.RLock()
 	defer tc.RUnlock()
 	if dynamicTimeout := tc.taskConfig.GetExecTimeout(); dynamicTimeout > 0 {
+		if tc.taskConfig.MaxExecTimeoutSecs != 0 && dynamicTimeout > tc.taskConfig.MaxExecTimeoutSecs {
+			return time.Duration(tc.taskConfig.MaxExecTimeoutSecs) * time.Second
+		}
 		return time.Duration(dynamicTimeout) * time.Second
 	}
 	if pt := tc.taskConfig.Project.FindProjectTask(tc.taskConfig.Task.DisplayName); pt != nil && pt.ExecTimeoutSecs > 0 {
