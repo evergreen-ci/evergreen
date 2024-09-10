@@ -42,6 +42,9 @@ type TaskLimitsConfig struct {
 
 	// MaxExecTimeoutSecs is the maximum number of seconds a task can run and set their timeout to.
 	MaxExecTimeoutSecs int `bson:"max_exec_timeout_secs" json:"max_exec_timeout_secs" yaml:"max_exec_timeout_secs"`
+
+	// MaxTaskExecution is the maximum task (zero based) execution number
+	MaxTaskExecution int `bson:"max_task_execution" json:"max_task_execution" yaml:"max_task_execution"`
 }
 
 var (
@@ -54,6 +57,7 @@ var (
 	maxDegradedModeParserProjectSize     = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxDegradedModeParserProjectSize")
 	maxParserProjectSize                 = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxParserProjectSize")
 	MaxExecTimeoutSecs                   = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxExecTimeoutSecs")
+	maxTaskExecutionKey                  = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxTaskExecution")
 )
 
 func (c *TaskLimitsConfig) SectionId() string { return "task_limits" }
@@ -74,6 +78,7 @@ func (c *TaskLimitsConfig) Set(ctx context.Context) error {
 			maxDegradedModeParserProjectSize:     c.MaxDegradedModeParserProjectSize,
 			maxParserProjectSize:                 c.MaxParserProjectSize,
 			MaxExecTimeoutSecs:                   c.MaxExecTimeoutSecs,
+			maxTaskExecutionKey:                  c.MaxTaskExecution,
 		},
 	}), "updating config section '%s'", c.SectionId())
 }

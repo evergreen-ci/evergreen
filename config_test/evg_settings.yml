@@ -178,7 +178,7 @@ project_creation:
 
 github_check_run:
   check_run_limit: 1
-  
+
 task_limits:
   max_hourly_patch_tasks: 100
-  
+  max_task_execution: 9

@@ -2757,7 +2757,7 @@ func TestTryResetTask(t *testing.T) {
 				DisplayName: displayName,
 				Activated:   false,
 				BuildId:     b.Id,
-				Execution:   evergreen.MaxTaskExecution,
+				Execution:   settings.TaskLimits.MaxTaskExecution,
 				Project:     "sample",
 				Status:      evergreen.TaskSucceeded,
 				Version:     b.Version,
@@ -2770,7 +2770,7 @@ func TestTryResetTask(t *testing.T) {
 				DisplayName: displayName,
 				Activated:   false,
 				BuildId:     b.Id,
-				Execution:   evergreen.MaxTaskExecution,
+				Execution:   settings.TaskLimits.MaxTaskExecution,
 				Project:     "sample",
 				Status:      evergreen.TaskSucceeded,
 				Version:     b.Version,
@@ -4779,6 +4779,8 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection))
 	assert := assert.New(t)
 
+	settings := testutil.TestConfig()
+
 	tasks := []task.Task{
 		{
 			Id:            "t",
@@ -4840,7 +4842,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 			ActivatedTime: time.Now(),
 			BuildId:       "b3",
 			Version:       "version3",
-			Execution:     evergreen.MaxTaskExecution,
+			Execution:     settings.TaskLimits.MaxTaskExecution,
 		},
 	}
 	for _, tsk := range tasks {
@@ -4873,7 +4875,6 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	}
 	assert.NoError(v2.Insert())
 
-	settings := testutil.TestConfig()
 	assert.NoError(ClearAndResetStrandedHostTask(ctx, settings, h))
 
 	runningTask, err := task.FindOne(db.Query(task.ById("t")))
@@ -5615,7 +5616,7 @@ func TestResetStaleTask(t *testing.T) {
 			assert.False(t, utility.IsZeroTime(dbTask.FinishTime))
 		},
 		"FailsStaleTaskThatHitsMaxExecutionRestartsWithoutRestartingIt": func(t *testing.T, tsk task.Task) {
-			const execNum = evergreen.MaxTaskExecution + 1
+			execNum := settings.TaskLimits.MaxTaskExecution + 1
 			tsk.Execution = execNum
 			require.NoError(t, tsk.Insert())
 

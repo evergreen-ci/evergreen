@@ -661,7 +661,7 @@ func (t *Task) IsPatchRequest() bool {
 
 // IsUnfinishedSystemUnresponsive returns true only if this is an unfinished system unresponsive task (i.e. not on max execution)
 func (t *Task) IsUnfinishedSystemUnresponsive() bool {
-	return t.isSystemUnresponsive() && t.Execution < evergreen.MaxTaskExecution
+	return t.isSystemUnresponsive() && t.Execution < evergreen.GetEnvironment().Settings().TaskLimits.MaxTaskExecution
 }
 
 func (t *Task) isSystemUnresponsive() bool {
