@@ -289,6 +289,7 @@ func (tc *taskContext) getTimeoutType() globals.TimeoutType {
 func (tc *taskContext) getExecTimeout() time.Duration {
 	tc.RLock()
 	defer tc.RUnlock()
+	// TODO DEVPROD-11204: Delete override to max exec timeout once this is enforced in project parsing
 	dynamicTimeout := math.Min(float64(tc.taskConfig.GetExecTimeout()), float64(tc.taskConfig.MaxExecTimeoutSecs))
 	if dynamicTimeout > 0 {
 		return time.Duration(dynamicTimeout) * time.Second
