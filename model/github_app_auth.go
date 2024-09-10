@@ -8,9 +8,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// kim: TODO: since this is the same data model as GitHub App Auth, should
-// probably go into the model/githubapp directory.
-
 var (
 	ghAuthIdKey         = bsonutil.MustHaveTag(githubapp.GithubAppAuth{}, "Id")
 	ghAuthAppIdKey      = bsonutil.MustHaveTag(githubapp.GithubAppAuth{}, "AppID")
