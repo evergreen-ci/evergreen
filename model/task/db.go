@@ -2697,12 +2697,6 @@ func activateTasks(taskIDs []string, caller string, activationTime time.Time) er
 					ActivatedKey:     true,
 					ActivatedByKey:   caller,
 					ActivatedTimeKey: activationTime,
-					// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
-					UnattainableDependencyKey: bson.M{"$cond": bson.M{
-						"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-						"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-						"else": false,
-					}},
 				},
 			},
 		})
