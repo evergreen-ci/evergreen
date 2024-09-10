@@ -35,7 +35,7 @@ type CloudHostModification struct {
 	env  evergreen.Environment
 }
 
-func (m *CloudHostModification) modifyHost(ctx context.Context, op func(ctx context.Context, mgr cloud.HostManager, h *host.Host, user string) error) error {
+func (m *CloudHostModification) modifyHost(ctx context.Context, op func(ctx context.Context, mgr cloud.Manager, h *host.Host, user string) error) error {
 	if m.env == nil {
 		m.env = evergreen.GetEnvironment()
 	}
@@ -117,7 +117,7 @@ func NewSpawnhostModifyJob(h *host.Host, changes host.HostModifyOptions, ts stri
 func (j *spawnhostModifyJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	modifyCloudHost := func(ctx context.Context, mgr cloud.HostManager, h *host.Host, user string) error {
+	modifyCloudHost := func(ctx context.Context, mgr cloud.Manager, h *host.Host, user string) error {
 		if err := mgr.ModifyHost(ctx, h, j.ModifyOptions); err != nil {
 			event.LogHostModifyError(h.Id, string(j.Source), err.Error())
 			grip.Error(message.WrapError(err, message.Fields{

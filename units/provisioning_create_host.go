@@ -268,7 +268,7 @@ var (
 )
 
 func (j *createHostJob) createHost(ctx context.Context) error {
-	var cloudManager cloud.HostManager
+	var cloudManager cloud.Manager
 	var err error
 	if err = ctx.Err(); err != nil {
 		return errors.Wrap(err, "creating host")
@@ -410,7 +410,7 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 }
 
 // spawnAndUpdateHost attempts to spawn the host and update the host document.
-func (j *createHostJob) spawnAndReplaceHost(ctx context.Context, cloudMgr cloud.HostManager) (replaced bool, err error) {
+func (j *createHostJob) spawnAndReplaceHost(ctx context.Context, cloudMgr cloud.Manager) (replaced bool, err error) {
 	if _, err = cloudMgr.SpawnHost(ctx, j.host); err != nil {
 		return false, errors.Wrapf(err, "spawning host '%s'", j.host.Id)
 	}
@@ -454,7 +454,7 @@ func (j *createHostJob) spawnAndReplaceHost(ctx context.Context, cloudMgr cloud.
 // real host that was created by this job. If that fails, it checks to see if
 // the real host already exists. If both of those fail, it will attempt to
 // terminate the cloud host.
-func (j *createHostJob) tryHostReplacement(ctx context.Context, cloudMgr cloud.HostManager) (replaced bool, err error) {
+func (j *createHostJob) tryHostReplacement(ctx context.Context, cloudMgr cloud.Manager) (replaced bool, err error) {
 	if err = host.UnsafeReplace(ctx, j.env, j.HostID, j.host); err == nil {
 		return true, nil
 	}

@@ -33,9 +33,9 @@ var (
 type EC2Suite struct {
 	suite.Suite
 	onDemandOpts              *EC2ManagerOptions
-	onDemandManager           HostManager
+	onDemandManager           Manager
 	onDemandWithRegionOpts    *EC2ManagerOptions
-	onDemandWithRegionManager HostManager
+	onDemandWithRegionManager Manager
 	impl                      *ec2Manager
 	mock                      *awsClientMock
 	h                         *host.Host
@@ -133,7 +133,7 @@ func (s *EC2Suite) SetupTest() {
 }
 
 func (s *EC2Suite) TestConstructor() {
-	s.Implements((*HostManager)(nil), &ec2Manager{env: s.env, EC2ManagerOptions: s.onDemandOpts})
+	s.Implements((*Manager)(nil), &ec2Manager{env: s.env, EC2ManagerOptions: s.onDemandOpts})
 	s.Implements((*BatchManager)(nil), &ec2Manager{env: s.env, EC2ManagerOptions: s.onDemandOpts})
 }
 

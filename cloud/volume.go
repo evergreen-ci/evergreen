@@ -29,7 +29,7 @@ func CreateVolume(ctx context.Context, env evergreen.Environment, volume *host.V
 	return volume, nil
 }
 
-func GetEC2ManagerForVolume(ctx context.Context, vol *host.Volume) (HostManager, error) {
+func GetEC2ManagerForVolume(ctx context.Context, vol *host.Volume) (Manager, error) {
 	provider := evergreen.ProviderNameEc2OnDemand
 	if os.Getenv("SETTINGS_OVERRIDE") != "" {
 		// Use the mock manager during integration tests

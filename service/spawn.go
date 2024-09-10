@@ -582,7 +582,7 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 			Provider: evergreen.ProviderNameEc2OnDemand,
 			Region:   cloud.AztoRegion(vol.AvailabilityZone),
 		}
-		var mgr cloud.HostManager
+		var mgr cloud.Manager
 		mgr, err = cloud.GetManager(ctx, uis.env, mgrOpts)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "can't get manager for volume '%s'", vol.ID))

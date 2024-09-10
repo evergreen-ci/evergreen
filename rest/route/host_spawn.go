@@ -921,7 +921,7 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		Provider: h.provider,
 		Region:   cloud.AztoRegion(volume.AvailabilityZone),
 	}
-	var mgr cloud.HostManager
+	var mgr cloud.Manager
 	mgr, err = cloud.GetManager(ctx, h.env, mgrOpts)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting cloud manager"))

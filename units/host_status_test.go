@@ -149,8 +149,8 @@ func TestSetCloudHostStatus(t *testing.T) {
 	defer cancel()
 	ctx = testutil.TestSpan(ctx, t)
 
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.HostManager){
-		"RunningStatusPreparesLegacyHostForProvisioning": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.HostManager) {
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager){
+		"RunningStatusPreparesLegacyHostForProvisioning": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
 			provider := cloud.GetMockProvider()
 			mockInstance := cloud.MockInstance{
 				Status: cloud.StatusRunning,
@@ -168,7 +168,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 			assert.False(t, dbHost.Provisioned)
 			assert.Equal(t, evergreen.HostProvisioning, dbHost.Status)
 		},
-		"RunningStatusMarksUserDataProvisionedHostAsProvisioned": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.HostManager) {
+		"RunningStatusMarksUserDataProvisionedHostAsProvisioned": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
 			provider := cloud.GetMockProvider()
 			mockInstance := cloud.MockInstance{
 				Status: cloud.StatusRunning,
@@ -186,7 +186,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 			assert.Equal(t, evergreen.HostStarting, dbHost.Status)
 			assert.True(t, dbHost.Provisioned)
 		},
-		"NonExistentStatusInitiatesTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.HostManager) {
+		"NonExistentStatusInitiatesTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
 			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, cloud.StatusNonExistent))
 
@@ -200,7 +200,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
-		"FailedStatusInitiatesTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.HostManager) {
+		"FailedStatusInitiatesTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
 			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, cloud.StatusFailed))
 
@@ -216,7 +216,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
-		"StoppedStatusInitiatesTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.HostManager) {
+		"StoppedStatusInitiatesTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
 			tsk := task.Task{
 				Id: "some_task",
 			}

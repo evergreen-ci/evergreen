@@ -22,9 +22,9 @@ type ProviderSettings interface {
 	FromDistroSettings(distro.Distro, string) error
 }
 
-// HostManager is an interface which handles creating new hosts or modifying
+// Manager is an interface which handles creating new hosts or modifying
 // them via some third-party API.
-type HostManager interface {
+type Manager interface {
 	// Load credentials or other settings from the config file
 	Configure(context.Context, *evergreen.Settings) error
 
@@ -87,7 +87,7 @@ type HostManager interface {
 }
 
 type ContainerManager interface {
-	HostManager
+	Manager
 
 	// GetContainers returns the IDs of all running containers on a specified host
 	GetContainers(context.Context, *host.Host) ([]string, error)
@@ -135,18 +135,10 @@ func GetSettings(provider string) (ProviderSettings, error) {
 	return nil, errors.Errorf("invalid provider name '%s'", provider)
 }
 
-func GetAWSClient(mock bool) AWSClient {
-	if !mock {
-		return &awsClientImpl{}
-	} else {
-		return &awsClientMock{}
-	}
-}
-
 // GetManager returns an implementation of Manager for the given manager options.
 // It returns an error if the provider name doesn't have a known implementation.
-func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerOpts) (HostManager, error) {
-	var provider HostManager
+func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerOpts) (Manager, error) {
+	var provider Manager
 
 	switch mgrOpts.Provider {
 	case evergreen.ProviderNameEc2OnDemand:
@@ -222,7 +214,7 @@ func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
 
 // ConvertContainerManager converts a regular manager into a container manager,
 // errors if type conversion not possible.
-func ConvertContainerManager(m HostManager) (ContainerManager, error) {
+func ConvertContainerManager(m Manager) (ContainerManager, error) {
 	if cm, ok := m.(ContainerManager); ok {
 		return cm, nil
 	}
