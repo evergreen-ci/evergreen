@@ -796,10 +796,11 @@ func (s *projectSuite) SetupTest() {
 			},
 			{
 				Name: "9001_task",
+				Tags: []string{"memes-dt"},
 			},
 			{
 				Name: "very_task",
-				Tags: []string{"part_of_memes"},
+				Tags: []string{"part_of_memes", "memes-dt"},
 			},
 			{
 				Name: "disabled_task",
@@ -807,6 +808,7 @@ func (s *projectSuite) SetupTest() {
 			{
 				Name:      "another_disabled_task",
 				Patchable: utility.FalsePtr(),
+				Tags:      []string{"memes-dt"},
 			},
 		},
 		Functions: map[string]*YAMLCommandSet{
@@ -944,6 +946,76 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 		BuildVariants: []string{"all"},
 		Tasks:         []string{"all"},
 	}
+
+	s.project.BuildProjectTVPairs(&patchDoc, evergreen.PatchVersionRequester)
+
+	s.Len(patchDoc.BuildVariants, 2)
+	s.ElementsMatch([]string{"bv_1", "bv_2"}, patchDoc.BuildVariants)
+	s.Len(patchDoc.Tasks, 7)
+	s.ElementsMatch([]string{
+		"a_task_1",
+		"a_task_2",
+		"b_task_1",
+		"b_task_2",
+		"9001_task",
+		"very_task",
+		"another_disabled_task"}, patchDoc.Tasks)
+	for _, vt := range patchDoc.VariantsTasks {
+		switch vt.Variant {
+		case "bv_1":
+			s.ElementsMatch([]string{
+				"a_task_1",
+				"a_task_2",
+				"b_task_1",
+				"b_task_2",
+				"9001_task",
+				"very_task",
+			}, vt.Tasks)
+			s.Len(vt.DisplayTasks, 1)
+			s.Equal("memes", vt.DisplayTasks[0].Name)
+		case "bv_2":
+			s.ElementsMatch([]string{
+				"a_task_1",
+				"a_task_2",
+				"b_task_1",
+				"b_task_2",
+				"another_disabled_task",
+			}, vt.Tasks)
+			s.Empty(vt.DisplayTasks)
+		default:
+			s.Fail("unexpected variant '%s'", vt.Variant)
+		}
+	}
+
+	// test all tasks expansion with named buildvariant expands unnamed buildvariant
+	patchDoc.BuildVariants = []string{"bv_1"}
+	patchDoc.Tasks = []string{"all"}
+	patchDoc.VariantsTasks = []patch.VariantTasks{}
+
+	s.project.BuildProjectTVPairs(&patchDoc, evergreen.PatchVersionRequester)
+
+	s.Len(patchDoc.BuildVariants, 2)
+	s.Len(patchDoc.Tasks, 6)
+
+	// test all variants expansion with named task
+	patchDoc.BuildVariants = []string{"all"}
+	patchDoc.VariantsTasks = []patch.VariantTasks{}
+
+	s.project.BuildProjectTVPairs(&patchDoc, evergreen.PatchVersionRequester)
+
+	s.Len(patchDoc.BuildVariants, 2)
+	s.Len(patchDoc.Tasks, 6)
+}
+
+func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskUsingATag() {
+	// test all expansions
+	patchDoc := patch.Patch{
+		BuildVariants: []string{"all"},
+		Tasks:         []string{"all"},
+	}
+
+	// Switch the execution tasks list to use a tag instead.
+	s.project.BuildVariants[0].DisplayTasks[0].ExecTasks = []string{".memes-dt"}
 
 	s.project.BuildProjectTVPairs(&patchDoc, evergreen.PatchVersionRequester)
 
