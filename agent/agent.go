@@ -684,7 +684,6 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 
 	idleTimeoutCtx, idleTimeoutCancel := context.WithCancel(timeoutWatcherCtx)
 	go a.startIdleTimeoutWatcher(timeoutWatcherCtx, idleTimeoutCancel, tc)
-
 	execTimeoutCtx, execTimeoutCancel := context.WithCancel(idleTimeoutCtx)
 	defer execTimeoutCancel()
 	timeoutOpts := timeoutWatcherOptions{

@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"math"
 	"path/filepath"
 	"sync"
 	"time"
@@ -288,7 +289,8 @@ func (tc *taskContext) getTimeoutType() globals.TimeoutType {
 func (tc *taskContext) getExecTimeout() time.Duration {
 	tc.RLock()
 	defer tc.RUnlock()
-	if dynamicTimeout := tc.taskConfig.GetExecTimeout(); dynamicTimeout > 0 {
+	dynamicTimeout := math.Min(float64(tc.taskConfig.GetExecTimeout()), float64(tc.taskConfig.MaxExecTimeoutSecs))
+	if dynamicTimeout > 0 {
 		return time.Duration(dynamicTimeout) * time.Second
 	}
 	if pt := tc.taskConfig.Project.FindProjectTask(tc.taskConfig.Task.DisplayName); pt != nil && pt.ExecTimeoutSecs > 0 {
