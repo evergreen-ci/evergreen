@@ -66,7 +66,7 @@ timeout. To work around that, users can open a PR and run the patch from there.
 
 Parsley will not accept files larger than 2.5GB. If you need to upload a file
 larger than 2.5GB, we recommend downloading the raw file and splitting the file
-into smaller parts and uploading them separately.
+into smaller parts, then uploading them separately.
 
 ## Task queue wait time limits
 
