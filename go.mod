@@ -203,7 +203,6 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/mongodb/jasper v0.0.0-20240903162551-472a0fcb2344
 	github.com/shirou/gopsutil/v3 v3.24.5
-	go.opentelemetry.io/contrib/propagators/b3 v1.24.0
 	go.uber.org/automaxprocs v1.5.3
 	gopkg.in/yaml.v3 v3.0.1
 )
