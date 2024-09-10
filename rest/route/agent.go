@@ -6,12 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -1743,16 +1740,15 @@ type awsAssumeRole struct {
 	taskID string
 	body   apimodels.AssumeRoleRequest
 
-	env    evergreen.Environment
-	client cloud.AWSClient
+	stsManager cloud.STSManager
 }
 
-func makeAWSAssumeRole(env evergreen.Environment, client cloud.AWSClient) gimlet.RouteHandler {
-	return &awsAssumeRole{env: env, client: client}
+func makeAWSAssumeRole(stsManager cloud.STSManager) gimlet.RouteHandler {
+	return &awsAssumeRole{stsManager: stsManager}
 }
 
 func (h *awsAssumeRole) Factory() gimlet.RouteHandler {
-	return &awsAssumeRole{env: h.env, client: h.client}
+	return &awsAssumeRole{stsManager: h.stsManager}
 }
 
 func (h *awsAssumeRole) Parse(ctx context.Context, r *http.Request) error {
@@ -1773,25 +1769,19 @@ func (h *awsAssumeRole) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
-	if err := h.client.Create(ctx, evergreen.DefaultEC2Region); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "connecting to AWS"))
-	}
-
-	output, err := h.client.AssumeRole(ctx, &sts.AssumeRoleInput{
-		RoleArn:         &h.body.RoleARN,
-		Policy:          &h.body.Policy,
-		DurationSeconds: &h.body.DurationSeconds,
-		ExternalId:      aws.String(fmt.Sprintf("%s-%s", "project-id", "requester")),
-		RoleSessionName: aws.String(strconv.Itoa(int(time.Now().Unix()))),
+	creds, err := h.stsManager.AssumeRole(ctx, h.taskID, cloud.AssumeRoleOptions{
+		RoleARN:         h.body.RoleARN,
+		Policy:          h.body.Policy,
+		DurationSeconds: h.body.DurationSeconds,
 	})
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "assuming role for task '%s'", h.taskID))
 	}
 
 	return gimlet.NewJSONResponse(&apimodels.AssumeRoleResponse{
-		AccessKeyID:     aws.ToString(output.Credentials.AccessKeyId),
-		SecretAccessKey: aws.ToString(output.Credentials.SecretAccessKey),
-		SessionToken:    aws.ToString(output.Credentials.SessionToken),
-		Expiration:      output.Credentials.Expiration.String(),
+		AccessKeyID:     creds.AccessKeyID,
+		SecretAccessKey: creds.SecretAccessKey,
+		SessionToken:    creds.SessionToken,
+		Expiration:      creds.Expiration.String(),
 	})
 }

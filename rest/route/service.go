@@ -66,7 +66,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
 
 	// Clients
-	awsClient := cloud.NewAWSClient()
+	stsManager := cloud.GetSTSManager(false)
 
 	// Agent protocol routes
 	app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentCedarConfig(settings.Cedar))
@@ -113,7 +113,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/update_push_status").Version(2).Post().Wrap(requireTask).RouteHandler(makeUpdatePushStatus())
 	app.AddRoute("/task/{task_id}/restart").Version(2).Post().Wrap(requireTask).RouteHandler(makeMarkTaskForRestart())
 	app.AddRoute("/task/{task_id}/check_run").Version(2).Post().Wrap(requireTask).RouteHandler(makeCheckRun(settings))
-	app.AddRoute("/task/{task_id}/aws/assume_role").Version(2).Post().Wrap(requireTask).RouteHandler(makeAWSAssumeRole(env, awsClient))
+	app.AddRoute("/task/{task_id}/aws/assume_role").Version(2).Post().Wrap(requireTask).RouteHandler(makeAWSAssumeRole(stsManager))
 
 	// REST v2 API Routes
 	app.AddRoute("/").Version(2).Get().Wrap(requireUser).RouteHandler(makePlaceHolder())

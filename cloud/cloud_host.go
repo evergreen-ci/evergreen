@@ -13,7 +13,7 @@ import (
 // underlying provider's implementation.
 type CloudHost struct {
 	Host     *host.Host
-	CloudMgr Manager
+	CloudMgr HostManager
 }
 
 // GetCloudHost returns an instance of CloudHost wrapping the given model.Host,

@@ -203,15 +203,18 @@ type Token struct {
 type AssumeRoleRequest struct {
 	RoleARN         string `json:"role_arn"`
 	Policy          string `json:"policy"`
-	DurationSeconds int32  `json:"duration_seconds"`
+	DurationSeconds *int32 `json:"duration_seconds"`
 }
 
 func (ar *AssumeRoleRequest) Validate() error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.NewWhen(ar.RoleARN == "", "must specify role ARN")
-	// 0 defaults to 15 minutes.
-	catcher.NewWhen(ar.DurationSeconds < 0, "cannot specify a non-positive duration")
+
+	if ar.DurationSeconds != nil {
+		// 0 defaults to 15 minutes.
+		catcher.NewWhen(*ar.DurationSeconds < 0, "cannot specify a non-positive duration")
+	}
 
 	return catcher.Resolve()
 }

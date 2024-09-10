@@ -184,7 +184,7 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 // determine the next step in the host lifecycle. Hosts that are running
 // in the cloud can successfully transition to the next step in the lifecycle.
 // Hosts found in an unrecoverable state are terminated.
-func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, cloudStatus cloud.CloudStatus) error {
+func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.HostManager, h host.Host, cloudStatus cloud.CloudStatus) error {
 	switch cloudStatus {
 	case cloud.StatusFailed, cloud.StatusTerminated, cloud.StatusStopped, cloud.StatusStopping, cloud.StatusNonExistent:
 		j.logHostStatusMessage(&h, cloudStatus)

@@ -141,7 +141,7 @@ type mockManager struct {
 	mutex     *sync.RWMutex
 }
 
-func makeMockManager() Manager {
+func makeMockManager() HostManager {
 	return &mockManager{
 		Instances: globalMockState.instances,
 		mutex:     &globalMockState.mutex,
