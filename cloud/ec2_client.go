@@ -126,10 +126,6 @@ type AWSClient interface {
 	AssumeRole(ctx context.Context, input *sts.AssumeRoleInput) (*sts.AssumeRoleOutput, error)
 }
 
-func NewAWSClient() AWSClient {
-	return &awsClientImpl{}
-}
-
 // awsClientImpl wraps ec2.EC2.
 type awsClientImpl struct { //nolint:all
 	ec2Client *ec2.Client
