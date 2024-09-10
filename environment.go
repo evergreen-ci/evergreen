@@ -32,6 +32,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
@@ -948,6 +949,13 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer t
 
 	spanLimits := sdktrace.NewSpanLimits()
 	spanLimits.AttributeValueLengthLimit = OtelAttributeMaxLength
+
+	// Set up propagators. This allows traces from the UI to connect to traces from Evergreen.
+	otel.SetTextMapPropagator(
+		propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+		),
+	)
 
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exp),
