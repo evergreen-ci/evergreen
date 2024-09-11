@@ -36,8 +36,6 @@ type Parameter struct {
 // parameters in AWS Systems Manager Parameter Store. It supports caching to
 // optimize parameter retrieval.
 type ParameterManager struct {
-	// pathPrefix is the prefix path in the Parameter Store hierarchy. If set,
-	// all parameters should be stored under this prefix.
 	pathPrefix string
 	// cache holds the in-memory cache of parameters. If parameter caching is
 	// enabled, the cache will reduce the number of reads from Parameter Store
@@ -50,6 +48,8 @@ type ParameterManager struct {
 
 // ParameterManagerOptions represent options to create a parameter manager.
 type ParameterManagerOptions struct {
+	// PathPrefix is the prefix path in the Parameter Store hierarchy. If set,
+	// all parameters should be stored under this prefix.
 	PathPrefix     string
 	CachingEnabled bool
 	SSMClient      SSMClient
