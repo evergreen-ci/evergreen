@@ -24,7 +24,7 @@ func TestAssumeRoleRequestValidate(t *testing.T) {
 				RoleARN:         "role",
 				DurationSeconds: utility.ToInt32Ptr(-1),
 			},
-			errContains: "cannot specify a non-positive duration",
+			errContains: "cannot specify a negative duration",
 		},
 		{
 			desc: "SuccessWithNoDuration",
