@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/taskoutput"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
@@ -1065,6 +1066,7 @@ func TestTaskResultOutcome(t *testing.T) {
 }
 
 func TestIsUnfinishedSystemUnresponsive(t *testing.T) {
+	settings := testutil.TestConfig()
 	var task Task
 
 	task = Task{
@@ -1080,7 +1082,7 @@ func TestIsUnfinishedSystemUnresponsive(t *testing.T) {
 
 	task = Task{
 		Status:    evergreen.TaskFailed,
-		Execution: evergreen.MaxTaskExecution,
+		Execution: settings.TaskLimits.MaxTaskExecution,
 		Details:   apimodels.TaskEndDetail{TimedOut: true, Description: evergreen.TaskDescriptionHeartbeat}}
 	assert.False(t, task.IsUnfinishedSystemUnresponsive(), "normal timeout")
 
@@ -1091,7 +1093,7 @@ func TestIsUnfinishedSystemUnresponsive(t *testing.T) {
 
 	task = Task{
 		Status:    evergreen.TaskSystemUnresponse,
-		Execution: evergreen.MaxTaskExecution,
+		Execution: settings.TaskLimits.MaxTaskExecution,
 	}
 	assert.False(t, task.IsUnfinishedSystemUnresponsive(), "finished restarting")
 }
