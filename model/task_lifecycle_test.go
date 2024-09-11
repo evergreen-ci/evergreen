@@ -2580,7 +2580,7 @@ func TestMarkEndWithDisplayTaskResetWhenFinished(t *testing.T) {
 	}
 	assert.NoError(t, h.Insert(ctx))
 
-	assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, &et, "", time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}, false))
+	assert.NoError(t, MarkEnd(ctx, testutil.TestConfig(), &et, "", time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}, false))
 
 	restartedDisplayTask, err := task.FindOneId(dtID)
 	assert.NoError(t, err)
@@ -2832,6 +2832,9 @@ func TestTryResetTask(t *testing.T) {
 				newSettings := &evergreen.Settings{
 					ServiceFlags: evergreen.ServiceFlags{
 						SystemFailedTaskRestartDisabled: true,
+					},
+					TaskLimits: evergreen.TaskLimitsConfig{
+						MaxTaskExecution: 9,
 					},
 				}
 				So(TryResetTask(ctx, newSettings, systemFailedTask.Id, userName, "", detail), ShouldBeNil)
