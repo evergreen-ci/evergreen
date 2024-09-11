@@ -648,7 +648,7 @@ func (h *attachFilesHandler) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-// Run updates file mappings for a task or build
+// Run updates file mappings for a task
 func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 	t, err := task.FindOneId(h.taskID)
 	if err != nil {
@@ -661,6 +661,29 @@ func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	catcher := grip.NewBasicCatcher()
+	// If there are previous executions, update entries in case any content types have changed.
+	if t.Execution > 0 {
+		entries, err := artifact.FindAll(artifact.ByTaskId(t.Id))
+		if err != nil {
+			catcher.Wrapf(err, "finding artifacts for task '%s'")
+		}
+		for _, entry := range entries {
+			entryUpdated := false
+			for i, file := range entry.Files {
+				for _, newFile := range h.files {
+					if file.FileKey == newFile.FileKey && file.Bucket == newFile.Bucket && file.ContentType != newFile.ContentType {
+						entry.Files[i].ContentType = newFile.ContentType
+						entryUpdated = true
+					}
+				}
+			}
+			if entryUpdated {
+				catcher.Wrapf(entry.Update(), "problem updating entry from execution '%d'", entry.Execution)
+			}
+		}
+	}
+
 	entry := &artifact.Entry{
 		TaskId:          t.Id,
 		TaskDisplayName: t.DisplayName,
@@ -671,10 +694,13 @@ func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if err = entry.Upsert(); err != nil {
-		message := fmt.Sprintf("updating artifact file info for task %s: %v", t.Id, err)
-		grip.Error(message)
-		return gimlet.MakeJSONInternalErrorResponder(errors.New(message))
+		catcher.Errorf("updating artifact file info for task %s: %v", t.Id, err)
 	}
+
+	if catcher.HasErrors() {
+		return gimlet.MakeJSONInternalErrorResponder(catcher.Resolve())
+	}
+
 	return gimlet.NewJSONResponse(fmt.Sprintf("Artifact files for task %s successfully attached", t.Id))
 }
 

@@ -376,7 +376,7 @@ func TestSignedUrlVisibility(t *testing.T) {
 		localFiles := []string{"file1", "file2"}
 		remoteFile := "remote file"
 
-		require.NoError(t, s.attachFiles(ctx, comm, logger, localFiles, remoteFile))
+		require.NoError(t, s.attachFiles(ctx, comm, localFiles, remoteFile))
 
 		attachedFiles := comm.AttachedFiles
 		if v, found := attachedFiles[""]; found {
@@ -423,7 +423,7 @@ func TestContentTypeSaved(t *testing.T) {
 	localFiles := []string{"file1", "file2"}
 	remoteFile := "remote file"
 
-	require.NoError(t, s.attachFiles(ctx, comm, logger, localFiles, remoteFile))
+	require.NoError(t, s.attachFiles(ctx, comm, localFiles, remoteFile))
 
 	attachedFiles := comm.AttachedFiles
 	files, ok := attachedFiles[conf.Task.Id]

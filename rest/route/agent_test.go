@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/artifact"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
@@ -887,6 +889,174 @@ func TestRevokeGitHubDynamicAccessToken(t *testing.T) {
 			require.True(t, ok)
 
 			tCase(ctx, t, r, env)
+		})
+	}
+}
+
+func TestAttachFilesHandler(t *testing.T) {
+	const (
+		route  = "/task/%s/files"
+		taskID = "myTask"
+	)
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *attachFilesHandler){
+		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *attachFilesHandler) {
+			url := fmt.Sprintf(route, "")
+			request, err := http.NewRequest(http.MethodPost, url, nil)
+			require.NoError(t, err)
+			request = gimlet.SetURLVars(request, map[string]string{"task_id": ""})
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "missing task ID")
+		},
+		"ParseErrorsOnNilBody": func(ctx context.Context, t *testing.T, handler *attachFilesHandler) {
+			url := fmt.Sprintf(route, taskID)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(nil))
+			require.NoError(t, err)
+
+			options := map[string]string{"task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "reading file definitions for task")
+		},
+		"SucceedsAndModifiesPreviousExecutions": func(ctx context.Context, t *testing.T, handler *attachFilesHandler) {
+			// Insert files for previous executions
+			entry1 := artifact.Entry{
+				TaskId:    taskID,
+				Execution: 0,
+				Files: []artifact.File{
+					{
+						FileKey:     "wrongFile",
+						ContentType: "txt",
+						Bucket:      "pail",
+					},
+					{
+						FileKey:     "myFile", // this one should change
+						ContentType: "txt",
+						Bucket:      "pail",
+					},
+				},
+			}
+			entry2 := artifact.Entry{
+				TaskId:    taskID,
+				Execution: 1,
+				Files: []artifact.File{
+					{
+						FileKey:     "myFile",
+						ContentType: "newType",
+						Bucket:      "pail",
+					},
+					{
+						FileKey:     "myOtherFile", // this one should change
+						ContentType: "txt",
+						Bucket:      "pail",
+					},
+					{
+						FileKey:     "myFile",
+						ContentType: "txt",
+						Bucket:      "wrongBucket",
+					},
+				},
+			}
+			entry3 := artifact.Entry{
+				TaskId:    "wrongTaskId",
+				Execution: 0,
+				Files: []artifact.File{
+					{
+						FileKey:     "myFile",
+						ContentType: "txt",
+						Bucket:      "pail",
+					},
+				},
+			}
+			assert.NoError(t, entry1.Upsert())
+			assert.NoError(t, entry2.Upsert())
+			assert.NoError(t, entry3.Upsert())
+			url := fmt.Sprintf(route, taskID)
+			body := []artifact.File{
+				{
+					FileKey:     "myFile",
+					ContentType: "newType",
+					Bucket:      "pail",
+				},
+				{
+					FileKey:     "myOtherFile",
+					ContentType: "newType",
+					Bucket:      "pail",
+				},
+				{
+					FileKey:     "somethingElseEntirely",
+					ContentType: "newType",
+					Bucket:      "pail",
+				},
+			}
+			jsonBody, err := json.Marshal(&body)
+			request, err := http.NewRequest(http.MethodDelete, url, bytes.NewReader(jsonBody))
+			require.NoError(t, err)
+
+			options := map[string]string{"task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			require.NoError(t, handler.Parse(ctx, request))
+			resp := handler.Run(ctx)
+			require.Equal(t, http.StatusOK, resp.Status())
+
+			// The new entry is inserted and unchanged.
+			entriesFromDB, err := artifact.FindAll(artifact.ByTaskIdAndExecution(taskID, 2))
+			assert.NoError(t, err)
+			require.Len(t, entriesFromDB, 1)
+			assert.Equal(t, entriesFromDB[0].Execution, 2)
+			require.Equal(t, entriesFromDB[0].Files, body)
+
+			// Verify that both of the old entries have their content type updated.
+			entriesFromDB, err = artifact.FindAll(artifact.ByTaskIdAndExecution(taskID, 0))
+			assert.NoError(t, err)
+			require.Len(t, entriesFromDB, 1)
+			assert.Equal(t, entriesFromDB[0].Execution, 0)
+			require.Len(t, entriesFromDB[0].Files, 2)
+			// First file shouldn't change
+			assert.Equal(t, entriesFromDB[0].Files[0].FileKey, entry1.Files[0].FileKey)
+			assert.Equal(t, entriesFromDB[0].Files[0].Bucket, entry1.Files[0].Bucket)
+			assert.Equal(t, entriesFromDB[0].Files[0].ContentType, entry1.Files[0].ContentType)
+			// Second file should have the new content type
+			assert.Equal(t, entriesFromDB[0].Files[1].FileKey, entry1.Files[1].FileKey)
+			assert.Equal(t, entriesFromDB[0].Files[1].Bucket, entry1.Files[1].Bucket)
+			assert.NotEqual(t, entriesFromDB[0].Files[1].ContentType, entry1.Files[1].ContentType)
+			assert.Equal(t, entriesFromDB[0].Files[1].ContentType, "newType")
+
+			entriesFromDB, err = artifact.FindAll(artifact.ByTaskIdAndExecution(taskID, 1))
+			assert.NoError(t, err)
+			require.Len(t, entriesFromDB, 1)
+			assert.Equal(t, entriesFromDB[0].Execution, 1)
+			require.Len(t, entriesFromDB[0].Files, 3)
+			// First file shouldn't change
+			assert.Equal(t, entriesFromDB[0].Files[0].FileKey, entry2.Files[0].FileKey)
+			assert.Equal(t, entriesFromDB[0].Files[0].Bucket, entry2.Files[0].Bucket)
+			assert.Equal(t, entriesFromDB[0].Files[0].ContentType, entry2.Files[0].ContentType)
+			// Second file should have the new content type
+			assert.Equal(t, entriesFromDB[0].Files[1].FileKey, entry2.Files[1].FileKey)
+			assert.Equal(t, entriesFromDB[0].Files[1].Bucket, entry2.Files[1].Bucket)
+			assert.NotEqual(t, entriesFromDB[0].Files[1].ContentType, entry2.Files[1].ContentType)
+			assert.Equal(t, entriesFromDB[0].Files[1].ContentType, "newType")
+			// Third file also unchanged
+			assert.Equal(t, entriesFromDB[0].Files[2].FileKey, entry2.Files[2].FileKey)
+			assert.Equal(t, entriesFromDB[0].Files[2].Bucket, entry2.Files[2].Bucket)
+			assert.Equal(t, entriesFromDB[0].Files[2].ContentType, entry2.Files[2].ContentType)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(artifact.Collection, task.Collection))
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			tsk := task.Task{
+				Id:        taskID,
+				Execution: 2,
+			}
+			assert.NoError(t, tsk.Insert())
+			r, ok := makeAttachFiles().(*attachFilesHandler)
+			require.True(t, ok)
+
+			tCase(ctx, t, r)
 		})
 	}
 }
