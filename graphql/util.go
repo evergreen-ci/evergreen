@@ -1340,3 +1340,18 @@ func annotationPermissionHelper(ctx context.Context, taskID string, execution *i
 	}
 	return nil
 }
+
+// unnestOtelVariables "flattens" one level of a string map. Any maps that are found as a value within the map are moved to the top level of the map, with "topkey.nestedkey" as their new key, in line with Honeycomb best practices.
+func unnestOtelVariables(vars map[string]interface{}) map[string]interface{} {
+	unnestedVars := map[string]interface{}{}
+	for k, v := range vars {
+		if valueMap, isMap := v.(map[string]interface{}); isMap {
+			for nestedKey, nestedValue := range valueMap {
+				unnestedVars[k+"."+nestedKey] = nestedValue
+			}
+		} else {
+			unnestedVars[k] = v
+		}
+	}
+	return unnestedVars
+}
