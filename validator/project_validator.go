@@ -31,6 +31,8 @@ type projectConfigValidator func(config *model.ProjectConfig) ValidationErrors
 
 type projectSettingsValidator func(context.Context, *evergreen.Settings, *model.Project, *model.ProjectRef, bool) ValidationErrors
 
+type projectAliasValidator func(config *model.Project, aliases model.ProjectAliases) ValidationErrors
+
 // bool indicates if we should still run the validator if the project is complex
 type longValidator func(*model.Project, bool) ValidationErrors
 
@@ -166,6 +168,11 @@ var projectWarningValidators = []projectValidator{
 	checkTaskUsage,
 }
 
+var projectAliasWarningValidators = []projectAliasValidator{
+	validateAliasCoverage,
+	validateCheckRuns,
+}
+
 // Functions used to validate a project configuration that requires additional
 // info such as admin settings and project settings.
 var projectSettingsValidators = []projectSettingsValidator{
@@ -287,7 +294,7 @@ func CheckProject(ctx context.Context, project *model.Project, config *model.Pro
 	return append(verrs, CheckAliasWarnings(project, aliases)...)
 }
 
-// verify that the project configuration semantics is valid
+// CheckProjectWarnings returns warnings about the project configuration semantics
 func CheckProjectWarnings(project *model.Project) ValidationErrors {
 	validationErrs := ValidationErrors{}
 	for _, projectWarningValidator := range projectWarningValidators {
@@ -297,11 +304,18 @@ func CheckProjectWarnings(project *model.Project) ValidationErrors {
 	return validationErrs
 }
 
+// CheckAliasWarnings returns warnings related to the definition of tasks/variants matching the given aliases.
 func CheckAliasWarnings(project *model.Project, aliases model.ProjectAliases) ValidationErrors {
-	return validateAliasCoverage(project, aliases)
+	validationErrs := ValidationErrors{}
+	for _, validator := range projectAliasWarningValidators {
+		validationErrs = append(validationErrs,
+			validator(project, aliases)...)
+	}
+
+	return validationErrs
 }
 
-// verify that the project configuration syntax is valid
+// CheckProjectErrors returns errors about the project configuration syntax
 func CheckProjectErrors(ctx context.Context, project *model.Project, includeLong bool) ValidationErrors {
 	validationErrs := ValidationErrors{}
 	for _, projectErrorValidator := range projectErrorValidators {
@@ -329,6 +343,7 @@ func CheckProjectErrors(ctx context.Context, project *model.Project, includeLong
 	return validationErrs
 }
 
+// CheckPatchedProjectConfigErrors returns validation errors for the given patched project config.
 func CheckPatchedProjectConfigErrors(patchedProjectConfig string) ValidationErrors {
 	validationErrs := ValidationErrors{}
 	if len(patchedProjectConfig) <= 0 {
@@ -655,6 +670,39 @@ func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) 
 		}
 	}
 	return aliasNeedsVariant, aliasNeedsTask, nil
+}
+
+// TODO: Should this be an error or a warning?
+func validateCheckRuns(p *model.Project, aliases model.ProjectAliases) ValidationErrors {
+	errs := ValidationErrors{}
+	aliasMap := map[string][]model.ProjectAlias{} // map of alias name to aliases
+	for _, a := range aliases {
+		if aliasMap[a.Alias] == nil {
+			aliasMap[a.Alias] = []model.ProjectAlias{}
+		}
+		aliasMap[a.Alias] = append(aliasMap[a.Alias], a)
+	}
+
+	tvPairs := &model.TaskVariantPairs{}
+	var err error
+	// TODO: should we only do this if PR testing is enabled
+	tvPairs.ExecTasks, tvPairs.DisplayTasks, err = p.BuildProjectTVPairsWithAlias(aliasMap[evergreen.GithubPRAlias], evergreen.GithubPRRequester)
+	if err != nil {
+		errs = append(errs, ValidationError{
+			Message: "problem getting task variant pairs for PR aliases",
+			Level:   Error,
+		})
+		return errs
+	}
+	numCheckRuns := p.GetNumCheckRunsFromTaskVariantPairs(tvPairs)
+	checkRunLimit := evergreen.GetEnvironment().Settings().GitHubCheckRun.CheckRunLimit
+	if numCheckRuns > checkRunLimit {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("total number of checkRuns (%d) exceeds maximum limit (%d)", numCheckRuns, checkRunLimit),
+			Level:   Error,
+		})
+	}
+	return errs
 }
 
 func aliasMatchesTaskGroupTask(p *model.Project, alias model.ProjectAlias, tgName string) (bool, error) {
