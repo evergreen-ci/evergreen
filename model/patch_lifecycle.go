@@ -6,14 +6,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
@@ -983,36 +981,20 @@ func AbortPatchesWithGithubPatchData(ctx context.Context, createdBefore time.Tim
 			continue
 		}
 
-		if p.IsCommitQueuePatch() {
-			mergeTask, err := task.FindMergeTaskForVersion(p.Version)
-			if err != nil {
-				return errors.Wrap(err, "finding merge task for version")
-			}
-			if mergeTask == nil {
-				return errors.New("no merge task found")
-			}
-			if mergeTask.Status == evergreen.TaskStarted || evergreen.IsFinishedTaskStatus(mergeTask.Status) {
-				// If the merge task already started, the PR merge is
-				// already ongoing, so it's better to just let it complete.
-				continue
-			}
-			catcher.Add(DequeueAndRestartForTask(ctx, nil, mergeTask, message.GithubStateFailure, evergreen.APIServerTaskActivator, "new push to pull request"))
-		} else {
-			err = CancelPatch(ctx, &p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed})
-			msg := message.Fields{
-				"source":         "github hook",
-				"created_before": createdBefore.String(),
-				"owner":          owner,
-				"repo":           repo,
-				"message":        "aborting patch's version",
-				"patch_id":       p.Id.Hex(),
-				"pr":             p.GithubPatchData.PRNumber,
-				"project":        p.Project,
-				"version":        p.Version,
-			}
-			grip.Error(message.WrapError(err, msg))
-			catcher.Add(err)
+		err = CancelPatch(ctx, &p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed})
+		msg := message.Fields{
+			"source":         "github hook",
+			"created_before": createdBefore.String(),
+			"owner":          owner,
+			"repo":           repo,
+			"message":        "aborting patch's version",
+			"patch_id":       p.Id.Hex(),
+			"pr":             p.GithubPatchData.PRNumber,
+			"project":        p.Project,
+			"version":        p.Version,
 		}
+		grip.Error(message.WrapError(err, msg))
+		catcher.Add(err)
 	}
 
 	return errors.Wrap(catcher.Resolve(), "aborting patches")
@@ -1063,40 +1045,6 @@ type EnqueuePatch struct {
 
 func (e *EnqueuePatch) String() string {
 	return fmt.Sprintf("enqueue patch '%s'", e.PatchID)
-}
-
-func (e *EnqueuePatch) Send() error {
-	existingPatch, err := patch.FindOneId(e.PatchID)
-	if err != nil {
-		return errors.Wrap(err, "getting existing patch")
-	}
-	if existingPatch == nil {
-		return errors.Errorf("no patch '%s' found", e.PatchID)
-	}
-
-	// only enqueue once
-	if len(existingPatch.MergePatch) != 0 {
-		return nil
-	}
-
-	cq, err := commitqueue.FindOneId(existingPatch.Project)
-	if err != nil {
-		return errors.Wrap(err, "getting commit queue")
-	}
-	if cq == nil {
-		return errors.Errorf("no commit queue for project '%s'", existingPatch.Project)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultParserProjectAccessTimeout)
-	defer cancel()
-	mergePatch, err := MakeMergePatchFromExisting(ctx, evergreen.GetEnvironment().Settings(), existingPatch, "")
-	if err != nil {
-		return errors.Wrap(err, "making merge patch")
-	}
-
-	_, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: mergePatch.Id.Hex(), PatchId: mergePatch.Id.Hex(), Source: commitqueue.SourceDiff})
-
-	return errors.Wrap(err, "enqueueing item")
 }
 
 func (e *EnqueuePatch) Valid() bool {
@@ -1184,78 +1132,6 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 	}
 
 	return patchDoc, nil
-}
-
-func RetryCommitQueueItems(projectID string, opts RestartOptions) ([]string, []string, error) {
-	patches, err := patch.FindFailedCommitQueuePatchesInTimeRange(projectID, opts.StartTime, opts.EndTime)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "finding failed commit queue patches for project in time range")
-	}
-	cq, err := commitqueue.FindOneId(projectID)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "finding commit queue '%s'", projectID)
-	}
-	if cq == nil {
-		return nil, nil, errors.Errorf("commit queue '%s' not found", projectID)
-	}
-
-	// don't requeue items, just return what would be requeued
-	if opts.DryRun {
-		toBeRequeued := []string{}
-		for _, p := range patches {
-			toBeRequeued = append(toBeRequeued, p.Id.Hex())
-		}
-		return toBeRequeued, nil, nil
-	}
-	patchesRestarted := []string{}
-	patchesFailed := []string{}
-	for _, p := range patches {
-		// use the PR number to determine if this is a PR or diff patch. Currently there
-		// is not a reliable field that is set for diff patches
-		var err error
-		if p.GithubPatchData.PRNumber > 0 {
-			err = restartPRItem(p, cq)
-		} else {
-			err = restartDiffItem(p, cq)
-		}
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"patch":        p.Id,
-				"commit_queue": cq.ProjectID,
-				"message":      "error restarting commit queue item",
-				"pr_number":    p.GithubPatchData.PRNumber,
-			}))
-			patchesFailed = append(patchesFailed, p.Id.Hex())
-		} else {
-			patchesRestarted = append(patchesRestarted, p.Id.Hex())
-		}
-	}
-
-	return patchesRestarted, patchesFailed, nil
-}
-
-func restartPRItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
-	// reconstruct commit queue item from patch
-	modules := []commitqueue.Module{}
-	for _, modulePatch := range p.Patches {
-		if modulePatch.ModuleName != "" {
-			module := commitqueue.Module{
-				Module: modulePatch.ModuleName,
-				Issue:  modulePatch.PatchSet.Patch,
-			}
-			modules = append(modules, module)
-		}
-	}
-	item := commitqueue.CommitQueueItem{
-		Issue:   strconv.Itoa(p.GithubPatchData.PRNumber),
-		Modules: modules,
-		Source:  commitqueue.SourcePullRequest,
-	}
-	if _, err := cq.Enqueue(item); err != nil {
-		return errors.Wrap(err, "enqueuing item")
-	}
-
-	return nil
 }
 
 func restartDiffItem(p patch.Patch, cq *commitqueue.CommitQueue) error {

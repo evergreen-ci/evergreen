@@ -999,9 +999,6 @@ func (p *Patch) GetRequester() string {
 	if p.IsGithubMergePatch() {
 		return evergreen.GithubMergeRequester
 	}
-	if p.IsCommitQueuePatch() {
-		return evergreen.MergeTestRequester
-	}
 	return evergreen.PatchVersionRequester
 }
 

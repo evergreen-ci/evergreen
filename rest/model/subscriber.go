@@ -14,7 +14,7 @@ import (
 
 type APISubscriber struct {
 	Type                *string                 `json:"type"`
-	Target              interface{}             `json:"target"`
+	Target              interface{}             `json:"target" swaggerignore:"true"`
 	WebhookSubscriber   *APIWebhookSubscriber   `json:"-"`
 	JiraIssueSubscriber *APIJIRAIssueSubscriber `json:"-"`
 }

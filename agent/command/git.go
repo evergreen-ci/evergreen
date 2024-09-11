@@ -908,16 +908,6 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 		return errors.Wrap(err, "fetching project and module source")
 	}
 
-	// Apply additional patches for commit queue batch execution.
-	if conf.Task.Requester == evergreen.MergeTestRequester && !conf.Task.CommitQueueMerge {
-		for _, patchId := range additionalPatches {
-			err := c.applyAdditionalPatch(ctx, comm, logger, conf, td, patchId)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
 	// Apply patches if this is a patch and we haven't already gotten the changes from a PR
 	if evergreen.IsPatchRequester(conf.Task.Requester) && !isGitHub(conf) {
 		if err = c.getPatchContents(ctx, comm, logger, conf, p); err != nil {

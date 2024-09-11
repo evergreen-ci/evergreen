@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"

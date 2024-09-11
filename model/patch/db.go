@@ -180,21 +180,6 @@ var requesterExpression = bson.M{
 				},
 				"then": evergreen.GithubMergeRequester,
 			},
-			{
-				"case": bson.M{
-					"$and": []bson.M{
-						{"$ifNull": []interface{}{"$" + githubPatchDataKey, false}},
-						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchMergeCommitSHAHKey), ""}},
-					},
-				},
-				"then": evergreen.MergeTestRequester,
-			},
-			{
-				"case": bson.M{
-					"$eq": []string{"$" + AliasKey, evergreen.CommitQueueAlias},
-				},
-				"then": evergreen.MergeTestRequester,
-			},
 		},
 		"default": evergreen.PatchVersionRequester,
 	},
