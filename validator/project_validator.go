@@ -672,7 +672,7 @@ func getAliasCoverage(p *model.Project, aliasMap map[string]model.ProjectAlias) 
 	return aliasNeedsVariant, aliasNeedsTask, nil
 }
 
-// TODO: Should this be an error or a warning?
+// validateCheckRuns returns warnings if PR aliases are going to violate check run rules for the given config.
 func validateCheckRuns(p *model.Project, aliases model.ProjectAliases) ValidationErrors {
 	errs := ValidationErrors{}
 	aliasMap := map[string][]model.ProjectAlias{} // map of alias name to aliases
@@ -683,23 +683,21 @@ func validateCheckRuns(p *model.Project, aliases model.ProjectAliases) Validatio
 		aliasMap[a.Alias] = append(aliasMap[a.Alias], a)
 	}
 
-	tvPairs := &model.TaskVariantPairs{}
-	var err error
-	// TODO: should we only do this if PR testing is enabled
-	tvPairs.ExecTasks, tvPairs.DisplayTasks, err = p.BuildProjectTVPairsWithAlias(aliasMap[evergreen.GithubPRAlias], evergreen.GithubPRRequester)
+	tvPairs, err := p.BuildProjectTVPairsWithAlias(aliasMap[evergreen.GithubPRAlias], evergreen.GithubPRRequester)
 	if err != nil {
 		errs = append(errs, ValidationError{
 			Message: "problem getting task variant pairs for PR aliases",
-			Level:   Error,
+			Level:   Warning,
 		})
 		return errs
 	}
-	numCheckRuns := p.GetNumCheckRunsFromTaskVariantPairs(tvPairs)
+	tvPairs.ExecTasks, err = model.IncludeDependencies(p, tvPairs.ExecTasks, evergreen.GithubPRRequester, nil)
+	numCheckRuns := p.GetNumCheckRunsFromTaskVariantPairs(&tvPairs)
 	checkRunLimit := evergreen.GetEnvironment().Settings().GitHubCheckRun.CheckRunLimit
 	if numCheckRuns > checkRunLimit {
 		errs = append(errs, ValidationError{
 			Message: fmt.Sprintf("total number of checkRuns (%d) exceeds maximum limit (%d)", numCheckRuns, checkRunLimit),
-			Level:   Error,
+			Level:   Warning,
 		})
 	}
 	return errs
