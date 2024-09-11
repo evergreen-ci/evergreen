@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -211,10 +212,8 @@ func (ar *AssumeRoleRequest) Validate() error {
 
 	catcher.NewWhen(ar.RoleARN == "", "must specify role ARN")
 
-	if ar.DurationSeconds != nil {
-		// 0 defaults to 15 minutes.
-		catcher.NewWhen(*ar.DurationSeconds < 0, "cannot specify a non-positive duration")
-	}
+	// 0 defaults to 15 minutes.
+	catcher.NewWhen(utility.FromInt32Ptr(ar.DurationSeconds) < 0, "cannot specify a negative duration")
 
 	return catcher.Resolve()
 }
