@@ -49,7 +49,7 @@ type ssmClientImpl struct {
 // region.
 var configCache map[string]*aws.Config = make(map[string]*aws.Config)
 
-func NewSSMClient(ctx context.Context, region string) (*ssmClientImpl, error) {
+func newSSMClient(ctx context.Context, region string) (*ssmClientImpl, error) {
 	if region == "" {
 		region = "us-east-1"
 	}

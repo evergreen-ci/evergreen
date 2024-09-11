@@ -923,12 +923,16 @@ func (e *envState) initParameterManager(ctx context.Context, tracer trace.Tracer
 	ctx, span := tracer.Start(ctx, "InitParameterManager")
 	defer span.End()
 
-	c, err := parameterstore.NewSSMClient(ctx, DefaultEC2Region)
+	pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
+		PathPrefix:     e.settings.Providers.AWS.ParameterStore.Prefix,
+		CachingEnabled: true,
+		DB:             e.client.Database(e.dbName),
+	})
 	if err != nil {
-		return errors.Wrap(err, "initializing SSM client")
+		return errors.Wrap(err, "creating parameter manager")
 	}
+	e.paramMgr = pm
 
-	e.paramMgr = parameterstore.NewParameterManager(e.settings.Providers.AWS.ParameterStore.Prefix, true, c, e.DB())
 	return nil
 }
 

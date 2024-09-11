@@ -48,23 +48,49 @@ type ParameterManager struct {
 	db        *mongo.Database
 }
 
-// NewParameterManager creates a new ParameterManager instance.
-func NewParameterManager(pathPrefix string, cachingEnabled bool, ssmClient SSMClient, db *mongo.Database) *ParameterManager {
-	if pathPrefix != "" {
+// ParameterManagerOptions represent options to create a parameter manager.
+type ParameterManagerOptions struct {
+	PathPrefix     string
+	CachingEnabled bool
+	SSMClient      SSMClient
+	DB             *mongo.Database
+}
+
+// Validate checks that the parameter manager options are valid and sets
+// defaults where possible.
+func (o *ParameterManagerOptions) Validate(ctx context.Context) error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(o.DB == nil, "DB cannot be nil")
+	if o.SSMClient == nil {
+		c, err := newSSMClient(ctx, "")
+		if err != nil {
+			return errors.Wrap(err, "creating default SSM client")
+		}
+		o.SSMClient = c
+	}
+	if o.PathPrefix != "" {
 		// Ensure the prefix has a leading slash to make it an absolute path in
 		// the hierarchy and a trailing slash to separate it from the remaining
 		// name.
-		pathPrefix = fmt.Sprintf("/%s/", strings.TrimPrefix(strings.TrimSuffix(pathPrefix, "/"), "/"))
+		o.PathPrefix = fmt.Sprintf("/%s/", strings.TrimPrefix(strings.TrimSuffix(o.PathPrefix, "/"), "/"))
+	}
+	return catcher.Resolve()
+}
+
+// NewParameterManager creates a new ParameterManager instance.
+func NewParameterManager(ctx context.Context, opts ParameterManagerOptions) (*ParameterManager, error) {
+	if err := opts.Validate(ctx); err != nil {
+		return nil, errors.Wrap(err, "invalid parameter manager options")
 	}
 	pm := ParameterManager{
-		pathPrefix: pathPrefix,
-		ssmClient:  ssmClient,
-		db:         db,
+		pathPrefix: opts.PathPrefix,
+		ssmClient:  opts.SSMClient,
+		db:         opts.DB,
 	}
-	if cachingEnabled {
+	if opts.CachingEnabled {
 		pm.cache = newParameterCache()
 	}
-	return &pm
+	return &pm, nil
 }
 
 // Put adds or updates a parameter. This returns the created parameter.
