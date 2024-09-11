@@ -9,10 +9,7 @@
       },
       "distro": {
         "_id": "rhel71-power8-large",
-        "aliases": [
-          "rhel71-power8",
-          "rhel71-power8-build"
-        ],
+        "aliases": ["rhel71-power8", "rhel71-power8-build"],
         "arch": "linux_ppc64le",
         "work_dir": "/data/mci",
         "provider": "static",
@@ -295,22 +292,6 @@
       }
     },
     {
-      "_id": "58aded494a1426f45c051945",
-      "r_type": "HOST",
-      "processed_at": {
-        "$date": "2015-02-22T03:45:00Z"
-      },
-      "ts": {
-        "$date": "2017-05-12T19:45:17.252Z"
-      },
-      "r_id": "i-0f81a2d39744003dd",
-      "e_type": "HOST_TEARDOWN",
-      "data": {
-        "log": "teardown.sh: line 5: ./terraform: No such file or directory\nteardown.sh: line 10: ./terraform: No such file or directory\n",
-        "duration": 1183926434
-      }
-    },
-    {
       "_id": "58aded494a1406f55c051945",
       "r_type": "HOST",
       "processed_at": {
@@ -414,21 +395,6 @@
       "r_id": "i-0f81a2d39744003dd",
       "e_type": "HOST_AGENT_MONITOR_DEPLOY_FAILED",
       "data": {}
-    },
-    {
-      "_id": "58aded494a1426f13c051945",
-      "r_type": "HOST",
-      "processed_at": {
-        "$date": "2015-12-14T04:29:00Z"
-      },
-      "ts": {
-        "$date": "2017-08-11T19:13:07.252Z"
-      },
-      "r_id": "evg-ubuntu1604-large-20200720180108-7236635000257959768",
-      "e_type": "HOST_MONITOR_FLAG",
-      "data": {
-        "monitor_op": "unreachable"
-      }
     },
     {
       "_id": "11aded111a1426f12c051945",
