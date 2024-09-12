@@ -164,7 +164,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	})
 
 	cmd := c.JasperManager().CreateCommand(ctx).
-		Background(c.Background).Directory(c.WorkingDir).Environment(c.Env).Append(c.Shell).
+		Background(c.Background).Directory(c.WorkingDir).Environment(c.Env).Append(c.Shell).SetGroupLeader().
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
 			if c.ExecuteAsString {
@@ -199,7 +199,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 
 			pid := proc.Info(ctx).PID
 
-			agentutil.TrackProcess(conf.Task.Id, pid, logger.System())
+			agentutil.TrackProcess(pid, conf.Task.Id, logger.System())
 
 			if c.Background {
 				logger.Execution().Debugf("Running process with PID %d in the background.", pid)

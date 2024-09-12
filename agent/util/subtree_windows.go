@@ -138,7 +138,7 @@ func (r *processRegistry) removeJob(taskId string) error {
 // job object, which can later be used by "cleanup" to terminate all members of the job object at
 // once. If a job object doesn't already exist, it will create one automatically, scoped by the
 // task ID for which the shell process was started.
-func TrackProcess(taskId string, pid int, logger grip.Journaler) {
+func TrackProcess(pid int, taskId string, logger grip.Journaler) {
 	job, err := processMapping.getJob(taskId)
 	if err != nil {
 		logger.Errorf("Failed to get job object: %s", err)
@@ -156,7 +156,7 @@ func TrackProcess(taskId string, pid int, logger grip.Journaler) {
 // cleanup() has a windows-specific implementation which finds the job object associated with the
 // given task key, and if it exists, terminates it. This will guarantee that any shell processes
 // started throughout the task run are destroyed, as long as they were captured in trackProcess.
-func KillSpawnedProcs(ctx context.Context, key, workingDir string, logger grip.Journaler) error {
+func KillSpawnedProcs(ctx context.Context, key string, logger grip.Journaler) error {
 	job, err := processMapping.getJob(key)
 	if err != nil {
 		return nil
