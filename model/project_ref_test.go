@@ -1672,13 +1672,13 @@ func TestSetGithubAppCredentials(t *testing.T) {
 	samplePrivateKey := []byte("private_key")
 	for name, test := range map[string]func(t *testing.T, p *ProjectRef){
 		"NoCredentialsWhenNoneExist": func(t *testing.T, p *ProjectRef) {
-			app, err := FindOneGithubAppAuth(p.Id)
+			app, err := githubapp.FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Nil(t, app)
 		},
 		"CredentialsCanBeSet": func(t *testing.T, p *ProjectRef) {
 			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
-			app, err := FindOneGithubAppAuth(p.Id)
+			app, err := githubapp.FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Equal(t, sampleAppId, app.AppID)
 			assert.Equal(t, samplePrivateKey, app.PrivateKey)
@@ -1686,35 +1686,35 @@ func TestSetGithubAppCredentials(t *testing.T) {
 		"CredentialsCanBeRemovedByEmptyAppIDAndEmptyPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
 			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
-			app, err := FindOneGithubAppAuth(p.Id)
+			app, err := githubapp.FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Equal(t, sampleAppId, app.AppID)
 			assert.Equal(t, samplePrivateKey, app.PrivateKey)
 
 			// Remove credentials.
 			require.NoError(t, p.SetGithubAppCredentials(0, []byte("")))
-			app, err = FindOneGithubAppAuth(p.Id)
+			app, err = githubapp.FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Nil(t, app)
 		},
 		"CredentialsCanBeRemovedByEmptyAppIDAndNilPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
 			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
-			app, err := FindOneGithubAppAuth(p.Id)
+			app, err := githubapp.FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Equal(t, sampleAppId, app.AppID)
 			assert.Equal(t, samplePrivateKey, app.PrivateKey)
 
 			// Remove credentials.
 			require.NoError(t, p.SetGithubAppCredentials(0, nil))
-			app, err = FindOneGithubAppAuth(p.Id)
+			app, err = githubapp.FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Nil(t, app)
 		},
 		"CredentialsCannotBeRemovedByOnlyEmptyPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
 			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
-			appID, err := GetGitHubAppID(p.Id)
+			appID, err := githubapp.GetGitHubAppID(p.Id)
 			require.NoError(t, err)
 			assert.NotNil(t, appID)
 
@@ -1724,7 +1724,7 @@ func TestSetGithubAppCredentials(t *testing.T) {
 		"CredentialsCannotBeRemovedByOnlyNilPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
 			require.NoError(t, p.SetGithubAppCredentials(10, samplePrivateKey))
-			appID, err := GetGitHubAppID(p.Id)
+			appID, err := githubapp.GetGitHubAppID(p.Id)
 			require.NoError(t, err)
 			assert.NotNil(t, appID)
 
@@ -1734,7 +1734,7 @@ func TestSetGithubAppCredentials(t *testing.T) {
 		"CredentialsCannotBeRemovedByOnlyEmptyAppID": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
 			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
-			appID, err := GetGitHubAppID(p.Id)
+			appID, err := githubapp.GetGitHubAppID(p.Id)
 			require.NoError(t, err)
 			assert.NotNil(t, appID)
 
@@ -1743,7 +1743,7 @@ func TestSetGithubAppCredentials(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(ProjectRefCollection, GitHubAppAuthCollection))
+			require.NoError(t, db.ClearCollections(ProjectRefCollection, githubapp.GitHubAppAuthCollection))
 			p := &ProjectRef{
 				Id: "id1",
 			}

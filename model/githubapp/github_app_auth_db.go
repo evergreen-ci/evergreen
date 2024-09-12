@@ -1,29 +1,27 @@
-package model
+package githubapp
 
 import (
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// kim: TODO: since this is the same data model as GitHub App Auth, should
-// probably go into the model/githubapp directory.
-
-var (
-	ghAuthIdKey         = bsonutil.MustHaveTag(githubapp.GithubAppAuth{}, "Id")
-	ghAuthAppIdKey      = bsonutil.MustHaveTag(githubapp.GithubAppAuth{}, "AppID")
-	ghAuthPrivateKeyKey = bsonutil.MustHaveTag(githubapp.GithubAppAuth{}, "PrivateKey")
-)
-
 const (
+	// GitHubAppAuthCollection is the name of the collection that contains
+	// GitHub app auth credentials.
 	GitHubAppAuthCollection = "github_app_auth"
 )
 
+var (
+	ghAuthIdKey         = bsonutil.MustHaveTag(GithubAppAuth{}, "Id")
+	ghAuthAppIdKey      = bsonutil.MustHaveTag(GithubAppAuth{}, "AppID")
+	ghAuthPrivateKeyKey = bsonutil.MustHaveTag(GithubAppAuth{}, "PrivateKey")
+)
+
 // FindOneGithubAppAuth finds the github app auth for the given project id
-func FindOneGithubAppAuth(projectId string) (*githubapp.GithubAppAuth, error) {
-	githubAppAuth := &githubapp.GithubAppAuth{}
+func FindOneGithubAppAuth(projectId string) (*GithubAppAuth, error) {
+	githubAppAuth := &GithubAppAuth{}
 	err := db.FindOneQ(GitHubAppAuthCollection, byGithubAppAuthID(projectId), githubAppAuth)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -39,7 +37,7 @@ func byGithubAppAuthID(projectId string) db.Q {
 
 // GetGitHubAppID returns the app id for the given project id
 func GetGitHubAppID(projectId string) (*int64, error) {
-	githubAppAuth := &githubapp.GithubAppAuth{}
+	githubAppAuth := &GithubAppAuth{}
 
 	q := byGithubAppAuthID(projectId).WithFields(ghAuthAppIdKey)
 	err := db.FindOneQ(GitHubAppAuthCollection, q, githubAppAuth)
@@ -51,7 +49,7 @@ func GetGitHubAppID(projectId string) (*int64, error) {
 }
 
 // UpsertGithubAppAuth inserts or updates the app auth for the given project id in the database
-func UpsertGithubAppAuth(githubAppAuth *githubapp.GithubAppAuth) error {
+func UpsertGithubAppAuth(githubAppAuth *GithubAppAuth) error {
 	_, err := db.Upsert(
 		GitHubAppAuthCollection,
 		bson.M{

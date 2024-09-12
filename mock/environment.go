@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
@@ -35,6 +36,7 @@ type Environment struct {
 	JasperProcessManager    jasper.Manager
 	RemoteGroup             amboy.QueueGroup
 	Depot                   certdepot.Depot
+	ParamManager            *parameterstore.ParameterManager
 	Closers                 map[string]func(context.Context) error
 	DBSession               db.Session
 	EvergreenSettings       *evergreen.Settings
@@ -247,6 +249,20 @@ func (e *Environment) CertificateDepot() certdepot.Depot {
 	defer e.mu.RUnlock()
 
 	return e.Depot
+}
+
+func (e *Environment) SetParameterManager(pm *parameterstore.ParameterManager) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.ParamManager = pm
+}
+
+func (e *Environment) ParameterManager() *parameterstore.ParameterManager {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.ParamManager
 }
 
 func (e *Environment) Settings() *evergreen.Settings {

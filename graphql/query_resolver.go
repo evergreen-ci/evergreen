@@ -982,33 +982,54 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		requesters = evergreen.SystemVersionRequesterTypes
 	}
 
+	maxOrderOpt := utility.FromIntPtr(options.MaxOrder)
+	minOrderOpt := utility.FromIntPtr(options.MinOrder)
+
 	opts := model.WaterfallOptions{
 		Limit:      limit,
 		Requesters: requesters,
+		MaxOrder:   maxOrderOpt,
+		MinOrder:   minOrderOpt,
 	}
 
-	versions, err := model.GetWaterfallVersions(ctx, projectId, opts)
+	activeVersions, err := model.GetActiveWaterfallVersions(ctx, projectId, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting active waterfall versions: %s", err.Error()))
+	}
+
+	// Since GetAllWaterfallVersions uses an inclusive order range ($gte instead of $gt), add 1 to our minimum range
+	minVersionOrder := minOrderOpt + 1
+	if minOrderOpt == 0 {
+		// Only use the last active version order number if no minOrder was provided. Using the activeVersions bounds may omit inactive versions between the min and the last active version found.
+		minVersionOrder = activeVersions[len(activeVersions)-1].RevisionOrderNumber
+	}
+
+	// Same as above, but subtract for max order
+	maxVersionOrder := maxOrderOpt - 1
+	if maxOrderOpt == 0 {
+		// Same as above: only use the first active version if no maxOrder was specified to avoid omitting inactive versions.
+		maxVersionOrder = activeVersions[0].RevisionOrderNumber
+	}
+
+	allVersions, err := model.GetAllWaterfallVersions(ctx, projectId, minVersionOrder, maxVersionOrder)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall versions: %s", err.Error()))
 	}
 
 	// TODO DEVPROD-10179: Add check to ensure each version has tasks that match filter...
 	// Something like this: https://github.com/evergreen-ci/evergreen/blob/bf8f12ec2eefe61f0cf9bcc594924c7be8f91d1b/graphql/query_resolver.go#L869-L938
-	// We should also be able to add a check to the version's build_variant_status field in case of a build variant filter (TODO DEVPROD-10178).
-	// For now, without filters it is guaranteed that `limit` matching versions have been returned.
+	// All other filters can be applied in the GetActiveWaterfallVersions pipeline, ensuring `limit` matching versions have been returned.
 
-	// TODO DEVPROD-10177: Implementing pagination will also allow us to fetch more versions if GetWaterfallVersions does not return enough *activated* versions
-
-	buildVariants, err := model.GetWaterfallBuildVariants(ctx, versions)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall build variants: %s", err.Error()))
+	activeVersionIds := []string{}
+	for _, v := range activeVersions {
+		activeVersionIds = append(activeVersionIds, v.Id)
 	}
 
-	apiVersions := []*restModel.APIVersion{}
-	for _, v := range versions {
-		apiVersion := restModel.APIVersion{}
-		apiVersion.BuildFromService(v)
-		apiVersions = append(apiVersions, &apiVersion)
+	waterfallVersions := groupInactiveVersions(activeVersionIds, allVersions)
+
+	buildVariants, err := model.GetWaterfallBuildVariants(ctx, activeVersionIds)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall build variants: %s", err.Error()))
 	}
 
 	bv := []*model.WaterfallBuildVariant{}
@@ -1017,9 +1038,20 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		bv = append(bv, &bCopy)
 	}
 
+	// Return the min and max orders returned to be used as parameters for navigating to the next page
+	prevPageOrder := allVersions[0].RevisionOrderNumber
+	nextPageOrder := allVersions[len(allVersions)-1].RevisionOrderNumber
+
+	// If loading base page, there's no prev page to navigate to regardless of max order
+	if maxOrderOpt == 0 && minOrderOpt == 0 {
+		prevPageOrder = 0
+	}
+
 	return &Waterfall{
 		BuildVariants: bv,
-		Versions:      apiVersions,
+		NextPageOrder: nextPageOrder,
+		PrevPageOrder: prevPageOrder,
+		Versions:      waterfallVersions,
 	}, nil
 }
 

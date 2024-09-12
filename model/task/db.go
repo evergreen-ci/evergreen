@@ -124,6 +124,7 @@ var (
 	IsEssentialToSucceedKey                = bsonutil.MustHaveTag(Task{}, "IsEssentialToSucceed")
 	HasAnnotationsKey                      = bsonutil.MustHaveTag(Task{}, "HasAnnotations")
 	NumNextTaskDispatchesKey               = bsonutil.MustHaveTag(Task{}, "NumNextTaskDispatches")
+	CachedProjectStorageMethodKey          = bsonutil.MustHaveTag(Task{}, "CachedProjectStorageMethod")
 )
 
 var (
@@ -2697,12 +2698,6 @@ func activateTasks(taskIDs []string, caller string, activationTime time.Time) er
 					ActivatedKey:     true,
 					ActivatedByKey:   caller,
 					ActivatedTimeKey: activationTime,
-					// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
-					UnattainableDependencyKey: bson.M{"$cond": bson.M{
-						"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-						"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-						"else": false,
-					}},
 				},
 			},
 		})
@@ -3034,6 +3029,16 @@ func GetPendingGenerateTasks(ctx context.Context) (int, error) {
 	} else {
 		return results[0].NumPendingGenerateTasks, nil
 	}
+}
+
+// CountLargeParserProjectTasks counts the number of tasks running with parser projects stored in s3.
+func CountLargeParserProjectTasks() (int, error) {
+	return Count(db.Query(bson.M{
+		StatusKey: bson.M{
+			"$in": evergreen.TaskInProgressStatuses,
+		},
+		CachedProjectStorageMethodKey: evergreen.ProjectStorageMethodS3,
+	}))
 }
 
 // GetLatestTaskFromImage retrieves the latest task from all the distros corresponding to the imageID.

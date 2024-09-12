@@ -13,8 +13,11 @@ import (
 )
 
 type APISubscriber struct {
-	Type                *string                 `json:"type"`
-	Target              interface{}             `json:"target"`
+	Type *string `json:"type"`
+	// Target can be either a slice or a string. However, since swaggo does not
+	// support the OpenAPI `oneOf` keyword, we set `swaggerignore` and document
+	// the field manually in the "Fetch all projects" endpoint.
+	Target              interface{}             `json:"target" swaggerignore:"true"`
 	WebhookSubscriber   *APIWebhookSubscriber   `json:"-"`
 	JiraIssueSubscriber *APIJIRAIssueSubscriber `json:"-"`
 }

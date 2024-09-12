@@ -35,6 +35,7 @@ const hostSecret = "secret"
 func TestHostNextTask(t *testing.T) {
 	distroID := "testDistro"
 	buildID := "buildId"
+	versionID := "versionId"
 	task1 := task.Task{
 		Id:        "task1",
 		Execution: 5,
@@ -43,6 +44,7 @@ func TestHostNextTask(t *testing.T) {
 		BuildId:   buildID,
 		Project:   "exists",
 		StartTime: utility.ZeroTime,
+		Version:   versionID,
 	}
 	task2 := task.Task{
 		Id:        "task2",
@@ -51,6 +53,7 @@ func TestHostNextTask(t *testing.T) {
 		Project:   "exists",
 		BuildId:   buildID,
 		StartTime: utility.ZeroTime,
+		Version:   versionID,
 	}
 	task3 := task.Task{
 		Id:        "task3",
@@ -59,6 +62,7 @@ func TestHostNextTask(t *testing.T) {
 		Project:   "exists",
 		BuildId:   buildID,
 		StartTime: utility.ZeroTime,
+		Version:   versionID,
 	}
 	task4 := task.Task{
 		Id:        "another",
@@ -67,6 +71,7 @@ func TestHostNextTask(t *testing.T) {
 		Project:   "exists",
 		StartTime: utility.ZeroTime,
 		BuildId:   buildID,
+		Version:   versionID,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -204,7 +209,7 @@ func TestHostNextTask(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					require.NoError(t, db.ClearCollections(host.Collection, distro.Collection))
+					require.NoError(t, db.ClearCollections(host.Collection, distro.Collection, model.VersionCollection))
 					h := host.Host{
 						Id: "id",
 						Distro: distro.Distro{
@@ -223,8 +228,12 @@ func TestHostNextTask(t *testing.T) {
 						Status:           evergreen.HostRunning,
 						NeedsReprovision: host.ReprovisionToNew,
 					}
+					v := model.Version{
+						Id: versionID,
+					}
 					require.NoError(t, h.Insert(ctx))
 					require.NoError(t, h.Distro.Insert(ctx))
+					require.NoError(t, v.Insert())
 					handler := hostAgentNextTask{
 						env: env,
 					}
@@ -557,7 +566,7 @@ func TestHostNextTask(t *testing.T) {
 			defer cancel()
 
 			colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection,
-				evergreen.ConfigCollection, distro.Collection}
+				evergreen.ConfigCollection, distro.Collection, model.VersionCollection}
 			require.NoError(t, db.ClearCollections(colls...))
 			defer func() {
 				assert.NoError(t, db.ClearCollections(colls...))
@@ -600,6 +609,9 @@ func TestHostNextTask(t *testing.T) {
 				Id:      "exists",
 				Enabled: true,
 			}
+			v := model.Version{
+				Id: versionID,
+			}
 
 			require.NoError(t, d.Insert(ctx))
 			require.NoError(t, task1.Insert())
@@ -610,6 +622,7 @@ func TestHostNextTask(t *testing.T) {
 			require.NoError(t, pref.Insert())
 			require.NoError(t, sampleHost.Insert(ctx))
 			require.NoError(t, tq.Save())
+			require.NoError(t, v.Insert())
 
 			r, ok := makeHostAgentNextTask(env, nil, nil).(*hostAgentNextTask)
 			require.True(t, ok)
