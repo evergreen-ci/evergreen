@@ -12,9 +12,13 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetActiveWaterfallVersions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
 	start := time.Now()
 	p := ProjectRef{
@@ -69,13 +73,12 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert())
 
-	ctx := context.TODO()
 	versions, err := GetActiveWaterfallVersions(ctx, p.Id, WaterfallOptions{
 		Limit:      4,
 		Requesters: evergreen.SystemVersionRequesterTypes,
 	})
 	assert.NoError(t, err)
-	assert.Len(t, versions, 4)
+	require.Len(t, versions, 4)
 	assert.EqualValues(t, "v_1", versions[0].Id)
 	assert.EqualValues(t, "v_3", versions[1].Id)
 	assert.EqualValues(t, "v_4", versions[2].Id)
@@ -92,6 +95,9 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 }
 
 func TestGetAllWaterfallVersions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
 	start := time.Now()
 	p := ProjectRef{
@@ -146,10 +152,9 @@ func TestGetAllWaterfallVersions(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert())
 
-	ctx := context.TODO()
 	versions, err := GetAllWaterfallVersions(ctx, p.Id, 7, 9)
 	assert.NoError(t, err)
-	assert.Len(t, versions, 3)
+	require.Len(t, versions, 3)
 	assert.EqualValues(t, "v_2", versions[0].Id)
 	assert.EqualValues(t, "v_3", versions[1].Id)
 	assert.EqualValues(t, "v_4", versions[2].Id)
@@ -160,10 +165,13 @@ func TestGetAllWaterfallVersions(t *testing.T) {
 
 	versions, err = GetAllWaterfallVersions(ctx, p.Id, 9, 8)
 	assert.Error(t, err)
-	assert.Nil(t, versions)
+	assert.Empty(t, versions)
 }
 
 func TestGetWaterfallBuildVariants(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
 	start := time.Now()
 	p := ProjectRef{
@@ -699,7 +707,6 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	tsk = task.Task{Id: "t_394", DisplayName: "Task 394", Status: evergreen.TaskSucceeded}
 	assert.NoError(t, tsk.Insert())
 
-	ctx := context.TODO()
 	buildVariants, err := GetWaterfallBuildVariants(ctx, []string{v1.Id, v2.Id, v3.Id, v4.Id})
 	assert.NoError(t, err)
 	assert.Len(t, buildVariants, 3)

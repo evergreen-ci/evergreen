@@ -1036,15 +1036,9 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		bv = append(bv, &bCopy)
 	}
 
-	// If a max order was specified, use this as the new min and vice versa. If not, take this value from the bounds of the returned versions.
 	prevPageOrder := allVersions[0].RevisionOrderNumber
-	if maxOrderOpt > prevPageOrder {
-		prevPageOrder = maxOrderOpt
-	}
 	nextPageOrder := allVersions[len(allVersions)-1].RevisionOrderNumber
-	if minOrderOpt != 0 && minOrderOpt < nextPageOrder {
-		nextPageOrder = minOrderOpt
-	}
+
 	// If loading base page, there's no prev page to navigate to regardless of max order
 	if maxOrderOpt == 0 && minOrderOpt == 0 {
 		prevPageOrder = 0

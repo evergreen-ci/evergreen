@@ -532,7 +532,7 @@ func TestGroupInactiveVersions(t *testing.T) {
 
 	activeVersionIds := []string{v2.Id, v3.Id, v5.Id}
 	waterfallVersions := groupInactiveVersions(ctx, activeVersionIds, []model.Version{v0, v1, v2, v3, v4, v5})
-	assert.Len(t, waterfallVersions, 5)
+	require.Len(t, waterfallVersions, 5)
 
 	assert.Nil(t, waterfallVersions[0].Version)
 	assert.Len(t, waterfallVersions[0].InactiveVersions, 2)
