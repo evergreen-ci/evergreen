@@ -40,12 +40,22 @@ func TestParameterManager(t *testing.T) {
 		checkParamInDB(ctx, t, p)
 	}
 
-	for managerTestName, makeParameterManager := range map[string]func() *parameterstore.ParameterManager{
-		"CachingDisabled": func() *parameterstore.ParameterManager {
-			return parameterstore.NewParameterManager("prefix", false, NewFakeSSMClient(), evergreen.GetEnvironment().DB())
+	for managerTestName, makeParameterManager := range map[string]func(context.Context) (*parameterstore.ParameterManager, error){
+		"CachingDisabled": func(ctx context.Context) (*parameterstore.ParameterManager, error) {
+			return parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
+				PathPrefix:     "prefix",
+				CachingEnabled: false,
+				SSMClient:      NewFakeSSMClient(),
+				DB:             evergreen.GetEnvironment().DB(),
+			})
 		},
-		"CachingEnabled": func() *parameterstore.ParameterManager {
-			return parameterstore.NewParameterManager("prefix", true, NewFakeSSMClient(), evergreen.GetEnvironment().DB())
+		"CachingEnabled": func(ctx context.Context) (*parameterstore.ParameterManager, error) {
+			return parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
+				PathPrefix:     "prefix",
+				CachingEnabled: true,
+				SSMClient:      NewFakeSSMClient(),
+				DB:             evergreen.GetEnvironment().DB(),
+			})
 		},
 	} {
 		t.Run(managerTestName, func(t *testing.T) {
@@ -336,7 +346,8 @@ func TestParameterManager(t *testing.T) {
 
 					require.NoError(t, db.ClearCollections(Collection))
 
-					pm := makeParameterManager()
+					pm, err := makeParameterManager(ctx)
+					require.NoError(t, err)
 
 					tCase(ctx, t, pm)
 				})
@@ -348,7 +359,13 @@ func TestParameterManager(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		pm := parameterstore.NewParameterManager("prefix", true, NewFakeSSMClient(), evergreen.GetEnvironment().DB())
+		pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
+			PathPrefix:     "prefix",
+			CachingEnabled: true,
+			SSMClient:      NewFakeSSMClient(),
+			DB:             evergreen.GetEnvironment().DB(),
+		})
+		require.NoError(t, err)
 		const basename = "basename"
 		const fullName = "/prefix/basename"
 
