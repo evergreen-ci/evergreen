@@ -2704,7 +2704,7 @@ type APITaskLimitsConfig struct {
 	MaxParserProjectSize                             *int `json:"max_parser_project_size"`
 	MaxExecTimeoutSecs                               *int `json:"max_exec_timeout_secs"`
 	MaxDegradedModeConcurrentLargeParserProjectTasks *int `json:"max_degraded_mode_concurrent_large_parser_project_tasks"`
-	MaxTaskExecution                     *int `json:"max_task_execution"`
+	MaxTaskExecution                                 *int `json:"max_task_execution"`
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
@@ -2739,7 +2739,7 @@ func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 		MaxParserProjectSize:                             utility.FromIntPtr(c.MaxParserProjectSize),
 		MaxExecTimeoutSecs:                               utility.FromIntPtr(c.MaxExecTimeoutSecs),
 		MaxDegradedModeConcurrentLargeParserProjectTasks: utility.FromIntPtr(c.MaxDegradedModeConcurrentLargeParserProjectTasks),
-		MaxTaskExecution:                     utility.FromIntPtr(c.MaxTaskExecution),
+		MaxTaskExecution:                                 utility.FromIntPtr(c.MaxTaskExecution),
 	}, nil
 }
 

@@ -243,7 +243,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 		taskGroupID := compositeGroupID(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
 		taskGroupUnit, ok := d.taskGroups[taskGroupID] // schedulableUnit
 		if ok {
-			if next := d.getNextTaskForTaskGroup(taskGroupUnit); next != nil {
+			if next := d.tryMarkNextTaskGroupTaskDispatched(taskGroupUnit); next != nil {
 				return next
 			}
 		}
@@ -270,7 +270,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 
 		// If maxHosts is not set, this is not a task group.
 		if item.GroupMaxHosts == 0 {
-			if itemAlreadyDispatched := d.tryMarkItemDispatched(item); itemAlreadyDispatched {
+			if itemNotDispatched := d.tryMarkItemDispatched(item); !itemNotDispatched {
 				continue
 			}
 			nextTaskFromDB, err := task.FindOneId(item.Id)
@@ -393,11 +393,13 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				}))
 				return nil
 			}
-
 			taskGroupUnit.runningHosts = numHosts
 			d.setTaskGroup(taskGroupUnit, taskGroupID)
+			// This is a best-effort attempt to return the next task in the task group, but is not
+			// a foolproof operation and runs the potential risk of dispatching a task group task
+			// that exceeds the configured max hosts for the group.
 			if taskGroupUnit.runningHosts < taskGroupUnit.maxHosts {
-				if next := d.getNextTaskForTaskGroup(taskGroupUnit); next != nil {
+				if next := d.tryMarkNextTaskGroupTaskDispatched(taskGroupUnit); next != nil {
 					nextTaskFromDB, err := task.FindOneId(next.Id)
 					if err != nil {
 						grip.Warning(message.WrapError(err, message.Fields{
@@ -441,22 +443,22 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 // (b) a record of the task exists in the database.
 // (c) it never previously ran on another host.
 // (d) all of its dependencies are satisfied.
-// Returns true if the item has already been marked dispatched by a separate request.
+// Returns false if the item has already been marked dispatched by a separate request.
 func (d *basicCachedDAGDispatcherImpl) tryMarkItemDispatched(item *TaskQueueItem) bool {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	if item.IsDispatched {
-		return true
+		return false
 	}
 
 	// Cache the task as dispatched from the in-memory queue's point of view.
 	// However, it won't actually be dispatched to a host if it doesn't satisfy all constraints.
 	item.IsDispatched = true // *TaskQueueItem
-	return false
+	return true
 }
 
-func (d *basicCachedDAGDispatcherImpl) getNextTaskForTaskGroup(taskGroupUnit schedulableUnit) *TaskQueueItem {
+func (d *basicCachedDAGDispatcherImpl) tryMarkNextTaskGroupTaskDispatched(taskGroupUnit schedulableUnit) *TaskQueueItem {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	next := d.nextTaskGroupTask(taskGroupUnit)
