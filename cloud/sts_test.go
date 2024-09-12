@@ -45,7 +45,7 @@ func TestAssumeRole(t *testing.T) {
 			assert.Equal(t, "session_token", creds.SessionToken)
 			assert.WithinDuration(t, time.Now().Add(time.Hour), creds.Expiration, time.Second)
 
-			// Mock implementation recieved the correct input from the manager.
+			// Mock implementation received the correct input from the manager.
 			assert.Equal(t, roleARN, utility.FromStringPtr(awsClientMock.AssumeRoleInput.RoleArn))
 			assert.Equal(t, policy, utility.FromStringPtr(awsClientMock.AssumeRoleInput.Policy))
 			assert.Equal(t, externalID, utility.FromStringPtr(awsClientMock.AssumeRoleInput.ExternalId))
