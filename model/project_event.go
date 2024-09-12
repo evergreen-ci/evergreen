@@ -45,6 +45,27 @@ type ProjectChangeEvent struct {
 	After  ProjectSettingsEvent `bson:"after" json:"after"`
 }
 
+func (e *ProjectChangeEvent) redactVars() {
+	modifiedPrivateVarKeys := findModifiedProjectVars(e)
+	// kim: TODO: remove since the loop below should cover redaction.
+	// changeEvent.After.Vars = *changeEvent.After.Vars.RedactPrivateVars()
+	// changeEvent.Before.Vars = *changeEvent.Before.Vars.RedactPrivateVars()
+
+	// Here we need to change the after value of modified private variables to
+	// {REDACTED} so the event log will show that the private variable
+	// has been changed in the UI. This is necessary because the above RedactPrivateVars
+	// function redacts private variables to an empty string, which will not get picked up
+	// by the UI as it relies on the before / after diff.
+	for _, varName := range modifiedPrivateVarKeys {
+		if e.After.Vars.Vars[varName] != "" {
+			e.After.Vars.Vars[varName] = evergreen.RedactedAfterValue
+		}
+		if e.Before.Vars.Vars[varName] != "" {
+			e.Before.Vars.Vars[varName] = evergreen.RedactedBeforeValue
+		}
+	}
+}
+
 type ProjectChangeEvents []ProjectChangeEventEntry
 
 // ApplyDefaults checks for any flags that indicate that a field in a project event should be nil and sets the field accordingly.
@@ -128,41 +149,77 @@ func (p *ProjectChangeEvents) RedactGitHubPrivateKey() {
 	}
 }
 
-// RedactPrivateVars redacts private variables from the project modification event.
-func (p *ProjectChangeEvents) RedactPrivateVars() {
+// RedactPrivateVars redacts project variables changes from the project modification event.
+// kim: NOTE: this can be removed entirely once project event logs are migrated
+// to not store any project var values.
+func (p *ProjectChangeEvents) RedactVars() {
 	for _, event := range *p {
 		changeEvent, isChangeEvent := event.Data.(*ProjectChangeEvent)
 		if !isChangeEvent {
 			continue
 		}
-		modifiedPrivateVarKeys := findModifiedPrivateVars(changeEvent)
-		changeEvent.After.Vars = *changeEvent.After.Vars.RedactPrivateVars()
-		changeEvent.Before.Vars = *changeEvent.Before.Vars.RedactPrivateVars()
+		// kim: TODO: verify that just modifying this redacts the project var
+		// changes from the UI log for older project event logs where redaction
+		// isn't done in the DB model.
+		modifiedPrivateVarKeys := findModifiedProjectVars(changeEvent)
+		// kim: TODO: remove since the loop below should cover redaction.
+		// changeEvent.After.Vars = *changeEvent.After.Vars.RedactPrivateVars()
+		// changeEvent.Before.Vars = *changeEvent.Before.Vars.RedactPrivateVars()
+
 		// Here we need to change the after value of modified private variables to
 		// {REDACTED} so the event log will show that the private variable
 		// has been changed in the UI. This is necessary because the above RedactPrivateVars
 		// function redacts private variables to an empty string, which will not get picked up
 		// by the UI as it relies on the before / after diff.
-		for _, privateVarKey := range modifiedPrivateVarKeys {
-			changeEvent.After.Vars.Vars[privateVarKey] = evergreen.RedactedAfterValue
-			changeEvent.Before.Vars.Vars[privateVarKey] = evergreen.RedactedBeforeValue
+		for _, varName := range modifiedPrivateVarKeys {
+			if changeEvent.After.Vars.Vars[varName] != "" {
+				changeEvent.After.Vars.Vars[varName] = evergreen.RedactedAfterValue
+			}
+			if changeEvent.Before.Vars.Vars[varName] != "" {
+				changeEvent.Before.Vars.Vars[varName] = evergreen.RedactedBeforeValue
+			}
 		}
 		event.EventLogEntry.Data = changeEvent
 	}
 }
 
-// findModifiedPrivateVars returns a list of private variables that have had
-// their values modified.
-func findModifiedPrivateVars(changeEvent *ProjectChangeEvent) []string {
-	modifiedPrivateVarKeys := []string{}
-	for key, afterVal := range changeEvent.After.Vars.Vars {
-		isPrivateVar := changeEvent.After.Vars.PrivateVars[key]
-		beforeVal, exists := changeEvent.Before.Vars.Vars[key]
-		if isPrivateVar && exists && afterVal != beforeVal {
-			modifiedPrivateVarKeys = append(modifiedPrivateVarKeys, key)
+// findModifiedProjectVars returns a list of project variables that have been
+// added, removed, or had their values modified.
+func findModifiedProjectVars(changeEvent *ProjectChangeEvent) []string {
+	modifiedVarsSet := map[string]struct{}{}
+
+	for name, value := range changeEvent.Before.Vars.Vars {
+		afterVal, exists := changeEvent.After.Vars.Vars[name]
+		if !exists || afterVal != value {
+			// Variable was modified or deleted.
+			modifiedVarsSet[name] = struct{}{}
 		}
 	}
-	return modifiedPrivateVarKeys
+	for name, value := range changeEvent.After.Vars.Vars {
+		beforeVal, exists := changeEvent.Before.Vars.Vars[name]
+		if !exists || beforeVal != value {
+			// Variable was modified or added.
+			modifiedVarsSet[name] = struct{}{}
+		}
+	}
+
+	modifiedVarNames := []string{}
+	for key := range modifiedVarsSet {
+		modifiedVarNames = append(modifiedVarNames, key)
+	}
+
+	// kim: TODO: remove
+	// for key, afterVal := range changeEvent.After.Vars.Vars {
+	//     // kim: TODO: remove
+	//     // isPrivateVar := changeEvent.After.Vars.PrivateVars[key]
+	//     beforeVal, exists := changeEvent.Before.Vars.Vars[key]
+	//     // kim: TODO: remove
+	//     // if isPrivateVar && exists && afterVal != beforeVal {
+	//     if exists && afterVal != beforeVal {
+	//         modifiedVarKeys = append(modifiedVarKeys, key)
+	//     }
+	// }
+	return modifiedVarNames
 }
 
 type ProjectChangeEventEntry struct {
@@ -316,7 +373,10 @@ func (p *ProjectSettings) resolveDefaults() *ProjectSettingsEvent {
 }
 
 // LogProjectModified logs an event for a modification of a project's settings.
+// kim: TODO: add test to verify that this never includes project var values.
 func LogProjectModified(projectId, username string, before, after *ProjectSettings) error {
+	// kim: TODO: consider redacting project vars here as a gate against all
+	// callers to ensure they don't log the project var value ever.
 	eventData := constructProjectChangeEvent(username, before, after)
 	if eventData == nil {
 		return nil
@@ -345,5 +405,6 @@ func constructProjectChangeEvent(username string, before, after *ProjectSettings
 		Before: *before.resolveDefaults(),
 		After:  *after.resolveDefaults(),
 	}
+	eventData.redactVars()
 	return &eventData
 }

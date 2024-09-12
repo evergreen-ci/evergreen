@@ -352,7 +352,7 @@ func GetEventsById(id string, before time.Time, n int) ([]restModel.APIProjectEv
 		return nil, err
 	}
 	events.RedactGitHubPrivateKey()
-	events.RedactPrivateVars()
+	events.RedactVars()
 	events.ApplyDefaults()
 
 	out := []restModel.APIProjectEvent{}

@@ -91,6 +91,7 @@ func CopyProject(ctx context.Context, env evergreen.Environment, opts CopyProjec
 
 	// Since this is a new project we want to log all settings that were copied,
 	// so we pass in an empty ProjectSettings struct for the original project state.
+	// kim: TODO: figure out how to redact project vars from event.
 	if err := model.GetAndLogProjectModified(projectToCopy.Id, u.Id, false, &model.ProjectSettings{}); err != nil {
 		catcher.Wrapf(err, "logging project modified")
 	}

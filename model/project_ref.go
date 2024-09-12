@@ -2406,6 +2406,7 @@ func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId s
 		}
 	}
 	if modified {
+		// kim: TODO: figure out how to redact project vars from event
 		catcher.Add(GetAndLogProjectModified(projectId, userId, false, before))
 	}
 

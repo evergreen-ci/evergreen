@@ -357,6 +357,8 @@ func (projectVars *ProjectVars) ShouldGetAdminOnlyVars(t *task.Task) bool {
 	return isAdmin
 }
 
+// RedactPrivateVars redacts private variable plaintext values and replaces them
+// with the empty string.
 func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	res := &ProjectVars{
 		Vars:          map[string]string{},
