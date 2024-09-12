@@ -13,19 +13,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type AssumeRoleOptions struct {
-	RoleARN         string
-	Policy          string
-	DurationSeconds *int32
-}
-
-type AssumeRoleCredentials struct {
-	AccessKeyID     string
-	SecretAccessKey string
-	SessionToken    string
-	Expiration      time.Time
-}
-
 type STSManager interface {
 	// AssumeRole gets the credentials for a role as the given task.
 	AssumeRole(ctx context.Context, taskID string, opts AssumeRoleOptions) (AssumeRoleCredentials, error)
@@ -46,6 +33,19 @@ type stsManagerImpl struct {
 	client AWSClient
 }
 
+type AssumeRoleOptions struct {
+	RoleARN         string
+	Policy          string
+	DurationSeconds *int32
+}
+
+type AssumeRoleCredentials struct {
+	AccessKeyID     string
+	SecretAccessKey string
+	SessionToken    string
+	Expiration      time.Time
+}
+
 func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts AssumeRoleOptions) (AssumeRoleCredentials, error) {
 	if err := s.client.Create(ctx, evergreen.DefaultEC2Region); err != nil {
 		return AssumeRoleCredentials{}, errors.Wrapf(err, "creating AWS client")
@@ -53,6 +53,9 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 	t, err := task.FindOneId(taskID)
 	if err != nil {
 		return AssumeRoleCredentials{}, errors.Wrapf(err, "finding task")
+	}
+	if t == nil {
+		return AssumeRoleCredentials{}, errors.New("task not found")
 	}
 	output, err := s.client.AssumeRole(ctx, &sts.AssumeRoleInput{
 		RoleArn:         &opts.RoleARN,
