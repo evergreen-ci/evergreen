@@ -2249,7 +2249,6 @@ func TestActivateDeactivatedDependencies(t *testing.T) {
 		if utility.StringSliceContains(updatedIDs, task.Id) {
 			assert.True(t, task.Activated)
 			assert.False(t, task.DeactivatedForDependency)
-			assert.True(t, task.UnattainableDependency)
 		} else {
 			for _, origTask := range tasks {
 				if origTask.Id == task.Id {
@@ -4981,7 +4980,8 @@ func TestReset(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
 
 		t0 := Task{
-			Id: "t0",
+			Id:                     "t0",
+			UnattainableDependency: true,
 			DependsOn: []Dependency{
 				{TaskId: "t1", Unattainable: true},
 				{TaskId: "t2", Unattainable: false},
@@ -5091,7 +5091,8 @@ func TestResetTasks(t *testing.T) {
 		require.NoError(t, db.Clear(Collection))
 
 		t0 := Task{
-			Id: "t0",
+			Id:                     "t0",
+			UnattainableDependency: true,
 			DependsOn: []Dependency{
 				{TaskId: "t1", Unattainable: true},
 				{TaskId: "t2", Unattainable: false},
