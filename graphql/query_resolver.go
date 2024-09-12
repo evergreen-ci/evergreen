@@ -1038,6 +1038,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		bv = append(bv, &bCopy)
 	}
 
+	// Return the min and max orders returned to be used as parameters for navigating to the next page
 	prevPageOrder := allVersions[0].RevisionOrderNumber
 	nextPageOrder := allVersions[len(allVersions)-1].RevisionOrderNumber
 

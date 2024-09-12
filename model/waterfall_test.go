@@ -84,6 +84,26 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 	assert.EqualValues(t, "v_4", versions[2].Id)
 	assert.EqualValues(t, "v_5", versions[3].Id)
 
+	versions, err = GetActiveWaterfallVersions(ctx, p.Id, WaterfallOptions{
+		Limit:      2,
+		Requesters: evergreen.SystemVersionRequesterTypes,
+		MaxOrder:   9,
+	})
+	assert.NoError(t, err)
+	require.Len(t, versions, 2)
+	assert.EqualValues(t, "v_3", versions[0].Id)
+	assert.EqualValues(t, "v_4", versions[1].Id)
+
+	versions, err = GetActiveWaterfallVersions(ctx, p.Id, WaterfallOptions{
+		Limit:      5,
+		Requesters: evergreen.SystemVersionRequesterTypes,
+		MinOrder:   7,
+	})
+	assert.NoError(t, err)
+	require.Len(t, versions, 2)
+	assert.EqualValues(t, "v_1", versions[0].Id)
+	assert.EqualValues(t, "v_3", versions[1].Id)
+
 	versions, err = GetActiveWaterfallVersions(ctx, p.Id,
 		WaterfallOptions{
 			Limit:      4,
@@ -166,6 +186,11 @@ func TestGetAllWaterfallVersions(t *testing.T) {
 	versions, err = GetAllWaterfallVersions(ctx, p.Id, 9, 8)
 	assert.Error(t, err)
 	assert.Empty(t, versions)
+
+	versions, err = GetAllWaterfallVersions(ctx, p.Id, 10, 12)
+	assert.NoError(t, err)
+	require.Len(t, versions, 1)
+	assert.EqualValues(t, "v_1", versions[0].Id)
 }
 
 func TestGetWaterfallBuildVariants(t *testing.T) {
