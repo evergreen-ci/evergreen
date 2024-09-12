@@ -43,7 +43,7 @@ func makeFetchProjectsRoute(url string) gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Fetch all projects
-//	@Description	Returns a paginated list of all projects. Any authenticated user can access this endpoint, so potentially sensitive information (variables, task annotation settings, workstation settings, and container secrets) is omitted.
+//	@Description	Returns a paginated list of all projects. Any authenticated user can access this endpoint, so potentially sensitive information (variables, task annotation settings, workstation settings, and container secrets) is omitted. subscriptions.subscriber.target is undocumented by the OpenAPI spec, and can be either a string or an object.
 //	@Tags			projects
 //	@Router			/projects [get]
 //	@Security		Api-User || Api-Key
