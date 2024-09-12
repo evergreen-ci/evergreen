@@ -1777,8 +1777,7 @@ func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "assuming role for task '%s'", h.taskID))
 	}
-
-	return gimlet.NewJSONResponse(&apimodels.AssumeRoleResponse{
+	return gimlet.NewJSONResponse(apimodels.AssumeRoleResponse{
 		AccessKeyID:     creds.AccessKeyID,
 		SecretAccessKey: creds.SecretAccessKey,
 		SessionToken:    creds.SessionToken,
