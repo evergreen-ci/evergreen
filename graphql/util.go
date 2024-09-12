@@ -1342,7 +1342,7 @@ func annotationPermissionHelper(ctx context.Context, taskID string, execution *i
 }
 
 // groupInactiveVersions partitions a slice of versions into a slice where each entry is either an active version or slice of inactive versions (i.e. versions that don't match filters; they may be technically activated).
-func groupInactiveVersions(ctx context.Context, activeVersionIds []string, versions []model.Version) []*WaterfallVersion {
+func groupInactiveVersions(activeVersionIds []string, versions []model.Version) []*WaterfallVersion {
 	waterfallVersions := []*WaterfallVersion{}
 	i := 0
 	for i < len(versions) {

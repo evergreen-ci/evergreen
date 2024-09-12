@@ -1025,7 +1025,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		activeVersionIds = append(activeVersionIds, v.Id)
 	}
 
-	waterfallVersions := groupInactiveVersions(ctx, activeVersionIds, allVersions)
+	waterfallVersions := groupInactiveVersions(activeVersionIds, allVersions)
 
 	buildVariants, err := model.GetWaterfallBuildVariants(ctx, activeVersionIds)
 	if err != nil {
