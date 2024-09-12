@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	ststypes "github.com/aws/aws-sdk-go-v2/service/sts/types"
 	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -1450,7 +1451,17 @@ func (c *awsClientMock) ChangeResourceRecordSets(ctx context.Context, input *rou
 // DeleteLaunchTemplate is a mock for ec2.DeleteLaunchTemplate
 func (c *awsClientMock) AssumeRole(ctx context.Context, input *sts.AssumeRoleInput) (*sts.AssumeRoleOutput, error) {
 	c.AssumeRoleInput = input
-	return &sts.AssumeRoleOutput{}, nil
+	if input.DurationSeconds == nil {
+		input.DurationSeconds = aws.Int32(3600)
+	}
+	return &sts.AssumeRoleOutput{
+		Credentials: &ststypes.Credentials{
+			AccessKeyId:     aws.String("access_key"),
+			SecretAccessKey: aws.String("secret_key"),
+			SessionToken:    aws.String("session_token"),
+			Expiration:      aws.Time(time.Now().Add(time.Duration(*input.DurationSeconds) * time.Second)),
+		},
+	}, nil
 }
 
 func makeAWSLogMessage(name, client string, args interface{}) message.Fields {
