@@ -9,6 +9,40 @@ enum HostSortBy {
   UPTIME
 }
 
+enum HostEventType {
+  HOST_CREATED
+  HOST_CREATED_ERROR
+  HOST_STARTED
+  HOST_STOPPED
+  HOST_MODIFIED
+  HOST_AGENT_DEPLOYED
+  HOST_AGENT_DEPLOY_FAILED
+  HOST_AGENT_MONITOR_DEPLOYED
+  HOST_AGENT_MONITOR_DEPLOY_FAILED
+  HOST_JASPER_RESTARTING
+  HOST_JASPER_RESTARTED
+  HOST_JASPER_RESTART_ERROR
+  HOST_CONVERTING_PROVISIONING
+  HOST_CONVERTED_PROVISIONING
+  HOST_CONVERTING_PROVISIONING_ERROR
+  HOST_STATUS_CHANGED
+  HOST_DNS_NAME_SET
+  HOST_PROVISION_ERROR
+  HOST_PROVISION_FAILED
+  HOST_PROVISIONED
+  HOST_RUNNING_TASK_SET
+  HOST_RUNNING_TASK_CLEARED
+  HOST_TASK_FINISHED
+  HOST_TERMINATED_EXTERNALLY
+  HOST_EXPIRATION_WARNING_SENT
+  HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT
+  HOST_IDLE_NOTIFICATION
+  HOST_SCRIPT_EXECUTED
+  HOST_SCRIPT_EXECUTE_FAILED
+  VOLUME_EXPIRATION_WARNING_SENT
+  VOLUME_MIGRATION_FAILED
+}
+
 enum SortDirection {
   ASC
   DESC
@@ -32,7 +66,7 @@ type SleepSchedule {
 }
 
 ###### TYPES ######
-""" 
+"""
 Host models a host, which are used for things like running tasks or as virtual workstations.
 """
 type Host {
@@ -43,7 +77,6 @@ type Host {
   distro: DistroInfo
   distroId: String
   elapsed: Time # running task start time
-  
   """
   events returns the event log entries for a given host.
   """
@@ -118,7 +151,7 @@ type HostEvents {
 type HostEventLogEntry {
   id: String!
   data: HostEventLogData!
-  eventType: String
+  eventType: HostEventType
   processedAt: Time!
   resourceId: String!
   resourceType: String!
@@ -143,6 +176,3 @@ type HostEventLogData {
   taskStatus: String!
   user: String!
 }
-
-
-

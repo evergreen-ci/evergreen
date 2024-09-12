@@ -1071,7 +1071,8 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 		)
 	}
 	if projectRef == nil {
-		return errors.Errorf("project ref for repo '%s/%s' with branch '%s' not found",
+		j.gitHubError = commitQueueDisabled
+		return errors.Errorf("project ref for repo '%s/%s' with branch '%s' and merge queue enabled not found",
 			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	}
 	j.user, err = findEvergreenUserForGithubMergeGroup(patchDoc.GithubPatchData.AuthorUID)

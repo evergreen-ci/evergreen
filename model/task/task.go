@@ -662,7 +662,7 @@ func (t *Task) IsPatchRequest() bool {
 
 // IsUnfinishedSystemUnresponsive returns true only if this is an unfinished system unresponsive task (i.e. not on max execution)
 func (t *Task) IsUnfinishedSystemUnresponsive() bool {
-	return t.isSystemUnresponsive() && t.Execution < evergreen.MaxTaskExecution
+	return t.isSystemUnresponsive() && t.Execution < evergreen.GetEnvironment().Settings().TaskLimits.MaxTaskExecution
 }
 
 func (t *Task) isSystemUnresponsive() bool {
@@ -2043,12 +2043,6 @@ func activateDeactivatedDependencies(tasksToActivate map[string]Task, taskIDsToA
 					DeactivatedForDependencyKey: false,
 					ActivatedByKey:              caller,
 					ActivatedTimeKey:            time.Now(),
-					// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
-					UnattainableDependencyKey: bson.M{"$cond": bson.M{
-						"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-						"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-						"else": false,
-					}},
 				},
 			},
 		},
@@ -2472,12 +2466,6 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 				LastHeartbeatKey:               utility.ZeroTime,
 				ContainerAllocationAttemptsKey: 0,
 				NumNextTaskDispatchesKey:       0,
-				// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
-				UnattainableDependencyKey: bson.M{"$cond": bson.M{
-					"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-					"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-					"else": false,
-				}},
 			},
 		},
 		{
@@ -2677,7 +2665,7 @@ func (t *Task) MarkUnscheduled() error {
 
 }
 
-// MarkAllForUnattainableDependency updates many tasks (taskIDs) to mark a
+// MarkAllForUnattainableDependencies updates many tasks (taskIDs) to mark a
 // subset of all their dependencies (dependencyIDs) as attainable or not. If
 // marking the dependencies unattainable, it creates an event log for each newly
 // blocked task. This returns all the tasks after the update.
