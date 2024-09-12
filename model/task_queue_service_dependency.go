@@ -488,11 +488,7 @@ func (d *basicCachedDAGDispatcherImpl) setTaskGroup(taskGroupUnit schedulableUni
 // on how many concurrent large parser project tasks can be running. The first returned parameter indicates whether FindNextTask should
 // return on an error, and the second indicates whether FindNextTask should skip this task and continue its loop.
 func checkMaxConcurrentLargeParserProjectTasks(settings *evergreen.Settings, nextTaskFromDB *task.Task, distroId string) (bool, bool) {
-	isDegradedMode := !settings.ServiceFlags.CPUDegradedModeDisabled
-	maxConcurrentLargeParserProjTasks := settings.TaskLimits.MaxConcurrentLargeParserProjectTasks
-	if isDegradedMode {
-		maxConcurrentLargeParserProjTasks = settings.TaskLimits.MaxDegradedModeConcurrentLargeParserProjectTasks
-	}
+	maxConcurrentLargeParserProjTasks := getMaxConcurrentLargeParserProjTasks(settings)
 	if maxConcurrentLargeParserProjTasks <= 0 {
 		return false, false
 	}
@@ -539,7 +535,7 @@ func checkMaxConcurrentLargeParserProjectTasks(settings *evergreen.Settings, nex
 				"message":          "skipping task because it would exceed the concurrent large parser project task limit",
 				"task_id":          nextTaskFromDB.Id,
 				"distro_id":        distroId,
-				"is_degraded_mode": isDegradedMode,
+				"is_degraded_mode": !settings.ServiceFlags.CPUDegradedModeDisabled,
 				"max_concurrent_large_parser_project_tasks": maxConcurrentLargeParserProjTasks,
 				"num_large_parser_project_tasks":            numLargeParserProjectTasks,
 			})
@@ -547,6 +543,15 @@ func checkMaxConcurrentLargeParserProjectTasks(settings *evergreen.Settings, nex
 		}
 	}
 	return false, false
+}
+
+func getMaxConcurrentLargeParserProjTasks(settings *evergreen.Settings) int {
+	isDegradedMode := !settings.ServiceFlags.CPUDegradedModeDisabled
+	maxConcurrentLargeParserProjTasks := settings.TaskLimits.MaxConcurrentLargeParserProjectTasks
+	if isDegradedMode {
+		maxConcurrentLargeParserProjTasks = settings.TaskLimits.MaxDegradedModeConcurrentLargeParserProjectTasks
+	}
+	return maxConcurrentLargeParserProjTasks
 }
 
 func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {

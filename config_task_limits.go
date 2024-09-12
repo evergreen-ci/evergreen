@@ -37,10 +37,10 @@ type TaskLimitsConfig struct {
 	// MaxDegradedModeConcurrentLargeParserProjectTasks is the maximum number of tasks with parser projects stored in S3 that can be running at once during CPU degraded mode.
 	MaxDegradedModeConcurrentLargeParserProjectTasks int `bson:"max_degraded_mode_concurrent_large_parser_project_tasks" json:"max_degraded_mode_concurrent_large_parser_project_tasks" yaml:"max_degraded_mode_concurrent_large_parser_project_tasks"`
 
-	// MaxDegradedModeParserProjectSize is the maximum parser project size during CPU degraded mode.
+	// MaxDegradedModeParserProjectSize is the maximum parser project size in MB during CPU degraded mode.
 	MaxDegradedModeParserProjectSize int `bson:"max_degraded_mode_parser_project_size" json:"max_degraded_mode_parser_project_size" yaml:"max_degraded_mode_parser_project_size"`
 
-	// MaxParserProjectSize is the maximum allowed size for parser projects that are stored in S3.
+	// MaxParserProjectSize is the maximum allowed size in MB for parser projects that are stored in S3.
 	MaxParserProjectSize int `bson:"max_parser_project_size" json:"max_parser_project_size" yaml:"max_parser_project_size"`
 
 	// MaxExecTimeoutSecs is the maximum number of seconds a task can run and set their timeout to.
@@ -61,7 +61,7 @@ var (
 	maxParserProjectSize                             = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxParserProjectSize")
 	MaxExecTimeoutSecs                               = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxExecTimeoutSecs")
 	maxDegradedModeConcurrentLargeParserProjectTasks = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxDegradedModeConcurrentLargeParserProjectTasks")
-	maxTaskExecutionKey                  = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxTaskExecution")
+	maxTaskExecutionKey                              = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxTaskExecution")
 )
 
 func (c *TaskLimitsConfig) SectionId() string { return "task_limits" }
@@ -83,7 +83,7 @@ func (c *TaskLimitsConfig) Set(ctx context.Context) error {
 			maxParserProjectSize:                             c.MaxParserProjectSize,
 			MaxExecTimeoutSecs:                               c.MaxExecTimeoutSecs,
 			maxDegradedModeConcurrentLargeParserProjectTasks: c.MaxDegradedModeConcurrentLargeParserProjectTasks,
-			maxTaskExecutionKey:                  c.MaxTaskExecution,
+			maxTaskExecutionKey:                              c.MaxTaskExecution,
 		},
 	}), "updating config section '%s'", c.SectionId())
 }

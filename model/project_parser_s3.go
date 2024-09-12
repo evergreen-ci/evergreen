@@ -85,6 +85,7 @@ func (s *ParserProjectS3Storage) UpsertOne(ctx context.Context, pp *ParserProjec
 	if isDegradedMode {
 		maxSize = config.TaskLimits.MaxDegradedModeParserProjectSize
 	}
+	// Multiply 1024*1024 to get the full size in MB
 	if maxSize > 0 && parserProjectLen > maxSize*1024*1024 {
 		serviceMode := "standard"
 		if isDegradedMode {
