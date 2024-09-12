@@ -58,8 +58,9 @@ func KillSpawnedProcs(ctx context.Context, _ string, logger grip.Journaler) erro
 	logger.Infof("killing pids: %v", pidsToKill)
 	for _, pid := range pidsToKill {
 		// shell.exec and subprocess.exec processes are started as group leaders. This means
-		// they and their child processes all share a single process group id (PGID). The POSIX spec stipulates
-		// that a negative PID signifies that a kill signal should be sent to the entire group.
+		// they and their child processes all share a single process group id (PGID) which is equal to
+		// the PID of the group leader. The POSIX spec stipulates that a negative PID signifies
+		// that a kill signal should be sent to the entire group.
 		// https://pubs.opengroup.org/onlinepubs/9699919799/functions/kill.html
 		if err := syscall.Kill(-pid, syscall.SIGKILL); err != nil {
 			logger.Errorf("Cleanup got error killing process with PGID %d: %s.", pid, err)
