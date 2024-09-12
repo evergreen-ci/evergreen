@@ -1734,7 +1734,7 @@ func (h *revokeGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-// DELETE /rest/v2/task/{task_id}/aws/assume_role
+// POST /rest/v2/task/{task_id}/aws/assume_role
 // This route is used to assume an AWS arn role for a task.
 type awsAssumeRole struct {
 	taskID string
