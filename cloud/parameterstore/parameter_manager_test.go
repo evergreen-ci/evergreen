@@ -1,9 +1,12 @@
 package parameterstore
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // This tests basic functionality in the Parameter Manager.
@@ -20,7 +23,16 @@ func TestParameterManager(t *testing.T) {
 		"PathPrefixWithLeadingAndTrailingSlash":   "/prefix/",
 	} {
 		t.Run(prefixTestCase, func(t *testing.T) {
-			pm := NewParameterManager(prefix, false, nil, nil)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			opts := ParameterManagerOptions{
+				PathPrefix: prefix,
+				DB:         &mongo.Database{},
+			}
+			require.NoError(t, opts.Validate(ctx))
+			pm := &ParameterManager{
+				pathPrefix: opts.PathPrefix,
+			}
 			t.Run("GetPrefixedName", func(t *testing.T) {
 				t.Run("PrefixesBasename", func(t *testing.T) {
 					assert.Equal(t, "/prefix/basename", pm.getPrefixedName("basename"))
@@ -35,6 +47,7 @@ func TestParameterManager(t *testing.T) {
 					assert.Equal(t, "/prefix/path/to/basename", pm.getPrefixedName("/prefix/path/to/basename"))
 				})
 			})
+
 			t.Run("GetBasename", func(t *testing.T) {
 				t.Run("ParsesBasenameFromFullNameWithPrefix", func(t *testing.T) {
 					fullName := pm.getPrefixedName("basename")
@@ -47,6 +60,10 @@ func TestParameterManager(t *testing.T) {
 				})
 				t.Run("ReturnsUnmodifiedBasenameThatIsAlreadyParsed", func(t *testing.T) {
 					assert.Equal(t, "basename", getBasename("basename"))
+				})
+				t.Run("ParsesBasenameWithoutLeadingSlash", func(t *testing.T) {
+					fullName := "/basename"
+					assert.Equal(t, "basename", getBasename(fullName))
 				})
 			})
 		})

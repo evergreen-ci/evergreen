@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -21,7 +20,7 @@ func (r *projectSettingsResolver) Aliases(ctx context.Context, obj *restModel.AP
 
 // GithubAppAuth is the resolver for the githubAppAuth field.
 func (r *projectSettingsResolver) GithubAppAuth(ctx context.Context, obj *restModel.APIProjectSettings) (*restModel.APIGithubAppAuth, error) {
-	app, err := model.FindOneGithubAppAuth(utility.FromStringPtr(obj.ProjectRef.Id))
+	app, err := githubapp.FindOneGithubAppAuth(utility.FromStringPtr(obj.ProjectRef.Id))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding GitHub app for project '%s': %s", utility.FromStringPtr(obj.ProjectRef.Id), err.Error()))
 	}

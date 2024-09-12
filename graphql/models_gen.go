@@ -149,6 +149,13 @@ type ExternalLinkForMetadata struct {
 	DisplayName string `json:"displayName"`
 }
 
+type GeneratedTaskCountResults struct {
+	BuildVariantName *string `json:"buildVariantName,omitempty"`
+	TaskName         *string `json:"taskName,omitempty"`
+	TaskID           *string `json:"taskId,omitempty"`
+	EstimatedTasks   int     `json:"estimatedTasks"`
+}
+
 type GroupedBuildVariant struct {
 	DisplayName string           `json:"displayName"`
 	Tasks       []*model.APITask `json:"tasks,omitempty"`

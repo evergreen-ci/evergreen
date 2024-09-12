@@ -504,7 +504,7 @@ tasks:
     tags: ["db"]
     name: test-cloud
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["nodb", "test"]
     name: test-cloud-parameterstore
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]

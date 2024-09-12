@@ -1741,10 +1741,12 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 			},
 		})
 		catcher.Wrap(err, "marking newly-added hosts as permanently exempt")
-		grip.InfoWhen(res.ModifiedCount > 0, message.Fields{
-			"message":   "marked newly-added hosts as permanently exempt",
-			"num_hosts": res.ModifiedCount,
-		})
+		if res != nil && res.ModifiedCount > 0 {
+			grip.Info(message.Fields{
+				"message":   "marked newly-added hosts as permanently exempt",
+				"num_hosts": res.ModifiedCount,
+			})
+		}
 	}
 
 	res, err := coll.UpdateMany(ctx, isSleepScheduleApplicable(bson.M{
