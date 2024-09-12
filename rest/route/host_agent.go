@@ -1244,6 +1244,11 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	if event.AllRecentHostEventsMatchStatus(ctx, currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
 		msg := "host encountered consecutive system failures"
 		if currentHost.Provider != evergreen.ProviderNameStatic {
+			// TODO (DEVPROD-7739): this logic should run even for static hosts
+			// to ensure they get auto-quarantined by consecutive system
+			// failures. However, have to also consider that re-enabling this
+			// logic for static hosts will also cause Jira tickets to be created
+			// for each quarantined static host (by the deco-host-notify job).
 			grip.Error(message.WrapError(units.HandlePoisonedHost(ctx, h.env, currentHost, msg), message.Fields{
 				"message": "unable to disable poisoned host",
 				"host":    currentHost.Id,
