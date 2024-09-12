@@ -336,6 +336,52 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 	s.Equal("patch has no build variants or tasks", err.Error())
 }
 
+func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithDisabledCommitQueue() {
+	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), s.T().Name())
+	headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
+	orgName := "evergreen-ci"
+	repoName := "commit-queue-sandbox"
+	headSHA := "foo"
+	baseSHA := "bar"
+
+	disabledMergeQueueProject := model.ProjectRef{
+		Id: repoName,
+		CommitQueue: model.CommitQueueParams{
+			Enabled: utility.FalsePtr(),
+		},
+	}
+	s.Require().NoError(disabledMergeQueueProject.Upsert())
+
+	org := github.Organization{
+		Login: &orgName,
+	}
+	repo := github.Repository{
+		Name: &repoName,
+	}
+	mg := github.MergeGroup{
+		HeadSHA: &headSHA,
+		HeadRef: &headRef,
+		BaseSHA: &baseSHA,
+	}
+	mge := github.MergeGroupEvent{
+		MergeGroup: &mg,
+		Org:        &org,
+		Repo:       &repo,
+	}
+	intent, err := patch.NewGithubMergeIntent("id", "auto", &mge)
+
+	s.NoError(err)
+	s.Require().NotNil(intent)
+	s.NoError(intent.Insert())
+
+	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+
+	patchDoc := intent.NewPatch()
+	s.Error(j.finishPatch(s.ctx, patchDoc))
+	s.NotEmpty(j.gitHubError)
+	s.Equal(j.gitHubError, commitQueueDisabled)
+}
+
 func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	patchId := mgobson.NewObjectId().Hex()
 	previousPatchDoc := &patch.Patch{

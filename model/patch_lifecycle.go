@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -1333,7 +1334,8 @@ func SendCommitQueueResult(ctx context.Context, p *patch.Patch, status message.G
 		URL:         url,
 	}
 
-	sender, err := evergreen.GetEnvironment().GetGitHubSender(projectRef.Owner, projectRef.Repo)
+	env := evergreen.GetEnvironment()
+	sender, err := env.GetGitHubSender(projectRef.Owner, projectRef.Repo, githubapp.CreateGitHubAppAuth(env.Settings()).CreateGitHubSenderInstallationToken)
 	if err != nil {
 		return errors.Wrap(err, "getting GitHub sender")
 	}

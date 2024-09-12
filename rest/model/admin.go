@@ -2047,7 +2047,6 @@ type APIServiceFlags struct {
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
 	GlobalGitHubTokenDisabled       bool `json:"global_github_token_disabled"`
 	SleepScheduleDisabled           bool `json:"sleep_schedule_disabled"`
-	SleepScheduleBetaTestDisabled   bool `json:"sleep_schedule_beta_test_disabled"`
 	SystemFailedTaskRestartDisabled bool `json:"system_failed_task_restart_disabled"`
 	DegradedModeDisabled            bool `json:"cpu_degraded_mode_disabled"`
 	ParameterStoreDisabled          bool `json:"parameter_store_disabled"`
@@ -2365,7 +2364,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.GlobalGitHubTokenDisabled = v.GlobalGitHubTokenDisabled
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
-		as.SleepScheduleBetaTestDisabled = v.SleepScheduleBetaTestDisabled
 		as.SystemFailedTaskRestartDisabled = v.SystemFailedTaskRestartDisabled
 		as.DegradedModeDisabled = v.CPUDegradedModeDisabled
 		as.ParameterStoreDisabled = v.ParameterStoreDisabled
@@ -2410,7 +2408,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
 		GlobalGitHubTokenDisabled:       as.GlobalGitHubTokenDisabled,
 		SleepScheduleDisabled:           as.SleepScheduleDisabled,
-		SleepScheduleBetaTestDisabled:   as.SleepScheduleBetaTestDisabled,
 		SystemFailedTaskRestartDisabled: as.SystemFailedTaskRestartDisabled,
 		CPUDegradedModeDisabled:         as.DegradedModeDisabled,
 		ParameterStoreDisabled:          as.ParameterStoreDisabled,
@@ -2707,6 +2704,7 @@ type APITaskLimitsConfig struct {
 	MaxParserProjectSize                             *int `json:"max_parser_project_size"`
 	MaxExecTimeoutSecs                               *int `json:"max_exec_timeout_secs"`
 	MaxDegradedModeConcurrentLargeParserProjectTasks *int `json:"max_degraded_mode_concurrent_large_parser_project_tasks"`
+	MaxTaskExecution                     *int `json:"max_task_execution"`
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
@@ -2722,6 +2720,7 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 		c.MaxDegradedModeParserProjectSize = utility.ToIntPtr(v.MaxDegradedModeParserProjectSize)
 		c.MaxParserProjectSize = utility.ToIntPtr(v.MaxParserProjectSize)
 		c.MaxExecTimeoutSecs = utility.ToIntPtr(v.MaxExecTimeoutSecs)
+		c.MaxTaskExecution = utility.ToIntPtr(v.MaxTaskExecution)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
@@ -2740,6 +2739,7 @@ func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 		MaxParserProjectSize:                             utility.FromIntPtr(c.MaxParserProjectSize),
 		MaxExecTimeoutSecs:                               utility.FromIntPtr(c.MaxExecTimeoutSecs),
 		MaxDegradedModeConcurrentLargeParserProjectTasks: utility.FromIntPtr(c.MaxDegradedModeConcurrentLargeParserProjectTasks),
+		MaxTaskExecution:                     utility.FromIntPtr(c.MaxTaskExecution),
 	}, nil
 }
 

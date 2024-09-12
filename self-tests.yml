@@ -117,8 +117,6 @@ variables:
       - func: run-make
         vars: { target: "${task_name}" }
 
-  - &version-constants
-    nodejs_version: "6.11.1"
   - &run-generate-lint
     name: generate-lint
     commands:
@@ -559,6 +557,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-event
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model-githubapp
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-host

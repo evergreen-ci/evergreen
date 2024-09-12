@@ -134,6 +134,71 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.HostAPIEventData
   HostEventLogEntry:
     model: github.com/evergreen-ci/evergreen/rest/model.HostAPIEventLogEntry
+  HostEventType:
+    model: github.com/99designs/gqlgen/graphql.String
+    enum_values:
+      HOST_CREATED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostCreated
+      HOST_CREATED_ERROR:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostCreatedError
+      HOST_STARTED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostStarted
+      HOST_STOPPED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostStopped
+      HOST_MODIFIED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostModified
+      HOST_AGENT_DEPLOYED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostAgentDeployed
+      HOST_AGENT_DEPLOY_FAILED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostAgentDeployFailed
+      HOST_AGENT_MONITOR_DEPLOYED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostAgentMonitorDeployed
+      HOST_AGENT_MONITOR_DEPLOY_FAILED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostAgentMonitorDeployFailed
+      HOST_JASPER_RESTARTING:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostJasperRestarting
+      HOST_JASPER_RESTARTED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostJasperRestarted
+      HOST_JASPER_RESTART_ERROR:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostJasperRestartError
+      HOST_CONVERTING_PROVISIONING:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostConvertingProvisioning
+      HOST_CONVERTED_PROVISIONING:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostConvertedProvisioning
+      HOST_CONVERTING_PROVISIONING_ERROR:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostConvertingProvisioningError
+      HOST_STATUS_CHANGED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostStatusChanged
+      HOST_DNS_NAME_SET:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostDNSNameSet
+      HOST_PROVISION_ERROR:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostProvisionError
+      HOST_PROVISION_FAILED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostProvisionFailed
+      HOST_PROVISIONED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostProvisioned
+      HOST_RUNNING_TASK_SET:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostRunningTaskSet
+      HOST_RUNNING_TASK_CLEARED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostRunningTaskCleared
+      HOST_TASK_FINISHED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostTaskFinished
+      HOST_TERMINATED_EXTERNALLY:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostTerminatedExternally
+      HOST_EXPIRATION_WARNING_SENT:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostExpirationWarningSent
+      HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostTemporaryExemptionExpirationWarningSent
+      HOST_IDLE_NOTIFICATION:
+        value: github.com/evergreen-ci/evergreen/model/event.EventSpawnHostIdleNotification
+      HOST_SCRIPT_EXECUTED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostScriptExecuted
+      HOST_SCRIPT_EXECUTE_FAILED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventHostScriptExecuteFailed
+      VOLUME_EXPIRATION_WARNING_SENT:
+        value: github.com/evergreen-ci/evergreen/model/event.EventVolumeExpirationWarningSent
+      VOLUME_MIGRATION_FAILED:
+        value: github.com/evergreen-ci/evergreen/model/event.EventVolumeMigrationFailed
   IceCreamSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIIceCreamSettings
   IceCreamSettingsInput:

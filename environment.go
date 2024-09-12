@@ -32,6 +32,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
@@ -151,7 +152,7 @@ type Environment interface {
 
 	// GetGitHubSender provides a grip Sender configured with the given
 	// owner and repo information.
-	GetGitHubSender(string, string) (send.Sender, error)
+	GetGitHubSender(owner string, repo string, createInstallationToken CreateInstallationTokenFunc) (send.Sender, error)
 
 	// RegisterCloser adds a function object to an internal
 	// tracker to be called by the Close method before process
@@ -949,6 +950,13 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer t
 	spanLimits := sdktrace.NewSpanLimits()
 	spanLimits.AttributeValueLengthLimit = OtelAttributeMaxLength
 
+	// Set up propagators. This allows traces from the UI to connect to traces from Evergreen.
+	otel.SetTextMapPropagator(
+		propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+		),
+	)
+
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exp),
 		sdktrace.WithResource(resource),
@@ -1093,12 +1101,14 @@ func (e *envState) SaveConfig(ctx context.Context) error {
 	return errors.WithStack(UpdateConfig(ctx, &copy))
 }
 
+type CreateInstallationTokenFunc func(ctx context.Context, owner, repo string) (string, error)
+
 // GetGitHubSender returns a cached sender with a GitHub app generated token. Each org in GitHub needs a separate token
 // for authentication so we cache a sender for each org and return it if the token has not expired.
 // If the sender for the org doesn't exist or has expired, we create a new one and cache it.
 // In case of GitHub app errors, the function returns the legacy GitHub sender with a global token attached.
 // The senders are only unique to orgs, not repos, but the repo name is needed to generate a token if necessary.
-func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
+func (e *envState) GetGitHubSender(owner, repo string, createInstallationToken CreateInstallationTokenFunc) (send.Sender, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -1111,9 +1121,9 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 	// If githubSender does not exist or has expired, create one, add it to the cache, then return it.
 
 	tokenCreatedAt := time.Now()
-	token, err := e.settings.CreateGitHubAppAuth().CreateCachedInstallationToken(e.ctx, owner, repo, maxInstallationTokenLifetime, nil)
+	token, err := createInstallationToken(e.ctx, owner, repo)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
+		return nil, errors.Wrap(err, "creating GitHub app installation token")
 	}
 	sender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
 		Token:       token,

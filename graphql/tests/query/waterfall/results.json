@@ -45,6 +45,24 @@
                     "version": "evergreen_version2"
                   }
                 ]
+              },
+              {
+                "builds": [
+                  {
+                    "activated": false,
+                    "id": "evergreen_version3_build",
+                    "tasks": [
+                      {
+                        "displayName": "Task Number 5",
+                        "id": "task_5",
+                        "status": "success"
+                      }
+                    ],
+                    "version": "evergreen_version5"
+                  }
+                ],
+                "displayName": "Linter",
+                "id": "lint"
               }
             ],
             "versions": [

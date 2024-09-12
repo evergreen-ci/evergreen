@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -553,7 +554,7 @@ func (r *mutationResolver) DeleteGithubAppCredentials(ctx context.Context, opts 
 		GitHubAppAuth: *app,
 	}
 	after := model.ProjectSettings{
-		GitHubAppAuth: evergreen.GithubAppAuth{},
+		GitHubAppAuth: githubapp.GithubAppAuth{},
 	}
 	if err = model.LogProjectModified(opts.ProjectID, usr.Id, &before, &after); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("logging project modification for project '%s': %s", opts.ProjectID, err.Error()))

@@ -167,9 +167,6 @@ const (
 	VersionCreated   = "created"
 	VersionFailed    = "failed"
 	VersionSucceeded = "success"
-
-	LegacyPatchSucceeded = "succeeded" // deprecated: will remove in EVG-20032
-
 	// VersionAborted is a display status only and not stored in the DB
 	VersionAborted = "aborted"
 
@@ -183,8 +180,6 @@ const (
 	MergeTestFailed    = "failed"
 	EnqueueFailed      = "failed to enqueue"
 
-	// MaxTaskExecution is the maximum task (zero based) execution number
-	MaxTaskExecution = 9
 	// MaxAutomaticRestarts is the maximum number of automatic restarts allowed for a task
 	MaxAutomaticRestarts = 1
 
@@ -390,10 +385,6 @@ const (
 	RedactedBeforeValue = "{REDACTED_BEFORE}"
 )
 
-var VersionSucceededStatuses = []string{
-	VersionSucceeded, LegacyPatchSucceeded,
-}
-
 var TaskStatuses = []string{
 	TaskStarted,
 	TaskSucceeded,
@@ -475,15 +466,8 @@ func IsFinishedBuildStatus(status string) bool {
 }
 
 // IsFinishedVersionStatus returns true if the version or patch is true.
-// Also handles the legacy status, to be removed in EVG-20032.
 func IsFinishedVersionStatus(status string) bool {
-	return status == VersionFailed || IsSuccessfulVersionStatus(status)
-}
-
-// IsSuccessfulVersionStatus returns true if the status represents a successful version.
-// Will deprecate this legacy status in EVG-20032.
-func IsSuccessfulVersionStatus(status string) bool {
-	return utility.StringSliceContains(VersionSucceededStatuses, status)
+	return status == VersionFailed || status == VersionSucceeded
 }
 
 type ModificationAction string

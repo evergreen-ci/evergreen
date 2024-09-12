@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/pkg/errors"
 )
@@ -23,7 +24,7 @@ func MakeTaskConfigFromModelData(ctx context.Context, settings *evergreen.Settin
 	// Arbitrarily pick a long lifetime for the app token so that it's valid for
 	// the entire test duration.
 	const appTokenLifetime = 30 * time.Minute
-	appToken, err := settings.CreateGitHubAppAuth().CreateCachedInstallationToken(ctx, data.ProjectRef.Owner, data.ProjectRef.Repo, appTokenLifetime, nil)
+	appToken, err := githubapp.CreateGitHubAppAuth(settings).CreateCachedInstallationToken(ctx, data.ProjectRef.Owner, data.ProjectRef.Repo, appTokenLifetime, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating GitHub app token")
 	}

@@ -635,6 +635,7 @@ The hash used for a module during cloning is determined by the following hierarc
 doesn't work for patches -- hashes will need to be specified in the revisions section of the command.*
 
 ## github.generate_token
+> **This command will only work if an app ID and key are saved in your project settings. You can follow [the instructions here](Github-Integrations#dynamic-github-access-tokens) to set it up.**
 
 The github.generate_token command will use the github app saved in your [project settings](Github-Integrations#dynamic-github-access-tokens) to dynamically generate a short lived github access token. If you run into any issues, please see the [FAQ](../FAQ.md#dynamic-github-access-tokens).
 

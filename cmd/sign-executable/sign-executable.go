@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -176,8 +175,7 @@ func signExecutable(ctx context.Context, opts signOpts) error {
 
 	signedZipPath := path.Join(tempDir, "evergreen_signed.zip")
 	if err = signWithNotaryClient(ctx, toSignPath, signedZipPath, opts); err != nil {
-		fmt.Fprintf(os.Stderr, "code signing failed: %s", err.Error())
-		return nil
+		return errors.Wrap(err, "code signing failed")
 	}
 
 	signedZip, err := os.ReadFile(signedZipPath)
