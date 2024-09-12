@@ -2694,16 +2694,17 @@ func (c *APIGitHubCheckRunConfig) ToService() (interface{}, error) {
 }
 
 type APITaskLimitsConfig struct {
-	MaxTasksPerVersion                   *int `json:"max_tasks_per_version"`
-	MaxIncludesPerVersion                *int `json:"max_includes_per_version"`
-	MaxHourlyPatchTasks                  *int `json:"max_hourly_patch_tasks"`
-	MaxPendingGeneratedTasks             *int `json:"max_pending_generated_tasks"`
-	MaxGenerateTaskJSONSize              *int `json:"max_generate_task_json_size"`
-	MaxConcurrentLargeParserProjectTasks *int `json:"max_concurrent_large_parser_project_tasks"`
-	MaxDegradedModeParserProjectSize     *int `json:"max_degraded_mode_parser_project_size"`
-	MaxParserProjectSize                 *int `json:"max_parser_project_size"`
-	MaxExecTimeoutSecs                   *int `json:"max_exec_timeout_secs"`
-	MaxTaskExecution                     *int `json:"max_task_execution"`
+	MaxTasksPerVersion                               *int `json:"max_tasks_per_version"`
+	MaxIncludesPerVersion                            *int `json:"max_includes_per_version"`
+	MaxHourlyPatchTasks                              *int `json:"max_hourly_patch_tasks"`
+	MaxPendingGeneratedTasks                         *int `json:"max_pending_generated_tasks"`
+	MaxGenerateTaskJSONSize                          *int `json:"max_generate_task_json_size"`
+	MaxConcurrentLargeParserProjectTasks             *int `json:"max_concurrent_large_parser_project_tasks"`
+	MaxDegradedModeParserProjectSize                 *int `json:"max_degraded_mode_parser_project_size"`
+	MaxParserProjectSize                             *int `json:"max_parser_project_size"`
+	MaxExecTimeoutSecs                               *int `json:"max_exec_timeout_secs"`
+	MaxDegradedModeConcurrentLargeParserProjectTasks *int `json:"max_degraded_mode_concurrent_large_parser_project_tasks"`
+	MaxTaskExecution                                 *int `json:"max_task_execution"`
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
@@ -2715,6 +2716,7 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 		c.MaxHourlyPatchTasks = utility.ToIntPtr(v.MaxHourlyPatchTasks)
 		c.MaxGenerateTaskJSONSize = utility.ToIntPtr(v.MaxGenerateTaskJSONSize)
 		c.MaxConcurrentLargeParserProjectTasks = utility.ToIntPtr(v.MaxConcurrentLargeParserProjectTasks)
+		c.MaxDegradedModeConcurrentLargeParserProjectTasks = utility.ToIntPtr(v.MaxDegradedModeConcurrentLargeParserProjectTasks)
 		c.MaxDegradedModeParserProjectSize = utility.ToIntPtr(v.MaxDegradedModeParserProjectSize)
 		c.MaxParserProjectSize = utility.ToIntPtr(v.MaxParserProjectSize)
 		c.MaxExecTimeoutSecs = utility.ToIntPtr(v.MaxExecTimeoutSecs)
@@ -2727,16 +2729,17 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 
 func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 	return evergreen.TaskLimitsConfig{
-		MaxTasksPerVersion:                   utility.FromIntPtr(c.MaxTasksPerVersion),
-		MaxIncludesPerVersion:                utility.FromIntPtr(c.MaxIncludesPerVersion),
-		MaxHourlyPatchTasks:                  utility.FromIntPtr(c.MaxHourlyPatchTasks),
-		MaxPendingGeneratedTasks:             utility.FromIntPtr(c.MaxPendingGeneratedTasks),
-		MaxGenerateTaskJSONSize:              utility.FromIntPtr(c.MaxGenerateTaskJSONSize),
-		MaxConcurrentLargeParserProjectTasks: utility.FromIntPtr(c.MaxConcurrentLargeParserProjectTasks),
-		MaxDegradedModeParserProjectSize:     utility.FromIntPtr(c.MaxDegradedModeParserProjectSize),
-		MaxParserProjectSize:                 utility.FromIntPtr(c.MaxParserProjectSize),
-		MaxExecTimeoutSecs:                   utility.FromIntPtr(c.MaxExecTimeoutSecs),
-		MaxTaskExecution:                     utility.FromIntPtr(c.MaxTaskExecution),
+		MaxTasksPerVersion:                               utility.FromIntPtr(c.MaxTasksPerVersion),
+		MaxIncludesPerVersion:                            utility.FromIntPtr(c.MaxIncludesPerVersion),
+		MaxHourlyPatchTasks:                              utility.FromIntPtr(c.MaxHourlyPatchTasks),
+		MaxPendingGeneratedTasks:                         utility.FromIntPtr(c.MaxPendingGeneratedTasks),
+		MaxGenerateTaskJSONSize:                          utility.FromIntPtr(c.MaxGenerateTaskJSONSize),
+		MaxConcurrentLargeParserProjectTasks:             utility.FromIntPtr(c.MaxConcurrentLargeParserProjectTasks),
+		MaxDegradedModeParserProjectSize:                 utility.FromIntPtr(c.MaxDegradedModeParserProjectSize),
+		MaxParserProjectSize:                             utility.FromIntPtr(c.MaxParserProjectSize),
+		MaxExecTimeoutSecs:                               utility.FromIntPtr(c.MaxExecTimeoutSecs),
+		MaxDegradedModeConcurrentLargeParserProjectTasks: utility.FromIntPtr(c.MaxDegradedModeConcurrentLargeParserProjectTasks),
+		MaxTaskExecution:                                 utility.FromIntPtr(c.MaxTaskExecution),
 	}, nil
 }
 
