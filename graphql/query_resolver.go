@@ -1000,12 +1000,14 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	// Since GetAllWaterfallVersions uses an inclusive order range ($gte instead of $gt), add 1 to our minimum range
 	minVersionOrder := minOrderOpt + 1
 	if minOrderOpt == 0 {
+		// Only use the last active version order number if no minOrder was provided. Using the activeVersions bounds may omit inactive versions between the min and the last active version found.
 		minVersionOrder = activeVersions[len(activeVersions)-1].RevisionOrderNumber
 	}
 
 	// Same as above, but subtract for max order
 	maxVersionOrder := maxOrderOpt - 1
 	if maxOrderOpt == 0 {
+		// Same as above: only use the first active version if no maxOrder was specified to avoid omitting inactive versions.
 		maxVersionOrder = activeVersions[0].RevisionOrderNumber
 	}
 
