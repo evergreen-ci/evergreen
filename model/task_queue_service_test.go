@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -1198,6 +1199,220 @@ func (s *taskDAGDispatchServiceSuite) TestNextTaskForDefaultTaskSpec() {
 	s.NotNil(next)
 	s.Equal("12", next.Id)
 	// .....
+}
+
+func (s *taskDAGDispatchServiceSuite) TestFindNextTaskThreadSafe() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	items := []TaskQueueItem{}
+	for i := 0; i < 100; i++ {
+		items = append(items, TaskQueueItem{
+			Id:            fmt.Sprintf("%d", i),
+			BuildVariant:  "variant_1",
+			Version:       "version_1",
+			Project:       "project_1",
+			GroupMaxHosts: 0,
+		})
+		t := task.Task{
+			Id:                fmt.Sprintf("%d", i),
+			BuildVariant:      "variant_1",
+			Version:           "version_1",
+			Project:           "project_1",
+			TaskGroupMaxHosts: 0,
+		}
+		s.Require().NoError(t.Insert())
+	}
+
+	s.taskQueue.Queue = items
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+	spec := TaskSpec{
+		BuildVariant: "variant_1",
+		Version:      "version_1",
+		Project:      "project_1",
+	}
+
+	numGoroutines := 100
+
+	var wg sync.WaitGroup
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			service.FindNextTask(ctx, spec, utility.ZeroTime)
+		}()
+	}
+	wg.Wait()
+
+	dispatchedCount := 0
+	for _, item := range service.nodeItemMap {
+		if item.IsDispatched {
+			dispatchedCount++
+		}
+	}
+	s.Equal(dispatchedCount, 100)
+}
+
+func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	items := []TaskQueueItem{}
+	for i := 0; i < 20; i++ {
+		id := fmt.Sprintf("%d", i)
+		items = append(items, TaskQueueItem{
+			Id:            id,
+			Group:         "group_1",
+			BuildVariant:  "variant_1",
+			Version:       "version_1",
+			Project:       "project_1",
+			GroupMaxHosts: 1,
+		})
+		t := task.Task{
+			Id:                id,
+			TaskGroup:         "group_1",
+			BuildVariant:      "variant_1",
+			Version:           "version_1",
+			TaskGroupMaxHosts: 1,
+			Project:           "project_1",
+			StartTime:         utility.ZeroTime,
+			FinishTime:        utility.ZeroTime,
+		}
+		s.Require().NoError(t.Insert())
+
+		s.taskQueue = TaskQueue{
+			Distro: "distro_1",
+			Queue:  items,
+		}
+	}
+
+	s.taskQueue.Queue = items
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+
+	// Populating the Group field on the task spec indicates the host just ran a task group.
+	spec := TaskSpec{
+		Group:        "group_1",
+		BuildVariant: "variant_1",
+		Version:      "version_1",
+		Project:      "project_1",
+	}
+
+	numGoroutines := 20
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+	for i := 0; i < numGoroutines; i++ {
+		go func() {
+			defer wg.Done()
+			service.FindNextTask(ctx, spec, utility.ZeroTime)
+		}()
+	}
+	wg.Wait()
+
+	dispatchedCount := 0
+	for _, item := range service.nodeItemMap {
+		if item.IsDispatched {
+			dispatchedCount++
+		}
+	}
+	s.Equal(dispatchedCount, 20)
+
+	service, err = newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+
+	// Set the Group field on the task spec to empty, indicating the host is running the task group for the first time.
+	spec = TaskSpec{
+		Group:        "",
+		BuildVariant: "variant_1",
+		Version:      "version_1",
+		Project:      "project_1",
+	}
+
+	wg.Add(numGoroutines)
+	for i := 0; i < numGoroutines; i++ {
+		go func() {
+			defer wg.Done()
+			service.FindNextTask(ctx, spec, utility.ZeroTime)
+		}()
+	}
+	wg.Wait()
+
+	dispatchedCount = 0
+	for _, item := range service.nodeItemMap {
+		if item.IsDispatched {
+			dispatchedCount++
+		}
+	}
+	s.Equal(dispatchedCount, 20)
+
+}
+
+func (s *taskDAGDispatchServiceSuite) TestFindNextFreshTaskGroupTaskThreadSafe() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	items := []TaskQueueItem{}
+	for i := 0; i < 20; i++ {
+		id := fmt.Sprintf("%d", i)
+		items = append(items, TaskQueueItem{
+			Id:            id,
+			Group:         "group_1",
+			BuildVariant:  "variant_1",
+			Version:       "version_1",
+			Project:       "project_1",
+			GroupMaxHosts: 1,
+		})
+		t := task.Task{
+			Id:                id,
+			TaskGroup:         "group_1",
+			BuildVariant:      "variant_1",
+			Version:           "version_1",
+			TaskGroupMaxHosts: 1,
+			Project:           "project_1",
+			StartTime:         utility.ZeroTime,
+			FinishTime:        utility.ZeroTime,
+		}
+		s.Require().NoError(t.Insert())
+
+		s.taskQueue = TaskQueue{
+			Distro: "distro_1",
+			Queue:  items,
+		}
+	}
+
+	s.taskQueue.Queue = items
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+	spec := TaskSpec{
+		BuildVariant: "variant_1",
+		Version:      "version_1",
+		Project:      "project_1",
+	}
+
+	numGoroutines := 20
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+	for i := 0; i < numGoroutines; i++ {
+		go func() {
+			defer wg.Done()
+			service.FindNextTask(ctx, spec, utility.ZeroTime)
+		}()
+	}
+	wg.Wait()
+
+	dispatchedCount := 0
+	for _, item := range service.nodeItemMap {
+		if item.IsDispatched {
+			dispatchedCount++
+		}
+	}
+	s.Equal(dispatchedCount, 20)
+
+	service, err = newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 }
 
 func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {

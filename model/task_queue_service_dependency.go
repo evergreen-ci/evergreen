@@ -243,13 +243,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 		taskGroupID := compositeGroupID(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
 		taskGroupUnit, ok := d.taskGroups[taskGroupID] // schedulableUnit
 		if ok {
-			if next := d.nextTaskGroupTask(taskGroupUnit); next != nil {
-				// next is a *TaskQueueItem, sourced for d.taskGroups (map[string]schedulableUnit) tasks' field, which in turn is a []TaskQueueItem.
-				// taskGroupTask is a *TaskQueueItem sourced from d.nodeItemMap, which is a map[node.ID()]*TaskQueueItem.
-				node := d.getNodeByItemID(next.Id)
-				taskGroupTask := d.getItemByNodeID(node.ID())
-				taskGroupTask.IsDispatched = true
-
+			if next := d.getNextTaskForTaskGroup(taskGroupUnit); next != nil {
 				return next
 			}
 		}
@@ -273,16 +267,9 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 
 		// If maxHosts is not set, this is not a task group.
 		if item.GroupMaxHosts == 0 {
-			// Dispatch this standalone task if all of the following are true:
-			// (a) it's not marked as dispatched in the in-memory queue.
-			// (b) a record of the task exists in the database.
-			// (c) it never previously ran on another host.
-			// (d) all of its dependencies are satisfied.
-
-			if item.IsDispatched {
+			if itemAlreadyDispatched := d.tryMarkItemDispatched(item); itemAlreadyDispatched {
 				continue
 			}
-
 			nextTaskFromDB, err := task.FindOneId(item.Id)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
@@ -304,10 +291,6 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				})
 				return nil
 			}
-
-			// Cache the task as dispatched from the in-memory queue's point of view.
-			// However, it won't actually be dispatched to a host if it doesn't satisfy all constraints.
-			item.IsDispatched = true // *TaskQueueItem
 
 			if !utility.IsZeroTime(nextTaskFromDB.StartTime) {
 				continue
@@ -387,7 +370,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 
 		// For a task group task, do some arithmetic to see if the group's next task is dispatchable.
 		taskGroupID := compositeGroupID(item.Group, item.BuildVariant, item.Project, item.Version)
-		taskGroupUnit, ok := d.taskGroups[taskGroupID]
+		taskGroupUnit, ok := d.getTaskGroup(taskGroupID)
 		if !ok {
 			continue
 		}
@@ -409,9 +392,9 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 			}
 
 			taskGroupUnit.runningHosts = numHosts
-			d.taskGroups[taskGroupID] = taskGroupUnit
+			d.setTaskGroup(taskGroupUnit, taskGroupID)
 			if taskGroupUnit.runningHosts < taskGroupUnit.maxHosts {
-				if next := d.nextTaskGroupTask(taskGroupUnit); next != nil {
+				if next := d.getNextTaskForTaskGroup(taskGroupUnit); next != nil {
 					nextTaskFromDB, err := task.FindOneId(next.Id)
 					if err != nil {
 						grip.Warning(message.WrapError(err, message.Fields{
@@ -442,16 +425,60 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 					if shouldContinue {
 						continue
 					}
-					node := d.getNodeByItemID(next.Id)
-					taskGroupTask := d.getItemByNodeID(node.ID()) // *TaskQueueItem
-					taskGroupTask.IsDispatched = true
-
 					return next
 				}
 			}
 		}
 	}
 	return nil
+}
+
+// tryMarkItemDispatched will dispatch a standalone task if all of the following are true:
+// (a) it's not marked as dispatched in the in-memory queue.
+// (b) a record of the task exists in the database.
+// (c) it never previously ran on another host.
+// (d) all of its dependencies are satisfied.
+// Returns true if the item has already been marked dispatched by a separate request.
+func (d *basicCachedDAGDispatcherImpl) tryMarkItemDispatched(item *TaskQueueItem) bool {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if item.IsDispatched {
+		return true
+	}
+
+	// Cache the task as dispatched from the in-memory queue's point of view.
+	// However, it won't actually be dispatched to a host if it doesn't satisfy all constraints.
+	item.IsDispatched = true // *TaskQueueItem
+	return false
+}
+
+func (d *basicCachedDAGDispatcherImpl) getNextTaskForTaskGroup(taskGroupUnit schedulableUnit) *TaskQueueItem {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	next := d.nextTaskGroupTask(taskGroupUnit)
+	if next != nil {
+		// next is a *TaskQueueItem, sourced for d.taskGroups (map[string]schedulableUnit) tasks' field, which in turn is a []TaskQueueItem.
+		// taskGroupTask is a *TaskQueueItem sourced from d.nodeItemMap, which is a map[node.ID()]*TaskQueueItem.
+		node := d.getNodeByItemID(next.Id)
+		taskGroupTask := d.getItemByNodeID(node.ID())
+		taskGroupTask.IsDispatched = true
+		return next
+	}
+	return nil
+}
+
+func (d *basicCachedDAGDispatcherImpl) getTaskGroup(taskGroupID string) (schedulableUnit, bool) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	taskGroupUnit, ok := d.taskGroups[taskGroupID]
+	return taskGroupUnit, ok
+}
+
+func (d *basicCachedDAGDispatcherImpl) setTaskGroup(taskGroupUnit schedulableUnit, taskGroupID string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.taskGroups[taskGroupID] = taskGroupUnit
 }
 
 // checkMaxConcurrentLargeParserProjectTasks checks whether the task is allowed to be dispatched according to the current limitations
@@ -520,8 +547,6 @@ func checkMaxConcurrentLargeParserProjectTasks(settings *evergreen.Settings, nex
 }
 
 func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {
-	d.mu.Lock()
-	defer d.mu.Unlock()
 	for i, nextTaskQueueItem := range unit.tasks {
 		// Dispatch this task if all of the following are true:
 		// (a) it's not marked as dispatched in the in-memory queue.
