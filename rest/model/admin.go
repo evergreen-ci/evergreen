@@ -2703,6 +2703,7 @@ type APITaskLimitsConfig struct {
 	MaxDegradedModeParserProjectSize     *int `json:"max_degraded_mode_parser_project_size"`
 	MaxParserProjectSize                 *int `json:"max_parser_project_size"`
 	MaxExecTimeoutSecs                   *int `json:"max_exec_timeout_secs"`
+	MaxTaskExecution                     *int `json:"max_task_execution"`
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
@@ -2717,6 +2718,7 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 		c.MaxDegradedModeParserProjectSize = utility.ToIntPtr(v.MaxDegradedModeParserProjectSize)
 		c.MaxParserProjectSize = utility.ToIntPtr(v.MaxParserProjectSize)
 		c.MaxExecTimeoutSecs = utility.ToIntPtr(v.MaxExecTimeoutSecs)
+		c.MaxTaskExecution = utility.ToIntPtr(v.MaxTaskExecution)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
@@ -2734,6 +2736,7 @@ func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 		MaxDegradedModeParserProjectSize:     utility.FromIntPtr(c.MaxDegradedModeParserProjectSize),
 		MaxParserProjectSize:                 utility.FromIntPtr(c.MaxParserProjectSize),
 		MaxExecTimeoutSecs:                   utility.FromIntPtr(c.MaxExecTimeoutSecs),
+		MaxTaskExecution:                     utility.FromIntPtr(c.MaxTaskExecution),
 	}, nil
 }
 
