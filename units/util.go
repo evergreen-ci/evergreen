@@ -42,8 +42,8 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 }
 
 // DisableAndNotifyPoisonedHost disables an unhealthy host so that it cannot run
-// any more tasks, clears any tasks that have been straned on it, and enqueues a
-// job to notify that a host was disabled. If canDecommission is true and the
+// any more tasks, clears any tasks that have been stranded on it, and enqueues
+// a job to notify that a host was disabled. If canDecommission is true and the
 // host is an ephemeral host, it will decommission the host instead of
 // quarantine it.
 func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment, h *host.Host, canDecommission bool, reason string) error {
@@ -53,19 +53,19 @@ func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment
 
 	if canDecommission && h.Provider != evergreen.ProviderNameStatic {
 		if err := h.SetDecommissioned(ctx, evergreen.User, true, reason); err != nil {
-			return errors.Wrap(err, "decommissioning host")
+			return errors.Wrapf(err, "decommissioning host '%s'", h.Id)
 		}
 	} else {
 		if err := h.SetQuarantined(ctx, evergreen.User, reason); err != nil {
-			return errors.Wrap(err, "quarantining host")
+			return errors.Wrapf(err, "quarantining host '%s'", h.Id)
 		}
 	}
 
-	if err := amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewDecoHostNotifyJob(env, h, nil, reason)); err != nil {
-		return errors.Wrap(err, "enqueueing decohost notify job")
+	if err := model.ClearAndResetStrandedHostTask(ctx, env.Settings(), h); err != nil {
+		return errors.Wrap(err, "clearing stranded task from host")
 	}
 
-	return errors.Wrap(model.ClearAndResetStrandedHostTask(ctx, env.Settings(), h), "clearing stranded task from host")
+	return errors.Wrapf(amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewDecoHostNotifyJob(env, h, nil, reason)), "enqueueing decohost notify job for host '%s'", h.Id)
 }
 
 // EnqueueHostReprovisioningJob enqueues a job to reprovision a host. For hosts

@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -109,7 +110,7 @@ func (j *hostMonitorExternalStateCheckJob) handleUnresponsiveStaticHost(ctx cont
 	if j.host.Provider != evergreen.ProviderNameStatic {
 		return nil
 	}
-	if j.host.Status == evergreen.HostQuarantined {
+	if utility.StringSliceContains(evergreen.DownHostStatus, j.host.Status) {
 		return nil
 	}
 
