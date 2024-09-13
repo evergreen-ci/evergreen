@@ -1370,3 +1370,18 @@ func groupInactiveVersions(activeVersionIds []string, versions []model.Version) 
 	}
 	return waterfallVersions
 }
+
+// flattenOtelVariables "flattens" one level of a string map. Any maps that are found as a value within the map are moved to the top level of the map, with "topkey.nestedkey" as their new key, in line with Honeycomb best practices.
+func flattenOtelVariables(vars map[string]interface{}) map[string]interface{} {
+	flattenedVars := map[string]interface{}{}
+	for k, v := range vars {
+		if valueMap, isMap := v.(map[string]interface{}); isMap {
+			for nestedKey, nestedValue := range valueMap {
+				flattenedVars[k+"."+nestedKey] = nestedValue
+			}
+		} else {
+			flattenedVars[k] = v
+		}
+	}
+	return flattenedVars
+}
