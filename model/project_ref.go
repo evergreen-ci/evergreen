@@ -751,7 +751,7 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 // are empty, the entry is deleted.
 func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) error {
 	if appID == 0 && len(privateKey) == 0 {
-		return RemoveGithubAppAuth(p.Id)
+		return githubapp.RemoveGithubAppAuth(p.Id)
 	}
 
 	if appID == 0 || len(privateKey) == 0 {
@@ -762,7 +762,7 @@ func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) err
 		AppID:      appID,
 		PrivateKey: privateKey,
 	}
-	return UpsertGithubAppAuth(&auth)
+	return githubapp.UpsertGithubAppAuth(&auth)
 }
 
 // AddToRepoScope validates that the branch can be attached to the matching repo,
@@ -2018,7 +2018,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 		return nil, errors.Wrapf(err, "finding subscription for project '%s'", p.Id)
 	}
 
-	githubApp, err := FindOneGithubAppAuth(p.Id)
+	githubApp, err := githubapp.FindOneGithubAppAuth(p.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding GitHub app for project '%s'", p.Id)
 	}

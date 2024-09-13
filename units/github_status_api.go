@@ -37,7 +37,7 @@ const (
 	// GitHub intent processing errors
 	ProjectDisabled             = "project was disabled"
 	PatchingDisabled            = "patching was disabled"
-	commitQueueDisabled         = "commit queue was disabled"
+	commitQueueDisabled         = "merge queue disabled for project"
 	ignoredFiles                = "all patched files are ignored"
 	PatchTaskSyncDisabled       = "task sync was disabled for patches"
 	invalidAlias                = "alias not found"

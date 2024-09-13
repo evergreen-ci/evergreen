@@ -13,54 +13,113 @@ import (
 )
 
 const (
+	DefaultWaterfallQueryCount   = 20
 	DefaultWaterfallVersionLimit = 5
 	MaxWaterfallVersionLimit     = 300
 )
 
 type WaterfallTask struct {
 	Id          string `bson:"_id" json:"_id"`
-	DisplayName string `bson:"display_name" json:"display_name,omitempty"`
-	Status      string `bson:"status" json:"status,omitempty"`
+	DisplayName string `bson:"display_name" json:"display_name"`
+	Status      string `bson:"status" json:"status"`
 }
 
 type WaterfallBuild struct {
 	Id          string          `bson:"_id" json:"_id"`
-	Activated   bool            `bson:"activated" json:"activated,omitempty"`
-	DisplayName string          `bson:"display_name" json:"display_name,omitempty"`
-	Version     string          `bson:"version" json:"version,omitempty"`
-	Tasks       []WaterfallTask `bson:"tasks" json:"tasks,omitempty"`
+	Activated   bool            `bson:"activated" json:"activated"`
+	DisplayName string          `bson:"display_name" json:"display_name"`
+	Version     string          `bson:"version" json:"version"`
+	Tasks       []WaterfallTask `bson:"tasks" json:"tasks"`
 }
 
 type WaterfallBuildVariant struct {
 	Id          string           `bson:"_id" json:"_id"`
-	DisplayName string           `bson:"display_name" json:"display_name,omitempty"`
-	Builds      []WaterfallBuild `bson:"builds" json:"builds,omitempty"`
+	DisplayName string           `bson:"display_name" json:"display_name"`
+	Builds      []WaterfallBuild `bson:"builds" json:"builds"`
 }
 
 type WaterfallOptions struct {
 	Limit      int      `bson:"-" json:"-"`
+	MaxOrder   int      `bson:"-" json:"-"`
+	MinOrder   int      `bson:"-" json:"-"`
 	Requesters []string `bson:"-" json:"-"`
 }
 
-// GetWaterfallVersions returns at most `opts.limit` versions for a given project.
-// TODO: It will eventually return `opts.limit` activated versions that also satisfy any given filters.
-func GetWaterfallVersions(ctx context.Context, projectId string, opts WaterfallOptions) ([]Version, error) {
+// GetActiveWaterfallVersions returns at most `opts.limit` activated versions for a given project.
+func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts WaterfallOptions) ([]Version, error) {
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(opts.Requesters, evergreen.SystemVersionRequesterTypes)
 	if len(invalidRequesters) > 0 {
 		return nil, errors.Errorf("invalid requester(s) '%s'; only commit-level requesters can be applied to the waterfall query", invalidRequesters)
 	}
+
+	if opts.MaxOrder != 0 && opts.MinOrder != 0 {
+		return nil, errors.New("cannot provide both max and min order options")
+	}
+
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey: bson.M{
 			"$in": opts.Requesters,
 		},
+		VersionActivatedKey: true,
 	}
 
-	// TODO DEVPROD-10177: Add revision order logic to handle pagination.
+	pagingForward := opts.MaxOrder != 0
+	pagingBackward := opts.MinOrder != 0
+
+	if pagingForward {
+		match[VersionRevisionOrderNumberKey] = bson.M{"$lt": opts.MaxOrder}
+	} else if pagingBackward {
+		match[VersionRevisionOrderNumberKey] = bson.M{"$gt": opts.MinOrder}
+	}
+
+	pipeline := []bson.M{{"$match": match}}
+
+	if pagingBackward {
+		// When querying with a $gt param, sort ascending so we can take `limit` versions nearest to the MinOrder param
+		pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: 1}})
+		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
+		// Then apply an acending sort so these versions are returned in the expected descending order
+		pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
+
+	} else {
+		pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
+		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
+
+	}
+
+	res := []Version{}
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating active versions")
+	}
+	if err = cursor.All(ctx, &res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+// GetAllWaterfallVersions returns all of a project's versions within an inclusive range of orders.
+func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int, maxOrder int) ([]Version, error) {
+	if minOrder >= maxOrder {
+		return nil, errors.New("minOrder must be less than maxOrder")
+	}
+
+	match := bson.M{
+		VersionIdentifierKey: projectId,
+		VersionRequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
+		VersionRevisionOrderNumberKey: bson.M{
+			"$gte": minOrder,
+			"$lte": maxOrder,
+		},
+	}
 
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
-	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
 
 	res := []Version{}
 	env := evergreen.GetEnvironment()
@@ -76,14 +135,9 @@ func GetWaterfallVersions(ctx context.Context, projectId string, opts WaterfallO
 }
 
 // GetWaterfallBuildVariants returns all build variants associated with the specified versions. Each build variant contains an array of builds sorted by revision and their tasks.
-func GetWaterfallBuildVariants(ctx context.Context, versions []Version) ([]WaterfallBuildVariant, error) {
-	if len(versions) == 0 {
-		return nil, errors.Errorf("no versions specified")
-	}
-
-	versionIds := []string{}
-	for _, version := range versions {
-		versionIds = append(versionIds, version.Id)
+func GetWaterfallBuildVariants(ctx context.Context, versionIds []string) ([]WaterfallBuildVariant, error) {
+	if len(versionIds) == 0 {
+		return nil, errors.Errorf("no version IDs specified")
 	}
 
 	pipeline := []bson.M{{"$match": bson.M{VersionIdKey: bson.M{"$in": versionIds}}}}
