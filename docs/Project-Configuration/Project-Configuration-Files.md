@@ -984,7 +984,7 @@ tasks.
 
 To create a display task, list its name and its execution tasks in a
 `display_tasks` array in the variant definition. The execution tasks
-must be present in the `tasks` array.
+must be present in the `tasks` array in the form of a tag or task name.
 
 ``` yaml
 - name: lint-variant
@@ -993,10 +993,12 @@ must be present in the `tasks` array.
     - archlinux
   tasks:
     - name: ".lint"
+    - name: "lint-task"
   display_tasks:
     - name: lint
       execution_tasks:
       - ".lint"
+      - "lint-task
 ```
 
 ### Stepback
