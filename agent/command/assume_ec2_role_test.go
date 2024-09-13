@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
@@ -14,55 +13,79 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEc2AssumeRoleExecute(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	conf := &internal.TaskConfig{
-		Task: task.Task{
-			Id:           "id",
-			Project:      "project",
-			Version:      "version",
-			BuildVariant: "build_variant",
-			DisplayName:  "display_name",
-		},
-		BuildVariant: model.BuildVariant{
-			Name: "build_variant",
-		},
-		ProjectRef: model.ProjectRef{
-			Id: "project_identifier",
-			TaskSync: model.TaskSyncOptions{
-				ConfigEnabled: utility.TruePtr(),
-			},
-		},
-		EC2Keys: []evergreen.EC2Key{
-			evergreen.EC2Key{
-				Key:    "aaaaaaaaaa",
-				Secret: "bbbbbbbbbbb",
-			},
-		},
-	}
-	comm := client.NewMock("localhost")
-	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
-	require.NoError(t, err)
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig){
-		"FailsWithNoARN": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+func TestEC2AssumeRoleParse(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T){
+		"FailsWithNoARN": func(t *testing.T) {
 			c := &ec2AssumeRole{}
-			err := c.Execute(ctx, comm, logger, conf)
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "must specify role ARN")
+			assert.Error(t, c.ParseParams(map[string]interface{}{}))
 		},
-		"FailsWithInvalidDuration": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+		"FailsWithInvalidDuration": func(t *testing.T) {
 			c := &ec2AssumeRole{
 				RoleARN:         "randomRoleArn1234567890",
 				DurationSeconds: -10,
 			}
-			err := c.Execute(ctx, comm, logger, conf)
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "cannot specify a non-positive duration")
+			assert.Error(t, c.ParseParams(map[string]interface{}{}))
+		},
+		"SucceedsWithValidParams": func(t *testing.T) {
+			c := &ec2AssumeRole{
+				RoleARN:         "randomRoleArn1234567890",
+				DurationSeconds: 10,
+			}
+			assert.NoError(t, c.ParseParams(map[string]interface{}{}))
 		},
 	} {
-		t.Run(testName, func(t *testing.T) {
-			testCase(ctx, t, comm, logger, conf)
+		t.Run(tName, tCase)
+	}
+}
+
+func TestEC2AssumeRoleExecute(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig){
+		"TemporaryFeatureFlagDisabled": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+			c := &ec2AssumeRole{
+				RoleARN:         "randomRoleArn1234567890",
+				DurationSeconds: 10,
+			}
+			assert.EqualError(t, c.Execute(ctx, comm, logger, conf), "no EC2 keys in config")
+		},
+		"TemporaryFeatureFlagEnabled": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+			// TODO (DEVPROD-9945): Migration to new implementation. That should include tests for the new implementations Execute method.
+			c := &ec2AssumeRole{
+				RoleARN:              "randomRoleArn1234567890",
+				DurationSeconds:      10,
+				TemporaryFeatureFlag: true,
+			}
+			assert.EqualError(t, c.Execute(ctx, comm, logger, conf), "temporary feature flag is enabled")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf := &internal.TaskConfig{
+				Task: task.Task{
+					Id:           "id",
+					Project:      "project",
+					Version:      "version",
+					BuildVariant: "build_variant",
+					DisplayName:  "display_name",
+				},
+				BuildVariant: model.BuildVariant{
+					Name: "build_variant",
+				},
+				ProjectRef: model.ProjectRef{
+					Id: "project_identifier",
+					TaskSync: model.TaskSyncOptions{
+						ConfigEnabled: utility.TruePtr(),
+					},
+				},
+			}
+
+			comm := client.NewMock("localhost")
+
+			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+			require.NoError(t, err)
+
+			tCase(ctx, t, comm, logger, conf)
 		})
 	}
 }
