@@ -32,6 +32,10 @@ type ec2AssumeRole struct {
 	// Defaults to 900s (15 minutes).
 	DurationSeconds int `mapstructure:"duration_seconds"`
 
+	// TemporaryFeatureFlag is a flag to flip between the new and old implementation.
+	// TODO (DEVPROD-9947): Remove this.
+	TemporaryFeatureFlag bool `mapstructure:"temporary_feature_flag"`
+
 	base
 }
 
@@ -49,14 +53,9 @@ func (r *ec2AssumeRole) ParseParams(params map[string]interface{}) error {
 func (r *ec2AssumeRole) validate() error {
 	catcher := grip.NewSimpleCatcher()
 
-	if r.RoleARN == "" {
-		catcher.New("must specify role ARN")
-	}
-
+	catcher.NewWhen(r.RoleARN == "", "must specify role ARN")
 	// 0 will default duration time to 15 minutes
-	if r.DurationSeconds < 0 {
-		catcher.New("cannot specify a non-positive duration")
-	}
+	catcher.NewWhen(r.DurationSeconds < 0, "cannot specify a non-positive duration")
 
 	return catcher.Resolve()
 }
@@ -71,6 +70,21 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
+	if r.TemporaryFeatureFlag {
+		return r.newExecution(ctx, comm, logger, conf)
+	}
+
+	return r.legacyExecute(ctx, comm, logger, conf)
+}
+
+func (r *ec2AssumeRole) newExecution(ctx context.Context,
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+	// TODO (DEVPROD-9945): Migration to new implementation
+	return errors.New("temporary feature flag is enabled")
+}
+
+func (r *ec2AssumeRole) legacyExecute(ctx context.Context,
+	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	if len(conf.EC2Keys) == 0 {
 		return errors.New("no EC2 keys in config")
 	}
