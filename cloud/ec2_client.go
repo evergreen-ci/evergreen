@@ -1449,7 +1449,6 @@ func (c *awsClientMock) ChangeResourceRecordSets(ctx context.Context, input *rou
 	return c.ChangeResourceRecordSetsOutput, nil
 }
 
-// DeleteLaunchTemplate is a mock for ec2.DeleteLaunchTemplate
 func (c *awsClientMock) AssumeRole(ctx context.Context, input *sts.AssumeRoleInput) (*sts.AssumeRoleOutput, error) {
 	c.AssumeRoleInput = input
 	if input.DurationSeconds == nil {
