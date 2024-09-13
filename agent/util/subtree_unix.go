@@ -55,7 +55,6 @@ func TrackProcess(pid int, _ string, _ grip.Journaler) {
 // for them to terminate.
 func KillSpawnedProcs(ctx context.Context, _ string, logger grip.Journaler) error {
 	pidsToKill := registry.popProcessList()
-	logger.Infof("killing pids: %v", pidsToKill)
 	for _, pid := range pidsToKill {
 		// shell.exec and subprocess.exec processes are started as group leaders. This means
 		// they and their child processes all share a single process group id (PGID) which is equal to
