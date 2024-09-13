@@ -1,6 +1,14 @@
 query {
   host(hostId: "i-0f81a2d39744003dd") {
-    events(opts: { sortDir: ASC, limit: 1 }) {
+    events(
+      opts: {
+        eventTypes: [
+          HOST_TASK_FINISHED
+          HOST_RUNNING_TASK_SET
+          HOST_RUNNING_TASK_CLEARED
+        ]
+      }
+    ) {
       eventLogEntries {
         id
         resourceType
@@ -27,6 +35,7 @@ query {
         }
         resourceId
       }
+      count
     }
   }
 }

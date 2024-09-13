@@ -65,6 +65,16 @@ type SleepSchedule {
   wholeWeekdaysOff: [Int!]!
 }
 
+input HostEventsInput {
+  limit: Int = 0
+  page: Int = 0
+  """
+  sort by timestamp
+  """
+  sortDir: SortDirection = DESC
+  eventTypes: [HostEventType!]
+}
+
 ###### TYPES ######
 """
 Host models a host, which are used for things like running tasks or as virtual workstations.
@@ -80,14 +90,8 @@ type Host {
   """
   events returns the event log entries for a given host.
   """
-  events(
-    limit: Int = 0
-    page: Int = 0
-    """
-    sort by timestamp
-    """
-    sortDir: SortDirection = DESC
-  ): HostEvents!
+  events(opts: HostEventsInput): HostEvents!
+  eventTypes: [HostEventType!]!
   expiration: Time
   hostUrl: String!
   homeVolume: Volume

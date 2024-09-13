@@ -64,7 +64,13 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	events, err := event.Find(event.MostRecentHostEvents(h.Id, h.Tag, 50, false))
+	hostEventOpts := event.MostRecentHostEventsOpts{
+		ID:      h.Id,
+		Tag:     h.Tag,
+		Limit:   50,
+		SortAsc: false,
+	}
+	events, err := event.Find(event.MostRecentHostEvents(hostEventOpts))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

@@ -36,14 +36,22 @@ func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*ti
 }
 
 // Events is the resolver for the events field.
-func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, limit *int, page *int, sortDir *SortDirection) (*HostEvents, error) {
+func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, opts *HostEventsInput) (*HostEvents, error) {
 	sortAsc := false
-	if sortDir != nil {
-		sortAsc = *sortDir == SortDirectionAsc
+	if opts.SortDir != nil {
+		sortAsc = *opts.SortDir == SortDirectionAsc
 	}
-	events, count, err := event.MostRecentPaginatedHostEvents(utility.FromStringPtr(obj.Id), utility.FromStringPtr(obj.Tag), utility.FromIntPtr(limit), utility.FromIntPtr(page), sortAsc)
+	hostQueryOpts := event.MostRecentPaginatedHostEventsOpts{
+		ID:         utility.FromStringPtr(obj.Id),
+		Tag:        utility.FromStringPtr(obj.Tag),
+		Limit:      utility.FromIntPtr(opts.Limit),
+		Page:       utility.FromIntPtr(opts.Page),
+		SortAsc:    sortAsc,
+		EventTypes: opts.EventTypes,
+	}
+	events, count, err := event.MostRecentPaginatedHostEvents(hostQueryOpts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host events: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host events for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	apiEventLogPointers := []*restModel.HostAPIEventLogEntry{}
 	for _, e := range events {
@@ -58,6 +66,15 @@ func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, limit
 		Count:           count,
 	}
 	return &hostEvents, nil
+}
+
+// EventTypes is the resolver for the eventTypes field.
+func (r *hostResolver) EventTypes(ctx context.Context, obj *restModel.APIHost) ([]string, error) {
+	eventTypes, err := event.FindEventTypesForHost(utility.FromStringPtr(obj.Id), utility.FromStringPtr(obj.Tag))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting event types for host '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+	}
+	return eventTypes, nil
 }
 
 // HomeVolume is the resolver for the homeVolume field.

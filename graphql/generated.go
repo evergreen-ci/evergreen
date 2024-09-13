@@ -460,7 +460,8 @@ type ComplexityRoot struct {
 		Distro                func(childComplexity int) int
 		DistroID              func(childComplexity int) int
 		Elapsed               func(childComplexity int) int
-		Events                func(childComplexity int, limit *int, page *int, sortDir *SortDirection) int
+		EventTypes            func(childComplexity int) int
+		Events                func(childComplexity int, opts *HostEventsInput) int
 		Expiration            func(childComplexity int) int
 		HomeVolume            func(childComplexity int) int
 		HomeVolumeID          func(childComplexity int) int
@@ -1764,7 +1765,8 @@ type HostResolver interface {
 
 	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
 	Elapsed(ctx context.Context, obj *model.APIHost) (*time.Time, error)
-	Events(ctx context.Context, obj *model.APIHost, limit *int, page *int, sortDir *SortDirection) (*HostEvents, error)
+	Events(ctx context.Context, obj *model.APIHost, opts *HostEventsInput) (*HostEvents, error)
+	EventTypes(ctx context.Context, obj *model.APIHost) ([]string, error)
 
 	HomeVolume(ctx context.Context, obj *model.APIHost) (*model.APIVolume, error)
 
@@ -3600,6 +3602,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Host.Elapsed(childComplexity), true
 
+	case "Host.eventTypes":
+		if e.complexity.Host.EventTypes == nil {
+			break
+		}
+
+		return e.complexity.Host.EventTypes(childComplexity), true
+
 	case "Host.events":
 		if e.complexity.Host.Events == nil {
 			break
@@ -3610,7 +3619,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Host.Events(childComplexity, args["limit"].(*int), args["page"].(*int), args["sortDir"].(*SortDirection)), true
+		return e.complexity.Host.Events(childComplexity, args["opts"].(*HostEventsInput)), true
 
 	case "Host.expiration":
 		if e.complexity.Host.Expiration == nil {
@@ -10380,6 +10389,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputGithubUserInput,
 		ec.unmarshalInputHomeVolumeSettingsInput,
 		ec.unmarshalInputHostAllocatorSettingsInput,
+		ec.unmarshalInputHostEventsInput,
 		ec.unmarshalInputIceCreamSettingsInput,
 		ec.unmarshalInputInstanceTagInput,
 		ec.unmarshalInputIssueLinkInput,
@@ -10632,33 +10642,15 @@ func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, r
 func (ec *executionContext) field_Host_events_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *int
-	if tmp, ok := rawArgs["limit"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
-		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+	var arg0 *HostEventsInput
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+		arg0, err = ec.unmarshalOHostEventsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostEventsInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["limit"] = arg0
-	var arg1 *int
-	if tmp, ok := rawArgs["page"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
-		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["page"] = arg1
-	var arg2 *SortDirection
-	if tmp, ok := rawArgs["sortDir"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sortDir"))
-		arg2, err = ec.unmarshalOSortDirection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["sortDir"] = arg2
+	args["opts"] = arg0
 	return args, nil
 }
 
@@ -23125,7 +23117,7 @@ func (ec *executionContext) _Host_events(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Host().Events(rctx, obj, fc.Args["limit"].(*int), fc.Args["page"].(*int), fc.Args["sortDir"].(*SortDirection))
+		return ec.resolvers.Host().Events(rctx, obj, fc.Args["opts"].(*HostEventsInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -23168,6 +23160,50 @@ func (ec *executionContext) fieldContext_Host_events(ctx context.Context, field 
 	if fc.Args, err = ec.field_Host_events_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Host_eventTypes(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Host_eventTypes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Host().EventTypes(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNHostEventType2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Host_eventTypes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Host",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type HostEventType does not have child fields")
+		},
 	}
 	return fc, nil
 }
@@ -25664,6 +25700,8 @@ func (ec *executionContext) fieldContext_HostsResponse_hosts(_ context.Context, 
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
+			case "eventTypes":
+				return ec.fieldContext_Host_eventTypes(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -32815,6 +32853,8 @@ func (ec *executionContext) fieldContext_Mutation_editSpawnHost(ctx context.Cont
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
+			case "eventTypes":
+				return ec.fieldContext_Host_eventTypes(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -32981,6 +33021,8 @@ func (ec *executionContext) fieldContext_Mutation_spawnHost(ctx context.Context,
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
+			case "eventTypes":
+				return ec.fieldContext_Host_eventTypes(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -33202,6 +33244,8 @@ func (ec *executionContext) fieldContext_Mutation_updateSpawnHostStatus(ctx cont
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
+			case "eventTypes":
+				return ec.fieldContext_Host_eventTypes(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -47231,6 +47275,8 @@ func (ec *executionContext) fieldContext_Query_host(ctx context.Context, field g
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
+			case "eventTypes":
+				return ec.fieldContext_Host_eventTypes(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -48294,6 +48340,8 @@ func (ec *executionContext) fieldContext_Query_myHosts(_ context.Context, field 
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
+			case "eventTypes":
+				return ec.fieldContext_Host_eventTypes(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -69063,6 +69111,8 @@ func (ec *executionContext) fieldContext_Volume_host(_ context.Context, field gr
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
+			case "eventTypes":
+				return ec.fieldContext_Host_eventTypes(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -74249,6 +74299,64 @@ func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context
 			if err = ec.resolvers.HostAllocatorSettingsInput().Version(ctx, &it, data); err != nil {
 				return it, err
 			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputHostEventsInput(ctx context.Context, obj interface{}) (HostEventsInput, error) {
+	var it HostEventsInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["limit"]; !present {
+		asMap["limit"] = 0
+	}
+	if _, present := asMap["page"]; !present {
+		asMap["page"] = 0
+	}
+	if _, present := asMap["sortDir"]; !present {
+		asMap["sortDir"] = "DESC"
+	}
+
+	fieldsInOrder := [...]string{"limit", "page", "sortDir", "eventTypes"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "limit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Limit = data
+		case "page":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Page = data
+		case "sortDir":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sortDir"))
+			data, err := ec.unmarshalOSortDirection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SortDir = data
+		case "eventTypes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("eventTypes"))
+			data, err := ec.unmarshalOHostEventType2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EventTypes = data
 		}
 	}
 
@@ -81053,6 +81161,42 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Host_events(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "eventTypes":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_eventTypes(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -95528,6 +95672,221 @@ func (ec *executionContext) marshalNHostEventLogEntry2ᚖgithubᚗcomᚋevergree
 	return ec._HostEventLogEntry(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNHostEventType2string(ctx context.Context, v interface{}) (string, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalNHostEventType2string[tmp]
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNHostEventType2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	res := graphql.MarshalString(marshalNHostEventType2string[v])
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+var (
+	unmarshalNHostEventType2string = map[string]string{
+		"HOST_CREATED":                                     event.EventHostCreated,
+		"HOST_CREATED_ERROR":                               event.EventHostCreatedError,
+		"HOST_STARTED":                                     event.EventHostStarted,
+		"HOST_STOPPED":                                     event.EventHostStopped,
+		"HOST_MODIFIED":                                    event.EventHostModified,
+		"HOST_AGENT_DEPLOYED":                              event.EventHostAgentDeployed,
+		"HOST_AGENT_DEPLOY_FAILED":                         event.EventHostAgentDeployFailed,
+		"HOST_AGENT_MONITOR_DEPLOYED":                      event.EventHostAgentMonitorDeployed,
+		"HOST_AGENT_MONITOR_DEPLOY_FAILED":                 event.EventHostAgentMonitorDeployFailed,
+		"HOST_JASPER_RESTARTING":                           event.EventHostJasperRestarting,
+		"HOST_JASPER_RESTARTED":                            event.EventHostJasperRestarted,
+		"HOST_JASPER_RESTART_ERROR":                        event.EventHostJasperRestartError,
+		"HOST_CONVERTING_PROVISIONING":                     event.EventHostConvertingProvisioning,
+		"HOST_CONVERTED_PROVISIONING":                      event.EventHostConvertedProvisioning,
+		"HOST_CONVERTING_PROVISIONING_ERROR":               event.EventHostConvertingProvisioningError,
+		"HOST_STATUS_CHANGED":                              event.EventHostStatusChanged,
+		"HOST_DNS_NAME_SET":                                event.EventHostDNSNameSet,
+		"HOST_PROVISION_ERROR":                             event.EventHostProvisionError,
+		"HOST_PROVISION_FAILED":                            event.EventHostProvisionFailed,
+		"HOST_PROVISIONED":                                 event.EventHostProvisioned,
+		"HOST_RUNNING_TASK_SET":                            event.EventHostRunningTaskSet,
+		"HOST_RUNNING_TASK_CLEARED":                        event.EventHostRunningTaskCleared,
+		"HOST_TASK_FINISHED":                               event.EventHostTaskFinished,
+		"HOST_TERMINATED_EXTERNALLY":                       event.EventHostTerminatedExternally,
+		"HOST_EXPIRATION_WARNING_SENT":                     event.EventHostExpirationWarningSent,
+		"HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT": event.EventHostTemporaryExemptionExpirationWarningSent,
+		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
+		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
+		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
+		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
+	}
+	marshalNHostEventType2string = map[string]string{
+		event.EventHostCreated:                                 "HOST_CREATED",
+		event.EventHostCreatedError:                            "HOST_CREATED_ERROR",
+		event.EventHostStarted:                                 "HOST_STARTED",
+		event.EventHostStopped:                                 "HOST_STOPPED",
+		event.EventHostModified:                                "HOST_MODIFIED",
+		event.EventHostAgentDeployed:                           "HOST_AGENT_DEPLOYED",
+		event.EventHostAgentDeployFailed:                       "HOST_AGENT_DEPLOY_FAILED",
+		event.EventHostAgentMonitorDeployed:                    "HOST_AGENT_MONITOR_DEPLOYED",
+		event.EventHostAgentMonitorDeployFailed:                "HOST_AGENT_MONITOR_DEPLOY_FAILED",
+		event.EventHostJasperRestarting:                        "HOST_JASPER_RESTARTING",
+		event.EventHostJasperRestarted:                         "HOST_JASPER_RESTARTED",
+		event.EventHostJasperRestartError:                      "HOST_JASPER_RESTART_ERROR",
+		event.EventHostConvertingProvisioning:                  "HOST_CONVERTING_PROVISIONING",
+		event.EventHostConvertedProvisioning:                   "HOST_CONVERTED_PROVISIONING",
+		event.EventHostConvertingProvisioningError:             "HOST_CONVERTING_PROVISIONING_ERROR",
+		event.EventHostStatusChanged:                           "HOST_STATUS_CHANGED",
+		event.EventHostDNSNameSet:                              "HOST_DNS_NAME_SET",
+		event.EventHostProvisionError:                          "HOST_PROVISION_ERROR",
+		event.EventHostProvisionFailed:                         "HOST_PROVISION_FAILED",
+		event.EventHostProvisioned:                             "HOST_PROVISIONED",
+		event.EventHostRunningTaskSet:                          "HOST_RUNNING_TASK_SET",
+		event.EventHostRunningTaskCleared:                      "HOST_RUNNING_TASK_CLEARED",
+		event.EventHostTaskFinished:                            "HOST_TASK_FINISHED",
+		event.EventHostTerminatedExternally:                    "HOST_TERMINATED_EXTERNALLY",
+		event.EventHostExpirationWarningSent:                   "HOST_EXPIRATION_WARNING_SENT",
+		event.EventHostTemporaryExemptionExpirationWarningSent: "HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT",
+		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
+		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
+		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
+		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
+	}
+)
+
+func (ec *executionContext) unmarshalNHostEventType2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNHostEventType2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNHostEventType2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNHostEventType2string(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+var (
+	unmarshalNHostEventType2ᚕstringᚄ = map[string]string{
+		"HOST_CREATED":                                     event.EventHostCreated,
+		"HOST_CREATED_ERROR":                               event.EventHostCreatedError,
+		"HOST_STARTED":                                     event.EventHostStarted,
+		"HOST_STOPPED":                                     event.EventHostStopped,
+		"HOST_MODIFIED":                                    event.EventHostModified,
+		"HOST_AGENT_DEPLOYED":                              event.EventHostAgentDeployed,
+		"HOST_AGENT_DEPLOY_FAILED":                         event.EventHostAgentDeployFailed,
+		"HOST_AGENT_MONITOR_DEPLOYED":                      event.EventHostAgentMonitorDeployed,
+		"HOST_AGENT_MONITOR_DEPLOY_FAILED":                 event.EventHostAgentMonitorDeployFailed,
+		"HOST_JASPER_RESTARTING":                           event.EventHostJasperRestarting,
+		"HOST_JASPER_RESTARTED":                            event.EventHostJasperRestarted,
+		"HOST_JASPER_RESTART_ERROR":                        event.EventHostJasperRestartError,
+		"HOST_CONVERTING_PROVISIONING":                     event.EventHostConvertingProvisioning,
+		"HOST_CONVERTED_PROVISIONING":                      event.EventHostConvertedProvisioning,
+		"HOST_CONVERTING_PROVISIONING_ERROR":               event.EventHostConvertingProvisioningError,
+		"HOST_STATUS_CHANGED":                              event.EventHostStatusChanged,
+		"HOST_DNS_NAME_SET":                                event.EventHostDNSNameSet,
+		"HOST_PROVISION_ERROR":                             event.EventHostProvisionError,
+		"HOST_PROVISION_FAILED":                            event.EventHostProvisionFailed,
+		"HOST_PROVISIONED":                                 event.EventHostProvisioned,
+		"HOST_RUNNING_TASK_SET":                            event.EventHostRunningTaskSet,
+		"HOST_RUNNING_TASK_CLEARED":                        event.EventHostRunningTaskCleared,
+		"HOST_TASK_FINISHED":                               event.EventHostTaskFinished,
+		"HOST_TERMINATED_EXTERNALLY":                       event.EventHostTerminatedExternally,
+		"HOST_EXPIRATION_WARNING_SENT":                     event.EventHostExpirationWarningSent,
+		"HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT": event.EventHostTemporaryExemptionExpirationWarningSent,
+		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
+		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
+		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
+		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
+	}
+	marshalNHostEventType2ᚕstringᚄ = map[string]string{
+		event.EventHostCreated:                                 "HOST_CREATED",
+		event.EventHostCreatedError:                            "HOST_CREATED_ERROR",
+		event.EventHostStarted:                                 "HOST_STARTED",
+		event.EventHostStopped:                                 "HOST_STOPPED",
+		event.EventHostModified:                                "HOST_MODIFIED",
+		event.EventHostAgentDeployed:                           "HOST_AGENT_DEPLOYED",
+		event.EventHostAgentDeployFailed:                       "HOST_AGENT_DEPLOY_FAILED",
+		event.EventHostAgentMonitorDeployed:                    "HOST_AGENT_MONITOR_DEPLOYED",
+		event.EventHostAgentMonitorDeployFailed:                "HOST_AGENT_MONITOR_DEPLOY_FAILED",
+		event.EventHostJasperRestarting:                        "HOST_JASPER_RESTARTING",
+		event.EventHostJasperRestarted:                         "HOST_JASPER_RESTARTED",
+		event.EventHostJasperRestartError:                      "HOST_JASPER_RESTART_ERROR",
+		event.EventHostConvertingProvisioning:                  "HOST_CONVERTING_PROVISIONING",
+		event.EventHostConvertedProvisioning:                   "HOST_CONVERTED_PROVISIONING",
+		event.EventHostConvertingProvisioningError:             "HOST_CONVERTING_PROVISIONING_ERROR",
+		event.EventHostStatusChanged:                           "HOST_STATUS_CHANGED",
+		event.EventHostDNSNameSet:                              "HOST_DNS_NAME_SET",
+		event.EventHostProvisionError:                          "HOST_PROVISION_ERROR",
+		event.EventHostProvisionFailed:                         "HOST_PROVISION_FAILED",
+		event.EventHostProvisioned:                             "HOST_PROVISIONED",
+		event.EventHostRunningTaskSet:                          "HOST_RUNNING_TASK_SET",
+		event.EventHostRunningTaskCleared:                      "HOST_RUNNING_TASK_CLEARED",
+		event.EventHostTaskFinished:                            "HOST_TASK_FINISHED",
+		event.EventHostTerminatedExternally:                    "HOST_TERMINATED_EXTERNALLY",
+		event.EventHostExpirationWarningSent:                   "HOST_EXPIRATION_WARNING_SENT",
+		event.EventHostTemporaryExemptionExpirationWarningSent: "HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT",
+		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
+		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
+		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
+		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
+	}
+)
+
 func (ec *executionContext) marshalNHostEvents2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostEvents(ctx context.Context, sel ast.SelectionSet, v HostEvents) graphql.Marshaler {
 	return ec._HostEvents(ctx, sel, &v)
 }
@@ -100111,6 +100470,142 @@ func (ec *executionContext) marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 	return ec._Host(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOHostEventType2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNHostEventType2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOHostEventType2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNHostEventType2string(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+var (
+	unmarshalOHostEventType2ᚕstringᚄ = map[string]string{
+		"HOST_CREATED":                                     event.EventHostCreated,
+		"HOST_CREATED_ERROR":                               event.EventHostCreatedError,
+		"HOST_STARTED":                                     event.EventHostStarted,
+		"HOST_STOPPED":                                     event.EventHostStopped,
+		"HOST_MODIFIED":                                    event.EventHostModified,
+		"HOST_AGENT_DEPLOYED":                              event.EventHostAgentDeployed,
+		"HOST_AGENT_DEPLOY_FAILED":                         event.EventHostAgentDeployFailed,
+		"HOST_AGENT_MONITOR_DEPLOYED":                      event.EventHostAgentMonitorDeployed,
+		"HOST_AGENT_MONITOR_DEPLOY_FAILED":                 event.EventHostAgentMonitorDeployFailed,
+		"HOST_JASPER_RESTARTING":                           event.EventHostJasperRestarting,
+		"HOST_JASPER_RESTARTED":                            event.EventHostJasperRestarted,
+		"HOST_JASPER_RESTART_ERROR":                        event.EventHostJasperRestartError,
+		"HOST_CONVERTING_PROVISIONING":                     event.EventHostConvertingProvisioning,
+		"HOST_CONVERTED_PROVISIONING":                      event.EventHostConvertedProvisioning,
+		"HOST_CONVERTING_PROVISIONING_ERROR":               event.EventHostConvertingProvisioningError,
+		"HOST_STATUS_CHANGED":                              event.EventHostStatusChanged,
+		"HOST_DNS_NAME_SET":                                event.EventHostDNSNameSet,
+		"HOST_PROVISION_ERROR":                             event.EventHostProvisionError,
+		"HOST_PROVISION_FAILED":                            event.EventHostProvisionFailed,
+		"HOST_PROVISIONED":                                 event.EventHostProvisioned,
+		"HOST_RUNNING_TASK_SET":                            event.EventHostRunningTaskSet,
+		"HOST_RUNNING_TASK_CLEARED":                        event.EventHostRunningTaskCleared,
+		"HOST_TASK_FINISHED":                               event.EventHostTaskFinished,
+		"HOST_TERMINATED_EXTERNALLY":                       event.EventHostTerminatedExternally,
+		"HOST_EXPIRATION_WARNING_SENT":                     event.EventHostExpirationWarningSent,
+		"HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT": event.EventHostTemporaryExemptionExpirationWarningSent,
+		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
+		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
+		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
+		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
+	}
+	marshalOHostEventType2ᚕstringᚄ = map[string]string{
+		event.EventHostCreated:                                 "HOST_CREATED",
+		event.EventHostCreatedError:                            "HOST_CREATED_ERROR",
+		event.EventHostStarted:                                 "HOST_STARTED",
+		event.EventHostStopped:                                 "HOST_STOPPED",
+		event.EventHostModified:                                "HOST_MODIFIED",
+		event.EventHostAgentDeployed:                           "HOST_AGENT_DEPLOYED",
+		event.EventHostAgentDeployFailed:                       "HOST_AGENT_DEPLOY_FAILED",
+		event.EventHostAgentMonitorDeployed:                    "HOST_AGENT_MONITOR_DEPLOYED",
+		event.EventHostAgentMonitorDeployFailed:                "HOST_AGENT_MONITOR_DEPLOY_FAILED",
+		event.EventHostJasperRestarting:                        "HOST_JASPER_RESTARTING",
+		event.EventHostJasperRestarted:                         "HOST_JASPER_RESTARTED",
+		event.EventHostJasperRestartError:                      "HOST_JASPER_RESTART_ERROR",
+		event.EventHostConvertingProvisioning:                  "HOST_CONVERTING_PROVISIONING",
+		event.EventHostConvertedProvisioning:                   "HOST_CONVERTED_PROVISIONING",
+		event.EventHostConvertingProvisioningError:             "HOST_CONVERTING_PROVISIONING_ERROR",
+		event.EventHostStatusChanged:                           "HOST_STATUS_CHANGED",
+		event.EventHostDNSNameSet:                              "HOST_DNS_NAME_SET",
+		event.EventHostProvisionError:                          "HOST_PROVISION_ERROR",
+		event.EventHostProvisionFailed:                         "HOST_PROVISION_FAILED",
+		event.EventHostProvisioned:                             "HOST_PROVISIONED",
+		event.EventHostRunningTaskSet:                          "HOST_RUNNING_TASK_SET",
+		event.EventHostRunningTaskCleared:                      "HOST_RUNNING_TASK_CLEARED",
+		event.EventHostTaskFinished:                            "HOST_TASK_FINISHED",
+		event.EventHostTerminatedExternally:                    "HOST_TERMINATED_EXTERNALLY",
+		event.EventHostExpirationWarningSent:                   "HOST_EXPIRATION_WARNING_SENT",
+		event.EventHostTemporaryExemptionExpirationWarningSent: "HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT",
+		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
+		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
+		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
+		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
+	}
+)
+
 func (ec *executionContext) unmarshalOHostEventType2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
 	if v == nil {
 		return nil, nil
@@ -100196,6 +100691,14 @@ var (
 		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
 	}
 )
+
+func (ec *executionContext) unmarshalOHostEventsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostEventsInput(ctx context.Context, v interface{}) (*HostEventsInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputHostEventsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
 
 func (ec *executionContext) unmarshalOHostSortBy2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostSortBy(ctx context.Context, v interface{}) (*HostSortBy, error) {
 	if v == nil {

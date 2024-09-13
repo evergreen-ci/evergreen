@@ -124,26 +124,99 @@ func CountUnprocessedEvents() (int, error) {
 
 // === Queries ===
 
-// Host Events
-func MostRecentHostEvents(id string, tag string, n int, sortAsc bool) db.Q {
+// MostRecentHostEventOpts represent filter arguments to the MostRecentHostEvents function.
+type MostRecentHostEventsOpts struct {
+	ID         string
+	Tag        string
+	Limit      int
+	SortAsc    bool
+	EventTypes []string
+}
+
+// MostRecentHostEvents builds a query that can be used to return the n = opts.Limit most recent events that satisfy the
+// filters provided in opts.
+func MostRecentHostEvents(opts MostRecentHostEventsOpts) db.Q {
 	filter := ResourceTypeKeyIs(ResourceTypeHost)
-	if tag != "" {
-		filter[ResourceIdKey] = bson.M{"$in": []string{id, tag}}
+	if opts.Tag != "" {
+		filter[ResourceIdKey] = bson.M{"$in": []string{opts.ID, opts.Tag}}
 	} else {
-		filter[ResourceIdKey] = id
+		filter[ResourceIdKey] = opts.ID
+	}
+	if len(opts.EventTypes) > 0 {
+		filter[eventTypeKey] = bson.M{"$in": opts.EventTypes}
 	}
 	sortMethod := []string{"-" + TimestampKey}
-	if sortAsc {
+	if opts.SortAsc {
 		sortMethod = []string{TimestampKey}
 	}
-	return db.Query(filter).Sort(sortMethod).Limit(n)
+	return db.Query(filter).Sort(sortMethod).Limit(opts.Limit)
+}
+
+// MostRecentPaginatedHostEventsOpts represent filter arguments to the MostRecentPaginatedHostEvents function.
+type MostRecentPaginatedHostEventsOpts struct {
+	ID         string
+	Tag        string
+	Limit      int
+	Page       int
+	SortAsc    bool
+	EventTypes []string
 }
 
 // MostRecentPaginatedHostEvents returns a limited and paginated list of host events for the given
-// host ID and tag sorted in descending order by timestamp as well as the total number of events.
-func MostRecentPaginatedHostEvents(id string, tag string, limit, page int, sortAsc bool) ([]EventLogEntry, int, error) {
-	recentHostsQuery := MostRecentHostEvents(id, tag, limit, sortAsc)
-	return FindPaginatedWithTotalCount(recentHostsQuery, limit, page)
+// filters sorted in descending order by timestamp, as well as the total number of host events.
+func MostRecentPaginatedHostEvents(opts MostRecentPaginatedHostEventsOpts) ([]EventLogEntry, int, error) {
+	queryOpts := MostRecentHostEventsOpts{
+		ID:         opts.ID,
+		Tag:        opts.Tag,
+		Limit:      opts.Limit,
+		SortAsc:    opts.SortAsc,
+		EventTypes: opts.EventTypes,
+	}
+	recentHostsQuery := MostRecentHostEvents(queryOpts)
+	return FindPaginatedWithTotalCount(recentHostsQuery, opts.Limit, opts.Page)
+}
+
+type eventType struct {
+	EventTypes []string `bson:"event_types"`
+}
+
+// FindEventTypesForHost returns the event types that have occurred on the host.
+func FindEventTypesForHost(hostID string, tag string) ([]string, error) {
+	filter := ResourceTypeKeyIs(ResourceTypeHost)
+	if tag != "" {
+		filter[ResourceIdKey] = bson.M{"$in": []string{hostID, tag}}
+	} else {
+		filter[ResourceIdKey] = hostID
+	}
+
+	pipeline := []bson.M{
+		{"$match": filter},
+		{
+			"$group": bson.M{
+				"_id":         nil,
+				"event_types": bson.M{"$addToSet": "$" + eventTypeKey},
+			},
+		},
+		{
+			"$project": bson.M{
+				"event_types": bson.M{
+					"$sortArray": bson.M{
+						"input":  "$event_types",
+						"sortBy": 1,
+					},
+				},
+			},
+		},
+	}
+
+	out := []eventType{}
+	if err := db.Aggregate(EventCollection, pipeline, &out); err != nil {
+		return nil, errors.Errorf("finding event types for host '%s': %s", hostID, err)
+	}
+	if len(out) == 0 {
+		return []string{}, nil
+	}
+	return out[0].EventTypes, nil
 }
 
 // HasNoRecentStoppedHostEvent returns true if no host event exists that is more recent than the passed in time stamp.
