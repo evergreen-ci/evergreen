@@ -54,7 +54,7 @@ func (r *ec2AssumeRole) validate() error {
 	catcher := grip.NewSimpleCatcher()
 
 	catcher.NewWhen(r.RoleARN == "", "must specify role ARN")
-	// 0 will default duration time to 15 minutes
+	// 0 will default duration time to 15 minutes.
 	catcher.NewWhen(r.DurationSeconds < 0, "cannot specify a non-positive duration")
 
 	return catcher.Resolve()
@@ -71,19 +71,20 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 	}
 
 	if r.TemporaryFeatureFlag {
-		return r.newExecution(ctx, comm, logger, conf)
+		return r.execute(ctx, comm, logger, conf)
 	}
 
 	return r.legacyExecute(ctx, comm, logger, conf)
 }
 
-func (r *ec2AssumeRole) newExecution(ctx context.Context,
+func (r *ec2AssumeRole) execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	// TODO (DEVPROD-9945): Migration to new implementation
+	// TODO (DEVPROD-9945): Migration to new implementation.
 	return errors.New("temporary feature flag is enabled")
 }
 
 func (r *ec2AssumeRole) legacyExecute(ctx context.Context,
+	// TODO (DEVPROD-9945): Remove this.
 	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	if len(conf.EC2Keys) == 0 {
 		return errors.New("no EC2 keys in config")
