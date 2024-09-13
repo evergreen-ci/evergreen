@@ -552,7 +552,7 @@ func TestGroupInactiveVersions(t *testing.T) {
 	assert.Nil(t, waterfallVersions[4].InactiveVersions)
 }
 
-func TestUnnestOtelVariables(t *testing.T) {
+func TestFlattenOtelVariables(t *testing.T) {
 	nestedVars := map[string]interface{}{
 		"k1": "v1",
 		"k2": map[string]interface{}{
@@ -565,7 +565,7 @@ func TestUnnestOtelVariables(t *testing.T) {
 		},
 	}
 
-	unnestedVars := unnestOtelVariables(nestedVars)
+	unnestedVars := flattenOtelVariables(nestedVars)
 	assert.Len(t, unnestedVars, 5)
 
 	val, ok := unnestedVars["k1"]

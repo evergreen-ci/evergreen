@@ -30,9 +30,9 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 		otelgqlgen.WithRequestVariablesAttributesBuilder(
 			otelgqlgen.RequestVariablesBuilderFunc(func(requestVariables map[string]interface{}) []attribute.KeyValue {
 				redactedRequestVariables := RedactFieldsInMap(requestVariables, redactedFields)
-				unnestedVariables := unnestOtelVariables(redactedRequestVariables)
+				flattenedVariables := flattenOtelVariables(redactedRequestVariables)
 
-				return otelgqlgen.RequestVariables(unnestedVariables)
+				return otelgqlgen.RequestVariables(flattenedVariables)
 			}),
 		),
 	))
