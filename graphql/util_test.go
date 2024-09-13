@@ -551,3 +551,40 @@ func TestGroupInactiveVersions(t *testing.T) {
 	assert.Equal(t, utility.FromStringPtr(waterfallVersions[4].Version.Id), v5.Id)
 	assert.Nil(t, waterfallVersions[4].InactiveVersions)
 }
+
+func TestFlattenOtelVariables(t *testing.T) {
+	nestedVars := map[string]interface{}{
+		"k1": "v1",
+		"k2": map[string]interface{}{
+			"nested_k3": "v3",
+			"nested_k4": "v4",
+		},
+		"k5": "v5",
+		"k6": map[string]interface{}{
+			"nested_k7": "v7",
+		},
+	}
+
+	unnestedVars := flattenOtelVariables(nestedVars)
+	assert.Len(t, unnestedVars, 5)
+
+	val, ok := unnestedVars["k1"]
+	assert.True(t, ok)
+	assert.Equal(t, val, "v1")
+
+	val, ok = unnestedVars["k5"]
+	assert.True(t, ok)
+	assert.Equal(t, val, "v5")
+
+	val, ok = unnestedVars["k2.nested_k3"]
+	assert.True(t, ok)
+	assert.Equal(t, val, "v3")
+
+	val, ok = unnestedVars["k2.nested_k4"]
+	assert.True(t, ok)
+	assert.Equal(t, val, "v4")
+
+	val, ok = unnestedVars["k6.nested_k7"]
+	assert.True(t, ok)
+	assert.Equal(t, val, "v7")
+}
