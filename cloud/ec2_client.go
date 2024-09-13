@@ -1452,7 +1452,7 @@ func (c *awsClientMock) ChangeResourceRecordSets(ctx context.Context, input *rou
 func (c *awsClientMock) AssumeRole(ctx context.Context, input *sts.AssumeRoleInput) (*sts.AssumeRoleOutput, error) {
 	c.AssumeRoleInput = input
 	if input.DurationSeconds == nil {
-		input.DurationSeconds = aws.Int32(3600)
+		input.DurationSeconds = aws.Int32(int32(time.Hour.Seconds()))
 	}
 	return &sts.AssumeRoleOutput{
 		Credentials: &ststypes.Credentials{
