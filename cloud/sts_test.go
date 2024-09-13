@@ -24,7 +24,7 @@ func TestAssumeRole(t *testing.T) {
 
 	testCases := map[string]func(ctx context.Context, t *testing.T, manager STSManager, awsClientMock *awsClientMock){
 		"InvalidTask": func(ctx context.Context, t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
-			_, err := manager.AssumeRole(context.Background(), taskID, AssumeRoleOptions{
+			_, err := manager.AssumeRole(ctx, taskID, AssumeRoleOptions{
 				RoleARN: roleARN,
 				Policy:  policy,
 			})
@@ -34,7 +34,7 @@ func TestAssumeRole(t *testing.T) {
 			task := task.Task{Id: taskID, Project: projectID, Requester: requester}
 			require.NoError(t, task.Insert())
 
-			creds, err := manager.AssumeRole(context.Background(), taskID, AssumeRoleOptions{
+			creds, err := manager.AssumeRole(ctx, taskID, AssumeRoleOptions{
 				RoleARN: roleARN,
 				Policy:  policy,
 			})
