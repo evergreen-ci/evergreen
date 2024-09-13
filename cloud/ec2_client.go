@@ -11,6 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+	ststypes "github.com/aws/aws-sdk-go-v2/service/sts/types"
 	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -120,12 +122,16 @@ type AWSClient interface {
 
 	// ChangeResourceRecordSets is a wrapper for route53.ChangeResourceRecordSets.
 	ChangeResourceRecordSets(context.Context, *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error)
+
+	// AssumeRole is a wrapper for sts.AssumeRole.
+	AssumeRole(ctx context.Context, input *sts.AssumeRoleInput) (*sts.AssumeRoleOutput, error)
 }
 
 // awsClientImpl wraps ec2.EC2.
 type awsClientImpl struct { //nolint:all
 	ec2Client *ec2.Client
 	r53Client *route53.Client
+	stsClient *sts.Client
 }
 
 type generateDeviceNameOptions struct {
@@ -167,6 +173,7 @@ func (c *awsClientImpl) Create(ctx context.Context, region string) error {
 
 	c.ec2Client = ec2.NewFromConfig(*configCache[region])
 	c.r53Client = route53.NewFromConfig(*configCache[region])
+	c.stsClient = sts.NewFromConfig(*configCache[region])
 	return nil
 }
 
@@ -1015,6 +1022,36 @@ func (c *awsClientImpl) ChangeResourceRecordSets(ctx context.Context, input *rou
 	return output, nil
 }
 
+// AssumeRole is a wrapper for sts.AssumeRole.
+func (c *awsClientImpl) AssumeRole(ctx context.Context, input *sts.AssumeRoleInput) (*sts.AssumeRoleOutput, error) {
+	var output *sts.AssumeRoleOutput
+	var err error
+	err = utility.Retry(
+		ctx,
+		func() (bool, error) {
+			msg := makeAWSLogMessage("AssumeRole", fmt.Sprintf("%T", c), input)
+			output, err = c.stsClient.AssumeRole(ctx, input)
+			if err != nil {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					if strings.Contains(apiErr.ErrorCode(), stsErrorAccessDenied) ||
+						strings.Contains(apiErr.ErrorCode(), stsErrorAssumeRoleAccessDenied) {
+						// This means the role does not exist or our role does not have permission to assume it.
+						return false, err
+					}
+					grip.Debug(message.WrapError(apiErr, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientDefaultRetryOptions())
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
 // awsClientMock mocks ec2.EC2.
 type awsClientMock struct { //nolint
 	*ec2.RunInstancesInput
@@ -1040,6 +1077,7 @@ type awsClientMock struct { //nolint
 	*ec2.CreateLaunchTemplateInput
 	*ec2.DeleteLaunchTemplateInput
 	*ec2.CreateFleetInput
+	*sts.AssumeRoleInput
 
 	*types.Instance
 	*ec2.DescribeInstancesOutput
@@ -1409,6 +1447,21 @@ func (c *awsClientMock) GetPublicDNSName(ctx context.Context, h *host.Host) (str
 func (c *awsClientMock) ChangeResourceRecordSets(ctx context.Context, input *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error) {
 	c.ChangeResourceRecordSetsInput = input
 	return c.ChangeResourceRecordSetsOutput, nil
+}
+
+func (c *awsClientMock) AssumeRole(ctx context.Context, input *sts.AssumeRoleInput) (*sts.AssumeRoleOutput, error) {
+	c.AssumeRoleInput = input
+	if input.DurationSeconds == nil {
+		input.DurationSeconds = aws.Int32(int32(time.Hour.Seconds()))
+	}
+	return &sts.AssumeRoleOutput{
+		Credentials: &ststypes.Credentials{
+			AccessKeyId:     aws.String("access_key"),
+			SecretAccessKey: aws.String("secret_key"),
+			SessionToken:    aws.String("session_token"),
+			Expiration:      aws.Time(time.Now().Add(time.Duration(*input.DurationSeconds) * time.Second)),
+		},
+	}, nil
 }
 
 func makeAWSLogMessage(name, client string, args interface{}) message.Fields {
