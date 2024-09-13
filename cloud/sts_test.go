@@ -22,15 +22,15 @@ func TestAssumeRole(t *testing.T) {
 	policy := "policy"
 	externalID := fmt.Sprintf("%s-%s", projectID, requester)
 
-	testCases := map[string]func(t *testing.T, manager STSManager, awsClientMock *awsClientMock){
-		"InvalidTask": func(t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
+	testCases := map[string]func(ctx context.Context, t *testing.T, manager STSManager, awsClientMock *awsClientMock){
+		"InvalidTask": func(ctx context.Context, t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
 			_, err := manager.AssumeRole(context.Background(), taskID, AssumeRoleOptions{
 				RoleARN: roleARN,
 				Policy:  policy,
 			})
 			require.ErrorContains(t, err, "task not found")
 		},
-		"Success": func(t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
+		"Success": func(ctx context.Context, t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
 			task := task.Task{Id: taskID, Project: projectID, Requester: requester}
 			require.NoError(t, task.Insert())
 
@@ -55,13 +55,16 @@ func TestAssumeRole(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(task.Collection))
 
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			manager := GetSTSManager(true)
 			stsManagerImpl, ok := manager.(*stsManagerImpl)
 			require.True(t, ok)
 			awsClientMock, ok := stsManagerImpl.client.(*awsClientMock)
 			require.True(t, ok)
 
-			tCase(t, manager, awsClientMock)
+			tCase(ctx, t, manager, awsClientMock)
 		})
 	}
 
