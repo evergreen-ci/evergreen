@@ -1022,6 +1022,7 @@ func (c *awsClientImpl) ChangeResourceRecordSets(ctx context.Context, input *rou
 	return output, nil
 }
 
+// AssumeRole is a wrapper for sts.AssumeRole.
 func (c *awsClientImpl) AssumeRole(ctx context.Context, input *sts.AssumeRoleInput) (*sts.AssumeRoleOutput, error) {
 	var output *sts.AssumeRoleOutput
 	var err error
