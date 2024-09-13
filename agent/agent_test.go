@@ -1819,7 +1819,11 @@ tasks:
 		Description:            "task failed",
 		AddFailureMetadataTags: []string{"failure_tag0", "failure_tag1", "failure_tag2"},
 	}
+
+	s.Nil(s.tc.userEndTaskResp)
 	s.tc.setUserEndTaskResponse(resp)
+	s.NotNil(s.tc.userEndTaskRespOriginatingCommand)
+	s.Equal((*s.tc.userEndTaskRespOriginatingCommand).FullDisplayName(), "initial task setup")
 
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     s.tc.task.ID,
@@ -1831,8 +1835,6 @@ tasks:
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
 	s.Equal(resp.Type, s.mockCommunicator.EndTaskResult.Detail.Type, "should set user-defined command failure type")
 	s.Equal(resp.Description, s.mockCommunicator.EndTaskResult.Detail.Description, "should set user-defined task description")
-	s.NotNil(s.tc.userEndTaskRespOriginatingCommand)
-	s.Equal((*s.tc.userEndTaskRespOriginatingCommand).FullDisplayName(), "initial task setup")
 	s.ElementsMatch([]string{"failure_tag0", "failure_tag1", "failure_tag2"}, s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "should set the failing command's metadata tags along with the additional tags")
 
 	s.NoError(s.tc.logger.Close())
