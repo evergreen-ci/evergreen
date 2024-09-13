@@ -13,7 +13,7 @@
     {
       "_id": "container-task",
       "branch": "spruce",
-      "container": "ubuntu1604-test"
+      "container": "ubuntu1604-container"
     }
   ],
   "distro": [

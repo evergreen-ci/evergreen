@@ -439,7 +439,7 @@ func (r *taskResolver) ImageID(ctx context.Context, obj *restModel.APITask) (str
 	}
 	imageID, err := distro.GetImageIDFromDistro(ctx, utility.FromStringPtr(obj.DistroId))
 	if err != nil {
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("error finding imageID from distro '%s': %s", utility.FromStringPtr(obj.DistroId), err.Error()))
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("finding imageID from distro '%s': %s", utility.FromStringPtr(obj.DistroId), err.Error()))
 	}
 	return imageID, nil
 }
