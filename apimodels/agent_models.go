@@ -197,16 +197,19 @@ type RegistrySettings struct {
 	Password string `mapstructure:"registry_password" json:"registry_password" yaml:"registry_password"`
 }
 
+// Token is a struct which wraps a GitHub generated token.
 type Token struct {
 	Token string `json:"token"`
 }
 
+// AssumeRoleRequest is the details of what role to assume.
 type AssumeRoleRequest struct {
 	RoleARN         string `json:"role_arn"`
 	Policy          string `json:"policy"`
 	DurationSeconds *int32 `json:"duration_seconds"`
 }
 
+// Validate checks that the request has valid values.
 func (ar *AssumeRoleRequest) Validate() error {
 	catcher := grip.NewBasicCatcher()
 
@@ -218,6 +221,7 @@ func (ar *AssumeRoleRequest) Validate() error {
 	return catcher.Resolve()
 }
 
+// AssumeRoleResponse the credentials from assuming a role.
 type AssumeRoleResponse struct {
 	AccessKeyID     string `json:"access_key_id"`
 	SecretAccessKey string `json:"secret_access_key"`
