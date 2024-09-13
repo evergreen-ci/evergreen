@@ -50,7 +50,8 @@ type taskContext struct {
 	setupGroupCleanups []internal.CommandCleanup
 	// userEndTaskResp is the end task response that the user can define, which
 	// will overwrite the default end task response.
-	userEndTaskResp *triggerEndTaskResp
+	userEndTaskResp                   *triggerEndTaskResp
+	userEndTaskRespOriginatingCommand *command.Command
 	sync.RWMutex
 }
 
@@ -608,6 +609,8 @@ func (tc *taskContext) setUserEndTaskResponse(resp *triggerEndTaskResp) {
 	defer tc.Unlock()
 
 	tc.userEndTaskResp = resp
+	currCmd := tc.currentCommand
+	tc.userEndTaskRespOriginatingCommand = &currCmd
 }
 
 // getUserEndTaskResponse gets the user-defined end task response data.
