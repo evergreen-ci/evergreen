@@ -2,6 +2,8 @@ package model
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -435,4 +437,36 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 			}
 		}
 	}
+}
+
+// validParamName is a regexp representing the valid characters for a parameter
+// name. Valid characters are alphanumerics, underscores, dashes, and periods.
+var validParamName = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
+
+// getParamNameForVar validates that the project variable only contains valid
+// characters and returns the name of the variable's corresponding parameter.
+// kim: TODO: add tests
+func getParamNameForVar(vars map[string]string, varName string) (string, error) {
+	paramName := varName
+	if !validParamName.MatchString(paramName) {
+		return "", errors.Errorf("project variable '%s' contains invalid characters - can only contain alphanumerics, underscores, and dashes", varName)
+	}
+
+	if strings.HasPrefix(varName, "aws") || strings.HasPrefix(paramName, "ssm") {
+		// Parameters cannot start with "aws" or "ssm", adding a prefix
+		// (arbitrarily chosen as an underscore) fixes the issue.
+		paramName = fmt.Sprintf("_%s", paramName)
+	}
+
+	// kim: TODO: check against parameter name (excluding self variable) instead
+	// of var name.
+	if _, ok := vars[paramName]; ok {
+		// Protect against an edge case where a conflicting project var
+		// already exists for the candidate parameter name (e.g. a project
+		// that has two variables called "aws_key" and "_aws_key"). Project
+		// vars must map to unique parameter names.
+		return "", errors.Errorf("parameter name '%s' for project variable '%s' conflicts with project variable '%s'", paramName, varName, paramName)
+	}
+
+	return paramName, nil
 }
