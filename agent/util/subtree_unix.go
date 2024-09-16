@@ -72,7 +72,7 @@ func KillSpawnedProcs(ctx context.Context, _ string, logger grip.Journaler) erro
 	if err != nil {
 		if cause := errors.Cause(err); cause == errProcessStillRunning {
 			for _, pid := range pidsStillRunning {
-				logger.Errorf("Failed to clean up process with PID %d.", pid)
+				logger.Errorf("Failed to clean up process group with PGID %d.", pid)
 			}
 		} else {
 			logger.Errorf("Problem waiting for processes to exit: %s.", err)
@@ -122,13 +122,13 @@ func psAllProcesses(ctx context.Context) ([]int, error) {
 	/*
 		Usage of ps:
 		-A: list *all* processes, not just ones that we own
-		-o: print output according to the given format. We supply 'pid=' to
-		print just the pid column without headers.
+		-o: print output according to the given format. We supply 'pid=' and 'stat=' to
+		print the pid and stat columns without headers.
 	*/
 	psCtx, cancel := context.WithTimeout(ctx, contextTimeout)
 	defer cancel()
 
-	args := []string{"-A", "-o", "pid="}
+	args := []string{"-A", "-o", "pid=,stat="}
 	out, err := exec.CommandContext(psCtx, "ps", args...).CombinedOutput()
 	if err != nil {
 		return nil, errors.Wrap(err, "running ps")
@@ -140,7 +140,19 @@ func parsePs(psOutput string) []int {
 	lines := strings.Split(psOutput, "\n")
 	pids := make([]int, 0, len(lines))
 	for _, line := range lines {
-		pid, err := strconv.Atoi(strings.TrimSpace(line))
+		splitLine := strings.Fields(line)
+		if len(splitLine) < 2 {
+			continue
+		}
+		// Zombie processes are dead processes that haven't been reaped by their parent. They do not consume
+		// resources and will go away by themselves when their parent dies.
+		// This is expected for processes that run in the background, such as a subprocess.exec with Background true.
+		if splitLine[1] == "Z" {
+			continue
+		}
+
+		pidString := splitLine[0]
+		pid, err := strconv.Atoi(pidString)
 		if err != nil {
 			continue
 		}

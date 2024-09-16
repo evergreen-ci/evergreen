@@ -17,7 +17,7 @@ import (
 
 func TestKillSpawnedProcs(t *testing.T) {
 	for testName, test := range map[string]func(ctx context.Context, t *testing.T){
-		"KillsTrackedProcesses": func(ctx context.Context, t *testing.T) {
+		"KillsTrackedProcess": func(ctx context.Context, t *testing.T) {
 			registry.popProcessList()
 			defer registry.popProcessList()
 
@@ -85,10 +85,11 @@ func TestWaitForExit(t *testing.T) {
 
 func TestParsePs(t *testing.T) {
 	cases := map[string][]int{
-		"1":       {1},
-		"1\n1267": {1, 1267},
-		"":        {},
-		"NaN":     {},
+		"1 S":         {1},
+		"1 R\n1267 S": {1, 1267},
+		"":            {},
+		"NaN R":       {},
+		"1 Z":         {},
 	}
 
 	for psOutput, processes := range cases {
