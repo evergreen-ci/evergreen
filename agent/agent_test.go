@@ -1831,6 +1831,11 @@ tasks:
 	s.NotNil(s.tc.userEndTaskRespOriginatingCommand)
 	s.Equal(s.tc.userEndTaskRespOriginatingCommand.FullDisplayName(), "initial task setup")
 
+	// Set the current command to show that the command containing the user-defined resp has precedence.
+	factory, ok := command.GetCommandFactory("command.mock")
+	s.Require().True(ok)
+	s.tc.setCurrentCommand(factory())
+
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     s.tc.task.ID,
 		TaskSecret: s.tc.task.Secret,
@@ -1841,6 +1846,7 @@ tasks:
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
 	s.Equal(resp.Type, s.mockCommunicator.EndTaskResult.Detail.Type, "should set user-defined command failure type")
 	s.Equal(resp.Description, s.mockCommunicator.EndTaskResult.Detail.Description, "should set user-defined task description")
+	s.Equal("initial task setup", s.mockCommunicator.EndTaskResult.Detail.FailingCommand, "should set the failing command's display name to the user-defined resp's originating command")
 	s.ElementsMatch([]string{"failure_tag0", "failure_tag1", "failure_tag2"}, s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "should set the failing command's metadata tags along with the additional tags")
 
 	s.NoError(s.tc.logger.Close())
