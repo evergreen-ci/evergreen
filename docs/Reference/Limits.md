@@ -41,15 +41,25 @@ per project based on this
 [investigation](https://jira.mongodb.org/browse/DEVPROD-3509) about GitHub
 usage.
 
-## YAML configuration size
+## Config YAML Size Limits
 
-Large parser projects are disabled, which means that Evergreen limits YAML
-project configuration sizes to 16MB. The 16 MB limit is on the sum of the size
-of the generate.tasks input file and the size of the project configuration YAML.
-If the YAML length > 16 MB after task generators have tacked on their
+### Current Limitations
+Evergreen limits YAML project configuration sizes to 18MB. The 18MB limit is on the sum of the size
+of the size of the project configuration YAML, plus all included YAML files, plus any additional 
+generate.tasks input files. If the YAML length >18MB after task generators have tacked on their
 configuration to the project configuration YAML, the task will fail.
 
-#### Can an exception be requested?
+### CPU Degraded Mode
+Running tasks with large config YAMLs is one of the most computationally intensive operations Evergreen
+does. In order to facilitate incremental increases in the maximum allowed config YAML size, Evergreen has a
+safeguard mechanism that will automatically detect periods of high CPU load, and reduce the maximum allowed 
+config YAML size to a previous limit that is known to be safe to proactively prevent performance issues. 
+
+When degraded mode is active, the maximum allowed config YAML size will decrease from 18MB to 16MB, and 
+a maximum number of concurrent running tasks with large config YAMLs will be enforced, potentially causing
+their scheduling to slow down.
+
+### Can an exception be requested?
 
 This cannot be lifted because Evergreen cannot safely handle larger file sizes
 from multiple users. Users are encouraged to instead try creating a new patch
