@@ -1245,8 +1245,8 @@ func (s *AgentSuite) TestEndTaskResponse() {
 		}
 		factory, ok := command.GetCommandFactory("command.mock")
 		s.Require().True(ok)
-		command := factory()
-		s.tc.userEndTaskRespOriginatingCommand = &command
+		cmd := factory()
+		s.tc.userEndTaskRespOriginatingCommand = cmd
 		defer func() {
 			s.tc.userEndTaskResp = nil
 			s.tc.userEndTaskRespOriginatingCommand = nil
@@ -1254,7 +1254,7 @@ func (s *AgentSuite) TestEndTaskResponse() {
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, systemFailureDescription)
 		s.Equal(s.tc.userEndTaskResp.Status, detail.Status)
 		s.Equal(s.tc.userEndTaskResp.Description, detail.Description)
-		s.Equal(detail.FailingCommand, command.FullDisplayName())
+		s.Equal(detail.FailingCommand, cmd.FullDisplayName())
 	})
 	s.T().Run("TaskHitsIdleTimeoutAndFailsResultsInFailureWithTimeout", func(t *testing.T) {
 		s.tc.setTimedOut(true, globals.IdleTimeout)
@@ -1829,7 +1829,7 @@ tasks:
 	s.Nil(s.tc.userEndTaskResp)
 	s.tc.setUserEndTaskResponse(resp)
 	s.NotNil(s.tc.userEndTaskRespOriginatingCommand)
-	s.Equal((*s.tc.userEndTaskRespOriginatingCommand).FullDisplayName(), "initial task setup")
+	s.Equal(s.tc.userEndTaskRespOriginatingCommand.FullDisplayName(), "initial task setup")
 
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     s.tc.task.ID,
