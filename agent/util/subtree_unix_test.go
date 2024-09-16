@@ -55,7 +55,7 @@ func TestKillSpawnedProcs(t *testing.T) {
 			registry.popProcessList()
 			defer registry.popProcessList()
 
-			longProcess := exec.CommandContext(ctx, "bash", "-c", "nohup sleep 1000 > /dev/null 2>&1 &")
+			longProcess := exec.CommandContext(ctx, "bash", "-c", "nohup sleep 30 > /dev/null 2>&1 &")
 			longProcess.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 			require.NoError(t, longProcess.Start())
 			registry.trackProcess(longProcess.Process.Pid)
@@ -63,7 +63,7 @@ func TestKillSpawnedProcs(t *testing.T) {
 			assert.NoError(t, KillSpawnedProcs(ctx, "", grip.GetDefaultJournaler()))
 			psOutput, err := exec.CommandContext(ctx, "ps", "-A").CombinedOutput()
 			assert.NoError(t, err)
-			assert.NotContains(t, string(psOutput), "sleep 1000")
+			assert.NotContains(t, string(psOutput), "sleep 30")
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

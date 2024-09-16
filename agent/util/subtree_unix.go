@@ -142,10 +142,7 @@ func parsePs(psOutput string) []int {
 	lines := strings.Split(psOutput, "\n")
 	pids := make([]int, 0, len(lines))
 	for _, line := range lines {
-		if len(line) == 0 {
-			continue
-		}
-		pid, err := strconv.Atoi(line)
+		pid, err := strconv.Atoi(strings.TrimSpace(line))
 		if err != nil {
 			continue
 		}
