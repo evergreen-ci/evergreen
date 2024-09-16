@@ -58,13 +58,13 @@ func (h *degradedModeHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 		if config.Banner == "" {
 			msg := fmt.Sprintf("Evergreen is under high load, max config YAML size has been reduced from %dMB to %dMB. "+
-				"Tasks with >16MB config YAMLs may experience slower scheduling.", config.TaskLimits.MaxParserProjectSize, config.TaskLimits.MaxDegradedModeParserProjectSize)
+				"Existing tasks with large (>16MB) config YAMLs may also experience slower scheduling.", config.TaskLimits.MaxParserProjectSize, config.TaskLimits.MaxDegradedModeParserProjectSize)
 			if err = evergreen.SetBanner(ctx, msg); err != nil {
-				return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "setting banner text"))
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting banner text"))
 			}
 		}
 		if err = data.SetBannerTheme(ctx, string(evergreen.Information), nil); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "setting banner theme"))
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting banner theme"))
 		}
 	}
 	return gimlet.NewJSONResponse(struct{}{})
