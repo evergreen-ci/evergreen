@@ -98,6 +98,8 @@ func (d *basicCachedDAGDispatcherImpl) addItem(item *TaskQueueItem) {
 }
 
 func (d *basicCachedDAGDispatcherImpl) getItemByNodeID(id int64) *TaskQueueItem {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	if item, ok := d.nodeItemMap[id]; ok {
 		return item
 	}
@@ -253,8 +255,12 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 
 	settings := evergreen.GetEnvironment().Settings()
 	dependencyCaches := make(map[string]task.Task)
-	for i := range d.sorted {
-		node := d.sorted[i]
+	d.mu.RLock()
+	sorted := make([]graph.Node, len(d.sorted))
+	copy(sorted, d.sorted)
+	d.mu.RUnlock()
+	for i := range sorted {
+		node := sorted[i]
 		// topo.SortStabilized represents nodes in a dependency cycle with a nil Node.
 		if node == nil {
 			continue
