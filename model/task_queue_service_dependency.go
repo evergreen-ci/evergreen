@@ -98,8 +98,6 @@ func (d *basicCachedDAGDispatcherImpl) addItem(item *TaskQueueItem) {
 }
 
 func (d *basicCachedDAGDispatcherImpl) getItemByNodeID(id int64) *TaskQueueItem {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
 	if item, ok := d.nodeItemMap[id]; ok {
 		return item
 	}
@@ -266,7 +264,9 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 			continue
 		}
 
+		d.mu.RLock()
 		item := d.getItemByNodeID(node.ID()) // item is a *TaskQueueItem sourced from d.nodeItemMap, which is a map[node.ID()]*TaskQueueItem.
+		d.mu.RUnlock()
 		if item == nil {
 			continue
 		}
