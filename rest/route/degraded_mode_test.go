@@ -58,7 +58,7 @@ func TestSetDegradedMode(t *testing.T) {
 	assert.False(dbSettings.ServiceFlags.CPUDegradedModeDisabled)
 	assert.Equal(evergreen.Information, dbSettings.BannerTheme)
 	msg = fmt.Sprintf("Evergreen is under high load, max config YAML size has been reduced from %dMB to %dMB. "+
-		"Tasks with >16MB config YAMLs may experience slower scheduling.", dbSettings.TaskLimits.MaxParserProjectSize, dbSettings.TaskLimits.MaxDegradedModeParserProjectSize)
+		"Existing tasks with large (>16MB) config YAMLs may also experience slower scheduling.", dbSettings.TaskLimits.MaxParserProjectSize, dbSettings.TaskLimits.MaxDegradedModeParserProjectSize)
 	assert.Equal(msg, dbSettings.Banner)
 
 	json = []byte(`{
