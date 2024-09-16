@@ -51,7 +51,7 @@ type taskContext struct {
 	// userEndTaskResp is the end task response that the user can define, which
 	// will overwrite the default end task response.
 	userEndTaskResp                   *triggerEndTaskResp
-	userEndTaskRespOriginatingCommand *command.Command
+	userEndTaskRespOriginatingCommand command.Command
 	sync.RWMutex
 }
 
@@ -609,8 +609,7 @@ func (tc *taskContext) setUserEndTaskResponse(resp *triggerEndTaskResp) {
 	defer tc.Unlock()
 
 	tc.userEndTaskResp = resp
-	currCmd := tc.currentCommand
-	tc.userEndTaskRespOriginatingCommand = &currCmd
+	tc.userEndTaskRespOriginatingCommand = tc.currentCommand
 }
 
 // getUserEndTaskResponse gets the user-defined end task response data.
