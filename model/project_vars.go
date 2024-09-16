@@ -49,7 +49,7 @@ type ProjectVars struct {
 	// Parameters contains the mappings between user-defined project variable
 	// names and the parameter name where the variable's value can be found in
 	// Parameter Store.
-	Parameters []ParameterMapping `bson:"parameters" json:"parameters"`
+	Parameters []ParameterMapping `bson:"parameters,omitempty" json:"parameters,omitempty"`
 
 	// PrivateVars keeps track of which variables are private and should therefore not
 	// be returned to the UI server.
