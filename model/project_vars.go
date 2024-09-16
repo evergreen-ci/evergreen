@@ -37,18 +37,38 @@ const (
 // yml files.
 type ProjectVars struct {
 
-	//Should match the identifier of the project it refers to
+	// Id is the ID of the project.
 	Id string `bson:"_id" json:"_id"`
 
-	//The actual mapping of variables for this project
+	// Vars is the actual mapping of variable names to values for this project.
+	// TODO (DEVPROD-9440): after all project vars are migrated to Parameter
+	// Store, remove the BSON tags on this field to ensure project var values
+	// are not put in the DB anymore.
 	Vars map[string]string `bson:"vars" json:"vars"`
 
-	//PrivateVars keeps track of which variables are private and should therefore not
-	//be returned to the UI server.
+	// Parameters contains the mappings between user-defined project variable
+	// names and the parameter name where the variable's value can be found in
+	// Parameter Store.
+	Parameters []ParameterMapping `bson:"parameters" json:"parameters"`
+
+	// PrivateVars keeps track of which variables are private and should therefore not
+	// be returned to the UI server.
 	PrivateVars map[string]bool `bson:"private_vars" json:"private_vars"`
 
-	// AdminOnlyVars keeps track of variables that are only accessible by project admins
+	// AdminOnlyVars keeps track of variables that are only accessible by project admins.
 	AdminOnlyVars map[string]bool `bson:"admin_only_vars" json:"admin_only_vars"`
+}
+
+// ParameterMapping represents a mapping between a DB field and the location of
+// its actual value in Parameter Store. This is used to keep track of where
+// sensitive secrets can be found in Parameter Store.
+type ParameterMapping struct {
+	// Name is the name of the value being stored (e.g. a project variable
+	// name).
+	Name string `bson:"name" json:"name"`
+	// ParameterName is the location where the parameter is kept in Parameter
+	// Store.
+	ParameterName string `bson:"parameter_name" json:"parameter_name"`
 }
 
 type AWSSSHKey struct {
