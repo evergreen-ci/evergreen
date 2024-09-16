@@ -72,10 +72,10 @@ func KillSpawnedProcs(ctx context.Context, _ string, logger grip.Journaler) erro
 	if err != nil {
 		if cause := errors.Cause(err); cause == errProcessStillRunning {
 			for _, pid := range pidsStillRunning {
-				logger.Infof("Failed to clean up process with PID %d.", pid)
+				logger.Errorf("Failed to clean up process with PID %d.", pid)
 			}
 		} else {
-			logger.Infof("Problem waiting for processes to exit: %s.", err)
+			logger.Errorf("Problem waiting for processes to exit: %s.", err)
 		}
 	}
 

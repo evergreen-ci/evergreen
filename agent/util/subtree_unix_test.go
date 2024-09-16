@@ -22,6 +22,7 @@ func TestKillSpawnedProcs(t *testing.T) {
 			defer registry.popProcessList()
 
 			longProcess := exec.CommandContext(ctx, "sleep", "30")
+			longProcess.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 			require.NoError(t, longProcess.Start())
 			registry.trackProcess(longProcess.Process.Pid)
 
