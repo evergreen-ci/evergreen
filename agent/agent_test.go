@@ -1829,7 +1829,7 @@ tasks:
 	s.Nil(s.tc.userEndTaskResp)
 	s.tc.setUserEndTaskResponse(resp)
 	s.NotNil(s.tc.userEndTaskRespOriginatingCommand)
-	s.Equal(s.tc.userEndTaskRespOriginatingCommand.FullDisplayName(), "initial task setup")
+	s.Equal("initial task setup", s.tc.userEndTaskRespOriginatingCommand.FullDisplayName())
 
 	// Set the current command to show that the command containing the user-defined resp has precedence.
 	factory, ok := command.GetCommandFactory("command.mock")
