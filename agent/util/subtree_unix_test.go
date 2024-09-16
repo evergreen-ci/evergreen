@@ -11,33 +11,12 @@ import (
 	"time"
 
 	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestKillSpawnedProcs(t *testing.T) {
 	for testName, test := range map[string]func(ctx context.Context, t *testing.T){
-		"ErrorsWithContextTimeout": func(ctx context.Context, t *testing.T) {
-			expiredContext, cancel := context.WithTimeout(ctx, -time.Second)
-			defer cancel()
-
-			err := KillSpawnedProcs(expiredContext, "", grip.GetDefaultJournaler())
-			assert.Error(t, err)
-			assert.Equal(t, ErrPSTimeout, errors.Cause(err))
-		},
-		"ErrorsWithContextCancelled": func(ctx context.Context, t *testing.T) {
-			cancelledContext, cancel := context.WithCancel(ctx)
-			cancel()
-
-			err := KillSpawnedProcs(cancelledContext, "", grip.GetDefaultJournaler())
-			assert.Error(t, err)
-			assert.NotEqual(t, ErrPSTimeout, errors.Cause(err))
-		},
-		"SucceedsWithNoContextError": func(ctx context.Context, t *testing.T) {
-			err := KillSpawnedProcs(ctx, "", grip.GetDefaultJournaler())
-			assert.NoError(t, err)
-		},
 		"KillsTrackedProcesses": func(ctx context.Context, t *testing.T) {
 			registry.popProcessList()
 			defer registry.popProcessList()
@@ -67,7 +46,7 @@ func TestKillSpawnedProcs(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 
 			test(ctx, t)

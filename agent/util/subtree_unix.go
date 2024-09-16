@@ -70,10 +70,13 @@ func KillSpawnedProcs(ctx context.Context, _ string, logger grip.Journaler) erro
 
 	pidsStillRunning, err := waitForExit(ctx, pidsToKill)
 	if err != nil {
-		logger.Infof("Problem waiting for processes to exit: %s.", err)
-	}
-	for _, pid := range pidsStillRunning {
-		logger.Infof("Failed to clean up process with PID %d.", pid)
+		if cause := errors.Cause(err); cause == errProcessStillRunning {
+			for _, pid := range pidsStillRunning {
+				logger.Infof("Failed to clean up process with PID %d.", pid)
+			}
+		} else {
+			logger.Infof("Problem waiting for processes to exit: %s.", err)
+		}
 	}
 
 	return nil
@@ -102,7 +105,7 @@ func waitForExit(ctx context.Context, pidsToWait []int) ([]int, error) {
 				}
 			}
 			if len(unkilledPIDs) > 0 {
-				return true, errors.Errorf("%d of %d processes are still running", len(unkilledPIDs), len(pidsToWait))
+				return true, errors.Wrapf(errProcessStillRunning, "%d of %d processes are still running", len(unkilledPIDs), len(pidsToWait))
 			}
 
 			return false, nil
@@ -128,11 +131,6 @@ func psAllProcesses(ctx context.Context) ([]int, error) {
 	args := []string{"-A", "-o", "pid="}
 	out, err := exec.CommandContext(psCtx, "ps", args...).CombinedOutput()
 	if err != nil {
-		// If the context's deadline was exceeded we conclude the process blocked
-		// and was killed when the context was closed.
-		if psCtx.Err() == context.DeadlineExceeded {
-			return nil, ErrPSTimeout
-		}
 		return nil, errors.Wrap(err, "running ps")
 	}
 	return parsePs(string(out)), nil
