@@ -84,7 +84,8 @@ type Task struct {
 	DependenciesMetTime    time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
 	ContainerAllocatedTime time.Time `bson:"container_allocated_time,omitempty" json:"container_allocated_time,omitempty"`
 
-	Version           string `bson:"version" json:"version,omitempty"`
+	Version string `bson:"version" json:"version,omitempty"`
+	// Project is the project id of the task.
 	Project           string `bson:"branch" json:"branch,omitempty"`
 	Revision          string `bson:"gitspec" json:"gitspec"`
 	Priority          int64  `bson:"priority" json:"priority"`

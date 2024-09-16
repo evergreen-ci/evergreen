@@ -38,6 +38,11 @@ const (
 
 	r53InvalidInput       = "InvalidInput"
 	r53InvalidChangeBatch = "InvalidChangeBatch"
+
+	// This means the role doing the assuming does not have permission to assume it.
+	stsErrorAccessDenied = "AccessDenied"
+	// This means the role to be assumed does not exist or does not have a trust relationship with the role doing the assuming.
+	stsErrorAssumeRoleAccessDenied = "AssumeRoleAccessDenied"
 )
 
 var (

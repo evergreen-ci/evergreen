@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
@@ -124,6 +125,18 @@ func (e *Environment) Configure(ctx context.Context) error {
 		return errors.Wrap(err, "bootstrapping host credentials collection")
 	}
 	e.Depot = depot
+
+	// For testing purposes, set up parameter manager so it's backed by the DB.
+	pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
+		PathPrefix:     e.EvergreenSettings.Providers.AWS.ParameterStore.Prefix,
+		CachingEnabled: true,
+		SSMClient:      fakeparameter.NewFakeSSMClient(),
+		DB:             e.MongoClient.Database(e.DatabaseName),
+	})
+	if err != nil {
+		return errors.Wrap(err, "creating fake parameter manager")
+	}
+	e.ParamManager = pm
 
 	// Although it would make more sense to call
 	// auth.LoadUserManager(e.EvergreenSettings), we have to avoid an import
