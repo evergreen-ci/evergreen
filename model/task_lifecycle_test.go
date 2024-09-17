@@ -7310,7 +7310,7 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 	}
 	assert.NoError(execTask.Insert())
 
-	assert.NoError(UpdateBlockedDependencies(ctx, []task.Task{tasks[0]}))
+	assert.NoError(UpdateBlockedDependencies(ctx, []task.Task{tasks[0]}, false))
 
 	dbTask1, err := task.FindOneId(tasks[1].Id)
 	assert.NoError(err)

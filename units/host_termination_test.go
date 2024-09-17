@@ -45,6 +45,9 @@ func TestHostTerminationJob(t *testing.T) {
 		assert.True(t, foundTerminationEvent, "expected host termination event to be logged")
 	}
 
+	reason := "some termination message"
+	buildId := "b1"
+	versionId := "v1"
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host){
 		"TerminatesRunningHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			require.NoError(t, h.Insert(ctx))
@@ -52,7 +55,6 @@ func TestHostTerminationJob(t *testing.T) {
 				Status: cloud.StatusRunning,
 			})
 
-			const reason = "some termination message"
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
 				TerminateIfBusy:   true,
 				TerminationReason: reason,
@@ -77,7 +79,6 @@ func TestHostTerminationJob(t *testing.T) {
 				Status: cloud.StatusRunning,
 			})
 
-			const reason = "some termination message"
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
 				TerminateIfBusy:          true,
 				SkipCloudHostTermination: true,
@@ -244,38 +245,40 @@ func TestHostTerminationJob(t *testing.T) {
 			h.LastGroup = "taskgroup"
 			h.LastTask = "task2"
 			require.NoError(t, h.Insert(ctx))
+			mcp.Set(h.Id, cloud.MockInstance{
+				Status: cloud.StatusRunning,
+			})
 
 			task1 := task.Task{
 				Id:                "task1",
 				Status:            evergreen.TaskSucceeded,
 				Activated:         true,
-				BuildId:           "b1",
+				BuildId:           buildId,
+				Version:           versionId,
 				Project:           "exists",
 				HostId:            h.Id,
 				TaskGroup:         "taskgroup",
 				TaskGroupMaxHosts: 1,
 			}
-			require.NoError(t, task1.Insert())
 			task2 := task.Task{
 				Id:                "task2",
 				Status:            evergreen.TaskSucceeded,
 				Activated:         true,
-				BuildId:           "b1",
+				BuildId:           buildId,
+				Version:           versionId,
 				Project:           "exists",
 				TaskGroup:         "taskgroup",
 				TaskGroupMaxHosts: 1,
+				DependsOn: []task.Dependency{
+					{
+						TaskId: task1.Id,
+						Status: evergreen.TaskSucceeded,
+					},
+				},
 			}
+			require.NoError(t, task1.Insert())
 			require.NoError(t, task2.Insert())
-			pref := &model.ProjectRef{
-				Id:      "exists",
-				Enabled: true,
-			}
-			require.NoError(t, pref.Insert())
-			mcp.Set(h.Id, cloud.MockInstance{
-				Status: cloud.StatusRunning,
-			})
 
-			const reason = "some termination message"
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
 				TerminateIfBusy:   true,
 				TerminationReason: reason,
@@ -294,10 +297,134 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, cloudHost)
 			assert.Equal(t, cloud.StatusTerminated, cloudHost.Status)
 
-			// Check if task1 has been reset
 			resetTask, err := task.FindOneId("task2")
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.TaskSucceeded, resetTask.Status)
+
+			// Verify the single host task group did not reset
+			tasks, err := task.Find(task.ByIds([]string{task1.Id, task2.Id}))
+			require.NoError(t, err)
+			require.Len(t, tasks, 2)
+			for _, dbTask := range tasks {
+				assert.Equal(t, evergreen.TaskSucceeded, dbTask.Status)
+				assert.False(t, dbTask.ResetWhenFinished)
+			}
+		},
+		"TaskInTaskGroupDoesNotRestartIfFinished2": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
+			h.LastGroup = "taskgroup"
+			h.LastTask = "task2"
+			require.NoError(t, h.Insert(ctx))
+
+			mcp.Set(h.Id, cloud.MockInstance{
+				Status: cloud.StatusRunning,
+			})
+
+			task1 := task.Task{
+				Id:                "task1",
+				Status:            evergreen.TaskSucceeded,
+				Activated:         true,
+				BuildId:           buildId,
+				Version:           versionId,
+				Project:           "exists",
+				HostId:            h.Id,
+				TaskGroup:         "taskgroup",
+				TaskGroupMaxHosts: 1,
+			}
+			task2 := task.Task{
+				Id:                "task2",
+				Status:            evergreen.TaskSucceeded,
+				Activated:         true,
+				BuildId:           buildId,
+				Version:           versionId,
+				Project:           "exists",
+				TaskGroup:         "taskgroup",
+				TaskGroupMaxHosts: 1,
+				DependsOn: []task.Dependency{
+					{
+						TaskId: task1.Id,
+						Status: evergreen.TaskSucceeded,
+					},
+				},
+			}
+			task3 := task.Task{
+				Id:                "task3",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				BuildId:           buildId,
+				Version:           versionId,
+				Project:           "exists",
+				TaskGroup:         "taskgroup",
+				TaskGroupMaxHosts: 1,
+				DependsOn: []task.Dependency{
+					{
+						TaskId: task2.Id,
+						Status: evergreen.TaskSucceeded,
+					},
+				},
+			}
+			task4 := task.Task{
+				Id:                "task4",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				BuildId:           buildId,
+				Version:           versionId,
+				Project:           "exists",
+				TaskGroup:         "taskgroup",
+				TaskGroupMaxHosts: 1,
+				DependsOn: []task.Dependency{
+					{
+						TaskId: task3.Id,
+						Status: evergreen.TaskSucceeded,
+					},
+				},
+			}
+			task5 := task.Task{
+				Id:                "task5",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         false,
+				BuildId:           buildId,
+				Version:           versionId,
+				Project:           "exists",
+				TaskGroup:         "taskgroup",
+				TaskGroupMaxHosts: 1,
+				DependsOn: []task.Dependency{
+					{
+						TaskId: task4.Id,
+						Status: evergreen.TaskSucceeded,
+					},
+				},
+			}
+			require.NoError(t, task1.Insert())
+			require.NoError(t, task2.Insert())
+			require.NoError(t, task3.Insert())
+			require.NoError(t, task4.Insert())
+			require.NoError(t, task5.Insert())
+
+			j := NewHostTerminationJob(env, h, HostTerminationOptions{
+				TerminateIfBusy:   true,
+				TerminationReason: reason,
+			})
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			dbHost, err := host.FindOne(ctx, host.ById(h.Id))
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
+
+			checkTerminationEvent(t, h.Id, reason)
+
+			cloudHost := mcp.Get(h.Id)
+			require.NotZero(t, cloudHost)
+			assert.Equal(t, cloud.StatusTerminated, cloudHost.Status)
+
+			// Verify the single host task group reset
+			tasks, err := task.Find(task.ByIds([]string{task1.Id, task2.Id, task3.Id, task4.Id, task5.Id}))
+			require.NoError(t, err)
+			require.Len(t, tasks, 5)
+			for _, dbTask := range tasks {
+				assert.Equal(t, evergreen.TaskUndispatched, dbTask.Status)
+			}
 		},
 		"TaskInTaskGroupAccountsForInactiveTasks": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			// If we have a partially activated task group, and the last one that is activated finishes
@@ -305,58 +432,58 @@ func TestHostTerminationJob(t *testing.T) {
 			h.LastGroup = "taskgroup"
 			h.LastTask = "task2"
 			require.NoError(t, h.Insert(ctx))
-			build := build.Build{
-				Id: "b1",
-			}
-			require.NoError(t, build.Insert())
-			version := model.Version{
-				Id: "v1",
-			}
-			require.NoError(t, version.Insert())
+
+			mcp.Set(h.Id, cloud.MockInstance{
+				Status: cloud.StatusRunning,
+			})
+
 			task1 := task.Task{
 				Id:                "task1",
 				Status:            evergreen.TaskSucceeded,
 				Activated:         true,
-				BuildId:           build.Id,
-				Version:           version.Id,
+				BuildId:           buildId,
+				Version:           versionId,
 				Project:           "exists",
 				HostId:            h.Id,
 				TaskGroup:         "taskgroup",
 				TaskGroupMaxHosts: 1,
 			}
-			require.NoError(t, task1.Insert())
 			task2 := task.Task{
 				Id:                "task2",
 				Status:            evergreen.TaskSucceeded,
 				Activated:         true,
-				BuildId:           build.Id,
-				Version:           version.Id,
+				BuildId:           buildId,
+				Version:           versionId,
 				Project:           "exists",
 				TaskGroup:         "taskgroup",
 				TaskGroupMaxHosts: 1,
+				DependsOn: []task.Dependency{
+					{
+						TaskId: task1.Id,
+						Status: evergreen.TaskSucceeded,
+					},
+				},
 			}
-			require.NoError(t, task2.Insert())
 			task3 := task.Task{
 				Id:                "task3",
 				Status:            evergreen.TaskUndispatched,
 				Activated:         false,
-				BuildId:           build.Id,
-				Version:           version.Id,
+				BuildId:           buildId,
+				Version:           versionId,
 				Project:           "exists",
 				TaskGroup:         "taskgroup",
 				TaskGroupMaxHosts: 1,
+				DependsOn: []task.Dependency{
+					{
+						TaskId: task2.Id,
+						Status: evergreen.TaskSucceeded,
+					},
+				},
 			}
+			require.NoError(t, task1.Insert())
+			require.NoError(t, task2.Insert())
 			require.NoError(t, task3.Insert())
-			pref := &model.ProjectRef{
-				Id:      "exists",
-				Enabled: true,
-			}
-			require.NoError(t, pref.Insert())
-			mcp.Set(h.Id, cloud.MockInstance{
-				Status: cloud.StatusRunning,
-			})
 
-			const reason = "some termination message"
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
 				TerminateIfBusy:   true,
 				TerminationReason: reason,
@@ -394,7 +521,20 @@ func TestHostTerminationJob(t *testing.T) {
 				Provider:    evergreen.ProviderNameMock,
 				Provisioned: true,
 			}
-
+			build := build.Build{
+				Id:      "b1",
+				Version: "v1",
+			}
+			require.NoError(t, build.Insert())
+			version := model.Version{
+				Id: "v1",
+			}
+			require.NoError(t, version.Insert())
+			pref := &model.ProjectRef{
+				Id:      "exists",
+				Enabled: true,
+			}
+			require.NoError(t, pref.Insert())
 			provider := cloud.GetMockProvider()
 			provider.Reset()
 

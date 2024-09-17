@@ -2640,12 +2640,14 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 // fetching tasks to block them, and for each task, all dependencies
 // that have a status that that would block the task from running (i.e., it is
 // inconsistent with the task's Dependency.Status field) and have not been marked
-// unattainable will be retrieved.
+// unattainable will be retrieved. The updateAllDependencies indicates whether
+// all tasks that depend on the given tasks will be updated (i.e., whether
+// the task's Dependency.Status will be ignored).
 //
 // This must find tasks in smaller chunks to avoid the 16 MB query size limit -
 // if the number of tasks is large, a single query could be too large and the DB
 // will reject it.
-func FindAllDependencyTasksToModify(tasks []Task, isUnblocking bool) ([]Task, error) {
+func FindAllDependencyTasksToModify(tasks []Task, isUnblocking, updateAllDependencies bool) ([]Task, error) {
 	if len(tasks) == 0 {
 		return nil, nil
 	}
@@ -2655,13 +2657,13 @@ func FindAllDependencyTasksToModify(tasks []Task, isUnblocking bool) ([]Task, er
 	allTasks := make([]Task, 0, len(tasks))
 
 	for i, t := range tasks {
-		elemMatchQuery := bson.M{DependencyTaskIdKey: t.Id}
-		if isUnblocking {
-			elemMatchQuery[DependencyUnattainableKey] = true
-		} else {
+		elemMatchQuery := bson.M{
+			DependencyTaskIdKey:       t.Id,
+			DependencyUnattainableKey: isUnblocking,
+		}
+		if !isUnblocking && !updateAllDependencies {
 			okStatusSet := []string{AllStatuses, t.Status}
 			elemMatchQuery[DependencyStatusKey] = bson.M{"$nin": okStatusSet}
-			elemMatchQuery[DependencyUnattainableKey] = false
 		}
 		unmatchedDep = append(unmatchedDep, bson.M{
 			DependsOnKey: bson.M{"$elemMatch": elemMatchQuery},
