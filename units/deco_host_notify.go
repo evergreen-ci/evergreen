@@ -54,7 +54,7 @@ func NewDecoHostNotifyJob(env evergreen.Environment, hostID, message string) amb
 	j.HostID = hostID
 	j.Message = message
 
-	j.SetID(fmt.Sprintf("%s.%s.%s", decoHostNotifyJobName, hostID, utility.RoundPartOfHour(10)))
+	j.SetID(fmt.Sprintf("%s.%s.%s", decoHostNotifyJobName, hostID, utility.RoundPartOfMinute(0)))
 	return j
 }
 
@@ -73,12 +73,18 @@ func (j *decoHostNotifyJob) Run(ctx context.Context) {
 		j.host = h
 	}
 
+	if j.host.Status != evergreen.HostDecommissioned && j.host.Status != evergreen.HostQuarantined {
+		return
+	}
+
 	m := message.Fields{
-		"operation": decoHostNotifyJobName,
-		"message":   j.Message,
-		"distro":    j.host.Distro.Id,
-		"provider":  j.host.Provider,
-		"host_id":   j.host.Id,
+		"message":          "host has been decommissioned or quarantined",
+		"detailed_message": j.Message,
+		"job":              decoHostNotifyJobName,
+		"distro":           j.host.Distro.Id,
+		"provider":         j.host.Provider,
+		"host_id":          j.host.Id,
+		"host_status":      j.host.Status,
 	}
 	if j.host.Provider != evergreen.ProviderNameStatic {
 		uptime := time.Since(j.host.CreationTime)
