@@ -4,9 +4,6 @@ package util
 
 import (
 	"context"
-	"os/exec"
-	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -14,6 +11,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"github.com/shirou/gopsutil/v3/process"
 )
 
 const (
@@ -23,7 +21,10 @@ const (
 	contextTimeout         = 10 * time.Minute
 )
 
-var registry processRegistry
+var (
+	errProcessStillRunning = errors.New("process still running")
+	registry               processRegistry
+)
 
 type processRegistry struct {
 	sync.Mutex
@@ -119,46 +120,22 @@ func waitForExit(ctx context.Context, pidsToWait []int) ([]int, error) {
 }
 
 func psAllProcesses(ctx context.Context) ([]int, error) {
-	/*
-		Usage of ps:
-		-A: list *all* processes, not just ones that we own
-		-o: print output according to the given format. We supply 'pid=' and 'stat=' to
-		print the pid and stat columns without headers.
-	*/
-	psCtx, cancel := context.WithTimeout(ctx, contextTimeout)
-	defer cancel()
-
-	args := []string{"-A", "-o", "pid=,stat="}
-	out, err := exec.CommandContext(psCtx, "ps", args...).CombinedOutput()
+	processes, err := process.ProcessesWithContext(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "running ps")
+		return nil, errors.Wrap(err, "getting processes")
 	}
-	return parsePs(string(out)), nil
-}
-
-func parsePs(psOutput string) []int {
-	lines := strings.Split(psOutput, "\n")
-	pids := make([]int, 0, len(lines))
-	for _, line := range lines {
-		splitLine := strings.Fields(line)
-		if len(splitLine) < 2 {
+	pids := make([]int, 0, len(processes))
+	for _, p := range processes {
+		statuses, err := p.StatusWithContext(ctx)
+		if err != nil {
 			continue
 		}
 		// Zombie processes are dead processes that haven't been reaped by their parent. They do not consume
 		// resources and will go away by themselves when their parent dies.
 		// This is expected for processes that run in the background, such as a subprocess.exec with Background true.
-		if splitLine[1] == "Z" {
-			continue
+		if !utility.StringSliceContains(statuses, process.Zombie) {
+			pids = append(pids, int(p.Pid))
 		}
-
-		pidString := splitLine[0]
-		pid, err := strconv.Atoi(pidString)
-		if err != nil {
-			continue
-		}
-
-		pids = append(pids, pid)
 	}
-
-	return pids
+	return pids, nil
 }

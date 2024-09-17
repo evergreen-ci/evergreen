@@ -83,16 +83,40 @@ func TestWaitForExit(t *testing.T) {
 	}
 }
 
-func TestParsePs(t *testing.T) {
-	cases := map[string][]int{
-		"1 S":         {1},
-		"1 R\n1267 S": {1, 1267},
-		"":            {},
-		"NaN R":       {},
-		"1 Z":         {},
-	}
+func TestPsAllProcesses(t *testing.T) {
+	for testName, test := range map[string]func(ctx context.Context, t *testing.T){
+		"RunningProcess": func(ctx context.Context, t *testing.T) {
+			cmd := exec.CommandContext(ctx, "sleep", "30")
+			require.NoError(t, cmd.Start())
+			processes, err := psAllProcesses(ctx)
+			assert.NoError(t, err)
+			assert.Contains(t, processes, cmd.Process.Pid)
+		},
+		"ZombieProcess": func(ctx context.Context, t *testing.T) {
+			cmd := exec.CommandContext(ctx, "sleep", "30")
+			require.NoError(t, cmd.Start())
+			assert.NoError(t, cmd.Process.Kill())
+			time.Sleep(time.Second)
+			processes, err := psAllProcesses(ctx)
+			assert.NoError(t, err)
+			assert.NotContains(t, processes, cmd.Process.Pid)
+		},
+		"KilledProcess": func(ctx context.Context, t *testing.T) {
+			cmd := exec.CommandContext(ctx, "sleep", "30")
+			require.NoError(t, cmd.Start())
+			assert.NoError(t, cmd.Process.Kill())
+			_, err := cmd.Process.Wait()
+			assert.NoError(t, err)
+			processes, err := psAllProcesses(ctx)
+			assert.NoError(t, err)
+			assert.NotContains(t, processes, cmd.Process.Pid)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
 
-	for psOutput, processes := range cases {
-		assert.Equal(t, processes, parsePs(psOutput))
+			test(ctx, t)
+		})
 	}
 }
