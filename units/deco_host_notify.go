@@ -93,5 +93,4 @@ func (j *decoHostNotifyJob) Run(ctx context.Context) {
 	}
 
 	grip.Notice(m)
-	return
 }

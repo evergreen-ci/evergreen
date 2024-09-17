@@ -1213,8 +1213,8 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	// the active state should be inactive.
 	if h.details.Status == evergreen.TaskUndispatched {
 		if t.Activated {
-			grip.Warningf("task %s is active and undispatched after being marked as finished", t.Id)
-			return gimlet.NewJSONResponse(struct{}{})
+			grip.Warningf("task '%s' is active and undispatched after being marked as finished", t.Id)
+			return gimlet.NewJSONResponse(&apimodels.EndTaskResponse{})
 		}
 		abortMsg := fmt.Sprintf("task '%s' has been aborted and will not run", t.Id)
 		grip.Infof(abortMsg)
