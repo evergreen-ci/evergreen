@@ -122,6 +122,9 @@ func waitForExit(ctx context.Context, pidsToWait []int) ([]int, error) {
 func psAllProcesses(ctx context.Context) ([]int, error) {
 	processes, err := process.ProcessesWithContext(ctx)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			grip.Alert(errors.New("getting processes encountered context deadline"))
+		}
 		return nil, errors.Wrap(err, "getting processes")
 	}
 	pids := make([]int, 0, len(processes))
