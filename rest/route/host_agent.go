@@ -1241,10 +1241,6 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	// Disable hosts and prevent them from performing more work if they have
 	// system failed many tasks in a row.
 	if event.AllRecentHostEventsMatchStatus(ctx, currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
-		// kim: TODO: add test to verify that this quarantines the host after
-		// the task is marked system-failed. Need to simulate the host event
-		// log, possibly by looking at what a real static host event log looks
-		// like.
 		msg := "host encountered consecutive system failures"
 		grip.Error(message.WrapError(units.HandlePoisonedHost(ctx, h.env, currentHost, msg), message.Fields{
 			"message": "unable to disable poisoned host",
