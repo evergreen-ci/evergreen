@@ -225,6 +225,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 						lastActivatedTaskGroupTask = t
 					}
 				}
+				// We want to block all subsequent tasks from running, regardless of what status the dependencies are waiting on.
 				j.AddError(errors.Wrapf(model.UpdateBlockedDependencies(ctx, []task.Task{*latestTask}, true), "updating blocked dependencies for task '%s'", latestTask.Id))
 				if lastActivatedTaskGroupTask.Id != latestTask.Id {
 					// If we aren't looking at the last task in the group, then we should mark the whole thing for restart,
