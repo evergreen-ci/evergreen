@@ -1179,10 +1179,15 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 	detail.Status = status
 	detail.Description = description
 	if status != evergreen.TaskSucceeded {
-		detail.FailingCommand = currCmd.FullDisplayName()
+		if tc.userEndTaskRespOriginatingCommand != nil {
+			detail.FailingCommand = tc.userEndTaskRespOriginatingCommand.FullDisplayName()
+			tc.setFailingCommand(tc.userEndTaskRespOriginatingCommand)
+		} else {
+			detail.FailingCommand = currCmd.FullDisplayName()
+			tc.setFailingCommand(currCmd)
+		}
 		detail.Type = failureType
 		detail.FailureMetadataTags = utility.UniqueStrings(append(currCmd.FailureMetadataTags(), failureMetadataTagsToAdd...))
-		tc.setFailingCommand(currCmd)
 	}
 
 	detail.OtherFailingCommands = tc.getOtherFailingCommands()

@@ -1238,17 +1238,23 @@ func (s *AgentSuite) TestEndTaskResponse() {
 		s.Equal(systemFailureDescription, detail.Description)
 		s.Empty(detail.FailingCommand, "failing command should be empty if the task succeeded")
 	})
-	s.T().Run("TaskWithUserDefinedTaskStatusAndDescriptionOverridesDescription", func(t *testing.T) {
+	s.T().Run("TaskWithUserDefinedTaskStatusAndDescriptionOverridesDescriptionAndFailingCommand", func(t *testing.T) {
 		s.tc.userEndTaskResp = &triggerEndTaskResp{
 			Description: "user description of what failed",
 			Status:      evergreen.TaskFailed,
 		}
+		factory, ok := command.GetCommandFactory("command.mock")
+		s.Require().True(ok)
+		cmd := factory()
+		s.tc.userEndTaskRespOriginatingCommand = cmd
 		defer func() {
 			s.tc.userEndTaskResp = nil
+			s.tc.userEndTaskRespOriginatingCommand = nil
 		}()
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, systemFailureDescription)
 		s.Equal(s.tc.userEndTaskResp.Status, detail.Status)
 		s.Equal(s.tc.userEndTaskResp.Description, detail.Description)
+		s.Equal(detail.FailingCommand, cmd.FullDisplayName())
 	})
 	s.T().Run("TaskHitsIdleTimeoutAndFailsResultsInFailureWithTimeout", func(t *testing.T) {
 		s.tc.setTimedOut(true, globals.IdleTimeout)
@@ -1819,7 +1825,16 @@ tasks:
 		Description:            "task failed",
 		AddFailureMetadataTags: []string{"failure_tag0", "failure_tag1", "failure_tag2"},
 	}
+
+	s.Nil(s.tc.userEndTaskResp)
 	s.tc.setUserEndTaskResponse(resp)
+	s.NotNil(s.tc.userEndTaskRespOriginatingCommand)
+	s.Equal("initial task setup", s.tc.userEndTaskRespOriginatingCommand.FullDisplayName())
+
+	// Set the current command to show that the command containing the user-defined resp has precedence.
+	factory, ok := command.GetCommandFactory("command.mock")
+	s.Require().True(ok)
+	s.tc.setCurrentCommand(factory())
 
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     s.tc.task.ID,
@@ -1831,6 +1846,7 @@ tasks:
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
 	s.Equal(resp.Type, s.mockCommunicator.EndTaskResult.Detail.Type, "should set user-defined command failure type")
 	s.Equal(resp.Description, s.mockCommunicator.EndTaskResult.Detail.Description, "should set user-defined task description")
+	s.Equal("initial task setup", s.mockCommunicator.EndTaskResult.Detail.FailingCommand, "should set the failing command's display name to the user-defined resp's originating command")
 	s.ElementsMatch([]string{"failure_tag0", "failure_tag1", "failure_tag2"}, s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "should set the failing command's metadata tags along with the additional tags")
 
 	s.NoError(s.tc.logger.Close())
