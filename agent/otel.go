@@ -19,6 +19,7 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/net"
+	"github.com/shirou/gopsutil/v3/process"
 	"go.opentelemetry.io/contrib/detectors/aws/ec2"
 	"go.opentelemetry.io/contrib/detectors/aws/ecs"
 	"go.opentelemetry.io/otel"
@@ -54,6 +55,8 @@ const (
 	diskIOTimeInstrumentPrefix     = "system.disk.io_time"
 
 	networkIOInstrumentPrefix = "system.network.io"
+
+	processCountPrefix = "system.process.count"
 )
 
 func (a *Agent) initOtel(ctx context.Context) error {
@@ -144,6 +147,7 @@ func instrumentMeter(ctx context.Context, meter metric.Meter) error {
 	catcher.Wrap(addMemoryMetrics(meter), "adding memory metrics")
 	catcher.Wrap(addDiskMetrics(ctx, meter), "adding disk metrics")
 	catcher.Wrap(addNetworkMetrics(meter), "adding network metrics")
+	catcher.Wrap(addProcessMetrics(meter), "adding process metrics")
 
 	return catcher.Resolve()
 }
@@ -342,6 +346,57 @@ func addNetworkMetrics(meter metric.Meter) error {
 		return nil
 	}, networkIOTransmit, networkIOReceive)
 	return errors.Wrap(err, "registering network io callback")
+}
+
+func addProcessMetrics(meter metric.Meter) error {
+	processCountRunning, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.running", processCountPrefix), metric.WithUnit("{process}"), metric.WithDescription("Total number of running processes"))
+	if err != nil {
+		return errors.Wrap(err, "making running process counter")
+	}
+	processCountSleeping, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.sleeping", processCountPrefix), metric.WithUnit("{process}"), metric.WithDescription("Total number of sleeping processes"))
+	if err != nil {
+		return errors.Wrap(err, "making sleeping process counter")
+	}
+	processCountZombie, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.zombie", processCountPrefix), metric.WithUnit("{process}"), metric.WithDescription("Total number of zombie processes"))
+	if err != nil {
+		return errors.Wrap(err, "making zombie process counter")
+	}
+	processCountStopped, err := meter.Int64ObservableUpDownCounter(fmt.Sprintf("%s.stopped", processCountPrefix), metric.WithUnit("{process}"), metric.WithDescription("Total number of stopped processes"))
+	if err != nil {
+		return errors.Wrap(err, "making stopped process counter")
+	}
+
+	_, err = meter.RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
+		processes, err := process.ProcessesWithContext(ctx)
+		if err != nil {
+			return errors.Wrap(err, "getting processes")
+		}
+		var running, sleeping, zombie, stopped int
+		for _, p := range processes {
+			statuses, err := p.StatusWithContext(ctx)
+			if err != nil {
+				continue
+			}
+			switch {
+			case utility.StringSliceContains(statuses, process.Running):
+				running++
+			case utility.StringSliceContains(statuses, process.Sleep):
+				sleeping++
+			case utility.StringSliceContains(statuses, process.Zombie):
+				zombie++
+			case utility.StringSliceContains(statuses, process.Stop):
+				stopped++
+			}
+		}
+
+		observer.ObserveInt64(processCountRunning, int64(running))
+		observer.ObserveInt64(processCountSleeping, int64(sleeping))
+		observer.ObserveInt64(processCountZombie, int64(zombie))
+		observer.ObserveInt64(processCountStopped, int64(stopped))
+
+		return nil
+	}, processCountRunning, processCountSleeping, processCountZombie, processCountStopped)
+	return errors.Wrap(err, "registering process count callback")
 }
 
 func hostResource(ctx context.Context) (*resource.Resource, error) {
