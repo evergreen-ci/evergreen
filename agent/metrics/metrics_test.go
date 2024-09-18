@@ -1,9 +1,8 @@
-//go:build windows
-
-package agent
+package metrics
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -14,30 +13,34 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
-func TestAdditionalMetrics(t *testing.T) {
+func TestMetrics(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	for testName, testCase := range map[string]func(t *testing.T, meter metric.Meter, reader sdk.Reader){
-		"DiskMetrics": func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
-			assert.NoError(t, addDiskMetrics(ctx, meter))
-			var metrics metricdata.ResourceMetrics
-			assert.NoError(t, reader.Collect(ctx, &metrics))
-			require.Empty(t, metrics.ScopeMetrics)
-		},
-		"ProcessMetrics": func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
-			assert.NoError(t, addProcessMetrics(meter))
+		"MemoryMetrics": func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
+			assert.NoError(t, addMemoryMetrics(meter))
 			var metrics metricdata.ResourceMetrics
 			assert.NoError(t, reader.Collect(ctx, &metrics))
 			require.NotEmpty(t, metrics.ScopeMetrics)
-			require.Len(t, metrics.ScopeMetrics[0].Metrics, 1)
-			assert.Equal(t, processCountPrefix, metrics.ScopeMetrics[0].Metrics[0].Name)
+			require.Len(t, metrics.ScopeMetrics[0].Metrics, 3)
+			assert.Equal(t, fmt.Sprintf("%s.available", memoryUsageInstrumentPrefix), metrics.ScopeMetrics[0].Metrics[0].Name)
+			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints)
+			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
+		},
+		"NetworkMetrics": func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
+			assert.NoError(t, addNetworkMetrics(meter))
+			var metrics metricdata.ResourceMetrics
+			assert.NoError(t, reader.Collect(ctx, &metrics))
+			require.NotEmpty(t, metrics.ScopeMetrics)
+			require.Len(t, metrics.ScopeMetrics[0].Metrics, 2)
+			assert.Equal(t, fmt.Sprintf("%s.transmit", networkIOInstrumentPrefix), metrics.ScopeMetrics[0].Metrics[0].Name)
 			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints)
 			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
 		},
 	} {
 		reader := sdk.NewManualReader()
-		meter := sdk.NewMeterProvider(sdk.WithReader(reader)).Meter(packageName)
+		meter := sdk.NewMeterProvider(sdk.WithReader(reader)).Meter("")
 		t.Run(testName, func(t *testing.T) { testCase(t, meter, reader) })
 	}
 }

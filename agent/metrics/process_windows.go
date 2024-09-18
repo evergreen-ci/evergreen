@@ -1,6 +1,6 @@
 //go:build windows
 
-package agent
+package metrics
 
 import (
 	"context"
@@ -9,11 +9,6 @@ import (
 	"github.com/shirou/gopsutil/v3/process"
 	"go.opentelemetry.io/otel/metric"
 )
-
-// addDiskMetrics is not supported for Windows.
-func addDiskMetrics(_ context.Context, _ metric.Meter) error {
-	return nil
-}
 
 // addProcessMetrics adds a metric for the total number of processes on Windows.
 func addProcessMetrics(meter metric.Meter) error {
