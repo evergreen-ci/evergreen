@@ -92,13 +92,13 @@ func TestHostNextTask(t *testing.T) {
 		"ShouldSucceedAndSetAgentStartTime": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			resp := rh.Run(ctx)
 			assert.NotNil(t, resp)
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 			require.True(t, ok, resp.Data())
 			assert.NotNil(t, taskResp)
 			assert.Equal(t, "task1", taskResp.TaskId)
 			assert.Equal(t, 5, taskResp.TaskExecution)
-			nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
+			nextTask, err := task.FindOneId(taskResp.TaskId)
 			require.NoError(t, err)
 			require.NotNil(t, nextTask)
 			assert.Equal(t, nextTask.Status, evergreen.TaskDispatched)
@@ -120,7 +120,7 @@ func TestHostNextTask(t *testing.T) {
 			resp := rh.Run(ctx)
 			taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 			require.True(t, ok, resp.Data())
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			assert.False(t, taskResp.ShouldExit)
 		},
 		"SetsAndUnsetsIsTearingDown": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
@@ -132,7 +132,7 @@ func TestHostNextTask(t *testing.T) {
 			resp := rh.Run(ctx)
 			taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 			require.True(t, ok, resp.Data())
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			assert.False(t, taskResp.ShouldExit)
 			assert.True(t, taskResp.ShouldTeardownGroup)
 
@@ -146,7 +146,7 @@ func TestHostNextTask(t *testing.T) {
 			resp = rh.Run(ctx)
 			taskResp, ok = resp.Data().(apimodels.NextTaskResponse)
 			require.True(t, ok, resp.Data())
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			assert.False(t, taskResp.ShouldExit)
 			assert.False(t, taskResp.ShouldTeardownGroup)
 
@@ -166,7 +166,7 @@ func TestHostNextTask(t *testing.T) {
 					rh.host = h
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
-					assert.Equal(t, resp.Status(), http.StatusOK)
+					assert.Equal(t, http.StatusOK, resp.Status())
 
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
@@ -193,7 +193,7 @@ func TestHostNextTask(t *testing.T) {
 					rh.taskDispatcher = model.NewTaskDispatchService(time.Hour)
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
-					assert.Equal(t, resp.Status(), http.StatusOK)
+					assert.Equal(t, http.StatusOK, resp.Status())
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
 					assert.False(t, taskResp.ShouldExit)
@@ -270,7 +270,7 @@ func TestHostNextTask(t *testing.T) {
 				rh.host = &nonLegacyHost
 				resp := rh.Run(ctx)
 				assert.NotNil(t, resp)
-				assert.Equal(t, resp.Status(), http.StatusOK)
+				assert.Equal(t, http.StatusOK, resp.Status())
 				taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 				require.True(t, ok, resp.Data())
 				assert.True(t, taskResp.ShouldExit)
@@ -296,7 +296,7 @@ func TestHostNextTask(t *testing.T) {
 			resp := rh.Run(ctx)
 
 			assert.NotNil(t, resp)
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 			require.True(t, ok, resp.Data())
 			assert.True(t, taskResp.ShouldExit)
@@ -348,7 +348,7 @@ func TestHostNextTask(t *testing.T) {
 					rh.host = nonLegacyHost
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					resp := rh.Run(ctx)
-					assert.Equal(t, resp.Status(), http.StatusOK)
+					assert.Equal(t, http.StatusOK, resp.Status())
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
 					assert.False(t, taskResp.ShouldExit)
@@ -406,12 +406,12 @@ func TestHostNextTask(t *testing.T) {
 					rh.host = h2
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
-					assert.Equal(t, resp.Status(), http.StatusOK)
+					assert.Equal(t, http.StatusOK, resp.Status())
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
 					assert.Equal(t, "existingTask", taskResp.TaskId)
 					assert.Equal(t, 8, taskResp.TaskExecution)
-					nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
+					nextTask, err := task.FindOneId(taskResp.TaskId)
 					require.NoError(t, err)
 					require.NotZero(t, nextTask)
 					assert.Equal(t, nextTask.Status, evergreen.TaskDispatched)
@@ -444,12 +444,13 @@ func TestHostNextTask(t *testing.T) {
 					assert.NotNil(t, resp)
 					assert.Equal(t, resp.Status(), http.StatusInternalServerError)
 
-					h, err := host.FindOne(ctx, host.ById(anotherHost.Id))
+					h, err := host.FindOneId(ctx, anotherHost.Id)
 					require.NoError(t, err)
 					assert.Equal(t, h.RunningTask, "")
 
-					previouslyStuckTask, err := task.FindOne(db.Query(task.ById(stuckTask.Id)))
+					previouslyStuckTask, err := task.FindOneId(stuckTask.Id)
 					require.NoError(t, err)
+					require.NotZero(t, previouslyStuckTask)
 					assert.Equal(t, previouslyStuckTask.Status, evergreen.TaskFailed)
 
 				},
@@ -476,11 +477,11 @@ func TestHostNextTask(t *testing.T) {
 					rh.host = &anotherHost
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
-					assert.Equal(t, resp.Status(), http.StatusOK)
+					assert.Equal(t, http.StatusOK, resp.Status())
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
 					assert.Equal(t, taskResp.TaskId, t1.Id)
-					nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
+					nextTask, err := task.FindOneId(taskResp.TaskId)
 					require.NoError(t, err)
 					require.NotZero(t, nextTask)
 					assert.Equal(t, nextTask.Status, evergreen.TaskDispatched)
@@ -505,10 +506,10 @@ func TestHostNextTask(t *testing.T) {
 					rh.host = &h3
 					resp = rh.Run(ctx)
 					assert.NotNil(t, resp)
-					assert.Equal(t, resp.Status(), http.StatusOK)
+					assert.Equal(t, http.StatusOK, resp.Status())
 					taskResp = resp.Data().(apimodels.NextTaskResponse)
 					assert.Equal(t, "", taskResp.TaskId)
-					h, err := host.FindOne(ctx, host.ById(h3.Id))
+					h, err := host.FindOneId(ctx, h3.Id)
 					require.NoError(t, err)
 					require.NotZero(t, h)
 					assert.Equal(t, "", h.RunningTask)
@@ -554,8 +555,9 @@ func TestHostNextTask(t *testing.T) {
 			require.NoError(t, newServiceFlags.Set(ctx))
 			resp := rh.Run(ctx)
 			assert.NotNil(t, resp)
-			assert.Equal(t, resp.Status(), http.StatusOK)
-			taskResp := resp.Data().(apimodels.NextTaskResponse)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+			require.True(t, ok)
 			assert.NotNil(t, taskResp)
 			assert.Equal(t, taskResp.TaskId, "")
 			assert.False(t, taskResp.ShouldExit)
@@ -635,19 +637,22 @@ func TestHostNextTask(t *testing.T) {
 	}
 }
 
-func TestTaskLifecycleEndpoints(t *testing.T) {
-	hostId := "h1"
-	projectId := "proj"
-	buildID := "b1"
-	versionId := "v1"
+func TestHostEndTask(t *testing.T) {
+	const (
+		hostId    = "h1"
+		projectId = "proj"
+		buildID   = "b1"
+		versionId = "v1"
+		taskId    = "task1"
+	)
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *hostAgentEndTask, env *mock.Environment){
 		"TestTaskShouldShowHostRunningTask": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
 			startTaskHandler := makeStartTask(env).(*startTaskHandler)
-			startTaskHandler.hostID = "h1"
-			startTaskHandler.taskID = "task1"
+			startTaskHandler.hostID = hostId
+			startTaskHandler.taskID = taskId
 			resp := startTaskHandler.Run(ctx)
-			require.Equal(t, resp.Status(), http.StatusOK)
+			require.Equal(t, http.StatusOK, resp.Status())
 			require.NotNil(t, resp)
 
 			h, err := host.FindOneId(ctx, hostId)
@@ -662,15 +667,16 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			handler.details = *details
 			resp := handler.Run(ctx)
 			require.NotNil(t, resp)
-			require.Equal(t, resp.Status(), http.StatusOK)
-			taskResp := apimodels.EndTaskResponse{}
+			require.Equal(t, http.StatusOK, resp.Status())
+			taskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
+			require.True(t, ok)
 			require.False(t, taskResp.ShouldExit)
-			h, err := host.FindOne(ctx, host.ById(hostId))
+			h, err := host.FindOneId(ctx, hostId)
 			require.NoError(t, err)
 			require.NotZero(t, h)
 			require.Equal(t, h.RunningTask, "")
 
-			foundTask, err := task.FindOne(db.Query(task.ById("task1")))
+			foundTask, err := task.FindOneId(taskId)
 			require.NoError(t, err)
 			require.NotZero(t, foundTask)
 			require.Equal(t, evergreen.TaskSucceeded, foundTask.Status)
@@ -680,23 +686,24 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			details := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,
 			}
-			testTask, err := task.FindOne(db.Query(task.ById("task1")))
+			testTask, err := task.FindOneId(taskId)
 			require.NoError(t, err)
 			require.NotZero(t, testTask)
 			require.Equal(t, evergreen.TaskStarted, testTask.Status)
 			handler.details = *details
 			resp := handler.Run(ctx)
 			require.NotNil(t, resp)
-			require.Equal(t, resp.Status(), http.StatusOK)
-			taskResp := apimodels.EndTaskResponse{}
+			require.Equal(t, http.StatusOK, resp.Status())
+			taskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
+			require.True(t, ok)
 			require.False(t, taskResp.ShouldExit)
 
-			h, err := host.FindOne(ctx, host.ById(hostId))
+			h, err := host.FindOneId(ctx, hostId)
 			require.NoError(t, err)
 			require.NotZero(t, h)
 			require.Equal(t, "", h.RunningTask)
 
-			foundTask, err := task.FindOne(db.Query(task.ById("task1")))
+			foundTask, err := task.FindOneId(taskId)
 			require.NoError(t, err)
 			require.NotZero(t, foundTask)
 			require.Equal(t, evergreen.TaskFailed, foundTask.Status)
@@ -727,7 +734,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			details := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskUndispatched,
 			}
-			testTask, err := task.FindOne(db.Query(task.ById("task1")))
+			testTask, err := task.FindOneId(taskId)
 			require.NoError(t, err)
 			require.NotZero(t, testTask)
 			require.Equal(t, evergreen.TaskStarted, testTask.Status)
@@ -735,8 +742,9 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			handler.details = *details
 			resp := handler.Run(ctx)
 			require.NotNil(t, resp)
-			require.Equal(t, resp.Status(), http.StatusOK)
-			taskResp := apimodels.EndTaskResponse{}
+			require.Equal(t, http.StatusOK, resp.Status())
+			taskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
+			require.True(t, ok)
 			require.False(t, taskResp.ShouldExit)
 		},
 		"WithTasksHostsBuildAndTaskQueue": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
@@ -784,14 +792,79 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			handler.details = *details
 			resp := handler.Run(ctx)
 			require.NotNil(t, resp)
-			require.Equal(t, resp.Status(), http.StatusOK)
-			taskResp := apimodels.EndTaskResponse{}
+			require.Equal(t, http.StatusOK, resp.Status())
+			taskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
+			require.True(t, ok)
 			require.False(t, taskResp.ShouldExit)
 
-			dbTask, err := task.FindOne(db.Query(task.ById(displayTask.Id)))
+			dbTask, err := task.FindOneId(displayTask.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			require.Equal(t, evergreen.TaskFailed, dbTask.Status)
+		},
+		"QuarantinesStaticHostWithRepeatedSystemFailedTasks": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			h, err := host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			require.NoError(t, host.UpdateOne(ctx, host.ById(hostId), bson.M{
+				"$set": bson.M{
+					host.ProviderKey: evergreen.ProviderNameStatic,
+				},
+			}))
+
+			for i := 0; i < 10; i++ {
+				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemFailed)
+			}
+
+			details := &apimodels.TaskEndDetail{
+				Status: evergreen.TaskFailed,
+				Type:   evergreen.CommandTypeSystem,
+			}
+			handler.details = *details
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			require.Equal(t, http.StatusOK, resp.Status())
+			h, err = host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			assert.Equal(t, evergreen.HostQuarantined, h.Status, "static host should be quarantined for consecutive system failed tasks")
+
+			foundTask, err := task.FindOneId(handler.taskID)
+			require.NoError(t, err)
+			require.NotZero(t, foundTask)
+			require.Equal(t, evergreen.TaskSystemFailed, foundTask.GetDisplayStatus())
+		},
+		"DecommissionsDynamicHostWithRepeatedSystemFailedTasks": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			h, err := host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			require.NoError(t, host.UpdateOne(ctx, host.ById(hostId), bson.M{
+				"$set": bson.M{
+					host.ProviderKey: evergreen.ProviderNameEc2Fleet,
+				},
+			}))
+
+			for i := 0; i < 10; i++ {
+				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemFailed)
+			}
+
+			details := &apimodels.TaskEndDetail{
+				Status: evergreen.TaskFailed,
+				Type:   evergreen.CommandTypeSystem,
+			}
+			handler.details = *details
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			require.Equal(t, http.StatusOK, resp.Status())
+			h, err = host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			assert.Equal(t, evergreen.HostDecommissioned, h.Status, "dynamic host should be decommissioned for consecutive system failed tasks")
+
+			foundTask, err := task.FindOneId(handler.taskID)
+			require.NoError(t, err)
+			require.NotZero(t, foundTask)
+			require.Equal(t, evergreen.TaskSystemFailed, foundTask.GetDisplayStatus())
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -822,7 +895,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			require.NoError(t, proj.Insert())
 
 			task1 := task.Task{
-				Id:        "task1",
+				Id:        taskId,
 				Status:    evergreen.TaskStarted,
 				Activated: true,
 				HostId:    hostId,
