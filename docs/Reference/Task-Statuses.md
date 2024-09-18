@@ -19,9 +19,6 @@ these statuses.
 - [Display Status Logic](#display-status-logic)
   - [Status Determination Logic](#status-determination-logic)
   - [Display Statuses](#display-statuses)
-- [Deprecated and Special-Case Statuses](#deprecated-and-special-case-statuses)
-  - [`inactive`](#inactive)
-  - [`pending`](#pending)
 - [Task Icon Reference](#task-icon-reference)
 - [Notes](#notes)
 
