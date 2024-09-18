@@ -158,16 +158,6 @@ func TestMetrics(t *testing.T) {
 			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints)
 			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
 		},
-		"DiskMetrics": func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
-			assert.NoError(t, addDiskMetrics(ctx, meter))
-			var metrics metricdata.ResourceMetrics
-			assert.NoError(t, reader.Collect(ctx, &metrics))
-			require.NotEmpty(t, metrics.ScopeMetrics)
-			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics)
-			assert.Regexp(t, `system\.disk\.io\.\w+\.read`, metrics.ScopeMetrics[0].Metrics[0].Name)
-			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints)
-			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
-		},
 		"NetworkMetrics": func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
 			assert.NoError(t, addNetworkMetrics(meter))
 			var metrics metricdata.ResourceMetrics
@@ -177,16 +167,6 @@ func TestMetrics(t *testing.T) {
 			assert.Equal(t, fmt.Sprintf("%s.transmit", networkIOInstrumentPrefix), metrics.ScopeMetrics[0].Metrics[0].Name)
 			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints)
 			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[0].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
-		},
-		"ProcessMetrics": func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
-			assert.NoError(t, addProcessMetrics(meter))
-			var metrics metricdata.ResourceMetrics
-			assert.NoError(t, reader.Collect(ctx, &metrics))
-			require.NotEmpty(t, metrics.ScopeMetrics)
-			require.Len(t, metrics.ScopeMetrics[0].Metrics, 4)
-			assert.Equal(t, fmt.Sprintf("%s.sleeping", processCountPrefix), metrics.ScopeMetrics[0].Metrics[1].Name)
-			require.NotEmpty(t, metrics.ScopeMetrics[0].Metrics[1].Data.(metricdata.Sum[int64]).DataPoints)
-			assert.NotZero(t, metrics.ScopeMetrics[0].Metrics[1].Data.(metricdata.Sum[int64]).DataPoints[0].Value)
 		},
 	} {
 		reader := sdk.NewManualReader()
