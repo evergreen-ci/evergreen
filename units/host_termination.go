@@ -205,6 +205,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			latestTask, err := task.FindOneId(j.host.LastTask)
 			if err != nil {
 				j.AddError(errors.Wrapf(err, "finding last task '%s'", j.host.LastTask))
+				return
 			}
 			// Only try to restart the task group if it was successful and should have continued executing.
 			if latestTask != nil && latestTask.IsPartOfSingleHostTaskGroup() && latestTask.Status == evergreen.TaskSucceeded {
@@ -218,13 +219,17 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 					return
 				}
 				// Check for the last task in the task group that we have activated, running, or completed.
-				var lastTaskGroupTask task.Task
+				var lastActivatedTaskGroupTask task.Task
 				for _, t := range tasks {
 					if t.Activated {
-						lastTaskGroupTask = t
+						lastActivatedTaskGroupTask = t
 					}
 				}
-				if lastTaskGroupTask.Id != latestTask.Id {
+				// If the host was in-between running a single host task group, the group should start from scratch.
+				// Since single host task groups only restart when the whole group is finished, we all block subsequent task group
+				// tasks from running regardless of what status they were waiting on, so that we can force the task group to restart immediately.
+				j.AddError(errors.Wrapf(model.UpdateBlockedDependencies(ctx, []task.Task{*latestTask}, true), "updating blocked dependencies for task '%s'", latestTask.Id))
+				if lastActivatedTaskGroupTask.Id != latestTask.Id {
 					// If we aren't looking at the last task in the group, then we should mark the whole thing for restart,
 					// because later tasks in the group need to run on the same host as the earlier ones.
 					j.AddError(errors.Wrapf(model.TryResetTask(ctx, j.env.Settings(), latestTask.Id, evergreen.User, evergreen.MonitorPackage, nil), "resetting task '%s'", latestTask.Id))
