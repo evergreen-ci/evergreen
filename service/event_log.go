@@ -46,7 +46,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			Limit:   5000,
 			SortAsc: false,
 		}
-		loggedEvents, err = event.Find(event.GetHostEvents(hostEventsOpts))
+		loggedEvents, err = event.Find(event.HostEvents(hostEventsOpts))
 	case event.ResourceTypeAdmin:
 		if u == nil {
 			uis.RedirectToLogin(w, r)

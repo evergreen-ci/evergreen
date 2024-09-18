@@ -57,7 +57,7 @@ func TestMostRecentPaginatedPodEvents(t *testing.T) {
 	}
 }
 
-func TestMostRecentPaginatedHostEvents(t *testing.T) {
+func TestGetPaginatedHostEvents(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(EventCollection))
 
 	hostID := "host"
@@ -133,7 +133,7 @@ func TestMostRecentPaginatedHostEvents(t *testing.T) {
 	assert.Equal(t, EventHostCreated, entries[0].EventType)
 }
 
-func TestFindEventTypesForHost(t *testing.T) {
+func TestGetEventTypesForHost(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(EventCollection))
 
 	hostID := "host"
@@ -148,7 +148,7 @@ func TestFindEventTypesForHost(t *testing.T) {
 	LogHostTaskFinished("task-2", 0, tag, evergreen.TaskSucceeded)       // HOST_TASK_FINISHED
 
 	// Should return non-duplicate host event types.
-	eventTypes, err := FindEventTypesForHost(hostID, tag)
+	eventTypes, err := GetEventTypesForHost(hostID, tag)
 	require.NoError(t, err)
 	require.NotNil(t, eventTypes)
 	require.Len(t, eventTypes, 5)
@@ -158,7 +158,7 @@ func TestFindEventTypesForHost(t *testing.T) {
 	}
 
 	// Should return 0 event types if a host has no events.
-	eventTypes, err = FindEventTypesForHost("host-with-no-events", "")
+	eventTypes, err = GetEventTypesForHost("host-with-no-events", "")
 	require.NoError(t, err)
 	require.NotNil(t, eventTypes)
 	require.Len(t, eventTypes, 0)

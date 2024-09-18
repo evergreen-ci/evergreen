@@ -70,7 +70,7 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		Limit:   50,
 		SortAsc: false,
 	}
-	events, err := event.Find(event.GetHostEvents(hostEventOpts))
+	events, err := event.Find(event.HostEvents(hostEventOpts))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

@@ -124,7 +124,7 @@ func CountUnprocessedEvents() (int, error) {
 
 // === Queries ===
 
-// HostEventsOpts represent filter arguments to the GetHostEvents function.
+// HostEventsOpts represent filter arguments to the HostEvents function.
 type HostEventsOpts struct {
 	ID         string
 	Tag        string
@@ -133,9 +133,9 @@ type HostEventsOpts struct {
 	EventTypes []string
 }
 
-// GetHostEvents builds a query that can be used to return the n = opts.Limit events that satisfy the
+// HostEvents builds a query that can be used to return the n = opts.Limit events that satisfy the
 // filters and sorting method provided in opts.
-func GetHostEvents(opts HostEventsOpts) db.Q {
+func HostEvents(opts HostEventsOpts) db.Q {
 	filter := ResourceTypeKeyIs(ResourceTypeHost)
 	if opts.Tag != "" {
 		filter[ResourceIdKey] = bson.M{"$in": []string{opts.ID, opts.Tag}}
@@ -173,16 +173,16 @@ func GetPaginatedHostEvents(opts PaginatedHostEventsOpts) ([]EventLogEntry, int,
 		SortAsc:    opts.SortAsc,
 		EventTypes: opts.EventTypes,
 	}
-	hostEventsQuery := GetHostEvents(queryOpts)
+	hostEventsQuery := HostEvents(queryOpts)
 	return FindPaginatedWithTotalCount(hostEventsQuery, opts.Limit, opts.Page)
 }
 
-type eventType struct {
+type eventTypeResult struct {
 	EventTypes []string `bson:"event_types"`
 }
 
-// FindEventTypesForHost returns the event types that have occurred on the host.
-func FindEventTypesForHost(hostID string, tag string) ([]string, error) {
+// GetEventTypesForHost returns the event types that have occurred on the host.
+func GetEventTypesForHost(hostID string, tag string) ([]string, error) {
 	filter := ResourceTypeKeyIs(ResourceTypeHost)
 	if tag != "" {
 		filter[ResourceIdKey] = bson.M{"$in": []string{hostID, tag}}
@@ -210,7 +210,7 @@ func FindEventTypesForHost(hostID string, tag string) ([]string, error) {
 		},
 	}
 
-	out := []eventType{}
+	out := []eventTypeResult{}
 	if err := db.Aggregate(EventCollection, pipeline, &out); err != nil {
 		return nil, errors.Errorf("finding event types for host '%s': %s", hostID, err)
 	}
