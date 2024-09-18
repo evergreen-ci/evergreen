@@ -202,7 +202,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		// assign the task to a host and retrieve the task
 		nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, h.env, taskQueue, h.taskDispatcher, h.host, h.details)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
+			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
 
@@ -219,7 +219,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		if secondaryQueue != nil {
 			nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, h.env, secondaryQueue, h.taskAliasDispatcher, h.host, h.details)
 			if err != nil {
-				return gimlet.MakeJSONErrorResponder(err)
+				return gimlet.MakeJSONInternalErrorResponder(err)
 			}
 		}
 	}
@@ -236,7 +236,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 			})
 			err = h.host.SetTaskGroupTeardownStartTime(ctx)
 			if err != nil {
-				return gimlet.MakeJSONErrorResponder(err)
+				return gimlet.MakeJSONInternalErrorResponder(err)
 			}
 			nextTaskResponse.ShouldTeardownGroup = true
 		} else {
