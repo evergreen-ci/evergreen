@@ -147,7 +147,7 @@ func TestFindEventTypesForHost(t *testing.T) {
 	LogHostModifySucceeded(hostID, evergreen.User)                       // HOST_MODIFIED
 	LogHostTaskFinished("task-2", 0, tag, evergreen.TaskSucceeded)       // HOST_TASK_FINISHED
 
-	// Should return non-duplicate host event types for a host.
+	// Should return non-duplicate host event types.
 	eventTypes, err := FindEventTypesForHost(hostID, tag)
 	require.NoError(t, err)
 	require.NotNil(t, eventTypes)
