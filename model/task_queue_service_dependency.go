@@ -253,8 +253,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 
 	settings := evergreen.GetEnvironment().Settings()
 	dependencyCaches := make(map[string]task.Task)
-	for i := range d.sorted {
-		node := d.sorted[i]
+	for _, node := range d.sorted {
 		// topo.SortStabilized represents nodes in a dependency cycle with a nil Node.
 		if node == nil {
 			continue
