@@ -310,7 +310,7 @@ func TestHostTerminationJob(t *testing.T) {
 				assert.False(t, dbTask.ResetWhenFinished)
 			}
 		},
-		"TaskInTaskGroupDoesNotRestartIfFinished2": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
+		"TaskInSingleHostTaskGroupBlocksAndRestartsTasks": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
 			h.LastGroup = "taskgroup"
 			h.LastTask = "task2"
 			require.NoError(t, h.Insert(ctx))

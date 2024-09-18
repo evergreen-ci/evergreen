@@ -1032,9 +1032,9 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (c
 // UpdateBlockedDependencies traverses the dependency graph and recursively sets
 // each parent dependency in dependencies as unattainable in depending tasks. It
 // updates the status of builds as well, in case they change due to blocking
-// dependencies. The updateAllDependencies indicates whether all tasks that depend
+// dependencies. The ignoreDependencyStatusForBlocking indicates whether all tasks that depend
 // on the given tasks will be updated (i.e., whether the task's Dependency.Status will be ignored).
-func UpdateBlockedDependencies(ctx context.Context, dependencies []task.Task, updateAllDependencies bool) error {
+func UpdateBlockedDependencies(ctx context.Context, dependencies []task.Task, ignoreDependencyStatusForBlocking bool) error {
 	ctx, span := tracer.Start(ctx, "update-blocked-dependencies")
 	defer span.End()
 
@@ -1043,7 +1043,7 @@ func UpdateBlockedDependencies(ctx context.Context, dependencies []task.Task, up
 		dependencyIDs = append(dependencyIDs, dep.Id)
 	}
 
-	dependentTasks, err := task.FindAllDependencyTasksToModify(dependencies, false, updateAllDependencies)
+	dependentTasks, err := task.FindAllDependencyTasksToModify(dependencies, true, ignoreDependencyStatusForBlocking)
 	if err != nil {
 		return errors.Wrapf(err, "getting all tasks depending on tasks")
 	}
@@ -1056,7 +1056,7 @@ func UpdateBlockedDependencies(ctx context.Context, dependencies []task.Task, up
 		return errors.Wrap(err, "marking unattainable dependencies for tasks")
 	}
 
-	if err := UpdateBlockedDependencies(ctx, dependentTasks, true); err != nil {
+	if err := UpdateBlockedDependencies(ctx, dependentTasks, ignoreDependencyStatusForBlocking); err != nil {
 		return errors.Wrap(err, "updating many blocked dependencies recursively")
 	}
 
@@ -1081,8 +1081,6 @@ func UpdateBlockedDependencies(ctx context.Context, dependencies []task.Task, up
 }
 
 // UpdateUnblockedDependencies recursively marks all unattainable dependencies as attainable.
-// The updateAllDependencies indicates whether all tasks that depend on the given tasks will
-// be updated (i.e., whether the task's Dependency.Status will be ignored).
 func UpdateUnblockedDependencies(ctx context.Context, dependencies []task.Task) error {
 	ctx, span := tracer.Start(ctx, "update-unblocked-dependencies")
 	defer span.End()
@@ -1092,7 +1090,7 @@ func UpdateUnblockedDependencies(ctx context.Context, dependencies []task.Task) 
 		dependencyIDs = append(dependencyIDs, dep.Id)
 	}
 
-	tasksToUnblock, err := task.FindAllDependencyTasksToModify(dependencies, true, false)
+	tasksToUnblock, err := task.FindAllDependencyTasksToModify(dependencies, false, false)
 	if err != nil {
 		return errors.Wrapf(err, "getting all tasks depending on tasks")
 	}
