@@ -112,6 +112,7 @@ func (s *AgentSuite) SetupTest() {
 			LogOutput:        globals.LogOutputStdout,
 			LogPrefix:        "agent",
 			WorkingDirectory: s.testTmpDirName,
+			HomeDirectory:    s.suiteTmpDirName,
 		},
 		comm:   client.NewMock("url"),
 		tracer: otel.GetTracerProvider().Tracer("noop_tracer"),
@@ -2727,6 +2728,37 @@ tasks:
 	}
 	expectedLines := "I am test log.\nI should get ingested automatically by the agent.\nAnd stored as well.\n"
 	s.Equal(expectedLines, actualLines)
+}
+
+func (s *AgentSuite) TestAttemptsToClearGitConfig() {
+	projYml := `
+tasks:
+- name: this_is_a_task_name
+  commands:
+  - command: shell.exec
+    params:
+      script: |
+        echo hello
+`
+	s.setupRunTask(projYml)
+
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+
+	s.NoError(err)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Clearing git config because post-task or teardown-task commands are finished",
+		"Clearing git config because task is finished",
+		"Global git config file does not exist.",
+	}, []string{
+		panicLog,
+		"Running task commands failed",
+	})
 }
 
 func (s *AgentSuite) TestShouldRunSetupGroup() {

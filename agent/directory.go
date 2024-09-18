@@ -178,3 +178,16 @@ func (a *Agent) tryCleanupDirectory(dir string) {
 		}
 	}
 }
+
+func (a *Agent) SetHomeDirectory() {
+	if a.opts.HomeDirectory != "" {
+		return
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		grip.Warning(errors.Wrap(err, "getting home directory"))
+		return
+	}
+	a.opts.HomeDirectory = homeDir
+}
