@@ -240,7 +240,7 @@ func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *
 	}
 	hostQueryOpts := event.PaginatedHostEventsOpts{
 		ID:      h.Id,
-		Tag:     h.Tag,
+		Tag:     utility.FromStringPtr(hostTag),
 		Limit:   utility.FromIntPtr(limit),
 		Page:    utility.FromIntPtr(page),
 		SortAsc: false,

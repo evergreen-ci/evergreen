@@ -36,7 +36,7 @@ func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*ti
 }
 
 // Events is the resolver for the events field.
-func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, opts *HostEventsInput) (*HostEvents, error) {
+func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, opts HostEventsInput) (*HostEvents, error) {
 	sortAsc := false
 	if opts.SortDir != nil {
 		sortAsc = *opts.SortDir == SortDirectionAsc

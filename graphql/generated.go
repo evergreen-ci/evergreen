@@ -461,7 +461,7 @@ type ComplexityRoot struct {
 		DistroID              func(childComplexity int) int
 		Elapsed               func(childComplexity int) int
 		EventTypes            func(childComplexity int) int
-		Events                func(childComplexity int, opts *HostEventsInput) int
+		Events                func(childComplexity int, opts HostEventsInput) int
 		Expiration            func(childComplexity int) int
 		HomeVolume            func(childComplexity int) int
 		HomeVolumeID          func(childComplexity int) int
@@ -1765,7 +1765,7 @@ type HostResolver interface {
 
 	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
 	Elapsed(ctx context.Context, obj *model.APIHost) (*time.Time, error)
-	Events(ctx context.Context, obj *model.APIHost, opts *HostEventsInput) (*HostEvents, error)
+	Events(ctx context.Context, obj *model.APIHost, opts HostEventsInput) (*HostEvents, error)
 	EventTypes(ctx context.Context, obj *model.APIHost) ([]string, error)
 
 	HomeVolume(ctx context.Context, obj *model.APIHost) (*model.APIVolume, error)
@@ -3619,7 +3619,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Host.Events(childComplexity, args["opts"].(*HostEventsInput)), true
+		return e.complexity.Host.Events(childComplexity, args["opts"].(HostEventsInput)), true
 
 	case "Host.expiration":
 		if e.complexity.Host.Expiration == nil {
@@ -10642,10 +10642,10 @@ func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, r
 func (ec *executionContext) field_Host_events_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *HostEventsInput
+	var arg0 HostEventsInput
 	if tmp, ok := rawArgs["opts"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
-		arg0, err = ec.unmarshalOHostEventsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostEventsInput(ctx, tmp)
+		arg0, err = ec.unmarshalNHostEventsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostEventsInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -23117,7 +23117,7 @@ func (ec *executionContext) _Host_events(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Host().Events(rctx, obj, fc.Args["opts"].(*HostEventsInput))
+		return ec.resolvers.Host().Events(rctx, obj, fc.Args["opts"].(HostEventsInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -95901,6 +95901,11 @@ func (ec *executionContext) marshalNHostEvents2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._HostEvents(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNHostEventsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostEventsInput(ctx context.Context, v interface{}) (HostEventsInput, error) {
+	res, err := ec.unmarshalInputHostEventsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNHostsResponse2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostsResponse(ctx context.Context, sel ast.SelectionSet, v HostsResponse) graphql.Marshaler {
 	return ec._HostsResponse(ctx, sel, &v)
 }
@@ -100691,14 +100696,6 @@ var (
 		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
 	}
 )
-
-func (ec *executionContext) unmarshalOHostEventsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostEventsInput(ctx context.Context, v interface{}) (*HostEventsInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputHostEventsInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
 
 func (ec *executionContext) unmarshalOHostSortBy2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostSortBy(ctx context.Context, v interface{}) (*HostSortBy, error) {
 	if v == nil {

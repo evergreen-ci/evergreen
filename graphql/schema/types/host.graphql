@@ -90,7 +90,7 @@ type Host {
   """
   events returns the event log entries for a given host.
   """
-  events(opts: HostEventsInput): HostEvents!
+  events(opts: HostEventsInput!): HostEvents!
   eventTypes: [HostEventType!]!
   expiration: Time
   hostUrl: String!
