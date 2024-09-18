@@ -45,13 +45,13 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		assert.Equal(http.StatusOK, httpStatus)
 		assert.Equal(result, fmt.Sprintf(api.HostStatusUpdateSuccess, evergreen.HostRunning, evergreen.HostQuarantined))
 		assert.Equal(h.Status, evergreen.HostQuarantined)
-		hostEventOpts := event.MostRecentHostEventsOpts{
+		hostEventOpts := event.HostEventsOpts{
 			ID:      "h1",
 			Tag:     "",
 			Limit:   1,
 			SortAsc: false,
 		}
-		events, err := event.Find(event.MostRecentHostEvents(hostEventOpts))
+		events, err := event.Find(event.GetHostEvents(hostEventOpts))
 		assert.NoError(err)
 		assert.Len(events, 1)
 		hostevent, ok := events[0].Data.(*event.HostEventData)

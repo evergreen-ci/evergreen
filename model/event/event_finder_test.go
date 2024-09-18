@@ -72,7 +72,7 @@ func TestMostRecentPaginatedHostEvents(t *testing.T) {
 	LogHostTaskFinished("task-2", 0, tag, evergreen.TaskSucceeded)       // HOST_TASK_FINISHED
 
 	// Filters by tag correctly.
-	opts := MostRecentPaginatedHostEventsOpts{
+	opts := PaginatedHostEventsOpts{
 		ID:         hostID,
 		Tag:        "",
 		Limit:      1,
@@ -80,13 +80,13 @@ func TestMostRecentPaginatedHostEvents(t *testing.T) {
 		SortAsc:    false,
 		EventTypes: []string{},
 	}
-	entries, totalCount, err := MostRecentPaginatedHostEvents(opts)
+	entries, totalCount, err := GetPaginatedHostEvents(opts)
 	require.NoError(t, err)
 	require.Equal(t, 5, totalCount)
 	require.NotNil(t, entries[0])
 	assert.Equal(t, EventHostModified, entries[0].EventType)
 
-	opts = MostRecentPaginatedHostEventsOpts{
+	opts = PaginatedHostEventsOpts{
 		ID:         hostID,
 		Tag:        tag,
 		Limit:      1,
@@ -94,14 +94,14 @@ func TestMostRecentPaginatedHostEvents(t *testing.T) {
 		SortAsc:    false,
 		EventTypes: []string{},
 	}
-	entries, totalCount, err = MostRecentPaginatedHostEvents(opts)
+	entries, totalCount, err = GetPaginatedHostEvents(opts)
 	require.NoError(t, err)
 	require.Equal(t, 6, totalCount)
 	require.NotNil(t, entries[0])
 	assert.Equal(t, EventHostTaskFinished, entries[0].EventType)
 
 	// Filters by event types correctly.
-	opts = MostRecentPaginatedHostEventsOpts{
+	opts = PaginatedHostEventsOpts{
 		ID:         hostID,
 		Tag:        tag,
 		Limit:      2,
@@ -109,7 +109,7 @@ func TestMostRecentPaginatedHostEvents(t *testing.T) {
 		SortAsc:    false,
 		EventTypes: []string{EventHostTaskFinished},
 	}
-	entries, totalCount, err = MostRecentPaginatedHostEvents(opts)
+	entries, totalCount, err = GetPaginatedHostEvents(opts)
 	require.NoError(t, err)
 	require.Equal(t, 2, totalCount)
 	require.NotNil(t, entries[0])
@@ -118,7 +118,7 @@ func TestMostRecentPaginatedHostEvents(t *testing.T) {
 	assert.Equal(t, EventHostTaskFinished, entries[1].EventType)
 
 	// Uses correct sort method.
-	opts = MostRecentPaginatedHostEventsOpts{
+	opts = PaginatedHostEventsOpts{
 		ID:         hostID,
 		Tag:        tag,
 		Limit:      1,
@@ -126,7 +126,7 @@ func TestMostRecentPaginatedHostEvents(t *testing.T) {
 		SortAsc:    true,
 		EventTypes: []string{},
 	}
-	entries, totalCount, err = MostRecentPaginatedHostEvents(opts)
+	entries, totalCount, err = GetPaginatedHostEvents(opts)
 	require.NoError(t, err)
 	require.Equal(t, 6, totalCount)
 	require.NotNil(t, entries[0])

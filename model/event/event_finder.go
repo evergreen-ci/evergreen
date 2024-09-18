@@ -124,8 +124,8 @@ func CountUnprocessedEvents() (int, error) {
 
 // === Queries ===
 
-// MostRecentHostEventOpts represent filter arguments to the MostRecentHostEvents function.
-type MostRecentHostEventsOpts struct {
+// HostEventsOpts represent filter arguments to the GetHostEvents function.
+type HostEventsOpts struct {
 	ID         string
 	Tag        string
 	Limit      int
@@ -133,9 +133,9 @@ type MostRecentHostEventsOpts struct {
 	EventTypes []string
 }
 
-// MostRecentHostEvents builds a query that can be used to return the n = opts.Limit most recent events that satisfy the
-// filters provided in opts.
-func MostRecentHostEvents(opts MostRecentHostEventsOpts) db.Q {
+// GetHostEvents builds a query that can be used to return the n = opts.Limit events that satisfy the
+// filters and sorting method provided in opts.
+func GetHostEvents(opts HostEventsOpts) db.Q {
 	filter := ResourceTypeKeyIs(ResourceTypeHost)
 	if opts.Tag != "" {
 		filter[ResourceIdKey] = bson.M{"$in": []string{opts.ID, opts.Tag}}
@@ -152,8 +152,8 @@ func MostRecentHostEvents(opts MostRecentHostEventsOpts) db.Q {
 	return db.Query(filter).Sort(sortMethod).Limit(opts.Limit)
 }
 
-// MostRecentPaginatedHostEventsOpts represent filter arguments to the MostRecentPaginatedHostEvents function.
-type MostRecentPaginatedHostEventsOpts struct {
+// PaginatedHostEventsOpts represent filter arguments to the GetPaginatedHostEvents function.
+type PaginatedHostEventsOpts struct {
 	ID         string
 	Tag        string
 	Limit      int
@@ -162,18 +162,19 @@ type MostRecentPaginatedHostEventsOpts struct {
 	EventTypes []string
 }
 
-// MostRecentPaginatedHostEvents returns a limited and paginated list of host events for the given
-// filters sorted in descending order by timestamp, as well as the total number of host events.
-func MostRecentPaginatedHostEvents(opts MostRecentPaginatedHostEventsOpts) ([]EventLogEntry, int, error) {
-	queryOpts := MostRecentHostEventsOpts{
+// GetPaginatedHostEvents returns a limited and paginated list of host events for the given
+// filters sorted in ascending or descending order by timestamp, as well as the total number
+// of host events.
+func GetPaginatedHostEvents(opts PaginatedHostEventsOpts) ([]EventLogEntry, int, error) {
+	queryOpts := HostEventsOpts{
 		ID:         opts.ID,
 		Tag:        opts.Tag,
 		Limit:      opts.Limit,
 		SortAsc:    opts.SortAsc,
 		EventTypes: opts.EventTypes,
 	}
-	recentHostsQuery := MostRecentHostEvents(queryOpts)
-	return FindPaginatedWithTotalCount(recentHostsQuery, opts.Limit, opts.Page)
+	hostEventsQuery := GetHostEvents(queryOpts)
+	return FindPaginatedWithTotalCount(hostEventsQuery, opts.Limit, opts.Page)
 }
 
 type eventType struct {

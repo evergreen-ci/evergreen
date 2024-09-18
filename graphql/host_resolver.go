@@ -41,7 +41,7 @@ func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, opts 
 	if opts.SortDir != nil {
 		sortAsc = *opts.SortDir == SortDirectionAsc
 	}
-	hostQueryOpts := event.MostRecentPaginatedHostEventsOpts{
+	hostQueryOpts := event.PaginatedHostEventsOpts{
 		ID:         utility.FromStringPtr(obj.Id),
 		Tag:        utility.FromStringPtr(obj.Tag),
 		Limit:      utility.FromIntPtr(opts.Limit),
@@ -49,7 +49,7 @@ func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, opts 
 		SortAsc:    sortAsc,
 		EventTypes: opts.EventTypes,
 	}
-	events, count, err := event.MostRecentPaginatedHostEvents(hostQueryOpts)
+	events, count, err := event.GetPaginatedHostEvents(hostQueryOpts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host events for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}

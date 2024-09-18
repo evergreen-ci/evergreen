@@ -33,13 +33,13 @@ func TestLoggingHostEvents(t *testing.T) {
 		time.Sleep(1 * time.Millisecond)
 
 		// fetch all the events from the database, make sure they are persisted correctly
-		hostEventOpts := MostRecentHostEventsOpts{
+		hostEventOpts := HostEventsOpts{
 			ID:      hostId,
 			Tag:     hostTag,
 			Limit:   50,
 			SortAsc: false,
 		}
-		eventsForHost, err := Find(MostRecentHostEvents(hostEventOpts))
+		eventsForHost, err := Find(GetHostEvents(hostEventOpts))
 		assert.NoError(t, err)
 
 		assert.Len(t, eventsForHost, 6)
