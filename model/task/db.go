@@ -2661,6 +2661,9 @@ func FindAllDependencyTasksToModify(tasks []Task, isUnblocking, updateAllDepende
 			DependencyTaskIdKey:       t.Id,
 			DependencyUnattainableKey: isUnblocking,
 		}
+		// If the operation is unblocking, then we ignore the status the dependencies were waiting on,
+		// and unblock all of them. Similarly, if the operation is blocking and updateAllDependencies is set,
+		// we also want to ignore the status the dependencies were waiting on.
 		if !isUnblocking && !updateAllDependencies {
 			okStatusSet := []string{AllStatuses, t.Status}
 			elemMatchQuery[DependencyStatusKey] = bson.M{"$nin": okStatusSet}
