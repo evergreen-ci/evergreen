@@ -1236,27 +1236,22 @@ func (s *taskDAGDispatchServiceSuite) TestIsRefreshFindNextTaskThreadSafe() {
 	}
 
 	var wg sync.WaitGroup
-	var panics []interface{}
 	wait := make(chan struct{})
 	numGoroutines := 50
 	wg.Add(numGoroutines)
 	for i := 0; i < numGoroutines; i++ {
 		go func() {
 			defer wg.Done()
-			defer func() {
-				if r := recover(); r != nil {
-					panics = append(panics, r)
-				}
-			}()
 			<-wait
-			item, err := dispatcher.RefreshFindNextTask(s.ctx, "distro_1", spec, utility.ZeroTime)
-			s.Require().NoError(err)
-			s.Require().NotNil(item)
+			s.NotPanics(func() {
+				item, err := dispatcher.RefreshFindNextTask(s.ctx, "distro_1", spec, utility.ZeroTime)
+				s.Require().NoError(err)
+				s.Require().NotNil(item)
+			})
 		}()
 	}
 	close(wait)
 	wg.Wait()
-	s.Len(panics, 0)
 }
 
 func (s *taskDAGDispatchServiceSuite) TestFindNextTaskThreadSafe() {
