@@ -766,7 +766,7 @@ Every task has some expansions available by default:
 -   `${workdir}` is the task's working directory
 -   `${revision}` is the commit hash of the base commit that a patch's changes
     are being applied to, or of the commit for a mainline build. For PR patches,
-    the base commit value is the PR base value computed by GitHub.
+    the base commit is the PR base chosen by GitHub.
 -   `${github_commit}` is the commit hash of the commit that triggered
     the patch run
 -   `${project}` is the project identifier the task belongs to
