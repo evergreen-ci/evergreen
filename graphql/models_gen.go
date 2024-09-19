@@ -184,6 +184,14 @@ type HostEvents struct {
 	EventLogEntries []*model.HostAPIEventLogEntry `json:"eventLogEntries"`
 }
 
+type HostEventsInput struct {
+	Limit *int `json:"limit,omitempty"`
+	Page  *int `json:"page,omitempty"`
+	// sort by timestamp
+	SortDir    *SortDirection `json:"sortDir,omitempty"`
+	EventTypes []string       `json:"eventTypes,omitempty"`
+}
+
 // HostsResponse is the return value for the hosts query.
 // It contains an array of Hosts matching the filter conditions, as well as some count information.
 type HostsResponse struct {

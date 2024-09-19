@@ -65,7 +65,7 @@ func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment
 		return errors.Wrap(err, "clearing stranded task from host")
 	}
 
-	return errors.Wrapf(amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewDecoHostNotifyJob(env, h, nil, reason)), "enqueueing decohost notify job for host '%s'", h.Id)
+	return errors.Wrapf(amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewDecoHostNotifyJob(env, h.Id, reason)), "enqueueing decohost notify job for host '%s'", h.Id)
 }
 
 // EnqueueHostReprovisioningJob enqueues a job to reprovision a host. For hosts

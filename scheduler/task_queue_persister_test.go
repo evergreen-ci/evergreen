@@ -104,11 +104,19 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				DurationPrediction:  util.CachedDurationValue{},
 				ActivatedBy:         users[4],
 				DisplayTaskId:       utility.ToStringPtr(""),
+				DependsOn: []task.Dependency{{
+					TaskId: "someTask",
+					Status: evergreen.TaskSucceeded,
+				}},
 			},
 		}
 
 		distroQueueInfo1 := GetDistroQueueInfo("", tasks[0:3], evergreen.MaxDurationPerDistroHost, TaskPlannerOptions{})
 		distroQueueInfo2 := GetDistroQueueInfo("", tasks[3:], evergreen.MaxDurationPerDistroHost, TaskPlannerOptions{})
+		So(distroQueueInfo1.Length, ShouldEqual, 3)
+		So(distroQueueInfo1.LengthWithDependenciesMet, ShouldEqual, 3)
+		So(distroQueueInfo2.Length, ShouldEqual, 2)
+		So(distroQueueInfo2.LengthWithDependenciesMet, ShouldEqual, 1)
 
 		So(db.Clear(model.TaskQueuesCollection), ShouldBeNil)
 
