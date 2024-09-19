@@ -448,8 +448,11 @@ var validParamName = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
 // generates one.
 func getParamNameForVar(varsToParams []ParameterMapping, varName string) (string, error) {
 	for _, varToParam := range varsToParams {
-		if varToParam.Name == varName && varToParam.ParameterName != "" {
-			return varToParam.ParameterName, nil
+		if varToParam.Name == varName {
+			if varToParam.ParameterName != "" {
+				return varToParam.ParameterName, nil
+			}
+			break
 		}
 	}
 
