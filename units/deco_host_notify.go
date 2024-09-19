@@ -23,11 +23,8 @@ func init() {
 }
 
 type decoHostNotifyJob struct {
-	// TODO (DEVPROD-7739): remove Host field once commit has been deployed
-	// since it is not used anymore.
-	Host     *host.Host `bson:"host" json:"host" yaml:"host"`
-	HostID   string     `bson:"host_id" json:"host_id" yaml:"host_id"`
-	Message  string     `bson:"message" json:"message" yaml:"message"`
+	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
+	Message  string `bson:"message" json:"message" yaml:"message"`
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 
 	host *host.Host
@@ -61,7 +58,6 @@ func NewDecoHostNotifyJob(env evergreen.Environment, hostID, message string) amb
 func (j *decoHostNotifyJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	j.host = j.Host
 	if j.host == nil {
 		h, err := host.FindOneId(ctx, j.HostID)
 		if err != nil {
