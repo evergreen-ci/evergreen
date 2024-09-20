@@ -486,9 +486,24 @@ func TestHostTerminationJob(t *testing.T) {
 					},
 				},
 			}
+			nonTgTask := task.Task{
+				Id:        "task4",
+				Status:    evergreen.TaskSucceeded,
+				Activated: true,
+				BuildId:   buildId,
+				Version:   versionId,
+				Project:   "exists",
+				DependsOn: []task.Dependency{
+					{
+						TaskId: task2.Id,
+						Status: evergreen.TaskSucceeded,
+					},
+				},
+			}
 			require.NoError(t, task1.Insert())
 			require.NoError(t, task2.Insert())
 			require.NoError(t, task3.Insert())
+			require.NoError(t, nonTgTask.Insert())
 
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
 				TerminateIfBusy:   true,
@@ -508,10 +523,14 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, cloudHost)
 			assert.Equal(t, cloud.StatusTerminated, cloudHost.Status)
 
-			// Check if task1 has been reset
+			// Verify the task group has not been reset
 			resetTask, err := task.FindOneId("task2")
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.TaskSucceeded, resetTask.Status)
+
+			dbTask, err := task.FindOneId(nonTgTask.Id)
+			require.NoError(t, err)
+			assert.False(t, dbTask.UnattainableDependency)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
