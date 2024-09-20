@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -246,7 +247,7 @@ func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 
 	return []string{
 		"set +o xtrace",
-		fmt.Sprintf(`echo %s`, clone),
+		fmt.Sprintf(`echo %s`, strconv.Quote(clone)),
 		clone,
 		"set -o xtrace",
 		fmt.Sprintf("cd %s", opts.dir),
