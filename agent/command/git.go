@@ -158,6 +158,10 @@ func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td 
 	owner := conf.ProjectRef.Owner
 	repo := conf.ProjectRef.Repo
 	appToken, err := comm.CreateInstallationToken(ctx, td, owner, repo)
+	if err == nil {
+		// Redact the token from the logs.
+		conf.NewExpansions.Redact("EVERGREEN_GENERATED_GITHUB_TOKEN", appToken)
+	}
 	// TODO EVG-21022: Remove fallback once we delete GitHub tokens as expansions.
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message": "error creating GitHub app token, falling back to legacy clone methods",
