@@ -600,11 +600,8 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	taskLogDir := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
 	grip.Error(errors.Wrapf(os.RemoveAll(taskLogDir), "removing task log directory '%s'", taskLogDir))
 	tc.logger, err = a.makeLoggerProducer(ctx, tc, "")
-	if err != nil {
-		return errors.Wrap(err, "making the logger producer")
-	}
 
-	return nil
+	return errors.Wrap(err, "making the logger producer")
 }
 
 // runTask runs a task. It returns true if the agent should exit.
