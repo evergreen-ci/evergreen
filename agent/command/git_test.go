@@ -994,14 +994,16 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 
 	td := client.TaskData{ID: s.taskConfig1.Task.Id, Secret: s.taskConfig1.Task.Secret}
 
+	expansions := map[string]string{
+		evergreen.GlobalGitHubTokenExpansion: globalGitHubToken,
+	}
 	conf := &internal.TaskConfig{
 		ProjectRef: model.ProjectRef{
 			Owner: "valid-owner",
 			Repo:  "valid-repo",
 		},
-		Expansions: map[string]string{
-			evergreen.GlobalGitHubTokenExpansion: globalGitHubToken,
-		},
+		Expansions:    expansions,
+		NewExpansions: agentutil.NewDynamicExpansions(expansions),
 	}
 
 	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken, true)
