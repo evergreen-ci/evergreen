@@ -1850,7 +1850,7 @@ func TestFindAllUnmarkedDependenciesToBlock(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	deps, err := FindAllDependencyTasksToModify([]Task{*t1}, true, false)
+	deps, err := FindAllDependencyTasksToModify([]Task{*t1}, false)
 	assert.NoError(err)
 	require.Len(t, deps, 1)
 	assert.Equal("t2", deps[0].Id)
@@ -1889,7 +1889,7 @@ func TestFindAllUnattainableDependenciesToUnbock(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	deps, err := FindAllDependencyTasksToModify([]Task{*t1}, false, false)
+	deps, err := FindAllDependencyTasksToModify([]Task{*t1}, true)
 	assert.NoError(err)
 	require.Len(t, deps, 1)
 	assert.Equal("t2", deps[0].Id)
