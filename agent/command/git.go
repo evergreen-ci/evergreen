@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -245,10 +244,9 @@ func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
 
-	redactedClone := strings.Replace(clone, opts.token, "[redacted github token]", -1)
 	return []string{
 		"set +o xtrace",
-		fmt.Sprintf(`echo %s`, strconv.Quote(redactedClone)),
+		fmt.Sprintf(`echo %s`, clone),
 		clone,
 		"set -o xtrace",
 		fmt.Sprintf("cd %s", opts.dir),
