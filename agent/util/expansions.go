@@ -91,6 +91,15 @@ func (e *DynamicExpansions) PutAndRedact(key, value string) {
 	}
 }
 
+// Redact is used when the key and value shouldn't be an expansion,
+// but should be redacted like one.
+func (e *DynamicExpansions) Redact(key, value string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.redact = append(e.redact, RedactInfo{Key: key, Value: value})
+}
+
 // UpdateFromYamlAndRedact updates the expansions from the given yaml file
 // and then marks the expansions for redaction.
 func (e *DynamicExpansions) UpdateFromYamlAndRedact(filename string) ([]string, error) {
