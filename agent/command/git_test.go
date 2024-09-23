@@ -322,7 +322,7 @@ func (s *GitGetProjectSuite) TestGitFetchRetries() {
 }
 
 func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
-	conf := s.taskConfig1
+	conf := s.taskConfig5
 	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
 	s.Require().NoError(err)
 	conf.ProjectRef.Repo = "invalidRepo"
@@ -347,7 +347,7 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	redactedKeys := conf.NewExpansions.GetRedacted()
 	foundCloneTokenRedacted := false
 	for _, redactedKey := range redactedKeys {
-		if redactedKey.Key == "EVERGREEN_GENERATED_GITHUB_TOKEN" {
+		if redactedKey.Key == "github_token" {
 			if redactedKey.Value == token {
 				foundCloneTokenRedacted = true
 			}
@@ -359,19 +359,16 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	foundCloneCommand := false
 	foundCloneErr := false
 	for _, line := range s.comm.GetTaskLogs(conf.Task.Id) {
-		// The token should be exposed from the direct output, because the logger producer used
-		// in production includes a redacting sender middleware.
-		if strings.Contains(line.Data, fmt.Sprintf("https://%s:x-oauth-basic@github.com/evergreen-ci/invalidRepo.git", token)) {
+		if strings.Contains(line.Data, fmt.Sprintf("https://%s:x-oauth-basic@github.com/evergreen-ci/invalidRepo.git", token)) ||
+			strings.Contains(line.Data, token) {
 			foundCloneCommand = true
 		}
 		if strings.Contains(line.Data, "Authentication failed for") {
 			foundCloneErr = true
 		}
-		if strings.Contains(line.Data, token) {
-			s.FailNow("token was leaked")
-		}
+		fmt.Println(line.Data)
 	}
-	s.True(foundCloneCommand)
+	s.False(foundCloneCommand)
 	s.True(foundCloneErr)
 }
 
