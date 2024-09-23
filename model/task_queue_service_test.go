@@ -1189,6 +1189,71 @@ func (s *taskDAGDispatchServiceSuite) TestNextTaskForDefaultTaskSpec() {
 	// .....
 }
 
+func (s *taskDAGDispatchServiceSuite) TestIsRefreshFindNextTaskThreadSafe() {
+	s.Require().NoError(db.ClearCollections(task.Collection, distro.Collection, TaskQueuesCollection))
+	d := distro.Distro{
+		Id: "distro_1",
+		DispatcherSettings: distro.DispatcherSettings{
+			Version: evergreen.DispatcherVersionRevisedWithDependencies,
+		},
+	}
+	s.Require().NoError(d.Insert(s.ctx))
+
+	items := []TaskQueueItem{}
+	for i := 0; i < 50; i++ {
+		items = append(items, TaskQueueItem{
+			Id:            fmt.Sprintf("%d", i),
+			BuildVariant:  "variant_1",
+			Version:       "version_1",
+			Project:       "project_1",
+			GroupMaxHosts: 0,
+		})
+		t := task.Task{
+			Id:                fmt.Sprintf("%d", i),
+			BuildVariant:      "variant_1",
+			Version:           "version_1",
+			Project:           "project_1",
+			DistroId:          "distro_1",
+			TaskGroupMaxHosts: 0,
+		}
+		s.Require().NoError(t.Insert())
+	}
+
+	s.taskQueue.Queue = items
+	s.Require().NoError(s.taskQueue.Save())
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Nanosecond)
+	s.NoError(err)
+	service.lastUpdated = time.Now().Add(-1 * time.Second)
+	dispatcher := &taskDispatchService{
+		cachedDispatchers: map[string]CachedDispatcher{
+			"distro_1": service,
+		},
+	}
+	spec := TaskSpec{
+		BuildVariant: "variant_1",
+		Version:      "version_1",
+		Project:      "project_1",
+	}
+
+	var wg sync.WaitGroup
+	wait := make(chan struct{})
+	numGoroutines := 50
+	wg.Add(numGoroutines)
+	for i := 0; i < numGoroutines; i++ {
+		go func() {
+			defer wg.Done()
+			<-wait
+			s.NotPanics(func() {
+				item, err := dispatcher.RefreshFindNextTask(s.ctx, "distro_1", spec, utility.ZeroTime)
+				s.Require().NoError(err)
+				s.Require().NotNil(item)
+			})
+		}()
+	}
+	close(wait)
+	wg.Wait()
+}
+
 func (s *taskDAGDispatchServiceSuite) TestFindNextTaskThreadSafe() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
 	items := []TaskQueueItem{}

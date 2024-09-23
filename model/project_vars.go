@@ -2,6 +2,8 @@ package model
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -435,4 +437,48 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 			}
 		}
 	}
+}
+
+// validParamName is a regexp representing the valid characters for a parameter
+// name. Valid characters are alphanumerics, underscores, dashes, and periods.
+var validParamName = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
+
+// getParamNameForVar returns the corresponding parameter name for a project
+// variable. If the project variable does not yet have a parameter name, it
+// generates one.
+func getParamNameForVar(varsToParams []ParameterMapping, varName string) (string, error) {
+	for _, varToParam := range varsToParams {
+		if varToParam.Name == varName {
+			if varToParam.ParameterName != "" {
+				return varToParam.ParameterName, nil
+			}
+			break
+		}
+	}
+
+	paramName := varName
+	if !validParamName.MatchString(paramName) {
+		return "", errors.Errorf("project variable '%s' contains invalid characters - can only contain alphanumerics, underscores, periods, and dashes", varName)
+	}
+
+	if strings.HasPrefix(varName, "aws") || strings.HasPrefix(paramName, "ssm") {
+		// Parameters cannot start with "aws" or "ssm", adding a prefix
+		// (arbitrarily chosen as an underscore) fixes the issue.
+		paramName = fmt.Sprintf("_%s", paramName)
+	}
+
+	for _, varToParam := range varsToParams {
+		if varToParam.Name == varName {
+			continue
+		}
+		if varToParam.ParameterName == paramName {
+			// Protect against an edge case where a different project var
+			// already exists that has the exact same candidate parameter name.
+			// Project vars must map to unique parameter names.
+			return "", errors.Errorf("parameter name '%s' for project variable '%s' conflicts with project variable '%s'", paramName, varName, paramName)
+		}
+
+	}
+
+	return paramName, nil
 }
