@@ -366,7 +366,9 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 		if strings.Contains(line.Data, "Authentication failed for") {
 			foundCloneErr = true
 		}
-		fmt.Println(line.Data)
+		if strings.Contains(line.Data, token) {
+			s.FailNow("token was leaked")
+		}
 	}
 	s.False(foundCloneCommand)
 	s.True(foundCloneErr)
