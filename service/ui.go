@@ -24,6 +24,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // UIServer provides a web interface for Evergreen.
@@ -105,6 +107,14 @@ func NewUIServer(env evergreen.Environment, queue amboy.Queue, home string, fo T
 			CookieTTL:      365 * 24 * time.Hour,
 			CookiePath:     "/",
 			CookieDomain:   settings.Ui.LoginDomain,
+			OIDC: &gimlet.OIDCConfig{
+				KeysetURL:  settings.AuthConfig.Kanopy.KeysetURL,
+				Issuer:     settings.AuthConfig.Kanopy.Issuer,
+				HeaderName: settings.AuthConfig.Kanopy.HeaderName,
+				DisplayNameFromID: func(id string) string {
+					return cases.Title(language.English).String(strings.Join(strings.Split(id, "."), " "))
+				},
+			},
 		},
 		hostCache: make(map[string]hostCacheItem),
 	}

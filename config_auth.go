@@ -23,6 +23,7 @@ var (
 	AuthGithubKey                  = bsonutil.MustHaveTag(AuthConfig{}, "Github")
 	AuthNaiveKey                   = bsonutil.MustHaveTag(AuthConfig{}, "Naive")
 	AuthMultiKey                   = bsonutil.MustHaveTag(AuthConfig{}, "Multi")
+	AuthKanopyKey                  = bsonutil.MustHaveTag(AuthConfig{}, "Kanopy")
 	authPreferredTypeKey           = bsonutil.MustHaveTag(AuthConfig{}, "PreferredType")
 	authBackgroundReauthMinutesKey = bsonutil.MustHaveTag(AuthConfig{}, "BackgroundReauthMinutes")
 	AuthAllowServiceUsersKey       = bsonutil.MustHaveTag(AuthConfig{}, "AllowServiceUsers")
@@ -67,12 +68,19 @@ func (c *MultiAuthConfig) IsZero() bool {
 	return len(c.ReadWrite) == 0 && len(c.ReadOnly) == 0
 }
 
+type KanopyAuthConfig struct {
+	HeaderName string
+	Issuer     string
+	KeysetURL  string
+}
+
 // AuthConfig contains the settings for the various auth managers.
 type AuthConfig struct {
 	Okta                    *OktaConfig       `bson:"okta,omitempty" json:"okta" yaml:"okta"`
 	Naive                   *NaiveAuthConfig  `bson:"naive,omitempty" json:"naive" yaml:"naive"`
 	Github                  *GithubAuthConfig `bson:"github,omitempty" json:"github" yaml:"github"`
 	Multi                   *MultiAuthConfig  `bson:"multi" json:"multi" yaml:"multi"`
+	Kanopy                  *KanopyAuthConfig `bson:"kanopy" json:"kanopy" yaml:"kanopy"`
 	AllowServiceUsers       bool              `bson:"allow_service_users" json:"allow_service_users" yaml:"allow_service_users"`
 	PreferredType           string            `bson:"preferred_type,omitempty" json:"preferred_type" yaml:"preferred_type"`
 	BackgroundReauthMinutes int               `bson:"background_reauth_minutes" json:"background_reauth_minutes" yaml:"background_reauth_minutes"`
@@ -121,9 +129,11 @@ func (c *AuthConfig) ValidateAndDefault() error {
 		AuthOktaKey,
 		AuthNaiveKey,
 		AuthGithubKey,
-		AuthMultiKey}, c.PreferredType), "invalid auth type '%s'", c.PreferredType)
+		AuthMultiKey,
+		AuthKanopyKey,
+	}, c.PreferredType), "invalid auth type '%s'", c.PreferredType)
 
-	if c.Naive == nil && c.Github == nil && c.Okta == nil && c.Multi == nil {
+	if c.Naive == nil && c.Github == nil && c.Okta == nil && c.Multi == nil && c.Kanopy != nil {
 		catcher.Add(errors.New("must specify one form of authentication"))
 	}
 

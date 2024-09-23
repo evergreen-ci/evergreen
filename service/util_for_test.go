@@ -49,6 +49,6 @@ func makeAuthTestUIRouter(ctx context.Context, env evergreen.Environment, umconf
 		DisableCache: true,
 	})
 	app := GetRESTv1App(uis)
-	app.AddMiddleware(gimlet.UserMiddleware(env.UserManager(), umconf))
+	app.AddMiddleware(gimlet.UserMiddleware(ctx, env.UserManager(), umconf))
 	return app.Handler()
 }
