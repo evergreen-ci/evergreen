@@ -868,7 +868,6 @@ func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskConte
 
 func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 	defer a.removeTaskDirectory(tc)
-	defer a.clearGitConfig(tc)
 	if tc.taskConfig == nil {
 		return
 	}
@@ -885,6 +884,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 			grip.Error(tc.logger.Close())
 		}
 	}()
+	defer a.clearGitConfig(tc)
 
 	teardownGroup, err := tc.getTeardownGroup()
 	if err != nil {

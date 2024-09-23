@@ -2731,30 +2731,25 @@ tasks:
 }
 
 func (s *AgentSuite) TestAttemptsToClearGitConfig() {
-	projYml := `
-tasks:
-- name: this_is_a_task_name
-  commands:
-  - command: shell.exec
-    params:
-      script: |
-        echo hello
+	s.setupRunTask(defaultProjYml)
+	// create a fake git config file
+	gitConfigPath := filepath.Join(s.a.opts.HomeDirectory, ".gitconfig")
+	gitConfigContents := `
+[user]
+  name = foo bar
+  email = foo@bar.com
 `
-	s.setupRunTask(projYml)
+	err := os.WriteFile(gitConfigPath, []byte(gitConfigContents), 0600)
+	s.Require().NoError(err)
+	s.Require().FileExists(gitConfigPath)
 
-	nextTask := &apimodels.NextTaskResponse{
-		TaskId:     s.tc.task.ID,
-		TaskSecret: s.tc.task.Secret,
-	}
-	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
-
+	s.a.runTeardownGroupCommands(s.ctx, s.tc)
 	s.NoError(err)
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
-		"Clearing git config because post-task or teardown-task commands are finished",
-		"Clearing git config because task is finished",
-		"Global git config file does not exist.",
+		"Clearing git config.",
+		"Cleared git config.",
 	}, []string{
 		panicLog,
 		"Running task commands failed",
