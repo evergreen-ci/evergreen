@@ -2,6 +2,8 @@ package model
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -37,18 +39,38 @@ const (
 // yml files.
 type ProjectVars struct {
 
-	//Should match the identifier of the project it refers to
+	// Id is the ID of the project.
 	Id string `bson:"_id" json:"_id"`
 
-	//The actual mapping of variables for this project
+	// Vars is the actual mapping of variable names to values for this project.
+	// TODO (DEVPROD-9440): after all project vars are migrated to Parameter
+	// Store, remove the BSON tags on this field to ensure project var values
+	// are not put in the DB anymore.
 	Vars map[string]string `bson:"vars" json:"vars"`
 
-	//PrivateVars keeps track of which variables are private and should therefore not
-	//be returned to the UI server.
+	// Parameters contains the mappings between user-defined project variable
+	// names and the parameter name where the variable's value can be found in
+	// Parameter Store.
+	Parameters []ParameterMapping `bson:"parameters,omitempty" json:"parameters,omitempty"`
+
+	// PrivateVars keeps track of which variables are private and should therefore not
+	// be returned to the UI server.
 	PrivateVars map[string]bool `bson:"private_vars" json:"private_vars"`
 
-	// AdminOnlyVars keeps track of variables that are only accessible by project admins
+	// AdminOnlyVars keeps track of variables that are only accessible by project admins.
 	AdminOnlyVars map[string]bool `bson:"admin_only_vars" json:"admin_only_vars"`
+}
+
+// ParameterMapping represents a mapping between a DB field and the location of
+// its actual value in Parameter Store. This is used to keep track of where
+// sensitive secrets can be found in Parameter Store.
+type ParameterMapping struct {
+	// Name is the name of the value being stored (e.g. a project variable
+	// name).
+	Name string `bson:"name" json:"name"`
+	// ParameterName is the location where the parameter is kept in Parameter
+	// Store.
+	ParameterName string `bson:"parameter_name" json:"parameter_name"`
 }
 
 type AWSSSHKey struct {
@@ -415,4 +437,48 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 			}
 		}
 	}
+}
+
+// validParamName is a regexp representing the valid characters for a parameter
+// name. Valid characters are alphanumerics, underscores, dashes, and periods.
+var validParamName = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
+
+// getParamNameForVar returns the corresponding parameter name for a project
+// variable. If the project variable does not yet have a parameter name, it
+// generates one.
+func getParamNameForVar(varsToParams []ParameterMapping, varName string) (string, error) {
+	for _, varToParam := range varsToParams {
+		if varToParam.Name == varName {
+			if varToParam.ParameterName != "" {
+				return varToParam.ParameterName, nil
+			}
+			break
+		}
+	}
+
+	paramName := varName
+	if !validParamName.MatchString(paramName) {
+		return "", errors.Errorf("project variable '%s' contains invalid characters - can only contain alphanumerics, underscores, periods, and dashes", varName)
+	}
+
+	if strings.HasPrefix(varName, "aws") || strings.HasPrefix(paramName, "ssm") {
+		// Parameters cannot start with "aws" or "ssm", adding a prefix
+		// (arbitrarily chosen as an underscore) fixes the issue.
+		paramName = fmt.Sprintf("_%s", paramName)
+	}
+
+	for _, varToParam := range varsToParams {
+		if varToParam.Name == varName {
+			continue
+		}
+		if varToParam.ParameterName == paramName {
+			// Protect against an edge case where a different project var
+			// already exists that has the exact same candidate parameter name.
+			// Project vars must map to unique parameter names.
+			return "", errors.Errorf("parameter name '%s' for project variable '%s' conflicts with project variable '%s'", paramName, varName, paramName)
+		}
+
+	}
+
+	return paramName, nil
 }

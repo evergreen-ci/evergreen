@@ -3,12 +3,13 @@ package route
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetDegradedMode(t *testing.T) {
@@ -19,10 +20,25 @@ func TestSetDegradedMode(t *testing.T) {
 	assert.IsType(&degradedModeHandler{}, routeManager)
 
 	ctx := context.Background()
+	var settings evergreen.Settings
+	require.NoError(t, settings.Get(ctx))
+	originalFlags, err := evergreen.GetServiceFlags(ctx)
+	require.NoError(t, err)
+	// Since the tests depend on modifying the global environment, reset it to
+	// its initial state afterwards.
+	defer func() {
+		require.NoError(t, settings.Set(ctx))
+		require.NoError(t, originalFlags.Set(ctx))
+	}()
 
-	settings := testutil.MockConfig()
-	assert.NoError(settings.Set(ctx))
-	assert.True(settings.ServiceFlags.CPUDegradedModeDisabled)
+	settings.TaskLimits.MaxParserProjectSize = 18
+	settings.TaskLimits.MaxDegradedModeParserProjectSize = 16
+	settings.Banner = ""
+	originalFlags.CPUDegradedModeDisabled = true
+	require.NoError(t, settings.Set(ctx))
+	require.NoError(t, originalFlags.Set(ctx))
+
+	assert.True(originalFlags.CPUDegradedModeDisabled)
 	json := []byte(`{
     "receiver": "webhook-devprod-evergreen",
     "status": "firing"
@@ -33,12 +49,17 @@ func TestSetDegradedMode(t *testing.T) {
 	assert.NoError(err)
 	resp := routeManager.Run(ctx)
 	assert.NoError(err)
-	assert.NotNil(resp)
+	require.NotNil(t, resp)
 	assert.Equal(http.StatusOK, resp.Status())
 
-	settings, err = evergreen.GetConfig(ctx)
+	dbSettings, err := evergreen.GetConfig(ctx)
+	require.NotNil(t, dbSettings)
 	assert.NoError(err)
-	assert.False(settings.ServiceFlags.CPUDegradedModeDisabled)
+	assert.False(dbSettings.ServiceFlags.CPUDegradedModeDisabled)
+	assert.Equal(evergreen.Information, dbSettings.BannerTheme)
+	msg = fmt.Sprintf("Evergreen is under high load, max config YAML size has been reduced from %dMB to %dMB. "+
+		"Existing tasks with large (>16MB) config YAMLs may also experience slower scheduling.", dbSettings.TaskLimits.MaxParserProjectSize, dbSettings.TaskLimits.MaxDegradedModeParserProjectSize)
+	assert.Equal(msg, dbSettings.Banner)
 
 	json = []byte(`{
     "receiver": "webhook-devprod-evergreen",

@@ -6,14 +6,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/pkg/errors"
 )
 
 // AddPRPatchIntent inserts the intent and adds it to the queue if PR testing is enabled for the branch.
@@ -55,19 +53,6 @@ func AddPRPatchIntent(intent patch.Intent, queue amboy.Queue) error {
 }
 
 func AddGithubMergeIntent(intent patch.Intent, queue amboy.Queue) error {
-	patchDoc := intent.NewPatch()
-	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(patchDoc.GithubMergeData.Org,
-		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "finding project ref for GitHub merge group").Error(),
-		}
-	}
-	if projectRef == nil {
-		return nil
-	}
-
 	if err := intent.Insert(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "couldn't insert GitHub merge group intent",

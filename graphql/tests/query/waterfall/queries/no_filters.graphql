@@ -1,5 +1,7 @@
 {
   waterfall(options: { projectIdentifier: "spruce-identifier" }) {
+    nextPageOrder
+    prevPageOrder
     buildVariants {
       builds {
         activated
@@ -15,10 +17,18 @@
       id
     }
     versions {
-      activated
-      author
-      id
-      revision
+      version {
+        activated
+        author
+        id
+        order
+      }
+      inactiveVersions {
+        activated
+        author
+        id
+        order
+      }
     }
   }
 }
