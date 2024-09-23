@@ -634,7 +634,6 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	}
 
 	defer a.killProcs(ctx, tc, false, "task is finished")
-	defer a.clearGitConfig(tc, false, "task is finished")
 
 	grip.Info(message.Fields{
 		"message": "running task",
@@ -851,7 +850,6 @@ func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskConte
 
 	a.killProcs(ctx, tc, false, "post-task or teardown-task commands are starting")
 	defer a.killProcs(ctx, tc, false, "post-task or teardown-task commands are finished")
-	defer a.clearGitConfig(tc, false, "post-task or teardown-task commands are finished")
 
 	post, err := tc.getPost()
 	if err != nil {
@@ -870,6 +868,7 @@ func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskConte
 
 func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 	defer a.removeTaskDirectory(tc)
+	defer a.clearGitConfig(tc)
 	if tc.taskConfig == nil {
 		return
 	}
@@ -877,7 +876,6 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 	// empty working directory to killProcs, and is okay because this
 	// killProcs is only for the processes run in runTeardownGroupCommands.
 	defer a.killProcs(ctx, tc, true, "teardown group commands are finished")
-	defer a.clearGitConfig(tc, true, "teardown group commands are finished")
 
 	defer func() {
 		if tc.logger != nil {
@@ -1241,17 +1239,13 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 	}
 }
 
-func (a *Agent) clearGitConfig(tc *taskContext, ignoreTaskGroupCheck bool, reason string) {
-	if !ignoreTaskGroupCheck && tc.taskConfig != nil && tc.taskConfig.TaskGroup != nil {
-		return
-	}
-
+func (a *Agent) clearGitConfig(tc *taskContext) {
 	logger := grip.GetDefaultJournaler()
 	if tc.logger != nil && !tc.logger.Closed() {
 		logger = tc.logger.Execution()
 	}
 
-	logger.Infof("Clearing git config because %s", reason)
+	logger.Infof("Clearing git config.")
 
 	globalGitConfigPath := filepath.Join(a.opts.HomeDirectory, ".gitconfig")
 	if _, err := os.Stat(globalGitConfigPath); os.IsNotExist(err) {
