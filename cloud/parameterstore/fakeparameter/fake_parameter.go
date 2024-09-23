@@ -7,6 +7,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
