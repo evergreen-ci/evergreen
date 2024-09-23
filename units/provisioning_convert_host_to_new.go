@@ -50,7 +50,7 @@ func makeConvertHostToNewProvisioningJob() *convertHostToNewProvisioningJob {
 
 // NewConvertHostToNewProvisioningJob converts a host from a legacy provisioned
 // host to a non-legacy provisioned host.
-func NewConvertHostToNewProvisioningJob(env evergreen.Environment, h host.Host, id string, attempt int) amboy.Job {
+func NewConvertHostToNewProvisioningJob(env evergreen.Environment, h host.Host, id string) amboy.Job {
 	j := makeConvertHostToNewProvisioningJob()
 	j.env = env
 	j.host = &h
@@ -86,7 +86,7 @@ func (j *convertHostToNewProvisioningJob) Run(ctx context.Context) {
 			// Static hosts should be quarantined if they've run out of attempts
 			// to reprovision.
 			if j.IsLastAttempt() && j.host.Provider == evergreen.ProviderNameStatic {
-				if err := j.host.SetStatusAtomically(ctx, evergreen.HostQuarantined, evergreen.User, "static host has run out of attempts to reprovision"); err != nil {
+				if err := DisableAndNotifyPoisonedHost(ctx, j.env, j.host, false, "static host has run out of attempts to reprovision"); err != nil {
 					j.AddError(errors.Wrap(err, "quarantining static host that could not reprovision"))
 				}
 			}

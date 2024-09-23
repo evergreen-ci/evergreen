@@ -149,8 +149,9 @@ func TestRestartJasperJob(t *testing.T) {
 			mngr.ManagerID = "mock-manager-id"
 
 			h := &host.Host{
-				Id:   "host_id",
-				Host: "localhost",
+				Id:       "host_id",
+				Host:     "localhost",
+				Provider: evergreen.ProviderNameStatic,
 				Distro: distro.Distro{
 					BootstrapSettings: distro.BootstrapSettings{
 						Method:                distro.BootstrapMethodUserData,
@@ -158,7 +159,7 @@ func TestRestartJasperJob(t *testing.T) {
 						JasperCredentialsPath: "/jasper_credentials_path",
 						JasperBinaryDir:       "/jasper_binary_dir",
 					},
-					Arch: "linux_amd64",
+					Arch: evergreen.ArchLinuxAmd64,
 				},
 				Status:               evergreen.HostProvisioning,
 				NeedsReprovision:     host.ReprovisionRestartJasper,

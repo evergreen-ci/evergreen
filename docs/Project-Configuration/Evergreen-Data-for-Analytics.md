@@ -35,6 +35,7 @@ Daily aggregated statistics for task executions run in Evergreen. Tasks are aggr
 | num\_test\_failed            | BIGINT  | Number of task executions that failed due to a test failure.
 | num\_system\_failed          | BIGINT  | Number of task executions that failed due to a system failure.
 | num\_setup\_failed           | BIGINT  | Number of task executions that failed due to a setup failure.
+| num\_status\_swaps           | BIGINT  | Number of task status changes between subsequent runs.
 | total\_success\_duration\_ns | BIGINT  | Total duration, in nanoseconds, of successful task executions.
 
 ### Evergreen Test Statistics
@@ -55,6 +56,7 @@ Daily aggregated statistics for test executions run in Evergreen. Test stats are
 | request\_type             | VARCHAR | Name of the trigger that requested the task execution. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `github_merge_request` (GitHub merge queue), `merge_test` (Evergreen commit queue, deprecated), or `ad_hoc` (periodic build).
 | num\_pass                 | BIGINT  | Number of passing tests.
 | num\_fail                 | BIGINT  | Number of failing tests.
+| num\_status\_swaps        | BIGINT  | Number of test status changes between subsequent runs. Only available for tests that ran after 2024-09-15.
 | total\_pass\_duration\_ns | DOUBLE  | Total duration, in nanoseconds, of passing tests.
 | task\_create\_iso         | VARCHAR | Date, in ISO format `YYYY-MM-DD`, on which the tests ran.
 

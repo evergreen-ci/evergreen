@@ -764,8 +764,9 @@ Every task has some expansions available by default:
     to
 -   `${version_id}` is the id of the task's version
 -   `${workdir}` is the task's working directory
--   `${revision}` is the commit hash of the base commit of a patch or of
-    the commit for a mainline build
+-   `${revision}` is the commit hash of the base commit that a patch's changes
+    are being applied to, or of the commit for a mainline build. For PR patches,
+    the base commit is the PR base chosen by GitHub.
 -   `${github_commit}` is the commit hash of the commit that triggered
     the patch run
 -   `${project}` is the project identifier the task belongs to
@@ -984,7 +985,7 @@ tasks.
 
 To create a display task, list its name and its execution tasks in a
 `display_tasks` array in the variant definition. The execution tasks
-must be present in the `tasks` array.
+must be present in the `tasks` array in the form of a tag or task name.
 
 ``` yaml
 - name: lint-variant
@@ -993,10 +994,12 @@ must be present in the `tasks` array.
     - archlinux
   tasks:
     - name: ".lint"
+    - name: "lint-task"
   display_tasks:
     - name: lint
       execution_tasks:
       - ".lint"
+      - "lint-task
 ```
 
 ### Stepback

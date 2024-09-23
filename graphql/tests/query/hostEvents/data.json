@@ -1,551 +1,520 @@
 {
-    "hosts" : [
-        {
-            "_id": "i-0f81a2d39744003dd",
-            "tag": "evg-ubuntu1604-large-20200720180108-7236635000257959768"
-        }
-    ],
-    "events": [
-        {
-            "_id": "525e7bb857e85a21ceb53cb0",
-            "r_type": "TASK",
-            "processed_at": {
-                "$date": "2020-03-03T15:46:29.961Z"
-            },
-            "ts": {
-                "$date": "2020-03-03T15:46:00.709Z"
-            },
-            "r_id": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
-            "e_type": "TASK_JIRA_ALERT_CREATED",
-            "data": {
-                "execution": 0,
-                "s": "success",
-                "jira": "an_issue"
-            }
+  "hosts": [
+    {
+      "_id": "i-0f81a2d39744003dd",
+      "tag": "evg-ubuntu1604-large-20200720180108-7236635000257959768"
+    }
+  ],
+  "events": [
+    {
+      "_id": "525e7bb857e85a21ceb53cb0",
+      "r_type": "TASK",
+      "processed_at": {
+        "$date": "2020-03-03T15:46:29.961Z"
+      },
+      "ts": {
+        "$date": "2020-03-03T15:46:00.709Z"
+      },
+      "r_id": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "e_type": "TASK_JIRA_ALERT_CREATED",
+      "data": {
+        "execution": 0,
+        "s": "success",
+        "jira": "an_issue"
+      }
+    },
+    {
+      "_id": "5e5e7bb857e85a21ceb53cb0",
+      "r_type": "TASK",
+      "processed_at": {
+        "$date": "2020-03-03T15:46:29.961Z"
+      },
+      "ts": {
+        "$date": "2020-03-03T15:46:00.709Z"
+      },
+      "r_id": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "e_type": "TASK_FINISHED",
+      "data": {
+        "execution": 0,
+        "s": "success"
+      }
+    },
+    {
+      "_id": "5e5e7b972fbabe2b8b27810b",
+      "r_type": "TASK",
+      "processed_at": {
+        "$date": "2015-10-21T23:29:01Z"
+      },
+      "ts": {
+        "$date": "2020-03-03T15:45:27.830Z"
+      },
+      "r_id": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "e_type": "TASK_STARTED",
+      "data": {
+        "execution": 50,
+        "h_id": "hostid",
+        "jira": "an_issue",
+        "pri": 55,
+        "s": "success",
+        "ts": {
+          "$date": "2020-03-03T15:45:27.830Z"
         },
-        {
-            "_id": "5e5e7bb857e85a21ceb53cb0",
-            "r_type": "TASK",
-            "processed_at": {
-                "$date": "2020-03-03T15:46:29.961Z"
-            },
-            "ts": {
-                "$date": "2020-03-03T15:46:00.709Z"
-            },
-            "r_id": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
-            "e_type": "TASK_FINISHED",
-            "data": {
-                "execution": 0,
-                "s": "success"
-            }
-        },
-        {
-            "_id": "5e5e7b972fbabe2b8b27810b",
-            "r_type": "TASK",
-            "processed_at": {
-                "$date": "2015-10-21T23:29:01Z"
-            },
-            "ts": {
-                "$date": "2020-03-03T15:45:27.830Z"
-            },
-            "r_id": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
-            "e_type": "TASK_STARTED",
-            "data": {
-                "execution": 50,
-                "h_id": "hostid",
-                "jira": "an_issue",
-                "pri": 55,
-                "s": "success",
-                "ts": {
-                    "$date": "2020-03-03T15:45:27.830Z"
-                },
-                "u_id": "super user"
-            }
-        },
-        {
-            "_id": "5e5e7b97e3c33148df4ea4e5",
-            "r_type": "TASK",
-            "processed_at": {
-                "$date": "2015-10-21T23:29:01Z"
-            },
-            "ts": {
-                "$date": "2020-03-03T15:45:27.543Z"
-            },
-            "r_id": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
-            "e_type": "TASK_DISPATCHED",
-            "data": {
-                "execution": 0,
-                "h_id": "i-08f7b38b217d21c13"
-            }
-        },
-        {
-            "_id": "5412f498b14ed69l84645p07",
-            "ts": {
-                "$date": "2014-09-12T13:25:44.451Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_PROVISIONED",
-            "data": {},
-            "processed_at": {
-                "$date": "2015-10-21T23:29:00Z"
-            },
-            "r_type": "HOST"
-        },
-        {
-            "_id": "8912kcddj14td81d8454c8dn",
-            "ts": {
-                "$date": "2014-09-12T14:02:05.272Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_RUNNING_TASK_SET",
-            "data": {
-                "t_id": "evergreen_ubuntu1604_test_agent_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-            },
-            "processed_at": {
-                "$date": "2015-10-21T23:29:00Z"
-            },
-            "r_type": "HOST"
-        },
-        {
-            "_id": "58aded494a1426f25c051955",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-10-22T13:29:00Z"
-            },
-            "ts": {
-                "$date": "2017-03-12T19:58:17.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_STATUS_CHANGED",
-            "data": {
-                "o_s": "running",
-                "n_s": "unreachable",
-                "log": "some text here"
-            }
-        },
-        {
-            "_id": "58aded494a1426f35c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-01-30T03:35:00Z"
-            },
-            "ts": {
-                "$date": "2017-04-22T19:38:17.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_PROVISION_FAILED",
-            "data": {
-                "log": "Retrieving http://dl.fedoraproject.org/pub/epel/5/i386/epel-release-5-4.noarch.rpm\nPreparing packages for installation...\nepel-release-5-4\nLoaded plugins: amazon-id, fastestmirror, rhui-lb, security\nDetermining fastest mirrors\n * epel: archive.linux.duke.edu\n * rhui-us-east-1-client-config-server-5: rhui2-cds01.us-east-1.aws.ce.redhat.com\n * rhui-us-east-1-rhel-server: rhui2-cds01.us-east-1.aws.ce.redhat.com\nExcluding Packages from Red Hat Enterprise Linux Server 5 (RPMs)\nFinished\nSetting up Install Process\nNo package libgsasl available.\nNo package git available.\nNo package python26-devel available.\nNo package python26-distribute available.\nResolving Dependencies\n--> Running transaction check\n---> Package boost.x86_64 0:1.33.1-16.el5_9 set to be updated\n---> Package boost-devel.x86_64 0:1.33.1-16.el5_9 set to be updated\n---> Package cyrus-sasl.i386 0:2.1.22-7.el5_8.1 set to be updated\n--> Processing Dependency: libresolv.so.2 for package: cyrus-sasl\n--> Processing Dependency: libpam.so.0(LIBPAM_1.0) for package: cyrus-sasl\n--> Processing Dependency: libpam.so.0 for package: cyrus-sasl\n--> Processing Dependency: libldap-2.3.so.0 for package: cyrus-sasl\n--> Processing Dependency: liblber-2.3.so.0 for package: cyrus-sasl\n--> Processing Dependency: libkrb5support.so.0 for package: cyrus-sasl\n--> Processing Dependency: libkrb5.so.3(krb5_3_MIT) for package: cyrus-sasl\n--> Processing Dependency: libkrb5.so.3 for package: cyrus-sasl\n--> Processing Dependency: libk5crypto.so.3 for package: cyrus-sasl\n--> Processing Dependency: libgssapi_krb5.so.2 for package: cyrus-sasl\n--> Processing Dependency: libgdbm.so.2 for package: cyrus-sasl\n--> Processing Dependency: libcrypto.so.6 for package: cyrus-sasl\n--> Processing Dependency: libcrypt.so.1(GLIBC_2.0) for package: cyrus-sasl\n--> Processing Dependency: libcrypt.so.1 for package: cyrus-sasl\n--> Processing Dependency: libcom_err.so.2 for package: cyrus-sasl\n--> Processing Dependency: libc.so.6(GLIBC_2.4) for package: cyrus-sasl\n--> Processing Dependency: libc.so.6(GLIBC_2.3.4) for package: cyrus-sasl\n--> Processing Dependency: libc.so.6(GLIBC_2.3) for package: cyrus-sasl\n--> Processing Dependency: libc.so.6(GLIBC_2.2) for package: cyrus-sasl\n--> Processing Dependency: libc.so.6(GLIBC_2.1.3) for package: cyrus-sasl\n--> Processing Dependency: libc.so.6(GLIBC_2.1) for package: cyrus-sasl\n--> Processing Dependency: libc.so.6(GLIBC_2.0) for package: cyrus-sasl\n--> Processing Dependency: libc.so.6 for package: cyrus-sasl\n---> Package cyrus-sasl.x86_64 0:2.1.22-7.el5_8.1 set to be updated\n---> Package cyrus-sasl-devel.i386 0:2.1.22-7.el5_8.1 set to be updated\n---> Package cyrus-sasl-devel.x86_64 0:2.1.22-7.el5_8.1 set to be updated\n---> Package cyrus-sasl-gssapi.i386 0:2.1.22-7.el5_8.1 set to be updated\n---> Package cyrus-sasl-gssapi.x86_64 0:2.1.22-7.el5_8.1 set to be updated\n--> Processing Dependency: cyrus-sasl-lib = 2.1.22-5.el5_4.3 for package: cyrus-sasl-plain\n---> Package cyrus-sasl-lib.i386 0:2.1.22-7.el5_8.1 set to be updated\n---> Package cyrus-sasl-lib.x86_64 0:2.1.22-7.el5_8.1 set to be updated\n---> Package cyrus-sasl-md5.i386 0:2.1.22-7.el5_8.1 set to be updated\n---> Package cyrus-sasl-md5.x86_64 0:2.1.22-7.el5_8.1 set to be updated\n---> Package e4fsprogs.x86_64 0:1.41.12-4.el5_10 set to be updated\n---> Package gcc-c++.x86_64 0:4.1.2-54.el5 set to be updated\n--> Processing Dependency: libstdc++-devel = 4.1.2-54.el5 for package: gcc-c++\n--> Processing Dependency: libstdc++ = 4.1.2-54.el5 for package: gcc-c++\n--> Processing Dependency: gcc = 4.1.2-54.el5 for package: gcc-c++\n---> Package mdadm.x86_64 0:2.6.9-5.el5 set to be updated\n---> Package net-snmp.x86_64 1:5.3.2.2-22.el5_10.1 set to be updated\n---> Package net-snmp-devel.i386 1:5.3.2.2-22.el5_10.1 set to be updated\n--> Processing Dependency: rpm-devel for package: net-snmp-devel\n--> Processing Dependency: lm_sensors-devel for package: net-snmp-devel\n--> Processing Dependency: elfutils-libelf-devel for package: net-snmp-devel\n--> Processing Dependency: elf"
-            }
-        },
-        {
-            "_id": "58aded494a1426f45c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-02-22T03:45:00Z"
-            },
-            "ts": {
-                "$date": "2017-05-12T19:45:17.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_TEARDOWN",
-            "data": {
-                "log": "teardown.sh: line 5: ./terraform: No such file or directory\nteardown.sh: line 10: ./terraform: No such file or directory\n",
-                "duration": 1183926434
-            }
-        },
-        {
-            "_id": "58aded494a1406f55c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-03-12T13:55:00Z"
-            },
-            "ts": {
-                "$date": "2017-06-25T19:54:07.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_DNS_NAME_SET",
-            "data": {
-                "hn": "ec2-12-12-12-122.compute-1.amazonaws.com"
-            }
-        },
-        {
-            "_id": "58aded494a1416f65c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-04-15T23:25:00Z"
-            },
-            "ts": {
-                "$date": "2017-02-16T19:13:08.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_CREATED",
-            "data": {
-                "usr": ""
-            }
-        },
-        {
-            "_id": "58aded494a1226f75c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-05-22T23:26:00Z"
-            },
-            "ts": {
-                "$date": "2017-01-26T19:22:06.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_STARTED",
-            "data": {
-                "prov_method": "",
-                "usr": "",
-                "successful": true
-            }
-        },
-        {
-            "_id": "58aded494a1326f85c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-06-16T12:45:00Z"
-            },
-            "ts": {
-                "$date": "2017-09-30T19:11:05.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_MODIFIED",
-            "data": {}
-        },
-        {
-            "_id": "58aded494a1426f95c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-07-25T23:22:00Z"
-            },
-            "ts": {
-                "$date": "2017-08-25T19:46:04.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_AGENT_DEPLOYED",
-            "data": {
-                "a_rev": "1fa212ac4acea6ce2a0123a123456c06e8cf72ea"
-            }
-        },
-        {
-            "_id": "58aded494a1426f16c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-09-30T03:16:00Z"
-            },
-            "ts": {
-                "$date": "2017-04-15T19:35:03.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_AGENT_DEPLOY_FAILED",
-            "data": {
-                "log": "error running SSH command: error waiting on process 'asdfghjkl1234567890klfddsa': operation canceled",
-                "prov_method": "",
-                "usr": ""
-            }
-        },
-        {
-            "_id": "58aded494a1426f14c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-10-27T04:18:00Z"
-            },
-            "ts": {
-                "$date": "2017-05-18T19:24:02.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_AGENT_MONITOR_DEPLOY_FAILED",
-            "data": {}
-        },
-        {
-            "_id": "58aded494a1426f13c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-12-14T04:29:00Z"
-            },
-            "ts": {
-                "$date": "2017-08-11T19:13:07.252Z"
-            },
-            "r_id": "evg-ubuntu1604-large-20200720180108-7236635000257959768",
-            "e_type": "HOST_MONITOR_FLAG",
-            "data": {
-                "monitor_op": "unreachable"
-            }
-        },
-        {
-            "_id": "11aded111a1426f12c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-10-16T13:27:00Z"
-            },
-            "ts": {
-                "$date": "2017-04-25T19:22:26.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_TASK_FINISHED",
-            "data": {
-                "t_id": "evergreen_ubuntu1604_test_command_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
-                "t_st": "test-timed-out",
-                "usr": ""
-            }
-        },
-        {
-            "_id": "58aded492a1426f35c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-09-25T10:35:00Z"
-            },
-            "ts": {
-                "$date": "2017-04-22T19:38:27.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_RUNNING_TASK_CLEARED",
-            "data": {
-                "t_id": "evergreen_ubuntu1604_test_command_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
-            }
-        },
-        {
-            "_id": "58aded491a1426f45c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-08-26T21:45:00Z"
-            },
-            "ts": {
-                "$date": "2017-05-12T19:45:10.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_RUNNING_TASK_SET",
-            "data": {
-                "prov_method": "",
-                "t_id": "evergreen_ubuntu1604_test_command_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
-                "usr": ""
-            }
-        },
-        {
-            "_id": "58aded493a1406f55c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-05-15T13:55:00Z"
-            },
-            "ts": {
-                "$date": "2017-06-25T19:54:19.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_STOPPED",
-            "data": {}
-        },
-        {
-            "_id": "58aded495a1416f65c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-03-14T12:25:00Z"
-            },
-            "ts": {
-                "$date": "2017-02-16T19:13:18.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_AGENT_DEPLOYED",
-            "data": {
-                "a_rev": "2019-05-25",
-                "a_build": "f4c4c42abc123456d14edfe4c123bb1a1a47dd12",
-                "prov_method": "",
-                "usr": ""
-            }
-        },
-        {
-            "_id": "09aded496a1226f75c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-02-23T11:26:00Z"
-            },
-            "ts": {
-                "$date": "2017-01-26T19:22:17.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_AGENT_MONITOR_DEPLOYED",
-            "data": {
-                "a_rev": "1fa212ac4acea6ce2a0123a123456c06e8cf72ea"
-            }
-        },
-        {
-            "_id": "99aded497a1326f85c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-01-22T08:45:00Z"
-            },
-            "ts": {
-                "$date": "2017-09-30T19:11:16.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_JASPER_RESTARTING",
-            "data": {
-                "usr": "mci"
-            }
-        },
-        {
-            "_id": "88aded498a1426f95c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-01-14T06:22:00Z"
-            },
-            "ts": {
-                "$date": "2017-08-25T19:46:15.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_JASPER_RESTARTED",
-            "data": {
-                "j_rev": "1234567ytrewq123456vgfdsa"
-            }
-        },
-        {
-            "_id": "58aded499a1426f16c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-04-15T05:16:00Z"
-            },
-            "ts": {
-                "$date": "2017-04-15T19:35:14.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_STATUS_CHANGED",
-            "data": {
-                "o_s": "running",
-                "n_s": "stopping"
-            }
-        },
-        {
-            "_id": "77aded477a1426f14c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-12-26T04:18:00Z"
-            },
-            "ts": {
-                "$date": "2017-05-18T19:24:13.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_JASPER_RESTART_ERROR",
-            "data": {
-                "log": "some text here. some logs. whatever."
-            }
-        },
-        {
-            "_id": "45aded488a1426f13c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-08-18T02:29:00Z"
-            },
-            "ts": {
-                "$date": "2017-08-11T19:13:14.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_CONVERTING_PROVISIONING",
-            "data": {
-                "prov_method": ""
-            }
-        },
-        {
-            "_id": "87aded499a1426f12c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-05-19T01:27:00Z"
-            },
-            "ts": {
-                "$date": "2017-04-25T19:22:11.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_CONVERTED_PROVISIONING",
-            "data": {
-                "prov_method": ""
-            }
-        },
-        {
-            "_id": "09aded488a1426f13c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-10-17T09:29:00Z"
-            },
-            "ts": {
-                "$date": "2017-08-11T19:13:12.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_CONVERTING_PROVISIONING_ERROR",
-            "data": {
-                "log": "some text here. some logs. whatever."
-            }
-        },
-        {
-            "_id": "89aded499a1426f12c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-12-30T23:27:00Z"
-            },
-            "ts": {
-                "$date": "2017-04-25T19:22:08.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_PROVISION_ERROR",
-            "data": {}
-        },
-        {
-            "_id": "76aded488a1426f13c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-02-18T02:29:00Z"
-            },
-            "ts": {
-                "$date": "2017-08-11T19:13:10.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_EXPIRATION_WARNING_SENT",
-            "data": {}
-        },
-        {
-            "_id": "67aded499a1426f12c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-04-23T01:27:00Z"
-            },
-            "ts": {
-                "$date": "2017-04-25T19:22:06.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_SCRIPT_EXECUTED",
-            "data": {
-                "log": "some text here. some logs. whatever."
-            }
-        },
-        {
-            "_id": "44aded488a1426f13c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-06-28T02:29:00Z"
-            },
-            "ts": {
-                "$date": "2017-08-11T19:13:09.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_SCRIPT_EXECUTE_FAILED",
-            "data": {
-                "log": "some text here. some logs. whatever."
-            }
-        },
-        {
-            "_id": "33aded499a1426f12c051945",
-            "r_type": "HOST",
-            "processed_at": {
-                "$date": "2015-11-29T01:27:00Z"
-            },
-            "ts": {
-                "$date": "2017-04-25T19:22:03.252Z"
-            },
-            "r_id": "i-0f81a2d39744003dd",
-            "e_type": "HOST_STATUS_CHANGED",
-            "data": {
-                "o_s": "running",
-                "n_s": "stopping"
-            }
-        }
-    ]
+        "u_id": "super user"
+      }
+    },
+    {
+      "_id": "5e5e7b97e3c33148df4ea4e5",
+      "r_type": "TASK",
+      "processed_at": {
+        "$date": "2015-10-21T23:29:01Z"
+      },
+      "ts": {
+        "$date": "2020-03-03T15:45:27.543Z"
+      },
+      "r_id": "evergreen_ubuntu1604_test_model_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+      "e_type": "TASK_DISPATCHED",
+      "data": {
+        "execution": 0,
+        "h_id": "i-08f7b38b217d21c13"
+      }
+    },
+    {
+      "_id": "5412f498b14ed69l84645p07",
+      "ts": {
+        "$date": "2014-09-12T13:25:44.451Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_PROVISIONED",
+      "data": {},
+      "processed_at": {
+        "$date": "2015-10-21T23:29:00Z"
+      },
+      "r_type": "HOST"
+    },
+    {
+      "_id": "8912kcddj14td81d8454c8dn",
+      "ts": {
+        "$date": "2014-09-12T14:02:05.272Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_RUNNING_TASK_SET",
+      "data": {
+        "t_id": "evergreen_ubuntu1604_test_agent_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+      },
+      "processed_at": {
+        "$date": "2015-10-21T23:29:00Z"
+      },
+      "r_type": "HOST"
+    },
+    {
+      "_id": "58aded494a1426f25c051955",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-10-22T13:29:00Z"
+      },
+      "ts": {
+        "$date": "2017-03-12T19:58:17.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_STATUS_CHANGED",
+      "data": {
+        "o_s": "running",
+        "n_s": "unreachable",
+        "log": "some text here"
+      }
+    },
+    {
+      "_id": "58aded494a1426f35c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-01-30T03:35:00Z"
+      },
+      "ts": {
+        "$date": "2017-04-22T19:38:17.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_PROVISION_FAILED",
+      "data": {
+        "log": "Retrieving http://dl.fedoraproject.org/pub/epel/5/i386/epel-release-5-4.noarch.rpm\nPreparing packages for installation...\nepel-release-5-4\nLoaded plugins: amazon-id, fastestmirror, rhui-lb, security\nDetermining fastest mirrors\n * epel: archive.linux.duke.edu\n * rhui-us-east-1-client-config-server-5: rhui2-cds01.us-east-1.aws.ce.redhat.com\n * rhui-us-east-1-rhel-server: rhui2-cds01.us-east-1.aws.ce.redhat.com\nExcluding Packages from Red Hat Enterprise Linux Server 5 (RPMs)\nFinished\nSetting up Install Process\nNo package libgsasl available.\nNo package git available.\nNo package python26-devel available.\nNo package python26-distribute available.\nResolving Dependencies\n--> Running transaction check\n---> Package boost.x86_64 0:1.33.1-16.el5_9 set to be updated\n---> Package boost-devel.x86_64 0:1.33.1-16.el5_9 set to be updated\n---> Package cyrus-sasl.i386 0:2.1.22-7.el5_8.1 set to be updated\n--> Processing Dependency: libresolv.so.2 for package: cyrus-sasl\n--> Processing Dependency: libpam.so.0(LIBPAM_1.0) for package: cyrus-sasl\n--> Processing Dependency: libpam.so.0 for package: cyrus-sasl\n--> Processing Dependency: libldap-2.3.so.0 for package: cyrus-sasl\n--> Processing Dependency: liblber-2.3.so.0 for package: cyrus-sasl\n--> Processing Dependency: libkrb5support.so.0 for package: cyrus-sasl\n--> Processing Dependency: libkrb5.so.3(krb5_3_MIT) for package: cyrus-sasl\n--> Processing Dependency: libkrb5.so.3 for package: cyrus-sasl\n--> Processing Dependency: libk5crypto.so.3 for package: cyrus-sasl\n--> Processing Dependency: libgssapi_krb5.so.2 for package: cyrus-sasl\n--> Processing Dependency: libgdbm.so.2 for package: cyrus-sasl\n--> Processing Dependency: libcrypto.so.6 for package: cyrus-sasl\n--> Processing Dependency: libcrypt.so.1(GLIBC_2.0) for package: cyrus-sasl\n--> Processing Dependency: libcrypt.so.1 for package: cyrus-sasl\n--> Processing Dependency: libcom_err.so.2 for package: cyrus-sasl\n--> Processing Dependency: libc.so.6(GLIBC_2.4) for package: cyrus-sasl\n--> Processing Dependency: libc.so.6(GLIBC_2.3.4) for package: cyrus-sasl\n--> Processing Dependency: libc.so.6(GLIBC_2.3) for package: cyrus-sasl\n--> Processing Dependency: libc.so.6(GLIBC_2.2) for package: cyrus-sasl\n--> Processing Dependency: libc.so.6(GLIBC_2.1.3) for package: cyrus-sasl\n--> Processing Dependency: libc.so.6(GLIBC_2.1) for package: cyrus-sasl\n--> Processing Dependency: libc.so.6(GLIBC_2.0) for package: cyrus-sasl\n--> Processing Dependency: libc.so.6 for package: cyrus-sasl\n---> Package cyrus-sasl.x86_64 0:2.1.22-7.el5_8.1 set to be updated\n---> Package cyrus-sasl-devel.i386 0:2.1.22-7.el5_8.1 set to be updated\n---> Package cyrus-sasl-devel.x86_64 0:2.1.22-7.el5_8.1 set to be updated\n---> Package cyrus-sasl-gssapi.i386 0:2.1.22-7.el5_8.1 set to be updated\n---> Package cyrus-sasl-gssapi.x86_64 0:2.1.22-7.el5_8.1 set to be updated\n--> Processing Dependency: cyrus-sasl-lib = 2.1.22-5.el5_4.3 for package: cyrus-sasl-plain\n---> Package cyrus-sasl-lib.i386 0:2.1.22-7.el5_8.1 set to be updated\n---> Package cyrus-sasl-lib.x86_64 0:2.1.22-7.el5_8.1 set to be updated\n---> Package cyrus-sasl-md5.i386 0:2.1.22-7.el5_8.1 set to be updated\n---> Package cyrus-sasl-md5.x86_64 0:2.1.22-7.el5_8.1 set to be updated\n---> Package e4fsprogs.x86_64 0:1.41.12-4.el5_10 set to be updated\n---> Package gcc-c++.x86_64 0:4.1.2-54.el5 set to be updated\n--> Processing Dependency: libstdc++-devel = 4.1.2-54.el5 for package: gcc-c++\n--> Processing Dependency: libstdc++ = 4.1.2-54.el5 for package: gcc-c++\n--> Processing Dependency: gcc = 4.1.2-54.el5 for package: gcc-c++\n---> Package mdadm.x86_64 0:2.6.9-5.el5 set to be updated\n---> Package net-snmp.x86_64 1:5.3.2.2-22.el5_10.1 set to be updated\n---> Package net-snmp-devel.i386 1:5.3.2.2-22.el5_10.1 set to be updated\n--> Processing Dependency: rpm-devel for package: net-snmp-devel\n--> Processing Dependency: lm_sensors-devel for package: net-snmp-devel\n--> Processing Dependency: elfutils-libelf-devel for package: net-snmp-devel\n--> Processing Dependency: elf"
+      }
+    },
+    {
+      "_id": "58aded494a1406f55c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-03-12T13:55:00Z"
+      },
+      "ts": {
+        "$date": "2017-06-25T19:54:07.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_DNS_NAME_SET",
+      "data": {
+        "hn": "ec2-12-12-12-122.compute-1.amazonaws.com"
+      }
+    },
+    {
+      "_id": "58aded494a1416f65c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-04-15T23:25:00Z"
+      },
+      "ts": {
+        "$date": "2017-02-16T19:13:08.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_CREATED",
+      "data": {
+        "usr": ""
+      }
+    },
+    {
+      "_id": "58aded494a1226f75c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-05-22T23:26:00Z"
+      },
+      "ts": {
+        "$date": "2017-01-26T19:22:06.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_STARTED",
+      "data": {
+        "prov_method": "",
+        "usr": "",
+        "successful": true
+      }
+    },
+    {
+      "_id": "58aded494a1326f85c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-06-16T12:45:00Z"
+      },
+      "ts": {
+        "$date": "2017-09-30T19:11:05.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_MODIFIED",
+      "data": {}
+    },
+    {
+      "_id": "58aded494a1426f95c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-07-25T23:22:00Z"
+      },
+      "ts": {
+        "$date": "2017-08-25T19:46:04.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_AGENT_DEPLOYED",
+      "data": {
+        "a_rev": "1fa212ac4acea6ce2a0123a123456c06e8cf72ea"
+      }
+    },
+    {
+      "_id": "58aded494a1426f16c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-09-30T03:16:00Z"
+      },
+      "ts": {
+        "$date": "2017-04-15T19:35:03.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_AGENT_DEPLOY_FAILED",
+      "data": {
+        "log": "error running SSH command: error waiting on process 'asdfghjkl1234567890klfddsa': operation canceled",
+        "prov_method": "",
+        "usr": ""
+      }
+    },
+    {
+      "_id": "58aded494a1426f14c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-10-27T04:18:00Z"
+      },
+      "ts": {
+        "$date": "2017-05-18T19:24:02.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_AGENT_MONITOR_DEPLOY_FAILED",
+      "data": {}
+    },
+    {
+      "_id": "11aded111a1426f12c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-10-16T13:27:00Z"
+      },
+      "ts": {
+        "$date": "2017-04-25T19:22:26.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_TASK_FINISHED",
+      "data": {
+        "t_id": "evergreen_ubuntu1604_test_command_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+        "t_st": "test-timed-out",
+        "usr": ""
+      }
+    },
+    {
+      "_id": "58aded492a1426f35c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-09-25T10:35:00Z"
+      },
+      "ts": {
+        "$date": "2017-04-22T19:38:27.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_RUNNING_TASK_CLEARED",
+      "data": {
+        "t_id": "evergreen_ubuntu1604_test_command_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48"
+      }
+    },
+    {
+      "_id": "58aded491a1426f45c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-08-26T21:45:00Z"
+      },
+      "ts": {
+        "$date": "2017-05-12T19:45:10.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_RUNNING_TASK_SET",
+      "data": {
+        "prov_method": "",
+        "t_id": "evergreen_ubuntu1604_test_command_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+        "usr": ""
+      }
+    },
+    {
+      "_id": "58aded493a1406f55c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-05-15T13:55:00Z"
+      },
+      "ts": {
+        "$date": "2017-06-25T19:54:19.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_STOPPED",
+      "data": {}
+    },
+    {
+      "_id": "58aded495a1416f65c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-03-14T12:25:00Z"
+      },
+      "ts": {
+        "$date": "2017-02-16T19:13:18.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_AGENT_DEPLOYED",
+      "data": {
+        "a_rev": "2019-05-25",
+        "a_build": "f4c4c42abc123456d14edfe4c123bb1a1a47dd12",
+        "prov_method": "",
+        "usr": ""
+      }
+    },
+    {
+      "_id": "09aded496a1226f75c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-02-23T11:26:00Z"
+      },
+      "ts": {
+        "$date": "2017-01-26T19:22:17.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_AGENT_MONITOR_DEPLOYED",
+      "data": {
+        "a_rev": "1fa212ac4acea6ce2a0123a123456c06e8cf72ea"
+      }
+    },
+    {
+      "_id": "99aded497a1326f85c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-01-22T08:45:00Z"
+      },
+      "ts": {
+        "$date": "2017-09-30T19:11:16.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_JASPER_RESTARTING",
+      "data": {
+        "usr": "mci"
+      }
+    },
+    {
+      "_id": "88aded498a1426f95c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-01-14T06:22:00Z"
+      },
+      "ts": {
+        "$date": "2017-08-25T19:46:15.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_JASPER_RESTARTED",
+      "data": {
+        "j_rev": "1234567ytrewq123456vgfdsa"
+      }
+    },
+    {
+      "_id": "58aded499a1426f16c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-04-15T05:16:00Z"
+      },
+      "ts": {
+        "$date": "2017-04-15T19:35:14.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_STATUS_CHANGED",
+      "data": {
+        "o_s": "running",
+        "n_s": "stopping"
+      }
+    },
+    {
+      "_id": "77aded477a1426f14c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-12-26T04:18:00Z"
+      },
+      "ts": {
+        "$date": "2017-05-18T19:24:13.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_JASPER_RESTART_ERROR",
+      "data": {
+        "log": "some text here. some logs. whatever."
+      }
+    },
+    {
+      "_id": "45aded488a1426f13c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-08-18T02:29:00Z"
+      },
+      "ts": {
+        "$date": "2017-08-11T19:13:14.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_CONVERTING_PROVISIONING",
+      "data": {
+        "prov_method": ""
+      }
+    },
+    {
+      "_id": "87aded499a1426f12c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-05-19T01:27:00Z"
+      },
+      "ts": {
+        "$date": "2017-04-25T19:22:11.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_CONVERTED_PROVISIONING",
+      "data": {
+        "prov_method": ""
+      }
+    },
+    {
+      "_id": "09aded488a1426f13c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-10-17T09:29:00Z"
+      },
+      "ts": {
+        "$date": "2017-08-11T19:13:12.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_CONVERTING_PROVISIONING_ERROR",
+      "data": {
+        "log": "some text here. some logs. whatever."
+      }
+    },
+    {
+      "_id": "89aded499a1426f12c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-12-30T23:27:00Z"
+      },
+      "ts": {
+        "$date": "2017-04-25T19:22:08.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_PROVISION_ERROR",
+      "data": {}
+    },
+    {
+      "_id": "76aded488a1426f13c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-02-18T02:29:00Z"
+      },
+      "ts": {
+        "$date": "2017-08-11T19:13:10.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_EXPIRATION_WARNING_SENT",
+      "data": {}
+    },
+    {
+      "_id": "67aded499a1426f12c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-04-23T01:27:00Z"
+      },
+      "ts": {
+        "$date": "2017-04-25T19:22:06.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_SCRIPT_EXECUTED",
+      "data": {
+        "log": "some text here. some logs. whatever."
+      }
+    },
+    {
+      "_id": "44aded488a1426f13c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-06-28T02:29:00Z"
+      },
+      "ts": {
+        "$date": "2017-08-11T19:13:09.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_SCRIPT_EXECUTE_FAILED",
+      "data": {
+        "log": "some text here. some logs. whatever."
+      }
+    },
+    {
+      "_id": "33aded499a1426f12c051945",
+      "r_type": "HOST",
+      "processed_at": {
+        "$date": "2015-11-29T01:27:00Z"
+      },
+      "ts": {
+        "$date": "2017-04-25T19:22:03.252Z"
+      },
+      "r_id": "i-0f81a2d39744003dd",
+      "e_type": "HOST_STATUS_CHANGED",
+      "data": {
+        "o_s": "running",
+        "n_s": "stopping"
+      }
+    }
+  ]
 }

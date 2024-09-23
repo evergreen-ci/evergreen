@@ -340,5 +340,5 @@ type DockerConfig struct {
 // ParameterStoreConfig stores configuration for using SSM Parameter Store.
 type ParameterStoreConfig struct {
 	// Prefix is the Parameter Store path prefix for the Evergreen application.
-	Prefix string
+	Prefix string `bson:"prefix" json:"prefix" yaml:"prefix"`
 }
