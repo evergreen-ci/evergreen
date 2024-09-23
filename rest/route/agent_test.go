@@ -9,14 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/artifact"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -998,6 +997,7 @@ func TestAttachFilesHandler(t *testing.T) {
 
 			require.NoError(t, handler.Parse(ctx, request))
 			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
 			require.Equal(t, http.StatusOK, resp.Status())
 
 			// The new entry is inserted and unchanged.

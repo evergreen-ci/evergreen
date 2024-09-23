@@ -662,7 +662,9 @@ func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	catcher := grip.NewBasicCatcher()
-	// If there are previous executions, update entries in case any content types have changed.
+	// If there are previous executions, update entries in case any content types have changed (note that this
+	// only updates the files for the current task; if other tasks are also pointing to the files, we leave those unchanged).
+	// We don't return the error before upserting the entry, since updating content type is more of a nice-to-have.
 	if t.Execution > 0 {
 		entries, err := artifact.FindAll(artifact.ByTaskId(t.Id))
 		if err != nil {
