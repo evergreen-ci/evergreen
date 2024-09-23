@@ -31,6 +31,7 @@ type TaskGroupInfo struct {
 
 type DistroQueueInfo struct {
 	Length                     int             `bson:"length" json:"length"`
+	LengthWithDependenciesMet  int             `bson:"length_with_dependencies_met" json:"length_with_dependencies_met"`
 	ExpectedDuration           time.Duration   `bson:"expected_duration" json:"expected_duration"`
 	MaxDurationThreshold       time.Duration   `bson:"max_duration_threshold" json:"max_duration_threshold"`
 	PlanCreatedAt              time.Time       `bson:"created_at" json:"created_at"`

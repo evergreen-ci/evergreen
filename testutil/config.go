@@ -217,7 +217,6 @@ func MockConfig() *evergreen.Settings {
 				Username: "username",
 				Password: "password",
 			},
-			DefaultProject: "proj",
 		},
 		TaskLimits: evergreen.TaskLimitsConfig{
 			MaxTasksPerVersion: 1000,

@@ -1040,6 +1040,120 @@
           }
         }
       }
+    },
+    {
+      "query_file": "events_with_event_type.graphql",
+      "result": {
+        "data": {
+          "host": {
+            "events": {
+              "eventLogEntries": [
+                {
+                  "id": "58aded491a1426f45c051945",
+                  "resourceType": "HOST",
+                  "processedAt": "2015-08-26T17:45:00-04:00",
+                  "timestamp": "2017-05-12T15:45:10.252-04:00",
+                  "eventType": "HOST_RUNNING_TASK_SET",
+                  "data": {
+                    "agentRevision": "",
+                    "agentBuild": "",
+                    "oldStatus": "",
+                    "newStatus": "",
+                    "logs": "",
+                    "hostname": "",
+                    "provisioningMethod": "",
+                    "taskId": "evergreen_ubuntu1604_test_command_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+                    "taskPid": "",
+                    "taskStatus": "",
+                    "execution": "",
+                    "monitorOp": "",
+                    "user": "",
+                    "successful": false,
+                    "duration": 0
+                  },
+                  "resourceId": "i-0f81a2d39744003dd"
+                },
+                {
+                  "id": "11aded111a1426f12c051945",
+                  "resourceType": "HOST",
+                  "processedAt": "2015-10-16T09:27:00-04:00",
+                  "timestamp": "2017-04-25T15:22:26.252-04:00",
+                  "eventType": "HOST_TASK_FINISHED",
+                  "data": {
+                    "agentRevision": "",
+                    "agentBuild": "",
+                    "oldStatus": "",
+                    "newStatus": "",
+                    "logs": "",
+                    "hostname": "",
+                    "provisioningMethod": "",
+                    "taskId": "evergreen_ubuntu1604_test_command_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+                    "taskPid": "",
+                    "taskStatus": "test-timed-out",
+                    "execution": "",
+                    "monitorOp": "",
+                    "user": "",
+                    "successful": false,
+                    "duration": 0
+                  },
+                  "resourceId": "i-0f81a2d39744003dd"
+                },
+                {
+                  "id": "58aded492a1426f35c051945",
+                  "resourceType": "HOST",
+                  "processedAt": "2015-09-25T06:35:00-04:00",
+                  "timestamp": "2017-04-22T15:38:27.252-04:00",
+                  "eventType": "HOST_RUNNING_TASK_CLEARED",
+                  "data": {
+                    "agentRevision": "",
+                    "agentBuild": "",
+                    "oldStatus": "",
+                    "newStatus": "",
+                    "logs": "",
+                    "hostname": "",
+                    "provisioningMethod": "",
+                    "taskId": "evergreen_ubuntu1604_test_command_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+                    "taskPid": "",
+                    "taskStatus": "",
+                    "execution": "",
+                    "monitorOp": "",
+                    "user": "",
+                    "successful": false,
+                    "duration": 0
+                  },
+                  "resourceId": "i-0f81a2d39744003dd"
+                },
+                {
+                  "id": "8912kcddj14td81d8454c8dn",
+                  "resourceType": "HOST",
+                  "processedAt": "2015-10-21T19:29:00-04:00",
+                  "timestamp": "2014-09-12T10:02:05.272-04:00",
+                  "eventType": "HOST_RUNNING_TASK_SET",
+                  "data": {
+                    "agentRevision": "",
+                    "agentBuild": "",
+                    "oldStatus": "",
+                    "newStatus": "",
+                    "logs": "",
+                    "hostname": "",
+                    "provisioningMethod": "",
+                    "taskId": "evergreen_ubuntu1604_test_agent_patch_5e823e1f28baeaa22ae00823d83e03082cd148ab_5e4ff3abe3c3317e352062e4_20_02_21_15_13_48",
+                    "taskPid": "",
+                    "taskStatus": "",
+                    "execution": "",
+                    "monitorOp": "",
+                    "user": "",
+                    "successful": false,
+                    "duration": 0
+                  },
+                  "resourceId": "i-0f81a2d39744003dd"
+                }
+              ],
+              "count": 4
+            }
+          }
+        }
+      }
     }
   ]
 }
