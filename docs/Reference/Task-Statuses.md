@@ -8,7 +8,7 @@ these statuses.
 
 ## Table of Contents
 
-- [Active Task Statuses](#active-task-statuses)
+- [Unfinished Task Statuses](#unfinished-task-statuses)
   - [`undispatched`](#undispatched)
   - [`dispatched`](#dispatched)
   - [`started`](#started)
@@ -24,7 +24,7 @@ these statuses.
 
 ---
 
-## Active Task Statuses
+## Unfinished Task Statuses
 
 These statuses indicate tasks that are currently in progress or scheduled to
 run.
@@ -68,6 +68,9 @@ These statuses indicate that a task has completed its execution.
 
 **Description**: The task has finished successfully without any errors.
 
+> `post_error_fails_task: false` will not fail the task if there is an error in
+> the `post` block.
+
 **Usage**: Denotes tasks that have met all requirements and passed all tests.
 
 ---
@@ -78,14 +81,6 @@ These statuses indicate that a task has completed its execution.
 covers any failure reason, which can be detailed in the task's end details.
 
 **Usage**: General failure status for tasks that did not complete successfully.
-
----
-
-### `aborted`
-
-**Description**: The task was aborted while it was running.
-
-**Usage**: Used when a task is intentionally stopped before completion.
 
 ---
 
@@ -139,26 +134,30 @@ in order:
    - **Condition**: `Details.TimedOut == true`
    - **Display Status**: `test-timed-out`
 
-9. **Unscheduled**:
-   - **Condition**:
-     - `Activated == false`
-     - `Status == "undispatched"`
-   - **Display Status**: `unscheduled`
+9. **Task Timed Out**:
+   - **Condition**: `Details.TimedOut == true`
+   - **Display Status**: `task-timed-out`
 
-10. **Blocked**:
+10. **Unscheduled**:
+    - **Condition**:
+      - `Activated == false`
+      - `Status == "undispatched"`
+    - **Display Status**: `unscheduled`
+
+11. **Blocked**:
     - **Condition**:
       - `Status == "undispatched"`
       - `OverrideDependencies != true`
       - The task has unattainable dependencies (`isUnattainable == true`)
     - **Display Status**: `blocked`
 
-11. **Will Run**:
+12. **Will Run**:
     - **Condition**:
       - `Status == "undispatched"`
       - `Activated == true`
     - **Display Status**: `will-run`
 
-12. **Default**:
+13. **Default**:
     - **Condition**: If none of the above conditions are met.
     - **Display Status**: The task's original status (`Status`)
 
@@ -241,6 +240,17 @@ testing phases.
 
 ---
 
+#### `task-timed-out`
+
+**Description**: The task failed because the task itself exceeded the allotted
+time (`Details.TimedOut == true`). This is configurable with the `timeout` field
+in the task configuration.
+
+**Usage**: Indicates tasks that did not complete due to time constraints during
+the task execution.
+
+---
+
 #### `unscheduled`
 
 **Description**: The task is undispatched and not scheduled to run
@@ -272,10 +282,11 @@ dependency resolution.
 
 ### `pending`
 
-**Description**: A special state used for a specific return value. Not
-meaningful in the UI or backend processing.
+**Description**: A special state used for the return value of a dependent task.
+This state is not shown as a Task status badge and is only used on the depends
+on section.
 
-**Usage**: Generally avoid using this status.
+**Usage**: Generally avoid using or relying on this status.
 
 ---
 
@@ -296,9 +307,9 @@ are the icons used for each task status:
   specific conditions.
 
 - **Failure Reasons**: Specific failure statuses (`setup-failed`,
-  `system-unresponsive`, `system-timed-out`, `system-failed`, `test-timed-out`)
-  provide more context for task failures, aiding in troubleshooting and
-  diagnostics.
+  `system-unresponsive`, `system-timed-out`, `system-failed`, `test-timed-out`,
+  `task-timed-out`) provide more context for task failures, aiding in
+  troubleshooting and diagnostics.
 
 - **Status Determination Order**: The order in which conditions are evaluated is
   significant. The first matching condition determines the display status. If no
