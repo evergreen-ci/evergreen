@@ -11,6 +11,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -34,6 +35,46 @@ func New(apiURL string) Config {
 		Resolvers: &Resolver{
 			sc: dbConnector,
 		},
+	}
+	c.Directives.RequireHostAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access HostAccessLevel) (interface{}, error) {
+		args, isStringMap := obj.(map[string]interface{})
+		if !isStringMap {
+			return nil, ResourceNotFound.Send(ctx, "host not specified")
+		}
+		hostId, hasHostId := args["hostId"].(string)
+		hostIdsInterface, hasHostIds := args["hostIds"].([]interface{})
+		hostIds := []string{}
+		if hasHostIds {
+			for _, v := range hostIdsInterface {
+				hostIds = append(hostIds, v.(string))
+			}
+		}
+		if !hasHostId && !hasHostIds {
+			return nil, ResourceNotFound.Send(ctx, "host not specified")
+		}
+		hostIdsToCheck := []string{}
+		hostIdsToCheck = append(hostIdsToCheck, hostId)
+		hostIdsToCheck = append(hostIdsToCheck, hostIds...)
+		var requiredLevel int
+		if access == HostAccessLevelEdit {
+			requiredLevel = evergreen.HostsEdit.Value
+		} else if access == HostAccessLevelView {
+			requiredLevel = evergreen.HostsView.Value
+		}
+		user := mustHaveUser(ctx)
+		hostsToCheck, err := host.Find(ctx, host.ByIds(hostIdsToCheck))
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, "Error getting hosts")
+		}
+		if len(hostsToCheck) == 0 {
+			return nil, ResourceNotFound.Send(ctx, "No matching hosts found")
+		}
+		for _, h := range hostsToCheck {
+			if !userHasHostPermission(user, h.Distro.Id, requiredLevel) {
+				return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access the host '%s'", user.Username(), h.Id))
+			}
+		}
+		return next(ctx)
 	}
 	c.Directives.RequireDistroAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (interface{}, error) {
 		user := mustHaveUser(ctx)
