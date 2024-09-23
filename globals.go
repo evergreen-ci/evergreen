@@ -1266,7 +1266,7 @@ var (
 		Value:       10,
 	}
 	PatchNone = PermissionLevel{
-		Description: "Not able to view or submit patches",
+		Description: "Not able to submit patches",
 		Value:       0,
 	}
 	LogsView = PermissionLevel{
