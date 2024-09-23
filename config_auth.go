@@ -99,6 +99,7 @@ func (c *AuthConfig) Set(ctx context.Context) error {
 			AuthNaiveKey:                   c.Naive,
 			AuthGithubKey:                  c.Github,
 			AuthMultiKey:                   c.Multi,
+			AuthKanopyKey:                  c.Kanopy,
 			authPreferredTypeKey:           c.PreferredType,
 			authBackgroundReauthMinutesKey: c.BackgroundReauthMinutes,
 			AuthAllowServiceUsersKey:       c.AllowServiceUsers,
