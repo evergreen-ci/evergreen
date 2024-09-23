@@ -526,10 +526,12 @@ func TestHostTerminationJob(t *testing.T) {
 			// Verify the task group has not been reset
 			resetTask, err := task.FindOneId("task2")
 			require.NoError(t, err)
+			require.NotNil(t, resetTask)
 			assert.Equal(t, evergreen.TaskSucceeded, resetTask.Status)
 
 			dbTask, err := task.FindOneId(nonTgTask.Id)
 			require.NoError(t, err)
+			require.NotNil(t, dbTask)
 			assert.False(t, dbTask.UnattainableDependency)
 		},
 	} {
