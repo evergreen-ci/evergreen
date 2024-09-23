@@ -100,6 +100,9 @@ func ModifyHostStatus(ctx context.Context, env evergreen.Environment, h *host.Ho
 	}
 
 	if newStatus == evergreen.HostQuarantined {
+		if notes == "" {
+			notes = fmt.Sprintf("quarantined by user '%s'", u.Username())
+		}
 		if err := units.DisableAndNotifyPoisonedHost(ctx, env, h, false, notes); err != nil {
 			return "", http.StatusInternalServerError, errors.Wrap(err, HostUpdateError)
 		}

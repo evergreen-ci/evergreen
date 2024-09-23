@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -84,7 +83,7 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 		case evergreen.HostTerminated:
 			err = errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), foundHost, user.Id, "terminated via REST API"))
 		case evergreen.HostQuarantined:
-			err = units.DisableAndNotifyPoisonedHost(ctx, evergreen.GetEnvironment(), foundHost, false, "quarantined via REST API")
+			err = units.DisableAndNotifyPoisonedHost(ctx, evergreen.GetEnvironment(), foundHost, false, fmt.Sprintf("quarantined via REST API by user '%s'", user.Id))
 		default:
 			err = foundHost.SetStatus(ctx, status.Status, user.Id, fmt.Sprintf("changed by %s from API", user.Id))
 		}
@@ -438,64 +437,6 @@ func (rh *hostIsUpPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 	return gimlet.NewJSONResponse(apiHost)
-}
-
-// //////////////////////////////////////////////////////////////////////
-//
-// POST /rest/v2/hosts/{host_id}/disable
-type disableHost struct {
-	env evergreen.Environment
-
-	hostID string
-	reason string
-}
-
-func makeDisableHostHandler(env evergreen.Environment) gimlet.RouteHandler {
-	return &disableHost{
-		env: env,
-	}
-}
-
-func (h *disableHost) Factory() gimlet.RouteHandler {
-	return &disableHost{
-		env: h.env,
-	}
-}
-
-func (h *disableHost) Parse(ctx context.Context, r *http.Request) error {
-	body := utility.NewRequestReader(r)
-	defer body.Close()
-	h.hostID = gimlet.GetVars(r)["host_id"]
-	if h.hostID == "" {
-		return errors.New("host ID must be specified")
-	}
-
-	info := apimodels.DisableInfo{}
-	if err := utility.ReadJSON(body, &info); err != nil {
-		return errors.Wrap(err, "unable to parse request body")
-	}
-	h.reason = info.Reason
-
-	return nil
-}
-
-func (h *disableHost) Run(ctx context.Context) gimlet.Responder {
-	host, err := host.FindOneId(ctx, h.hostID)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
-	}
-	if host == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("host '%s' not found", h.hostID)},
-		)
-	}
-
-	if err = units.HandlePoisonedHost(ctx, h.env, host, h.reason); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "disabling host"))
-	}
-
-	return gimlet.NewJSONResponse(struct{}{})
 }
 
 ////////////////////////////////////////////////////////////////////////

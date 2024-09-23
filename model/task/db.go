@@ -2634,18 +2634,22 @@ func getTasksByVersionPipeline(versionID string, opts GetTasksByVersionOptions) 
 }
 
 // FindAllDependencyTasksToModify finds tasks that depend on the
-// given tasks. The isUnblocking parameter indicates whether we are fetching
+// given tasks. The isBlocking parameter indicates whether we are fetching
 // tasks to unblock them, and if so, for each task, all dependencies
 // that have been marked unattainable will be retrieved. Otherwise, we are
 // fetching tasks to block them, and for each task, all dependencies
 // that have a status that that would block the task from running (i.e., it is
 // inconsistent with the task's Dependency.Status field) and have not been marked
-// unattainable will be retrieved.
+// unattainable will be retrieved. The ignoreDependencyStatusForBlocking parameter
+// indicates whether all tasks that depend on the given need to be updated for a
+// blocking operation (for example, if a single host task group host terminates
+// before completing the group and we need to block all later tasks regardless
+// of their Dependency.Status field).
 //
 // This must find tasks in smaller chunks to avoid the 16 MB query size limit -
 // if the number of tasks is large, a single query could be too large and the DB
 // will reject it.
-func FindAllDependencyTasksToModify(tasks []Task, isUnblocking bool) ([]Task, error) {
+func FindAllDependencyTasksToModify(tasks []Task, isBlocking, ignoreDependencyStatusForBlocking bool) ([]Task, error) {
 	if len(tasks) == 0 {
 		return nil, nil
 	}
@@ -2655,13 +2659,16 @@ func FindAllDependencyTasksToModify(tasks []Task, isUnblocking bool) ([]Task, er
 	allTasks := make([]Task, 0, len(tasks))
 
 	for i, t := range tasks {
-		elemMatchQuery := bson.M{DependencyTaskIdKey: t.Id}
-		if isUnblocking {
-			elemMatchQuery[DependencyUnattainableKey] = true
-		} else {
+		elemMatchQuery := bson.M{
+			DependencyTaskIdKey:       t.Id,
+			DependencyUnattainableKey: !isBlocking,
+		}
+		// If the operation is unblocking, then we ignore the status the dependencies were waiting on,
+		// and unblock all of them. Similarly, if the operation is blocking and ignoreDependencyStatusForBlocking
+		// is set, we also want to ignore the status the dependencies were waiting on.
+		if isBlocking && !ignoreDependencyStatusForBlocking {
 			okStatusSet := []string{AllStatuses, t.Status}
 			elemMatchQuery[DependencyStatusKey] = bson.M{"$nin": okStatusSet}
-			elemMatchQuery[DependencyUnattainableKey] = false
 		}
 		unmatchedDep = append(unmatchedDep, bson.M{
 			DependsOnKey: bson.M{"$elemMatch": elemMatchQuery},

@@ -314,3 +314,79 @@ func TestAWSVars(t *testing.T) {
 	assert.Equal(false, found.PrivateVars[ProjectAWSSSHKeyName])
 	assert.Equal(true, found.PrivateVars[ProjectAWSSSHKeyValue])
 }
+
+func TestGetParamNameForVar(t *testing.T) {
+	t.Run("ReturnsNewlyGeneratedParameterNameBasedOnProjectVarName", func(t *testing.T) {
+		paramName, err := getParamNameForVar([]ParameterMapping{
+			{
+				Name:          "my_var",
+				ParameterName: "my_parameter_name",
+			},
+		}, "my_new_var")
+		require.NoError(t, err)
+		assert.Equal(t, "my_new_var", paramName)
+	})
+	t.Run("ReturnsAlreadyGeneratedParamName", func(t *testing.T) {
+		paramName, err := getParamNameForVar([]ParameterMapping{
+			{
+				Name:          "my_var",
+				ParameterName: "my_parameter_name",
+			},
+		}, "my_var")
+		require.NoError(t, err)
+		assert.Equal(t, "my_parameter_name", paramName)
+	})
+	t.Run("ReturnsNewlyGeneratedParameterNameThatDoesNotStartWithAWS", func(t *testing.T) {
+		paramName, err := getParamNameForVar([]ParameterMapping{
+			{
+				Name:          "my_var",
+				ParameterName: "my_parameter_name",
+			},
+			{
+				Name: "aws_key",
+			},
+		}, "aws_key")
+		require.NoError(t, err)
+		assert.Equal(t, "_aws_key", paramName)
+	})
+	t.Run("ReturnsNewlyGeneratedParameterNameThatDoesNotStartWithSSM", func(t *testing.T) {
+		paramName, err := getParamNameForVar([]ParameterMapping{
+			{
+				Name:          "my_var",
+				ParameterName: "my_parameter_name",
+			},
+			{
+				Name: "ssm_key",
+			},
+		}, "ssm_key")
+		require.NoError(t, err)
+		assert.Equal(t, "_ssm_key", paramName)
+	})
+	t.Run("ReturnsNewlyGeneratedParameterNameIfParameterMappingDoesNotYetHaveParameterName", func(t *testing.T) {
+		paramName, err := getParamNameForVar([]ParameterMapping{
+			{
+				Name: "aws_key",
+			},
+		}, "aws_key")
+		require.NoError(t, err)
+		assert.Equal(t, "_aws_key", paramName)
+	})
+	t.Run("ErrorsIfConflictingParameterNameWouldBeGenerated", func(t *testing.T) {
+		paramName, err := getParamNameForVar([]ParameterMapping{
+			{
+				Name:          "_aws_key",
+				ParameterName: "_aws_key",
+			},
+			{
+				Name: "aws_key",
+			},
+		}, "aws_key")
+		assert.Error(t, err)
+		assert.Zero(t, paramName)
+	})
+	t.Run("DoesNotAllowEmptyParameterName", func(t *testing.T) {
+		paramName, err := getParamNameForVar(nil, "")
+		assert.Error(t, err)
+		assert.Zero(t, paramName)
+	})
+}
