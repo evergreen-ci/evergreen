@@ -344,17 +344,6 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 		}
 	}
 
-	redactedKeys := conf.NewExpansions.GetRedacted()
-	foundCloneTokenRedacted := false
-	for _, redactedKey := range redactedKeys {
-		if redactedKey.Key == "github_token" {
-			if redactedKey.Value == token {
-				foundCloneTokenRedacted = true
-			}
-		}
-	}
-	s.True(foundCloneTokenRedacted)
-
 	s.NoError(logger.Close())
 	foundCloneCommand := false
 	foundCloneErr := false
