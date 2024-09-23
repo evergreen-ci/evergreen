@@ -237,11 +237,14 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 }
 
 // FindNextTask returns the next dispatchable task in the queue, and returns the tasks that need to be checked for dependencies.
+// Rather than use a single parent lock, this function uses granular locking for performance reasons, to prevent lock contention
+// caused by latency in the function's DB operations. Read locks are placed on operations that fetch queue items, and write locks
+// are placed on operations that mark queue items as dispatched.
 func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec TaskSpec, amiUpdatedTime time.Time) *TaskQueueItem {
 	// If the host just ran a task group, give it one back.
 	if spec.Group != "" {
 		taskGroupID := compositeGroupID(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
-		taskGroupUnit, ok := d.taskGroups[taskGroupID] // schedulableUnit
+		taskGroupUnit, ok := d.getTaskGroup(taskGroupID) // schedulableUnit
 		if ok {
 			if next := d.tryMarkNextTaskGroupTaskDispatched(taskGroupUnit); next != nil {
 				return next
@@ -253,14 +256,17 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 
 	settings := evergreen.GetEnvironment().Settings()
 	dependencyCaches := make(map[string]task.Task)
-	for i := range d.sorted {
-		node := d.sorted[i]
+	sorted := d.getSortedCopy()
+	for i := range sorted {
+		node := sorted[i]
 		// topo.SortStabilized represents nodes in a dependency cycle with a nil Node.
 		if node == nil {
 			continue
 		}
 
+		d.mu.RLock()
 		item := d.getItemByNodeID(node.ID()) // item is a *TaskQueueItem sourced from d.nodeItemMap, which is a map[node.ID()]*TaskQueueItem.
+		d.mu.RUnlock()
 		if item == nil {
 			continue
 		}
@@ -436,6 +442,15 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 		}
 	}
 	return nil
+}
+
+// getSortedCopy constructs a copy of the sorted graph in a thread-safe manner.
+func (d *basicCachedDAGDispatcherImpl) getSortedCopy() []graph.Node {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	sorted := make([]graph.Node, len(d.sorted))
+	copy(sorted, d.sorted)
+	return sorted
 }
 
 // tryMarkItemDispatched will dispatch a standalone task if all of the following are true:
