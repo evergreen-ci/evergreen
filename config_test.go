@@ -284,6 +284,9 @@ func (s *AdminSuite) TestAuthConfig() {
 		Multi: &MultiAuthConfig{
 			ReadWrite: []string{AuthGithubKey},
 		},
+		Kanopy: &KanopyAuthConfig{
+			HeaderName: "internal_header",
+		},
 		BackgroundReauthMinutes: 60,
 	}
 
