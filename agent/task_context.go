@@ -101,7 +101,7 @@ func (tc *taskContext) runTaskCommandCleanups(ctx context.Context, logger client
 	if len(tc.taskCleanups) == 0 {
 		return
 	}
-	ctx, span := trace.Start(ctx, "task_command_cleanups")
+	ctx, span := trace.Start(ctx, "task-command-cleanups")
 	defer span.End()
 
 	if err := errors.Wrap(runCommandCleanups(ctx, tc.taskCleanups, trace), "running setup group command cleanups"); err != nil {
@@ -115,7 +115,7 @@ func (tc *taskContext) runSetupGroupCommandCleanups(ctx context.Context, logger 
 	if len(tc.setupGroupCleanups) == 0 {
 		return
 	}
-	ctx, span := trace.Start(ctx, "setup_group_command_cleanups")
+	ctx, span := trace.Start(ctx, "setup-group-command-cleanups")
 	defer span.End()
 
 	if err := errors.Wrap(runCommandCleanups(ctx, tc.setupGroupCleanups, trace), "running setup group command cleanups"); err != nil {

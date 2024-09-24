@@ -896,8 +896,10 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 
 	if teardownGroup.commands != nil {
 		a.killProcs(ctx, tc, true, "teardown group commands are starting")
-
+		ctx = utility.ContextWithAttributes(ctx, tc.taskConfig.TaskAttributes())
+		ctx, span := a.tracer.Start(ctx, "teardown_group")
 		_ = a.runCommandsInBlock(ctx, tc, *teardownGroup)
+		span.End()
 		// Teardown groups should run all the remaining command cleanups.
 		tc.runTaskCommandCleanups(ctx, tc.logger, a.tracer)
 		tc.runSetupGroupCommandCleanups(ctx, tc.logger, a.tracer)
