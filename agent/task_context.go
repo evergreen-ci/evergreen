@@ -20,6 +20,7 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/v3/disk"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -127,7 +128,12 @@ func runCommandCleanups(ctx context.Context, cleanups []internal.CommandCleanup,
 	catcher := grip.NewBasicCatcher()
 	for _, cleanup := range cleanups {
 		ctx, span := trace.Start(ctx, cleanup.Command)
-		catcher.Wrapf(cleanup.Run(ctx), "running clean up from command '%s'", cleanup.Command)
+		if err := cleanup.Run(ctx); err != nil {
+			catcher.Wrapf(err, "running clean up from command '%s'", cleanup.Command)
+			span.SetAttributes(
+				attribute.String("evergreen.command.error", err.Error()),
+			)
+		}
 		span.End()
 	}
 	return catcher.Resolve()
