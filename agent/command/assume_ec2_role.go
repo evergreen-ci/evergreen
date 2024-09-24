@@ -59,8 +59,7 @@ func (r *ec2AssumeRole) validate() error {
 	return catcher.Resolve()
 }
 
-func (r *ec2AssumeRole) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+func (r *ec2AssumeRole) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	if err := util.ExpandValues(r, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
@@ -69,6 +68,7 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
+	// TODO (DEVPROD-9947): Remove feature flag check and just use the new implementation.
 	if r.TemporaryFeatureFlag {
 		return r.execute(ctx, comm, logger, conf)
 	}
@@ -76,8 +76,7 @@ func (r *ec2AssumeRole) Execute(ctx context.Context,
 	return r.legacyExecute(ctx, comm, logger, conf)
 }
 
-func (r *ec2AssumeRole) execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+func (r *ec2AssumeRole) execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	request := apimodels.AssumeRoleRequest{
 		RoleARN: r.RoleARN,
 	}
@@ -92,6 +91,9 @@ func (r *ec2AssumeRole) execute(ctx context.Context,
 	if err != nil {
 		return errors.Wrap(err, "assuming role")
 	}
+	if creds == nil {
+		return errors.New("nil credentials returned")
+	}
 	conf.NewExpansions.PutAndRedact(globals.AWSAccessKeyId, creds.AccessKeyID)
 	conf.NewExpansions.PutAndRedact(globals.AWSSecretAccessKey, creds.SecretAccessKey)
 	conf.NewExpansions.PutAndRedact(globals.AWSSessionToken, creds.SessionToken)
@@ -100,9 +102,8 @@ func (r *ec2AssumeRole) execute(ctx context.Context,
 	return nil
 }
 
-func (r *ec2AssumeRole) legacyExecute(ctx context.Context,
-	// TODO (DEVPROD-9945): Remove this.
-	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+func (r *ec2AssumeRole) legacyExecute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+	// TODO (DEVPROD-9947): Remove this.
 	if len(conf.EC2Keys) == 0 {
 		return errors.New("no EC2 keys in config")
 	}

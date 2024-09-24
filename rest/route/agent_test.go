@@ -932,7 +932,7 @@ func TestAWSAssumeRole(t *testing.T) {
 			require.NoError(t, handler.Parse(ctx, request))
 			assert.Equal(t, taskID, handler.taskID)
 			assert.Equal(t, roleARN, handler.body.RoleARN)
-			assert.Equal(t, policy, handler.body.Policy)
+			assert.Equal(t, policy, utility.FromStringPtr(handler.body.Policy))
 			assert.Equal(t, duration, utility.FromInt32Ptr(handler.body.DurationSeconds))
 
 			t.Run("RunErrorsOnNilTask", func(t *testing.T) {
