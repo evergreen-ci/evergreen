@@ -338,12 +338,19 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting hosts: %s", err.Error()))
 	}
 
-	apiHosts := []*restModel.APIHost{}
 	usr := mustHaveUser(ctx)
+	forbiddenHosts := []string{}
 	for _, h := range hosts {
 		if !userHasHostPermission(usr, h.Distro.Id, evergreen.HostsView.Value) {
-			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access the host '%s'", usr.Username(), h.Id))
+			forbiddenHosts = append(forbiddenHosts, h.Id)
 		}
+	}
+	if len(forbiddenHosts) > 0 {
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access the hosts '%v'", usr.Username(), forbiddenHosts))
+	}
+
+	apiHosts := []*restModel.APIHost{}
+	for _, h := range hosts {
 		apiHost := restModel.APIHost{}
 		apiHost.BuildFromService(&h, h.RunningTaskFull)
 		apiHosts = append(apiHosts, &apiHost)
