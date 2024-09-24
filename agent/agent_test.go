@@ -2730,7 +2730,7 @@ tasks:
 	s.Equal(expectedLines, actualLines)
 }
 
-func (s *AgentSuite) TestAttemptsToClearGitConfig() {
+func (s *AgentSuite) TestClearsGitConfig() {
 	s.setupRunTask(defaultProjYml)
 	// create a fake git config file
 	gitConfigPath := filepath.Join(s.a.opts.HomeDirectory, ".gitconfig")
@@ -2754,6 +2754,8 @@ func (s *AgentSuite) TestAttemptsToClearGitConfig() {
 		panicLog,
 		"Running task commands failed",
 	})
+
+	s.Assert().NoFileExists(gitConfigPath)
 }
 
 func (s *AgentSuite) TestShouldRunSetupGroup() {
