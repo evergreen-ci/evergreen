@@ -3,84 +3,18 @@
     {
       "query_file": "no_permissions.graphql",
       "result": {
-        "data": {
-          "hosts": {
-            "filteredHostsCount": null,
-            "totalHostsCount": 9,
-            "hosts": [
-              {
-                "id": "i-06f80fa6e28f93b7d",
-                "distroId": "ubuntu1604-small",
-                "status": "provisioning",
-                "startedBy": "mci",
-                "hostUrl": "ec2-34-207-222-84.compute-1.amazonaws.com",
-                "totalIdleTime": 54073,
-                "uptime": "2020-07-20T10:48:05.256-04:00",
-                "elapsed": "2020-07-20T10:49:21.073-04:00",
-                "runningTask": {
-                  "id": "mongo_tools_ubuntu1604_qa_dump_restore_with_archiving_current_patch_b7227e1b7aeaaa6283d53b32fc03968a46b19c2d_5f15ad3c3627e07772ab2d01_20_07_20_14_42_05",
-                  "name": "qa-dump-restore-with-archiving-current"
-                }
-              },
-              {
-                "id": "i-0fb9fe0592ea38150",
-                "distroId": "debian92-small",
-                "status": "provisioning",
-                "startedBy": "mci",
-                "hostUrl": "ec2-54-146-18-248.compute-1.amazonaws.com",
-                "totalIdleTime": 46369,
-                "uptime": "2020-07-20T14:05:03.174-04:00",
-                "elapsed": "2020-07-20T14:07:06.369-04:00",
-                "runningTask": {
-                  "id": "mongodb_mongo_v3.6_debian92_sharding_auth_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
-                  "name": "sharding_auth"
-                }
-              },
-              {
-                "id": "macos-1014-68.macstadium.build.10gen.cc",
-                "distroId": "macos-1014",
-                "status": "quarantined",
-                "startedBy": "mci",
-                "hostUrl": "macos-1014-68.macstadium.build.10gen.cc",
-                "totalIdleTime": 0,
-                "uptime": "2019-09-16T11:49:05.059-04:00",
-                "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
-              },
-              {
-                "id": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "distroId": "ubuntu1804-power8-small",
-                "status": "quarantined",
-                "startedBy": "mci",
-                "hostUrl": "ubuntu1804-ppc-3.pic.build.10gen.cc",
-                "totalIdleTime": 0,
-                "uptime": "2019-01-25T12:40:50.223-05:00",
-                "elapsed": null,
-                "runningTask": {
-                  "id": null,
-                  "name": null
-                }
-              },
-              {
-                "id": "build10.ny.cbi.10gen.cc",
-                "distroId": "centos6-perf",
-                "status": "running",
-                "startedBy": "mci",
-                "hostUrl": "build10.ny.cbi.10gen.cc",
-                "totalIdleTime": 0,
-                "uptime": "2018-11-08T10:22:11.7-05:00",
-                "elapsed": "2020-07-20T14:56:18.352-04:00",
-                "runningTask": {
-                  "id": "performance_3.6_linux_wt_standalone_misc_bc405c72dce4714da604810cdc90c132bd5fbaa1_20_07_20_17_39_20",
-                  "name": "misc"
-                }
-              }
-            ]
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access one or more hosts.",
+            "path": [
+              "hosts"
+            ],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
           }
-        }
+        ]
       }
     }
   ]
