@@ -35,11 +35,12 @@ func (s *BackgroundSuite) SetupTest() {
 	var err error
 	s.a = &Agent{
 		opts: Options{
-			HostID:     "host",
-			HostSecret: "secret",
-			StatusPort: 2286,
-			LogOutput:  globals.LogOutputStdout,
-			LogPrefix:  "agent",
+			HostID:        "host",
+			HostSecret:    "secret",
+			StatusPort:    2286,
+			LogOutput:     globals.LogOutputStdout,
+			LogPrefix:     "agent",
+			HomeDirectory: s.T().TempDir(),
 		},
 		comm:   client.NewMock("url"),
 		tracer: otel.GetTracerProvider().Tracer("noop_tracer"),

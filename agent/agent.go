@@ -79,6 +79,7 @@ type Options struct {
 	// SendTaskLogsToGlobalSender indicates whether task logs should also be
 	// sent to the global agent file log.
 	SendTaskLogsToGlobalSender bool
+	HomeDirectory              string
 }
 
 // AddLoggableInfo is a helper to add relevant information about the agent
@@ -883,6 +884,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 			grip.Error(tc.logger.Close())
 		}
 	}()
+	defer a.clearGitConfig(tc)
 
 	teardownGroup, err := tc.getTeardownGroup()
 	if err != nil {
@@ -1235,6 +1237,27 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 		}
 		logger.Info("Cleaned up Docker artifacts.")
 	}
+}
+
+func (a *Agent) clearGitConfig(tc *taskContext) {
+	logger := grip.GetDefaultJournaler()
+	if tc.logger != nil && !tc.logger.Closed() {
+		logger = tc.logger.Execution()
+	}
+
+	logger.Infof("Clearing git config.")
+
+	globalGitConfigPath := filepath.Join(a.opts.HomeDirectory, ".gitconfig")
+	if _, err := os.Stat(globalGitConfigPath); os.IsNotExist(err) {
+		logger.Info("Global git config file does not exist.")
+		return
+	}
+	if err := os.Remove(globalGitConfigPath); err != nil {
+		logger.Error(errors.Wrap(err, "removing global git config file"))
+		return
+	}
+
+	logger.Info("Cleared git config.")
 }
 
 func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {

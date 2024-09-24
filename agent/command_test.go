@@ -55,6 +55,7 @@ func (s *CommandSuite) SetupTest() {
 			LogOutput:        globals.LogOutputStdout,
 			LogPrefix:        "agent",
 			WorkingDirectory: s.tmpDirName,
+			HomeDirectory:    s.tmpDirName,
 		},
 		comm:   client.NewMock("url"),
 		tracer: otel.GetTracerProvider().Tracer("noop_tracer"),
