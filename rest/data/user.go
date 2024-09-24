@@ -176,7 +176,7 @@ func AddOrUpdateServiceUser(toUpdate restModel.APIDBUser) error {
 
 	dbUser, err := toUpdate.ToService()
 	if err != nil {
-		errors.Wrapf(err, "converting service user '%s' from API model to service", userID)
+		return errors.Wrapf(err, "converting service user '%s' from API model to service", userID)
 	}
 	return errors.Wrap(user.AddOrUpdateServiceUser(*dbUser), "updating service user")
 }

@@ -129,7 +129,11 @@ func (s *APIUserSettings) BuildFromService(settings user.UserSettings) {
 }
 
 func (s *APIUserSettings) ToService() (user.UserSettings, error) {
-	githubUser := s.GithubUser.ToService()
+	githubUser := user.GithubUser{}
+	if s.GithubUser != nil {
+		githubUser = s.GithubUser.ToService()
+	}
+
 	preferences, err := s.Notifications.ToService()
 	if err != nil {
 		return user.UserSettings{}, err
