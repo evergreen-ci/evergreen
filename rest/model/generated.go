@@ -6,7 +6,6 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/user"
 )
 
 type APIBaseTaskInfo struct {
@@ -20,14 +19,6 @@ type APIDisplayTask struct {
 type APIModule struct {
 	Module *string `json:"module"`
 	Issue  *string `json:"issue"`
-}
-type APIDBUser struct {
-	UserID      *string `json:"user_id"`
-	DisplayName *string `json:"display_name"`
-	// will be set to true if the user represents a service user
-	OnlyApi      bool     `json:"only_api"`
-	Roles        []string `json:"roles"`
-	EmailAddress *string  `json:"email_address"`
 }
 
 // APIDisplayTaskBuildFromService takes the patch.DisplayTask DB struct and
@@ -54,29 +45,5 @@ func APIModuleToService(m APIModule) *commitqueue.Module {
 	out := &commitqueue.Module{}
 	out.Module = StringPtrString(m.Module)
 	out.Issue = StringPtrString(m.Issue)
-	return out
-}
-
-// APIDBUserBuildFromService takes the user.DBUser DB struct and
-// returns the REST struct *APIDBUser with the corresponding fields populated
-func APIDBUserBuildFromService(t user.DBUser) *APIDBUser {
-	m := APIDBUser{}
-	m.DisplayName = StringStringPtr(t.DispName)
-	m.Roles = ArrstringArrstring(t.SystemRoles)
-	m.UserID = StringStringPtr(t.Id)
-	m.OnlyApi = BoolBool(t.OnlyAPI)
-	m.EmailAddress = StringStringPtr(t.EmailAddress)
-	return &m
-}
-
-// APIDBUserToService takes the APIDBUser REST struct and returns the DB struct
-// *user.DBUser with the corresponding fields populated
-func APIDBUserToService(m APIDBUser) *user.DBUser {
-	out := &user.DBUser{}
-	out.DispName = StringPtrString(m.DisplayName)
-	out.Id = StringPtrString(m.UserID)
-	out.SystemRoles = ArrstringArrstring(m.Roles)
-	out.OnlyAPI = BoolBool(m.OnlyApi)
-	out.EmailAddress = StringPtrString(m.EmailAddress)
 	return out
 }

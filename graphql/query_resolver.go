@@ -709,15 +709,9 @@ func (r *queryResolver) User(ctx context.Context, userID *string) (*restModel.AP
 			return nil, ResourceNotFound.Send(ctx, "Could not find user from user ID")
 		}
 	}
-	displayName := usr.DisplayName()
-	username := usr.Username()
-	email := usr.Email()
-	user := restModel.APIDBUser{
-		DisplayName:  &displayName,
-		UserID:       &username,
-		EmailAddress: &email,
-	}
-	return &user, nil
+	apiUser := restModel.APIDBUser{}
+	apiUser.BuildFromService(*usr)
+	return &apiUser, nil
 }
 
 // UserConfig is the resolver for the userConfig field.

@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -14,6 +15,70 @@ import (
 	"github.com/google/go-github/v52/github"
 	"github.com/pkg/errors"
 )
+
+type APIDBUser struct {
+	DisplayName  *string `json:"display_name"`
+	EmailAddress *string `json:"email_address"`
+	// will be set to true if the user represents a service user
+	OnlyApi         bool               `json:"only_api"`
+	Roles           []string           `json:"roles"`
+	ParsleyFilters  []APIParsleyFilter `json:"parsley_filters"`
+	ParsleySettings APIParsleySettings `json:"parsley_settings"`
+	Settings        APIUserSettings    `json:"settings"`
+	UserID          *string            `json:"user_id"`
+}
+
+// BuildFromService converts a service layer user.DBUser to an APIDBUser.
+func (s *APIDBUser) BuildFromService(usr user.DBUser) {
+	s.DisplayName = utility.ToStringPtr(usr.DispName)
+	s.UserID = utility.ToStringPtr(usr.Id)
+	s.EmailAddress = utility.ToStringPtr(usr.EmailAddress)
+	s.Roles = usr.SystemRoles
+	s.OnlyApi = usr.OnlyAPI
+
+	userSettings := APIUserSettings{}
+	userSettings.BuildFromService(usr.Settings)
+	s.Settings = userSettings
+
+	res := []APIParsleyFilter{}
+	for _, p := range usr.ParsleyFilters {
+		parsleyFilter := APIParsleyFilter{}
+		parsleyFilter.BuildFromService(p)
+		res = append(res, parsleyFilter)
+	}
+	s.ParsleyFilters = res
+
+	parsleySettings := APIParsleySettings{}
+	parsleySettings.BuildFromService(usr.ParsleySettings)
+	s.ParsleySettings = parsleySettings
+}
+
+// ToService returns a service layer user.DBUser using the data from APIDBUser.
+func (s *APIDBUser) ToService() (*user.DBUser, error) {
+	out := &user.DBUser{}
+	out.DispName = utility.FromStringPtr(s.DisplayName)
+	out.Id = utility.FromStringPtr(s.UserID)
+	out.EmailAddress = utility.FromStringPtr(s.EmailAddress)
+	out.SystemRoles = s.Roles
+	out.OnlyAPI = s.OnlyApi
+	out.ParsleySettings = s.ParsleySettings.ToService()
+
+	if s.ParsleyFilters != nil {
+		filters := []parsley.Filter{}
+		for _, f := range s.ParsleyFilters {
+			filters = append(filters, f.ToService())
+		}
+		out.ParsleyFilters = filters
+	}
+
+	userSettings, err := s.Settings.ToService()
+	if err != nil {
+		return nil, errors.Wrapf(err, "converting user settings to service for user '%s'", out.Id)
+	}
+	out.Settings = userSettings
+
+	return out, nil
+}
 
 type APIPubKey struct {
 	Name *string `json:"name"`
