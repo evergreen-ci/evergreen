@@ -692,6 +692,13 @@ func validateCheckRuns(p *model.Project, aliases model.ProjectAliases) Validatio
 		return errs
 	}
 	tvPairs.ExecTasks, err = model.IncludeDependencies(p, tvPairs.ExecTasks, evergreen.GithubPRRequester, nil)
+	if err != nil {
+		errs = append(errs, ValidationError{
+			Message: "problem adding dependencies to PR alias tasks",
+			Level:   Warning,
+		})
+		return errs
+	}
 	numCheckRuns := p.GetNumCheckRunsFromTaskVariantPairs(&tvPairs)
 	checkRunLimit := evergreen.GetEnvironment().Settings().GitHubCheckRun.CheckRunLimit
 	if numCheckRuns > checkRunLimit {
