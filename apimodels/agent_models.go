@@ -200,9 +200,9 @@ type Token struct {
 
 // AssumeRoleRequest is the details of what role to assume.
 type AssumeRoleRequest struct {
-	RoleARN         string `json:"role_arn"`
-	Policy          string `json:"policy"`
-	DurationSeconds *int32 `json:"duration_seconds"`
+	RoleARN         string  `json:"role_arn"`
+	Policy          *string `json:"policy"`
+	DurationSeconds *int32  `json:"duration_seconds"`
 }
 
 // Validate checks that the request has valid values.

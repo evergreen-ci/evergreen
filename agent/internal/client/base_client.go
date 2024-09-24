@@ -1012,3 +1012,21 @@ func (c *baseCommunicator) UpsertCheckRun(ctx context.Context, td TaskData, chec
 	defer resp.Body.Close()
 	return nil
 }
+
+func (c *baseCommunicator) AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AssumeRoleResponse, error) {
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &td,
+	}
+	info.setTaskPathSuffix("aws/assume_role")
+	resp, err := c.retryRequest(ctx, info, &request)
+	if err != nil {
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "assuming role").Error())
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespErrorf(resp, "trouble assuming role")
+	}
+	creds := apimodels.AssumeRoleResponse{}
+	return &creds, errors.Wrapf(utility.ReadJSON(resp.Body, &creds), "reading assume role response")
+}
