@@ -2,12 +2,18 @@ package client
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/taskoutput"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEvergreenCommunicatorConstructor(t *testing.T) {
@@ -21,6 +27,88 @@ func TestEvergreenCommunicatorConstructor(t *testing.T) {
 	assert.Equal(t, defaultMaxAttempts, c.retry.MaxAttempts)
 	assert.Equal(t, defaultTimeoutStart, c.retry.MinDelay)
 	assert.Equal(t, defaultTimeoutMax, c.retry.MaxDelay)
+}
+
+func TestLoggerProducerRedactorOptions(t *testing.T) {
+	secret := "super_soccer_ball"
+	createTask := func() *task.Task {
+		return &task.Task{
+			Id:      "task",
+			Project: "project",
+			TaskOutputInfo: &taskoutput.TaskOutput{
+				TaskLogs: taskoutput.TaskLogOutput{
+					Version: 1,
+					BucketConfig: evergreen.BucketConfig{
+						Name: t.TempDir(),
+						Type: evergreen.BucketTypeLocal,
+					},
+				},
+			},
+		}
+	}
+
+	readLogs := func(t *testing.T, task *task.Task) string {
+		logFile := filepath.Join(task.TaskOutputInfo.TaskLogs.BucketConfig.Name, "project", "task", "0", "task_logs", "task")
+		entries, err := os.ReadDir(logFile)
+		require.NoError(t, err)
+		require.Len(t, entries, 1)
+
+		data, err := os.ReadFile(filepath.Join(logFile, entries[0].Name()))
+		require.NoError(t, err)
+
+		return string(data)
+	}
+
+	t.Run("LeaksWithoutRedactor", func(t *testing.T) {
+		task := createTask()
+		comm := newBaseCommunicator("whatever", map[string]string{})
+		logger, err := comm.GetLoggerProducer(context.Background(), task, nil)
+		require.NoError(t, err)
+
+		logger.Task().Alert("Fluff 1")
+		logger.Task().Alert("More fluff")
+		require.NoError(t, err)
+
+		logger.Task().Info(secret)
+		logger.Task().Alert("Even more fluff")
+		require.NoError(t, logger.Close())
+
+		data := readLogs(t, task)
+		assert.Contains(t, data, secret)
+
+		// Make sure it has the other log lines.
+		assert.Contains(t, data, "Fluff 1")
+		assert.Contains(t, data, "More fluff")
+		assert.Contains(t, data, "Even more fluff")
+	})
+
+	t.Run("RedactsWhenAdded", func(t *testing.T) {
+		task := createTask()
+		comm := newBaseCommunicator("whatever", map[string]string{})
+		e := agentutil.NewDynamicExpansions(util.Expansions{})
+		logger, err := comm.GetLoggerProducer(context.Background(), task, &LoggerConfig{
+			RedactorOpts: redactor.RedactionOptions{
+				Expansions: e,
+			},
+		})
+		logger.Task().Alert("Fluff 1")
+		e.PutAndRedact("secret_key", secret)
+		logger.Task().Alert("More fluff")
+		require.NoError(t, err)
+
+		logger.Task().Info(secret)
+		logger.Task().Alert("Even more fluff")
+		require.NoError(t, logger.Close())
+
+		data := readLogs(t, task)
+		assert.NotContains(t, data, secret)
+		assert.Contains(t, data, "secret_key")
+
+		// Make sure it has the other log lines.
+		assert.Contains(t, data, "Fluff 1")
+		assert.Contains(t, data, "More fluff")
+		assert.Contains(t, data, "Even more fluff")
+	})
 }
 
 func TestLoggerClose(t *testing.T) {
