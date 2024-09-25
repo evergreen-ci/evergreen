@@ -26,7 +26,7 @@ func TestAssumeRole(t *testing.T) {
 		"InvalidTask": func(ctx context.Context, t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
 			_, err := manager.AssumeRole(ctx, taskID, AssumeRoleOptions{
 				RoleARN: roleARN,
-				Policy:  policy,
+				Policy:  &policy,
 			})
 			require.ErrorContains(t, err, "task not found")
 		},
@@ -36,7 +36,7 @@ func TestAssumeRole(t *testing.T) {
 
 			creds, err := manager.AssumeRole(ctx, taskID, AssumeRoleOptions{
 				RoleARN: roleARN,
-				Policy:  policy,
+				Policy:  &policy,
 			})
 			require.NoError(t, err)
 			// Return credentials

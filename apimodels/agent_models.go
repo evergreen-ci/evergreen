@@ -200,8 +200,12 @@ type Token struct {
 
 // AssumeRoleRequest is the details of what role to assume.
 type AssumeRoleRequest struct {
-	RoleARN         string `json:"role_arn"`
-	Policy          string `json:"policy"`
+	// RoleARN is the Amazon Resource Name (ARN) of the role to assume.
+	RoleARN string `json:"role_arn"`
+	// Policy is an optional field that can be used to restrict the permissions.
+	Policy *string `json:"policy"`
+	// DurationSeconds is an optional field of the duration of the role session.
+	// It defaults to 15 minutes.
 	DurationSeconds *int32 `json:"duration_seconds"`
 }
 
