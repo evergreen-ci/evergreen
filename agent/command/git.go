@@ -42,6 +42,8 @@ const (
 	// Valid types of performing git clone
 	cloneMethodOAuth       = "oauth"
 	cloneMethodAccessToken = "access-token"
+
+	generatedTokenKey = "EVERGREEN_GENERATED_GITHUB_TOKEN"
 )
 
 var (
@@ -160,7 +162,7 @@ func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td 
 	appToken, err := comm.CreateInstallationToken(ctx, td, owner, repo)
 	if appToken != "" {
 		// Redact the token from the logs.
-		conf.NewExpansions.Redact("EVERGREEN_GENERATED_GITHUB_TOKEN", appToken)
+		conf.NewExpansions.Redact(generatedTokenKey, appToken)
 	}
 	// TODO EVG-21022: Remove fallback once we delete GitHub tokens as expansions.
 	grip.Warning(message.WrapError(err, message.Fields{
@@ -727,7 +729,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 			opts.method = cloneMethodAccessToken
 
 			// After generating, redact the token from the logs.
-			conf.NewExpansions.Redact("EVERGREEN_GENERATED_GITHUB_TOKEN", appToken)
+			conf.NewExpansions.Redact(generatedTokenKey, appToken)
 		} else {
 			// If a token cannot be created, fallback to the legacy global token.
 			opts.method = cloneMethodOAuth

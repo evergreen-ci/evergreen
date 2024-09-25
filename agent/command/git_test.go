@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	agenttestutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/db"
@@ -321,46 +322,82 @@ func (s *GitGetProjectSuite) TestGitFetchRetries() {
 	s.Error(err)
 }
 
-func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
+func (s *GitGetProjectSuite) TestTokenIsRedactedWhenGenerated() {
 	conf := s.taskConfig5
-	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
-	s.Require().NoError(err)
 	conf.ProjectRef.Repo = "invalidRepo"
 	conf.Distro = nil
 	token := "abcdefghij"
 	s.comm.CreateInstallationTokenResult = token
+	s.comm.CreateInstallationTokenFail = false
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
-		for _, command := range task.Commands {
-			pluginCmds, err := Render(command, &conf.Project, BlockInfo{})
-			s.NoError(err)
-			s.NotNil(pluginCmds)
-			pluginCmds[0].SetJasperManager(s.jasper)
-			err = pluginCmds[0].Execute(ctx, s.comm, logger, conf)
-			s.Error(err)
+	runCommands := func(logger client.LoggerProducer) {
+		for _, task := range conf.Project.Tasks {
+			s.NotEqual(len(task.Commands), 0)
+			for _, command := range task.Commands {
+				pluginCmds, err := Render(command, &conf.Project, BlockInfo{})
+				s.NoError(err)
+				s.NotNil(pluginCmds)
+				pluginCmds[0].SetJasperManager(s.jasper)
+				err = pluginCmds[0].Execute(ctx, s.comm, logger, conf)
+				s.Error(err)
+			}
 		}
 	}
 
-	s.NoError(logger.Close())
-	foundCloneCommand := false
-	foundCloneErr := false
-	for _, line := range s.comm.GetTaskLogs(conf.Task.Id) {
-		if strings.Contains(line.Data, fmt.Sprintf("https://%s:x-oauth-basic@github.com/evergreen-ci/invalidRepo.git", token)) ||
-			strings.Contains(line.Data, token) {
-			foundCloneCommand = true
+	findTokenInLogs := func() bool {
+		for _, line := range s.comm.GetTaskLogs(conf.Task.Id) {
+			if strings.Contains(line.Data, token) {
+				return true
+			}
 		}
-		if strings.Contains(line.Data, "Authentication failed for") {
-			foundCloneErr = true
-		}
-		if strings.Contains(line.Data, token) {
-			s.FailNow("token was leaked")
-		}
+		return false
 	}
-	s.False(foundCloneCommand)
-	s.True(foundCloneErr)
+
+	findTokenInRedacted := func() bool {
+		for _, redacted := range conf.NewExpansions.GetRedacted() {
+			if redacted.Key == generatedTokenKey {
+				if redacted.Value == token {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	// This is to ensure that the token would be leaked if not redacted.
+	s.Run("WithoutRedactorShouldLeak", func() {
+		logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+		s.Require().NoError(err)
+		runCommands(logger)
+		s.NoError(logger.Close())
+
+		// Token should be leaked in logs.
+		s.True(findTokenInLogs())
+
+		// Token should be in the redacted list (the
+		// redactor logger sender is just not using it).
+		s.True(findTokenInRedacted())
+	})
+
+	s.Run("WithRedactorShouldNotLeak", func() {
+		logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, &client.LoggerConfig{
+			RedactorOpts: redactor.RedactionOptions{
+				Expansions: conf.NewExpansions,
+			},
+		})
+		s.Require().NoError(err)
+
+		runCommands(logger)
+		s.NoError(logger.Close())
+
+		// Token should not be leaked in the logs.
+		s.False(findTokenInLogs())
+
+		// Token should be in redacted list.
+		s.True(findTokenInRedacted())
+	})
 }
 
 func (s *GitGetProjectSuite) TestStdErrLogged() {
