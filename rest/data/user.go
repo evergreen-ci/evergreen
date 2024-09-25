@@ -178,5 +178,8 @@ func AddOrUpdateServiceUser(toUpdate restModel.APIDBUser) error {
 	if err != nil {
 		return errors.Wrapf(err, "converting service user '%s' from API model to service", userID)
 	}
+	if dbUser == nil {
+		return errors.Wrapf(err, "cannot perform add or update with nil user")
+	}
 	return errors.Wrap(user.AddOrUpdateServiceUser(*dbUser), "updating service user")
 }
