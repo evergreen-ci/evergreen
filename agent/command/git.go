@@ -319,7 +319,7 @@ func (c *gitFetchProject) buildSourceCloneCommand(ctx context.Context, comm clie
 			}
 			if commitToTest == "" {
 				// Proceed if github has confirmed this pr is mergeable.
-				commitToTest, err = c.waitForMergeableCheck(ctx, comm, logger, conf, opts)
+				commitToTest, err = c.waitForMergeableCheck(ctx, comm, conf, opts)
 				if err != nil {
 					commitToTest = conf.GithubPatchData.HeadHash
 					logger.Task().Errorf("Error checking if pull request is mergeable: %s", err)
@@ -365,7 +365,7 @@ func (c *gitFetchProject) buildSourceCloneCommand(ctx context.Context, comm clie
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) (string, error) {
+func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, opts cloneOpts) (string, error) {
 	var mergeSHA string
 
 	const (

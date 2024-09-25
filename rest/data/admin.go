@@ -125,7 +125,7 @@ func LogConfigChanges(newSettings *evergreen.Settings, oldSettings *evergreen.Se
 }
 
 // SetBannerTheme sets the banner theme in the DB and event logs it
-func SetBannerTheme(ctx context.Context, themeString string, u *user.DBUser) error {
+func SetBannerTheme(ctx context.Context, themeString string) error {
 	valid, theme := evergreen.IsValidBannerTheme(themeString)
 	if !valid {
 		return errors.Errorf("invalid banner theme '%s'", themeString)

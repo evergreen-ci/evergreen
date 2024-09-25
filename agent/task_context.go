@@ -20,6 +20,7 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/v3/disk"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -101,7 +102,7 @@ func (tc *taskContext) runTaskCommandCleanups(ctx context.Context, logger client
 	if len(tc.taskCleanups) == 0 {
 		return
 	}
-	ctx, span := trace.Start(ctx, "task_command_cleanups")
+	ctx, span := trace.Start(ctx, "task-command-cleanups")
 	defer span.End()
 
 	if err := errors.Wrap(runCommandCleanups(ctx, tc.taskCleanups, trace), "running setup group command cleanups"); err != nil {
@@ -115,7 +116,7 @@ func (tc *taskContext) runSetupGroupCommandCleanups(ctx context.Context, logger 
 	if len(tc.setupGroupCleanups) == 0 {
 		return
 	}
-	ctx, span := trace.Start(ctx, "setup_group_command_cleanups")
+	ctx, span := trace.Start(ctx, "setup-group-command-cleanups")
 	defer span.End()
 
 	if err := errors.Wrap(runCommandCleanups(ctx, tc.setupGroupCleanups, trace), "running setup group command cleanups"); err != nil {
@@ -127,7 +128,12 @@ func runCommandCleanups(ctx context.Context, cleanups []internal.CommandCleanup,
 	catcher := grip.NewBasicCatcher()
 	for _, cleanup := range cleanups {
 		ctx, span := trace.Start(ctx, cleanup.Command)
-		catcher.Wrapf(cleanup.Run(ctx), "running clean up from command '%s'", cleanup.Command)
+		if err := cleanup.Run(ctx); err != nil {
+			catcher.Wrapf(err, "running clean up from command '%s'", cleanup.Command)
+			span.SetAttributes(
+				attribute.String("evergreen.command.error", err.Error()),
+			)
+		}
 		span.End()
 	}
 	return catcher.Resolve()

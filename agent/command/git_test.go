@@ -85,7 +85,7 @@ func (s *GitGetProjectSuite) SetupSuite() {
 	env := testutil.NewEnvironment(s.ctx, s.T())
 	settings := env.Settings()
 
-	testutil.ConfigureIntegrationTest(s.T(), settings, s.T().Name())
+	testutil.ConfigureIntegrationTest(s.T(), settings)
 	s.settings = settings
 }
 

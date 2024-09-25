@@ -232,7 +232,7 @@ func StartSpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUs
 }
 
 // StartSpawnHost enqueues a job to modify a spawn host.
-func ModifySpawnHost(ctx context.Context, env evergreen.Environment, u *user.DBUser, h *host.Host, opts host.HostModifyOptions) (int, error) {
+func ModifySpawnHost(ctx context.Context, env evergreen.Environment, h *host.Host, opts host.HostModifyOptions) (int, error) {
 	ts := utility.RoundPartOfMinute(1).Format(units.TSFormat)
 	modifyJob := units.NewSpawnhostModifyJob(h, opts, ts)
 	if err := units.EnqueueSpawnHostModificationJob(ctx, env, modifyJob); err != nil {

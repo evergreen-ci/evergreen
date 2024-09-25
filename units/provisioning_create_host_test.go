@@ -24,7 +24,7 @@ func TestProvisioningCreateHostJob(t *testing.T) {
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host){
 		"PopulatesFields": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
-			j := NewHostCreateJob(env, *h, "job-id", 0, true)
+			j := NewHostCreateJob(env, *h, "job-id", true)
 			hostCreateJob, ok := j.(*createHostJob)
 			require.True(t, ok)
 
@@ -35,7 +35,7 @@ func TestProvisioningCreateHostJob(t *testing.T) {
 		},
 		"SucceedsForHostCreate": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host) {
 			require.NoError(t, h.Insert(ctx))
-			j := NewHostCreateJob(env, *h, "job-id", 0, true)
+			j := NewHostCreateJob(env, *h, "job-id", true)
 			hostCreateJob, ok := j.(*createHostJob)
 			require.True(t, ok)
 			hostCreateJob.Run(ctx)
@@ -48,7 +48,7 @@ func TestProvisioningCreateHostJob(t *testing.T) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert(ctx))
 
-			j := NewHostCreateJob(env, *h, "job-id", 0, true)
+			j := NewHostCreateJob(env, *h, "job-id", true)
 			hostCreateJob, ok := j.(*createHostJob)
 			require.True(t, ok)
 			hostCreateJob.Run(ctx)
@@ -82,7 +82,7 @@ func TestProvisioningCreateHostJob(t *testing.T) {
 
 			env.Settings().HostInit.MaxTotalDynamicHosts = maxHosts
 
-			j := NewHostCreateJob(env, *h, "", 0, true)
+			j := NewHostCreateJob(env, *h, "", true)
 			j.Run(ctx)
 			assert.NoError(t, j.Error())
 

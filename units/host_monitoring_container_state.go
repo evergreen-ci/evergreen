@@ -44,7 +44,7 @@ func makeHostMonitorContainerStateJob() *hostMonitorContainerStateJob {
 	return j
 }
 
-func NewHostMonitorContainerStateJob(env evergreen.Environment, h *host.Host, providerName, id string) amboy.Job {
+func NewHostMonitorContainerStateJob(h *host.Host, providerName, id string) amboy.Job {
 	job := makeHostMonitorContainerStateJob()
 
 	job.host = h

@@ -173,7 +173,7 @@ func LogHostModifySucceeded(hostID, source string) {
 
 // LogHostModifyError logs an event indicating that the host errored while being
 // modified.
-func LogHostModifyError(hostID, source, logs string) {
+func LogHostModifyError(hostID, logs string) {
 	LogHostEvent(hostID, EventHostModified, HostEventData{Successful: false, Logs: logs})
 }
 

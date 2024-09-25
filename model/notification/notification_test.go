@@ -236,7 +236,7 @@ func (s *notificationSuite) TestWebhookPayload() {
 
 	s.Equal(jsonData, string(n.Payload.(*util.EvergreenWebhook).Body))
 
-	c, err := n.Composer(s.env)
+	c, err := n.Composer()
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
@@ -257,7 +257,7 @@ func (s *notificationSuite) TestJIRACommentPayload() {
 
 	s.Equal("hi", *n.Payload.(*string))
 
-	c, err := n.Composer(s.env)
+	c, err := n.Composer()
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.Equal("hi", c.String())
@@ -294,7 +294,7 @@ func (s *notificationSuite) TestJIRAIssuePayload() {
 
 	s.Equal(s.n, *n)
 
-	c, err := n.Composer(s.env)
+	c, err := n.Composer()
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
@@ -323,7 +323,7 @@ func (s *notificationSuite) TestEmailPayload() {
 
 	s.Equal(s.n, *n)
 
-	c, err := n.Composer(s.env)
+	c, err := n.Composer()
 	s.NoError(err)
 	s.Require().NotNil(c)
 
@@ -350,7 +350,7 @@ func (s *notificationSuite) TestSlackPayload() {
 
 	s.Equal(s.n, *n)
 
-	c, err := n.Composer(s.env)
+	c, err := n.Composer()
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
@@ -375,7 +375,7 @@ func (s *notificationSuite) TestGithubPayload() {
 
 	s.Equal(s.n, *n)
 
-	c, err := n.Composer(s.env)
+	c, err := n.Composer()
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
@@ -386,7 +386,7 @@ func (s *notificationSuite) TestEnqueuePatchPayload() {
 	s.n.Payload = &model.EnqueuePatch{
 		PatchID: "1234567890987654321abcde",
 	}
-	c, err := s.n.Composer(s.env)
+	c, err := s.n.Composer()
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())

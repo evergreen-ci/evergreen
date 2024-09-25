@@ -196,7 +196,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	testutil.ConfigureIntegrationTest(t, patchTestConfig, t.Name())
+	testutil.ConfigureIntegrationTest(t, patchTestConfig)
 	Convey("With calling GetPatchedProject with a config and remote configuration path",
 		t, func() {
 			Convey("Calling GetPatchedProject returns a valid project given a patch and settings", func() {
@@ -285,7 +285,7 @@ func TestFinalizePatch(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	testutil.ConfigureIntegrationTest(t, patchTestConfig, t.Name())
+	testutil.ConfigureIntegrationTest(t, patchTestConfig)
 	require.NoError(t, evergreen.UpdateConfig(ctx, patchTestConfig), ShouldBeNil)
 
 	// Running a multi-document transaction requires the collections to exist
