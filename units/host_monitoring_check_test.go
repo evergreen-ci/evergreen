@@ -10,10 +10,13 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -53,7 +56,7 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 	mockCloud.Reset()
 	mockCloud.Set(h.Id, mockInstance)
 
-	j := NewHostMonitorExternalStateJob(env, h, "one")
+	j := NewHostMonitoringCheckJob(env, h, "one")
 
 	j.Run(ctx)
 
@@ -70,6 +73,95 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 	assert.Equal(evergreen.HostTerminated, dbHost.Status)
 }
 
+func TestHandleUnresponsiveStaticHost(t *testing.T) {
+	colls := []string{host.Collection, task.Collection, build.Collection, model.VersionCollection}
+	defer func() {
+		assert.NoError(t, db.ClearCollections(colls...))
+	}()
+	for tName, tCase := range map[string]func(ctx context.Context, h *host.Host, j *hostMonitorExternalStateCheckJob){
+		"QuarantinesStaticHost": func(ctx context.Context, h *host.Host, j *hostMonitorExternalStateCheckJob) {
+			require.NoError(t, h.Insert(ctx))
+
+			assert.NoError(t, j.handleUnresponsiveStaticHost(ctx))
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
+		},
+		"QuarantinesStaticHostAndFixesStrandedTask": func(ctx context.Context, h *host.Host, j *hostMonitorExternalStateCheckJob) {
+			v := model.Version{
+				Id:     "version_id",
+				Status: evergreen.VersionStarted,
+			}
+			require.NoError(t, v.Insert())
+			b := build.Build{
+				Id:      "build_id",
+				Version: v.Id,
+				Status:  evergreen.BuildStarted,
+			}
+			require.NoError(t, b.Insert())
+			tsk := task.Task{
+				Id:        "task_id",
+				Execution: 1,
+				BuildId:   b.Id,
+				Version:   v.Id,
+				Status:    evergreen.TaskStarted,
+				HostId:    h.Id,
+			}
+			require.NoError(t, tsk.Insert())
+
+			h.RunningTask = tsk.Id
+			h.RunningTaskExecution = tsk.Execution
+			require.NoError(t, h.Insert(ctx))
+
+			assert.NoError(t, j.handleUnresponsiveStaticHost(ctx))
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
+
+			dbTask, err := task.FindOneIdAndExecution(tsk.Id, tsk.Execution)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
+		},
+		"NoopsForNonStaticHost": func(ctx context.Context, h *host.Host, j *hostMonitorExternalStateCheckJob) {
+			h.Provider = evergreen.ProviderNameEc2Fleet
+			require.NoError(t, h.Insert(ctx))
+
+			assert.NoError(t, j.handleUnresponsiveStaticHost(ctx))
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			require.NoError(t, db.ClearCollections(colls...))
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
+			h := &host.Host{
+				Id:                    "host_id",
+				Provider:              evergreen.ProviderNameStatic,
+				Status:                evergreen.HostRunning,
+				LastCommunicationTime: time.Now().Add(-7 * utility.Day),
+			}
+
+			j, ok := NewHostMonitoringCheckJob(env, h, "job_id").(*hostMonitorExternalStateCheckJob)
+			require.True(t, ok)
+
+			tCase(ctx, h, j)
+		})
+	}
+}
+
 func TestHandleExternallyTerminatedHost(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -82,7 +174,6 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 	} {
 		t.Run("InstanceStatus"+strings.Title(status.String()), func(t *testing.T) {
 			t.Run("TerminatesHostAndClearsTask", func(t *testing.T) {
-				strings.Title(status.String())
 				tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
 				defer tcancel()
 				tctx = testutil.TestSpan(tctx, t)

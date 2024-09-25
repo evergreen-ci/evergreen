@@ -8,9 +8,8 @@ import (
 )
 
 ////////////////////////////////////////////////////////////////////////////////
-//
-// APIOSInfo is the model to be returned by the API whenever OS information is fetched.
 
+// APIOSInfo is the model to be returned by the API whenever OS information is fetched.
 type APIOSInfo struct {
 	Name    *string `json:"name"`
 	Version *string `json:"version"`
@@ -32,9 +31,8 @@ func (apiOSInfo *APIOSInfo) ToService() *thirdparty.OSInfo {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-//
-// APIPackage is the model to be returned by the API whenever packages are fetched.
 
+// APIPackage is the model to be returned by the API whenever packages are fetched.
 type APIPackage struct {
 	Name    *string `json:"name"`
 	Manager *string `json:"manager"`
@@ -59,9 +57,8 @@ func (apiPackage *APIPackage) ToService() *thirdparty.Package {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-//
-// APIToolchain is the model to be returned by the API whenever toolchains are fetched.
 
+// APIToolchain is the model to be returned by the API whenever toolchains are fetched.
 type APIToolchain struct {
 	Name    *string `json:"name"`
 	Path    *string `json:"path"`
@@ -86,9 +83,8 @@ func (apiToolchain *APIToolchain) ToService() *thirdparty.Toolchain {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-//
-// APIImageEventEntry is the model to be returned by the API whenever image event entries are fetched.
 
+// APIImageEventEntry is the model to be returned by the API whenever image event entries are fetched.
 type APIImageEventEntry struct {
 	Name   *string                          `json:"name"`
 	Before *string                          `json:"before"`
@@ -119,9 +115,8 @@ func (apiImageEventEntry *APIImageEventEntry) ToService() *thirdparty.ImageEvent
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-//
-// APIImageEvent is the model to be returned by the API whenever image events are fetched.
 
+// APIImageEvent is the model to be returned by the API whenever image events are fetched.
 type APIImageEvent struct {
 	Entries   []APIImageEventEntry `json:"entries"`
 	Timestamp *time.Time           `json:"timestamp"`
@@ -156,9 +151,8 @@ func (apiImage *APIImageEvent) ToService() *thirdparty.ImageEvent {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-//
-// APIImage is the model to be returned by the API whenever images are fetched.
 
+// APIImage is the model to be returned by the API whenever images are fetched.
 type APIImage struct {
 	ID           *string    `json:"id"`
 	AMI          *string    `json:"ami"`
@@ -166,15 +160,15 @@ type APIImage struct {
 }
 
 // BuildFromService converts from service level thirdparty.Image to an APIImage.
-func (apiImage *APIImage) BuildFromService(image thirdparty.Image) {
+func (apiImage *APIImage) BuildFromService(image thirdparty.DistroImage) {
 	apiImage.ID = utility.ToStringPtr(image.ID)
 	apiImage.AMI = utility.ToStringPtr(image.AMI)
 	apiImage.LastDeployed = utility.ToTimePtr(image.LastDeployed)
 }
 
 // ToService returns a service layer image using the data from APIImage.
-func (apiImage *APIImage) ToService() *thirdparty.Image {
-	image := thirdparty.Image{
+func (apiImage *APIImage) ToService() *thirdparty.DistroImage {
+	image := thirdparty.DistroImage{
 		ID:           utility.FromStringPtr(apiImage.ID),
 		AMI:          utility.FromStringPtr(apiImage.AMI),
 		LastDeployed: utility.FromTimePtr(apiImage.LastDeployed),

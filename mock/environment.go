@@ -9,6 +9,8 @@ import (
 
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
@@ -35,6 +37,7 @@ type Environment struct {
 	JasperProcessManager    jasper.Manager
 	RemoteGroup             amboy.QueueGroup
 	Depot                   certdepot.Depot
+	ParamManager            *parameterstore.ParameterManager
 	Closers                 map[string]func(context.Context) error
 	DBSession               db.Session
 	EvergreenSettings       *evergreen.Settings
@@ -122,6 +125,18 @@ func (e *Environment) Configure(ctx context.Context) error {
 		return errors.Wrap(err, "bootstrapping host credentials collection")
 	}
 	e.Depot = depot
+
+	// For testing purposes, set up parameter manager so it's backed by the DB.
+	pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
+		PathPrefix:     e.EvergreenSettings.Providers.AWS.ParameterStore.Prefix,
+		CachingEnabled: true,
+		SSMClient:      fakeparameter.NewFakeSSMClient(),
+		DB:             e.MongoClient.Database(e.DatabaseName),
+	})
+	if err != nil {
+		return errors.Wrap(err, "creating fake parameter manager")
+	}
+	e.ParamManager = pm
 
 	// Although it would make more sense to call
 	// auth.LoadUserManager(e.EvergreenSettings), we have to avoid an import
@@ -249,6 +264,20 @@ func (e *Environment) CertificateDepot() certdepot.Depot {
 	return e.Depot
 }
 
+func (e *Environment) SetParameterManager(pm *parameterstore.ParameterManager) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.ParamManager = pm
+}
+
+func (e *Environment) ParameterManager() *parameterstore.ParameterManager {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.ParamManager
+}
+
 func (e *Environment) Settings() *evergreen.Settings {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
@@ -265,7 +294,7 @@ func (e *Environment) ClientConfig() *evergreen.ClientConfig {
 	return &e.Clients
 }
 
-func (e *Environment) GetGitHubSender(owner, repo string) (send.Sender, error) {
+func (e *Environment) GetGitHubSender(string, string, evergreen.CreateInstallationTokenFunc) (send.Sender, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.InternalSender, nil

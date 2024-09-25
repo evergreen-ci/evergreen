@@ -45,6 +45,8 @@ providers:
         client_type: "mock"
       secrets_manager:
         client_type: "mock"
+    parameter_store:
+      prefix: "/evg-test"
   docker:
     api_version: 1.32
 
@@ -178,7 +180,7 @@ project_creation:
 
 github_check_run:
   check_run_limit: 1
-  
+
 task_limits:
   max_hourly_patch_tasks: 100
-  
+  max_task_execution: 9

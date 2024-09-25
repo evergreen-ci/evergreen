@@ -948,9 +948,6 @@ func TestGetCollectiveStatusFromPatchStatuses(t *testing.T) {
 	successful := []string{evergreen.VersionSucceeded}
 	assert.Equal(t, evergreen.VersionSucceeded, GetCollectiveStatusFromPatchStatuses(successful))
 
-	successfulLegacy := []string{evergreen.LegacyPatchSucceeded}
-	assert.Equal(t, evergreen.VersionSucceeded, GetCollectiveStatusFromPatchStatuses(successfulLegacy))
-
 	assert.Equal(t, evergreen.VersionSucceeded, GetCollectiveStatusFromPatchStatuses(successful))
 	failed := []string{evergreen.VersionSucceeded, evergreen.VersionFailed}
 	assert.Equal(t, evergreen.VersionFailed, GetCollectiveStatusFromPatchStatuses(failed))

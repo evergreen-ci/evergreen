@@ -1,38 +1,33 @@
 query {
-  host(
-    hostId: "i-0f81a2d39744003dd"
-  ) {
-    events(
-        limit: 10
-        page: 1
-    ) {
-        eventLogEntries {
-            id
-            resourceType
-            processedAt
-            timestamp
-            eventType
-            data {
-                agentRevision
-                agentBuild
-                agentBuild
-                oldStatus
-                newStatus
-                logs
-                hostname
-                provisioningMethod
-                taskId
-                taskPid
-                taskStatus
-                execution
-                monitorOp
-                user
-                successful
-                duration
-            }
-            resourceId
+  host(hostId: "i-0f81a2d39744003dd") {
+    events(opts: { limit: 10, page: 1 }) {
+      eventLogEntries {
+        id
+        resourceType
+        processedAt
+        timestamp
+        eventType
+        data {
+          agentRevision
+          agentBuild
+          agentBuild
+          oldStatus
+          newStatus
+          logs
+          hostname
+          provisioningMethod
+          taskId
+          taskPid
+          taskStatus
+          execution
+          monitorOp
+          user
+          successful
+          duration
         }
-        count
+        resourceId
+      }
+      count
     }
   }
 }

@@ -1,6 +1,31 @@
 {
   "versions": [
     {
+      "_id": "evergreen_version39",
+      "gitspec": "revision39",
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "activated": true,
+      "author": "mohamed.khelif",
+      "status": "failed",
+      "order": 39
+    },
+    {
+      "_id": "evergreen_version0",
+      "gitspec": "revision0",
+      "identifier": "spruce",
+      "r": "gitter_request",
+      "activated": false,
+      "author": "mohamed.khelif",
+      "status": "failed",
+      "order": 40,
+      "build_variants_status": {
+        "activated": false,
+        "build_id": "evergreen_version1_build",
+        "build_variant": "enterprise-ubuntu1604-64"
+      }
+    },
+    {
       "_id": "evergreen_version1",
       "gitspec": "revision1",
       "identifier": "spruce",
@@ -8,7 +33,7 @@
       "activated": true,
       "author": "mohamed.khelif",
       "status": "success",
-      "order": 1,
+      "order": 41,
       "build_variants_status": {
         "activated": true,
         "build_id": "evergreen_version1_build",
@@ -23,7 +48,7 @@
       "activated": true,
       "author": "mohamed.khelif",
       "status": "success",
-      "order": 2,
+      "order": 42,
       "build_variants_status": {
         "activated": true,
         "build_id": "evergreen_version2_build",
@@ -35,10 +60,15 @@
       "gitspec": "revision3",
       "identifier": "spruce",
       "r": "gitter_request",
-      "activated": false,
+      "activated": true,
       "author": "mohamed.khelif",
       "status": "created",
-      "order": 3
+      "order": 43,
+      "build_variants_status": {
+        "activated": true,
+        "build_id": "evergreen_version3_build",
+        "build_variant": "lint"
+      }
     },
     {
       "_id": "evergreen_version4",
@@ -48,7 +78,7 @@
       "activated": false,
       "author": "mohamed.khelif",
       "status": "created",
-      "order": 4
+      "order": 44
     },
     {
       "_id": "evergreen_version5",
@@ -58,7 +88,7 @@
       "activated": true,
       "author": "mohamed.khelif",
       "status": "created",
-      "order": 5
+      "order": 45
     }
   ],
   "tasks": [
@@ -122,11 +152,11 @@
       "_id": "task_5",
       "version": "evergreen_version5",
       "status": "success",
-      "display_name": "Some Other Task",
+      "display_name": "Task Number 5",
       "activated": true,
-      "build_variant": "enterprise-ubuntu1604-64",
-      "build_variant_display_name": "Ubuntu 16.04",
-      "build_id": "evergreen_version5_build",
+      "build_variant": "lint",
+      "build_variant_display_name": "Linter",
+      "build_id": "evergreen_version3_build",
       "create_time": {
         "$date": "2020-01-01T00:00:05Z"
       },
@@ -175,9 +205,16 @@
       "version": "evergreen_version2"
     },
     {
-      "_id": "evergreen_version5_build",
-      "build_variant": "enterprise-ubuntu1604-64",
-      "display_name": "Ubuntu 16.04"
+      "_id": "evergreen_version3_build",
+      "activated": true,
+      "build_variant": "lint",
+      "display_name": "Linter",
+      "tasks": [
+        {
+          "id": "task_5"
+        }
+      ],
+      "version": "evergreen_version5"
     }
   ]
 }

@@ -202,7 +202,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		// assign the task to a host and retrieve the task
 		nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, h.env, taskQueue, h.taskDispatcher, h.host, h.details)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
+			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
 
@@ -219,7 +219,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		if secondaryQueue != nil {
 			nextTask, shouldRunTeardown, err = assignNextAvailableTask(ctx, h.env, secondaryQueue, h.taskAliasDispatcher, h.host, h.details)
 			if err != nil {
-				return gimlet.MakeJSONErrorResponder(err)
+				return gimlet.MakeJSONInternalErrorResponder(err)
 			}
 		}
 	}
@@ -236,7 +236,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 			})
 			err = h.host.SetTaskGroupTeardownStartTime(ctx)
 			if err != nil {
-				return gimlet.MakeJSONErrorResponder(err)
+				return gimlet.MakeJSONInternalErrorResponder(err)
 			}
 			nextTaskResponse.ShouldTeardownGroup = true
 		} else {
@@ -1213,8 +1213,8 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	// the active state should be inactive.
 	if h.details.Status == evergreen.TaskUndispatched {
 		if t.Activated {
-			grip.Warningf("task %s is active and undispatched after being marked as finished", t.Id)
-			return gimlet.NewJSONResponse(struct{}{})
+			grip.Warningf("task '%s' is active and undispatched after being marked as finished", t.Id)
+			return gimlet.NewJSONResponse(&apimodels.EndTaskResponse{})
 		}
 		abortMsg := fmt.Sprintf("task '%s' has been aborted and will not run", t.Id)
 		grip.Infof(abortMsg)
@@ -1238,17 +1238,14 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		endTaskResp.ShouldExit = true
 	}
 
-	// we should disable hosts and prevent them from performing
-	// more work if they appear to be in a bad state
-	// (e.g. encountered 5 consecutive system failures)
+	// Disable hosts and prevent them from performing more work if they have
+	// system failed many tasks in a row.
 	if event.AllRecentHostEventsMatchStatus(ctx, currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
-		msg := "host encountered consecutive system failures"
-		if currentHost.Provider != evergreen.ProviderNameStatic {
-			grip.Error(message.WrapError(units.HandlePoisonedHost(ctx, h.env, currentHost, msg), message.Fields{
-				"message": "unable to disable poisoned host",
-				"host":    currentHost.Id,
-			}))
-		}
+		msg := fmt.Sprintf("host encountered %d consecutive system failures", consecutiveSystemFailureThreshold)
+		grip.Error(message.WrapError(units.HandlePoisonedHost(ctx, h.env, currentHost, msg), message.Fields{
+			"message": "unable to disable poisoned host",
+			"host":    currentHost.Id,
+		}))
 
 		endTaskResp.ShouldExit = true
 	}

@@ -956,7 +956,6 @@ func (a *APIJiraConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.JiraConfig:
 		a.Host = utility.ToStringPtr(v.Host)
-		a.DefaultProject = utility.ToStringPtr(v.DefaultProject)
 		a.Email = utility.ToStringPtr(v.Email)
 		a.BasicAuthConfig = &APIJiraBasicAuth{}
 		a.BasicAuthConfig.BuildFromService(v.BasicAuthConfig)
@@ -970,9 +969,8 @@ func (a *APIJiraConfig) BuildFromService(h interface{}) error {
 
 func (a *APIJiraConfig) ToService() (interface{}, error) {
 	c := evergreen.JiraConfig{
-		Host:           utility.FromStringPtr(a.Host),
-		DefaultProject: utility.FromStringPtr(a.DefaultProject),
-		Email:          utility.FromStringPtr(a.Email),
+		Host:  utility.FromStringPtr(a.Host),
+		Email: utility.FromStringPtr(a.Email),
 	}
 	if a.BasicAuthConfig != nil {
 		c.BasicAuthConfig = a.BasicAuthConfig.ToService()
@@ -2047,7 +2045,6 @@ type APIServiceFlags struct {
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
 	GlobalGitHubTokenDisabled       bool `json:"global_github_token_disabled"`
 	SleepScheduleDisabled           bool `json:"sleep_schedule_disabled"`
-	SleepScheduleBetaTestDisabled   bool `json:"sleep_schedule_beta_test_disabled"`
 	SystemFailedTaskRestartDisabled bool `json:"system_failed_task_restart_disabled"`
 	DegradedModeDisabled            bool `json:"cpu_degraded_mode_disabled"`
 	ParameterStoreDisabled          bool `json:"parameter_store_disabled"`
@@ -2365,7 +2362,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.GlobalGitHubTokenDisabled = v.GlobalGitHubTokenDisabled
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
-		as.SleepScheduleBetaTestDisabled = v.SleepScheduleBetaTestDisabled
 		as.SystemFailedTaskRestartDisabled = v.SystemFailedTaskRestartDisabled
 		as.DegradedModeDisabled = v.CPUDegradedModeDisabled
 		as.ParameterStoreDisabled = v.ParameterStoreDisabled
@@ -2410,7 +2406,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
 		GlobalGitHubTokenDisabled:       as.GlobalGitHubTokenDisabled,
 		SleepScheduleDisabled:           as.SleepScheduleDisabled,
-		SleepScheduleBetaTestDisabled:   as.SleepScheduleBetaTestDisabled,
 		SystemFailedTaskRestartDisabled: as.SystemFailedTaskRestartDisabled,
 		CPUDegradedModeDisabled:         as.DegradedModeDisabled,
 		ParameterStoreDisabled:          as.ParameterStoreDisabled,
@@ -2697,15 +2692,17 @@ func (c *APIGitHubCheckRunConfig) ToService() (interface{}, error) {
 }
 
 type APITaskLimitsConfig struct {
-	MaxTasksPerVersion                   *int `json:"max_tasks_per_version"`
-	MaxIncludesPerVersion                *int `json:"max_includes_per_version"`
-	MaxHourlyPatchTasks                  *int `json:"max_hourly_patch_tasks"`
-	MaxPendingGeneratedTasks             *int `json:"max_pending_generated_tasks"`
-	MaxGenerateTaskJSONSize              *int `json:"max_generate_task_json_size"`
-	MaxConcurrentLargeParserProjectTasks *int `json:"max_concurrent_large_parser_project_tasks"`
-	MaxDegradedModeParserProjectSize     *int `json:"max_degraded_mode_parser_project_size"`
-	MaxParserProjectSize                 *int `json:"max_parser_project_size"`
-	MaxExecTimeoutSecs                   *int `json:"max_exec_timeout_secs"`
+	MaxTasksPerVersion                               *int `json:"max_tasks_per_version"`
+	MaxIncludesPerVersion                            *int `json:"max_includes_per_version"`
+	MaxHourlyPatchTasks                              *int `json:"max_hourly_patch_tasks"`
+	MaxPendingGeneratedTasks                         *int `json:"max_pending_generated_tasks"`
+	MaxGenerateTaskJSONSize                          *int `json:"max_generate_task_json_size"`
+	MaxConcurrentLargeParserProjectTasks             *int `json:"max_concurrent_large_parser_project_tasks"`
+	MaxDegradedModeParserProjectSize                 *int `json:"max_degraded_mode_parser_project_size"`
+	MaxParserProjectSize                             *int `json:"max_parser_project_size"`
+	MaxExecTimeoutSecs                               *int `json:"max_exec_timeout_secs"`
+	MaxDegradedModeConcurrentLargeParserProjectTasks *int `json:"max_degraded_mode_concurrent_large_parser_project_tasks"`
+	MaxTaskExecution                                 *int `json:"max_task_execution"`
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
@@ -2717,9 +2714,11 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 		c.MaxHourlyPatchTasks = utility.ToIntPtr(v.MaxHourlyPatchTasks)
 		c.MaxGenerateTaskJSONSize = utility.ToIntPtr(v.MaxGenerateTaskJSONSize)
 		c.MaxConcurrentLargeParserProjectTasks = utility.ToIntPtr(v.MaxConcurrentLargeParserProjectTasks)
+		c.MaxDegradedModeConcurrentLargeParserProjectTasks = utility.ToIntPtr(v.MaxDegradedModeConcurrentLargeParserProjectTasks)
 		c.MaxDegradedModeParserProjectSize = utility.ToIntPtr(v.MaxDegradedModeParserProjectSize)
 		c.MaxParserProjectSize = utility.ToIntPtr(v.MaxParserProjectSize)
 		c.MaxExecTimeoutSecs = utility.ToIntPtr(v.MaxExecTimeoutSecs)
+		c.MaxTaskExecution = utility.ToIntPtr(v.MaxTaskExecution)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
@@ -2728,15 +2727,17 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 
 func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 	return evergreen.TaskLimitsConfig{
-		MaxTasksPerVersion:                   utility.FromIntPtr(c.MaxTasksPerVersion),
-		MaxIncludesPerVersion:                utility.FromIntPtr(c.MaxIncludesPerVersion),
-		MaxHourlyPatchTasks:                  utility.FromIntPtr(c.MaxHourlyPatchTasks),
-		MaxPendingGeneratedTasks:             utility.FromIntPtr(c.MaxPendingGeneratedTasks),
-		MaxGenerateTaskJSONSize:              utility.FromIntPtr(c.MaxGenerateTaskJSONSize),
-		MaxConcurrentLargeParserProjectTasks: utility.FromIntPtr(c.MaxConcurrentLargeParserProjectTasks),
-		MaxDegradedModeParserProjectSize:     utility.FromIntPtr(c.MaxDegradedModeParserProjectSize),
-		MaxParserProjectSize:                 utility.FromIntPtr(c.MaxParserProjectSize),
-		MaxExecTimeoutSecs:                   utility.FromIntPtr(c.MaxExecTimeoutSecs),
+		MaxTasksPerVersion:                               utility.FromIntPtr(c.MaxTasksPerVersion),
+		MaxIncludesPerVersion:                            utility.FromIntPtr(c.MaxIncludesPerVersion),
+		MaxHourlyPatchTasks:                              utility.FromIntPtr(c.MaxHourlyPatchTasks),
+		MaxPendingGeneratedTasks:                         utility.FromIntPtr(c.MaxPendingGeneratedTasks),
+		MaxGenerateTaskJSONSize:                          utility.FromIntPtr(c.MaxGenerateTaskJSONSize),
+		MaxConcurrentLargeParserProjectTasks:             utility.FromIntPtr(c.MaxConcurrentLargeParserProjectTasks),
+		MaxDegradedModeParserProjectSize:                 utility.FromIntPtr(c.MaxDegradedModeParserProjectSize),
+		MaxParserProjectSize:                             utility.FromIntPtr(c.MaxParserProjectSize),
+		MaxExecTimeoutSecs:                               utility.FromIntPtr(c.MaxExecTimeoutSecs),
+		MaxDegradedModeConcurrentLargeParserProjectTasks: utility.FromIntPtr(c.MaxDegradedModeConcurrentLargeParserProjectTasks),
+		MaxTaskExecution:                                 utility.FromIntPtr(c.MaxTaskExecution),
 	}, nil
 }
 

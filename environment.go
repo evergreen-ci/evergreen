@@ -10,6 +10,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/evergreen-ci/certdepot"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
@@ -32,6 +33,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
@@ -135,6 +137,10 @@ type Environment interface {
 	// commands. Every process has a manager service.
 	JasperManager() jasper.Manager
 	CertificateDepot() certdepot.Depot
+	// ParameterManager returns the parameter manager that stores sensitive
+	// secrets.
+	ParameterManager() *parameterstore.ParameterManager
+	SetParameterManager(pm *parameterstore.ParameterManager)
 
 	// ClientConfig provides access to a list of the latest evergreen
 	// clients, that this server can serve to users
@@ -151,7 +157,7 @@ type Environment interface {
 
 	// GetGitHubSender provides a grip Sender configured with the given
 	// owner and repo information.
-	GetGitHubSender(string, string) (send.Sender, error)
+	GetGitHubSender(owner string, repo string, createInstallationToken CreateInstallationTokenFunc) (send.Sender, error)
 
 	// RegisterCloser adds a function object to an internal
 	// tracker to be called by the Close method before process
@@ -179,17 +185,17 @@ type Environment interface {
 	BuildVersion() string
 }
 
-// NewEnvironment constructs an Environment instance, establishing a
-// new connection to the database, and creating a new set of worker
-// queues.
+// NewEnvironment constructs an Environment instance and initializes all
+// essential global state, including establishing a new connection to the
+// database and creating a new set of worker queues.
 //
 // When NewEnvironment returns without an error, you should assume
 // that the queues have been started, there was no issue
 // establishing a connection to the database, and that the
 // local and remote queues have started.
 //
-// NewEnvironment requires that either the path or DB is sent so that
-// if both are specified, the settings are read from the file.
+// NewEnvironment requires that either the path or DB is set. If both are
+// specified, the settings are read from the file.
 func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket string, db *DBSettings, tp trace.TracerProvider) (Environment, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	tracer := tp.Tracer("github.com/evergreen-ci/evergreen/evergreen")
@@ -238,6 +244,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 
 	catcher.Add(e.initJasper(ctx, tracer))
 	catcher.Add(e.initDepot(ctx, tracer))
+	catcher.Add(e.initParameterManager(ctx, tracer))
 	catcher.Add(e.initThirdPartySenders(ctx, tracer))
 	catcher.Add(e.initClientConfig(ctx, versionID, clientS3Bucket, tracer))
 	catcher.Add(e.createLocalQueue(ctx, tracer))
@@ -262,6 +269,7 @@ type envState struct {
 	ctx                     context.Context
 	jasperManager           jasper.Manager
 	depot                   certdepot.Depot
+	paramMgr                *parameterstore.ParameterManager
 	settings                *Settings
 	dbName                  string
 	client                  *mongo.Client
@@ -911,6 +919,23 @@ func (e *envState) initDepot(ctx context.Context, tracer trace.Tracer) error {
 	return nil
 }
 
+func (e *envState) initParameterManager(ctx context.Context, tracer trace.Tracer) error {
+	ctx, span := tracer.Start(ctx, "InitParameterManager")
+	defer span.End()
+
+	pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
+		PathPrefix:     e.settings.Providers.AWS.ParameterStore.Prefix,
+		CachingEnabled: true,
+		DB:             e.client.Database(e.dbName),
+	})
+	if err != nil {
+		return errors.Wrap(err, "creating parameter manager")
+	}
+	e.paramMgr = pm
+
+	return nil
+}
+
 func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer trace.Tracer) error {
 	ctx, span := tracer.Start(ctx, "InitTracer")
 	defer span.End()
@@ -948,6 +973,13 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer t
 
 	spanLimits := sdktrace.NewSpanLimits()
 	spanLimits.AttributeValueLengthLimit = OtelAttributeMaxLength
+
+	// Set up propagators. This allows traces from the UI to connect to traces from Evergreen.
+	otel.SetTextMapPropagator(
+		propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+		),
+	)
 
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exp),
@@ -1093,12 +1125,14 @@ func (e *envState) SaveConfig(ctx context.Context) error {
 	return errors.WithStack(UpdateConfig(ctx, &copy))
 }
 
+type CreateInstallationTokenFunc func(ctx context.Context, owner, repo string) (string, error)
+
 // GetGitHubSender returns a cached sender with a GitHub app generated token. Each org in GitHub needs a separate token
 // for authentication so we cache a sender for each org and return it if the token has not expired.
 // If the sender for the org doesn't exist or has expired, we create a new one and cache it.
 // In case of GitHub app errors, the function returns the legacy GitHub sender with a global token attached.
 // The senders are only unique to orgs, not repos, but the repo name is needed to generate a token if necessary.
-func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
+func (e *envState) GetGitHubSender(owner, repo string, createInstallationToken CreateInstallationTokenFunc) (send.Sender, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -1111,9 +1145,9 @@ func (e *envState) GetGitHubSender(owner, repo string) (send.Sender, error) {
 	// If githubSender does not exist or has expired, create one, add it to the cache, then return it.
 
 	tokenCreatedAt := time.Now()
-	token, err := e.settings.CreateGitHubAppAuth().CreateCachedInstallationToken(e.ctx, owner, repo, maxInstallationTokenLifetime, nil)
+	token, err := createInstallationToken(e.ctx, owner, repo)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
+		return nil, errors.Wrap(err, "creating GitHub app installation token")
 	}
 	sender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
 		Token:       token,
@@ -1241,6 +1275,20 @@ func (e *envState) CertificateDepot() certdepot.Depot {
 	defer e.mu.RUnlock()
 
 	return e.depot
+}
+
+func (e *envState) SetParameterManager(pm *parameterstore.ParameterManager) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.paramMgr = pm
+}
+
+func (e *envState) ParameterManager() *parameterstore.ParameterManager {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.paramMgr
 }
 
 func (e *envState) RoleManager() gimlet.RoleManager {

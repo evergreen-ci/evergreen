@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -750,18 +751,18 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 // are empty, the entry is deleted.
 func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) error {
 	if appID == 0 && len(privateKey) == 0 {
-		return RemoveGithubAppAuth(p.Id)
+		return githubapp.RemoveGithubAppAuth(p.Id)
 	}
 
 	if appID == 0 || len(privateKey) == 0 {
 		return errors.New("both app ID and private key must be provided")
 	}
-	auth := evergreen.GithubAppAuth{
+	auth := githubapp.GithubAppAuth{
 		Id:         p.Id,
 		AppID:      appID,
 		PrivateKey: privateKey,
 	}
-	return UpsertGithubAppAuth(&auth)
+	return githubapp.UpsertGithubAppAuth(&auth)
 }
 
 // AddToRepoScope validates that the branch can be attached to the matching repo,
@@ -1858,7 +1859,7 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 // SetTracksPushEvents returns true if the GitHub app is installed on the owner/repo for the given project.
 func SetTracksPushEvents(ctx context.Context, projectRef *ProjectRef) (bool, error) {
 	// Don't return errors because it could cause the project page to break if GitHub is down.
-	hasApp, err := evergreen.GetEnvironment().Settings().CreateGitHubAppAuth().IsGithubAppInstalledOnRepo(ctx, projectRef.Owner, projectRef.Repo)
+	hasApp, err := githubapp.CreateGitHubAppAuth(evergreen.GetEnvironment().Settings()).IsGithubAppInstalledOnRepo(ctx, projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":            "Error verifying GitHub app installation",
@@ -1999,7 +2000,7 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	// Don't error even if there is problem with verifying the GitHub app installation
 	// because a GitHub outage could cause project settings page to not load.
-	hasEvergreenAppInstalled, _ := evergreen.GetEnvironment().Settings().CreateGitHubAppAuth().IsGithubAppInstalledOnRepo(context.Background(), p.Owner, p.Repo)
+	hasEvergreenAppInstalled, _ := githubapp.CreateGitHubAppAuth(evergreen.GetEnvironment().Settings()).IsGithubAppInstalledOnRepo(context.Background(), p.Owner, p.Repo)
 
 	projectVars, err := FindOneProjectVars(p.Id)
 	if err != nil {
@@ -2017,12 +2018,12 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 		return nil, errors.Wrapf(err, "finding subscription for project '%s'", p.Id)
 	}
 
-	githubApp, err := FindOneGithubAppAuth(p.Id)
+	githubApp, err := githubapp.FindOneGithubAppAuth(p.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding GitHub app for project '%s'", p.Id)
 	}
 	if githubApp == nil {
-		githubApp = &evergreen.GithubAppAuth{}
+		githubApp = &githubapp.GithubAppAuth{}
 	}
 
 	projectSettingsEvent := ProjectSettings{
@@ -3276,6 +3277,8 @@ func (c ContainerSecret) Validate() error {
 	return catcher.Resolve()
 }
 
+var validTriggerStatuses = []string{"", AllStatuses, evergreen.VersionSucceeded, evergreen.VersionFailed}
+
 func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
 	if definition.ChildProject == parentProject {
 		return definition, errors.New("a project cannot trigger itself")
@@ -3286,7 +3289,7 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 		return definition, errors.Wrapf(err, "finding child project '%s'", definition.ChildProject)
 	}
 
-	if !utility.StringSliceContains([]string{"", AllStatuses, evergreen.LegacyPatchSucceeded, evergreen.VersionSucceeded, evergreen.VersionFailed}, definition.Status) {
+	if !utility.StringSliceContains(validTriggerStatuses, definition.Status) {
 		return definition, errors.Errorf("invalid status: %s", definition.Status)
 	}
 

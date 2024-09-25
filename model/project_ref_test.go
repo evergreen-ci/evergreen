@@ -14,6 +14,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -794,7 +795,7 @@ func TestAttachToNewRepo(t *testing.T) {
 	defer cancel()
 
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
-		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, evergreen.GitHubAppCollection))
+		evergreen.RoleCollection, user.Collection, evergreen.ConfigCollection, githubapp.GitHubAppCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 	settings := evergreen.Settings{
@@ -832,7 +833,7 @@ func TestAttachToNewRepo(t *testing.T) {
 		SystemRoles: []string{GetViewRepoRole("myRepo")},
 	}
 	assert.NoError(t, u.Insert())
-	installation := evergreen.GitHubAppInstallation{
+	installation := githubapp.GitHubAppInstallation{
 		Owner:          pRef.Owner,
 		Repo:           pRef.Repo,
 		AppID:          1234,
@@ -846,7 +847,7 @@ func TestAttachToNewRepo(t *testing.T) {
 
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
-	newInstallation := evergreen.GitHubAppInstallation{
+	newInstallation := githubapp.GitHubAppInstallation{
 		Owner:          pRef.Owner,
 		Repo:           pRef.Repo,
 		AppID:          1234,
@@ -947,7 +948,7 @@ func TestAttachToRepo(t *testing.T) {
 	}
 	assert.NoError(t, pRef.Insert())
 
-	installation := evergreen.GitHubAppInstallation{
+	installation := githubapp.GitHubAppInstallation{
 		Owner:          pRef.Owner,
 		Repo:           pRef.Repo,
 		AppID:          1234,
@@ -1671,13 +1672,13 @@ func TestSetGithubAppCredentials(t *testing.T) {
 	samplePrivateKey := []byte("private_key")
 	for name, test := range map[string]func(t *testing.T, p *ProjectRef){
 		"NoCredentialsWhenNoneExist": func(t *testing.T, p *ProjectRef) {
-			app, err := FindOneGithubAppAuth(p.Id)
+			app, err := githubapp.FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Nil(t, app)
 		},
 		"CredentialsCanBeSet": func(t *testing.T, p *ProjectRef) {
 			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
-			app, err := FindOneGithubAppAuth(p.Id)
+			app, err := githubapp.FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Equal(t, sampleAppId, app.AppID)
 			assert.Equal(t, samplePrivateKey, app.PrivateKey)
@@ -1685,35 +1686,35 @@ func TestSetGithubAppCredentials(t *testing.T) {
 		"CredentialsCanBeRemovedByEmptyAppIDAndEmptyPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
 			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
-			app, err := FindOneGithubAppAuth(p.Id)
+			app, err := githubapp.FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Equal(t, sampleAppId, app.AppID)
 			assert.Equal(t, samplePrivateKey, app.PrivateKey)
 
 			// Remove credentials.
 			require.NoError(t, p.SetGithubAppCredentials(0, []byte("")))
-			app, err = FindOneGithubAppAuth(p.Id)
+			app, err = githubapp.FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Nil(t, app)
 		},
 		"CredentialsCanBeRemovedByEmptyAppIDAndNilPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
 			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
-			app, err := FindOneGithubAppAuth(p.Id)
+			app, err := githubapp.FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Equal(t, sampleAppId, app.AppID)
 			assert.Equal(t, samplePrivateKey, app.PrivateKey)
 
 			// Remove credentials.
 			require.NoError(t, p.SetGithubAppCredentials(0, nil))
-			app, err = FindOneGithubAppAuth(p.Id)
+			app, err = githubapp.FindOneGithubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Nil(t, app)
 		},
 		"CredentialsCannotBeRemovedByOnlyEmptyPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
 			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
-			appID, err := GetGitHubAppID(p.Id)
+			appID, err := githubapp.GetGitHubAppID(p.Id)
 			require.NoError(t, err)
 			assert.NotNil(t, appID)
 
@@ -1723,7 +1724,7 @@ func TestSetGithubAppCredentials(t *testing.T) {
 		"CredentialsCannotBeRemovedByOnlyNilPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
 			require.NoError(t, p.SetGithubAppCredentials(10, samplePrivateKey))
-			appID, err := GetGitHubAppID(p.Id)
+			appID, err := githubapp.GetGitHubAppID(p.Id)
 			require.NoError(t, err)
 			assert.NotNil(t, appID)
 
@@ -1733,7 +1734,7 @@ func TestSetGithubAppCredentials(t *testing.T) {
 		"CredentialsCannotBeRemovedByOnlyEmptyAppID": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
 			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
-			appID, err := GetGitHubAppID(p.Id)
+			appID, err := githubapp.GetGitHubAppID(p.Id)
 			require.NoError(t, err)
 			assert.NotNil(t, appID)
 
@@ -1742,7 +1743,7 @@ func TestSetGithubAppCredentials(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(ProjectRefCollection, GitHubAppAuthCollection))
+			require.NoError(t, db.ClearCollections(ProjectRefCollection, githubapp.GitHubAppAuthCollection))
 			p := &ProjectRef{
 				Id: "id1",
 			}
@@ -1754,7 +1755,7 @@ func TestSetGithubAppCredentials(t *testing.T) {
 
 func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
-		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection, evergreen.GitHubAppCollection))
+		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection, githubapp.GitHubAppCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1798,7 +1799,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	}
 	assert.NoError(t, doc3.Insert())
 
-	installation := evergreen.GitHubAppInstallation{
+	installation := githubapp.GitHubAppInstallation{
 		Owner:          "mongodb",
 		Repo:           "mongo",
 		AppID:          1234,

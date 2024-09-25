@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	model1 "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -377,6 +378,13 @@ type ComplexityRoot struct {
 		TriggerData    func(childComplexity int) int
 	}
 
+	GeneratedTaskCountResults struct {
+		BuildVariantName func(childComplexity int) int
+		EstimatedTasks   func(childComplexity int) int
+		TaskID           func(childComplexity int) int
+		TaskName         func(childComplexity int) int
+	}
+
 	GitHubDynamicTokenPermissionGroup struct {
 		Name        func(childComplexity int) int
 		Permissions func(childComplexity int) int
@@ -452,7 +460,8 @@ type ComplexityRoot struct {
 		Distro                func(childComplexity int) int
 		DistroID              func(childComplexity int) int
 		Elapsed               func(childComplexity int) int
-		Events                func(childComplexity int, limit *int, page *int, sortDir *SortDirection) int
+		EventTypes            func(childComplexity int) int
+		Events                func(childComplexity int, opts HostEventsInput) int
 		Expiration            func(childComplexity int) int
 		HomeVolume            func(childComplexity int) int
 		HomeVolumeID          func(childComplexity int) int
@@ -1220,7 +1229,6 @@ type ComplexityRoot struct {
 	SleepSchedule struct {
 		DailyStartTime         func(childComplexity int) int
 		DailyStopTime          func(childComplexity int) int
-		IsBetaTester           func(childComplexity int) int
 		NextStartTime          func(childComplexity int) int
 		NextStopTime           func(childComplexity int) int
 		PermanentlyExempt      func(childComplexity int) int
@@ -1669,6 +1677,8 @@ type ComplexityRoot struct {
 
 	Waterfall struct {
 		BuildVariants func(childComplexity int) int
+		NextPageOrder func(childComplexity int) int
+		PrevPageOrder func(childComplexity int) int
 		Versions      func(childComplexity int) int
 	}
 
@@ -1690,6 +1700,11 @@ type ComplexityRoot struct {
 		DisplayName func(childComplexity int) int
 		Id          func(childComplexity int) int
 		Status      func(childComplexity int) int
+	}
+
+	WaterfallVersion struct {
+		InactiveVersions func(childComplexity int) int
+		Version          func(childComplexity int) int
 	}
 
 	Webhook struct {
@@ -1750,7 +1765,8 @@ type HostResolver interface {
 
 	DistroID(ctx context.Context, obj *model.APIHost) (*string, error)
 	Elapsed(ctx context.Context, obj *model.APIHost) (*time.Time, error)
-	Events(ctx context.Context, obj *model.APIHost, limit *int, page *int, sortDir *SortDirection) (*HostEvents, error)
+	Events(ctx context.Context, obj *model.APIHost, opts HostEventsInput) (*HostEvents, error)
+	EventTypes(ctx context.Context, obj *model.APIHost) ([]string, error)
 
 	HomeVolume(ctx context.Context, obj *model.APIHost) (*model.APIVolume, error)
 
@@ -1854,7 +1870,7 @@ type PatchResolver interface {
 	CommitQueuePosition(ctx context.Context, obj *model.APIPatch) (*int, error)
 
 	Duration(ctx context.Context, obj *model.APIPatch) (*PatchDuration, error)
-	GeneratedTaskCounts(ctx context.Context, obj *model.APIPatch) (map[string]interface{}, error)
+	GeneratedTaskCounts(ctx context.Context, obj *model.APIPatch) ([]*GeneratedTaskCountResults, error)
 
 	PatchTriggerAliases(ctx context.Context, obj *model.APIPatch) ([]*model.APIPatchTriggerDefinition, error)
 	Project(ctx context.Context, obj *model.APIPatch) (*PatchProject, error)
@@ -2066,7 +2082,7 @@ type VersionResolver interface {
 
 	ExternalLinksForMetadata(ctx context.Context, obj *model.APIVersion) ([]*ExternalLinkForMetadata, error)
 
-	GeneratedTaskCounts(ctx context.Context, obj *model.APIVersion) (map[string]interface{}, error)
+	GeneratedTaskCounts(ctx context.Context, obj *model.APIVersion) ([]*GeneratedTaskCountResults, error)
 
 	IsPatch(ctx context.Context, obj *model.APIVersion) (bool, error)
 	Manifest(ctx context.Context, obj *model.APIVersion) (*Manifest, error)
@@ -3292,6 +3308,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.GeneralSubscription.TriggerData(childComplexity), true
 
+	case "GeneratedTaskCountResults.buildVariantName":
+		if e.complexity.GeneratedTaskCountResults.BuildVariantName == nil {
+			break
+		}
+
+		return e.complexity.GeneratedTaskCountResults.BuildVariantName(childComplexity), true
+
+	case "GeneratedTaskCountResults.estimatedTasks":
+		if e.complexity.GeneratedTaskCountResults.EstimatedTasks == nil {
+			break
+		}
+
+		return e.complexity.GeneratedTaskCountResults.EstimatedTasks(childComplexity), true
+
+	case "GeneratedTaskCountResults.taskId":
+		if e.complexity.GeneratedTaskCountResults.TaskID == nil {
+			break
+		}
+
+		return e.complexity.GeneratedTaskCountResults.TaskID(childComplexity), true
+
+	case "GeneratedTaskCountResults.taskName":
+		if e.complexity.GeneratedTaskCountResults.TaskName == nil {
+			break
+		}
+
+		return e.complexity.GeneratedTaskCountResults.TaskName(childComplexity), true
+
 	case "GitHubDynamicTokenPermissionGroup.name":
 		if e.complexity.GitHubDynamicTokenPermissionGroup.Name == nil {
 			break
@@ -3558,6 +3602,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Host.Elapsed(childComplexity), true
 
+	case "Host.eventTypes":
+		if e.complexity.Host.EventTypes == nil {
+			break
+		}
+
+		return e.complexity.Host.EventTypes(childComplexity), true
+
 	case "Host.events":
 		if e.complexity.Host.Events == nil {
 			break
@@ -3568,7 +3619,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Host.Events(childComplexity, args["limit"].(*int), args["page"].(*int), args["sortDir"].(*SortDirection)), true
+		return e.complexity.Host.Events(childComplexity, args["opts"].(HostEventsInput)), true
 
 	case "Host.expiration":
 		if e.complexity.Host.Expiration == nil {
@@ -7807,13 +7858,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.SleepSchedule.DailyStopTime(childComplexity), true
 
-	case "SleepSchedule.isBetaTester":
-		if e.complexity.SleepSchedule.IsBetaTester == nil {
-			break
-		}
-
-		return e.complexity.SleepSchedule.IsBetaTester(childComplexity), true
-
 	case "SleepSchedule.nextStartTime":
 		if e.complexity.SleepSchedule.NextStartTime == nil {
 			break
@@ -10098,6 +10142,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Waterfall.BuildVariants(childComplexity), true
 
+	case "Waterfall.nextPageOrder":
+		if e.complexity.Waterfall.NextPageOrder == nil {
+			break
+		}
+
+		return e.complexity.Waterfall.NextPageOrder(childComplexity), true
+
+	case "Waterfall.prevPageOrder":
+		if e.complexity.Waterfall.PrevPageOrder == nil {
+			break
+		}
+
+		return e.complexity.Waterfall.PrevPageOrder(childComplexity), true
+
 	case "Waterfall.versions":
 		if e.complexity.Waterfall.Versions == nil {
 			break
@@ -10181,6 +10239,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.WaterfallTask.Status(childComplexity), true
+
+	case "WaterfallVersion.inactiveVersions":
+		if e.complexity.WaterfallVersion.InactiveVersions == nil {
+			break
+		}
+
+		return e.complexity.WaterfallVersion.InactiveVersions(childComplexity), true
+
+	case "WaterfallVersion.version":
+		if e.complexity.WaterfallVersion.Version == nil {
+			break
+		}
+
+		return e.complexity.WaterfallVersion.Version(childComplexity), true
 
 	case "Webhook.endpoint":
 		if e.complexity.Webhook.Endpoint == nil {
@@ -10317,6 +10389,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputGithubUserInput,
 		ec.unmarshalInputHomeVolumeSettingsInput,
 		ec.unmarshalInputHostAllocatorSettingsInput,
+		ec.unmarshalInputHostEventsInput,
 		ec.unmarshalInputIceCreamSettingsInput,
 		ec.unmarshalInputInstanceTagInput,
 		ec.unmarshalInputIssueLinkInput,
@@ -10569,33 +10642,15 @@ func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, r
 func (ec *executionContext) field_Host_events_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *int
-	if tmp, ok := rawArgs["limit"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
-		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+	var arg0 HostEventsInput
+	if tmp, ok := rawArgs["opts"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("opts"))
+		arg0, err = ec.unmarshalNHostEventsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostEventsInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["limit"] = arg0
-	var arg1 *int
-	if tmp, ok := rawArgs["page"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
-		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["page"] = arg1
-	var arg2 *SortDirection
-	if tmp, ok := rawArgs["sortDir"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sortDir"))
-		arg2, err = ec.unmarshalOSortDirection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["sortDir"] = arg2
+	args["opts"] = arg0
 	return args, nil
 }
 
@@ -20851,6 +20906,173 @@ func (ec *executionContext) fieldContext_GeneralSubscription_triggerData(_ conte
 	return fc, nil
 }
 
+func (ec *executionContext) _GeneratedTaskCountResults_buildVariantName(ctx context.Context, field graphql.CollectedField, obj *GeneratedTaskCountResults) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneratedTaskCountResults_buildVariantName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BuildVariantName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GeneratedTaskCountResults_buildVariantName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GeneratedTaskCountResults",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GeneratedTaskCountResults_taskName(ctx context.Context, field graphql.CollectedField, obj *GeneratedTaskCountResults) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneratedTaskCountResults_taskName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GeneratedTaskCountResults_taskName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GeneratedTaskCountResults",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GeneratedTaskCountResults_taskId(ctx context.Context, field graphql.CollectedField, obj *GeneratedTaskCountResults) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneratedTaskCountResults_taskId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GeneratedTaskCountResults_taskId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GeneratedTaskCountResults",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GeneratedTaskCountResults_estimatedTasks(ctx context.Context, field graphql.CollectedField, obj *GeneratedTaskCountResults) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneratedTaskCountResults_estimatedTasks(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EstimatedTasks, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GeneratedTaskCountResults_estimatedTasks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GeneratedTaskCountResults",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GitHubDynamicTokenPermissionGroup_name(ctx context.Context, field graphql.CollectedField, obj *model.APIGitHubDynamicTokenPermissionGroup) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GitHubDynamicTokenPermissionGroup_name(ctx, field)
 	if err != nil {
@@ -22895,7 +23117,7 @@ func (ec *executionContext) _Host_events(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Host().Events(rctx, obj, fc.Args["limit"].(*int), fc.Args["page"].(*int), fc.Args["sortDir"].(*SortDirection))
+		return ec.resolvers.Host().Events(rctx, obj, fc.Args["opts"].(HostEventsInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -22938,6 +23160,50 @@ func (ec *executionContext) fieldContext_Host_events(ctx context.Context, field 
 	if fc.Args, err = ec.field_Host_events_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Host_eventTypes(ctx context.Context, field graphql.CollectedField, obj *model.APIHost) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Host_eventTypes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Host().EventTypes(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNHostEventType2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Host_eventTypes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Host",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type HostEventType does not have child fields")
+		},
 	}
 	return fc, nil
 }
@@ -23492,8 +23758,6 @@ func (ec *executionContext) fieldContext_Host_sleepSchedule(_ context.Context, f
 				return ec.fieldContext_SleepSchedule_dailyStartTime(ctx, field)
 			case "dailyStopTime":
 				return ec.fieldContext_SleepSchedule_dailyStopTime(ctx, field)
-			case "isBetaTester":
-				return ec.fieldContext_SleepSchedule_isBetaTester(ctx, field)
 			case "nextStartTime":
 				return ec.fieldContext_SleepSchedule_nextStartTime(ctx, field)
 			case "nextStopTime":
@@ -25047,7 +25311,7 @@ func (ec *executionContext) _HostEventLogEntry_eventType(ctx context.Context, fi
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOHostEventType2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostEventLogEntry_eventType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -25057,7 +25321,7 @@ func (ec *executionContext) fieldContext_HostEventLogEntry_eventType(_ context.C
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type HostEventType does not have child fields")
 		},
 	}
 	return fc, nil
@@ -25436,6 +25700,8 @@ func (ec *executionContext) fieldContext_HostsResponse_hosts(_ context.Context, 
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
+			case "eventTypes":
+				return ec.fieldContext_Host_eventTypes(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -32587,6 +32853,8 @@ func (ec *executionContext) fieldContext_Mutation_editSpawnHost(ctx context.Cont
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
+			case "eventTypes":
+				return ec.fieldContext_Host_eventTypes(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -32753,6 +33021,8 @@ func (ec *executionContext) fieldContext_Mutation_spawnHost(ctx context.Context,
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
+			case "eventTypes":
+				return ec.fieldContext_Host_eventTypes(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -32974,6 +33244,8 @@ func (ec *executionContext) fieldContext_Mutation_updateSpawnHostStatus(ctx cont
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
+			case "eventTypes":
+				return ec.fieldContext_Host_eventTypes(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -37548,9 +37820,9 @@ func (ec *executionContext) _Patch_generatedTaskCounts(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.(map[string]interface{})
+	res := resTmp.([]*GeneratedTaskCountResults)
 	fc.Result = res
-	return ec.marshalNMap2map(ctx, field.Selections, res)
+	return ec.marshalNGeneratedTaskCountResults2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGeneratedTaskCountResultsᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Patch_generatedTaskCounts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -37560,7 +37832,17 @@ func (ec *executionContext) fieldContext_Patch_generatedTaskCounts(_ context.Con
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Map does not have child fields")
+			switch field.Name {
+			case "buildVariantName":
+				return ec.fieldContext_GeneratedTaskCountResults_buildVariantName(ctx, field)
+			case "taskName":
+				return ec.fieldContext_GeneratedTaskCountResults_taskName(ctx, field)
+			case "taskId":
+				return ec.fieldContext_GeneratedTaskCountResults_taskId(ctx, field)
+			case "estimatedTasks":
+				return ec.fieldContext_GeneratedTaskCountResults_estimatedTasks(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GeneratedTaskCountResults", field.Name)
 		},
 	}
 	return fc, nil
@@ -46993,6 +47275,8 @@ func (ec *executionContext) fieldContext_Query_host(ctx context.Context, field g
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
+			case "eventTypes":
+				return ec.fieldContext_Host_eventTypes(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -48056,6 +48340,8 @@ func (ec *executionContext) fieldContext_Query_myHosts(_ context.Context, field 
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
+			case "eventTypes":
+				return ec.fieldContext_Host_eventTypes(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -49212,11 +49498,14 @@ func (ec *executionContext) _Query_waterfall(ctx context.Context, field graphql.
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*Waterfall)
 	fc.Result = res
-	return ec.marshalOWaterfall2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfall(ctx, field.Selections, res)
+	return ec.marshalNWaterfall2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfall(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_waterfall(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -49229,6 +49518,10 @@ func (ec *executionContext) fieldContext_Query_waterfall(ctx context.Context, fi
 			switch field.Name {
 			case "buildVariants":
 				return ec.fieldContext_Waterfall_buildVariants(ctx, field)
+			case "nextPageOrder":
+				return ec.fieldContext_Waterfall_nextPageOrder(ctx, field)
+			case "prevPageOrder":
+				return ec.fieldContext_Waterfall_prevPageOrder(ctx, field)
 			case "versions":
 				return ec.fieldContext_Waterfall_versions(ctx, field)
 			}
@@ -53194,47 +53487,6 @@ func (ec *executionContext) fieldContext_SleepSchedule_dailyStopTime(_ context.C
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SleepSchedule_isBetaTester(ctx context.Context, field graphql.CollectedField, obj *host.SleepScheduleInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SleepSchedule_isBetaTester(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.IsBetaTester, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SleepSchedule_isBetaTester(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SleepSchedule",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -66748,9 +67000,9 @@ func (ec *executionContext) _Version_generatedTaskCounts(ctx context.Context, fi
 		}
 		return graphql.Null
 	}
-	res := resTmp.(map[string]interface{})
+	res := resTmp.([]*GeneratedTaskCountResults)
 	fc.Result = res
-	return ec.marshalNMap2map(ctx, field.Selections, res)
+	return ec.marshalNGeneratedTaskCountResults2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGeneratedTaskCountResultsᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Version_generatedTaskCounts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -66760,7 +67012,17 @@ func (ec *executionContext) fieldContext_Version_generatedTaskCounts(_ context.C
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Map does not have child fields")
+			switch field.Name {
+			case "buildVariantName":
+				return ec.fieldContext_GeneratedTaskCountResults_buildVariantName(ctx, field)
+			case "taskName":
+				return ec.fieldContext_GeneratedTaskCountResults_taskName(ctx, field)
+			case "taskId":
+				return ec.fieldContext_GeneratedTaskCountResults_taskId(ctx, field)
+			case "estimatedTasks":
+				return ec.fieldContext_GeneratedTaskCountResults_estimatedTasks(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GeneratedTaskCountResults", field.Name)
 		},
 	}
 	return fc, nil
@@ -68849,6 +69111,8 @@ func (ec *executionContext) fieldContext_Volume_host(_ context.Context, field gr
 				return ec.fieldContext_Host_elapsed(ctx, field)
 			case "events":
 				return ec.fieldContext_Host_events(ctx, field)
+			case "eventTypes":
+				return ec.fieldContext_Host_eventTypes(ctx, field)
 			case "expiration":
 				return ec.fieldContext_Host_expiration(ctx, field)
 			case "hostUrl":
@@ -69166,6 +69430,94 @@ func (ec *executionContext) fieldContext_Waterfall_buildVariants(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Waterfall_nextPageOrder(ctx context.Context, field graphql.CollectedField, obj *Waterfall) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Waterfall_nextPageOrder(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NextPageOrder, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Waterfall_nextPageOrder(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Waterfall",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Waterfall_prevPageOrder(ctx context.Context, field graphql.CollectedField, obj *Waterfall) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Waterfall_prevPageOrder(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PrevPageOrder, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Waterfall_prevPageOrder(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Waterfall",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Waterfall_versions(ctx context.Context, field graphql.CollectedField, obj *Waterfall) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Waterfall_versions(ctx, field)
 	if err != nil {
@@ -69192,9 +69544,9 @@ func (ec *executionContext) _Waterfall_versions(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.APIVersion)
+	res := resTmp.([]*WaterfallVersion)
 	fc.Result = res
-	return ec.marshalNVersion2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersionᚄ(ctx, field.Selections, res)
+	return ec.marshalNWaterfallVersion2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfallVersionᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Waterfall_versions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -69205,86 +69557,12 @@ func (ec *executionContext) fieldContext_Waterfall_versions(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Version_id(ctx, field)
-			case "activated":
-				return ec.fieldContext_Version_activated(ctx, field)
-			case "author":
-				return ec.fieldContext_Version_author(ctx, field)
-			case "authorEmail":
-				return ec.fieldContext_Version_authorEmail(ctx, field)
-			case "baseTaskStatuses":
-				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
-			case "baseVersion":
-				return ec.fieldContext_Version_baseVersion(ctx, field)
-			case "branch":
-				return ec.fieldContext_Version_branch(ctx, field)
-			case "buildVariants":
-				return ec.fieldContext_Version_buildVariants(ctx, field)
-			case "buildVariantStats":
-				return ec.fieldContext_Version_buildVariantStats(ctx, field)
-			case "childVersions":
-				return ec.fieldContext_Version_childVersions(ctx, field)
-			case "createTime":
-				return ec.fieldContext_Version_createTime(ctx, field)
-			case "errors":
-				return ec.fieldContext_Version_errors(ctx, field)
-			case "externalLinksForMetadata":
-				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Version_finishTime(ctx, field)
-			case "generatedTaskCounts":
-				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
-			case "gitTags":
-				return ec.fieldContext_Version_gitTags(ctx, field)
-			case "ignored":
-				return ec.fieldContext_Version_ignored(ctx, field)
-			case "isPatch":
-				return ec.fieldContext_Version_isPatch(ctx, field)
-			case "manifest":
-				return ec.fieldContext_Version_manifest(ctx, field)
-			case "message":
-				return ec.fieldContext_Version_message(ctx, field)
-			case "order":
-				return ec.fieldContext_Version_order(ctx, field)
-			case "parameters":
-				return ec.fieldContext_Version_parameters(ctx, field)
-			case "patch":
-				return ec.fieldContext_Version_patch(ctx, field)
-			case "previousVersion":
-				return ec.fieldContext_Version_previousVersion(ctx, field)
-			case "project":
-				return ec.fieldContext_Version_project(ctx, field)
-			case "projectIdentifier":
-				return ec.fieldContext_Version_projectIdentifier(ctx, field)
-			case "projectMetadata":
-				return ec.fieldContext_Version_projectMetadata(ctx, field)
-			case "repo":
-				return ec.fieldContext_Version_repo(ctx, field)
-			case "requester":
-				return ec.fieldContext_Version_requester(ctx, field)
-			case "revision":
-				return ec.fieldContext_Version_revision(ctx, field)
-			case "startTime":
-				return ec.fieldContext_Version_startTime(ctx, field)
-			case "status":
-				return ec.fieldContext_Version_status(ctx, field)
-			case "taskCount":
-				return ec.fieldContext_Version_taskCount(ctx, field)
-			case "tasks":
-				return ec.fieldContext_Version_tasks(ctx, field)
-			case "taskStatuses":
-				return ec.fieldContext_Version_taskStatuses(ctx, field)
-			case "taskStatusStats":
-				return ec.fieldContext_Version_taskStatusStats(ctx, field)
-			case "upstreamProject":
-				return ec.fieldContext_Version_upstreamProject(ctx, field)
-			case "versionTiming":
-				return ec.fieldContext_Version_versionTiming(ctx, field)
-			case "warnings":
-				return ec.fieldContext_Version_warnings(ctx, field)
+			case "inactiveVersions":
+				return ec.fieldContext_WaterfallVersion_inactiveVersions(ctx, field)
+			case "version":
+				return ec.fieldContext_WaterfallVersion_version(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type WaterfallVersion", field.Name)
 		},
 	}
 	return fc, nil
@@ -69786,6 +70064,248 @@ func (ec *executionContext) fieldContext_WaterfallTask_displayName(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WaterfallVersion_inactiveVersions(ctx context.Context, field graphql.CollectedField, obj *WaterfallVersion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WaterfallVersion_inactiveVersions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.InactiveVersions, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIVersion)
+	fc.Result = res
+	return ec.marshalOVersion2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersionᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WaterfallVersion_inactiveVersions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WaterfallVersion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Version_id(ctx, field)
+			case "activated":
+				return ec.fieldContext_Version_activated(ctx, field)
+			case "author":
+				return ec.fieldContext_Version_author(ctx, field)
+			case "authorEmail":
+				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "baseTaskStatuses":
+				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
+			case "baseVersion":
+				return ec.fieldContext_Version_baseVersion(ctx, field)
+			case "branch":
+				return ec.fieldContext_Version_branch(ctx, field)
+			case "buildVariants":
+				return ec.fieldContext_Version_buildVariants(ctx, field)
+			case "buildVariantStats":
+				return ec.fieldContext_Version_buildVariantStats(ctx, field)
+			case "childVersions":
+				return ec.fieldContext_Version_childVersions(ctx, field)
+			case "createTime":
+				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_Version_gitTags(ctx, field)
+			case "ignored":
+				return ec.fieldContext_Version_ignored(ctx, field)
+			case "isPatch":
+				return ec.fieldContext_Version_isPatch(ctx, field)
+			case "manifest":
+				return ec.fieldContext_Version_manifest(ctx, field)
+			case "message":
+				return ec.fieldContext_Version_message(ctx, field)
+			case "order":
+				return ec.fieldContext_Version_order(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Version_parameters(ctx, field)
+			case "patch":
+				return ec.fieldContext_Version_patch(ctx, field)
+			case "previousVersion":
+				return ec.fieldContext_Version_previousVersion(ctx, field)
+			case "project":
+				return ec.fieldContext_Version_project(ctx, field)
+			case "projectIdentifier":
+				return ec.fieldContext_Version_projectIdentifier(ctx, field)
+			case "projectMetadata":
+				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "repo":
+				return ec.fieldContext_Version_repo(ctx, field)
+			case "requester":
+				return ec.fieldContext_Version_requester(ctx, field)
+			case "revision":
+				return ec.fieldContext_Version_revision(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Version_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_Version_status(ctx, field)
+			case "taskCount":
+				return ec.fieldContext_Version_taskCount(ctx, field)
+			case "tasks":
+				return ec.fieldContext_Version_tasks(ctx, field)
+			case "taskStatuses":
+				return ec.fieldContext_Version_taskStatuses(ctx, field)
+			case "taskStatusStats":
+				return ec.fieldContext_Version_taskStatusStats(ctx, field)
+			case "upstreamProject":
+				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "versionTiming":
+				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WaterfallVersion_version(ctx context.Context, field graphql.CollectedField, obj *WaterfallVersion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WaterfallVersion_version(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Version, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIVersion)
+	fc.Result = res
+	return ec.marshalOVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WaterfallVersion_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WaterfallVersion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Version_id(ctx, field)
+			case "activated":
+				return ec.fieldContext_Version_activated(ctx, field)
+			case "author":
+				return ec.fieldContext_Version_author(ctx, field)
+			case "authorEmail":
+				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "baseTaskStatuses":
+				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
+			case "baseVersion":
+				return ec.fieldContext_Version_baseVersion(ctx, field)
+			case "branch":
+				return ec.fieldContext_Version_branch(ctx, field)
+			case "buildVariants":
+				return ec.fieldContext_Version_buildVariants(ctx, field)
+			case "buildVariantStats":
+				return ec.fieldContext_Version_buildVariantStats(ctx, field)
+			case "childVersions":
+				return ec.fieldContext_Version_childVersions(ctx, field)
+			case "createTime":
+				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_Version_gitTags(ctx, field)
+			case "ignored":
+				return ec.fieldContext_Version_ignored(ctx, field)
+			case "isPatch":
+				return ec.fieldContext_Version_isPatch(ctx, field)
+			case "manifest":
+				return ec.fieldContext_Version_manifest(ctx, field)
+			case "message":
+				return ec.fieldContext_Version_message(ctx, field)
+			case "order":
+				return ec.fieldContext_Version_order(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Version_parameters(ctx, field)
+			case "patch":
+				return ec.fieldContext_Version_patch(ctx, field)
+			case "previousVersion":
+				return ec.fieldContext_Version_previousVersion(ctx, field)
+			case "project":
+				return ec.fieldContext_Version_project(ctx, field)
+			case "projectIdentifier":
+				return ec.fieldContext_Version_projectIdentifier(ctx, field)
+			case "projectMetadata":
+				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "repo":
+				return ec.fieldContext_Version_repo(ctx, field)
+			case "requester":
+				return ec.fieldContext_Version_requester(ctx, field)
+			case "revision":
+				return ec.fieldContext_Version_revision(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Version_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_Version_status(ctx, field)
+			case "taskCount":
+				return ec.fieldContext_Version_taskCount(ctx, field)
+			case "tasks":
+				return ec.fieldContext_Version_tasks(ctx, field)
+			case "taskStatuses":
+				return ec.fieldContext_Version_taskStatuses(ctx, field)
+			case "taskStatusStats":
+				return ec.fieldContext_Version_taskStatusStats(ctx, field)
+			case "upstreamProject":
+				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "versionTiming":
+				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
 		},
 	}
 	return fc, nil
@@ -73785,6 +74305,64 @@ func (ec *executionContext) unmarshalInputHostAllocatorSettingsInput(ctx context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputHostEventsInput(ctx context.Context, obj interface{}) (HostEventsInput, error) {
+	var it HostEventsInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["limit"]; !present {
+		asMap["limit"] = 0
+	}
+	if _, present := asMap["page"]; !present {
+		asMap["page"] = 0
+	}
+	if _, present := asMap["sortDir"]; !present {
+		asMap["sortDir"] = "DESC"
+	}
+
+	fieldsInOrder := [...]string{"limit", "page", "sortDir", "eventTypes"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "limit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Limit = data
+		case "page":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Page = data
+		case "sortDir":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sortDir"))
+			data, err := ec.unmarshalOSortDirection2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐSortDirection(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SortDir = data
+		case "eventTypes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("eventTypes"))
+			data, err := ec.unmarshalOHostEventType2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EventTypes = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputIceCreamSettingsInput(ctx context.Context, obj interface{}) (model.APIIceCreamSettings, error) {
 	var it model.APIIceCreamSettings
 	asMap := map[string]interface{}{}
@@ -76102,7 +76680,7 @@ func (ec *executionContext) unmarshalInputSleepScheduleInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"dailyStartTime", "dailyStopTime", "isBetaTester", "permanentlyExempt", "shouldKeepOff", "timeZone", "temporarilyExemptUntil", "wholeWeekdaysOff"}
+	fieldsInOrder := [...]string{"dailyStartTime", "dailyStopTime", "permanentlyExempt", "shouldKeepOff", "timeZone", "temporarilyExemptUntil", "wholeWeekdaysOff"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76123,13 +76701,6 @@ func (ec *executionContext) unmarshalInputSleepScheduleInput(ctx context.Context
 				return it, err
 			}
 			it.DailyStopTime = data
-		case "isBetaTester":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isBetaTester"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.IsBetaTester = data
 		case "permanentlyExempt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("permanentlyExempt"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -77353,10 +77924,10 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 	}
 
 	if _, present := asMap["limit"]; !present {
-		asMap["limit"] = 7
+		asMap["limit"] = 5
 	}
 
-	fieldsInOrder := [...]string{"limit", "projectIdentifier", "requesters"}
+	fieldsInOrder := [...]string{"limit", "minOrder", "maxOrder", "projectIdentifier", "requesters"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77370,6 +77941,20 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 				return it, err
 			}
 			it.Limit = data
+		case "minOrder":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("minOrder"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MinOrder = data
+		case "maxOrder":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxOrder"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxOrder = data
 		case "projectIdentifier":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdentifier"))
 			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
@@ -79868,6 +80453,51 @@ func (ec *executionContext) _GeneralSubscription(ctx context.Context, sel ast.Se
 	return out
 }
 
+var generatedTaskCountResultsImplementors = []string{"GeneratedTaskCountResults"}
+
+func (ec *executionContext) _GeneratedTaskCountResults(ctx context.Context, sel ast.SelectionSet, obj *GeneratedTaskCountResults) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, generatedTaskCountResultsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GeneratedTaskCountResults")
+		case "buildVariantName":
+			out.Values[i] = ec._GeneratedTaskCountResults_buildVariantName(ctx, field, obj)
+		case "taskName":
+			out.Values[i] = ec._GeneratedTaskCountResults_taskName(ctx, field, obj)
+		case "taskId":
+			out.Values[i] = ec._GeneratedTaskCountResults_taskId(ctx, field, obj)
+		case "estimatedTasks":
+			out.Values[i] = ec._GeneratedTaskCountResults_estimatedTasks(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var gitHubDynamicTokenPermissionGroupImplementors = []string{"GitHubDynamicTokenPermissionGroup"}
 
 func (ec *executionContext) _GitHubDynamicTokenPermissionGroup(ctx context.Context, sel ast.SelectionSet, obj *model.APIGitHubDynamicTokenPermissionGroup) graphql.Marshaler {
@@ -80531,6 +81161,42 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Host_events(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "eventTypes":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_eventTypes(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -86969,13 +87635,16 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		case "waterfall":
 			field := field
 
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._Query_waterfall(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -87964,8 +88633,6 @@ func (ec *executionContext) _SleepSchedule(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "isBetaTester":
-			out.Values[i] = ec._SleepSchedule_isBetaTester(ctx, field, obj)
 		case "nextStartTime":
 			out.Values[i] = ec._SleepSchedule_nextStartTime(ctx, field, obj)
 		case "nextStopTime":
@@ -92922,6 +93589,16 @@ func (ec *executionContext) _Waterfall(ctx context.Context, sel ast.SelectionSet
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "nextPageOrder":
+			out.Values[i] = ec._Waterfall_nextPageOrder(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "prevPageOrder":
+			out.Values[i] = ec._Waterfall_prevPageOrder(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "versions":
 			out.Values[i] = ec._Waterfall_versions(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -93081,6 +93758,44 @@ func (ec *executionContext) _WaterfallTask(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var waterfallVersionImplementors = []string{"WaterfallVersion"}
+
+func (ec *executionContext) _WaterfallVersion(ctx context.Context, sel ast.SelectionSet, obj *WaterfallVersion) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, waterfallVersionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WaterfallVersion")
+		case "inactiveVersions":
+			out.Values[i] = ec._WaterfallVersion_inactiveVersions(ctx, field, obj)
+		case "version":
+			out.Values[i] = ec._WaterfallVersion_version(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -94554,6 +95269,60 @@ func (ec *executionContext) marshalNGeneralSubscription2ᚖgithubᚗcomᚋevergr
 	return ec._GeneralSubscription(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNGeneratedTaskCountResults2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGeneratedTaskCountResultsᚄ(ctx context.Context, sel ast.SelectionSet, v []*GeneratedTaskCountResults) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNGeneratedTaskCountResults2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGeneratedTaskCountResults(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNGeneratedTaskCountResults2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐGeneratedTaskCountResults(ctx context.Context, sel ast.SelectionSet, v *GeneratedTaskCountResults) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GeneratedTaskCountResults(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNGitHubDynamicTokenPermissionGroup2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroup(ctx context.Context, sel ast.SelectionSet, v model.APIGitHubDynamicTokenPermissionGroup) graphql.Marshaler {
 	return ec._GitHubDynamicTokenPermissionGroup(ctx, sel, &v)
 }
@@ -94903,6 +95672,221 @@ func (ec *executionContext) marshalNHostEventLogEntry2ᚖgithubᚗcomᚋevergree
 	return ec._HostEventLogEntry(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNHostEventType2string(ctx context.Context, v interface{}) (string, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalNHostEventType2string[tmp]
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNHostEventType2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	res := graphql.MarshalString(marshalNHostEventType2string[v])
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+var (
+	unmarshalNHostEventType2string = map[string]string{
+		"HOST_CREATED":                                     event.EventHostCreated,
+		"HOST_CREATED_ERROR":                               event.EventHostCreatedError,
+		"HOST_STARTED":                                     event.EventHostStarted,
+		"HOST_STOPPED":                                     event.EventHostStopped,
+		"HOST_MODIFIED":                                    event.EventHostModified,
+		"HOST_AGENT_DEPLOYED":                              event.EventHostAgentDeployed,
+		"HOST_AGENT_DEPLOY_FAILED":                         event.EventHostAgentDeployFailed,
+		"HOST_AGENT_MONITOR_DEPLOYED":                      event.EventHostAgentMonitorDeployed,
+		"HOST_AGENT_MONITOR_DEPLOY_FAILED":                 event.EventHostAgentMonitorDeployFailed,
+		"HOST_JASPER_RESTARTING":                           event.EventHostJasperRestarting,
+		"HOST_JASPER_RESTARTED":                            event.EventHostJasperRestarted,
+		"HOST_JASPER_RESTART_ERROR":                        event.EventHostJasperRestartError,
+		"HOST_CONVERTING_PROVISIONING":                     event.EventHostConvertingProvisioning,
+		"HOST_CONVERTED_PROVISIONING":                      event.EventHostConvertedProvisioning,
+		"HOST_CONVERTING_PROVISIONING_ERROR":               event.EventHostConvertingProvisioningError,
+		"HOST_STATUS_CHANGED":                              event.EventHostStatusChanged,
+		"HOST_DNS_NAME_SET":                                event.EventHostDNSNameSet,
+		"HOST_PROVISION_ERROR":                             event.EventHostProvisionError,
+		"HOST_PROVISION_FAILED":                            event.EventHostProvisionFailed,
+		"HOST_PROVISIONED":                                 event.EventHostProvisioned,
+		"HOST_RUNNING_TASK_SET":                            event.EventHostRunningTaskSet,
+		"HOST_RUNNING_TASK_CLEARED":                        event.EventHostRunningTaskCleared,
+		"HOST_TASK_FINISHED":                               event.EventHostTaskFinished,
+		"HOST_TERMINATED_EXTERNALLY":                       event.EventHostTerminatedExternally,
+		"HOST_EXPIRATION_WARNING_SENT":                     event.EventHostExpirationWarningSent,
+		"HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT": event.EventHostTemporaryExemptionExpirationWarningSent,
+		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
+		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
+		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
+		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
+	}
+	marshalNHostEventType2string = map[string]string{
+		event.EventHostCreated:                                 "HOST_CREATED",
+		event.EventHostCreatedError:                            "HOST_CREATED_ERROR",
+		event.EventHostStarted:                                 "HOST_STARTED",
+		event.EventHostStopped:                                 "HOST_STOPPED",
+		event.EventHostModified:                                "HOST_MODIFIED",
+		event.EventHostAgentDeployed:                           "HOST_AGENT_DEPLOYED",
+		event.EventHostAgentDeployFailed:                       "HOST_AGENT_DEPLOY_FAILED",
+		event.EventHostAgentMonitorDeployed:                    "HOST_AGENT_MONITOR_DEPLOYED",
+		event.EventHostAgentMonitorDeployFailed:                "HOST_AGENT_MONITOR_DEPLOY_FAILED",
+		event.EventHostJasperRestarting:                        "HOST_JASPER_RESTARTING",
+		event.EventHostJasperRestarted:                         "HOST_JASPER_RESTARTED",
+		event.EventHostJasperRestartError:                      "HOST_JASPER_RESTART_ERROR",
+		event.EventHostConvertingProvisioning:                  "HOST_CONVERTING_PROVISIONING",
+		event.EventHostConvertedProvisioning:                   "HOST_CONVERTED_PROVISIONING",
+		event.EventHostConvertingProvisioningError:             "HOST_CONVERTING_PROVISIONING_ERROR",
+		event.EventHostStatusChanged:                           "HOST_STATUS_CHANGED",
+		event.EventHostDNSNameSet:                              "HOST_DNS_NAME_SET",
+		event.EventHostProvisionError:                          "HOST_PROVISION_ERROR",
+		event.EventHostProvisionFailed:                         "HOST_PROVISION_FAILED",
+		event.EventHostProvisioned:                             "HOST_PROVISIONED",
+		event.EventHostRunningTaskSet:                          "HOST_RUNNING_TASK_SET",
+		event.EventHostRunningTaskCleared:                      "HOST_RUNNING_TASK_CLEARED",
+		event.EventHostTaskFinished:                            "HOST_TASK_FINISHED",
+		event.EventHostTerminatedExternally:                    "HOST_TERMINATED_EXTERNALLY",
+		event.EventHostExpirationWarningSent:                   "HOST_EXPIRATION_WARNING_SENT",
+		event.EventHostTemporaryExemptionExpirationWarningSent: "HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT",
+		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
+		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
+		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
+		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
+	}
+)
+
+func (ec *executionContext) unmarshalNHostEventType2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNHostEventType2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNHostEventType2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNHostEventType2string(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+var (
+	unmarshalNHostEventType2ᚕstringᚄ = map[string]string{
+		"HOST_CREATED":                                     event.EventHostCreated,
+		"HOST_CREATED_ERROR":                               event.EventHostCreatedError,
+		"HOST_STARTED":                                     event.EventHostStarted,
+		"HOST_STOPPED":                                     event.EventHostStopped,
+		"HOST_MODIFIED":                                    event.EventHostModified,
+		"HOST_AGENT_DEPLOYED":                              event.EventHostAgentDeployed,
+		"HOST_AGENT_DEPLOY_FAILED":                         event.EventHostAgentDeployFailed,
+		"HOST_AGENT_MONITOR_DEPLOYED":                      event.EventHostAgentMonitorDeployed,
+		"HOST_AGENT_MONITOR_DEPLOY_FAILED":                 event.EventHostAgentMonitorDeployFailed,
+		"HOST_JASPER_RESTARTING":                           event.EventHostJasperRestarting,
+		"HOST_JASPER_RESTARTED":                            event.EventHostJasperRestarted,
+		"HOST_JASPER_RESTART_ERROR":                        event.EventHostJasperRestartError,
+		"HOST_CONVERTING_PROVISIONING":                     event.EventHostConvertingProvisioning,
+		"HOST_CONVERTED_PROVISIONING":                      event.EventHostConvertedProvisioning,
+		"HOST_CONVERTING_PROVISIONING_ERROR":               event.EventHostConvertingProvisioningError,
+		"HOST_STATUS_CHANGED":                              event.EventHostStatusChanged,
+		"HOST_DNS_NAME_SET":                                event.EventHostDNSNameSet,
+		"HOST_PROVISION_ERROR":                             event.EventHostProvisionError,
+		"HOST_PROVISION_FAILED":                            event.EventHostProvisionFailed,
+		"HOST_PROVISIONED":                                 event.EventHostProvisioned,
+		"HOST_RUNNING_TASK_SET":                            event.EventHostRunningTaskSet,
+		"HOST_RUNNING_TASK_CLEARED":                        event.EventHostRunningTaskCleared,
+		"HOST_TASK_FINISHED":                               event.EventHostTaskFinished,
+		"HOST_TERMINATED_EXTERNALLY":                       event.EventHostTerminatedExternally,
+		"HOST_EXPIRATION_WARNING_SENT":                     event.EventHostExpirationWarningSent,
+		"HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT": event.EventHostTemporaryExemptionExpirationWarningSent,
+		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
+		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
+		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
+		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
+	}
+	marshalNHostEventType2ᚕstringᚄ = map[string]string{
+		event.EventHostCreated:                                 "HOST_CREATED",
+		event.EventHostCreatedError:                            "HOST_CREATED_ERROR",
+		event.EventHostStarted:                                 "HOST_STARTED",
+		event.EventHostStopped:                                 "HOST_STOPPED",
+		event.EventHostModified:                                "HOST_MODIFIED",
+		event.EventHostAgentDeployed:                           "HOST_AGENT_DEPLOYED",
+		event.EventHostAgentDeployFailed:                       "HOST_AGENT_DEPLOY_FAILED",
+		event.EventHostAgentMonitorDeployed:                    "HOST_AGENT_MONITOR_DEPLOYED",
+		event.EventHostAgentMonitorDeployFailed:                "HOST_AGENT_MONITOR_DEPLOY_FAILED",
+		event.EventHostJasperRestarting:                        "HOST_JASPER_RESTARTING",
+		event.EventHostJasperRestarted:                         "HOST_JASPER_RESTARTED",
+		event.EventHostJasperRestartError:                      "HOST_JASPER_RESTART_ERROR",
+		event.EventHostConvertingProvisioning:                  "HOST_CONVERTING_PROVISIONING",
+		event.EventHostConvertedProvisioning:                   "HOST_CONVERTED_PROVISIONING",
+		event.EventHostConvertingProvisioningError:             "HOST_CONVERTING_PROVISIONING_ERROR",
+		event.EventHostStatusChanged:                           "HOST_STATUS_CHANGED",
+		event.EventHostDNSNameSet:                              "HOST_DNS_NAME_SET",
+		event.EventHostProvisionError:                          "HOST_PROVISION_ERROR",
+		event.EventHostProvisionFailed:                         "HOST_PROVISION_FAILED",
+		event.EventHostProvisioned:                             "HOST_PROVISIONED",
+		event.EventHostRunningTaskSet:                          "HOST_RUNNING_TASK_SET",
+		event.EventHostRunningTaskCleared:                      "HOST_RUNNING_TASK_CLEARED",
+		event.EventHostTaskFinished:                            "HOST_TASK_FINISHED",
+		event.EventHostTerminatedExternally:                    "HOST_TERMINATED_EXTERNALLY",
+		event.EventHostExpirationWarningSent:                   "HOST_EXPIRATION_WARNING_SENT",
+		event.EventHostTemporaryExemptionExpirationWarningSent: "HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT",
+		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
+		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
+		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
+		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
+	}
+)
+
 func (ec *executionContext) marshalNHostEvents2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostEvents(ctx context.Context, sel ast.SelectionSet, v HostEvents) graphql.Marshaler {
 	return ec._HostEvents(ctx, sel, &v)
 }
@@ -94915,6 +95899,11 @@ func (ec *executionContext) marshalNHostEvents2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._HostEvents(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNHostEventsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostEventsInput(ctx context.Context, v interface{}) (HostEventsInput, error) {
+	res, err := ec.unmarshalInputHostEventsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNHostsResponse2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostsResponse(ctx context.Context, sel ast.SelectionSet, v HostsResponse) graphql.Marshaler {
@@ -97917,50 +98906,6 @@ func (ec *executionContext) marshalNVersion2githubᚗcomᚋevergreenᚑciᚋever
 	return ec._Version(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNVersion2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIVersion) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
 func (ec *executionContext) marshalNVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx context.Context, sel ast.SelectionSet, v *model.APIVersion) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -98064,6 +99009,20 @@ func (ec *executionContext) marshalNVolume2ᚖgithubᚗcomᚋevergreenᚑciᚋev
 func (ec *executionContext) unmarshalNVolumeHost2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVolumeHost(ctx context.Context, v interface{}) (VolumeHost, error) {
 	res, err := ec.unmarshalInputVolumeHost(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNWaterfall2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfall(ctx context.Context, sel ast.SelectionSet, v Waterfall) graphql.Marshaler {
+	return ec._Waterfall(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWaterfall2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfall(ctx context.Context, sel ast.SelectionSet, v *Waterfall) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Waterfall(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNWaterfallBuild2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐWaterfallBuild(ctx context.Context, sel ast.SelectionSet, v model1.WaterfallBuild) graphql.Marshaler {
@@ -98219,6 +99178,60 @@ func (ec *executionContext) marshalNWaterfallTask2ᚕgithubᚗcomᚋevergreenᚑ
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalNWaterfallVersion2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfallVersionᚄ(ctx context.Context, sel ast.SelectionSet, v []*WaterfallVersion) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNWaterfallVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfallVersion(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNWaterfallVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfallVersion(ctx context.Context, sel ast.SelectionSet, v *WaterfallVersion) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._WaterfallVersion(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNWebhook2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebHook(ctx context.Context, sel ast.SelectionSet, v model.APIWebHook) graphql.Marshaler {
@@ -99461,6 +100474,228 @@ func (ec *executionContext) marshalOHost2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 	}
 	return ec._Host(ctx, sel, v)
 }
+
+func (ec *executionContext) unmarshalOHostEventType2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNHostEventType2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOHostEventType2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNHostEventType2string(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+var (
+	unmarshalOHostEventType2ᚕstringᚄ = map[string]string{
+		"HOST_CREATED":                                     event.EventHostCreated,
+		"HOST_CREATED_ERROR":                               event.EventHostCreatedError,
+		"HOST_STARTED":                                     event.EventHostStarted,
+		"HOST_STOPPED":                                     event.EventHostStopped,
+		"HOST_MODIFIED":                                    event.EventHostModified,
+		"HOST_AGENT_DEPLOYED":                              event.EventHostAgentDeployed,
+		"HOST_AGENT_DEPLOY_FAILED":                         event.EventHostAgentDeployFailed,
+		"HOST_AGENT_MONITOR_DEPLOYED":                      event.EventHostAgentMonitorDeployed,
+		"HOST_AGENT_MONITOR_DEPLOY_FAILED":                 event.EventHostAgentMonitorDeployFailed,
+		"HOST_JASPER_RESTARTING":                           event.EventHostJasperRestarting,
+		"HOST_JASPER_RESTARTED":                            event.EventHostJasperRestarted,
+		"HOST_JASPER_RESTART_ERROR":                        event.EventHostJasperRestartError,
+		"HOST_CONVERTING_PROVISIONING":                     event.EventHostConvertingProvisioning,
+		"HOST_CONVERTED_PROVISIONING":                      event.EventHostConvertedProvisioning,
+		"HOST_CONVERTING_PROVISIONING_ERROR":               event.EventHostConvertingProvisioningError,
+		"HOST_STATUS_CHANGED":                              event.EventHostStatusChanged,
+		"HOST_DNS_NAME_SET":                                event.EventHostDNSNameSet,
+		"HOST_PROVISION_ERROR":                             event.EventHostProvisionError,
+		"HOST_PROVISION_FAILED":                            event.EventHostProvisionFailed,
+		"HOST_PROVISIONED":                                 event.EventHostProvisioned,
+		"HOST_RUNNING_TASK_SET":                            event.EventHostRunningTaskSet,
+		"HOST_RUNNING_TASK_CLEARED":                        event.EventHostRunningTaskCleared,
+		"HOST_TASK_FINISHED":                               event.EventHostTaskFinished,
+		"HOST_TERMINATED_EXTERNALLY":                       event.EventHostTerminatedExternally,
+		"HOST_EXPIRATION_WARNING_SENT":                     event.EventHostExpirationWarningSent,
+		"HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT": event.EventHostTemporaryExemptionExpirationWarningSent,
+		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
+		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
+		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
+		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
+	}
+	marshalOHostEventType2ᚕstringᚄ = map[string]string{
+		event.EventHostCreated:                                 "HOST_CREATED",
+		event.EventHostCreatedError:                            "HOST_CREATED_ERROR",
+		event.EventHostStarted:                                 "HOST_STARTED",
+		event.EventHostStopped:                                 "HOST_STOPPED",
+		event.EventHostModified:                                "HOST_MODIFIED",
+		event.EventHostAgentDeployed:                           "HOST_AGENT_DEPLOYED",
+		event.EventHostAgentDeployFailed:                       "HOST_AGENT_DEPLOY_FAILED",
+		event.EventHostAgentMonitorDeployed:                    "HOST_AGENT_MONITOR_DEPLOYED",
+		event.EventHostAgentMonitorDeployFailed:                "HOST_AGENT_MONITOR_DEPLOY_FAILED",
+		event.EventHostJasperRestarting:                        "HOST_JASPER_RESTARTING",
+		event.EventHostJasperRestarted:                         "HOST_JASPER_RESTARTED",
+		event.EventHostJasperRestartError:                      "HOST_JASPER_RESTART_ERROR",
+		event.EventHostConvertingProvisioning:                  "HOST_CONVERTING_PROVISIONING",
+		event.EventHostConvertedProvisioning:                   "HOST_CONVERTED_PROVISIONING",
+		event.EventHostConvertingProvisioningError:             "HOST_CONVERTING_PROVISIONING_ERROR",
+		event.EventHostStatusChanged:                           "HOST_STATUS_CHANGED",
+		event.EventHostDNSNameSet:                              "HOST_DNS_NAME_SET",
+		event.EventHostProvisionError:                          "HOST_PROVISION_ERROR",
+		event.EventHostProvisionFailed:                         "HOST_PROVISION_FAILED",
+		event.EventHostProvisioned:                             "HOST_PROVISIONED",
+		event.EventHostRunningTaskSet:                          "HOST_RUNNING_TASK_SET",
+		event.EventHostRunningTaskCleared:                      "HOST_RUNNING_TASK_CLEARED",
+		event.EventHostTaskFinished:                            "HOST_TASK_FINISHED",
+		event.EventHostTerminatedExternally:                    "HOST_TERMINATED_EXTERNALLY",
+		event.EventHostExpirationWarningSent:                   "HOST_EXPIRATION_WARNING_SENT",
+		event.EventHostTemporaryExemptionExpirationWarningSent: "HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT",
+		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
+		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
+		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
+		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
+	}
+)
+
+func (ec *executionContext) unmarshalOHostEventType2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	tmp, err := graphql.UnmarshalString(v)
+	res := unmarshalOHostEventType2ᚖstring[tmp]
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOHostEventType2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	res := graphql.MarshalString(marshalOHostEventType2ᚖstring[*v])
+	return res
+}
+
+var (
+	unmarshalOHostEventType2ᚖstring = map[string]string{
+		"HOST_CREATED":                                     event.EventHostCreated,
+		"HOST_CREATED_ERROR":                               event.EventHostCreatedError,
+		"HOST_STARTED":                                     event.EventHostStarted,
+		"HOST_STOPPED":                                     event.EventHostStopped,
+		"HOST_MODIFIED":                                    event.EventHostModified,
+		"HOST_AGENT_DEPLOYED":                              event.EventHostAgentDeployed,
+		"HOST_AGENT_DEPLOY_FAILED":                         event.EventHostAgentDeployFailed,
+		"HOST_AGENT_MONITOR_DEPLOYED":                      event.EventHostAgentMonitorDeployed,
+		"HOST_AGENT_MONITOR_DEPLOY_FAILED":                 event.EventHostAgentMonitorDeployFailed,
+		"HOST_JASPER_RESTARTING":                           event.EventHostJasperRestarting,
+		"HOST_JASPER_RESTARTED":                            event.EventHostJasperRestarted,
+		"HOST_JASPER_RESTART_ERROR":                        event.EventHostJasperRestartError,
+		"HOST_CONVERTING_PROVISIONING":                     event.EventHostConvertingProvisioning,
+		"HOST_CONVERTED_PROVISIONING":                      event.EventHostConvertedProvisioning,
+		"HOST_CONVERTING_PROVISIONING_ERROR":               event.EventHostConvertingProvisioningError,
+		"HOST_STATUS_CHANGED":                              event.EventHostStatusChanged,
+		"HOST_DNS_NAME_SET":                                event.EventHostDNSNameSet,
+		"HOST_PROVISION_ERROR":                             event.EventHostProvisionError,
+		"HOST_PROVISION_FAILED":                            event.EventHostProvisionFailed,
+		"HOST_PROVISIONED":                                 event.EventHostProvisioned,
+		"HOST_RUNNING_TASK_SET":                            event.EventHostRunningTaskSet,
+		"HOST_RUNNING_TASK_CLEARED":                        event.EventHostRunningTaskCleared,
+		"HOST_TASK_FINISHED":                               event.EventHostTaskFinished,
+		"HOST_TERMINATED_EXTERNALLY":                       event.EventHostTerminatedExternally,
+		"HOST_EXPIRATION_WARNING_SENT":                     event.EventHostExpirationWarningSent,
+		"HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT": event.EventHostTemporaryExemptionExpirationWarningSent,
+		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
+		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
+		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
+		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
+	}
+	marshalOHostEventType2ᚖstring = map[string]string{
+		event.EventHostCreated:                                 "HOST_CREATED",
+		event.EventHostCreatedError:                            "HOST_CREATED_ERROR",
+		event.EventHostStarted:                                 "HOST_STARTED",
+		event.EventHostStopped:                                 "HOST_STOPPED",
+		event.EventHostModified:                                "HOST_MODIFIED",
+		event.EventHostAgentDeployed:                           "HOST_AGENT_DEPLOYED",
+		event.EventHostAgentDeployFailed:                       "HOST_AGENT_DEPLOY_FAILED",
+		event.EventHostAgentMonitorDeployed:                    "HOST_AGENT_MONITOR_DEPLOYED",
+		event.EventHostAgentMonitorDeployFailed:                "HOST_AGENT_MONITOR_DEPLOY_FAILED",
+		event.EventHostJasperRestarting:                        "HOST_JASPER_RESTARTING",
+		event.EventHostJasperRestarted:                         "HOST_JASPER_RESTARTED",
+		event.EventHostJasperRestartError:                      "HOST_JASPER_RESTART_ERROR",
+		event.EventHostConvertingProvisioning:                  "HOST_CONVERTING_PROVISIONING",
+		event.EventHostConvertedProvisioning:                   "HOST_CONVERTED_PROVISIONING",
+		event.EventHostConvertingProvisioningError:             "HOST_CONVERTING_PROVISIONING_ERROR",
+		event.EventHostStatusChanged:                           "HOST_STATUS_CHANGED",
+		event.EventHostDNSNameSet:                              "HOST_DNS_NAME_SET",
+		event.EventHostProvisionError:                          "HOST_PROVISION_ERROR",
+		event.EventHostProvisionFailed:                         "HOST_PROVISION_FAILED",
+		event.EventHostProvisioned:                             "HOST_PROVISIONED",
+		event.EventHostRunningTaskSet:                          "HOST_RUNNING_TASK_SET",
+		event.EventHostRunningTaskCleared:                      "HOST_RUNNING_TASK_CLEARED",
+		event.EventHostTaskFinished:                            "HOST_TASK_FINISHED",
+		event.EventHostTerminatedExternally:                    "HOST_TERMINATED_EXTERNALLY",
+		event.EventHostExpirationWarningSent:                   "HOST_EXPIRATION_WARNING_SENT",
+		event.EventHostTemporaryExemptionExpirationWarningSent: "HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT",
+		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
+		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
+		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
+		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
+	}
+)
 
 func (ec *executionContext) unmarshalOHostSortBy2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostSortBy(ctx context.Context, v interface{}) (*HostSortBy, error) {
 	if v == nil {
@@ -101066,13 +102301,6 @@ func (ec *executionContext) marshalOVolume2ᚖgithubᚗcomᚋevergreenᚑciᚋev
 		return graphql.Null
 	}
 	return ec._Volume(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOWaterfall2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfall(ctx context.Context, sel ast.SelectionSet, v *Waterfall) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Waterfall(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOWebhookInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebHook(ctx context.Context, v interface{}) (model.APIWebHook, error) {

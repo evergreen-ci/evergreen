@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,8 +22,8 @@ func TestBumpParameterRecord(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(parameterstore.Collection))
 	}()
 
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment){
-		"CreatesNewParameterRecord": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment){
+		"CreatesNewParameterRecord": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
 			const name = "name"
 			lastUpdated := utility.BSONTime(time.Now())
 			require.NoError(t, parameterstore.BumpParameterRecord(ctx, env.DB(), name, lastUpdated))
@@ -33,7 +33,7 @@ func TestBumpParameterRecord(t *testing.T) {
 			assert.Equal(t, name, rec.Name)
 			assert.Equal(t, lastUpdated, rec.LastUpdated)
 		},
-		"UpdatesExistingParameterRecord": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+		"UpdatesExistingParameterRecord": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
 			const name = "name"
 			lastUpdated := utility.BSONTime(time.Now())
 			originalRec := parameterstore.ParameterRecord{
@@ -49,7 +49,7 @@ func TestBumpParameterRecord(t *testing.T) {
 			assert.Equal(t, name, rec.Name)
 			assert.Equal(t, lastUpdated, rec.LastUpdated, "last updated time should have been updated")
 		},
-		"DoesNotBumpNewerParameterRecord": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+		"DoesNotBumpNewerParameterRecord": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
 			const name = "name"
 			lastUpdated := utility.BSONTime(time.Now())
 			originalRec := parameterstore.ParameterRecord{
@@ -72,26 +72,23 @@ func TestBumpParameterRecord(t *testing.T) {
 
 			require.NoError(t, db.ClearCollections(parameterstore.Collection))
 
-			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
-
-			tCase(ctx, t, env)
+			tCase(ctx, t, evergreen.GetEnvironment())
 		})
 	}
 }
 
-func TestParameterRecordFindOneID(t *testing.T) {
+func TestParameterRecordFindOneName(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(parameterstore.Collection))
 	}()
 
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment){
-		"ReturnsNilWhenNotFound": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment){
+		"ReturnsNilWhenNotFound": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
 			rec, err := parameterstore.FindOneName(ctx, env.DB(), "nonexistent")
 			assert.NoError(t, err)
 			assert.Zero(t, rec)
 		},
-		"ReturnsFoundRecord": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+		"ReturnsFoundRecord": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
 			const name = "name"
 			expectedRec := parameterstore.ParameterRecord{
 				Name:        name,
@@ -109,26 +106,23 @@ func TestParameterRecordFindOneID(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
-
-			tCase(ctx, t, env)
+			tCase(ctx, t, evergreen.GetEnvironment())
 		})
 	}
 }
 
-func TestParameterRecordFindByIDs(t *testing.T) {
+func TestParameterRecordFindByNames(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(parameterstore.Collection))
 	}()
 
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment){
-		"ReturnsNoResultsWhenNotFound": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment){
+		"ReturnsNoResultsWhenNotFound": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
 			foundParams, err := parameterstore.FindByNames(ctx, env.DB(), "nonexistent0", "nonexistent1")
 			assert.NoError(t, err)
 			assert.Empty(t, foundParams)
 		},
-		"ReturnsPartiallyFoundRecords": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+		"ReturnsPartiallyFoundRecords": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
 			const name = "name"
 			expectedRec := parameterstore.ParameterRecord{
 				Name:        name,
@@ -141,7 +135,7 @@ func TestParameterRecordFindByIDs(t *testing.T) {
 			require.Len(t, recs, 1)
 			assert.Equal(t, expectedRec, recs[0])
 		},
-		"ReturnsNoResultsForNoNames": func(ctx context.Context, t *testing.T, env *mock.Environment) {
+		"ReturnsNoResultsForNoNames": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
 			recs, err := parameterstore.FindByNames(ctx, env.DB())
 			assert.NoError(t, err)
 			assert.Empty(t, recs)
@@ -151,10 +145,7 @@ func TestParameterRecordFindByIDs(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
-
-			tCase(ctx, t, env)
+			tCase(ctx, t, evergreen.GetEnvironment())
 		})
 	}
 }

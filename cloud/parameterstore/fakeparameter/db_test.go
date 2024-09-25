@@ -2,18 +2,42 @@ package fakeparameter
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 func init() {
-	testutil.Setup()
+	// This is identical to testutil.Setup(), but that can't be called directly
+	// in this package without causing an import cycle.
+
+	const (
+		testDir      = "config_test"
+		testSettings = "evg_settings.yml"
+	)
+
+	if evergreen.GetEnvironment() == nil {
+		ctx := context.Background()
+
+		path := filepath.Join(evergreen.FindEvergreenHome(), testDir, testSettings)
+		env, err := evergreen.NewEnvironment(ctx, path, "", "", nil, noop.NewTracerProvider())
+
+		grip.EmergencyPanic(message.WrapError(err, message.Fields{
+			"message": "could not initialize test environment",
+			"path":    path,
+		}))
+
+		evergreen.SetEnvironment(env)
+	}
 }
 
 func TestFindOneID(t *testing.T) {

@@ -412,16 +412,24 @@ func (d *Distro) IsPowerShellSetup() bool {
 	return strings.Contains(d.Setup[start:end], "powershell")
 }
 
+// IsWindows returns whether or not the distro's hosts run on Windows.
 func (d *Distro) IsWindows() bool {
 	// XXX: if this is-windows check is updated, make sure to also update
 	// public/static/js/spawned_hosts.js as well
 	return strings.Contains(d.Arch, "windows")
 }
 
+// IsLinux returns whether or not the distro's hosts run on Linux.
 func (d *Distro) IsLinux() bool {
 	return strings.Contains(d.Arch, "linux")
 }
 
+// IsMacOS returns whether or not the distro's hosts run on MacOS.
+func (d *Distro) IsMacOS() bool {
+	return strings.Contains(d.Arch, "darwin")
+}
+
+// Platform returns the distro's OS and architecture.
 func (d *Distro) Platform() (string, string) {
 	osAndArch := strings.Split(d.Arch, "_")
 	return osAndArch[0], osAndArch[1]

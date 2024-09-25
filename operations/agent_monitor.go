@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -296,6 +297,25 @@ func handleMonitorSignals(ctx context.Context, serviceCancel context.CancelFunc)
 	}
 }
 
+// removeMacOSClient deletes the Evergreen client file on MacOS hosts. This is
+// necessary to fix a MacOS-specific issue where if the host has System
+// Integrity Protection (SIP) enabled and it runs an Evergreen client that has a
+// problem (e.g. the binary was not signed by Apple), running that client
+// results in SIGKILL. The SIGKILL issue will persist even if a valid agent is
+// downloaded to replace it. Removing the binary before downloading it is the
+// only known workaround to ensure that MacOS can run the client.
+func (m *monitor) removeMacOSClient() error {
+	if runtime.GOOS != "darwin" {
+		return nil
+	}
+
+	if err := os.RemoveAll(m.clientPath); err != nil {
+		return errors.Wrapf(err, "removing client '%s'", m.clientPath)
+	}
+
+	return nil
+}
+
 // fetchClient downloads the evergreen client.
 func (m *monitor) fetchClient(ctx context.Context, urls []string, retry utility.RetryOptions) error {
 	var downloaded bool
@@ -460,6 +480,15 @@ func (m *monitor) run(ctx context.Context) {
 					"distro_id":   m.distroID,
 				})
 				return false, errAgentMonitorShouldExit
+			}
+
+			if err := m.removeMacOSClient(); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":     "could not remove MacOS client",
+					"distro":      m.distroID,
+					"client_path": m.clientPath,
+				}))
+				return true, err
 			}
 
 			clientURLs, err := m.comm.GetClientURLs(ctx, m.distroID)

@@ -265,7 +265,8 @@ The validation step will check for
 
 Note: validation is server-side and requires a valid evergreen configuration file (by default located at ~/.evergreen.yml). If the configuration file exists but is not valid (malformed, references invalid hosts, invalid api key, etc.) the `evergreen validate` command [will exit with code 0, indicating success, even when the project file is invalid](https://jira.mongodb.org/browse/EVG-6417). The validation is likely not performed at all in this scenario. To check whether a project file is valid, verify that the process exited with code 0 and produced the output "\<project file path\> is valid".
 
-Additionally the `evaluate` command can be used to locally expand task tags and return a fully evaluated version of a project file.
+Additionally, the `evaluate` command can be used to locally expand task tags and return a fully evaluated version of a project file.
+(Note that this command doesn't support evaluating included files from modules.)
 
 ```
 evergreen evaluate <path-to-yaml-project-file>

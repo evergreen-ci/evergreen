@@ -10,6 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	jmock "github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +24,7 @@ func TestConvertHostToNewProvisioningJob(t *testing.T) {
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host){
 		"PopulatesFields": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {
-			j := NewConvertHostToNewProvisioningJob(env, *h, "job-id", 0)
+			j := NewConvertHostToNewProvisioningJob(env, *h, "job-id")
 
 			info := j.TimeInfo()
 			assert.Equal(t, maxHostReprovisioningJobTime, info.MaxTime)
@@ -34,11 +36,28 @@ func TestConvertHostToNewProvisioningJob(t *testing.T) {
 			assert.Equal(t, h.Id, convertJob.HostID)
 			assert.Equal(t, *h, *convertJob.host)
 		},
+		"QuarantinesHostOnFailedLastAttempt": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {
+			h.NeedsNewAgentMonitor = false
+			require.NoError(t, h.Insert(ctx))
+			j := NewConvertHostToNewProvisioningJob(env, *h, "job-id")
+			j.UpdateRetryInfo(amboy.JobRetryOptions{
+				CurrentAttempt: utility.ToIntPtr(maxProvisioningConversionAttempts),
+			})
+
+			j.Run(ctx)
+			assert.True(t, j.IsLastAttempt())
+			assert.Error(t, j.Error())
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
+		},
 		"NoopsIfAgentIsUp": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {
 			h.NeedsNewAgent = false
 			require.NoError(t, h.Insert(ctx))
 
-			j := NewConvertHostToNewProvisioningJob(env, *h, "job-id", 0)
+			j := NewConvertHostToNewProvisioningJob(env, *h, "job-id")
 			convertJob, ok := j.(*convertHostToNewProvisioningJob)
 			require.True(t, ok)
 			convertJob.Run(ctx)
@@ -50,7 +69,7 @@ func TestConvertHostToNewProvisioningJob(t *testing.T) {
 			h.Status = evergreen.HostTerminated
 			require.NoError(t, h.Insert(ctx))
 
-			j := NewConvertHostToNewProvisioningJob(env, *h, "job-id", 0)
+			j := NewConvertHostToNewProvisioningJob(env, *h, "job-id")
 			convertJob, ok := j.(*convertHostToNewProvisioningJob)
 			require.True(t, ok)
 			convertJob.Run(ctx)
@@ -62,7 +81,7 @@ func TestConvertHostToNewProvisioningJob(t *testing.T) {
 			h.NeedsReprovision = host.ReprovisionNone
 			require.NoError(t, h.Insert(ctx))
 
-			j := NewConvertHostToNewProvisioningJob(env, *h, "job-id", 0)
+			j := NewConvertHostToNewProvisioningJob(env, *h, "job-id")
 			convertJob, ok := j.(*convertHostToNewProvisioningJob)
 			require.True(t, ok)
 			convertJob.Run(ctx)
@@ -108,8 +127,9 @@ func TestConvertHostToNewProvisioningJob(t *testing.T) {
 					},
 					Arch: evergreen.ArchLinuxAmd64,
 				},
-				Host: "localhost",
-				User: evergreen.User,
+				Provider: evergreen.ProviderNameStatic,
+				Host:     "localhost",
+				User:     evergreen.User,
 			}
 
 			testCase(tctx, t, env, mgr, &h)

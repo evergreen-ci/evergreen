@@ -34,11 +34,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2024-08-26"
+	ClientVersion = "2024-09-24"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2024-09-05"
+	AgentVersion = "2024-09-24"
 )
 
 const (
@@ -725,6 +725,7 @@ const (
 	Information  BannerTheme = "INFORMATION"
 	Warning      BannerTheme = "WARNING"
 	Important    BannerTheme = "IMPORTANT"
+	Empty        BannerTheme = ""
 )
 
 func IsValidBannerTheme(input string) (bool, BannerTheme) {

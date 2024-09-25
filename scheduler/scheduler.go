@@ -121,10 +121,10 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.T
 	return prioritizedTasks, nil
 }
 
-// Returns the distroQueueInfo for the given set of tasks having set the task.ExpectedDuration for each task.
+// GetDistroQueueInfo returns the distroQueueInfo for the given set of tasks having set the task.ExpectedDuration for each task.
 func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold time.Duration, opts TaskPlannerOptions) model.DistroQueueInfo {
 	var distroExpectedDuration, distroDurationOverThreshold time.Duration
-	var distroCountDurationOverThreshold, distroCountWaitOverThreshold int
+	var distroCountDurationOverThreshold, distroCountWaitOverThreshold, numTasksDepsMet int
 	var isSecondaryQueue bool
 	taskGroupInfosMap := make(map[string]*model.TaskGroupInfo)
 	depCache := make(map[string]task.Task, len(tasks))
@@ -165,6 +165,9 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 		}
 
 		dependenciesMet := checkDependenciesMet(&task, depCache)
+		if dependenciesMet {
+			numTasksDepsMet++
+		}
 		if !opts.IncludesDependencies || dependenciesMet {
 			task.ExpectedDuration = duration
 			distroExpectedDuration += duration
@@ -206,6 +209,7 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 
 	distroQueueInfo := model.DistroQueueInfo{
 		Length:                     len(tasks),
+		LengthWithDependenciesMet:  numTasksDepsMet,
 		ExpectedDuration:           distroExpectedDuration,
 		MaxDurationThreshold:       maxDurationThreshold,
 		CountDurationOverThreshold: distroCountDurationOverThreshold,

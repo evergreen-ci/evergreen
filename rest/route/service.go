@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
@@ -64,6 +65,9 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 
 	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
 
+	// Clients
+	stsManager := cloud.GetSTSManager(false)
+
 	// Agent protocol routes
 	app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentCedarConfig(settings.Cedar))
 	app.AddRoute("/agent/setup").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentSetup(settings))
@@ -72,7 +76,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/distros/{distro_id}/ami").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetDistroAMI())
 	app.AddRoute("/hosts/{host_id}/agent/next_task").Version(2).Get().Wrap(requireHost).RouteHandler(makeHostAgentNextTask(env, opts.TaskDispatcher, opts.TaskAliasDispatcher))
 	app.AddRoute("/hosts/{host_id}/task/{task_id}/end").Version(2).Post().Wrap(requireHost, requireTask).RouteHandler(makeHostAgentEndTask(env))
-	app.AddRoute("/hosts/{host_id}/disable").Version(2).Post().Wrap(requireHost).RouteHandler(makeDisableHostHandler(env))
 	app.AddRoute("/hosts/{host_id}/status").Version(2).Get().Wrap(requireTaskHost).RouteHandler(makeContainerStatusManager())
 	app.AddRoute("/hosts/{host_id}/is_up").Version(2).Post().Wrap(requireHost).RouteHandler(makeHostIsUpPostHandler(env))
 	app.AddRoute("/hosts/{host_id}/logs/output").Version(2).Get().Wrap(requireTaskHost).RouteHandler(makeContainerLogsRouteManager(false))
@@ -109,6 +112,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/update_push_status").Version(2).Post().Wrap(requireTask).RouteHandler(makeUpdatePushStatus())
 	app.AddRoute("/task/{task_id}/restart").Version(2).Post().Wrap(requireTask).RouteHandler(makeMarkTaskForRestart())
 	app.AddRoute("/task/{task_id}/check_run").Version(2).Post().Wrap(requireTask).RouteHandler(makeCheckRun(settings))
+	app.AddRoute("/task/{task_id}/aws/assume_role").Version(2).Post().Wrap(requireTask).RouteHandler(makeAWSAssumeRole(stsManager))
 
 	// REST v2 API Routes
 	app.AddRoute("/").Version(2).Get().Wrap(requireUser).RouteHandler(makePlaceHolder())

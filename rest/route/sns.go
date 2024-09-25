@@ -260,7 +260,7 @@ func (sns *ec2SNS) handleInstanceTerminated(ctx context.Context, instanceID stri
 		return errors.Wrap(err, "decommissioning host")
 	}
 
-	if err := amboy.EnqueueUniqueJob(ctx, sns.queue, units.NewHostMonitorExternalStateJob(sns.env, h, sns.payload.MessageId)); err != nil {
+	if err := amboy.EnqueueUniqueJob(ctx, sns.queue, units.NewHostMonitoringCheckJob(sns.env, h, sns.payload.MessageId)); err != nil {
 		return errors.Wrap(err, "enqueueing host external state check job")
 	}
 
@@ -324,7 +324,7 @@ func (sns *ec2SNS) handleInstanceStopped(ctx context.Context, instanceID string)
 		return errors.Wrap(err, "decommissioning host")
 	}
 
-	if err := amboy.EnqueueUniqueJob(ctx, sns.queue, units.NewHostMonitorExternalStateJob(sns.env, h, sns.payload.MessageId)); err != nil {
+	if err := amboy.EnqueueUniqueJob(ctx, sns.queue, units.NewHostMonitoringCheckJob(sns.env, h, sns.payload.MessageId)); err != nil {
 		return errors.Wrap(err, "enqueueing host external state check job")
 	}
 
