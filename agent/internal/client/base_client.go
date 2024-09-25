@@ -1027,6 +1027,9 @@ func (c *baseCommunicator) AssumeRole(ctx context.Context, td TaskData, request 
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespErrorf(resp, "trouble assuming role")
 	}
-	creds := apimodels.AssumeRoleResponse{}
-	return &creds, errors.Wrapf(utility.ReadJSON(resp.Body, &creds), "reading assume role response")
+	var creds apimodels.AssumeRoleResponse
+	if err := utility.ReadJSON(resp.Body, &creds); err != nil {
+		return nil, errors.Wrap(err, "reading assume role response")
+	}
+	return &creds, nil
 }
