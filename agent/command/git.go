@@ -158,7 +158,7 @@ func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td 
 	owner := conf.ProjectRef.Owner
 	repo := conf.ProjectRef.Repo
 	appToken, err := comm.CreateInstallationToken(ctx, td, owner, repo)
-	if err == nil {
+	if appToken != "" {
 		// Redact the token from the logs.
 		conf.NewExpansions.Redact("EVERGREEN_GENERATED_GITHUB_TOKEN", appToken)
 	}
