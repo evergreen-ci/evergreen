@@ -373,7 +373,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	b := build.Build{
 		Id:          "b_a",
 		Activated:   true,
-		DisplayName: "Build A",
+		DisplayName: "02 Build C",
 		Version:     "v_1",
 		Tasks: []build.TaskCache{
 			build.TaskCache{
@@ -394,7 +394,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	b = build.Build{
 		Id:          "b_b",
 		Activated:   true,
-		DisplayName: "Build B",
+		DisplayName: "03 Build B",
 		Version:     "v_1",
 		Tasks: []build.TaskCache{
 			build.TaskCache{
@@ -409,7 +409,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	b = build.Build{
 		Id:          "b_c",
 		Activated:   true,
-		DisplayName: "Build C",
+		DisplayName: "01 Build A",
 		Version:     "v_1",
 		Tasks: []build.TaskCache{
 			build.TaskCache{
@@ -427,7 +427,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	b = build.Build{
 		Id:          "b_d",
 		Activated:   false,
-		DisplayName: "Build D",
+		DisplayName: "03 Build B",
 		Version:     "v_2",
 		Tasks: []build.TaskCache{
 			build.TaskCache{
@@ -448,7 +448,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	b = build.Build{
 		Id:          "b_e",
 		Activated:   false,
-		DisplayName: "Build E",
+		DisplayName: "01 Build A",
 		Version:     "v_2",
 		Tasks: []build.TaskCache{
 			build.TaskCache{
@@ -463,7 +463,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	b = build.Build{
 		Id:          "b_f",
 		Activated:   false,
-		DisplayName: "Build F",
+		DisplayName: "02 Build C",
 		Version:     "v_2",
 		Tasks: []build.TaskCache{
 			build.TaskCache{
@@ -481,7 +481,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	b = build.Build{
 		Id:          "b_g",
 		Activated:   true,
-		DisplayName: "Build G",
+		DisplayName: "01 Build A",
 		Version:     "v_3",
 		Tasks: []build.TaskCache{
 			build.TaskCache{
@@ -502,7 +502,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	b = build.Build{
 		Id:          "b_h",
 		Activated:   true,
-		DisplayName: "Build H",
+		DisplayName: "03 Build B",
 		Version:     "v_3",
 		Tasks: []build.TaskCache{
 			build.TaskCache{
@@ -517,7 +517,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	b = build.Build{
 		Id:          "b_i",
 		Activated:   true,
-		DisplayName: "Build I",
+		DisplayName: "02 Build C",
 		Version:     "v_3",
 		Tasks: []build.TaskCache{
 			build.TaskCache{
@@ -535,7 +535,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	b = build.Build{
 		Id:          "b_j",
 		Activated:   true,
-		DisplayName: "Build J",
+		DisplayName: "02 Build C",
 		Version:     "v_4",
 		Tasks: []build.TaskCache{
 			build.TaskCache{
@@ -556,7 +556,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	b = build.Build{
 		Id:          "b_k",
 		Activated:   true,
-		DisplayName: "Build K",
+		DisplayName: "01 Build A",
 		Version:     "v_4",
 		Tasks: []build.TaskCache{
 			build.TaskCache{
@@ -571,7 +571,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	b = build.Build{
 		Id:          "b_l",
 		Activated:   true,
-		DisplayName: "Build L",
+		DisplayName: "03 Build B",
 		Version:     "v_4",
 		Tasks: []build.TaskCache{
 			build.TaskCache{
@@ -589,7 +589,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	b = build.Build{
 		Id:          "b_m",
 		Activated:   true,
-		DisplayName: "Build M",
+		DisplayName: "03 Build B",
 		Version:     "v_5",
 		Tasks: []build.TaskCache{
 			build.TaskCache{
@@ -610,7 +610,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	b = build.Build{
 		Id:          "b_n",
 		Activated:   true,
-		DisplayName: "Build N",
+		DisplayName: "01 Build A",
 		Version:     "v_5",
 		Tasks: []build.TaskCache{
 			build.TaskCache{
@@ -625,7 +625,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	b = build.Build{
 		Id:          "b_o",
 		Activated:   true,
-		DisplayName: "Build O",
+		DisplayName: "02 Build C",
 		Version:     "v_5",
 		Tasks: []build.TaskCache{
 			build.TaskCache{
@@ -737,9 +737,9 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.Len(t, buildVariants, 3)
 
 	// Assert build variants are sorted alphabetically
-	assert.Equal(t, buildVariants[0].Id, "bv_1")
-	assert.Equal(t, buildVariants[1].Id, "bv_2")
-	assert.Equal(t, buildVariants[2].Id, "bv_3")
+	assert.Equal(t, buildVariants[0].DisplayName, "01 Build A")
+	assert.Equal(t, buildVariants[1].DisplayName, "02 Build C")
+	assert.Equal(t, buildVariants[2].DisplayName, "03 Build B")
 
 	// Each variant has 4 builds, corresponding to `limit`
 	assert.Len(t, buildVariants[0].Builds, 4)
