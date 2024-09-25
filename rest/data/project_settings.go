@@ -367,6 +367,8 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 		}
 	case model.ProjectPageVariablesSection:
+		// kim: TODO: figure out if this still works after redacting all private
+		// vars. It should since the project vars page should be unchanged.
 		for key, value := range before.Vars.Vars {
 			// Private variables are redacted in the UI, so re-set to the real value
 			// before updating (assuming the value isn't deleted/re-configured).

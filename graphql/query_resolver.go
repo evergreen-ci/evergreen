@@ -459,6 +459,7 @@ func (r *queryResolver) ProjectEvents(ctx context.Context, projectIdentifier str
 	if before != nil {
 		timestamp = *before
 	}
+	// kim: TODO: redact project vars from this
 	events, err := data.GetProjectEventLog(projectIdentifier, timestamp, utility.FromIntPtr(limit))
 	res := &ProjectEvents{
 		EventLogEntries: getPointerEventList(events),
