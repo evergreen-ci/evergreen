@@ -100,6 +100,7 @@ type User {
   parsleySettings: ParsleySettings!
   patches(patchesInput: PatchesInput!): Patches! # user patches
   permissions: Permissions!
+  settings: UserSettings!
   subscriptions: [GeneralSubscription!]
   userId: String!
 }

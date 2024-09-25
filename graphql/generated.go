@@ -1578,6 +1578,7 @@ type ComplexityRoot struct {
 		ParsleySettings func(childComplexity int) int
 		Patches         func(childComplexity int, patchesInput PatchesInput) int
 		Permissions     func(childComplexity int) int
+		Settings        func(childComplexity int) int
 		Subscriptions   func(childComplexity int) int
 		UserID          func(childComplexity int) int
 	}
@@ -2066,10 +2067,9 @@ type TicketFieldsResolver interface {
 	ResolutionName(ctx context.Context, obj *thirdparty.TicketFields) (*string, error)
 }
 type UserResolver interface {
-	ParsleyFilters(ctx context.Context, obj *model.APIDBUser) ([]*model.APIParsleyFilter, error)
-	ParsleySettings(ctx context.Context, obj *model.APIDBUser) (*model.APIParsleySettings, error)
 	Patches(ctx context.Context, obj *model.APIDBUser, patchesInput PatchesInput) (*Patches, error)
 	Permissions(ctx context.Context, obj *model.APIDBUser) (*Permissions, error)
+
 	Subscriptions(ctx context.Context, obj *model.APIDBUser) ([]*model.APISubscription, error)
 }
 type VersionResolver interface {
@@ -9596,6 +9596,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.User.Permissions(childComplexity), true
+
+	case "User.settings":
+		if e.complexity.User.Settings == nil {
+			break
+		}
+
+		return e.complexity.User.Settings(childComplexity), true
 
 	case "User.subscriptions":
 		if e.complexity.User.Subscriptions == nil {
@@ -49106,6 +49113,8 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 				return ec.fieldContext_User_patches(ctx, field)
 			case "permissions":
 				return ec.fieldContext_User_permissions(ctx, field)
+			case "settings":
+				return ec.fieldContext_User_settings(ctx, field)
 			case "subscriptions":
 				return ec.fieldContext_User_subscriptions(ctx, field)
 			case "userId":
@@ -65189,7 +65198,7 @@ func (ec *executionContext) _User_parsleyFilters(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.User().ParsleyFilters(rctx, obj)
+		return obj.ParsleyFilters, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -65201,17 +65210,17 @@ func (ec *executionContext) _User_parsleyFilters(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.APIParsleyFilter)
+	res := resTmp.([]model.APIParsleyFilter)
 	fc.Result = res
-	return ec.marshalNParsleyFilter2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ(ctx, field.Selections, res)
+	return ec.marshalNParsleyFilter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_parsleyFilters(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "User",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "expression":
@@ -65241,7 +65250,7 @@ func (ec *executionContext) _User_parsleySettings(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.User().ParsleySettings(rctx, obj)
+		return obj.ParsleySettings, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -65253,17 +65262,17 @@ func (ec *executionContext) _User_parsleySettings(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.APIParsleySettings)
+	res := resTmp.(model.APIParsleySettings)
 	fc.Result = res
-	return ec.marshalNParsleySettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings(ctx, field.Selections, res)
+	return ec.marshalNParsleySettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_parsleySettings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "User",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "sectionsEnabled":
@@ -65391,6 +65400,70 @@ func (ec *executionContext) fieldContext_User_permissions(_ context.Context, fie
 				return ec.fieldContext_Permissions_userId(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Permissions", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_settings(ctx context.Context, field graphql.CollectedField, obj *model.APIDBUser) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_User_settings(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Settings, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.APIUserSettings)
+	fc.Result = res
+	return ec.marshalNUserSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_User_settings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "githubUser":
+				return ec.fieldContext_UserSettings_githubUser(ctx, field)
+			case "notifications":
+				return ec.fieldContext_UserSettings_notifications(ctx, field)
+			case "region":
+				return ec.fieldContext_UserSettings_region(ctx, field)
+			case "slackUsername":
+				return ec.fieldContext_UserSettings_slackUsername(ctx, field)
+			case "slackMemberId":
+				return ec.fieldContext_UserSettings_slackMemberId(ctx, field)
+			case "timezone":
+				return ec.fieldContext_UserSettings_timezone(ctx, field)
+			case "useSpruceOptions":
+				return ec.fieldContext_UserSettings_useSpruceOptions(ctx, field)
+			case "dateFormat":
+				return ec.fieldContext_UserSettings_dateFormat(ctx, field)
+			case "timeFormat":
+				return ec.fieldContext_UserSettings_timeFormat(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UserSettings", field.Name)
 		},
 	}
 	return fc, nil
@@ -92213,77 +92286,15 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "parsleyFilters":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._User_parsleyFilters(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._User_parsleyFilters(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "parsleySettings":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._User_parsleySettings(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._User_parsleySettings(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "patches":
 			field := field
 
@@ -92356,6 +92367,11 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "settings":
+			out.Values[i] = ec._User_settings(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "subscriptions":
 			field := field
 
@@ -97006,7 +97022,7 @@ func (ec *executionContext) marshalNParsleyFilter2githubᚗcomᚋevergreenᚑci�
 	return ec._ParsleyFilter(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNParsleyFilter2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIParsleyFilter) graphql.Marshaler {
+func (ec *executionContext) marshalNParsleyFilter2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilterᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIParsleyFilter) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -97030,7 +97046,7 @@ func (ec *executionContext) marshalNParsleyFilter2ᚕᚖgithubᚗcomᚋevergreen
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNParsleyFilter2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilter(ctx, sel, v[i])
+			ret[i] = ec.marshalNParsleyFilter2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilter(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -97050,16 +97066,6 @@ func (ec *executionContext) marshalNParsleyFilter2ᚕᚖgithubᚗcomᚋevergreen
 	return ret
 }
 
-func (ec *executionContext) marshalNParsleyFilter2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilter(ctx context.Context, sel ast.SelectionSet, v *model.APIParsleyFilter) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._ParsleyFilter(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalNParsleyFilterInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleyFilter(ctx context.Context, v interface{}) (model.APIParsleyFilter, error) {
 	res, err := ec.unmarshalInputParsleyFilterInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -97067,16 +97073,6 @@ func (ec *executionContext) unmarshalNParsleyFilterInput2githubᚗcomᚋevergree
 
 func (ec *executionContext) marshalNParsleySettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings(ctx context.Context, sel ast.SelectionSet, v model.APIParsleySettings) graphql.Marshaler {
 	return ec._ParsleySettings(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNParsleySettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings(ctx context.Context, sel ast.SelectionSet, v *model.APIParsleySettings) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._ParsleySettings(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNParsleySettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIParsleySettings(ctx context.Context, v interface{}) (*model.APIParsleySettings, error) {
@@ -98830,6 +98826,10 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 		return graphql.Null
 	}
 	return ec._User(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNUserSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, sel ast.SelectionSet, v model.APIUserSettings) graphql.Marshaler {
+	return ec._UserSettings(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNVariantTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐVariantTask(ctx context.Context, sel ast.SelectionSet, v model.VariantTask) graphql.Marshaler {
