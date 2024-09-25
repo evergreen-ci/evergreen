@@ -52,10 +52,6 @@ type TestStatusDiff struct {
 	Patch    string     `json:"patch"`
 }
 
-var (
-	TestLogPath = "/test_log/"
-)
-
 // StatusDiffBuilds takes two builds and returns a diff of their results
 // for easy comparison and analysis.
 func StatusDiffBuilds(original, patch *build.Build) (BuildStatusDiff, error) {

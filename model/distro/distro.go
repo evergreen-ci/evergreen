@@ -853,10 +853,6 @@ func AllDistros(ctx context.Context) ([]Distro, error) {
 	return Find(ctx, bson.M{}, options.Find().SetSort(bson.M{IdKey: 1}))
 }
 
-func AllDistroIDs(ctx context.Context) ([]Distro, error) {
-	return Find(ctx, bson.M{}, options.Find().SetSort(bson.M{IdKey: 1}).SetProjection(bson.M{IdKey: 1}))
-}
-
 // GetHostCreateDistro returns the distro based on the name and provider.
 // If the provider is Docker, passing in the distro is required, and the
 // distro must be a Docker distro. If the provider is EC2, the distro

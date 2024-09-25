@@ -10,9 +10,8 @@ import (
 
 const (
 	FlashSeveritySuccess = "success"
-	FlashSeverityInfo    = "info"
-	FlashSeverityWarning = "warning"
-	FlashSeverityError   = "danger"
+
+	FlashSeverityError = "danger"
 )
 
 const FlashSession = "mci-session"

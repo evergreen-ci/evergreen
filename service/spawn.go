@@ -25,22 +25,21 @@ import (
 )
 
 var (
-	HostRename                 = "changeHostDisplayName"
-	HostPasswordUpdate         = "updateRDPPassword"
-	HostInstanceTypeUpdate     = "updateInstanceType"
-	HostTagUpdate              = "updateHostTags"
-	HostExpirationExtension    = "extendHostExpiration"
-	HostTerminate              = "terminate"
-	HostStop                   = "stop"
-	HostStart                  = "start"
-	VolumeRename               = "changeVolumeDisplayName"
-	VolumeExtendExpiration     = "extendVolumeExpiration"
-	VolumeSetNoExpiration      = "setVolumeNoExpiration"
-	VolumeSetHasExpiration     = "setVolumeHasExpiration"
-	VolumeAttach               = "attachVolume"
-	VolumeDetach               = "detachVolume"
-	VolumeDelete               = "deleteVolume"
-	MaxExpirationDurationHours = 24 * 7 // 7 days
+	HostRename              = "changeHostDisplayName"
+	HostPasswordUpdate      = "updateRDPPassword"
+	HostInstanceTypeUpdate  = "updateInstanceType"
+	HostTagUpdate           = "updateHostTags"
+	HostExpirationExtension = "extendHostExpiration"
+	HostTerminate           = "terminate"
+	HostStop                = "stop"
+	HostStart               = "start"
+	VolumeRename            = "changeVolumeDisplayName"
+	VolumeExtendExpiration  = "extendVolumeExpiration"
+	VolumeSetNoExpiration   = "setVolumeNoExpiration"
+	VolumeSetHasExpiration  = "setVolumeHasExpiration"
+	VolumeAttach            = "attachVolume"
+	VolumeDetach            = "detachVolume"
+	VolumeDelete            = "deleteVolume"
 )
 
 func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
