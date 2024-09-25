@@ -124,7 +124,7 @@ func (h *getUserHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("user '%s' not found", h.userId),
 		})
 	}
-	apiUser := model.APIDBUser{}
+	apiUser := &model.APIDBUser{}
 	apiUser.BuildFromService(*usr)
 	return gimlet.NewJSONResponse(apiUser)
 }

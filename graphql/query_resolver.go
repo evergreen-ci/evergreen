@@ -703,10 +703,10 @@ func (r *queryResolver) User(ctx context.Context, userID *string) (*restModel.AP
 	if userID != nil {
 		usr, err = user.FindOneById(*userID)
 		if err != nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting user from user ID: %s", err.Error()))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("getting user from user ID: %s", err.Error()))
 		}
 		if usr == nil {
-			return nil, ResourceNotFound.Send(ctx, "Could not find user from user ID")
+			return nil, ResourceNotFound.Send(ctx, "unable to find user from user ID")
 		}
 	}
 	apiUser := restModel.APIDBUser{}

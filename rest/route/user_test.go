@@ -1149,7 +1149,7 @@ func TestGetUserHandler(t *testing.T) {
 
 			resp := handler.Run(gimlet.AttachUser(ctx, &me))
 			assert.Equal(t, resp.Status(), http.StatusOK)
-			respUsr, ok := resp.Data().(restModel.APIDBUser)
+			respUsr, ok := resp.Data().(*restModel.APIDBUser)
 			require.True(t, ok)
 			assert.NotEmpty(t, respUsr)
 			assert.Equal(t, usrToRetrieve.Id, utility.FromStringPtr(respUsr.UserID))
