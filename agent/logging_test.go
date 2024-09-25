@@ -30,6 +30,7 @@ func TestStartLogging(t *testing.T) {
 			LogOutput:        globals.LogOutputStdout,
 			LogPrefix:        "agent",
 			WorkingDirectory: tmpDirName,
+			HomeDirectory:    tmpDirName,
 		},
 		comm: client.NewMock("url"),
 	}

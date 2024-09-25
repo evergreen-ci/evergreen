@@ -76,7 +76,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/distros/{distro_id}/ami").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetDistroAMI())
 	app.AddRoute("/hosts/{host_id}/agent/next_task").Version(2).Get().Wrap(requireHost).RouteHandler(makeHostAgentNextTask(env, opts.TaskDispatcher, opts.TaskAliasDispatcher))
 	app.AddRoute("/hosts/{host_id}/task/{task_id}/end").Version(2).Post().Wrap(requireHost, requireTask).RouteHandler(makeHostAgentEndTask(env))
-	app.AddRoute("/hosts/{host_id}/disable").Version(2).Post().Wrap(requireHost).RouteHandler(makeDisableHostHandler(env))
 	app.AddRoute("/hosts/{host_id}/status").Version(2).Get().Wrap(requireTaskHost).RouteHandler(makeContainerStatusManager())
 	app.AddRoute("/hosts/{host_id}/is_up").Version(2).Post().Wrap(requireHost).RouteHandler(makeHostIsUpPostHandler(env))
 	app.AddRoute("/hosts/{host_id}/logs/output").Version(2).Get().Wrap(requireTaskHost).RouteHandler(makeContainerLogsRouteManager(false))
