@@ -898,7 +898,11 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 		a.killProcs(ctx, tc, true, "teardown group commands are starting")
 		ctx = utility.ContextWithAttributes(ctx, tc.taskConfig.TaskAttributes())
 		ctx, span := a.tracer.Start(ctx, "teardown_group")
-		_ = a.runCommandsInBlock(ctx, tc, *teardownGroup)
+		defer span.End()
+		// The teardown group commands don't defer the span as to not include the
+		// cleanups below, which add their own spans.
+		cmdCtx, span := a.tracer.Start(ctx, "commands")
+		_ = a.runCommandsInBlock(cmdCtx, tc, *teardownGroup)
 		span.End()
 		// Teardown groups should run all the remaining command cleanups.
 		tc.runTaskCommandCleanups(ctx, tc.logger, a.tracer)
