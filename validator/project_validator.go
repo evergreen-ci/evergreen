@@ -677,7 +677,7 @@ func validateCheckRuns(p *model.Project, aliases model.ProjectAliases) Validatio
 	errs := ValidationErrors{}
 	aliasMap := map[string][]model.ProjectAlias{} // map of alias name to aliases
 	for _, a := range aliases {
-		if aliasMap[a.Alias] == nil {
+		if _, ok := aliasMap[a.Alias]; !ok {
 			aliasMap[a.Alias] = []model.ProjectAlias{}
 		}
 		aliasMap[a.Alias] = append(aliasMap[a.Alias], a)
