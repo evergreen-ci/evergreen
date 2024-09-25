@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -30,6 +31,8 @@ func TestEvergreenCommunicatorConstructor(t *testing.T) {
 }
 
 func TestLoggerProducerRedactorOptions(t *testing.T) {
+	secret_key := "secret_key"
+	secret_key_redaction := fmt.Sprintf("<REDACTED:%s>", secret_key)
 	secret := "super_soccer_ball"
 	createTask := func() *task.Task {
 		return &task.Task{
@@ -78,6 +81,7 @@ func TestLoggerProducerRedactorOptions(t *testing.T) {
 
 		data := readLogs(t, task)
 		assert.Contains(t, data, secret)
+		assert.NotContains(t, data, secret_key_redaction)
 
 		// Make sure it has the other log lines.
 		assert.Contains(t, data, "Fluff 1")
@@ -98,7 +102,7 @@ func TestLoggerProducerRedactorOptions(t *testing.T) {
 			},
 		})
 		logger.Task().Alert("Fluff 1")
-		e.PutAndRedact("secret_key", secret)
+		e.PutAndRedact(secret_key, secret)
 		logger.Task().Alert("More fluff")
 		require.NoError(t, err)
 
@@ -108,7 +112,7 @@ func TestLoggerProducerRedactorOptions(t *testing.T) {
 
 		data := readLogs(t, task)
 		assert.NotContains(t, data, secret)
-		assert.Contains(t, data, "secret_key")
+		assert.Contains(t, data, secret_key_redaction)
 
 		// Make sure it has the other log lines.
 		assert.Contains(t, data, "Fluff 1")
