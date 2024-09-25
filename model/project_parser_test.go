@@ -1975,7 +1975,7 @@ func TestParserProjectStorage(t *testing.T) {
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
 
-	testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
+	testutil.ConfigureIntegrationTest(t, env.Settings())
 
 	c := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(c)

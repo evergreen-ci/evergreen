@@ -24,7 +24,7 @@ func setupEnv(ctx context.Context) (*mock.Environment, error) {
 	return env, nil
 }
 
-func withSetupAndTeardown(t *testing.T, env evergreen.Environment, fn func()) {
+func withSetupAndTeardown(t *testing.T, fn func()) {
 	require.NoError(t, db.ClearCollections(taskstats.DailyTaskStatsCollection))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(taskstats.DailyTaskStatsCollection))
@@ -110,7 +110,7 @@ func TestPipeline(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						filter := TaskReliabilityFilter{
 							StatsFilter: taskstats.StatsFilter{
 								Project:    project,
@@ -295,7 +295,7 @@ func TestPipeline(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						filter := TaskReliabilityFilter{
 							StatsFilter: taskstats.StatsFilter{
 								Project:      project,
@@ -397,7 +397,7 @@ func TestPipeline(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						filter := TaskReliabilityFilter{
 							StatsFilter: taskstats.StatsFilter{
 								Project:    project,
@@ -476,7 +476,7 @@ func TestPipeline(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						filter := TaskReliabilityFilter{
 							StatsFilter: taskstats.StatsFilter{
 								Project:    project,
@@ -556,7 +556,7 @@ func TestPipeline(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						filter := TaskReliabilityFilter{
 							StatsFilter: taskstats.StatsFilter{
 								Project:    project,

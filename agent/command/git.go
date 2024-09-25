@@ -42,6 +42,8 @@ const (
 	// Valid types of performing git clone
 	cloneMethodOAuth       = "oauth"
 	cloneMethodAccessToken = "access-token"
+
+	generatedTokenKey = "EVERGREEN_GENERATED_GITHUB_TOKEN"
 )
 
 var (
@@ -158,6 +160,10 @@ func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td 
 	owner := conf.ProjectRef.Owner
 	repo := conf.ProjectRef.Repo
 	appToken, err := comm.CreateInstallationToken(ctx, td, owner, repo)
+	if appToken != "" {
+		// Redact the token from the logs.
+		conf.NewExpansions.Redact(generatedTokenKey, appToken)
+	}
 	// TODO EVG-21022: Remove fallback once we delete GitHub tokens as expansions.
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message": "error creating GitHub app token, falling back to legacy clone methods",
@@ -241,10 +247,9 @@ func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
 
-	redactedClone := strings.Replace(clone, opts.token, "[redacted github token]", -1)
 	return []string{
 		"set +o xtrace",
-		fmt.Sprintf(`echo %s`, strconv.Quote(redactedClone)),
+		fmt.Sprintf(`echo %s`, strconv.Quote(clone)),
 		clone,
 		"set -o xtrace",
 		fmt.Sprintf("cd %s", opts.dir),
@@ -319,7 +324,7 @@ func (c *gitFetchProject) buildSourceCloneCommand(ctx context.Context, comm clie
 			}
 			if commitToTest == "" {
 				// Proceed if github has confirmed this pr is mergeable.
-				commitToTest, err = c.waitForMergeableCheck(ctx, comm, logger, conf, opts)
+				commitToTest, err = c.waitForMergeableCheck(ctx, comm, conf, opts)
 				if err != nil {
 					commitToTest = conf.GithubPatchData.HeadHash
 					logger.Task().Errorf("Error checking if pull request is mergeable: %s", err)
@@ -365,7 +370,7 @@ func (c *gitFetchProject) buildSourceCloneCommand(ctx context.Context, comm clie
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) (string, error) {
+func (c *gitFetchProject) waitForMergeableCheck(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, opts cloneOpts) (string, error) {
 	var mergeSHA string
 
 	const (
@@ -543,16 +548,11 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 		// return early and will stop waiting for the command to exit. In the
 		// context error case, this thread and the still-running command may race to
 		// read/write the buffer, so the buffer has to be thread-safe.
-		stdErr := utility.MakeSafeBuffer(bytes.Buffer{})
 		fetchSourceCmd := jpm.CreateCommand(ctx).Add([]string{"bash", "-c", fetchScript}).Directory(conf.WorkDir).
-			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr)
+			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Execution().GetSender())
 
 		logger.Execution().Info("Fetching source from git...")
-		redactedCmds := fetchScript
-		if opts.token != "" {
-			redactedCmds = strings.Replace(redactedCmds, opts.token, "[redacted github token]", -1)
-		}
-		logger.Execution().Debugf("Commands are: %s", redactedCmds)
+		logger.Execution().Debugf("Commands are: %s", fetchScript)
 
 		ctx, span := getTracer().Start(ctx, "clone_source", trace.WithAttributes(
 			attribute.String(cloneOwnerAttribute, opts.owner),
@@ -563,15 +563,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 		))
 		defer span.End()
 
-		err = fetchSourceCmd.Run(ctx)
-		out := stdErr.String()
-		if out != "" {
-			if opts.token != "" {
-				out = strings.Replace(out, opts.token, "[redacted github token]", -1)
-			}
-			logger.Execution().Error(out)
-		}
-		return err
+		return fetchSourceCmd.Run(ctx)
 	})
 }
 
@@ -725,17 +717,19 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		return errors.Wrap(err, "setting location to clone from")
 	}
 
-	if opts.method == cloneMethodOAuth {
+	if opts.method == cloneMethodOAuth || opts.method == cloneMethodAccessToken {
 		// If user provided a token, use that token.
 		opts.token = projectToken
 	} else {
-
 		// Otherwise, create an installation token for to clone the module.
 		// Fallback to the legacy global token if the token cannot be created.
 		appToken, err := comm.CreateInstallationToken(ctx, td, opts.owner, opts.repo)
 		if err == nil {
 			opts.token = appToken
 			opts.method = cloneMethodAccessToken
+
+			// After generating, redact the token from the logs.
+			conf.NewExpansions.Redact(generatedTokenKey, appToken)
 		} else {
 			// If a token cannot be created, fallback to the legacy global token.
 			opts.method = cloneMethodOAuth
@@ -791,9 +785,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 
 		errOutput := stdErr.String()
 		if errOutput != "" {
-			if opts.token != "" {
-				errOutput = strings.Replace(errOutput, opts.token, "[redacted github token]", -1)
-			}
+			errOutput = strings.ReplaceAll(errOutput, "\n", fmt.Sprintf("\n%s: ", module.Name))
 			logger.Execution().Error(fmt.Sprintf("%s: %s", module.Name, errOutput))
 		}
 		return err

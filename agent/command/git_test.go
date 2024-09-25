@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	agenttestutil "github.com/evergreen-ci/evergreen/agent/internal/testutil"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/db"
@@ -85,7 +86,7 @@ func (s *GitGetProjectSuite) SetupSuite() {
 	env := testutil.NewEnvironment(s.ctx, s.T())
 	settings := env.Settings()
 
-	testutil.ConfigureIntegrationTest(s.T(), settings, s.T().Name())
+	testutil.ConfigureIntegrationTest(s.T(), settings)
 	s.settings = settings
 }
 
@@ -193,7 +194,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandUsesHTTPS() {
 	}
 	s.Require().NoError(opts.setLocation())
 	cmds, _ := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
-	s.True(utility.StringSliceContains(cmds, "git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'"))
+	s.True(utility.StringSliceContains(cmds, fmt.Sprintf("git clone https://%s:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", projectGitHubToken)))
 }
 
 func (s *GitGetProjectSuite) TestBuildSourceCommandWithHTTPSNeedsToken() {
@@ -321,45 +322,80 @@ func (s *GitGetProjectSuite) TestGitFetchRetries() {
 	s.Error(err)
 }
 
-func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
-	conf := s.taskConfig1
-	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
-	s.Require().NoError(err)
+func (s *GitGetProjectSuite) TestTokenIsRedactedWhenGenerated() {
+	conf := s.taskConfig5
 	conf.ProjectRef.Repo = "invalidRepo"
 	conf.Distro = nil
 	token := "abcdefghij"
 	s.comm.CreateInstallationTokenResult = token
+	s.comm.CreateInstallationTokenFail = false
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
-		for _, command := range task.Commands {
-			pluginCmds, err := Render(command, &conf.Project, BlockInfo{})
-			s.NoError(err)
-			s.NotNil(pluginCmds)
-			pluginCmds[0].SetJasperManager(s.jasper)
-			err = pluginCmds[0].Execute(ctx, s.comm, logger, conf)
-			s.Error(err)
+	runCommands := func(logger client.LoggerProducer) {
+		for _, task := range conf.Project.Tasks {
+			s.NotEqual(len(task.Commands), 0)
+			for _, command := range task.Commands {
+				pluginCmds, err := Render(command, &conf.Project, BlockInfo{})
+				s.NoError(err)
+				s.NotNil(pluginCmds)
+				pluginCmds[0].SetJasperManager(s.jasper)
+				err = pluginCmds[0].Execute(ctx, s.comm, logger, conf)
+				s.Error(err)
+			}
 		}
 	}
 
-	s.NoError(logger.Close())
-	foundCloneCommand := false
-	foundCloneErr := false
-	for _, line := range s.comm.GetTaskLogs(conf.Task.Id) {
-		if strings.Contains(line.Data, "https://[redacted github token]:x-oauth-basic@github.com/evergreen-ci/invalidRepo.git") {
-			foundCloneCommand = true
+	findTokenInLogs := func() bool {
+		for _, line := range s.comm.GetTaskLogs(conf.Task.Id) {
+			if strings.Contains(line.Data, token) {
+				return true
+			}
 		}
-		if strings.Contains(line.Data, "Authentication failed for") {
-			foundCloneErr = true
-		}
-		if strings.Contains(line.Data, token) {
-			s.FailNow("token was leaked")
-		}
+		return false
 	}
-	s.True(foundCloneCommand)
-	s.True(foundCloneErr)
+
+	findTokenInRedacted := func() bool {
+		for _, redacted := range conf.NewExpansions.GetRedacted() {
+			if redacted.Key == generatedTokenKey && redacted.Value == token {
+				return true
+			}
+		}
+		return false
+	}
+
+	// This is to ensure that the token would be leaked if not redacted.
+	s.Run("WithoutRedactorShouldLeak", func() {
+		logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+		s.Require().NoError(err)
+		runCommands(logger)
+		s.NoError(logger.Close())
+
+		// Token should be leaked in logs.
+		s.True(findTokenInLogs())
+
+		// Token should be in the redacted list (the
+		// redactor logger sender is just not using it).
+		s.True(findTokenInRedacted())
+	})
+
+	s.Run("WithRedactorShouldNotLeak", func() {
+		logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, &client.LoggerConfig{
+			RedactorOpts: redactor.RedactionOptions{
+				Expansions: conf.NewExpansions,
+			},
+		})
+		s.Require().NoError(err)
+
+		runCommands(logger)
+		s.NoError(logger.Close())
+
+		// Token should not be leaked in the logs.
+		s.False(findTokenInLogs())
+
+		// Token should be in redacted list.
+		s.True(findTokenInRedacted())
+	})
 }
 
 func (s *GitGetProjectSuite) TestStdErrLogged() {
@@ -461,8 +497,8 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
 		"set +o xtrace",
-		"echo \"git clone https://[redacted github token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'",
+		fmt.Sprintf("echo \"git clone https://%s:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", projectGitHubToken),
+		fmt.Sprintf("git clone https://%s:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", projectGitHubToken),
 		"set -o xtrace",
 		"cd dir",
 	}))
@@ -473,8 +509,8 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
 		"set +o xtrace",
-		"echo \"git clone https://[redacted github token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir'\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir'",
+		fmt.Sprintf("echo \"git clone https://%s:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir'\"", projectGitHubToken),
+		fmt.Sprintf("git clone https://%s:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir'", projectGitHubToken),
 		"set -o xtrace",
 		"cd dir",
 	}))
@@ -487,8 +523,8 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
-		"echo \"git clone https://[redacted github token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'",
+		fmt.Sprintf("echo \"git clone https://%s:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", projectGitHubToken),
+		fmt.Sprintf("git clone https://%s:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", projectGitHubToken),
 	}))
 
 	// ensure that we aren't sending the github oauth token to other
@@ -498,8 +534,8 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
-		"echo \"git clone https://[redacted github token]:x-oauth-basic@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main'\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main'",
+		fmt.Sprintf("echo \"git clone https://%s:x-oauth-basic@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", projectGitHubToken),
+		fmt.Sprintf("git clone https://%s:x-oauth-basic@someothergithost.com/evergreen-ci/sample.git 'dir' --branch 'main'", projectGitHubToken),
 	}))
 }
 
@@ -535,8 +571,8 @@ func (s *GitGetProjectSuite) TestBuildSourceCommand() {
 		"set -o errexit",
 		"rm -rf dir",
 		"set +o xtrace",
-		"echo \"git clone https://[redacted github token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'",
+		fmt.Sprintf("echo \"git clone https://%s:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'\"", projectGitHubToken),
+		fmt.Sprintf("git clone https://%s:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", projectGitHubToken),
 		"set -o xtrace",
 		"cd dir",
 		"git reset --hard ",
@@ -655,8 +691,8 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 		"set -o xtrace",
 		"set -o errexit",
 		"set +o xtrace",
-		"echo \"git clone https://[redacted github token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'",
+		fmt.Sprintf("echo \"git clone https://%s:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'\"", projectGitHubToken),
+		fmt.Sprintf("git clone https://%s:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'", projectGitHubToken),
 		"set -o xtrace",
 		"cd module",
 		"git checkout 'main'",
@@ -668,8 +704,8 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
-		"echo \"git clone https://[redacted github token]:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'\"",
-		"git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'",
+		fmt.Sprintf("echo \"git clone https://%s:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'\"", projectGitHubToken),
+		fmt.Sprintf("git clone https://%s:x-oauth-basic@github.com/evergreen-ci/sample.git 'module'", projectGitHubToken),
 	}))
 
 	conf = s.taskConfig4
@@ -689,7 +725,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
 		"set -o xtrace",
 		"set -o errexit",
-		"git clone https://x-access-token:PROJECTTOKEN@github.com/evergreen-ci/sample.git 'module'",
+		fmt.Sprintf("git clone https://x-access-token:%s@github.com/evergreen-ci/sample.git 'module'", projectGitHubToken),
 		"cd module",
 		"git fetch origin \"pull/1234/merge:evg-merge-test-",
 		"git checkout 'evg-merge-test-",
@@ -994,14 +1030,16 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 
 	td := client.TaskData{ID: s.taskConfig1.Task.Id, Secret: s.taskConfig1.Task.Secret}
 
+	expansions := map[string]string{
+		evergreen.GlobalGitHubTokenExpansion: globalGitHubToken,
+	}
 	conf := &internal.TaskConfig{
 		ProjectRef: model.ProjectRef{
 			Owner: "valid-owner",
 			Repo:  "valid-repo",
 		},
-		Expansions: map[string]string{
-			evergreen.GlobalGitHubTokenExpansion: globalGitHubToken,
-		},
+		Expansions:    expansions,
+		NewExpansions: agentutil.NewDynamicExpansions(expansions),
 	}
 
 	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken, true)

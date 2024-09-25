@@ -55,7 +55,7 @@ func TestJiraUnauthorized(t *testing.T) {
 }
 
 func TestJiraIntegration(t *testing.T) {
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestJiraIntegration")
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	Convey("With a JIRA rest interface that makes a valid request", t, func() {
 		jira := NewJiraHandler(*testConfig.Jira.Export())
 

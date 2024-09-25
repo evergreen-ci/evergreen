@@ -63,7 +63,7 @@ func (h *degradedModeHandler) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting banner text"))
 			}
 		}
-		if err = data.SetBannerTheme(ctx, string(evergreen.Information), nil); err != nil {
+		if err = data.SetBannerTheme(ctx, string(evergreen.Information)); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "setting banner theme"))
 		}
 	}

@@ -59,7 +59,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	testConfig := env.Settings()
 
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	require.NoError(db.Clear(host.Collection))
 
 	opts := &EC2ManagerOptions{

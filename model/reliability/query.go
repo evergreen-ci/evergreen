@@ -18,11 +18,11 @@ const (
 	MinSignificanceLimit = 0.0
 	DefaultSignificance  = 0.05
 
-	GroupByTask       = taskstats.GroupByTask
-	GroupByVariant    = taskstats.GroupByVariant
-	GroupByDistro     = taskstats.GroupByDistro
-	SortEarliestFirst = taskstats.SortEarliestFirst
-	SortLatestFirst   = taskstats.SortLatestFirst
+	GroupByTask = taskstats.GroupByTask
+
+	GroupByDistro = taskstats.GroupByDistro
+
+	SortLatestFirst = taskstats.SortLatestFirst
 )
 
 // TaskReliabilityFilter represents search and aggregation parameters when

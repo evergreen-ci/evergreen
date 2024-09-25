@@ -126,7 +126,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 			} {
 				t.Run(testName, func(t *testing.T) {
 					handler := taskReliabilityHandler{}
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						testCase(paginationContext, t, handler)
 					})
 				})
@@ -175,7 +175,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 			} {
 				t.Run(testName, func(t *testing.T) {
 					handler := taskReliabilityHandler{}
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						testCase(paginationContext, t, handler)
 					})
 				})
@@ -218,7 +218,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 			} {
 				t.Run(testName, func(t *testing.T) {
 					handler := taskReliabilityHandler{}
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						testCase(paginationContext, t, handler)
 					})
 				})
@@ -297,7 +297,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 			} {
 				t.Run(testName, func(t *testing.T) {
 					handler := taskReliabilityHandler{}
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						testCase(paginationContext, t, handler)
 					})
 				})
@@ -348,7 +348,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 			} {
 				t.Run(testName, func(t *testing.T) {
 					handler := taskReliabilityHandler{}
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						testCase(paginationContext, t, handler)
 					})
 				})
@@ -454,7 +454,7 @@ func TestReliabilityParse(t *testing.T) {
 			} {
 				t.Run(testName, func(t *testing.T) {
 					handler := taskReliabilityHandler{}
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						testCase(paginationContext, t, handler)
 					})
 				})
@@ -716,7 +716,7 @@ func TestReliabilityRun(t *testing.T) {
 			} {
 				t.Run(testName, func(t *testing.T) {
 					handler := makeGetProjectTaskReliability("https://example.net/test").(*taskReliabilityHandler)
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						testCase(paginationContext, t, handler)
 					})
 				})
@@ -745,7 +745,7 @@ func setupEnv(ctx context.Context) (*mock.Environment, error) {
 	return env, nil
 }
 
-func withSetupAndTeardown(t *testing.T, env evergreen.Environment, fn func()) {
+func withSetupAndTeardown(t *testing.T, fn func()) {
 	require.NoError(t, db.ClearCollections(taskstats.DailyTaskStatsCollection))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(taskstats.DailyTaskStatsCollection))
@@ -940,7 +940,7 @@ func TestReliability(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						testCase(paginationContext, t)
 					})
 				})

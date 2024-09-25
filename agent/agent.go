@@ -600,11 +600,8 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	taskLogDir := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
 	grip.Error(errors.Wrapf(os.RemoveAll(taskLogDir), "removing task log directory '%s'", taskLogDir))
 	tc.logger, err = a.makeLoggerProducer(ctx, tc, "")
-	if err != nil {
-		return errors.Wrap(err, "making the logger producer")
-	}
 
-	return nil
+	return errors.Wrap(err, "making the logger producer")
 }
 
 // runTask runs a task. It returns true if the agent should exit.
@@ -896,8 +893,14 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 
 	if teardownGroup.commands != nil {
 		a.killProcs(ctx, tc, true, "teardown group commands are starting")
-
-		_ = a.runCommandsInBlock(ctx, tc, *teardownGroup)
+		ctx = utility.ContextWithAttributes(ctx, tc.taskConfig.TaskAttributes())
+		ctx, span := a.tracer.Start(ctx, "teardown_group")
+		defer span.End()
+		// The teardown group commands don't defer the span as to not include the
+		// cleanups below, which add their own spans.
+		cmdCtx, span := a.tracer.Start(ctx, "commands")
+		_ = a.runCommandsInBlock(cmdCtx, tc, *teardownGroup)
+		span.End()
 		// Teardown groups should run all the remaining command cleanups.
 		tc.runTaskCommandCleanups(ctx, tc.logger, a.tracer)
 		tc.runSetupGroupCommandCleanups(ctx, tc.logger, a.tracer)

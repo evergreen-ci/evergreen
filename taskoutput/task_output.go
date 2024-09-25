@@ -23,7 +23,7 @@ type TaskOptions struct {
 }
 
 // InitializeTaskOutput initializes the task output for a new task run.
-func InitializeTaskOutput(env evergreen.Environment, opts TaskOptions) *TaskOutput {
+func InitializeTaskOutput(env evergreen.Environment) *TaskOutput {
 	settings := env.Settings()
 
 	return &TaskOutput{

@@ -44,7 +44,7 @@ func TestAssumeRoleRequestValidate(t *testing.T) {
 			req: AssumeRoleRequest{
 				RoleARN:         "role",
 				DurationSeconds: utility.ToInt32Ptr(1),
-				Policy:          "policy",
+				Policy:          utility.ToStringPtr("policy"),
 			},
 		},
 	}

@@ -551,7 +551,7 @@ type outputPatchParams struct {
 // according to the outputPatchParams.
 func getPatchDisplay(ac *legacyClient, params outputPatchParams) (string, error) {
 	if params.outputJSON {
-		return getJSONPatchDisplay(ac, params)
+		return getJSONPatchDisplay(params)
 	}
 	return getGenericPatchDisplay(ac, params)
 }
@@ -602,7 +602,7 @@ func getGenericPatchDisplay(ac *legacyClient, params outputPatchParams) (string,
 // using the JSON format. If there is only one patch, it will be displayed
 // as a single JSON object. If there are multiple patches, they will be
 // displayed as a JSON array.
-func getJSONPatchDisplay(ac *legacyClient, params outputPatchParams) (string, error) {
+func getJSONPatchDisplay(params outputPatchParams) (string, error) {
 	display := []restModel.APIPatch{}
 	for _, p := range params.patches {
 		api := restModel.APIPatch{}
