@@ -132,7 +132,6 @@ func checkProjRef(suite *ProjectEventSuite, in model.ProjectRef, out APIProjectR
 	suite.Equal(in.Repo, utility.FromStringPtr(out.Repo))
 	suite.Equal(in.Branch, utility.FromStringPtr(out.Branch))
 	suite.Equal(in.Enabled, utility.FromBoolPtr(out.Enabled))
-	suite.Equal(in.Private, out.Private)
 	suite.Equal(in.BatchTime, out.BatchTime)
 	suite.Equal(in.RemotePath, utility.FromStringPtr(out.RemotePath))
 	suite.Equal(in.Id, utility.FromStringPtr(out.Id))

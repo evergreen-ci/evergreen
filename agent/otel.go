@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"regexp"
+	"runtime"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -54,7 +56,11 @@ const (
 	diskIOTimeInstrumentPrefix     = "system.disk.io_time"
 
 	networkIOInstrumentPrefix = "system.network.io"
+
+	processCountPrefix = "system.process.count"
 )
+
+var instrumentNameDisallowedCharacters = regexp.MustCompile(`[^A-Za-z0-9_.-/]`)
 
 func (a *Agent) initOtel(ctx context.Context) error {
 	if a.opts.TraceCollectorEndpoint == "" {
@@ -140,10 +146,15 @@ func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func
 func instrumentMeter(ctx context.Context, meter metric.Meter) error {
 	catcher := grip.NewBasicCatcher()
 
-	catcher.Wrap(addCPUMetrics(meter), "adding CPU metrics")
+	// CPU and disk metrics are not implemented by gopsutil for macOS.
+	if runtime.GOOS != "darwin" {
+		catcher.Wrap(addCPUMetrics(meter), "adding CPU metrics")
+		catcher.Wrap(addDiskMetrics(ctx, meter), "adding disk metrics")
+	}
+
 	catcher.Wrap(addMemoryMetrics(meter), "adding memory metrics")
-	catcher.Wrap(addDiskMetrics(ctx, meter), "adding disk metrics")
 	catcher.Wrap(addNetworkMetrics(meter), "adding network metrics")
+	catcher.Wrap(addProcessMetrics(meter), "adding process metrics")
 
 	return catcher.Resolve()
 }
@@ -256,25 +267,28 @@ func addDiskMetrics(ctx context.Context, meter metric.Meter) error {
 	diskInstrumentMap := map[string]diskInstruments{}
 	var allInstruments []metric.Observable
 	for diskName := range ioCountersMap {
-		diskIORead, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.read", diskIOInstrumentPrefix, diskName), metric.WithUnit("By"))
+		// Instrument names may only contain characters in the allowed set. Characters such as : (such as in C: on Windows) are disallowed.
+		sanitizedDiskName := instrumentNameDisallowedCharacters.ReplaceAllString(diskName, "")
+
+		diskIORead, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.read", diskIOInstrumentPrefix, sanitizedDiskName), metric.WithUnit("By"))
 		if err != nil {
 			return errors.Wrapf(err, "making disk io read counter for disk '%s'", diskName)
 		}
-		diskIOWrite, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.write", diskIOInstrumentPrefix, diskName), metric.WithUnit("By"))
+		diskIOWrite, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.write", diskIOInstrumentPrefix, sanitizedDiskName), metric.WithUnit("By"))
 		if err != nil {
 			return errors.Wrapf(err, "making disk io write counter for disk '%s'", diskName)
 		}
 
-		diskOperationsRead, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.read", diskOperationsInstrumentPrefix, diskName), metric.WithUnit("{operation}"))
+		diskOperationsRead, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.read", diskOperationsInstrumentPrefix, sanitizedDiskName), metric.WithUnit("{operation}"))
 		if err != nil {
 			return errors.Wrapf(err, "making disk operations read counter for disk '%s'", diskName)
 		}
-		diskOperationsWrite, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.write", diskOperationsInstrumentPrefix, diskName), metric.WithUnit("{operation}"))
+		diskOperationsWrite, err := meter.Int64ObservableCounter(fmt.Sprintf("%s.%s.write", diskOperationsInstrumentPrefix, sanitizedDiskName), metric.WithUnit("{operation}"))
 		if err != nil {
 			return errors.Wrapf(err, "making disk operations write counter for disk '%s'", diskName)
 		}
 
-		diskIOTime, err := meter.Float64ObservableCounter(fmt.Sprintf("%s.%s", diskIOTimeInstrumentPrefix, diskName), metric.WithUnit("s"), metric.WithDescription("Time disk spent activated"))
+		diskIOTime, err := meter.Float64ObservableCounter(fmt.Sprintf("%s.%s", diskIOTimeInstrumentPrefix, sanitizedDiskName), metric.WithUnit("s"), metric.WithDescription("Time disk spent activated"))
 		if err != nil {
 			return errors.Wrapf(err, "making disk io time counter for disk '%s'", diskName)
 		}

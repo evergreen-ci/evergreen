@@ -238,7 +238,14 @@ func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *
 	if h == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", hostID))
 	}
-	events, count, err := event.MostRecentPaginatedHostEvents(h.Id, h.Tag, *limit, *page)
+	hostQueryOpts := event.PaginatedHostEventsOpts{
+		ID:      h.Id,
+		Tag:     utility.FromStringPtr(hostTag),
+		Limit:   utility.FromIntPtr(limit),
+		Page:    utility.FromIntPtr(page),
+		SortAsc: false,
+	}
+	events, count, err := event.GetPaginatedHostEvents(hostQueryOpts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host events: %s", err.Error()))
 	}
@@ -961,6 +968,98 @@ func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectIde
 		return []string{}, nil
 	}
 	return buildVariantTasks, nil
+}
+
+// Waterfall is the resolver for the waterfall field.
+func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions) (*Waterfall, error) {
+	projectId, err := model.GetIdForProject(options.ProjectIdentifier)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding project with id: '%s'", options.ProjectIdentifier))
+	}
+	limit := model.DefaultWaterfallVersionLimit
+	if limitOpt := utility.FromIntPtr(options.Limit); limitOpt != 0 {
+		if limitOpt > model.MaxWaterfallVersionLimit {
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("limit exceeds max limit of %d", model.MaxWaterfallVersionLimit))
+		}
+
+		limit = limitOpt
+	}
+	requesters := options.Requesters
+	if len(requesters) == 0 {
+		requesters = evergreen.SystemVersionRequesterTypes
+	}
+
+	maxOrderOpt := utility.FromIntPtr(options.MaxOrder)
+	minOrderOpt := utility.FromIntPtr(options.MinOrder)
+
+	opts := model.WaterfallOptions{
+		Limit:      limit,
+		Requesters: requesters,
+		MaxOrder:   maxOrderOpt,
+		MinOrder:   minOrderOpt,
+	}
+
+	activeVersions, err := model.GetActiveWaterfallVersions(ctx, projectId, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting active waterfall versions: %s", err.Error()))
+	}
+
+	// Since GetAllWaterfallVersions uses an inclusive order range ($gte instead of $gt), add 1 to our minimum range
+	minVersionOrder := minOrderOpt + 1
+	if minOrderOpt == 0 {
+		// Only use the last active version order number if no minOrder was provided. Using the activeVersions bounds may omit inactive versions between the min and the last active version found.
+		minVersionOrder = activeVersions[len(activeVersions)-1].RevisionOrderNumber
+	}
+
+	// Same as above, but subtract for max order
+	maxVersionOrder := maxOrderOpt - 1
+	if maxOrderOpt == 0 {
+		// Same as above: only use the first active version if no maxOrder was specified to avoid omitting inactive versions.
+		maxVersionOrder = activeVersions[0].RevisionOrderNumber
+	}
+
+	allVersions, err := model.GetAllWaterfallVersions(ctx, projectId, minVersionOrder, maxVersionOrder)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall versions: %s", err.Error()))
+	}
+
+	// TODO DEVPROD-10179: Add check to ensure each version has tasks that match filter...
+	// Something like this: https://github.com/evergreen-ci/evergreen/blob/bf8f12ec2eefe61f0cf9bcc594924c7be8f91d1b/graphql/query_resolver.go#L869-L938
+	// All other filters can be applied in the GetActiveWaterfallVersions pipeline, ensuring `limit` matching versions have been returned.
+
+	activeVersionIds := []string{}
+	for _, v := range activeVersions {
+		activeVersionIds = append(activeVersionIds, v.Id)
+	}
+
+	waterfallVersions := groupInactiveVersions(activeVersionIds, allVersions)
+
+	buildVariants, err := model.GetWaterfallBuildVariants(ctx, activeVersionIds)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall build variants: %s", err.Error()))
+	}
+
+	bv := []*model.WaterfallBuildVariant{}
+	for _, b := range buildVariants {
+		bCopy := b
+		bv = append(bv, &bCopy)
+	}
+
+	// Return the min and max orders returned to be used as parameters for navigating to the next page
+	prevPageOrder := allVersions[0].RevisionOrderNumber
+	nextPageOrder := allVersions[len(allVersions)-1].RevisionOrderNumber
+
+	// If loading base page, there's no prev page to navigate to regardless of max order
+	if maxOrderOpt == 0 && minOrderOpt == 0 {
+		prevPageOrder = 0
+	}
+
+	return &Waterfall{
+		BuildVariants: bv,
+		NextPageOrder: nextPageOrder,
+		PrevPageOrder: prevPageOrder,
+		Versions:      waterfallVersions,
+	}, nil
 }
 
 // HasVersion is the resolver for the hasVersion field.

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
@@ -64,6 +65,9 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 
 	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
 
+	// Clients
+	stsManager := cloud.GetSTSManager(false)
+
 	// Agent protocol routes
 	app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentCedarConfig(settings.Cedar))
 	app.AddRoute("/agent/setup").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentSetup(settings))
@@ -72,7 +76,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/distros/{distro_id}/ami").Version(2).Get().Wrap(requireTask).RouteHandler(makeGetDistroAMI())
 	app.AddRoute("/hosts/{host_id}/agent/next_task").Version(2).Get().Wrap(requireHost).RouteHandler(makeHostAgentNextTask(env, opts.TaskDispatcher, opts.TaskAliasDispatcher))
 	app.AddRoute("/hosts/{host_id}/task/{task_id}/end").Version(2).Post().Wrap(requireHost, requireTask).RouteHandler(makeHostAgentEndTask(env))
-	app.AddRoute("/hosts/{host_id}/disable").Version(2).Post().Wrap(requireHost).RouteHandler(makeDisableHostHandler(env))
 	app.AddRoute("/hosts/{host_id}/status").Version(2).Get().Wrap(requireTaskHost).RouteHandler(makeContainerStatusManager())
 	app.AddRoute("/hosts/{host_id}/is_up").Version(2).Post().Wrap(requireHost).RouteHandler(makeHostIsUpPostHandler(env))
 	app.AddRoute("/hosts/{host_id}/logs/output").Version(2).Get().Wrap(requireTaskHost).RouteHandler(makeContainerLogsRouteManager(false))
@@ -109,6 +112,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/update_push_status").Version(2).Post().Wrap(requireTask).RouteHandler(makeUpdatePushStatus())
 	app.AddRoute("/task/{task_id}/restart").Version(2).Post().Wrap(requireTask).RouteHandler(makeMarkTaskForRestart())
 	app.AddRoute("/task/{task_id}/check_run").Version(2).Post().Wrap(requireTask).RouteHandler(makeCheckRun(settings))
+	app.AddRoute("/task/{task_id}/aws/assume_role").Version(2).Post().Wrap(requireTask).RouteHandler(makeAWSAssumeRole(stsManager))
 
 	// REST v2 API Routes
 	app.AddRoute("/").Version(2).Get().Wrap(requireUser).RouteHandler(makePlaceHolder())
@@ -117,8 +121,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/admin/uiv2_url").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchAdminUIV2Url())
 	app.AddRoute("/admin/events").Version(2).Get().Wrap(requireUser, adminSettings).RouteHandler(makeFetchAdminEvents(opts.URL))
 	app.AddRoute("/admin/spawn_hosts").Version(2).Get().Wrap(requireUser, adminSettings).RouteHandler(makeFetchSpawnHostUsage())
-	app.AddRoute("/admin/restart/versions").Version(2).Post().Wrap(requireUser, adminSettings).RouteHandler(makeRestartRoute(evergreen.RestartVersions, nil))
-	app.AddRoute("/admin/restart/tasks").Version(2).Post().Wrap(requireUser, adminSettings).RouteHandler(makeRestartRoute(evergreen.RestartTasks, opts.APIQueue))
+	app.AddRoute("/admin/restart/tasks").Version(2).Post().Wrap(adminSettings).RouteHandler(makeRestartRoute(opts.APIQueue))
 	app.AddRoute("/admin/revert").Version(2).Post().Wrap(requireUser, adminSettings).RouteHandler(makeRevertRouteManager())
 	app.AddRoute("/admin/service_flags").Version(2).Post().Wrap(requireUser, adminSettings).RouteHandler(makeSetServiceFlagsRouteManager())
 	app.AddRoute("/admin/settings").Version(2).Get().Wrap(requireUser, adminSettings).RouteHandler(makeFetchAdminSettings())
@@ -216,6 +219,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/parameters").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeFetchParameters())
 	app.AddRoute("/projects/variables/rotate").Version(2).Put().Wrap(requireUser, adminSettings).RouteHandler(makeProjectVarsPut())
 	app.AddRoute("/permissions").Version(2).Get().Wrap(requireUser).RouteHandler(&permissionsGetHandler{})
+	app.AddRoute("/permissions/users").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetAllUsersPermissions(env.RoleManager()))
 	app.AddRoute("/repos/{repo_id}").Version(2).Get().Wrap(requireUser, viewProjectSettings).RouteHandler(makeGetRepoByID())
 	app.AddRoute("/repos/{repo_id}").Version(2).Patch().Wrap(requireUser, requireRepoAdmin, editProjectSettings).RouteHandler(makePatchRepoByID(settings))
 	app.AddRoute("/roles").Version(2).Get().Wrap(requireUser).RouteHandler(acl.NewGetAllRolesHandler(env.RoleManager()))
@@ -258,7 +262,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Post().Wrap(requireUser, editRoles).RouteHandler(makeModifyUserPermissions(env.RoleManager()))
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Delete().Wrap(requireUser, editRoles).RouteHandler(makeDeleteUserPermissions(env.RoleManager()))
 	app.AddRoute("/users/{user_id}/roles").Version(2).Post().Wrap(requireUser, editRoles).RouteHandler(makeModifyUserRoles(env.RoleManager()))
-	app.AddRoute("/users/permissions").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetAllUsersPermissions(env.RoleManager()))
 	app.AddRoute("/versions").Version(2).Put().Wrap(requireUser).RouteHandler(makeVersionCreateHandler(sc))
 	app.AddRoute("/versions/{version_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetVersionByID())
 	app.AddRoute("/versions/{version_id}").Version(2).Patch().Wrap(requireUser, editTasks).RouteHandler(makePatchVersion())

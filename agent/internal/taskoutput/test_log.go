@@ -200,7 +200,7 @@ func (s testLogSpec) getParser() taskoutput.LogLineParser {
 		return func(data string) (log.LogLine, error) {
 			lineParts := strings.SplitN(strings.TrimSpace(data), " ", 2)
 			if len(lineParts) != 2 {
-				return log.LogLine{}, errors.New("malformed log line")
+				return log.LogLine{}, errors.Errorf("malformed text-timestamp log line: %s", data)
 			}
 
 			ts, err := strconv.ParseInt(lineParts[0], 10, 64)

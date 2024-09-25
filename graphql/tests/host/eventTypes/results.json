@@ -1,0 +1,41 @@
+{
+  "tests": [
+    {
+      "query_file": "event_types.graphql",
+      "result": {
+        "data": {
+          "host": {
+            "id": "i-0f81a2d39744003dd",
+            "eventTypes": [
+              "HOST_AGENT_DEPLOYED",
+              "HOST_AGENT_DEPLOY_FAILED",
+              "HOST_AGENT_MONITOR_DEPLOYED",
+              "HOST_AGENT_MONITOR_DEPLOY_FAILED",
+              "HOST_CONVERTED_PROVISIONING",
+              "HOST_CONVERTING_PROVISIONING",
+              "HOST_CONVERTING_PROVISIONING_ERROR",
+              "HOST_CREATED",
+              "HOST_DNS_NAME_SET",
+              "HOST_EXPIRATION_WARNING_SENT",
+              "HOST_JASPER_RESTARTED",
+              "HOST_JASPER_RESTARTING",
+              "HOST_JASPER_RESTART_ERROR",
+              "HOST_MODIFIED",
+              "HOST_PROVISIONED",
+              "HOST_PROVISION_ERROR",
+              "HOST_PROVISION_FAILED",
+              "HOST_RUNNING_TASK_CLEARED",
+              "HOST_RUNNING_TASK_SET",
+              "HOST_SCRIPT_EXECUTED",
+              "HOST_SCRIPT_EXECUTE_FAILED",
+              "HOST_STARTED",
+              "HOST_STATUS_CHANGED",
+              "HOST_STOPPED",
+              "HOST_TASK_FINISHED"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

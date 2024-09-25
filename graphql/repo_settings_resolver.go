@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -20,7 +21,7 @@ func (r *repoSettingsResolver) Aliases(ctx context.Context, obj *restModel.APIPr
 func (r *repoSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj *restModel.APIProjectSettings) (bool, error) {
 	owner := utility.FromStringPtr(obj.ProjectRef.Owner)
 	repo := utility.FromStringPtr(obj.ProjectRef.Repo)
-	hasApp, err := evergreen.GetEnvironment().Settings().CreateGitHubAppAuth().IsGithubAppInstalledOnRepo(ctx, owner, repo)
+	hasApp, err := githubapp.CreateGitHubAppAuth(evergreen.GetEnvironment().Settings()).IsGithubAppInstalledOnRepo(ctx, owner, repo)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": "Error verifying GitHub app installation",
 		"project": utility.FromStringPtr(obj.ProjectRef.Id),

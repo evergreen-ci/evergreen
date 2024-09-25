@@ -231,10 +231,6 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	apiPatch.FinishTime = ToTimePtr(p.FinishTime)
 	apiPatch.MergedFrom = utility.ToStringPtr(p.MergedFrom)
 	apiPatch.Status = utility.ToStringPtr(p.Status)
-	// Ensure we're returning a consistent successful status.
-	if p.Status == evergreen.LegacyPatchSucceeded {
-		apiPatch.Status = utility.ToStringPtr(evergreen.VersionSucceeded)
-	}
 	builds := make([]*string, 0)
 	for _, b := range p.BuildVariants {
 		builds = append(builds, utility.ToStringPtr(b))

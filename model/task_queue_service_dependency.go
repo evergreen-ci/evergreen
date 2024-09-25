@@ -230,7 +230,6 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 			"distro_id":  d.distroID,
 		})
 	}
-
 	d.sorted = sorted
 	d.lastUpdated = time.Now()
 
@@ -238,21 +237,16 @@ func (d *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 }
 
 // FindNextTask returns the next dispatchable task in the queue, and returns the tasks that need to be checked for dependencies.
+// Rather than use a single parent lock, this function uses granular locking for performance reasons, to prevent lock contention
+// caused by latency in the function's DB operations. Read locks are placed on operations that fetch queue items, and write locks
+// are placed on operations that mark queue items as dispatched.
 func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec TaskSpec, amiUpdatedTime time.Time) *TaskQueueItem {
-	d.mu.Lock()
-	defer d.mu.Unlock()
 	// If the host just ran a task group, give it one back.
 	if spec.Group != "" {
 		taskGroupID := compositeGroupID(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
-		taskGroupUnit, ok := d.taskGroups[taskGroupID] // schedulableUnit
+		taskGroupUnit, ok := d.getTaskGroup(taskGroupID) // schedulableUnit
 		if ok {
-			if next := d.nextTaskGroupTask(taskGroupUnit); next != nil {
-				// next is a *TaskQueueItem, sourced for d.taskGroups (map[string]schedulableUnit) tasks' field, which in turn is a []TaskQueueItem.
-				// taskGroupTask is a *TaskQueueItem sourced from d.nodeItemMap, which is a map[node.ID()]*TaskQueueItem.
-				node := d.getNodeByItemID(next.Id)
-				taskGroupTask := d.getItemByNodeID(node.ID())
-				taskGroupTask.IsDispatched = true
-
+			if next := d.tryMarkNextTaskGroupTaskDispatched(taskGroupUnit); next != nil {
 				return next
 			}
 		}
@@ -260,31 +254,31 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 		// Fall through to get a task that's not in this task group.
 	}
 
+	settings := evergreen.GetEnvironment().Settings()
 	dependencyCaches := make(map[string]task.Task)
-	for i := range d.sorted {
-		node := d.sorted[i]
+	sorted := d.getSortedCopy()
+	for i := range sorted {
+		node := sorted[i]
 		// topo.SortStabilized represents nodes in a dependency cycle with a nil Node.
 		if node == nil {
 			continue
 		}
 
+		d.mu.RLock()
 		item := d.getItemByNodeID(node.ID()) // item is a *TaskQueueItem sourced from d.nodeItemMap, which is a map[node.ID()]*TaskQueueItem.
+		d.mu.RUnlock()
+		if item == nil {
+			continue
+		}
 
 		// TODO Consider checking if the state of any task has changed, which could unblock later tasks in the queue.
 		// Currently, we just wait for the dispatcher's in-memory queue to refresh.
 
 		// If maxHosts is not set, this is not a task group.
 		if item.GroupMaxHosts == 0 {
-			// Dispatch this standalone task if all of the following are true:
-			// (a) it's not marked as dispatched in the in-memory queue.
-			// (b) a record of the task exists in the database.
-			// (c) it never previously ran on another host.
-			// (d) all of its dependencies are satisfied.
-
-			if item.IsDispatched {
+			if itemNotDispatched := d.tryMarkItemDispatched(item); !itemNotDispatched {
 				continue
 			}
-
 			nextTaskFromDB, err := task.FindOneId(item.Id)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
@@ -307,26 +301,11 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				return nil
 			}
 
-			// Cache the task as dispatched from the in-memory queue's point of view.
-			// However, it won't actually be dispatched to a host if it doesn't satisfy all constraints.
-			item.IsDispatched = true // *TaskQueueItem
-
 			if !utility.IsZeroTime(nextTaskFromDB.StartTime) {
 				continue
 			}
 
 			// Skip the task if it's estimated to create more tasks than the generate task limit.
-			settings, err := evergreen.GetConfig(ctx)
-			if err != nil {
-				grip.Warning(message.WrapError(err, message.Fields{
-					"dispatcher": DAGDispatcher,
-					"function":   "FindNextTask",
-					"message":    "problem getting evergreen settings",
-					"task_id":    item.Id,
-					"distro_id":  d.distroID,
-				}))
-				continue
-			}
 			generateTasksLimit := settings.TaskLimits.MaxPendingGeneratedTasks
 			tasksToGenerate := utility.FromIntPtr(nextTaskFromDB.EstimatedNumGeneratedTasks)
 			if generateTasksLimit > 0 && tasksToGenerate > 0 {
@@ -354,6 +333,14 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 					})
 					continue
 				}
+			}
+
+			shouldContinue, shouldReturn := checkMaxConcurrentLargeParserProjectTasks(settings, nextTaskFromDB, d.distroID)
+			if shouldReturn {
+				return nil
+			}
+			if shouldContinue {
+				continue
 			}
 
 			dependenciesMet, err := nextTaskFromDB.DependenciesMet(dependencyCaches)
@@ -392,7 +379,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 
 		// For a task group task, do some arithmetic to see if the group's next task is dispatchable.
 		taskGroupID := compositeGroupID(item.Group, item.BuildVariant, item.Project, item.Version)
-		taskGroupUnit, ok := d.taskGroups[taskGroupID]
+		taskGroupUnit, ok := d.getTaskGroup(taskGroupID)
 		if !ok {
 			continue
 		}
@@ -412,21 +399,176 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				}))
 				return nil
 			}
-
 			taskGroupUnit.runningHosts = numHosts
-			d.taskGroups[taskGroupID] = taskGroupUnit
+			d.setTaskGroup(taskGroupUnit, taskGroupID)
+			// This is a best-effort attempt to return the next task in the task group, but is not
+			// a foolproof operation and runs the potential risk of dispatching a task group task
+			// that exceeds the configured max hosts for the group.
 			if taskGroupUnit.runningHosts < taskGroupUnit.maxHosts {
-				if next := d.nextTaskGroupTask(taskGroupUnit); next != nil {
-					node := d.getNodeByItemID(next.Id)
-					taskGroupTask := d.getItemByNodeID(node.ID()) // *TaskQueueItem
-					taskGroupTask.IsDispatched = true
-
+				if next := d.tryMarkNextTaskGroupTaskDispatched(taskGroupUnit); next != nil {
+					nextTaskFromDB, err := task.FindOneId(next.Id)
+					if err != nil {
+						grip.Warning(message.WrapError(err, message.Fields{
+							"dispatcher": DAGDispatcher,
+							"function":   "FindNextTask",
+							"message":    "problem finding task in db",
+							"task_id":    item.Id,
+							"group":      item.Group,
+							"distro_id":  d.distroID,
+						}))
+						return nil
+					}
+					if nextTaskFromDB == nil {
+						grip.Warning(message.Fields{
+							"dispatcher": DAGDispatcher,
+							"function":   "FindNextTask",
+							"message":    "task from db not found",
+							"task_id":    item.Id,
+							"group":      item.Group,
+							"distro_id":  d.distroID,
+						})
+						return nil
+					}
+					shouldContinue, shouldReturn := checkMaxConcurrentLargeParserProjectTasks(settings, nextTaskFromDB, d.distroID)
+					if shouldReturn {
+						return nil
+					}
+					if shouldContinue {
+						continue
+					}
 					return next
 				}
 			}
 		}
 	}
 	return nil
+}
+
+// getSortedCopy constructs a copy of the sorted graph in a thread-safe manner.
+func (d *basicCachedDAGDispatcherImpl) getSortedCopy() []graph.Node {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	sorted := make([]graph.Node, len(d.sorted))
+	copy(sorted, d.sorted)
+	return sorted
+}
+
+// tryMarkItemDispatched will dispatch a standalone task if all of the following are true:
+// (a) it's not marked as dispatched in the in-memory queue.
+// (b) a record of the task exists in the database.
+// (c) it never previously ran on another host.
+// (d) all of its dependencies are satisfied.
+// Returns false if the item has already been marked dispatched by a separate request.
+func (d *basicCachedDAGDispatcherImpl) tryMarkItemDispatched(item *TaskQueueItem) bool {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if item.IsDispatched {
+		return false
+	}
+
+	// Cache the task as dispatched from the in-memory queue's point of view.
+	// However, it won't actually be dispatched to a host if it doesn't satisfy all constraints.
+	item.IsDispatched = true // *TaskQueueItem
+	return true
+}
+
+func (d *basicCachedDAGDispatcherImpl) tryMarkNextTaskGroupTaskDispatched(taskGroupUnit schedulableUnit) *TaskQueueItem {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	next := d.nextTaskGroupTask(taskGroupUnit)
+	if next != nil {
+		// next is a *TaskQueueItem, sourced for d.taskGroups (map[string]schedulableUnit) tasks' field, which in turn is a []TaskQueueItem.
+		// taskGroupTask is a *TaskQueueItem sourced from d.nodeItemMap, which is a map[node.ID()]*TaskQueueItem.
+		node := d.getNodeByItemID(next.Id)
+		taskGroupTask := d.getItemByNodeID(node.ID())
+		taskGroupTask.IsDispatched = true
+		return next
+	}
+	return nil
+}
+
+func (d *basicCachedDAGDispatcherImpl) getTaskGroup(taskGroupID string) (schedulableUnit, bool) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	taskGroupUnit, ok := d.taskGroups[taskGroupID]
+	return taskGroupUnit, ok
+}
+
+func (d *basicCachedDAGDispatcherImpl) setTaskGroup(taskGroupUnit schedulableUnit, taskGroupID string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.taskGroups[taskGroupID] = taskGroupUnit
+}
+
+// checkMaxConcurrentLargeParserProjectTasks checks whether the task is allowed to be dispatched according to the current limitations
+// on how many concurrent large parser project tasks can be running. The first returned parameter indicates whether FindNextTask should
+// return on an error, and the second indicates whether FindNextTask should skip this task and continue its loop.
+func checkMaxConcurrentLargeParserProjectTasks(settings *evergreen.Settings, nextTaskFromDB *task.Task, distroId string) (bool, bool) {
+	maxConcurrentLargeParserProjTasks := getMaxConcurrentLargeParserProjTasks(settings)
+	if maxConcurrentLargeParserProjTasks <= 0 {
+		return false, false
+	}
+	taskVersion, err := VersionFindOneId(nextTaskFromDB.Version)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"dispatcher": DAGDispatcher,
+			"function":   "FindNextTask",
+			"message":    "problem finding version for task in db",
+			"version_id": nextTaskFromDB.Version,
+			"task_id":    nextTaskFromDB.Id,
+			"distro_id":  distroId,
+		}))
+		return false, true
+	}
+	if taskVersion == nil {
+		grip.Warning(message.Fields{
+			"dispatcher": DAGDispatcher,
+			"function":   "FindNextTask",
+			"message":    "version for task from db not found",
+			"task_id":    nextTaskFromDB.Id,
+			"version_id": nextTaskFromDB.Version,
+			"distro_id":  distroId,
+		})
+		return false, true
+	}
+
+	if taskVersion.ProjectStorageMethod == evergreen.ProjectStorageMethodS3 {
+		numLargeParserProjectTasks, err := task.CountLargeParserProjectTasks()
+		if err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"dispatcher": DAGDispatcher,
+				"function":   "FindNextTask",
+				"message":    "problem getting num large parser project tasks",
+				"task_id":    nextTaskFromDB.Id,
+				"distro_id":  distroId,
+			}))
+			return true, false
+		}
+		if numLargeParserProjectTasks >= maxConcurrentLargeParserProjTasks {
+			grip.Info(message.Fields{
+				"dispatcher":       DAGDispatcher,
+				"function":         "FindNextTask",
+				"message":          "skipping task because it would exceed the concurrent large parser project task limit",
+				"task_id":          nextTaskFromDB.Id,
+				"distro_id":        distroId,
+				"is_degraded_mode": !settings.ServiceFlags.CPUDegradedModeDisabled,
+				"max_concurrent_large_parser_project_tasks": maxConcurrentLargeParserProjTasks,
+				"num_large_parser_project_tasks":            numLargeParserProjectTasks,
+			})
+			return true, false
+		}
+	}
+	return false, false
+}
+
+func getMaxConcurrentLargeParserProjTasks(settings *evergreen.Settings) int {
+	isDegradedMode := !settings.ServiceFlags.CPUDegradedModeDisabled
+	maxConcurrentLargeParserProjTasks := settings.TaskLimits.MaxConcurrentLargeParserProjectTasks
+	if isDegradedMode {
+		maxConcurrentLargeParserProjTasks = settings.TaskLimits.MaxDegradedModeConcurrentLargeParserProjectTasks
+	}
+	return maxConcurrentLargeParserProjTasks
 }
 
 func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {

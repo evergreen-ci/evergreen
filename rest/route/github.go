@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -123,7 +124,7 @@ func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
 // shouldSkipWebhook returns true if the event is from a GitHub app and the app is available for the owner/repo or,
 // the event is from webhooks and the app is not available for the owner/repo.
 func (gh *githubHookApi) shouldSkipWebhook(ctx context.Context, owner, repo string, fromApp bool) bool {
-	hasApp, err := gh.settings.CreateGitHubAppAuth().IsGithubAppInstalledOnRepo(ctx, owner, repo)
+	hasApp, err := githubapp.CreateGitHubAppAuth(gh.settings).IsGithubAppInstalledOnRepo(ctx, owner, repo)
 	if err != nil {
 		hasApp = false
 	}
@@ -461,52 +462,7 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(event *github.MergeGrou
 		"head_sha": event.GetMergeGroup().GetHeadSHA(),
 		"message":  "merge group received",
 	})
-	ref, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(org, repo, branch)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"source":   "GitHub hook",
-			"msg_id":   gh.msgID,
-			"event":    gh.eventType,
-			"org":      org,
-			"repo":     repo,
-			"branch":   branch,
-			"base_sha": event.GetMergeGroup().GetBaseSHA(),
-			"head_sha": event.GetMergeGroup().GetHeadSHA(),
-			"message":  "finding project ref",
-		}))
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding project ref"))
-	}
-	if ref == nil {
-		grip.Error(message.Fields{
-			"source":   "GitHub hook",
-			"msg_id":   gh.msgID,
-			"event":    gh.eventType,
-			"org":      org,
-			"repo":     repo,
-			"branch":   branch,
-			"base_sha": event.GetMergeGroup().GetBaseSHA(),
-			"head_sha": event.GetMergeGroup().GetHeadSHA(),
-			"message":  "no matching project ref",
-		})
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "no matching project ref"))
-	}
-	if ref.CommitQueue.MergeQueue == model.MergeQueueGitHub {
-		err = gh.AddIntentForGithubMerge(event)
-	} else {
-		grip.Info(message.Fields{
-			"source":   "GitHub hook",
-			"msg_id":   gh.msgID,
-			"event":    gh.eventType,
-			"org":      org,
-			"repo":     repo,
-			"branch":   branch,
-			"base_sha": event.GetMergeGroup().GetBaseSHA(),
-			"head_sha": event.GetMergeGroup().GetHeadSHA(),
-			"message":  "received merge group event, but project is not set to use GitHub merge queue",
-		})
-		return gimlet.NewJSONResponse(struct{}{})
-	}
-	if err != nil {
+	if err := gh.AddIntentForGithubMerge(event); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":   "GitHub hook",
 			"msg_id":   gh.msgID,

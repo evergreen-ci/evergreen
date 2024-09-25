@@ -33,11 +33,11 @@ Admin Settings
 					<div id="divMsg"></div>
 					<div>The following [[items.length]] items will be restarted:</div>
 					<div id="tasksDisplay">
-						<li ng-repeat="item in items" class="link" ng-click="jumpToItem(itemType, item)">[[item]]</li>
+						<li ng-repeat="item in items" class="link" ng-click="jumpToItem(item)">[[item]]</li>
 					</div>
 					<div>
 						<div class="justifyRight">
-							<md-button class="md-raised" ng-click="restartItems(itemType, false)"
+							<md-button class="md-raised" ng-click="restartItems(false)"
 								ng-disabled="disableRestart">Restart</md-button>
 							<md-button class="md-raised" data-dismiss="modal">Cancel</md-button>
 						</div>
@@ -429,17 +429,6 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
-												<td>Unexpirable host sleep schedule beta test</td>
-												<td colspan="2">
-													<md-radio-group
-														data-ng-model="Settings.service_flags.sleep_schedule_beta_test_disabled"
-														layout="row">
-														<md-radio-button data-ng-value="false"></md-radio-button>
-														<md-radio-button data-ng-value="true"></md-radio-button>
-													</md-radio-group>
-												</td>
-											</tr>
-											<tr>
 												<td>Parameter Store</td>
 												<td colspan="2">
 													<md-radio-group
@@ -639,12 +628,20 @@ Admin Settings
 										<input type="number" ng-model="Settings.task_limits.max_concurrent_large_parser_project_tasks">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
+										<label>Max CPU Degraded Mode Concurrent Large Parser Project Tasks</label>
+										<input type="number" ng-model="Settings.task_limits.max_degraded_mode_concurrent_large_parser_project_tasks">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<label>Max Parser Project Size (MB)</label>
 										<input type="number" ng-model="Settings.task_limits.max_parser_project_size">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Max Task Exec Timeout (secs)</label>
 										<input type="number" ng-model="Settings.task_limits.max_exec_timeout_secs">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Max Task Execution Number (zero based)</label>
+										<input type="number" ng-model="Settings.task_limits.max_task_execution">
 									</md-input-container>
 								</md-card-content>
 							</md-card>
@@ -2592,25 +2589,12 @@ Admin Settings
 				<md-card-title>
 					<i class="fa fa-refresh"></i>
 					<md-card-title-text>
-						<span>Restart Tasks/Commit Queue Versions</span>
-						<span class="md-subhead">Restart failed tasks or commit queue versions that started or finished
+						<span>Restart Tasks</span>
+						<span class="md-subhead">Restart failed tasks that started or finished
 							between two times. Uses Eastern timezone regardless of configured timezone.</span>
 					</md-card-title-text>
 				</md-card-title>
 				<md-card-content>
-					<table>
-						<tr>
-							<td>Restart...</td>
-							<td>
-								<md-radio-group data-ng-model="restartType" layout="row" style="margin-left:40px">
-									<md-radio-button data-ng-value="'tasks'" style="width:2%"></md-radio-button>
-									<span>Tasks</span>
-									<md-radio-button class="inline" data-ng-value="'versions'"
-										style="margin-left:40px;width:12%"></md-radio-button><span>Versions</span>
-								</md-radio-group>
-							</td>
-						</tr>
-					</table>
 					<table>
 						<tr>
 							<td>From:</td>
@@ -2629,13 +2613,13 @@ Admin Settings
 					</table>
 				</md-card-content>
 				<md-card-footer class="squeezeTop">
-					<md-checkbox ng-model="restartRed" ng-show="restartType == 'tasks'" style="top: 10px">Red Tasks
+					<md-checkbox ng-model="restartRed" style="top: 10px">Red Tasks
 					</md-checkbox>
-					<md-checkbox ng-model="restartPurple" ng-show="restartType == 'tasks'" style="top: 10px">Purple
+					<md-checkbox ng-model="restartPurple" style="top: 10px">Purple
 						Tasks</md-checkbox>
-					<md-checkbox ng-model="restartLavender" ng-show="restartType == 'tasks'" style="top: 10px">Lavender
+					<md-checkbox ng-model="restartLavender" style="top: 10px">Lavender
 						Tasks</md-checkbox>
-					<md-button class="md-raised" ng-disabled="disableSubmit" ng-click="restartItems(restartType, true)">
+					<md-button class="md-raised" ng-disabled="disableSubmit" ng-click="restartItems(true)">
 						Submit</md-button>
 				</md-card-footer>
 			</md-card>

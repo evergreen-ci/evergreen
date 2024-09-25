@@ -64,7 +64,7 @@ func ChmodCommandWithSudo(script string, sudo bool) []string {
 	return append(args, "chmod", "+x", script)
 }
 
-// CurlCommand returns the command to curl the evergreen client.
+// CurlCommand returns the command to download the evergreen client.
 func (h *Host) CurlCommand(env evergreen.Environment) (string, error) {
 	cmds, err := h.curlCommands(env, "")
 	if err != nil {
@@ -97,13 +97,28 @@ func (h *Host) curlCommands(env evergreen.Environment, curlArgs string) ([]strin
 		return nil, errors.Errorf("S3 downloads are not configured")
 	}
 
-	return []string{
+	cmds := []string{
 		fmt.Sprintf("cd %s", h.Distro.HomeDir()),
+	}
+	if h.Distro.IsMacOS() {
+		// Ensure the Evergreen client file is deleted on MacOS hosts before
+		// downloading it again. This is necessary to fix a MacOS-specific issue
+		// where if the host has System Integrity Protection (SIP) enabled and
+		// it runs an Evergreen client that has a problem (e.g. the binary was
+		// not signed by Apple), running that client results in SIGKILL. The
+		// SIGKILL issue will persist even if a valid agent is downloaded to
+		// replace it. Removing the binary before downloading it is the only
+		// known workaround to ensure that MacOS can run the client.
+		cmds = append(cmds, fmt.Sprintf("rm -f %s", h.Distro.BinaryName()))
+	}
+	cmds = append(cmds,
 		// Download the agent from S3. Include -f to return an error code from curl if the HTTP request
 		// fails (e.g. it receives 403 Forbidden or 404 Not Found).
 		fmt.Sprintf("curl -fLO %s%s", h.Distro.S3ClientURL(env), curlArgs),
 		fmt.Sprintf("chmod +x %s", h.Distro.BinaryName()),
-	}, nil
+	)
+
+	return cmds, nil
 }
 
 // Constants representing default curl retry arguments.

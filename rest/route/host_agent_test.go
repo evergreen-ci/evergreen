@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -34,6 +35,7 @@ const hostSecret = "secret"
 func TestHostNextTask(t *testing.T) {
 	distroID := "testDistro"
 	buildID := "buildId"
+	versionID := "versionId"
 	task1 := task.Task{
 		Id:        "task1",
 		Execution: 5,
@@ -42,6 +44,7 @@ func TestHostNextTask(t *testing.T) {
 		BuildId:   buildID,
 		Project:   "exists",
 		StartTime: utility.ZeroTime,
+		Version:   versionID,
 	}
 	task2 := task.Task{
 		Id:        "task2",
@@ -50,6 +53,7 @@ func TestHostNextTask(t *testing.T) {
 		Project:   "exists",
 		BuildId:   buildID,
 		StartTime: utility.ZeroTime,
+		Version:   versionID,
 	}
 	task3 := task.Task{
 		Id:        "task3",
@@ -58,6 +62,7 @@ func TestHostNextTask(t *testing.T) {
 		Project:   "exists",
 		BuildId:   buildID,
 		StartTime: utility.ZeroTime,
+		Version:   versionID,
 	}
 	task4 := task.Task{
 		Id:        "another",
@@ -66,6 +71,7 @@ func TestHostNextTask(t *testing.T) {
 		Project:   "exists",
 		StartTime: utility.ZeroTime,
 		BuildId:   buildID,
+		Version:   versionID,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -86,13 +92,13 @@ func TestHostNextTask(t *testing.T) {
 		"ShouldSucceedAndSetAgentStartTime": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
 			resp := rh.Run(ctx)
 			assert.NotNil(t, resp)
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 			require.True(t, ok, resp.Data())
 			assert.NotNil(t, taskResp)
 			assert.Equal(t, "task1", taskResp.TaskId)
 			assert.Equal(t, 5, taskResp.TaskExecution)
-			nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
+			nextTask, err := task.FindOneId(taskResp.TaskId)
 			require.NoError(t, err)
 			require.NotNil(t, nextTask)
 			assert.Equal(t, nextTask.Status, evergreen.TaskDispatched)
@@ -114,7 +120,7 @@ func TestHostNextTask(t *testing.T) {
 			resp := rh.Run(ctx)
 			taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 			require.True(t, ok, resp.Data())
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			assert.False(t, taskResp.ShouldExit)
 		},
 		"SetsAndUnsetsIsTearingDown": func(ctx context.Context, t *testing.T, rh *hostAgentNextTask) {
@@ -126,7 +132,7 @@ func TestHostNextTask(t *testing.T) {
 			resp := rh.Run(ctx)
 			taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 			require.True(t, ok, resp.Data())
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			assert.False(t, taskResp.ShouldExit)
 			assert.True(t, taskResp.ShouldTeardownGroup)
 
@@ -140,7 +146,7 @@ func TestHostNextTask(t *testing.T) {
 			resp = rh.Run(ctx)
 			taskResp, ok = resp.Data().(apimodels.NextTaskResponse)
 			require.True(t, ok, resp.Data())
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			assert.False(t, taskResp.ShouldExit)
 			assert.False(t, taskResp.ShouldTeardownGroup)
 
@@ -160,7 +166,7 @@ func TestHostNextTask(t *testing.T) {
 					rh.host = h
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
-					assert.Equal(t, resp.Status(), http.StatusOK)
+					assert.Equal(t, http.StatusOK, resp.Status())
 
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
@@ -187,7 +193,7 @@ func TestHostNextTask(t *testing.T) {
 					rh.taskDispatcher = model.NewTaskDispatchService(time.Hour)
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
-					assert.Equal(t, resp.Status(), http.StatusOK)
+					assert.Equal(t, http.StatusOK, resp.Status())
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
 					assert.False(t, taskResp.ShouldExit)
@@ -203,7 +209,7 @@ func TestHostNextTask(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					require.NoError(t, db.ClearCollections(host.Collection, distro.Collection))
+					require.NoError(t, db.ClearCollections(host.Collection, distro.Collection, model.VersionCollection))
 					h := host.Host{
 						Id: "id",
 						Distro: distro.Distro{
@@ -222,8 +228,12 @@ func TestHostNextTask(t *testing.T) {
 						Status:           evergreen.HostRunning,
 						NeedsReprovision: host.ReprovisionToNew,
 					}
+					v := model.Version{
+						Id: versionID,
+					}
 					require.NoError(t, h.Insert(ctx))
 					require.NoError(t, h.Distro.Insert(ctx))
+					require.NoError(t, v.Insert())
 					handler := hostAgentNextTask{
 						env: env,
 					}
@@ -260,7 +270,7 @@ func TestHostNextTask(t *testing.T) {
 				rh.host = &nonLegacyHost
 				resp := rh.Run(ctx)
 				assert.NotNil(t, resp)
-				assert.Equal(t, resp.Status(), http.StatusOK)
+				assert.Equal(t, http.StatusOK, resp.Status())
 				taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 				require.True(t, ok, resp.Data())
 				assert.True(t, taskResp.ShouldExit)
@@ -286,7 +296,7 @@ func TestHostNextTask(t *testing.T) {
 			resp := rh.Run(ctx)
 
 			assert.NotNil(t, resp)
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 			require.True(t, ok, resp.Data())
 			assert.True(t, taskResp.ShouldExit)
@@ -338,7 +348,7 @@ func TestHostNextTask(t *testing.T) {
 					rh.host = nonLegacyHost
 					rh.details = &apimodels.GetNextTaskDetails{AgentRevision: evergreen.AgentVersion}
 					resp := rh.Run(ctx)
-					assert.Equal(t, resp.Status(), http.StatusOK)
+					assert.Equal(t, http.StatusOK, resp.Status())
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
 					assert.False(t, taskResp.ShouldExit)
@@ -396,12 +406,12 @@ func TestHostNextTask(t *testing.T) {
 					rh.host = h2
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
-					assert.Equal(t, resp.Status(), http.StatusOK)
+					assert.Equal(t, http.StatusOK, resp.Status())
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
 					assert.Equal(t, "existingTask", taskResp.TaskId)
 					assert.Equal(t, 8, taskResp.TaskExecution)
-					nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
+					nextTask, err := task.FindOneId(taskResp.TaskId)
 					require.NoError(t, err)
 					require.NotZero(t, nextTask)
 					assert.Equal(t, nextTask.Status, evergreen.TaskDispatched)
@@ -434,12 +444,13 @@ func TestHostNextTask(t *testing.T) {
 					assert.NotNil(t, resp)
 					assert.Equal(t, resp.Status(), http.StatusInternalServerError)
 
-					h, err := host.FindOne(ctx, host.ById(anotherHost.Id))
+					h, err := host.FindOneId(ctx, anotherHost.Id)
 					require.NoError(t, err)
 					assert.Equal(t, h.RunningTask, "")
 
-					previouslyStuckTask, err := task.FindOne(db.Query(task.ById(stuckTask.Id)))
+					previouslyStuckTask, err := task.FindOneId(stuckTask.Id)
 					require.NoError(t, err)
+					require.NotZero(t, previouslyStuckTask)
 					assert.Equal(t, previouslyStuckTask.Status, evergreen.TaskFailed)
 
 				},
@@ -466,11 +477,11 @@ func TestHostNextTask(t *testing.T) {
 					rh.host = &anotherHost
 					resp := rh.Run(ctx)
 					assert.NotNil(t, resp)
-					assert.Equal(t, resp.Status(), http.StatusOK)
+					assert.Equal(t, http.StatusOK, resp.Status())
 					taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
 					require.True(t, ok, resp.Data())
 					assert.Equal(t, taskResp.TaskId, t1.Id)
-					nextTask, err := task.FindOne(db.Query(task.ById(taskResp.TaskId)))
+					nextTask, err := task.FindOneId(taskResp.TaskId)
 					require.NoError(t, err)
 					require.NotZero(t, nextTask)
 					assert.Equal(t, nextTask.Status, evergreen.TaskDispatched)
@@ -495,10 +506,10 @@ func TestHostNextTask(t *testing.T) {
 					rh.host = &h3
 					resp = rh.Run(ctx)
 					assert.NotNil(t, resp)
-					assert.Equal(t, resp.Status(), http.StatusOK)
+					assert.Equal(t, http.StatusOK, resp.Status())
 					taskResp = resp.Data().(apimodels.NextTaskResponse)
 					assert.Equal(t, "", taskResp.TaskId)
-					h, err := host.FindOne(ctx, host.ById(h3.Id))
+					h, err := host.FindOneId(ctx, h3.Id)
 					require.NoError(t, err)
 					require.NotZero(t, h)
 					assert.Equal(t, "", h.RunningTask)
@@ -544,8 +555,9 @@ func TestHostNextTask(t *testing.T) {
 			require.NoError(t, newServiceFlags.Set(ctx))
 			resp := rh.Run(ctx)
 			assert.NotNil(t, resp)
-			assert.Equal(t, resp.Status(), http.StatusOK)
-			taskResp := resp.Data().(apimodels.NextTaskResponse)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+			require.True(t, ok)
 			assert.NotNil(t, taskResp)
 			assert.Equal(t, taskResp.TaskId, "")
 			assert.False(t, taskResp.ShouldExit)
@@ -556,7 +568,7 @@ func TestHostNextTask(t *testing.T) {
 			defer cancel()
 
 			colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection,
-				evergreen.ConfigCollection, distro.Collection}
+				evergreen.ConfigCollection, distro.Collection, model.VersionCollection}
 			require.NoError(t, db.ClearCollections(colls...))
 			defer func() {
 				assert.NoError(t, db.ClearCollections(colls...))
@@ -599,6 +611,9 @@ func TestHostNextTask(t *testing.T) {
 				Id:      "exists",
 				Enabled: true,
 			}
+			v := model.Version{
+				Id: versionID,
+			}
 
 			require.NoError(t, d.Insert(ctx))
 			require.NoError(t, task1.Insert())
@@ -609,6 +624,7 @@ func TestHostNextTask(t *testing.T) {
 			require.NoError(t, pref.Insert())
 			require.NoError(t, sampleHost.Insert(ctx))
 			require.NoError(t, tq.Save())
+			require.NoError(t, v.Insert())
 
 			r, ok := makeHostAgentNextTask(env, nil, nil).(*hostAgentNextTask)
 			require.True(t, ok)
@@ -621,19 +637,22 @@ func TestHostNextTask(t *testing.T) {
 	}
 }
 
-func TestTaskLifecycleEndpoints(t *testing.T) {
-	hostId := "h1"
-	projectId := "proj"
-	buildID := "b1"
-	versionId := "v1"
+func TestHostEndTask(t *testing.T) {
+	const (
+		hostId    = "h1"
+		projectId = "proj"
+		buildID   = "b1"
+		versionId = "v1"
+		taskId    = "task1"
+	)
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *hostAgentEndTask, env *mock.Environment){
 		"TestTaskShouldShowHostRunningTask": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
 			startTaskHandler := makeStartTask(env).(*startTaskHandler)
-			startTaskHandler.hostID = "h1"
-			startTaskHandler.taskID = "task1"
+			startTaskHandler.hostID = hostId
+			startTaskHandler.taskID = taskId
 			resp := startTaskHandler.Run(ctx)
-			require.Equal(t, resp.Status(), http.StatusOK)
+			require.Equal(t, http.StatusOK, resp.Status())
 			require.NotNil(t, resp)
 
 			h, err := host.FindOneId(ctx, hostId)
@@ -648,15 +667,16 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			handler.details = *details
 			resp := handler.Run(ctx)
 			require.NotNil(t, resp)
-			require.Equal(t, resp.Status(), http.StatusOK)
-			taskResp := apimodels.EndTaskResponse{}
+			require.Equal(t, http.StatusOK, resp.Status())
+			taskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
+			require.True(t, ok)
 			require.False(t, taskResp.ShouldExit)
-			h, err := host.FindOne(ctx, host.ById(hostId))
+			h, err := host.FindOneId(ctx, hostId)
 			require.NoError(t, err)
 			require.NotZero(t, h)
 			require.Equal(t, h.RunningTask, "")
 
-			foundTask, err := task.FindOne(db.Query(task.ById("task1")))
+			foundTask, err := task.FindOneId(taskId)
 			require.NoError(t, err)
 			require.NotZero(t, foundTask)
 			require.Equal(t, evergreen.TaskSucceeded, foundTask.Status)
@@ -666,23 +686,24 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			details := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,
 			}
-			testTask, err := task.FindOne(db.Query(task.ById("task1")))
+			testTask, err := task.FindOneId(taskId)
 			require.NoError(t, err)
 			require.NotZero(t, testTask)
 			require.Equal(t, evergreen.TaskStarted, testTask.Status)
 			handler.details = *details
 			resp := handler.Run(ctx)
 			require.NotNil(t, resp)
-			require.Equal(t, resp.Status(), http.StatusOK)
-			taskResp := apimodels.EndTaskResponse{}
+			require.Equal(t, http.StatusOK, resp.Status())
+			taskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
+			require.True(t, ok)
 			require.False(t, taskResp.ShouldExit)
 
-			h, err := host.FindOne(ctx, host.ById(hostId))
+			h, err := host.FindOneId(ctx, hostId)
 			require.NoError(t, err)
 			require.NotZero(t, h)
 			require.Equal(t, "", h.RunningTask)
 
-			foundTask, err := task.FindOne(db.Query(task.ById("task1")))
+			foundTask, err := task.FindOneId(taskId)
 			require.NoError(t, err)
 			require.NotZero(t, foundTask)
 			require.Equal(t, evergreen.TaskFailed, foundTask.Status)
@@ -713,7 +734,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			details := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskUndispatched,
 			}
-			testTask, err := task.FindOne(db.Query(task.ById("task1")))
+			testTask, err := task.FindOneId(taskId)
 			require.NoError(t, err)
 			require.NotZero(t, testTask)
 			require.Equal(t, evergreen.TaskStarted, testTask.Status)
@@ -721,8 +742,9 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			handler.details = *details
 			resp := handler.Run(ctx)
 			require.NotNil(t, resp)
-			require.Equal(t, resp.Status(), http.StatusOK)
-			taskResp := apimodels.EndTaskResponse{}
+			require.Equal(t, http.StatusOK, resp.Status())
+			taskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
+			require.True(t, ok)
 			require.False(t, taskResp.ShouldExit)
 		},
 		"WithTasksHostsBuildAndTaskQueue": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
@@ -770,14 +792,79 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			handler.details = *details
 			resp := handler.Run(ctx)
 			require.NotNil(t, resp)
-			require.Equal(t, resp.Status(), http.StatusOK)
-			taskResp := apimodels.EndTaskResponse{}
+			require.Equal(t, http.StatusOK, resp.Status())
+			taskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
+			require.True(t, ok)
 			require.False(t, taskResp.ShouldExit)
 
-			dbTask, err := task.FindOne(db.Query(task.ById(displayTask.Id)))
+			dbTask, err := task.FindOneId(displayTask.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			require.Equal(t, evergreen.TaskFailed, dbTask.Status)
+		},
+		"QuarantinesStaticHostWithRepeatedSystemFailedTasks": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			h, err := host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			require.NoError(t, host.UpdateOne(ctx, host.ById(hostId), bson.M{
+				"$set": bson.M{
+					host.ProviderKey: evergreen.ProviderNameStatic,
+				},
+			}))
+
+			for i := 0; i < 10; i++ {
+				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemFailed)
+			}
+
+			details := &apimodels.TaskEndDetail{
+				Status: evergreen.TaskFailed,
+				Type:   evergreen.CommandTypeSystem,
+			}
+			handler.details = *details
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			require.Equal(t, http.StatusOK, resp.Status())
+			h, err = host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			assert.Equal(t, evergreen.HostQuarantined, h.Status, "static host should be quarantined for consecutive system failed tasks")
+
+			foundTask, err := task.FindOneId(handler.taskID)
+			require.NoError(t, err)
+			require.NotZero(t, foundTask)
+			require.Equal(t, evergreen.TaskSystemFailed, foundTask.GetDisplayStatus())
+		},
+		"DecommissionsDynamicHostWithRepeatedSystemFailedTasks": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			h, err := host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			require.NoError(t, host.UpdateOne(ctx, host.ById(hostId), bson.M{
+				"$set": bson.M{
+					host.ProviderKey: evergreen.ProviderNameEc2Fleet,
+				},
+			}))
+
+			for i := 0; i < 10; i++ {
+				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemFailed)
+			}
+
+			details := &apimodels.TaskEndDetail{
+				Status: evergreen.TaskFailed,
+				Type:   evergreen.CommandTypeSystem,
+			}
+			handler.details = *details
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			require.Equal(t, http.StatusOK, resp.Status())
+			h, err = host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			assert.Equal(t, evergreen.HostDecommissioned, h.Status, "dynamic host should be decommissioned for consecutive system failed tasks")
+
+			foundTask, err := task.FindOneId(handler.taskID)
+			require.NoError(t, err)
+			require.NotZero(t, foundTask)
+			require.Equal(t, evergreen.TaskSystemFailed, foundTask.GetDisplayStatus())
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -808,7 +895,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			require.NoError(t, proj.Insert())
 
 			task1 := task.Task{
-				Id:        "task1",
+				Id:        taskId,
 				Status:    evergreen.TaskStarted,
 				Activated: true,
 				HostId:    hostId,
@@ -857,295 +944,683 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 	}
 }
 
-func TestAssignNextAvailableTaskWithDispatcherSettingsVersionTunable(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func TestAssignNextAvailableTask(t *testing.T) {
+	// Each section is a different unit of data (Distro -> Tq)
+	type data struct {
+		Project1 *model.ProjectRef
+		Project2 *model.ProjectRef
 
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
+		Distro1       *distro.Distro
+		Host1         *host.Host
+		Host2         *host.Host
+		Version1      *model.Version
+		BuildVariant1 *build.Build
+		Tg1Task1      *task.Task
+		Tg1Task2      *task.Task
+		Tq1           *model.TaskQueue
 
-	Convey("with a task queue and a host", t, func() {
-		settings := distro.DispatcherSettings{
-			Version: evergreen.DispatcherVersionRevisedWithDependencies,
-		}
-		colls := []string{distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection}
-		require.NoError(t, db.ClearCollections(colls...))
-		defer func() {
-			assert.NoError(t, db.ClearCollections(colls...))
-		}()
-		require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey))
+		Distro2       *distro.Distro
+		Host3         *host.Host
+		Host4         *host.Host
+		Version2      *model.Version
+		BuildVariant2 *build.Build
+		Task1         *task.Task
+		Task2         *task.Task
+		Tg2Task1      *task.Task
+		Tg2Task2      *task.Task
+		Tq2           *model.TaskQueue
 
-		d := distro.Distro{
-			Id:                 "testDistro",
-			DispatcherSettings: settings,
-		}
-		So(d.Insert(ctx), ShouldBeNil)
+		Distro3       *distro.Distro
+		Host5         *host.Host
+		Host6         *host.Host
+		Version3      *model.Version
+		BuildVariant3 *build.Build
+		Task3         *task.Task
+		Task4         *task.Task
+		Tq3           *model.TaskQueue
+	}
 
-		taskGroupInfo := model.TaskGroupInfo{
-			Name:  "",
-			Count: 2,
-		}
-		distroQueueInfo := model.DistroQueueInfo{
-			Length:         2,
-			TaskGroupInfos: []model.TaskGroupInfo{taskGroupInfo},
-		}
-		taskQueue := &model.TaskQueue{
-			Distro: d.Id,
-			Queue: []model.TaskQueueItem{
-				{Id: "task1"},
-				{Id: "task2"},
-			},
-			DistroQueueInfo: distroQueueInfo,
-		}
-		So(taskQueue.Save(), ShouldBeNil)
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, d data){
+		"an empty task queue should return a nil task": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
+			d.Tq1.Queue = []model.TaskQueueItem{}
+			require.NoError(t, d.Tq1.Save())
+			details := &apimodels.GetNextTaskDetails{}
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host1, details)
+			require.NoError(t, err)
+			assert.Nil(t, task)
+			assert.False(t, shouldTeardown)
 
-		theHostWhoCanBoastTheMostRoast := host.Host{
-			Id: "h1",
-			Distro: distro.Distro{
-				Id:                 d.Id,
-				DispatcherSettings: settings,
-			},
-			Secret: hostSecret,
-			Status: evergreen.HostRunning,
-		}
-		So(theHostWhoCanBoastTheMostRoast.Insert(ctx), ShouldBeNil)
+			tq, err := model.LoadTaskQueue(d.Distro1.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 0, tq.Length())
 
-		task1 := task.Task{
-			Id:        "task1",
-			Status:    evergreen.TaskUndispatched,
-			Activated: true,
-			Project:   "exists",
-			StartTime: utility.ZeroTime,
-		}
-		task2 := task.Task{
-			Id:        "task2",
-			Status:    evergreen.TaskUndispatched,
-			Activated: true,
-			Project:   "exists",
-			StartTime: utility.ZeroTime,
-		}
-		pref := &model.ProjectRef{
-			Id:      "exists",
-			Enabled: true,
-		}
-		So(task1.Insert(), ShouldBeNil)
-		So(task2.Insert(), ShouldBeNil)
-		So(pref.Insert(), ShouldBeNil)
+			h, err := host.FindOneId(ctx, d.Host1.Id)
+			require.NoError(t, err)
+			assert.Equal(t, "", h.RunningTask)
+		},
+		"an invalid task in a task queue should skip it and noop": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
+			d.Tq3.Queue = append([]model.TaskQueueItem{{Id: "invalid"}}, d.Tq3.Queue...)
+			require.NoError(t, d.Tq3.Save())
+			details := &apimodels.GetNextTaskDetails{}
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			// The legacy dispatcher does not automatically handle invalid tasks.
+			require.NoError(t, err)
+			assert.Nil(t, task)
+			assert.False(t, shouldTeardown)
 
-		details := &apimodels.GetNextTaskDetails{}
-		Convey("a host should get the task at the top of the queue", func() {
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
-			So(err, ShouldBeNil)
-			So(shouldTeardown, ShouldBeFalse)
-			So(t, ShouldNotBeNil)
-			So(t.Id, ShouldEqual, "task1")
+			tq, err := model.LoadTaskQueue(d.Distro3.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 3, tq.Length())
 
-			currentTq, err := model.LoadTaskQueue(d.Id)
-			So(err, ShouldBeNil)
-			So(currentTq.Length(), ShouldEqual, 1)
+			h, err := host.FindOneId(ctx, d.Host5.Id)
+			require.NoError(t, err)
+			assert.Equal(t, "", h.RunningTask)
+		},
+		"a host should get the task at the top of a queue for a regular task": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
+			details := &apimodels.GetNextTaskDetails{}
+			nextTaskId := d.Tq3.Queue[0].Id
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			require.NoError(t, err)
+			require.NotNil(t, task)
+			assert.False(t, shouldTeardown)
+			assert.Equal(t, nextTaskId, task.Id)
 
-			h, err := host.FindOne(ctx, host.ById(theHostWhoCanBoastTheMostRoast.Id))
-			So(err, ShouldBeNil)
-			So(h.RunningTask, ShouldEqual, "task1")
-		})
-		Convey("a completed task group should return a nil task", func() {
-			currentTq, err := model.LoadTaskQueue(d.Id)
-			So(err, ShouldBeNil)
-			So(currentTq.Length(), ShouldEqual, 2)
+			tq, err := model.LoadTaskQueue(d.Distro3.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 1, tq.Length())
 
-			details.TaskGroup = "my-task-group"
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
-			So(err, ShouldBeNil)
-			So(t, ShouldBeNil)
-			So(shouldTeardown, ShouldBeTrue)
+			h, err := host.FindOneId(ctx, d.Host5.Id)
+			require.NoError(t, err)
+			assert.Equal(t, nextTaskId, h.RunningTask)
+		},
+		"a host should get the task at the top of a queue for a task group": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
+			details := &apimodels.GetNextTaskDetails{}
+			nextTaskId := d.Tq1.Queue[0].Id
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host1, details)
+			require.NoError(t, err)
+			require.NotNil(t, task)
+			assert.False(t, shouldTeardown)
+			assert.Equal(t, nextTaskId, task.Id)
 
-			// task queue unmodified
-			currentTq, err = model.LoadTaskQueue(d.Id)
-			So(err, ShouldBeNil)
-			So(currentTq.Length(), ShouldEqual, 2)
-			details.TaskGroup = ""
-		})
-		Convey("a completed task group and an empty queue should return true for teardown", func() {
-			taskQueue.Queue = []model.TaskQueueItem{}
-			So(taskQueue.Save(), ShouldBeNil)
-			So(taskQueue.Length(), ShouldEqual, 0)
+			tq, err := model.LoadTaskQueue(d.Distro1.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 1, tq.Length())
 
-			details.TaskGroup = "my-task-group"
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
-			So(err, ShouldBeNil)
-			So(t, ShouldBeNil)
-			So(shouldTeardown, ShouldBeTrue)
-		})
-		Convey("a task that is not undispatched should not be updated in the host", func() {
-			taskQueue.Queue = []model.TaskQueueItem{
-				{Id: "undispatchedTask"},
-				{Id: "task2"},
+			h, err := host.FindOneId(ctx, d.Host1.Id)
+			require.NoError(t, err)
+			assert.Equal(t, nextTaskId, h.RunningTask)
+		},
+		"tasks with a disabled project should be removed from the queue": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
+			// The queue has task3 then task4, task3 is under a disabled project.
+			d.Project2.Enabled = false
+			require.NoError(t, d.Project2.Upsert())
+			nextTaskId := "task4"
+			details := &apimodels.GetNextTaskDetails{}
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			require.NoError(t, err)
+			require.NotNil(t, task)
+			assert.False(t, shouldTeardown)
+			assert.Equal(t, nextTaskId, task.Id)
+
+			tq, err := model.LoadTaskQueue(d.Distro3.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 0, tq.Length())
+
+			h, err := host.FindOneId(ctx, d.Host5.Id)
+			require.NoError(t, err)
+			assert.Equal(t, nextTaskId, h.RunningTask)
+		},
+		"tasks with a project with dispatching disabled should be removed from the queue": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
+			// The queue has task3 then task4, task3 is under a disabled project.
+			d.Project2.DispatchingDisabled = utility.TruePtr()
+			require.NoError(t, d.Project2.Upsert())
+			nextTaskId := d.Tq3.Queue[1].Id
+			details := &apimodels.GetNextTaskDetails{}
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			require.NoError(t, err)
+			require.NotNil(t, task)
+			assert.False(t, shouldTeardown)
+			assert.Equal(t, nextTaskId, task.Id)
+
+			tq, err := model.LoadTaskQueue(d.Distro3.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 0, tq.Length())
+
+			h, err := host.FindOneId(ctx, d.Host5.Id)
+			require.NoError(t, err)
+			assert.Equal(t, nextTaskId, h.RunningTask)
+		},
+		"a completed task group should return a nil task if no task is available ": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
+			details := &apimodels.GetNextTaskDetails{
+				TaskGroup: "completed-task-group",
 			}
-			So(taskQueue.Save(), ShouldBeNil)
-			// STU: this task should never get into the queue in the first place?
-			undispatchedTask := task.Task{
-				Id:        "undispatchedTask",
-				Status:    evergreen.TaskStarted,
-				StartTime: utility.ZeroTime,
-			}
-			So(undispatchedTask.Insert(), ShouldBeNil)
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
-			So(err, ShouldBeNil)
-			So(shouldTeardown, ShouldBeFalse)
-			So(t.Id, ShouldEqual, "task2")
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host1, details)
+			require.NoError(t, err)
+			assert.Nil(t, task)
+			assert.True(t, shouldTeardown)
 
-			currentTq, err := model.LoadTaskQueue(d.Id)
-			So(err, ShouldBeNil)
-			So(currentTq.Length(), ShouldEqual, 0)
-		})
-		Convey("an empty task queue should return a nil task", func() {
-			taskQueue.Queue = []model.TaskQueueItem{}
-			So(taskQueue.Save(), ShouldBeNil)
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
-			So(err, ShouldBeNil)
-			So(shouldTeardown, ShouldBeFalse)
-			So(t, ShouldBeNil)
-		})
-		Convey("a tasks queue with a task that does not exist should error", func() {
-			item := model.TaskQueueItem{
-				Id:           "notatask",
-				Dependencies: []string{},
+			tq, err := model.LoadTaskQueue(d.Distro1.Id)
+			require.NoError(t, err)
+			assert.Equal(t, tq.Length(), 2)
+
+			h, err := host.FindOneId(ctx, d.Host1.Id)
+			require.NoError(t, err)
+			assert.Equal(t, "", h.RunningTask)
+		},
+		"a completed task group should return the next available task when available": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
+			details := &apimodels.GetNextTaskDetails{
+				TaskGroup: "completed-task-group",
 			}
-			taskQueue.Queue = []model.TaskQueueItem{item}
-			So(taskQueue.Save(), ShouldBeNil)
-			t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &theHostWhoCanBoastTheMostRoast, details)
-			So(err, ShouldBeNil)
-			So(shouldTeardown, ShouldBeFalse)
-			So(t, ShouldBeNil)
-		})
-		Convey("with a host with a running task", func() {
-			anotherHost := host.Host{
-				Id:          "ahost",
-				RunningTask: "sampleTask",
-				Distro: distro.Distro{
-					Id: d.Id,
-				},
-				Secret: hostSecret,
-			}
-			So(anotherHost.Insert(ctx), ShouldBeNil)
-			h2 := host.Host{
-				Id: "host2",
-				Distro: distro.Distro{
-					Id: d.Id,
-				},
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq2, model.NewTaskDispatchService(time.Minute), d.Host3, details)
+			require.NoError(t, err)
+			assert.Nil(t, task)
+			assert.True(t, shouldTeardown)
+
+			tq, err := model.LoadTaskQueue(d.Distro2.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 4, tq.Length())
+
+			h, err := host.FindOneId(ctx, d.Host3.Id)
+			require.NoError(t, err)
+			assert.Equal(t, "", h.RunningTask)
+		},
+		"a dispatched task should not be updated in the host": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
+			require.NoError(t, task.UpdateOne(bson.M{"_id": d.Task3.Id},
+				bson.M{"$set": bson.M{"status": evergreen.TaskStarted}}))
+			nextTaskId := d.Tq3.Queue[1].Id
+			details := &apimodels.GetNextTaskDetails{}
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			require.NoError(t, err)
+			require.NotNil(t, task)
+			assert.False(t, shouldTeardown)
+			assert.Equal(t, nextTaskId, task.Id)
+
+			tq, err := model.LoadTaskQueue(d.Distro3.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 0, tq.Length())
+
+			h, err := host.FindOneId(ctx, d.Host5.Id)
+			require.NoError(t, err)
+			assert.Equal(t, nextTaskId, h.RunningTask)
+		},
+		"subsequentially assigning tasks to two hosts should remove them from the queue": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
+			details := &apimodels.GetNextTaskDetails{}
+			nextTaskId := d.Tq3.Queue[0].Id
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			require.NoError(t, err)
+			require.NotNil(t, task)
+			assert.False(t, shouldTeardown)
+			assert.Equal(t, nextTaskId, task.Id)
+
+			tq, err := model.LoadTaskQueue(d.Distro3.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 1, tq.Length())
+
+			h, err := host.FindOneId(ctx, d.Host5.Id)
+			require.NoError(t, err)
+			assert.Equal(t, nextTaskId, h.RunningTask)
+
+			nextTaskId = d.Tq3.Queue[0].Id
+			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host6, details)
+			require.NoError(t, err)
+			require.NotNil(t, task)
+			assert.False(t, shouldTeardown)
+			assert.Equal(t, nextTaskId, task.Id)
+
+			tq, err = model.LoadTaskQueue(d.Distro3.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 0, tq.Length())
+
+			h, err = host.FindOneId(ctx, d.Host6.Id)
+			require.NoError(t, err)
+			assert.Equal(t, nextTaskId, h.RunningTask)
+		},
+		"a task that is already running on another host should not be assigned again": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
+			details := &apimodels.GetNextTaskDetails{}
+			nextTaskId := d.Tq3.Queue[0].Id
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			require.NoError(t, err)
+			require.NotNil(t, task)
+			assert.False(t, shouldTeardown)
+			assert.Equal(t, nextTaskId, task.Id)
+
+			tq, err := model.LoadTaskQueue(d.Distro3.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 1, tq.Length())
+
+			h, err := host.FindOneId(ctx, d.Host5.Id)
+			require.NoError(t, err)
+			assert.Equal(t, nextTaskId, h.RunningTask)
+
+			d.Tq3.Queue = append(d.Tq3.Queue, model.TaskQueueItem{Id: nextTaskId})
+			nextTaskId = d.Tq3.Queue[0].Id
+			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host6, details)
+			require.NoError(t, err)
+			require.NotNil(t, task)
+			assert.False(t, shouldTeardown)
+			assert.Equal(t, nextTaskId, task.Id)
+
+			tq, err = model.LoadTaskQueue(d.Distro3.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 0, tq.Length())
+
+			h, err = host.FindOneId(ctx, d.Host6.Id)
+			require.NoError(t, err)
+			assert.Equal(t, nextTaskId, h.RunningTask)
+		},
+		"a host with a running task cannot be assigned again": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
+			details := &apimodels.GetNextTaskDetails{}
+			nextTaskId := d.Tq3.Queue[0].Id
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			require.NoError(t, err)
+			require.NotNil(t, task)
+			assert.False(t, shouldTeardown)
+			assert.Equal(t, nextTaskId, task.Id)
+
+			tq, err := model.LoadTaskQueue(d.Distro3.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 1, tq.Length())
+
+			h, err := host.FindOneId(ctx, d.Host5.Id)
+			require.NoError(t, err)
+			assert.Equal(t, nextTaskId, h.RunningTask)
+
+			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
+			require.Error(t, err)
+			assert.Nil(t, task)
+			assert.False(t, shouldTeardown)
+
+			tq, err = model.LoadTaskQueue(d.Distro3.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 1, tq.Length())
+
+			h, err = host.FindOneId(ctx, d.Host5.Id)
+			require.NoError(t, err)
+			assert.Equal(t, nextTaskId, h.RunningTask)
+		},
+		"a host running a single host task group should be the only host assigned those tasks": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
+			details := &apimodels.GetNextTaskDetails{}
+			nextTaskId := d.Tq1.Queue[0].Id
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host1, details)
+			require.NoError(t, err)
+			require.NotNil(t, task)
+			assert.False(t, shouldTeardown)
+			assert.Equal(t, nextTaskId, task.Id)
+
+			tq, err := model.LoadTaskQueue(d.Distro1.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 1, tq.Length())
+
+			h, err := host.FindOneId(ctx, d.Host1.Id)
+			require.NoError(t, err)
+			assert.Equal(t, nextTaskId, h.RunningTask)
+
+			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host2, details)
+			fmt.Println(task, shouldTeardown, err)
+			require.NoError(t, err)
+			assert.Nil(t, task)
+			assert.False(t, shouldTeardown)
+
+			tq, err = model.LoadTaskQueue(d.Distro1.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 0, tq.Length())
+
+			h, err = host.FindOneId(ctx, d.Host2.Id)
+			require.NoError(t, err)
+			assert.Equal(t, "", h.RunningTask)
+		},
+		"multiple max hosts for task group": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
+			extraHost := &host.Host{
+				Id:     "extraHost",
+				Distro: *d.Distro1,
 				Secret: hostSecret,
 				Status: evergreen.HostRunning,
 			}
-			So(h2.Insert(ctx), ShouldBeNil)
-
-			t1 := task.Task{
-				Id:        "sampleTask",
-				Status:    evergreen.TaskUndispatched,
-				Project:   "exists",
-				Activated: true,
-				StartTime: utility.ZeroTime,
+			require.NoError(t, extraHost.Insert(ctx))
+			d.Tq1.Queue = append(d.Tq1.Queue, model.TaskQueueItem{Id: "tg1-task3"})
+			d.Tq1.DistroQueueInfo = model.DistroQueueInfo{
+				Length:         3,
+				TaskGroupInfos: []model.TaskGroupInfo{{Name: "task-group-1", Count: 3}},
 			}
-			So(t1.Insert(), ShouldBeNil)
-			t2 := task.Task{
-				Id:        "another",
-				Status:    evergreen.TaskUndispatched,
-				Project:   "exists",
-				Activated: true,
-				StartTime: utility.ZeroTime,
-			}
-			So(t2.Insert(), ShouldBeNil)
-
-			taskQueue.Queue = []model.TaskQueueItem{
-				{Id: t1.Id},
-				{Id: t2.Id},
-			}
-			So(taskQueue.Save(), ShouldBeNil)
-			Convey("the task that is in the other host should not be assigned to another host", func() {
-				t, shouldTeardown, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &h2, details)
-				So(err, ShouldBeNil)
-				So(shouldTeardown, ShouldBeFalse)
-				So(t, ShouldNotBeNil)
-				So(t.Id, ShouldEqual, t2.Id)
-				h, err := host.FindOne(ctx, host.ById(h2.Id))
-				So(err, ShouldBeNil)
-				So(h.RunningTask, ShouldEqual, t2.Id)
-			})
-			Convey("a host with a running task should return an error", func() {
-				_, _, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &anotherHost, details)
-				So(err, ShouldNotBeNil)
-			})
-		})
-		Convey("with a host running a task in a task group", func() {
-			host1 := host.Host{
-				Id:                      "host1",
-				Status:                  evergreen.HostRunning,
-				RunningTask:             "task1",
-				RunningTaskGroup:        "group1",
-				RunningTaskBuildVariant: "variant1",
-				RunningTaskVersion:      "version1",
-				RunningTaskProject:      "exists",
-				Distro: distro.Distro{
-					Id: "d1",
-					DispatcherSettings: distro.DispatcherSettings{
-						Version: evergreen.DispatcherVersionRevisedWithDependencies,
-					},
-				},
-			}
-			So(host1.Insert(ctx), ShouldBeNil)
-			host2 := host.Host{
-				Id:                      "host2",
-				Status:                  evergreen.HostRunning,
-				RunningTask:             "",
-				RunningTaskGroup:        "",
-				RunningTaskBuildVariant: "",
-				RunningTaskVersion:      "",
-				RunningTaskProject:      "",
-				Distro: distro.Distro{
-					Id: d.Id,
-					DispatcherSettings: distro.DispatcherSettings{
-						Version: evergreen.DispatcherVersionRevisedWithDependencies,
-					},
-				},
-			}
-			So(host2.Insert(ctx), ShouldBeNil)
-			task3 := task.Task{
-				Id:                "task3",
+			require.NoError(t, d.Tq1.Save())
+			tg1Task3 := &task.Task{
+				Id:                "tg1-task3",
 				Status:            evergreen.TaskUndispatched,
 				Activated:         true,
-				TaskGroup:         "group1",
-				BuildVariant:      "variant1",
-				Version:           "version1",
-				Project:           "exists",
-				TaskGroupMaxHosts: 1,
+				Project:           d.Project1.Id,
+				StartTime:         utility.ZeroTime,
+				TaskGroup:         d.Tg1Task1.TaskGroup,
+				Version:           d.Version1.Id,
+				BuildId:           d.BuildVariant1.Id,
+				BuildVariant:      d.BuildVariant1.BuildVariant,
+				TaskGroupMaxHosts: 2,
 			}
-			So(task3.Insert(), ShouldBeNil)
-			task4 := task.Task{
-				Id:                "task4",
+			require.NoError(t, tg1Task3.Insert())
+			require.NoError(t, task.UpdateOne(bson.M{"_id": d.Tg1Task1.Id},
+				bson.M{"$set": bson.M{"task_group_max_hosts": 2}}))
+			require.NoError(t, task.UpdateOne(bson.M{"_id": d.Tg1Task2.Id},
+				bson.M{"$set": bson.M{"task_group_max_hosts": 2}}))
+			details := &apimodels.GetNextTaskDetails{}
+			// The first host should get the top of the task group.
+			nextTaskId := d.Tq1.Queue[0].Id
+			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host1, details)
+			require.NoError(t, err)
+			require.NotNil(t, task)
+			assert.False(t, shouldTeardown)
+			assert.Equal(t, nextTaskId, task.Id)
+
+			tq, err := model.LoadTaskQueue(d.Distro1.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 2, tq.Length())
+
+			h, err := host.FindOneId(ctx, d.Host1.Id)
+			require.NoError(t, err)
+			assert.Equal(t, nextTaskId, h.RunningTask)
+
+			// The second host should get the next task of the task group.
+			nextTaskId = d.Tq1.Queue[0].Id
+			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host2, details)
+			require.NoError(t, err)
+			require.NotNil(t, task)
+			assert.False(t, shouldTeardown)
+			assert.Equal(t, nextTaskId, task.Id)
+
+			tq, err = model.LoadTaskQueue(d.Distro1.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 1, tq.Length())
+
+			h, err = host.FindOneId(ctx, d.Host2.Id)
+			require.NoError(t, err)
+			assert.Equal(t, nextTaskId, h.RunningTask)
+
+			// The third host should not get a task, since the limit is 2.
+			task, shouldTeardown, err = assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), extraHost, details)
+			fmt.Print(task, shouldTeardown, err)
+			require.NoError(t, err)
+			assert.Nil(t, task)
+			assert.False(t, shouldTeardown)
+
+			tq, err = model.LoadTaskQueue(d.Distro1.Id)
+			require.NoError(t, err)
+			assert.Equal(t, 0, tq.Length())
+
+			h, err = host.FindOneId(ctx, extraHost.Id)
+			require.NoError(t, err)
+			assert.Equal(t, "", h.RunningTask)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
+			colls := []string{distro.Collection, host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection, model.VersionCollection, build.Collection}
+			require.NoError(t, db.ClearCollections(colls...))
+			require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey))
+
+			var data data
+
+			data.Project1 = &model.ProjectRef{
+				Id:      "exists",
+				Enabled: true,
+			}
+			require.NoError(t, data.Project1.Insert())
+			data.Project2 = &model.ProjectRef{
+				Id:      "also-exists",
+				Enabled: true,
+			}
+			require.NoError(t, data.Project2.Insert())
+
+			data.Distro1 = &distro.Distro{
+				Id: "d1",
+				DispatcherSettings: distro.DispatcherSettings{
+					Version: evergreen.DispatcherVersionRevisedWithDependencies,
+				},
+			}
+			require.NoError(t, data.Distro1.Insert(ctx))
+			data.Host1 = &host.Host{
+				Id:     "h1",
+				Distro: *data.Distro1,
+				Secret: hostSecret,
+				Status: evergreen.HostRunning,
+			}
+			require.NoError(t, data.Host1.Insert(ctx))
+			data.Host2 = &host.Host{
+				Id:     "h2",
+				Distro: *data.Distro1,
+				Secret: hostSecret,
+				Status: evergreen.HostRunning,
+			}
+			require.NoError(t, data.Host2.Insert(ctx))
+			data.Version1 = &model.Version{Id: "v1"}
+			require.NoError(t, data.Version1.Insert())
+			data.BuildVariant1 = &build.Build{
+				Id:           "bv1",
+				BuildVariant: "bv1",
+				Version:      data.Version1.Id,
+				Tasks: []build.TaskCache{
+					{Id: "tg1-task1"},
+					{Id: "tg1-task2"},
+				},
+			}
+			require.NoError(t, data.BuildVariant1.Insert())
+			data.Distro2 = &distro.Distro{
+				Id: "d2",
+				DispatcherSettings: distro.DispatcherSettings{
+					Version: evergreen.DispatcherVersionRevisedWithDependencies,
+				},
+			}
+			require.NoError(t, data.Distro2.Insert(ctx))
+			data.Host3 = &host.Host{
+				Id: "h3",
+
+				Distro: *data.Distro2,
+				Secret: hostSecret,
+				Status: evergreen.HostRunning,
+			}
+			require.NoError(t, data.Host3.Insert(ctx))
+			data.Host4 = &host.Host{
+				Id:     "h4",
+				Distro: *data.Distro2,
+				Secret: hostSecret,
+				Status: evergreen.HostRunning,
+			}
+			require.NoError(t, data.Host4.Insert(ctx))
+			data.Version2 = &model.Version{Id: "v2"}
+			require.NoError(t, data.Version2.Insert())
+			data.BuildVariant2 = &build.Build{
+				Id:           "bv2",
+				BuildVariant: "bv2",
+				Version:      data.Version1.Id,
+				Tasks: []build.TaskCache{
+					{Id: "tg2-task1"},
+					{Id: "task1"},
+					{Id: "task2"},
+					{Id: "tg2-task2"},
+				},
+			}
+			require.NoError(t, data.BuildVariant2.Insert())
+			data.Distro3 = &distro.Distro{
+				Id: "d3",
+				DispatcherSettings: distro.DispatcherSettings{
+					Version: evergreen.DispatcherVersionRevisedWithDependencies,
+				},
+			}
+			require.NoError(t, data.Distro3.Insert(ctx))
+			data.Host5 = &host.Host{
+				Id:     "h5",
+				Distro: *data.Distro3,
+				Secret: hostSecret,
+				Status: evergreen.HostRunning,
+			}
+			require.NoError(t, data.Host5.Insert(ctx))
+			data.Host6 = &host.Host{
+				Id:     "h6",
+				Distro: *data.Distro3,
+				Secret: hostSecret,
+				Status: evergreen.HostRunning,
+			}
+			require.NoError(t, data.Host6.Insert(ctx))
+			data.Version3 = &model.Version{Id: "v3"}
+			require.NoError(t, data.Version3.Insert())
+			data.BuildVariant3 = &build.Build{
+				Id:           "bv3",
+				BuildVariant: "bv3",
+				Version:      data.Version3.Id,
+				Tasks: []build.TaskCache{
+					{Id: "task3"},
+					{Id: "task4"},
+				},
+			}
+			require.NoError(t, data.BuildVariant3.Insert())
+			tgInfo1 := model.TaskGroupInfo{
+				Name:  "task-group-1",
+				Count: 2,
+			}
+			data.Tg1Task1 = &task.Task{
+				Id:                "tg1-task1",
 				Status:            evergreen.TaskUndispatched,
 				Activated:         true,
-				TaskGroup:         "group2",
-				BuildVariant:      "variant1",
-				Version:           "version1",
-				Project:           "exists",
+				Project:           data.Project1.Id,
+				StartTime:         utility.ZeroTime,
+				TaskGroup:         tgInfo1.Name,
+				Version:           data.Version1.Id,
+				BuildId:           data.BuildVariant1.Id,
+				BuildVariant:      data.BuildVariant1.BuildVariant,
 				TaskGroupMaxHosts: 1,
 			}
-			So(task4.Insert(), ShouldBeNil)
-			taskQueue.Queue = []model.TaskQueueItem{
-				{Id: task3.Id},
-				{Id: task4.Id},
+			require.NoError(t, data.Tg1Task1.Insert())
+			data.Tg1Task2 = &task.Task{
+				Id:                "tg1-task2",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				Project:           data.Project1.Id,
+				StartTime:         utility.ZeroTime,
+				TaskGroup:         tgInfo1.Name,
+				Version:           data.Version1.Id,
+				BuildId:           data.BuildVariant1.Id,
+				BuildVariant:      data.BuildVariant1.BuildVariant,
+				TaskGroupMaxHosts: 1,
 			}
-			So(taskQueue.Save(), ShouldBeNil)
-			t, _, err := assignNextAvailableTask(ctx, env, taskQueue, model.NewTaskDispatchService(time.Minute), &host2, details)
-			So(err, ShouldBeNil)
-			So(t, ShouldNotBeNil)
-			// task 3 should not be dispatched, because it's already running on max
-			// hosts, instead it should be task 4
-			So(t.Id, ShouldEqual, task4.Id)
-			h, err := host.FindOne(ctx, host.ById(host2.Id))
-			So(err, ShouldBeNil)
-			So(h.RunningTask, ShouldEqual, task4.Id)
+			require.NoError(t, data.Tg1Task2.Insert())
+			data.Tq1 = &model.TaskQueue{
+				Distro: data.Distro1.Id,
+				Queue: []model.TaskQueueItem{
+					{Id: data.Tg1Task1.Id},
+					{Id: data.Tg1Task2.Id},
+				},
+				DistroQueueInfo: model.DistroQueueInfo{
+					Length:         2,
+					TaskGroupInfos: []model.TaskGroupInfo{tgInfo1},
+				},
+			}
+			require.NoError(t, data.Tq1.Save())
+			data.Task1 = &task.Task{
+				Id:           "task1",
+				Status:       evergreen.TaskUndispatched,
+				Activated:    true,
+				Project:      data.Project1.Id,
+				StartTime:    utility.ZeroTime,
+				Version:      data.Version2.Id,
+				BuildId:      data.BuildVariant2.Id,
+				BuildVariant: data.BuildVariant2.BuildVariant,
+			}
+			require.NoError(t, data.Task1.Insert())
+			data.Task2 = &task.Task{
+				Id:           "task2",
+				Status:       evergreen.TaskUndispatched,
+				Activated:    true,
+				Project:      data.Project1.Id,
+				StartTime:    utility.ZeroTime,
+				Version:      data.Version2.Id,
+				BuildId:      data.BuildVariant2.Id,
+				BuildVariant: data.BuildVariant2.BuildVariant,
+			}
+			require.NoError(t, data.Task2.Insert())
+			tgInfo2 := model.TaskGroupInfo{
+				Name:  "task-group-2",
+				Count: 2,
+			}
+			data.Tg2Task1 = &task.Task{
+				Id:                "tg2-task1",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				Project:           data.Project1.Id,
+				StartTime:         utility.ZeroTime,
+				TaskGroup:         tgInfo2.Name,
+				Version:           data.Version2.Id,
+				BuildId:           data.BuildVariant2.Id,
+				BuildVariant:      data.BuildVariant2.BuildVariant,
+				TaskGroupMaxHosts: 1,
+			}
+			require.NoError(t, data.Tg2Task1.Insert())
+			data.Tg2Task2 = &task.Task{
+				Id:                "tg2-task2",
+				Status:            evergreen.TaskUndispatched,
+				Activated:         true,
+				Project:           data.Project1.Id,
+				StartTime:         utility.ZeroTime,
+				TaskGroup:         tgInfo2.Name,
+				Version:           data.Version2.Id,
+				BuildId:           data.BuildVariant2.Id,
+				BuildVariant:      data.BuildVariant2.BuildVariant,
+				TaskGroupMaxHosts: 1,
+			}
+			require.NoError(t, data.Tg2Task2.Insert())
+			data.Tq2 = &model.TaskQueue{
+				Distro: data.Distro2.Id,
+				Queue: []model.TaskQueueItem{
+					{Id: data.Tg2Task1.Id},
+					{Id: data.Task1.Id},
+					{Id: data.Task2.Id},
+					{Id: data.Tg2Task2.Id},
+				},
+				DistroQueueInfo: model.DistroQueueInfo{
+					Length:         4,
+					TaskGroupInfos: []model.TaskGroupInfo{tgInfo2},
+				},
+			}
+			require.NoError(t, data.Tq2.Save())
+			data.Task3 = &task.Task{
+				Id:           "task3",
+				Status:       evergreen.TaskUndispatched,
+				Activated:    true,
+				Project:      data.Project2.Id,
+				StartTime:    utility.ZeroTime,
+				Version:      data.Version3.Id,
+				BuildId:      data.BuildVariant3.Id,
+				BuildVariant: data.BuildVariant3.BuildVariant,
+			}
+			require.NoError(t, data.Task3.Insert())
+			data.Task4 = &task.Task{
+				Id:           "task4",
+				Status:       evergreen.TaskUndispatched,
+				Activated:    true,
+				Project:      data.Project1.Id,
+				StartTime:    utility.ZeroTime,
+				Version:      data.Version3.Id,
+				BuildId:      data.BuildVariant3.Id,
+				BuildVariant: data.BuildVariant3.BuildVariant,
+			}
+			require.NoError(t, data.Task4.Insert())
+			data.Tq3 = &model.TaskQueue{
+				Distro: data.Distro3.Id,
+				Queue: []model.TaskQueueItem{
+					{Id: data.Task3.Id},
+					{Id: data.Task4.Id},
+				},
+				DistroQueueInfo: model.DistroQueueInfo{
+					Length:         2,
+					TaskGroupInfos: []model.TaskGroupInfo{},
+				},
+			}
+			require.NoError(t, data.Tq3.Save())
+
+			tCase(ctx, t, env, data)
 		})
-	})
+	}
 }
 
 func TestCheckHostHealth(t *testing.T) {

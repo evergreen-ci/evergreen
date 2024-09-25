@@ -11,10 +11,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -425,7 +427,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	const ghTokenLifetime = 50 * time.Minute
-	appToken, err := h.settings.CreateGitHubAppAuth().CreateCachedInstallationToken(ctx, pRef.Owner, pRef.Repo, ghTokenLifetime, nil)
+	appToken, err := githubapp.CreateGitHubAppAuth(h.settings).CreateCachedInstallationToken(ctx, pRef.Owner, pRef.Repo, ghTokenLifetime, nil)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "creating GitHub app token"))
 	}
@@ -1406,7 +1408,7 @@ func (g *createInstallationToken) Parse(ctx context.Context, r *http.Request) er
 
 func (g *createInstallationToken) Run(ctx context.Context) gimlet.Responder {
 	const lifetime = 50 * time.Minute
-	token, err := g.env.Settings().CreateGitHubAppAuth().CreateCachedInstallationToken(ctx, g.owner, g.repo, lifetime, nil)
+	token, err := githubapp.CreateGitHubAppAuth(g.env.Settings()).CreateCachedInstallationToken(ctx, g.owner, g.repo, lifetime, nil)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", g.owner, g.repo))
 	}
@@ -1663,7 +1665,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	}
 
 	// The token also should use the project's GitHub app.
-	githubAppAuth, err := model.FindOneGithubAppAuth(t.Project)
+	githubAppAuth, err := githubapp.FindOneGithubAppAuth(t.Project)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -1730,4 +1732,55 @@ func (h *revokeGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
+}
+
+// POST /rest/v2/task/{task_id}/aws/assume_role
+// This route is used to assume an AWS arn role for a task.
+type awsAssumeRole struct {
+	taskID string
+	body   apimodels.AssumeRoleRequest
+
+	stsManager cloud.STSManager
+}
+
+func makeAWSAssumeRole(stsManager cloud.STSManager) gimlet.RouteHandler {
+	return &awsAssumeRole{stsManager: stsManager}
+}
+
+func (h *awsAssumeRole) Factory() gimlet.RouteHandler {
+	return &awsAssumeRole{stsManager: h.stsManager}
+}
+
+func (h *awsAssumeRole) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task_id")
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return errors.Wrap(err, "reading body")
+	}
+
+	if err = json.Unmarshal(body, &h.body); err != nil {
+		return errors.Wrapf(err, "reading assume role body for task '%s'", h.taskID)
+	}
+
+	return errors.Wrapf(h.body.Validate(), "validating assume role body for task '%s'", h.taskID)
+}
+
+func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
+	creds, err := h.stsManager.AssumeRole(ctx, h.taskID, cloud.AssumeRoleOptions{
+		RoleARN:         h.body.RoleARN,
+		Policy:          h.body.Policy,
+		DurationSeconds: h.body.DurationSeconds,
+	})
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "assuming role for task '%s'", h.taskID))
+	}
+	return gimlet.NewJSONResponse(apimodels.AssumeRoleResponse{
+		AccessKeyID:     creds.AccessKeyID,
+		SecretAccessKey: creds.SecretAccessKey,
+		SessionToken:    creds.SessionToken,
+		Expiration:      creds.Expiration.String(),
+	})
 }

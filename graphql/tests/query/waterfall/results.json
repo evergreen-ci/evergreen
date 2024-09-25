@@ -1,0 +1,257 @@
+{
+  "tests": [
+    {
+      "query_file": "no_filters.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "nextPageOrder": 39,
+            "prevPageOrder": 0,
+            "buildVariants": [
+              {
+                "id": "enterprise-ubuntu1604-64",
+                "displayName": "Ubuntu 16.04",
+                "builds": [
+                  {
+                    "activated": true,
+                    "id": "evergreen_version1_build",
+                    "tasks": [
+                      {
+                        "displayName": "Some Task",
+                        "id": "task_1",
+                        "status": "success"
+                      },
+                      {
+                        "displayName": "Some Other Task",
+                        "id": "task_2",
+                        "status": "success"
+                      }
+                    ],
+                    "version": "evergreen_version1"
+                  },
+                  {
+                    "activated": true,
+                    "id": "evergreen_version2_build",
+                    "tasks": [
+                      {
+                        "displayName": "Some Task",
+                        "id": "task_3",
+                        "status": "failed"
+                      },
+                      {
+                        "displayName": "Some Other Task",
+                        "id": "task_4",
+                        "status": "success"
+                      }
+                    ],
+                    "version": "evergreen_version2"
+                  }
+                ]
+              },
+              {
+                "builds": [
+                  {
+                    "activated": true,
+                    "id": "evergreen_version3_build",
+                    "tasks": [
+                      {
+                        "displayName": "Task Number 5",
+                        "id": "task_5",
+                        "status": "success"
+                      }
+                    ],
+                    "version": "evergreen_version5"
+                  }
+                ],
+                "displayName": "Linter",
+                "id": "lint"
+              }
+            ],
+            "versions": [
+              {
+                "inactiveVersions": null,
+                "version": {
+                  "activated": true,
+                  "author": "mohamed.khelif",
+                  "id": "evergreen_version5",
+                  "order": 45
+                }
+              },
+              {
+                "inactiveVersions": [
+                  {
+                    "activated": false,
+                    "author": "mohamed.khelif",
+                    "id": "evergreen_version4",
+                    "order": 44
+                  }
+                ],
+                "version": null
+              },
+              {
+                "inactiveVersions": null,
+                "version": {
+                  "activated": true,
+                  "author": "mohamed.khelif",
+                  "id": "evergreen_version3",
+                  "order": 43
+                }
+              },
+              {
+                "inactiveVersions": null,
+                "version": {
+                  "activated": true,
+                  "author": "mohamed.khelif",
+                  "id": "evergreen_version2",
+                  "order": 42
+                }
+              },
+              {
+                "inactiveVersions": null,
+                "version": {
+                  "activated": true,
+                  "author": "mohamed.khelif",
+                  "id": "evergreen_version1",
+                  "order": 41
+                }
+              },
+              {
+                "inactiveVersions": [
+                  {
+                    "activated": false,
+                    "author": "mohamed.khelif",
+                    "id": "evergreen_version0",
+                    "order": 40
+                  }
+                ],
+                "version": null
+              },
+              {
+                "inactiveVersions": null,
+                "version": {
+                  "activated": true,
+                  "author": "mohamed.khelif",
+                  "id": "evergreen_version39",
+                  "order": 39
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "pagination_forward.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "nextPageOrder": 39,
+            "prevPageOrder": 44,
+            "versions": [
+              {
+                "inactiveVersions": [
+                  {
+                    "activated": false,
+                    "author": "mohamed.khelif",
+                    "id": "evergreen_version4",
+                    "order": 44
+                  }
+                ],
+                "version": null
+              },
+              {
+                "inactiveVersions": null,
+                "version": {
+                  "activated": true,
+                  "author": "mohamed.khelif",
+                  "id": "evergreen_version3",
+                  "order": 43
+                }
+              },
+              {
+                "inactiveVersions": null,
+                "version": {
+                  "activated": true,
+                  "author": "mohamed.khelif",
+                  "id": "evergreen_version2",
+                  "order": 42
+                }
+              },
+              {
+                "inactiveVersions": null,
+                "version": {
+                  "activated": true,
+                  "author": "mohamed.khelif",
+                  "id": "evergreen_version1",
+                  "order": 41
+                }
+              },
+              {
+                "inactiveVersions": [
+                  {
+                    "activated": false,
+                    "author": "mohamed.khelif",
+                    "id": "evergreen_version0",
+                    "order": 40
+                  }
+                ],
+                "version": null
+              },
+              {
+                "inactiveVersions": null,
+                "version": {
+                  "activated": true,
+                  "author": "mohamed.khelif",
+                  "id": "evergreen_version39",
+                  "order": 39
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "pagination_backward.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "nextPageOrder": 43,
+            "prevPageOrder": 45,
+            "versions": [
+              {
+                "inactiveVersions": null,
+                "version": {
+                  "activated": true,
+                  "author": "mohamed.khelif",
+                  "id": "evergreen_version5",
+                  "order": 45
+                }
+              },
+              {
+                "inactiveVersions": [
+                  {
+                    "activated": false,
+                    "author": "mohamed.khelif",
+                    "id": "evergreen_version4",
+                    "order": 44
+                  }
+                ],
+                "version": null
+              },
+              {
+                "inactiveVersions": null,
+                "version": {
+                  "activated": true,
+                  "author": "mohamed.khelif",
+                  "id": "evergreen_version3",
+                  "order": 43
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -10,6 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/amboy"
 	jmock "github.com/mongodb/jasper/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,6 +35,23 @@ func TestConvertHostToLegacyProvisioningJob(t *testing.T) {
 			assert.Equal(t, env, convertJob.env)
 			assert.Equal(t, h.Id, convertJob.HostID)
 			assert.Equal(t, *h, *convertJob.host)
+		},
+		"QuarantinesHostOnFailedLastAttempt": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {
+			h.NeedsNewAgent = false
+			require.NoError(t, h.Insert(ctx))
+			j := NewConvertHostToLegacyProvisioningJob(env, *h, "job-id")
+			j.UpdateRetryInfo(amboy.JobRetryOptions{
+				CurrentAttempt: utility.ToIntPtr(maxProvisioningConversionAttempts),
+			})
+
+			j.Run(ctx)
+			assert.True(t, j.IsLastAttempt())
+			assert.Error(t, j.Error())
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostQuarantined, dbHost.Status)
 		},
 		"NoopsIfAgentIsUp": func(ctx context.Context, t *testing.T, env *mock.Environment, mgr *jmock.Manager, h *host.Host) {
 			h.NeedsNewAgent = false
@@ -102,8 +121,9 @@ func TestConvertHostToLegacyProvisioningJob(t *testing.T) {
 						JasperBinaryDir: "/jasper_dir",
 					},
 				},
-				Host: "localhost",
-				User: evergreen.User,
+				Provider: evergreen.ProviderNameStatic,
+				Host:     "localhost",
+				User:     evergreen.User,
 			}
 
 			testCase(tctx, t, env, mgr, h)

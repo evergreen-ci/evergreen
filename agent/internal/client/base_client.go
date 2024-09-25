@@ -168,21 +168,6 @@ func (c *baseCommunicator) GetProjectRef(ctx context.Context, taskData TaskData)
 	return projectRef, nil
 }
 
-// DisableHost signals to the app server that the host should be disabled.
-func (c *baseCommunicator) DisableHost(ctx context.Context, hostID string, details apimodels.DisableInfo) error {
-	info := requestInfo{
-		method: http.MethodPost,
-		path:   fmt.Sprintf("hosts/%s/disable", hostID),
-	}
-	resp, err := c.retryRequest(ctx, info, &details)
-	if err != nil {
-		return util.RespErrorf(resp, errors.Wrapf(err, "disabling host '%s'", hostID).Error())
-	}
-
-	defer resp.Body.Close()
-	return nil
-}
-
 // GetTask returns the active task.
 func (c *baseCommunicator) GetTask(ctx context.Context, taskData TaskData) (*task.Task, error) {
 	task := &task.Task{}

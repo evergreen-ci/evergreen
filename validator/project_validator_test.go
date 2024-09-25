@@ -1757,8 +1757,8 @@ func TestValidateTimeoutLimits(t *testing.T) {
 		}
 		errs := validateTimeoutLimits(ctx, settings, project, &model.ProjectRef{}, false)
 		require.Len(t, errs, 1)
-		assert.Equal(t, Error, errs[0].Level)
-		assert.Contains(t, "task 'task' exec timeout (10) exceeds maximum limit (1)", errs[0].Message)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, "task 'task' exec timeout (10) is too high and will be set to maximum limit (1)", errs[0].Message)
 	})
 	t.Run("SucceedsWithNoMaxTimeoutLimit", func(t *testing.T) {
 		settings := &evergreen.Settings{}

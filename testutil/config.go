@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -57,6 +59,15 @@ func Setup() {
 func NewEnvironment(ctx context.Context, t *testing.T) evergreen.Environment {
 	env, err := evergreen.NewEnvironment(ctx, filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings), "", "", nil, noop.NewTracerProvider())
 	require.NoError(t, err)
+	// For testing purposes, set up parameter manager so it's backed by the DB.
+	pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
+		PathPrefix:     env.Settings().Providers.AWS.ParameterStore.Prefix,
+		CachingEnabled: true,
+		SSMClient:      fakeparameter.NewFakeSSMClient(),
+		DB:             env.DB(),
+	})
+	require.NoError(t, err)
+	env.SetParameterManager(pm)
 	return env
 }
 
@@ -206,7 +217,6 @@ func MockConfig() *evergreen.Settings {
 				Username: "username",
 				Password: "password",
 			},
-			DefaultProject: "proj",
 		},
 		TaskLimits: evergreen.TaskLimitsConfig{
 			MaxTasksPerVersion: 1000,

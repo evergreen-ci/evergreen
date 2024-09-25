@@ -1,0 +1,41 @@
+input WaterfallOptions {
+  limit: Int = 5
+  "Return versions with an order greater than minOrder. Used for paginating backward."
+  minOrder: Int
+  "Return versions with an order lower than maxOrder. Used for paginating forward."
+  maxOrder: Int
+  projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)
+  requesters: [String!]
+}
+
+type WaterfallTask {
+  id: String!
+  status: String!
+  displayName: String!
+}
+
+type WaterfallBuild {
+  id: String!
+  activated: Boolean
+  displayName: String!
+  version: String!
+  tasks: [WaterfallTask!]!
+}
+
+type WaterfallBuildVariant {
+  id: String!
+  displayName: String!
+  builds: [WaterfallBuild!]!
+}
+
+type WaterfallVersion {
+  inactiveVersions: [Version!]
+  version: Version
+}
+
+type Waterfall {
+  buildVariants: [WaterfallBuildVariant!]!
+  nextPageOrder: Int!
+  prevPageOrder: Int!
+  versions: [WaterfallVersion!]!
+}

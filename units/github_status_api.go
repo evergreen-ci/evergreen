@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/amboy"
@@ -36,7 +37,7 @@ const (
 	// GitHub intent processing errors
 	ProjectDisabled             = "project was disabled"
 	PatchingDisabled            = "patching was disabled"
-	commitQueueDisabled         = "commit queue was disabled"
+	commitQueueDisabled         = "merge queue disabled for project"
 	ignoredFiles                = "all patched files are ignored"
 	PatchTaskSyncDisabled       = "task sync was disabled for patches"
 	invalidAlias                = "alias not found"
@@ -246,7 +247,7 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 
 func (j *githubStatusUpdateJob) setSender(owner, repo string) error {
 	var err error
-	j.sender, err = j.env.GetGitHubSender(owner, repo)
+	j.sender, err = j.env.GetGitHubSender(owner, repo, githubapp.CreateGitHubAppAuth(j.env.Settings()).CreateGitHubSenderInstallationToken)
 	return err
 }
 

@@ -6,115 +6,114 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLoggingHostEvents(t *testing.T) {
-	Convey("When logging host events", t, func() {
+	assert.NoError(t, db.Clear(EventCollection))
 
-		So(db.Clear(EventCollection), ShouldBeNil)
+	t.Run("AllEventsLoggedShouldBePersistedToTheDatabaseAndFetchingThemInOrderShouldSortByTheTimeTheyWereLogged", func(t *testing.T) {
+		hostId := "host_id"
+		hostTag := "host_tag"
+		hostname := "hostname"
+		taskId := "task_id"
 
-		Convey("all events logged should be persisted to the database, and"+
-			" fetching them in order should sort by the time they were"+
-			" logged", func() {
+		// log some events, sleeping in between to make sure the times are different
+		LogHostCreated(hostId)
+		time.Sleep(1 * time.Millisecond)
+		LogHostStatusChanged(hostTag, evergreen.HostRunning, evergreen.HostTerminated, "user", "myLogs")
+		time.Sleep(1 * time.Millisecond)
+		LogHostDNSNameSet(hostId, hostname)
+		time.Sleep(1 * time.Millisecond)
+		LogHostProvisioned(hostTag)
+		time.Sleep(1 * time.Millisecond)
+		LogHostRunningTaskSet(hostId, taskId, 0)
+		time.Sleep(1 * time.Millisecond)
+		LogHostRunningTaskCleared(hostId, taskId, 0)
+		time.Sleep(1 * time.Millisecond)
 
-			hostId := "host_id"
-			hostTag := "host_tag"
-			hostname := "hostname"
-			taskId := "task_id"
+		// fetch all the events from the database, make sure they are persisted correctly
+		hostEventOpts := HostEventsOpts{
+			ID:      hostId,
+			Tag:     hostTag,
+			Limit:   50,
+			SortAsc: false,
+		}
+		eventsForHost, err := Find(HostEvents(hostEventOpts))
+		assert.NoError(t, err)
 
-			// log some events, sleeping in between to make sure the times are different
-			LogHostCreated(hostId)
-			time.Sleep(1 * time.Millisecond)
-			LogHostStatusChanged(hostTag, evergreen.HostRunning, evergreen.HostTerminated, "user", "myLogs")
-			time.Sleep(1 * time.Millisecond)
-			LogHostDNSNameSet(hostId, hostname)
-			time.Sleep(1 * time.Millisecond)
-			LogHostProvisioned(hostTag)
-			time.Sleep(1 * time.Millisecond)
-			LogHostRunningTaskSet(hostId, taskId, 0)
-			time.Sleep(1 * time.Millisecond)
-			LogHostRunningTaskCleared(hostId, taskId, 0)
-			time.Sleep(1 * time.Millisecond)
+		assert.Len(t, eventsForHost, 6)
 
-			// fetch all the events from the database, make sure they are
-			// persisted correctly
+		event := eventsForHost[5]
+		assert.Equal(t, EventHostCreated, event.EventType)
 
-			eventsForHost, err := Find(MostRecentHostEvents(hostId, hostTag, 50))
-			So(err, ShouldBeNil)
+		eventData, ok := event.Data.(*HostEventData)
+		assert.True(t, ok)
+		assert.Empty(t, eventData.OldStatus)
+		assert.Empty(t, eventData.NewStatus)
+		assert.Empty(t, eventData.Logs)
+		assert.Empty(t, eventData.Hostname)
+		assert.Empty(t, eventData.TaskId)
+		assert.Empty(t, eventData.TaskPid)
 
-			So(eventsForHost, ShouldHaveLength, 6)
-			event := eventsForHost[5]
-			So(event.EventType, ShouldEqual, EventHostCreated)
+		event = eventsForHost[4]
+		assert.Equal(t, EventHostStatusChanged, event.EventType)
 
-			eventData, ok := event.Data.(*HostEventData)
-			So(ok, ShouldBeTrue)
-			So(eventData.OldStatus, ShouldBeBlank)
-			So(eventData.NewStatus, ShouldBeBlank)
-			So(eventData.Logs, ShouldBeBlank)
-			So(eventData.Hostname, ShouldBeBlank)
-			So(eventData.TaskId, ShouldBeBlank)
-			So(eventData.TaskPid, ShouldBeBlank)
+		eventData, ok = event.Data.(*HostEventData)
+		assert.True(t, ok)
+		assert.Equal(t, evergreen.HostRunning, eventData.OldStatus)
+		assert.Equal(t, evergreen.HostTerminated, eventData.NewStatus)
+		assert.Equal(t, "myLogs", eventData.Logs)
+		assert.Empty(t, eventData.Hostname)
+		assert.Empty(t, eventData.TaskId)
+		assert.Empty(t, eventData.TaskPid)
 
-			event = eventsForHost[4]
-			So(event.EventType, ShouldEqual, EventHostStatusChanged)
+		event = eventsForHost[3]
+		assert.Equal(t, EventHostDNSNameSet, event.EventType)
 
-			eventData, ok = event.Data.(*HostEventData)
-			So(ok, ShouldBeTrue)
-			So(eventData.OldStatus, ShouldEqual, evergreen.HostRunning)
-			So(eventData.NewStatus, ShouldEqual, evergreen.HostTerminated)
-			So(eventData.Logs, ShouldEqual, "myLogs")
-			So(eventData.Hostname, ShouldBeBlank)
-			So(eventData.TaskId, ShouldBeBlank)
-			So(eventData.TaskPid, ShouldBeBlank)
+		eventData, ok = event.Data.(*HostEventData)
+		assert.True(t, ok)
+		assert.Empty(t, eventData.OldStatus)
+		assert.Empty(t, eventData.NewStatus)
+		assert.Empty(t, eventData.Logs)
+		assert.Equal(t, hostname, eventData.Hostname)
+		assert.Empty(t, eventData.TaskId)
+		assert.Empty(t, eventData.TaskPid)
 
-			event = eventsForHost[3]
-			So(event.EventType, ShouldEqual, EventHostDNSNameSet)
+		event = eventsForHost[2]
+		assert.Equal(t, EventHostProvisioned, event.EventType)
 
-			eventData, ok = event.Data.(*HostEventData)
-			So(ok, ShouldBeTrue)
-			So(eventData.OldStatus, ShouldBeBlank)
-			So(eventData.NewStatus, ShouldBeBlank)
-			So(eventData.Logs, ShouldBeBlank)
-			So(eventData.Hostname, ShouldEqual, hostname)
-			So(eventData.TaskId, ShouldBeBlank)
-			So(eventData.TaskPid, ShouldBeBlank)
+		eventData, ok = event.Data.(*HostEventData)
+		assert.True(t, ok)
+		assert.Empty(t, eventData.OldStatus)
+		assert.Empty(t, eventData.NewStatus)
+		assert.Empty(t, eventData.Logs)
+		assert.Empty(t, eventData.Hostname)
+		assert.Empty(t, eventData.TaskId)
+		assert.Empty(t, eventData.TaskPid)
 
-			event = eventsForHost[2]
-			So(event.EventType, ShouldEqual, EventHostProvisioned)
+		event = eventsForHost[1]
+		assert.Equal(t, EventHostRunningTaskSet, event.EventType)
 
-			eventData, ok = event.Data.(*HostEventData)
-			So(ok, ShouldBeTrue)
-			So(eventData.OldStatus, ShouldBeBlank)
-			So(eventData.NewStatus, ShouldBeBlank)
-			So(eventData.Logs, ShouldBeBlank)
-			So(eventData.Hostname, ShouldBeBlank)
-			So(eventData.TaskId, ShouldBeBlank)
-			So(eventData.TaskPid, ShouldBeBlank)
+		eventData, ok = event.Data.(*HostEventData)
+		assert.True(t, ok)
+		assert.Empty(t, eventData.OldStatus)
+		assert.Empty(t, eventData.NewStatus)
+		assert.Empty(t, eventData.Logs)
+		assert.Empty(t, eventData.Hostname)
+		assert.Equal(t, taskId, eventData.TaskId)
+		assert.Empty(t, eventData.TaskPid)
 
-			event = eventsForHost[1]
-			So(event.EventType, ShouldEqual, EventHostRunningTaskSet)
+		event = eventsForHost[0]
+		assert.Equal(t, EventHostRunningTaskCleared, event.EventType)
 
-			eventData, ok = event.Data.(*HostEventData)
-			So(ok, ShouldBeTrue)
-			So(eventData.OldStatus, ShouldBeBlank)
-			So(eventData.NewStatus, ShouldBeBlank)
-			So(eventData.Logs, ShouldBeBlank)
-			So(eventData.Hostname, ShouldBeBlank)
-			So(eventData.TaskId, ShouldEqual, taskId)
-			So(eventData.TaskPid, ShouldBeBlank)
-
-			event = eventsForHost[0]
-			So(event.EventType, ShouldEqual, EventHostRunningTaskCleared)
-
-			eventData, ok = event.Data.(*HostEventData)
-			So(ok, ShouldBeTrue)
-			So(eventData.OldStatus, ShouldBeBlank)
-			So(eventData.NewStatus, ShouldBeBlank)
-			So(eventData.Logs, ShouldBeBlank)
-			So(eventData.Hostname, ShouldBeBlank)
-			So(eventData.TaskId, ShouldEqual, taskId)
-			So(eventData.TaskPid, ShouldBeBlank)
-		})
+		eventData, ok = event.Data.(*HostEventData)
+		assert.True(t, ok)
+		assert.Empty(t, eventData.OldStatus)
+		assert.Empty(t, eventData.NewStatus)
+		assert.Empty(t, eventData.Logs)
+		assert.Empty(t, eventData.Hostname)
+		assert.Equal(t, taskId, eventData.TaskId)
+		assert.Empty(t, eventData.TaskPid)
 	})
 }

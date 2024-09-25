@@ -63,7 +63,6 @@ func PopulateActivationJobs(part int) amboy.QueueOperation {
 }
 
 func hostMonitoringJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	const reachabilityCheckInterval = 10 * time.Minute
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting service flags")
@@ -78,6 +77,7 @@ func hostMonitoringJobs(ctx context.Context, env evergreen.Environment, ts time.
 		return nil, nil
 	}
 
+	const reachabilityCheckInterval = 10 * time.Minute
 	threshold := time.Now().Add(-reachabilityCheckInterval)
 	hosts, err := host.Find(ctx, host.ByNotMonitoredSince(threshold))
 	if err != nil {
@@ -92,7 +92,7 @@ func hostMonitoringJobs(ctx context.Context, env evergreen.Environment, ts time.
 
 	jobs := []amboy.Job{NewStrandedTaskCleanupJob(ts.Format(TSFormat))}
 	for _, host := range hosts {
-		jobs = append(jobs, NewHostMonitorExternalStateJob(env, &host, ts.Format(TSFormat)))
+		jobs = append(jobs, NewHostMonitoringCheckJob(env, &host, ts.Format(TSFormat)))
 	}
 	return jobs, nil
 }

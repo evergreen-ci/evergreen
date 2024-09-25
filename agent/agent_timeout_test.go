@@ -37,11 +37,12 @@ func TestTimeoutSuite(t *testing.T) {
 func (s *TimeoutSuite) SetupTest() {
 	s.a = &Agent{
 		opts: Options{
-			HostID:     "host",
-			HostSecret: "secret",
-			StatusPort: 2286,
-			LogOutput:  globals.LogOutputStdout,
-			LogPrefix:  "agent",
+			HostID:        "host",
+			HostSecret:    "secret",
+			StatusPort:    2286,
+			LogOutput:     globals.LogOutputStdout,
+			LogPrefix:     "agent",
+			HomeDirectory: s.tmpDirName,
 		},
 		comm:   client.NewMock("url"),
 		tracer: otel.GetTracerProvider().Tracer("noop_tracer"),

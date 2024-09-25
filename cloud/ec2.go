@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -593,14 +594,22 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 	}
 
 	if noExpiration {
-		if err := h.MarkShouldNotExpire(ctx, expireOnValue); err != nil {
+		var userTimeZone string
+		u, err := user.FindOneById(h.StartedBy)
+		if err != nil {
+			return errors.Wrapf(err, "finding owner '%s' for host '%s'", h.StartedBy, h.Id)
+		}
+		if u != nil {
+			userTimeZone = u.Settings.Timezone
+		}
+		if err := h.MarkShouldNotExpire(ctx, expireOnValue, userTimeZone); err != nil {
 			return errors.Wrapf(err, "marking host should not expire in DB for host '%s'", h.Id)
 		}
 
-		// Use GetInstanceStatus to add/update the cached host data (including
-		// unexpirable host information like persistent DNS names and IP
-		// addrseses) if the unexpirable host is running.
-		_, err := m.GetInstanceState(ctx, h)
+		// Getting the instance status adds/updates the cached host data
+		// (including unexpirable host information like persistent DNS names and
+		// IP addresses) if the unexpirable host is running.
+		_, err = m.GetInstanceState(ctx, h)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "could not get instance info to assign persistent DNS name",
 			"dashboard":  "evergreen sleep schedule health",

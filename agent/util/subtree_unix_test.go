@@ -5,93 +5,45 @@ package util
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"os/exec"
-	"path/filepath"
-	"strconv"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetPIDsToKill(t *testing.T) {
-	const timeoutSecs = 10
-	ctx, cancel := context.WithTimeout(context.Background(), timeoutSecs*time.Second)
-	defer cancel()
-
-	agentPID, ok := os.LookupEnv(MarkerAgentPID)
-	if ok {
-		// For CI testing, temporarily simulate this process as running outside
-		// of the agent so that getPIDsToKill performs its special checks for
-		// agent-external processes.
-		os.Unsetenv(MarkerAgentPID)
-		defer os.Setenv(MarkerAgentPID, agentPID)
-	}
-
-	inEvergreenCmd := exec.CommandContext(ctx, "sleep", strconv.Itoa(timeoutSecs))
-	inEvergreenCmd.Env = append(inEvergreenCmd.Env, fmt.Sprintf("%s=true", MarkerInEvergreen))
-	require.NoError(t, inEvergreenCmd.Start())
-	inEvergreenPID := inEvergreenCmd.Process.Pid
-
-	fullSleepPath, err := exec.LookPath("sleep")
-	require.NoError(t, err)
-
-	inWorkingDirCmd := exec.CommandContext(ctx, fullSleepPath, strconv.Itoa(timeoutSecs))
-	require.NoError(t, inWorkingDirCmd.Start())
-	inWorkingDirPID := inWorkingDirCmd.Process.Pid
-
-	assert.Eventually(t, func() bool {
-		// Since the processes run in the background, we have to poll them until
-		// they actually start, at which point they should appear in the listed
-		// PIDs.
-		pids, err := getPIDsToKill(ctx, "", filepath.Dir(fullSleepPath))
-		require.NoError(t, err)
-
-		var (
-			foundInEvergreenPID  bool
-			foundInWorkingDirPID bool
-		)
-		for _, pid := range pids {
-			if pid == inEvergreenPID {
-				foundInEvergreenPID = true
-			}
-			if pid == inWorkingDirPID {
-				foundInWorkingDirPID = true
-			}
-			if foundInEvergreenPID && foundInWorkingDirPID {
-				break
-			}
-		}
-		return foundInEvergreenPID && foundInWorkingDirPID
-	}, timeoutSecs*time.Second, 100*time.Millisecond, "in Evergreen process (pid %d) and in working directory process (pid %d) both should have eventually appeared in the listed PID")
-}
-
 func TestKillSpawnedProcs(t *testing.T) {
 	for testName, test := range map[string]func(ctx context.Context, t *testing.T){
-		"ErrorsWithContextTimeout": func(ctx context.Context, t *testing.T) {
-			expiredContext, cancel := context.WithTimeout(ctx, -time.Second)
-			defer cancel()
+		"KillsTrackedProcess": func(ctx context.Context, t *testing.T) {
+			registry.popProcessList()
+			defer registry.popProcessList()
 
-			err := KillSpawnedProcs(expiredContext, "", "", grip.GetDefaultJournaler())
-			assert.Error(t, err)
-			assert.Equal(t, ErrPSTimeout, errors.Cause(err))
-		},
-		"ErrorsWithContextCancelled": func(ctx context.Context, t *testing.T) {
-			cancelledContext, cancel := context.WithCancel(ctx)
-			cancel()
+			longProcess := exec.CommandContext(ctx, "sleep", "30")
+			longProcess.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+			require.NoError(t, longProcess.Start())
+			registry.trackProcess(longProcess.Process.Pid)
 
-			err := KillSpawnedProcs(cancelledContext, "", "", grip.GetDefaultJournaler())
-			assert.Error(t, err)
-			assert.NotEqual(t, ErrPSTimeout, errors.Cause(err))
-		},
-		"SucceedsWithNoContextError": func(ctx context.Context, t *testing.T) {
-			err := KillSpawnedProcs(ctx, "", "", grip.GetDefaultJournaler())
+			assert.NoError(t, KillSpawnedProcs(ctx, "", grip.GetDefaultJournaler()))
+			runningProcesses, err := psAllProcesses(ctx)
 			assert.NoError(t, err)
+			assert.NotContains(t, runningProcesses, longProcess.Process.Pid)
+		},
+		"KillsTrackedProcessDescendants": func(ctx context.Context, t *testing.T) {
+			registry.popProcessList()
+			defer registry.popProcessList()
+
+			longProcess := exec.CommandContext(ctx, "bash", "-c", "nohup sleep 30 > /dev/null 2>&1 &")
+			longProcess.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+			require.NoError(t, longProcess.Start())
+			registry.trackProcess(longProcess.Process.Pid)
+
+			assert.NoError(t, KillSpawnedProcs(ctx, "", grip.GetDefaultJournaler()))
+			psOutput, err := exec.CommandContext(ctx, "ps", "-A").CombinedOutput()
+			assert.NoError(t, err)
+			assert.NotContains(t, string(psOutput), "sleep 30")
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -131,27 +83,40 @@ func TestWaitForExit(t *testing.T) {
 	}
 }
 
-func TestParsePs(t *testing.T) {
-	cases := make(map[string][]process)
-	cases[`
-    1 /sbin/init
-   1267 /lib/systemd/systemd --user LANG=C.UTF-8
-`] = []process{
-		{pid: 1, command: "/sbin/init"},
-		{pid: 1267, command: "/lib/systemd/systemd", env: []string{"--user", "LANG=C.UTF-8"}},
-	}
+func TestPsAllProcesses(t *testing.T) {
+	for testName, test := range map[string]func(ctx context.Context, t *testing.T){
+		"RunningProcess": func(ctx context.Context, t *testing.T) {
+			cmd := exec.CommandContext(ctx, "sleep", "30")
+			require.NoError(t, cmd.Start())
+			processes, err := psAllProcesses(ctx)
+			assert.NoError(t, err)
+			assert.Contains(t, processes, cmd.Process.Pid)
+		},
+		"ZombieProcess": func(ctx context.Context, t *testing.T) {
+			cmd := exec.CommandContext(ctx, "sleep", "30")
+			require.NoError(t, cmd.Start())
+			assert.NoError(t, cmd.Process.Kill())
+			time.Sleep(time.Second)
+			processes, err := psAllProcesses(ctx)
+			assert.NoError(t, err)
+			assert.NotContains(t, processes, cmd.Process.Pid)
+		},
+		"KilledProcess": func(ctx context.Context, t *testing.T) {
+			cmd := exec.CommandContext(ctx, "sleep", "30")
+			require.NoError(t, cmd.Start())
+			assert.NoError(t, cmd.Process.Kill())
+			_, err := cmd.Process.Wait()
+			assert.NoError(t, err)
+			processes, err := psAllProcesses(ctx)
+			assert.NoError(t, err)
+			assert.NotContains(t, processes, cmd.Process.Pid)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
 
-	cases[""] = []process{}
-
-	cases[`
-    NaN /sbin/init
-`] = []process{}
-
-	cases["1 /sbin/init"] = []process{{pid: 1, command: "/sbin/init"}}
-
-	cases["1"] = []process{}
-
-	for psOutput, processes := range cases {
-		assert.Equal(t, processes, parsePs(psOutput))
+			test(ctx, t)
+		})
 	}
 }
