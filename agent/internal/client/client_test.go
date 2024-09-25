@@ -60,9 +60,12 @@ func TestLoggerProducerRedactorOptions(t *testing.T) {
 	}
 
 	t.Run("LeaksWithoutRedactor", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		task := createTask()
 		comm := newBaseCommunicator("whatever", map[string]string{})
-		logger, err := comm.GetLoggerProducer(context.Background(), task, nil)
+		logger, err := comm.GetLoggerProducer(ctx, task, nil)
 		require.NoError(t, err)
 
 		logger.Task().Alert("Fluff 1")
@@ -83,10 +86,13 @@ func TestLoggerProducerRedactorOptions(t *testing.T) {
 	})
 
 	t.Run("RedactsWhenAdded", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		task := createTask()
 		comm := newBaseCommunicator("whatever", map[string]string{})
 		e := agentutil.NewDynamicExpansions(util.Expansions{})
-		logger, err := comm.GetLoggerProducer(context.Background(), task, &LoggerConfig{
+		logger, err := comm.GetLoggerProducer(ctx, task, &LoggerConfig{
 			RedactorOpts: redactor.RedactionOptions{
 				Expansions: e,
 			},
