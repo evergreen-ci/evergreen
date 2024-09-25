@@ -620,11 +620,6 @@ func (c *PluginCommandConf) unmarshalParams() error {
 	return nil
 }
 
-type ArtifactInstructions struct {
-	Include      []string `yaml:"include,omitempty" bson:"include"`
-	ExcludeFiles []string `yaml:"excludefiles,omitempty" bson:"exclude_files"`
-}
-
 type YAMLCommandSet struct {
 	SingleCommand *PluginCommandConf  `yaml:"single_command,omitempty" bson:"single_command,omitempty"`
 	MultiCommand  []PluginCommandConf `yaml:"multi_command,omitempty" bson:"multi_command,omitempty"`

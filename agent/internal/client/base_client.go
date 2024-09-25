@@ -388,7 +388,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, confi
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
 	var senders []send.Sender
 	if config.SendToGlobalSender {
-		senders = append(senders, grip.GetSender())
+		senders = append(senders, redactor.NewRedactingSender(grip.GetSender(), config.RedactorOpts))
 	}
 
 	var sender send.Sender
