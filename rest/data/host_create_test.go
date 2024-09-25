@@ -108,7 +108,7 @@ func TestCreateHostsFromTask(t *testing.T) {
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
-	testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
+	testutil.ConfigureIntegrationTest(t, env.Settings())
 
 	var err error
 	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
@@ -428,7 +428,7 @@ func TestCreateContainerFromTask(t *testing.T) {
 
 	env := &mock.Environment{}
 	require.NoError(env.Configure(ctx))
-	testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
+	testutil.ConfigureIntegrationTest(t, env.Settings())
 
 	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	env.EvergreenSettings.ContainerPools = evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{pool}}

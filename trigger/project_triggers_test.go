@@ -99,7 +99,7 @@ func TestMakeDownstreamConfigFromFile(t *testing.T) {
 	assert.NoError(db.ClearCollections(evergreen.ConfigCollection))
 
 	testConfig := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestMakeDownstreamConfigFromFile")
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	assert.NoError(testConfig.Set(ctx))
 
 	ref := model.ProjectRef{

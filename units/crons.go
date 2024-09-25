@@ -288,7 +288,7 @@ func containerStateJobs(ctx context.Context, env evergreen.Environment, ts time.
 	var jobs []amboy.Job
 	// Create a job to check container state consistency for each parent.
 	for _, p := range parents {
-		jobs = append(jobs, NewHostMonitorContainerStateJob(env, &p, evergreen.ProviderNameDocker, ts.Format(TSFormat)))
+		jobs = append(jobs, NewHostMonitorContainerStateJob(&p, evergreen.ProviderNameDocker, ts.Format(TSFormat)))
 	}
 	return jobs, nil
 }
@@ -638,7 +638,7 @@ func hostCreationJobs(ctx context.Context, env evergreen.Environment, ts time.Ti
 
 	var jobs []amboy.Job
 	for _, h := range hosts {
-		jobs = append(jobs, NewHostCreateJob(env, h, ts.Format(TSFormat), 0, false))
+		jobs = append(jobs, NewHostCreateJob(env, h, ts.Format(TSFormat), false))
 	}
 	return jobs, nil
 }

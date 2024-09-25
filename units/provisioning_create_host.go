@@ -55,7 +55,7 @@ func makeCreateHostJob() *createHostJob {
 	return j
 }
 
-func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, currentAttempt int, buildImageStarted bool) amboy.Job {
+func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, buildImageStarted bool) amboy.Job {
 	j := makeCreateHostJob()
 	j.host = &h
 	j.HostID = h.Id
@@ -509,7 +509,7 @@ func EnqueueHostCreateJobs(ctx context.Context, env evergreen.Environment, hostI
 	catcher := grip.NewBasicCatcher()
 	ts := utility.RoundPartOfHour(0).Format(TSFormat)
 	for _, intent := range hostIntents {
-		catcher.Add(errors.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewHostCreateJob(env, intent, ts, 0, false)), "enqueueing host create job for '%s'", intent.Id))
+		catcher.Add(errors.Wrapf(amboy.EnqueueUniqueJob(ctx, queue, NewHostCreateJob(env, intent, ts, false)), "enqueueing host create job for '%s'", intent.Id))
 	}
 
 	return catcher.Resolve()

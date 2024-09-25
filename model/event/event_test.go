@@ -41,7 +41,7 @@ func (s *eventSuite) TestMarshallAndUnarshallingStructsHaveSameTags() {
 // resource_type in data should be copied to root document
 const expectedJSON = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
 
-func (s *eventSuite) checkRealData(e *EventLogEntry, loc *time.Location) {
+func (s *eventSuite) checkRealData(e *EventLogEntry) {
 	s.NotPanics(func() {
 		s.Equal("HOST_TASK_FINISHED", e.EventType)
 		s.Equal("macos.example.com", e.ResourceId)
@@ -79,7 +79,7 @@ func (s *eventSuite) TestWithRealData() {
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
-		s.checkRealData(&entries[0], loc)
+		s.checkRealData(&entries[0])
 		entries[0].Timestamp = entries[0].Timestamp.In(loc)
 		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
 		s.Equal("HOST", entries[0].ResourceType)
@@ -114,7 +114,7 @@ func (s *eventSuite) TestWithRealData() {
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
-		s.checkRealData(&entries[0], loc)
+		s.checkRealData(&entries[0])
 		entries[0].Timestamp = entries[0].Timestamp.In(loc)
 		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
 		s.Equal("5949645c9acd9604fdd202d9", entries[0].ID)

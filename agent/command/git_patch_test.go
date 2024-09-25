@@ -23,7 +23,7 @@ import (
 
 func TestPatchPluginAPI(t *testing.T) {
 	settings := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, settings, t.Name())
+	testutil.ConfigureIntegrationTest(t, settings)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
@@ -98,7 +98,7 @@ func TestPatchPlugin(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	settings := env.Settings()
 
-	testutil.ConfigureIntegrationTest(t, settings, t.Name())
+	testutil.ConfigureIntegrationTest(t, settings)
 	cwd := testutil.GetDirectoryOfFile()
 	jpm := env.JasperManager()
 

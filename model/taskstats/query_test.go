@@ -283,7 +283,7 @@ func (s *statsQuerySuite) TestGetTaskStatsOneDocument() {
 	docs, err := GetTaskStats(s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 1)
-	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, float64(10.5))
+	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 10, 5, 1, 1, 2, float64(10.5))
 }
 
 func (s *statsQuerySuite) TestGetTaskStatsTwoDocuments() {
@@ -295,8 +295,8 @@ func (s *statsQuerySuite) TestGetTaskStatsTwoDocuments() {
 	docs, err := GetTaskStats(s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 2)
-	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, float64(10.5))
-	s.checkTaskStats(docs[1], "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, float64(20))
+	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 10, 5, 1, 1, 2, float64(10.5))
+	s.checkTaskStats(docs[1], "task1", "v1", "d1", day2, 20, 7, 0, 0, 0, float64(20))
 }
 
 func (s *statsQuerySuite) TestGetTaskStatsFilterScope() {
@@ -315,8 +315,8 @@ func (s *statsQuerySuite) TestGetTaskStatsFilterScope() {
 	docs, err := GetTaskStats(s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 2)
-	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, float64(10.5))
-	s.checkTaskStats(docs[1], "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, float64(20))
+	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 10, 5, 1, 1, 2, float64(10.5))
+	s.checkTaskStats(docs[1], "task1", "v1", "d1", day2, 20, 7, 0, 0, 0, float64(20))
 }
 
 func (s *statsQuerySuite) TestGetTaskStatsSortOrder() {
@@ -330,16 +330,16 @@ func (s *statsQuerySuite) TestGetTaskStatsSortOrder() {
 	docs, err := GetTaskStats(s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 2)
-	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, float64(10.5))
-	s.checkTaskStats(docs[1], "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, float64(20))
+	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 10, 5, 1, 1, 2, float64(10.5))
+	s.checkTaskStats(docs[1], "task1", "v1", "d1", day2, 20, 7, 0, 0, 0, float64(20))
 
 	s.baseTaskFilter.Sort = SortLatestFirst
 
 	docs, err = GetTaskStats(s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 2)
-	s.checkTaskStats(docs[0], "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, float64(20))
-	s.checkTaskStats(docs[1], "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, float64(10.5))
+	s.checkTaskStats(docs[0], "task1", "v1", "d1", day2, 20, 7, 0, 0, 0, float64(20))
+	s.checkTaskStats(docs[1], "task1", "v1", "d1", day1, 10, 5, 1, 1, 2, float64(10.5))
 }
 
 func (s *statsQuerySuite) TestGetTaskStatsGroupNumDays() {
@@ -352,7 +352,7 @@ func (s *statsQuerySuite) TestGetTaskStatsGroupNumDays() {
 	docs, err := GetTaskStats(s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 1)
-	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 30, 12, 8, 1, 1, 2, float64(16.833333333333332))
+	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 30, 12, 1, 1, 2, float64(16.833333333333332))
 }
 
 func (s *statsQuerySuite) TestGetTaskStatsGroupByDistro() {
@@ -370,8 +370,8 @@ func (s *statsQuerySuite) TestGetTaskStatsGroupByDistro() {
 	docs, err := GetTaskStats(s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 2)
-	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 30, 12, 8, 1, 1, 2, float64(16.833333333333332))
-	s.checkTaskStats(docs[1], "task1", "v1", "d2", day1, 2, 3, 2, 1, 0, 0, float64(10))
+	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 30, 12, 1, 1, 2, float64(16.833333333333332))
+	s.checkTaskStats(docs[1], "task1", "v1", "d2", day1, 2, 3, 1, 0, 0, float64(10))
 }
 
 func (s *statsQuerySuite) TestGetTaskStatsGroupByVariant() {
@@ -391,8 +391,8 @@ func (s *statsQuerySuite) TestGetTaskStatsGroupByVariant() {
 	docs, err := GetTaskStats(s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 2)
-	s.checkTaskStats(docs[0], "task1", "v1", "", day1, 32, 15, 10, 2, 1, 2, float64(16.40625))
-	s.checkTaskStats(docs[1], "task1", "v2", "", day1, 2, 3, 2, 1, 0, 0, float64(10))
+	s.checkTaskStats(docs[0], "task1", "v1", "", day1, 32, 15, 2, 1, 2, float64(16.40625))
+	s.checkTaskStats(docs[1], "task1", "v2", "", day1, 2, 3, 1, 0, 0, float64(10))
 }
 
 func (s *statsQuerySuite) TestGetTaskStatsGroupByTask() {
@@ -414,8 +414,8 @@ func (s *statsQuerySuite) TestGetTaskStatsGroupByTask() {
 	docs, err := GetTaskStats(s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 2)
-	s.checkTaskStats(docs[0], "task1", "", "", day1, 34, 18, 12, 3, 1, 2, float64(16.029411764705884))
-	s.checkTaskStats(docs[1], "task2", "", "", day1, 2, 3, 2, 1, 0, 0, float64(10))
+	s.checkTaskStats(docs[0], "task1", "", "", day1, 34, 18, 3, 1, 2, float64(16.029411764705884))
+	s.checkTaskStats(docs[1], "task2", "", "", day1, 2, 3, 1, 0, 0, float64(10))
 }
 
 func (s *statsQuerySuite) TestGetTaskStatsPagination() {
@@ -437,27 +437,27 @@ func (s *statsQuerySuite) TestGetTaskStatsPagination() {
 	require.NoError(err)
 	require.Len(docs, 3)
 	// expecting the results ordered by date/variant/task/test/distro
-	s.checkTaskStats(docs[0], "task4", "v1", "d2", day1, 1, 1, 1, 0, 0, 0, float64(10))
-	s.checkTaskStats(docs[1], "task5", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, float64(10))
-	s.checkTaskStats(docs[2], "task6", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[0], "task4", "v1", "d2", day1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[1], "task5", "v1", "d1", day1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[2], "task6", "v1", "d1", day1, 1, 1, 0, 0, 0, float64(10))
 
 	s.baseTaskFilter.StartAt = &StartAt{Date: day1, Task: "task6", BuildVariant: "v1", Distro: "d1"}
 
 	docs, err = GetTaskStats(s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 3)
-	s.checkTaskStats(docs[0], "task6", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, float64(10))
-	s.checkTaskStats(docs[1], "task1", "v2", "d2", day1, 1, 1, 1, 0, 0, 0, float64(10))
-	s.checkTaskStats(docs[2], "task2", "v2", "d1", day1, 1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[0], "task6", "v1", "d1", day1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[1], "task1", "v2", "d2", day1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[2], "task2", "v2", "d1", day1, 1, 1, 0, 0, 0, float64(10))
 
 	s.baseTaskFilter.StartAt = &StartAt{Date: day1, Task: "task2", BuildVariant: "v2", Distro: "d1"}
 
 	docs, err = GetTaskStats(s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 3)
-	s.checkTaskStats(docs[0], "task2", "v2", "d1", day1, 1, 1, 1, 0, 0, 0, float64(10))
-	s.checkTaskStats(docs[1], "task3", "v2", "d1", day1, 1, 1, 1, 0, 0, 0, float64(10))
-	s.checkTaskStats(docs[2], "task1", "v1", "d1", day2, 1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[0], "task2", "v2", "d1", day1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[1], "task3", "v2", "d1", day1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[2], "task1", "v1", "d1", day2, 1, 1, 0, 0, 0, float64(10))
 }
 
 func (s *statsQuerySuite) TestGetTaskStatsPaginationGroupByTask() {
@@ -478,18 +478,18 @@ func (s *statsQuerySuite) TestGetTaskStatsPaginationGroupByTask() {
 	docs, err := GetTaskStats(s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 3)
-	s.checkTaskStats(docs[0], "task1", "", "", day1, 1, 1, 1, 0, 0, 0, float64(10))
-	s.checkTaskStats(docs[1], "task2", "", "", day1, 1, 1, 1, 0, 0, 0, float64(10))
-	s.checkTaskStats(docs[2], "task3", "", "", day1, 1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[0], "task1", "", "", day1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[1], "task2", "", "", day1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[2], "task3", "", "", day1, 1, 1, 0, 0, 0, float64(10))
 
 	s.baseTaskFilter.StartAt = &StartAt{Date: day1, Task: "task3"}
 
 	docs, err = GetTaskStats(s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 3)
-	s.checkTaskStats(docs[0], "task3", "", "", day1, 1, 1, 1, 0, 0, 0, float64(10))
-	s.checkTaskStats(docs[1], "task4", "", "", day1, 1, 1, 1, 0, 0, 0, float64(10))
-	s.checkTaskStats(docs[2], "task5", "", "", day1, 1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[0], "task3", "", "", day1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[1], "task4", "", "", day1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[2], "task5", "", "", day1, 1, 1, 0, 0, 0, float64(10))
 }
 
 func (s *statsQuerySuite) TestGetTaskStatsPaginationGroupNumDays() {
@@ -512,27 +512,27 @@ func (s *statsQuerySuite) TestGetTaskStatsPaginationGroupNumDays() {
 	docs, err := GetTaskStats(s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 3)
-	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 2, 2, 2, 0, 0, 0, float64(10))
-	s.checkTaskStats(docs[1], "task2", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, float64(10))
-	s.checkTaskStats(docs[2], "task3", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 2, 2, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[1], "task2", "v1", "d1", day1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[2], "task3", "v1", "d1", day1, 1, 1, 0, 0, 0, float64(10))
 
 	s.baseTaskFilter.StartAt = &StartAt{Date: day1, Task: "task3", BuildVariant: "v1", Distro: "d1"}
 	docs, err = GetTaskStats(s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 3)
-	s.checkTaskStats(docs[0], "task3", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, float64(10))
-	s.checkTaskStats(docs[1], "task4", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, float64(10))
-	s.checkTaskStats(docs[2], "task1", "v1", "d1", day8, 1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[0], "task3", "v1", "d1", day1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[1], "task4", "v1", "d1", day1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[2], "task1", "v1", "d1", day8, 1, 1, 0, 0, 0, float64(10))
 
 	s.baseTaskFilter.StartAt = &StartAt{Date: day8, Task: "task1", BuildVariant: "v1", Distro: "d1"}
 	docs, err = GetTaskStats(s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 2)
-	s.checkTaskStats(docs[0], "task1", "v1", "d1", day8, 1, 1, 1, 0, 0, 0, float64(10))
-	s.checkTaskStats(docs[1], "task2", "v1", "d1", day8, 1, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[0], "task1", "v1", "d1", day8, 1, 1, 0, 0, 0, float64(10))
+	s.checkTaskStats(docs[1], "task2", "v1", "d1", day8, 1, 1, 0, 0, 0, float64(10))
 }
 
-func (s *statsQuerySuite) checkTaskStats(stats TaskStats, task, variant, distro string, date time.Time, numSuccess, numFailed, numTimeout, numTestFailed, numSystemFailed, numSetupFailed int, avgDuration float64) {
+func (s *statsQuerySuite) checkTaskStats(stats TaskStats, task, variant, distro string, date time.Time, numSuccess, numFailed, numTestFailed, numSystemFailed, numSetupFailed int, avgDuration float64) {
 	require := s.Require()
 	require.Equal(task, stats.TaskName)
 	require.Equal(variant, stats.BuildVariant)
