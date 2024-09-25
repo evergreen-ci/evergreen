@@ -357,10 +357,8 @@ func (s *GitGetProjectSuite) TestTokenIsRedactedWhenGenerated() {
 
 	findTokenInRedacted := func() bool {
 		for _, redacted := range conf.NewExpansions.GetRedacted() {
-			if redacted.Key == generatedTokenKey {
-				if redacted.Value == token {
-					return true
-				}
+			if redacted.Key == generatedTokenKey && redacted.Value == token {
+				return true
 			}
 		}
 		return false
