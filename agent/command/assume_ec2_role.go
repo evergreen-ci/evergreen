@@ -97,7 +97,7 @@ func (r *ec2AssumeRole) execute(ctx context.Context, comm client.Communicator, l
 	conf.NewExpansions.PutAndRedact(globals.AWSAccessKeyId, creds.AccessKeyID)
 	conf.NewExpansions.PutAndRedact(globals.AWSSecretAccessKey, creds.SecretAccessKey)
 	conf.NewExpansions.PutAndRedact(globals.AWSSessionToken, creds.SessionToken)
-	conf.NewExpansions.PutAndRedact(globals.AWSRoleExpiration, creds.Expiration)
+	conf.NewExpansions.Put(globals.AWSRoleExpiration, creds.Expiration)
 
 	return nil
 }

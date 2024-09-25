@@ -104,7 +104,8 @@ func TestEC2AssumeRoleExecute(t *testing.T) {
 				assert.True(t, hasAccessKey)
 				assert.True(t, hasSecretAccessKey)
 				assert.True(t, hasSessionToken)
-				assert.True(t, hasExpiration)
+				// The expiration should not be redacted.
+				assert.False(t, hasExpiration)
 			})
 		},
 	} {
