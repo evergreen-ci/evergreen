@@ -280,7 +280,7 @@ func TestBatchTimeForTasks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	assert.NoError(t, db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection,
-		build.Collection, task.Collection, model.ProjectConfigCollection, model.ProjectRefCollection), ShouldBeNil)
+		build.Collection, task.Collection, model.ProjectConfigCollection, model.ProjectRefCollection))
 
 	simpleYml := `
 buildvariants:
@@ -387,10 +387,12 @@ tasks:
 
 	build1, err := build.FindOneId(bv.BuildId)
 	assert.NoError(t, err)
+	require.NotZero(t, build1)
 
 	// neither batchtime task nor disabled task should be activated
 	tasks, err := task.Find(task.ByBuildId(build1.Id))
 	assert.NoError(t, err)
+	require.NotEmpty(t, tasks)
 	assert.Len(t, tasks, 3)
 	for _, tsk := range tasks {
 		if tsk.DisplayName == "t1" {
@@ -812,6 +814,8 @@ type CreateVersionFromConfigSuite struct {
 	suite.Suite
 }
 
+// kim: TODO: add test for periodic build with patch_optional dep (i.e. has
+// alias and patch_optional dep that is not selected by alias).
 func TestCreateVersionFromConfigSuite(t *testing.T) {
 	suite.Run(t, new(CreateVersionFromConfigSuite))
 }

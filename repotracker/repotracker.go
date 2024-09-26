@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/utility"
 	"github.com/jpillora/backoff"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -812,16 +813,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	if metadata.SourceVersion != nil {
 		sourceRev = metadata.SourceVersion.Revision
 	}
-	// kim: NOTE: this makes task IDs even for tasks that might not be
-	// scheduled, like ones that aren't scheduled and are patch_optional.
-	// kim: NOTE: this is done differently from patches (which use
-	// NewTaskIdConfig on the patch's tasks). This will include a task even if
-	// it might not be scheduled. In that case, we should only create task IDs
-	// for tasks that we plan to schedule, and omit tasks that definitely won't
-	// be scheduled.
-	// kim: TODO: try moving this initialization below the logic to include
-	// dependencies, then omit task IDs for tasks that won't be scheduled.
-	taskIds := model.NewTaskIdConfigForRepotrackerVersion(projectInfo.Project, v, sourceRev, metadata.TriggerDefinitionID)
 
 	// create all builds for the version
 	buildsToCreate := []interface{}{}
@@ -886,6 +877,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	}))
 	batchTimeCatcher := grip.NewBasicCatcher()
 	debuggingData := map[string]string{}
+
 	var githubCheckAliases model.ProjectAliases
 	if v.Requester == evergreen.RepotrackerVersionRequester && projectInfo.Ref.IsGithubChecksEnabled() {
 		githubCheckAliases, err = model.FindAliasInProjectRepoOrConfig(v.Identifier, evergreen.GithubChecksAlias)
@@ -895,8 +887,25 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"version": v.Id,
 		}))
 	}
+
+	// kim: NOTE: this makes task IDs even for tasks that might not be
+	// scheduled, like ones that aren't scheduled and are patch_optional.
+	// kim: NOTE: this is done differently from patches (which use
+	// NewTaskIdConfig on the patch's tasks). This will include a task even if
+	// it might not be scheduled. In that case, we should only create task IDs
+	// for tasks that we plan to schedule, and omit tasks that definitely won't
+	// be scheduled.
+	// kim: TODO: try moving this initialization below the logic to include
+	// dependencies, then omit task IDs for tasks that won't be scheduled.
+	// kim: NOTE: pairsToCreate is only populated if using an alias. If
+	// everything is being created (e.g. for a commit, all tasks are created
+	// immediately, but some can be deactivated with activate: false), then
+	// create all task IDs.
+	taskIds := model.NewTaskIdConfigForRepotrackerVersion(projectInfo.Project, v, pairsToCreate, sourceRev, metadata.TriggerDefinitionID)
+
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
+		pp.Println("task names to create for BV:", buildvariant.Name, taskNames)
 		var aliasesMatchingVariant model.ProjectAliases
 		aliasesMatchingVariant, err = githubCheckAliases.AliasesMatchingVariant(buildvariant.Name, buildvariant.Tags)
 		grip.Error(message.WrapError(err, message.Fields{

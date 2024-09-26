@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -682,6 +683,8 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 	// If tasks are passed in, then use those, otherwise use the default set.
 	tasksToCreate := []BuildVariantTaskUnit{}
 
+	// kim: NOTE: createAll is true for commits, which have an empty
+	// pairsToCreate since it's not filtering any tasks.
 	createAll := false
 	if len(creationInfo.TaskNames) == 0 && len(creationInfo.DisplayNames) == 0 {
 		createAll = true
@@ -742,6 +745,9 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 	taskMap := make(map[string]*task.Task)
 	for _, t := range tasksToCreate {
 		id := execTable.GetId(creationInfo.Build.BuildVariant, t.Name)
+		if id == "" {
+			pp.Println("Missing task ID for task about to be created:", creationInfo.Build.BuildVariant, t.Name)
+		}
 		newTask, err := createOneTask(ctx, id, creationInfo, t)
 		if err != nil {
 			return nil, errors.Wrapf(err, "creating task '%s'", id)

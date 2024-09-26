@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -846,11 +847,19 @@ func (t TaskIdConfig) Length() int {
 }
 
 // NewTaskIdConfigForRepotrackerVersion creates a special TaskIdTable for a
-// repotracker version.
-func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, sourceRev, defID string) TaskIdConfig {
+// repotracker version. If pairsToCreate is not empty, that means only some of
+// the tasks will be created for this version so only create task IDs for those
+// tasks that actually will be created; otherwise, it will create task IDs for
+// all possible tasks in the version.
+// kim: TODO: add test to verify that pairsToCreate filters down the task IDs
+// generated.
+func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, pairsToCreate TVPairSet, sourceRev, defID string) TaskIdConfig {
 	// init the variant map
 	execTable := TaskIdTable{}
 	displayTable := TaskIdTable{}
+
+	isCreatingAllTasks := len(pairsToCreate) > 0
+	pp.Println("BVT pairs to be created:", pairsToCreate)
 
 	sort.Stable(p.BuildVariants)
 
@@ -859,6 +868,7 @@ func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, sourceRev, def
 		projectIdentifier = p.Identifier
 	}
 	for _, bv := range p.BuildVariants {
+		taskNamesInBV := pairsToCreate.TaskNames(bv.Name)
 		rev := v.Revision
 		if evergreen.IsPatchRequester(v.Requester) {
 			rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
@@ -876,10 +886,20 @@ func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, sourceRev, def
 			}
 			if tg := p.FindTaskGroup(t.Name); tg != nil {
 				for _, groupTask := range tg.Tasks {
+					if !isCreatingAllTasks && !utility.StringSliceContains(taskNamesInBV, groupTask) {
+						// kim: TODO: double-check if pairsToCreate is tasks or
+						// potentially can be task groups as well.
+						pp.Println("skipping creating task ID for task group task", groupTask)
+						continue
+					}
 					taskId := generateId(groupTask, projectIdentifier, &bv, rev, v)
 					execTable[TVPair{bv.Name, groupTask}] = util.CleanName(taskId)
 				}
 			} else {
+				if !isCreatingAllTasks && !utility.StringSliceContains(taskNamesInBV, t.Name) {
+					pp.Println("skipping creating task ID for task", t.Name)
+					continue
+				}
 				// create a unique Id for each task
 				taskId := generateId(t.Name, projectIdentifier, &bv, rev, v)
 				execTable[TVPair{bv.Name, t.Name}] = util.CleanName(taskId)

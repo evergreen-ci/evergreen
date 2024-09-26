@@ -1020,7 +1020,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		project, err := TranslateProject(parserProject)
 		So(err, ShouldBeNil)
 		So(project, ShouldNotBeNil)
-		table := NewTaskIdConfigForRepotrackerVersion(project, v, "", "")
+		table := NewTaskIdConfigForRepotrackerVersion(project, v, TVPairSet{}, "", "")
 		tt := table.ExecutionTasks
 		dt := table.DisplayTasks
 
@@ -1724,7 +1724,7 @@ func TestCreateTaskGroup(t *testing.T) {
 		Id:         "projectId",
 		Identifier: projectIdentifier,
 	}
-	table := NewTaskIdConfigForRepotrackerVersion(proj, v, "", "")
+	table := NewTaskIdConfigForRepotrackerVersion(proj, v, TVPairSet{}, "", "")
 
 	creationInfo := TaskCreationInfo{
 		Project:          proj,
