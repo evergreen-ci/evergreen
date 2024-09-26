@@ -858,7 +858,7 @@ func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, pairsToCreate 
 	execTable := TaskIdTable{}
 	displayTable := TaskIdTable{}
 
-	isCreatingAllTasks := len(pairsToCreate) > 0
+	isCreatingSubsetOfTasks := len(pairsToCreate) > 0
 	pp.Println("BVT pairs to be created:", pairsToCreate)
 
 	sort.Stable(p.BuildVariants)
@@ -886,7 +886,7 @@ func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, pairsToCreate 
 			}
 			if tg := p.FindTaskGroup(t.Name); tg != nil {
 				for _, groupTask := range tg.Tasks {
-					if !isCreatingAllTasks && !utility.StringSliceContains(taskNamesInBV, groupTask) {
+					if isCreatingSubsetOfTasks && !utility.StringSliceContains(taskNamesInBV, groupTask) {
 						// kim: TODO: double-check if pairsToCreate is tasks or
 						// potentially can be task groups as well.
 						pp.Println("skipping creating task ID for task group task", groupTask)
@@ -896,7 +896,7 @@ func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, pairsToCreate 
 					execTable[TVPair{bv.Name, groupTask}] = util.CleanName(taskId)
 				}
 			} else {
-				if !isCreatingAllTasks && !utility.StringSliceContains(taskNamesInBV, t.Name) {
+				if isCreatingSubsetOfTasks && !utility.StringSliceContains(taskNamesInBV, t.Name) {
 					pp.Println("skipping creating task ID for task", t.Name)
 					continue
 				}

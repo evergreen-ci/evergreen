@@ -1249,6 +1249,127 @@ tasks:
 	s.Len(dbTasks, 2)
 }
 
+func (s *CreateVersionFromConfigSuite) TestWithAliasAndPatchOptionalDependencyDoesNotCreateDependentTaskAutomatically() {
+	configYml := `
+buildvariants:
+- name: bv1
+  display_name: bv_display
+  run_on: d
+  tasks:
+  - name: task1
+  - name: task2
+tasks:
+- name: task1
+  depends_on:
+  - name: task2
+    patch_optional: true
+- name: task2
+`
+	p := &model.Project{}
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
+	s.NoError(err)
+
+	alias := model.ProjectAlias{
+		Alias:     "task1_alias",
+		ProjectID: s.ref.Id,
+		Task:      "task1",
+		Variant:   ".*",
+	}
+	s.NoError(alias.Upsert())
+
+	projectInfo := &model.ProjectInfo{
+		Ref:                 s.ref,
+		IntermediateProject: pp,
+		Project:             p,
+	}
+	metadata := model.VersionMetadata{
+		Revision: *s.rev,
+		Alias:    alias.Alias,
+	}
+	v, err := CreateVersionFromConfig(s.ctx, projectInfo, metadata, false, nil)
+	s.NoError(err)
+	s.Require().NotNil(v)
+	s.Len(v.Errors, 0)
+
+	tasks, err := task.Find(task.ByVersion(v.Id))
+	s.NoError(err)
+	s.Require().Len(tasks, 1)
+	s.Equal("task1", tasks[0].DisplayName, "should create task matching alias")
+	s.Equal("bv1", tasks[0].BuildVariant, "should create task matching alias in build variant")
+	s.Empty(tasks[0].DependsOn, "should not automatically create patch_optional dependency since the task is not created")
+}
+
+func (s *CreateVersionFromConfigSuite) TestWithAliasAndPatchOptionalDependencyCreatesDependencyIfDependentTaskIsCreated() {
+	configYml := `
+buildvariants:
+- name: bv1
+  display_name: bv_display
+  run_on: d
+  tasks:
+  - name: task1
+  - name: task2
+  - name: task3
+tasks:
+- name: task1
+  depends_on:
+  - name: task2
+    patch_optional: true
+- name: task2
+- name: task3
+`
+	p := &model.Project{}
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
+	s.NoError(err)
+
+	alias := model.ProjectAlias{
+		Alias:     "task_alias",
+		ProjectID: s.ref.Id,
+		Task:      "(task1)|(task2)",
+		Variant:   ".*",
+	}
+	s.NoError(alias.Upsert())
+
+	projectInfo := &model.ProjectInfo{
+		Ref:                 s.ref,
+		IntermediateProject: pp,
+		Project:             p,
+	}
+	metadata := model.VersionMetadata{
+		Revision: *s.rev,
+		Alias:    alias.Alias,
+	}
+	v, err := CreateVersionFromConfig(s.ctx, projectInfo, metadata, false, nil)
+	s.NoError(err)
+	s.Require().NotNil(v)
+	s.Len(v.Errors, 0)
+
+	tasks, err := task.Find(task.ByVersion(v.Id))
+	s.NoError(err)
+	s.Require().Len(tasks, 2)
+
+	var foundTask1, foundTask2 bool
+	var task1DepID, task2ID string
+	for _, tsk := range tasks {
+		switch tsk.DisplayName {
+		case "task1":
+			s.Equal("bv1", tsk.BuildVariant)
+			s.Require().Len(tsk.DependsOn, 1, "should create patch_optional dependency since the task is created")
+			task1DepID = tsk.DependsOn[0].TaskId
+			foundTask1 = true
+		case "task2":
+			s.Equal("bv1", tsk.BuildVariant)
+			task2ID = tsk.Id
+			foundTask2 = true
+		default:
+			s.FailNow("unexpected task created:", tsk.DisplayName)
+		}
+	}
+
+	s.True(foundTask1, "should create task1 because it matches alias")
+	s.True(foundTask2, "should create task2 because it matches alias")
+	s.Equal(task1DepID, task2ID, "task1 should depend on task2 even with patch_optional dependency because task2 was created")
+}
+
 func TestCreateManifest(t *testing.T) {
 	assert := assert.New(t)
 	settings := testutil.TestConfig()
