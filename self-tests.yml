@@ -536,14 +536,6 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-util
-    depends_on:
-      - name: kim-patch-optional
-        patch_optional: true
-  - name: kim-patch-optional
-    commands:
-      - command: shell.exec
-        params:
-          script: echo hello world
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-validator
@@ -820,7 +812,6 @@ buildvariants:
       - name: "js-test"
       - name: generate-api-docs
       - name: write-downstream-expansions-for-pine
-      - name: kim-patch-optional
 
   - name: race-detector
     display_name: Race Detector
@@ -836,7 +827,6 @@ buildvariants:
       test_timeout: 15m
     tasks:
       - name: ".test"
-      - name: kim-patch-optional
 
   - name: ubuntu2004-container
     display_name: Ubuntu 20.04 (Container)
