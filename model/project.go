@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -851,15 +850,12 @@ func (t TaskIdConfig) Length() int {
 // the tasks will be created for this version so only create task IDs for those
 // tasks that actually will be created; otherwise, it will create task IDs for
 // all possible tasks in the version.
-// kim: TODO: add test to verify that pairsToCreate filters down the task IDs
-// generated.
 func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, pairsToCreate TVPairSet, sourceRev, defID string) TaskIdConfig {
 	// init the variant map
 	execTable := TaskIdTable{}
 	displayTable := TaskIdTable{}
 
 	isCreatingSubsetOfTasks := len(pairsToCreate) > 0
-	pp.Println("BVT pairs to be created:", pairsToCreate)
 
 	sort.Stable(p.BuildVariants)
 
@@ -887,9 +883,6 @@ func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, pairsToCreate 
 			if tg := p.FindTaskGroup(t.Name); tg != nil {
 				for _, groupTask := range tg.Tasks {
 					if isCreatingSubsetOfTasks && !utility.StringSliceContains(taskNamesInBV, groupTask) {
-						// kim: TODO: double-check if pairsToCreate is tasks or
-						// potentially can be task groups as well.
-						pp.Println("skipping creating task ID for task group task", groupTask)
 						continue
 					}
 					taskId := generateId(groupTask, projectIdentifier, &bv, rev, v)
@@ -897,7 +890,6 @@ func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, pairsToCreate 
 				}
 			} else {
 				if isCreatingSubsetOfTasks && !utility.StringSliceContains(taskNamesInBV, t.Name) {
-					pp.Println("skipping creating task ID for task", t.Name)
 					continue
 				}
 				// create a unique Id for each task

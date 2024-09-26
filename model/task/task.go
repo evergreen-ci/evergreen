@@ -696,8 +696,6 @@ func (t *Task) SetOverrideDependencies(userID string) error {
 	)
 }
 
-// kim: NOTE: this adds a new dependency. However, it appears to only be used in
-// merge/commit queue logic.
 func (t *Task) AddDependency(ctx context.Context, d Dependency) error {
 	// ensure the dependency doesn't already exist
 	for _, existingDependency := range t.DependsOn {
@@ -3863,10 +3861,6 @@ func AddParentDisplayTasks(tasks []Task) ([]Task, error) {
 
 // UpdateDependsOn appends new dependencies to tasks that already depend on this task
 // if the task does not explicitly omit having generated tasks as dependencies
-// kim: NOTE: this modifies the existing dependencies or adds new ones. This
-// appears to be used for commit queue and generate.tasks, but I believe some of
-// the problematic tasks weren't actually generated, they were statically
-// defined in the YAML.
 func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
 	for _, depID := range newDependencyIDs {

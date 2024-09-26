@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -683,8 +682,6 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 	// If tasks are passed in, then use those, otherwise use the default set.
 	tasksToCreate := []BuildVariantTaskUnit{}
 
-	// kim: NOTE: createAll is true for commits, which have an empty
-	// pairsToCreate since it's not filtering any tasks.
 	createAll := false
 	if len(creationInfo.TaskNames) == 0 && len(creationInfo.DisplayNames) == 0 {
 		createAll = true
@@ -745,9 +742,6 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 	taskMap := make(map[string]*task.Task)
 	for _, t := range tasksToCreate {
 		id := execTable.GetId(creationInfo.Build.BuildVariant, t.Name)
-		if id == "" {
-			pp.Println("Missing task ID for task about to be created:", creationInfo.Build.BuildVariant, t.Name)
-		}
 		newTask, err := createOneTask(ctx, id, creationInfo, t)
 		if err != nil {
 			return nil, errors.Wrapf(err, "creating task '%s'", id)
@@ -757,7 +751,6 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 		if projectTask != nil {
 			newTask.Tags = projectTask.Tags
 		}
-		// kim: NOTE: this sets initial task dependencies upon task creation.
 		newTask.DependsOn = makeDeps(t.DependsOn, newTask, execTable)
 		newTask.GeneratedBy = creationInfo.GeneratedBy
 		if generatorIsGithubCheck {
@@ -927,16 +920,6 @@ func makeDeps(deps []TaskUnitDependency, thisTask *task.Task, taskIds TaskIdTabl
 			dep.Variant = thisTask.BuildVariant
 		}
 
-		// kim: NOTE: this creates dependecies for a new task by using the task
-		// ID table. The theory is that the task ID table includes the
-		// patch_optional dependency on the theory that it _might_ be created,
-		// but that dependency might not actually be scheduled. In that case, we
-		// need to somehow deduce whether the patch_optional dependency is
-		// actually going to be created or not.
-		// kim: NOTE: might be quite difficult if the patch_optional dependency
-		// is in generate.tasks since it adds to existing builds and new builds
-		// in separate calls.
-
 		var depIDs []string
 		if dep.Variant == AllVariants && dep.Name == AllDependencies {
 			depIDs = taskIds.GetIdsForAllTasks()
@@ -945,10 +928,9 @@ func makeDeps(deps []TaskUnitDependency, thisTask *task.Task, taskIds TaskIdTabl
 		} else if dep.Name == AllDependencies {
 			depIDs = taskIds.GetIdsForAllTasksInVariant(dep.Variant)
 		} else {
-			// kim: TODO: figure out how to make this work with patch_optional
-			// in alias-based non-patch versions like periodic builds.
-			// Don't add missing dependencies - patch_optional tasks may not be
-			// scheduled and therefore might be missing from the task ID table.
+			// Don't add missing dependencies - patch_optional dependencies may
+			// not be created and therefore might be missing from the task ID
+			// table.
 			if id := taskIds.GetId(dep.Variant, dep.Name); id != "" {
 				depIDs = []string{id}
 			}

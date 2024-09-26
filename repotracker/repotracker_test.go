@@ -814,8 +814,6 @@ type CreateVersionFromConfigSuite struct {
 	suite.Suite
 }
 
-// kim: TODO: add test for periodic build with patch_optional dep (i.e. has
-// alias and patch_optional dep that is not selected by alias).
 func TestCreateVersionFromConfigSuite(t *testing.T) {
 	suite.Run(t, new(CreateVersionFromConfigSuite))
 }
@@ -1299,6 +1297,73 @@ tasks:
 	s.Empty(tasks[0].DependsOn, "should not automatically create patch_optional dependency since the task is not created")
 }
 
+func (s *CreateVersionFromConfigSuite) TestWithAliasMatchingTaskGroup() {
+	configYml := `
+buildvariants:
+- name: bv1
+  display_name: bv_display
+  run_on: d
+  tasks:
+  - name: tg1
+  - name: task3
+tasks:
+- name: task1
+- name: task2
+- name: task3
+task_groups:
+- name: tg1
+  max_hosts: 2
+  tasks:
+  - task1
+  - task2
+`
+	p := &model.Project{}
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
+	s.NoError(err)
+
+	alias := model.ProjectAlias{
+		Alias:     "tg_alias",
+		ProjectID: s.ref.Id,
+		Task:      "tg1",
+		Variant:   ".*",
+	}
+	s.NoError(alias.Upsert())
+
+	projectInfo := &model.ProjectInfo{
+		Ref:                 s.ref,
+		IntermediateProject: pp,
+		Project:             p,
+	}
+	metadata := model.VersionMetadata{
+		Revision: *s.rev,
+		Alias:    alias.Alias,
+	}
+	v, err := CreateVersionFromConfig(s.ctx, projectInfo, metadata, false, nil)
+	s.NoError(err)
+	s.Require().NotNil(v)
+	s.Len(v.Errors, 0)
+
+	tasks, err := task.Find(task.ByVersion(v.Id))
+	s.NoError(err)
+	s.Require().Len(tasks, 2)
+	var foundTask1, foundTask2 bool
+	for _, tsk := range tasks {
+		switch tsk.DisplayName {
+		case "task1":
+			s.Equal("bv1", tsk.BuildVariant)
+			foundTask1 = true
+		case "task2":
+			s.Equal("bv1", tsk.BuildVariant)
+			foundTask2 = true
+		default:
+			s.FailNow("unexpected task created", tsk.DisplayName)
+		}
+	}
+
+	s.True(foundTask1, "should create task1 because it matches alias")
+	s.True(foundTask2, "should create task2 because it matches alias")
+}
+
 func (s *CreateVersionFromConfigSuite) TestWithAliasAndPatchOptionalDependencyCreatesDependencyIfDependentTaskIsCreated() {
 	configYml := `
 buildvariants:
@@ -1361,7 +1426,7 @@ tasks:
 			task2ID = tsk.Id
 			foundTask2 = true
 		default:
-			s.FailNow("unexpected task created:", tsk.DisplayName)
+			s.FailNow("unexpected task created", tsk.DisplayName)
 		}
 	}
 

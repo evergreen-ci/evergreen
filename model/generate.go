@@ -359,7 +359,6 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 	}
 
 	// only want to add dependencies to activated tasks
-	// kim: NOTE: this adds dependencies for generated tasks.
 	if err = g.addDependencies(ctx, append(activatedTasksInExistingBuilds, activatedTasksInNewBuilds...)); err != nil {
 		return errors.Wrap(err, "adding dependencies")
 	}
