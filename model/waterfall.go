@@ -195,7 +195,6 @@ func GetWaterfallBuildVariants(ctx context.Context, versionIds []string) ([]Wate
 			},
 		},
 	})
-	pipeline = append(pipeline, bson.M{"$sort": bson.M{"_id": 1}})
 	pipeline = append(pipeline, bson.M{
 		"$project": bson.M{
 			build.DisplayNameKey: bson.M{
@@ -204,6 +203,7 @@ func GetWaterfallBuildVariants(ctx context.Context, versionIds []string) ([]Wate
 			buildsKey: 1,
 		},
 	})
+	pipeline = append(pipeline, bson.M{"$sort": bson.M{build.DisplayNameKey: 1}})
 
 	res := []WaterfallBuildVariant{}
 	env := evergreen.GetEnvironment()

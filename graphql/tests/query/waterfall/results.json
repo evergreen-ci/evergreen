@@ -10,7 +10,7 @@
             "buildVariants": [
               {
                 "id": "enterprise-ubuntu1604-64",
-                "displayName": "Ubuntu 16.04",
+                "displayName": "01 Ubuntu 16.04",
                 "builds": [
                   {
                     "activated": true,
@@ -63,7 +63,7 @@
                     "version": "evergreen_version5"
                   }
                 ],
-                "displayName": "Linter",
+                "displayName": "03 Linter",
                 "id": "lint"
               }
             ],
