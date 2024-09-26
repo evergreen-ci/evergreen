@@ -134,7 +134,7 @@ func (c *AuthConfig) ValidateAndDefault() error {
 		AuthKanopyKey,
 	}, c.PreferredType), "invalid auth type '%s'", c.PreferredType)
 
-	if c.Naive == nil && c.Github == nil && c.Okta == nil && c.Multi == nil && c.Kanopy != nil {
+	if c.Naive == nil && c.Github == nil && c.Okta == nil && c.Multi == nil && c.Kanopy == nil {
 		catcher.Add(errors.New("must specify one form of authentication"))
 	}
 
@@ -160,6 +160,12 @@ func (c *AuthConfig) ValidateAndDefault() error {
 			catcher.ErrorfWhen(seen[kind], "duplicate auth mechanism '%s' in multi auth", kind)
 			seen[kind] = true
 		}
+	}
+
+	if c.Kanopy != nil {
+		catcher.NewWhen(c.Kanopy.HeaderName == "", "header name cannot be empty if using Kanopy auth")
+		catcher.NewWhen(c.Kanopy.Issuer == "", "issuer cannot be empty if using Kanopy auth")
+		catcher.NewWhen(c.Kanopy.KeysetURL == "", "keyset URL cannot be empty if using Kanopy auth")
 	}
 
 	return catcher.Resolve()
