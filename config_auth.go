@@ -73,12 +73,12 @@ func (c *MultiAuthConfig) IsZero() bool {
 // so all we need to do is extract the information they provide about the user.
 type KanopyAuthConfig struct {
 	// HeaderName is the name of the header that contains the JWT with information about the user.
-	HeaderName string
+	HeaderName string `bson:"header_name" json:"header_name" yaml:"header_name"`
 	// Issuer is the expected issuer of the JWT. JWT Validation fails if the JWT's issuer field
 	// does not match the Issuer provided.
-	Issuer string
+	Issuer string `bson:"issuer" json:"issuer" yaml:"issuer"`
 	// KeysetURL is the URL for the remote keyset, or JWKS, used to validate the signing of the JWT.
-	KeysetURL string
+	KeysetURL string `bson:"keyset_url" json:"keyset_url" yaml:"keyset_url"`
 }
 
 // AuthConfig contains the settings for the various auth managers.
