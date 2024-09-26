@@ -654,6 +654,10 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 
 		}
 	}
+
+	// kim: NOTE: can use alias here to select tasks for waterfall version if
+	// it's a git tag version or any other waterfall version requester that uses
+	// aliases (e.g. periodic builds, downstream triggers).
 	var aliases model.ProjectAliases
 	if metadata.Alias == evergreen.GitTagAlias {
 		aliases, err = model.FindMatchingGitTagAliasesInProject(projectInfo.Ref.Id, metadata.GitTag.Tag)
@@ -808,6 +812,15 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	if metadata.SourceVersion != nil {
 		sourceRev = metadata.SourceVersion.Revision
 	}
+	// kim: NOTE: this makes task IDs even for tasks that might not be
+	// scheduled, like ones that aren't scheduled and are patch_optional.
+	// kim: NOTE: this is done differently from patches (which use
+	// NewTaskIdConfig on the patch's tasks). This will include a task even if
+	// it might not be scheduled. In that case, we should only create task IDs
+	// for tasks that we plan to schedule, and omit tasks that definitely won't
+	// be scheduled.
+	// kim: TODO: try moving this initialization below the logic to include
+	// dependencies, then omit task IDs for tasks that won't be scheduled.
 	taskIds := model.NewTaskIdConfigForRepotrackerVersion(projectInfo.Project, v, sourceRev, metadata.TriggerDefinitionID)
 
 	// create all builds for the version
@@ -861,6 +874,10 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}
 	}
 
+	// kim: NOTE: expandDependencies in IncludeDependencies will filter out
+	// patch_optional dependencies, so they won't be auto-scheduled. So at this
+	// point, the task ID exists in the task ID table, but pairsToCreate won't
+	// include the patch_optional dependency.
 	pairsToCreate, err = model.IncludeDependencies(projectInfo.Project, pairsToCreate, v.Requester, nil)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"message": "error including dependencies",

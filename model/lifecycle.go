@@ -751,6 +751,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 		if projectTask != nil {
 			newTask.Tags = projectTask.Tags
 		}
+		// kim: NOTE: this sets initial task dependencies upon task creation.
 		newTask.DependsOn = makeDeps(t.DependsOn, newTask, execTable)
 		newTask.GeneratedBy = creationInfo.GeneratedBy
 		if generatorIsGithubCheck {
@@ -920,6 +921,16 @@ func makeDeps(deps []TaskUnitDependency, thisTask *task.Task, taskIds TaskIdTabl
 			dep.Variant = thisTask.BuildVariant
 		}
 
+		// kim: NOTE: this creates dependecies for a new task by using the task
+		// ID table. The theory is that the task ID table includes the
+		// patch_optional dependency on the theory that it _might_ be created,
+		// but that dependency might not actually be scheduled. In that case, we
+		// need to somehow deduce whether the patch_optional dependency is
+		// actually going to be created or not.
+		// kim: NOTE: might be quite difficult if the patch_optional dependency
+		// is in generate.tasks since it adds to existing builds and new builds
+		// in separate calls.
+
 		var depIDs []string
 		if dep.Variant == AllVariants && dep.Name == AllDependencies {
 			depIDs = taskIds.GetIdsForAllTasks()
@@ -928,8 +939,10 @@ func makeDeps(deps []TaskUnitDependency, thisTask *task.Task, taskIds TaskIdTabl
 		} else if dep.Name == AllDependencies {
 			depIDs = taskIds.GetIdsForAllTasksInVariant(dep.Variant)
 		} else {
-			// don't add missing dependencies
-			// patch_optional tasks aren't in the patch and will be missing from the table
+			// kim: TODO: figure out how to make this work with patch_optional
+			// in alias-based non-patch versions like periodic builds.
+			// Don't add missing dependencies - patch_optional tasks may not be
+			// scheduled and therefore might be missing from the task ID table.
 			if id := taskIds.GetId(dep.Variant, dep.Name); id != "" {
 				depIDs = []string{id}
 			}

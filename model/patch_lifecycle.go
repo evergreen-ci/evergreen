@@ -670,6 +670,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		return nil, errors.New("cannot finalize patch with no tasks")
 	}
+	// kim: NOTE: this creates task IDs for the patch, taking into account what
+	// the patch has actually selected.
 	taskIds, err := NewTaskIdConfig(project, patchVersion, tasks, projectRef.Identifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating patch's task ID table")

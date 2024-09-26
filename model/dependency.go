@@ -213,7 +213,11 @@ func (di *dependencyIncluder) recursivelyUpdateDeactivationMap(pair TVPair, depe
 func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnitDependency) []TVPair {
 	deps := []TVPair{}
 	for _, d := range depends {
-		// don't automatically add dependencies if they are marked patch_optional
+		// Don't automatically add dependency to patch requesters if the
+		// dependency is marked patch_optional.
+		// kim: NOTE: this ignores patch optional dependencies for all requester
+		// types, even those that select tasks (e.g. periodic builds).
+		// if evergreen.IsPatchRequester(di.requester) && d.PatchOptional {
 		if d.PatchOptional {
 			continue
 		}
