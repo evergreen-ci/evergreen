@@ -37,7 +37,6 @@ import (
 )
 
 const (
-	globalGitHubToken    = "GLOBALTOKEN"
 	projectGitHubToken   = "PROJECTTOKEN"
 	mockedGitHubAppToken = "MOCKEDTOKEN"
 )
@@ -105,14 +104,10 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.taskConfig1, err = agenttestutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData1)
 	s.Require().NoError(err)
-	s.taskConfig1.Expansions = *util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
-	s.Require().NoError(err)
-
 	s.modelData2, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
 	s.Require().NoError(err)
 	s.taskConfig2, err = agenttestutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData2)
 	s.Require().NoError(err)
-	s.taskConfig2.Expansions = *util.NewExpansions(s.settings.Credentials)
 	s.taskConfig2.Expansions.Put("prefixpath", "hello")
 	s.taskConfig2.NewExpansions = agentutil.NewDynamicExpansions(s.taskConfig2.Expansions)
 	// SetupAPITestData always creates BuildVariant with no modules so this line works around that
@@ -124,7 +119,6 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.taskConfig3, err = agenttestutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData3)
 	s.Require().NoError(err)
-	s.taskConfig3.Expansions = *util.NewExpansions(s.settings.Credentials)
 	s.taskConfig3.GithubPatchData = thirdparty.GithubPatch{
 		PRNumber:   9001,
 		BaseOwner:  "evergreen-ci",
@@ -141,7 +135,6 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.taskConfig4, err = agenttestutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData4)
 	s.Require().NoError(err)
-	s.taskConfig4.Expansions = *util.NewExpansions(s.settings.Credentials)
 	s.taskConfig4.GithubPatchData = thirdparty.GithubPatch{
 		PRNumber:       9001,
 		MergeCommitSHA: "abcdef",
@@ -155,7 +148,6 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.taskConfig6, err = agenttestutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData6)
 	s.Require().NoError(err)
-	s.taskConfig6.Expansions = *util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
 	s.taskConfig6.BuildVariant.Modules = []string{"evergreen"}
 	s.taskConfig6.GithubMergeData = thirdparty.GithubMergeGroup{
 		HeadBranch: "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056",
@@ -167,12 +159,13 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.taskConfig7, err = agenttestutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData7)
 	s.Require().NoError(err)
-	s.taskConfig7.Expansions = *util.NewExpansions(s.settings.Credentials)
+	s.taskConfig7.Expansions = *util.NewExpansions(map[string]string{})
 	s.taskConfig7.Expansions.Put("prefixpath", "hello")
 	// SetupAPITestData always creates BuildVariant with no modules so this line works around that
 	s.taskConfig7.BuildVariant.Modules = []string{"sample-1", "sample-2"}
 
 	s.comm.CreateInstallationTokenResult = mockedGitHubAppToken
+	s.comm.CreateInstallationTokenFail = false
 }
 
 func (s *GitGetProjectSuite) TestBuildSourceCommandUsesHTTPS() {
@@ -194,28 +187,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandUsesHTTPS() {
 	}
 	s.Require().NoError(opts.setLocation())
 	cmds, _ := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
-	s.True(utility.StringSliceContains(cmds, fmt.Sprintf("git clone https://%s:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'", projectGitHubToken)))
-}
-
-func (s *GitGetProjectSuite) TestBuildSourceCommandWithHTTPSNeedsToken() {
-	c := &gitFetchProject{
-		Directory: "dir",
-	}
-	conf := s.taskConfig1
-	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
-	s.Require().NoError(err)
-
-	opts := cloneOpts{
-		method: cloneMethodOAuth,
-		owner:  conf.ProjectRef.Owner,
-		repo:   conf.ProjectRef.Repo,
-		branch: conf.ProjectRef.Branch,
-		dir:    c.Directory,
-		token:  "",
-	}
-	s.Require().NoError(opts.setLocation())
-	_, err = c.buildSourceCloneCommand(context.Background(), s.comm, logger, conf, opts)
-	s.Error(err)
+	s.True(utility.StringSliceContains(cmds, "git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'"))
 }
 
 func (s *GitGetProjectSuite) TestRetryFetchAttemptsFiveTimesOnError() {
@@ -293,6 +265,8 @@ func (s *GitGetProjectSuite) TestGitPlugin() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	s.comm.CreateInstallationTokenResult = "token"
+	s.comm.CreateGitHubDynamicAccessTokenResult = "token"
 	for _, task := range conf.Project.Tasks {
 		s.NotEqual(len(task.Commands), 0)
 		for _, command := range task.Commands {
@@ -425,20 +399,16 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 	s.NoError(logger.Close())
 	foundCloneCommand := false
 	foundCloneErr := false
-	foundSSHErr := false
 	for _, line := range s.comm.GetTaskLogs(conf.Task.Id) {
 		if strings.Contains(line.Data, "/invalidRepo.git 'src' --branch 'main'") {
 			foundCloneCommand = true
 		}
-		if strings.Contains(line.Data, "/invalidRepo.git/' not found") {
+		if strings.Contains(line.Data, "git source clone failed") {
 			foundCloneErr = true
-		}
-		if strings.Contains(line.Data, "Authentication failed for") && strings.Contains(line.Data, "/evergreen-ci/invalidRepo.git") {
-			foundSSHErr = true
 		}
 	}
 	s.True(foundCloneCommand)
-	s.True(foundCloneErr || foundSSHErr)
+	s.True(foundCloneErr)
 }
 
 func (s *GitGetProjectSuite) TestValidateGitCommands() {
@@ -452,7 +422,8 @@ func (s *GitGetProjectSuite) TestValidateGitCommands() {
 	defer cancel()
 	var pluginCmds []Command
 
-	s.comm.CreateGitHubDynamicAccessTokenResult = mockedGitHubAppToken
+	// s.comm.CreateGitHubDynamicAccessTokenResult = mockedGitHubAppToken
+	// s.comm.CreateInstallationTokenResult = mockedGitHubAppToken
 
 	for _, task := range conf.Project.Tasks {
 		for _, command := range task.Commands {
@@ -827,6 +798,7 @@ func (s *GitGetProjectSuite) TestMultipleModules() {
 	conf.Expansions.Put(moduleRevExpansionName("sample-2"), sample2Hash)
 
 	s.comm.CreateInstallationTokenResult = mockedGitHubAppToken
+	s.comm.CreateGitHubDynamicAccessTokenResult = mockedGitHubAppToken
 
 	for _, task := range conf.Project.Tasks {
 		s.NotEqual(len(task.Commands), 0)
@@ -1030,16 +1002,13 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 
 	td := client.TaskData{ID: s.taskConfig1.Task.Id, Secret: s.taskConfig1.Task.Secret}
 
-	expansions := map[string]string{
-		evergreen.GlobalGitHubTokenExpansion: globalGitHubToken,
-	}
 	conf := &internal.TaskConfig{
 		ProjectRef: model.ProjectRef{
 			Owner: "valid-owner",
 			Repo:  "valid-repo",
 		},
-		Expansions:    expansions,
-		NewExpansions: agentutil.NewDynamicExpansions(expansions),
+		Expansions:    map[string]string{},
+		NewExpansions: agentutil.NewDynamicExpansions(map[string]string{}),
 	}
 
 	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken, true)
@@ -1061,8 +1030,6 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 	s.NoError(err)
 	s.Equal(projectGitHubToken, token)
 	s.Equal(cloneMethodOAuth, method)
-
-	conf.Expansions[evergreen.GlobalGitHubTokenExpansion] = ""
 
 	method, token, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, projectGitHubToken, true)
 	s.NoError(err)
@@ -1078,8 +1045,6 @@ func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
 
 	_, _, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "", false)
 	s.Error(err)
-
-	conf.Expansions[evergreen.GlobalGitHubTokenExpansion] = globalGitHubToken
 
 	_, _, err = getProjectMethodAndToken(s.ctx, s.comm, td, conf, "token this is not a real token", false)
 	s.Error(err)

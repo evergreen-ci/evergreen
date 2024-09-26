@@ -964,6 +964,10 @@ func (c *baseCommunicator) CreateGitHubDynamicAccessToken(ctx context.Context, t
 	return token.Token, nil
 }
 
+func (c *baseCommunicator) CreateCachedInstallationToken(context.Context, string, string, time.Duration, *github.InstallationTokenOptions) (string, error) {
+	return "", errors.New("not implemented")
+}
+
 func (c *baseCommunicator) RevokeGitHubDynamicAccessToken(ctx context.Context, td TaskData, token string) error {
 	info := requestInfo{
 		method:   http.MethodDelete,

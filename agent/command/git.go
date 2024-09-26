@@ -123,8 +123,8 @@ func (opts cloneOpts) validate() error {
 		catcher.New("missing required location")
 	}
 	catcher.Wrapf(validateCloneMethod(opts.method), "invalid clone method '%s'", opts.method)
-	if opts.token == "" {
-		catcher.New("cannot clone using OAuth or access token if token is not set")
+	if opts.token == "" && opts.method == cloneMethodOAuth {
+		catcher.New("cannot clone using OAuth if token is not set")
 	}
 	if opts.cloneDepth < 0 {
 		catcher.New("clone depth cannot be negative")
@@ -160,40 +160,16 @@ func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td 
 	owner := conf.ProjectRef.Owner
 	repo := conf.ProjectRef.Repo
 	appToken, err := comm.CreateInstallationToken(ctx, td, owner, repo)
+	if err != nil {
+		return "", "", errors.Wrap(err, "creating app token")
+	}
 	if appToken != "" {
 		// Redact the token from the logs.
 		conf.NewExpansions.Redact(generatedTokenKey, appToken)
 	}
-	// TODO EVG-21022: Remove fallback once we delete GitHub tokens as expansions.
-	grip.Warning(message.WrapError(err, message.Fields{
-		"message": "error creating GitHub app token, falling back to legacy clone methods",
-		"owner":   owner,
-		"repo":    repo,
-		"task":    td.ID,
-		"ticket":  "EVG-21022",
-	}))
-	if appToken != "" {
-		return cloneMethodAccessToken, appToken, nil
-	}
-	grip.DebugWhen(err == nil, message.Fields{
-		"message": "GitHub app token not found, falling back to legacy clone methods",
-		"owner":   owner,
-		"repo":    repo,
-		"task":    td.ID,
-		"ticket":  "EVG-21022",
-	})
 
-	globalToken := conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
-	token, err := parseToken(globalToken)
-	if err != nil {
-		return "", "", err
-	}
+	return cloneMethodAccessToken, appToken, nil
 
-	if token == "" {
-		return "", "", errors.New("cannot clone using OAuth if explicit token from parameter and global token are both empty")
-	}
-
-	return cloneMethodOAuth, token, nil
 }
 
 // parseToken parses the OAuth token, if it is in the format "token <token>";
@@ -724,23 +700,16 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		// Otherwise, create an installation token for to clone the module.
 		// Fallback to the legacy global token if the token cannot be created.
 		appToken, err := comm.CreateInstallationToken(ctx, td, opts.owner, opts.repo)
-		if err == nil {
-			opts.token = appToken
-			opts.method = cloneMethodAccessToken
-
-			// After generating, redact the token from the logs.
-			conf.NewExpansions.Redact(generatedTokenKey, appToken)
-		} else {
-			// If a token cannot be created, fallback to the legacy global token.
-			opts.method = cloneMethodOAuth
-			opts.token = conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
-			logger.Execution().Warning(message.WrapError(err, message.Fields{
-				"message": "failed to create app token, falling back to global token",
-				"ticket":  "EVG-19966",
-				"owner":   opts.owner,
-				"repo":    opts.repo,
-			}))
+		if err != nil {
+			return errors.Wrap(err, "creating app token")
 		}
+
+		opts.token = appToken
+		opts.method = cloneMethodAccessToken
+
+		// After generating, redact the token from the logs.
+		conf.NewExpansions.Redact(generatedTokenKey, appToken)
+
 	}
 
 	if err = opts.validate(); err != nil {
