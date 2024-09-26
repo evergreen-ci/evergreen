@@ -68,10 +68,17 @@ func (c *MultiAuthConfig) IsZero() bool {
 	return len(c.ReadWrite) == 0 && len(c.ReadOnly) == 0
 }
 
+// KanopyAuthConfig configures the auth method that validates and consumes the JWT
+// that Kanopy provides with information about the user. Kanopy deals with authentication
+// so all we need to do is extract the information they provide about the user.
 type KanopyAuthConfig struct {
+	// HeaderName is the name of the header that contains the JWT with information about the user.
 	HeaderName string
-	Issuer     string
-	KeysetURL  string
+	// Issuer is the expected issuer of the JWT. JWT Validation fails if the JWT's issuer field
+	// does not match the Issuer provided.
+	Issuer string
+	// KeysetURL is the URL for the remote keyset, or JWKS, used to validate the signing of the JWT.
+	KeysetURL string
 }
 
 // AuthConfig contains the settings for the various auth managers.
