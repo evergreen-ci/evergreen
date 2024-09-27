@@ -742,6 +742,9 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 	taskMap := make(map[string]*task.Task)
 	for _, t := range tasksToCreate {
 		id := execTable.GetId(creationInfo.Build.BuildVariant, t.Name)
+		if id == "" {
+			return nil, errors.Errorf("could not find task ID for task '%s' in build variant '%s'", t.Name, creationInfo.Build.BuildVariant)
+		}
 		newTask, err := createOneTask(ctx, id, creationInfo, t)
 		if err != nil {
 			return nil, errors.Wrapf(err, "creating task '%s'", id)
