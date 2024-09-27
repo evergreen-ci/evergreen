@@ -1410,7 +1410,7 @@ tasks:
 
 	tasks, err := task.Find(task.ByVersion(v.Id))
 	s.NoError(err)
-	s.Require().Len(tasks, 2)
+	s.Len(tasks, 2)
 
 	var foundTask1, foundTask2 bool
 	var task1DepID, task2ID string

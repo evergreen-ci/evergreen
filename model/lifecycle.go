@@ -742,9 +742,6 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 	taskMap := make(map[string]*task.Task)
 	for _, t := range tasksToCreate {
 		id := execTable.GetId(creationInfo.Build.BuildVariant, t.Name)
-		if id == "" {
-			return nil, errors.Errorf("could not find task ID for task '%s' in build variant '%s'", t.Name, creationInfo.Build.BuildVariant)
-		}
 		newTask, err := createOneTask(ctx, id, creationInfo, t)
 		if err != nil {
 			return nil, errors.Wrapf(err, "creating task '%s'", id)
@@ -1127,6 +1124,10 @@ func getTaskCreateTime(creationInfo TaskCreationInfo) (time.Time, error) {
 
 // createOneTask is a helper to create a single task.
 func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo, buildVarTask BuildVariantTaskUnit) (*task.Task, error) {
+	if id == "" {
+		return nil, errors.Errorf("cannot create task  '%s' in build variant '%s' for project '%s' with an empty task ID", creationInfo.ProjectRef.Id, buildVarTask.Name, creationInfo.Build.BuildVariant)
+	}
+
 	activateTask := creationInfo.Build.Activated && !creationInfo.ActivationInfo.taskHasSpecificActivation(creationInfo.Build.BuildVariant, buildVarTask.Name)
 
 	// If stepback is enabled, check if the task should be activated via stepback.
