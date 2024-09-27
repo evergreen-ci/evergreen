@@ -339,18 +339,11 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 	}
 
 	usr := mustHaveUser(ctx)
-	forbiddenHosts := []string{}
-	for _, h := range hosts {
-		if !userHasHostPermission(usr, h.Distro.Id, evergreen.HostsView.Value) {
-			forbiddenHosts = append(forbiddenHosts, h.Id)
-		}
-	}
-	if len(forbiddenHosts) > 0 {
-		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access one or more hosts", usr.Username()))
-	}
-
 	apiHosts := []*restModel.APIHost{}
 	for _, h := range hosts {
+		if !userHasHostPermission(usr, h.Distro.Id, evergreen.HostsView.Value) {
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access one or more hosts", usr.Username()))
+		}
 		apiHost := restModel.APIHost{}
 		apiHost.BuildFromService(&h, h.RunningTaskFull)
 		apiHosts = append(apiHosts, &apiHost)
