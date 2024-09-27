@@ -69,11 +69,17 @@ func New(apiURL string) Config {
 		if len(hostsToCheck) == 0 {
 			return nil, ResourceNotFound.Send(ctx, "No matching hosts found")
 		}
+		forbiddenHosts := []string{}
 		for _, h := range hostsToCheck {
 			if !userHasHostPermission(user, h.Distro.Id, requiredLevel) {
-				return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access the host '%s'", user.Username(), h.Id))
+				forbiddenHosts = append(forbiddenHosts, h.Id)
 			}
 		}
+		if len(forbiddenHosts) > 0 {
+			hostsString := strings.Join(forbiddenHosts, ", ")
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access the hosts: '%v'", user.Username(), hostsString))
+		}
+
 		return next(ctx)
 	}
 	c.Directives.RequireDistroAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (interface{}, error) {
