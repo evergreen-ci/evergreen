@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -243,25 +244,25 @@ func TestRequireHostAccess(t *testing.T) {
 		"FailsWhenHostIdIsNotSpecified": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
 			obj := interface{}(nil)
 			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
-			require.EqualError(t, err, "input: host not specified")
+			assert.EqualError(t, err, "input: host not specified")
 		},
 		"FailsWhenHostDoesNotExist": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
 			obj := interface{}(map[string]interface{}{"hostId": "a-non-existent-host-id"})
 			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
-			require.EqualError(t, err, "input: No matching hosts found")
+			assert.EqualError(t, err, "input: No matching hosts found")
 		},
 		"EditFailsWhenUserDoesNotHaveEditPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
 			obj := interface{}(map[string]interface{}{"hostId": "host1"})
 			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
-			require.EqualError(t, err, "input: user 'testuser' does not have permission to access the host 'host1'")
+			assert.EqualError(t, err, "input: user 'testuser' does not have permission to access the host 'host1'")
 		},
 		"ViewFailsWhenUserDoesNotHaveViewPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
 			obj := interface{}(map[string]interface{}{"hostId": "host1"})
 			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelView)
-			require.EqualError(t, err, "input: user 'testuser' does not have permission to access the host 'host1'")
+			assert.EqualError(t, err, "input: user 'testuser' does not have permission to access the host 'host1'")
 		},
 		"EditSucceedsWhenUserHasEditPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			require.NoError(t, usr.AddRole("edit_host-id"))
+			assert.NoError(t, usr.AddRole("edit_host-id"))
 			nextCalled := false
 			wrappedNext := func(rctx context.Context) (interface{}, error) {
 				nextCalled = true
@@ -269,13 +270,13 @@ func TestRequireHostAccess(t *testing.T) {
 			}
 			obj := interface{}(map[string]interface{}{"hostId": "host1"})
 			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelEdit)
-			require.NoError(t, err)
-			require.Nil(t, res)
-			require.Equal(t, true, nextCalled)
-			require.NoError(t, usr.RemoveRole("edit_host-id"))
+			assert.NoError(t, err)
+			assert.Nil(t, res)
+			assert.Equal(t, true, nextCalled)
+			assert.NoError(t, usr.RemoveRole("edit_host-id"))
 		},
 		"ViewSucceedsWhenUserHasViewPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			require.NoError(t, usr.AddRole("view_host-id"))
+			assert.NoError(t, usr.AddRole("view_host-id"))
 			nextCalled := false
 			wrappedNext := func(rctx context.Context) (interface{}, error) {
 				nextCalled = true
@@ -283,10 +284,10 @@ func TestRequireHostAccess(t *testing.T) {
 			}
 			obj := interface{}(map[string]interface{}{"hostId": "host1"})
 			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelView)
-			require.NoError(t, err)
-			require.Nil(t, res)
-			require.Equal(t, true, nextCalled)
-			require.NoError(t, usr.RemoveRole("view_host-id"))
+			assert.NoError(t, err)
+			assert.Nil(t, res)
+			assert.Equal(t, true, nextCalled)
+			assert.NoError(t, usr.RemoveRole("view_host-id"))
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -294,10 +295,10 @@ func TestRequireHostAccess(t *testing.T) {
 			defer cancel()
 			setupPermissions(t)
 			usr, err := setupUser(t)
-			require.NoError(t, err)
-			require.NotNil(t, usr)
+			assert.NoError(t, err)
+			assert.NotNil(t, usr)
 			ctx = gimlet.AttachUser(ctx, usr)
-			require.NotNil(t, ctx)
+			assert.NotNil(t, ctx)
 			h1 := host.Host{
 				Id:        "host1",
 				StartedBy: "testuser",
@@ -305,9 +306,9 @@ func TestRequireHostAccess(t *testing.T) {
 					Id: "distro-id",
 				},
 			}
-			require.NoError(t, h1.Insert(ctx))
+			assert.NoError(t, h1.Insert(ctx))
 			config := New("/graphql")
-			require.NotNil(t, config)
+			assert.NotNil(t, config)
 			next := func(rctx context.Context) (interface{}, error) {
 				return nil, nil
 			}
