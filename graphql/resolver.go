@@ -46,15 +46,14 @@ func New(apiURL string) Config {
 		if !hasHostId && !hasHostIds {
 			return nil, ResourceNotFound.Send(ctx, "host not specified")
 		}
-		
+
 		hostIds := []string{}
 		if hasHostIds {
 			for _, v := range hostIdsInterface {
 				hostIds = append(hostIds, v.(string))
 			}
 		}
-		hostIdsToCheck := []string{}
-		hostIdsToCheck = append(hostIdsToCheck, hostId)
+		hostIdsToCheck := []string{hostId}
 		hostIdsToCheck = append(hostIdsToCheck, hostIds...)
 		var requiredLevel int
 		if access == HostAccessLevelEdit {
