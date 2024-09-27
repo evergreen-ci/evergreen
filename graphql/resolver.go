@@ -58,7 +58,7 @@ func New(apiURL string) Config {
 		var requiredLevel int
 		if access == HostAccessLevelEdit {
 			requiredLevel = evergreen.HostsEdit.Value
-		} else if access == HostAccessLevelView {
+		} else {
 			requiredLevel = evergreen.HostsView.Value
 		}
 		user := mustHaveUser(ctx)
