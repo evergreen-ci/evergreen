@@ -355,15 +355,21 @@ func (tl TaskList) Less(i, j int) bool {
 		return t1.TaskGroupOrder < t2.TaskGroupOrder
 	}
 
-	if t1.NumDependents != t2.NumDependents {
-		return t1.NumDependents > t2.NumDependents
-	}
+	t1Max := maxPriorityAndNumDependents(t1.NumDependents, t1.Priority)
+	t2Max := maxPriorityAndNumDependents(t2.NumDependents, t2.Priority)
 
-	if t1.Priority != t2.Priority {
-		return t1.Priority > t2.Priority
+	if t1Max != t2Max {
+		return t1Max > t2Max
 	}
 
 	return t1.FetchExpectedDuration().Average > t2.FetchExpectedDuration().Average
+}
+
+func maxPriorityAndNumDependents(numDependents int, priority int64) int64 {
+	if int64(numDependents) > priority {
+		return int64(numDependents)
+	}
+	return priority
 }
 
 // TaskPlan provides a sortable interface on top of a slice of
