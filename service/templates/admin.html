@@ -72,6 +72,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('naive')">Naive</li>
 						<li class="link" ng-click="scrollTo('github')">Github</li>
 						<li class="link" ng-click="scrollTo('multi')">Multi</li>
+						<li class="link" ng-click="scrollTo('kanopy')">Kanopy</li>
 						<div>External Communication</div>
 						<li class="link" ng-click="scrollTo('jira')">Jira</li>
 						<li class="link" ng-click="scrollTo('slack')">Slack</li>
@@ -977,6 +978,7 @@ Admin Settings
 										<md-radio-button value="naive">Naive</md-radio-button>
 										<md-radio-button value="github">Github</md-radio-button>
 										<md-radio-button value="multi">Multi</md-radio-button>
+										<md-radio-button value="kanopy">Kanopy</md-radio-button>
 										<md-radio-button value="">None</md-radio-button>
 									</md-radio-group>
 									<br />
@@ -1088,6 +1090,30 @@ Admin Settings
 											email:[[$chip.email]]
 										</md-chip-template>
 									</md-chips>
+								</md-card-content>
+							</md-card>
+							<md-card flex=50 id="kanopy" style="max-width:49%">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Kanopy Authentication</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('auth','kanopy')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>Header name</label>
+										<input type="text" ng-model="Settings.auth.kanopy.header_name">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>JWT Issuer</label>
+										<input type="text" ng-model="Settings.auth.kanopy.issuer">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Remote Keyset URL</label>
+										<input type="text" ng-model="Settings.auth.kanopy.keyset_url">
+									</md-input-container>
 								</md-card-content>
 							</md-card>
 						</section>

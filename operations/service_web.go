@@ -277,7 +277,7 @@ func getServiceRouter(ctx context.Context, env evergreen.Environment, queue ambo
 		return nil, errors.Wrap(err, "creating API server")
 	}
 
-	return service.GetRouter(as, uis)
+	return service.GetRouter(ctx, as, uis)
 }
 
 func getAdminService(ctx context.Context, env evergreen.Environment, tracer trace.Tracer) (http.Handler, error) {
