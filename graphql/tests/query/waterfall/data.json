@@ -178,7 +178,7 @@
       "_id": "evergreen_version1_build",
       "activated": true,
       "build_variant": "enterprise-ubuntu1604-64",
-      "display_name": "Ubuntu 16.04",
+      "display_name": "01 Ubuntu 16.04",
       "tasks": [
         {
           "id": "task_1"
@@ -193,7 +193,7 @@
       "_id": "evergreen_version2_build",
       "activated": true,
       "build_variant": "enterprise-ubuntu1604-64",
-      "display_name": "Ubuntu 16.04",
+      "display_name": "02 Ubuntu 16.04",
       "tasks": [
         {
           "id": "task_3"
@@ -208,7 +208,7 @@
       "_id": "evergreen_version3_build",
       "activated": true,
       "build_variant": "lint",
-      "display_name": "Linter",
+      "display_name": "03 Linter",
       "tasks": [
         {
           "id": "task_5"

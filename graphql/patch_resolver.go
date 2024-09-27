@@ -135,7 +135,7 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.
 					task.BuildVariantKey: buildVariant.Name,
 					task.DisplayNameKey:  taskUnit.Name,
 					task.GenerateTaskKey: true,
-				}).Sort([]string{"-" + task.CreateTimeKey}))
+				}).Sort([]string{"-" + task.FinishTimeKey}))
 				if err != nil {
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task with variant '%s' and name '%s': %s", buildVariant.Name, taskUnit.Name, err.Error()))
 				}

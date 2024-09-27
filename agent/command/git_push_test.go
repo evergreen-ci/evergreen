@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -31,10 +32,12 @@ func TestGitPush(t *testing.T) {
 	}
 	comm := client.NewMock("http://localhost.com")
 	comm.CreateInstallationTokenResult = "token"
+	expansions := util.Expansions{}
 	conf := &internal.TaskConfig{
-		Task:       task.Task{},
-		ProjectRef: model.ProjectRef{Branch: "main"},
-		Expansions: util.Expansions{},
+		Task:          task.Task{},
+		ProjectRef:    model.ProjectRef{Branch: "main"},
+		Expansions:    expansions,
+		NewExpansions: agentutil.NewDynamicExpansions(expansions),
 	}
 	logger, err := comm.GetLoggerProducer(context.Background(), &conf.Task, nil)
 	require.NoError(t, err)

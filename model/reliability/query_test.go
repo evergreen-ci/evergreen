@@ -459,7 +459,7 @@ func TestGetTaskReliability(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						setupDB(t)
 						filter := createValidFilter()
 						testCase(ctx, t, filter)
@@ -666,7 +666,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						filter := commonSetup(ctx, t)
 						testCase(ctx, t, filter)
 					})
@@ -721,7 +721,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						filter := commonSetup(ctx, t)
 						testCase(ctx, t, filter)
 					})
@@ -815,7 +815,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						filter := commonSetup(ctx, t)
 						testCase(ctx, t, filter)
 					})
@@ -923,7 +923,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					withSetupAndTeardown(t, env, func() {
+					withSetupAndTeardown(t, func() {
 						filter := commonSetup(ctx, t)
 						testCase(ctx, t, filter)
 					})

@@ -112,6 +112,7 @@ func (s *AgentSuite) SetupTest() {
 			LogOutput:        globals.LogOutputStdout,
 			LogPrefix:        "agent",
 			WorkingDirectory: s.testTmpDirName,
+			HomeDirectory:    s.suiteTmpDirName,
 		},
 		comm:   client.NewMock("url"),
 		tracer: otel.GetTracerProvider().Tracer("noop_tracer"),
@@ -2727,6 +2728,34 @@ tasks:
 	}
 	expectedLines := "I am test log.\nI should get ingested automatically by the agent.\nAnd stored as well.\n"
 	s.Equal(expectedLines, actualLines)
+}
+
+func (s *AgentSuite) TestClearsGitConfig() {
+	s.setupRunTask(defaultProjYml)
+	// create a fake git config file
+	gitConfigPath := filepath.Join(s.a.opts.HomeDirectory, ".gitconfig")
+	gitConfigContents := `
+[user]
+  name = foo bar
+  email = foo@bar.com
+`
+	err := os.WriteFile(gitConfigPath, []byte(gitConfigContents), 0600)
+	s.Require().NoError(err)
+	s.Require().FileExists(gitConfigPath)
+
+	s.a.runTeardownGroupCommands(s.ctx, s.tc)
+	s.NoError(err)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Clearing git config.",
+		"Cleared git config.",
+	}, []string{
+		panicLog,
+		"Running task commands failed",
+	})
+
+	s.Assert().NoFileExists(gitConfigPath)
 }
 
 func (s *AgentSuite) TestShouldRunSetupGroup() {

@@ -101,7 +101,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			require.NoError(t, env.Configure(ctx))
 			env.Settings().LoggerConfig.RedactKeys = []string{"pass", "secret"}
 
-			testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
+			testutil.ConfigureIntegrationTest(t, env.Settings())
 
 			require.NoError(t, db.ClearCollections(host.Collection, task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection, model.ParserProjectCollection))
 
@@ -932,7 +932,7 @@ func TestAWSAssumeRole(t *testing.T) {
 			require.NoError(t, handler.Parse(ctx, request))
 			assert.Equal(t, taskID, handler.taskID)
 			assert.Equal(t, roleARN, handler.body.RoleARN)
-			assert.Equal(t, policy, handler.body.Policy)
+			assert.Equal(t, policy, utility.FromStringPtr(handler.body.Policy))
 			assert.Equal(t, duration, utility.FromInt32Ptr(handler.body.DurationSeconds))
 
 			t.Run("RunErrorsOnNilTask", func(t *testing.T) {

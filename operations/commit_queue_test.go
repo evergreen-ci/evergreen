@@ -43,7 +43,7 @@ func TestCommitQueueSuite(t *testing.T) {
 	defer func() {
 		evergreen.SetEnvironment(originalEnv)
 	}()
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	require.NoError(t, testConfig.Set(ctx))
 	suite.Run(t, new(CommitQueueSuite))
 }

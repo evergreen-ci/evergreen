@@ -971,13 +971,13 @@ func UpdateAll(ctx context.Context, query bson.M, update bson.M) error {
 }
 
 // InsertOne inserts the host into the hosts collection.
-func InsertOne(ctx context.Context, h *Host, options ...*options.InsertOneOptions) error {
+func InsertOne(ctx context.Context, h *Host) error {
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertOne(ctx, h)
 	return errors.Wrap(err, "inserting host")
 }
 
 // InsertMany inserts the hosts into the hosts collection.
-func InsertMany(ctx context.Context, hosts []Host, options ...*options.InsertManyOptions) error {
+func InsertMany(ctx context.Context, hosts []Host) error {
 	if len(hosts) == 0 {
 		return nil
 	}
@@ -1529,18 +1529,6 @@ func (h *Host) UnsetNumAgentCleanupFailures(ctx context.Context) error {
 		},
 	)
 	return errors.Wrapf(err, "unsetting number of agent cleanup failures for host '%s'", h.Id)
-}
-
-// FindUnexpirableRunningWithoutPersistentDNSName finds unexpirable hosts that
-// are currently running and do not have a persistent DNS name assigned to
-// them.
-func FindUnexpirableRunningWithoutPersistentDNSName(ctx context.Context, limit int) ([]Host, error) {
-	return Find(ctx, bson.M{
-		StatusKey:            evergreen.HostRunning,
-		StartedByKey:         bson.M{"$ne": evergreen.User},
-		NoExpirationKey:      true,
-		PersistentDNSNameKey: nil,
-	}, options.Find().SetLimit(int64(limit)))
 }
 
 // isSleepScheduleApplicable returns a query that finds hosts which can use a

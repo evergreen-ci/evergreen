@@ -37,7 +37,7 @@ type CommitQueueSuite struct {
 }
 
 func TestCommitQueueSuite(t *testing.T) {
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	s := &CommitQueueSuite{settings: testConfig}
 	suite.Run(t, s)
 }

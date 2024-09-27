@@ -29,7 +29,7 @@ func TestPeriodicBuildsJob(t *testing.T) {
 	_ = env.DB().RunCommand(nil, map[string]string{"create": build.Collection})
 	_ = env.DB().RunCommand(nil, map[string]string{"create": task.Collection})
 	j.env = env
-	testutil.ConfigureIntegrationTest(t, j.env.Settings(), "TestPeriodicBuildsJob")
+	testutil.ConfigureIntegrationTest(t, j.env.Settings())
 
 	sampleProject := model.ProjectRef{
 		Id:         "myProject",

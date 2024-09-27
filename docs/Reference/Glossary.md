@@ -1,5 +1,7 @@
 # Glossary
 
+* **agent**: An agent is the evergreen client that runs tasks on a host.
+* **artifact**: An artifact is a file or directory that is uploaded to Evergreen by a task and can be downloaded from the task page.
 * **build**: A build is a set of tasks in a single build variant in a single version.
 * **build variant**: A build variant is a distro configured in a project. It contains a distro name and some metadata.
 * **command**: A tasks runs one or more commands. There are separate commands to do things like run a program or upload a file to s3.

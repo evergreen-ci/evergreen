@@ -95,10 +95,6 @@ type LogInfo struct {
 	URL     string `bson:"url" json:"url"`
 }
 
-type DisableInfo struct {
-	Reason string `bson:"reason" json:"reason"`
-}
-
 type ModuleCloneInfo struct {
 	Prefixes map[string]string `bson:"prefixes,omitempty" json:"prefixes,omitempty"`
 }
@@ -204,8 +200,12 @@ type Token struct {
 
 // AssumeRoleRequest is the details of what role to assume.
 type AssumeRoleRequest struct {
-	RoleARN         string `json:"role_arn"`
-	Policy          string `json:"policy"`
+	// RoleARN is the Amazon Resource Name (ARN) of the role to assume.
+	RoleARN string `json:"role_arn"`
+	// Policy is an optional field that can be used to restrict the permissions.
+	Policy *string `json:"policy"`
+	// DurationSeconds is an optional field of the duration of the role session.
+	// It defaults to 15 minutes.
 	DurationSeconds *int32 `json:"duration_seconds"`
 }
 
@@ -233,7 +233,7 @@ func (ted *TaskEndDetail) IsEmpty() bool {
 	return ted == nil || ted.Status == ""
 }
 
-func (ch *CreateHost) validateDocker(ctx context.Context) error {
+func (ch *CreateHost) validateDocker() error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Add(ch.setNumHosts())
@@ -352,7 +352,7 @@ func (ch *CreateHost) Validate(ctx context.Context) error {
 	}
 
 	if ch.CloudProvider == ProviderDocker {
-		return ch.validateDocker(ctx)
+		return ch.validateDocker()
 	}
 
 	return errors.Errorf("cloud provider must be either '%s' or '%s'", ProviderEC2, ProviderDocker)

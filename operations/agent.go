@@ -191,6 +191,7 @@ func Agent() cli.Command {
 				return errors.Wrap(err, "setting up global logger")
 			}
 			agt.SetDefaultLogger(sender)
+			agt.SetHomeDirectory()
 
 			err = agt.Start(ctx)
 			if err != nil {

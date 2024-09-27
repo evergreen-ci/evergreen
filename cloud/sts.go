@@ -41,8 +41,12 @@ type stsManagerImpl struct {
 // Some internal options are not present and are set by the manager
 // (e.g. ExternalID).
 type AssumeRoleOptions struct {
-	RoleARN         string
-	Policy          string
+	// RoleARN is the Amazon Resource Name (ARN) of the role to assume.
+	RoleARN string
+	// Policy is an optional field that can be used to restrict the permissions.
+	Policy *string
+	// DurationSeconds is an optional field of the duration of the role session.
+	// It defaults to 15 minutes.
 	DurationSeconds *int32
 }
 
@@ -70,7 +74,7 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 	}
 	output, err := s.client.AssumeRole(ctx, &sts.AssumeRoleInput{
 		RoleArn:         &opts.RoleARN,
-		Policy:          &opts.Policy,
+		Policy:          opts.Policy,
 		DurationSeconds: opts.DurationSeconds,
 		ExternalId:      aws.String(createExternalID(t)),
 		RoleSessionName: aws.String(strconv.Itoa(int(time.Now().Unix()))),

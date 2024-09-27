@@ -6,14 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
-
-const defaultMaxBufferSize = 1e7
 
 // LineParser functions parse a raw log line into the service representation of
 // a log line for uniform ingestion of logs by the Evergreen log sender.
@@ -44,30 +41,6 @@ type SenderOptions struct {
 	FlushInterval time.Duration
 }
 
-func (opts *SenderOptions) validate() error {
-	catcher := grip.NewBasicCatcher()
-	catcher.NewWhen(opts.LogName == "", "must provide a log name")
-	catcher.NewWhen(opts.MaxBufferSize < 0, "max buffer size cannot be negative")
-	catcher.NewWhen(opts.FlushInterval < 0, "flush interval cannot be negative")
-
-	if opts.Parse == nil {
-		opts.Parse = func(rawLine string) (LogLine, error) {
-			return LogLine{Data: rawLine}, nil
-		}
-	}
-
-	if opts.Local == nil {
-		opts.Local = send.MakeNative()
-		opts.Local.SetName("local")
-	}
-
-	if opts.MaxBufferSize == 0 {
-		opts.MaxBufferSize = defaultMaxBufferSize
-	}
-
-	return catcher.Resolve()
-}
-
 // sender implements the send.Sender interface for persisting Evergreen logs.
 type sender struct {
 	mu         sync.Mutex
@@ -80,32 +53,6 @@ type sender struct {
 	lastFlush  time.Time
 	closed     bool
 	*send.Base
-}
-
-// NewSender creates a new log sender backed by an Evergreen log service.
-func NewSender(ctx context.Context, name string, svc LogService, opts SenderOptions) (send.Sender, error) {
-	if err := opts.validate(); err != nil {
-		return nil, err
-	}
-
-	ctx, cancel := context.WithCancel(ctx)
-	s := &sender{
-		ctx:    ctx,
-		cancel: cancel,
-		opts:   opts,
-		svc:    svc,
-		Base:   send.NewBase(name),
-	}
-
-	if err := s.SetErrorHandler(send.ErrorHandlerFromSender(s.opts.Local)); err != nil {
-		return nil, errors.Wrap(err, "setting default error handler")
-	}
-
-	if opts.FlushInterval > 0 {
-		go s.timedFlush()
-	}
-
-	return s, nil
 }
 
 // Send sends the given message to the Evergreen log service. This function

@@ -8,7 +8,7 @@ import (
 )
 
 // GetPluginHandler returns a handler function given the template route and data to go to that page.
-func (uis *UIServer) GetPluginHandler(uiPage *plugin.UIPage, pluginName string) func(http.ResponseWriter, *http.Request) {
+func (uis *UIServer) GetPluginHandler(uiPage *plugin.UIPage) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		projCtx := MustHaveProjectContext(r)
 		u := gimlet.GetUser(r.Context())

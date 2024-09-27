@@ -53,7 +53,7 @@ func GetIntegrationFile(t *testing.T) *evergreen.Settings {
 	return integrationSettings
 }
 
-func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings, testName string) {
+func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings) {
 	// make sure an override file is provided
 	if skip, _ := strconv.ParseBool(os.Getenv("SKIP_INTEGRATION_TESTS")); skip {
 		t.Skip("SKIP_INTEGRATION_TESTS is set, skipping integration test")

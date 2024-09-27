@@ -28,7 +28,7 @@ import (
 
 func TestGithubSuite(t *testing.T) {
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGithubSuite")
+	testutil.ConfigureIntegrationTest(t, config)
 
 	suite.Run(t, &githubSuite{config: config})
 }
@@ -447,7 +447,7 @@ func TestGetGitHubSender(t *testing.T) {
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
-	testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
+	testutil.ConfigureIntegrationTest(t, env.Settings())
 
 	sender, err := env.GetGitHubSender("evergreen-ci", "evergreen", func(context.Context, string, string) (string, error) {
 		return "", nil

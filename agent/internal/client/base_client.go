@@ -168,21 +168,6 @@ func (c *baseCommunicator) GetProjectRef(ctx context.Context, taskData TaskData)
 	return projectRef, nil
 }
 
-// DisableHost signals to the app server that the host should be disabled.
-func (c *baseCommunicator) DisableHost(ctx context.Context, hostID string, details apimodels.DisableInfo) error {
-	info := requestInfo{
-		method: http.MethodPost,
-		path:   fmt.Sprintf("hosts/%s/disable", hostID),
-	}
-	resp, err := c.retryRequest(ctx, info, &details)
-	if err != nil {
-		return util.RespErrorf(resp, errors.Wrapf(err, "disabling host '%s'", hostID).Error())
-	}
-
-	defer resp.Body.Close()
-	return nil
-}
-
 // GetTask returns the active task.
 func (c *baseCommunicator) GetTask(ctx context.Context, taskData TaskData) (*task.Task, error) {
 	task := &task.Task{}
@@ -403,7 +388,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, confi
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
 	var senders []send.Sender
 	if config.SendToGlobalSender {
-		senders = append(senders, grip.GetSender())
+		senders = append(senders, redactor.NewRedactingSender(grip.GetSender(), config.RedactorOpts))
 	}
 
 	var sender send.Sender
@@ -1026,4 +1011,25 @@ func (c *baseCommunicator) UpsertCheckRun(ctx context.Context, td TaskData, chec
 
 	defer resp.Body.Close()
 	return nil
+}
+
+func (c *baseCommunicator) AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AssumeRoleResponse, error) {
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &td,
+	}
+	info.setTaskPathSuffix("aws/assume_role")
+	resp, err := c.retryRequest(ctx, info, &request)
+	if err != nil {
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "assuming role").Error())
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespErrorf(resp, "trouble assuming role")
+	}
+	var creds apimodels.AssumeRoleResponse
+	if err := utility.ReadJSON(resp.Body, &creds); err != nil {
+		return nil, errors.Wrap(err, "reading assume role response")
+	}
+	return &creds, nil
 }

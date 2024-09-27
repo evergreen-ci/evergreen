@@ -1075,7 +1075,7 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 		return errors.Errorf("project ref for repo '%s/%s' with branch '%s' and merge queue enabled not found",
 			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	}
-	j.user, err = findEvergreenUserForGithubMergeGroup(patchDoc.GithubPatchData.AuthorUID)
+	j.user, err = findEvergreenUserForGithubMergeGroup()
 	if err != nil {
 		return errors.Wrap(err, "finding GitHub merge queue user")
 	}
@@ -1224,7 +1224,7 @@ func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {
 	return u, err
 }
 
-func findEvergreenUserForGithubMergeGroup(githubUID int) (*user.DBUser, error) {
+func findEvergreenUserForGithubMergeGroup() (*user.DBUser, error) {
 	u, err := user.FindOne(user.ById(evergreen.GithubMergeUser))
 	if err != nil {
 		return u, errors.Wrap(err, "finding GitHub merge queue user")

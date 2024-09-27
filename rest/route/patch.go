@@ -593,7 +593,7 @@ func (p *countEstimatedGeneratedTasksHandler) Run(ctx context.Context) gimlet.Re
 			task.BuildVariantKey: vt.Variant,
 			task.DisplayNameKey:  vt.TaskName,
 			task.GenerateTaskKey: true,
-		}).Sort([]string{"-" + task.CreateTimeKey}))
+		}).Sort([]string{"-" + task.FinishTimeKey}))
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting task with variant '%s' and name '%s'", vt.Variant, vt.TaskName))
 		}

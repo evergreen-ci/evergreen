@@ -8,6 +8,7 @@ import (
 
 // DynamicExpansions wraps expansions for safe concurrent access as they are
 // dynamically updated.
+// It also contains logic to redact values that should not be exposed.
 //
 // This should be expanded to support better expansion handling during a task
 // run.
@@ -15,13 +16,14 @@ type DynamicExpansions struct {
 	util.Expansions
 	mu sync.RWMutex
 
-	// redact stores expansions that should be redacted.
-	// These expansions can be from `expansion.update` or
-	// from project commands that generate private expansions.
-	// Since updates can be done dynamically and override previous
-	// expansions that should be redacted, we need to store them
-	// separately. Otherwise, previously redacted values can leak
-	// if they are updated.
+	// redact stores information about key and value pairs that
+	// should be redacted. These come from `expansion.update` or
+	// from project commands that generate sensitive expansions or
+	// internally generated sensitive expansions that aren't exposed
+	// to the user.
+	// Since we can't trust the current state of `util.Expansions` to
+	// have all the necessary information (because of overwriting),
+	// we store the redacted information separately.
 	redact []RedactInfo
 }
 
@@ -89,6 +91,15 @@ func (e *DynamicExpansions) PutAndRedact(key, value string) {
 	if value != "" {
 		e.redact = append(e.redact, RedactInfo{Key: key, Value: value})
 	}
+}
+
+// Redact adds a key and value pair to be redacted. This should only be
+// used for generated keys not exposed to the task.
+func (e *DynamicExpansions) Redact(key, value string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.redact = append(e.redact, RedactInfo{Key: key, Value: value})
 }
 
 // UpdateFromYamlAndRedact updates the expansions from the given yaml file

@@ -80,9 +80,9 @@ type copyVariablesOptions struct {
 	// be copied. (If private, the values will be redacted.) If dry_run is set,
 	// then the route does not complete the copy, but returns OK if no project
 	// variables in the source project will be overwritten (this concerns
-	// [all]{.title-ref} variables in the destination project, but only redacted
+	// all variables in the destination project, but only redacted
 	// variables in the source project). Otherwise, an error is given which
-	// includes the project variable keys that overlap.  if dry_run is not set,
+	// includes the project variable keys that overlap. If dry_run is not set,
 	// the copy is completed, and variables could be overwritten.
 	DryRun bool `json:"dry_run"`
 	// 	If set to true, private variables will also be copied.

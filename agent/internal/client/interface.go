@@ -82,9 +82,6 @@ type SharedCommunicator interface {
 	// GetPullRequestInfo takes in a PR number, owner, and repo and returns information from the corresponding pull request.
 	GetPullRequestInfo(context.Context, TaskData, int, string, string, bool) (*apimodels.PullRequestInfo, error)
 
-	// DisableHost signals to the app server that the host should be disabled.
-	DisableHost(context.Context, string, apimodels.DisableInfo) error
-
 	// GetLoggerProducer constructs a new LogProducer instance for use by tasks.
 	GetLoggerProducer(context.Context, *task.Task, *LoggerConfig) (LoggerProducer, error)
 
@@ -133,8 +130,11 @@ type SharedCommunicator interface {
 	// MarkFailedTaskToRestart marks the task as needing to be restarted
 	MarkFailedTaskToRestart(ctx context.Context, td TaskData) error
 
-	// UpsertCheckRun upserts a checkrun for a task
+	// UpsertCheckRun upserts a checkrun for a task.
 	UpsertCheckRun(ctx context.Context, td TaskData, checkRunOutput apimodels.CheckRunOutput) error
+
+	// AssumeRole assumes an AWS role and returns the credentials.
+	AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AssumeRoleResponse, error)
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for

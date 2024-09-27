@@ -79,6 +79,7 @@ type Options struct {
 	// SendTaskLogsToGlobalSender indicates whether task logs should also be
 	// sent to the global agent file log.
 	SendTaskLogsToGlobalSender bool
+	HomeDirectory              string
 }
 
 // AddLoggableInfo is a helper to add relevant information about the agent
@@ -599,11 +600,8 @@ func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {
 	taskLogDir := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
 	grip.Error(errors.Wrapf(os.RemoveAll(taskLogDir), "removing task log directory '%s'", taskLogDir))
 	tc.logger, err = a.makeLoggerProducer(ctx, tc, "")
-	if err != nil {
-		return errors.Wrap(err, "making the logger producer")
-	}
 
-	return nil
+	return errors.Wrap(err, "making the logger producer")
 }
 
 // runTask runs a task. It returns true if the agent should exit.
@@ -883,6 +881,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 			grip.Error(tc.logger.Close())
 		}
 	}()
+	defer a.clearGitConfig(tc)
 
 	teardownGroup, err := tc.getTeardownGroup()
 	if err != nil {
@@ -894,8 +893,14 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 
 	if teardownGroup.commands != nil {
 		a.killProcs(ctx, tc, true, "teardown group commands are starting")
-
-		_ = a.runCommandsInBlock(ctx, tc, *teardownGroup)
+		ctx = utility.ContextWithAttributes(ctx, tc.taskConfig.TaskAttributes())
+		ctx, span := a.tracer.Start(ctx, "teardown_group")
+		defer span.End()
+		// The teardown group commands don't defer the span as to not include the
+		// cleanups below, which add their own spans.
+		cmdCtx, span := a.tracer.Start(ctx, "commands")
+		_ = a.runCommandsInBlock(cmdCtx, tc, *teardownGroup)
+		span.End()
 		// Teardown groups should run all the remaining command cleanups.
 		tc.runTaskCommandCleanups(ctx, tc.logger, a.tracer)
 		tc.runSetupGroupCommandCleanups(ctx, tc.logger, a.tracer)
@@ -1217,12 +1222,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 
 	if tc.task.ID != "" && tc.taskConfig != nil {
 		logger.Infof("Cleaning up processes for task: '%s'.", tc.task.ID)
-		if err := agentutil.KillSpawnedProcs(ctx, tc.task.ID, tc.taskConfig.WorkDir, logger); err != nil {
-			// If the host is in a state where ps is timing out we need human intervention.
-			if psErr := errors.Cause(err); psErr == agentutil.ErrPSTimeout {
-				disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: psErr.Error()})
-				logger.CriticalWhen(disableErr != nil, errors.Wrap(err, "disabling host due to ps timeout"))
-			}
+		if err := agentutil.KillSpawnedProcs(ctx, tc.task.ID, logger); err != nil {
 			logger.Critical(errors.Wrap(err, "cleaning up spawned processes"))
 		}
 		logger.Infof("Cleaned up processes for task: '%s'.", tc.task.ID)
@@ -1240,6 +1240,27 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 		}
 		logger.Info("Cleaned up Docker artifacts.")
 	}
+}
+
+func (a *Agent) clearGitConfig(tc *taskContext) {
+	logger := grip.GetDefaultJournaler()
+	if tc.logger != nil && !tc.logger.Closed() {
+		logger = tc.logger.Execution()
+	}
+
+	logger.Infof("Clearing git config.")
+
+	globalGitConfigPath := filepath.Join(a.opts.HomeDirectory, ".gitconfig")
+	if _, err := os.Stat(globalGitConfigPath); os.IsNotExist(err) {
+		logger.Info("Global git config file does not exist.")
+		return
+	}
+	if err := os.Remove(globalGitConfigPath); err != nil {
+		logger.Error(errors.Wrap(err, "removing global git config file"))
+		return
+	}
+
+	logger.Info("Cleared git config.")
 }
 
 func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {

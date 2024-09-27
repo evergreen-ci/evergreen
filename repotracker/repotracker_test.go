@@ -60,7 +60,7 @@ func TestFetchRevisions(t *testing.T) {
 
 		Convey("Only get 2 revisions from the given repository if given a "+
 			"limit of 2 commits where 3 exist", func() {
-			testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+			testutil.ConfigureIntegrationTest(t, testConfig)
 			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 2
 			require.NoError(t, repoTracker.FetchRevisions(ctx),
 				"Error running repository process %s", repoTracker.Settings.Id)
@@ -95,7 +95,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 		Convey("On storing a single repo revision, we expect a version to be created"+
 			" in the database for this project, which should be retrieved when we search"+
 			" for this project's most recent version", func() {
-			testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+			testutil.ConfigureIntegrationTest(t, testConfig)
 			createTime := time.Now()
 			revisionOne := *createTestRevision("1d97b5e8127a684f341d9fea5b3a2848f075c3b0", createTime)
 			revisions := []model.Revision{revisionOne}
@@ -112,7 +112,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 		Convey("On storing several repo revisions, we expect a version to be created "+
 			"for each revision", func() {
-			testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+			testutil.ConfigureIntegrationTest(t, testConfig)
 			createTime := time.Now()
 			laterCreateTime := createTime.Add(4 * time.Hour)
 
@@ -137,7 +137,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			So(versionTwo.AuthorID, ShouldEqual, "")
 		})
 		Convey("if an evergreen user can be associated with the commit, record it", func() {
-			testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+			testutil.ConfigureIntegrationTest(t, testConfig)
 			revisionOne := *createTestRevision("1d97b5e8127a684f341d9fea5b3a2848f075c3b0", time.Now())
 			revisions := []model.Revision{revisionOne}
 			revisions[0].AuthorGithubUID = 1234
@@ -1248,7 +1248,7 @@ tasks:
 func TestCreateManifest(t *testing.T) {
 	assert := assert.New(t)
 	settings := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, settings, t.Name())
+	testutil.ConfigureIntegrationTest(t, settings)
 	require.NoError(t, db.ClearCollections(model.VersionCollection, model.ProjectRefCollection, model.ProjectVarsCollection))
 	// with a revision from 5/31/15
 	v := model.Version{

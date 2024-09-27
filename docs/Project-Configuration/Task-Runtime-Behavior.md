@@ -147,6 +147,11 @@ a task group, it will keep the task directory as long as it is running tasks
 in the same task group. Once all the task group tasks have finished, it will
 clean up the task directory.
 
+### Global Git Config Cleanup
+For tasks not in a task group, the global git config will be reset at the end of the 
+task after all commands have finished running. For a tasks in a task group, the reset 
+will occur after the all the tasks in the task group tasks have finished.
+
 ## Task Timeouts
 
 Tasks are not allowed to run forever, so all commands that run for a task are
