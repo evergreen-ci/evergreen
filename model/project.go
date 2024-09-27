@@ -846,11 +846,16 @@ func (t TaskIdConfig) Length() int {
 }
 
 // NewTaskIdConfigForRepotrackerVersion creates a special TaskIdTable for a
-// repotracker version.
-func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, sourceRev, defID string) TaskIdConfig {
+// repotracker version. If pairsToCreate is not empty, that means only some of
+// the tasks will be created for this version so only create task IDs for those
+// tasks that actually will be created; otherwise, it will create task IDs for
+// all possible tasks in the version.
+func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, pairsToCreate TVPairSet, sourceRev, defID string) TaskIdConfig {
 	// init the variant map
 	execTable := TaskIdTable{}
 	displayTable := TaskIdTable{}
+
+	isCreatingSubsetOfTasks := len(pairsToCreate) > 0
 
 	sort.Stable(p.BuildVariants)
 
@@ -859,6 +864,7 @@ func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, sourceRev, def
 		projectIdentifier = p.Identifier
 	}
 	for _, bv := range p.BuildVariants {
+		taskNamesInBV := pairsToCreate.TaskNames(bv.Name)
 		rev := v.Revision
 		if evergreen.IsPatchRequester(v.Requester) {
 			rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
@@ -876,10 +882,16 @@ func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, sourceRev, def
 			}
 			if tg := p.FindTaskGroup(t.Name); tg != nil {
 				for _, groupTask := range tg.Tasks {
+					if isCreatingSubsetOfTasks && !utility.StringSliceContains(taskNamesInBV, groupTask) {
+						continue
+					}
 					taskId := generateId(groupTask, projectIdentifier, &bv, rev, v)
 					execTable[TVPair{bv.Name, groupTask}] = util.CleanName(taskId)
 				}
 			} else {
+				if isCreatingSubsetOfTasks && !utility.StringSliceContains(taskNamesInBV, t.Name) {
+					continue
+				}
 				// create a unique Id for each task
 				taskId := generateId(t.Name, projectIdentifier, &bv, rev, v)
 				execTable[TVPair{bv.Name, t.Name}] = util.CleanName(taskId)
