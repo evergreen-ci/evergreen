@@ -145,6 +145,9 @@ func shouldNotifyForVolumeExpiration(v host.Volume, numHours int) (bool, error) 
 	if err != nil {
 		return false, err
 	}
+	if rec == nil {
+		return true, err
+	}
 
-	return rec == nil, nil
+	return time.Since(rec.AlertTime) > hostRenotificationInterval, nil
 }

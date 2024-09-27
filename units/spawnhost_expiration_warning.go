@@ -121,13 +121,16 @@ func shouldNotifyForSpawnhostExpiration(h *host.Host, numHours int) (bool, error
 	if err != nil {
 		return false, err
 	}
+	if rec == nil {
+		return true, nil
+	}
 
-	return rec == nil, nil
+	return time.Since(rec.AlertTime) > hostRenotificationInterval, nil
 }
 
-// temporaryExemptionRenotificationInterval is how frequently a notification can
-// be re-sent for a temporary exemption that's expring.
-const temporaryExemptionRenotificationInterval = utility.Day
+// hostRenotificationInterval is how frequently a host-related notification can
+// be re-sent after one has already been sent.
+const hostRenotificationInterval = utility.Day
 
 func shouldNotifyForHostTemporaryExemptionExpiration(h *host.Host, numHours int) (bool, error) {
 	if utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) || time.Until(h.SleepSchedule.TemporarilyExemptUntil) > time.Duration(numHours)*time.Hour {
@@ -141,7 +144,7 @@ func shouldNotifyForHostTemporaryExemptionExpiration(h *host.Host, numHours int)
 		return true, nil
 	}
 
-	return time.Since(rec.AlertTime) > temporaryExemptionRenotificationInterval, nil
+	return time.Since(rec.AlertTime) > hostRenotificationInterval, nil
 }
 
 func trySpawnHostExpirationNotification(h *host.Host, numHours int) error {
