@@ -1,11 +1,14 @@
 package model
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -483,4 +486,33 @@ func getParamNameForVar(varsToParams []ParameterMapping, varName string) (string
 	}
 
 	return paramName, nil
+}
+
+// kim: TODO: confirm if 8192 is the exact limit, or possibly something fuzzier
+// like 8191 or 8000.
+const gzipCompressedParamExtension = ".gz"
+
+// getParamValueForVar returns the parameter name and value for a project
+// variable. If the value is too long to be stored in Parameter Store, attempt
+// to compress it down to a valid size.
+// kim: TODO: test this logic on long project var in prod.
+func getParamValueForVar(varName, varValue string) (paramName string, paramValue string, err error) {
+	if len(varValue) < parameterstore.ParamValueMaxLength {
+		return varName, varValue, nil
+	}
+
+	compressedValue := bytes.NewBuffer(make([]byte, 0, len(varValue)))
+	gzw := gzip.NewWriter(compressedValue)
+	if _, err := gzw.Write([]byte(varValue)); err != nil {
+		return "", "", errors.Wrap(err, "compressing long project variable value")
+	}
+	if err := gzw.Close(); err != nil {
+		return "", "", errors.Wrap(err, "closing gzip writer after compressing long project variable value")
+	}
+
+	if compressedValue.Len() >= parameterstore.ParamValueMaxLength {
+		return "", "", errors.Errorf("project variable value exceeds maximum length, even after attempted compression (value is %d bytes, compressed value is %d bytes, maximum is %d bytes)", len(varValue), compressedValue.Len(), parameterstore.ParamValueMaxLength)
+	}
+
+	return fmt.Sprintf("%s%s", varName, gzipCompressedParamExtension), compressedValue.String(), nil
 }

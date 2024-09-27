@@ -4,11 +4,18 @@ import (
 	"fmt"
 	"testing"
 
+	"strings"
+	"testing"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
+
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -393,6 +400,47 @@ func TestGetParamNameForVar(t *testing.T) {
 		paramName, err := getParamNameForVar(nil, "")
 		assert.Error(t, err)
 		assert.Zero(t, paramName)
+	})
+}
+
+func TestGetParamValueForVar(t *testing.T) {
+	t.Run("ReturnsUnmodifiedVarForShortVarValue", func(t *testing.T) {
+		const (
+			varName  = "var_name"
+			varValue = "var_value"
+		)
+		paramName, paramValue, err := getParamValueForVar(varName, varValue)
+		assert.NoError(t, err)
+		assert.Equal(t, varName, paramName)
+		assert.Equal(t, varValue, paramValue)
+	})
+	t.Run("ReturnsUnmodifiedVarForEmptyVarValue", func(t *testing.T) {
+		const (
+			varName  = "var_name"
+			varValue = ""
+		)
+		paramName, paramValue, err := getParamValueForVar(varName, varValue)
+		assert.NoError(t, err)
+		assert.Equal(t, varName, paramName)
+		assert.Equal(t, varValue, paramValue)
+	})
+	t.Run("ReturnsCompressedVarForLongVarValue", func(t *testing.T) {
+		const varName = "var_name"
+		varValue := strings.Repeat("abc", parameterstore.ParamValueMaxLength)
+		assert.Greater(t, len(varValue), parameterstore.ParamValueMaxLength)
+
+		paramName, paramValue, err := getParamValueForVar(varName, varValue)
+		assert.NoError(t, err)
+		assert.Equal(t, fmt.Sprintf("%s%s", varName, gzipCompressedParamExtension), paramName)
+		assert.Less(t, len(paramValue), parameterstore.ParamValueMaxLength)
+	})
+	t.Run("ReturnsErrorForVarValueThatExceedsMaxLengthAfterCompression", func(t *testing.T) {
+		const varName = "var_name"
+		varValue := utility.MakeRandomString(10 * parameterstore.ParamValueMaxLength)
+		assert.Greater(t, len(varValue), parameterstore.ParamValueMaxLength)
+
+		_, _, err := getParamValueForVar(varName, varValue)
+		assert.Error(t, err)
 	})
 }
 
