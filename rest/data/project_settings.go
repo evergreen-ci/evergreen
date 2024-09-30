@@ -160,6 +160,8 @@ func PromoteVarsToRepo(projectIdentifier string, varNames []string, userId strin
 	if err != nil {
 		return errors.Wrapf(err, "getting settings for repo '%s' after adding promoted variables", repoId)
 	}
+	// kim: TODO: verify that this still works after LogProjectModified redacts
+	// vars from the event log
 	if err = model.LogProjectModified(repoId, userId, repo, repoAfter); err != nil {
 		return errors.Wrapf(err, "logging repo '%s' modified", repoId)
 	}

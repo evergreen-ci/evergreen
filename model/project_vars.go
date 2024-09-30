@@ -171,6 +171,15 @@ func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun, e
 						continue
 					}
 
+					// var afterVars ProjectVars
+					// err = util.DeepCopy(*projectVars, &afterVars)
+					// if err != nil {
+					//     catcher.Wrap(err, "copying project variables")
+					//     continue
+					// }
+					// kim; NOTE: the deep copy shouldn't be needed if
+					// LogProjectModified makes a redacted copy of the map
+					// rather than modifying the original map.
 					after := ProjectSettings{
 						Vars: *projectVars,
 					}

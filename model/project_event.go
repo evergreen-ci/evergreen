@@ -45,7 +45,10 @@ type ProjectChangeEvent struct {
 	After  ProjectSettingsEvent `bson:"after" json:"after"`
 }
 
-func (e *ProjectChangeEvent) redactVars() {
+// RedactVars redacts project variables from a project change event. Project
+// variables that are not changed are cleared and project variables that are
+// changed are replaced with redacted placeholders.
+func (e *ProjectChangeEvent) RedactVars() {
 	modifiedPrivateVarKeys := findModifiedProjectVars(e)
 	// kim: TODO: remove since the loop below should cover redaction.
 	// changeEvent.After.Vars = *changeEvent.After.Vars.RedactPrivateVars()
@@ -53,28 +56,38 @@ func (e *ProjectChangeEvent) redactVars() {
 
 	// kim: TODO: test that the UI event log still displays okay with cleared
 	// out vars.
+
+	// Redact project variables in a copy of the map. Since project settings are
+	// passed in to create a ProjectChangeEvent, making a copy avoids redacting
+	// the original variables map in case the caller still needs to use the
+	// unredacted variables.
+	beforeVarsRedacted := make(map[string]string, len(e.Before.Vars.Vars))
 	for k, v := range e.Before.Vars.Vars {
 		if _, ok := modifiedPrivateVarKeys[k]; ok && v != "" {
 			// The project var was modified and it had a before value, so
 			// replace it with a placeholder string to indicate that it changed.
-			e.Before.Vars.Vars[k] = evergreen.RedactedBeforeValue
-		} else if v != "" {
+			beforeVarsRedacted[k] = evergreen.RedactedBeforeValue
+		} else {
 			// The project var was not modified, but still has a non-empty
 			// value. Prevent the value from appearing in the project event log.
-			e.Before.Vars.Vars[k] = ""
+			beforeVarsRedacted[k] = ""
 		}
 	}
+	e.Before.Vars.Vars = beforeVarsRedacted
+
+	afterVarsRedacted := make(map[string]string, len(e.After.Vars.Vars))
 	for k, v := range e.After.Vars.Vars {
 		if _, ok := modifiedPrivateVarKeys[k]; ok && v != "" {
 			// The project var was modified and it had an after value, so
 			// replace it with a placeholder string to indicate that it changed.
-			e.After.Vars.Vars[k] = evergreen.RedactedAfterValue
+			afterVarsRedacted[k] = evergreen.RedactedAfterValue
 		} else if v != "" {
 			// The project var was not modified, but still has a non-empty
 			// value. Prevent the value from appearing in the project event log.
-			e.After.Vars.Vars[k] = ""
+			afterVarsRedacted[k] = ""
 		}
 	}
+	e.After.Vars.Vars = afterVarsRedacted
 
 	// kim: TODO: remove since the redaction has been absorbed into the logic
 	// above.
@@ -190,7 +203,7 @@ func (p *ProjectChangeEvents) RedactVars() {
 		// kim: NOTE: this redacts the project var changes from the UI log for
 		// older project event logs where redaction isn't done before doc
 		// insertion.
-		changeEvent.redactVars()
+		changeEvent.RedactVars()
 		// kim: TODO: remove since redactVars already has the same effect.
 		// modifiedPrivateVarKeys := findModifiedProjectVars(changeEvent)
 
@@ -422,7 +435,8 @@ func (p *ProjectSettings) resolveDefaults() *ProjectSettingsEvent {
 }
 
 // LogProjectModified logs an event for a modification of a project's settings.
-// kim: TODO: add test to verify that this never includes project var values.
+// This also redacts project variables from the before and after project
+// settings, so care should be taken to ensure that the before/after
 func LogProjectModified(projectId, username string, before, after *ProjectSettings) error {
 	// kim: TODO: consider redacting project vars here as a gate against all
 	// callers to ensure they don't log the project var value ever.
@@ -454,6 +468,6 @@ func constructProjectChangeEvent(username string, before, after *ProjectSettings
 		Before: *before.resolveDefaults(),
 		After:  *after.resolveDefaults(),
 	}
-	eventData.redactVars()
+	eventData.RedactVars()
 	return &eventData
 }
