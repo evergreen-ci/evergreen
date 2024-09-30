@@ -91,7 +91,6 @@ func CopyProject(ctx context.Context, env evergreen.Environment, opts CopyProjec
 
 	// Since this is a new project we want to log all settings that were copied,
 	// so we pass in an empty ProjectSettings struct for the original project state.
-	// kim: TODO: figure out how to redact project vars from event.
 	if err := model.GetAndLogProjectModified(projectToCopy.Id, u.Id, false, &model.ProjectSettings{}); err != nil {
 		catcher.Wrapf(err, "logging project modified")
 	}
@@ -160,8 +159,6 @@ func PromoteVarsToRepo(projectIdentifier string, varNames []string, userId strin
 	if err != nil {
 		return errors.Wrapf(err, "getting settings for repo '%s' after adding promoted variables", repoId)
 	}
-	// kim: TODO: verify that this still works after LogProjectModified redacts
-	// vars from the event log
 	if err = model.LogProjectModified(repoId, userId, repo, repoAfter); err != nil {
 		return errors.Wrapf(err, "logging repo '%s' modified", repoId)
 	}
@@ -369,8 +366,6 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 		}
 	case model.ProjectPageVariablesSection:
-		// kim: TODO: figure out if this still works after redacting all private
-		// vars. It should since the project vars page should be unchanged.
 		for key, value := range before.Vars.Vars {
 			// Private variables are redacted in the UI, so re-set to the real value
 			// before updating (assuming the value isn't deleted/re-configured).
