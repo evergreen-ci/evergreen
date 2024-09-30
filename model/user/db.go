@@ -48,6 +48,7 @@ var (
 	ParsleyFiltersKey         = bsonutil.MustHaveTag(DBUser{}, "ParsleyFilters")
 	ParsleySettingsKey        = bsonutil.MustHaveTag(DBUser{}, "ParsleySettings")
 	NumScheduledPatchTasksKey = bsonutil.MustHaveTag(DBUser{}, "NumScheduledPatchTasks")
+	BetaFeaturesKey           = bsonutil.MustHaveTag(DBUser{}, "BetaFeatures")
 )
 
 //nolint:megacheck,unused

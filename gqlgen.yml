@@ -22,6 +22,10 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAWSPodConfig
   BannerTheme:
     model: github.com/evergreen-ci/evergreen.BannerTheme
+  BetaFeatures:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIBetaFeatures
+  BetaFeaturesInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIBetaFeatures
   BootstrapSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBootstrapSettings
   BootstrapSettingsInput:

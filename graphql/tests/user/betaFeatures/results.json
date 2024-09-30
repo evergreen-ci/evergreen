@@ -1,0 +1,30 @@
+{
+  "tests": [
+    {
+      "query_file": "no_preferences_defined.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "userId": "jane.smith",
+            "betaFeatures": {
+              "spruceWaterfallEnabled": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "preferences_defined.graphql",
+      "result": {
+        "data": {
+          "user": {
+            "userId": "bob.smith",
+            "betaFeatures": {
+              "spruceWaterfallEnabled": true
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -16,6 +16,14 @@ input ParsleySettingsInput {
   jumpToFailingLineEnabled: Boolean
 }
 
+input UpdateBetaFeaturesInput {
+  betaFeatures: BetaFeaturesInput!
+}
+
+input BetaFeaturesInput {
+  spruceWaterfallEnabled: Boolean
+}
+
 """
 UserSettingsInput is the input to the updateUserSettings mutation.
 It is used to update user information such as GitHub or Slack username.
@@ -94,6 +102,7 @@ User is returned by the user query.
 It contains information about a user's id, name, email, and permissions.
 """
 type User {
+  betaFeatures: BetaFeatures!
   displayName: String!
   emailAddress: String!
   parsleyFilters: [ParsleyFilter!]!
@@ -129,12 +138,20 @@ type UpdateParsleySettingsPayload {
   parsleySettings: ParsleySettings
 }
 
+type UpdateBetaFeaturesPayload {
+  betaFeatures: BetaFeatures
+}
+
 """
 ParsleySettings contains information about a user's settings for Parsley.
 """
 type ParsleySettings {
   sectionsEnabled: Boolean!
   jumpToFailingLineEnabled: Boolean!
+}
+
+type BetaFeatures {
+  spruceWaterfallEnabled: Boolean
 }
 
 """
