@@ -6,7 +6,7 @@
         "data": null,
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to access one or more hosts.",
+            "message": "user 'testuser' does not have permission to access one or more hosts",
             "path": [
               "hosts"
             ],

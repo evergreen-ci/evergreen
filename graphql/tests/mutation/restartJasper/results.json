@@ -58,7 +58,7 @@
         "data": null,
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to access the host 'i-0d0ae8b83366d22be'",
+            "message": "user 'testuser' does not have permission to access host 'i-0d0ae8b83366d22be'",
             "path": [
               "restartJasper",
               "hostIds"

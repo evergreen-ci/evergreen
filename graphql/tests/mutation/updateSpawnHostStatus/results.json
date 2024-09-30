@@ -6,7 +6,7 @@
                 "data": null,
                 "errors": [
                   {
-                    "message": "user 'testuser' does not have permission to access the host 'i-085085e236d598a60'",
+                    "message": "user 'testuser' does not have permission to access host 'i-085085e236d598a60'",
                     "path": [
                       "updateSpawnHostStatus",
                       "updateSpawnHostStatusInput",
@@ -25,7 +25,7 @@
                 "data": null,
                 "errors": [
                   {
-                    "message": "user 'testuser' does not have permission to access the host 'i-085085e236d598a60'",
+                    "message": "user 'testuser' does not have permission to access host 'i-085085e236d598a60'",
                     "path": [
                       "updateSpawnHostStatus",
                       "updateSpawnHostStatusInput",

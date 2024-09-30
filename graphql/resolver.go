@@ -75,9 +75,11 @@ func New(apiURL string) Config {
 				forbiddenHosts = append(forbiddenHosts, h.Id)
 			}
 		}
-		if len(forbiddenHosts) > 0 {
+		if len(forbiddenHosts) == 1 {
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access host '%v'", user.Username(), forbiddenHosts[0]))
+		} else if len(forbiddenHosts) > 1 {
 			hostsString := strings.Join(forbiddenHosts, ", ")
-			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access the hosts: '%v'", user.Username(), hostsString))
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access hosts: '%v'", user.Username(), hostsString))
 		}
 
 		return next(ctx)
