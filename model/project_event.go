@@ -1,6 +1,7 @@
 package model
 
 import (
+	"maps"
 	"reflect"
 	"time"
 
@@ -57,17 +58,17 @@ func (e *ProjectChangeEvent) RedactVars() {
 	// kim: TODO: test that the UI event log still displays okay with cleared
 	// out vars.
 
-	// Redact project variables in a copy of the map. Since project settings are
-	// passed in to create a ProjectChangeEvent, making a copy avoids redacting
-	// the original variables map in case the caller still needs to use the
-	// unredacted variables.
-	beforeVarsRedacted := make(map[string]string, len(e.Before.Vars.Vars))
-	for k, v := range e.Before.Vars.Vars {
+	// Redact a copy of the project variables. Since project settings are passed
+	// in to create a ProjectChangeEvent, making a copy avoids potentially
+	// redacting the original variables map in the project settings in case the
+	// caller still needs to use the unredacted variables.
+	beforeVarsRedacted := maps.Clone(e.Before.Vars.Vars)
+	for k, v := range beforeVarsRedacted {
 		if _, ok := modifiedPrivateVarKeys[k]; ok && v != "" {
 			// The project var was modified and it had a before value, so
 			// replace it with a placeholder string to indicate that it changed.
 			beforeVarsRedacted[k] = evergreen.RedactedBeforeValue
-		} else {
+		} else if v != "" {
 			// The project var was not modified, but still has a non-empty
 			// value. Prevent the value from appearing in the project event log.
 			beforeVarsRedacted[k] = ""
@@ -75,8 +76,8 @@ func (e *ProjectChangeEvent) RedactVars() {
 	}
 	e.Before.Vars.Vars = beforeVarsRedacted
 
-	afterVarsRedacted := make(map[string]string, len(e.After.Vars.Vars))
-	for k, v := range e.After.Vars.Vars {
+	afterVarsRedacted := maps.Clone(e.After.Vars.Vars)
+	for k, v := range afterVarsRedacted {
 		if _, ok := modifiedPrivateVarKeys[k]; ok && v != "" {
 			// The project var was modified and it had an after value, so
 			// replace it with a placeholder string to indicate that it changed.
@@ -359,6 +360,7 @@ func ProjectEventsBefore(id string, before time.Time, n int) (ProjectChangeEvent
 
 // LogProjectEvent logs a project event.
 func LogProjectEvent(eventType string, projectId string, eventData ProjectChangeEvent) error {
+	eventData.RedactVars()
 	projectEvent := event.EventLogEntry{
 		Timestamp:    time.Now(),
 		ResourceType: event.EventResourceTypeProject,
