@@ -254,12 +254,12 @@ func TestRequireHostAccess(t *testing.T) {
 		"EditFailsWhenUserDoesNotHaveEditPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
 			obj := interface{}(map[string]interface{}{"hostId": "host1"})
 			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
-			assert.EqualError(t, err, "input: user 'testuser' does not have permission to access the host 'host1'")
+			assert.EqualError(t, err, "input: user 'testuser' does not have permission to access host 'host1'")
 		},
 		"ViewFailsWhenUserDoesNotHaveViewPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
 			obj := interface{}(map[string]interface{}{"hostId": "host1"})
 			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelView)
-			assert.EqualError(t, err, "input: user 'testuser' does not have permission to access the host 'host1'")
+			assert.EqualError(t, err, "input: user 'testuser' does not have permission to access host 'host1'")
 		},
 		"EditSucceedsWhenUserHasEditPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
 			assert.NoError(t, usr.AddRole("edit_host-id"))
