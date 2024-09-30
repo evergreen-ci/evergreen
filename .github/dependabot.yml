@@ -22,3 +22,4 @@ updates:
     ignore:
       - dependency-name: "*gonum*" # TODO: (DEVPROD-6962) Remove this ignore once we upgrade to minimum golang version 1.21
       - dependency-name: "*grpc*" # TODO: (DEVPROD-6962) Remove this ignore once we upgrade to minimum golang version 1.21
+      - dependency-name: "github.com/aws/smithy-go" # TODO: (DEVPROD-6962) Remove this ignore once we upgrade to minimum golang version 1.21
