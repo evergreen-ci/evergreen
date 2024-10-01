@@ -1021,7 +1021,6 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken, knownH
 	expansions.Put("revision", t.Revision)
 	expansions.Put("github_commit", t.Revision)
 	expansions.Put(evergreen.GithubKnownHosts, knownHosts)
-	expansions.Put(evergreen.GlobalGitHubTokenExpansion, oauthToken)
 	expansions.Put(evergreen.GithubAppToken, appToken)
 	expansions.Put("project", projectRef.Identifier)
 	expansions.Put("project_identifier", projectRef.Identifier) // TODO: deprecate
