@@ -113,22 +113,13 @@ func validateCloneMethod(method string) error {
 
 func (opts cloneOpts) validate() error {
 	catcher := grip.NewBasicCatcher()
-	if opts.owner == "" {
-		catcher.New("missing required owner")
-	}
-	if opts.repo == "" {
-		catcher.New("missing required repo")
-	}
-	if opts.location == "" {
-		catcher.New("missing required location")
-	}
+	catcher.NewWhen(opts.owner == "", "missing required owner")
+	catcher.NewWhen(opts.repo == "", "missing required repo")
+	catcher.NewWhen(opts.location == "", "missing required location")
 	catcher.Wrapf(validateCloneMethod(opts.method), "invalid clone method '%s'", opts.method)
-	if opts.token == "" && opts.method == cloneMethodOAuth {
-		catcher.New("cannot clone using OAuth if token is not set")
-	}
-	if opts.cloneDepth < 0 {
-		catcher.New("clone depth cannot be negative")
-	}
+	catcher.NewWhen(opts.token == "" && opts.method == cloneMethodOAuth, "cannot clone using OAuth if token is not set")
+
+	catcher.NewWhen(opts.cloneDepth < 0, "clone depth cannot be negative")
 	return catcher.Resolve()
 }
 
@@ -698,7 +689,6 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		opts.token = projectToken
 	} else {
 		// Otherwise, create an installation token for to clone the module.
-		// Fallback to the legacy global token if the token cannot be created.
 		appToken, err := comm.CreateInstallationToken(ctx, td, opts.owner, opts.repo)
 		if err != nil {
 			return errors.Wrap(err, "creating app token")

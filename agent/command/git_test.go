@@ -422,9 +422,6 @@ func (s *GitGetProjectSuite) TestValidateGitCommands() {
 	defer cancel()
 	var pluginCmds []Command
 
-	// s.comm.CreateGitHubDynamicAccessTokenResult = mockedGitHubAppToken
-	// s.comm.CreateInstallationTokenResult = mockedGitHubAppToken
-
 	for _, task := range conf.Project.Tasks {
 		for _, command := range task.Commands {
 			pluginCmds, err = Render(command, &conf.Project, BlockInfo{})
