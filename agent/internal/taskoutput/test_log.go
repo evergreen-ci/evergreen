@@ -207,7 +207,7 @@ func (s testLogSpec) getParser() taskoutput.LogLineParser {
 
 			var data string
 			if len(lineParts) == 2 {
-				data = strings.TrimSuffix(lineParts[1], "\n")
+				data = lineParts[1]
 			}
 
 			return log.LogLine{
