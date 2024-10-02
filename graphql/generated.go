@@ -14468,11 +14468,14 @@ func (ec *executionContext) _BetaFeatures_spruceWaterfallEnabled(ctx context.Con
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_BetaFeatures_spruceWaterfallEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -73075,7 +73078,7 @@ func (ec *executionContext) unmarshalInputBetaFeaturesInput(ctx context.Context,
 		switch k {
 		case "spruceWaterfallEnabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("spruceWaterfallEnabled"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -78868,6 +78871,9 @@ func (ec *executionContext) _BetaFeatures(ctx context.Context, sel ast.Selection
 			out.Values[i] = graphql.MarshalString("BetaFeatures")
 		case "spruceWaterfallEnabled":
 			out.Values[i] = ec._BetaFeatures_spruceWaterfallEnabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

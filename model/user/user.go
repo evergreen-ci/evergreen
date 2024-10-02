@@ -163,7 +163,7 @@ func (u *DBUser) UpdateSettings(settings UserSettings) error {
 	return nil
 }
 
-// UpdateParsleySettings updates the user's settings for Parsley.
+// UpdateParsleySettings updates a user's settings for Parsley.
 func (u *DBUser) UpdateParsleySettings(settings parsley.Settings) error {
 	update := bson.M{"$set": bson.M{ParsleySettingsKey: settings}}
 	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
@@ -173,7 +173,7 @@ func (u *DBUser) UpdateParsleySettings(settings parsley.Settings) error {
 	return nil
 }
 
-// UpdateBetaFeatures updates the user's beta feature settings.
+// UpdateBetaFeatures updates a user's beta feature settings.
 func (u *DBUser) UpdateBetaFeatures(betaFeatures BetaFeatures) error {
 	update := bson.M{"$set": bson.M{BetaFeaturesKey: betaFeatures}}
 	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
