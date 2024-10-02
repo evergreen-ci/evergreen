@@ -180,10 +180,6 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding host running task")
 	}
-	oauthToken, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "getting GitHub OAuth token from admin settings")
-	}
 	pRef, err := model.FindBranchProjectRef(t.Project)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "finding project ref '%s'", t.Project)

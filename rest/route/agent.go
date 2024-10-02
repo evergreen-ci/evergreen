@@ -410,11 +410,6 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		}
 	}
 
-	oauthToken, err := h.settings.GetGithubOauthToken()
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting GitHub OAuth token"))
-	}
-
 	pRef, err := model.FindBranchProjectRef(t.Project)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project ref '%s'", t.Project))
