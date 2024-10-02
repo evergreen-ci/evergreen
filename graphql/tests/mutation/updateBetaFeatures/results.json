@@ -1,0 +1,16 @@
+{
+  "tests": [
+    {
+      "query_file": "update_beta_features.graphql",
+      "result": {
+        "data": {
+          "updateBetaFeatures": {
+            "betaFeatures": {
+              "spruceWaterfallEnabled": true
+            }
+          }
+        }
+      }
+    }
+  ]
+}

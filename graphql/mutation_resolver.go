@@ -1253,6 +1253,22 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	return true, nil
 }
 
+// UpdateBetaFeatures is the resolver for the updateBetaFeatures field.
+func (r *mutationResolver) UpdateBetaFeatures(ctx context.Context, opts UpdateBetaFeaturesInput) (*UpdateBetaFeaturesPayload, error) {
+	usr := mustHaveUser(ctx)
+	newBetaFeatureSettings := opts.BetaFeatures.ToService()
+
+	if err := usr.UpdateBetaFeatures(newBetaFeatureSettings); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating beta features: %s", err.Error()))
+	}
+
+	betaFeatures := restModel.APIBetaFeatures{}
+	betaFeatures.BuildFromService(usr.BetaFeatures)
+	return &UpdateBetaFeaturesPayload{
+		BetaFeatures: &betaFeatures,
+	}, nil
+}
+
 // UpdateParsleySettings is the resolver for the updateParsleySettings field.
 func (r *mutationResolver) UpdateParsleySettings(ctx context.Context, opts UpdateParsleySettingsInput) (*UpdateParsleySettingsPayload, error) {
 	usr := mustHaveUser(ctx)

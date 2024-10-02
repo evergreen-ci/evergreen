@@ -39,6 +39,7 @@ type DBUser struct {
 	ParsleySettings        parsley.Settings `bson:"parsley_settings"`
 	NumScheduledPatchTasks int              `bson:"num_scheduled_patch_tasks"`
 	LastScheduledTasksAt   time.Time        `bson:"last_scheduled_tasks_at"`
+	BetaFeatures           BetaFeatures     `bson:"beta_features"`
 }
 
 func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
@@ -60,6 +61,10 @@ type PubKey struct {
 	Name      string    `bson:"name" json:"name"`
 	Key       string    `bson:"key" json:"key"`
 	CreatedAt time.Time `bson:"created_at" json:"created_at"`
+}
+
+type BetaFeatures struct {
+	SpruceWaterfallEnabled bool `bson:"spruce_waterfall_enabled" json:"spruce_waterfall_enabled"`
 }
 
 type UserSettings struct {
@@ -158,13 +163,23 @@ func (u *DBUser) UpdateSettings(settings UserSettings) error {
 	return nil
 }
 
-// UpdateParsleySettings updates the user's settings for Parsley.
+// UpdateParsleySettings updates a user's settings for Parsley.
 func (u *DBUser) UpdateParsleySettings(settings parsley.Settings) error {
 	update := bson.M{"$set": bson.M{ParsleySettingsKey: settings}}
 	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
 		return errors.Wrapf(err, "saving Parsley settings for user '%s'", u.Id)
 	}
 	u.ParsleySettings = settings
+	return nil
+}
+
+// UpdateBetaFeatures updates a user's beta feature settings.
+func (u *DBUser) UpdateBetaFeatures(betaFeatures BetaFeatures) error {
+	update := bson.M{"$set": bson.M{BetaFeaturesKey: betaFeatures}}
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return errors.Wrapf(err, "saving beta feature settings for user '%s'", u.Id)
+	}
+	u.BetaFeatures = betaFeatures
 	return nil
 }
 

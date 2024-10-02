@@ -101,6 +101,7 @@ type Mutation {
   removeFavoriteProject(opts: RemoveFavoriteProjectInput!): Project!
   removePublicKey(keyName: String!): [PublicKey!]!
   saveSubscription(subscription: SubscriptionInput!): Boolean!
+  updateBetaFeatures(opts: UpdateBetaFeaturesInput!): UpdateBetaFeaturesPayload
   updateParsleySettings(opts: UpdateParsleySettingsInput!): UpdateParsleySettingsPayload
   updatePublicKey(
     targetKeyName: String!

@@ -1,0 +1,7 @@
+mutation {
+  updateBetaFeatures(opts: { betaFeatures: { spruceWaterfallEnabled: true } }) {
+    betaFeatures {
+      spruceWaterfallEnabled
+    }
+  }
+}

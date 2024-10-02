@@ -532,6 +532,14 @@ type TestSortOptions struct {
 	Direction SortDirection    `json:"direction"`
 }
 
+type UpdateBetaFeaturesInput struct {
+	BetaFeatures *model.APIBetaFeatures `json:"betaFeatures"`
+}
+
+type UpdateBetaFeaturesPayload struct {
+	BetaFeatures *model.APIBetaFeatures `json:"betaFeatures,omitempty"`
+}
+
 type UpdateParsleySettingsInput struct {
 	ParsleySettings *model.APIParsleySettings `json:"parsleySettings"`
 }
