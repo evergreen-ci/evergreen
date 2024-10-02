@@ -518,6 +518,7 @@ type APIAuthConfig struct {
 	Naive                   *APINaiveAuthConfig  `json:"naive"`
 	Github                  *APIGithubAuthConfig `json:"github"`
 	Multi                   *APIMultiAuthConfig  `json:"multi"`
+	Kanopy                  *APIKanopyAuthConfig `json:"kanopy"`
 	PreferredType           *string              `json:"preferred_type"`
 	BackgroundReauthMinutes int                  `json:"background_reauth_minutes"`
 	AllowServiceUsers       bool                 `json:"allow_service_users"`
@@ -550,6 +551,12 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 				return errors.Wrap(err, "converting multi auth settings to API model")
 			}
 		}
+		if v.Kanopy != nil {
+			a.Kanopy = &APIKanopyAuthConfig{}
+			if err := a.Kanopy.BuildFromService(v.Kanopy); err != nil {
+				return errors.Wrap(err, "converting Kanopy auth settings to API model")
+			}
+		}
 		a.PreferredType = utility.ToStringPtr(v.PreferredType)
 		a.BackgroundReauthMinutes = v.BackgroundReauthMinutes
 		a.AllowServiceUsers = v.AllowServiceUsers
@@ -564,6 +571,7 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 	var naive *evergreen.NaiveAuthConfig
 	var github *evergreen.GithubAuthConfig
 	var multi *evergreen.MultiAuthConfig
+	var kanopy *evergreen.KanopyAuthConfig
 	var ok bool
 
 	i, err := a.Okta.ToService()
@@ -610,11 +618,23 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 		}
 	}
 
+	i, err = a.Kanopy.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting Kanopy auth config to service model")
+	}
+	if i != nil {
+		kanopy, ok = i.(*evergreen.KanopyAuthConfig)
+		if !ok {
+			return nil, errors.Errorf("programmatic error: expected Kanopy auth config but got type %T", i)
+		}
+	}
+
 	return evergreen.AuthConfig{
 		Okta:                    okta,
 		Naive:                   naive,
 		Github:                  github,
 		Multi:                   multi,
+		Kanopy:                  kanopy,
 		PreferredType:           utility.FromStringPtr(a.PreferredType),
 		BackgroundReauthMinutes: a.BackgroundReauthMinutes,
 		AllowServiceUsers:       a.AllowServiceUsers,
@@ -875,6 +895,38 @@ func (a *APIMultiAuthConfig) ToService() (interface{}, error) {
 	return &evergreen.MultiAuthConfig{
 		ReadWrite: a.ReadWrite,
 		ReadOnly:  a.ReadOnly,
+	}, nil
+}
+
+type APIKanopyAuthConfig struct {
+	HeaderName *string `json:"header_name"`
+	Issuer     *string `json:"issuer"`
+	KeysetURL  *string `json:"keyset_url"`
+}
+
+func (a *APIKanopyAuthConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case *evergreen.KanopyAuthConfig:
+		if v == nil {
+			return nil
+		}
+		a.HeaderName = utility.ToStringPtr(v.HeaderName)
+		a.Issuer = utility.ToStringPtr(v.Issuer)
+		a.KeysetURL = utility.ToStringPtr(v.KeysetURL)
+	default:
+		return errors.Errorf("programmatic error: expected Kanopy auth config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIKanopyAuthConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	return &evergreen.KanopyAuthConfig{
+		HeaderName: utility.FromStringPtr(a.HeaderName),
+		Issuer:     utility.FromStringPtr(a.Issuer),
+		KeysetURL:  utility.FromStringPtr(a.KeysetURL),
 	}, nil
 }
 

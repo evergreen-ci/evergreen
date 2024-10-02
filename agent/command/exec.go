@@ -181,7 +181,7 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 	expansions := opts.expansions.Map()
 	if opts.addExpansionsToEnv {
 		for k, v := range expansions {
-			if k == evergreen.GlobalGitHubTokenExpansion || k == evergreen.GithubAppToken {
+			if k == evergreen.GithubAppToken {
 				//users should not be able to use the global github token expansion
 				//as it can result in the breaching of Evergreen's GitHub API limit
 				continue
@@ -191,7 +191,7 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 	}
 
 	for _, expName := range opts.includeExpansionsInEnv {
-		if val, ok := expansions[expName]; ok && expName != evergreen.GlobalGitHubTokenExpansion && expName != evergreen.GithubAppToken {
+		if val, ok := expansions[expName]; ok && expName != evergreen.GithubAppToken {
 			env[expName] = val
 		}
 	}
@@ -222,7 +222,7 @@ func addTempDirs(env map[string]string, dir string) {
 
 func (c *subprocessExec) getProc(ctx context.Context, execPath, taskID string, logger client.LoggerProducer) *jasper.Command {
 	cmd := c.JasperManager().CreateCommand(ctx).Add(append([]string{execPath}, c.Args...)).
-		Background(c.Background).Environment(c.Env).Directory(c.WorkingDir).SetGroupLeader().
+		Background(c.Background).Environment(c.Env).Directory(c.WorkingDir).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *options.Create) (jasper.Process, error) {
 			var cancel context.CancelFunc
@@ -250,7 +250,7 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath, taskID string, l
 
 			pid := proc.Info(ctx).PID
 
-			agentutil.TrackProcess(pid, taskID, logger.System())
+			agentutil.TrackProcess(taskID, pid, logger.System())
 
 			if c.Background {
 				logger.Execution().Debugf("Running process in the background with pid %d.", pid)

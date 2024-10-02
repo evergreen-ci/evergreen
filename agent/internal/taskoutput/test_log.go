@@ -197,20 +197,22 @@ const testLogSpecFilename = "log_spec.yaml"
 func (s testLogSpec) getParser() taskoutput.LogLineParser {
 	switch s.Format {
 	case testLogFormatTextTimestamp:
-		return func(data string) (log.LogLine, error) {
-			lineParts := strings.SplitN(strings.TrimSpace(data), " ", 2)
-			if len(lineParts) != 2 {
-				return log.LogLine{}, errors.Errorf("malformed text-timestamp log line: %s", data)
-			}
+		return func(line string) (log.LogLine, error) {
+			lineParts := strings.SplitN(strings.TrimSpace(line), " ", 2)
 
 			ts, err := strconv.ParseInt(lineParts[0], 10, 64)
 			if err != nil {
 				return log.LogLine{}, errors.Wrap(err, "invalid log timestamp prefix")
 			}
 
+			var data string
+			if len(lineParts) == 2 {
+				data = lineParts[1]
+			}
+
 			return log.LogLine{
 				Timestamp: ts,
-				Data:      strings.TrimSuffix(lineParts[1], "\n"),
+				Data:      data,
 			}, nil
 		}
 	default:

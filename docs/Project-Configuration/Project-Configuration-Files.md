@@ -1545,7 +1545,9 @@ parameters are available:
 -   `patch_optional` - boolean (default: false). If true the dependency
     will only exist when the depended on task is present in the version
     at the time the dependent task is created. The depended on task will
-    not be automatically pulled in to the version.
+    not be automatically pulled in to the version. This means that, despite the
+    name of the field, `patch_optional` makes the dependency optional for _all
+    versions, not just patches_.
 -   `omit_generated_tasks` - boolean (default: false). If true and the
     dependency is a generator task (i.e. it generates tasks via the
     [`generate.tasks`](Project-Commands#generatetasks) command), then generated tasks will not be included

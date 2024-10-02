@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -42,7 +43,7 @@ func (s *TestServer) Close() {
 	s.ts.Close()
 }
 
-func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config, loadUserManager bool) (*TestServer, error) {
+func CreateTestServer(ctx context.Context, settings *evergreen.Settings, tlsConfig *tls.Config, loadUserManager bool) (*TestServer, error) {
 	home := evergreen.FindEvergreenHome()
 	port := testutil.NextPort()
 
@@ -71,7 +72,7 @@ func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config, loadU
 	var l net.Listener
 	protocol := "http"
 
-	handler, err := GetRouter(as, uis)
+	handler, err := GetRouter(ctx, as, uis)
 	if err != nil {
 		return nil, err
 	}

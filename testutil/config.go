@@ -160,6 +160,11 @@ func MockConfig() *evergreen.Settings {
 				ReadOnly:  []string{evergreen.AuthNaiveKey},
 				ReadWrite: []string{evergreen.AuthOktaKey},
 			},
+			Kanopy: &evergreen.KanopyAuthConfig{
+				Issuer:     "www.example.com",
+				HeaderName: "auth_header",
+				KeysetURL:  "www.google.com",
+			},
 			BackgroundReauthMinutes: 60,
 		},
 		AWSInstanceRole: "role",

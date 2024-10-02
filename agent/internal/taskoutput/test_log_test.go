@@ -333,6 +333,13 @@ func TestTestLogSpecGetParser(t *testing.T) {
 					_, err := parser(fmt.Sprintf("%v %s\n", time.Now(), data))
 					assert.Error(t, err)
 				})
+				t.Run("ParseRawLineWithJustTimestamp", func(t *testing.T) {
+					line, err := parser(fmt.Sprintf("%d\n", ts))
+					require.NoError(t, err)
+					assert.Zero(t, line.Priority)
+					assert.Equal(t, ts, line.Timestamp)
+					assert.Empty(t, line.Data)
+				})
 				t.Run("ParseRawLine", func(t *testing.T) {
 					line, err := parser(fmt.Sprintf("%d %s\n", ts, data))
 					require.NoError(t, err)

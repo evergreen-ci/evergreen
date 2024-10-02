@@ -438,6 +438,11 @@ func (c *Mock) SetResultsInfo(ctx context.Context, _ TaskData, service string, f
 	return nil
 }
 
+// DisableHost signals to the app server that the host should be disabled.
+func (c *Mock) DisableHost(ctx context.Context, hostID string, info apimodels.DisableInfo) error {
+	return nil
+}
+
 // SendFiles attaches task files.
 func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifact.File) error {
 	c.mu.Lock()

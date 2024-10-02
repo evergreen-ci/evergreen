@@ -45,6 +45,9 @@ func LoadUserManager(settings *evergreen.Settings) (gimlet.UserManager, evergree
 	if authConfig.AllowServiceUsers {
 		return makeOnlyAPIManager()
 	}
+	if authConfig.Kanopy != nil {
+		return makeExternalManager()
+	}
 	return nil, evergreen.UserManagerInfo{}, errors.New("Must have at least one form of authentication, currently there are none")
 }
 
@@ -81,6 +84,14 @@ func makeGithubManager(settings *evergreen.Settings, config *evergreen.GithubAut
 		return nil, evergreen.UserManagerInfo{}, errors.Wrap(err, "problem setting up github authentication")
 	}
 	return manager, evergreen.UserManagerInfo{}, nil
+}
+
+func makeExternalManager() (gimlet.UserManager, evergreen.UserManagerInfo, error) {
+	manager, err := NewExternalUserManager()
+	if err != nil {
+		return nil, evergreen.UserManagerInfo{}, errors.Wrap(err, "making external user manager")
+	}
+	return manager, evergreen.UserManagerInfo{CanClearTokens: false, CanReauthorize: false}, nil
 }
 
 func makeMultiManager(settings *evergreen.Settings, config evergreen.AuthConfig) (gimlet.UserManager, evergreen.UserManagerInfo, error) {
@@ -139,6 +150,10 @@ func makeSingleManager(kind string, settings *evergreen.Settings, config evergre
 		}
 	case evergreen.AuthAllowServiceUsersKey:
 		return makeOnlyAPIManager()
+	case evergreen.AuthKanopyKey:
+		if config.Kanopy != nil {
+			return makeExternalManager()
+		}
 	default:
 		return nil, evergreen.UserManagerInfo{}, errors.Errorf("unrecognized user manager of type '%s'", kind)
 	}
