@@ -252,6 +252,42 @@
           }
         }
       }
+    },
+    {
+      "query_file": "all_inactive_versions.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "nextPageOrder": 1,
+            "prevPageOrder": 0,
+            "versions": [
+              {
+                "version": null,
+                "inactiveVersions": [
+                  {
+                    "activated": false,
+                    "author": "sophie.stadler",
+                    "id": "inactive3",
+                    "order": 3
+                  },
+                  {
+                    "activated": false,
+                    "author": "sophie.stadler",
+                    "id": "inactive2",
+                    "order": 2
+                  },
+                  {
+                    "activated": false,
+                    "author": "sophie.stadler",
+                    "id": "inactive1",
+                    "order": 1
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
     }
   ]
 }

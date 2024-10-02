@@ -191,6 +191,10 @@ func TestGetAllWaterfallVersions(t *testing.T) {
 	assert.NoError(t, err)
 	require.Len(t, versions, 1)
 	assert.EqualValues(t, "v_1", versions[0].Id)
+
+	versions, err = GetAllWaterfallVersions(ctx, p.Id, 0, 0)
+	assert.NoError(t, err)
+	require.Len(t, versions, 5)
 }
 
 func TestGetWaterfallBuildVariants(t *testing.T) {

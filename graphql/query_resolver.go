@@ -1000,15 +1000,23 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	// Since GetAllWaterfallVersions uses an inclusive order range ($gte instead of $gt), add 1 to our minimum range
 	minVersionOrder := minOrderOpt + 1
-	if minOrderOpt == 0 {
+	if minOrderOpt == 0 && len(activeVersions) != 0 {
 		// Only use the last active version order number if no minOrder was provided. Using the activeVersions bounds may omit inactive versions between the min and the last active version found.
 		minVersionOrder = activeVersions[len(activeVersions)-1].RevisionOrderNumber
+	} else if len(activeVersions) == 0 {
+		// If there are no active versions, use 0 to fetch all inactive versions
+		minVersionOrder = 0
 	}
 
 	// Same as above, but subtract for max order
 	maxVersionOrder := maxOrderOpt - 1
-	if maxOrderOpt == 0 {
-		// Same as above: only use the first active version if no maxOrder was specified to avoid omitting inactive versions.
+	if len(activeVersions) == 0 {
+		maxVersionOrder = 0
+	} else if maxOrderOpt == 0 && minOrderOpt == 0 {
+		// If no order options were specified, we're on the first page and should not put a limit on the first version returned so that we don't omit inactive versions
+		maxVersionOrder = 0
+	} else if maxOrderOpt == 0 {
+		// If we're paginating backwards, use the newest active version as the upper bound
 		maxVersionOrder = activeVersions[0].RevisionOrderNumber
 	}
 
@@ -1027,16 +1035,18 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	}
 
 	waterfallVersions := groupInactiveVersions(activeVersionIds, allVersions)
-
-	buildVariants, err := model.GetWaterfallBuildVariants(ctx, activeVersionIds)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall build variants: %s", err.Error()))
-	}
-
 	bv := []*model.WaterfallBuildVariant{}
-	for _, b := range buildVariants {
-		bCopy := b
-		bv = append(bv, &bCopy)
+
+	if len(activeVersionIds) > 0 {
+		buildVariants, err := model.GetWaterfallBuildVariants(ctx, activeVersionIds)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall build variants: %s", err.Error()))
+		}
+
+		for _, b := range buildVariants {
+			bCopy := b
+			bv = append(bv, &bCopy)
+		}
 	}
 
 	// Return the min and max orders returned to be used as parameters for navigating to the next page
