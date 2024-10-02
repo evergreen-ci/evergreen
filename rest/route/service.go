@@ -144,7 +144,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/commit_queue/{patch_id}").Version(2).Delete().Wrap(requireUser, addProject, requireCommitQueueItemOwner, editTasks).RouteHandler(makeDeleteCommitQueueItems(env))
 	app.AddRoute("/commit_queue/{patch_id}").Version(2).Put().Wrap(requireUser, addProject, requireCommitQueueItemOwner, editTasks).RouteHandler(makeCommitQueueEnqueueItem())
 	app.AddRoute("/commit_queue/{patch_id}/message").Version(2).Get().Wrap(requireUser).RouteHandler(makecqMessageForPatch())
-	app.AddRoute("/degraded_mode").Version(2).Post().Wrap(requireUser, requireAlertmanager).RouteHandler(makeSetDegradedMode())
+	// degraded_mode is used by Kanopy's alertmanager instance, which is only able to perform basic auth for REST, so it does not pass in user info
+	app.AddRoute("/degraded_mode").Version(2).Post().Wrap(requireAlertmanager).RouteHandler(makeSetDegradedMode())
 	app.AddRoute("/distros").Version(2).Get().Wrap(requireUser).RouteHandler(makeDistroRoute())
 	app.AddRoute("/distros/{distro_id}").Version(2).Get().Wrap(requireUser, editDistroSettings).RouteHandler(makeGetDistroByID())
 	app.AddRoute("/distros/{distro_id}").Version(2).Patch().Wrap(requireUser, editDistroSettings).RouteHandler(makePatchDistroByID())
