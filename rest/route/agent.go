@@ -433,7 +433,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	knownHosts := h.settings.Expansions[evergreen.GithubKnownHosts]
-	e, err := model.PopulateExpansions(t, foundHost, oauthToken, appToken, knownHosts)
+	e, err := model.PopulateExpansions(t, foundHost, appToken, knownHosts)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "populating expansions"))
 	}

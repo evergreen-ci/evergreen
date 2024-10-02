@@ -199,7 +199,7 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 	}
 
 	knownHosts := settings.Expansions[evergreen.GithubKnownHosts]
-	expansions, err := model.PopulateExpansions(t, h, oauthToken, appToken, knownHosts)
+	expansions, err := model.PopulateExpansions(t, h, appToken, knownHosts)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "populating expansions")
 	}

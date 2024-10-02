@@ -1001,7 +1001,7 @@ func generateId(name string, projectIdentifier string, projBV *BuildVariant, rev
 
 // PopulateExpansions returns expansions for a task, excluding build variant
 // expansions, project variables, and project/version parameters.
-func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken, knownHosts string) (util.Expansions, error) {
+func PopulateExpansions(t *task.Task, h *host.Host, appToken, knownHosts string) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}

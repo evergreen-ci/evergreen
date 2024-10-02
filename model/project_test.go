@@ -417,7 +417,7 @@ func TestPopulateExpansions(t *testing.T) {
 		Project:      "mci",
 	}
 
-	expansions, err := PopulateExpansions(taskDoc, &h, "", "appToken", "")
+	expansions, err := PopulateExpansions(taskDoc, &h, "appToken", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("0", expansions.Get("execution"))
@@ -454,7 +454,7 @@ func TestPopulateExpansions(t *testing.T) {
 	}
 	require.NoError(t, p.Insert())
 
-	expansions, err = PopulateExpansions(taskDoc, &h, "", "", "")
+	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -482,7 +482,7 @@ func TestPopulateExpansions(t *testing.T) {
 		},
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, "", "", "")
+	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 30)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -509,7 +509,7 @@ func TestPopulateExpansions(t *testing.T) {
 		},
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, "", "", "")
+	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 28)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -527,7 +527,7 @@ func TestPopulateExpansions(t *testing.T) {
 		Version: v.Id,
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, "", "", "")
+	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 28)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -552,7 +552,7 @@ func TestPopulateExpansions(t *testing.T) {
 	}
 	assert.NoError(patchDoc.Insert())
 
-	expansions, err = PopulateExpansions(taskDoc, &h, "", "", "")
+	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 28)
 	assert.Equal("github_pr", expansions.Get("requester"))
@@ -578,7 +578,7 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.NoError(upstreamProject.Insert())
 	taskDoc.TriggerID = "upstreamTask"
 	taskDoc.TriggerType = ProjectTriggerLevelTask
-	expansions, err = PopulateExpansions(taskDoc, &h, "", "", "")
+	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 37)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))

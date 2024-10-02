@@ -15,7 +15,7 @@ import (
 // This function is only used for tests.
 func MakeTaskConfigFromModelData(ctx context.Context, settings *evergreen.Settings, data *testutil.TestModelData) (*internal.TaskConfig, error) {
 	knownHosts := settings.Expansions[evergreen.GithubKnownHosts]
-	exp, err := model.PopulateExpansions(data.Task, data.Host, "", "appToken", knownHosts)
+	exp, err := model.PopulateExpansions(data.Task, data.Host, "appToken", knownHosts)
 	if err != nil {
 		return nil, errors.Wrap(err, "populating expansions")
 	}
