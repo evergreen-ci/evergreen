@@ -297,14 +297,13 @@ func TestExpansionWriter(t *testing.T) {
 	logger, err := comm.GetLoggerProducer(ctx, &task.Task{}, nil)
 	require.NoError(t, err)
 	expansions := util.Expansions{
-		"foo":                                "bar",
-		"baz":                                "qux",
-		"password":                           "hunter2",
-		evergreen.GlobalGitHubTokenExpansion: "sample_token",
-		evergreen.GithubAppToken:             "app_token",
-		globals.AWSAccessKeyId:               "aws_key_id",
-		globals.AWSSecretAccessKey:           "aws_secret_key",
-		globals.AWSSessionToken:              "aws_token",
+		"foo":                      "bar",
+		"baz":                      "qux",
+		"password":                 "hunter2",
+		evergreen.GithubAppToken:   "app_token",
+		globals.AWSAccessKeyId:     "aws_key_id",
+		globals.AWSSecretAccessKey: "aws_secret_key",
+		globals.AWSSessionToken:    "aws_token",
 	}
 	tc := &internal.TaskConfig{
 		Expansions:    expansions,

@@ -6,8 +6,6 @@ tasks:
       - command: git.get_project
         params:
           directory: src
-          token: ${github}
-          is_oauth: true
 
 modules:
   - name: enterprise

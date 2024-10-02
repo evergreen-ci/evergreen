@@ -69,9 +69,7 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 	}
 
 	token := c.Token
-	if token == "" {
-		token = conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion)
-	}
+
 	appToken := conf.Expansions.Get(evergreen.GithubAppToken)
 
 	c.statusSender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{

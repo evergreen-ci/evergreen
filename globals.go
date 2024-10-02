@@ -334,12 +334,11 @@ const (
 
 	DefaultJasperPort = 2385
 
-	// TODO (DEVPROD-778): Remove GlobalGitHubTokenExpansion
-	GlobalGitHubTokenExpansion = "global_github_oauth_token"
-	GithubAppToken             = "github_app_token"
-	GithubAppPrivateKey        = "github_app_key"
-	GithubKnownHosts           = "github_known_hosts"
-	GithubCheckRun             = "github_check_run"
+	// TODO (DEVPROD-778): Remove GithubAppToken
+	GithubAppToken      = "github_app_token"
+	GithubAppPrivateKey = "github_app_key"
+	GithubKnownHosts    = "github_known_hosts"
+	GithubCheckRun      = "github_check_run"
 
 	// GitHubRetryAttempts is the github client maximum number of attempts.
 	GitHubRetryAttempts = 3
