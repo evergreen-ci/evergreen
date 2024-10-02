@@ -1,6 +1,7 @@
 package graphql
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,12 +18,15 @@ import (
 const pathToTests = "../../graphql"
 
 func TestAtomicGQLQueries(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	grip.Warning(grip.SetSender(send.MakePlainLogger()))
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings)
 	testDirectories, err := os.ReadDir(filepath.Join(pathToTests, "tests"))
 	require.NoError(t, err)
-	server, err := service.CreateTestServer(settings, nil, true)
+	server, err := service.CreateTestServer(ctx, settings, nil, true)
 	require.NoError(t, err)
 	defer server.Close()
 	dir, _ := os.Getwd()

@@ -29,6 +29,11 @@ func TestLoadUserManager(t *testing.T) {
 	multiNoInfo := evergreen.MultiAuthConfig{
 		ReadWrite: []string{evergreen.AuthGithubKey},
 	}
+	kanopy := evergreen.KanopyAuthConfig{
+		HeaderName: "internal_header",
+		Issuer:     "www.example.com",
+		KeysetURL:  "www.google.com",
+	}
 
 	a := evergreen.AuthConfig{}
 	um, info, err := LoadUserManager(&evergreen.Settings{AuthConfig: a})
@@ -119,4 +124,11 @@ func TestLoadUserManager(t *testing.T) {
 	assert.NotNil(t, um)
 	_, ok = um.(*NaiveUserManager)
 	assert.True(t, ok)
+
+	a = evergreen.AuthConfig{PreferredType: evergreen.AuthKanopyKey, Kanopy: &kanopy}
+	um, info, err = LoadUserManager(&evergreen.Settings{AuthConfig: a})
+	assert.NoError(t, err)
+	assert.False(t, info.CanClearTokens)
+	assert.False(t, info.CanReauthorize)
+	assert.NotNil(t, um)
 }
