@@ -369,7 +369,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				"task_build_variant": queueItem.BuildVariant,
 				"task_version":       queueItem.Version,
 			})
-			// An error is not returned in this situation due to https://jira.mongodb.org/browse/EVG-6214
+			// An error is not returned in this situation due to EVG-6214
 			return nil, false, nil
 		}
 

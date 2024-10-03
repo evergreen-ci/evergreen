@@ -69,7 +69,6 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 				}
 			}
 
-			// Investigating strange dispatch state as part of EVG-13144
 			if t.IsHostTask() && !utility.IsZeroTime(t.DispatchTime) && t.Status == evergreen.TaskUndispatched {
 				catcher.Wrapf(resetTask(ctx, t.Id, caller), "resetting task '%s'", t.Id)
 			} else {
