@@ -694,25 +694,30 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	catcher := grip.NewBasicCatcher()
 	for _, toAdd := range h.rolesToAdd {
 		if err = u.AddRole(toAdd); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding role '%s' to user '%s'", toAdd, u.Username()))
+			catcher.Wrapf(err, "adding role '%s' to user '%s'", toAdd, u.Username())
 		}
 	}
 	for _, toRemove := range h.rolesToRemove {
 		if err = u.RemoveRole(toRemove); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "removing the role '%s' from user '%s'", toRemove, u.Username()))
+			catcher.Wrapf(err, "removing the role '%s' from user '%s'", toRemove, u.Username()))
 		}
 	}
 
 	grip.Info(message.Fields{
-		"message":       "updated roles for user",
+		"message":       "modify roles route executed",
 		"roles_added":   h.rolesToAdd,
 		"roles_removed": h.rolesToRemove,
 		"user_modified": u.Username(),
 		"caller":        h.caller,
+		"errors": catcher.Resolve(),
 	})
 
+	if catcher.HasErrors() {
+		return gimlet.MakeJSONInternalErrorResponder(catcher.Resolve())
+	}
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
