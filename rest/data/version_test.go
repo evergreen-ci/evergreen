@@ -319,7 +319,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	assert.Equal(evergreen.VersionCreated, newVersion.Status)
 	assert.Equal(ref.Id, newVersion.Identifier)
 	assert.Equal(1, newVersion.RevisionOrderNumber)
-	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
+	assert.Equal(evergreen.CreateVersionEndpointRequester, newVersion.Requester)
 
 	ppStorage, err := model.GetParserProjectStorage(ctx, env.Settings(), newVersion.ProjectStorageMethod)
 	require.NoError(t, err)
@@ -357,10 +357,11 @@ tasks:
 	projectInfo.Project = p
 	projectInfo.IntermediateProject = pp
 	metadata = model.VersionMetadata{
-		Message:  "message 2",
-		User:     &u,
-		IsAdHoc:  true,
-		Activate: true,
+		Message:         "message 2",
+		User:            &u,
+		IsAdHoc:         true,
+		Activate:        true,
+		PeriodicBuildID: "abc",
 	}
 	newVersion, err = dc.CreateVersionFromConfig(context.Background(), projectInfo, metadata)
 	assert.NoError(err)

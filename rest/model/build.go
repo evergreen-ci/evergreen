@@ -13,11 +13,12 @@ import (
 )
 
 var (
-	commitOrigin  = "commit"
-	patchOrigin   = "patch"
-	triggerOrigin = "trigger"
-	triggerAdHoc  = "ad_hoc"
-	gitTagOrigin  = "git_tag"
+	commitOrigin                 = "commit"
+	patchOrigin                  = "patch"
+	triggerOrigin                = "trigger"
+	triggerAdHoc                 = "ad_hoc"
+	triggerCreateVersionEndpoint = "create_version_endpoint"
+	gitTagOrigin                 = "git_tag"
 )
 
 // APIBuild is the model to be returned by the API whenever builds are fetched.
@@ -140,6 +141,8 @@ func (apiBuild *APIBuild) BuildFromService(v build.Build, pp *model.ParserProjec
 		origin = triggerOrigin
 	case evergreen.AdHocRequester:
 		origin = triggerAdHoc
+	case evergreen.CreateVersionEndpointRequester:
+		origin = triggerCreateVersionEndpoint
 	case evergreen.GitTagRequester:
 		origin = gitTagOrigin
 	}
