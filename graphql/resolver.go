@@ -64,7 +64,7 @@ func New(apiURL string) Config {
 		user := mustHaveUser(ctx)
 		hostsToCheck, err := host.Find(ctx, host.ByIds(hostIdsToCheck))
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, "Error getting hosts")
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting hosts: %s", err.Error()))
 		}
 		if len(hostsToCheck) == 0 {
 			return nil, ResourceNotFound.Send(ctx, "No matching hosts found")
@@ -76,10 +76,10 @@ func New(apiURL string) Config {
 			}
 		}
 		if len(forbiddenHosts) == 1 {
-			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access host '%v'", user.Username(), forbiddenHosts[0]))
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access host '%s'", user.Username(), forbiddenHosts[0]))
 		} else if len(forbiddenHosts) > 1 {
 			hostsString := strings.Join(forbiddenHosts, ", ")
-			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access hosts: '%v'", user.Username(), hostsString))
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access hosts: '%s'", user.Username(), hostsString))
 		}
 
 		return next(ctx)
