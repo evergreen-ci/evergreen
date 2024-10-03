@@ -424,16 +424,19 @@ func TestGetUserPermissions(t *testing.T) {
 }
 
 func TestPostUserRoles(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	env.SetUserManager(serviceutil.MockUserManager{})
 	require.NoError(t, db.ClearCollections(user.Collection, evergreen.RoleCollection))
-	rm := env.RoleManager()
 	u := user.DBUser{
 		Id: "user",
 	}
 	require.NoError(t, u.Insert())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ctx = gimlet.AttachUser(ctx, &u)
+	defer cancel()
+
+	env := testutil.NewEnvironment(ctx, t)
+	env.SetUserManager(serviceutil.MockUserManager{})
+	rm := env.RoleManager()
 	require.NoError(t, rm.UpdateRole(gimlet.Role{ID: "role1", Scope: "scope1", Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value}}))
 	handler := userRolesPostHandler{rm: rm, userID: u.Id}
 
@@ -477,6 +480,26 @@ func TestPostUserRoles(t *testing.T) {
 	dbUser, err = user.FindOneById(newId)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"role1"}, dbUser.Roles())
+
+	// Test removing roles
+	body = `{"remove_roles": ["notarole"]}`
+	request, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(body)))
+	request = gimlet.SetURLVars(request, map[string]string{"user_id": u.Id})
+	require.NoError(t, err)
+	assert.NoError(t, handler.Parse(ctx, request))
+	resp = handler.Run(ctx)
+	assert.Equal(t, http.StatusNotFound, resp.Status())
+
+	body = `{"remove_roles": ["role1"]}`
+	request, err = http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(body)))
+	request = gimlet.SetURLVars(request, map[string]string{"user_id": u.Id})
+	require.NoError(t, err)
+	assert.NoError(t, handler.Parse(ctx, request))
+	resp = handler.Run(ctx)
+	assert.Equal(t, http.StatusOK, resp.Status())
+	dbUser, err = user.FindOneById(newId)
+	assert.NoError(t, err)
+	assert.Empty(t, dbUser.Roles())
 }
 
 func TestServiceUserOperations(t *testing.T) {

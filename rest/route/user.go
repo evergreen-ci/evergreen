@@ -586,15 +586,19 @@ func removeHiddenProjects(permissions []rolemanager.PermissionSummary) error {
 type rolesPostRequest struct {
 	// the list of roles to add for the user
 	Roles []string `json:"roles"`
+	// The list of roles to remove for the user
+	RemoveRoles []string `json:"remove_roles"`
 	// if true, will also create a shell user document for the user. By default, specifying a user that does not exist will error
 	CreateUser bool `json:"create_user"`
 }
 
 type userRolesPostHandler struct {
-	rm         gimlet.RoleManager
-	userID     string
-	roles      []string
-	createUser bool
+	rm            gimlet.RoleManager
+	userID        string
+	caller        string
+	rolesToAdd    []string
+	rolesToRemove []string
+	createUser    bool
 }
 
 func makeModifyUserRoles(rm gimlet.RoleManager) gimlet.RouteHandler {
@@ -620,14 +624,18 @@ func (h *userRolesPostHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *userRolesPostHandler) Parse(ctx context.Context, r *http.Request) error {
+	caller, _ := gimlet.GetUser(ctx).(*user.DBUser)
+	h.caller = caller.Username()
+
 	var request rolesPostRequest
 	if err := utility.ReadJSON(r.Body, &request); err != nil {
 		return errors.Wrap(err, "reading role modification request from JSON request body")
 	}
-	if len(request.Roles) == 0 {
-		return errors.New("must specify at least 1 role to add")
+	if len(request.Roles) == 0 && len(request.RemoveRoles) == 0 {
+		return errors.New("must specify at least 1 role to add/remove")
 	}
-	h.roles = request.Roles
+	h.rolesToAdd = request.Roles
+	h.rolesToRemove = request.RemoveRoles
 	h.createUser = request.CreateUser
 	vars := gimlet.GetVars(r)
 	h.userID = vars["user_id"]
@@ -645,7 +653,7 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 			um := evergreen.GetEnvironment().UserManager()
 			newUser := user.DBUser{
 				Id:          h.userID,
-				SystemRoles: h.roles,
+				SystemRoles: h.rolesToAdd,
 			}
 			_, err = um.GetOrCreateUser(&newUser)
 			if err != nil {
@@ -659,7 +667,7 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 	}
-	dbRoles, err := h.rm.GetRoles(h.roles)
+	dbRoles, err := h.rm.GetRoles(h.rolesToAdd)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message:    errors.Wrapf(err, "finding roles for user '%s'", u.Username()).Error(),
@@ -670,18 +678,40 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, found := range dbRoles {
 		foundRoles = append(foundRoles, found.ID)
 	}
-	nonexistent, _ := utility.StringSliceSymmetricDifference(h.roles, foundRoles)
+	nonexistent, _ := utility.StringSliceSymmetricDifference(h.rolesToAdd, foundRoles)
 	if len(nonexistent) > 0 {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("roles not found: %v", nonexistent),
 			StatusCode: http.StatusNotFound,
 		})
 	}
-	for _, toAdd := range h.roles {
+
+	nonexistent, _ = utility.StringSliceSymmetricDifference(h.rolesToRemove, u.Roles())
+	if len(nonexistent) > 0 {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("user doesn't have roles to remove: %v", nonexistent),
+			StatusCode: http.StatusNotFound,
+		})
+	}
+
+	for _, toAdd := range h.rolesToAdd {
 		if err = u.AddRole(toAdd); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding role '%s' to user '%s'", toAdd, u.Username()))
 		}
 	}
+	for _, toRemove := range h.rolesToRemove {
+		if err = u.RemoveRole(toRemove); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "removing the role '%s' from user '%s'", toRemove, u.Username()))
+		}
+	}
+
+	grip.Info(message.Fields{
+		"message":       "updated roles for user",
+		"roles_added":   h.rolesToAdd,
+		"roles_removed": h.rolesToRemove,
+		"user_modified": u.Username(),
+		"caller":        h.caller,
+	})
 
 	return gimlet.NewJSONResponse(struct{}{})
 }
