@@ -49,7 +49,7 @@ type APIVersion struct {
 	Aborted   *bool `json:"aborted"`
 	// The git tag that triggered this version, if any.
 	TriggeredGitTag *APIGitTag `json:"triggered_by_git_tag"`
-	// The pushed git tags to this version.
+	// Git tags that were pushed to this version.
 	GitTags []APIGitTag `json:"git_tags"`
 	// Indicates if the version was ignored due to only making changes to ignored files.
 	Ignored *bool `json:"ignored"`
@@ -114,7 +114,6 @@ func (apiVersion *APIVersion) BuildFromService(v model.Version) {
 		})
 	}
 
-	// triggered by git tag
 	if v.TriggeredByGitTag.Tag != "" {
 		apiVersion.TriggeredGitTag = &APIGitTag{
 			Tag:    utility.ToStringPtr(v.TriggeredByGitTag.Tag),
