@@ -47,14 +47,12 @@ func New(apiURL string) Config {
 			return nil, ResourceNotFound.Send(ctx, "host not specified")
 		}
 
-		hostIds := []string{}
+		hostIdsToCheck := []string{hostId}
 		if hasHostIds {
 			for _, v := range hostIdsInterface {
-				hostIds = append(hostIds, v.(string))
+				hostIdsToCheck = append(hostIdsToCheck, v.(string))
 			}
 		}
-		hostIdsToCheck := []string{hostId}
-		hostIdsToCheck = append(hostIdsToCheck, hostIds...)
 		var requiredLevel int
 		if access == HostAccessLevelEdit {
 			requiredLevel = evergreen.HostsEdit.Value
