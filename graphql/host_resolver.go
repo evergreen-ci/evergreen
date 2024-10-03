@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
@@ -32,6 +33,48 @@ func (r *hostResolver) DistroID(ctx context.Context, obj *restModel.APIHost) (*s
 // Elapsed is the resolver for the elapsed field.
 func (r *hostResolver) Elapsed(ctx context.Context, obj *restModel.APIHost) (*time.Time, error) {
 	return obj.RunningTask.StartTime, nil
+}
+
+// Events is the resolver for the events field.
+func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, opts HostEventsInput) (*HostEvents, error) {
+	sortAsc := false
+	if opts.SortDir != nil {
+		sortAsc = *opts.SortDir == SortDirectionAsc
+	}
+	hostQueryOpts := event.PaginatedHostEventsOpts{
+		ID:         utility.FromStringPtr(obj.Id),
+		Tag:        utility.FromStringPtr(obj.Tag),
+		Limit:      utility.FromIntPtr(opts.Limit),
+		Page:       utility.FromIntPtr(opts.Page),
+		SortAsc:    sortAsc,
+		EventTypes: opts.EventTypes,
+	}
+	events, count, err := event.GetPaginatedHostEvents(hostQueryOpts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host events for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+	}
+	apiEventLogPointers := []*restModel.HostAPIEventLogEntry{}
+	for _, e := range events {
+		apiEventLog := restModel.HostAPIEventLogEntry{}
+		if err = apiEventLog.BuildFromService(e); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIEventLogEntry from EventLog: %s", err.Error()))
+		}
+		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
+	}
+	hostEvents := HostEvents{
+		EventLogEntries: apiEventLogPointers,
+		Count:           count,
+	}
+	return &hostEvents, nil
+}
+
+// EventTypes is the resolver for the eventTypes field.
+func (r *hostResolver) EventTypes(ctx context.Context, obj *restModel.APIHost) ([]string, error) {
+	eventTypes, err := event.GetEventTypesForHost(utility.FromStringPtr(obj.Id), utility.FromStringPtr(obj.Tag))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting event types for host '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+	}
+	return eventTypes, nil
 }
 
 // HomeVolume is the resolver for the homeVolume field.

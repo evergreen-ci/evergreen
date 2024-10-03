@@ -14,7 +14,6 @@ type JiraConfig struct {
 	Host            string              `yaml:"host" bson:"host" json:"host"`
 	BasicAuthConfig JiraBasicAuthConfig `yaml:"basic_auth" bson:"basic_auth" json:"basic_auth"`
 	OAuth1Config    JiraOAuth1Config    `yaml:"oauth1" bson:"oauth1" json:"oauth1"`
-	DefaultProject  string              `yaml:"default_project" bson:"default_project" json:"default_project"`
 	Email           string              `yaml:"email" bson:"email" json:"email"`
 }
 
@@ -39,11 +38,10 @@ func (c *JiraConfig) Get(ctx context.Context) error {
 func (c *JiraConfig) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			"host":            c.Host,
-			"basic_auth":      c.BasicAuthConfig,
-			"oauth1":          c.OAuth1Config,
-			"default_project": c.DefaultProject,
-			"email":           c.Email,
+			"host":       c.Host,
+			"basic_auth": c.BasicAuthConfig,
+			"oauth1":     c.OAuth1Config,
+			"email":      c.Email,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -47,7 +48,6 @@ func getMockProjectSettings() model.ProjectSettings {
 		ProjectRef: model.ProjectRef{
 			Owner:          "admin",
 			Enabled:        true,
-			Private:        utility.TruePtr(),
 			Id:             projectId,
 			Admins:         []string{},
 			PeriodicBuilds: nil,
@@ -56,7 +56,7 @@ func getMockProjectSettings() model.ProjectSettings {
 				GitClone:      nil,
 			},
 		},
-		GitHubAppAuth:      evergreen.GithubAppAuth{},
+		GitHubAppAuth:      githubapp.GithubAppAuth{},
 		GithubHooksEnabled: true,
 		Vars: model.ProjectVars{
 			Id:          projectId,
@@ -92,7 +92,6 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		projects := []*model.ProjectRef{
 			{
 				Id:          "projectA",
-				Private:     utility.FalsePtr(),
 				Enabled:     true,
 				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
@@ -101,7 +100,6 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			},
 			{
 				Id:          "projectB",
-				Private:     utility.TruePtr(),
 				Enabled:     true,
 				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
@@ -110,16 +108,15 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			},
 			{
 				Id:          "projectC",
-				Private:     utility.TruePtr(),
 				Enabled:     true,
 				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "mongodb",
 				Repo:        "mongo",
 				Branch:      "main",
 			},
-			{Id: "projectD", Private: utility.FalsePtr()},
-			{Id: "projectE", Private: utility.FalsePtr()},
-			{Id: "projectF", Private: utility.TruePtr()},
+			{Id: "projectD"},
+			{Id: "projectE"},
+			{Id: "projectF"},
 			{Id: projectId},
 		}
 
@@ -146,7 +143,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		s.NoError(vars.Insert())
 		before := getMockProjectSettings()
 		after := getMockProjectSettings()
-		after.GitHubAppAuth = evergreen.GithubAppAuth{
+		after.GitHubAppAuth = githubapp.GithubAppAuth{
 			AppID:      12345,
 			PrivateKey: []byte("secret"),
 		}
@@ -701,7 +698,6 @@ func TestHideBranch(t *testing.T) {
 		RepoRefId: repo.Id,
 		Enabled:   false,
 		Hidden:    utility.TruePtr(),
-		Private:   utility.TruePtr(),
 	}
 	assert.Equal(t, skeletonProj, *hiddenProj)
 

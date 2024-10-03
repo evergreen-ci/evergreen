@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -196,15 +197,47 @@ type RegistrySettings struct {
 	Password string `mapstructure:"registry_password" json:"registry_password" yaml:"registry_password"`
 }
 
+// Token is a struct which wraps a GitHub generated token.
 type Token struct {
 	Token string `json:"token"`
+}
+
+// AssumeRoleRequest is the details of what role to assume.
+type AssumeRoleRequest struct {
+	// RoleARN is the Amazon Resource Name (ARN) of the role to assume.
+	RoleARN string `json:"role_arn"`
+	// Policy is an optional field that can be used to restrict the permissions.
+	Policy *string `json:"policy"`
+	// DurationSeconds is an optional field of the duration of the role session.
+	// It defaults to 15 minutes.
+	DurationSeconds *int32 `json:"duration_seconds"`
+}
+
+// Validate checks that the request has valid values.
+func (ar *AssumeRoleRequest) Validate() error {
+	catcher := grip.NewBasicCatcher()
+
+	catcher.NewWhen(ar.RoleARN == "", "must specify role ARN")
+
+	// 0 defaults to 15 minutes.
+	catcher.NewWhen(utility.FromInt32Ptr(ar.DurationSeconds) < 0, "cannot specify a negative duration")
+
+	return catcher.Resolve()
+}
+
+// AssumeRoleResponse the credentials from assuming a role.
+type AssumeRoleResponse struct {
+	AccessKeyID     string `json:"access_key_id"`
+	SecretAccessKey string `json:"secret_access_key"`
+	SessionToken    string `json:"session_token"`
+	Expiration      string `json:"expiration"`
 }
 
 func (ted *TaskEndDetail) IsEmpty() bool {
 	return ted == nil || ted.Status == ""
 }
 
-func (ch *CreateHost) validateDocker(ctx context.Context) error {
+func (ch *CreateHost) validateDocker() error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Add(ch.setNumHosts())
@@ -323,7 +356,7 @@ func (ch *CreateHost) Validate(ctx context.Context) error {
 	}
 
 	if ch.CloudProvider == ProviderDocker {
-		return ch.validateDocker(ctx)
+		return ch.validateDocker()
 	}
 
 	return errors.Errorf("cloud provider must be either '%s' or '%s'", ProviderEC2, ProviderDocker)

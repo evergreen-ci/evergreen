@@ -120,7 +120,6 @@ var (
 	SleepSchedulePermanentlyExemptKey      = bsonutil.MustHaveTag(SleepScheduleInfo{}, "PermanentlyExempt")
 	SleepScheduleTemporarilyExemptUntilKey = bsonutil.MustHaveTag(SleepScheduleInfo{}, "TemporarilyExemptUntil")
 	SleepScheduleShouldKeepOffKey          = bsonutil.MustHaveTag(SleepScheduleInfo{}, "ShouldKeepOff")
-	SleepScheduleIsBetaTesterKey           = bsonutil.MustHaveTag(SleepScheduleInfo{}, "IsBetaTester")
 )
 
 var (
@@ -694,7 +693,7 @@ func FindByTemporaryExemptionsExpiringBetween(ctx context.Context, lowerBound ti
 // either they do not have an agent yet or their agents have not communicated
 // recently.
 func NeedsAgentDeploy(currentTime time.Time) bson.M {
-	cutoffTime := currentTime.Add(-MaxLCTInterval)
+	cutoffTime := currentTime.Add(-MaxAgentUnresponsiveInterval)
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return bson.M{
 		StartedByKey:     evergreen.User,
@@ -739,7 +738,7 @@ func NeedsAgentMonitorDeploy(currentTime time.Time) bson.M {
 			}},
 			{"$or": []bson.M{
 				{LastCommunicationTimeKey: utility.ZeroTime},
-				{LastCommunicationTimeKey: bson.M{"$lte": currentTime.Add(-MaxUncommunicativeInterval)}},
+				{LastCommunicationTimeKey: bson.M{"$lte": currentTime.Add(-MaxAgentMonitorUnresponsiveInterval)}},
 				{LastCommunicationTimeKey: bson.M{"$exists": false}},
 			}},
 		},
@@ -972,13 +971,13 @@ func UpdateAll(ctx context.Context, query bson.M, update bson.M) error {
 }
 
 // InsertOne inserts the host into the hosts collection.
-func InsertOne(ctx context.Context, h *Host, options ...*options.InsertOneOptions) error {
+func InsertOne(ctx context.Context, h *Host) error {
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertOne(ctx, h)
 	return errors.Wrap(err, "inserting host")
 }
 
 // InsertMany inserts the hosts into the hosts collection.
-func InsertMany(ctx context.Context, hosts []Host, options ...*options.InsertManyOptions) error {
+func InsertMany(ctx context.Context, hosts []Host) error {
 	if len(hosts) == 0 {
 		return nil
 	}
@@ -1532,18 +1531,6 @@ func (h *Host) UnsetNumAgentCleanupFailures(ctx context.Context) error {
 	return errors.Wrapf(err, "unsetting number of agent cleanup failures for host '%s'", h.Id)
 }
 
-// FindUnexpirableRunningWithoutPersistentDNSName finds unexpirable hosts that
-// are currently running and do not have a persistent DNS name assigned to
-// them.
-func FindUnexpirableRunningWithoutPersistentDNSName(ctx context.Context, limit int) ([]Host, error) {
-	return Find(ctx, bson.M{
-		StatusKey:            evergreen.HostRunning,
-		StartedByKey:         bson.M{"$ne": evergreen.User},
-		NoExpirationKey:      true,
-		PersistentDNSNameKey: nil,
-	}, options.Find().SetLimit(int64(limit)))
-}
-
 // isSleepScheduleApplicable returns a query that finds hosts which can use a
 // sleep schedule.
 func isSleepScheduleApplicable(q bson.M) bson.M {
@@ -1566,7 +1553,6 @@ func isSleepScheduleEnabledQuery(q bson.M, now time.Time) bson.M {
 	sleepSchedulePermanentlyExemptKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepSchedulePermanentlyExemptKey)
 	sleepScheduleTemporarilyExemptUntil := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleTemporarilyExemptUntilKey)
 	sleepScheduleShouldKeepOff := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleShouldKeepOffKey)
-	sleepScheduleIsBetaTesterKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleIsBetaTesterKey)
 
 	if _, ok := q[StatusKey]; !ok {
 		// Use all sleep schedule statuses if the query hasn't already specified
@@ -1576,18 +1562,6 @@ func isSleepScheduleEnabledQuery(q bson.M, now time.Time) bson.M {
 
 	q[sleepSchedulePermanentlyExemptKey] = bson.M{"$ne": true}
 	q[sleepScheduleShouldKeepOff] = bson.M{"$ne": true}
-
-	serviceFlagCtx, serviceFlagCancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer serviceFlagCancel()
-	flags, err := evergreen.GetServiceFlags(serviceFlagCtx)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "unable to check if sleep schedule beta test is enabled, falling back to assuming the beta test is enabled",
-		}))
-	}
-	if flags == nil || !flags.SleepScheduleBetaTestDisabled {
-		q[sleepScheduleIsBetaTesterKey] = true
-	}
 
 	notTemporarilyExempt := []bson.M{
 		{
@@ -1755,10 +1729,12 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 			},
 		})
 		catcher.Wrap(err, "marking newly-added hosts as permanently exempt")
-		grip.InfoWhen(res.ModifiedCount > 0, message.Fields{
-			"message":   "marked newly-added hosts as permanently exempt",
-			"num_hosts": res.ModifiedCount,
-		})
+		if res != nil && res.ModifiedCount > 0 {
+			grip.Info(message.Fields{
+				"message":   "marked newly-added hosts as permanently exempt",
+				"num_hosts": res.ModifiedCount,
+			})
+		}
 	}
 
 	res, err := coll.UpdateMany(ctx, isSleepScheduleApplicable(bson.M{

@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -17,13 +18,16 @@ import (
 )
 
 func TestLimitedProjectEndPoint(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	assert.NoError(db.Clear(model.ProjectRefCollection))
 
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
 	testConfig := testutil.TestConfig()
-	testApiServer, err := CreateTestServer(testConfig, nil, false)
+	testApiServer, err := CreateTestServer(ctx, testConfig, nil, false)
 	require.NoError(t, err, "failed to create new API server")
 	defer testApiServer.Close()
 

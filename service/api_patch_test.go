@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -16,11 +17,14 @@ import (
 )
 
 func TestPatchListModulesEndPoints(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
 	testDirectory := testutil.GetDirectoryOfFile()
 	testConfig := testutil.TestConfig()
-	testApiServer, err := CreateTestServer(testConfig, nil, false)
+	testApiServer, err := CreateTestServer(ctx, testConfig, nil, false)
 	require.NoError(t, err, "failed to create new API server")
 	defer testApiServer.Close()
 

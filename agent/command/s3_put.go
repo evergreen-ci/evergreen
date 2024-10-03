@@ -11,7 +11,6 @@ import (
 	"time"
 
 	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -114,9 +113,6 @@ type s3put struct {
 	taskdata client.TaskData
 	base
 }
-
-// NotFound is returned by S3 when an object does not exist.
-const notFoundError = "NotFound"
 
 func s3PutFactory() Command      { return &s3put{} }
 func (s3pc *s3put) Name() string { return "s3.put" }
@@ -466,7 +462,7 @@ retryLoop:
 		return nil
 	}
 
-	err = errors.WithStack(s3pc.attachFiles(ctx, comm, logger, uploadedFiles, s3pc.RemoteFile))
+	err = errors.WithStack(s3pc.attachFiles(ctx, comm, uploadedFiles, s3pc.RemoteFile))
 	if err != nil {
 		return err
 	}
@@ -483,7 +479,7 @@ retryLoop:
 
 // attachTaskFiles is responsible for sending the
 // specified file to the API Server. Does not support multiple file putting.
-func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, localFiles []string, remoteFile string) error {
+func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, localFiles []string, remoteFile string) error {
 	files := []*artifact.File{}
 
 	for _, fn := range localFiles {
@@ -563,23 +559,14 @@ func (s3pc *s3put) isPublic() bool {
 }
 
 func (s3pc *s3put) remoteFileExists(ctx context.Context, remoteName string) (bool, error) {
-	requestParams := pail.PreSignRequestParams{
-		Bucket:          s3pc.Bucket,
-		FileKey:         remoteName,
-		AwsKey:          s3pc.AwsKey,
-		AwsSecret:       s3pc.AwsSecret,
-		AwsSessionToken: s3pc.AwsSessionToken,
-		Region:          s3pc.Region,
+	opts := pail.S3Options{
+		Name:        s3pc.Bucket,
+		Credentials: pail.CreateAWSCredentials(s3pc.AwsKey, s3pc.AwsSecret, s3pc.AwsSessionToken),
+		Region:      s3pc.Region,
 	}
-	_, err := pail.GetHeadObject(ctx, requestParams)
+	bucket, err := pail.NewS3Bucket(ctx, opts)
 	if err != nil {
-		var smithyErr smithy.APIError
-		if errors.As(err, &smithyErr) {
-			if smithyErr.ErrorCode() == notFoundError {
-				return false, nil
-			}
-		}
-		return false, errors.Wrapf(err, "getting head object for remote file '%s'", remoteName)
+		return false, errors.Wrap(err, "creating S3 bucket")
 	}
-	return true, nil
+	return bucket.Exists(ctx, remoteName)
 }

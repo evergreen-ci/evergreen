@@ -50,7 +50,6 @@ func TestAppendTestLog(t *testing.T) {
 		Task:          "task",
 		TaskExecution: 5,
 	}
-	comm := client.NewMock("url")
 
 	for _, testCase := range []struct {
 		name           string
@@ -77,7 +76,7 @@ func TestAppendTestLog(t *testing.T) {
 			tsk.TaskOutputInfo.TestLogs.BucketConfig.Name = t.TempDir()
 			testLog.Lines = testCase.input
 
-			require.NoError(t, AppendTestLog(ctx, comm, tsk, testCase.redactOpts, testLog))
+			require.NoError(t, AppendTestLog(ctx, tsk, testCase.redactOpts, testLog))
 			it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{testLog.Name}})
 			require.NoError(t, err)
 
@@ -333,6 +332,13 @@ func TestTestLogSpecGetParser(t *testing.T) {
 				t.Run("InvalidTimestamp", func(t *testing.T) {
 					_, err := parser(fmt.Sprintf("%v %s\n", time.Now(), data))
 					assert.Error(t, err)
+				})
+				t.Run("ParseRawLineWithJustTimestamp", func(t *testing.T) {
+					line, err := parser(fmt.Sprintf("%d\n", ts))
+					require.NoError(t, err)
+					assert.Zero(t, line.Priority)
+					assert.Equal(t, ts, line.Timestamp)
+					assert.Empty(t, line.Data)
 				})
 				t.Run("ParseRawLine", func(t *testing.T) {
 					line, err := parser(fmt.Sprintf("%d %s\n", ts, data))

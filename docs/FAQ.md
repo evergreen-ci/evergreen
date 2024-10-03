@@ -18,7 +18,11 @@ It is possible that the token is being generated with permissions being fully re
 
 ##### Why am I seeing a `Remote: Repository not found` error when I try to clone with a generated token?
 
-It is possible that either the GitHub app associated with the project does not have permission to clone this repo, or the token is being generated with _restricted permissions_. Double check that _both_ the project settings and the command, if they specify restricted permissions, include `contents:read`.
+A few things may cause this issue:
+
+- The GitHub app associated with the project does not have permission to clone this repo.
+- The token is being generated with _restricted permissions_. Double check that _both_ the project settings and the command, if they specify restricted permissions, include `contents:read`.
+- In some cases, you may need to specify the owner and repo using the [github.generate_token command](Project-Configuration/Project-Commands#githubgenerate_token) parameters when generating a token, especially if the repository you want to clone has a different owner than your Evergreen project.
 
 ##### Why am I seeing `the intersection of the project setting's requester permissions and provided permissions does not have any permissions to create a token`?
 
@@ -40,3 +44,7 @@ A few things may cause this issue:
 - There may be a typo in the owner or repository used when generating the token. Look for the log that says `creating github dynamic access token for 'owner/repo'` and copy/paste it into github to ensure that the owner/repo exist and are spelled correctly.
 - Parts of the evergreen system or github may be down.
 - There may be something wrong with the github app ID or the github app key saved in [project settings](Github-Integrations#dynamic-github-access-tokens).
+
+##### How can I use a generated token for private go modules?
+
+After using the github.generate_token command to generate a token, you can then use it in a global git config with something like `git config --global url."https://x-access-token:${generated_token}@github.com/".insteadOf https://github.com/`. Evergreen will reset the global git config at the end of tasks (or for task groups, after the all the tasks in the task group tasks have finished).

@@ -125,6 +125,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settingsFromConnector.AuthConfig.Github.ClientId)
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settingsFromConnector.AuthConfig.Github.Users))
 	s.Equal(testSettings.AuthConfig.Multi.ReadWrite[0], settingsFromConnector.AuthConfig.Multi.ReadWrite[0])
+	s.EqualValues(testSettings.AuthConfig.Kanopy.Issuer, settingsFromConnector.AuthConfig.Kanopy.Issuer)
 	s.EqualValues(testSettings.HostJasper.URL, settingsFromConnector.HostJasper.URL)
 	s.EqualValues(testSettings.HostInit.HostThrottle, settingsFromConnector.HostInit.HostThrottle)
 	s.EqualValues(testSettings.HostInit.ProvisioningThrottle, settingsFromConnector.HostInit.ProvisioningThrottle)
@@ -262,6 +263,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settingsFromConnector.AuthConfig.Github.ClientId)
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settingsFromConnector.AuthConfig.Github.Users))
 	s.Equal(testSettings.AuthConfig.Multi.ReadWrite[0], settingsFromConnector.AuthConfig.Multi.ReadWrite[0])
+	s.EqualValues(testSettings.AuthConfig.Kanopy.Issuer, settingsFromConnector.AuthConfig.Kanopy.Issuer)
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settingsFromConnector.Jira.BasicAuthConfig.Username)
 
 	s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
@@ -334,9 +336,8 @@ func (s *AdminDataSuite) TestGetBanner() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	u := &user.DBUser{Id: "me"}
 	s.NoError(evergreen.SetBanner(ctx, "banner text"))
-	s.NoError(SetBannerTheme(ctx, string(evergreen.Important), u))
+	s.NoError(SetBannerTheme(ctx, string(evergreen.Important)))
 	text, theme, err := GetBanner(ctx)
 	s.NoError(err)
 	s.Equal("banner text", text)

@@ -167,9 +167,6 @@ const (
 	VersionCreated   = "created"
 	VersionFailed    = "failed"
 	VersionSucceeded = "success"
-
-	LegacyPatchSucceeded = "succeeded" // deprecated: will remove in EVG-20032
-
 	// VersionAborted is a display status only and not stored in the DB
 	VersionAborted = "aborted"
 
@@ -183,8 +180,6 @@ const (
 	MergeTestFailed    = "failed"
 	EnqueueFailed      = "failed to enqueue"
 
-	// MaxTaskExecution is the maximum task (zero based) execution number
-	MaxTaskExecution = 9
 	// MaxAutomaticRestarts is the maximum number of automatic restarts allowed for a task
 	MaxAutomaticRestarts = 1
 
@@ -339,12 +334,11 @@ const (
 
 	DefaultJasperPort = 2385
 
-	// TODO (DEVPROD-778): Remove GlobalGitHubTokenExpansion
-	GlobalGitHubTokenExpansion = "global_github_oauth_token"
-	GithubAppToken             = "github_app_token"
-	GithubAppPrivateKey        = "github_app_key"
-	GithubKnownHosts           = "github_known_hosts"
-	GithubCheckRun             = "github_check_run"
+	// TODO (DEVPROD-778): Remove GithubAppToken
+	GithubAppToken      = "github_app_token"
+	GithubAppPrivateKey = "github_app_key"
+	GithubKnownHosts    = "github_known_hosts"
+	GithubCheckRun      = "github_check_run"
 
 	// GitHubRetryAttempts is the github client maximum number of attempts.
 	GitHubRetryAttempts = 3
@@ -390,10 +384,6 @@ const (
 	RedactedBeforeValue = "{REDACTED_BEFORE}"
 )
 
-var VersionSucceededStatuses = []string{
-	VersionSucceeded, LegacyPatchSucceeded,
-}
-
 var TaskStatuses = []string{
 	TaskStarted,
 	TaskSucceeded,
@@ -432,14 +422,6 @@ var TaskNonGenericFailureStatuses = []string{
 	TaskSystemTimedOut,
 }
 
-var TaskSystemFailures = []string{
-	TaskSystemFailed,
-	TaskTimedOut,
-	TaskSystemUnresponse,
-	TaskSystemTimedOut,
-	TaskTestTimedOut,
-}
-
 // TaskFailureStatuses represent all the ways that a completed task can fail,
 // inclusive of display statuses such as system failures.
 var TaskFailureStatuses = append([]string{TaskFailed}, TaskNonGenericFailureStatuses...)
@@ -475,15 +457,8 @@ func IsFinishedBuildStatus(status string) bool {
 }
 
 // IsFinishedVersionStatus returns true if the version or patch is true.
-// Also handles the legacy status, to be removed in EVG-20032.
 func IsFinishedVersionStatus(status string) bool {
-	return status == VersionFailed || IsSuccessfulVersionStatus(status)
-}
-
-// IsSuccessfulVersionStatus returns true if the status represents a successful version.
-// Will deprecate this legacy status in EVG-20032.
-func IsSuccessfulVersionStatus(status string) bool {
-	return utility.StringSliceContains(VersionSucceededStatuses, status)
+	return status == VersionFailed || status == VersionSucceeded
 }
 
 type ModificationAction string
@@ -499,9 +474,6 @@ const (
 	// ModifySpawnHostManual means the spawn host is being modified by the
 	// automatic sleep schedule.
 	ModifySpawnHostSleepSchedule ModifySpawnHostSource = "sleep_schedule"
-	// ModifySpawnHostManual means the spawn host is being modified by a
-	// user-owned sleep script.
-	ModifySpawnHostSleepScript ModifySpawnHostSource = "script"
 )
 
 // Common OTEL constants and attribute keys
@@ -658,19 +630,6 @@ var (
 
 	ProviderContainer = []string{
 		ProviderNameDocker,
-	}
-
-	// ProviderSpotEc2Type includes all cloud provider types that manage EC2
-	// spot instances.
-	ProviderSpotEc2Type = []string{
-		ProviderNameEc2Fleet,
-	}
-
-	// ProviderEc2Type includes all cloud provider types that manage EC2
-	// instances.
-	ProviderEc2Type = []string{
-		ProviderNameEc2Fleet,
-		ProviderNameEc2OnDemand,
 	}
 )
 
@@ -1196,13 +1155,13 @@ var (
 	PermissionDistroCreate  = "distro_create"
 	PermissionRoleModify    = "modify_roles"
 	// Project permissions.
-	PermissionProjectSettings  = "project_settings"
-	PermissionProjectVariables = "project_variables"
-	PermissionGitTagVersions   = "project_git_tags"
-	PermissionTasks            = "project_tasks"
-	PermissionAnnotations      = "project_task_annotations"
-	PermissionPatches          = "project_patches"
-	PermissionLogs             = "project_logs"
+	PermissionProjectSettings = "project_settings"
+
+	PermissionGitTagVersions = "project_git_tags"
+	PermissionTasks          = "project_tasks"
+	PermissionAnnotations    = "project_task_annotations"
+	PermissionPatches        = "project_patches"
+	PermissionLogs           = "project_logs"
 	// Distro permissions.
 	PermissionDistroSettings = "distro_settings"
 	PermissionHosts          = "distro_hosts"
@@ -1283,7 +1242,7 @@ var (
 		Value:       10,
 	}
 	PatchNone = PermissionLevel{
-		Description: "Not able to view or submit patches",
+		Description: "Not able to submit patches",
 		Value:       0,
 	}
 	LogsView = PermissionLevel{

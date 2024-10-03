@@ -253,7 +253,7 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	env := testutil.NewEnvironment(s.ctx, s.T())
 	settings := testutil.TestConfig()
 
-	testutil.ConfigureIntegrationTest(s.T(), settings, "TestWithGithub")
+	testutil.ConfigureIntegrationTest(s.T(), settings)
 	env.Settings().Credentials = settings.Credentials
 	env.Settings().Ui.Url = "http://example.com"
 

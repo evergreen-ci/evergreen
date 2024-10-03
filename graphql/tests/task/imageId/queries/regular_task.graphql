@@ -1,0 +1,5 @@
+{
+  task(taskId: "regular-task") {
+    imageId
+  }
+}

@@ -201,7 +201,7 @@ func (c *byCommitQueue) compare(t1, t2 task.Task, comparator *CmpBasedTaskCompar
 func tasksAreFromOneProject(t1, t2 task.Task) bool { return t1.Project == t2.Project }
 func tasksAreCommitBuilds(t1, t2 task.Task) bool {
 	if utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t1.Requester) &&
-		utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t1.Requester) {
+		utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t2.Requester) {
 		return true
 	}
 	return false

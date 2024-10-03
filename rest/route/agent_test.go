@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -100,7 +101,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			require.NoError(t, env.Configure(ctx))
 			env.Settings().LoggerConfig.RedactKeys = []string{"pass", "secret"}
 
-			testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
+			testutil.ConfigureIntegrationTest(t, env.Settings())
 
 			require.NoError(t, db.ClearCollections(host.Collection, task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection, model.ParserProjectCollection))
 
@@ -618,8 +619,8 @@ func TestCreateInstallationToken(t *testing.T) {
 	validOwner := "owner"
 	validRepo := "repo"
 
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *createInstallationToken, env *mock.Environment){
-		"ParseErrorsOnEmptyOwnerAndRepo": func(ctx context.Context, t *testing.T, handler *createInstallationToken, env *mock.Environment) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *createInstallationToken){
+		"ParseErrorsOnEmptyOwnerAndRepo": func(ctx context.Context, t *testing.T, handler *createInstallationToken) {
 			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", "", "")
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
 			assert.NoError(t, err)
@@ -629,7 +630,7 @@ func TestCreateInstallationToken(t *testing.T) {
 
 			assert.Error(t, handler.Parse(ctx, request))
 		},
-		"ParseErrorsOnEmptyOwner": func(ctx context.Context, t *testing.T, handler *createInstallationToken, env *mock.Environment) {
+		"ParseErrorsOnEmptyOwner": func(ctx context.Context, t *testing.T, handler *createInstallationToken) {
 			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", "", validRepo)
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
 			assert.NoError(t, err)
@@ -639,7 +640,7 @@ func TestCreateInstallationToken(t *testing.T) {
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing owner")
 		},
-		"ParseErrorsOnEmptyRepo": func(ctx context.Context, t *testing.T, handler *createInstallationToken, env *mock.Environment) {
+		"ParseErrorsOnEmptyRepo": func(ctx context.Context, t *testing.T, handler *createInstallationToken) {
 			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", validOwner, "")
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
 			assert.NoError(t, err)
@@ -649,7 +650,7 @@ func TestCreateInstallationToken(t *testing.T) {
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing repo")
 		},
-		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createInstallationToken, env *mock.Environment) {
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createInstallationToken) {
 			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", validOwner, validRepo)
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
 			assert.NoError(t, err)
@@ -670,7 +671,7 @@ func TestCreateInstallationToken(t *testing.T) {
 			r, ok := makeCreateInstallationToken(env).(*createInstallationToken)
 			require.True(t, ok)
 
-			tCase(ctx, t, r, env)
+			tCase(ctx, t, r)
 		})
 	}
 }
@@ -742,8 +743,8 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 	taskID := "taskID"
 	json := []byte(`{ "checks": "read", "actions": "write" }`)
 
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *createGitHubDynamicAccessToken, env *mock.Environment){
-		"ParseErrorsOnEmptyOwner": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken, env *mock.Environment) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *createGitHubDynamicAccessToken){
+		"ParseErrorsOnEmptyOwner": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
 			url := fmt.Sprintf(route, taskID, "", repo)
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(json))
 			require.NoError(t, err)
@@ -753,7 +754,7 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing owner")
 		},
-		"ParseErrorsOnEmptyRepo": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken, env *mock.Environment) {
+		"ParseErrorsOnEmptyRepo": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
 			url := fmt.Sprintf(route, taskID, owner, "")
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(json))
 			require.NoError(t, err)
@@ -763,7 +764,7 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing repo")
 		},
-		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken, env *mock.Environment) {
+		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
 			url := fmt.Sprintf(route, "", owner, repo)
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(json))
 			require.NoError(t, err)
@@ -773,7 +774,7 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing task_id")
 		},
-		"ParseSucceedsOnNullBody": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken, env *mock.Environment) {
+		"ParseSucceedsOnNullBody": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
 			url := fmt.Sprintf(route, taskID, owner, repo)
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader([]byte("null")))
 			require.NoError(t, err)
@@ -784,7 +785,7 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 			require.NoError(t, handler.Parse(ctx, request))
 			require.True(t, handler.allPermissions)
 		},
-		"ParseSucceedsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken, env *mock.Environment) {
+		"ParseSucceedsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
 			url := fmt.Sprintf(route, taskID, owner, repo)
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader([]byte("{}")))
 			require.NoError(t, err)
@@ -795,7 +796,7 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 			require.NoError(t, handler.Parse(ctx, request))
 			require.True(t, handler.allPermissions)
 		},
-		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken, env *mock.Environment) {
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createGitHubDynamicAccessToken) {
 			url := fmt.Sprintf(route, taskID, owner, repo)
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(json))
 			require.NoError(t, err)
@@ -820,7 +821,7 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 			r, ok := makeCreateGitHubDynamicAccessToken(env).(*createGitHubDynamicAccessToken)
 			require.True(t, ok)
 
-			tCase(ctx, t, r, env)
+			tCase(ctx, t, r)
 		})
 	}
 }
@@ -834,8 +835,8 @@ func TestRevokeGitHubDynamicAccessToken(t *testing.T) {
 	body, err := json.Marshal(apimodels.Token{Token: token})
 	require.NoError(t, err)
 
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *revokeGitHubDynamicAccessToken, env *mock.Environment){
-		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *revokeGitHubDynamicAccessToken, env *mock.Environment) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *revokeGitHubDynamicAccessToken){
+		"ParseErrorsOnEmptyTaskID": func(ctx context.Context, t *testing.T, handler *revokeGitHubDynamicAccessToken) {
 			url := fmt.Sprintf(route, "")
 			request, err := http.NewRequest(http.MethodDelete, url, bytes.NewReader(body))
 			require.NoError(t, err)
@@ -845,7 +846,7 @@ func TestRevokeGitHubDynamicAccessToken(t *testing.T) {
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing task_id")
 		},
-		"ParseErrorsOnNilBody": func(ctx context.Context, t *testing.T, handler *revokeGitHubDynamicAccessToken, env *mock.Environment) {
+		"ParseErrorsOnNilBody": func(ctx context.Context, t *testing.T, handler *revokeGitHubDynamicAccessToken) {
 			url := fmt.Sprintf(route, taskID)
 			request, err := http.NewRequest(http.MethodDelete, url, bytes.NewReader(nil))
 			require.NoError(t, err)
@@ -854,7 +855,7 @@ func TestRevokeGitHubDynamicAccessToken(t *testing.T) {
 			request = gimlet.SetURLVars(request, options)
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "reading token JSON request body for task 'taskID'")
-		}, "ParseErrorsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *revokeGitHubDynamicAccessToken, env *mock.Environment) {
+		}, "ParseErrorsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *revokeGitHubDynamicAccessToken) {
 			url := fmt.Sprintf(route, taskID)
 			request, err := http.NewRequest(http.MethodDelete, url, bytes.NewReader([]byte("{}")))
 			require.NoError(t, err)
@@ -864,7 +865,7 @@ func TestRevokeGitHubDynamicAccessToken(t *testing.T) {
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing token")
 		},
-		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *revokeGitHubDynamicAccessToken, env *mock.Environment) {
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *revokeGitHubDynamicAccessToken) {
 			url := fmt.Sprintf(route, taskID)
 			request, err := http.NewRequest(http.MethodDelete, url, bytes.NewReader(body))
 			require.NoError(t, err)
@@ -886,7 +887,92 @@ func TestRevokeGitHubDynamicAccessToken(t *testing.T) {
 			r, ok := makeRevokeGitHubDynamicAccessToken(env).(*revokeGitHubDynamicAccessToken)
 			require.True(t, ok)
 
-			tCase(ctx, t, r, env)
+			tCase(ctx, t, r)
 		})
 	}
+}
+
+func TestAWSAssumeRole(t *testing.T) {
+	route := "/task/%s/aws/assume_role"
+	taskID := "taskID"
+	roleARN := "unique_role_arn"
+	policy := "policy-num"
+	var duration int32 = 1600
+	json := `{"role_arn": "%s", "policy": "%s", "duration_seconds": %d}`
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ar *awsAssumeRole){
+		"ParseErrorsOnNilBody": func(ctx context.Context, t *testing.T, handler *awsAssumeRole) {
+			url := fmt.Sprintf(route, taskID)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(nil))
+			require.NoError(t, err)
+
+			options := map[string]string{"task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "reading assume role body for task 'taskID'")
+		},
+		"ParseErrorsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *awsAssumeRole) {
+			url := fmt.Sprintf(route, taskID)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte("{}")))
+			require.NoError(t, err)
+
+			options := map[string]string{"task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "validating assume role body for task 'taskID'")
+		},
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *awsAssumeRole) {
+			url := fmt.Sprintf(route, taskID)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte(fmt.Sprintf(json, roleARN, policy, duration))))
+			require.NoError(t, err)
+
+			options := map[string]string{"task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			require.NoError(t, handler.Parse(ctx, request))
+			assert.Equal(t, taskID, handler.taskID)
+			assert.Equal(t, roleARN, handler.body.RoleARN)
+			assert.Equal(t, policy, utility.FromStringPtr(handler.body.Policy))
+			assert.Equal(t, duration, utility.FromInt32Ptr(handler.body.DurationSeconds))
+
+			t.Run("RunErrorsOnNilTask", func(t *testing.T) {
+				resp := handler.Run(ctx)
+				require.NotNil(t, resp)
+				require.Equal(t, http.StatusInternalServerError, resp.Status(), resp.Data())
+			})
+
+			t.Run("RunSucceeds", func(t *testing.T) {
+				task := task.Task{Id: taskID, Project: projectID, Requester: "requester"}
+				require.NoError(t, task.Insert())
+
+				resp := handler.Run(ctx)
+				require.NotNil(t, resp)
+				require.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+				data, ok := resp.Data().(apimodels.AssumeRoleResponse)
+				require.True(t, ok)
+				assert.NotEmpty(t, data.AccessKeyID)
+				assert.NotEmpty(t, data.SecretAccessKey)
+				assert.NotEmpty(t, data.SessionToken)
+				assert.NotEmpty(t, data.Expiration)
+			})
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection))
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
+			manager := cloud.GetSTSManager(true)
+
+			r, ok := makeAWSAssumeRole(manager).(*awsAssumeRole)
+			require.True(t, ok)
+
+			tCase(ctx, t, r)
+		})
+	}
+
 }

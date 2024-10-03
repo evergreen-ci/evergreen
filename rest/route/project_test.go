@@ -1110,7 +1110,6 @@ func TestDeleteProject(t *testing.T) {
 			RepoRefId: repo.Id,
 			Enabled:   false,
 			Hidden:    utility.TruePtr(),
-			Private:   utility.TruePtr(),
 		}
 		assert.Equal(t, skeletonProj, *hiddenProj)
 

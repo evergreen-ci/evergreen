@@ -1850,7 +1850,7 @@ func TestFindAllUnmarkedDependenciesToBlock(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	deps, err := FindAllDependencyTasksToModify([]Task{*t1}, false)
+	deps, err := FindAllDependencyTasksToModify([]Task{*t1}, true, false)
 	assert.NoError(err)
 	require.Len(t, deps, 1)
 	assert.Equal("t2", deps[0].Id)
@@ -1889,7 +1889,7 @@ func TestFindAllUnattainableDependenciesToUnbock(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	deps, err := FindAllDependencyTasksToModify([]Task{*t1}, true)
+	deps, err := FindAllDependencyTasksToModify([]Task{*t1}, false, false)
 	assert.NoError(err)
 	require.Len(t, deps, 1)
 	assert.Equal("t2", deps[0].Id)
@@ -2103,49 +2103,6 @@ func TestActivateTasksUpdate(t *testing.T) {
 		assert.True(t, activationTime.Equal(dbTask.ActivatedTime))
 		assert.False(t, dbTask.UnattainableDependency)
 	})
-
-	t.Run("UnattainableDependency", func(t *testing.T) {
-		require.NoError(t, db.Clear(Collection))
-
-		t0 := Task{
-			Id: "t0",
-			DependsOn: []Dependency{
-				{TaskId: "t1", Unattainable: true},
-				{TaskId: "t2", Unattainable: false},
-			},
-		}
-
-		require.NoError(t, t0.Insert())
-		assert.NoError(t, activateTasks([]string{t0.Id}, caller, activationTime))
-		dbTask, err := FindOneId(t0.Id)
-		assert.NoError(t, err)
-		assert.True(t, dbTask.Activated)
-		assert.Equal(t, caller, dbTask.ActivatedBy)
-		assert.True(t, activationTime.Equal(dbTask.ActivatedTime))
-		assert.True(t, dbTask.UnattainableDependency)
-	})
-
-	t.Run("AttainableDependencies", func(t *testing.T) {
-		require.NoError(t, db.Clear(Collection))
-
-		t0 := Task{
-			Id: "t0",
-			DependsOn: []Dependency{
-				{TaskId: "t1", Unattainable: false},
-				{TaskId: "t2", Unattainable: false},
-			},
-		}
-
-		require.NoError(t, t0.Insert())
-		assert.NoError(t, activateTasks([]string{t0.Id}, caller, activationTime))
-		dbTask, err := FindOneId(t0.Id)
-		assert.NoError(t, err)
-		assert.True(t, dbTask.Activated)
-		assert.Equal(t, caller, dbTask.ActivatedBy)
-		assert.True(t, activationTime.Equal(dbTask.ActivatedTime))
-		assert.False(t, dbTask.UnattainableDependency)
-	})
-
 	t.Run("DisabledTask", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()

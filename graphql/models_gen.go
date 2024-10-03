@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+	model1 "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -148,6 +149,13 @@ type ExternalLinkForMetadata struct {
 	DisplayName string `json:"displayName"`
 }
 
+type GeneratedTaskCountResults struct {
+	BuildVariantName *string `json:"buildVariantName,omitempty"`
+	TaskName         *string `json:"taskName,omitempty"`
+	TaskID           *string `json:"taskId,omitempty"`
+	EstimatedTasks   int     `json:"estimatedTasks"`
+}
+
 type GroupedBuildVariant struct {
 	DisplayName string           `json:"displayName"`
 	Tasks       []*model.APITask `json:"tasks,omitempty"`
@@ -174,6 +182,14 @@ type GroupedProjects struct {
 type HostEvents struct {
 	Count           int                           `json:"count"`
 	EventLogEntries []*model.HostAPIEventLogEntry `json:"eventLogEntries"`
+}
+
+type HostEventsInput struct {
+	Limit *int `json:"limit,omitempty"`
+	Page  *int `json:"page,omitempty"`
+	// sort by timestamp
+	SortDir    *SortDirection `json:"sortDir,omitempty"`
+	EventTypes []string       `json:"eventTypes,omitempty"`
 }
 
 // HostsResponse is the return value for the hosts query.
@@ -516,6 +532,14 @@ type TestSortOptions struct {
 	Direction SortDirection    `json:"direction"`
 }
 
+type UpdateBetaFeaturesInput struct {
+	BetaFeatures *model.APIBetaFeatures `json:"betaFeatures"`
+}
+
+type UpdateBetaFeaturesPayload struct {
+	BetaFeatures *model.APIBetaFeatures `json:"betaFeatures,omitempty"`
+}
+
 type UpdateParsleySettingsInput struct {
 	ParsleySettings *model.APIParsleySettings `json:"parsleySettings"`
 }
@@ -582,6 +606,28 @@ type VersionTiming struct {
 type VolumeHost struct {
 	VolumeID string `json:"volumeId"`
 	HostID   string `json:"hostId"`
+}
+
+type Waterfall struct {
+	BuildVariants []*model1.WaterfallBuildVariant `json:"buildVariants"`
+	NextPageOrder int                             `json:"nextPageOrder"`
+	PrevPageOrder int                             `json:"prevPageOrder"`
+	Versions      []*WaterfallVersion             `json:"versions"`
+}
+
+type WaterfallOptions struct {
+	Limit *int `json:"limit,omitempty"`
+	// Return versions with an order greater than minOrder. Used for paginating backward.
+	MinOrder *int `json:"minOrder,omitempty"`
+	// Return versions with an order lower than maxOrder. Used for paginating forward.
+	MaxOrder          *int     `json:"maxOrder,omitempty"`
+	ProjectIdentifier string   `json:"projectIdentifier"`
+	Requesters        []string `json:"requesters,omitempty"`
+}
+
+type WaterfallVersion struct {
+	InactiveVersions []*model.APIVersion `json:"inactiveVersions,omitempty"`
+	Version          *model.APIVersion   `json:"version,omitempty"`
 }
 
 type AccessLevel string

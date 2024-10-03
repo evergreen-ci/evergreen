@@ -541,7 +541,7 @@ func makeRandomTasks() []task.Task {
 	return tasks
 }
 
-func pickSubtaskStatus(statuses []string, dependsOn []task.Dependency) string {
+func pickSubtaskStatus(dependsOn []task.Dependency) string {
 	// If any task that a task depends on is undispatched, this task must be
 	// undispatched
 	for _, dep := range dependsOn {
@@ -581,7 +581,7 @@ func makeRandomSubTasks(statuses []string, parentTasks *[]task.Task) []task.Task
 			depTasks = append(depTasks, task.Task{
 				Id:        childId,
 				Activated: true,
-				Status:    pickSubtaskStatus(statuses, dependsOn),
+				Status:    pickSubtaskStatus(dependsOn),
 				DependsOn: dependsOn,
 				Project:   "exists",
 			})

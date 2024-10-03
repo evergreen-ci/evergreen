@@ -325,7 +325,6 @@ type APIAmboyConfig struct {
 	GroupBackgroundCreateFrequencyMinutes int                        `json:"group_background_create_frequency"`
 	GroupPruneFrequencyMinutes            int                        `json:"group_prune_frequency"`
 	GroupTTLMinutes                       int                        `json:"group_ttl"`
-	RequireRemotePriority                 bool                       `json:"require_remote_priority"`
 	LockTimeoutMinutes                    int                        `json:"lock_timeout_minutes"`
 	SampleSize                            int                        `json:"sample_size"`
 	Retry                                 APIAmboyRetryConfig        `json:"retry,omitempty"`
@@ -347,7 +346,6 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 		a.GroupBackgroundCreateFrequencyMinutes = v.GroupBackgroundCreateFrequencyMinutes
 		a.GroupPruneFrequencyMinutes = v.GroupPruneFrequencyMinutes
 		a.GroupTTLMinutes = v.GroupTTLMinutes
-		a.RequireRemotePriority = v.RequireRemotePriority
 		a.LockTimeoutMinutes = v.LockTimeoutMinutes
 		a.SampleSize = v.SampleSize
 		if err := a.Retry.BuildFromService(v.Retry); err != nil {
@@ -398,7 +396,6 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		GroupBackgroundCreateFrequencyMinutes: a.GroupBackgroundCreateFrequencyMinutes,
 		GroupPruneFrequencyMinutes:            a.GroupPruneFrequencyMinutes,
 		GroupTTLMinutes:                       a.GroupTTLMinutes,
-		RequireRemotePriority:                 a.RequireRemotePriority,
 		LockTimeoutMinutes:                    a.LockTimeoutMinutes,
 		SampleSize:                            a.SampleSize,
 		Retry:                                 retry,
@@ -521,6 +518,7 @@ type APIAuthConfig struct {
 	Naive                   *APINaiveAuthConfig  `json:"naive"`
 	Github                  *APIGithubAuthConfig `json:"github"`
 	Multi                   *APIMultiAuthConfig  `json:"multi"`
+	Kanopy                  *APIKanopyAuthConfig `json:"kanopy"`
 	PreferredType           *string              `json:"preferred_type"`
 	BackgroundReauthMinutes int                  `json:"background_reauth_minutes"`
 	AllowServiceUsers       bool                 `json:"allow_service_users"`
@@ -553,6 +551,12 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 				return errors.Wrap(err, "converting multi auth settings to API model")
 			}
 		}
+		if v.Kanopy != nil {
+			a.Kanopy = &APIKanopyAuthConfig{}
+			if err := a.Kanopy.BuildFromService(v.Kanopy); err != nil {
+				return errors.Wrap(err, "converting Kanopy auth settings to API model")
+			}
+		}
 		a.PreferredType = utility.ToStringPtr(v.PreferredType)
 		a.BackgroundReauthMinutes = v.BackgroundReauthMinutes
 		a.AllowServiceUsers = v.AllowServiceUsers
@@ -567,6 +571,7 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 	var naive *evergreen.NaiveAuthConfig
 	var github *evergreen.GithubAuthConfig
 	var multi *evergreen.MultiAuthConfig
+	var kanopy *evergreen.KanopyAuthConfig
 	var ok bool
 
 	i, err := a.Okta.ToService()
@@ -613,11 +618,23 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 		}
 	}
 
+	i, err = a.Kanopy.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting Kanopy auth config to service model")
+	}
+	if i != nil {
+		kanopy, ok = i.(*evergreen.KanopyAuthConfig)
+		if !ok {
+			return nil, errors.Errorf("programmatic error: expected Kanopy auth config but got type %T", i)
+		}
+	}
+
 	return evergreen.AuthConfig{
 		Okta:                    okta,
 		Naive:                   naive,
 		Github:                  github,
 		Multi:                   multi,
+		Kanopy:                  kanopy,
 		PreferredType:           utility.FromStringPtr(a.PreferredType),
 		BackgroundReauthMinutes: a.BackgroundReauthMinutes,
 		AllowServiceUsers:       a.AllowServiceUsers,
@@ -881,6 +898,38 @@ func (a *APIMultiAuthConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APIKanopyAuthConfig struct {
+	HeaderName *string `json:"header_name"`
+	Issuer     *string `json:"issuer"`
+	KeysetURL  *string `json:"keyset_url"`
+}
+
+func (a *APIKanopyAuthConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case *evergreen.KanopyAuthConfig:
+		if v == nil {
+			return nil
+		}
+		a.HeaderName = utility.ToStringPtr(v.HeaderName)
+		a.Issuer = utility.ToStringPtr(v.Issuer)
+		a.KeysetURL = utility.ToStringPtr(v.KeysetURL)
+	default:
+		return errors.Errorf("programmatic error: expected Kanopy auth config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIKanopyAuthConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	return &evergreen.KanopyAuthConfig{
+		HeaderName: utility.FromStringPtr(a.HeaderName),
+		Issuer:     utility.FromStringPtr(a.Issuer),
+		KeysetURL:  utility.FromStringPtr(a.KeysetURL),
+	}, nil
+}
+
 // APIBanner is a public structure representing the banner part of the admin settings
 type APIBanner struct {
 	Text  *string `json:"banner"`
@@ -959,7 +1008,6 @@ func (a *APIJiraConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.JiraConfig:
 		a.Host = utility.ToStringPtr(v.Host)
-		a.DefaultProject = utility.ToStringPtr(v.DefaultProject)
 		a.Email = utility.ToStringPtr(v.Email)
 		a.BasicAuthConfig = &APIJiraBasicAuth{}
 		a.BasicAuthConfig.BuildFromService(v.BasicAuthConfig)
@@ -973,9 +1021,8 @@ func (a *APIJiraConfig) BuildFromService(h interface{}) error {
 
 func (a *APIJiraConfig) ToService() (interface{}, error) {
 	c := evergreen.JiraConfig{
-		Host:           utility.FromStringPtr(a.Host),
-		DefaultProject: utility.FromStringPtr(a.DefaultProject),
-		Email:          utility.FromStringPtr(a.Email),
+		Host:  utility.FromStringPtr(a.Host),
+		Email: utility.FromStringPtr(a.Email),
 	}
 	if a.BasicAuthConfig != nil {
 		c.BasicAuthConfig = a.BasicAuthConfig.ToService()
@@ -2050,7 +2097,6 @@ type APIServiceFlags struct {
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
 	GlobalGitHubTokenDisabled       bool `json:"global_github_token_disabled"`
 	SleepScheduleDisabled           bool `json:"sleep_schedule_disabled"`
-	SleepScheduleBetaTestDisabled   bool `json:"sleep_schedule_beta_test_disabled"`
 	SystemFailedTaskRestartDisabled bool `json:"system_failed_task_restart_disabled"`
 	DegradedModeDisabled            bool `json:"cpu_degraded_mode_disabled"`
 	ParameterStoreDisabled          bool `json:"parameter_store_disabled"`
@@ -2368,7 +2414,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.GlobalGitHubTokenDisabled = v.GlobalGitHubTokenDisabled
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
-		as.SleepScheduleBetaTestDisabled = v.SleepScheduleBetaTestDisabled
 		as.SystemFailedTaskRestartDisabled = v.SystemFailedTaskRestartDisabled
 		as.DegradedModeDisabled = v.CPUDegradedModeDisabled
 		as.ParameterStoreDisabled = v.ParameterStoreDisabled
@@ -2413,7 +2458,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
 		GlobalGitHubTokenDisabled:       as.GlobalGitHubTokenDisabled,
 		SleepScheduleDisabled:           as.SleepScheduleDisabled,
-		SleepScheduleBetaTestDisabled:   as.SleepScheduleBetaTestDisabled,
 		SystemFailedTaskRestartDisabled: as.SystemFailedTaskRestartDisabled,
 		CPUDegradedModeDisabled:         as.DegradedModeDisabled,
 		ParameterStoreDisabled:          as.ParameterStoreDisabled,
@@ -2700,15 +2744,17 @@ func (c *APIGitHubCheckRunConfig) ToService() (interface{}, error) {
 }
 
 type APITaskLimitsConfig struct {
-	MaxTasksPerVersion                   *int `json:"max_tasks_per_version"`
-	MaxIncludesPerVersion                *int `json:"max_includes_per_version"`
-	MaxHourlyPatchTasks                  *int `json:"max_hourly_patch_tasks"`
-	MaxPendingGeneratedTasks             *int `json:"max_pending_generated_tasks"`
-	MaxGenerateTaskJSONSize              *int `json:"max_generate_task_json_size"`
-	MaxConcurrentLargeParserProjectTasks *int `json:"max_concurrent_large_parser_project_tasks"`
-	MaxDegradedModeParserProjectSize     *int `json:"max_degraded_mode_parser_project_size"`
-	MaxParserProjectSize                 *int `json:"max_parser_project_size"`
-	MaxExecTimeoutSecs                   *int `json:"max_exec_timeout_secs"`
+	MaxTasksPerVersion                               *int `json:"max_tasks_per_version"`
+	MaxIncludesPerVersion                            *int `json:"max_includes_per_version"`
+	MaxHourlyPatchTasks                              *int `json:"max_hourly_patch_tasks"`
+	MaxPendingGeneratedTasks                         *int `json:"max_pending_generated_tasks"`
+	MaxGenerateTaskJSONSize                          *int `json:"max_generate_task_json_size"`
+	MaxConcurrentLargeParserProjectTasks             *int `json:"max_concurrent_large_parser_project_tasks"`
+	MaxDegradedModeParserProjectSize                 *int `json:"max_degraded_mode_parser_project_size"`
+	MaxParserProjectSize                             *int `json:"max_parser_project_size"`
+	MaxExecTimeoutSecs                               *int `json:"max_exec_timeout_secs"`
+	MaxDegradedModeConcurrentLargeParserProjectTasks *int `json:"max_degraded_mode_concurrent_large_parser_project_tasks"`
+	MaxTaskExecution                                 *int `json:"max_task_execution"`
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
@@ -2720,9 +2766,11 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 		c.MaxHourlyPatchTasks = utility.ToIntPtr(v.MaxHourlyPatchTasks)
 		c.MaxGenerateTaskJSONSize = utility.ToIntPtr(v.MaxGenerateTaskJSONSize)
 		c.MaxConcurrentLargeParserProjectTasks = utility.ToIntPtr(v.MaxConcurrentLargeParserProjectTasks)
+		c.MaxDegradedModeConcurrentLargeParserProjectTasks = utility.ToIntPtr(v.MaxDegradedModeConcurrentLargeParserProjectTasks)
 		c.MaxDegradedModeParserProjectSize = utility.ToIntPtr(v.MaxDegradedModeParserProjectSize)
 		c.MaxParserProjectSize = utility.ToIntPtr(v.MaxParserProjectSize)
 		c.MaxExecTimeoutSecs = utility.ToIntPtr(v.MaxExecTimeoutSecs)
+		c.MaxTaskExecution = utility.ToIntPtr(v.MaxTaskExecution)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
@@ -2731,15 +2779,17 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 
 func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 	return evergreen.TaskLimitsConfig{
-		MaxTasksPerVersion:                   utility.FromIntPtr(c.MaxTasksPerVersion),
-		MaxIncludesPerVersion:                utility.FromIntPtr(c.MaxIncludesPerVersion),
-		MaxHourlyPatchTasks:                  utility.FromIntPtr(c.MaxHourlyPatchTasks),
-		MaxPendingGeneratedTasks:             utility.FromIntPtr(c.MaxPendingGeneratedTasks),
-		MaxGenerateTaskJSONSize:              utility.FromIntPtr(c.MaxGenerateTaskJSONSize),
-		MaxConcurrentLargeParserProjectTasks: utility.FromIntPtr(c.MaxConcurrentLargeParserProjectTasks),
-		MaxDegradedModeParserProjectSize:     utility.FromIntPtr(c.MaxDegradedModeParserProjectSize),
-		MaxParserProjectSize:                 utility.FromIntPtr(c.MaxParserProjectSize),
-		MaxExecTimeoutSecs:                   utility.FromIntPtr(c.MaxExecTimeoutSecs),
+		MaxTasksPerVersion:                               utility.FromIntPtr(c.MaxTasksPerVersion),
+		MaxIncludesPerVersion:                            utility.FromIntPtr(c.MaxIncludesPerVersion),
+		MaxHourlyPatchTasks:                              utility.FromIntPtr(c.MaxHourlyPatchTasks),
+		MaxPendingGeneratedTasks:                         utility.FromIntPtr(c.MaxPendingGeneratedTasks),
+		MaxGenerateTaskJSONSize:                          utility.FromIntPtr(c.MaxGenerateTaskJSONSize),
+		MaxConcurrentLargeParserProjectTasks:             utility.FromIntPtr(c.MaxConcurrentLargeParserProjectTasks),
+		MaxDegradedModeParserProjectSize:                 utility.FromIntPtr(c.MaxDegradedModeParserProjectSize),
+		MaxParserProjectSize:                             utility.FromIntPtr(c.MaxParserProjectSize),
+		MaxExecTimeoutSecs:                               utility.FromIntPtr(c.MaxExecTimeoutSecs),
+		MaxDegradedModeConcurrentLargeParserProjectTasks: utility.FromIntPtr(c.MaxDegradedModeConcurrentLargeParserProjectTasks),
+		MaxTaskExecution:                                 utility.FromIntPtr(c.MaxTaskExecution),
 	}, nil
 }
 

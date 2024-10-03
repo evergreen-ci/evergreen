@@ -48,6 +48,7 @@ var (
 	ParsleyFiltersKey         = bsonutil.MustHaveTag(DBUser{}, "ParsleyFilters")
 	ParsleySettingsKey        = bsonutil.MustHaveTag(DBUser{}, "ParsleySettings")
 	NumScheduledPatchTasksKey = bsonutil.MustHaveTag(DBUser{}, "NumScheduledPatchTasks")
+	BetaFeaturesKey           = bsonutil.MustHaveTag(DBUser{}, "BetaFeatures")
 )
 
 //nolint:megacheck,unused
@@ -139,20 +140,6 @@ func FindOneByToken(token string) (*DBUser, error) {
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "finding user by token")
-	}
-	return u, nil
-}
-
-// FindOneByDisplayName gets a DBUser by their display name.
-func FindOneByDisplayName(displayName string) (*DBUser, error) {
-	u := &DBUser{}
-	query := db.Query(bson.M{DispNameKey: displayName})
-	err := db.FindOneQ(Collection, query, u)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "finding user by display name")
 	}
 	return u, nil
 }

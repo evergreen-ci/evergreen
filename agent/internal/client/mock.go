@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
@@ -70,6 +71,7 @@ type Mock struct {
 	CreateGitHubDynamicAccessTokenResult string
 	CreateGitHubDynamicAccessTokenFail   bool
 	RevokeGitHubDynamicAccessTokenFail   bool
+	AssumeRoleResponse                   *apimodels.AssumeRoleResponse
 
 	CedarGRPCConn *grpc.ClientConn
 
@@ -334,7 +336,7 @@ func (c *Mock) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {
 }
 
 // GetLoggerProducer constructs a single channel log producer.
-func (c *Mock) GetLoggerProducer(ctx context.Context, tsk *task.Task, _ *LoggerConfig) (LoggerProducer, error) {
+func (c *Mock) GetLoggerProducer(ctx context.Context, tsk *task.Task, config *LoggerConfig) (LoggerProducer, error) {
 	if c.GetLoggerProducerShouldFail {
 		return nil, errors.New("operation run in fail mode.")
 	}
@@ -350,7 +352,11 @@ func (c *Mock) GetLoggerProducer(ctx context.Context, tsk *task.Task, _ *LoggerC
 		return c.sendTaskLogLine(taskID, line)
 	}
 
-	return NewSingleChannelLogHarness(taskID, newMockSender("mock", appendLine)), nil
+	var sender send.Sender = newMockSender("mock", appendLine)
+	if config != nil {
+		sender = redactor.NewRedactingSender(sender, config.RedactorOpts)
+	}
+	return NewSingleChannelLogHarness(taskID, sender), nil
 }
 
 // sendTaskLogLine appends a new log line to the task log cache.
@@ -601,4 +607,8 @@ func (s *mockSender) Flush(_ context.Context) error { return nil }
 
 func (c *Mock) UpsertCheckRun(ctx context.Context, td TaskData, checkRunOutput apimodels.CheckRunOutput) error {
 	return nil
+}
+
+func (c *Mock) AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AssumeRoleResponse, error) {
+	return c.AssumeRoleResponse, nil
 }

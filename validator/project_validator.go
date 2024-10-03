@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -158,7 +157,6 @@ var projectConfigErrorValidators = []projectConfigValidator{
 // a level of Warning ValidationLevel or Notice ValidationLevel.
 var projectWarningValidators = []projectValidator{
 	checkTaskGroups,
-	checkProjectFields,
 	checkTaskRuns,
 	checkModules,
 	checkTasks,
@@ -819,15 +817,6 @@ func validateBVFields(project *model.Project) ValidationErrors {
 func validateProjectFields(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 
-	if project.BatchTime < 0 {
-		errs = append(errs,
-			ValidationError{
-				Level:   Error,
-				Message: "'batchtime' must be non-negative",
-			},
-		)
-	}
-
 	if project.CommandType != "" {
 		if !utility.StringSliceContains(evergreen.ValidCommandTypes, project.CommandType) {
 			errs = append(errs,
@@ -838,24 +827,6 @@ func validateProjectFields(project *model.Project) ValidationErrors {
 			)
 		}
 	}
-	return errs
-}
-
-func checkProjectFields(project *model.Project) ValidationErrors {
-	errs := ValidationErrors{}
-
-	if project.BatchTime > math.MaxInt32 {
-		// Error level is warning for backwards compatibility with
-		// existing projects. This value will be capped at MaxInt32
-		// in ProjectRef.getBatchTime()
-		errs = append(errs,
-			ValidationError{
-				Message: fmt.Sprintf("'batchtime' should not exceed %d", math.MaxInt32),
-				Level:   Warning,
-			},
-		)
-	}
-
 	return errs
 }
 
@@ -901,11 +872,6 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 	for _, buildVariant := range project.BuildVariants {
 		buildVariantTasks := map[string]bool{}
 		for _, task := range buildVariant.Tasks {
-			if task.TaskGroup != nil {
-				for _, taskGroupTask := range task.TaskGroup.Tasks {
-					errs = append(errs, validateBuildVariantTaskNames(taskGroupTask, buildVariant.Name, allTaskNames, taskGroupTaskSet)...)
-				}
-			}
 			errs = append(errs, validateBuildVariantTaskNames(task.Name, buildVariant.Name, allTaskNames, taskGroupTaskSet)...)
 			if _, ok := taskGroupTaskSet[task.Name]; ok {
 				errs = append(errs,
@@ -1023,8 +989,9 @@ func validateTimeoutLimits(_ context.Context, settings *evergreen.Settings, proj
 		for _, task := range project.Tasks {
 			if task.ExecTimeoutSecs > settings.TaskLimits.MaxExecTimeoutSecs {
 				errs = append(errs, ValidationError{
-					Message: fmt.Sprintf("task '%s' exec timeout (%d) exceeds maximum limit (%d)", task.Name, task.ExecTimeoutSecs, settings.TaskLimits.MaxExecTimeoutSecs),
-					Level:   Error,
+					Message: fmt.Sprintf("task '%s' exec timeout (%d) is too high and will be set to maximum limit (%d)", task.Name, task.ExecTimeoutSecs, settings.TaskLimits.MaxExecTimeoutSecs),
+					// TODO DEVPROD-11204: Update to Error once the exec timeout limit can be enforced
+					Level: Warning,
 				})
 			}
 		}
@@ -1777,15 +1744,7 @@ func validateParameters(p *model.Project) ValidationErrors {
 
 func validateTaskGroups(p *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
-	taskGroups := p.TaskGroups
-	for _, bv := range p.BuildVariants {
-		for _, t := range bv.Tasks {
-			if t.TaskGroup != nil {
-				taskGroups = append(taskGroups, *t.TaskGroup)
-			}
-		}
-	}
-	for _, tg := range taskGroups {
+	for _, tg := range p.TaskGroups {
 		// validate that there is at least 1 task
 		if len(tg.Tasks) < 1 {
 			errs = append(errs, ValidationError{
@@ -1835,15 +1794,7 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	tasksInTaskGroups := map[string]string{}
 	names := map[string]bool{}
-	taskGroups := p.TaskGroups
-	for _, bv := range p.BuildVariants {
-		for _, t := range bv.Tasks {
-			if t.TaskGroup != nil {
-				taskGroups = append(taskGroups, *t.TaskGroup)
-			}
-		}
-	}
-	for _, tg := range taskGroups {
+	for _, tg := range p.TaskGroups {
 		// validate that teardown group timeout is not over MaxTeardownGroupTimeout
 		if tg.TeardownGroupTimeoutSecs > int(globals.MaxTeardownGroupTimeout.Seconds()) {
 			errs = append(errs, ValidationError{
@@ -1891,10 +1842,7 @@ func validateDuplicateBVTasks(p *model.Project) ValidationErrors {
 		for _, t := range bv.Tasks {
 
 			if t.IsGroup {
-				tg := t.TaskGroup
-				if tg == nil {
-					tg = p.FindTaskGroup(t.Name)
-				}
+				tg := p.FindTaskGroup(t.Name)
 				if tg == nil {
 					continue
 				}
@@ -2123,10 +2071,7 @@ func bvsWithTasksThatCallCommand(p *model.Project, cmd string) (map[string]map[s
 
 		for _, bvtu := range bv.Tasks {
 			if bvtu.IsGroup {
-				tg := bvtu.TaskGroup
-				if tg == nil {
-					tg = p.FindTaskGroup(bvtu.Name)
-				}
+				tg := p.FindTaskGroup(bvtu.Name)
 				if tg == nil {
 					catcher.Errorf("cannot find definition of task group '%s' used in build variant '%s'", bvtu.Name, bv.Name)
 					continue

@@ -22,8 +22,8 @@ type TaskCreationInfo struct {
 	ActivateBuild       bool                    // True if the build should be scheduled
 	ActivationInfo      specificActivationInfo  // Indicates if the task has a specific activation or is a stepback task
 	TasksInBuild        []task.Task             // The set of task names that already exist for the given build, including display tasks
-	TaskNames           []string                // Names of tasks to create (used in patches). Will create all if nil
-	DisplayNames        []string                // Names of display tasks to create (used in patches). Will create all if nil
+	TaskNames           []string                // Names of tasks to create (used in patches). Will create all if empty
+	DisplayNames        []string                // Names of display tasks to create (used in patches). Will create all if empty
 	GeneratedBy         string                  // ID of the task that generated this build
 	SourceRev           string                  // Githash of the revision that triggered this build
 	DefinitionID        string                  // Definition ID of the trigger used to create this build

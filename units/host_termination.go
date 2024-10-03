@@ -205,6 +205,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			latestTask, err := task.FindOneId(j.host.LastTask)
 			if err != nil {
 				j.AddError(errors.Wrapf(err, "finding last task '%s'", j.host.LastTask))
+				return
 			}
 			// Only try to restart the task group if it was successful and should have continued executing.
 			if latestTask != nil && latestTask.IsPartOfSingleHostTaskGroup() && latestTask.Status == evergreen.TaskSucceeded {
@@ -218,13 +219,17 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 					return
 				}
 				// Check for the last task in the task group that we have activated, running, or completed.
-				var lastTaskGroupTask task.Task
+				var lastActivatedTaskGroupTask task.Task
 				for _, t := range tasks {
 					if t.Activated {
-						lastTaskGroupTask = t
+						lastActivatedTaskGroupTask = t
 					}
 				}
-				if lastTaskGroupTask.Id != latestTask.Id {
+				if lastActivatedTaskGroupTask.Id != latestTask.Id {
+					// If the host was in-between running a single host task group, the group should start from scratch.
+					// Since single host task groups only restart when the whole group is finished, we all block subsequent task group
+					// tasks from running regardless of what status they were waiting on, so that we can force the task group to restart immediately.
+					j.AddError(errors.Wrapf(model.UpdateBlockedDependencies(ctx, []task.Task{*latestTask}, true), "updating blocked dependencies for task '%s'", latestTask.Id))
 					// If we aren't looking at the last task in the group, then we should mark the whole thing for restart,
 					// because later tasks in the group need to run on the same host as the earlier ones.
 					j.AddError(errors.Wrapf(model.TryResetTask(ctx, j.env.Settings(), latestTask.Id, evergreen.User, evergreen.MonitorPackage, nil), "resetting task '%s'", latestTask.Id))
@@ -293,7 +298,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		}
 	}
 
-	if err := j.checkAndTerminateCloudHost(ctx, prevStatus); err != nil {
+	if err := j.checkAndTerminateCloudHost(ctx); err != nil {
 		j.AddError(err)
 		return
 	}
@@ -335,14 +340,16 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	if utility.StringSliceContains(evergreen.ProvisioningHostStatus, prevStatus) && j.host.TaskCount == 0 {
 		event.LogHostProvisionFailed(j.HostID, fmt.Sprintf("terminating host in status '%s'", prevStatus))
 		grip.Info(message.Fields{
-			"message":     "provisioning failure",
-			"status":      prevStatus,
-			"host_id":     j.HostID,
-			"host_tag":    j.host.Tag,
-			"distro":      j.host.Distro.Id,
-			"uptime_secs": time.Since(j.host.StartTime).Seconds(),
-			"provider":    j.host.Provider,
-			"spawn_host":  j.host.StartedBy != evergreen.User,
+			"message":          "provisioning failure",
+			"status":           prevStatus,
+			"host_id":          j.HostID,
+			"host_tag":         j.host.Tag,
+			"distro":           j.host.Distro.Id,
+			"uptime_secs":      time.Since(j.host.StartTime).Seconds(),
+			"provider":         j.host.Provider,
+			"spawn_host":       j.host.StartedBy != evergreen.User,
+			"is_ec2_host":      cloud.IsEC2InstanceID(j.HostID),
+			"agent_start_time": j.host.AgentStartTime,
 		})
 	}
 }
@@ -367,7 +374,7 @@ func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) error {
 //
 // If this job is set to skip cloud host termination, it will ignore the cloud
 // host and only mark the host as terminated in the DB .
-func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context, oldStatus string) error {
+func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context) error {
 	if j.SkipCloudHostTermination {
 		return errors.Wrap(j.host.Terminate(ctx, evergreen.User, j.TerminationReason), "marking DB host terminated")
 	}

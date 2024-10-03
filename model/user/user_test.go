@@ -1003,6 +1003,32 @@ func TestUpdateParsleySettings(t *testing.T) {
 	assert.Equal(t, utility.FromBoolPtr(dbUser.ParsleySettings.SectionsEnabled), false)
 }
 
+func TestUpdateBetaFeatures(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+
+	usr := DBUser{
+		Id: "me",
+	}
+	require.NoError(t, usr.Insert())
+
+	dbUser, err := FindOneById(usr.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbUser)
+	assert.Equal(t, false, dbUser.BetaFeatures.SpruceWaterfallEnabled)
+
+	newBetaFeatureSettings := BetaFeatures{
+		SpruceWaterfallEnabled: true,
+	}
+	err = usr.UpdateBetaFeatures(newBetaFeatureSettings)
+	require.NoError(t, err)
+	assert.Equal(t, true, usr.BetaFeatures.SpruceWaterfallEnabled)
+
+	dbUser, err = FindOneById(usr.Id)
+	require.NoError(t, err)
+	require.NotNil(t, dbUser)
+	assert.Equal(t, true, dbUser.BetaFeatures.SpruceWaterfallEnabled)
+}
+
 func (s *UserTestSuite) TestClearUser() {
 	// Error on non-existent user.
 	s.Error(ClearUser("asdf"))

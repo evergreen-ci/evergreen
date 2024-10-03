@@ -325,8 +325,7 @@ type SecretsManagerConfig struct {
 type AWSClientType string
 
 const (
-	// AWSClientTypeBasic is the standard implementation of an AWS client.
-	AWSClientTypeBasic AWSClientType = ""
+
 	// AWSClientTypeMock is the mock implementation of an AWS client for testing
 	// purposes only. This should never be used in production.
 	AWSClientTypeMock AWSClientType = "mock"
@@ -340,5 +339,5 @@ type DockerConfig struct {
 // ParameterStoreConfig stores configuration for using SSM Parameter Store.
 type ParameterStoreConfig struct {
 	// Prefix is the Parameter Store path prefix for the Evergreen application.
-	Prefix string
+	Prefix string `bson:"prefix" json:"prefix" yaml:"prefix"`
 }

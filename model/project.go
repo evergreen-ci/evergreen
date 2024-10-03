@@ -46,7 +46,6 @@ type Project struct {
 	PreErrorFailsTask  bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
 	PostErrorFailsTask bool                       `yaml:"post_error_fails_task,omitempty" bson:"post_error_fails_task,omitempty"`
 	OomTracker         bool                       `yaml:"oom_tracker,omitempty" bson:"oom_tracker"`
-	BatchTime          int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
 	Identifier         string                     `yaml:"identifier,omitempty" bson:"identifier"`
 	DisplayName        string                     `yaml:"display_name,omitempty" bson:"display_name"`
 	CommandType        string                     `yaml:"command_type,omitempty" bson:"command_type"`
@@ -64,9 +63,6 @@ type Project struct {
 	Tasks              []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
 	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 	TimeoutSecs        int                        `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
-
-	// Flag that indicates a project as requiring user authentication
-	Private bool `yaml:"private,omitempty" bson:"private"`
 
 	// Number of includes in the project cached for validation
 	NumIncludes int `yaml:"-" bson:"-"`
@@ -142,9 +138,6 @@ type BuildVariantTaskUnit struct {
 	CronBatchTime string `yaml:"cron,omitempty" bson:"cron,omitempty"`
 	// If Activate is set to false, then we don't initially activate the task.
 	Activate *bool `yaml:"activate,omitempty" bson:"activate,omitempty"`
-	// TaskGroup is set if an inline task group is defined on the build variant.
-	TaskGroup *TaskGroup `yaml:"task_group,omitempty" bson:"task_group,omitempty"`
-
 	// CreateCheckRun will create a check run on GitHub if set.
 	CreateCheckRun *CheckRun `yaml:"create_check_run,omitempty" bson:"create_check_run,omitempty"`
 }
@@ -627,11 +620,6 @@ func (c *PluginCommandConf) unmarshalParams() error {
 	return nil
 }
 
-type ArtifactInstructions struct {
-	Include      []string `yaml:"include,omitempty" bson:"include"`
-	ExcludeFiles []string `yaml:"excludefiles,omitempty" bson:"exclude_files"`
-}
-
 type YAMLCommandSet struct {
 	SingleCommand *PluginCommandConf  `yaml:"single_command,omitempty" bson:"single_command,omitempty"`
 	MultiCommand  []PluginCommandConf `yaml:"multi_command,omitempty" bson:"multi_command,omitempty"`
@@ -858,11 +846,16 @@ func (t TaskIdConfig) Length() int {
 }
 
 // NewTaskIdConfigForRepotrackerVersion creates a special TaskIdTable for a
-// repotracker version.
-func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, sourceRev, defID string) TaskIdConfig {
+// repotracker version. If pairsToCreate is not empty, that means only some of
+// the tasks will be created for this version so only create task IDs for those
+// tasks that actually will be created; otherwise, it will create task IDs for
+// all possible tasks in the version.
+func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, pairsToCreate TVPairSet, sourceRev, defID string) TaskIdConfig {
 	// init the variant map
 	execTable := TaskIdTable{}
 	displayTable := TaskIdTable{}
+
+	isCreatingSubsetOfTasks := len(pairsToCreate) > 0
 
 	sort.Stable(p.BuildVariants)
 
@@ -871,6 +864,7 @@ func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, sourceRev, def
 		projectIdentifier = p.Identifier
 	}
 	for _, bv := range p.BuildVariants {
+		taskNamesInBV := pairsToCreate.TaskNames(bv.Name)
 		rev := v.Revision
 		if evergreen.IsPatchRequester(v.Requester) {
 			rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
@@ -886,16 +880,18 @@ func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, sourceRev, def
 			if t.IsDisabled() || t.SkipOnRequester(v.Requester) {
 				continue
 			}
-			tg := t.TaskGroup
-			if tg == nil {
-				tg = p.FindTaskGroup(t.Name)
-			}
-			if tg != nil {
+			if tg := p.FindTaskGroup(t.Name); tg != nil {
 				for _, groupTask := range tg.Tasks {
+					if isCreatingSubsetOfTasks && !utility.StringSliceContains(taskNamesInBV, groupTask) {
+						continue
+					}
 					taskId := generateId(groupTask, projectIdentifier, &bv, rev, v)
 					execTable[TVPair{bv.Name, groupTask}] = util.CleanName(taskId)
 				}
 			} else {
+				if isCreatingSubsetOfTasks && !utility.StringSliceContains(taskNamesInBV, t.Name) {
+					continue
+				}
 				// create a unique Id for each task
 				taskId := generateId(t.Name, projectIdentifier, &bv, rev, v)
 				execTable[TVPair{bv.Name, t.Name}] = util.CleanName(taskId)
@@ -922,13 +918,7 @@ func NewTaskIdConfig(proj *Project, v *Version, tasks TaskVariantPairs, projectI
 	for _, tg := range proj.TaskGroups {
 		tgMap[tg.Name] = tg
 	}
-	for _, variant := range proj.BuildVariants {
-		for _, t := range variant.Tasks {
-			if t.TaskGroup != nil {
-				tgMap[t.Name] = *t.TaskGroup
-			}
-		}
-	}
+
 	execTasksWithTaskGroupTasks := TVPairSet{}
 	for _, vt := range tasks.ExecTasks {
 		if _, ok := tgMap[vt.TaskName]; ok {
@@ -1023,7 +1013,7 @@ func generateId(name string, projectIdentifier string, projBV *BuildVariant, rev
 
 // PopulateExpansions returns expansions for a task, excluding build variant
 // expansions, project variables, and project/version parameters.
-func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken, knownHosts string) (util.Expansions, error) {
+func PopulateExpansions(t *task.Task, h *host.Host, appToken, knownHosts string) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
@@ -1043,7 +1033,6 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken, appToken, knownH
 	expansions.Put("revision", t.Revision)
 	expansions.Put("github_commit", t.Revision)
 	expansions.Put(evergreen.GithubKnownHosts, knownHosts)
-	expansions.Put(evergreen.GlobalGitHubTokenExpansion, oauthToken)
 	expansions.Put(evergreen.GithubAppToken, appToken)
 	expansions.Put("project", projectRef.Identifier)
 	expansions.Put("project_identifier", projectRef.Identifier) // TODO: deprecate
@@ -1221,13 +1210,6 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 			return &tg
 		}
 	}
-	for _, bv := range p.BuildVariants {
-		for _, t := range bv.Tasks {
-			if t.TaskGroup != nil && t.Name == name {
-				return t.TaskGroup
-			}
-		}
-	}
 	return nil
 }
 
@@ -1253,16 +1235,8 @@ func (p *Project) FindTaskGroupForTask(bvName, taskName string) *TaskGroup {
 		}
 	}
 
-	// Third, loop through the build variant's task units, which may be an inline task group
-	// or a reference to a defined task group.
+	// Third, loop through the build variant's task units.
 	for _, t := range bv.Tasks {
-		// Check inline task groups.
-		if t.TaskGroup != nil {
-			if utility.StringSliceContains(t.TaskGroup.Tasks, taskName) {
-				return t.TaskGroup
-			}
-			continue
-		}
 		// Check if the task group is in the map of task groups with the task.
 		if tg, ok := tgWithTask[t.Name]; ok {
 			return &tg
@@ -1395,11 +1369,6 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 	for _, tg := range p.TaskGroups {
 		tgMap[tg.Name] = tg
 	}
-	for _, t := range bv.Tasks {
-		if t.TaskGroup != nil {
-			tgMap[t.Name] = *t.TaskGroup
-		}
-	}
 
 	for _, bvt := range bv.Tasks {
 		if bvt.Name == task {
@@ -1459,10 +1428,7 @@ func (p *Project) findBuildVariantsWithTag(tags []string) []string {
 // build variant task unit, and returns the name and tags
 func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string, bool) {
 	if bvt.IsGroup || bvt.IsPartOfGroup {
-		ptg := bvt.TaskGroup
-		if ptg == nil {
-			ptg = p.FindTaskGroup(bvt.Name)
-		}
+		ptg := p.FindTaskGroup(bvt.Name)
 		if ptg == nil {
 			return "", nil, false
 		}
@@ -1620,10 +1586,7 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 // tasksFromGroup returns a slice of the task group's tasks.
 // Settings missing from the group task are populated from the task definition.
 func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVariantTaskUnit {
-	tg := bvTaskGroup.TaskGroup
-	if tg == nil {
-		tg = p.FindTaskGroup(bvTaskGroup.Name)
-	}
+	tg := p.FindTaskGroup(bvTaskGroup.Name)
 	if tg == nil {
 		return nil
 	}
@@ -1654,7 +1617,6 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 			// unit is a task within the task group, not the task group itself.
 			// These are not persisted.
 			IsPartOfGroup:     true,
-			TaskGroup:         bvTaskGroup.TaskGroup,
 			GroupName:         bvTaskGroup.Name,
 			Variant:           bvTaskGroup.Variant,
 			Patchable:         bvTaskGroup.Patchable,

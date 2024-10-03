@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -20,7 +20,7 @@ func (r *projectSettingsResolver) Aliases(ctx context.Context, obj *restModel.AP
 
 // GithubAppAuth is the resolver for the githubAppAuth field.
 func (r *projectSettingsResolver) GithubAppAuth(ctx context.Context, obj *restModel.APIProjectSettings) (*restModel.APIGithubAppAuth, error) {
-	app, err := model.FindOneGithubAppAuth(utility.FromStringPtr(obj.ProjectRef.Id))
+	app, err := githubapp.FindOneGithubAppAuth(utility.FromStringPtr(obj.ProjectRef.Id))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding GitHub app for project '%s': %s", utility.FromStringPtr(obj.ProjectRef.Id), err.Error()))
 	}
@@ -38,7 +38,7 @@ func (r *projectSettingsResolver) GithubAppAuth(ctx context.Context, obj *restMo
 func (r *projectSettingsResolver) GithubWebhooksEnabled(ctx context.Context, obj *restModel.APIProjectSettings) (bool, error) {
 	owner := utility.FromStringPtr(obj.ProjectRef.Owner)
 	repo := utility.FromStringPtr(obj.ProjectRef.Repo)
-	hasApp, err := evergreen.GetEnvironment().Settings().CreateGitHubAppAuth().IsGithubAppInstalledOnRepo(ctx, owner, repo)
+	hasApp, err := githubapp.CreateGitHubAppAuth(evergreen.GetEnvironment().Settings()).IsGithubAppInstalledOnRepo(ctx, owner, repo)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": "Error verifying GitHub app installation",
 		"project": utility.FromStringPtr(obj.ProjectRef.Id),

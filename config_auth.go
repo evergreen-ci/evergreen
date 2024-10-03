@@ -23,6 +23,7 @@ var (
 	AuthGithubKey                  = bsonutil.MustHaveTag(AuthConfig{}, "Github")
 	AuthNaiveKey                   = bsonutil.MustHaveTag(AuthConfig{}, "Naive")
 	AuthMultiKey                   = bsonutil.MustHaveTag(AuthConfig{}, "Multi")
+	AuthKanopyKey                  = bsonutil.MustHaveTag(AuthConfig{}, "Kanopy")
 	authPreferredTypeKey           = bsonutil.MustHaveTag(AuthConfig{}, "PreferredType")
 	authBackgroundReauthMinutesKey = bsonutil.MustHaveTag(AuthConfig{}, "BackgroundReauthMinutes")
 	AuthAllowServiceUsersKey       = bsonutil.MustHaveTag(AuthConfig{}, "AllowServiceUsers")
@@ -67,12 +68,26 @@ func (c *MultiAuthConfig) IsZero() bool {
 	return len(c.ReadWrite) == 0 && len(c.ReadOnly) == 0
 }
 
+// KanopyAuthConfig configures the auth method that validates and consumes the JWT
+// that Kanopy provides with information about the user. Kanopy deals with authentication
+// so all we need to do is extract the information they provide about the user.
+type KanopyAuthConfig struct {
+	// HeaderName is the name of the header that contains the JWT with information about the user.
+	HeaderName string `bson:"header_name" json:"header_name" yaml:"header_name"`
+	// Issuer is the expected issuer of the JWT. JWT Validation fails if the JWT's issuer field
+	// does not match the Issuer provided.
+	Issuer string `bson:"issuer" json:"issuer" yaml:"issuer"`
+	// KeysetURL is the URL for the remote keyset, or JWKS, used to validate the signing of the JWT.
+	KeysetURL string `bson:"keyset_url" json:"keyset_url" yaml:"keyset_url"`
+}
+
 // AuthConfig contains the settings for the various auth managers.
 type AuthConfig struct {
 	Okta                    *OktaConfig       `bson:"okta,omitempty" json:"okta" yaml:"okta"`
 	Naive                   *NaiveAuthConfig  `bson:"naive,omitempty" json:"naive" yaml:"naive"`
 	Github                  *GithubAuthConfig `bson:"github,omitempty" json:"github" yaml:"github"`
 	Multi                   *MultiAuthConfig  `bson:"multi" json:"multi" yaml:"multi"`
+	Kanopy                  *KanopyAuthConfig `bson:"kanopy" json:"kanopy" yaml:"kanopy"`
 	AllowServiceUsers       bool              `bson:"allow_service_users" json:"allow_service_users" yaml:"allow_service_users"`
 	PreferredType           string            `bson:"preferred_type,omitempty" json:"preferred_type" yaml:"preferred_type"`
 	BackgroundReauthMinutes int               `bson:"background_reauth_minutes" json:"background_reauth_minutes" yaml:"background_reauth_minutes"`
@@ -91,6 +106,7 @@ func (c *AuthConfig) Set(ctx context.Context) error {
 			AuthNaiveKey:                   c.Naive,
 			AuthGithubKey:                  c.Github,
 			AuthMultiKey:                   c.Multi,
+			AuthKanopyKey:                  c.Kanopy,
 			authPreferredTypeKey:           c.PreferredType,
 			authBackgroundReauthMinutesKey: c.BackgroundReauthMinutes,
 			AuthAllowServiceUsersKey:       c.AllowServiceUsers,
@@ -121,9 +137,11 @@ func (c *AuthConfig) ValidateAndDefault() error {
 		AuthOktaKey,
 		AuthNaiveKey,
 		AuthGithubKey,
-		AuthMultiKey}, c.PreferredType), "invalid auth type '%s'", c.PreferredType)
+		AuthMultiKey,
+		AuthKanopyKey,
+	}, c.PreferredType), "invalid auth type '%s'", c.PreferredType)
 
-	if c.Naive == nil && c.Github == nil && c.Okta == nil && c.Multi == nil {
+	if c.Naive == nil && c.Github == nil && c.Okta == nil && c.Multi == nil && c.Kanopy == nil {
 		catcher.Add(errors.New("must specify one form of authentication"))
 	}
 
@@ -149,6 +167,12 @@ func (c *AuthConfig) ValidateAndDefault() error {
 			catcher.ErrorfWhen(seen[kind], "duplicate auth mechanism '%s' in multi auth", kind)
 			seen[kind] = true
 		}
+	}
+
+	if c.Kanopy != nil {
+		catcher.NewWhen(c.Kanopy.HeaderName == "", "header name cannot be empty if using Kanopy auth")
+		catcher.NewWhen(c.Kanopy.Issuer == "", "issuer cannot be empty if using Kanopy auth")
+		catcher.NewWhen(c.Kanopy.KeysetURL == "", "keyset URL cannot be empty if using Kanopy auth")
 	}
 
 	return catcher.Resolve()

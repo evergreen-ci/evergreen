@@ -27,7 +27,7 @@ import (
 
 // AppendTestLog appends log lines to the specified test log for the given task
 // run.
-func AppendTestLog(ctx context.Context, comm client.Communicator, tsk *task.Task, redactionOptions redactor.RedactionOptions, testLog *testlog.TestLog) error {
+func AppendTestLog(ctx context.Context, tsk *task.Task, redactionOptions redactor.RedactionOptions, testLog *testlog.TestLog) error {
 	taskOpts := taskoutput.TaskOptions{
 		ProjectID: tsk.Project,
 		TaskID:    tsk.Id,
@@ -102,7 +102,7 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 			}()
 			defer wg.Done()
 
-			h.ingest(ctx, h.dir, path)
+			h.ingest(ctx, path)
 		}()
 
 		return nil
@@ -134,7 +134,7 @@ func (h *testLogDirectoryHandler) getSpecFile() {
 }
 
 // ingest reads and ships a test log file.
-func (h *testLogDirectoryHandler) ingest(ctx context.Context, dir, path string) {
+func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string) {
 	h.logger.Task().Infof("new test log file '%s' found, initiating automated ingestion", path)
 
 	// The persisted log path should be relative to the reserved directory
@@ -197,20 +197,22 @@ const testLogSpecFilename = "log_spec.yaml"
 func (s testLogSpec) getParser() taskoutput.LogLineParser {
 	switch s.Format {
 	case testLogFormatTextTimestamp:
-		return func(data string) (log.LogLine, error) {
-			lineParts := strings.SplitN(strings.TrimSpace(data), " ", 2)
-			if len(lineParts) != 2 {
-				return log.LogLine{}, errors.New("malformed log line")
-			}
+		return func(line string) (log.LogLine, error) {
+			lineParts := strings.SplitN(strings.TrimSpace(line), " ", 2)
 
 			ts, err := strconv.ParseInt(lineParts[0], 10, 64)
 			if err != nil {
 				return log.LogLine{}, errors.Wrap(err, "invalid log timestamp prefix")
 			}
 
+			var data string
+			if len(lineParts) == 2 {
+				data = lineParts[1]
+			}
+
 			return log.LogLine{
 				Timestamp: ts,
-				Data:      strings.TrimSuffix(lineParts[1], "\n"),
+				Data:      data,
 			}, nil
 		}
 	default:

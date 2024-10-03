@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -63,7 +64,13 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	events, err := event.Find(event.MostRecentHostEvents(h.Id, h.Tag, 50))
+	hostEventOpts := event.HostEventsOpts{
+		ID:      h.Id,
+		Tag:     h.Tag,
+		Limit:   50,
+		SortAsc: false,
+	}
+	events, err := event.Find(event.HostEvents(hostEventOpts))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -302,4 +309,19 @@ func (uis *UIServer) handleBackendError(message string, statusCode int) func(htt
 	return func(w http.ResponseWriter, r *http.Request, err error) {
 		gimlet.WriteTextResponse(w, statusCode, message)
 	}
+}
+
+// returns dockerfle as text
+func getDockerfile(w http.ResponseWriter, r *http.Request) {
+	parts := []string{
+		"ARG BASE_IMAGE",
+		"FROM $BASE_IMAGE",
+		"ARG URL",
+		"ARG EXECUTABLE_SUB_PATH",
+		"ARG BINARY_NAME",
+		"ADD ${URL}/clients/${EXECUTABLE_SUB_PATH} /",
+		"RUN chmod 0777 /${BINARY_NAME}",
+	}
+
+	gimlet.WriteText(w, strings.Join(parts, "\n"))
 }

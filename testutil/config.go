@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -20,8 +22,7 @@ const (
 	TestDir = "config_test"
 	// TestSettings contains the default admin settings suitable for testing
 	// that depends on the global environment.
-	TestSettings               = "evg_settings.yml"
-	testSettingsWithAuthTokens = "evg_settings_with_3rd_party_defaults.yml"
+	TestSettings = "evg_settings.yml"
 )
 
 func init() {
@@ -57,6 +58,15 @@ func Setup() {
 func NewEnvironment(ctx context.Context, t *testing.T) evergreen.Environment {
 	env, err := evergreen.NewEnvironment(ctx, filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings), "", "", nil, noop.NewTracerProvider())
 	require.NoError(t, err)
+	// For testing purposes, set up parameter manager so it's backed by the DB.
+	pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
+		PathPrefix:     env.Settings().Providers.AWS.ParameterStore.Prefix,
+		CachingEnabled: true,
+		SSMClient:      fakeparameter.NewFakeSSMClient(),
+		DB:             env.DB(),
+	})
+	require.NoError(t, err)
+	env.SetParameterManager(pm)
 	return env
 }
 
@@ -150,6 +160,11 @@ func MockConfig() *evergreen.Settings {
 				ReadOnly:  []string{evergreen.AuthNaiveKey},
 				ReadWrite: []string{evergreen.AuthOktaKey},
 			},
+			Kanopy: &evergreen.KanopyAuthConfig{
+				Issuer:     "www.example.com",
+				HeaderName: "auth_header",
+				KeysetURL:  "www.google.com",
+			},
 			BackgroundReauthMinutes: 60,
 		},
 		AWSInstanceRole: "role",
@@ -206,7 +221,6 @@ func MockConfig() *evergreen.Settings {
 				Username: "username",
 				Password: "password",
 			},
-			DefaultProject: "proj",
 		},
 		TaskLimits: evergreen.TaskLimitsConfig{
 			MaxTasksPerVersion: 1000,

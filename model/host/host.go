@@ -382,10 +382,6 @@ type SleepScheduleInfo struct {
 	// NextStartTime is the next time that the host should start for its sleep
 	// schedule.
 	NextStartTime time.Time `bson:"next_start_time,omitempty" json:"next_start_time,omitempty"`
-
-	// IsBetaTester is a temporary flag to allow users to opt into beta testing
-	// the sleep schedule.
-	IsBetaTester bool `bson:"is_beta_tester,omitempty" json:"is_beta_tester,omitempty"`
 }
 
 // NewSleepScheduleInfo creates a new sleep schedule for a host that does not
@@ -464,8 +460,7 @@ func (i SleepScheduleInfo) IsZero() bool {
 		utility.IsZeroTime(i.NextStartTime) &&
 		utility.IsZeroTime(i.TemporarilyExemptUntil) &&
 		!i.PermanentlyExempt &&
-		!i.ShouldKeepOff &&
-		!i.IsBetaTester
+		!i.ShouldKeepOff
 }
 
 type newParentsNeededParams struct {
@@ -633,12 +628,12 @@ type SpawnHostUsage struct {
 }
 
 const (
-	// MaxLCTInterval is the maximum amount of time that can elapse before the
+	// MaxAgentUnresponsiveInterval is the maximum amount of time that can elapse before the
 	// agent is considered dead. Once it has been successfully started (e.g.
 	// once an agent has been deployed from the server), the agent must
 	// regularly contact the server to ensure it is still alive.
-	MaxLCTInterval = 5 * time.Minute
-	// MaxUncommunicativeInterval is the maximum amount of time that can elapse
+	MaxAgentUnresponsiveInterval = 5 * time.Minute
+	// MaxAgentMonitorUnresponsiveInterval is the maximum amount of time that can elapse
 	// before the agent monitor is considered dead. When the host is
 	// provisioning, the agent must contact the app server within this duration
 	// for the agent monitor to be alive (i.e. the agent monitor has
@@ -647,7 +642,16 @@ const (
 	// duration does not elapse. Otherwise, the agent monitor is considered dead
 	// (because it has failed to keep an agent alive that can contact the
 	// server).
-	MaxUncommunicativeInterval = 3 * MaxLCTInterval
+	MaxAgentMonitorUnresponsiveInterval = 15 * time.Minute
+	// MaxStaticHostUnresponsiveInterval is the maximum amount of time that can
+	// elapse before a static host is considered unresponsive and unfixable. If
+	// the host is running and healthy, the agent must regularly contact the app
+	// server within this duration. Otherwise, the host will be considered
+	// unhealthy and require manual intervention to investigate why it's
+	// unresponsive.
+	// This timeout is intentionally very conservative to mitigate false
+	// positives when automatically detecting unhealthy static hosts.
+	MaxStaticHostUnresponsiveInterval = 120 * time.Minute
 
 	// provisioningCutoff is the threshold before a host is considered stuck in
 	// provisioning.
@@ -822,6 +826,7 @@ func (h *Host) SetStatus(ctx context.Context, newStatus, user, logs string) erro
 			shouldKeepOffKey: 1,
 		}
 	}
+
 	return h.setStatusAndFields(ctx, newStatus, nil, nil, unset, user, logs)
 }
 
@@ -1935,10 +1940,10 @@ func (h *Host) IsWaitingForAgent() bool {
 		return true
 	}
 
-	if h.Distro.LegacyBootstrap() && h.LastCommunicationTime.Before(time.Now().Add(-MaxLCTInterval)) {
+	if h.Distro.LegacyBootstrap() && h.LastCommunicationTime.Before(time.Now().Add(-MaxAgentUnresponsiveInterval)) {
 		return true
 	}
-	if !h.Distro.LegacyBootstrap() && h.LastCommunicationTime.Before(time.Now().Add(-MaxUncommunicativeInterval)) {
+	if !h.Distro.LegacyBootstrap() && h.LastCommunicationTime.Before(time.Now().Add(-MaxAgentMonitorUnresponsiveInterval)) {
 		return true
 	}
 
@@ -2197,26 +2202,6 @@ func DecommissionHostsWithDistroId(ctx context.Context, distroId string) error {
 	return err
 }
 
-func (h *Host) DisablePoisonedHost(ctx context.Context, logs string) error {
-	if h.Provider == evergreen.ProviderNameStatic {
-		if err := h.SetQuarantined(ctx, evergreen.User, logs); err != nil {
-			return errors.WithStack(err)
-		}
-
-		grip.Error(message.Fields{
-			"host_id":  h.Id,
-			"provider": h.Provider,
-			"distro":   h.Distro.Id,
-			"message":  "host may be poisoned",
-			"action":   "investigate recent provisioning and system failures",
-		})
-
-		return nil
-	}
-
-	return errors.WithStack(h.SetDecommissioned(ctx, evergreen.User, true, logs))
-}
-
 func (h *Host) SetExtId(ctx context.Context) error {
 	return UpdateOne(
 		ctx,
@@ -2306,7 +2291,7 @@ func FindHostsToTerminate(ctx context.Context) ([]Host, error) {
 								{RunningTaskKey: bson.M{"$exists": false}},
 								{LTCTaskKey: ""},
 							},
-							LastCommunicationTimeKey: bson.M{"$lte": now.Add(-MaxUncommunicativeInterval)},
+							LastCommunicationTimeKey: bson.M{"$lte": now.Add(-MaxAgentMonitorUnresponsiveInterval)},
 						}, {
 							// Host is not a user data host so cannot run tasks
 							// until done provisioning.
@@ -3158,12 +3143,14 @@ func makeExpireOnTag(expireOn string) Tag {
 }
 
 // MarkShouldNotExpire marks a host as one that should not expire
-// and updates its expiration time to avoid early reaping.
-func (h *Host) MarkShouldNotExpire(ctx context.Context, expireOnValue string) error {
+// and updates its expiration time to avoid early reaping. If the host is marked
+// unexpirable and has invalid/missing sleep schedule settings,  it is assigned
+// the default sleep schedule.
+func (h *Host) MarkShouldNotExpire(ctx context.Context, expireOnValue, userTimeZone string) error {
 	h.NoExpiration = true
 	h.ExpirationTime = time.Now().Add(evergreen.SpawnHostNoExpirationDuration)
 	h.addTag(makeExpireOnTag(expireOnValue), true)
-	return UpdateOne(
+	if err := UpdateOne(
 		ctx,
 		bson.M{
 			IdKey: h.Id,
@@ -3175,7 +3162,38 @@ func (h *Host) MarkShouldNotExpire(ctx context.Context, expireOnValue string) er
 				InstanceTagsKey:   h.InstanceTags,
 			},
 		},
-	)
+	); err != nil {
+		return err
+	}
+
+	if h.SleepSchedule.Validate() != nil {
+		// If the host is being made expirable and its sleep schedule is
+		// invalid/missing, set it to the default sleep schedule. This is a
+		// safety measure to ensure that a host cannot be made unexpirable
+		// without having some kind of working sleep schedule (or permanent
+		// exemption) in place.
+		var opts SleepScheduleOptions
+		opts.SetDefaultSchedule()
+		opts.SetDefaultTimeZone(userTimeZone)
+		schedule, err := NewSleepScheduleInfo(opts)
+		if err != nil {
+			return errors.Wrap(err, "creating default sleep schedule for host being marked unexpirable that has invalid schedule")
+		}
+		grip.Info(message.Fields{
+			"message":            "host is being marked unexpirable but has an invalid sleep schedule, setting it to the default sleep schedule",
+			"host_id":            h.Id,
+			"started_by":         h.StartedBy,
+			"old_sleep_schedule": h.SleepSchedule,
+			"new_sleep_schedule": schedule,
+		})
+		grip.Error(message.WrapError(h.UpdateSleepSchedule(ctx, *schedule, time.Now()), message.Fields{
+			"message":    "could not set default sleep schedule for host being marked unexpirable that currently has an invalid schedule",
+			"host_id":    h.Id,
+			"started_by": h.StartedBy,
+		}))
+	}
+
+	return nil
 }
 
 // MarkShouldExpire resets a host's expiration to expire like
@@ -3753,32 +3771,6 @@ func (h *Host) UpdateSleepSchedule(ctx context.Context, schedule SleepScheduleIn
 		}
 	}
 	h.SleepSchedule = schedule
-
-	return nil
-}
-
-// SetSleepScheduleBetaTester enables or disables sleep schedule beta testing
-// for this host.
-func (h *Host) SetSleepScheduleBetaTester(ctx context.Context, isBetaTester bool) error {
-	if err := h.SleepSchedule.Validate(); err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    errors.Wrap(err, "cannot opt into sleep schedule with invalid sleep schedule").Error(),
-		}
-	}
-
-	sleepScheduleIsBetaTesterKey := bsonutil.GetDottedKeyName(SleepScheduleKey, SleepScheduleIsBetaTesterKey)
-	if err := UpdateOne(ctx,
-		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{sleepScheduleIsBetaTesterKey: isBetaTester}},
-	); err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "enabling/disabling sleep schedule beta test").Error(),
-		}
-	}
-
-	h.SleepSchedule.IsBetaTester = isBetaTester
 
 	return nil
 }

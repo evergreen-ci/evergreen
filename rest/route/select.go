@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -73,5 +74,10 @@ func (t *selectTestsHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
+	grip.Info(message.Fields{
+		"message": "received test selection request",
+		"route":   "/rest/v2/select/tests",
+		"request": t.selectTests,
+	})
 	return gimlet.NewJSONResponse(t.selectTests)
 }

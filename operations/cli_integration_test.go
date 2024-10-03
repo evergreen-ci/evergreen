@@ -59,7 +59,7 @@ type cliTestHarness struct {
 
 func setupCLITestHarness(ctx context.Context) cliTestHarness {
 	// create a test API server
-	testServer, err := service.CreateTestServer(testConfig, nil, false)
+	testServer, err := service.CreateTestServer(ctx, testConfig, nil, false)
 	So(err, ShouldBeNil)
 	So(
 		db.ClearCollections(
@@ -131,7 +131,7 @@ func TestCLIFetchSource(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchSource")
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
@@ -213,7 +213,7 @@ func TestCLIFetchArtifacts(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchArtifacts")
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
 
 	Convey("with API test server running", t, func() {
@@ -290,7 +290,7 @@ func TestCLITestHistory(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(task.Collection))
 		assert.NoError(t, testresult.ClearLocal(ctx, env))
 	}()
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLITestHistory")
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	Convey("with API test server running", t, func() {
 		testSetup := setupCLITestHarness(ctx)
 		defer testSetup.testServer.Close()
@@ -363,7 +363,7 @@ func TestCLIFunctions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFunctions")
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials

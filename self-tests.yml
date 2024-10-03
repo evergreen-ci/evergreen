@@ -117,8 +117,6 @@ variables:
       - func: run-make
         vars: { target: "${task_name}" }
 
-  - &version-constants
-    nodejs_version: "6.11.1"
   - &run-generate-lint
     name: generate-lint
     commands:
@@ -421,10 +419,10 @@ functions:
           set -o xtrace
           rm evergreen/bin/output.*
           rm evergreen/bin/jstests/*.xml
-  
+
   write-downstream-expansions-for-pine:
     - command: shell.exec
-      params: 
+      params:
         script: |
           touch downstream_expansions_pine.yaml
           echo "pine_repo_name: evergreen" | tee downstream_expansions_pine.yaml
@@ -506,7 +504,7 @@ tasks:
     tags: ["db"]
     name: test-cloud
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["nodb", "test"]
     name: test-cloud-parameterstore
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -530,7 +528,7 @@ tasks:
     tags: ["db", "test"]
     name: test-taskoutput
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "skip-container"]
+    tags: ["db", "test"]
     name: test-thirdparty
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -559,6 +557,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-event
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model-githubapp
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-host
@@ -611,7 +612,7 @@ tasks:
     tags: ["db", "test"]
     name: test-plugin
   - <<: *run-go-test-suite-with-mongodb-useast
-    tags: ["db", "test", "skip-container"]
+    tags: ["db", "test"]
     name: test-graphql
   - name: test-repotracker
     tags: ["db", "test"]
@@ -645,7 +646,7 @@ tasks:
       - func: verify-swaggo-fmt
   - name: check-go-vulnerabilities
     disable: true # TODO: re-enable in DEVPROD-5453
-    tags: ["linter", "skip-container"]
+    tags: ["linter"]
     commands:
       - func: get-project-and-modules
       - command: subprocess.exec
@@ -735,10 +736,10 @@ tasks:
           display_name: swagger.json (latest)
           patchable: false
   - name: write-downstream-expansions-for-pine
-    commands: 
+    commands:
       - func: write-downstream-expansions-for-pine
       - command: downstream_expansions.set
-        params: 
+        params:
           file: downstream_expansions_pine.yaml
   - <<: *build-and-push-client
     name: build-linux_amd64
@@ -758,11 +759,9 @@ tasks:
   - <<: *build-and-push-client
     name: build-darwin_amd64
     tags: ["build"]
-    run_on: macos-14-arm64
   - <<: *build-and-push-client
     name: build-darwin_arm64
     tags: ["build"]
-    run_on: macos-14-arm64
   - <<: *tar-and-push-static-assets
     name: tar-and-push-static-assets
     tags: ["build"]
@@ -776,7 +775,6 @@ tasks:
   - <<: *build-and-push-client
     name: build-darwin-staging_amd64
     tags: ["build-staging"]
-    run_on: macos-14-arm64
   - <<: *tar-and-push-static-assets
     name: tar-and-push-static-assets-staging
     tags: ["build-staging"]
@@ -784,11 +782,9 @@ tasks:
   - <<: *build-and-push-client
     name: build-darwin-unsigned_amd64
     tags: ["build-unsigned"]
-    run_on: macos-14-arm64
   - <<: *build-and-push-client
     name: build-darwin-unsigned_arm64
     tags: ["build-unsigned"]
-    run_on: macos-14-arm64
 
 #######################################
 #            Buildvariants            #
@@ -807,6 +803,7 @@ buildvariants:
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-7.0.2.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
+      notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
     tasks:
       - name: ".smoke"
       - name: ".test"
@@ -845,9 +842,6 @@ buildvariants:
       decompress: tar zxvf
     tasks:
       - name: ".smoke"
-      - name: ".test !.skip-container"
-      - name: "js-test"
-      - name: ".linter !.skip-container"
 
   - name: lint
     display_name: Lint
@@ -917,18 +911,17 @@ buildvariants:
         activate: false
     expansions:
       GOROOT: /opt/golang/go1.20
-      notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.8.3/darwin_arm64.zip
+      notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
     display_tasks:
       - name: build-and-push
         execution_tasks:
-        - ".build"
+          - ".build"
       - name: build-and-push-staging
         execution_tasks:
-        - ".build-staging"
+          - ".build-staging"
       - name: build-and-push-darwin-unsigned
         execution_tasks:
-        - ".build-unsigned"
-
+          - ".build-unsigned"
 
 containers:
   - name: evg-container

@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -114,7 +115,7 @@ func (j *eventSendJob) Run(ctx context.Context) {
 }
 
 func (j *eventSendJob) send(n *notification.Notification) error {
-	c, err := n.Composer(j.env)
+	c, err := n.Composer()
 	if err != nil {
 		return err
 	}
@@ -136,7 +137,7 @@ func (j *eventSendJob) send(n *notification.Notification) error {
 		if !ok || payload == nil {
 			return errors.New("github status payload is invalid")
 		}
-		sender, err = j.env.GetGitHubSender(payload.Owner, payload.Repo)
+		sender, err = j.env.GetGitHubSender(payload.Owner, payload.Repo, githubapp.CreateGitHubAppAuth(j.env.Settings()).CreateGitHubSenderInstallationToken)
 		if err != nil {
 			return errors.Wrap(err, "getting github status sender")
 		}

@@ -1020,7 +1020,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		project, err := TranslateProject(parserProject)
 		So(err, ShouldBeNil)
 		So(project, ShouldNotBeNil)
-		table := NewTaskIdConfigForRepotrackerVersion(project, v, "", "")
+		table := NewTaskIdConfigForRepotrackerVersion(project, v, TVPairSet{}, "", "")
 		tt := table.ExecutionTasks
 		dt := table.DisplayTasks
 
@@ -1084,6 +1084,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(build, ShouldNotBeNil)
 			So(build.Id, ShouldNotEqual, "")
 			So(len(tasks), ShouldEqual, 4)
+			So(len(build.Tasks), ShouldEqual, 4)
 			So(len(tasks[0].Tags), ShouldEqual, 2)
 		})
 
@@ -1723,7 +1724,7 @@ func TestCreateTaskGroup(t *testing.T) {
 		Id:         "projectId",
 		Identifier: projectIdentifier,
 	}
-	table := NewTaskIdConfigForRepotrackerVersion(proj, v, "", "")
+	table := NewTaskIdConfigForRepotrackerVersion(proj, v, TVPairSet{}, "", "")
 
 	creationInfo := TaskCreationInfo{
 		Project:          proj,
@@ -3007,12 +3008,15 @@ func TestAddNewTasks(t *testing.T) {
 			}
 			_, err := addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{b}, "")
 			assert.NoError(t, err)
+			buildTasks, err := task.FindAll(db.Query(bson.M{task.BuildIdKey: "b0"}))
+			assert.NoError(t, err)
 			activatedTasks, err := task.FindAll(db.Query(bson.M{task.ActivatedKey: true}))
 			assert.NoError(t, err)
 			build, err := build.FindOneId("b0")
 			assert.NoError(t, err)
 			assert.NotNil(t, build)
 			assert.Equal(t, len(testCase.activatedTasks), len(activatedTasks))
+			assert.Len(t, build.Tasks, len(buildTasks))
 			for _, task := range activatedTasks {
 				assert.Contains(t, testCase.activatedTasks, task.DisplayName)
 			}

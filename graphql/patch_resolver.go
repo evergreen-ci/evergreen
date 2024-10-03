@@ -106,7 +106,7 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 }
 
 // GeneratedTaskCounts is the resolver for the generatedTaskCounts field.
-func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.APIPatch) (map[string]interface{}, error) {
+func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.APIPatch) ([]*GeneratedTaskCountResults, error) {
 	patchID := utility.FromStringPtr(obj.Id)
 	p, err := patch.FindOneId(patchID)
 	if err != nil {
@@ -126,7 +126,7 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project variants and tasks for patch '%s': %s", p.Id.Hex(), err.Error()))
 	}
-	res := map[string]interface{}{}
+	var res []*GeneratedTaskCountResults
 	for _, buildVariant := range patchProjectVariantsAndTasks.Variants {
 		for _, taskUnit := range buildVariant.Tasks {
 			if _, ok := generatorTasks[taskUnit.Name]; ok {
@@ -135,12 +135,16 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.
 					task.BuildVariantKey: buildVariant.Name,
 					task.DisplayNameKey:  taskUnit.Name,
 					task.GenerateTaskKey: true,
-				}).Sort([]string{"-" + task.CreateTimeKey}))
+				}).Sort([]string{"-" + task.FinishTimeKey}))
 				if err != nil {
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task with variant '%s' and name '%s': %s", buildVariant.Name, taskUnit.Name, err.Error()))
 				}
 				if dbTask != nil {
-					res[fmt.Sprintf("%s-%s", buildVariant.Name, taskUnit.Name)] = utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks)
+					res = append(res, &GeneratedTaskCountResults{
+						BuildVariantName: utility.ToStringPtr(buildVariant.Name),
+						TaskName:         utility.ToStringPtr(taskUnit.Name),
+						EstimatedTasks:   utility.FromIntPtr(dbTask.EstimatedNumActivatedGeneratedTasks),
+					})
 				}
 			}
 		}

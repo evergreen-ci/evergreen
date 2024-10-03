@@ -133,8 +133,11 @@ type SharedCommunicator interface {
 	// MarkFailedTaskToRestart marks the task as needing to be restarted
 	MarkFailedTaskToRestart(ctx context.Context, td TaskData) error
 
-	// UpsertCheckRun upserts a checkrun for a task
+	// UpsertCheckRun upserts a checkrun for a task.
 	UpsertCheckRun(ctx context.Context, td TaskData, checkRunOutput apimodels.CheckRunOutput) error
+
+	// AssumeRole assumes an AWS role and returns the credentials.
+	AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AssumeRoleResponse, error)
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for

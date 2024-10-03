@@ -49,27 +49,17 @@ func runSetupScript(ctx context.Context, wd string, setupAsSudo bool) error {
 
 	if _, err := os.Stat(evergreen.SetupScriptName); err == nil {
 		setup := host.ShCommandWithSudo(evergreen.TempSetupScriptName, setupAsSudo)
-		return runScript(ctx,
-			wd,
-			evergreen.SetupScriptName,
-			evergreen.TempSetupScriptName,
-			setup,
-			setupAsSudo)
+		return runScript(ctx, evergreen.SetupScriptName, evergreen.TempSetupScriptName, setup, setupAsSudo)
 	} else if _, err = os.Stat(evergreen.PowerShellSetupScriptName); err == nil {
 		setup := []string{"powershell", "./" + evergreen.PowerShellTempSetupScriptName}
-		return runScript(ctx,
-			wd,
-			evergreen.PowerShellSetupScriptName,
-			evergreen.PowerShellTempSetupScriptName,
-			setup,
-			setupAsSudo)
+		return runScript(ctx, evergreen.PowerShellSetupScriptName, evergreen.PowerShellTempSetupScriptName, setup, setupAsSudo)
 	}
 	return nil
 }
 
 // runScript ensures a shell script has proper permissions and runs it. The
 // script is deleted.
-func runScript(ctx context.Context, wd, scriptFileName, tempFileName string, runScriptArgs []string, sudo bool) error {
+func runScript(ctx context.Context, scriptFileName, tempFileName string, runScriptArgs []string, sudo bool) error {
 	if err := os.Rename(scriptFileName, tempFileName); os.IsNotExist(err) {
 		return nil
 	}

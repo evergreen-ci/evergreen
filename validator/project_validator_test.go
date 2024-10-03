@@ -6,7 +6,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"math"
 	"reflect"
 	"runtime"
 	"strings"
@@ -1758,8 +1757,8 @@ func TestValidateTimeoutLimits(t *testing.T) {
 		}
 		errs := validateTimeoutLimits(ctx, settings, project, &model.ProjectRef{}, false)
 		require.Len(t, errs, 1)
-		assert.Equal(t, Error, errs[0].Level)
-		assert.Contains(t, "task 'task' exec timeout (10) exceeds maximum limit (1)", errs[0].Message)
+		assert.Equal(t, Warning, errs[0].Level)
+		assert.Contains(t, "task 'task' exec timeout (10) is too high and will be set to maximum limit (1)", errs[0].Message)
 	})
 	t.Run("SucceedsWithNoMaxTimeoutLimit", func(t *testing.T) {
 		settings := &evergreen.Settings{}
@@ -3834,17 +3833,7 @@ func (s *validateProjectFieldSuite) SetupTest() {
 	s.project = model.Project{
 		Identifier:  "identifier",
 		DisplayName: "test",
-		BatchTime:   10,
 	}
-}
-
-func (s *validateProjectFieldSuite) TestBatchTimeValueMustNonNegative() {
-	s.project.BatchTime = -10
-	validationError := validateProjectFields(&s.project)
-
-	s.Len(validationError, 1)
-	s.Contains(validationError[0].Message, "'batchtime' must be non-negative",
-		"Project 'batchtime' must not be negative")
 }
 
 func (s *validateProjectFieldSuite) TestCommandTypes() {
@@ -3872,15 +3861,6 @@ func (s *validateProjectFieldSuite) TestFailOnInvalidCommandType() {
 	s.Len(validationError, 1)
 	s.Contains(validationError[0].Message, "invalid command type: random",
 		"Project 'CommandType' must be valid")
-}
-
-func (s *validateProjectFieldSuite) TestWarnOnLargeBatchTimeValue() {
-	s.project.BatchTime = math.MaxInt32 + 1
-	validationError := checkProjectFields(&s.project)
-
-	s.Len(validationError, 1)
-	s.Equal(validationError[0].Level, Warning,
-		"Large batch time validation error should be a warning")
 }
 
 func TestValidateBVFields(t *testing.T) {
@@ -4209,6 +4189,8 @@ tasks:
 task_groups:
 - name: example_task_group
   max_hosts: 4
+  teardown_group:
+  - command: attach.results
   tasks:
   - example_task_1
   - example_task_2
@@ -4218,15 +4200,6 @@ buildvariants:
   display_name: "bv_display"
   tasks:
     - name: example_task_group
-    - name: inline_task_group
-      task_group:
-        share_processes: true
-        max_hosts: 3
-        teardown_group:
-        - command: attach.results
-        tasks:
-        - example_task_1
-        - example_task_2
 `
 	pp, err = model.LoadProjectInto(ctx, []byte(largeMaxHostYml), nil, "", &proj)
 	require.NotNil(t, proj)
@@ -4236,11 +4209,9 @@ buildvariants:
 	require.Len(t, validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "attach.results cannot be used in the group teardown stage")
 	validationErrs = checkTaskGroups(&proj)
-	require.Len(t, validationErrs, 2)
+	require.Len(t, validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "task group 'example_task_group' has max number of hosts 4 greater than the number of tasks 3")
-	assert.Contains(validationErrs[1].Message, "task group 'inline_task_group' has max number of hosts 3 greater than the number of tasks 2")
 	assert.Equal(validationErrs[0].Level, Warning)
-	assert.Equal(validationErrs[1].Level, Warning)
 
 	overMaxTimeoutYml := `
 tasks:
@@ -4256,16 +4227,6 @@ buildvariants:
   display_name: "bv_display"
   tasks:
     - name: example_task_group
-    - name: inline_task_group
-      task_group:
-        share_processes: true
-        teardown_group:
-        - command: shell.exec
-        - command: shell.exec
-          params:
-           script: "echo teardown_group"
-        tasks:
-        - example_task_1
 `
 	pp, err = model.LoadProjectInto(ctx, []byte(overMaxTimeoutYml), nil, "", &proj)
 	require.NotNil(t, proj)

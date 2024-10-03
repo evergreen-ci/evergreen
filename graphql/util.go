@@ -1340,3 +1340,48 @@ func annotationPermissionHelper(ctx context.Context, taskID string, execution *i
 	}
 	return nil
 }
+
+// groupInactiveVersions partitions a slice of versions into a slice where each entry is either an active version or slice of inactive versions (i.e. versions that don't match filters; they may be technically activated).
+func groupInactiveVersions(activeVersionIds []string, versions []model.Version) []*WaterfallVersion {
+	waterfallVersions := []*WaterfallVersion{}
+	i := 0
+	for i < len(versions) {
+		if utility.StringSliceContains(activeVersionIds, versions[i].Id) {
+			apiVersion := restModel.APIVersion{}
+			apiVersion.BuildFromService(versions[i])
+			waterfallVersions = append(waterfallVersions, &WaterfallVersion{
+				InactiveVersions: nil,
+				Version:          &apiVersion,
+			})
+			i++
+		} else {
+			inactiveGroup := []*restModel.APIVersion{}
+			for i < len(versions) && !utility.StringSliceContains(activeVersionIds, versions[i].Id) {
+				apiVersion := restModel.APIVersion{}
+				apiVersion.BuildFromService(versions[i])
+				inactiveGroup = append(inactiveGroup, &apiVersion)
+				i++
+			}
+			waterfallVersions = append(waterfallVersions, &WaterfallVersion{
+				InactiveVersions: inactiveGroup,
+				Version:          nil,
+			})
+		}
+	}
+	return waterfallVersions
+}
+
+// flattenOtelVariables "flattens" one level of a string map. Any maps that are found as a value within the map are moved to the top level of the map, with "topkey.nestedkey" as their new key, in line with Honeycomb best practices.
+func flattenOtelVariables(vars map[string]interface{}) map[string]interface{} {
+	flattenedVars := map[string]interface{}{}
+	for k, v := range vars {
+		if valueMap, isMap := v.(map[string]interface{}); isMap {
+			for nestedKey, nestedValue := range valueMap {
+				flattenedVars[k+"."+nestedKey] = nestedValue
+			}
+		} else {
+			flattenedVars[k] = v
+		}
+	}
+	return flattenedVars
+}

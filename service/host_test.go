@@ -3,7 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -42,7 +45,13 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		assert.Equal(http.StatusOK, httpStatus)
 		assert.Equal(result, fmt.Sprintf(api.HostStatusUpdateSuccess, evergreen.HostRunning, evergreen.HostQuarantined))
 		assert.Equal(h.Status, evergreen.HostQuarantined)
-		events, err := event.Find(event.MostRecentHostEvents("h1", "", 1))
+		hostEventOpts := event.HostEventsOpts{
+			ID:      "h1",
+			Tag:     "",
+			Limit:   1,
+			SortAsc: false,
+		}
+		events, err := event.Find(event.HostEvents(hostEventOpts))
 		assert.NoError(err)
 		assert.Len(events, 1)
 		hostevent, ok := events[0].Data.(*event.HostEventData)
@@ -133,4 +142,29 @@ func TestGetHostDNS(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, path, 1)
 	assert.Equal(t, fmt.Sprintf("www.example.com:%d", evergreen.VSCodePort), path[0])
+}
+
+func TestGetDockerfile(t *testing.T) {
+	assert := assert.New(t)
+
+	req, err := http.NewRequest("GET", "/hosts/dockerfile", nil)
+	assert.NoError(err)
+	w := httptest.NewRecorder()
+	getDockerfile(w, req)
+
+	resp := w.Result()
+	body, err := io.ReadAll(resp.Body)
+	assert.NoError(err)
+
+	parts := []string{
+		"ARG BASE_IMAGE",
+		"FROM $BASE_IMAGE",
+		"ARG URL",
+		"ARG EXECUTABLE_SUB_PATH",
+		"ARG BINARY_NAME",
+		"ADD ${URL}/clients/${EXECUTABLE_SUB_PATH} /",
+		"RUN chmod 0777 /${BINARY_NAME}",
+	}
+
+	assert.Equal(strings.Join(parts, "\n"), string(body))
 }

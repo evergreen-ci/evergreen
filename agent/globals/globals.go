@@ -42,10 +42,6 @@ const (
 	// block should time out and stop the current command.
 	DefaultCallbackTimeout = 15 * time.Minute
 
-	// DefaultTeardownGroupTimeout specifies the duration after when the
-	// teardown_group should time out and stop the current command.
-	DefaultTeardownGroupTimeout = 15 * time.Minute
-
 	// DefaultPreTimeout specifies the default duration after when the pre,
 	// setup_group, or setup_task block should time out and stop the current
 	// command.
@@ -126,7 +122,6 @@ const (
 var (
 	// ExpansionsToRedact are expansion names that should be redacted from logs and expansion exports.
 	ExpansionsToRedact = []string{
-		evergreen.GlobalGitHubTokenExpansion,
 		evergreen.GithubAppToken,
 		// HostServicePasswordExpansion exists to redact the host's ServicePassword in the logs,
 		// which is used for some jasper commands for Windows hosts. It is populated as a default

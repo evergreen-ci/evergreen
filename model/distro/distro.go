@@ -412,16 +412,24 @@ func (d *Distro) IsPowerShellSetup() bool {
 	return strings.Contains(d.Setup[start:end], "powershell")
 }
 
+// IsWindows returns whether or not the distro's hosts run on Windows.
 func (d *Distro) IsWindows() bool {
 	// XXX: if this is-windows check is updated, make sure to also update
 	// public/static/js/spawned_hosts.js as well
 	return strings.Contains(d.Arch, "windows")
 }
 
+// IsLinux returns whether or not the distro's hosts run on Linux.
 func (d *Distro) IsLinux() bool {
 	return strings.Contains(d.Arch, "linux")
 }
 
+// IsMacOS returns whether or not the distro's hosts run on MacOS.
+func (d *Distro) IsMacOS() bool {
+	return strings.Contains(d.Arch, "darwin")
+}
+
+// Platform returns the distro's OS and architecture.
 func (d *Distro) Platform() (string, string) {
 	osAndArch := strings.Split(d.Arch, "_")
 	return osAndArch[0], osAndArch[1]
@@ -843,10 +851,6 @@ func (d *Distro) S3ClientURL(env evergreen.Environment) string {
 
 func AllDistros(ctx context.Context) ([]Distro, error) {
 	return Find(ctx, bson.M{}, options.Find().SetSort(bson.M{IdKey: 1}))
-}
-
-func AllDistroIDs(ctx context.Context) ([]Distro, error) {
-	return Find(ctx, bson.M{}, options.Find().SetSort(bson.M{IdKey: 1}).SetProjection(bson.M{IdKey: 1}))
 }
 
 // GetHostCreateDistro returns the distro based on the name and provider.

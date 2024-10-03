@@ -124,8 +124,9 @@ func (h *getUserHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("user '%s' not found", h.userId),
 		})
 	}
-
-	return gimlet.NewJSONResponse(model.APIDBUserBuildFromService(*usr))
+	apiUser := &model.APIDBUser{}
+	apiUser.BuildFromService(*usr)
+	return gimlet.NewJSONResponse(apiUser)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -208,6 +209,28 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	if err = u.AddRole(newRole.ID); err != nil {
 		return gimlet.NewTextInternalErrorResponse(err.Error())
+	}
+
+	// This is unfortunately very special-casey, but if the user has been granted permission to view/edit
+	// a project that's attached to repo, they also need to be given view access for the repo project
+	if h.permissions.ResourceType == evergreen.ProjectResourceType &&
+		h.permissions.Permissions[evergreen.PermissionProjectSettings] >= evergreen.ProjectSettingsView.Value {
+		repoProjectsUpdated := map[string]bool{}
+		pRefs, err := serviceModel.FindMergedEnabledProjectRefsByIds(h.permissions.Resources...)
+		if err != nil {
+			return gimlet.NewTextInternalErrorResponse(fmt.Sprintf(
+				"problem checking for repos: %s", err))
+		}
+
+		for _, pRef := range pRefs {
+			if pRef.RepoRefId != "" && !repoProjectsUpdated[pRef.RepoRefId] {
+				if err = u.AddRole(serviceModel.GetViewRepoRole(pRef.RepoRefId)); err != nil {
+					return gimlet.NewTextInternalErrorResponse(fmt.Sprintf(
+						"problem updating repo view permission: %s", err.Error()))
+				}
+				repoProjectsUpdated[pRef.RepoRefId] = true
+			}
+		}
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -335,7 +358,7 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 
 ////////////////////////////////////////////////////////////////////////
 //
-// GET /users/permissions
+// GET /permissions/users
 
 type UsersPermissionsInput struct {
 	// The resource ID
@@ -367,7 +390,7 @@ func makeGetAllUsersPermissions(rm gimlet.RoleManager) gimlet.RouteHandler {
 //	@Summary		Get all user permissions for resource
 //	@Description	Retrieves all users with permissions for the resource, and their highest permissions, and returns this as a mapping. This ignores basic permissions that are given to all users.
 //	@Tags			users
-//	@Router			/users/permissions [get]
+//	@Router			/permissions/users [get]
 //	@Security		Api-User || Api-Key
 //	@Param			{object}	body		UsersPermissionsInput	true	"parameters"
 //	@Success		200			{object}	swaggerUsersPermissionsResult

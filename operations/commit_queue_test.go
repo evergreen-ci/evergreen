@@ -43,7 +43,7 @@ func TestCommitQueueSuite(t *testing.T) {
 	defer func() {
 		evergreen.SetEnvironment(originalEnv)
 	}()
-	testutil.ConfigureIntegrationTest(t, testConfig, t.Name())
+	testutil.ConfigureIntegrationTest(t, testConfig)
 	require.NoError(t, testConfig.Set(ctx))
 	suite.Run(t, new(CommitQueueSuite))
 }
@@ -53,7 +53,7 @@ func (s *CommitQueueSuite) SetupSuite() {
 	testutil.DisablePermissionsForTests()
 
 	var err error
-	s.server, err = service.CreateTestServer(testConfig, nil, false)
+	s.server, err = service.CreateTestServer(s.ctx, testConfig, nil, false)
 	s.Require().NoError(err)
 
 	settings := ClientSettings{

@@ -1,14 +1,34 @@
 {
-    "tests": [
-      {
-        "query_file": "image_id.graphql",
-        "result": {
-          "data": {
-            "task": {
-              "imageId": "ubuntu1604"
-            }
+  "tests": [
+    {
+      "query_file": "regular_task.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "imageId": "ubuntu1604"
           }
         }
       }
-    ]
-  }
+    },
+    {
+      "query_file": "display_task.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "imageId": ""
+          }
+        }
+      }
+    },
+    {
+      "query_file": "container_task.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "imageId": ""
+          }
+        }
+      }
+    }
+  ]
+}

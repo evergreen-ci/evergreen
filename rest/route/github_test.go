@@ -592,15 +592,6 @@ func TestHandleGitHubMergeGroup(t *testing.T) {
 			assert.Contains(t, str, "message ID cannot be empty")
 			assert.NotContains(t, str, "200")
 		},
-		"evergreenMergeQueueSelected": func(t *testing.T) {
-			p.CommitQueue.MergeQueue = model.MergeQueueEvergreen
-			require.NoError(t, p.Insert())
-			response := gh.handleMergeGroupChecksRequested(event)
-			// check for 200 returned in noop case
-			str := fmt.Sprintf("%#v", response)
-			assert.Contains(t, str, "200")
-			assert.NotContains(t, str, "message ID cannot be empty")
-		},
 	} {
 		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 		t.Run(testCase, test)

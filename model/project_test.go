@@ -171,10 +171,6 @@ func TestFindTaskGroupForTask(t *testing.T) {
 				{Name: "tg1t3"},
 				{Name: "tg1t4"},
 				{Name: "tg3"},
-				{Name: "tg4", TaskGroup: &parserTaskGroup{
-					Name:  "tg4",
-					Tasks: []string{"tg4t1", "tg4t2"},
-				}},
 			}},
 			{Name: "v2", Tasks: []parserBVTaskUnit{
 				{Name: "t1"},
@@ -212,15 +208,6 @@ func TestFindTaskGroupForTask(t *testing.T) {
 			tg := p.FindTaskGroupForTask("v1", task)
 			require.NotNil(t, tg, "finding task group for task %s", task)
 			assert.Equal(t, "tg3", tg.Name)
-		}
-	})
-
-	t.Run("FindsTaskGroupWhenDefinedInline", func(t *testing.T) {
-		tg4Tasks := []string{"tg4t1", "tg4t2"}
-		for _, task := range tg4Tasks {
-			tg := p.FindTaskGroupForTask("v1", task)
-			require.NotNil(t, tg, "finding task group for task %s", task)
-			assert.Equal(t, "tg4", tg.Name)
 		}
 	})
 
@@ -430,10 +417,9 @@ func TestPopulateExpansions(t *testing.T) {
 		Project:      "mci",
 	}
 
-	oauthToken := "globalGitHubOauthToken"
-	expansions, err := PopulateExpansions(taskDoc, &h, oauthToken, "appToken", "")
+	expansions, err := PopulateExpansions(taskDoc, &h, "appToken", "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 25)
+	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("0", expansions.Get("execution"))
 	assert.Equal("v1", expansions.Get("version_id"))
 	assert.Equal("t1", expansions.Get("task_id"))
@@ -450,7 +436,6 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Equal("somebody@somewhere.com", expansions.Get("author_email"))
 	assert.Equal("d1", expansions.Get("distro_id"))
 	assert.Equal("release", expansions.Get("triggered_by_git_tag"))
-	assert.Equal("globalGitHubOauthToken", expansions.Get(evergreen.GlobalGitHubTokenExpansion))
 	assert.Equal("appToken", expansions.Get(evergreen.GithubAppToken))
 	assert.True(expansions.Exists("created_at"))
 	assert.Equal("42", expansions.Get("revision_order_id"))
@@ -469,9 +454,9 @@ func TestPopulateExpansions(t *testing.T) {
 	}
 	require.NoError(t, p.Insert())
 
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken, "", "")
+	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 25)
+	assert.Len(map[string]string(expansions), 24)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("patch", expansions.Get("requester"))
 	assert.False(expansions.Exists("is_commit_queue"))
@@ -497,9 +482,9 @@ func TestPopulateExpansions(t *testing.T) {
 		},
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken, "", "")
+	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 31)
+	assert.Len(map[string]string(expansions), 30)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_commit_queue"))
 	assert.Equal("12", expansions.Get("github_pr_number"))
@@ -524,9 +509,9 @@ func TestPopulateExpansions(t *testing.T) {
 		},
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken, "", "")
+	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 29)
+	assert.Len(map[string]string(expansions), 28)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_commit_queue"))
 	assert.Equal("github_merge_queue", expansions.Get("requester"))
@@ -542,9 +527,9 @@ func TestPopulateExpansions(t *testing.T) {
 		Version: v.Id,
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken, "", "")
+	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 29)
+	assert.Len(map[string]string(expansions), 28)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("github_pr", expansions.Get("requester"))
 	assert.False(expansions.Exists("is_commit_queue"))
@@ -567,9 +552,9 @@ func TestPopulateExpansions(t *testing.T) {
 	}
 	assert.NoError(patchDoc.Insert())
 
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken, "", "")
+	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 29)
+	assert.Len(map[string]string(expansions), 28)
 	assert.Equal("github_pr", expansions.Get("requester"))
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("evergreen", expansions.Get("github_repo"))
@@ -593,9 +578,9 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.NoError(upstreamProject.Insert())
 	taskDoc.TriggerID = "upstreamTask"
 	taskDoc.TriggerType = ProjectTriggerLevelTask
-	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken, "", "")
+	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 38)
+	assert.Len(map[string]string(expansions), 37)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))
 	assert.Equal(taskDoc.TriggerType, expansions.Get("trigger_event_type"))
 	assert.Equal(upstreamTask.Revision, expansions.Get("trigger_revision"))
@@ -1618,7 +1603,6 @@ func TestFindProjectsSuite(t *testing.T) {
 		projects := []*ProjectRef{
 			{
 				Id:          "projectA",
-				Private:     utility.FalsePtr(),
 				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
@@ -1627,7 +1611,6 @@ func TestFindProjectsSuite(t *testing.T) {
 			},
 			{
 				Id:          "projectB",
-				Private:     utility.TruePtr(),
 				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "evergreen-ci",
@@ -1636,16 +1619,15 @@ func TestFindProjectsSuite(t *testing.T) {
 			},
 			{
 				Id:          "projectC",
-				Private:     utility.TruePtr(),
 				Enabled:     true,
 				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 				Owner:       "mongodb",
 				Repo:        "mongo",
 				Branch:      "main",
 			},
-			{Id: "projectD", Private: utility.FalsePtr()},
-			{Id: "projectE", Private: utility.FalsePtr()},
-			{Id: "projectF", Private: utility.TruePtr()},
+			{Id: "projectD"},
+			{Id: "projectE"},
+			{Id: "projectF"},
 			{Id: projectId},
 		}
 
@@ -1786,7 +1768,6 @@ func (s *FindProjectsSuite) TestGetProjectSettings() {
 	projRef := &ProjectRef{
 		Owner:   "admin",
 		Enabled: true,
-		Private: utility.TruePtr(),
 		Id:      projectId,
 		Admins:  []string{},
 		Repo:    "SomeRepo",
@@ -1800,7 +1781,6 @@ func (s *FindProjectsSuite) TestGetProjectSettingsNoRepo() {
 	projRef := &ProjectRef{
 		Owner:   "admin",
 		Enabled: true,
-		Private: utility.TruePtr(),
 		Id:      projectId,
 		Admins:  []string{},
 	}

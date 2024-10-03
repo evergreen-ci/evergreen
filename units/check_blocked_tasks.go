@@ -127,12 +127,12 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 
 	dependenciesMet, err := t.DependenciesMet(dependencyCaches)
 	if err != nil {
-		grip.Debug(message.Fields{
-			"message":      "checking if dependencies met for task",
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":      "could not check if dependencies met for task",
 			"task_id":      t.Id,
 			"activated_by": t.ActivatedBy,
 			"depends_on":   t.DependsOn,
-		})
+		}))
 		return errors.Wrapf(err, "checking if dependencies met for task '%s'", t.Id)
 	}
 	if dependenciesMet {
@@ -145,7 +145,7 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 	if err == nil {
 		for _, blockingTask := range finishedBlockingTasks {
 			blockingTaskIds = append(blockingTaskIds, blockingTask.Id)
-			err = model.UpdateBlockedDependencies(ctx, []task.Task{blockingTask})
+			err = model.UpdateBlockedDependencies(ctx, []task.Task{blockingTask}, false)
 			catcher.Wrapf(err, "updating blocked dependencies for '%s'", blockingTask.Id)
 			if err != nil {
 				err = t.MarkDependenciesFinished(ctx, false)

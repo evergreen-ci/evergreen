@@ -16,6 +16,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v52/github"
@@ -27,7 +28,7 @@ import (
 
 func TestGithubSuite(t *testing.T) {
 	config := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, config, "TestGithubSuite")
+	testutil.ConfigureIntegrationTest(t, config)
 
 	suite.Run(t, &githubSuite{config: config})
 }
@@ -181,7 +182,7 @@ func getInstallationTokenNoCache(ctx context.Context, owner, repo string, opts *
 		return "", errors.Wrap(err, "getting config")
 	}
 
-	token, err := settings.CreateGitHubAppAuth().CreateInstallationToken(ctx, owner, repo, opts)
+	token, err := githubapp.CreateGitHubAppAuth(settings).CreateInstallationToken(ctx, owner, repo, opts)
 	if err != nil {
 		return "", errors.Wrap(err, "creating installation token")
 	}
@@ -446,9 +447,11 @@ func TestGetGitHubSender(t *testing.T) {
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
-	testutil.ConfigureIntegrationTest(t, env.Settings(), t.Name())
+	testutil.ConfigureIntegrationTest(t, env.Settings())
 
-	sender, err := env.GetGitHubSender("evergreen-ci", "evergreen")
+	sender, err := env.GetGitHubSender("evergreen-ci", "evergreen", func(context.Context, string, string) (string, error) {
+		return "", nil
+	})
 	require.NoError(t, err)
 	assert.NotZero(t, sender.ErrorHandler, "fallback error handler should be set")
 }

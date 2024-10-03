@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -179,10 +180,6 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding host running task")
 	}
-	oauthToken, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "getting GitHub OAuth token from admin settings")
-	}
 	pRef, err := model.FindBranchProjectRef(t.Project)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "finding project ref '%s'", t.Project)
@@ -192,13 +189,13 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 	}
 
 	const ghTokenLifetime = 50 * time.Minute
-	appToken, err := settings.CreateGitHubAppAuth().CreateCachedInstallationToken(ctx, pRef.Owner, pRef.Repo, ghTokenLifetime, nil)
+	appToken, err := githubapp.CreateGitHubAppAuth(settings).CreateCachedInstallationToken(ctx, pRef.Owner, pRef.Repo, ghTokenLifetime, nil)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "creating GitHub app token")
 	}
 
 	knownHosts := settings.Expansions[evergreen.GithubKnownHosts]
-	expansions, err := model.PopulateExpansions(t, h, oauthToken, appToken, knownHosts)
+	expansions, err := model.PopulateExpansions(t, h, appToken, knownHosts)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "populating expansions")
 	}

@@ -35,11 +35,6 @@ const (
 	GithubRepoType = "github"
 )
 
-// valid repositories - currently only github supported
-var (
-	ValidRepoTypes = []string{GithubRepoType}
-)
-
 type Revision struct {
 	Author          string
 	AuthorID        string

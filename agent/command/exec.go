@@ -181,7 +181,7 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 	expansions := opts.expansions.Map()
 	if opts.addExpansionsToEnv {
 		for k, v := range expansions {
-			if k == evergreen.GlobalGitHubTokenExpansion || k == evergreen.GithubAppToken {
+			if k == evergreen.GithubAppToken {
 				//users should not be able to use the global github token expansion
 				//as it can result in the breaching of Evergreen's GitHub API limit
 				continue
@@ -191,7 +191,7 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 	}
 
 	for _, expName := range opts.includeExpansionsInEnv {
-		if val, ok := expansions[expName]; ok && expName != evergreen.GlobalGitHubTokenExpansion && expName != evergreen.GithubAppToken {
+		if val, ok := expansions[expName]; ok && expName != evergreen.GithubAppToken {
 			env[expName] = val
 		}
 	}
@@ -389,7 +389,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		})
 	}
 
-	err = errors.WithStack(c.runCommand(ctx, conf.Task.Id, c.getProc(ctx, execPath, conf.Task.Id, logger), logger))
+	err = errors.WithStack(c.runCommand(ctx, c.getProc(ctx, execPath, conf.Task.Id, logger), logger))
 
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		logger.System().Debugf("Canceled command '%s', dumping running processes.", c.Name())
@@ -402,7 +402,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 	return err
 }
 
-func (c *subprocessExec) runCommand(ctx context.Context, taskID string, cmd *jasper.Command, logger client.LoggerProducer) error {
+func (c *subprocessExec) runCommand(ctx context.Context, cmd *jasper.Command, logger client.LoggerProducer) error {
 	if c.Silent {
 		logger.Execution().Info("Executing command in silent mode.")
 	}

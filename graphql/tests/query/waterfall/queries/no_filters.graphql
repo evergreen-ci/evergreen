@@ -1,0 +1,34 @@
+{
+  waterfall(options: { projectIdentifier: "spruce-identifier" }) {
+    nextPageOrder
+    prevPageOrder
+    buildVariants {
+      builds {
+        activated
+        id
+        tasks {
+          status
+          id
+          displayName
+        }
+        version
+      }
+      displayName
+      id
+    }
+    versions {
+      version {
+        activated
+        author
+        id
+        order
+      }
+      inactiveVersions {
+        activated
+        author
+        id
+        order
+      }
+    }
+  }
+}

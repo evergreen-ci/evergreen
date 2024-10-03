@@ -84,7 +84,8 @@ type Task struct {
 	DependenciesMetTime    time.Time `bson:"dependencies_met_time,omitempty" json:"dependencies_met_time,omitempty"`
 	ContainerAllocatedTime time.Time `bson:"container_allocated_time,omitempty" json:"container_allocated_time,omitempty"`
 
-	Version           string `bson:"version" json:"version,omitempty"`
+	Version string `bson:"version" json:"version,omitempty"`
+	// Project is the project id of the task.
 	Project           string `bson:"branch" json:"branch,omitempty"`
 	Revision          string `bson:"gitspec" json:"gitspec"`
 	Priority          int64  `bson:"priority" json:"priority"`
@@ -328,6 +329,10 @@ type Task struct {
 	// NumNextTaskDispatches is the number of times the task has been dispatched to run on a
 	// host or in a container. This is used to determine if the task seems to be stuck.
 	NumNextTaskDispatches int `bson:"num_next_task_dispatches" json:"num_next_task_dispatches"`
+
+	// CachedProjectStorageMethod is a cached value how the parser project for this task's version was
+	// stored at the time this task was created. If this is empty, the default storage method is StorageMethodDB.
+	CachedProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"cached_project_storage_method" json:"cached_project_storage_method,omitempty"`
 }
 
 // GeneratedJSONFiles represent files used by a task for generate.tasks to update the project YAML.
@@ -661,7 +666,7 @@ func (t *Task) IsPatchRequest() bool {
 
 // IsUnfinishedSystemUnresponsive returns true only if this is an unfinished system unresponsive task (i.e. not on max execution)
 func (t *Task) IsUnfinishedSystemUnresponsive() bool {
-	return t.isSystemUnresponsive() && t.Execution < evergreen.MaxTaskExecution
+	return t.isSystemUnresponsive() && t.Execution < evergreen.GetEnvironment().Settings().TaskLimits.MaxTaskExecution
 }
 
 func (t *Task) isSystemUnresponsive() bool {
@@ -1708,11 +1713,7 @@ func (t *Task) initializeTaskOutputInfo(env evergreen.Environment) (*taskoutput.
 		return nil, false
 	}
 
-	return taskoutput.InitializeTaskOutput(env, taskoutput.TaskOptions{
-		ProjectID: t.Project,
-		TaskID:    t.Id,
-		Execution: t.Execution,
-	}), true
+	return taskoutput.InitializeTaskOutput(env), true
 }
 
 // getTaskOutputSafe returns an instantiation of the task output interface and
@@ -2042,12 +2043,6 @@ func activateDeactivatedDependencies(tasksToActivate map[string]Task, taskIDsToA
 					DeactivatedForDependencyKey: false,
 					ActivatedByKey:              caller,
 					ActivatedTimeKey:            time.Now(),
-					// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
-					UnattainableDependencyKey: bson.M{"$cond": bson.M{
-						"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-						"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-						"else": false,
-					}},
 				},
 			},
 		},
@@ -2471,12 +2466,6 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 				LastHeartbeatKey:               utility.ZeroTime,
 				ContainerAllocationAttemptsKey: 0,
 				NumNextTaskDispatchesKey:       0,
-				// TODO: (EVG-20334) Remove this field and the aggregation update once old tasks without the UnattainableDependency field have TTLed.
-				UnattainableDependencyKey: bson.M{"$cond": bson.M{
-					"if":   bson.M{"$isArray": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-					"then": bson.M{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey)},
-					"else": false,
-				}},
 			},
 		},
 		{
@@ -2676,7 +2665,7 @@ func (t *Task) MarkUnscheduled() error {
 
 }
 
-// MarkAllForUnattainableDependency updates many tasks (taskIDs) to mark a
+// MarkAllForUnattainableDependencies updates many tasks (taskIDs) to mark a
 // subset of all their dependencies (dependencyIDs) as attainable or not. If
 // marking the dependencies unattainable, it creates an event log for each newly
 // blocked task. This returns all the tasks after the update.

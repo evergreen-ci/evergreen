@@ -169,10 +169,10 @@ func (j *agentDeployJob) getHostMessage() message.Fields {
 		m["reason"] = "flagged for new agent"
 	} else if j.host.LastCommunicationTime.IsZero() {
 		m["reason"] = "new host"
-	} else if sinceLCT > host.MaxLCTInterval {
+	} else if sinceLCT > host.MaxAgentUnresponsiveInterval {
 		m["reason"] = "host has exceeded last communication threshold"
-		m["threshold"] = host.MaxLCTInterval
-		m["threshold_span"] = host.MaxLCTInterval.String()
+		m["threshold"] = host.MaxAgentUnresponsiveInterval
+		m["threshold_span"] = host.MaxAgentUnresponsiveInterval.String()
 		m["last_communication_at"] = sinceLCT
 		m["last_communication_at_time"] = sinceLCT.String()
 	}

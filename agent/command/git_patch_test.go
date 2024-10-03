@@ -23,10 +23,11 @@ import (
 
 func TestPatchPluginAPI(t *testing.T) {
 	settings := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, settings, t.Name())
+	testutil.ConfigureIntegrationTest(t, settings)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
+	comm.CreateInstallationTokenResult = "token"
 	conf := &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{}, Project: model.Project{}}
 	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
 	require.NoError(t, err)
@@ -98,7 +99,7 @@ func TestPatchPlugin(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	settings := env.Settings()
 
-	testutil.ConfigureIntegrationTest(t, settings, t.Name())
+	testutil.ConfigureIntegrationTest(t, settings)
 	cwd := testutil.GetDirectoryOfFile()
 	jpm := env.JasperManager()
 
@@ -116,7 +117,6 @@ func TestPatchPlugin(t *testing.T) {
 		require.NoError(t, err)
 		taskConfig, err := agentutil.MakeTaskConfigFromModelData(ctx, settings, modelData)
 		require.NoError(t, err)
-		taskConfig.Expansions = *util.NewExpansions(settings.Credentials)
 
 		err = setupTestPatchData(modelData, patchFile, t)
 		require.NoError(t, err)

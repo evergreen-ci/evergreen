@@ -654,6 +654,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 
 		}
 	}
+
 	var aliases model.ProjectAliases
 	if metadata.Alias == evergreen.GitTagAlias {
 		aliases, err = model.FindMatchingGitTagAliasesInProject(projectInfo.Ref.Id, metadata.GitTag.Tag)
@@ -812,7 +813,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	if metadata.SourceVersion != nil {
 		sourceRev = metadata.SourceVersion.Revision
 	}
-	taskIds := model.NewTaskIdConfigForRepotrackerVersion(projectInfo.Project, v, sourceRev, metadata.TriggerDefinitionID)
 
 	// create all builds for the version
 	buildsToCreate := []interface{}{}
@@ -873,6 +873,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	}))
 	batchTimeCatcher := grip.NewBasicCatcher()
 	debuggingData := map[string]string{}
+
 	var githubCheckAliases model.ProjectAliases
 	if v.Requester == evergreen.RepotrackerVersionRequester && projectInfo.Ref.IsGithubChecksEnabled() {
 		githubCheckAliases, err = model.FindAliasInProjectRepoOrConfig(v.Identifier, evergreen.GithubChecksAlias)
@@ -882,6 +883,9 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"version": v.Id,
 		}))
 	}
+
+	taskIds := model.NewTaskIdConfigForRepotrackerVersion(projectInfo.Project, v, pairsToCreate, sourceRev, metadata.TriggerDefinitionID)
+
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
 		var aliasesMatchingVariant model.ProjectAliases

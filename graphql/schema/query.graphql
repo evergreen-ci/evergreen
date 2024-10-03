@@ -24,7 +24,7 @@ type Query {
     hostTag: String = ""
     limit: Int = 0
     page: Int = 0
-  ): HostEvents!
+  ): HostEvents! @deprecated(reason: "Use host.events instead.")
   hosts(
     hostId: String = ""
     distroId: String = ""
@@ -89,6 +89,9 @@ type Query {
   buildVariantsForTaskName(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW), taskName: String!): [BuildVariantTuple!]
   mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits # Has directive on MainlineCommitsOptions.
   taskNamesForBuildVariant(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW), buildVariant: String!): [String!]
+
+  # waterfall
+  waterfall(options: WaterfallOptions!): Waterfall!
 
   # version
   hasVersion(patchId: String!): Boolean!

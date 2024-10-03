@@ -33,24 +33,39 @@ import (
 )
 
 func TestCurlCommand(t *testing.T) {
-	assert := assert.New(t)
 	env := &mock.Environment{
 		EvergreenSettings: &evergreen.Settings{
 			ApiUrl: "www.example.com",
 		},
 		Clients: evergreen.ClientConfig{S3URLPrefix: "https://foo.com"},
 	}
-	h := &Host{
-		Distro: distro.Distro{
-			Arch: evergreen.ArchLinuxAmd64,
+
+	t.Run("Linux", func(t *testing.T) {
+		h := &Host{
+			Distro: distro.Distro{
+				Arch: evergreen.ArchLinuxAmd64,
+				User: "user",
+			},
 			User: "user",
-		},
-		User: "user",
-	}
-	expected := "cd /home/user && curl -fLO https://foo.com/linux_amd64/evergreen && chmod +x evergreen"
-	cmd, err := h.CurlCommand(env)
-	require.NoError(t, err)
-	assert.Equal(expected, cmd)
+		}
+		expected := "cd /home/user && curl -fLO https://foo.com/linux_amd64/evergreen && chmod +x evergreen"
+		cmd, err := h.CurlCommand(env)
+		require.NoError(t, err)
+		assert.Equal(t, expected, cmd)
+	})
+	t.Run("MacOS", func(t *testing.T) {
+		h := &Host{
+			Distro: distro.Distro{
+				Arch: evergreen.ArchDarwinArm64,
+				User: "user",
+			},
+			User: "user",
+		}
+		expected := "cd /Users/user && rm -f evergreen && curl -fLO https://foo.com/darwin_arm64/evergreen && chmod +x evergreen"
+		cmd, err := h.CurlCommand(env)
+		require.NoError(t, err)
+		assert.Equal(t, expected, cmd)
+	})
 }
 
 func TestSpawnHostGetTaskDataCommand(t *testing.T) {

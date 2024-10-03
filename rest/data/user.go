@@ -156,7 +156,9 @@ func GetServiceUsers() ([]restModel.APIDBUser, error) {
 	}
 	apiUsers := []restModel.APIDBUser{}
 	for _, u := range users {
-		apiUsers = append(apiUsers, *restModel.APIDBUserBuildFromService(u))
+		apiUser := restModel.APIDBUser{}
+		apiUser.BuildFromService(u)
+		apiUsers = append(apiUsers, apiUser)
 	}
 	return apiUsers, nil
 }
@@ -171,6 +173,13 @@ func AddOrUpdateServiceUser(toUpdate restModel.APIDBUser) error {
 		return errors.New("cannot update an existing non-service user")
 	}
 	toUpdate.OnlyApi = true
-	dbUser := restModel.APIDBUserToService(toUpdate)
+
+	dbUser, err := toUpdate.ToService()
+	if err != nil {
+		return errors.Wrapf(err, "converting service user '%s' from API model to service", userID)
+	}
+	if dbUser == nil {
+		return errors.Wrapf(err, "cannot perform add or update with nil user")
+	}
 	return errors.Wrap(user.AddOrUpdateServiceUser(*dbUser), "updating service user")
 }

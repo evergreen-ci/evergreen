@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -51,6 +52,20 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 			require.NoError(t, err)
 			assert.True(t, proc.Complete(ctx))
 			assert.Zero(t, exitCode)
+		},
+		"RemoveMacOSClientOnlyDeletesFileInMacOS": func(ctx context.Context, t *testing.T, m *monitor) {
+			require.NoError(t, m.fetchClient(ctx, []string{"https://example.com"}, agentMonitorDefaultRetryOptions()))
+			fileInfo, err := os.Stat(m.clientPath)
+			require.NoError(t, err)
+			assert.NotZero(t, fileInfo.Size())
+
+			require.NoError(t, m.removeMacOSClient())
+			_, err = os.Stat(m.clientPath)
+			if runtime.GOOS == "darwin" {
+				assert.True(t, os.IsNotExist(err), "client file should be removed on MacOS")
+			} else {
+				assert.NoError(t, err, "file should still exist on non-MacOS platforms")
+			}
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

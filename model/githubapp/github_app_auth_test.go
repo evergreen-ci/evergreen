@@ -1,9 +1,8 @@
-package model
+package githubapp
 
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +16,7 @@ func TestFindOneGithubAppAuth(t *testing.T) {
 		"Error clearing collection")
 
 	key := []byte("I'm private!")
-	githubAppAuth := evergreen.GithubAppAuth{
+	githubAppAuth := GithubAppAuth{
 		Id:         "mongodb",
 		AppID:      1234,
 		PrivateKey: key,
@@ -40,7 +39,7 @@ func TestGetGitHubAppID(t *testing.T) {
 		"Error clearing collection")
 
 	key := []byte("I'm private!")
-	githubAppAuth := evergreen.GithubAppAuth{
+	githubAppAuth := GithubAppAuth{
 		Id:         "mongodb",
 		AppID:      1234,
 		PrivateKey: key,
@@ -59,7 +58,7 @@ func TestRemoveGithubAppAuth(t *testing.T) {
 		"Error clearing collection")
 
 	key := []byte("I'm private")
-	githubAppAuth := evergreen.GithubAppAuth{
+	githubAppAuth := GithubAppAuth{
 		Id:         "mongodb",
 		AppID:      1234,
 		PrivateKey: key,

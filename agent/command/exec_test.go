@@ -180,7 +180,7 @@ func (s *execCmdSuite) TestRunCommand() {
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	exec := cmd.getProc(s.ctx, cmd.Binary, "foo", s.logger)
-	s.NoError(cmd.runCommand(s.ctx, "foo", exec, s.logger))
+	s.NoError(cmd.runCommand(s.ctx, exec, s.logger))
 }
 
 func (s *execCmdSuite) TestRunCommandPropagatesError() {
@@ -190,7 +190,7 @@ func (s *execCmdSuite) TestRunCommandPropagatesError() {
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	exec := cmd.getProc(s.ctx, cmd.Binary, "foo", s.logger)
-	err := cmd.runCommand(s.ctx, "foo", exec, s.logger)
+	err := cmd.runCommand(s.ctx, exec, s.logger)
 	s.Require().NotNil(err)
 	s.Contains(err.Error(), "process encountered problem: exit code 1")
 	s.NotContains(err.Error(), "error waiting on process")
@@ -204,7 +204,7 @@ func (s *execCmdSuite) TestRunCommandContinueOnErrorNoError() {
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	exec := cmd.getProc(s.ctx, cmd.Binary, "foo", s.logger)
-	s.NoError(cmd.runCommand(s.ctx, "foo", exec, s.logger))
+	s.NoError(cmd.runCommand(s.ctx, exec, s.logger))
 }
 
 func (s *execCmdSuite) TestRunCommandBackgroundAlwaysNil() {
@@ -216,7 +216,7 @@ func (s *execCmdSuite) TestRunCommandBackgroundAlwaysNil() {
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	exec := cmd.getProc(s.ctx, cmd.Binary, "foo", s.logger)
-	s.NoError(cmd.runCommand(s.ctx, "foo", exec, s.logger))
+	s.NoError(cmd.runCommand(s.ctx, exec, s.logger))
 }
 
 func (s *execCmdSuite) TestCommandFailsWithoutWorkingDirectorySet() {

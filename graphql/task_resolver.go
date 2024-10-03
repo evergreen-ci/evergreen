@@ -433,11 +433,16 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 
 // ImageID is the resolver for the imageId field.
 func (r *taskResolver) ImageID(ctx context.Context, obj *restModel.APITask) (string, error) {
-	imageId, err := distro.GetImageIDFromDistro(ctx, *obj.DistroId)
-	if err != nil {
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("error finding imageID from distro: '%s'", err.Error()))
+	distroID := utility.FromStringPtr(obj.DistroId)
+	// Don't try to look up image ID if the task has no associated distro.
+	if distroID == "" {
+		return "", nil
 	}
-	return imageId, nil
+	imageID, err := distro.GetImageIDFromDistro(ctx, distroID)
+	if err != nil {
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("finding imageID from distro '%s': %s", distroID, err.Error()))
+	}
+	return imageID, nil
 }
 
 // IsPerfPluginEnabled is the resolver for the isPerfPluginEnabled field.
