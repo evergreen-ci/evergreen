@@ -27,7 +27,7 @@ Daily aggregated statistics for task executions run in Evergreen. Tasks are aggr
 | project\_id                  | VARCHAR | Unique project identifier.
 | variant                      | VARCHAR | Name of the build variant on which the tasks ran.
 | task\_name                   | VARCHAR | Display name of the tasks.
-| request\_type                | VARCHAR | Name of the trigger that requested the task executions. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `github_merge_request` (GitHub merge queue), `merge_test` (Evergreen commit queue, deprecated), or `ad_hoc` (periodic build).
+| request\_type                | VARCHAR | Name of the trigger that requested the task executions. Will always be one of: `patch_request`, `github_pull_request`, `gitter_request` (mainline), `trigger_request`, `github_merge_request` (GitHub merge queue), `merge_test` (Evergreen commit queue, deprecated), `create_version_endpoint` (REST API) or `ad_hoc` (periodic build).
 | finish\_date                 | VARCHAR | Date, in ISO format `YYYY-MM-DD`, on which the tasks ran.
 | num\_success                 | BIGINT  | Number of successful task executions in the group.
 | num\_failed                  | BIGINT  | Number of failed task executions in the group.
