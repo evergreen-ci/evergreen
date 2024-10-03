@@ -45,9 +45,12 @@ type APIVersion struct {
 	Requester *string   `json:"requester"`
 	Errors    []*string `json:"errors"`
 	// Will be null for versions created before this field was added.
-	Activated *bool       `json:"activated"`
-	Aborted   *bool       `json:"aborted"`
-	GitTags   []APIGitTag `json:"git_tags"`
+	Activated *bool `json:"activated"`
+	Aborted   *bool `json:"aborted"`
+	// The git tag that triggered this version, if any.
+	TriggeredGitTag *APIGitTag `json:"triggered_by_git_tag"`
+	// Git tags that were pushed to this version.
+	GitTags []APIGitTag `json:"git_tags"`
 	// Indicates if the version was ignored due to only making changes to ignored files.
 	Ignored *bool `json:"ignored"`
 }
@@ -109,6 +112,13 @@ func (apiVersion *APIVersion) BuildFromService(v model.Version) {
 			Pusher: utility.ToStringPtr(gt.Pusher),
 			Tag:    utility.ToStringPtr(gt.Tag),
 		})
+	}
+
+	if v.TriggeredByGitTag.Tag != "" {
+		apiVersion.TriggeredGitTag = &APIGitTag{
+			Tag:    utility.ToStringPtr(v.TriggeredByGitTag.Tag),
+			Pusher: utility.ToStringPtr(v.TriggeredByGitTag.Pusher),
+		}
 	}
 
 	if v.Identifier != "" {

@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestVersionBuildFromService tests that BuildFromService function completes
@@ -40,20 +41,32 @@ func TestVersionBuildFromService(t *testing.T) {
 			BuildId:      bi2,
 		},
 	}
+	gitTags := []model.GitTag{
+		{
+			Tag:    "tag",
+			Pusher: "pusher",
+		},
+	}
+	triggeredGitTag := model.GitTag{
+		Tag:    "my-triggered-tag",
+		Pusher: "pusher",
+	}
 	v := model.Version{
-		Id:            versionId,
-		CreateTime:    time,
-		StartTime:     time,
-		FinishTime:    time,
-		Revision:      revision,
-		Author:        author,
-		AuthorEmail:   authorEmail,
-		Message:       msg,
-		Status:        status,
-		Repo:          repo,
-		Branch:        branch,
-		BuildVariants: buildVariants,
-		Errors:        errors,
+		Id:                versionId,
+		CreateTime:        time,
+		StartTime:         time,
+		FinishTime:        time,
+		Revision:          revision,
+		Author:            author,
+		AuthorEmail:       authorEmail,
+		Message:           msg,
+		Status:            status,
+		Repo:              repo,
+		Branch:            branch,
+		BuildVariants:     buildVariants,
+		Errors:            errors,
+		GitTags:           gitTags,
+		TriggeredByGitTag: triggeredGitTag,
 	}
 
 	apiVersion := &APIVersion{}
@@ -78,4 +91,12 @@ func TestVersionBuildFromService(t *testing.T) {
 	assert.Equal(bvs[0].BuildId, utility.ToStringPtr(bi1))
 	assert.Equal(bvs[1].BuildVariant, utility.ToStringPtr(bv2))
 	assert.Equal(bvs[1].BuildId, utility.ToStringPtr(bi2))
+
+	gts := apiVersion.GitTags
+	require.Len(t, gts, 1)
+	assert.Equal(gts[0].Pusher, utility.ToStringPtr("pusher"))
+	assert.Equal(gts[0].Tag, utility.ToStringPtr("tag"))
+
+	require.NotNil(t, apiVersion.TriggeredGitTag)
+	assert.Equal(apiVersion.TriggeredGitTag.Tag, utility.ToStringPtr("my-triggered-tag"))
 }
