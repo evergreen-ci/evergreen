@@ -684,7 +684,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		return errors.Wrap(err, "setting location to clone from")
 	}
 
-	if opts.method == cloneMethodOAuth || opts.method == cloneMethodAccessToken {
+	if opts.method == cloneMethodOAuth {
 		// If user provided a token, use that token.
 		opts.token = projectToken
 	} else {
