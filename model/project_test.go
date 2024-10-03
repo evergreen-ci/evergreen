@@ -827,11 +827,11 @@ func (s *projectSuite) SetupTest() {
 
 func (s *projectSuite) TestAliasResolution() {
 	// test that .* on variants and tasks selects everything
-	pairs, displayTaskPairs, err := s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[0]}, evergreen.PatchVersionRequester)
+	pairs, err := s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[0]}, evergreen.PatchVersionRequester)
 	s.NoError(err)
-	s.Len(pairs, 11)
-	pairStrs := make([]string, len(pairs))
-	for i, p := range pairs {
+	s.Len(pairs.ExecTasks, 11)
+	pairStrs := make([]string, len(pairs.ExecTasks))
+	for i, p := range pairs.ExecTasks {
 		pairStrs[i] = p.String()
 	}
 	s.Contains(pairStrs, "bv_1/a_task_1")
@@ -845,64 +845,64 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Contains(pairStrs, "bv_2/b_task_1")
 	s.Contains(pairStrs, "bv_2/b_task_2")
 	s.Contains(pairStrs, "bv_2/another_disabled_task")
-	s.Require().Len(displayTaskPairs, 1)
-	s.Equal("bv_1/memes", displayTaskPairs[0].String())
+	s.Require().Len(pairs.DisplayTasks, 1)
+	s.Equal("bv_1/memes", pairs.DisplayTasks[0].String())
 
 	// test that the .*_2 regex on variants selects just bv_2
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[1]}, evergreen.PatchVersionRequester)
+	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[1]}, evergreen.PatchVersionRequester)
 	s.NoError(err)
-	s.Len(pairs, 5)
-	for _, pair := range pairs {
+	s.Len(pairs.ExecTasks, 5)
+	for _, pair := range pairs.ExecTasks {
 		s.Equal("bv_2", pair.Variant)
 	}
-	s.Empty(displayTaskPairs)
+	s.Empty(pairs.DisplayTasks)
 
 	// test that the .*_2 regex on tasks selects just the _2 tasks
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[2]}, evergreen.PatchVersionRequester)
+	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[2]}, evergreen.PatchVersionRequester)
 	s.NoError(err)
-	s.Len(pairs, 4)
-	for _, pair := range pairs {
+	s.Len(pairs.ExecTasks, 4)
+	for _, pair := range pairs.ExecTasks {
 		s.Contains(pair.TaskName, "task_2")
 	}
-	s.Empty(displayTaskPairs)
+	s.Empty(pairs.DisplayTasks)
 
 	// test that the 'a' tag only selects 'a' tasks
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[3]}, evergreen.PatchVersionRequester)
+	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[3]}, evergreen.PatchVersionRequester)
 	s.NoError(err)
-	s.Len(pairs, 4)
-	for _, pair := range pairs {
+	s.Len(pairs.ExecTasks, 4)
+	for _, pair := range pairs.ExecTasks {
 		s.Contains(pair.TaskName, "a_task")
 	}
-	s.Empty(displayTaskPairs)
+	s.Empty(pairs.DisplayTasks)
 
 	// test that the .*_2 regex selects the union of both
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[4]}, evergreen.PatchVersionRequester)
+	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[4]}, evergreen.PatchVersionRequester)
 	s.NoError(err)
-	s.Len(pairs, 4)
-	for _, pair := range pairs {
+	s.Len(pairs.ExecTasks, 4)
+	for _, pair := range pairs.ExecTasks {
 		s.NotEqual("b_task_1", pair.TaskName)
 	}
-	s.Empty(displayTaskPairs)
+	s.Empty(pairs.DisplayTasks)
 
 	// test for display tasks
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[5]}, evergreen.PatchVersionRequester)
+	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[5]}, evergreen.PatchVersionRequester)
 	s.NoError(err)
-	s.Empty(pairs)
-	s.Require().Len(displayTaskPairs, 1)
-	s.Equal("bv_1/memes", displayTaskPairs[0].String())
+	s.Empty(pairs.ExecTasks)
+	s.Require().Len(pairs.DisplayTasks, 1)
+	s.Equal("bv_1/memes", pairs.DisplayTasks[0].String())
 
 	// test for alias including a task belong to a disabled variant
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[6]}, evergreen.PatchVersionRequester)
+	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[6]}, evergreen.PatchVersionRequester)
 	s.NoError(err)
-	s.Empty(pairs)
-	s.Empty(displayTaskPairs)
+	s.Empty(pairs.ExecTasks)
+	s.Empty(pairs.DisplayTasks)
 
-	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[8]}, evergreen.PatchVersionRequester)
+	pairs, err = s.project.BuildProjectTVPairsWithAlias([]ProjectAlias{s.aliases[8]}, evergreen.PatchVersionRequester)
 	s.NoError(err)
-	s.Require().Len(pairs, 2)
-	s.Equal("bv_2/a_task_1", pairs[0].String())
-	s.Equal("bv_2/a_task_2", pairs[1].String())
-	s.Empty(displayTaskPairs)
+	s.Require().Len(pairs.ExecTasks, 2)
+	s.Equal("bv_2/a_task_1", pairs.ExecTasks[0].String())
+	s.Equal("bv_2/a_task_2", pairs.ExecTasks[1].String())
+	s.Empty(pairs.DisplayTasks)
 }
 
 func (s *projectSuite) TestCheckRunCount() {
@@ -2838,23 +2838,16 @@ patch_aliases:
 	s.NotNil(pc)
 
 	alias := pc.PatchAliases[0]
-	pairs, _, err := p.BuildProjectTVPairsWithAlias([]ProjectAlias{alias}, evergreen.PatchVersionRequester)
+	pairs, err := p.BuildProjectTVPairsWithAlias([]ProjectAlias{alias}, evergreen.PatchVersionRequester)
 	s.NoError(err)
-	s.Len(pairs, 1)
-	for _, pair := range pairs {
-		a := pair.Variant
-		b := pair.TaskName
-		print(a, b)
-	}
-
-	pairStrs := make([]string, len(pairs))
-	for i, p := range pairs {
+	s.Len(pairs.ExecTasks, 1)
+	pairStrs := make([]string, len(pairs.ExecTasks))
+	for i, p := range pairs.ExecTasks {
 		pairStrs[i] = p.String()
 	}
-
 	s.Contains(pairStrs, "print-variant/print")
 
-	for _, pair := range pairs {
+	for _, pair := range pairs.ExecTasks {
 		s.NotEqual("performance-variant", pair.Variant)
 		s.NotEqual("other-variant", pair.Variant)
 	}

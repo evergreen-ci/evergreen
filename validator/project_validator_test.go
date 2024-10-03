@@ -2902,6 +2902,94 @@ func TestValidateAliasCoverage(t *testing.T) {
 	}
 }
 
+func TestValidateCheckRuns(t *testing.T) {
+	for testName, testCase := range map[string]func(*testing.T, *model.Project){
+		"NoPRAliases": func(t *testing.T, p *model.Project) {
+			alias1 := model.ProjectAlias{
+				ID:          mgobson.NewObjectId(),
+				Alias:       evergreen.CommitQueueAlias,
+				VariantTags: []string{"notTheVariantTag"},
+				TaskTags:    []string{"taskTag1", "taskTag2"},
+				Source:      model.AliasSourceConfig,
+			}
+			alias2 := model.ProjectAlias{
+				ID:      mgobson.NewObjectId(),
+				Alias:   evergreen.CommitQueueAlias,
+				Variant: "nonsense",
+				Task:    ".*",
+				Source:  model.AliasSourceConfig,
+			}
+
+			errs := validateCheckRuns(p, model.ProjectAliases{alias1, alias2})
+			require.Len(t, errs, 0)
+		},
+		"CheckRunsBelowLimit": func(t *testing.T, p *model.Project) {
+			alias1 := model.ProjectAlias{
+				ID:      mgobson.NewObjectId(),
+				Alias:   evergreen.GithubPRAlias,
+				Variant: "variant1",
+				Task:    ".*",
+				Source:  model.AliasSourceConfig,
+			}
+
+			errs := validateCheckRuns(p, model.ProjectAliases{alias1})
+			require.Len(t, errs, 0)
+		},
+		"CheckRunsAboveLimit": func(t *testing.T, p *model.Project) {
+			alias1 := model.ProjectAlias{
+				ID:      mgobson.NewObjectId(),
+				Alias:   evergreen.GithubPRAlias,
+				Variant: ".*",
+				Task:    ".*",
+				Source:  model.AliasSourceConfig,
+			}
+
+			errs := validateCheckRuns(p, model.ProjectAliases{alias1})
+			require.Len(t, errs, 1)
+			assert.Equal(t, errs[0].Level, Warning)
+			assert.Contains(t, errs[0].Message, "total number of checkRuns (2) exceeds maximum limit (1)")
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			p := &model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "myTask",
+					},
+					{
+						Name: "myOtherTask",
+					},
+				},
+				BuildVariants: model.BuildVariants{
+					{
+						Name: "variant1",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "myTask",
+								CreateCheckRun: &model.CheckRun{
+									PathToOutputs: "myPath",
+								},
+							},
+						},
+					},
+					{
+						Name: "variant2",
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "myOtherTask",
+								CreateCheckRun: &model.CheckRun{
+									PathToOutputs: "myPath",
+								},
+							},
+						},
+					},
+				},
+			}
+			testCase(t, p)
+		})
+	}
+}
+
 func TestValidateProjectAliases(t *testing.T) {
 	Convey("When validating a project", t, func() {
 		Convey("ensure misconfigured aliases throw an error", func() {
