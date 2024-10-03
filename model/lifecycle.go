@@ -588,7 +588,7 @@ func CreateBuildFromVersionNoInsert(ctx context.Context, creationInfo TaskCreati
 		rev = fmt.Sprintf("patch_%s_%s", creationInfo.Version.Revision, creationInfo.Version.Id)
 	} else if creationInfo.Version.Requester == evergreen.TriggerRequester {
 		rev = fmt.Sprintf("%s_%s", creationInfo.SourceRev, creationInfo.DefinitionID)
-	} else if creationInfo.Version.Requester == evergreen.AdHocRequester {
+	} else if creationInfo.Version.Requester == evergreen.AdHocRequester || creationInfo.Version.Requester == evergreen.CreateVersionEndpointRequester {
 		rev = creationInfo.Version.Id
 	} else if creationInfo.Version.Requester == evergreen.GitTagRequester {
 		rev = fmt.Sprintf("%s_%s", creationInfo.SourceRev, creationInfo.Version.TriggeredByGitTag.Tag)

@@ -660,6 +660,7 @@ var (
 		TriggerRequester,
 		GitTagRequester,
 		AdHocRequester,
+		CreateVersionEndpointRequester,
 	}
 	AllRequesterTypes = []string{
 		PatchVersionRequester,
@@ -669,6 +670,7 @@ var (
 		TriggerRequester,
 		MergeTestRequester,
 		AdHocRequester,
+		CreateVersionEndpointRequester,
 		GithubMergeRequester,
 	}
 )
@@ -686,6 +688,7 @@ func (r UserRequester) Validate() error {
 		TriggerUserRequester,
 		MergeTestUserRequester,
 		AdHocUserRequester,
+		CreateVersionEndpointUserRequester,
 		GithubMergeUserRequester:
 		return nil
 	default:
@@ -699,14 +702,15 @@ const (
 	// user-facing functionality such as YAML configuration and expansions and
 	// should be translated into the true internal requester types so they're
 	// actually usable.
-	PatchVersionUserRequester       UserRequester = "patch"
-	GithubPRUserRequester           UserRequester = "github_pr"
-	GitTagUserRequester             UserRequester = "github_tag"
-	RepotrackerVersionUserRequester UserRequester = "commit"
-	TriggerUserRequester            UserRequester = "trigger"
-	MergeTestUserRequester          UserRequester = "commit_queue"
-	AdHocUserRequester              UserRequester = "ad_hoc"
-	GithubMergeUserRequester        UserRequester = "github_merge_queue"
+	PatchVersionUserRequester          UserRequester = "patch"
+	GithubPRUserRequester              UserRequester = "github_pr"
+	GitTagUserRequester                UserRequester = "github_tag"
+	RepotrackerVersionUserRequester    UserRequester = "commit"
+	TriggerUserRequester               UserRequester = "trigger"
+	MergeTestUserRequester             UserRequester = "commit_queue"
+	AdHocUserRequester                 UserRequester = "ad_hoc"
+	CreateVersionEndpointUserRequester UserRequester = "create_version_endpoint"
+	GithubMergeUserRequester           UserRequester = "github_merge_queue"
 )
 
 var AllUserRequesterTypes = []UserRequester{
@@ -717,6 +721,7 @@ var AllUserRequesterTypes = []UserRequester{
 	TriggerUserRequester,
 	MergeTestUserRequester,
 	AdHocUserRequester,
+	CreateVersionEndpointUserRequester,
 	GithubMergeUserRequester,
 }
 
@@ -738,6 +743,8 @@ func InternalRequesterToUserRequester(requester string) UserRequester {
 		return MergeTestUserRequester
 	case AdHocRequester:
 		return AdHocUserRequester
+	case CreateVersionEndpointRequester:
+		return CreateVersionEndpointUserRequester
 	case GithubMergeRequester:
 		return GithubMergeUserRequester
 	default:
@@ -763,6 +770,8 @@ func UserRequesterToInternalRequester(requester UserRequester) string {
 		return MergeTestRequester
 	case AdHocUserRequester:
 		return AdHocRequester
+	case CreateVersionEndpointUserRequester:
+		return CreateVersionEndpointRequester
 	case GithubMergeUserRequester:
 		return GithubMergeRequester
 	default:
@@ -1120,7 +1129,7 @@ func IsGithubMergeQueueRequester(requester string) bool {
 }
 
 func ShouldConsiderBatchtime(requester string) bool {
-	return !IsPatchRequester(requester) && requester != AdHocRequester && requester != GitTagRequester
+	return !IsPatchRequester(requester) && requester != AdHocRequester && requester != GitTagRequester && requester != CreateVersionEndpointRequester
 }
 
 func PermissionsDisabledForTests() bool {
