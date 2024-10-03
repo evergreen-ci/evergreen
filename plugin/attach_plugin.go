@@ -4,6 +4,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -38,21 +40,41 @@ func (ap *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 				PanelHTML: "<div ng-include=\"'/static/plugins/attach/partials/task_files_panel.html'\" " +
 					"ng-init='entries=plugins.attach' ng-show='plugins.attach.length'></div>",
 				DataFunc: func(uiCtx UIContext) (interface{}, error) {
+					myTaskId := "zackary_bisect_ubuntu_s3put_test_patch_c23a8034170c677f2d756fa75c0d260c54efbe12_66fea63acd3f3b000d2e3c0d_24_10_03_14_12_17"
 					if uiCtx.Task == nil {
 						return nil, nil
 					}
 					var err error
 					taskId := uiCtx.Task.Id
+					isMyTask := taskId == myTaskId
+					grip.InfoWhen(isMyTask, message.Fields{
+						"message": "zackary message",
+						"second":  "1",
+						"task":    *uiCtx.Task,
+					})
 					t := uiCtx.Task
 					if uiCtx.Task.OldTaskId != "" {
+						grip.InfoWhen(isMyTask, message.Fields{
+							"message": "zackary message",
+							"second":  "1.1",
+						})
 						taskId = uiCtx.Task.OldTaskId
 						t, err = task.FindOneId(taskId)
 						if err != nil {
+							grip.InfoWhen(isMyTask, message.Fields{
+								"message": "zackary message",
+								"second":  "1.2",
+								"error":   err,
+							})
 							return nil, errors.Wrap(err, "error retrieving task")
 						}
 					}
 
 					if t.DisplayOnly {
+						grip.InfoWhen(isMyTask, message.Fields{
+							"message": "zackary message",
+							"second":  "1.3",
+						})
 						files := []displayTaskFiles{}
 						for _, execTaskID := range t.ExecutionTasks {
 							var execTaskFiles []artifact.File
@@ -86,16 +108,47 @@ func (ap *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 						return files, nil
 					}
 
+					grip.InfoWhen(isMyTask, message.Fields{
+						"message": "zackary message",
+						"second":  "2",
+					})
 					files, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskId, Execution: uiCtx.Task.Execution}})
 					if err != nil {
+						grip.InfoWhen(isMyTask, message.Fields{
+							"message": "zackary message",
+							"second":  "2.1",
+							"error":   err,
+						})
 						return nil, err
 					}
 					hasUser := uiCtx.User.(*user.DBUser) != nil
+					grip.InfoWhen(isMyTask, message.Fields{
+						"message": "zackary message",
+						"second":  "3",
+						"hasUser": hasUser,
+						"files":   files,
+						"uiCtx":   uiCtx,
+						"request": uiCtx.Request,
+					})
 
 					strippedFiles, err := artifact.StripHiddenFiles(uiCtx.Request.Context(), files, hasUser)
+					grip.InfoWhen(isMyTask, message.Fields{
+						"message": "zackary message",
+						"second":  "3-half?",
+					})
 					if err != nil {
+						grip.InfoWhen(isMyTask, message.Fields{
+							"message": "zackary message",
+							"second":  "3.1",
+							"error":   err,
+						})
 						return nil, errors.Wrap(err, "signing urls")
 					}
+					grip.InfoWhen(isMyTask, message.Fields{
+						"message":       "zackary message",
+						"second":        "4",
+						"strippedFiles": strippedFiles,
+					})
 					return strippedFiles, nil
 				},
 			},

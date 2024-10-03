@@ -372,6 +372,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	usr := gimlet.GetUser(ctx)
 	pluginContext := projCtx.ToPluginContext(uis.Settings, usr)
+	pluginContext.Request = r
 	pluginContent := getPluginDataAndHTML(uis, plugin.TaskPage, pluginContext)
 	permissions := gimlet.Permissions{}
 	if usr != nil {
