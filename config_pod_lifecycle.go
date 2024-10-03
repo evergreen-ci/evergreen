@@ -31,8 +31,7 @@ func (c *PodLifecycleConfig) Set(ctx context.Context) error {
 func (c *PodLifecycleConfig) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
 	if c.MaxParallelPodRequests == 0 {
-		// TODO: (EVG-16217) Determine empirically if this is indeed reasonable
-		c.MaxParallelPodRequests = 2000
+		c.MaxParallelPodRequests = 300
 	}
 	catcher.NewWhen(c.MaxParallelPodRequests < 0, "max parallel pod requests cannot be negative")
 	return catcher.Resolve()
