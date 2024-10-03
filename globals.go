@@ -680,20 +680,10 @@ type UserRequester string
 
 // Validate checks that the user-facing requester type is valid.
 func (r UserRequester) Validate() error {
-	switch r {
-	case PatchVersionUserRequester,
-		GithubPRUserRequester,
-		GitTagUserRequester,
-		RepotrackerVersionUserRequester,
-		TriggerUserRequester,
-		MergeTestUserRequester,
-		AdHocUserRequester,
-		CreateVersionEndpointUserRequester,
-		GithubMergeUserRequester:
-		return nil
-	default:
+	if !utility.StringSliceContains(AllRequesterTypes, UserRequesterToInternalRequester(r)) {
 		return errors.Errorf("invalid user requester '%s'", r)
 	}
+	return nil
 }
 
 const (
