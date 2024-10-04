@@ -51,25 +51,26 @@ type ProjectChangeEvent struct {
 // changed are replaced with redacted placeholders.
 func (e *ProjectChangeEvent) RedactVars() {
 	modifiedVarKeys := findModifiedProjectVars(e)
-
 	e.Before.Vars.Vars = getRedactedVarsCopy(e.Before.Vars.Vars, modifiedVarKeys, evergreen.RedactedBeforeValue)
 	e.After.Vars.Vars = getRedactedVarsCopy(e.After.Vars.Vars, modifiedVarKeys, evergreen.RedactedAfterValue)
 }
 
+// getRedactedVarsCopy returns a copy of the project variables with modified
+// variables redacted and unmodified variables set to the empty string.
+// This intentionally makes a copy to avoid potentially modifying the original
+// vars map, which may be shared by the actual project settings. That way,
+// callers can still access the unredacted variable values.
 func getRedactedVarsCopy(vars map[string]string, modifiedVarNames map[string]struct{}, placeholder string) map[string]string {
-	// Redact a copy of the project variables. Making a copy avoids potentially
-	// modifying the original vars map, which may be shared by the actual
-	// project settings. That way, callers can still access the unredacted
-	// variable values.
 	redactedVars := maps.Clone(vars)
 	for k, v := range redactedVars {
 		if _, ok := modifiedVarNames[k]; ok && v != "" {
-			// The project var was modified and it had a before value, so
-			// replace it with a placeholder string to indicate that it changed.
+			// The project var was modified and it had a value, so replace the
+			// value with a placeholder string to indicate that it changed.
 			redactedVars[k] = placeholder
 		} else if v != "" {
-			// The project var was not modified, but still has a non-empty
-			// value. Prevent the value from appearing in the project event log.
+			// The project var was not modified, but it still has a non-empty
+			// value. Set the value to empty to indicate that the project var
+			// exists but was not modified.
 			redactedVars[k] = ""
 		}
 	}
