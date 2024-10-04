@@ -23,8 +23,6 @@ type versionCreateHandler struct {
 	Message string `json:"message"`
 	// Optional. If true, the defined tasks will run immediately. Otherwise, the version will be created and can be activated in the UI
 	Active bool `json:"activate"`
-	// Optional. If true, the version will be indicated as coming from an ad hoc source and will not display as if it were a patch or commit. If false, it will be assumed to be a commit.
-	IsAdHoc bool `json:"is_adhoc"`
 	// Required. This is the yml config that will be used for defining tasks, variants, and functions.
 	Config []byte `json:"config"`
 
@@ -56,7 +54,7 @@ func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 	metadata := model.VersionMetadata{
 		Message:  h.Message,
-		IsAdHoc:  h.IsAdHoc,
+		IsAdHoc:  true,
 		User:     u,
 		Activate: h.Active,
 	}
