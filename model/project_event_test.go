@@ -112,9 +112,11 @@ func (s *ProjectEventSuite) TestModifyProjectEventRedactsAllVars() {
 	before := getMockProjectSettings()
 	before.Vars.Vars["deleted"] = "deleted_value"
 	before.Vars.Vars["modified"] = "old_value"
+	before.Vars.Vars["unmodified"] = "same_value"
 	after := getMockProjectSettings()
 	after.Vars.Vars["added"] = "added_value"
 	after.Vars.Vars["modified"] = "new_value"
+	after.Vars.Vars["unmodified"] = "same_value"
 
 	s.NoError(LogProjectModified(projectId, username, &before, &after))
 
@@ -140,6 +142,7 @@ func (s *ProjectEventSuite) TestModifyProjectEventRedactsAllVars() {
 	s.Len(eventData.Before.Vars.Vars, len(before.Vars.Vars))
 	s.Equal(evergreen.RedactedBeforeValue, eventData.Before.Vars.Vars["deleted"], "deleted var should be redacted")
 	s.Equal(evergreen.RedactedBeforeValue, eventData.Before.Vars.Vars["modified"], "modified var should be redacted")
+	s.Empty(eventData.Before.Vars.Vars["unmodified"], "unmodified var should be present but empty to indicate it wasn't changed")
 	s.Equal(before.Aliases, eventData.Before.Aliases)
 	s.Equal(before.Subscriptions, eventData.Before.Subscriptions)
 
@@ -154,6 +157,7 @@ func (s *ProjectEventSuite) TestModifyProjectEventRedactsAllVars() {
 	s.Len(eventData.After.Vars.Vars, len(after.Vars.Vars))
 	s.Equal(evergreen.RedactedAfterValue, eventData.After.Vars.Vars["added"], "newly-added var should be redacted")
 	s.Equal(evergreen.RedactedAfterValue, eventData.After.Vars.Vars["modified"], "modified var should be redacted")
+	s.Empty(eventData.After.Vars.Vars["unmodified"], "unmodified var should be present but empty to indicate it wasn't changed")
 	s.Equal(after.Aliases, eventData.After.Aliases)
 	s.Equal(after.Subscriptions, eventData.After.Subscriptions)
 }
