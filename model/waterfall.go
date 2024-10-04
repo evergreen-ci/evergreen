@@ -103,11 +103,9 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 
 // GetAllWaterfallVersions returns all of a project's versions within an inclusive range of orders.
 func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int, maxOrder int) ([]Version, error) {
-	hasOrderFilters := maxOrder != 0 && minOrder != 0
-	if hasOrderFilters && minOrder >= maxOrder {
+	if minOrder != 0 && maxOrder != 0 && minOrder >= maxOrder {
 		return nil, errors.New("minOrder must be less than maxOrder")
 	}
-
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey: bson.M{
@@ -115,6 +113,7 @@ func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int
 		},
 	}
 
+	hasOrderFilters := maxOrder != 0 || minOrder != 0
 	if hasOrderFilters {
 		revisionFilter := bson.M{}
 		if minOrder != 0 {
