@@ -225,6 +225,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 
 	canEdit := (currentUser != nil) && (projCtx.Version.Requester != evergreen.MergeTestRequester)
 	pluginContext := projCtx.ToPluginContext(uis.Settings, currentUser)
+	pluginContext.Request = r
 	pluginContent := getPluginDataAndHTML(uis, plugin.VersionPage, pluginContext)
 	newUILink := ""
 	if len(uis.Settings.Ui.UIv2Url) > 0 {
