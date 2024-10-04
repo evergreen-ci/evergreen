@@ -97,9 +97,6 @@ type Communicator interface {
 	// in the local evergreen yaml
 	GetSubscriptions(context.Context) ([]event.Subscription, error)
 
-	// CreateVersionFromConfig takes an evergreen config and makes runnable tasks from it
-	CreateVersionFromConfig(context.Context, string, string, bool, []byte) (*model.Version, error)
-
 	// Commit Queue
 	GetCommitQueue(ctx context.Context, projectID string) (*restmodel.APICommitQueue, error)
 	DeleteCommitQueueItem(ctx context.Context, item string) error

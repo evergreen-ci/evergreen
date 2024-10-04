@@ -870,7 +870,7 @@ func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, pairsToCreate 
 			rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
 		} else if v.Requester == evergreen.TriggerRequester {
 			rev = fmt.Sprintf("%s_%s", sourceRev, defID)
-		} else if v.Requester == evergreen.AdHocRequester || v.Requester == evergreen.CreateVersionEndpointRequester {
+		} else if v.Requester == evergreen.AdHocRequester {
 			rev = v.Id
 		} else if v.Requester == evergreen.GitTagRequester {
 			rev = fmt.Sprintf("%s_%s", sourceRev, v.TriggeredByGitTag.Tag)
