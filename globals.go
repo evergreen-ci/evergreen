@@ -654,13 +654,14 @@ const (
 )
 
 // Constants related to requester types.
+
 var (
+	// SystemVersionRequesterTypes contain non-patch requesters that are created by the Evergreen system, i.e. configs and patch files are unchanged by author.
 	SystemVersionRequesterTypes = []string{
 		RepotrackerVersionRequester,
 		TriggerRequester,
 		GitTagRequester,
 		AdHocRequester,
-		CreateVersionEndpointRequester,
 	}
 	AllRequesterTypes = []string{
 		PatchVersionRequester,

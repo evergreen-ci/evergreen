@@ -322,7 +322,7 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 
 func (projectVars *ProjectVars) GetVars(t *task.Task) map[string]string {
 	vars := map[string]string{}
-	isAdmin := projectVars.ShouldGetAdminOnlyVars(t)
+	isAdmin := shouldGetAdminOnlyVars(t)
 	for k, v := range projectVars.Vars {
 		if !projectVars.AdminOnlyVars[k] || isAdmin {
 			vars[k] = v
@@ -331,7 +331,9 @@ func (projectVars *ProjectVars) GetVars(t *task.Task) map[string]string {
 	return vars
 }
 
-func (projectVars *ProjectVars) ShouldGetAdminOnlyVars(t *task.Task) bool {
+// shouldGetAdminOnlyVars returns true if the task is part of a version that can't be modified by users,
+// or if the task was activated by a project admin.
+func shouldGetAdminOnlyVars(t *task.Task) bool {
 	if utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
 		return true
 	} else if t.ActivatedBy == "" {
