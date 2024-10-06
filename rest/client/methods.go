@@ -1059,44 +1059,6 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 	return subs, nil
 }
 
-func (c *communicatorImpl) CreateVersionFromConfig(ctx context.Context, project, message string, active bool, config []byte) (*serviceModel.Version, error) {
-	info := requestInfo{
-		method: http.MethodPut,
-		path:   "/versions",
-	}
-	body := struct {
-		ProjectID string `json:"project_id"`
-		Message   string `json:"message"`
-		Active    bool   `json:"activate"`
-		IsAdHoc   bool   `json:"is_adhoc"`
-		Config    []byte `json:"config"`
-	}{
-		ProjectID: project,
-		Message:   message,
-		Active:    active,
-		IsAdHoc:   true,
-		Config:    config,
-	}
-	resp, err := c.request(ctx, info, body)
-	if err != nil {
-		return nil, errors.Wrap(err, "sending request to create version from config")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, util.RespErrorf(resp, AuthError)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "creating version from config")
-	}
-
-	v := &serviceModel.Version{}
-	if err = utility.ReadJSON(resp.Body, v); err != nil {
-		return nil, errors.Wrap(err, "reading JSON response body")
-	}
-
-	return v, nil
-}
-
 func (c *communicatorImpl) GetCommitQueue(ctx context.Context, projectID string) (*model.APICommitQueue, error) {
 	info := requestInfo{
 		method: http.MethodGet,

@@ -1,9 +1,14 @@
 package model
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -389,4 +394,120 @@ func TestGetParamNameForVar(t *testing.T) {
 		assert.Error(t, err)
 		assert.Zero(t, paramName)
 	})
+}
+
+func TestShouldGetAdminOnlyVars(t *testing.T) {
+	type testCase struct {
+		requester          string
+		usrId              string
+		shouldGetAdminVars bool
+	}
+
+	usrId := "not_admin"
+	adminUsrId := "admin"
+	testCases := map[string]testCase{
+		"repotrackerShouldSucceed": {
+			requester:          evergreen.RepotrackerVersionRequester,
+			usrId:              usrId,
+			shouldGetAdminVars: true,
+		},
+		"triggerShouldSucceed": {
+			requester:          evergreen.TriggerRequester,
+			usrId:              usrId,
+			shouldGetAdminVars: true,
+		},
+		"gitTagShouldSucceed": {
+			requester:          evergreen.GitTagRequester,
+			usrId:              usrId,
+			shouldGetAdminVars: true,
+		},
+		"adHocShouldSucceed": {
+			requester:          evergreen.AdHocRequester,
+			usrId:              usrId,
+			shouldGetAdminVars: true,
+		},
+		"patchVersionShouldFail": {
+			requester:          evergreen.PatchVersionRequester,
+			usrId:              usrId,
+			shouldGetAdminVars: false,
+		},
+		"githubPRShouldFail": {
+			requester:          evergreen.GithubPRRequester,
+			usrId:              usrId,
+			shouldGetAdminVars: false,
+		},
+		"mergeTestShouldFail": {
+			requester:          evergreen.MergeTestRequester,
+			usrId:              usrId,
+			shouldGetAdminVars: false,
+		},
+		"mergeRequestShouldFail": {
+			requester:          evergreen.GithubMergeRequester,
+			usrId:              usrId,
+			shouldGetAdminVars: false,
+		},
+		"githubPRWithAdminShouldSucceed": {
+			requester:          evergreen.GithubPRRequester,
+			usrId:              adminUsrId,
+			shouldGetAdminVars: true,
+		},
+		"patchVersionWithAdminShouldSucceed": {
+			requester:          evergreen.PatchVersionRequester,
+			usrId:              adminUsrId,
+			shouldGetAdminVars: true,
+		},
+	}
+
+	for name, testCase := range testCases {
+		assert.NoError(t, db.ClearCollections(user.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
+
+		usr := user.DBUser{
+			Id: usrId,
+		}
+
+		adminUsr := user.DBUser{
+			Id: adminUsrId,
+		}
+		assert.NoError(t, usr.Insert())
+		assert.NoError(t, adminUsr.Insert())
+		env := evergreen.GetEnvironment()
+		roleManager := env.RoleManager()
+		projectScope := gimlet.Scope{
+			ID:        "projectScopeID",
+			Type:      evergreen.ProjectResourceType,
+			Resources: []string{"myProject"},
+		}
+		require.NoError(t, roleManager.AddScope(projectScope))
+
+		role := gimlet.Role{
+			ID:          "admin_role",
+			Scope:       projectScope.ID,
+			Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value},
+		}
+		require.NoError(t, roleManager.UpdateRole(role))
+		require.NoError(t, adminUsr.AddRole(role.ID))
+		tsk := &task.Task{
+			Id:      "t1",
+			Project: "myProject",
+		}
+
+		t.Run(name, func(t *testing.T) {
+			tsk.Requester = testCase.requester
+			tsk.ActivatedBy = testCase.usrId
+
+			assert.Equal(t, testCase.shouldGetAdminVars, shouldGetAdminOnlyVars(tsk))
+		})
+	}
+
+	// Verify that all requesters are tested on the non-admin.
+	for _, requester := range evergreen.AllRequesterTypes {
+		tested := false
+		for _, testCase := range testCases {
+			if testCase.usrId == usrId && requester == testCase.requester {
+				tested = true
+				break
+			}
+		}
+		assert.True(t, tested, fmt.Sprintf("requester '%s' not tested with non-admin", requester))
+	}
 }

@@ -634,7 +634,6 @@ The valid requester values are:
 - `commit`: mainline commits.
 - `trigger`: downstream trigger versions.
 - `ad_hoc`: periodic build versions.
-- `create_version_endpoint`: versions created via API.
 - `github_merge_queue`: GitHub's merge queue.
 
 By default, if no `allowed_requesters` are explicitly specified, then a task can
@@ -799,7 +798,7 @@ Every task has some expansions available by default:
 -   `${is_commit_queue}` is the string "true" if this is a merge
     queue task
 -   `${requester}` is what triggered the task: `patch`, `github_pr`,
-    `github_tag`, `commit`, `trigger`, `github_merge_queue`, `create_version_endpoint` or `ad_hoc`
+    `github_tag`, `commit`, `trigger`, `github_merge_queue`, or `ad_hoc`
 -   `${otel_collector_endpoint}` is the gRPC endpoint for Evergreen's
     OTel collector. Tasks can send traces to this endpoint.
 -   `${otel_trace_id}` is the OTel trace ID this task is running under.

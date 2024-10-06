@@ -22,12 +22,11 @@ import (
 
 const (
 	// Requester API values
-	statsAPIRequesterMainline      = "mainline"
-	statsAPIRequesterPatch         = "patch"
-	statsAPIRequesterTrigger       = "trigger"
-	statsAPIRequesterGitTag        = "git_tag"
-	statsAPIRequesterAdhoc         = "adhoc"
-	statsAPIRequesterCreateVersion = "create_version_endpoint"
+	statsAPIRequesterMainline = "mainline"
+	statsAPIRequesterPatch    = "patch"
+	statsAPIRequesterTrigger  = "trigger"
+	statsAPIRequesterGitTag   = "git_tag"
+	statsAPIRequesterAdhoc    = "adhoc"
 
 	// Sort API values
 	statsAPISortEarliest = "earliest"
@@ -168,8 +167,6 @@ func (sh *StatsHandler) readRequesters(requesters []string) ([]string, error) {
 			requesterValues = append(requesterValues, evergreen.GitTagRequester)
 		case statsAPIRequesterAdhoc:
 			requesterValues = append(requesterValues, evergreen.AdHocRequester)
-		case statsAPIRequesterCreateVersion:
-			requesterValues = append(requesterValues, evergreen.CreateVersionEndpointRequester)
 		default:
 			return nil, errors.Errorf("invalid requester '%s'", requester)
 		}

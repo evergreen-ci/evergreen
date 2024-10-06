@@ -642,25 +642,25 @@ const (
 	DefaultAmboyDatabaseURL = "mongodb://localhost:27017"
 
 	// version requester types
-	PatchVersionRequester          = "patch_request"
-	GithubPRRequester              = "github_pull_request"
-	GitTagRequester                = "git_tag_request"
-	RepotrackerVersionRequester    = "gitter_request"
-	TriggerRequester               = "trigger_request"
-	MergeTestRequester             = "merge_test"              // Evergreen commit queue
-	AdHocRequester                 = "ad_hoc"                  // periodic build
-	CreateVersionEndpointRequester = "create_version_endpoint" // create version endpoint
-	GithubMergeRequester           = "github_merge_request"    // GitHub merge queue
+	PatchVersionRequester       = "patch_request"
+	GithubPRRequester           = "github_pull_request"
+	GitTagRequester             = "git_tag_request"
+	RepotrackerVersionRequester = "gitter_request"
+	TriggerRequester            = "trigger_request"
+	MergeTestRequester          = "merge_test"           // Evergreen commit queue
+	AdHocRequester              = "ad_hoc"               // periodic build
+	GithubMergeRequester        = "github_merge_request" // GitHub merge queue
 )
 
 // Constants related to requester types.
+
 var (
+	// SystemVersionRequesterTypes contain non-patch requesters that are created by the Evergreen system, i.e. configs and patch files are unchanged by author.
 	SystemVersionRequesterTypes = []string{
 		RepotrackerVersionRequester,
 		TriggerRequester,
 		GitTagRequester,
 		AdHocRequester,
-		CreateVersionEndpointRequester,
 	}
 	AllRequesterTypes = []string{
 		PatchVersionRequester,
@@ -670,7 +670,6 @@ var (
 		TriggerRequester,
 		MergeTestRequester,
 		AdHocRequester,
-		CreateVersionEndpointRequester,
 		GithubMergeRequester,
 	}
 )
@@ -692,15 +691,14 @@ const (
 	// user-facing functionality such as YAML configuration and expansions and
 	// should be translated into the true internal requester types so they're
 	// actually usable.
-	PatchVersionUserRequester          UserRequester = "patch"
-	GithubPRUserRequester              UserRequester = "github_pr"
-	GitTagUserRequester                UserRequester = "github_tag"
-	RepotrackerVersionUserRequester    UserRequester = "commit"
-	TriggerUserRequester               UserRequester = "trigger"
-	MergeTestUserRequester             UserRequester = "commit_queue"
-	AdHocUserRequester                 UserRequester = "ad_hoc"
-	CreateVersionEndpointUserRequester UserRequester = "create_version_endpoint"
-	GithubMergeUserRequester           UserRequester = "github_merge_queue"
+	PatchVersionUserRequester       UserRequester = "patch"
+	GithubPRUserRequester           UserRequester = "github_pr"
+	GitTagUserRequester             UserRequester = "github_tag"
+	RepotrackerVersionUserRequester UserRequester = "commit"
+	TriggerUserRequester            UserRequester = "trigger"
+	MergeTestUserRequester          UserRequester = "commit_queue"
+	AdHocUserRequester              UserRequester = "ad_hoc"
+	GithubMergeUserRequester        UserRequester = "github_merge_queue"
 )
 
 var AllUserRequesterTypes = []UserRequester{
@@ -711,7 +709,6 @@ var AllUserRequesterTypes = []UserRequester{
 	TriggerUserRequester,
 	MergeTestUserRequester,
 	AdHocUserRequester,
-	CreateVersionEndpointUserRequester,
 	GithubMergeUserRequester,
 }
 
@@ -733,8 +730,6 @@ func InternalRequesterToUserRequester(requester string) UserRequester {
 		return MergeTestUserRequester
 	case AdHocRequester:
 		return AdHocUserRequester
-	case CreateVersionEndpointRequester:
-		return CreateVersionEndpointUserRequester
 	case GithubMergeRequester:
 		return GithubMergeUserRequester
 	default:
@@ -760,8 +755,6 @@ func UserRequesterToInternalRequester(requester UserRequester) string {
 		return MergeTestRequester
 	case AdHocUserRequester:
 		return AdHocRequester
-	case CreateVersionEndpointUserRequester:
-		return CreateVersionEndpointRequester
 	case GithubMergeUserRequester:
 		return GithubMergeRequester
 	default:
@@ -1119,7 +1112,7 @@ func IsGithubMergeQueueRequester(requester string) bool {
 }
 
 func ShouldConsiderBatchtime(requester string) bool {
-	return !IsPatchRequester(requester) && requester != AdHocRequester && requester != GitTagRequester && requester != CreateVersionEndpointRequester
+	return !IsPatchRequester(requester) && requester != AdHocRequester && requester != GitTagRequester
 }
 
 func PermissionsDisabledForTests() bool {
