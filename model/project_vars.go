@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"maps"
 	"regexp"
 	"strings"
 
@@ -239,7 +240,11 @@ func CopyProjectVars(oldProjectId, newProjectId string) error {
 	if vars == nil {
 		vars = &ProjectVars{}
 	}
+
 	vars.Id = newProjectId
+	// kim: NOTE: it's okay to pass nil here because we're copying from an
+	// existing project to a new project that doesn't exist yet. At worst, it'll
+	// copy more vars than needed, which is okay.
 	_, err = vars.Upsert()
 	return errors.Wrapf(err, "inserting variables for project '%s", newProjectId)
 }
@@ -258,6 +263,11 @@ func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
 	if vars.PrivateVars == nil {
 		vars.PrivateVars = map[string]bool{}
 	}
+	// Copy the map so there's a before copy (without any project var update)
+	// and after copy containing the updated project var.
+	beforeVars := *vars
+	beforeVars.Vars = make(map[string]string, len(vars.Vars))
+	maps.Copy(beforeVars.Vars, vars.Vars)
 
 	vars.Vars[ProjectAWSSSHKeyName] = ssh.Name
 	vars.Vars[ProjectAWSSSHKeyValue] = ssh.Value
@@ -280,8 +290,25 @@ func GetAWSKeyForProject(projectId string) (*AWSSSHKey, error) {
 	}, nil
 }
 
-// kim: TODO: update this to sync with PS as well if enabled.
+// kim: TODO: update this to sync with PS as well if enabled. Ideally only the
+// diff.
 func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
+	// kim; NOTE: it's more efficient to just replace all the vars rather than
+	// compute the diff or  looking up before vars in here rather than passing it in
+	// because in all likelihood, most logic will have to find the project vars
+	// by ID anyways, which for PS would require reading all the project vars
+	// into memory. If that happens before this, then loading the project vars
+	// is pretty much free here and saves having to plumb the before vars
+	// down from the request.
+	before, err := FindOneProjectVars(projectVars.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectVars.Id)
+	}
+	// kim: TODO: use before vars to determine diff of modified vars.
+	if before != nil {
+		fmt.Println("kim: before vars:", before)
+	}
+
 	return db.Upsert(
 		ProjectVarsCollection,
 		bson.M{
@@ -305,7 +332,8 @@ func (projectVars *ProjectVars) Insert() error {
 }
 
 // kim: TODO: update this to also sync with PS as well if enabled.
-func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.ChangeInfo, error) {
+// kim: NOTE: ideally only sync the diff.
+func (projectVars *ProjectVars) FindAndModify(before *ProjectVars, varsToDelete []string) (*adb.ChangeInfo, error) {
 	setUpdate := bson.M{}
 	unsetUpdate := bson.M{}
 	update := bson.M{}

@@ -299,16 +299,20 @@ func FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIP
 // UpdateProjectVars adds new variables, overwrites variables, and deletes variables for the given project.
 // kim: TODO: double-check usages of UpdateProjectVars to ensure before vars
 // were passed in correctly and existing tests still pass.
-func UpdateProjectVars(projectId string, beforeVars model.ProjectVars, varsModel *restModel.APIProjectVars, overwrite bool) error {
+// kim: TODO: remove before - the existing vars functionality can just load the
+// vars directly from the DB/PS because most code paths already have loaded the
+// vars previously (to compute the event log diff), meaning the vars are already
+// cached at this point.
+func UpdateProjectVars(projectId string, before *model.ProjectVars, varsModel *restModel.APIProjectVars, overwrite bool) error {
 	// kim: TODO: update this function to _additionally_ upsert into PS. Unlike
 	// the DB which has a single doc to replace the vars fully, this has to do
 	// more of a diff. Probably can use before and after vars to get diff,
 	// similar to event log.
 	// kim: NOTE: may have to do a one-time sync for projects that haven't saved
 	// vars into PS before.
-	// kim: TODO: should use project-level PS flag for now until prod vars are
-	// fully migrated. This avoids prod being affected by temporary fluctuations
-	// in PS while it's being developed.
+	// kim: TODO: should use project-level PS flag to determine if PS upsert
+	// no-ops until prod vars are fully migrated. This avoids prod being
+	// affected by temporary fluctuations in PS while it's being developed.
 	// kim: TODO: additionally no-op PS upsert if global feature flag is
 	// disabled.
 	if varsModel == nil {
@@ -329,10 +333,10 @@ func UpdateProjectVars(projectId string, beforeVars model.ProjectVars, varsModel
 			return errors.Wrapf(err, "overwriting variables for project '%s'", vars.Id)
 		}
 	} else {
-		// kim: NOTE: this only updates those vars present in the after vars and
-		// ignores missing vars (which may be either deleted or omitted by
-		// above).
-		_, err := vars.FindAndModify(varsModel.VarsToDelete)
+		// kim: NOTE: this only updates those vars explicitly present in the
+		// after vars and ignores missing vars (which may be either deleted or
+		// omitted by above).
+		_, err := vars.FindAndModify(before, varsModel.VarsToDelete)
 		if err != nil {
 			return errors.Wrapf(err, "updating variables for project '%s'", vars.Id)
 		}

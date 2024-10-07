@@ -172,7 +172,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 	}
 	varsToDelete := []string{"d"}
 
-	info, err := newVars.FindAndModify(varsToDelete)
+	info, err := newVars.FindAndModify(vars, varsToDelete)
 	assert.NoError(err)
 	assert.NotNil(info)
 	assert.Equal(info.Updated, 1)
@@ -189,7 +189,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 	assert.False(ok)
 
 	newVars.Id = "234"
-	info, err = newVars.FindAndModify(varsToDelete)
+	info, err = newVars.FindAndModify(vars, varsToDelete)
 	assert.NoError(err) // should upsert
 }
 
