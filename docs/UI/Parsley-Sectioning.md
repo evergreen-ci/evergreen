@@ -29,7 +29,7 @@ A function containing a failing command is marked with a failing status icon whe
 Jump to Failing Line is a separate feature that works synergistically with Sectioning. When enabled with Sectioning, Parsley will open the failing command section and scroll to the failing line during initial load.
 
 ### Searching
-Sections that contain a search result will open. Iterating over search results will open the section if it's closed.
+Sections that match the search criteria will open automatically.
 
 ### Filtering
 Sections will temporarily go away when filters are applied and come back when filters are removed.
