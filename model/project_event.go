@@ -360,8 +360,7 @@ func (p *ProjectSettings) resolveDefaults() *ProjectSettingsEvent {
 }
 
 // LogProjectModified logs an event for a modification of a project's settings.
-// This also redacts project variables from the before and after project
-// settings, so care should be taken to ensure that the before/after
+// Secrets are redacted from the event data.
 func LogProjectModified(projectId, username string, before, after *ProjectSettings) error {
 	eventData := constructProjectChangeEvent(username, before, after)
 	if eventData == nil {
