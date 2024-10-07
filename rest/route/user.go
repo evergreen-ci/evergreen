@@ -702,7 +702,7 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	for _, toRemove := range h.rolesToRemove {
 		if err = u.RemoveRole(toRemove); err != nil {
-			catcher.Wrapf(err, "removing the role '%s' from user '%s'", toRemove, u.Username()))
+			catcher.Wrapf(err, "removing the role '%s' from user '%s'", toRemove, u.Username())
 		}
 	}
 
@@ -712,7 +712,7 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 		"roles_removed": h.rolesToRemove,
 		"user_modified": u.Username(),
 		"caller":        h.caller,
-		"errors": catcher.Resolve(),
+		"errors":        catcher.Resolve(),
 	})
 
 	if catcher.HasErrors() {
