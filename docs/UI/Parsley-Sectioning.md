@@ -10,7 +10,7 @@ At the top of the log viewer, two buttons are available to "Open all sections" a
 
 ![Toggle All Sections](../images/toggle_all_sections.png)
 
-There are also toggles available on function rows, "Open Subsections" and "Close Subsections", to expand and collapse all commands that belong to the function.
+Similarly there are "Open Subsections" and "Close Subsections" buttons available on individual function rows, which can be used to expand and collapse all commands that belong to the function.
 
 ![Toggle Subsections](../images/toggle_subsections.png)
 
