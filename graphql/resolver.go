@@ -197,7 +197,6 @@ func New(apiURL string) Config {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem checking repo view permission: %s", err.Error()))
 			}
 			if hasPermission {
-				fmt.Printf("Project %s has repo view permission\n", projectId)
 				return next(ctx)
 			}
 		}

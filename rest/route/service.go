@@ -221,7 +221,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/variables/rotate").Version(2).Put().Wrap(requireUser, adminSettings).RouteHandler(makeProjectVarsPut())
 	app.AddRoute("/permissions").Version(2).Get().Wrap(requireUser).RouteHandler(&permissionsGetHandler{})
 	app.AddRoute("/permissions/users").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetAllUsersPermissions(env.RoleManager()))
-	app.AddRoute("/repos/{repo_id}").Version(2).Get().Wrap(requireUser, viewProjectSettings).RouteHandler(makeGetRepoByID()) // remove repo routes.
+	app.AddRoute("/repos/{repo_id}").Version(2).Get().Wrap(requireUser, viewProjectSettings).RouteHandler(makeGetRepoByID())
 	app.AddRoute("/repos/{repo_id}").Version(2).Patch().Wrap(requireUser, requireRepoAdmin, editProjectSettings).RouteHandler(makePatchRepoByID(settings))
 	app.AddRoute("/roles").Version(2).Get().Wrap(requireUser).RouteHandler(acl.NewGetAllRolesHandler(env.RoleManager()))
 	app.AddRoute("/roles").Version(2).Post().Wrap(requireUser).RouteHandler(acl.NewUpdateRoleHandler(env.RoleManager()))
