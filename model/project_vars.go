@@ -3,10 +3,12 @@ package model
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"maps"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
@@ -25,10 +27,11 @@ import (
 )
 
 var (
-	projectVarIdKey     = bsonutil.MustHaveTag(ProjectVars{}, "Id")
-	projectVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
-	privateVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
-	adminOnlyVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "AdminOnlyVars")
+	projectVarIdKey          = bsonutil.MustHaveTag(ProjectVars{}, "Id")
+	projectVarsMapKey        = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
+	projectVarsParametersKey = bsonutil.MustHaveTag(ProjectVars{}, "Parameters")
+	privateVarsMapKey        = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
+	adminOnlyVarsMapKey      = bsonutil.MustHaveTag(ProjectVars{}, "AdminOnlyVars")
 )
 
 const (
@@ -300,13 +303,100 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 	// into memory. If that happens before this, then loading the project vars
 	// is pretty much free here and saves having to plumb the before vars
 	// down from the request.
-	before, err := FindOneProjectVars(projectVars.Id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectVars.Id)
-	}
-	// kim: TODO: use before vars to determine diff of modified vars.
-	if before != nil {
-		fmt.Println("kim: before vars:", before)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, projectVars.Id)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message":    "could not check if Parameter Store was enabled for project, falling back to assuming it's disabled",
+		"project_id": projectVars.Id,
+	}))
+	if isPSEnabled {
+		before, err := FindOneProjectVars(projectVars.Id)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectVars.Id)
+		}
+
+		toUpsert := map[string]string{}
+		toDelete := map[string]struct{}{}
+		for varName := range before.Vars {
+			if _, ok := projectVars.Vars[varName]; !ok {
+				toDelete[varName] = struct{}{}
+			}
+		}
+		for varName, afterVal := range projectVars.Vars {
+			beforeVal, ok := before.Vars[varName]
+			if !ok || beforeVal != afterVal {
+				toUpsert[varName] = afterVal
+			}
+		}
+
+		// kim: NOTE: I'm sure that there's a more elegant way to track the
+		// updates/deletes (possibly by absorbing into above logic) and map
+		// between the project variable name and param name. But if the logic
+		// works, that's good enough for now and it can be cleaned up later.
+		paramMappingToUpdate := map[string]string{}
+		paramMappingToDelete := map[string]struct{}{}
+		pm := evergreen.GetEnvironment().ParameterManager()
+		for varName, varValue := range toUpsert {
+			paramName, err := getParamNameForVar(before.Parameters, varName)
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":    "could not get corresponding parameter name for project variable",
+					"var_name":   varName,
+					"project_id": projectVars.Id,
+				}))
+				continue
+			}
+			// kim: TODO: get compressed param value as well.
+			param, err := pm.Put(ctx, paramName, varValue)
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":    "could not put project variable into Parameter Store",
+					"var_name":   varName,
+					"project_id": projectVars.Id,
+				}))
+				continue
+			}
+			paramMappingToUpdate[varName] = param.Name
+		}
+		if len(toDelete) > 0 {
+			namesToDelete := make([]string, 0, len(toDelete))
+			for _, paramMapping := range before.Parameters {
+				if _, ok := toDelete[paramMapping.Name]; ok {
+					namesToDelete = append(namesToDelete, paramMapping.ParameterName)
+					paramMappingToDelete[paramMapping.Name] = struct{}{}
+				}
+			}
+			if err := pm.Delete(ctx, namesToDelete...); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":               "could not delete project variables from Parameter Store",
+					"vars_to_delete":        toDelete,
+					"param_names_to_delete": namesToDelete,
+					"project_id":            projectVars.Id,
+				}))
+			}
+		}
+
+		syncedParamMappings := getSyncedParamMappings(projectVars.Parameters, paramMappingToUpdate, paramMappingToDelete)
+		if _, err := db.Upsert(
+			ProjectVarsCollection,
+			bson.M{
+				projectVarIdKey: projectVars.Id,
+			},
+			bson.M{
+				"$set": bson.M{
+					projectVarsParametersKey: syncedParamMappings,
+				},
+			},
+		); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":               "could not update parameter mappings for project vars",
+				"param_mapping_updates": paramMappingToUpdate,
+				"param_mapping_deletes": paramMappingToUpdate,
+				"project_id":            projectVars.Id,
+			}))
+		}
+		projectVars.Parameters = syncedParamMappings
 	}
 
 	return db.Upsert(
@@ -322,6 +412,58 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 			},
 		},
 	)
+}
+
+func getSyncedParamMappings(existingParamMappings []ParameterMapping, updatedParamMappings map[string]string, deletedParamMappings map[string]struct{}) []ParameterMapping {
+	syncedMapping := make([]ParameterMapping, 0, len(existingParamMappings))
+	for varName, paramName := range updatedParamMappings {
+		syncedMapping = append(syncedMapping, ParameterMapping{
+			Name:          varName,
+			ParameterName: paramName,
+		})
+	}
+
+	for i, paramMapping := range existingParamMappings {
+		if _, ok := deletedParamMappings[paramMapping.Name]; ok {
+			continue
+		}
+		syncedMapping = append(syncedMapping, existingParamMappings[i])
+	}
+
+	// kim: TODO: sort so it's in a predictable alphabetical order.
+	// sort.Sort(syncedMapping)
+	return syncedMapping
+}
+
+// isParameterStoreEnabledForProject checks if Parameter Store is enabled for a
+// project.
+func isParameterStoreEnabledForProject(ctx context.Context, projectID string) (bool, error) {
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return false, errors.Wrap(err, "getting service flags")
+	}
+	if flags.ParameterStoreDisabled {
+		return false, nil
+	}
+
+	projRef, err := FindMergedProjectRef(projectID, "", false)
+	if err != nil {
+		return false, errors.Wrapf(err, "finding merged project ref '%s'", projectID)
+	}
+	if projRef != nil {
+		return projRef.ParameterStoreEnabled, nil
+	}
+
+	// Project vars could tied to a repo instead of branch project, so check the
+	// repo as a fallback.
+	repoRef, err := FindOneRepoRef(projectID)
+	if err != nil {
+		return false, errors.Wrapf(err, "finding repo ref '%s'", projectID)
+	}
+	if repoRef == nil {
+		return false, errors.Errorf("project or repo ref '%s' not found", projectID)
+	}
+	return repoRef.ParameterStoreEnabled, nil
 }
 
 func (projectVars *ProjectVars) Insert() error {
