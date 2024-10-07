@@ -1726,6 +1726,7 @@ func UserHasRepoViewPermission(u *user.DBUser, repoRefId string) (bool, error) {
 	if err != nil {
 		return false, errors.Wrap(err, "finding branch project IDs")
 	}
+
 	for _, pRef := range projectRefs {
 		opts := gimlet.PermissionOpts{
 			Resource:      pRef.Id,
