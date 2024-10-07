@@ -16,8 +16,6 @@ Similarly there are "Open Subsections" and "Close Subsections" buttons available
 
 Clicking on the caret will also open and close a single command or function section.
 
-![Toggle Single Section](../images/section_toggle.png)
-
 ### Section status
 A function containing a failing command is marked with a failing status icon whereas as passing function is marked with a passing icon.
 
@@ -25,7 +23,7 @@ A function containing a failing command is marked with a failing status icon whe
 
 ![Failing Function](../images/failing_function.png)
 
-### Jump to Failing Line
+### Jump to failing line
 Jump to Failing Line is a separate feature that works synergistically with Sectioning. When enabled with Sectioning, Parsley will open the failing command section and scroll to the failing line during initial load.
 
 ### Searching
