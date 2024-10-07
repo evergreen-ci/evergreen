@@ -3520,9 +3520,11 @@ func GetPaginatedRunningHosts(ctx context.Context, opts HostsFilterOptions) ([]H
 	if len(opts.SortBy) > 0 {
 		sorters = append(sorters, bson.E{Key: opts.SortBy, Value: opts.SortDir})
 	}
-	// _id must be the last item in the sort array to ensure a consistent sort
-	// order when previous sort keys result in a tie.
-	sorters = append(sorters, bson.E{Key: IdKey, Value: 1})
+
+	// If we're not sorting by ID, we need to sort by ID as a tiebreaker to ensure a consistent sort order.
+	if opts.SortBy != IdKey {
+		sorters = append(sorters, bson.E{Key: IdKey, Value: 1})
+	}
 	runningHostsPipeline = append(runningHostsPipeline, bson.M{
 		"$sort": sorters,
 	})
