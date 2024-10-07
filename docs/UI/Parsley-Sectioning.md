@@ -1,7 +1,7 @@
 # Parsley Sectioning
 
 ## Overview
-Parsley sectioning is toggleable from the "Log Viewing" tab of the "Parsley Settings" menu and is available to task logs only. Toggling the feature will render your task log into expandable sections split up by function and command.
+Parsley sectioning is toggleable from the "Log Viewing" tab of the "Parsley Settings" menu and is available for task logs only. Enabling sectioning will render your task log into expandable sections split up by function and command.
 
 ## Feature details
 
