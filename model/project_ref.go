@@ -1713,6 +1713,33 @@ func FindBranchAdminsForRepo(repoId string) ([]string, error) {
 	return utility.UniqueStrings(allBranchAdmins), nil
 }
 
+// UserHasRepoViewPermission returns true if the user has permission to view any branch project settings.
+func UserHasRepoViewPermission(u *user.DBUser, repoRefId string) (bool, error) {
+	projectRefs := []ProjectRef{}
+	err := db.FindAllQ(
+		ProjectRefCollection,
+		db.Query(bson.M{
+			ProjectRefRepoRefIdKey: repoRefId,
+		}).WithFields(ProjectRefIdKey),
+		&projectRefs,
+	)
+	if err != nil {
+		return false, errors.Wrap(err, "finding branch project IDs")
+	}
+	for _, pRef := range projectRefs {
+		opts := gimlet.PermissionOpts{
+			Resource:      pRef.Id,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsView.Value,
+		}
+		if u.HasPermission(opts) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // FindDownstreamProjects finds projects that have that trigger enabled or
 // inherits it from the repo project.
 func FindDownstreamProjects(project string) ([]ProjectRef, error) {
