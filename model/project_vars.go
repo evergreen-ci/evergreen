@@ -280,6 +280,7 @@ func GetAWSKeyForProject(projectId string) (*AWSSSHKey, error) {
 	}, nil
 }
 
+// kim: TODO: update this to sync with PS as well if enabled.
 func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 	return db.Upsert(
 		ProjectVarsCollection,
@@ -303,6 +304,7 @@ func (projectVars *ProjectVars) Insert() error {
 	)
 }
 
+// kim: TODO: update this to also sync with PS as well if enabled.
 func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.ChangeInfo, error) {
 	setUpdate := bson.M{}
 	unsetUpdate := bson.M{}
@@ -311,6 +313,7 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 		len(projectVars.AdminOnlyVars) == 0 && len(varsToDelete) == 0 {
 		return nil, nil
 	}
+	// kim: NOTE: this only sets vars for the modified vars.
 	for key, val := range projectVars.Vars {
 		setUpdate[bsonutil.GetDottedKeyName(projectVarsMapKey, key)] = val
 	}

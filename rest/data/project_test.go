@@ -277,7 +277,10 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 		PrivateVars:  map[string]bool{"b": false, "c": true},
 		VarsToDelete: varsToDelete,
 	}
-	s.NoError(UpdateProjectVars(projectId, &newVars, false))
+	projectVars, err := model.FindOneProjectVars(projectId)
+	s.Require().NoError(err)
+	s.Require().NotZero(projectVars)
+	s.NoError(UpdateProjectVars(projectId, *projectVars, &newVars, false))
 	s.Equal(newVars.Vars["b"], "") // can't unredact previously redacted  variables
 	s.Equal(newVars.Vars["c"], "")
 	s.Equal(newVars.Vars["d"], "4") // can't overwrite a value with the empty string
@@ -290,7 +293,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	s.False(ok)
 
 	// successful upsert
-	s.NoError(UpdateProjectVars("not-an-id", &newVars, false))
+	s.NoError(UpdateProjectVars("not-an-id", model.ProjectVars{}, &newVars, false))
 }
 
 func TestUpdateProjectVarsByValue(t *testing.T) {
