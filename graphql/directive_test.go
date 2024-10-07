@@ -104,7 +104,7 @@ func setupPermissions(t *testing.T) {
 		ID:        "project_scope",
 		Name:      "project scope",
 		Type:      evergreen.ProjectResourceType,
-		Resources: []string{"project_id", "repo_id"},
+		Resources: []string{"project_id"},
 	}
 	err = roleManager.AddScope(projectScope)
 	require.NoError(t, err)
