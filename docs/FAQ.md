@@ -44,6 +44,7 @@ A few things may cause this issue:
 - There may be a typo in the owner or repository used when generating the token. Look for the log that says `creating github dynamic access token for 'owner/repo'` and copy/paste it into github to ensure that the owner/repo exist and are spelled correctly.
 - Parts of the evergreen system or github may be down.
 - There may be something wrong with the github app ID or the github app key saved in [project settings](Github-Integrations#dynamic-github-access-tokens).
+- You may be requesting a permission that your app doesn't have. For example, you may be specifying `contents: read` in the command but the app you provided in your project settings doesn't have `contents: read` permissions for the repo.
 
 ##### How can I use a generated token for private go modules?
 
