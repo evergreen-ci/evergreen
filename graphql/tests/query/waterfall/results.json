@@ -288,6 +288,18 @@
           }
         }
       }
+    },
+    {
+      "query_file": "no_versions.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "nextPageOrder": 0,
+            "prevPageOrder": 0,
+            "versions": []
+          }
+        }
+      }
     }
   ]
 }

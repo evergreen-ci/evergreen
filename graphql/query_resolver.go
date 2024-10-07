@@ -1049,13 +1049,17 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		}
 	}
 
-	// Return the min and max orders returned to be used as parameters for navigating to the next page
-	prevPageOrder := allVersions[0].RevisionOrderNumber
-	nextPageOrder := allVersions[len(allVersions)-1].RevisionOrderNumber
+	prevPageOrder := 0
+	nextPageOrder := 0
+	if len(allVersions) > 0 {
+		// Return the min and max orders returned to be used as parameters for navigating to the next page
+		prevPageOrder = allVersions[0].RevisionOrderNumber
+		nextPageOrder = allVersions[len(allVersions)-1].RevisionOrderNumber
 
-	// If loading base page, there's no prev page to navigate to regardless of max order
-	if maxOrderOpt == 0 && minOrderOpt == 0 {
-		prevPageOrder = 0
+		// If loading base page, there's no prev page to navigate to regardless of max order
+		if maxOrderOpt == 0 && minOrderOpt == 0 {
+			prevPageOrder = 0
+		}
 	}
 
 	return &Waterfall{

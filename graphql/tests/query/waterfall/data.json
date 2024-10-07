@@ -201,6 +201,10 @@
     {
       "_id": "mci",
       "identifier": "mci"
+    },
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "project_sandbox"
     }
   ],
   "builds": [
