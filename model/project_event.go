@@ -89,20 +89,20 @@ func getRedactedVarsCopy(vars map[string]string, modifiedVarNames map[string]str
 	// Note: this copy logic can be replaced by maps.Clone(vars) once Evergreen
 	// can compile with go 1.21 or higher.
 	redactedVars := make(map[string]string, len(vars))
-	for k, v := range vars {
-		redactedVars[k] = v
+	for name, value := range vars {
+		redactedVars[name] = value
 	}
 
-	for k, v := range redactedVars {
-		if _, ok := modifiedVarNames[k]; ok && v != "" {
+	for name, value := range redactedVars {
+		if _, ok := modifiedVarNames[name]; ok && value != "" {
 			// The project var was modified and it had a value, so replace the
 			// value with a placeholder string to indicate that it changed.
-			redactedVars[k] = placeholder
-		} else if v != "" {
+			redactedVars[name] = placeholder
+		} else if value != "" {
 			// The project var was not modified, but it still has a non-empty
 			// value. Set the value to empty to indicate that the project var
 			// exists but was not modified.
-			redactedVars[k] = ""
+			redactedVars[name] = ""
 		}
 	}
 	return redactedVars
