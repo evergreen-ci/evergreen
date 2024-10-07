@@ -74,10 +74,13 @@ func (t *selectTestsHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
-	grip.Info(message.Fields{
+	// TODO (DEVPROD-11879): remove this log once test ROI MVP no longer needs
+	// this to debug inputs.
+	grip.Debug(message.Fields{
 		"message": "received test selection request",
 		"route":   "/rest/v2/select/tests",
 		"request": t.selectTests,
+		"ticket":  "DEVPROD-11629",
 	})
 	return gimlet.NewJSONResponse(t.selectTests)
 }
