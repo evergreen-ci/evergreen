@@ -1,7 +1,6 @@
 package model
 
 import (
-	"maps"
 	"reflect"
 	"time"
 
@@ -61,7 +60,13 @@ func (e *ProjectChangeEvent) RedactVars() {
 // vars map, which may be shared by the actual project settings. That way,
 // callers can still access the unredacted variable values.
 func getRedactedVarsCopy(vars map[string]string, modifiedVarNames map[string]struct{}, placeholder string) map[string]string {
-	redactedVars := maps.Clone(vars)
+	// Note: this copy logic can be replaced by maps.Clone(vars) once Evergreen
+	// can compile with go 1.21 or higher.
+	redactedVars := make(map[string]string, len(vars))
+	for k, v := range vars {
+		redactedVars[k] = v
+	}
+
 	for k, v := range redactedVars {
 		if _, ok := modifiedVarNames[k]; ok && v != "" {
 			// The project var was modified and it had a value, so replace the
