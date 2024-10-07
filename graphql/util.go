@@ -354,13 +354,11 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 		IncludeNeverActivatedTasks: !evergreen.IsPatchRequester(requester),
 	}
 
-	start := time.Now()
 	tasks, _, err := task.GetTasksByVersion(ctx, versionId, opts)
 	if err != nil {
 		return nil, errors.Wrapf(err, fmt.Sprintf("Error getting tasks for patch `%s`", versionId))
 	}
-	timeToFindTasks := time.Since(start)
-	buildTaskStartTime := time.Now()
+
 	for _, t := range tasks {
 		apiTask := restModel.APITask{}
 		err := apiTask.BuildFromService(ctx, &t, &restModel.APITaskArgs{
@@ -374,9 +372,6 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 
 	}
 
-	timeToBuildTasks := time.Since(buildTaskStartTime)
-	groupTasksStartTime := time.Now()
-
 	result := []*GroupedBuildVariant{}
 	for variant, tasks := range tasksByVariant {
 		pbv := GroupedBuildVariant{
@@ -387,28 +382,11 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 		result = append(result, &pbv)
 	}
 
-	timeToGroupTasks := time.Since(groupTasksStartTime)
-
-	sortTasksStartTime := time.Now()
 	// sort variants by name
 	sort.SliceStable(result, func(i, j int) bool {
 		return result[i].DisplayName < result[j].DisplayName
 	})
 
-	timeToSortTasks := time.Since(sortTasksStartTime)
-
-	totalTime := time.Since(start)
-	grip.InfoWhen(totalTime > time.Second*2, message.Fields{
-		"Ticket":             "EVG-14828",
-		"timeToFindTasksMS":  timeToFindTasks.Milliseconds(),
-		"timeToBuildTasksMS": timeToBuildTasks.Milliseconds(),
-		"timeToGroupTasksMS": timeToGroupTasks.Milliseconds(),
-		"timeToSortTasksMS":  timeToSortTasks.Milliseconds(),
-		"totalTimeMS":        totalTime.Milliseconds(),
-		"versionId":          versionId,
-		"taskCount":          len(tasks),
-		"buildVariantCount":  len(result),
-	})
 	return result, nil
 }
 

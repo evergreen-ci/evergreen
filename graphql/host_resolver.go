@@ -88,7 +88,6 @@ func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (
 		if volume == nil {
 			grip.Error(message.Fields{
 				"message":   "could not find the volume associated with this host",
-				"ticket":    "EVG-16149",
 				"host_id":   obj.Id,
 				"volume_id": volId,
 			})

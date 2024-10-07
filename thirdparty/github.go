@@ -110,7 +110,7 @@ var (
 	githubTransport http.RoundTripper
 	cacheTransport  *httpcache.Transport
 
-	// TODO: (EVG-19966) Remove this error type.
+	// TODO: (DEVPROD-2923) Remove this error type.
 	missingTokenError = errors.New("missing installation token")
 )
 
@@ -354,13 +354,13 @@ func getInstallationToken(ctx context.Context, owner, repo string, opts *github.
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "error creating token",
-			"ticket":  "EVG-19966",
+			"ticket":  "DEVPROD-2923",
 			"owner":   owner,
 			"repo":    repo,
 		}))
 		return "", errors.Wrap(err, "creating installation token")
 	}
-	// TODO: (EVG-19966) Remove once CreateInstallationToken returns an error.
+	// TODO: (DEVPROD-2923) Remove once CreateInstallationToken returns an error.
 	if token == "" {
 		return "", missingTokenError
 	}
@@ -402,11 +402,11 @@ func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "error creating default token",
-			"ticket":  "EVG-19966",
+			"ticket":  "DEVPROD-2923",
 		}))
 		return "", errors.Wrap(err, "creating default installation token")
 	}
-	// TODO: (EVG-19966) Remove once CreateInstallationTokenWithDefaultOwnerRepo returns an error.
+	// TODO: (DEVPROD-2923) Remove once CreateInstallationTokenWithDefaultOwnerRepo returns an error.
 	if token == "" {
 		return "", missingTokenError
 	}
@@ -421,9 +421,9 @@ func GetGithubCommits(ctx context.Context, token, owner, repo, ref string, until
 	if err == nil {
 		return commits, nextPage, nil
 	}
-	// TODO: (EVG-19966) Remove logging.
+	// TODO: (DEVPROD-2923) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
+		"ticket":  "DEVPROD-2923",
 		"message": "failed to get commits from GitHub",
 		"caller":  "GetGithubCommits",
 		"owner":   owner,
@@ -503,9 +503,9 @@ func GetGithubFile(ctx context.Context, token, owner, repo, path, ref string) (*
 	if err == nil {
 		return content, nil
 	}
-	// TODO: (EVG-19966) Remove logging.
+	// TODO: (DEVPROD-2923) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
+		"ticket":  "DEVPROD-2923",
 		"message": "failed to get a file from GitHub",
 		"caller":  "GetGithubFile",
 		"owner":   owner,
@@ -638,7 +638,7 @@ func GetGithubMergeBaseRevision(ctx context.Context, token, owner, repo, baseRev
 		return mergeBase, nil
 	}
 	grip.Debug(message.WrapError(err, message.Fields{
-		"ticket":              "EVG-19966",
+		"ticket":              "DEVPROD-2923",
 		"message":             "failed to get merge-base from GitHub",
 		"caller":              "GetGithubMergeBaseRevision",
 		"owner":               owner,
@@ -730,9 +730,9 @@ func GetCommitEvent(ctx context.Context, token, owner, repo, githash string) (*g
 	if err == nil {
 		return event, nil
 	}
-	// TODO: (EVG-19966) Remove logging.
+	// TODO: (DEVPROD-2923) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
+		"ticket":  "DEVPROD-2923",
 		"message": "failed to get commit event from GitHub",
 		"caller":  "GetCommitEvent",
 		"owner":   owner,
@@ -810,9 +810,9 @@ func GetCommitDiff(ctx context.Context, token, owner, repo, sha string) (string,
 	if err == nil {
 		return diff, nil
 	}
-	// TODO: (EVG-19966) Remove logging.
+	// TODO: (DEVPROD-2923) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
+		"ticket":  "DEVPROD-2923",
 		"message": "failed to get commit diff from GitHub",
 		"caller":  "GetCommitDiff",
 		"owner":   owner,
@@ -870,9 +870,9 @@ func GetBranchEvent(ctx context.Context, token, owner, repo, branch string) (*gi
 	if err == nil {
 		return event, nil
 	}
-	// TODO: (EVG-19966) Remove logging.
+	// TODO: (DEVPROD-2923) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
+		"ticket":  "DEVPROD-2923",
 		"message": "failed to get branch event from GitHub",
 		"caller":  "GetBranchEvent",
 		"owner":   owner,
@@ -1066,9 +1066,9 @@ func GetTaggedCommitFromGithub(ctx context.Context, token, owner, repo, tag stri
 	if err == nil {
 		return sha, nil
 	}
-	// TODO: (EVG-19966) Remove logging.
+	// TODO: (DEVPROD-2923) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
+		"ticket":  "DEVPROD-2923",
 		"message": "failed to get tagged commit from GitHub",
 		"caller":  "GetTaggedCommitFromGithub",
 		"owner":   owner,
@@ -1173,9 +1173,9 @@ func IsUserInGithubTeam(ctx context.Context, teams []string, org, user, token, o
 	if err == nil {
 		return inTeam
 	}
-	// TODO: (EVG-19966) Remove logging.
+	// TODO: (DEVPROD-2923) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
+		"ticket":  "DEVPROD-2923",
 		"message": "failed to get team membership from GitHub",
 		"caller":  "IsUserInGithubTeam",
 		"org":     org,
@@ -1289,9 +1289,9 @@ func CheckGithubAPILimit(ctx context.Context, token string) (int64, error) {
 	if err == nil {
 		return limit, nil
 	}
-	// TODO: (EVG-19966) Remove logging.
+	// TODO: (DEVPROD-2923) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
+		"ticket":  "DEVPROD-2923",
 		"message": "failed to get API limit from GitHub",
 		"caller":  "CheckGithubAPILimit",
 	}))
@@ -1342,9 +1342,9 @@ func GetGithubUser(ctx context.Context, token, loginName string) (*github.User, 
 	if err == nil {
 		return user, nil
 	}
-	// TODO: (EVG-19966) Remove logging.
+	// TODO: (DEVPROD-2923) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
+		"ticket":  "DEVPROD-2923",
 		"message": "failed to get user from GitHub",
 		"caller":  "GetGithubUser",
 		"user":    loginName,
@@ -1394,9 +1394,9 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 	if err == nil {
 		return inOrg, nil
 	}
-	// TODO: (EVG-19966) Remove logging.
+	// TODO: (DEVPROD-2923) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
+		"ticket":  "DEVPROD-2923",
 		"message": "failed to check user in org from GitHub",
 		"caller":  "GithubUserInOrganization",
 		"org":     requiredOrganization,
@@ -1438,9 +1438,9 @@ func AppAuthorizedForOrg(ctx context.Context, token, requiredOrganization, name 
 	if err == nil {
 		return authorized, nil
 	}
-	// TODO: (EVG-19966) Remove logging.
+	// TODO: (DEVPROD-2923) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
+		"ticket":  "DEVPROD-2923",
 		"message": "failed to check app in org from GitHub",
 		"caller":  "AppAuthorizedForOrg",
 		"org":     requiredOrganization,
@@ -1509,7 +1509,7 @@ func GitHubUserHasWritePermission(ctx context.Context, token, owner, repo, usern
 		return level, nil
 	}
 	grip.Debug(message.WrapError(err, message.Fields{
-		"ticket":   "EVG-19966",
+		"ticket":   "DEVPROD-2923",
 		"message":  "failed to check user permission level from GitHub",
 		"caller":   "GitHubUserPermissionLevel",
 		"owner":    owner,
@@ -1588,9 +1588,9 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data GithubPatch
 	if err == nil {
 		return mergeBase, nil
 	}
-	// TODO: (EVG-19966) Remove logging.
+	// TODO: (DEVPROD-2923) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
+		"ticket":  "DEVPROD-2923",
 		"message": "failed to get PR merge base from GitHub",
 		"caller":  "GetPullRequestMergeBase",
 		"owner":   data.BaseOwner,
@@ -1689,9 +1689,9 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 	if err == nil {
 		return pr, nil
 	}
-	// TODO: (EVG-19966) Remove logging.
+	// TODO: (DEVPROD-2923) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":         "EVG-19966",
+		"ticket":         "DEVPROD-2923",
 		"message":        "failed to get PR from GitHub",
 		"caller":         "GetGithubPullRequest",
 		"owner":          baseOwner,
@@ -1740,9 +1740,9 @@ func GetGithubPullRequestDiff(ctx context.Context, token string, gh GithubPatch)
 	if err == nil {
 		return diff, summary, nil
 	}
-	// TODO: (EVG-19966) Remove logging.
+	// TODO: (DEVPROD-2923) Remove logging.
 	grip.DebugWhen(!errors.Is(err, missingTokenError), message.WrapError(err, message.Fields{
-		"ticket":  "EVG-19966",
+		"ticket":  "DEVPROD-2923",
 		"message": "failed to get PR diff from GitHub",
 		"caller":  "GetGithubPullRequestDiff",
 		"owner":   gh.BaseOwner,
@@ -1925,7 +1925,7 @@ func MergePullRequest(ctx context.Context, token, appToken, owner, repo, commitM
 		return nil
 	}
 	grip.Debug(message.WrapError(err, message.Fields{
-		"ticket":    "EVG-19966",
+		"ticket":    "DEVPROD-2923",
 		"message":   "failed to merge PR on GitHub",
 		"caller":    "MergePullRequest",
 		"owner":     owner,
@@ -1971,7 +1971,7 @@ func PostCommentToPullRequest(ctx context.Context, token, owner, repo string, pr
 		return nil
 	}
 	grip.Debug(message.WrapError(err, message.Fields{
-		"ticket":    "EVG-19966",
+		"ticket":    "DEVPROD-2923",
 		"message":   "failed to comment to PR on GitHub",
 		"caller":    "PostCommentToPullRequest",
 		"owner":     owner,

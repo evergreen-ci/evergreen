@@ -375,24 +375,14 @@ func getPRAndCheckBase(ctx context.Context, sc Connector, info commitqueue.Enque
 // PR info as-is.
 func checkPRIsMergeable(ctx context.Context, sc Connector, pr *github.PullRequest, info commitqueue.EnqueuePRInfo) (*github.PullRequest, error) {
 	mergeableState := pr.GetMergeableState()
-
-	grip.Debug(message.Fields{
-		"message":        "checking PR mergeable status",
-		"ticket":         "EVG-19680",
-		"owner":          info.Owner,
-		"repo":           info.Repo,
-		"pr":             info.PR,
-		"mergeble_state": mergeableState,
-	})
 	// If the PR is blocked, refresh status, and re-check PR.
 	// We do this even if the patch isn't finished since the PR checks may not rely on all variants.
 	if mergeableState == thirdparty.GithubPRBlocked {
 		p, err := patch.FindLatestGithubPRPatch(info.Owner, info.Repo, info.PR)
 		if err != nil {
-			// Not required that such a patch exists, since the commit queue can be enabled without PR checks, so we log at debugging.
-			grip.Debug(message.WrapError(err, message.Fields{
+			// Not required that such a patch exists, since the commit queue can be enabled without PR checks.
+			grip.Info(message.WrapError(err, message.Fields{
 				"message": "couldn't find latest PR patch when enqueuing PR",
-				"ticket":  "EVG-19098",
 				"owner":   info.Owner,
 				"repo":    info.Repo,
 				"pr":      info.PR,

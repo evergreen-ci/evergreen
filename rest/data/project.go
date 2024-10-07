@@ -55,7 +55,7 @@ func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*m
 }
 
 // RequestS3Creds creates a JIRA ticket that requests S3 credentials to be added for the specified project.
-// TODO PM-3212: Remove the function after project completion.
+// TODO DEVPROD-5553: Remove the function after project completion.
 func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) error {
 	if projectIdentifier == "" {
 		return errors.New("project identifier cannot be empty")

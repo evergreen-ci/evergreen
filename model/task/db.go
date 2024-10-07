@@ -2032,7 +2032,7 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 	var count int
 
 	// If there is no limit applied we should just return the tasks and compute the total count in go.
-	// This avoids hitting the 16 MB limit on the aggregation pipeline in the $facet stage https://jira.mongodb.org/browse/EVG-15334
+	// This avoids hitting the 16 MB limit on the aggregation pipeline in the $facet stage (EVG-15334)
 	if opts.Limit > 0 {
 		type TasksAndCount struct {
 			Tasks []Task           `bson:"tasks"`

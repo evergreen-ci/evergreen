@@ -43,7 +43,7 @@ func CompareTasks(ctx context.Context, taskIds []string, useLegacy bool) ([]stri
 		for _, t := range tasks {
 			prioritizedIds = append(prioritizedIds, t.Id)
 		}
-	} else { // this is temporary: logic should be added in EVG-13795
+	} else { // this is temporary: logic should be added in DEVPROD-1849
 		d, err := distro.FindOneId(ctx, distroId)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "finding distro '%s'", distroId)

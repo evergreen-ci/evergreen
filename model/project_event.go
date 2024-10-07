@@ -190,7 +190,7 @@ func (e *ProjectChangeEventEntry) SetBSON(raw mgobson.Raw) error {
 	}
 
 	// IDs for events were ObjectIDs previously, so we need to do this
-	// TODO (EVG-17214): Remove once old events are TTLed and/or migrated.
+	// TODO (DEVPROD-1838): Remove once old events are TTLed and/or migrated.
 	switch v := temp.ID.(type) {
 	case string:
 		e.ID = v
