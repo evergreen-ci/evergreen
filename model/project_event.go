@@ -49,9 +49,32 @@ type ProjectChangeEvent struct {
 // variables that are not changed are cleared and project variables that are
 // changed are replaced with redacted placeholders.
 func (e *ProjectChangeEvent) RedactVars() {
-	modifiedVarKeys := findModifiedProjectVars(e)
+	modifiedVarKeys := e.getModifiedProjectVars()
 	e.Before.Vars.Vars = getRedactedVarsCopy(e.Before.Vars.Vars, modifiedVarKeys, evergreen.RedactedBeforeValue)
 	e.After.Vars.Vars = getRedactedVarsCopy(e.After.Vars.Vars, modifiedVarKeys, evergreen.RedactedAfterValue)
+}
+
+// getModifiedProjectVars returns the set of project variables in the change
+// event that have been added, removed, or had their values modified.
+func (e *ProjectChangeEvent) getModifiedProjectVars() map[string]struct{} {
+	modifiedVarsSet := map[string]struct{}{}
+
+	for name, value := range e.Before.Vars.Vars {
+		afterVal, exists := e.After.Vars.Vars[name]
+		if !exists || afterVal != value {
+			// Variable was modified or deleted.
+			modifiedVarsSet[name] = struct{}{}
+		}
+	}
+	for name, value := range e.After.Vars.Vars {
+		beforeVal, exists := e.Before.Vars.Vars[name]
+		if !exists || beforeVal != value {
+			// Variable was modified or added.
+			modifiedVarsSet[name] = struct{}{}
+		}
+	}
+
+	return modifiedVarsSet
 }
 
 // getRedactedVarsCopy returns a copy of the project variables with modified
@@ -180,29 +203,6 @@ func (p *ProjectChangeEvents) RedactVars() {
 		changeEvent.RedactVars()
 		event.EventLogEntry.Data = changeEvent
 	}
-}
-
-// findModifiedProjectVars returns the set of project variables in the change
-// event that have been added, removed, or had their values modified.
-func findModifiedProjectVars(changeEvent *ProjectChangeEvent) map[string]struct{} {
-	modifiedVarsSet := map[string]struct{}{}
-
-	for name, value := range changeEvent.Before.Vars.Vars {
-		afterVal, exists := changeEvent.After.Vars.Vars[name]
-		if !exists || afterVal != value {
-			// Variable was modified or deleted.
-			modifiedVarsSet[name] = struct{}{}
-		}
-	}
-	for name, value := range changeEvent.After.Vars.Vars {
-		beforeVal, exists := changeEvent.Before.Vars.Vars[name]
-		if !exists || beforeVal != value {
-			// Variable was modified or added.
-			modifiedVarsSet[name] = struct{}{}
-		}
-	}
-
-	return modifiedVarsSet
 }
 
 type ProjectChangeEventEntry struct {
