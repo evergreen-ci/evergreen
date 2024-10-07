@@ -83,6 +83,9 @@ func (e *ProjectChangeEvent) getModifiedProjectVars() map[string]struct{} {
 // vars map, which may be shared by the actual project settings. That way,
 // callers can still access the unredacted variable values.
 func getRedactedVarsCopy(vars map[string]string, modifiedVarNames map[string]struct{}, placeholder string) map[string]string {
+	if len(vars) == 0 {
+		return map[string]string{}
+	}
 	// Note: this copy logic can be replaced by maps.Clone(vars) once Evergreen
 	// can compile with go 1.21 or higher.
 	redactedVars := make(map[string]string, len(vars))
