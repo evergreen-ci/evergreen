@@ -36,8 +36,8 @@ buildvariants:
     run_on:
       - DEVPROD-5742-ubuntu2204-small
     tasks:
-      - name: clone-public-repo-ssh
-      - name: clone-private-repo-ssh
+      - name: ssh-clone-public-repo
+      - name: ssh-clone-private-repo-ssh
   - name: osx
     display_name: OSX
     run_on:
