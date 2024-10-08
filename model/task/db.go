@@ -2964,7 +2964,7 @@ func getGenerateTasksEstimation(ctx context.Context, project, buildVariant, disp
 	coll := evergreen.GetEnvironment().DB().Collection(Collection)
 	dbCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	cursor, err := coll.Aggregate(dbCtx, pipeline, &options.AggregateOptions{Hint: DurationIndex})
+	cursor, err := coll.Aggregate(dbCtx, pipeline, options.Aggregate().SetHint(DurationIndex))
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating generate tasks estimations")
 	}
