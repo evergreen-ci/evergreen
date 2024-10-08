@@ -89,6 +89,36 @@
       "author": "mohamed.khelif",
       "status": "created",
       "order": 45
+    },
+    {
+      "_id": "inactive1",
+      "gitspec": "abc",
+      "identifier": "mci",
+      "r": "gitter_request",
+      "activated": false,
+      "author": "sophie.stadler",
+      "status": "inactive",
+      "order": 1
+    },
+    {
+      "_id": "inactive2",
+      "gitspec": "abc",
+      "identifier": "mci",
+      "r": "gitter_request",
+      "activated": false,
+      "author": "sophie.stadler",
+      "status": "inactive",
+      "order": 2
+    },
+    {
+      "_id": "inactive3",
+      "gitspec": "abc",
+      "identifier": "mci",
+      "r": "gitter_request",
+      "activated": false,
+      "author": "sophie.stadler",
+      "status": "inactive",
+      "order": 3
     }
   ],
   "tasks": [
@@ -169,8 +199,12 @@
       "identifier": "spruce-identifier"
     },
     {
-      "_id": "evergreen",
-      "identifier": "evergreen"
+      "_id": "mci",
+      "identifier": "mci"
+    },
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "project_sandbox"
     }
   ],
   "builds": [
