@@ -585,7 +585,7 @@ func removeHiddenProjects(permissions []rolemanager.PermissionSummary) error {
 
 type rolesPostRequest struct {
 	// the list of roles to add for the user
-	Roles []string `json:"roles"`
+	AddRoles []string `json:"roles"` // the JSON here is "roles" instead of "add_roles" for backwards compatibility.
 	// The list of roles to remove for the user
 	RemoveRoles []string `json:"remove_roles"`
 	// if true, will also create a shell user document for the user. By default, specifying a user that does not exist will error
@@ -631,10 +631,10 @@ func (h *userRolesPostHandler) Parse(ctx context.Context, r *http.Request) error
 	if err := utility.ReadJSON(r.Body, &request); err != nil {
 		return errors.Wrap(err, "reading role modification request from JSON request body")
 	}
-	if len(request.Roles) == 0 && len(request.RemoveRoles) == 0 {
+	if len(request.AddRoles) == 0 && len(request.RemoveRoles) == 0 {
 		return errors.New("must specify at least 1 role to add/remove")
 	}
-	h.rolesToAdd = request.Roles
+	h.rolesToAdd = request.AddRoles
 	h.rolesToRemove = request.RemoveRoles
 	h.createUser = request.CreateUser
 	vars := gimlet.GetVars(r)
