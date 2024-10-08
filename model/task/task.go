@@ -946,9 +946,9 @@ func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) erro
 		bson.M{
 			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedKey): finished},
 		},
-		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
+		options.Update().SetArrayFilters([]interface{}{
 			bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},
-		}}),
+		}),
 	)
 	if err != nil {
 		return errors.Wrap(err, "marking finished dependencies")
@@ -1668,12 +1668,10 @@ func SetGeneratedStepbackInfoForGenerator(ctx context.Context, taskId string, s 
 				bsonutil.GetDottedKeyName(StepbackInfoKey, GeneratedStepbackInfoKey, "$[elem]", PreviousStepbackTaskIdKey):    s.PreviousStepbackTaskId,
 			},
 		},
-		options.Update().SetArrayFilters(options.ArrayFilters{
-			Filters: []interface{}{
-				bson.M{
-					bsonutil.GetDottedKeyName("elem", DisplayNameKey):  s.DisplayName,
-					bsonutil.GetDottedKeyName("elem", BuildVariantKey): s.BuildVariant,
-				},
+		options.Update().SetArrayFilters([]interface{}{
+			bson.M{
+				bsonutil.GetDottedKeyName("elem", DisplayNameKey):  s.DisplayName,
+				bsonutil.GetDottedKeyName("elem", BuildVariantKey): s.BuildVariant,
 			},
 		}),
 	)
