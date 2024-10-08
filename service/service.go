@@ -51,7 +51,7 @@ func GetRouter(ctx context.Context, as *APIServer, uis *UIServer) (http.Handler,
 	clients := gimlet.NewApp()
 	if uis.env.ClientConfig().S3URLPrefix != "" {
 		clients.NoVersions = true
-		clients.AddPrefixRoute("/clients").Get().Head().Handler(func(w http.ResponseWriter, r *http.Request) {
+		clients.AddPrefixRoute("/clients").Get().Head().Wrap(gimlet.NewRequireAuthHandler()).Handler(func(w http.ResponseWriter, r *http.Request) {
 			path := strings.TrimPrefix(r.URL.Path, "/clients")
 			path = uis.env.ClientConfig().S3URLPrefix + path
 			http.Redirect(w, r, path, http.StatusTemporaryRedirect)
