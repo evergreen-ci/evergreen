@@ -1971,6 +1971,7 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 		sortPipeline := []bson.M{}
 
 		sortFields := bson.D{}
+		var idSort bool
 		for _, singleSort := range opts.Sorts {
 			if singleSort.Key == DisplayStatusKey || singleSort.Key == BaseTaskStatusKey {
 				sortPipeline = append(sortPipeline, addStatusColorSort(singleSort.Key))
@@ -1981,8 +1982,14 @@ func GetTasksByVersion(ctx context.Context, versionID string, opts GetTasksByVer
 			} else {
 				sortFields = append(sortFields, bson.E{Key: singleSort.Key, Value: singleSort.Order})
 			}
+			if singleSort.Key == IdKey {
+				idSort = true
+			}
 		}
-		sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
+		// If we're not sorting by ID, we need to sort by ID as a tiebreaker to ensure a consistent sort order.
+		if !idSort {
+			sortFields = append(sortFields, bson.E{Key: IdKey, Value: 1})
+		}
 
 		sortPipeline = append(sortPipeline, bson.M{
 			"$sort": sortFields,
