@@ -1,0 +1,47 @@
+#######################################
+#                Tasks                #
+#######################################
+
+tasks:
+  - name: ssh-clone-public-repo
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            ssh -T git@github.com
+            # this will fail without a valid ssh key
+            git clone git@github.com:evergreen-ci/evergreen.git
+  - name: ssh-clone-private-repo-ssh
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            ssh -T git@github.com
+            # this will fail without a valid ssh key
+            git clone git@github.com:evergreen-ci/github-merge-queue-sandbox.git
+
+#######################################
+#            Buildvariants            #
+#######################################
+buildvariants:
+  - name: ubuntu2204
+    display_name: Ubuntu 22.04
+    run_on:
+      - ubuntu2204-small
+    tasks:
+      - name: ssh-clone-public-repo
+      - name: ssh-clone-private-repo-ssh
+  - name: DEVPROD-5742-ubuntu2204-small
+    display_name: DEVPROD-5742-ubuntu2204-small
+    run_on:
+      - DEVPROD-5742-ubuntu2204-small
+    tasks:
+      - name: clone-public-repo-ssh
+      - name: clone-private-repo-ssh
+  - name: osx
+    display_name: OSX
+    run_on:
+      - macos-1100-arm64
+    tasks:
+      - name: clone-public-repo-ssh
+      - name: clone-private-repo-ssh
