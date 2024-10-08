@@ -26,7 +26,7 @@ require (
 	github.com/evergreen-ci/pail v0.0.0-20241008145017-805bfccdffac
 	github.com/evergreen-ci/poplar v0.0.0-20241008145130-28401a0c7692
 	github.com/evergreen-ci/shrub v0.0.0-20231121224157-600e066f9de6
-	github.com/evergreen-ci/timber v0.0.0-20240509150854-9d66df03b40e
+	github.com/evergreen-ci/timber v0.0.0-20241008154219-9e9edb8184d2
 	github.com/evergreen-ci/utility v0.0.0-20240812204255-c58f66487604
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-github/v52 v52.0.0
@@ -222,7 +222,6 @@ require (
 	github.com/papertrail/go-tail v0.0.0-20180509224916-973c153b0431 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
-	go.mongodb.org/mongo-driver v1.12.1 // indirect
 	go.step.sm/crypto v0.31.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 )
