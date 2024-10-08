@@ -85,7 +85,7 @@ func (pm ParameterMappings) Swap(i, j int) {
 // NameMap returns a map from each name to the full parameter mapping
 // information.
 func (pm ParameterMappings) NameMap() map[string]ParameterMapping {
-	res := make(map[string]ParameterMapping, len(pm))
+	res := map[string]ParameterMapping{}
 	for i, m := range pm {
 		res[m.Name] = pm[i]
 	}
@@ -101,8 +101,23 @@ func (pm ParameterMappings) ParamNameMap() map[string]ParameterMapping {
 	}
 	return res
 }
+func (pm ParameterMappings) Names() []string {
+	res := make([]string, 0, len(pm))
+	for _, m := range pm {
+		res = append(res, m.Name)
+	}
+	return res
+}
 
-func (pm ParameterMappings) Params() []string {
+func (pm ParameterMappings) ParamNamesMap() map[string]ParameterMapping {
+	res := map[string]ParameterMapping{}
+	for i, m := range pm {
+		res[m.ParameterName] = pm[i]
+	}
+	return res
+}
+
+func (pm ParameterMappings) ParamNames() []string {
 	res := make([]string, 0, len(pm))
 	for _, m := range pm {
 		res = append(res, m.ParameterName)
@@ -370,7 +385,7 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error 
 		}
 	}
 
-	existingParamMappings := before.Parameters.VarMap()
+	existingParamMappings := before.Parameters.NameMap()
 
 	// kim: NOTE: I'm sure that there's a more elegant way to track the
 	// updates/deletes (possibly by absorbing into above logic) and map

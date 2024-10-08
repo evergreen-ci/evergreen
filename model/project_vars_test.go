@@ -1,11 +1,8 @@
 package model
 
 import (
-<<<<<<< HEAD
 	"compress/gzip"
-=======
 	"context"
->>>>>>> 3b4a3bd40 (Add some tests for Parameter Store functionality when PS is enabled)
 	"fmt"
 	"io"
 	"testing"
