@@ -330,6 +330,11 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 			}
 		}
 
+		existingParamMappings := make(map[string]string, len(before.Parameters))
+		for _, paramMapping := range before.Parameters {
+			existingParamMappings[paramMapping.Name] = paramMapping.ParameterName
+		}
+
 		// kim: NOTE: I'm sure that there's a more elegant way to track the
 		// updates/deletes (possibly by absorbing into above logic) and map
 		// between the project variable name and param name. But if the logic
@@ -338,6 +343,7 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 		paramMappingToDelete := map[string]struct{}{}
 		pm := evergreen.GetEnvironment().ParameterManager()
 		for varName, varValue := range toUpsert {
+			// kim: TODO: replace with helper.
 			paramName, err := getParamNameForVar(before.Parameters, varName)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
@@ -347,7 +353,6 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 				}))
 				continue
 			}
-			// kim: TODO: get compressed param value as well.
 			param, err := pm.Put(ctx, paramName, varValue)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
@@ -357,8 +362,33 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 				}))
 				continue
 			}
+			// kim: NOTE: use the resulting param name because it's the full
+			// path rather than basename for new parameters. This also accounts
+			// for edge cases like project vars being modified and crossing
+			// above/below the compression threshold, meaning the parameter name
+			// changes (it won't cause any bugs to leave behind the old
+			// parameter, even though it's a little wasteful).
 			paramMappingToUpdate[varName] = param.Name
+
+			// In a few special edge cases, the project var could be stored in
+			// one parameter name but renamed to a new name. For example, if
+			// the project var is stored in a parameter named "foo" and then it
+			// gets modified to store a very long string, the parameter could be
+			// renamed to "foo.gzip" to indicate that it had to be compressed to
+			// fit within the parameter 8 KB limitation.
+			// If the parameter has been renamed, then the old parameter name is
+			// now invalid because the project variable was renamed to something
+			// else. The old parameter should be deleted as part of the rename
+			// to clean it up.
+			if existingParamName, ok := existingParamMappings[varName]; ok && existingParamName != param.Name {
+				toDelete[varName] = struct{}{}
+			}
 		}
+
+		// kim: TODO: detect if param mapping changes from an existing to a new
+		// parameter, meaning we have to delete the old parameter to prevent it
+		// from leaking.
+
 		if len(toDelete) > 0 {
 			namesToDelete := make([]string, 0, len(toDelete))
 			for _, paramMapping := range before.Parameters {
@@ -427,6 +457,11 @@ func getSyncedParamMappings(existingParamMappings []ParameterMapping, updatedPar
 		if _, ok := deletedParamMappings[paramMapping.Name]; ok {
 			continue
 		}
+		if _, ok := updatedParamMappings[paramMapping.Name]; ok {
+			continue
+		}
+		// If it wasn't added, deleted, or modified, then the mapping is the
+		// same as before.
 		syncedMapping = append(syncedMapping, existingParamMappings[i])
 	}
 
