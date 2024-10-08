@@ -36,5 +36,5 @@ buildvariants:
     run_on:
       - macos-1100-arm64
     tasks:
-      - name: clone-public-repo-ssh
-      - name: clone-private-repo-ssh
+      - name: ssh-clone-public-repo
+      - name: ssh-clone-public-repo
