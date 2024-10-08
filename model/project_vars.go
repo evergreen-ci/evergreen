@@ -66,21 +66,22 @@ type ProjectVars struct {
 
 type ParameterMappings []ParameterMapping
 
-// NameMap returns a map from each name to the full parameter mapping.
-func (pms ParameterMappings) NameMap() map[string]ParameterMapping {
-	res := make(map[string]ParameterMapping, len(pms))
-	for i, pm := range pms {
-		res[pm.Name] = pms[i]
+// NameMap returns a map from each name to the full parameter mapping
+// information.
+func (pm ParameterMappings) NameMap() map[string]ParameterMapping {
+	res := make(map[string]ParameterMapping, len(pm))
+	for i, m := range pm {
+		res[m.Name] = pm[i]
 	}
 	return res
 }
 
 // ParamNameMap returns a map from each parameter name to the full parameter
-// mapping.
-func (pms ParameterMappings) ParamNameMap() map[string]ParameterMapping {
-	res := make(map[string]ParameterMapping, len(pms))
-	for i, pm := range pms {
-		res[pm.ParameterName] = pms[i]
+// mapping information.
+func (pm ParameterMappings) ParamNameMap() map[string]ParameterMapping {
+	res := make(map[string]ParameterMapping, len(pm))
+	for i, m := range pm {
+		res[m.ParameterName] = pm[i]
 	}
 	return res
 }
