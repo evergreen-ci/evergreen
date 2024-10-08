@@ -11,7 +11,7 @@ tasks:
             ssh -T git@github.com || true
             # should fail without a valid ssh key
             git clone git@github.com:evergreen-ci/evergreen.git
-  - name: ssh-clone-private-repo-ssh
+  - name: ssh-clone-private-repo
     commands:
       - command: shell.exec
         params:
@@ -30,11 +30,11 @@ buildvariants:
       - ubuntu2204-small
     tasks:
       - name: ssh-clone-public-repo
-      - name: ssh-clone-private-repo-ssh
+      - name: ssh-clone-private-repo
   - name: osx
     display_name: OSX
     run_on:
       - macos-1100-arm64
     tasks:
       - name: ssh-clone-public-repo
-      - name: ssh-clone-public-repo
+      - name: ssh-clone-private-repo
