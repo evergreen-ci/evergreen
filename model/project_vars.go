@@ -311,122 +311,7 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 		"project_id": projectVars.Id,
 	}))
 	if isPSEnabled {
-		before, err := FindOneProjectVars(projectVars.Id)
-		if err != nil {
-			return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectVars.Id)
-		}
-
-		toUpsert := map[string]string{}
-		toDelete := map[string]struct{}{}
-		for varName := range before.Vars {
-			if _, ok := projectVars.Vars[varName]; !ok {
-				toDelete[varName] = struct{}{}
-			}
-		}
-		for varName, afterVal := range projectVars.Vars {
-			beforeVal, ok := before.Vars[varName]
-			if !ok || beforeVal != afterVal {
-				toUpsert[varName] = afterVal
-			}
-		}
-
-		existingParamMappings := make(map[string]string, len(before.Parameters))
-		for _, paramMapping := range before.Parameters {
-			existingParamMappings[paramMapping.Name] = paramMapping.ParameterName
-		}
-
-		// kim: NOTE: I'm sure that there's a more elegant way to track the
-		// updates/deletes (possibly by absorbing into above logic) and map
-		// between the project variable name and param name. But if the logic
-		// works, that's good enough for now and it can be cleaned up later.
-		paramMappingToUpdate := map[string]string{}
-		paramMappingToDelete := map[string]struct{}{}
-		pm := evergreen.GetEnvironment().ParameterManager()
-		for varName, varValue := range toUpsert {
-			// kim: TODO: replace with helper.
-			paramName, err := getParamNameForVar(before.Parameters, varName)
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message":    "could not get corresponding parameter name for project variable",
-					"var_name":   varName,
-					"project_id": projectVars.Id,
-				}))
-				continue
-			}
-			param, err := pm.Put(ctx, paramName, varValue)
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message":    "could not put project variable into Parameter Store",
-					"var_name":   varName,
-					"project_id": projectVars.Id,
-				}))
-				continue
-			}
-			// kim: NOTE: use the resulting param name because it's the full
-			// path rather than basename for new parameters. This also accounts
-			// for edge cases like project vars being modified and crossing
-			// above/below the compression threshold, meaning the parameter name
-			// changes (it won't cause any bugs to leave behind the old
-			// parameter, even though it's a little wasteful).
-			paramMappingToUpdate[varName] = param.Name
-
-			// In a few special edge cases, the project var could be stored in
-			// one parameter name but renamed to a new name. For example, if
-			// the project var is stored in a parameter named "foo" and then it
-			// gets modified to store a very long string, the parameter could be
-			// renamed to "foo.gzip" to indicate that it had to be compressed to
-			// fit within the parameter 8 KB limitation.
-			// If the parameter has been renamed, then the old parameter name is
-			// now invalid because the project variable was renamed to something
-			// else. The old parameter should be deleted as part of the rename
-			// to clean it up.
-			if existingParamName, ok := existingParamMappings[varName]; ok && existingParamName != param.Name {
-				toDelete[varName] = struct{}{}
-			}
-		}
-
-		// kim: TODO: detect if param mapping changes from an existing to a new
-		// parameter, meaning we have to delete the old parameter to prevent it
-		// from leaking.
-
-		if len(toDelete) > 0 {
-			namesToDelete := make([]string, 0, len(toDelete))
-			for _, paramMapping := range before.Parameters {
-				if _, ok := toDelete[paramMapping.Name]; ok {
-					namesToDelete = append(namesToDelete, paramMapping.ParameterName)
-					paramMappingToDelete[paramMapping.Name] = struct{}{}
-				}
-			}
-			if err := pm.Delete(ctx, namesToDelete...); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message":               "could not delete project variables from Parameter Store",
-					"vars_to_delete":        toDelete,
-					"param_names_to_delete": namesToDelete,
-					"project_id":            projectVars.Id,
-				}))
-			}
-		}
-
-		syncedParamMappings := getSyncedParamMappings(projectVars.Parameters, paramMappingToUpdate, paramMappingToDelete)
-		if _, err := db.Upsert(
-			ProjectVarsCollection,
-			bson.M{
-				projectVarIdKey: projectVars.Id,
-			},
-			bson.M{
-				"$set": bson.M{
-					projectVarsParametersKey: syncedParamMappings,
-				},
-			},
-		); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":               "could not update parameter mappings for project vars",
-				"param_mapping_updates": paramMappingToUpdate,
-				"param_mapping_deletes": paramMappingToUpdate,
-				"project_id":            projectVars.Id,
-			}))
-		}
-		projectVars.Parameters = syncedParamMappings
+		upsertParameterStore(ctx, projectVars)
 	}
 
 	return db.Upsert(
@@ -444,30 +329,169 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 	)
 }
 
-func getSyncedParamMappings(existingParamMappings []ParameterMapping, updatedParamMappings map[string]string, deletedParamMappings map[string]struct{}) []ParameterMapping {
-	syncedMapping := make([]ParameterMapping, 0, len(existingParamMappings))
-	for varName, paramName := range updatedParamMappings {
-		syncedMapping = append(syncedMapping, ParameterMapping{
+// upsertParameterStore upserts the diff of added/modified/deleted project
+// variables into Parameter Store.
+func upsertParameterStore(ctx context.Context, after *ProjectVars) error {
+	before, err := FindOneProjectVars(after.Id)
+	if err != nil {
+		return errors.Wrapf(err, "finding original project vars for project '%s'", after.Id)
+	}
+
+	varsToUpsert := map[string]string{}
+	for varName, afterVal := range after.Vars {
+		beforeVal, ok := before.Vars[varName]
+		if !ok || beforeVal != afterVal {
+			varsToUpsert[varName] = afterVal
+		}
+	}
+
+	existingParamMappings := make(map[string]ParameterMapping, len(before.Parameters))
+	for i, paramMapping := range before.Parameters {
+		existingParamMappings[paramMapping.Name] = before.Parameters[i]
+	}
+
+	// kim: NOTE: I'm sure that there's a more elegant way to track the
+	// updates/deletes (possibly by absorbing into above logic) and map
+	// between the project variable name and param name. But if the logic
+	// works, that's good enough for now and it can be cleaned up later.
+	// Var name: param name
+	paramMappingsToUpdate := map[string]ParameterMapping{}
+	pm := evergreen.GetEnvironment().ParameterManager()
+	for varName, varValue := range varsToUpsert {
+		// kim: TODO: replace with helper to export to param name/value.
+		paramName, err := getParamNameForVar(before.Parameters, varName)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":    "could not get corresponding parameter name for project variable",
+				"var_name":   varName,
+				"project_id": after.Id,
+			}))
+			continue
+		}
+		param, err := pm.Put(ctx, paramName, varValue)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":    "could not put project variable into Parameter Store",
+				"var_name":   varName,
+				"param_name": paramName,
+				"project_id": after.Id,
+			}))
+			continue
+		}
+
+		// kim: NOTE: use the resulting param name because it's the full
+		// path rather than basename for new parameters. This also accounts
+		// for edge cases like project vars being modified and crossing
+		// above/below the compression threshold, meaning the parameter name
+		// changes (it won't cause any bugs to leave behind the old
+		// parameter, even though it's a little wasteful).
+		paramMappingsToUpdate[varName] = ParameterMapping{
 			Name:          varName,
-			ParameterName: paramName,
-		})
+			ParameterName: param.Name,
+		}
+
+		if existingParamMapping, ok := existingParamMappings[varName]; ok && existingParamMapping.ParameterName != param.Name {
+			// In a few special edge cases, the project var could already be
+			// stored in one parameter name but renamed to a new parameter.
+			// For example, if the project var is stored in a parameter
+			// named "foo" and then it gets modified to store a very long
+			// string, the parameter could be renamed to "foo.gzip" to
+			// indicate that it had to be compressed to fit within the
+			// parameter 8 KB limitation. If the parameter has been renamed,
+			// then the old parameter name is now invalid and should be
+			// cleaned up.
+			if err := pm.Delete(ctx, existingParamMapping.ParameterName); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":        "could not delete project variable from Parameter Store that was renamed to a different parameter",
+					"var_name":       varName,
+					"old_param_name": existingParamMapping.ParameterName,
+					"new_param_name": param.Name,
+					"project_id":     after.Id,
+				}))
+			}
+		}
+	}
+
+	varsToDelete := map[string]struct{}{}
+	namesToDelete := make([]string, 0, len(varsToDelete))
+	// Var name : param name
+	paramMappingToDelete := map[string]ParameterMapping{}
+	for varName := range before.Vars {
+		if _, ok := after.Vars[varName]; !ok {
+			varsToDelete[varName] = struct{}{}
+			if paramMapping, ok := existingParamMappings[varName]; ok {
+				namesToDelete = append(namesToDelete, existingParamMappings[varName].ParameterName)
+				paramMappingToDelete[varName] = paramMapping
+			}
+		}
+	}
+	if len(namesToDelete) > 0 {
+		if err := pm.Delete(ctx, namesToDelete...); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":               "could not delete project variables from Parameter Store",
+				"vars_to_delete":        varsToDelete,
+				"param_names_to_delete": namesToDelete,
+				"project_id":            after.Id,
+			}))
+		}
+	}
+
+	syncedParamMappings := getSyncedParamMappings(before.Parameters, paramMappingsToUpdate, paramMappingToDelete)
+
+	if _, err := db.Upsert(
+		ProjectVarsCollection,
+		bson.M{
+			projectVarIdKey: after.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				projectVarsParametersKey: syncedParamMappings,
+			},
+		},
+	); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":               "could not update parameter mappings for project vars",
+			"param_mapping_updates": paramMappingsToUpdate,
+			"param_mapping_deletes": paramMappingsToUpdate,
+			"project_id":            after.Id,
+		}))
+	}
+
+	after.Parameters = syncedParamMappings
+
+	return nil
+}
+
+// kim: NOTE: updated includes added/upserted/renamed parameters.
+func getSyncedParamMappings(existingParamMappings []ParameterMapping, updated, deleted map[string]ParameterMapping) []ParameterMapping {
+	paramMappings := make(map[string]ParameterMapping, len(existingParamMappings))
+	for varName, paramMapping := range updated {
+		paramMappings[varName] = ParameterMapping{
+			Name:          varName,
+			ParameterName: paramMapping.ParameterName,
+		}
 	}
 
 	for i, paramMapping := range existingParamMappings {
-		if _, ok := deletedParamMappings[paramMapping.Name]; ok {
+		if _, ok := deleted[paramMapping.Name]; ok {
 			continue
 		}
-		if _, ok := updatedParamMappings[paramMapping.Name]; ok {
+		if _, ok := updated[paramMapping.Name]; ok {
 			continue
 		}
 		// If it wasn't added, deleted, or modified, then the mapping is the
 		// same as before.
-		syncedMapping = append(syncedMapping, existingParamMappings[i])
+		paramMappings[paramMapping.Name] = existingParamMappings[i]
+	}
+
+	res := make([]ParameterMapping, 0, len(paramMappings))
+	for _, paramMapping := range paramMappings {
+		res = append(res, paramMapping)
 	}
 
 	// kim: TODO: sort so it's in a predictable alphabetical order.
 	// sort.Sort(syncedMapping)
-	return syncedMapping
+	return res
 }
 
 // isParameterStoreEnabledForProject checks if Parameter Store is enabled for a
