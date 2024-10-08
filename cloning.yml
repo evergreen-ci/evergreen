@@ -34,7 +34,7 @@ buildvariants:
   - name: osx
     display_name: OSX
     run_on:
-      - macos-1100-arm64
+      - macos-1014
     tasks:
       - name: ssh-clone-public-repo
       - name: ssh-clone-private-repo
