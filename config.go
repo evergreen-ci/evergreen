@@ -704,8 +704,7 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptionsBuilder {
 		// SetSocketTimeout(mongoTimeout).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections))).
 		SetBSONOptions(&options.BSONOptions{
-			// TODO-mongo-driver: this option should exist soon.
-			// DecodeObjectIDAsHex: true,
+			ObjectIDAsHexString: true,
 		})
 
 	if s.AWSAuthEnabled {

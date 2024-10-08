@@ -116,8 +116,6 @@ func (h *annotationsByVersionHandler) Run(ctx context.Context) gimlet.Responder 
 }
 
 func getAPIAnnotationsForTaskIds(taskIds []string, allExecutions bool) gimlet.Responder {
-	// TODO-mongo-driver: This Find method returns an error about the _id property
-	// unmarshalling in to a string. This is from some unexposed option maybe?
 	allAnnotations, err := annotations.FindByTaskIds(taskIds)
 	if err != nil {
 		fmt.Println("error", err)

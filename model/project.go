@@ -2222,8 +2222,6 @@ func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, sh
 
 	// Filter out execution tasks because they'll be dropped when iterating through the build task cache anyway.
 	// maxTime ensures the query won't go on indefinitely when the request is cancelled.
-	// TODO-mongo-driver: This query returns "(BadValue) cannot set maxTimeMS on getMore command for a non-awaitData cursor"
-	// error when there are too many versionIds. This is likely due to some timeout bug.
 	tasksFromDb, err := task.FindAll(db.Query(task.NonExecutionTasksByVersions(versionIds)).WithFields(task.StatusFields...).MaxTime(waterfallTasksQueryMaxTime))
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "fetching tasks from database")
