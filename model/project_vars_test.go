@@ -5,10 +5,8 @@ import (
 	"testing"
 
 	"strings"
-	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
@@ -409,7 +407,7 @@ func TestGetParamValueForVar(t *testing.T) {
 			varName  = "var_name"
 			varValue = "var_value"
 		)
-		paramName, paramValue, err := getParamValueForVar(varName, varValue)
+		paramName, paramValue, err := getCompressedParamValueForVar(varName, varValue)
 		assert.NoError(t, err)
 		assert.Equal(t, varName, paramName)
 		assert.Equal(t, varValue, paramValue)
@@ -419,7 +417,7 @@ func TestGetParamValueForVar(t *testing.T) {
 			varName  = "var_name"
 			varValue = ""
 		)
-		paramName, paramValue, err := getParamValueForVar(varName, varValue)
+		paramName, paramValue, err := getCompressedParamValueForVar(varName, varValue)
 		assert.NoError(t, err)
 		assert.Equal(t, varName, paramName)
 		assert.Equal(t, varValue, paramValue)
@@ -429,7 +427,7 @@ func TestGetParamValueForVar(t *testing.T) {
 		varValue := strings.Repeat("abc", parameterstore.ParamValueMaxLength)
 		assert.Greater(t, len(varValue), parameterstore.ParamValueMaxLength)
 
-		paramName, paramValue, err := getParamValueForVar(varName, varValue)
+		paramName, paramValue, err := getCompressedParamValueForVar(varName, varValue)
 		assert.NoError(t, err)
 		assert.Equal(t, fmt.Sprintf("%s%s", varName, gzipCompressedParamExtension), paramName)
 		assert.Less(t, len(paramValue), parameterstore.ParamValueMaxLength)
@@ -439,7 +437,7 @@ func TestGetParamValueForVar(t *testing.T) {
 		varValue := utility.MakeRandomString(10 * parameterstore.ParamValueMaxLength)
 		assert.Greater(t, len(varValue), parameterstore.ParamValueMaxLength)
 
-		_, _, err := getParamValueForVar(varName, varValue)
+		_, _, err := getCompressedParamValueForVar(varName, varValue)
 		assert.Error(t, err)
 	})
 }

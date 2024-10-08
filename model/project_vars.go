@@ -444,13 +444,31 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 	}
 }
 
-// validParamName is a regexp representing the valid characters for a parameter
-// name. Valid characters are alphanumerics, underscores, dashes, and periods.
-var validParamName = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
+// exportVarToParam converts a project variable to its equivalent parameter name
+// and value.
+func exportVarToParam(varsToParams []ParameterMapping, varName, varValue string) (paramName string, paramValue string, err error) {
+	paramName, err = getParamNameForVar(varsToParams, varName)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "getting parameter name for project variable '%s'", varName)
+	}
+
+	paramName, paramValue, err = getCompressedParamValueForVar(paramName, varValue)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "getting parameter value for project variable '%s'", varName)
+	}
+
+	return paramName, paramValue, nil
+}
+
+// validParamBasename is a regexp representing the valid characters for a
+// parameter's base name (i.e. excluding any slash-delimited paths). Valid
+// characters for a basename are alphanumerics, underscores, dashes, and
+// periods.
+var validParamBasename = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
 
 // getParamNameForVar returns the corresponding parameter name for a project
 // variable. If the project variable does not yet have a parameter name, it
-// generates one.
+// generates a new basename for it.
 func getParamNameForVar(varsToParams []ParameterMapping, varName string) (string, error) {
 	for _, varToParam := range varsToParams {
 		if varToParam.Name == varName {
@@ -461,8 +479,14 @@ func getParamNameForVar(varsToParams []ParameterMapping, varName string) (string
 		}
 	}
 
+	return createUniqueBasenameForVar(varsToParams, varName)
+}
+
+// createUniqueBasenameForVar generates a unique parameter basename for a
+// project variable.
+func createUniqueBasenameForVar(varsToParams []ParameterMapping, varName string) (string, error) {
 	paramName := varName
-	if !validParamName.MatchString(paramName) {
+	if !validParamBasename.MatchString(paramName) {
 		return "", errors.Errorf("project variable '%s' contains invalid characters - can only contain alphanumerics, underscores, periods, and dashes", varName)
 	}
 
@@ -490,13 +514,18 @@ func getParamNameForVar(varsToParams []ParameterMapping, varName string) (string
 
 // kim: TODO: confirm if 8192 is the exact limit, or possibly something fuzzier
 // like 8191 or 8000.
+// gzipCompressedParamExtension is the extension added to the parameter name to
+// indicate that the parameter value had to be compressed to fit within the
+// parameter length limit.
 const gzipCompressedParamExtension = ".gz"
 
-// getParamValueForVar returns the parameter name and value for a project
+// getCompressedParamValueForVar returns the parameter name and value for a project
 // variable. If the value is too long to be stored in Parameter Store, attempt
 // to compress it down to a valid size.
 // kim: TODO: test this logic on long project var in prod.
-func getParamValueForVar(varName, varValue string) (paramName string, paramValue string, err error) {
+func getCompressedParamValueForVar(varName, varValue string) (paramName string, paramValue string, err error) {
+	// kim: TODO: consider possibility that parameter value may grow to larger
+	// than 8 KB limit, at which point the parameter name will change.
 	if len(varValue) < parameterstore.ParamValueMaxLength {
 		return varName, varValue, nil
 	}
