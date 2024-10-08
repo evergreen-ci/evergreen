@@ -5,8 +5,8 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
-	"maps"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -70,6 +70,18 @@ type ProjectVars struct {
 
 type ParameterMappings []ParameterMapping
 
+func (pm ParameterMappings) Len() int {
+	return len(pm)
+}
+
+func (pm ParameterMappings) Less(i, j int) bool {
+	return pm[i].Name < pm[j].Name
+}
+
+func (pm ParameterMappings) Swap(i, j int) {
+	pm[i], pm[j] = pm[j], pm[i]
+}
+
 // NameMap returns a map from each name to the full parameter mapping
 // information.
 func (pm ParameterMappings) NameMap() map[string]ParameterMapping {
@@ -86,6 +98,14 @@ func (pm ParameterMappings) ParamNameMap() map[string]ParameterMapping {
 	res := make(map[string]ParameterMapping, len(pm))
 	for i, m := range pm {
 		res[m.ParameterName] = pm[i]
+	}
+	return res
+}
+
+func (pm ParameterMappings) Params() []string {
+	res := make([]string, 0, len(pm))
+	for _, m := range pm {
+		res = append(res, m.ParameterName)
 	}
 	return res
 }
@@ -266,11 +286,6 @@ func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
 	if vars.PrivateVars == nil {
 		vars.PrivateVars = map[string]bool{}
 	}
-	// Copy the map so there's a before copy (without any project var update)
-	// and after copy containing the updated project var.
-	beforeVars := *vars
-	beforeVars.Vars = make(map[string]string, len(vars.Vars))
-	maps.Copy(beforeVars.Vars, vars.Vars)
 
 	vars.Vars[ProjectAWSSSHKeyName] = ssh.Name
 	vars.Vars[ProjectAWSSSHKeyValue] = ssh.Value
@@ -293,8 +308,6 @@ func GetAWSKeyForProject(projectId string) (*AWSSSHKey, error) {
 	}, nil
 }
 
-// kim: TODO: update this to sync with PS as well if enabled. Ideally only the
-// diff.
 func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 	// kim; NOTE: it's more efficient to just replace all the vars rather than
 	// compute the diff or  looking up before vars in here rather than passing it in
@@ -311,7 +324,10 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 		"project_id": projectVars.Id,
 	}))
 	if isPSEnabled {
-		upsertParameterStore(ctx, projectVars)
+		grip.Error(message.WrapError(projectVars.upsertParameterStore(ctx), message.Fields{
+			"message":    "could not upsert project vars into Parameter Store",
+			"project_id": projectVars.Id,
+		}))
 	}
 
 	return db.Upsert(
@@ -331,10 +347,19 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 
 // upsertParameterStore upserts the diff of added/modified/deleted project
 // variables into Parameter Store.
-func upsertParameterStore(ctx context.Context, after *ProjectVars) error {
+func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error {
+	after := projectVars
+	// kim: TODO: test if the project's vars are synced to PS first. If not,
+	// then have to initial sync all of them to PS to initialize the state.
+	// kim: TODO: need to think about how to keep params and vars in sync while
+	// rollout is ongoing. They may go out of sync if it's disabled.
+
 	before, err := FindOneProjectVars(after.Id)
 	if err != nil {
 		return errors.Wrapf(err, "finding original project vars for project '%s'", after.Id)
+	}
+	if before == nil {
+		before = &ProjectVars{}
 	}
 
 	varsToUpsert := map[string]string{}
@@ -345,10 +370,7 @@ func upsertParameterStore(ctx context.Context, after *ProjectVars) error {
 		}
 	}
 
-	existingParamMappings := make(map[string]ParameterMapping, len(before.Parameters))
-	for i, paramMapping := range before.Parameters {
-		existingParamMappings[paramMapping.Name] = before.Parameters[i]
-	}
+	existingParamMappings := before.Parameters.VarMap()
 
 	// kim: NOTE: I'm sure that there's a more elegant way to track the
 	// updates/deletes (possibly by absorbing into above logic) and map
@@ -367,6 +389,11 @@ func upsertParameterStore(ctx context.Context, after *ProjectVars) error {
 				"project_id": after.Id,
 			}))
 			continue
+		}
+		if !strings.HasPrefix(paramName, after.Id) {
+			// kim: NOTE: prepending the project ID will be absorbed into helper
+			// to export the param.
+			paramName = fmt.Sprintf("%s/%s", after.Id, paramName)
 		}
 		param, err := pm.Put(ctx, paramName, varValue)
 		if err != nil {
@@ -484,13 +511,13 @@ func getSyncedParamMappings(existingParamMappings []ParameterMapping, updated, d
 		paramMappings[paramMapping.Name] = existingParamMappings[i]
 	}
 
-	res := make([]ParameterMapping, 0, len(paramMappings))
+	res := make(ParameterMappings, 0, len(paramMappings))
 	for _, paramMapping := range paramMappings {
 		res = append(res, paramMapping)
 	}
+	// Sort them by variable name so it's in a predictable order.
+	sort.Sort(res)
 
-	// kim: TODO: sort so it's in a predictable alphabetical order.
-	// sort.Sort(syncedMapping)
 	return res
 }
 
