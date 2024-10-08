@@ -8,16 +8,16 @@ tasks:
       - command: shell.exec
         params:
           script: |
-            ssh -T git@github.com
-            # this will fail without a valid ssh key
+            ssh -T git@github.com || true
+            # should fail without a valid ssh key
             git clone git@github.com:evergreen-ci/evergreen.git
   - name: ssh-clone-private-repo-ssh
     commands:
       - command: shell.exec
         params:
           script: |
-            ssh -T git@github.com
-            # this will fail without a valid ssh key
+            ssh -T git@github.com || true
+            # should fail without a valid ssh key
             git clone git@github.com:evergreen-ci/github-merge-queue-sandbox.git
 
 #######################################
@@ -36,5 +36,5 @@ buildvariants:
     run_on:
       - macos-1100-arm64
     tasks:
-      - name: ssh-clone-public-repo
-      - name: ssh-clone-private-repo-ssh
+      - name: clone-public-repo-ssh
+      - name: clone-private-repo-ssh
