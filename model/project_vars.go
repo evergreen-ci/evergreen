@@ -54,7 +54,7 @@ type ProjectVars struct {
 	// Parameters contains the mappings between user-defined project variable
 	// names and the parameter name where the variable's value can be found in
 	// Parameter Store.
-	Parameters []ParameterMapping `bson:"parameters,omitempty" json:"parameters,omitempty"`
+	Parameters ParameterMappings `bson:"parameters,omitempty" json:"parameters,omitempty"`
 
 	// PrivateVars keeps track of which variables are private and should therefore not
 	// be returned to the UI server.
@@ -62,6 +62,27 @@ type ProjectVars struct {
 
 	// AdminOnlyVars keeps track of variables that are only accessible by project admins.
 	AdminOnlyVars map[string]bool `bson:"admin_only_vars" json:"admin_only_vars"`
+}
+
+type ParameterMappings []ParameterMapping
+
+// NameMap returns a map from each name to the full parameter mapping.
+func (pms ParameterMappings) NameMap() map[string]ParameterMapping {
+	res := make(map[string]ParameterMapping, len(pms))
+	for i, pm := range pms {
+		res[pm.Name] = pms[i]
+	}
+	return res
+}
+
+// ParamNameMap returns a map from each parameter name to the full parameter
+// mapping.
+func (pms ParameterMappings) ParamNameMap() map[string]ParameterMapping {
+	res := make(map[string]ParameterMapping, len(pms))
+	for i, pm := range pms {
+		res[pm.ParameterName] = pms[i]
+	}
+	return res
 }
 
 // ParameterMapping represents a mapping between a DB field and the location of
@@ -446,15 +467,27 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 
 // exportVarToParam converts a project variable to its equivalent parameter name
 // and value.
-func exportVarToParam(varsToParams []ParameterMapping, varName, varValue string) (paramName string, paramValue string, err error) {
-	paramName, err = getParamNameForVar(varsToParams, varName)
-	if err != nil {
-		return "", "", errors.Wrapf(err, "getting parameter name for project variable '%s'", varName)
+// kim: TODO: add tests
+func exportVarToParam(projectID string, pms ParameterMappings, varName, varValue string) (paramName string, paramValue string, err error) {
+	varsToParams := pms.NameMap()
+	pm, paramExists := varsToParams[varName]
+
+	if !paramExists {
+		paramName, err = createParamBasenameForVar(pms, varName)
+		if err != nil {
+			return "", "", errors.Wrapf(err, "getting parameter name for project variable '%s'", varName)
+		}
+	} else {
+		paramName = pm.Name
 	}
 
 	paramName, paramValue, err = getCompressedParamValueForVar(paramName, varValue)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "getting parameter value for project variable '%s'", varName)
+	}
+
+	if !paramExists && !strings.HasPrefix(paramName, projectID) {
+		paramName = fmt.Sprintf("%s/%s", projectID, paramName)
 	}
 
 	return paramName, paramValue, nil
@@ -466,25 +499,9 @@ func exportVarToParam(varsToParams []ParameterMapping, varName, varValue string)
 // periods.
 var validParamBasename = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
 
-// getParamNameForVar returns the corresponding parameter name for a project
-// variable. If the project variable does not yet have a parameter name, it
-// generates a new basename for it.
-func getParamNameForVar(varsToParams []ParameterMapping, varName string) (string, error) {
-	for _, varToParam := range varsToParams {
-		if varToParam.Name == varName {
-			if varToParam.ParameterName != "" {
-				return varToParam.ParameterName, nil
-			}
-			break
-		}
-	}
-
-	return createUniqueBasenameForVar(varsToParams, varName)
-}
-
-// createUniqueBasenameForVar generates a unique parameter basename for a
+// createParamBasenameForVar generates a unique parameter basename for a
 // project variable.
-func createUniqueBasenameForVar(varsToParams []ParameterMapping, varName string) (string, error) {
+func createParamBasenameForVar(pms ParameterMappings, varName string) (string, error) {
 	paramName := varName
 	if !validParamBasename.MatchString(paramName) {
 		return "", errors.Errorf("project variable '%s' contains invalid characters - can only contain alphanumerics, underscores, periods, and dashes", varName)
@@ -496,17 +513,17 @@ func createUniqueBasenameForVar(varsToParams []ParameterMapping, varName string)
 		paramName = fmt.Sprintf("_%s", paramName)
 	}
 
-	for _, varToParam := range varsToParams {
-		if varToParam.Name == varName {
+	for _, pm := range pms {
+		if pm.Name == varName {
 			continue
 		}
-		if varToParam.ParameterName == paramName {
+		basename := parameterstore.GetBasename(pm.ParameterName)
+		if basename == paramName {
 			// Protect against an edge case where a different project var
 			// already exists that has the exact same candidate parameter name.
 			// Project vars must map to unique parameter names.
-			return "", errors.Errorf("parameter name '%s' for project variable '%s' conflicts with project variable '%s'", paramName, varName, paramName)
+			return "", errors.Errorf("parameter basename '%s' for project variable '%s' conflicts with project variable '%s'", paramName, varName, pm.Name)
 		}
-
 	}
 
 	return paramName, nil

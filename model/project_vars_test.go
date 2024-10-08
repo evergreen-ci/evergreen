@@ -327,7 +327,7 @@ func TestAWSVars(t *testing.T) {
 
 func TestGetParamNameForVar(t *testing.T) {
 	t.Run("ReturnsNewlyGeneratedParameterNameBasedOnProjectVarName", func(t *testing.T) {
-		paramName, err := getParamNameForVar([]ParameterMapping{
+		paramName, err := createParamBasenameForVar([]ParameterMapping{
 			{
 				Name:          "my_var",
 				ParameterName: "my_parameter_name",
@@ -337,7 +337,7 @@ func TestGetParamNameForVar(t *testing.T) {
 		assert.Equal(t, "my_new_var", paramName)
 	})
 	t.Run("ReturnsAlreadyGeneratedParamName", func(t *testing.T) {
-		paramName, err := getParamNameForVar([]ParameterMapping{
+		paramName, err := createParamBasenameForVar([]ParameterMapping{
 			{
 				Name:          "my_var",
 				ParameterName: "my_parameter_name",
@@ -347,7 +347,7 @@ func TestGetParamNameForVar(t *testing.T) {
 		assert.Equal(t, "my_parameter_name", paramName)
 	})
 	t.Run("ReturnsNewlyGeneratedParameterNameThatDoesNotStartWithAWS", func(t *testing.T) {
-		paramName, err := getParamNameForVar([]ParameterMapping{
+		paramName, err := createParamBasenameForVar([]ParameterMapping{
 			{
 				Name:          "my_var",
 				ParameterName: "my_parameter_name",
@@ -360,7 +360,7 @@ func TestGetParamNameForVar(t *testing.T) {
 		assert.Equal(t, "_aws_key", paramName)
 	})
 	t.Run("ReturnsNewlyGeneratedParameterNameThatDoesNotStartWithSSM", func(t *testing.T) {
-		paramName, err := getParamNameForVar([]ParameterMapping{
+		paramName, err := createParamBasenameForVar([]ParameterMapping{
 			{
 				Name:          "my_var",
 				ParameterName: "my_parameter_name",
@@ -373,7 +373,7 @@ func TestGetParamNameForVar(t *testing.T) {
 		assert.Equal(t, "_ssm_key", paramName)
 	})
 	t.Run("ReturnsNewlyGeneratedParameterNameIfParameterMappingDoesNotYetHaveParameterName", func(t *testing.T) {
-		paramName, err := getParamNameForVar([]ParameterMapping{
+		paramName, err := createParamBasenameForVar([]ParameterMapping{
 			{
 				Name: "aws_key",
 			},
@@ -382,7 +382,7 @@ func TestGetParamNameForVar(t *testing.T) {
 		assert.Equal(t, "_aws_key", paramName)
 	})
 	t.Run("ErrorsIfConflictingParameterNameWouldBeGenerated", func(t *testing.T) {
-		paramName, err := getParamNameForVar([]ParameterMapping{
+		paramName, err := createParamBasenameForVar([]ParameterMapping{
 			{
 				Name:          "_aws_key",
 				ParameterName: "_aws_key",
@@ -395,7 +395,7 @@ func TestGetParamNameForVar(t *testing.T) {
 		assert.Zero(t, paramName)
 	})
 	t.Run("DoesNotAllowEmptyParameterName", func(t *testing.T) {
-		paramName, err := getParamNameForVar(nil, "")
+		paramName, err := createParamBasenameForVar(nil, "")
 		assert.Error(t, err)
 		assert.Zero(t, paramName)
 	})
