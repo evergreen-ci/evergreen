@@ -587,3 +587,19 @@ func TestShouldGetAdminOnlyVars(t *testing.T) {
 		assert.True(t, tested, fmt.Sprintf("requester '%s' not tested with non-admin", requester))
 	}
 }
+
+// kim: TODO: add tests
+func TestConvertParamToVar(t *testing.T) {
+	t.Run("ReturnsVarNameFromExistingParameterMapping", func(t *testing.T) {
+
+	})
+	t.Run("ReturnsErrorForVariableWithoutParameterMapping", func(t *testing.T) {
+
+	})
+	t.Run("ReturnsErrorForVariableWithEmptyParameterMapping", func(t *testing.T) {
+
+	})
+	t.Run("DecompressesParameterToOriginalVariable", func(t *testing.T) {
+
+	})
+}
