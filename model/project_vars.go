@@ -466,29 +466,28 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 	}
 }
 
-// exportVarToParam converts a project variable to its equivalent parameter name
-// and value.
-// kim: TODO: add tests
-func exportVarToParam(projectID string, pms ParameterMappings, varName, varValue string) (paramName string, paramValue string, err error) {
-	varsToParams := pms.NameMap()
-	pm, paramExists := varsToParams[varName]
-
-	if !paramExists {
-		paramName, err = createParamBasenameForVar(pms, varName)
+// convertVarToParam converts a project variable to its equivalent parameter
+// name and value.
+func convertVarToParam(projectID string, pm ParameterMappings, varName, varValue string) (paramName string, paramValue string, err error) {
+	varsToParams := pm.NameMap()
+	m, ok := varsToParams[varName]
+	if !ok {
+		paramName, err = createParamBasenameForVar(pm, varName)
 		if err != nil {
 			return "", "", errors.Wrapf(err, "getting parameter name for project variable '%s'", varName)
 		}
 	} else {
-		paramName = pm.Name
+		paramName = m.ParameterName
 	}
 
-	paramName, paramValue, err = getCompressedParamValueForVar(paramName, varValue)
+	paramName, paramValue, err = getCompressedParamForVar(paramName, varValue)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "getting parameter value for project variable '%s'", varName)
 	}
 
-	if !paramExists && !strings.HasPrefix(paramName, projectID) {
-		paramName = fmt.Sprintf("%s/%s", projectID, paramName)
+	prefix := fmt.Sprintf("%s/", projectID)
+	if !strings.Contains(paramName, prefix) {
+		paramName = fmt.Sprintf("%s%s", prefix, paramName)
 	}
 
 	return paramName, paramValue, nil
@@ -502,7 +501,7 @@ var validParamBasename = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
 
 // createParamBasenameForVar generates a unique parameter basename for a
 // project variable.
-func createParamBasenameForVar(pms ParameterMappings, varName string) (string, error) {
+func createParamBasenameForVar(pm ParameterMappings, varName string) (string, error) {
 	paramName := varName
 	if !validParamBasename.MatchString(paramName) {
 		return "", errors.Errorf("project variable '%s' contains invalid characters - can only contain alphanumerics, underscores, periods, and dashes", varName)
@@ -514,36 +513,31 @@ func createParamBasenameForVar(pms ParameterMappings, varName string) (string, e
 		paramName = fmt.Sprintf("_%s", paramName)
 	}
 
-	for _, pm := range pms {
-		if pm.Name == varName {
+	for _, m := range pm {
+		if m.Name == varName {
 			continue
 		}
-		basename := parameterstore.GetBasename(pm.ParameterName)
+		basename := parameterstore.GetBasename(m.ParameterName)
 		if basename == paramName {
 			// Protect against an edge case where a different project var
 			// already exists that has the exact same candidate parameter name.
 			// Project vars must map to unique parameter names.
-			return "", errors.Errorf("parameter basename '%s' for project variable '%s' conflicts with project variable '%s'", paramName, varName, pm.Name)
+			return "", errors.Errorf("parameter basename '%s' for project variable '%s' conflicts with project variable '%s'", paramName, varName, m.Name)
 		}
 	}
 
 	return paramName, nil
 }
 
-// kim: TODO: confirm if 8192 is the exact limit, or possibly something fuzzier
-// like 8191 or 8000.
 // gzipCompressedParamExtension is the extension added to the parameter name to
 // indicate that the parameter value had to be compressed to fit within the
 // parameter length limit.
 const gzipCompressedParamExtension = ".gz"
 
-// getCompressedParamValueForVar returns the parameter name and value for a project
+// getCompressedParamForVar returns the parameter name and value for a project
 // variable. If the value is too long to be stored in Parameter Store, attempt
 // to compress it down to a valid size.
-// kim: TODO: test this logic on long project var in prod.
-func getCompressedParamValueForVar(varName, varValue string) (paramName string, paramValue string, err error) {
-	// kim: TODO: consider possibility that parameter value may grow to larger
-	// than 8 KB limit, at which point the parameter name will change.
+func getCompressedParamForVar(varName, varValue string) (paramName string, paramValue string, err error) {
 	if len(varValue) < parameterstore.ParamValueMaxLength {
 		return varName, varValue, nil
 	}

@@ -1,7 +1,9 @@
 package model
 
 import (
+	"compress/gzip"
 	"fmt"
+	"io"
 	"testing"
 
 	"strings"
@@ -401,13 +403,13 @@ func TestGetParamNameForVar(t *testing.T) {
 	})
 }
 
-func TestGetParamValueForVar(t *testing.T) {
+func TestGetCompressedParamForVar(t *testing.T) {
 	t.Run("ReturnsUnmodifiedVarForShortVarValue", func(t *testing.T) {
 		const (
 			varName  = "var_name"
 			varValue = "var_value"
 		)
-		paramName, paramValue, err := getCompressedParamValueForVar(varName, varValue)
+		paramName, paramValue, err := getCompressedParamForVar(varName, varValue)
 		assert.NoError(t, err)
 		assert.Equal(t, varName, paramName)
 		assert.Equal(t, varValue, paramValue)
@@ -417,28 +419,94 @@ func TestGetParamValueForVar(t *testing.T) {
 			varName  = "var_name"
 			varValue = ""
 		)
-		paramName, paramValue, err := getCompressedParamValueForVar(varName, varValue)
+		paramName, paramValue, err := getCompressedParamForVar(varName, varValue)
 		assert.NoError(t, err)
 		assert.Equal(t, varName, paramName)
 		assert.Equal(t, varValue, paramValue)
 	})
 	t.Run("ReturnsCompressedVarForLongVarValue", func(t *testing.T) {
 		const varName = "var_name"
-		varValue := strings.Repeat("abc", parameterstore.ParamValueMaxLength)
-		assert.Greater(t, len(varValue), parameterstore.ParamValueMaxLength)
+		longVarValue := strings.Repeat("abc", parameterstore.ParamValueMaxLength)
+		assert.Greater(t, len(longVarValue), parameterstore.ParamValueMaxLength)
 
-		paramName, paramValue, err := getCompressedParamValueForVar(varName, varValue)
+		paramName, paramValue, err := getCompressedParamForVar(varName, longVarValue)
 		assert.NoError(t, err)
 		assert.Equal(t, fmt.Sprintf("%s%s", varName, gzipCompressedParamExtension), paramName)
 		assert.Less(t, len(paramValue), parameterstore.ParamValueMaxLength)
 	})
 	t.Run("ReturnsErrorForVarValueThatExceedsMaxLengthAfterCompression", func(t *testing.T) {
 		const varName = "var_name"
-		varValue := utility.MakeRandomString(10 * parameterstore.ParamValueMaxLength)
-		assert.Greater(t, len(varValue), parameterstore.ParamValueMaxLength)
+		longVarValue := utility.MakeRandomString(10 * parameterstore.ParamValueMaxLength)
+		assert.Greater(t, len(longVarValue), parameterstore.ParamValueMaxLength)
 
-		_, _, err := getCompressedParamValueForVar(varName, varValue)
+		_, _, err := getCompressedParamForVar(varName, longVarValue)
 		assert.Error(t, err)
+	})
+}
+
+func TestConvertVarToParam(t *testing.T) {
+	t.Run("ReturnsUnmodifiedVarForShortVarValueWithValidName", func(t *testing.T) {
+		const (
+			varName  = "var_name"
+			varValue = "var_value"
+		)
+		paramName, paramValue, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
+		require.NoError(t, err)
+		assert.Equal(t, "project_id/var_name", paramName)
+		assert.Equal(t, varValue, paramValue)
+	})
+	t.Run("ReturnsValidParamNameForVarContainingDisallowedPrefix", func(t *testing.T) {
+		const (
+			varName  = "aws_secret"
+			varValue = "super_secret"
+		)
+		paramName, paramValue, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
+		require.NoError(t, err)
+		assert.Equal(t, "project_id/_aws_secret", paramName)
+		assert.Equal(t, varValue, paramValue)
+	})
+	t.Run("ReturnsExistingParameterNameAndNewVarValueForVarWithExistingParameter", func(t *testing.T) {
+		const (
+			varName           = "var_name"
+			varValue          = "var_value"
+			existingParamName = "/prefix/project_id/var_name"
+		)
+		pm := ParameterMappings{
+			{
+				Name:          varName,
+				ParameterName: existingParamName,
+			},
+		}
+		paramName, paramValue, err := convertVarToParam("project_id", pm, varName, varValue)
+		require.NoError(t, err)
+		assert.Equal(t, existingParamName, paramName)
+		assert.Equal(t, varValue, paramValue)
+	})
+	t.Run("ReturnsNewParameterNameAndCompressedParameterValueWhenVarValueLengthIncreasesBeyondLimit", func(t *testing.T) {
+		const (
+			varName           = "var_name"
+			existingParamName = "/prefix/project_id/var_name"
+		)
+		pm := ParameterMappings{
+			{
+				Name:          varName,
+				ParameterName: existingParamName,
+			},
+		}
+
+		longVarValue := strings.Repeat("abc", parameterstore.ParamValueMaxLength)
+		assert.Greater(t, len(longVarValue), parameterstore.ParamValueMaxLength)
+
+		paramName, paramValue, err := convertVarToParam("project_id", pm, varName, longVarValue)
+		require.NoError(t, err)
+		assert.NotEqual(t, existingParamName, paramName)
+		assert.Equal(t, existingParamName+gzipCompressedParamExtension, paramName, "project variable that was previously short but now is long enoguh to require compression should have its parameter name changed")
+		assert.NotEqual(t, longVarValue, paramValue)
+		gzr, err := gzip.NewReader(strings.NewReader(paramValue))
+		require.NoError(t, err)
+		decompressed, err := io.ReadAll(gzr)
+		require.NoError(t, err)
+		assert.Equal(t, longVarValue, string(decompressed))
 	})
 }
 
