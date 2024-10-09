@@ -196,7 +196,7 @@ func (p *ProjectChangeEvents) RedactGitHubPrivateKey() {
 // TODO (DEVPROD-9384): this can be removed entirely once project event logs are
 // migrated to not store any project var values. Project change events should
 // already redact all variable values when the log is inserted into the DB (see
-// RedactVars).
+// (ProjectChangeEvent).RedactVars).
 func (p *ProjectChangeEvents) RedactVars() {
 	for _, event := range *p {
 		changeEvent, isChangeEvent := event.Data.(*ProjectChangeEvent)
