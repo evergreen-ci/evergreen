@@ -83,7 +83,7 @@ type Communicator interface {
 	DeletePublicKey(context.Context, string) error
 
 	// List variant/task aliases
-	ListAliases(context.Context, string) ([]model.ProjectAlias, error)
+	ListAliases(context.Context, string, bool) ([]model.ProjectAlias, error)
 	ListPatchTriggerAliases(context.Context, string) ([]string, error)
 	GetDistroByName(context.Context, string) (*restmodel.APIDistro, error)
 

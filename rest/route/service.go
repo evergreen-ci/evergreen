@@ -132,7 +132,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/admin/service_users").Version(2).Get().Wrap(requireUser, adminSettings).RouteHandler(makeGetServiceUsers())
 	app.AddRoute("/admin/service_users").Version(2).Post().Wrap(requireUser, adminSettings).RouteHandler(makeUpdateServiceUser())
 	app.AddRoute("/admin/service_users").Version(2).Delete().Wrap(requireUser, adminSettings).RouteHandler(makeDeleteServiceUser())
-	app.AddRoute("/alias/{name}").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchAliases())
+	app.AddRoute("/alias/{project_id}").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchAliases())
 	app.AddRoute("/auth").Version(2).Get().Wrap(requireUser).RouteHandler(&authPermissionGetHandler{})
 	app.AddRoute("/builds/{build_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetBuildByID(env))
 	app.AddRoute("/builds/{build_id}").Version(2).Patch().Wrap(requireUser, editTasks).RouteHandler(makeChangeStatusForBuild())
