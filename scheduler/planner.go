@@ -181,8 +181,8 @@ type unitInfo struct {
 	TimeInQueue time.Duration `json:"time_in_queue_ns"`
 	// TotalPriority is the sum of the priority values of all the tasks in the unit.
 	TotalPriority int64 `json:"total_priority"`
-	// NumDeps is the total number of tasks depending on tasks in the unit.
-	NumDeps int64 `json:"num_deps"`
+	// NumDependents is the total number of tasks depending on tasks in the unit.
+	NumDependents int64 `json:"num_deps"`
 	// ContainsInCommitQueue indicates if the unit contains any tasks that are part of a commit queue version.
 	ContainsInCommitQueue bool `json:"contains_in_commit_queue"`
 	// ContainsInPatch indicates if the unit contains any tasks that are part of a patch.
@@ -255,10 +255,10 @@ func (u *unitInfo) value() int64 {
 	// priority, to avoid situations where the impact of changing
 	// priority is obviated by other factors.
 
-	// Increase the value for the number of dependencies, so that
+	// Increase the value for the number of dependents, so that
 	// tasks (and units) which block other tasks run before tasks
 	// that don't block other tasks.
-	value += priority * (u.NumDeps / length)
+	value += priority * (u.NumDependents / length)
 
 	// Increase the value for tasks with longer runtimes, given
 	// that most of our workloads have different runtimes, and we
@@ -293,7 +293,7 @@ func (unit *Unit) info() unitInfo {
 
 		info.TotalPriority += t.Priority
 		info.ExpectedRuntime += t.FetchExpectedDuration().Average
-		info.NumDeps += int64(t.NumDependents)
+		info.NumDependents += int64(t.NumDependents)
 		info.TaskIDs = append(info.TaskIDs, t.Id)
 	}
 
@@ -355,21 +355,15 @@ func (tl TaskList) Less(i, j int) bool {
 		return t1.TaskGroupOrder < t2.TaskGroupOrder
 	}
 
-	t1Max := maxPriorityAndNumDependents(t1.NumDependents, t1.Priority)
-	t2Max := maxPriorityAndNumDependents(t2.NumDependents, t2.Priority)
+	if t1.NumDependents != t2.NumDependents {
+		return t1.NumDependents > t2.NumDependents
+	}
 
-	if t1Max != t2Max {
-		return t1Max > t2Max
+	if t1.Priority != t2.Priority {
+		return t1.Priority > t2.Priority
 	}
 
 	return t1.FetchExpectedDuration().Average > t2.FetchExpectedDuration().Average
-}
-
-func maxPriorityAndNumDependents(numDependents int, priority int64) int64 {
-	if int64(numDependents) > priority {
-		return int64(numDependents)
-	}
-	return priority
 }
 
 // TaskPlan provides a sortable interface on top of a slice of
@@ -428,14 +422,15 @@ func (tpl TaskPlan) Export() []task.Task {
 	output := []task.Task{}
 	seen := StringSet{}
 	for _, unit := range tpl {
+		rankValue := unit.RankValue()
 		tasks := unit.Export()
 		sort.Sort(tasks)
-		for _, t := range tasks {
-			if seen.Visit(t.Id) {
+		for i, _ := range tasks {
+			if seen.Visit(tasks[i].Id) {
 				continue
 			}
-
-			output = append(output, t)
+			tasks[i].PriorityRankValue = rankValue
+			output = append(output, tasks[i])
 		}
 	}
 
