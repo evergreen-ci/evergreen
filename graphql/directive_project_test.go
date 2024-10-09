@@ -98,6 +98,7 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 	projectRef := model.ProjectRef{
 		Id:         "project_id",
 		Identifier: "project_identifier",
+		RepoRefId:  "repo_id",
 	}
 	err = projectRef.Insert()
 	require.NoError(t, err)
@@ -147,8 +148,15 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 	require.Nil(t, res)
 	require.Equal(t, 3, callCount)
 
+	// Verify that user with only branch permission can view the repo page but not edit.
 	obj = interface{}(map[string]interface{}{"repoId": repoRef.ProjectRef.Id})
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
+	require.EqualError(t, err, "input: user 'testuser' does not have permission to access 'settings' for the project 'repo_id'")
+	require.Nil(t, res)
+	require.Equal(t, 3, callCount)
+
+	obj = interface{}(map[string]interface{}{"repoId": repoRef.ProjectRef.Id})
+	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelView)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 4, callCount)
