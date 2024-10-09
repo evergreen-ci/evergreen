@@ -127,6 +127,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/admin/service_flags").Version(2).Post().Wrap(requireUser, adminSettings).RouteHandler(makeSetServiceFlagsRouteManager())
 	app.AddRoute("/admin/settings").Version(2).Get().Wrap(requireUser, adminSettings).RouteHandler(makeFetchAdminSettings())
 	app.AddRoute("/admin/settings").Version(2).Post().Wrap(requireUser, adminSettings).RouteHandler(makeSetAdminSettings())
+	app.AddRoute("/admin/task_limits").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchTaskLimits())
 	app.AddRoute("/admin/task_queue").Version(2).Delete().Wrap(requireUser, adminSettings).RouteHandler(makeClearTaskQueueHandler())
 	app.AddRoute("/admin/commit_queues").Version(2).Delete().Wrap(requireUser, adminSettings).RouteHandler(makeClearCommitQueuesHandler())
 	app.AddRoute("/admin/service_users").Version(2).Get().Wrap(requireUser, adminSettings).RouteHandler(makeGetServiceUsers())
