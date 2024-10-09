@@ -1380,12 +1380,18 @@ func (t *Task) SetGeneratedTasksToActivate(buildVariantName, taskName string) er
 func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	ids := []string{}
 	for i := range tasks {
-		tasks[i].ScheduledTime = scheduledTime
-		ids = append(ids, tasks[i].Id)
+		// Skip tasks with scheduled time to prevent large updates
+		if tasks[i].ScheduledTime == utility.ZeroTime {
+			tasks[i].ScheduledTime = scheduledTime
+			ids = append(ids, tasks[i].Id)
+		}
 
 		// Display tasks are considered scheduled when their first exec task is scheduled
 		if tasks[i].IsPartOfDisplay() {
-			ids = append(ids, utility.FromStringPtr(tasks[i].DisplayTaskId))
+			displayTaskId := utility.FromStringPtr(tasks[i].DisplayTaskId)
+			if !utility.StringSliceContains(ids, displayTaskId) {
+				ids = append(ids, displayTaskId)
+			}
 		}
 	}
 	_, err := UpdateAll(
