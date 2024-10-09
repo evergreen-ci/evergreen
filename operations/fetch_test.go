@@ -5,63 +5,35 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestClone(t *testing.T) {
-	settings := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, settings)
-
-	type testCase struct {
-		opts      cloneOptions
-		isPassing bool
+	opts := cloneOptions{
+		owner:      "evergreen-ci",
+		repository: "sample",
+		revision:   "cf46076567e4949f9fc68e0634139d4ac495c89b",
+		branch:     "main",
 	}
-
-	testCases := map[string]testCase{
-		"SimpleHTTPS": {isPassing: true, opts: cloneOptions{
-			owner:      "evergreen-ci",
-			repository: "sample",
-			revision:   "cf46076567e4949f9fc68e0634139d4ac495c89b",
-			branch:     "main",
-		}},
-		"InvalidRepo": {isPassing: false, opts: cloneOptions{
-			owner:      "evergreen-ci",
-			repository: "foo",
-			revision:   "cf46076567e4949f9fc68e0634139d4ac495c89b",
-			branch:     "main",
-		}},
-		"InvalidRevision": {isPassing: false, opts: cloneOptions{
-			owner:      "evergreen-ci",
-			repository: "sample",
-			revision:   "9999999999999999999999999999999999999999",
-			branch:     "main",
-		}},
-		"InvalidToken": {isPassing: false, opts: cloneOptions{
-			owner:      "10gen",
-			repository: "kernel-tools",
-			revision:   "cabca3defc4b251c8a0be268969606717e01f906",
-			branch:     "main",
-			token:      "foo",
-		}},
-	}
-
-	for name, test := range testCases {
-		t.Run(name, func(t *testing.T) {
-			runCloneTest(t, test.opts, test.isPassing)
-		})
-	}
-}
-
-func runCloneTest(t *testing.T, opts cloneOptions, pass bool) {
 	opts.rootDir = t.TempDir()
-	if !pass {
-		assert.Error(t, clone(opts))
-		return
-	}
 	assert.NoError(t, clone(opts))
-}
 
+	// test with invalid repo
+	opts.repository = "foo"
+	assert.Error(t, clone(opts))
+
+	// test with invalid revision
+	opts.repository = "sample"
+	opts.revision = "9999999999999999999999999999999999999999"
+	assert.Error(t, clone(opts))
+
+	// test with invalid token
+	opts.owner = "10gen"
+	opts.repository = "kernel-tools"
+	opts.revision = "cabca3defc4b251c8a0be268969606717e01f906"
+	opts.token = "foo"
+	assert.Error(t, clone(opts))
+}
 func TestTruncateName(t *testing.T) {
 	// Test with .tar in filename
 	fileName := strings.Repeat("a", 300) + ".tar.gz"
