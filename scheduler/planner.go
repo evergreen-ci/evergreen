@@ -425,7 +425,7 @@ func (tpl TaskPlan) Export() []task.Task {
 		rankValue := unit.RankValue()
 		tasks := unit.Export()
 		sort.Sort(tasks)
-		for i, _ := range tasks {
+		for i := range tasks {
 			if seen.Visit(tasks[i].Id) {
 				continue
 			}
