@@ -467,27 +467,38 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 }
 
 // convertVarToParam converts a project variable to its equivalent parameter
-// name and value.
+// name and value. In particular, it validates that the variable name and value
+// fits within parameter constraints and if the name or value doesn't fit in the
+// constraints, it attempts to fix minor issues where possible. The return value
+// is a valid parameter name and parameter value.
 func convertVarToParam(projectID string, pm ParameterMappings, varName, varValue string) (paramName string, paramValue string, err error) {
+	if err := validateVarNameCharset(varName); err != nil {
+		return "", "", errors.Wrapf(err, "validating project variable name '%s'", varName)
+	}
+
 	varsToParams := pm.NameMap()
 	m, ok := varsToParams[varName]
-	if !ok {
-		paramName, err = createParamBasenameForVar(pm, varName)
-		if err != nil {
-			return "", "", errors.Wrapf(err, "getting parameter name for project variable '%s'", varName)
-		}
-	} else {
+	if ok {
 		paramName = m.ParameterName
+	} else {
+		paramName, err = createParamBasenameForVar(varName)
+		if err != nil {
+			return "", "", errors.Wrapf(err, "creating new parameter name for project variable '%s'", varName)
+		}
 	}
 
 	paramName, paramValue, err = getCompressedParamForVar(paramName, varValue)
 	if err != nil {
-		return "", "", errors.Wrapf(err, "getting parameter value for project variable '%s'", varName)
+		return "", "", errors.Wrapf(err, "getting compressed parameter name and value for project variable '%s'", varName)
 	}
 
 	prefix := fmt.Sprintf("%s/", projectID)
 	if !strings.Contains(paramName, prefix) {
 		paramName = fmt.Sprintf("%s%s", prefix, paramName)
+	}
+
+	if err := validateParamNameUnique(pm, varName, paramName); err != nil {
+		return "", "", errors.Wrapf(err, "validating parameter name for project variable '%s'", varName)
 	}
 
 	return paramName, paramValue, nil
@@ -499,31 +510,49 @@ func convertVarToParam(projectID string, pm ParameterMappings, varName, varValue
 // periods.
 var validParamBasename = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
 
-// createParamBasenameForVar generates a unique parameter basename for a
-// project variable.
-func createParamBasenameForVar(pm ParameterMappings, varName string) (string, error) {
-	paramName := varName
-	if !validParamBasename.MatchString(paramName) {
-		return "", errors.Errorf("project variable '%s' contains invalid characters - can only contain alphanumerics, underscores, periods, and dashes", varName)
+// validateVarNameCharset verifies that a project variable name is not empty and
+// contains only valid characters. It returns an error if it it's empty or
+// contains invalid characters that are not allowed in a parameter name.
+func validateVarNameCharset(varName string) error {
+	if len(varName) == 0 {
+		return errors.Errorf("project variable name cannot be empty")
 	}
+	if !validParamBasename.MatchString(varName) {
+		return errors.Errorf("project variable '%s' contains invalid characters - can only contain alphanumerics, underscores, periods, and dashes", varName)
+	}
+	return nil
+}
+
+// validateParamNameUnique verifies if the proposed parameter name to be used is
+// unique within a project. It returns an error if the parameter name
+// conflicts with an already existing parameter name.
+func validateParamNameUnique(pm ParameterMappings, varName, paramName string) error {
+	proposedBasename := parameterstore.GetBasename(paramName)
+	for _, m := range pm {
+		basename := parameterstore.GetBasename(m.ParameterName)
+		if m.Name == varName {
+			continue
+		}
+		if basename == proposedBasename {
+			// Protect against an edge case where a different project var
+			// already exists that has the exact same candidate parameter name.
+			// Project vars must map to unique parameter names.
+			return errors.Errorf("parameter basename '%s' for project variable '%s' conflicts with existing one for project variable '%s'", proposedBasename, varName, m.Name)
+		}
+	}
+
+	return nil
+}
+
+// createParamBasenameForVar generates a unique parameter basename from a
+// project variable name.
+func createParamBasenameForVar(varName string) (string, error) {
+	paramName := varName
 
 	if strings.HasPrefix(varName, "aws") || strings.HasPrefix(paramName, "ssm") {
 		// Parameters cannot start with "aws" or "ssm", adding a prefix
 		// (arbitrarily chosen as an underscore) fixes the issue.
 		paramName = fmt.Sprintf("_%s", paramName)
-	}
-
-	for _, m := range pm {
-		if m.Name == varName {
-			continue
-		}
-		basename := parameterstore.GetBasename(m.ParameterName)
-		if basename == paramName {
-			// Protect against an edge case where a different project var
-			// already exists that has the exact same candidate parameter name.
-			// Project vars must map to unique parameter names.
-			return "", errors.Errorf("parameter basename '%s' for project variable '%s' conflicts with project variable '%s'", paramName, varName, m.Name)
-		}
 	}
 
 	return paramName, nil

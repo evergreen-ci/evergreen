@@ -327,143 +327,46 @@ func TestAWSVars(t *testing.T) {
 	assert.Equal(true, found.PrivateVars[ProjectAWSSSHKeyValue])
 }
 
-func TestGetParamNameForVar(t *testing.T) {
-	t.Run("ReturnsNewlyGeneratedParameterNameBasedOnProjectVarName", func(t *testing.T) {
-		paramName, err := createParamBasenameForVar([]ParameterMapping{
-			{
-				Name:          "my_var",
-				ParameterName: "my_parameter_name",
-			},
-		}, "my_new_var")
-		require.NoError(t, err)
-		assert.Equal(t, "my_new_var", paramName)
-	})
-	t.Run("ReturnsAlreadyGeneratedParamName", func(t *testing.T) {
-		paramName, err := createParamBasenameForVar([]ParameterMapping{
-			{
-				Name:          "my_var",
-				ParameterName: "my_parameter_name",
-			},
-		}, "my_var")
-		require.NoError(t, err)
-		assert.Equal(t, "my_parameter_name", paramName)
-	})
-	t.Run("ReturnsNewlyGeneratedParameterNameThatDoesNotStartWithAWS", func(t *testing.T) {
-		paramName, err := createParamBasenameForVar([]ParameterMapping{
-			{
-				Name:          "my_var",
-				ParameterName: "my_parameter_name",
-			},
-			{
-				Name: "aws_key",
-			},
-		}, "aws_key")
-		require.NoError(t, err)
-		assert.Equal(t, "_aws_key", paramName)
-	})
-	t.Run("ReturnsNewlyGeneratedParameterNameThatDoesNotStartWithSSM", func(t *testing.T) {
-		paramName, err := createParamBasenameForVar([]ParameterMapping{
-			{
-				Name:          "my_var",
-				ParameterName: "my_parameter_name",
-			},
-			{
-				Name: "ssm_key",
-			},
-		}, "ssm_key")
-		require.NoError(t, err)
-		assert.Equal(t, "_ssm_key", paramName)
-	})
-	t.Run("ReturnsNewlyGeneratedParameterNameIfParameterMappingDoesNotYetHaveParameterName", func(t *testing.T) {
-		paramName, err := createParamBasenameForVar([]ParameterMapping{
-			{
-				Name: "aws_key",
-			},
-		}, "aws_key")
-		require.NoError(t, err)
-		assert.Equal(t, "_aws_key", paramName)
-	})
-	t.Run("ErrorsIfConflictingParameterNameWouldBeGenerated", func(t *testing.T) {
-		paramName, err := createParamBasenameForVar([]ParameterMapping{
-			{
-				Name:          "_aws_key",
-				ParameterName: "_aws_key",
-			},
-			{
-				Name: "aws_key",
-			},
-		}, "aws_key")
-		assert.Error(t, err)
-		assert.Zero(t, paramName)
-	})
-	t.Run("DoesNotAllowEmptyParameterName", func(t *testing.T) {
-		paramName, err := createParamBasenameForVar(nil, "")
-		assert.Error(t, err)
-		assert.Zero(t, paramName)
-	})
-}
-
-func TestGetCompressedParamForVar(t *testing.T) {
-	t.Run("ReturnsUnmodifiedVarForShortVarValue", func(t *testing.T) {
-		const (
-			varName  = "var_name"
-			varValue = "var_value"
-		)
-		paramName, paramValue, err := getCompressedParamForVar(varName, varValue)
-		assert.NoError(t, err)
-		assert.Equal(t, varName, paramName)
-		assert.Equal(t, varValue, paramValue)
-	})
-	t.Run("ReturnsUnmodifiedVarForEmptyVarValue", func(t *testing.T) {
-		const (
-			varName  = "var_name"
-			varValue = ""
-		)
-		paramName, paramValue, err := getCompressedParamForVar(varName, varValue)
-		assert.NoError(t, err)
-		assert.Equal(t, varName, paramName)
-		assert.Equal(t, varValue, paramValue)
-	})
-	t.Run("ReturnsCompressedVarForLongVarValue", func(t *testing.T) {
-		const varName = "var_name"
-		longVarValue := strings.Repeat("abc", parameterstore.ParamValueMaxLength)
-		assert.Greater(t, len(longVarValue), parameterstore.ParamValueMaxLength)
-
-		paramName, paramValue, err := getCompressedParamForVar(varName, longVarValue)
-		assert.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%s%s", varName, gzipCompressedParamExtension), paramName)
-		assert.Less(t, len(paramValue), parameterstore.ParamValueMaxLength)
-	})
-	t.Run("ReturnsErrorForVarValueThatExceedsMaxLengthAfterCompression", func(t *testing.T) {
-		const varName = "var_name"
-		longVarValue := utility.MakeRandomString(10 * parameterstore.ParamValueMaxLength)
-		assert.Greater(t, len(longVarValue), parameterstore.ParamValueMaxLength)
-
-		_, _, err := getCompressedParamForVar(varName, longVarValue)
-		assert.Error(t, err)
-	})
-}
-
 func TestConvertVarToParam(t *testing.T) {
-	t.Run("ReturnsUnmodifiedVarForShortVarValueWithValidName", func(t *testing.T) {
+	t.Run("ReturnsNewParamNameForValidVarNameAndValue", func(t *testing.T) {
 		const (
 			varName  = "var_name"
 			varValue = "var_value"
 		)
 		paramName, paramValue, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
 		require.NoError(t, err)
-		assert.Equal(t, "project_id/var_name", paramName)
-		assert.Equal(t, varValue, paramValue)
+		assert.Equal(t, "project_id/var_name", paramName, "new parameter name should include project ID prefix")
+		assert.Equal(t, varValue, paramValue, "variable value is valid and should be unchanged")
 	})
-	t.Run("ReturnsValidParamNameForVarContainingDisallowedPrefix", func(t *testing.T) {
+	t.Run("ReturnsNewParamNameAndEmptyValueForValidVarNameAndValue", func(t *testing.T) {
+		const (
+			varName  = "var_name"
+			varValue = ""
+		)
+		paramName, paramValue, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
+		require.NoError(t, err)
+		assert.Equal(t, "project_id/var_name", paramName, "new parameter name should include project ID prefix")
+		assert.Equal(t, varValue, paramValue, "variable value is empty, which is valid, so parameter value should also be empty")
+	})
+	t.Run("ReturnsValidParamNameForVarContainingDisallowedAWSPrefix", func(t *testing.T) {
 		const (
 			varName  = "aws_secret"
 			varValue = "super_secret"
 		)
 		paramName, paramValue, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
 		require.NoError(t, err)
-		assert.Equal(t, "project_id/_aws_secret", paramName)
-		assert.Equal(t, varValue, paramValue)
+		assert.Equal(t, "project_id/_aws_secret", paramName, "new parameter name should prevent invalid 'aws' prefix from appearing in basename")
+		assert.Equal(t, varValue, paramValue, "parameter value should match variable value because variable value is valid")
+	})
+	t.Run("ReturnsValidParamNameForVarContainingDisallowedSSMPrefix", func(t *testing.T) {
+		const (
+			varName  = "ssm_secret"
+			varValue = "super_secret"
+		)
+		paramName, paramValue, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
+		require.NoError(t, err)
+		assert.Equal(t, "project_id/_ssm_secret", paramName, "new parameter name should prevent invalid 'ssm' prefix from appearing in basename")
+		assert.Equal(t, varValue, paramValue, "parameter value should match variable value because variable value is valid")
 	})
 	t.Run("ReturnsExistingParameterNameAndNewVarValueForVarWithExistingParameter", func(t *testing.T) {
 		const (
@@ -479,10 +382,27 @@ func TestConvertVarToParam(t *testing.T) {
 		}
 		paramName, paramValue, err := convertVarToParam("project_id", pm, varName, varValue)
 		require.NoError(t, err)
-		assert.Equal(t, existingParamName, paramName)
-		assert.Equal(t, varValue, paramValue)
+		assert.Equal(t, existingParamName, paramName, "should return already-existing parameter name")
+		assert.Equal(t, varValue, paramValue, "parameter value should match variable value")
 	})
-	t.Run("ReturnsNewParameterNameAndCompressedParameterValueWhenVarValueLengthIncreasesBeyondLimit", func(t *testing.T) {
+	t.Run("ReturnsNewParameterNameAndCompressedParameterValueWhenVarValueExceedsLimit", func(t *testing.T) {
+		const varName = "var_name"
+
+		longVarValue := strings.Repeat("abc", parameterstore.ParamValueMaxLength)
+		assert.Greater(t, len(longVarValue), parameterstore.ParamValueMaxLength)
+
+		paramName, paramValue, err := convertVarToParam("project_id", ParameterMappings{}, varName, longVarValue)
+		require.NoError(t, err)
+		assert.Equal(t, "project_id/var_name.gz", paramName, "should include project ID prefix and gzip extension to indicate the value was compressed")
+		assert.NotEqual(t, longVarValue, paramValue, "compressed value should not match original variable value")
+
+		gzr, err := gzip.NewReader(strings.NewReader(paramValue))
+		require.NoError(t, err)
+		decompressed, err := io.ReadAll(gzr)
+		require.NoError(t, err)
+		assert.Equal(t, longVarValue, string(decompressed), "decompressed value should match original value")
+	})
+	t.Run("ReturnsNewParameterNameAndCompressedParameterValueWhenLengthOfExistingVarIncreasesBeyondLimit", func(t *testing.T) {
 		const (
 			varName           = "var_name"
 			existingParamName = "/prefix/project_id/var_name"
@@ -502,11 +422,45 @@ func TestConvertVarToParam(t *testing.T) {
 		assert.NotEqual(t, existingParamName, paramName)
 		assert.Equal(t, existingParamName+gzipCompressedParamExtension, paramName, "project variable that was previously short but now is long enoguh to require compression should have its parameter name changed")
 		assert.NotEqual(t, longVarValue, paramValue)
+
 		gzr, err := gzip.NewReader(strings.NewReader(paramValue))
 		require.NoError(t, err)
 		decompressed, err := io.ReadAll(gzr)
 		require.NoError(t, err)
 		assert.Equal(t, longVarValue, string(decompressed))
+	})
+	t.Run("ReturnsErrorForEmptyVariableName", func(t *testing.T) {
+		const (
+			varName  = ""
+			varValue = "var_value"
+		)
+		_, _, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
+		assert.Error(t, err, "should not allow variable with empty name")
+	})
+	t.Run("ReturnsErrorForVarValueThatExceedsMaxLengthAfterCompression", func(t *testing.T) {
+		const varName = "var_name"
+		// Since this is a purely random string, there's no realistic way to
+		// compress it to fit within the max length limit.
+		longVarValue := utility.MakeRandomString(10 * parameterstore.ParamValueMaxLength)
+		assert.Greater(t, len(longVarValue), parameterstore.ParamValueMaxLength)
+
+		_, _, err := convertVarToParam("project_id", ParameterMappings{}, varName, longVarValue)
+		assert.Error(t, err)
+	})
+	t.Run("ReturnsErrorForNewParameterThatWouldConflictWithExistingParameter", func(t *testing.T) {
+		const (
+			varName  = "aws_secret"
+			varValue = "super_secret"
+		)
+		pm := ParameterMappings{
+			{
+				Name:          "_aws_secret",
+				ParameterName: "/prefix/project_id/_aws_secret",
+			},
+		}
+
+		_, _, err := convertVarToParam("project_id", pm, varName, varValue)
+		assert.Error(t, err, "should not allow creation of new parameter whose name conflicts with an already-existing parameter")
 	})
 }
 
