@@ -99,7 +99,7 @@ Finished Evergreen tasks, partitioned by the project and date (in ISO format). F
 | start\_time                   | TIMESTAMP      | Time the task started running.
 | finish\_time                  | TIMESTAMP      | Time the task completed running.
 | activated\_time               | TIMESTAMP      | Time the task was marked as available to be scheduled, automatically or by a developer.
-| dependencies\_met\_time       | TIMESTAMP      | Time all dependencies are met, for tasks that have dependencies.
+| dependencies\_met\_time       | TIMESTAMP      | Time that Evergreen determines all dependencies have been met, for tasks that have dependencies.
 | time\_taken                   | BIGINT         | Duration, in nanoseconds, the task took to execute.
 | distro                        | VARCHAR        | ID of the distro this task is for.
 | secondary\_distros            | ARRAY(VARCHAR) | Optional secondary distros that can run the task when they're idle.
