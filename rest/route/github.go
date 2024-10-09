@@ -462,6 +462,13 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(event *github.MergeGrou
 		"head_sha": event.GetMergeGroup().GetHeadSHA(),
 		"message":  "merge group received",
 	})
+	projectRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(org, repo, branch)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding project ref"))
+	}
+	if len(projectRefs) == 0 {
+		return gimlet.NewJSONInternalErrorResponse(errors.New("no matching project ref"))
+	}
 	if err := gh.AddIntentForGithubMerge(event); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":   "GitHub hook",
