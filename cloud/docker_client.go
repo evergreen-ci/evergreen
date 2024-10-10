@@ -289,7 +289,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, env evergree
 			"BASE_IMAGE":          &baseImage,
 			"EXECUTABLE_SUB_PATH": &executableSubPath,
 			"BINARY_NAME":         &binaryName,
-			"URL":                 utility.ToStringPtr(h.Distro.S3ClientURL(env)),
+			"URL":                 utility.ToStringPtr(env.ClientConfig().S3URLPrefix),
 		},
 		Remove:        true,
 		RemoteContext: dockerfileUrl,
