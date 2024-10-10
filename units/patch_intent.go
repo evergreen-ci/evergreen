@@ -1063,18 +1063,34 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 		}))
 	}()
 
-	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(patchDoc.GithubMergeData.Org,
-		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
+	projectRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	if err != nil {
 		return errors.Wrapf(err, "fetching project ref for repo '%s/%s' with branch '%s'",
 			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch,
 		)
 	}
-	if projectRef == nil {
+	if len(projectRefs) == 0 {
+		// No Evergreen project exists for this repo
+		return errors.Errorf("project ref for repo '%s/%s' with branch '%s' not found",
+			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
+	}
+
+	commitQueueEnabled := false
+	projectRef := model.ProjectRef{}
+	for _, p := range projectRefs {
+		if p.CommitQueue.IsEnabled() {
+			projectRef = p
+			commitQueueEnabled = true
+			break
+		}
+	}
+
+	if !commitQueueEnabled {
 		j.gitHubError = commitQueueDisabled
 		return errors.Errorf("project ref for repo '%s/%s' with branch '%s' and merge queue enabled not found",
 			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	}
+
 	j.user, err = findEvergreenUserForGithubMergeGroup()
 	if err != nil {
 		return errors.Wrap(err, "finding GitHub merge queue user")
