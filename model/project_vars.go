@@ -511,14 +511,21 @@ func convertVarToParam(projectID string, pm ParameterMappings, varName, varValue
 var validParamBasename = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
 
 // validateVarNameCharset verifies that a project variable name is not empty and
-// contains only valid characters. It returns an error if it it's empty or
-// contains invalid characters that are not allowed in a parameter name.
+// contains only valid characters. It returns an error if it's empty or contains
+// invalid characters that are not allowed in a parameter name.
 func validateVarNameCharset(varName string) error {
 	if len(varName) == 0 {
 		return errors.Errorf("project variable name cannot be empty")
 	}
 	if !validParamBasename.MatchString(varName) {
-		return errors.Errorf("project variable '%s' contains invalid characters - can only contain alphanumerics, underscores, periods, and dashes", varName)
+		return errors.Errorf("project variable name '%s' contains invalid characters - can only contain alphanumerics, underscores, periods, and dashes", varName)
+	}
+	if strings.HasSuffix(varName, gzipCompressedParamExtension) {
+		// Project variable names should not end in ".gz" to avoid ambiguity
+		// over whether the variable value had to be compressed. The ".gz"
+		// extension is reserved for project variables where the value had to be
+		// compressed to fit within the parameter length limit.
+		return errors.Errorf("project variable name '%s' cannot end with '%s'", varName, gzipCompressedParamExtension)
 	}
 	return nil
 }

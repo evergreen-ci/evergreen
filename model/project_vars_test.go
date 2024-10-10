@@ -437,6 +437,14 @@ func TestConvertVarToParam(t *testing.T) {
 		_, _, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
 		assert.Error(t, err, "should not allow variable with empty name")
 	})
+	t.Run("ReturnsErrorForVariableNameEndingInGzipExtension", func(t *testing.T) {
+		const (
+			varName  = "var_name.gz"
+			varValue = "var_value"
+		)
+		_, _, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
+		assert.Error(t, err, "should not allow variable with gzip extension")
+	})
 	t.Run("ReturnsErrorForVarValueThatExceedsMaxLengthAfterCompression", func(t *testing.T) {
 		const varName = "var_name"
 		// Since this is a purely random string, there's no realistic way to
