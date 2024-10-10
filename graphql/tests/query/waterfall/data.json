@@ -2,7 +2,7 @@
   "versions": [
     {
       "_id": "evergreen_version39",
-      "gitspec": "revision39",
+      "gitspec": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
       "identifier": "spruce",
       "r": "gitter_request",
       "activated": true,

@@ -300,6 +300,129 @@
           }
         }
       }
+    },
+    {
+      "query_file": "revision.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "nextPageOrder": 39,
+            "prevPageOrder": 41,
+            "versions": [
+              {
+                "version": {
+                  "id": "evergreen_version1",
+                  "order": 41,
+                  "revision": "revision1"
+                },
+                "inactiveVersions": null
+              },
+              {
+                "version": null,
+                "inactiveVersions": [
+                  {
+                    "id": "evergreen_version0",
+                    "order": 40,
+                    "revision": "revision0"
+                  }
+                ]
+              },
+              {
+                "version": {
+                  "id": "evergreen_version39",
+                  "order": 39,
+                  "revision": "da39a3ee5e6b4b0d3255bfef95601890afd80709"
+                },
+                "inactiveVersions": null
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "revision_nonexistent.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "nextPageOrder": 39,
+            "prevPageOrder": 0,
+            "versions": [
+              {
+                "version": {
+                  "id": "evergreen_version5",
+                  "order": 45,
+                  "revision": "revision5"
+                },
+                "inactiveVersions": null
+              },
+              {
+                "version": null,
+                "inactiveVersions": [
+                  {
+                    "id": "evergreen_version4",
+                    "order": 44,
+                    "revision": "revision4"
+                  }
+                ]
+              },
+              {
+                "version": {
+                  "id": "evergreen_version3",
+                  "order": 43,
+                  "revision": "revision3"
+                },
+                "inactiveVersions": null
+              },
+              {
+                "version": {
+                  "id": "evergreen_version2",
+                  "order": 42,
+                  "revision": "2c9056df66d42fb1908d52eed096750a91f1f089"
+                },
+                "inactiveVersions": null
+              },
+              {
+                "version": {
+                  "id": "evergreen_version1",
+                  "order": 41,
+                  "revision": "revision1"
+                },
+                "inactiveVersions": null
+              },
+              {
+                "version": null,
+                "inactiveVersions": [
+                  {
+                    "id": "evergreen_version0",
+                    "order": 40,
+                    "revision": "revision0"
+                  }
+                ]
+              },
+              {
+                "version": {
+                  "id": "evergreen_version39",
+                  "order": 39,
+                  "revision": "da39a3ee5e6b4b0d3255bfef95601890afd80709"
+                },
+                "inactiveVersions": null
+              }
+            ]
+          }
+        },
+        "errors": [
+          {
+            "message": "version with revision 'foobarbaz' not found",
+            "path": [
+              "waterfall"
+            ],
+            "extensions": {
+              "code": "PARTIAL_ERROR"
+            }
+          }
+        ]
+      }
     }
   ]
 }

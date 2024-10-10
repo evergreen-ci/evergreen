@@ -812,18 +812,11 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	revision := utility.FromStringPtr(options.Revision)
 
 	if options.SkipOrderNumber == nil && options.Revision != nil {
-		if len(revision) < minRevisionLength {
-			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("at least %d characters must be provided for the revision", minRevisionLength)))
+		order, err := getRevisionOrder(revision, projectId, limit)
+		if err != nil {
+			graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 		} else {
-			found, err := model.VersionFindOne(model.VersionByProjectIdAndRevisionPrefix(projectId, revision))
-			if err != nil {
-				graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("getting version with revision '%s': %s", revision, err)))
-			} else if found == nil {
-				graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("version with revision '%s' not found", revision)))
-			} else {
-				// Offset the order number so the specified revision lands nearer to the center of the page.
-				skipOrderNumber = found.RevisionOrderNumber + limit/2 + 1
-			}
+			skipOrderNumber = order
 		}
 	}
 
@@ -978,6 +971,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 		limit = limitOpt
 	}
+
 	requesters := options.Requesters
 	if len(requesters) == 0 {
 		requesters = evergreen.SystemVersionRequesterTypes
@@ -985,6 +979,16 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	maxOrderOpt := utility.FromIntPtr(options.MaxOrder)
 	minOrderOpt := utility.FromIntPtr(options.MinOrder)
+	revision := utility.FromStringPtr(options.Revision)
+
+	if options.Revision != nil {
+		order, err := getRevisionOrder(revision, projectId, limit)
+		if err != nil {
+			graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
+		} else {
+			maxOrderOpt = order
+		}
+	}
 
 	opts := model.WaterfallOptions{
 		Limit:      limit,
@@ -1024,10 +1028,6 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall versions: %s", err.Error()))
 	}
-
-	// TODO DEVPROD-10179: Add check to ensure each version has tasks that match filter...
-	// Something like this: https://github.com/evergreen-ci/evergreen/blob/bf8f12ec2eefe61f0cf9bcc594924c7be8f91d1b/graphql/query_resolver.go#L869-L938
-	// All other filters can be applied in the GetActiveWaterfallVersions pipeline, ensuring `limit` matching versions have been returned.
 
 	activeVersionIds := []string{}
 	for _, v := range activeVersions {
