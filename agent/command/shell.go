@@ -226,6 +226,10 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		}
 	}
 
+	if execUser := conf.Distro.ExecUser; execUser != "" {
+		cmd.SudoAs(execUser)
+	}
+
 	err = cmd.Run(ctx)
 	if !c.Background && err != nil {
 		if exitCode, _ := cmd.Wait(ctx); exitCode != 0 {

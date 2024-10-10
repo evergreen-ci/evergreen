@@ -179,7 +179,7 @@ func (s *execCmdSuite) TestRunCommand() {
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	exec := cmd.getProc(s.ctx, cmd.Binary, "foo", s.logger)
+	exec := cmd.getProc(s.ctx, cmd.Binary, &internal.TaskConfig{Task: task.Task{Id: "foo"}}, s.logger)
 	s.NoError(cmd.runCommand(s.ctx, exec, s.logger))
 }
 
@@ -189,7 +189,7 @@ func (s *execCmdSuite) TestRunCommandPropagatesError() {
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	exec := cmd.getProc(s.ctx, cmd.Binary, "foo", s.logger)
+	exec := cmd.getProc(s.ctx, cmd.Binary, &internal.TaskConfig{Task: task.Task{Id: "foo"}}, s.logger)
 	err := cmd.runCommand(s.ctx, exec, s.logger)
 	s.Require().NotNil(err)
 	s.Contains(err.Error(), "process encountered problem: exit code 1")
@@ -203,7 +203,7 @@ func (s *execCmdSuite) TestRunCommandContinueOnErrorNoError() {
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	exec := cmd.getProc(s.ctx, cmd.Binary, "foo", s.logger)
+	exec := cmd.getProc(s.ctx, cmd.Binary, &internal.TaskConfig{Task: task.Task{Id: "foo"}}, s.logger)
 	s.NoError(cmd.runCommand(s.ctx, exec, s.logger))
 }
 
@@ -215,7 +215,7 @@ func (s *execCmdSuite) TestRunCommandBackgroundAlwaysNil() {
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	exec := cmd.getProc(s.ctx, cmd.Binary, "foo", s.logger)
+	exec := cmd.getProc(s.ctx, cmd.Binary, &internal.TaskConfig{Task: task.Task{Id: "foo"}}, s.logger)
 	s.NoError(cmd.runCommand(s.ctx, exec, s.logger))
 }
 
