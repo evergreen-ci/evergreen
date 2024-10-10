@@ -43,8 +43,7 @@ func TestClone(t *testing.T) {
 	}
 
 	opts := cloneOptions{
-		rootDir: t.TempDir(),
-		branch:  "main",
+		branch: "main",
 	}
 	for name, test := range testCases {
 		opts.owner = test.opts.owner
@@ -61,6 +60,7 @@ func TestClone(t *testing.T) {
 }
 
 func runCloneTest(t *testing.T, opts cloneOptions, pass bool) {
+	opts.rootDir = t.TempDir()
 	if !pass {
 		assert.Error(t, clone(opts))
 		return
