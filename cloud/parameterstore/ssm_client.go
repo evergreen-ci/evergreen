@@ -17,6 +17,10 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 )
 
+// ParamValueMaxLength is the maximum allowed length (in bytes) of an SSM
+// parameter value.
+const ParamValueMaxLength = 8192
+
 // SSMClient is an interface to interact with AWS Systems Manager (SSM)
 // Parameter Store.
 type SSMClient interface {
