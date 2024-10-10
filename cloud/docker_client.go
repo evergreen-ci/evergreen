@@ -31,7 +31,7 @@ import (
 type DockerClient interface {
 	Init(string) error
 	EnsureImageDownloaded(context.Context, *host.Host, host.DockerOptions) (string, error)
-	BuildImageWithAgent(context.Context, *host.Host, string) (string, error)
+	BuildImageWithAgent(context.Context, evergreen.Environment, *host.Host, string) (string, error)
 	CreateContainer(context.Context, *host.Host, *host.Host) error
 	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
 	GetDockerLogs(context.Context, string, *host.Host, types.ContainerLogsOptions) (io.Reader, error)
@@ -255,7 +255,7 @@ func (c *dockerClientImpl) pullImage(ctx context.Context, h *host.Host, url, use
 
 // BuildImageWithAgent takes a base image and builds a new image on the specified
 // host from a Dockfile in the root directory, which adds the Evergreen binary
-func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host, baseImage string) (string, error) {
+func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, env evergreen.Environment, h *host.Host, baseImage string) (string, error) {
 	const dockerfileRoute = "dockerfile"
 	start := time.Now()
 
@@ -289,7 +289,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 			"BASE_IMAGE":          &baseImage,
 			"EXECUTABLE_SUB_PATH": &executableSubPath,
 			"BINARY_NAME":         &binaryName,
-			"URL":                 &c.evergreenSettings.Ui.Url,
+			"URL":                 utility.ToStringPtr(h.Distro.S3ClientURL(env)),
 		},
 		Remove:        true,
 		RemoteContext: dockerfileUrl,
