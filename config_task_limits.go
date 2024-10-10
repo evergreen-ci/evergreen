@@ -46,7 +46,7 @@ type TaskLimitsConfig struct {
 	// MaxExecTimeoutSecs is the maximum number of seconds a task can run and set their timeout to.
 	MaxExecTimeoutSecs int `bson:"max_exec_timeout_secs" json:"max_exec_timeout_secs" yaml:"max_exec_timeout_secs"`
 
-	// MaxTaskExecution is the maximum task (zero based) execution number
+	// MaxTaskExecution is the maximum task (zero based) execution number.
 	MaxTaskExecution int `bson:"max_task_execution" json:"max_task_execution" yaml:"max_task_execution"`
 }
 

@@ -158,7 +158,7 @@ func New(apiURL string) Config {
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access the %s resolver", user.Username(), operationContext))
 	}
 	c.Directives.RequireProjectAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (interface{}, error) {
-		user := mustHaveUser(ctx)
+		usr := mustHaveUser(ctx)
 
 		args, isMap := obj.(map[string]interface{})
 		if !isMap {
@@ -180,19 +180,31 @@ func New(apiURL string) Config {
 			return nil, mapHTTPStatusToGqlError(ctx, statusCode, err)
 		}
 
-		opts := gimlet.PermissionOpts{
+		hasPermission := usr.HasPermission(gimlet.PermissionOpts{
 			Resource:      projectId,
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    requiredPermission,
 			RequiredLevel: requiredLevel,
-		}
-		if user.HasPermission(opts) {
+		})
+		if hasPermission {
 			return next(ctx)
 		}
-		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access '%s' for the project '%s'", user.Username(), strings.ToLower(permission.String()), projectId))
+
+		if requiredPermission == evergreen.PermissionProjectSettings && requiredLevel == evergreen.ProjectSettingsView.Value {
+			// If we're trying to view a repo project, check if the user has view permission for any branch project instead.
+			hasPermission, err = model.UserHasRepoViewPermission(usr, projectId)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem checking repo view permission: %s", err.Error()))
+			}
+			if hasPermission {
+				return next(ctx)
+			}
+		}
+
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access '%s' for the project '%s'", usr.Username(), strings.ToLower(permission.String()), projectId))
 	}
 	c.Directives.RequireProjectSettingsAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
-		user := mustHaveUser(ctx)
+		usr := mustHaveUser(ctx)
 
 		projectSettings, isProjectSettings := obj.(*restModel.APIProjectSettings)
 		if !isProjectSettings {
@@ -205,15 +217,25 @@ func New(apiURL string) Config {
 			return nil, ResourceNotFound.Send(ctx, "project not specified")
 		}
 
-		opts := gimlet.PermissionOpts{
+		hasPermission := usr.HasPermission(gimlet.PermissionOpts{
 			Resource:      projectId,
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    evergreen.PermissionProjectSettings,
 			RequiredLevel: evergreen.ProjectSettingsView.Value,
-		}
-		if user.HasPermission(opts) {
+		})
+		if hasPermission {
 			return next(ctx)
 		}
+
+		// In case this is a repo project, check if the user has view permission for any branch project instead.
+		hasPermission, err = model.UserHasRepoViewPermission(usr, projectId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem checking repo view permission: %s", err.Error()))
+		}
+		if hasPermission {
+			return next(ctx)
+		}
+
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user does not have permission to access the field '%s' for project with ID '%s'", graphql.GetFieldContext(ctx).Path(), projectId))
 	}
 	c.Directives.RequireCommitQueueItemOwner = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {

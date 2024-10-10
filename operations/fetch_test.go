@@ -5,14 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestClone(t *testing.T) {
-	settings := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, settings)
-
 	type testCase struct {
 		opts      cloneOptions
 		isPassing bool
@@ -46,9 +42,19 @@ func TestClone(t *testing.T) {
 		}},
 	}
 
+	opts := cloneOptions{
+		branch: "main",
+	}
 	for name, test := range testCases {
+		opts.owner = test.opts.owner
+		opts.repository = test.opts.repository
+		opts.revision = test.opts.revision
+
+		if test.opts.token != "" {
+			opts.token = test.opts.token
+		}
 		t.Run(name, func(t *testing.T) {
-			runCloneTest(t, test.opts, test.isPassing)
+			runCloneTest(t, opts, test.isPassing)
 		})
 	}
 }

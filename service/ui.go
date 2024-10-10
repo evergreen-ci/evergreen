@@ -276,7 +276,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/login/key").Handler(uis.userGetKey).Post()
 	app.AddRoute("/logout").Wrap(allowsCORS).Handler(uis.logout).Get()
 
-	app.AddRoute("/robots.txt").Get().Handler(func(rw http.ResponseWriter, r *http.Request) {
+	app.AddRoute("/robots.txt").Get().Wrap(needsLogin).Handler(func(rw http.ResponseWriter, r *http.Request) {
 		_, err := rw.Write([]byte(strings.Join([]string{
 			"User-agent: *",
 			"Disallow: /",
@@ -317,7 +317,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/task_log_raw/{task_id}/{execution}").Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.taskLogRaw).Get()
 
 	// Proxy downloads for task uploaded files via S3
-	app.AddRoute(("/task_file_raw/{task_id}/{execution}/{file_name}")).Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.taskFileRaw).Get()
+	app.AddRoute("/task_file_raw/{task_id}/{execution}/{file_name}").Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.taskFileRaw).Get()
 	// Test Logs
 	app.AddRoute("/test_log/{task_id}/{task_execution}").Wrap(needsLogin, needsContext, allowsCORS, viewLogs).Handler(uis.testLog).Get()
 	// TODO: We are keeping this route temporarily for backwards

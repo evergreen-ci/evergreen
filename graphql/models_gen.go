@@ -623,6 +623,7 @@ type WaterfallOptions struct {
 	MaxOrder          *int     `json:"maxOrder,omitempty"`
 	ProjectIdentifier string   `json:"projectIdentifier"`
 	Requesters        []string `json:"requesters,omitempty"`
+	Revision          *string  `json:"revision,omitempty"`
 }
 
 type WaterfallVersion struct {
