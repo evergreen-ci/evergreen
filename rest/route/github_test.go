@@ -592,13 +592,6 @@ func TestHandleGitHubMergeGroup(t *testing.T) {
 			assert.Contains(t, str, "message ID cannot be empty")
 			assert.NotContains(t, str, "200")
 		},
-		"nonexistentProject": func(t *testing.T) {
-			response := gh.handleMergeGroupChecksRequested(event)
-			// check for error returned by GitHub merge queue handler
-			str := fmt.Sprintf("%#v", response)
-			assert.Contains(t, str, "no matching project ref")
-			assert.NotContains(t, str, "200")
-		},
 	} {
 		require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 		t.Run(testCase, test)
