@@ -1363,3 +1363,18 @@ func flattenOtelVariables(vars map[string]interface{}) map[string]interface{} {
 	}
 	return flattenedVars
 }
+
+func getRevisionOrder(revision string, projectId string, limit int) (int, error) {
+	if len(revision) < minRevisionLength {
+		return 0, errors.New(fmt.Sprintf("at least %d characters must be provided for the revision", minRevisionLength))
+	}
+
+	found, err := model.VersionFindOne(model.VersionByProjectIdAndRevisionPrefix(projectId, revision))
+	if err != nil {
+		return 0, errors.New(fmt.Sprintf("getting version with revision '%s': %s", revision, err))
+	} else if found == nil {
+		return 0, errors.New(fmt.Sprintf("version with revision '%s' not found", revision))
+	}
+	// Offset the order number so the specified revision lands nearer to the center of the page.
+	return found.RevisionOrderNumber + limit/2 + 1, nil
+}
