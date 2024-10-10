@@ -574,7 +574,7 @@ func (projectVars *ProjectVars) Insert() error {
 	)
 }
 
-// kim: TODO: update this to also sync with PS as well if enabled.
+// kim: TODO: update this to also sync with PS as well if enabled (DEVPROD-11973).
 // kim: NOTE: ideally only sync the diff.
 func (projectVars *ProjectVars) FindAndModify(before *ProjectVars, varsToDelete []string) (*adb.ChangeInfo, error) {
 	setUpdate := bson.M{}
