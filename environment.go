@@ -103,6 +103,7 @@ type Environment interface {
 	Context() (context.Context, context.CancelFunc)
 
 	Session() db.Session
+	ContextSession(ctx context.Context) db.Session
 	Client() *mongo.Client
 	DB() *mongo.Database
 	SharedDB() *mongo.Database
@@ -1074,6 +1075,13 @@ func (e *envState) Session() db.Session {
 	defer e.mu.RUnlock()
 
 	return db.WrapClient(e.ctx, e.client).Clone()
+}
+
+func (e *envState) ContextSession(ctx context.Context) db.Session {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return db.WrapClient(ctx, e.client).Clone()
 }
 
 func (e *envState) ClientConfig() *ClientConfig {

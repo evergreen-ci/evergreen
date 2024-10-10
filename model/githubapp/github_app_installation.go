@@ -80,9 +80,7 @@ func (h *GitHubAppInstallation) Upsert(ctx context.Context) error {
 		bson.M{
 			"$set": h,
 		},
-		&options.UpdateOptions{
-			Upsert: utility.TruePtr(),
-		},
+		options.Update().SetUpsert(true),
 	)
 	return err
 }

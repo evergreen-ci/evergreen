@@ -345,7 +345,7 @@ func (b Builds) InsertMany(ctx context.Context, ordered bool) error {
 	if len(b) == 0 {
 		return nil
 	}
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, b.getPayload(), &options.InsertManyOptions{Ordered: &ordered})
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, b.getPayload(), options.InsertMany().SetOrdered(ordered))
 	return errors.Wrap(err, "bulk inserting builds")
 }
 

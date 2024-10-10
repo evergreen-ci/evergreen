@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"time"
@@ -25,7 +26,11 @@ var (
 )
 
 type SessionFactory interface {
+	// GetSession uses the global environment's context to get a session and database.
 	GetSession() (db.Session, db.Database, error)
+	// GetContextSession uses the provided context to get a session and database.
+	// This is needed for operations that need control over the passed in context.
+	GetContextSession(ctx context.Context) (db.Session, db.Database, error)
 }
 
 type shimFactoryImpl struct {
@@ -47,6 +52,19 @@ func (s *shimFactoryImpl) GetSession() (db.Session, db.Database, error) {
 	}
 
 	session := s.env.Session()
+	if session == nil {
+		return nil, nil, errors.New("session is not defined")
+	}
+
+	return session, session.DB(s.db), nil
+}
+
+func (s *shimFactoryImpl) GetContextSession(ctx context.Context) (db.Session, db.Database, error) {
+	if s.env == nil {
+		return nil, nil, errors.New("undefined environment")
+	}
+
+	session := s.env.ContextSession(ctx)
 	if session == nil {
 		return nil, nil, errors.New("session is not defined")
 	}
