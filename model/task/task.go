@@ -86,9 +86,14 @@ type Task struct {
 
 	Version string `bson:"version" json:"version,omitempty"`
 	// Project is the project id of the task.
-	Project           string `bson:"branch" json:"branch,omitempty"`
-	Revision          string `bson:"gitspec" json:"gitspec"`
-	Priority          int64  `bson:"priority" json:"priority"`
+	Project  string `bson:"branch" json:"branch,omitempty"`
+	Revision string `bson:"gitspec" json:"gitspec"`
+	// Priority is a specifiable value that adds weight to the prioritization that task will be given in its
+	// corresponding distro task queue.
+	Priority int64 `bson:"priority" json:"priority"`
+	// PriorityRankValue is not persisted to the db, but stored in memory and passed to the task queue document.
+	// It is a mixture of Priority and the various task queue ranking factors that multiply on top of Priority.
+	PriorityRankValue int64  `bson:"priority_rank_value" json:"priority_rank_value"`
 	TaskGroup         string `bson:"task_group" json:"task_group"`
 	TaskGroupMaxHosts int    `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
 	TaskGroupOrder    int    `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`

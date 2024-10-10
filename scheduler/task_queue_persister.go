@@ -29,6 +29,7 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 			Project:             t.Project,
 			ExpectedDuration:    t.ExpectedDuration,
 			Priority:            t.Priority,
+			PriorityRankValue:   t.PriorityRankValue,
 			Group:               t.TaskGroup,
 			GroupMaxHosts:       t.TaskGroupMaxHosts,
 			GroupIndex:          t.TaskGroupOrder,
