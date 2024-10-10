@@ -34,12 +34,12 @@ input PatchConfigure {
 }
 
 input VariantTasks {
-  displayTasks: [DisplayTask!]!
+  displayTasks: [DisplayTaskInput!]!
   tasks: [String!]!
   variant: String!
 }
 
-input DisplayTask {
+input DisplayTaskInput {
   ExecTasks: [String!]!
   Name: String!
 }
@@ -108,6 +108,12 @@ type PatchTriggerAlias {
 type VariantTask {
   name: String!
   tasks: [String!]!
+  displayTasks: [DisplayTask!]!
+}
+
+type DisplayTask {
+  execTasks: [String!]!
+  name: String!
 }
 
 # This is also used by the Project type

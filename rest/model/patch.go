@@ -77,11 +77,21 @@ type ChildPatch struct {
 	PatchID *string `json:"patch_id"`
 	Status  *string `json:"status"`
 }
+
 type VariantTask struct {
 	// Name of build variant
 	Name *string `json:"name"`
 	// All tasks available to run on this build variant
 	Tasks []*string `json:"tasks"`
+	// Display tasks associated with the tasks
+	DisplayTasks []*DisplayTask `json:"display_tasks"`
+}
+
+type DisplayTask struct {
+	// Name of the display task
+	Name string `json:"name"`
+	// Execution tasks of the display task
+	ExecTasks []string `json:"execution_tasks"`
 }
 
 type FileDiff struct {
@@ -247,9 +257,17 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 		for _, task := range vt.Tasks {
 			vtasks = append(vtasks, utility.ToStringPtr(task))
 		}
+		displayTasks := make([]*DisplayTask, 0)
+		for _, task := range vt.DisplayTasks {
+			displayTasks = append(displayTasks, &DisplayTask{
+				Name:      task.Name,
+				ExecTasks: task.ExecTasks,
+			})
+		}
 		variantTasks = append(variantTasks, VariantTask{
-			Name:  utility.ToStringPtr(vt.Variant),
-			Tasks: vtasks,
+			Name:         utility.ToStringPtr(vt.Variant),
+			Tasks:        vtasks,
+			DisplayTasks: displayTasks,
 		})
 	}
 	apiPatch.VariantsTasks = variantTasks
@@ -289,9 +307,17 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 			for _, task := range vt.Tasks {
 				vtasks = append(vtasks, utility.ToStringPtr(task))
 			}
+			displayTasks := make([]*DisplayTask, 0)
+			for _, task := range vt.DisplayTasks {
+				displayTasks = append(displayTasks, &DisplayTask{
+					Name:      task.Name,
+					ExecTasks: task.ExecTasks,
+				})
+			}
 			variantTasks = append(variantTasks, VariantTask{
-				Name:  utility.ToStringPtr(vt.Variant),
-				Tasks: vtasks,
+				Name:         utility.ToStringPtr(vt.Variant),
+				Tasks:        vtasks,
+				DisplayTasks: displayTasks,
 			})
 		}
 
@@ -432,9 +458,17 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 		for _, task := range vt.Tasks {
 			vtasks = append(vtasks, utility.FromStringPtr(task))
 		}
+		displayTasks := make([]patch.DisplayTask, 0)
+		for _, task := range vt.DisplayTasks {
+			displayTasks = append(displayTasks, patch.DisplayTask{
+				Name:      task.Name,
+				ExecTasks: task.ExecTasks,
+			})
+		}
 		variantTasks = append(variantTasks, patch.VariantTasks{
-			Variant: utility.FromStringPtr(vt.Name),
-			Tasks:   vtasks,
+			Variant:      utility.FromStringPtr(vt.Name),
+			Tasks:        vtasks,
+			DisplayTasks: displayTasks,
 		})
 	}
 	res.VariantsTasks = variantTasks

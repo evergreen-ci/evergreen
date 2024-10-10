@@ -93,6 +93,11 @@ type Dependency struct {
 }
 
 type DisplayTask struct {
+	ExecTasks []string `json:"execTasks"`
+	Name      string   `json:"name"`
+}
+
+type DisplayTaskInput struct {
 	ExecTasks []string `json:"ExecTasks"`
 	Name      string   `json:"Name"`
 }
@@ -596,9 +601,9 @@ type UserConfig struct {
 }
 
 type VariantTasks struct {
-	DisplayTasks []*DisplayTask `json:"displayTasks"`
-	Tasks        []string       `json:"tasks"`
-	Variant      string         `json:"variant"`
+	DisplayTasks []*DisplayTaskInput `json:"displayTasks"`
+	Tasks        []string            `json:"tasks"`
+	Variant      string              `json:"variant"`
 }
 
 type VersionTasks struct {

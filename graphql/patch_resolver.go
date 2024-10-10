@@ -152,9 +152,17 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 
 		variantsTasks := []restModel.VariantTask{}
 		for _, vt := range matchingTasks {
+			displayTasks := []*restModel.DisplayTask{}
+			for _, dt := range vt.DisplayTasks {
+				displayTasks = append(displayTasks, &restModel.DisplayTask{
+					Name:      dt.Name,
+					ExecTasks: dt.ExecTasks,
+				})
+			}
 			variantsTasks = append(variantsTasks, restModel.VariantTask{
-				Name:  utility.ToStringPtr(vt.Variant),
-				Tasks: utility.ToStringPtrSlice(vt.Tasks),
+				Name:         utility.ToStringPtr(vt.Variant),
+				Tasks:        utility.ToStringPtrSlice(vt.Tasks),
+				DisplayTasks: displayTasks,
 			})
 		}
 
@@ -254,7 +262,16 @@ func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch
 	return &apiVersion, nil
 }
 
+// DisplayTasks is the resolver for the displayTasks field.
+func (r *variantTaskResolver) DisplayTasks(ctx context.Context, obj *restModel.VariantTask) ([]*DisplayTask, error) {
+	panic(fmt.Errorf("not implemented: DisplayTasks - displayTasks"))
+}
+
 // Patch returns PatchResolver implementation.
 func (r *Resolver) Patch() PatchResolver { return &patchResolver{r} }
 
+// VariantTask returns VariantTaskResolver implementation.
+func (r *Resolver) VariantTask() VariantTaskResolver { return &variantTaskResolver{r} }
+
 type patchResolver struct{ *Resolver }
+type variantTaskResolver struct{ *Resolver }

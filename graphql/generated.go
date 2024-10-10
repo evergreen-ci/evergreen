@@ -80,6 +80,7 @@ type ResolverRoot interface {
 	TaskQueueItem() TaskQueueItemResolver
 	TicketFields() TicketFieldsResolver
 	User() UserResolver
+	VariantTask() VariantTaskResolver
 	Version() VersionResolver
 	Volume() VolumeResolver
 	BootstrapSettingsInput() BootstrapSettingsInputResolver
@@ -245,6 +246,11 @@ type ComplexityRoot struct {
 
 	DispatcherSettings struct {
 		Version func(childComplexity int) int
+	}
+
+	DisplayTask struct {
+		ExecTasks func(childComplexity int) int
+		Name      func(childComplexity int) int
 	}
 
 	Distro struct {
@@ -1598,8 +1604,9 @@ type ComplexityRoot struct {
 	}
 
 	VariantTask struct {
-		Name  func(childComplexity int) int
-		Tasks func(childComplexity int) int
+		DisplayTasks func(childComplexity int) int
+		Name         func(childComplexity int) int
+		Tasks        func(childComplexity int) int
 	}
 
 	Version struct {
@@ -2074,6 +2081,9 @@ type UserResolver interface {
 	Permissions(ctx context.Context, obj *model.APIDBUser) (*Permissions, error)
 
 	Subscriptions(ctx context.Context, obj *model.APIDBUser) ([]*model.APISubscription, error)
+}
+type VariantTaskResolver interface {
+	DisplayTasks(ctx context.Context, obj *model.VariantTask) ([]*DisplayTask, error)
 }
 type VersionResolver interface {
 	BaseTaskStatuses(ctx context.Context, obj *model.APIVersion) ([]string, error)
@@ -2708,6 +2718,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.DispatcherSettings.Version(childComplexity), true
+
+	case "DisplayTask.execTasks":
+		if e.complexity.DisplayTask.ExecTasks == nil {
+			break
+		}
+
+		return e.complexity.DisplayTask.ExecTasks(childComplexity), true
+
+	case "DisplayTask.name":
+		if e.complexity.DisplayTask.Name == nil {
+			break
+		}
+
+		return e.complexity.DisplayTask.Name(childComplexity), true
 
 	case "Distro.adminOnly":
 		if e.complexity.Distro.AdminOnly == nil {
@@ -9677,6 +9701,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.UserSettings.UseSpruceOptions(childComplexity), true
 
+	case "VariantTask.displayTasks":
+		if e.complexity.VariantTask.DisplayTasks == nil {
+			break
+		}
+
+		return e.complexity.VariantTask.DisplayTasks(childComplexity), true
+
 	case "VariantTask.name":
 		if e.complexity.VariantTask.Name == nil {
 			break
@@ -10400,7 +10431,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputDeleteDistroInput,
 		ec.unmarshalInputDeleteGithubAppCredentialsInput,
 		ec.unmarshalInputDispatcherSettingsInput,
-		ec.unmarshalInputDisplayTask,
+		ec.unmarshalInputDisplayTaskInput,
 		ec.unmarshalInputDistroEventsInput,
 		ec.unmarshalInputDistroInput,
 		ec.unmarshalInputDistroPermissionsOptions,
@@ -17044,6 +17075,94 @@ func (ec *executionContext) fieldContext_DispatcherSettings_version(_ context.Co
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type DispatcherVersion does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DisplayTask_execTasks(ctx context.Context, field graphql.CollectedField, obj *DisplayTask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DisplayTask_execTasks(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExecTasks, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DisplayTask_execTasks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DisplayTask",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DisplayTask_name(ctx context.Context, field graphql.CollectedField, obj *DisplayTask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DisplayTask_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DisplayTask_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DisplayTask",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -38007,6 +38126,8 @@ func (ec *executionContext) fieldContext_Patch_variantsTasks(_ context.Context, 
 				return ec.fieldContext_VariantTask_name(ctx, field)
 			case "tasks":
 				return ec.fieldContext_VariantTask_tasks(ctx, field)
+			case "displayTasks":
+				return ec.fieldContext_VariantTask_displayTasks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type VariantTask", field.Name)
 		},
@@ -38791,6 +38912,8 @@ func (ec *executionContext) fieldContext_PatchTriggerAlias_variantsTasks(_ conte
 				return ec.fieldContext_VariantTask_name(ctx, field)
 			case "tasks":
 				return ec.fieldContext_VariantTask_tasks(ctx, field)
+			case "displayTasks":
+				return ec.fieldContext_VariantTask_displayTasks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type VariantTask", field.Name)
 		},
@@ -65972,6 +66095,56 @@ func (ec *executionContext) fieldContext_VariantTask_tasks(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _VariantTask_displayTasks(ctx context.Context, field graphql.CollectedField, obj *model.VariantTask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_VariantTask_displayTasks(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.VariantTask().DisplayTasks(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*DisplayTask)
+	fc.Result = res
+	return ec.marshalNDisplayTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTaskᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_VariantTask_displayTasks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "VariantTask",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "execTasks":
+				return ec.fieldContext_DisplayTask_execTasks(ctx, field)
+			case "name":
+				return ec.fieldContext_DisplayTask_name(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DisplayTask", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Version_id(ctx context.Context, field graphql.CollectedField, obj *model.APIVersion) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Version_id(ctx, field)
 	if err != nil {
@@ -73669,8 +73842,8 @@ func (ec *executionContext) unmarshalInputDispatcherSettingsInput(ctx context.Co
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputDisplayTask(ctx context.Context, obj interface{}) (DisplayTask, error) {
-	var it DisplayTask
+func (ec *executionContext) unmarshalInputDisplayTaskInput(ctx context.Context, obj interface{}) (DisplayTaskInput, error) {
+	var it DisplayTaskInput
 	asMap := map[string]interface{}{}
 	for k, v := range obj.(map[string]interface{}) {
 		asMap[k] = v
@@ -78181,7 +78354,7 @@ func (ec *executionContext) unmarshalInputVariantTasks(ctx context.Context, obj 
 		switch k {
 		case "displayTasks":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("displayTasks"))
-			data, err := ec.unmarshalNDisplayTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTaskᚄ(ctx, v)
+			data, err := ec.unmarshalNDisplayTaskInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTaskInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -79810,6 +79983,50 @@ func (ec *executionContext) _DispatcherSettings(ctx context.Context, sel ast.Sel
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var displayTaskImplementors = []string{"DisplayTask"}
+
+func (ec *executionContext) _DisplayTask(ctx context.Context, sel ast.SelectionSet, obj *DisplayTask) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, displayTaskImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DisplayTask")
+		case "execTasks":
+			out.Values[i] = ec._DisplayTask_execTasks(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._DisplayTask_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -92858,13 +93075,49 @@ func (ec *executionContext) _VariantTask(ctx context.Context, sel ast.SelectionS
 		case "name":
 			out.Values[i] = ec._VariantTask_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "tasks":
 			out.Values[i] = ec._VariantTask_tasks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "displayTasks":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._VariantTask_displayTasks(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -95123,16 +95376,70 @@ func (ec *executionContext) marshalNDispatcherVersion2githubᚗcomᚋevergreen�
 	return v
 }
 
-func (ec *executionContext) unmarshalNDisplayTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTaskᚄ(ctx context.Context, v interface{}) ([]*DisplayTask, error) {
+func (ec *executionContext) marshalNDisplayTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTaskᚄ(ctx context.Context, sel ast.SelectionSet, v []*DisplayTask) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNDisplayTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTask(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNDisplayTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTask(ctx context.Context, sel ast.SelectionSet, v *DisplayTask) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DisplayTask(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNDisplayTaskInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTaskInputᚄ(ctx context.Context, v interface{}) ([]*DisplayTaskInput, error) {
 	var vSlice []interface{}
 	if v != nil {
 		vSlice = graphql.CoerceList(v)
 	}
 	var err error
-	res := make([]*DisplayTask, len(vSlice))
+	res := make([]*DisplayTaskInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNDisplayTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTask(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNDisplayTaskInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTaskInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -95140,8 +95447,8 @@ func (ec *executionContext) unmarshalNDisplayTask2ᚕᚖgithubᚗcomᚋevergreen
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalNDisplayTask2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTask(ctx context.Context, v interface{}) (*DisplayTask, error) {
-	res, err := ec.unmarshalInputDisplayTask(ctx, v)
+func (ec *executionContext) unmarshalNDisplayTaskInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTaskInput(ctx context.Context, v interface{}) (*DisplayTaskInput, error) {
+	res, err := ec.unmarshalInputDisplayTaskInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
