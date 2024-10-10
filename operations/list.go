@@ -24,7 +24,7 @@ func List() cli.Command {
 		tasksFlagName                = "tasks"
 		distrosFlagName              = "distros"
 		spawnableFlagName            = "spawnable"
-		includeProjectConfigFlagName = "include-config"
+		includeConfigAliasesFlagName = "include-config-aliases"
 		parametersFlagName           = "parameters"
 		patchAliasesFlagName         = "patch-aliases"
 		triggerAliasesFlagName       = "trigger-aliases"
@@ -59,6 +59,10 @@ func List() cli.Command {
 				Usage: "list all patch aliases for a project",
 			},
 			cli.BoolFlag{
+				Name:  includeConfigAliasesFlagName,
+				Usage: "include YAML defined aliases when listing patch aliases",
+			},
+			cli.BoolFlag{
 				Name:  triggerAliasesFlagName,
 				Usage: "list all trigger aliases for a project",
 			},
@@ -72,7 +76,7 @@ func List() cli.Command {
 			project := c.String(projectFlagName)
 			filename := c.String(pathFlagName)
 			onlyUserSpawnable := c.Bool(spawnableFlagName)
-			includeProjectConfig := c.Bool(includeProjectConfigFlagName)
+			includeProjectConfig := c.Bool(includeConfigAliasesFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
