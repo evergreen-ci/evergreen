@@ -521,10 +521,11 @@ func validateVarNameCharset(varName string) error {
 		return errors.Errorf("project variable name '%s' contains invalid characters - can only contain alphanumerics, underscores, periods, and dashes", varName)
 	}
 	if strings.HasSuffix(varName, gzipCompressedParamExtension) {
-		// Project variable names should not end in ".gz" to avoid ambiguity
-		// over whether the variable value had to be compressed. The ".gz"
-		// extension is reserved for project variables where the value had to be
-		// compressed to fit within the parameter length limit.
+		// Project variable names should not end in a gzip extension to avoid
+		// ambiguity over whether the variable value had to be compressed. The
+		// extension is reserved for internal Evergreen use in case there's a
+		// project variable that's long enough to require compression to fit
+		// within the parameter length limit.
 		return errors.Errorf("project variable name '%s' cannot end with '%s'", varName, gzipCompressedParamExtension)
 	}
 	return nil
