@@ -19,14 +19,15 @@ import (
 
 func List() cli.Command {
 	const (
-		projectsFlagName       = "projects"
-		variantsFlagName       = "variants"
-		tasksFlagName          = "tasks"
-		distrosFlagName        = "distros"
-		spawnableFlagName      = "spawnable"
-		parametersFlagName     = "parameters"
-		patchAliasesFlagName   = "patch-aliases"
-		triggerAliasesFlagName = "trigger-aliases"
+		projectsFlagName             = "projects"
+		variantsFlagName             = "variants"
+		tasksFlagName                = "tasks"
+		distrosFlagName              = "distros"
+		spawnableFlagName            = "spawnable"
+		includeConfigAliasesFlagName = "include-config-aliases"
+		parametersFlagName           = "parameters"
+		patchAliasesFlagName         = "patch-aliases"
+		triggerAliasesFlagName       = "trigger-aliases"
 	)
 
 	return cli.Command{
@@ -58,6 +59,10 @@ func List() cli.Command {
 				Usage: "list all patch aliases for a project",
 			},
 			cli.BoolFlag{
+				Name:  includeConfigAliasesFlagName,
+				Usage: "include YAML defined aliases when listing patch aliases",
+			},
+			cli.BoolFlag{
 				Name:  triggerAliasesFlagName,
 				Usage: "list all trigger aliases for a project",
 			},
@@ -71,6 +76,7 @@ func List() cli.Command {
 			project := c.String(projectFlagName)
 			filename := c.String(pathFlagName)
 			onlyUserSpawnable := c.Bool(spawnableFlagName)
+			includeProjectConfig := c.Bool(includeConfigAliasesFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -85,7 +91,7 @@ func List() cli.Command {
 			case c.Bool(parametersFlagName):
 				return listParameters(ctx, confPath, project, filename)
 			case c.Bool(patchAliasesFlagName):
-				return listPatchAliases(ctx, confPath, project)
+				return listPatchAliases(ctx, confPath, project, includeProjectConfig)
 			case c.Bool(triggerAliasesFlagName):
 				return listTriggerAliases(ctx, confPath, project)
 			case c.Bool(distrosFlagName), onlyUserSpawnable:
@@ -302,7 +308,7 @@ func listTriggerAliases(ctx context.Context, confPath, project string) error {
 	return nil
 }
 
-func listPatchAliases(ctx context.Context, confPath, project string) error {
+func listPatchAliases(ctx context.Context, confPath, project string, includeProjectConfig bool) error {
 	conf, err := NewClientSettings(confPath)
 	if err != nil {
 		return errors.Wrap(err, "loading configuration")
@@ -317,7 +323,7 @@ func listPatchAliases(ctx context.Context, confPath, project string) error {
 		return errors.New("no project specified")
 	}
 
-	aliases, err := comm.ListAliases(ctx, project)
+	aliases, err := comm.ListAliases(ctx, project, includeProjectConfig)
 	if err != nil {
 		return err
 	}
