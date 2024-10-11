@@ -22,7 +22,7 @@ func makeFetchAliases() gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Get a project's aliases
-//	@Description	Returns the the project's aliases. This endpoint serves the data returned by the "evergreen list --patch-aliases" command.
+//	@Description	Returns the project's aliases. This endpoint serves the data returned by the "evergreen list --patch-aliases" command.
 //	@Tags			projects
 //	@Router			/alias/{project_id} [get]
 //	@Security		Api-User || Api-Key

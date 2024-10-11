@@ -82,7 +82,7 @@ type Communicator interface {
 	// Delete a key with specified name from the current authenticated user
 	DeletePublicKey(context.Context, string) error
 
-	// List variant/task aliases
+	// List variant/task aliases, with bool parameter to optionally include YAML-defined aliases.
 	ListAliases(context.Context, string, bool) ([]model.ProjectAlias, error)
 	ListPatchTriggerAliases(context.Context, string) ([]string, error)
 	GetDistroByName(context.Context, string) (*restmodel.APIDistro, error)
