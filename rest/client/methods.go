@@ -900,11 +900,14 @@ func (c *communicatorImpl) DeletePublicKey(ctx context.Context, keyName string) 
 	return nil
 }
 
-func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]serviceModel.ProjectAlias, error) {
+func (c *communicatorImpl) ListAliases(ctx context.Context, project string, includeProjectConfig bool) ([]serviceModel.ProjectAlias, error) {
 	path := fmt.Sprintf("alias/%s", project)
 	info := requestInfo{
 		method: http.MethodGet,
 		path:   path,
+	}
+	if includeProjectConfig {
+		info.path += "?includeProjectConfig=true"
 	}
 	resp, err := c.request(ctx, info, "")
 	if err != nil {
