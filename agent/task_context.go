@@ -326,7 +326,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	}
 
 	grip.Info("Fetching distro configuration.")
-	var confDistro *apimodels.DistroView
+	confDistro := &apimodels.DistroView{}
 	if a.opts.Mode == globals.HostMode {
 		var err error
 		confDistro, err = a.comm.GetDistroView(ctx, tc.task)
