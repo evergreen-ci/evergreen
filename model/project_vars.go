@@ -363,15 +363,16 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 // upsertParameterStore upserts the diff of added/modified/deleted project
 // variables into Parameter Store.
 func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error {
+	projectID := projectVars.Id
 	after := projectVars
 	// kim: TODO: test if the project's vars are synced to PS first. If not,
 	// then have to initial sync all of them to PS to initialize the state.
 	// kim: TODO: need to think about how to keep params and vars in sync while
 	// rollout is ongoing. They may go out of sync if it's disabled.
 
-	before, err := FindOneProjectVars(after.Id)
+	before, err := FindOneProjectVars(projectID)
 	if err != nil {
-		return errors.Wrapf(err, "finding original project vars for project '%s'", after.Id)
+		return errors.Wrapf(err, "finding original project vars for project '%s'", projectID)
 	}
 	if before == nil {
 		before = &ProjectVars{}
@@ -395,28 +396,22 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error 
 	paramMappingsToUpdate := map[string]ParameterMapping{}
 	pm := evergreen.GetEnvironment().ParameterManager()
 	for varName, varValue := range varsToUpsert {
-		// kim: TODO: replace with helper to export to param name/value.
-		paramName, err := getParamNameForVar(before.Parameters, varName)
+		paramName, paramValue, err := convertVarToParam(projectID, before.Parameters, varName, varValue)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":    "could not get corresponding parameter name for project variable",
 				"var_name":   varName,
-				"project_id": after.Id,
+				"project_id": projectID,
 			}))
 			continue
 		}
-		if !strings.HasPrefix(paramName, after.Id) {
-			// kim: NOTE: prepending the project ID will be absorbed into helper
-			// to export the param.
-			paramName = fmt.Sprintf("%s/%s", after.Id, paramName)
-		}
-		param, err := pm.Put(ctx, paramName, varValue)
+		param, err := pm.Put(ctx, paramName, paramValue)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":    "could not put project variable into Parameter Store",
 				"var_name":   varName,
 				"param_name": paramName,
-				"project_id": after.Id,
+				"project_id": projectID,
 			}))
 			continue
 		}
@@ -448,7 +443,7 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error 
 					"var_name":       varName,
 					"old_param_name": existingParamMapping.ParameterName,
 					"new_param_name": param.Name,
-					"project_id":     after.Id,
+					"project_id":     projectID,
 				}))
 			}
 		}
@@ -473,7 +468,7 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error 
 				"message":               "could not delete project variables from Parameter Store",
 				"vars_to_delete":        varsToDelete,
 				"param_names_to_delete": namesToDelete,
-				"project_id":            after.Id,
+				"project_id":            projectID,
 			}))
 		}
 	}
@@ -483,7 +478,7 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error 
 	if _, err := db.Upsert(
 		ProjectVarsCollection,
 		bson.M{
-			projectVarIdKey: after.Id,
+			projectVarIdKey: projectID,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -495,7 +490,7 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error 
 			"message":               "could not update parameter mappings for project vars",
 			"param_mapping_updates": paramMappingsToUpdate,
 			"param_mapping_deletes": paramMappingsToUpdate,
-			"project_id":            after.Id,
+			"project_id":            projectID,
 		}))
 	}
 
