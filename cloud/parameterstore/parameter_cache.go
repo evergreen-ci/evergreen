@@ -39,7 +39,7 @@ func newCachedParameter(name, value string, lastUpdated time.Time) cachedParamet
 func (cp *cachedParameter) export() Parameter {
 	return Parameter{
 		Name:     cp.name,
-		Basename: getBasename(cp.name),
+		Basename: GetBasename(cp.name),
 		Value:    cp.value,
 	}
 }

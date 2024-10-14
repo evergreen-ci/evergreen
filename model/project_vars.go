@@ -1,11 +1,14 @@
 package model
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -51,7 +54,7 @@ type ProjectVars struct {
 	// Parameters contains the mappings between user-defined project variable
 	// names and the parameter name where the variable's value can be found in
 	// Parameter Store.
-	Parameters []ParameterMapping `bson:"parameters,omitempty" json:"parameters,omitempty"`
+	Parameters ParameterMappings `bson:"parameters,omitempty" json:"parameters,omitempty"`
 
 	// PrivateVars keeps track of which variables are private and should therefore not
 	// be returned to the UI server.
@@ -59,6 +62,28 @@ type ProjectVars struct {
 
 	// AdminOnlyVars keeps track of variables that are only accessible by project admins.
 	AdminOnlyVars map[string]bool `bson:"admin_only_vars" json:"admin_only_vars"`
+}
+
+type ParameterMappings []ParameterMapping
+
+// NameMap returns a map from each name to the full parameter mapping
+// information.
+func (pm ParameterMappings) NameMap() map[string]ParameterMapping {
+	res := make(map[string]ParameterMapping, len(pm))
+	for i, m := range pm {
+		res[m.Name] = pm[i]
+	}
+	return res
+}
+
+// ParamNameMap returns a map from each parameter name to the full parameter
+// mapping information.
+func (pm ParameterMappings) ParamNameMap() map[string]ParameterMapping {
+	res := make(map[string]ParameterMapping, len(pm))
+	for i, m := range pm {
+		res[m.ParameterName] = pm[i]
+	}
+	return res
 }
 
 // ParameterMapping represents a mapping between a DB field and the location of
@@ -441,27 +466,96 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 	}
 }
 
-// validParamName is a regexp representing the valid characters for a parameter
-// name. Valid characters are alphanumerics, underscores, dashes, and periods.
-var validParamName = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
+// convertVarToParam converts a project variable to its equivalent parameter
+// name and value. In particular, it validates that the variable name and value
+// fits within parameter constraints and if the name or value doesn't fit in the
+// constraints, it attempts to fix minor issues where possible. The return value
+// is a valid parameter name and parameter value.
+func convertVarToParam(projectID string, pm ParameterMappings, varName, varValue string) (paramName string, paramValue string, err error) {
+	if err := validateVarNameCharset(varName); err != nil {
+		return "", "", errors.Wrapf(err, "validating project variable name '%s'", varName)
+	}
 
-// getParamNameForVar returns the corresponding parameter name for a project
-// variable. If the project variable does not yet have a parameter name, it
-// generates one.
-func getParamNameForVar(varsToParams []ParameterMapping, varName string) (string, error) {
-	for _, varToParam := range varsToParams {
-		if varToParam.Name == varName {
-			if varToParam.ParameterName != "" {
-				return varToParam.ParameterName, nil
-			}
-			break
+	varsToParams := pm.NameMap()
+	m, ok := varsToParams[varName]
+	if ok {
+		paramName = m.ParameterName
+	} else {
+		paramName, err = createParamBasenameForVar(varName)
+		if err != nil {
+			return "", "", errors.Wrapf(err, "creating new parameter name for project variable '%s'", varName)
 		}
 	}
 
-	paramName := varName
-	if !validParamName.MatchString(paramName) {
-		return "", errors.Errorf("project variable '%s' contains invalid characters - can only contain alphanumerics, underscores, periods, and dashes", varName)
+	paramName, paramValue, err = getCompressedParamForVar(paramName, varValue)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "getting compressed parameter name and value for project variable '%s'", varName)
 	}
+
+	prefix := fmt.Sprintf("%s/", projectID)
+	if !strings.Contains(paramName, prefix) {
+		paramName = fmt.Sprintf("%s%s", prefix, paramName)
+	}
+
+	if err := validateParamNameUnique(pm, varName, paramName); err != nil {
+		return "", "", errors.Wrapf(err, "validating parameter name for project variable '%s'", varName)
+	}
+
+	return paramName, paramValue, nil
+}
+
+// validParamBasename is a regexp representing the valid characters for a
+// parameter's base name (i.e. excluding any slash-delimited paths). Valid
+// characters for a basename are alphanumerics, underscores, dashes, and
+// periods.
+var validParamBasename = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
+
+// validateVarNameCharset verifies that a project variable name is not empty and
+// contains only valid characters. It returns an error if it's empty or contains
+// invalid characters that are not allowed in a parameter name.
+func validateVarNameCharset(varName string) error {
+	if len(varName) == 0 {
+		return errors.Errorf("project variable name cannot be empty")
+	}
+	if !validParamBasename.MatchString(varName) {
+		return errors.Errorf("project variable name '%s' contains invalid characters - can only contain alphanumerics, underscores, periods, and dashes", varName)
+	}
+	if strings.HasSuffix(varName, gzipCompressedParamExtension) {
+		// Project variable names should not end in a gzip extension to avoid
+		// ambiguity over whether the variable value had to be compressed. The
+		// extension is reserved for internal Evergreen use in case there's a
+		// project variable that's long enough to require compression to fit
+		// within the parameter length limit.
+		return errors.Errorf("project variable name '%s' cannot end with '%s'", varName, gzipCompressedParamExtension)
+	}
+	return nil
+}
+
+// validateParamNameUnique verifies if the proposed parameter name to be used is
+// unique within a project. It returns an error if the parameter name
+// conflicts with an already existing parameter name.
+func validateParamNameUnique(pm ParameterMappings, varName, paramName string) error {
+	proposedBasename := parameterstore.GetBasename(paramName)
+	for _, m := range pm {
+		basename := parameterstore.GetBasename(m.ParameterName)
+		if m.Name == varName {
+			continue
+		}
+		if basename == proposedBasename {
+			// Protect against an edge case where a different project var
+			// already exists that has the exact same candidate parameter name.
+			// Project vars must map to unique parameter names.
+			return errors.Errorf("parameter basename '%s' for project variable '%s' conflicts with existing one for project variable '%s'", proposedBasename, varName, m.Name)
+		}
+	}
+
+	return nil
+}
+
+// createParamBasenameForVar generates a unique parameter basename from a
+// project variable name.
+func createParamBasenameForVar(varName string) (string, error) {
+	paramName := varName
 
 	if strings.HasPrefix(varName, "aws") || strings.HasPrefix(paramName, "ssm") {
 		// Parameters cannot start with "aws" or "ssm", adding a prefix
@@ -469,18 +563,34 @@ func getParamNameForVar(varsToParams []ParameterMapping, varName string) (string
 		paramName = fmt.Sprintf("_%s", paramName)
 	}
 
-	for _, varToParam := range varsToParams {
-		if varToParam.Name == varName {
-			continue
-		}
-		if varToParam.ParameterName == paramName {
-			// Protect against an edge case where a different project var
-			// already exists that has the exact same candidate parameter name.
-			// Project vars must map to unique parameter names.
-			return "", errors.Errorf("parameter name '%s' for project variable '%s' conflicts with project variable '%s'", paramName, varName, paramName)
-		}
+	return paramName, nil
+}
 
+// gzipCompressedParamExtension is the extension added to the parameter name to
+// indicate that the parameter value had to be compressed to fit within the
+// parameter length limit.
+const gzipCompressedParamExtension = ".gz"
+
+// getCompressedParamForVar returns the parameter name and value for a project
+// variable. If the value is too long to be stored in Parameter Store, attempt
+// to compress it down to a valid size.
+func getCompressedParamForVar(varName, varValue string) (paramName string, paramValue string, err error) {
+	if len(varValue) < parameterstore.ParamValueMaxLength {
+		return varName, varValue, nil
 	}
 
-	return paramName, nil
+	compressedValue := bytes.NewBuffer(make([]byte, 0, len(varValue)))
+	gzw := gzip.NewWriter(compressedValue)
+	if _, err := gzw.Write([]byte(varValue)); err != nil {
+		return "", "", errors.Wrap(err, "compressing long project variable value")
+	}
+	if err := gzw.Close(); err != nil {
+		return "", "", errors.Wrap(err, "closing gzip writer after compressing long project variable value")
+	}
+
+	if compressedValue.Len() >= parameterstore.ParamValueMaxLength {
+		return "", "", errors.Errorf("project variable value exceeds maximum length, even after attempted compression (value is %d bytes, compressed value is %d bytes, maximum is %d bytes)", len(varValue), compressedValue.Len(), parameterstore.ParamValueMaxLength)
+	}
+
+	return fmt.Sprintf("%s%s", varName, gzipCompressedParamExtension), compressedValue.String(), nil
 }
