@@ -45,7 +45,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	requirePodOrHost := NewPodOrHostAuthMiddleWare()
 	addProject := NewProjectContextMiddleware()
 	requireProjectAdmin := NewProjectAdminMiddleware()
-	requireRepoAdmin := NewRepoAdminMiddleware()
 	requireCommitQueueItemOwner := NewCommitQueueItemOwnerMiddleware()
 	requireAlertmanager := NewAlertmanagerMiddleware()
 	createProject := NewCanCreateMiddleware()
