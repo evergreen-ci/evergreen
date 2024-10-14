@@ -220,7 +220,7 @@ func addTempDirs(env map[string]string, dir string) {
 	}
 }
 
-func (c *subprocessExec) getProc(ctx context.Context, execPath, taskID string, logger client.LoggerProducer) *jasper.Command {
+func (c *subprocessExec) getProc(ctx context.Context, execPath string, conf *internal.TaskConfig, logger client.LoggerProducer) *jasper.Command {
 	cmd := c.JasperManager().CreateCommand(ctx).Add(append([]string{execPath}, c.Args...)).
 		Background(c.Background).Environment(c.Env).Directory(c.WorkingDir).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
@@ -250,7 +250,7 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath, taskID string, l
 
 			pid := proc.Info(ctx).PID
 
-			agentutil.TrackProcess(taskID, pid, logger.System())
+			agentutil.TrackProcess(conf.Task.Id, pid, logger.System())
 
 			if c.Background {
 				logger.Execution().Debugf("Running process in the background with pid %d.", pid)
@@ -275,6 +275,10 @@ func (c *subprocessExec) getProc(ctx context.Context, execPath, taskID string, l
 		} else {
 			cmd.SetErrorSender(level.Error, logger.Task().GetSender())
 		}
+	}
+
+	if execUser := conf.Distro.ExecUser; execUser != "" {
+		cmd.SudoAs(execUser)
 	}
 
 	return cmd
@@ -389,7 +393,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		})
 	}
 
-	err = errors.WithStack(c.runCommand(ctx, c.getProc(ctx, execPath, conf.Task.Id, logger), logger))
+	err = errors.WithStack(c.runCommand(ctx, c.getProc(ctx, execPath, conf, logger), logger))
 
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		logger.System().Debugf("Canceled command '%s', dumping running processes.", c.Name())

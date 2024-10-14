@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -52,7 +53,7 @@ func (s *execCmdSuite) SetupTest() {
 	var err error
 
 	s.comm = client.NewMock("http://localhost.com")
-	s.conf = &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{}, Project: model.Project{}}
+	s.conf = &internal.TaskConfig{Expansions: util.Expansions{}, Distro: &apimodels.DistroView{}, Task: task.Task{}, Project: model.Project{}}
 	s.logger, err = s.comm.GetLoggerProducer(s.ctx, &s.conf.Task, nil)
 	s.Require().NoError(err)
 }
@@ -179,7 +180,7 @@ func (s *execCmdSuite) TestRunCommand() {
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	exec := cmd.getProc(s.ctx, cmd.Binary, "foo", s.logger)
+	exec := cmd.getProc(s.ctx, cmd.Binary, &internal.TaskConfig{Task: task.Task{Id: "foo"}, Distro: &apimodels.DistroView{}}, s.logger)
 	s.NoError(cmd.runCommand(s.ctx, exec, s.logger))
 }
 
@@ -189,7 +190,7 @@ func (s *execCmdSuite) TestRunCommandPropagatesError() {
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	exec := cmd.getProc(s.ctx, cmd.Binary, "foo", s.logger)
+	exec := cmd.getProc(s.ctx, cmd.Binary, &internal.TaskConfig{Task: task.Task{Id: "foo"}, Distro: &apimodels.DistroView{}}, s.logger)
 	err := cmd.runCommand(s.ctx, exec, s.logger)
 	s.Require().NotNil(err)
 	s.Contains(err.Error(), "process encountered problem: exit code 1")
@@ -203,7 +204,7 @@ func (s *execCmdSuite) TestRunCommandContinueOnErrorNoError() {
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	exec := cmd.getProc(s.ctx, cmd.Binary, "foo", s.logger)
+	exec := cmd.getProc(s.ctx, cmd.Binary, &internal.TaskConfig{Task: task.Task{Id: "foo"}, Distro: &apimodels.DistroView{}}, s.logger)
 	s.NoError(cmd.runCommand(s.ctx, exec, s.logger))
 }
 
@@ -215,7 +216,7 @@ func (s *execCmdSuite) TestRunCommandBackgroundAlwaysNil() {
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	exec := cmd.getProc(s.ctx, cmd.Binary, "foo", s.logger)
+	exec := cmd.getProc(s.ctx, cmd.Binary, &internal.TaskConfig{Task: task.Task{Id: "foo"}, Distro: &apimodels.DistroView{}}, s.logger)
 	s.NoError(cmd.runCommand(s.ctx, exec, s.logger))
 }
 

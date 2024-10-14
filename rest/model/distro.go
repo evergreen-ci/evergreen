@@ -365,6 +365,7 @@ type APIDistro struct {
 	ValidProjects         []*string                `json:"valid_projects"`
 	Mountpoints           []string                 `json:"mountpoints"`
 	ImageID               *string                  `json:"image_id"`
+	ExecUser              *string                  `json:"exec_user"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -390,6 +391,7 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.ValidProjects = utility.ToStringPtrSlice(d.ValidProjects)
 	apiDistro.Mountpoints = d.Mountpoints
 	apiDistro.ImageID = utility.ToStringPtr(d.ImageID)
+	apiDistro.ExecUser = utility.ToStringPtr(d.ExecUser)
 
 	if d.Expansions != nil {
 		apiDistro.Expansions = []APIExpansion{}
@@ -455,6 +457,7 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 	d.Disabled = apiDistro.Disabled
 	d.ContainerPool = utility.FromStringPtr(apiDistro.ContainerPool)
 	d.ImageID = utility.FromStringPtr(apiDistro.ImageID)
+	d.ExecUser = utility.FromStringPtr(apiDistro.ExecUser)
 
 	d.FinderSettings = apiDistro.FinderSettings.ToService()
 	d.PlannerSettings = apiDistro.PlannerSettings.ToService()
