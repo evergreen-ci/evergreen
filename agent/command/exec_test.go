@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -52,7 +53,7 @@ func (s *execCmdSuite) SetupTest() {
 	var err error
 
 	s.comm = client.NewMock("http://localhost.com")
-	s.conf = &internal.TaskConfig{Expansions: util.Expansions{}, Task: task.Task{}, Project: model.Project{}}
+	s.conf = &internal.TaskConfig{Expansions: util.Expansions{}, Distro: &apimodels.DistroView{}, Task: task.Task{}, Project: model.Project{}}
 	s.logger, err = s.comm.GetLoggerProducer(s.ctx, &s.conf.Task, nil)
 	s.Require().NoError(err)
 }

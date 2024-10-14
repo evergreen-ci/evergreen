@@ -49,7 +49,7 @@ func TestDistroBuildFromService(t *testing.T) {
 	assert.Equal(t, d.IceCreamSettings.SchedulerHost, utility.FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost))
 	assert.Equal(t, d.IceCreamSettings.ConfigPath, utility.FromStringPtr(apiDistro.IcecreamSettings.ConfigPath))
 	assert.Equal(t, d.Mountpoints, apiDistro.Mountpoints)
-	assert.Equal(t, d.ExecUser, apiDistro.ExecUser)
+	assert.Equal(t, d.ExecUser, utility.FromStringPtr(apiDistro.ExecUser))
 }
 
 func TestDistroBuildFromServiceDefaults(t *testing.T) {
