@@ -256,6 +256,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
+	rm := env.RoleManager()
 	require.NoError(t, db.ClearCollections(dbModel.RepoRefCollection, dbModel.ProjectVarsCollection,
 		dbModel.ProjectAliasCollection, commitqueue.Collection, user.Collection, dbModel.ProjectRefCollection,
 		evergreen.ScopeCollection, evergreen.RoleCollection, evergreen.ConfigCollection, githubapp.GitHubAppCollection))
@@ -300,7 +301,6 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.NoError(t, u.Insert())
 	ctx = gimlet.AttachUser(context.Background(), u)
 
-	rm := env.RoleManager()
 	allProjectsScope := &gimlet.Scope{
 		ID:        evergreen.AllProjectsScope,
 		Resources: []string{},
@@ -324,6 +324,33 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.Len(t, allProjectsScope.Resources, 2)
 	assert.Contains(t, allProjectsScope.Resources, "branch1")
 	assert.Contains(t, allProjectsScope.Resources, "branch2")
+
+	// Add admin roles to relevant users for the new branches.
+	// add scope for the branch-level project configurations
+	adminPermissions := gimlet.Permissions{
+		evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+		evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+		evergreen.PermissionPatches:         evergreen.PatchSubmit.Value,
+		evergreen.PermissionLogs:            evergreen.LogsView.Value,
+	}
+	for _, p := range []*dbModel.ProjectRef{branchProject, independentProject} {
+		newScope := gimlet.Scope{
+			ID:        fmt.Sprintf("project_%s", p.Id),
+			Resources: []string{p.Id},
+			Name:      p.Id,
+			Type:      evergreen.ProjectResourceType,
+		}
+		assert.NoError(t, rm.AddScope(newScope))
+		newRole := gimlet.Role{
+			ID:          fmt.Sprintf("admin_project_%s", p.Id),
+			Scope:       newScope.ID,
+			Permissions: adminPermissions,
+		}
+		assert.NoError(t, rm.UpdateRole(newRole))
+		modified, err := p.UpdateAdminRoles(p.Admins, nil)
+		assert.NoError(t, err)
+		assert.True(t, modified)
+	}
 
 	settings, err := evergreen.GetConfig(ctx)
 	assert.NoError(t, err)
@@ -364,7 +391,7 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, allProjectsScope.Resources, repoId)
 
-	// Branch admin that didn't turn on repo settings should still have view access
+	// Branch admin that didn't turn on repo settings should still have view access.
 	u, err = user.FindOneById("branch2_admin")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
