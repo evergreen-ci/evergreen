@@ -472,6 +472,112 @@ func TestConvertVarToParam(t *testing.T) {
 	})
 }
 
+func TestConvertParamToVar(t *testing.T) {
+	t.Run("ReturnsOriginalVariableNameAndValue", func(t *testing.T) {
+		const (
+			varName   = "var_name"
+			varValue  = "var_value"
+			paramName = "/prefix/project_id/var_name"
+		)
+		pm := ParameterMappings{
+			{
+				Name:          varName,
+				ParameterName: paramName,
+			},
+		}
+		varNameFromParam, varValueFromParam, err := convertParamToVar(pm, paramName, varValue)
+		require.NoError(t, err)
+		assert.Equal(t, varName, varNameFromParam, "should return original variable name")
+		assert.Equal(t, varValue, varValueFromParam, "should return original variable value")
+	})
+	t.Run("ReturnsOriginalVariableNameAndValueForVariablePrefixedWithAWS", func(t *testing.T) {
+		const (
+			varName   = "aws_secret"
+			varValue  = "super_secret"
+			paramName = "/prefix/project_id/_aws_secret"
+		)
+		pm := ParameterMappings{
+			{
+				Name:          varName,
+				ParameterName: paramName,
+			},
+		}
+		varNameFromParam, varValueFromParam, err := convertParamToVar(pm, paramName, varValue)
+		require.NoError(t, err)
+		assert.Equal(t, varName, varNameFromParam, "should return original variable name")
+		assert.Equal(t, varValue, varValueFromParam, "should return original variable value")
+	})
+	t.Run("ReturnsErrorForVariableMissingParameterMapping", func(t *testing.T) {
+		pm := ParameterMappings{
+			{
+				Name:          "var_name",
+				ParameterName: "/prefix/project_id/var_name",
+			},
+		}
+		varNameFromParam, varValueFromParam, err := convertParamToVar(pm, "some_other_var_name", "some_other_var_value")
+		assert.Error(t, err, "should return error if there's no parameter mapping entry associated with the given parameter")
+		assert.Zero(t, varNameFromParam)
+		assert.Zero(t, varValueFromParam)
+	})
+	t.Run("ReturnsErrorForParameterThatMapsToEmptyVariable", func(t *testing.T) {
+		const (
+			paramName = "/prefix/project_id/var_name"
+		)
+		pm := ParameterMappings{
+			{
+				ParameterName: paramName,
+			},
+		}
+		varNameFromParam, varValueFromParam, err := convertParamToVar(pm, paramName, "var_value")
+		assert.Error(t, err, "should error if parameter mapping entry exists but maps to empty variable name")
+		assert.Zero(t, varNameFromParam)
+		assert.Zero(t, varValueFromParam)
+	})
+	t.Run("DecompressesParameterValueToOriginalVariableValue", func(t *testing.T) {
+		const (
+			varName   = "var_name"
+			paramName = "/prefix/project_id/var_name.gz"
+		)
+
+		longVarValue := strings.Repeat("abc", parameterstore.ParamValueMaxLength)
+		assert.Greater(t, len(longVarValue), parameterstore.ParamValueMaxLength)
+
+		_, compressedParamValue, err := getCompressedParamForVar(varName, longVarValue)
+		require.NoError(t, err)
+
+		pm := ParameterMappings{
+			{
+				Name:          varName,
+				ParameterName: paramName,
+			},
+		}
+
+		varNameFromParam, varValueFromParam, err := convertParamToVar(pm, paramName, compressedParamValue)
+		require.NoError(t, err)
+		assert.Equal(t, varName, varNameFromParam)
+		assert.Equal(t, longVarValue, varValueFromParam, "should return original decompressed variable value")
+	})
+	t.Run("RoundTripReturnsOriginalVarNameAndValue", func(t *testing.T) {
+		const (
+			varName   = "var_name"
+			varValue  = "var_value"
+			projectID = "project_id"
+		)
+		pm := ParameterMappings{}
+		paramName, paramValue, err := convertVarToParam(projectID, pm, varName, varValue)
+		require.NoError(t, err)
+		pm = append(pm, ParameterMapping{
+			Name:          varName,
+			ParameterName: paramName,
+		})
+
+		varNameFromParam, varValueFromParam, err := convertParamToVar(pm, paramName, paramValue)
+		require.NoError(t, err)
+		assert.Equal(t, varName, varNameFromParam, "should return original variable name")
+		assert.Equal(t, varValue, varValueFromParam, "should return original variable value")
+	})
+}
+
 func TestShouldGetAdminOnlyVars(t *testing.T) {
 	type testCase struct {
 		requester          string
@@ -586,20 +692,4 @@ func TestShouldGetAdminOnlyVars(t *testing.T) {
 		}
 		assert.True(t, tested, fmt.Sprintf("requester '%s' not tested with non-admin", requester))
 	}
-}
-
-// kim: TODO: add tests
-func TestConvertParamToVar(t *testing.T) {
-	t.Run("ReturnsVarNameFromExistingParameterMapping", func(t *testing.T) {
-
-	})
-	t.Run("ReturnsErrorForVariableWithoutParameterMapping", func(t *testing.T) {
-
-	})
-	t.Run("ReturnsErrorForVariableWithEmptyParameterMapping", func(t *testing.T) {
-
-	})
-	t.Run("DecompressesParameterToOriginalVariable", func(t *testing.T) {
-
-	})
 }

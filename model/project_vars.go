@@ -597,8 +597,7 @@ func getCompressedParamForVar(varName, varValue string) (paramName string, param
 }
 
 func convertParamToVar(pm ParameterMappings, paramName, paramValue string) (varName, varValue string, err error) {
-	// kim: TODO: use constant extension.
-	if !strings.HasSuffix(paramName, ".gz") {
+	if strings.HasSuffix(paramName, gzipCompressedParamExtension) {
 		gzr, err := gzip.NewReader(strings.NewReader(paramValue))
 		if err != nil {
 			return "", "", errors.Wrap(err, "creating gzip reader for compressed project variable")
@@ -608,13 +607,15 @@ func convertParamToVar(pm ParameterMappings, paramName, paramValue string) (varN
 			return "", "", errors.Wrap(err, "decoding gzip-compressed parameter to project variable")
 		}
 		varValue = string(b)
+	} else {
+		varValue = paramValue
 	}
 
-	// kim: TODO: use exported helper from DEVPROD-9472.
-	varName, ok := pm.ParamNameMap()[paramName]
+	m, ok := pm.ParamNameMap()[paramName]
 	if !ok {
 		return "", "", errors.Errorf("cannot find project variable name corresponding to parameter '%s'", paramName)
 	}
+	varName = m.Name
 	if varName == "" {
 		return "", "", errors.Errorf("project variable name corresponding to parameter '%s' exists but is empty", paramName)
 	}
