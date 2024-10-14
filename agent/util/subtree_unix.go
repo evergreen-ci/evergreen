@@ -32,6 +32,8 @@ func TrackProcess(key string, pid int, logger grip.Journaler) {}
 // KillSpawnedProcs kills processes that descend from the agent and waits
 // for them to terminate.
 func KillSpawnedProcs(ctx context.Context, key, workingDir, execUser string, logger grip.Journaler) error {
+	// When execUser is set all subprocess.exec and shell.exec processes are run under that user. This facilitates
+	// easy cleanup of processes started by a task. It is enabled on a distro-by-distro basis.
 	if execUser != "" {
 		return killUserProcesses(ctx, execUser)
 	}

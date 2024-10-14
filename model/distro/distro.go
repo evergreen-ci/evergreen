@@ -57,7 +57,7 @@ type Distro struct {
 	// ImageID is not equivalent to AMI. It is the identifier of the base image for the distro.
 	ImageID string `bson:"image_id,omitempty" json:"image_id,omitempty" mapstructure:"image_id,omitempty"`
 
-	// ExecUser is the user to run shell.exec and subprocess.exec processes as. If unset processes are run as the regular distro User.
+	// ExecUser is the user to run shell.exec and subprocess.exec processes as. If unset, processes are run as the regular distro User.
 	ExecUser string `bson:"exec_user,omitempty" json:"exec_user,omitempty" mapstructure:"exec_user,omitempty"`
 }
 
