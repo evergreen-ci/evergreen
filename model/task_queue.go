@@ -113,6 +113,7 @@ type TaskQueueItem struct {
 	Project             string        `bson:"project" json:"project"`
 	ExpectedDuration    time.Duration `bson:"exp_dur" json:"exp_dur"`
 	Priority            int64         `bson:"priority" json:"priority"`
+	PriorityRankValue   int64         `bson:"priority_rank_value" json:"priority_rank_value"`
 	Dependencies        []string      `bson:"dependencies" json:"dependencies"`
 	ActivatedBy         string        `bson:"activated_by" json:"activated_by"`
 }

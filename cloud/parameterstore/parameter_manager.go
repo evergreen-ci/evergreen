@@ -122,7 +122,7 @@ func (pm *ParameterManager) Put(ctx context.Context, name, value string) (*Param
 
 	return &Parameter{
 		Name:     fullName,
-		Basename: getBasename(fullName),
+		Basename: GetBasename(fullName),
 		Value:    value,
 	}, nil
 }
@@ -182,7 +182,7 @@ func (pm *ParameterManager) Get(ctx context.Context, names ...string) ([]Paramet
 		value := aws.ToString(p.Value)
 		params = append(params, Parameter{
 			Name:     name,
-			Basename: getBasename(name),
+			Basename: GetBasename(name),
 			Value:    value,
 		})
 		cachedParams = append(cachedParams, newCachedParameter(name, value, lastRetrieved))
@@ -284,8 +284,8 @@ func (pm *ParameterManager) getPrefixedName(basename string) string {
 	return fmt.Sprintf("/%s/%s", pathPrefix, strings.TrimPrefix(basename, "/"))
 }
 
-// getBasename returns the parameter basename without any intermediate paths.
-func getBasename(name string) string {
+// GetBasename returns the parameter basename without any intermediate paths.
+func GetBasename(name string) string {
 	idx := strings.LastIndex(name, "/")
 	if idx == -1 {
 		return name
