@@ -203,7 +203,7 @@ func (h *repoIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = h.newRepoRef.Upsert(); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating repo '%s'", h.newRepoRef.Id))
 	}
-	if err = data.UpdateProjectVars(h.newRepoRef.Id, &before.Vars, &h.apiNewRepoRef.Variables, false); err != nil { // destructively modifies h.apiNewRepoRef.Variables
+	if err = data.UpdateProjectVars(h.newRepoRef.Id, &h.apiNewRepoRef.Variables, false); err != nil { // destructively modifies h.apiNewRepoRef.Variables
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating variables for project '%s'", h.repoName))
 	}
 	if err = data.UpdateProjectAliases(h.newRepoRef.Id, h.apiNewRepoRef.Aliases); err != nil {

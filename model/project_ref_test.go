@@ -1040,8 +1040,6 @@ func checkParametersMatchVars(ctx context.Context, t *testing.T, pm ParameterMap
 	}
 }
 
-// kim: TODO: investigate how detach works. It might be that I have to implement
-// more (like FindAndModify) before the tests can pass.
 func TestDetachFromRepo(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
