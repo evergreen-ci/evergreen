@@ -368,7 +368,9 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	u, err = user.FindOneById("branch2_admin")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
-	assert.Contains(t, u.Roles(), dbModel.GetViewRepoRole(repoId))
+	hasPermission, err := dbModel.UserHasRepoViewPermission(u, repoId)
+	assert.NoError(t, err)
+	assert.True(t, hasPermission)
 
 	repoRef, err := dbModel.FindOneRepoRef(repoId)
 	assert.NoError(t, err)
@@ -416,11 +418,13 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, scope)
 	assert.Empty(t, scope.Resources)
-	// branch user should no longer be able to see repo settings, since it's restricted
+	// branch user should still be able to see repo settings, since otherwise they'd be unable to view the branch page.
 	u, err = user.FindOneById("branch2_admin")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
-	assert.NotContains(t, u.Roles(), dbModel.GetViewRepoRole(repoId))
+	hasPermission, err = dbModel.UserHasRepoViewPermission(u, repoId)
+	assert.NoError(t, err)
+	assert.True(t, hasPermission)
 
 	// test that setting branch explicitly not-restricted impacts that branch, even though it's using repo settings
 	req, _ = http.NewRequest(http.MethodPost, "rest/v2/projects/branch1/attach_to_repo", nil)
@@ -466,11 +470,13 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, scope)
 	assert.Equal(t, scope.Resources, []string{"branch1"})
-	// Verify that setting branch unrestricted doesn't give view settings to restricted repo
+	// Verify that setting branch unrestricted still gives view settings to restricted repo
 	u, err = user.FindOneById("branch1_admin")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
-	assert.NotContains(t, u.Roles(), dbModel.GetViewRepoRole(repoId))
+	hasPermission, err = dbModel.UserHasRepoViewPermission(u, repoId)
+	assert.NoError(t, err)
+	assert.True(t, hasPermission)
 
 	// Test that setting branch to null uses the repo default (which is restricted)
 	body = bytes.NewBuffer([]byte(`{"restricted": null}`))
@@ -516,10 +522,4 @@ func TestPatchHandlersWithRestricted(t *testing.T) {
 	u, err = user.FindOneById("branch1_admin")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
-	assert.Contains(t, u.Roles(), dbModel.GetViewRepoRole(repoId))
-	// Verify that setting branch unrestricted doesn't give view settings to restricted repo
-	u, err = user.FindOneById("branch2_admin")
-	assert.NoError(t, err)
-	assert.NotNil(t, u)
-	assert.Contains(t, u.Roles(), dbModel.GetViewRepoRole(repoId))
 }
