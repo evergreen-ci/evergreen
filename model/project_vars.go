@@ -919,3 +919,44 @@ func areParameterStoreVarsSynced(projectID string) (bool, error) {
 	}
 	return pRef.ParameterStoreVarsSynced, nil
 }
+
+func (projectVars *ProjectVars) fullSyncToParameterStore(ctx context.Context) error {
+	// kim: TODO: needs DEVPROD-9405 merged for helper fn
+	paramNames := projectVars.Parameters.Parameters()
+	paramMgr := evergreen.GetEnvironment().ParameterManager()
+	if len(paramNames) > 0 {
+		if err := paramMgr.Delete(ctx, paramNames...); err != nil {
+			return errors.Wrap(err, "deleting existing parameters for project vars")
+		}
+	}
+
+	after := projectVars
+
+	before, err := FindOneProjectVars(after.Id)
+	if err != nil {
+		return errors.Wrapf(err, "finding project vars for project '%s'", after.Id)
+	}
+	if before == nil {
+		before = &ProjectVars{}
+	}
+
+	// kim: TODO: needs DEVPROD-9405 merged for helper fn
+	varsToUpdate, _ := getProjectVarsDiff(before, after)
+
+	// kim: NOTE: this logic is pretty much upsertParams followed by
+	// getSyncedParameterMappings but with no initial
+	// parameters.
+	// kim: TODO: needs DEVPROD-9405 merged for helper fn
+	paramMappingsToUpdate, err := after.upsertParameters(ctx, varsToUpdate)
+	if err != nil {
+		return errors.Wrapf(err, "upserting %d parameters for project vars", len(varsToUpdate))
+	}
+
+	// kim: TODO: needs DEVPROD-9405 merged for helper fn
+	updatedParamMappings := getSyncedParameterMappings(before.Parameters, paramMappingsToUpdate, nil)
+
+	// kim; TODO: update the param mappings in the DB for the full sync and set
+	// ParameterStoreVarsSynced: true.
+
+	return nil
+}
