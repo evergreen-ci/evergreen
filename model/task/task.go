@@ -1385,8 +1385,11 @@ func (t *Task) SetGeneratedTasksToActivate(buildVariantName, taskName string) er
 func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	ids := []string{}
 	for i := range tasks {
-		tasks[i].ScheduledTime = scheduledTime
-		ids = append(ids, tasks[i].Id)
+		// Skip tasks with scheduled time to prevent large updates
+		if utility.IsZeroTime(tasks[i].ScheduledTime) {
+			tasks[i].ScheduledTime = scheduledTime
+			ids = append(ids, tasks[i].Id)
+		}
 
 		// Display tasks are considered scheduled when their first exec task is scheduled
 		if tasks[i].IsPartOfDisplay() {
@@ -1396,7 +1399,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	_, err := UpdateAll(
 		bson.M{
 			IdKey: bson.M{
-				"$in": ids,
+				"$in": utility.UniqueStrings(ids),
 			},
 			ScheduledTimeKey: bson.M{
 				"$lte": utility.ZeroTime,
