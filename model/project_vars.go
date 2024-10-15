@@ -441,13 +441,14 @@ func (projectVars *ProjectVars) upsertParams(ctx context.Context, pm ParameterMa
 			catcher.Wrapf(err, "putting project variable '%s' into Parameter Store", varName)
 			continue
 		}
+		paramName := param.Name
 
 		paramMappingsToUpsert[varName] = ParameterMapping{
 			Name:          varName,
-			ParameterName: param.Name,
+			ParameterName: paramName,
 		}
 
-		if existingParamMapping, ok := nameToExistingParamMapping[varName]; ok && existingParamMapping.ParameterName != param.Name {
+		if existingParamMapping, ok := nameToExistingParamMapping[varName]; ok && existingParamMapping.ParameterName != paramName {
 			// In a few special edge cases, the project var could already be
 			// stored in one parameter name but has to be renamed to a new
 			// parameter. For example, if the project var is stored in a
@@ -457,7 +458,7 @@ func (projectVars *ProjectVars) upsertParams(ctx context.Context, pm ParameterMa
 			// 8 KB limitation. If the parameter has been renamed, then the old
 			// parameter name is now invalid and should be cleaned up.
 			if err := paramMgr.Delete(ctx, existingParamMapping.ParameterName); err != nil {
-				catcher.Wrapf(err, "deleting project variable '%s' from Parameter Store that was renamed from '%s' to '%s'", varName, existingParamMapping.ParameterName, param.Name)
+				catcher.Wrapf(err, "deleting project variable '%s' from Parameter Store whose parameter was renamed from '%s' to '%s'", varName, existingParamMapping.ParameterName, paramName)
 				continue
 			}
 		}
