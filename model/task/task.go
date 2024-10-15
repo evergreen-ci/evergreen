@@ -1381,23 +1381,20 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	ids := []string{}
 	for i := range tasks {
 		// Skip tasks with scheduled time to prevent large updates
-		if tasks[i].ScheduledTime == utility.ZeroTime {
+		if utility.IsZeroTime(tasks[i].ScheduledTime) {
 			tasks[i].ScheduledTime = scheduledTime
 			ids = append(ids, tasks[i].Id)
 		}
 
 		// Display tasks are considered scheduled when their first exec task is scheduled
 		if tasks[i].IsPartOfDisplay() {
-			displayTaskId := utility.FromStringPtr(tasks[i].DisplayTaskId)
-			if !utility.StringSliceContains(ids, displayTaskId) {
-				ids = append(ids, displayTaskId)
-			}
+			ids = append(ids, utility.FromStringPtr(tasks[i].DisplayTaskId))
 		}
 	}
 	_, err := UpdateAll(
 		bson.M{
 			IdKey: bson.M{
-				"$in": ids,
+				"$in": utility.UniqueStrings(ids),
 			},
 			ScheduledTimeKey: bson.M{
 				"$lte": utility.ZeroTime,
