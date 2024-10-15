@@ -336,12 +336,12 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 	defer cancel()
 	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, projectVars.Id)
 	grip.Error(message.WrapError(err, message.Fields{
-		"message":    "could not check if Parameter Store was enabled for project, falling back to assuming it's disabled",
+		"message":    "could not check if Parameter Store was enabled for project; assuming it's disabled and falling back to using the DB",
 		"project_id": projectVars.Id,
 	}))
 	if isPSEnabled {
 		grip.Error(message.WrapError(projectVars.upsertParameterStore(ctx), message.Fields{
-			"message":    "could not upsert project vars into Parameter Store",
+			"message":    "could not upsert project vars into Parameter Store; falling back to using the DB",
 			"project_id": projectVars.Id,
 		}))
 	}
@@ -361,7 +361,7 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 	)
 }
 
-// upsertParameterStore upserts the diff of added/modified/deleted project
+// upsertParameterStore upserts the diff of added/updated/deleted project
 // variables into Parameter Store.
 // TODO (DEVPROD-11882): remove temporary logic that currently continues on
 // error once all project vars are using Parameter Store and the rollout is
@@ -431,12 +431,12 @@ func (projectVars *ProjectVars) upsertParams(ctx context.Context, pm ParameterMa
 	catcher := grip.NewBasicCatcher()
 
 	for varName, varValue := range varsToUpsert {
-		paramName, paramValue, err := convertVarToParam(projectID, pm, varName, varValue)
+		partialParamName, paramValue, err := convertVarToParam(projectID, pm, varName, varValue)
 		if err != nil {
 			catcher.Wrapf(err, "converting project variable '%s' to parameter", varName)
 			continue
 		}
-		param, err := paramMgr.Put(ctx, paramName, paramValue)
+		param, err := paramMgr.Put(ctx, partialParamName, paramValue)
 		if err != nil {
 			catcher.Wrapf(err, "putting project variable '%s' into Parameter Store", varName)
 			continue
@@ -465,6 +465,9 @@ func (projectVars *ProjectVars) upsertParams(ctx context.Context, pm ParameterMa
 	return paramMappingsToUpsert, nil
 }
 
+// deleteParams deletes parameters corresponding to deleted project variables
+// from Parameter Store. It returns the parameter mappings for the deleted
+// variables.
 func (projectVars *ProjectVars) deleteParams(ctx context.Context, pm ParameterMappings, varsToDelete map[string]struct{}) (map[string]ParameterMapping, error) {
 	nameToExistingParamMapping := pm.NameMap()
 	paramMappingsToDelete := make(map[string]ParameterMapping, len(varsToDelete))
@@ -489,7 +492,7 @@ func (projectVars *ProjectVars) deleteParams(ctx context.Context, pm ParameterMa
 	return paramMappingsToDelete, nil
 }
 
-// getProjectVarsDiff returns the diff of added/modified/deleted project
+// getProjectVarsDiff returns the diff of added/updated/deleted project
 // variables between the before and after project variables. It returns the
 // variables that have to be upserted and deleted so that before matches after.
 func getProjectVarsDiff(before, after *ProjectVars) (upserted map[string]string, deleted map[string]struct{}) {
@@ -531,7 +534,7 @@ func getUpdatedParamMappings(original ParameterMappings, upserted, deleted map[s
 			continue
 		}
 		// If it wasn't added, updated, or deleted, then the mapping is the same
-		// as before.
+		// as it was originally.
 		updatedParamMappings[m.Name] = original[i]
 	}
 
@@ -539,6 +542,7 @@ func getUpdatedParamMappings(original ParameterMappings, upserted, deleted map[s
 	for _, paramMapping := range updatedParamMappings {
 		res = append(res, paramMapping)
 	}
+
 	// Sort them so the mappings are in a predictable order.
 	sort.Sort(res)
 

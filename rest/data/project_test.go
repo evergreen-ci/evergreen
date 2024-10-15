@@ -277,9 +277,6 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 		PrivateVars:  map[string]bool{"b": false, "c": true},
 		VarsToDelete: varsToDelete,
 	}
-	projectVars, err := model.FindOneProjectVars(projectId)
-	s.Require().NoError(err)
-	s.Require().NotZero(projectVars)
 	s.NoError(UpdateProjectVars(projectId, &newVars, false))
 	s.Equal(newVars.Vars["b"], "") // can't unredact previously redacted  variables
 	s.Equal(newVars.Vars["c"], "")
