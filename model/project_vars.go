@@ -68,16 +68,25 @@ type ProjectVars struct {
 	AdminOnlyVars map[string]bool `bson:"admin_only_vars" json:"admin_only_vars"`
 }
 
+// ParameterMappings is a wrapper around a slice of mappings between names and
+// their corresponding parameters kept in Parameter Store.
 type ParameterMappings []ParameterMapping
 
+// Len returns the number of parameter mappings for the sake of implementing
+// sort.Interface.
 func (pm ParameterMappings) Len() int {
 	return len(pm)
 }
 
+// Less returns whether the parameter mapping name at index i must be sorted
+// before the parameter mapping name at index j for the sake of implementing
+// sort.Interface.
 func (pm ParameterMappings) Less(i, j int) bool {
 	return pm[i].Name < pm[j].Name
 }
 
+// Swap swaps the parameter mappings at indices i and j for the sake of
+// implementing sort.Interface.
 func (pm ParameterMappings) Swap(i, j int) {
 	pm[i], pm[j] = pm[j], pm[i]
 }
@@ -101,6 +110,8 @@ func (pm ParameterMappings) ParamNameMap() map[string]ParameterMapping {
 	}
 	return res
 }
+
+// Names returns the names for each parameter mapping.
 func (pm ParameterMappings) Names() []string {
 	res := make([]string, 0, len(pm))
 	for _, m := range pm {
@@ -109,14 +120,7 @@ func (pm ParameterMappings) Names() []string {
 	return res
 }
 
-func (pm ParameterMappings) ParamNamesMap() map[string]ParameterMapping {
-	res := map[string]ParameterMapping{}
-	for i, m := range pm {
-		res[m.ParameterName] = pm[i]
-	}
-	return res
-}
-
+// ParamNames returns the parameter names for each parameter mapping.
 func (pm ParameterMappings) ParamNames() []string {
 	res := make([]string, 0, len(pm))
 	for _, m := range pm {
@@ -320,8 +324,15 @@ func GetAWSKeyForProject(projectId string) (*AWSSSHKey, error) {
 	}, nil
 }
 
+// defaultParameterStoreAccessTimeout is the default timeout for accessing
+// Parameter Store. In general, the context timeout should prefer to be
+// inherited from a higher-level context (e.g. a REST request's context), so
+// this timeout should only be used as a last resort if the context cannot
+// easily be passed down.
+const defaultParameterStoreAccessTimeout = 30 * time.Second
+
 func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, projectVars.Id)
 	grip.Error(message.WrapError(err, message.Fields{
@@ -440,8 +451,8 @@ func (projectVars *ProjectVars) upsertParams(ctx context.Context, pm ParameterMa
 			// In a few special edge cases, the project var could already be
 			// stored in one parameter name but has to be renamed to a new
 			// parameter. For example, if the project var is stored in a
-			// parameter named "foo" and then it gets modified to store a very
-			// long string, the parameter could be renamed to "foo.gz" to
+			// parameter named "foo" initially and then the value is updated a
+			// very long string, the parameter could be renamed to "foo.gz" to
 			// indicate that it had to be compressed to fit within the parameter
 			// 8 KB limitation. If the parameter has been renamed, then the old
 			// parameter name is now invalid and should be cleaned up.

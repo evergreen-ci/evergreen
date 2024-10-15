@@ -1032,7 +1032,7 @@ func checkParametersMatchVars(ctx context.Context, t *testing.T, pm ParameterMap
 	assert.NoError(t, err)
 	assert.Len(t, fakeParams, len(vars))
 
-	paramNamesMap := pm.ParamNamesMap()
+	paramNamesMap := pm.ParamNameMap()
 	for _, fakeParam := range fakeParams {
 		varName := paramNamesMap[fakeParam.Name].Name
 		assert.NotEmpty(t, varName, "parameter should have corresponding project variable")
@@ -1066,7 +1066,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NotNil(t, dbUser)
 			assert.NotContains(t, dbUser.Roles(), GetViewRepoRole(pRefFromDB.RepoRefId))
 		},
-		"ProjectVarsAreUpdated": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+		"NewRepoVarsAreMerged": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 			vars, err := FindOneProjectVars(pRef.Id)
@@ -1079,7 +1079,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.True(t, vars.PrivateVars["in"])
 			assert.True(t, vars.PrivateVars["repo"]) // added from repo
 		},
-		"ProjectVarsAreStoredInParameterStore": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+		"ProjectAndRepoVarsAreMergedAndStoredInParameterStore": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			expectedVars, err := FindMergedProjectVars(pRef.Id)
 			require.NoError(t, err)
 
@@ -1087,6 +1087,7 @@ func TestDetachFromRepo(t *testing.T) {
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 			vars, err := FindOneProjectVars(pRef.Id)
 			require.NoError(t, err)
+			require.NotZero(t, vars)
 
 			checkParametersMatchVars(ctx, t, vars.Parameters, expectedVars.Vars)
 		},
