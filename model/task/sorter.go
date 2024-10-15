@@ -40,7 +40,7 @@ func (t Tasks) InsertUnordered(ctx context.Context) error {
 		return nil
 	}
 	ordered := false
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, t.getPayload(), &options.InsertManyOptions{Ordered: &ordered})
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, t.getPayload(), options.InsertMany().SetOrdered(ordered))
 	return err
 }
 

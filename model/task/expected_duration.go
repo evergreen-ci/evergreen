@@ -78,7 +78,7 @@ func getExpectedDurationsForWindow(name, project, buildVariant string, start, en
 	coll := evergreen.GetEnvironment().DB().Collection(Collection)
 	ctx, cancel := evergreen.GetEnvironment().Context()
 	defer cancel()
-	cursor, err := coll.Aggregate(ctx, pipeline, &options.AggregateOptions{Hint: DurationIndex})
+	cursor, err := coll.Aggregate(ctx, pipeline, options.Aggregate().SetHint(DurationIndex))
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating task average duration")
 	}
