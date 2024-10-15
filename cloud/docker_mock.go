@@ -11,7 +11,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
 )
@@ -56,7 +55,7 @@ func (c *dockerClientMock) EnsureImageDownloaded(context.Context, *host.Host, ho
 	return c.baseImage, nil
 }
 
-func (c *dockerClientMock) BuildImageWithAgent(context.Context, evergreen.Environment, *host.Host, string) (string, error) {
+func (c *dockerClientMock) BuildImageWithAgent(context.Context, *host.Host, string) (string, error) {
 	if c.failBuild {
 		return "", errors.New("failed to build image with agent")
 	}
