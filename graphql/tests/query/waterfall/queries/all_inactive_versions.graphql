@@ -1,0 +1,20 @@
+{
+  waterfall(options: { projectIdentifier: "mci" }) {
+    nextPageOrder
+    prevPageOrder
+    versions {
+      version {
+        activated
+        author
+        id
+        order
+      }
+      inactiveVersions {
+        activated
+        author
+        id
+        order
+      }
+    }
+  }
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -55,6 +56,7 @@ func (s *shellExecuteCommandSuite) SetupTest() {
 			Secret: "task_secret",
 		},
 		Project: model.Project{},
+		Distro:  &apimodels.DistroView{},
 	}
 	s.logger, err = s.comm.GetLoggerProducer(s.ctx, &s.conf.Task, nil)
 	s.Require().NoError(err)

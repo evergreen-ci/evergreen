@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -102,7 +103,7 @@ func setupPermissions(t *testing.T) {
 		ID:        "project_scope",
 		Name:      "project scope",
 		Type:      evergreen.ProjectResourceType,
-		Resources: []string{"project_id", "repo_id"},
+		Resources: []string{"project_id"},
 	}
 	err = roleManager.AddScope(projectScope)
 	require.NoError(t, err)
@@ -257,18 +258,18 @@ func TestRequireDistroAccess(t *testing.T) {
 
 	// Fails when distro is not specified
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
-	require.EqualError(t, err, "input: distro not specified")
+	assert.EqualError(t, err, "input: distro not specified")
 
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessCreate)
-	require.EqualError(t, err, "input: user 'testuser' does not have create distro permissions")
+	assert.EqualError(t, err, "input: user 'testuser' does not have create distro permissions")
 
 	// superuser should be successful for create with no distro ID specified
 	require.NoError(t, usr.AddRole("superuser"))
 
 	res, err := config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessCreate)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 1, callCount)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 1, callCount)
 
 	require.NoError(t, usr.RemoveRole("superuser"))
 
@@ -277,19 +278,19 @@ func TestRequireDistroAccess(t *testing.T) {
 
 	obj = interface{}(map[string]interface{}{"distroId": "distro-id"})
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 2, callCount)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 2, callCount)
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 3, callCount)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 3, callCount)
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 4, callCount)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 4, callCount)
 
 	require.NoError(t, usr.RemoveRole("superuser_distro_access"))
 
@@ -297,19 +298,19 @@ func TestRequireDistroAccess(t *testing.T) {
 	require.NoError(t, usr.AddRole("admin_distro-id"))
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 5, callCount)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 5, callCount)
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 6, callCount)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 6, callCount)
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 7, callCount)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 7, callCount)
 
 	require.NoError(t, usr.RemoveRole("admin_distro-id"))
 
@@ -317,19 +318,19 @@ func TestRequireDistroAccess(t *testing.T) {
 	require.NoError(t, usr.AddRole("edit_distro-id"))
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
-	require.Nil(t, res)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
-	require.Equal(t, 7, callCount)
+	assert.Nil(t, res)
+	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.Equal(t, 7, callCount)
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 8, callCount)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 8, callCount)
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 9, callCount)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 9, callCount)
 
 	require.NoError(t, usr.RemoveRole("edit_distro-id"))
 
@@ -337,32 +338,32 @@ func TestRequireDistroAccess(t *testing.T) {
 	require.NoError(t, usr.AddRole("view_distro-id"))
 
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
-	require.Equal(t, 9, callCount)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.Equal(t, 9, callCount)
+	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
 
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
-	require.Equal(t, 9, callCount)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.Equal(t, 9, callCount)
+	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 10, callCount)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 10, callCount)
 
 	require.NoError(t, usr.RemoveRole("view_distro-id"))
 
 	// no access fails all query attempts
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
-	require.Equal(t, 10, callCount)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.Equal(t, 10, callCount)
+	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
 
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
-	require.Equal(t, 10, callCount)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.Equal(t, 10, callCount)
+	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
 
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
-	require.Equal(t, 10, callCount)
-	require.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.Equal(t, 10, callCount)
+	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
 }
 
 func TestRequireProjectAdmin(t *testing.T) {
@@ -413,9 +414,9 @@ func TestRequireProjectAdmin(t *testing.T) {
 	require.NoError(t, err)
 
 	res, err := config.Directives.RequireProjectAdmin(ctx, obj, next)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 1, callCount)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 1, callCount)
 
 	err = usr.RemoveRole("superuser")
 	require.NoError(t, err)
@@ -431,17 +432,17 @@ func TestRequireProjectAdmin(t *testing.T) {
 		},
 	}
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	require.EqualError(t, err, "input: user testuser does not have permission to access the CreateProject resolver")
-	require.Nil(t, res)
-	require.Equal(t, 1, callCount)
+	assert.EqualError(t, err, "input: user testuser does not have permission to access the CreateProject resolver")
+	assert.Nil(t, res)
+	assert.Equal(t, 1, callCount)
 
 	// CreateProject - successful
 	err = usr.AddRole("admin_project")
 	require.NoError(t, err)
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 2, callCount)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 2, callCount)
 
 	// CopyProject - permission denied
 	operationContext = &graphql.OperationContext{
@@ -454,9 +455,9 @@ func TestRequireProjectAdmin(t *testing.T) {
 		},
 	}
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	require.EqualError(t, err, "input: user testuser does not have permission to access the CopyProject resolver")
-	require.Nil(t, res)
-	require.Equal(t, 2, callCount)
+	assert.EqualError(t, err, "input: user testuser does not have permission to access the CopyProject resolver")
+	assert.Nil(t, res)
+	assert.Equal(t, 2, callCount)
 
 	// CopyProject - successful
 	obj = map[string]interface{}{
@@ -465,9 +466,9 @@ func TestRequireProjectAdmin(t *testing.T) {
 		},
 	}
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 3, callCount)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 3, callCount)
 
 	// DeleteProject - permission denied
 	operationContext = &graphql.OperationContext{
@@ -476,16 +477,16 @@ func TestRequireProjectAdmin(t *testing.T) {
 	ctx = graphql.WithOperationContext(ctx, operationContext)
 	obj = map[string]interface{}{"projectId": "anything"}
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	require.EqualError(t, err, "input: user testuser does not have permission to access the DeleteProject resolver")
-	require.Nil(t, res)
-	require.Equal(t, 3, callCount)
+	assert.EqualError(t, err, "input: user testuser does not have permission to access the DeleteProject resolver")
+	assert.Nil(t, res)
+	assert.Equal(t, 3, callCount)
 
 	// DeleteProject - successful
 	obj = map[string]interface{}{"projectId": "project_id"}
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 4, callCount)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 4, callCount)
 
 	// SetLastRevision - successful
 	operationContext = &graphql.OperationContext{
@@ -498,9 +499,9 @@ func TestRequireProjectAdmin(t *testing.T) {
 		},
 	}
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 5, callCount)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 5, callCount)
 
 	// SetLastRevision - project not found
 	operationContext = &graphql.OperationContext{
@@ -513,9 +514,9 @@ func TestRequireProjectAdmin(t *testing.T) {
 		},
 	}
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	require.EqualError(t, err, "input: project 'project_whatever' not found")
-	require.Nil(t, res)
-	require.Equal(t, 5, callCount)
+	assert.EqualError(t, err, "input: project 'project_whatever' not found")
+	assert.Nil(t, res)
+	assert.Equal(t, 5, callCount)
 
 	// SetLastRevision - permission denied
 	operationContext = &graphql.OperationContext{
@@ -529,9 +530,9 @@ func TestRequireProjectAdmin(t *testing.T) {
 	}
 	require.NoError(t, usr.RemoveRole("admin_project"))
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	require.EqualError(t, err, "input: user testuser does not have permission to access the SetLastRevision resolver")
-	require.Nil(t, res)
-	require.Equal(t, 5, callCount)
+	assert.EqualError(t, err, "input: user testuser does not have permission to access the SetLastRevision resolver")
+	assert.Nil(t, res)
+	assert.Equal(t, 5, callCount)
 
 }
 
@@ -557,6 +558,13 @@ func TestRequireProjectSettingsAccess(t *testing.T) {
 	config := New("/graphql")
 	require.NotNil(t, config)
 	ctx := context.Background()
+
+	pRef := model.ProjectRef{
+		Id:         "project_id",
+		Identifier: "project_identifier",
+		RepoRefId:  "repo_project_id",
+	}
+	assert.NoError(t, pRef.Insert())
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
@@ -590,34 +598,52 @@ func TestRequireProjectSettingsAccess(t *testing.T) {
 	ctx = graphql.WithFieldContext(ctx, fieldCtx)
 
 	res, err := config.Directives.RequireProjectSettingsAccess(ctx, interface{}(nil), next)
-	require.EqualError(t, err, "input: project not valid")
-	require.Nil(t, res)
-	require.Equal(t, 0, callCount)
+	assert.EqualError(t, err, "input: project not valid")
+	assert.Nil(t, res)
+	assert.Equal(t, 0, callCount)
 
 	res, err = config.Directives.RequireProjectSettingsAccess(ctx, apiProjectSettings, next)
-	require.EqualError(t, err, "input: project not specified")
-	require.Nil(t, res)
-	require.Equal(t, 0, callCount)
+	assert.EqualError(t, err, "input: project not specified")
+	assert.Nil(t, res)
+	assert.Equal(t, 0, callCount)
 
 	validApiProjectSettings := &restModel.APIProjectSettings{
 		ProjectRef: restModel.APIProjectRef{
 			Id:         utility.ToStringPtr("project_id"),
+			RepoRefId:  utility.ToStringPtr("repo_project_id"),
 			Identifier: utility.ToStringPtr("project_identifier"),
 			Admins:     utility.ToStringPtrSlice([]string{"admin_1", "admin_2", "admin_3"}),
 		},
 	}
+	validRepoProjectSettings := &restModel.APIProjectSettings{
+		ProjectRef: restModel.APIProjectRef{
+			Id: utility.ToStringPtr("repo_project_id"),
+		},
+	}
 	res, err = config.Directives.RequireProjectSettingsAccess(ctx, validApiProjectSettings, next)
-	require.EqualError(t, err, "input: user does not have permission to access the field 'admins' for project with ID 'project_id'")
-	require.Nil(t, res)
-	require.Equal(t, 0, callCount)
+	assert.EqualError(t, err, "input: user does not have permission to access the field 'admins' for project with ID 'project_id'")
+	assert.Nil(t, res)
+	assert.Equal(t, 0, callCount)
+
+	// Verify that the user also doesn't have permission to view the repo project
+	res, err = config.Directives.RequireProjectSettingsAccess(ctx, validRepoProjectSettings, next)
+	assert.EqualError(t, err, "input: user does not have permission to access the field 'admins' for project with ID 'repo_project_id'")
+	assert.Nil(t, res)
+	assert.Equal(t, 0, callCount)
 
 	err = usr.AddRole("view_project")
 	require.NoError(t, err)
 
 	res, err = config.Directives.RequireProjectSettingsAccess(ctx, validApiProjectSettings, next)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 1, callCount)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 1, callCount)
+
+	// Verify that the user also has permission to view the repo project
+	res, err = config.Directives.RequireProjectSettingsAccess(ctx, validRepoProjectSettings, next)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 2, callCount)
 }
 
 func TestRequireCommitQueueItemOwner(t *testing.T) {
@@ -663,37 +689,37 @@ func TestRequireCommitQueueItemOwner(t *testing.T) {
 	require.NoError(t, commitqueue.InsertQueue(&cq))
 
 	res, err := config.Directives.RequireCommitQueueItemOwner(ctx, interface{}(nil), next)
-	require.EqualError(t, err, "input: converting mutation args into map")
-	require.Nil(t, res)
-	require.Equal(t, 0, callCount)
+	assert.EqualError(t, err, "input: converting mutation args into map")
+	assert.Nil(t, res)
+	assert.Equal(t, 0, callCount)
 
 	res, err = config.Directives.RequireCommitQueueItemOwner(ctx, map[string]interface{}{}, next)
-	require.EqualError(t, err, "input: commit queue id was not provided")
-	require.Nil(t, res)
-	require.Equal(t, 0, callCount)
+	assert.EqualError(t, err, "input: commit queue id was not provided")
+	assert.Nil(t, res)
+	assert.Equal(t, 0, callCount)
 
 	res, err = config.Directives.RequireCommitQueueItemOwner(ctx, map[string]interface{}{
 		"commitQueueId": "commit_queue_id",
 	}, next)
-	require.EqualError(t, err, "input: issue was not provided")
-	require.Nil(t, res)
-	require.Equal(t, 0, callCount)
+	assert.EqualError(t, err, "input: issue was not provided")
+	assert.Nil(t, res)
+	assert.Equal(t, 0, callCount)
 
 	res, err = config.Directives.RequireCommitQueueItemOwner(ctx, map[string]interface{}{
 		"commitQueueId": "bad_project",
 		"issue":         "123",
 	}, next)
-	require.EqualError(t, err, "input: 404 (Not Found): project 'bad_project' not found")
-	require.Nil(t, res)
-	require.Equal(t, 0, callCount)
+	assert.EqualError(t, err, "input: 404 (Not Found): project 'bad_project' not found")
+	assert.Nil(t, res)
+	assert.Equal(t, 0, callCount)
 
 	res, err = config.Directives.RequireCommitQueueItemOwner(ctx, map[string]interface{}{
 		"commitQueueId": projectRef.Id,
 		"issue":         patch.Id.Hex(),
 	}, next)
-	require.EqualError(t, err, "input: 400 (Bad Request): commit queue is not enabled for project 'project_id'")
-	require.Nil(t, res)
-	require.Equal(t, 0, callCount)
+	assert.EqualError(t, err, "input: 400 (Bad Request): commit queue is not enabled for project 'project_id'")
+	assert.Nil(t, res)
+	assert.Equal(t, 0, callCount)
 
 	projectRef.RepoRefId = "repo_id"
 	require.NoError(t, projectRef.Upsert())
@@ -709,7 +735,7 @@ func TestRequireCommitQueueItemOwner(t *testing.T) {
 		"commitQueueId": projectRef.Id,
 		"issue":         patch.Id.Hex(),
 	}, next)
-	require.NoError(t, err)
-	require.Nil(t, res)
-	require.Equal(t, 1, callCount)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 1, callCount)
 }

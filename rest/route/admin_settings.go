@@ -122,3 +122,37 @@ func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 
 	return gimlet.NewJSONResponse(h.model)
 }
+
+func makeFetchTaskLimits() gimlet.RouteHandler {
+	return &taskLimitsGetHandler{}
+}
+
+type taskLimitsGetHandler struct{}
+
+// Factory creates an instance of the handler.
+//
+//	@Summary		Get Evergreen's task limits
+//	@Description	Returns all of Evergreen's task-related limitations.
+//	@Tags			admin
+//	@Router			/admin/task_limits [get]
+//	@Security		Api-User || Api-Key
+//	@Success		200	{object}	model.APITaskLimitsConfig
+func (h *taskLimitsGetHandler) Factory() gimlet.RouteHandler {
+	return &taskLimitsGetHandler{}
+}
+
+func (h *taskLimitsGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	return nil
+}
+
+func (h *taskLimitsGetHandler) Run(ctx context.Context) gimlet.Responder {
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
+	}
+	taskLimits := &model.APITaskLimitsConfig{}
+	if err = taskLimits.BuildFromService(settings.TaskLimits); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "converting task limits to API model"))
+	}
+	return gimlet.NewJSONResponse(taskLimits)
+}

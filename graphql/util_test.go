@@ -515,22 +515,14 @@ func TestHasAnnotationPermission(t *testing.T) {
 }
 
 func TestGroupInactiveVersions(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(model.VersionCollection))
+	v0 := model.Version{Id: "0", Activated: utility.ToBoolPtr(false)}
+	v1 := model.Version{Id: "1", Activated: utility.ToBoolPtr(false)}
+	v2 := model.Version{Id: "2", Activated: utility.ToBoolPtr(true)}
+	v3 := model.Version{Id: "3", Activated: utility.ToBoolPtr(true)}
+	v4 := model.Version{Id: "4", Activated: utility.ToBoolPtr(false)}
+	v5 := model.Version{Id: "5", Activated: utility.ToBoolPtr(true)}
 
-	v0 := model.Version{Id: "0"}
-	v1 := model.Version{Id: "1"}
-	assert.NoError(t, v1.Insert())
-	v2 := model.Version{Id: "2"}
-	assert.NoError(t, v2.Insert())
-	v3 := model.Version{Id: "3"}
-	assert.NoError(t, v3.Insert())
-	v4 := model.Version{Id: "4"}
-	assert.NoError(t, v4.Insert())
-	v5 := model.Version{Id: "5"}
-	assert.NoError(t, v5.Insert())
-
-	activeVersionIds := []string{v2.Id, v3.Id, v5.Id}
-	waterfallVersions := groupInactiveVersions(activeVersionIds, []model.Version{v0, v1, v2, v3, v4, v5})
+	waterfallVersions := groupInactiveVersions([]model.Version{v0, v1, v2, v3, v4, v5})
 	require.Len(t, waterfallVersions, 5)
 
 	assert.Nil(t, waterfallVersions[0].Version)

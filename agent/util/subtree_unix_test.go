@@ -77,7 +77,7 @@ func TestKillSpawnedProcs(t *testing.T) {
 			expiredContext, cancel := context.WithTimeout(ctx, -time.Second)
 			defer cancel()
 
-			err := KillSpawnedProcs(expiredContext, "", "", grip.GetDefaultJournaler())
+			err := KillSpawnedProcs(expiredContext, "", "", "", grip.GetDefaultJournaler())
 			assert.Error(t, err)
 			assert.Equal(t, ErrPSTimeout, errors.Cause(err))
 		},
@@ -85,12 +85,12 @@ func TestKillSpawnedProcs(t *testing.T) {
 			cancelledContext, cancel := context.WithCancel(ctx)
 			cancel()
 
-			err := KillSpawnedProcs(cancelledContext, "", "", grip.GetDefaultJournaler())
+			err := KillSpawnedProcs(cancelledContext, "", "", "", grip.GetDefaultJournaler())
 			assert.Error(t, err)
 			assert.NotEqual(t, ErrPSTimeout, errors.Cause(err))
 		},
 		"SucceedsWithNoContextError": func(ctx context.Context, t *testing.T) {
-			err := KillSpawnedProcs(ctx, "", "", grip.GetDefaultJournaler())
+			err := KillSpawnedProcs(ctx, "", "", "", grip.GetDefaultJournaler())
 			assert.NoError(t, err)
 		},
 	} {

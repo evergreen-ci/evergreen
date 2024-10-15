@@ -2744,17 +2744,32 @@ func (c *APIGitHubCheckRunConfig) ToService() (interface{}, error) {
 }
 
 type APITaskLimitsConfig struct {
-	MaxTasksPerVersion                               *int `json:"max_tasks_per_version"`
-	MaxIncludesPerVersion                            *int `json:"max_includes_per_version"`
-	MaxHourlyPatchTasks                              *int `json:"max_hourly_patch_tasks"`
-	MaxPendingGeneratedTasks                         *int `json:"max_pending_generated_tasks"`
-	MaxGenerateTaskJSONSize                          *int `json:"max_generate_task_json_size"`
-	MaxConcurrentLargeParserProjectTasks             *int `json:"max_concurrent_large_parser_project_tasks"`
-	MaxDegradedModeParserProjectSize                 *int `json:"max_degraded_mode_parser_project_size"`
-	MaxParserProjectSize                             *int `json:"max_parser_project_size"`
-	MaxExecTimeoutSecs                               *int `json:"max_exec_timeout_secs"`
+	// MaxTasksPerVersion is the maximum number of tasks that a single version
+	// can have.
+	MaxTasksPerVersion *int `json:"max_tasks_per_version"`
+	// MaxIncludesPerVersion is the maximum number of includes that a single
+	// version can have.
+	MaxIncludesPerVersion *int `json:"max_includes_per_version"`
+	// MaxHourlyPatchTasks is the maximum number of patch tasks a single user can
+	// schedule per hour.
+	MaxHourlyPatchTasks *int `json:"max_hourly_patch_tasks"`
+	// MaxPendingGeneratedTasks is the maximum number of tasks that can be created
+	// by all generated task at once.
+	MaxPendingGeneratedTasks *int `json:"max_pending_generated_tasks"`
+	// MaxGenerateTaskJSONSize is the maximum size of a JSON file in MB that can be specified in the GenerateTasks command.
+	MaxGenerateTaskJSONSize *int `json:"max_generate_task_json_size"`
+	// MaxConcurrentLargeParserProjectTasks is the maximum number of tasks with parser projects stored in S3 that can be running at once.
+	MaxConcurrentLargeParserProjectTasks *int `json:"max_concurrent_large_parser_project_tasks"`
+	// MaxDegradedModeConcurrentLargeParserProjectTasks is the maximum number of tasks with parser projects stored in S3 that can be running at once during CPU degraded mode.
 	MaxDegradedModeConcurrentLargeParserProjectTasks *int `json:"max_degraded_mode_concurrent_large_parser_project_tasks"`
-	MaxTaskExecution                                 *int `json:"max_task_execution"`
+	// MaxDegradedModeParserProjectSize is the maximum parser project size in MB during CPU degraded mode.
+	MaxDegradedModeParserProjectSize *int `json:"max_degraded_mode_parser_project_size"`
+	// MaxParserProjectSize is the maximum allowed size in MB for parser projects that are stored in S3.
+	MaxParserProjectSize *int `json:"max_parser_project_size"`
+	// MaxExecTimeoutSecs is the maximum number of seconds a task can run and set their timeout to.
+	MaxExecTimeoutSecs *int `json:"max_exec_timeout_secs"`
+	// MaxTaskExecution is the maximum task (zero based) execution number.
+	MaxTaskExecution *int `json:"max_task_execution"`
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {

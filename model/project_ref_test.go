@@ -4113,3 +4113,81 @@ func TestGetActivationTimeForVariant(t *testing.T) {
 	assert.NotZero(activationTime)
 	assert.Equal(activationTime, versionCreatedAt)
 }
+
+func TestUserHasRepoViewPermission(t *testing.T) {
+	wrongProjectScopeId := "wrongProjectScope"
+	projectScopeId := "projectScope"
+
+	for testName, testCase := range map[string]func(t *testing.T, usr *user.DBUser, roleManager gimlet.RoleManager){
+		"wrongProjectViewPermissionFails": func(t *testing.T, usr *user.DBUser, roleManager gimlet.RoleManager) {
+			wrongProjectRole := gimlet.Role{
+				ID:          "view_branch_role",
+				Scope:       wrongProjectScopeId,
+				Permissions: map[string]int{evergreen.PermissionProjectSettings: 20},
+			}
+			require.NoError(t, roleManager.UpdateRole(wrongProjectRole))
+
+			assert.NoError(t, usr.AddRole(wrongProjectRole.ID))
+			hasPermission, err := UserHasRepoViewPermission(usr, "myRepoId")
+			assert.NoError(t, err)
+			assert.False(t, hasPermission)
+		},
+		"wrongPermissionViewPermissionFails": func(t *testing.T, usr *user.DBUser, roleManager gimlet.RoleManager) {
+			wrongPermissionRole := gimlet.Role{
+				ID:          "view_branch_role",
+				Scope:       projectScopeId,
+				Permissions: map[string]int{evergreen.PermissionTasks: 30},
+			}
+			require.NoError(t, roleManager.UpdateRole(wrongPermissionRole))
+
+			assert.NoError(t, usr.AddRole(wrongPermissionRole.ID))
+			hasPermission, err := UserHasRepoViewPermission(usr, "myRepoId")
+			assert.NoError(t, err)
+			assert.False(t, hasPermission)
+		},
+		"branchViewPermissionSucceeds": func(t *testing.T, usr *user.DBUser, roleManager gimlet.RoleManager) {
+			viewBranchRole := gimlet.Role{
+				ID:          "view_branch_role",
+				Scope:       projectScopeId,
+				Permissions: map[string]int{evergreen.PermissionProjectSettings: 20},
+			}
+			require.NoError(t, roleManager.UpdateRole(viewBranchRole))
+
+			assert.NoError(t, usr.AddRole(viewBranchRole.ID))
+			hasPermission, err := UserHasRepoViewPermission(usr, "myRepoId")
+			assert.NoError(t, err)
+			assert.True(t, hasPermission)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(ProjectRefCollection, user.Collection, evergreen.RoleCollection, evergreen.ScopeCollection))
+			pRef := ProjectRef{
+				Id:        "project1",
+				RepoRefId: "myRepoId",
+			}
+			wrongRef := ProjectRef{
+				Id: "project2",
+			}
+			assert.NoError(t, pRef.Insert())
+			assert.NoError(t, wrongRef.Insert())
+			env := evergreen.GetEnvironment()
+			roleManager := env.RoleManager()
+			projectScope := gimlet.Scope{
+				ID:        projectScopeId,
+				Type:      evergreen.ProjectResourceType,
+				Resources: []string{pRef.Id},
+			}
+			assert.NoError(t, roleManager.AddScope(projectScope))
+			wrongProjectScope := gimlet.Scope{
+				ID:        wrongProjectScopeId,
+				Type:      evergreen.ProjectResourceType,
+				Resources: []string{wrongRef.Id},
+			}
+			assert.NoError(t, roleManager.AddScope(wrongProjectScope))
+
+			usr := &user.DBUser{Id: "usr"}
+			assert.NoError(t, usr.Insert())
+			testCase(t, usr, roleManager)
+		})
+	}
+}

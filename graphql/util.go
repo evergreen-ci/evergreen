@@ -1320,11 +1320,11 @@ func annotationPermissionHelper(ctx context.Context, taskID string, execution *i
 }
 
 // groupInactiveVersions partitions a slice of versions into a slice where each entry is either an active version or slice of inactive versions (i.e. versions that don't match filters; they may be technically activated).
-func groupInactiveVersions(activeVersionIds []string, versions []model.Version) []*WaterfallVersion {
+func groupInactiveVersions(versions []model.Version) []*WaterfallVersion {
 	waterfallVersions := []*WaterfallVersion{}
 	i := 0
 	for i < len(versions) {
-		if utility.StringSliceContains(activeVersionIds, versions[i].Id) {
+		if utility.FromBoolPtr(versions[i].Activated) {
 			apiVersion := restModel.APIVersion{}
 			apiVersion.BuildFromService(versions[i])
 			waterfallVersions = append(waterfallVersions, &WaterfallVersion{
@@ -1334,7 +1334,7 @@ func groupInactiveVersions(activeVersionIds []string, versions []model.Version) 
 			i++
 		} else {
 			inactiveGroup := []*restModel.APIVersion{}
-			for i < len(versions) && !utility.StringSliceContains(activeVersionIds, versions[i].Id) {
+			for i < len(versions) && !utility.FromBoolPtr(versions[i].Activated) {
 				apiVersion := restModel.APIVersion{}
 				apiVersion.BuildFromService(versions[i])
 				inactiveGroup = append(inactiveGroup, &apiVersion)
@@ -1362,4 +1362,19 @@ func flattenOtelVariables(vars map[string]interface{}) map[string]interface{} {
 		}
 	}
 	return flattenedVars
+}
+
+func getRevisionOrder(revision string, projectId string, limit int) (int, error) {
+	if len(revision) < minRevisionLength {
+		return 0, errors.New(fmt.Sprintf("at least %d characters must be provided for the revision", minRevisionLength))
+	}
+
+	found, err := model.VersionFindOne(model.VersionByProjectIdAndRevisionPrefix(projectId, revision))
+	if err != nil {
+		return 0, errors.New(fmt.Sprintf("getting version with revision '%s': %s", revision, err))
+	} else if found == nil {
+		return 0, errors.New(fmt.Sprintf("version with revision '%s' not found", revision))
+	}
+	// Offset the order number so the specified revision lands nearer to the center of the page.
+	return found.RevisionOrderNumber + limit/2 + 1, nil
 }
