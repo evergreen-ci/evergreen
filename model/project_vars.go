@@ -894,7 +894,7 @@ func convertParamToVar(pm ParameterMappings, paramName, paramValue string) (varN
 		varValue = paramValue
 	}
 
-	m, ok := pm.ParamNameMap()[paramName]
+	m, ok := pm.ParameterNameMap()[paramName]
 	if !ok {
 		return "", "", errors.Errorf("cannot find project variable name corresponding to parameter '%s'", paramName)
 	}
@@ -904,4 +904,18 @@ func convertParamToVar(pm ParameterMappings, paramName, paramValue string) (varN
 	}
 
 	return varName, varValue, nil
+}
+
+// areParameterStoreVarsSynced returns whether or not the project's variables
+// are fully synced to Parameter Store.
+func areParameterStoreVarsSynced(projectID string) (bool, error) {
+	// kim: TODO: merge this logic with isParameterStoreEnabled (DEVPROD-9405).
+	pRef, err := FindBranchProjectRef(projectID)
+	if err != nil {
+		return false, err
+	}
+	if pRef == nil {
+		return false, errors.Errorf("project '%s' not found", projectID)
+	}
+	return pRef.ParameterStoreVarsSynced, nil
 }
