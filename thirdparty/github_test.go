@@ -141,6 +141,23 @@ func (s *githubSuite) TestGithubShouldRetry() {
 		}
 		s.False(retryFn(0, req, resp, nil))
 	})
+
+	s.Run("IgnoreCodes", func() {
+		code := http.StatusNotFound
+		resp := &http.Response{
+			StatusCode: code,
+			Header: http.Header{
+				"X-Ratelimit-Limit":     []string{"10"},
+				"X-Ratelimit-Remaining": []string{"10"},
+			},
+		}
+
+		retryFn := githubShouldRetry("", retryConfig{retry: true})
+		s.True(retryFn(0, req, resp, nil))
+
+		retryFn = githubShouldRetry("", retryConfig{retry: true, ignoreCodes: []int{code}})
+		s.False(retryFn(0, req, resp, nil))
+	})
 }
 
 func (s *githubSuite) TestCheckGithubAPILimit() {
