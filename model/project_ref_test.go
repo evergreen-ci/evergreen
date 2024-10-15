@@ -1028,11 +1028,11 @@ func TestAttachToRepo(t *testing.T) {
 
 func checkParametersMatchVars(ctx context.Context, t *testing.T, pm ParameterMappings, vars map[string]string) {
 	assert.Len(t, pm, len(vars), "each project var should have exactly one corresponding parameter")
-	fakeParams, err := fakeparameter.FindByIDs(ctx, pm.ParamNames()...)
+	fakeParams, err := fakeparameter.FindByIDs(ctx, pm.ParameterNames()...)
 	assert.NoError(t, err)
 	assert.Len(t, fakeParams, len(vars))
 
-	paramNamesMap := pm.ParamNameMap()
+	paramNamesMap := pm.ParameterNameMap()
 	for _, fakeParam := range fakeParams {
 		varName := paramNamesMap[fakeParam.Name].Name
 		assert.NotEmpty(t, varName, "parameter should have corresponding project variable")

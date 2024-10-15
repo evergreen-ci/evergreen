@@ -101,9 +101,9 @@ func (pm ParameterMappings) NameMap() map[string]ParameterMapping {
 	return res
 }
 
-// ParamNameMap returns a map from each parameter name to the full parameter
+// ParameterNameMap returns a map from each parameter name to the full parameter
 // mapping information.
-func (pm ParameterMappings) ParamNameMap() map[string]ParameterMapping {
+func (pm ParameterMappings) ParameterNameMap() map[string]ParameterMapping {
 	res := make(map[string]ParameterMapping, len(pm))
 	for i, m := range pm {
 		res[m.ParameterName] = pm[i]
@@ -120,8 +120,8 @@ func (pm ParameterMappings) Names() []string {
 	return res
 }
 
-// ParamNames returns the parameter names for each parameter mapping.
-func (pm ParameterMappings) ParamNames() []string {
+// ParameterNames returns the parameter names for each parameter mapping.
+func (pm ParameterMappings) ParameterNames() []string {
 	res := make([]string, 0, len(pm))
 	for _, m := range pm {
 		res = append(res, m.ParameterName)
@@ -380,13 +380,13 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error 
 
 	varsToUpsert, varsToDelete := getProjectVarsDiff(before, after)
 
-	paramMappingsToUpsert, err := after.upsertParams(ctx, before.Parameters, varsToUpsert)
+	paramMappingsToUpsert, err := after.upsertParameters(ctx, before.Parameters, varsToUpsert)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":    "encountered error while upserting project variables into Parameter Store",
 		"project_id": projectID,
 	}))
 
-	paramMappingsToDelete, err := after.deleteParams(ctx, before.Parameters, varsToDelete)
+	paramMappingsToDelete, err := after.deleteParameters(ctx, before.Parameters, varsToDelete)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":        "encountered error while deleting project variables from Parameter Store",
 		"vars_to_delete": varsToDelete,
@@ -419,10 +419,10 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error 
 	return nil
 }
 
-// upsertParams upserts the parameter mappings for project variables into
+// upsertParameters upserts the parameter mappings for project variables into
 // Parameter Store. It returns the parameter mappings for the upserted
 // variables.
-func (projectVars *ProjectVars) upsertParams(ctx context.Context, pm ParameterMappings, varsToUpsert map[string]string) (map[string]ParameterMapping, error) {
+func (projectVars *ProjectVars) upsertParameters(ctx context.Context, pm ParameterMappings, varsToUpsert map[string]string) (map[string]ParameterMapping, error) {
 	projectID := projectVars.Id
 	nameToExistingParamMapping := pm.NameMap()
 	paramMgr := evergreen.GetEnvironment().ParameterManager()
@@ -466,10 +466,10 @@ func (projectVars *ProjectVars) upsertParams(ctx context.Context, pm ParameterMa
 	return paramMappingsToUpsert, nil
 }
 
-// deleteParams deletes parameters corresponding to deleted project variables
+// deleteParameters deletes parameters corresponding to deleted project variables
 // from Parameter Store. It returns the parameter mappings for the deleted
 // variables.
-func (projectVars *ProjectVars) deleteParams(ctx context.Context, pm ParameterMappings, varsToDelete map[string]struct{}) (map[string]ParameterMapping, error) {
+func (projectVars *ProjectVars) deleteParameters(ctx context.Context, pm ParameterMappings, varsToDelete map[string]struct{}) (map[string]ParameterMapping, error) {
 	nameToExistingParamMapping := pm.NameMap()
 	paramMappingsToDelete := make(map[string]ParameterMapping, len(varsToDelete))
 	for varToDelete := range varsToDelete {
