@@ -29,7 +29,8 @@ type SessionFactory interface {
 	// GetSession uses the global environment's context to get a session and database.
 	GetSession() (db.Session, db.Database, error)
 	// GetContextSession uses the provided context to get a session and database.
-	// This is needed for operations that need control over the passed in context.
+	// This is needed for operations that need control over the passed-in context.
+	// TODO DEVPROD-11824 Use this method instead of GetSession.
 	GetContextSession(ctx context.Context) (db.Session, db.Database, error)
 }
 
@@ -46,6 +47,8 @@ func GetGlobalSessionFactory() SessionFactory {
 	}
 }
 
+// GetSession creates a database connection using the global environment's
+// session (and context through the session).
 func (s *shimFactoryImpl) GetSession() (db.Session, db.Database, error) {
 	if s.env == nil {
 		return nil, nil, errors.New("undefined environment")
@@ -59,6 +62,8 @@ func (s *shimFactoryImpl) GetSession() (db.Session, db.Database, error) {
 	return session, session.DB(s.db), nil
 }
 
+// GetContextSession creates a database session and connection that uses the associated
+// context in its operations.
 func (s *shimFactoryImpl) GetContextSession(ctx context.Context) (db.Session, db.Database, error) {
 	if s.env == nil {
 		return nil, nil, errors.New("undefined environment")
@@ -66,7 +71,7 @@ func (s *shimFactoryImpl) GetContextSession(ctx context.Context) (db.Session, db
 
 	session := s.env.ContextSession(ctx)
 	if session == nil {
-		return nil, nil, errors.New("session is not defined")
+		return nil, nil, errors.New("context session is not defined")
 	}
 
 	return session, session.DB(s.db), nil
