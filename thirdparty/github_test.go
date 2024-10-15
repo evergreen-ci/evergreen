@@ -143,7 +143,7 @@ func (s *githubSuite) TestGithubShouldRetry() {
 	})
 
 	s.Run("IgnoreCodes", func() {
-		code := http.StatusNotFound
+		code := http.StatusBadGateway
 		resp := &http.Response{
 			StatusCode: code,
 			Header: http.Header{
