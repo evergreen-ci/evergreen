@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"io"
 	"regexp"
 	"strings"
 
@@ -470,7 +471,8 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 // name and value. In particular, it validates that the variable name and value
 // fits within parameter constraints and if the name or value doesn't fit in the
 // constraints, it attempts to fix minor issues where possible. The return value
-// is a valid parameter name and parameter value.
+// is a valid parameter name and parameter value. This is the inverse operation
+// of convertParamToVar.
 func convertVarToParam(projectID string, pm ParameterMappings, varName, varValue string) (paramName string, paramValue string, err error) {
 	if err := validateVarNameCharset(varName); err != nil {
 		return "", "", errors.Wrapf(err, "validating project variable name '%s'", varName)
@@ -593,4 +595,33 @@ func getCompressedParamForVar(varName, varValue string) (paramName string, param
 	}
 
 	return fmt.Sprintf("%s%s", varName, gzipCompressedParamExtension), compressedValue.String(), nil
+}
+
+// convertParamToVar converts a parameter back to its original project variable
+// name and value. This is the inverse operation of convertVarToParam.
+func convertParamToVar(pm ParameterMappings, paramName, paramValue string) (varName, varValue string, err error) {
+	if strings.HasSuffix(paramName, gzipCompressedParamExtension) {
+		gzr, err := gzip.NewReader(strings.NewReader(paramValue))
+		if err != nil {
+			return "", "", errors.Wrap(err, "creating gzip reader for compressed project variable")
+		}
+		b, err := io.ReadAll(gzr)
+		if err != nil {
+			return "", "", errors.Wrap(err, "decoding gzip-compressed parameter to project variable")
+		}
+		varValue = string(b)
+	} else {
+		varValue = paramValue
+	}
+
+	m, ok := pm.ParamNameMap()[paramName]
+	if !ok {
+		return "", "", errors.Errorf("cannot find project variable name corresponding to parameter '%s'", paramName)
+	}
+	varName = m.Name
+	if varName == "" {
+		return "", "", errors.Errorf("project variable name corresponding to parameter '%s' exists but is empty", paramName)
+	}
+
+	return varName, varValue, nil
 }
