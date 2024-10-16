@@ -920,9 +920,9 @@ func areParameterStoreVarsSynced(projectID string) (bool, error) {
 	return pRef.ParameterStoreVarsSynced, nil
 }
 
-func (projectVars *ProjectVars) fullSyncToParameterStore(ctx context.Context) error {
+func fullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *ProjectRef, isRepoRef bool) error {
 	// kim: TODO: needs DEVPROD-9405 merged for helper fn
-	paramNames := projectVars.Parameters.Parameters()
+	paramNames := vars.Parameters.Parameters()
 	paramMgr := evergreen.GetEnvironment().ParameterManager()
 	if len(paramNames) > 0 {
 		if err := paramMgr.Delete(ctx, paramNames...); err != nil {
@@ -930,7 +930,7 @@ func (projectVars *ProjectVars) fullSyncToParameterStore(ctx context.Context) er
 		}
 	}
 
-	after := projectVars
+	after := vars
 
 	before, err := FindOneProjectVars(after.Id)
 	if err != nil {
@@ -955,8 +955,33 @@ func (projectVars *ProjectVars) fullSyncToParameterStore(ctx context.Context) er
 	// kim: TODO: needs DEVPROD-9405 merged for helper fn
 	updatedParamMappings := getSyncedParameterMappings(before.Parameters, paramMappingsToUpdate, nil)
 
-	// kim; TODO: update the param mappings in the DB for the full sync and set
+	// kim; TODO: upsert the param mappings in the DB for the full sync and set
 	// ParameterStoreVarsSynced: true.
+	if _, err := db.Upsert(ProjectVarsCollection,
+		bson.M{projectVarIdKey: after.Id},
+		bson.M{"$set": bson.M{projectVarsParametersKey: updatedParamMappings}},
+	); err != nil {
+		return errors.Wrap(err, "updating parameter mappings for project vars after full sync")
+	}
+
+	if !isRepoRef {
+		if err := db.UpdateId(ProjectRefCollection, pRef.Id, bson.M{
+			"$set": bson.M{
+				projectRefParameterStoreVarsSyncedKey: true,
+			},
+		}); err != nil {
+			return errors.Wrap(err, "marking project as having its project vars fully synced")
+		}
+	} else {
+		// kim: TODO: make sure this is correct way to update repo ref.
+		if err := db.UpdateId(RepoRefCollection, pRef.Id, bson.M{
+			"$set": bson.M{
+				projectRefParameterStoreVarsSyncedKey: true,
+			},
+		}); err != nil {
+			return errors.Wrap(err, "marking repo as having its project vars fully synced")
+		}
+	}
 
 	return nil
 }
