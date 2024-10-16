@@ -20,6 +20,7 @@ type APIPlannerSettings struct {
 	MainlineTimeInQueueFactor int64       `json:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor     int64       `json:"expected_runtime_factor"`
 	GenerateTaskFactor        int64       `json:"generate_task_factor"`
+	NumDependentsFactor       int64       `json:"num_dependents_factor"`
 	CommitQueueFactor         int64       `json:"commit_queue_factor"`
 }
 
@@ -37,6 +38,7 @@ func (s *APIPlannerSettings) BuildFromService(settings distro.PlannerSettings) {
 	s.PatchTimeInQueueFactor = settings.PatchTimeInQueueFactor
 	s.MainlineTimeInQueueFactor = settings.MainlineTimeInQueueFactor
 	s.GenerateTaskFactor = settings.GenerateTaskFactor
+	s.NumDependentsFactor = settings.NumDependentsFactor
 	s.CommitQueueFactor = settings.CommitQueueFactor
 }
 
@@ -54,6 +56,7 @@ func (s *APIPlannerSettings) ToService() distro.PlannerSettings {
 	settings.MainlineTimeInQueueFactor = s.MainlineTimeInQueueFactor
 	settings.ExpectedRuntimeFactor = s.ExpectedRuntimeFactor
 	settings.GenerateTaskFactor = s.GenerateTaskFactor
+	settings.NumDependentsFactor = s.NumDependentsFactor
 	settings.CommitQueueFactor = s.CommitQueueFactor
 
 	return settings

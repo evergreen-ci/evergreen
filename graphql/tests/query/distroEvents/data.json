@@ -469,6 +469,9 @@
             "generate_task_factor": {
               "$numberLong": "0"
             },
+            "num_dependents_factor": {
+              "$numberLong": "0"
+            },
             "stepback_task_factor": {
               "$numberLong": "0"
             }

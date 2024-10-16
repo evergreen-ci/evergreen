@@ -384,6 +384,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 			MainlineTimeInQueueFactor: 0,
 			ExpectedRuntimeFactor:     0,
 			GenerateTaskFactor:        0,
+			NumDependentsFactor:       0,
 		},
 	}
 	config0 := evergreen.SchedulerConfig{
@@ -401,6 +402,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		MainlineTimeInQueueFactor:     10,
 		ExpectedRuntimeFactor:         7,
 		GenerateTaskFactor:            20,
+		NumDependentsFactor:           10,
 		StepbackTaskFactor:            40,
 	}
 
@@ -423,6 +425,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	// Fallback to the SchedulerConfig.ExpectedRuntimeFactor as PlannerSettings.ExpectedRunTimeFactor is equal to 0.
 	assert.EqualValues(t, 7, resolved0.ExpectedRuntimeFactor)
 	assert.EqualValues(t, 20, resolved0.GenerateTaskFactor)
+	assert.EqualValues(t, 10, resolved0.NumDependentsFactor)
 	assert.EqualValues(t, 40, resolved0.StepbackTaskFactor)
 
 	d1 := Distro{
@@ -437,6 +440,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 			MainlineTimeInQueueFactor: 0,
 			ExpectedRuntimeFactor:     0,
 			GenerateTaskFactor:        0,
+			NumDependentsFactor:       0,
 		},
 	}
 	config1 := evergreen.SchedulerConfig{
@@ -454,6 +458,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		MainlineTimeInQueueFactor:     0,
 		ExpectedRuntimeFactor:         0,
 		GenerateTaskFactor:            0,
+		NumDependentsFactor:           0,
 	}
 
 	settings1 := &evergreen.Settings{Scheduler: config1}
@@ -470,6 +475,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.EqualValues(t, 0, resolved1.MainlineTimeInQueueFactor)
 	assert.EqualValues(t, 0, resolved1.ExpectedRuntimeFactor)
 	assert.EqualValues(t, 0, resolved1.GenerateTaskFactor)
+	assert.EqualValues(t, 0, resolved1.NumDependentsFactor)
 
 	ps := &PlannerSettings{
 		Version:                   "",
@@ -481,6 +487,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		MainlineTimeInQueueFactor: 0,
 		ExpectedRuntimeFactor:     0,
 		GenerateTaskFactor:        0,
+		NumDependentsFactor:       0,
 	}
 	d2 := Distro{
 		Id:              "distro2",
@@ -501,6 +508,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		MainlineTimeInQueueFactor:     0,
 		ExpectedRuntimeFactor:         0,
 		GenerateTaskFactor:            0,
+		NumDependentsFactor:           0,
 	}
 	settings2 := &evergreen.Settings{Scheduler: config2}
 
