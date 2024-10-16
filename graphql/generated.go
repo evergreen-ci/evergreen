@@ -40624,9 +40624,9 @@ func (ec *executionContext) _PlannerSettings_numDependentsFactor(ctx context.Con
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int64)
+	res := resTmp.(float64)
 	fc.Result = res
-	return ec.marshalNInt2int64(ctx, field.Selections, res)
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_PlannerSettings_numDependentsFactor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -40636,7 +40636,7 @@ func (ec *executionContext) fieldContext_PlannerSettings_numDependentsFactor(_ c
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -75670,7 +75670,7 @@ func (ec *executionContext) unmarshalInputPlannerSettingsInput(ctx context.Conte
 			it.GenerateTaskFactor = data
 		case "numDependentsFactor":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("numDependentsFactor"))
-			data, err := ec.unmarshalNInt2int64(ctx, v)
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
 			if err != nil {
 				return it, err
 			}
