@@ -2018,7 +2018,7 @@ type APISchedulerConfig struct {
 	MainlineTimeInQueueFactor     int64   `json:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor         int64   `json:"expected_runtime_factor"`
 	GenerateTaskFactor            int64   `json:"generate_task_factor"`
-	NumDependentsFactor           int64   `json:"num_dependents_factor"`
+	NumDependentsFactor           float64 `json:"num_dependents_factor"`
 	StepbackTaskFactor            int64   `json:"stepback_task_factor"`
 }
 

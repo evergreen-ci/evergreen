@@ -27,7 +27,7 @@ type SchedulerConfig struct {
 	MainlineTimeInQueueFactor     int64   `bson:"mainline_time_in_queue_factor" json:"mainline_time_in_queue_factor" mapstructure:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor         int64   `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
 	GenerateTaskFactor            int64   `bson:"generate_task_factor" json:"generate_task_factor" mapstructure:"generate_task_factor"`
-	NumDependentsFactor           int64   `bson:"num_dependents_factor" json:"num_dependents_factor" mapstructure:"num_dependents_factor"`
+	NumDependentsFactor           float64 `bson:"num_dependents_factor" json:"num_dependents_factor" mapstructure:"num_dependents_factor"`
 	StepbackTaskFactor            int64   `bson:"stepback_task_factor" json:"stepback_task_factor" mapstructure:"stepback_task_factor"`
 }
 
