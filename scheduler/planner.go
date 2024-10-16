@@ -98,7 +98,7 @@ type Unit struct {
 	distro      *distro.Distro
 }
 
-// MakeuUnit constructs a new unit, caching a reference to the distro
+// MakeUnit constructs a new unit, caching a reference to the distro
 // in the unit. It's valid to pass a nil here.
 func MakeUnit(d *distro.Distro) *Unit {
 	return &Unit{
@@ -258,7 +258,7 @@ func (u *unitInfo) value() int64 {
 	// Increase the value for the number of dependents, so that
 	// tasks (and units) which block other tasks run before tasks
 	// that don't block other tasks.
-	value += priority * (u.NumDependents / length)
+	value += int64(float64(priority) * u.Settings.GetNumDependentsFactor() * float64(u.NumDependents/length))
 
 	// Increase the value for tasks with longer runtimes, given
 	// that most of our workloads have different runtimes, and we

@@ -2018,6 +2018,7 @@ type APISchedulerConfig struct {
 	MainlineTimeInQueueFactor     int64   `json:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor         int64   `json:"expected_runtime_factor"`
 	GenerateTaskFactor            int64   `json:"generate_task_factor"`
+	NumDependentsFactor           float64 `json:"num_dependents_factor"`
 	StepbackTaskFactor            int64   `json:"stepback_task_factor"`
 }
 
@@ -2040,6 +2041,7 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.MainlineTimeInQueueFactor = v.MainlineTimeInQueueFactor
 		a.ExpectedRuntimeFactor = v.ExpectedRuntimeFactor
 		a.GenerateTaskFactor = v.GenerateTaskFactor
+		a.NumDependentsFactor = v.NumDependentsFactor
 		a.StepbackTaskFactor = v.StepbackTaskFactor
 	default:
 		return errors.Errorf("programmatic error: expected host scheduler config but got type %T", h)
@@ -2065,6 +2067,7 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 		CommitQueueFactor:             a.CommitQueueFactor,
 		MainlineTimeInQueueFactor:     a.MainlineTimeInQueueFactor,
 		GenerateTaskFactor:            a.GenerateTaskFactor,
+		NumDependentsFactor:           a.NumDependentsFactor,
 		StepbackTaskFactor:            a.StepbackTaskFactor,
 	}, nil
 }
