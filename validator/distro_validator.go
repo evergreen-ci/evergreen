@@ -469,7 +469,7 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 	}
 	if settings.NumDependentsFactor < 0 || settings.NumDependentsFactor > 100 {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.num_dependents_factor value of %v for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", settings.NumDependentsFactor, d.Id),
+			Message: fmt.Sprintf("invalid planner_settings.num_dependents_factor value of %f for distro '%s' - its value must be a non-negative integer between 0 and 100, inclusive", settings.NumDependentsFactor, d.Id),
 			Level:   Error,
 		})
 	}
