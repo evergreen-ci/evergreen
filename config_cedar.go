@@ -15,7 +15,10 @@ type CedarConfig struct {
 	User        string `bson:"user" json:"user" yaml:"user"`
 	APIKey      string `bson:"api_key" json:"api_key" yaml:"api_key"`
 	// Insecure disables TLS, this should only be used for testing.
-	Insecure bool `bson:"insecure" json:"insecure" yaml:"insecure"`
+	Insecure     bool   `bson:"insecure" json:"insecure" yaml:"insecure"`
+	SendToCedar  bool   `bson:"send_to_cedar" json:"send_to_cedar" yaml:"send_to_cedar"`
+	SPSURL       string `bson:"sps_url" json:"sps_url" yaml:"sps_url"`
+	SendRatioSPS int    `bson:"send_ratio_sps" json:"send_ratio_sps" yaml:"send_ratio_sps"`
 }
 
 var (
@@ -25,6 +28,9 @@ var (
 	cedarConfigUserKey        = bsonutil.MustHaveTag(CedarConfig{}, "User")
 	cedarConfigAPIKeyKey      = bsonutil.MustHaveTag(CedarConfig{}, "APIKey")
 	cedarConfigInsecureKey    = bsonutil.MustHaveTag(CedarConfig{}, "Insecure")
+	cedarSendToCedarKey       = bsonutil.MustHaveTag(CedarConfig{}, "SendToCedar")
+	cedarSPSURLKey            = bsonutil.MustHaveTag(CedarConfig{}, "SPSURL")
+	cedarSendRatioSPSKey      = bsonutil.MustHaveTag(CedarConfig{}, "SendRatioSPS")
 )
 
 func (*CedarConfig) SectionId() string { return "cedar" }
@@ -42,6 +48,9 @@ func (c *CedarConfig) Set(ctx context.Context) error {
 			cedarConfigUserKey:        c.User,
 			cedarConfigAPIKeyKey:      c.APIKey,
 			cedarConfigInsecureKey:    c.Insecure,
+			cedarSendToCedarKey:       c.SendToCedar,
+			cedarSPSURLKey:            c.SPSURL,
+			cedarSendRatioSPSKey:      c.SendRatioSPS,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
