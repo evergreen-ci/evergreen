@@ -148,8 +148,12 @@ type AWSSSHKey struct {
 }
 
 func FindOneProjectVars(projectId string) (*ProjectVars, error) {
+	return findProjectVarsDB(projectId)
+}
+
+func findProjectVarsDB(projectID string) (*ProjectVars, error) {
 	projectVars := &ProjectVars{}
-	q := db.Query(bson.M{projectVarIdKey: projectId})
+	q := db.Query(bson.M{projectVarIdKey: projectID})
 	err := db.FindOneQ(ProjectVarsCollection, q, projectVars)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -157,6 +161,45 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 	if err != nil {
 		return nil, err
 	}
+	return projectVars, nil
+}
+
+func findVarsInParameterStore(ctx context.Context, projectID string) (*ProjectVars, error) {
+	projectVars, err := findProjectVarsDB(projectID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding project vars for project '%s'", projectID)
+	}
+	if projectVars == nil {
+		return nil, nil
+	}
+	// kim: TODO: have to check branch/repo ref to see if Parameter Store is
+	// synced.
+
+	paramMgr := evergreen.GetEnvironment().ParameterManager()
+
+	// kim: TODO: needs DEVPROD-9405
+	params, err := paramMgr.GetStrict(ctx, projectVars.Parameters.ParameterNames())
+	if err != nil {
+		return nil, errors.Wrap(err, "getting parameters for project vars")
+	}
+
+	varsFromPS := map[string]string{}
+	catcher := grip.NewBasicCatcher()
+	for _, p := range params {
+		// kim: TODO: needs DEVPROD-9473
+		varName, varValue, err := convertParamToVar(p.Name, p.Value)
+		if err != nil {
+			catcher.Wrapf(err, "parameter '%s'", p.Name)
+			continue
+		}
+		varsFromPS[varName] = varValue
+	}
+
+	if catcher.HasErrors() {
+		return nil, errors.Wrap(catcher.Resolve(), "converting parameters back to their original project variables")
+	}
+
+	projectVars.Vars = varsFromPS
 	return projectVars, nil
 }
 
