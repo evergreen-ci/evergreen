@@ -2,6 +2,7 @@ package model
 
 import (
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"testing"
@@ -21,22 +22,27 @@ import (
 )
 
 func TestFindOneProjectVar(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	assert := assert.New(t)
 
-	require.NoError(t, db.Clear(ProjectVarsCollection),
-		"Error clearing collection")
+	require.NoError(t, db.ClearCollections(ProjectVarsCollection, ProjectRefCollection))
+	pRef := ProjectRef{
+		Id:                    "mongodb",
+		ParameterStoreEnabled: true,
+	}
+	require.NoError(t, pRef.Insert())
 	vars := map[string]string{
 		"a": "b",
 		"c": "d",
 	}
 	projectVars := ProjectVars{
-		Id:   "mongodb",
+		Id:   pRef.Id,
 		Vars: vars,
 	}
 	change, err := projectVars.Upsert()
 	assert.NotNil(change)
 	assert.NoError(err)
-	assert.NotNil(change.UpsertedId)
 	assert.Equal(1, change.Updated, "%+v", change)
 
 	projectVarsFromDB, err := FindOneProjectVars("mongodb")
@@ -44,6 +50,8 @@ func TestFindOneProjectVar(t *testing.T) {
 
 	assert.Equal("mongodb", projectVarsFromDB.Id)
 	assert.Equal(vars, projectVarsFromDB.Vars)
+
+	checkParametersMatchVars(ctx, t, projectVarsFromDB.Parameters, vars)
 }
 
 func TestFindMergedProjectVars(t *testing.T) {
