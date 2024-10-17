@@ -1393,6 +1393,8 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 			ids = append(ids, utility.FromStringPtr(tasks[i].DisplayTaskId))
 		}
 	}
+	// Remove duplicates to prevent large updates
+	ids = utility.UniqueStrings(ids)
 	_, err := UpdateAll(
 		bson.M{
 			IdKey: bson.M{
