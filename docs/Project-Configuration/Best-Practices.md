@@ -50,3 +50,17 @@ echo $foo
 ## Distro Choice
 
 Tasks on more popular distros are often run quicker than tasks on less popular ones. Prefer more popular distros where possible. For more information about available distro choices see [Guidelines around Evergreen distros](https://wiki.corp.mongodb.com/x/CZ7yBg)
+
+## Secrets in Project Variables
+
+If possible, prefer to use private variables instead of public variables to store secrets. Using private variables
+ensures that the plaintext secret is not visible in user-facing endpoints and the UI, which reduces the possibility of
+someone accidentally being able to view the plaintext value that shouldn't have access. Also, private variables are
+always redacted from task logs, making it less likely that the secret will be leaked accidentally (e.g. by echoing the
+secret in a script). If you use a public variable for a secret, Evergreen may still attempt to redact it if it contains
+a suspicious pattern (e.g. if it looks like a GitHub API key), but that automatic redaction logic is more of a last
+resort, best effort mechanism and by nature will never be perfectly reliable.
+
+If you wish to securely provide access to the plaintext secret value to other people, it's recommended to use an
+external secrets management service such as 1Password rather than relying on setting an Evergreen public variable with a
+secret.
