@@ -5,7 +5,7 @@ modules:
     branch: bynntest
 
 include:
-  - filename: bynntest.yml
+  - filename: include1.yml
     module: sandbox
 
 command_type: test
