@@ -436,11 +436,11 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Wrap(needsLogin, needsContext, editTasks).Handler(bbSaveNote).Put()
 	app.PrefixRoute("/plugin").Route("/buildbaron/file_ticket").Wrap(needsLogin, needsContext).Handler(uis.bbFileTicket).Post()
 
-	// Add an OPTIONS method to every POST request to handle preflight OPTIONS requests, and also for logging out.
+	// Add an OPTIONS method to every POST and GET request to handle preflight OPTIONS requests.
 	// These requests must not check for credentials. They exist to validate whether a route exists, and to
 	// allow requests from specific origins.
 	for _, r := range app.Routes() {
-		if r.HasMethod(http.MethodPost) || r.GetRoute() == "/logout" {
+		if r.HasMethod(http.MethodPost) || r.HasMethod(http.MethodGet) {
 			app.AddRoute(r.GetRoute()).Wrap(allowsCORS).Handler(func(w http.ResponseWriter, _ *http.Request) { gimlet.WriteJSON(w, "") }).Options()
 		}
 	}
