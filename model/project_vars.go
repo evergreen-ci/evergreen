@@ -335,16 +335,32 @@ const defaultParameterStoreAccessTimeout = 30 * time.Second
 func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
-	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, projectVars.Id)
+
+	ref, isRepoRef, err := projectVars.findProjectRef()
 	grip.Error(message.WrapError(err, message.Fields{
-		"message":    "could not check if Parameter Store was enabled for project; assuming it's disabled and falling back to using the DB",
+		"message":    "could not get project ref to check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
 		"project_id": projectVars.Id,
 	}))
-	if isPSEnabled {
-		grip.Error(message.WrapError(projectVars.upsertParameterStore(ctx), message.Fields{
-			"message":    "could not upsert project vars into Parameter Store; falling back to using the DB",
+	var isPSEnabled bool
+	if ref != nil {
+		isPSEnabled, err = isParameterStoreEnabledForProject(ctx, ref)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
 			"project_id": projectVars.Id,
 		}))
+	}
+	if isPSEnabled {
+		if !ref.ParameterStoreVarsSynced {
+			grip.Error(message.WrapError(fullSyncToParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
+				"message":    "could not upsert project vars into Parameter Store; falling back to using the DB",
+				"project_id": projectVars.Id,
+			}))
+		} else {
+			grip.Error(message.WrapError(projectVars.upsertParameterStore(ctx), message.Fields{
+				"message":    "could not upsert project vars into Parameter Store; falling back to using the DB",
+				"project_id": projectVars.Id,
+			}))
+		}
 	}
 
 	return db.Upsert(
@@ -547,7 +563,7 @@ func getUpdatedParamMappings(original ParameterMappings, upserted, deleted map[s
 // project.
 // TODO (DEVPROD-11882): remove feature flag checks once all project vars are
 // using Parameter Store and the rollout is stable.
-func isParameterStoreEnabledForProject(ctx context.Context, projectID string) (bool, error) {
+func isParameterStoreEnabledForProject(ctx context.Context, ref *ProjectRef) (bool, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "getting service flags")
@@ -556,24 +572,88 @@ func isParameterStoreEnabledForProject(ctx context.Context, projectID string) (b
 		return false, nil
 	}
 
-	projRef, err := FindMergedProjectRef(projectID, "", false)
+	return ref.ParameterStoreEnabled, nil
+}
+
+// findProjectRef finds the project ref associated with the project variables.
+// Returns a bool indicating if it's a branch project ref or a repo ref.
+func (projectVars *ProjectVars) findProjectRef() (ref *ProjectRef, isRepoRef bool, err error) {
+	projectID := projectVars.Id
+	// This intentionally looks for a branch project ref without merging with
+	// its repo ref because project vars for a branch project are stored
+	// separately from project vars for a repo. Therefore, a branch project and
+	// its repo could have differing sync statuses (e.g. it's possible for a
+	// branch project's vars to be synced to Parameter Store, but not its repo
+	// vars).
+	projRef, err := FindBranchProjectRef(projectID)
 	if err != nil {
-		return false, errors.Wrapf(err, "finding merged project ref '%s'", projectID)
+		return nil, false, errors.Wrapf(err, "finding merged project ref '%s'", projectID)
 	}
 	if projRef != nil {
-		return projRef.ParameterStoreEnabled, nil
+		return projRef, false, nil
 	}
 
 	// Project vars could tied to a repo instead of branch project, so check the
 	// repo as a fallback.
 	repoRef, err := FindOneRepoRef(projectID)
 	if err != nil {
-		return false, errors.Wrapf(err, "finding repo ref '%s'", projectID)
+		return nil, false, errors.Wrapf(err, "finding repo ref '%s'", projectID)
 	}
 	if repoRef == nil {
-		return false, errors.Errorf("project or repo ref '%s' not found", projectID)
+		return nil, false, errors.Errorf("project or repo ref '%s' not found", projectID)
 	}
-	return repoRef.ParameterStoreEnabled, nil
+	return &repoRef.ProjectRef, true, nil
+}
+
+func fullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *ProjectRef, isRepoRef bool) error {
+	// Delete any existing vars to ensure that the project vars are fully synced
+	// starting from a clean state.
+	paramNames := vars.Parameters.ParameterNames()
+	paramMgr := evergreen.GetEnvironment().ParameterManager()
+	if len(paramNames) > 0 {
+		if err := paramMgr.Delete(ctx, paramNames...); err != nil {
+			return errors.Wrap(err, "deleting existing parameters for project vars")
+		}
+	}
+
+	after := vars
+
+	// Since this is fully syncing all the project vars to Parameter Store,
+	// always perform comparisons against a clean state where there are no
+	// parameters.
+	before := &ProjectVars{}
+
+	// There's no variables to delete because any pre-existing ones were already
+	// deleted above.
+	varsToUpdate, _ := getProjectVarsDiff(before, after)
+
+	paramMappingsToUpdate, err := after.upsertParameters(ctx, before.Parameters, varsToUpdate)
+	if err != nil {
+		return errors.Wrapf(err, "upserting %d parameters for project vars", len(varsToUpdate))
+	}
+
+	updatedParamMappings := getUpdatedParamMappings(before.Parameters, paramMappingsToUpdate, nil)
+
+	if _, err := db.Upsert(ProjectVarsCollection,
+		bson.M{projectVarIdKey: after.Id},
+		bson.M{"$set": bson.M{projectVarsParametersKey: updatedParamMappings}},
+	); err != nil {
+		return errors.Wrap(err, "updating parameter mappings for project vars after full sync")
+	}
+
+	coll := ProjectRefCollection
+	if isRepoRef {
+		coll = RepoRefCollection
+	}
+	if err := db.UpdateId(coll, pRef.Id, bson.M{
+		"$set": bson.M{
+			projectRefParameterStoreVarsSyncedKey: true,
+		},
+	}); err != nil {
+		return errors.Wrapf(err, "marking project/repo '%s' as having its project vars fully synced", pRef.Id)
+	}
+
+	return nil
 }
 
 func (projectVars *ProjectVars) Insert() error {
@@ -904,84 +984,4 @@ func convertParamToVar(pm ParameterMappings, paramName, paramValue string) (varN
 	}
 
 	return varName, varValue, nil
-}
-
-// areParameterStoreVarsSynced returns whether or not the project's variables
-// are fully synced to Parameter Store.
-func areParameterStoreVarsSynced(projectID string) (bool, error) {
-	// kim: TODO: merge this logic with isParameterStoreEnabled (DEVPROD-9405).
-	pRef, err := FindBranchProjectRef(projectID)
-	if err != nil {
-		return false, err
-	}
-	if pRef == nil {
-		return false, errors.Errorf("project '%s' not found", projectID)
-	}
-	return pRef.ParameterStoreVarsSynced, nil
-}
-
-func fullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *ProjectRef, isRepoRef bool) error {
-	// kim: TODO: needs DEVPROD-9405 merged for helper fn
-	paramNames := vars.Parameters.Parameters()
-	paramMgr := evergreen.GetEnvironment().ParameterManager()
-	if len(paramNames) > 0 {
-		if err := paramMgr.Delete(ctx, paramNames...); err != nil {
-			return errors.Wrap(err, "deleting existing parameters for project vars")
-		}
-	}
-
-	after := vars
-
-	before, err := FindOneProjectVars(after.Id)
-	if err != nil {
-		return errors.Wrapf(err, "finding project vars for project '%s'", after.Id)
-	}
-	if before == nil {
-		before = &ProjectVars{}
-	}
-
-	// kim: TODO: needs DEVPROD-9405 merged for helper fn
-	varsToUpdate, _ := getProjectVarsDiff(before, after)
-
-	// kim: NOTE: this logic is pretty much upsertParams followed by
-	// getSyncedParameterMappings but with no initial
-	// parameters.
-	// kim: TODO: needs DEVPROD-9405 merged for helper fn
-	paramMappingsToUpdate, err := after.upsertParameters(ctx, varsToUpdate)
-	if err != nil {
-		return errors.Wrapf(err, "upserting %d parameters for project vars", len(varsToUpdate))
-	}
-
-	// kim: TODO: needs DEVPROD-9405 merged for helper fn
-	updatedParamMappings := getSyncedParameterMappings(before.Parameters, paramMappingsToUpdate, nil)
-
-	// kim; TODO: upsert the param mappings in the DB for the full sync and set
-	// ParameterStoreVarsSynced: true.
-	if _, err := db.Upsert(ProjectVarsCollection,
-		bson.M{projectVarIdKey: after.Id},
-		bson.M{"$set": bson.M{projectVarsParametersKey: updatedParamMappings}},
-	); err != nil {
-		return errors.Wrap(err, "updating parameter mappings for project vars after full sync")
-	}
-
-	if !isRepoRef {
-		if err := db.UpdateId(ProjectRefCollection, pRef.Id, bson.M{
-			"$set": bson.M{
-				projectRefParameterStoreVarsSyncedKey: true,
-			},
-		}); err != nil {
-			return errors.Wrap(err, "marking project as having its project vars fully synced")
-		}
-	} else {
-		// kim: TODO: make sure this is correct way to update repo ref.
-		if err := db.UpdateId(RepoRefCollection, pRef.Id, bson.M{
-			"$set": bson.M{
-				projectRefParameterStoreVarsSyncedKey: true,
-			},
-		}); err != nil {
-			return errors.Wrap(err, "marking repo as having its project vars fully synced")
-		}
-	}
-
-	return nil
 }

@@ -1220,7 +1220,7 @@ func TestDetachFromRepo(t *testing.T) {
 				PRTestingEnabled:      utility.FalsePtr(),          // neither of these should be changed when overwriting
 				GitTagVersionsEnabled: utility.TruePtr(),
 				GithubChecksEnabled:   nil, // for now this is defaulting to repo
-				//GithubTriggerAliases:  nil,
+				ParameterStoreEnabled: true,
 			}
 			assert.NoError(t, pRef.Insert())
 

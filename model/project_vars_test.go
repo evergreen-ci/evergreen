@@ -705,7 +705,7 @@ func TestShouldGetAdminOnlyVars(t *testing.T) {
 
 func TestFullSyncToParameterStore(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection))
+		assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectVarsCollection, fakeparameter.Collection))
 	}()
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
 		"InitiallySyncsAllParametersWithNewProjectVars": func(ctx context.Context, t *testing.T) {
@@ -729,7 +729,6 @@ func TestFullSyncToParameterStore(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbProjVars)
 
-			// kim: TODO: needs DEVPROD-9405
 			checkParametersMatchVars(ctx, t, dbProjVars.Parameters, vars)
 
 			dbProjRef, err := FindBranchProjectRef(projRef.Id)
@@ -759,7 +758,6 @@ func TestFullSyncToParameterStore(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbProjVars)
 
-			// kim: TODO: needs DEVPROD-9405
 			checkParametersMatchVars(ctx, t, dbProjVars.Parameters, vars)
 
 			dbProjRef, err := FindBranchProjectRef(projRef.Id)
@@ -768,6 +766,13 @@ func TestFullSyncToParameterStore(t *testing.T) {
 			assert.True(t, dbProjRef.ParameterStoreVarsSynced)
 		},
 		"InitiallySyncsAllParametersForRepoVars": func(ctx context.Context, t *testing.T) {
+			repoRef := RepoRef{
+				ProjectRef: ProjectRef{
+					Id:                    "repo_id",
+					ParameterStoreEnabled: true,
+				},
+			}
+			require.NoError(t, repoRef.Upsert())
 			vars := map[string]string{
 				"var1": "value1",
 				"var2": "value2",
@@ -776,17 +781,13 @@ func TestFullSyncToParameterStore(t *testing.T) {
 				Id:   "repo_id",
 				Vars: vars,
 			}
-			repoRef := ProjectRef{
-				Id:                    "repo_id",
-				ParameterStoreEnabled: true,
-			}
-			require.NoError(t, fullSyncToParameterStore(ctx, &repoVars, &repoRef, false))
+
+			require.NoError(t, fullSyncToParameterStore(ctx, &repoVars, &repoRef.ProjectRef, true))
 
 			dbRepoVars, err := FindOneProjectVars(repoVars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbRepoVars)
 
-			// kim: TODO: needs DEVPROD-9405
 			checkParametersMatchVars(ctx, t, dbRepoVars.Parameters, vars)
 
 			dbRepoRef, err := FindOneRepoRef(repoRef.Id)
@@ -795,6 +796,11 @@ func TestFullSyncToParameterStore(t *testing.T) {
 			assert.True(t, dbRepoRef.ParameterStoreVarsSynced)
 		},
 		"DeletesExistingDesyncedParametersAndResyncs": func(ctx context.Context, t *testing.T) {
+			projRef := ProjectRef{
+				Id:                    "project_id",
+				ParameterStoreEnabled: true,
+			}
+			require.NoError(t, projRef.Insert())
 			vars := map[string]string{
 				"var1": "value1",
 				"var2": "value2",
@@ -804,17 +810,13 @@ func TestFullSyncToParameterStore(t *testing.T) {
 				Id:   "project_id",
 				Vars: vars,
 			}
-			projRef := ProjectRef{
-				Id:                    "project_id",
-				ParameterStoreEnabled: true,
-			}
+
 			require.NoError(t, fullSyncToParameterStore(ctx, &projVars, &projRef, false))
 
 			dbProjVars, err := FindOneProjectVars(projVars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjVars)
 
-			// kim: TODO: needs DEVPROD-9405
 			checkParametersMatchVars(ctx, t, dbProjVars.Parameters, vars)
 
 			dbProjRef, err := FindBranchProjectRef(projRef.Id)
@@ -846,7 +848,7 @@ func TestFullSyncToParameterStore(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			require.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection))
+			require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectVarsCollection, fakeparameter.Collection))
 			tCase(ctx, t)
 		})
 	}
