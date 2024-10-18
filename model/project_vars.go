@@ -402,13 +402,7 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error 
 	varsToUpsert, varsToDelete := getProjectVarsDiff(before, after)
 
 	if err := projectVars.syncParameterDiff(ctx, varsToUpsert, varsToDelete); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":            "could not sync project vars diff to Parameter Store",
-			"num_vars_to_upsert": len(varsToUpsert),
-			"num_vars_to_delete": len(varsToDelete),
-			"parameters":         projectVars.Parameters,
-			"project_id":         projectID,
-		}))
+		return errors.Wrap(err, "syncing project vars diff to Parameter Store")
 	}
 
 	return nil
@@ -423,11 +417,7 @@ func (projectVars *ProjectVars) syncParameterDiff(ctx context.Context, varsToUps
 		return errors.Wrap(err, "upserting project variables into Parameter Store")
 	}
 
-	varSetToDelete := map[string]struct{}{}
-	for varName := range varsToDelete {
-		varSetToDelete[varName] = struct{}{}
-	}
-	paramMappingsToDelete, err := projectVars.deleteParameters(ctx, varSetToDelete)
+	paramMappingsToDelete, err := projectVars.deleteParameters(ctx, varsToDelete)
 	if err != nil {
 		return errors.Wrap(err, "deleting project variables from Parameter Store")
 	}
@@ -777,13 +767,7 @@ func (projectVars *ProjectVars) findAndModifyParameterStore(ctx context.Context,
 	}
 
 	if err := projectVars.syncParameterDiff(ctx, varsToUpsert, varSetToDelete); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":            "could not sync project vars diff to Parameter Store",
-			"num_vars_to_upsert": len(varsToUpsert),
-			"num_vars_to_delete": len(varsToDelete),
-			"parameters":         projectVars.Parameters,
-			"project_id":         projectID,
-		}))
+		return errors.Wrap(err, "syncing project vars diff to Parameter Store")
 	}
 
 	return nil
@@ -813,6 +797,7 @@ func shouldGetAdminOnlyVars(t *task.Task) bool {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": fmt.Sprintf("problem with fetching user '%s'", t.ActivatedBy),
 			"task_id": t.Id,
+			"epic":    "DEVPROD-5552",
 		}))
 		return false
 	}
