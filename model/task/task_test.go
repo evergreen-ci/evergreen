@@ -829,6 +829,27 @@ func TestSetTasksScheduledTime(t *testing.T) {
 					})
 				})
 
+				Convey("if we update a third time", func() {
+					newTime := time.Unix(99999999, 0)
+					So(newTime, ShouldHappenAfter, testTime)
+					So(SetTasksScheduledTime(tasks, newTime), ShouldBeNil)
+
+					Convey("nothing should have updated", func() {
+						t0, err := FindOne(db.Query(ById("t0")))
+						So(err, ShouldBeNil)
+						So(t0.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+						t1, err := FindOne(db.Query(ById("t1")))
+						So(err, ShouldBeNil)
+						So(t1.ScheduledTime.Round(oneMs), ShouldResemble, newTime)
+						t2, err := FindOne(db.Query(ById("t2")))
+						So(err, ShouldBeNil)
+						So(t2.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+						t3, err := FindOne(db.Query(ById("t3")))
+						So(err, ShouldBeNil)
+						So(t3.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+					})
+				})
+
 			})
 
 		})
