@@ -653,6 +653,8 @@ func fullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *Proj
 		return errors.Wrapf(err, "marking project/repo '%s' as having its project vars fully synced", pRef.Id)
 	}
 
+	pRef.ParameterStoreVarsSynced = true
+
 	return nil
 }
 
