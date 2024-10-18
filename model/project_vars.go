@@ -519,12 +519,9 @@ func getProjectVarsDiff(before, after *ProjectVars) (upserted map[string]string,
 // variables after adding, updating, or deleting parameter mappings. It returns
 // the updated parameter mappings.
 func getUpdatedParamMappings(original ParameterMappings, upserted, deleted map[string]ParameterMapping) ParameterMappings {
-	updatedParamMappings := make(map[string]ParameterMapping, len(original))
-	for varName, paramMapping := range upserted {
-		updatedParamMappings[varName] = ParameterMapping{
-			Name:          varName,
-			ParameterName: paramMapping.ParameterName,
-		}
+	updatedParamMappings := make(ParameterMappings, 0, len(original))
+	for varName := range upserted {
+		updatedParamMappings = append(updatedParamMappings, upserted[varName])
 	}
 
 	for i, m := range original {
@@ -536,18 +533,13 @@ func getUpdatedParamMappings(original ParameterMappings, upserted, deleted map[s
 		}
 		// If it wasn't added, updated, or deleted, then the mapping is the same
 		// as it was originally.
-		updatedParamMappings[m.Name] = original[i]
-	}
-
-	res := make(ParameterMappings, 0, len(updatedParamMappings))
-	for _, paramMapping := range updatedParamMappings {
-		res = append(res, paramMapping)
+		updatedParamMappings = append(updatedParamMappings, original[i])
 	}
 
 	// Sort them so the mappings are in a predictable order.
-	sort.Sort(res)
+	sort.Sort(updatedParamMappings)
 
-	return res
+	return updatedParamMappings
 }
 
 // isParameterStoreEnabledForProject checks if Parameter Store is enabled for a
