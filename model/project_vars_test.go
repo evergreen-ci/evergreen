@@ -2,6 +2,7 @@ package model
 
 import (
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"testing"
@@ -21,22 +22,27 @@ import (
 )
 
 func TestFindOneProjectVar(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	assert := assert.New(t)
 
-	require.NoError(t, db.Clear(ProjectVarsCollection),
-		"Error clearing collection")
+	require.NoError(t, db.ClearCollections(ProjectVarsCollection, ProjectRefCollection))
+	pRef := ProjectRef{
+		Id:                    "mongodb",
+		ParameterStoreEnabled: true,
+	}
+	require.NoError(t, pRef.Insert())
 	vars := map[string]string{
 		"a": "b",
 		"c": "d",
 	}
 	projectVars := ProjectVars{
-		Id:   "mongodb",
+		Id:   pRef.Id,
 		Vars: vars,
 	}
 	change, err := projectVars.Upsert()
 	assert.NotNil(change)
 	assert.NoError(err)
-	assert.NotNil(change.UpsertedId)
 	assert.Equal(1, change.Updated, "%+v", change)
 
 	projectVarsFromDB, err := FindOneProjectVars("mongodb")
@@ -44,6 +50,8 @@ func TestFindOneProjectVar(t *testing.T) {
 
 	assert.Equal("mongodb", projectVarsFromDB.Id)
 	assert.Equal(vars, projectVarsFromDB.Vars)
+
+	checkParametersMatchVars(ctx, t, projectVarsFromDB.Parameters, vars)
 }
 
 func TestFindMergedProjectVars(t *testing.T) {
@@ -469,6 +477,112 @@ func TestConvertVarToParam(t *testing.T) {
 
 		_, _, err := convertVarToParam("project_id", pm, varName, varValue)
 		assert.Error(t, err, "should not allow creation of new parameter whose name conflicts with an already-existing parameter")
+	})
+}
+
+func TestConvertParamToVar(t *testing.T) {
+	t.Run("ReturnsOriginalVariableNameAndValue", func(t *testing.T) {
+		const (
+			varName   = "var_name"
+			varValue  = "var_value"
+			paramName = "/prefix/project_id/var_name"
+		)
+		pm := ParameterMappings{
+			{
+				Name:          varName,
+				ParameterName: paramName,
+			},
+		}
+		varNameFromParam, varValueFromParam, err := convertParamToVar(pm, paramName, varValue)
+		require.NoError(t, err)
+		assert.Equal(t, varName, varNameFromParam, "should return original variable name")
+		assert.Equal(t, varValue, varValueFromParam, "should return original variable value")
+	})
+	t.Run("ReturnsOriginalVariableNameAndValueForVariablePrefixedWithAWS", func(t *testing.T) {
+		const (
+			varName   = "aws_secret"
+			varValue  = "super_secret"
+			paramName = "/prefix/project_id/_aws_secret"
+		)
+		pm := ParameterMappings{
+			{
+				Name:          varName,
+				ParameterName: paramName,
+			},
+		}
+		varNameFromParam, varValueFromParam, err := convertParamToVar(pm, paramName, varValue)
+		require.NoError(t, err)
+		assert.Equal(t, varName, varNameFromParam, "should return original variable name")
+		assert.Equal(t, varValue, varValueFromParam, "should return original variable value")
+	})
+	t.Run("ReturnsErrorForVariableMissingParameterMapping", func(t *testing.T) {
+		pm := ParameterMappings{
+			{
+				Name:          "var_name",
+				ParameterName: "/prefix/project_id/var_name",
+			},
+		}
+		varNameFromParam, varValueFromParam, err := convertParamToVar(pm, "some_other_var_name", "some_other_var_value")
+		assert.Error(t, err, "should return error if there's no parameter mapping entry associated with the given parameter")
+		assert.Zero(t, varNameFromParam)
+		assert.Zero(t, varValueFromParam)
+	})
+	t.Run("ReturnsErrorForParameterThatMapsToEmptyVariable", func(t *testing.T) {
+		const (
+			paramName = "/prefix/project_id/var_name"
+		)
+		pm := ParameterMappings{
+			{
+				ParameterName: paramName,
+			},
+		}
+		varNameFromParam, varValueFromParam, err := convertParamToVar(pm, paramName, "var_value")
+		assert.Error(t, err, "should error if parameter mapping entry exists but maps to empty variable name")
+		assert.Zero(t, varNameFromParam)
+		assert.Zero(t, varValueFromParam)
+	})
+	t.Run("DecompressesParameterValueToOriginalVariableValue", func(t *testing.T) {
+		const (
+			varName   = "var_name"
+			paramName = "/prefix/project_id/var_name.gz"
+		)
+
+		longVarValue := strings.Repeat("abc", parameterstore.ParamValueMaxLength)
+		assert.Greater(t, len(longVarValue), parameterstore.ParamValueMaxLength)
+
+		_, compressedParamValue, err := getCompressedParamForVar(varName, longVarValue)
+		require.NoError(t, err)
+
+		pm := ParameterMappings{
+			{
+				Name:          varName,
+				ParameterName: paramName,
+			},
+		}
+
+		varNameFromParam, varValueFromParam, err := convertParamToVar(pm, paramName, compressedParamValue)
+		require.NoError(t, err)
+		assert.Equal(t, varName, varNameFromParam)
+		assert.Equal(t, longVarValue, varValueFromParam, "should return original decompressed variable value")
+	})
+	t.Run("RoundTripReturnsOriginalVarNameAndValue", func(t *testing.T) {
+		const (
+			varName   = "var_name"
+			varValue  = "var_value"
+			projectID = "project_id"
+		)
+		pm := ParameterMappings{}
+		paramName, paramValue, err := convertVarToParam(projectID, pm, varName, varValue)
+		require.NoError(t, err)
+		pm = append(pm, ParameterMapping{
+			Name:          varName,
+			ParameterName: paramName,
+		})
+
+		varNameFromParam, varValueFromParam, err := convertParamToVar(pm, paramName, paramValue)
+		require.NoError(t, err)
+		assert.Equal(t, varName, varNameFromParam, "should return original variable name")
+		assert.Equal(t, varValue, varValueFromParam, "should return original variable value")
 	})
 }
 

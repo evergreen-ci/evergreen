@@ -259,10 +259,22 @@ func TestPlanner(t *testing.T) {
 					unit.SetDistro(&distro.Distro{})
 					assert.EqualValues(t, 12, unit.RankValue())
 				})
-				t.Run("NumDeps", func(t *testing.T) {
+				t.Run("NumDependents", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", NumDependents: 2})
 					unit.SetDistro(&distro.Distro{})
 					assert.EqualValues(t, 182, unit.RankValue())
+				})
+				t.Run("NumDependentsWithFactor", func(t *testing.T) {
+					unit := NewUnit(task.Task{Id: "foo", NumDependents: 2})
+					unit.SetDistro(&distro.Distro{})
+					unit.distro.PlannerSettings.NumDependentsFactor = 10
+					assert.EqualValues(t, 200, unit.RankValue())
+				})
+				t.Run("NumDependentsWithFractionFactor", func(t *testing.T) {
+					unit := NewUnit(task.Task{Id: "foo", NumDependents: 2})
+					unit.SetDistro(&distro.Distro{})
+					unit.distro.PlannerSettings.NumDependentsFactor = 0.5
+					assert.EqualValues(t, 181, unit.RankValue())
 				})
 			})
 			t.Run("RankCachesValue", func(t *testing.T) {
@@ -324,7 +336,7 @@ func TestPlanner(t *testing.T) {
 				assert.Equal(t, "first", plan[0].Id)
 				assert.Equal(t, "second", plan[1].Id)
 			})
-			t.Run("NumDeps", func(t *testing.T) {
+			t.Run("NumDependents", func(t *testing.T) {
 				plan := TaskList{{Id: "second"}, {Id: "first", NumDependents: 2}}
 				sort.Sort(plan)
 				assert.Equal(t, "first", plan[0].Id)

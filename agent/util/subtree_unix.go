@@ -12,6 +12,7 @@ import (
 
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 )
 
@@ -20,6 +21,8 @@ const (
 	cleanupCheckTimeoutMin = 100 * time.Millisecond
 	cleanupCheckTimeoutMax = time.Second
 	contextTimeout         = 10 * time.Minute
+
+	pkillNoMatchingProcessesExitCode = 1
 )
 
 // TrackProcess is a noop by default if we don't need to do any special
@@ -28,7 +31,13 @@ func TrackProcess(key string, pid int, logger grip.Journaler) {}
 
 // KillSpawnedProcs kills processes that descend from the agent and waits
 // for them to terminate.
-func KillSpawnedProcs(ctx context.Context, key, workingDir string, logger grip.Journaler) error {
+func KillSpawnedProcs(ctx context.Context, key, workingDir, execUser string, logger grip.Journaler) error {
+	// When execUser is set all subprocess.exec and shell.exec processes are run under that user. This facilitates
+	// easy cleanup of processes started by a task. It is enabled on a distro-by-distro basis.
+	if execUser != "" {
+		return killUserProcesses(ctx, execUser)
+	}
+
 	pidsToKill, err := getPIDsToKill(ctx, key, workingDir, logger)
 	if err != nil {
 		return errors.Wrap(err, "getting list of PIDs to kill")
@@ -54,6 +63,20 @@ func KillSpawnedProcs(ctx context.Context, key, workingDir string, logger grip.J
 
 	return nil
 
+}
+
+func killUserProcesses(ctx context.Context, execUser string) error {
+	if execUser == "" {
+		return errors.New("execUser cannot be empty")
+	}
+	cmd := jasper.NewCommand().Add([]string{"pkill", "-SIGKILL", "-U", execUser}).Sudo(true)
+	if err := cmd.Run(ctx); err != nil {
+		exitCode, _ := cmd.Wait(ctx)
+		if exitCode != pkillNoMatchingProcessesExitCode {
+			return errors.Wrapf(err, "killing processes for user '%s'", execUser)
+		}
+	}
+	return nil
 }
 
 func getPIDsToKill(ctx context.Context, key, workingDir string, logger grip.Journaler) ([]int, error) {

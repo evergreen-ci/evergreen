@@ -220,6 +220,18 @@ var (
 type retryConfig struct {
 	retry    bool
 	retry404 bool
+	// ignoreCodes are http status codes that the retry function should ignore
+	// and not retry on.
+	ignoreCodes []int
+}
+
+func (c *retryConfig) shouldIgnoreCode(statusCode int) bool {
+	for _, ignoreCode := range c.ignoreCodes {
+		if statusCode == ignoreCode {
+			return true
+		}
+	}
+	return false
 }
 
 func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunction {
@@ -261,6 +273,10 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 				"retry_num": index,
 			})
 			return true
+		}
+
+		if config.shouldIgnoreCode(resp.StatusCode) {
+			return false
 		}
 
 		if resp.StatusCode >= http.StatusBadRequest {
@@ -379,7 +395,8 @@ func RevokeInstallationToken(ctx context.Context, token string) error {
 	))
 	defer span.End()
 
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	// Ignore unauthorized responses since the token may have already been revoked.
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true, ignoreCodes: []int{http.StatusUnauthorized}})
 	defer githubClient.Close()
 	resp, err := githubClient.Apps.RevokeInstallationToken(ctx)
 	if resp != nil {

@@ -908,6 +908,7 @@ type ComplexityRoot struct {
 		GenerateTaskFactor        func(childComplexity int) int
 		GroupVersions             func(childComplexity int) int
 		MainlineTimeInQueueFactor func(childComplexity int) int
+		NumDependentsFactor       func(childComplexity int) int
 		PatchFactor               func(childComplexity int) int
 		PatchTimeInQueueFactor    func(childComplexity int) int
 		TargetTime                func(childComplexity int) int
@@ -6075,6 +6076,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PlannerSettings.MainlineTimeInQueueFactor(childComplexity), true
+
+	case "PlannerSettings.numDependentsFactor":
+		if e.complexity.PlannerSettings.NumDependentsFactor == nil {
+			break
+		}
+
+		return e.complexity.PlannerSettings.NumDependentsFactor(childComplexity), true
 
 	case "PlannerSettings.patchFactor":
 		if e.complexity.PlannerSettings.PatchFactor == nil {
@@ -18588,6 +18596,8 @@ func (ec *executionContext) fieldContext_Distro_plannerSettings(_ context.Contex
 				return ec.fieldContext_PlannerSettings_expectedRuntimeFactor(ctx, field)
 			case "generateTaskFactor":
 				return ec.fieldContext_PlannerSettings_generateTaskFactor(ctx, field)
+			case "numDependentsFactor":
+				return ec.fieldContext_PlannerSettings_numDependentsFactor(ctx, field)
 			case "groupVersions":
 				return ec.fieldContext_PlannerSettings_groupVersions(ctx, field)
 			case "mainlineTimeInQueueFactor":
@@ -40583,6 +40593,47 @@ func (ec *executionContext) fieldContext_PlannerSettings_generateTaskFactor(_ co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlannerSettings_numDependentsFactor(ctx context.Context, field graphql.CollectedField, obj *model.APIPlannerSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlannerSettings_numDependentsFactor(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NumDependentsFactor, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalOFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlannerSettings_numDependentsFactor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlannerSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -75586,7 +75637,7 @@ func (ec *executionContext) unmarshalInputPlannerSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"commitQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "groupVersions", "mainlineTimeInQueueFactor", "patchFactor", "patchTimeInQueueFactor", "targetTime", "version"}
+	fieldsInOrder := [...]string{"commitQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "numDependentsFactor", "groupVersions", "mainlineTimeInQueueFactor", "patchFactor", "patchTimeInQueueFactor", "targetTime", "version"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -75614,6 +75665,13 @@ func (ec *executionContext) unmarshalInputPlannerSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.GenerateTaskFactor = data
+		case "numDependentsFactor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("numDependentsFactor"))
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NumDependentsFactor = data
 		case "groupVersions":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("groupVersions"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -85752,6 +85810,8 @@ func (ec *executionContext) _PlannerSettings(ctx context.Context, sel ast.Select
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "numDependentsFactor":
+			out.Values[i] = ec._PlannerSettings_numDependentsFactor(ctx, field, obj)
 		case "groupVersions":
 			out.Values[i] = ec._PlannerSettings_groupVersions(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

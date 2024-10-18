@@ -83,6 +83,7 @@
                     "mainline_time_in_queue_factor": 0,
                     "expected_runtime_factor": 0,
                     "generate_task_factor": 0,
+                    "num_dependents_factor": 0,
                     "stepback_task_factor": 0
                   },
                   "dispatcher_settings": {
@@ -191,6 +192,7 @@
                     "mainline_time_in_queue_factor": 0,
                     "expected_runtime_factor": 0,
                     "generate_task_factor": 0,
+                    "num_dependents_factor": 0,
                     "stepback_task_factor": 0
                   },
                   "dispatcher_settings": {
@@ -295,6 +297,7 @@
                     "mainline_time_in_queue_factor": 0,
                     "expected_runtime_factor": 0,
                     "generate_task_factor": 0,
+                    "num_dependents_factor": 0,
                     "stepback_task_factor": 0
                   },
                   "dispatcher_settings": {
@@ -399,6 +402,7 @@
                     "mainline_time_in_queue_factor": 0,
                     "expected_runtime_factor": 0,
                     "generate_task_factor": 0,
+                    "num_dependents_factor": 0,
                     "stepback_task_factor": 0
                   },
                   "dispatcher_settings": {

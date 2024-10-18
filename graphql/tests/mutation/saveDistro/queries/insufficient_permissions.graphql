@@ -65,6 +65,7 @@ mutation {
           commitQueueFactor: 0
           expectedRuntimeFactor: 0
           generateTaskFactor: 0
+          numDependentsFactor: 0
           groupVersions: false
           mainlineTimeInQueueFactor: 0
           patchFactor: 0
