@@ -79,7 +79,7 @@ func (c *perfSend) Execute(ctx context.Context, comm client.Communicator, logger
 	opts := rpc.UploadReportOptions{
 		Report:          report,
 		CedarClientConn: conn,
-		SendToCedar:     cedarConfig.SendToCedar,
+		SendToCedar:     !cedarConfig.SendToCedarDisabled,
 		SendRatioSPS:    cedarConfig.SendRatioSPS,
 		SPSURL:          cedarConfig.SPSURL,
 	}
