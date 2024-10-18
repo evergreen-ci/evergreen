@@ -1397,11 +1397,14 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 		}
 	}
 	// Remove duplicates to prevent large updates
-	ids = utility.UniqueStrings(ids)
+	uniqueIDs := utility.UniqueStrings(ids)
+	if len(uniqueIDs) == 0 {
+		return nil
+	}
 	_, err := UpdateAll(
 		bson.M{
 			IdKey: bson.M{
-				"$in": ids,
+				"$in": uniqueIDs,
 			},
 			ScheduledTimeKey: bson.M{
 				"$lte": utility.ZeroTime,
