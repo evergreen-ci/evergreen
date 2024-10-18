@@ -16,7 +16,7 @@
                   "githubWebhooksEnabled": false,
                   "vars": {
                     "vars": {
-                      "hello": "world"
+                      "hello": "{REDACTED_BEFORE}"
                     }
                   }
                 },
@@ -27,7 +27,7 @@
                   "githubWebhooksEnabled": true,
                   "vars": {
                     "vars": {
-                      "hello": "universe"
+                      "hello": "{REDACTED_AFTER}"
                     }
                   }
                 }
