@@ -401,41 +401,62 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error 
 
 	varsToUpsert, varsToDelete := getProjectVarsDiff(before, after)
 
-	paramMappingsToUpsert, err := after.upsertParameters(ctx, before.Parameters, varsToUpsert)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message":    "encountered error while upserting project variables into Parameter Store",
-		"project_id": projectID,
-	}))
-
-	paramMappingsToDelete, err := after.deleteParameters(ctx, before.Parameters, varsToDelete)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message":        "encountered error while deleting project variables from Parameter Store",
-		"vars_to_delete": varsToDelete,
-		"project_id":     projectID,
-	}))
-
-	updatedParamMappings := getUpdatedParamMappings(before.Parameters, paramMappingsToUpsert, paramMappingsToDelete)
-
-	if _, err := db.Upsert(
-		ProjectVarsCollection,
-		bson.M{
-			projectVarIdKey: projectID,
-		},
-		bson.M{
-			"$set": bson.M{
-				projectVarsParametersKey: updatedParamMappings,
-			},
-		},
-	); err != nil {
+	if err := projectVars.syncParameterDiff(ctx, varsToUpsert, varsToDelete); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":               "could not update parameter mappings for project vars",
-			"param_mapping_updates": paramMappingsToUpsert,
-			"param_mapping_deletes": paramMappingsToUpsert,
-			"project_id":            projectID,
+			"message":            "could not sync project vars diff to Parameter Store",
+			"num_vars_to_upsert": len(varsToUpsert),
+			"num_vars_to_delete": len(varsToDelete),
+			"parameters":         projectVars.Parameters,
+			"project_id":         projectID,
 		}))
 	}
 
-	after.Parameters = updatedParamMappings
+	return nil
+}
+
+// syncParameterDiff syncs the diff of project variables to Parameter Store. It
+// adds/updates varsToUpsert, deletes varsToDelete from Parameter Store, and
+// updates the project variable parameter mappings.
+func (projectVars *ProjectVars) syncParameterDiff(ctx context.Context, varsToUpsert map[string]string, varsToDelete map[string]struct{}) error {
+	paramMappingsToUpsert, err := projectVars.upsertParameters(ctx, varsToUpsert)
+	if err != nil {
+		return errors.Wrap(err, "upserting project variables into Parameter Store")
+	}
+
+	varSetToDelete := map[string]struct{}{}
+	for varName := range varsToDelete {
+		varSetToDelete[varName] = struct{}{}
+	}
+	paramMappingsToDelete, err := projectVars.deleteParameters(ctx, varSetToDelete)
+	if err != nil {
+		return errors.Wrap(err, "deleting project variables from Parameter Store")
+	}
+
+	updatedParamMappings := getUpdatedParamMappings(projectVars.Parameters, paramMappingsToUpsert, paramMappingsToDelete)
+
+	if err := projectVars.setParamMappings(updatedParamMappings); err != nil {
+		return errors.Wrap(err, "updating parameter mappings for project vars")
+	}
+
+	return nil
+}
+
+func (projectVars *ProjectVars) setParamMappings(pm ParameterMappings) error {
+	if _, err := db.Upsert(
+		ProjectVarsCollection,
+		bson.M{
+			projectVarIdKey: projectVars.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				projectVarsParametersKey: pm,
+			},
+		},
+	); err != nil {
+		return errors.Wrap(err, "updating parameter mappings for project vars")
+	}
+
+	projectVars.Parameters = pm
 
 	return nil
 }
@@ -443,16 +464,16 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error 
 // upsertParameters upserts the parameter mappings for project variables into
 // Parameter Store. It returns the parameter mappings for the upserted
 // variables.
-func (projectVars *ProjectVars) upsertParameters(ctx context.Context, pm ParameterMappings, varsToUpsert map[string]string) (map[string]ParameterMapping, error) {
+func (projectVars *ProjectVars) upsertParameters(ctx context.Context, varsToUpsert map[string]string) (map[string]ParameterMapping, error) {
 	projectID := projectVars.Id
-	nameToExistingParamMapping := pm.NameMap()
+	nameToExistingParamMapping := projectVars.Parameters.NameMap()
 	paramMgr := evergreen.GetEnvironment().ParameterManager()
 
 	paramMappingsToUpsert := map[string]ParameterMapping{}
 	catcher := grip.NewBasicCatcher()
 
 	for varName, varValue := range varsToUpsert {
-		partialParamName, paramValue, err := convertVarToParam(projectID, pm, varName, varValue)
+		partialParamName, paramValue, err := convertVarToParam(projectID, projectVars.Parameters, varName, varValue)
 		if err != nil {
 			catcher.Wrapf(err, "converting project variable '%s' to parameter", varName)
 			continue
@@ -490,8 +511,8 @@ func (projectVars *ProjectVars) upsertParameters(ctx context.Context, pm Paramet
 // deleteParameters deletes parameters corresponding to deleted project variables
 // from Parameter Store. It returns the parameter mappings for the deleted
 // variables.
-func (projectVars *ProjectVars) deleteParameters(ctx context.Context, pm ParameterMappings, varsToDelete map[string]struct{}) (map[string]ParameterMapping, error) {
-	nameToExistingParamMapping := pm.NameMap()
+func (projectVars *ProjectVars) deleteParameters(ctx context.Context, varsToDelete map[string]struct{}) (map[string]ParameterMapping, error) {
+	nameToExistingParamMapping := projectVars.Parameters.NameMap()
 	paramMappingsToDelete := make(map[string]ParameterMapping, len(varsToDelete))
 	for varToDelete := range varsToDelete {
 		if paramMapping, ok := nameToExistingParamMapping[varToDelete]; ok {
@@ -724,6 +745,48 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 		},
 		projectVars,
 	)
+}
+
+// kim: TODO: update FindAndModify tests as well as UpdateProjectVars tests.
+// findAndModifyParameterStore is almost the same functionally as Upsert, except
+// that it only deletes project vars that are explicitly provided in
+// varsToDelete.
+func (projectVars *ProjectVars) findAndModifyParameterStore(ctx context.Context, varsToDelete []string) error {
+	// kim: TODO: reuse logic from DEVPROD-11973 to check if PS is
+	// enabled/synced.
+	projectID := projectVars.Id
+
+	after := projectVars
+
+	before, err := FindOneProjectVars(projectID)
+	if err != nil {
+		return errors.Wrapf(err, "finding original project vars for project '%s'", projectID)
+	}
+	if before == nil {
+		before = &ProjectVars{}
+	}
+
+	// Ignore the vars that are deleted between before and after because
+	// FindAndModify only deletes variables that are explicitly specified in
+	// varsToDelete.
+	varsToUpsert, _ := getProjectVarsDiff(before, after)
+
+	varSetToDelete := map[string]struct{}{}
+	for _, varName := range varsToDelete {
+		varSetToDelete[varName] = struct{}{}
+	}
+
+	if err := projectVars.syncParameterDiff(ctx, varsToUpsert, varSetToDelete); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":            "could not sync project vars diff to Parameter Store",
+			"num_vars_to_upsert": len(varsToUpsert),
+			"num_vars_to_delete": len(varsToDelete),
+			"parameters":         projectVars.Parameters,
+			"project_id":         projectID,
+		}))
+	}
+
+	return nil
 }
 
 func (projectVars *ProjectVars) GetVars(t *task.Task) map[string]string {
