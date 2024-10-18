@@ -33,7 +33,7 @@
         },
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to access 'settings' for the project 'evergreen_id'",
+            "message": "user 'testuser' does not have permission to 'edit project settings' for the project 'evergreen_id'",
             "path": ["defaultSectionToRepo", "opts", "projectId"],
             "extensions": {
               "code": "FORBIDDEN"
