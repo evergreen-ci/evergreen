@@ -165,7 +165,7 @@ func New(apiURL string) Config {
 			return nil, InternalServerError.Send(ctx, "converting args into map")
 		}
 
-		requiredPermission, requiredLevel, err := getProjectPermissionLevel(permission, access)
+		requiredPermission, permissionInfo, err := getProjectPermissionLevel(permission, access)
 		if err != nil {
 			return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid permission and access level configuration: %s", err.Error()))
 		}
@@ -184,13 +184,13 @@ func New(apiURL string) Config {
 			Resource:      projectId,
 			ResourceType:  evergreen.ProjectResourceType,
 			Permission:    requiredPermission,
-			RequiredLevel: requiredLevel,
+			RequiredLevel: permissionInfo.Value,
 		})
 		if hasPermission {
 			return next(ctx)
 		}
 
-		if requiredPermission == evergreen.PermissionProjectSettings && requiredLevel == evergreen.ProjectSettingsView.Value {
+		if requiredPermission == evergreen.PermissionProjectSettings && permissionInfo.Value == evergreen.ProjectSettingsView.Value {
 			// If we're trying to view a repo project, check if the user has view permission for any branch project instead.
 			hasPermission, err = model.UserHasRepoViewPermission(usr, projectId)
 			if err != nil {
@@ -201,7 +201,7 @@ func New(apiURL string) Config {
 			}
 		}
 
-		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access '%s' for the project '%s'", usr.Username(), strings.ToLower(permission.String()), projectId))
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to '%s' for the project '%s'", usr.Username(), strings.ToLower(permissionInfo.Description), projectId))
 	}
 	c.Directives.RequireProjectSettingsAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
 		usr := mustHaveUser(ctx)

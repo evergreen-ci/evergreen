@@ -72,7 +72,7 @@
       "result": {
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "message": "user 'testuser' does not have permission to 'edit tasks' for the project 'evergreen'",
             "path": ["abortTask", "taskId"],
             "extensions": {
               "code": "FORBIDDEN"

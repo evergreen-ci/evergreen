@@ -14,7 +14,7 @@
         "data": null,
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to access 'patches' for the project 'evergreen'",
+            "message": "user 'testuser' does not have permission to 'submit and edit patches' for the project 'evergreen'",
             "path": ["enqueuePatch", "patchId"],
             "extensions": {
               "code": "FORBIDDEN"

@@ -1210,11 +1210,11 @@ var (
 		Value:       0,
 	}
 	TasksAdmin = PermissionLevel{
-		Description: "Full tasks permissions",
+		Description: "Edit tasks and override dependencies",
 		Value:       30,
 	}
 	TasksBasic = PermissionLevel{
-		Description: "Basic modifications to tasks",
+		Description: "Edit tasks",
 		Value:       20,
 	}
 	TasksView = PermissionLevel{
