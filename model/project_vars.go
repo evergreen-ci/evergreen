@@ -894,7 +894,7 @@ func convertParamToVar(pm ParameterMappings, paramName, paramValue string) (varN
 		varValue = paramValue
 	}
 
-	m, ok := pm.ParamNameMap()[paramName]
+	m, ok := pm.ParameterNameMap()[paramName]
 	if !ok {
 		return "", "", errors.Errorf("cannot find project variable name corresponding to parameter '%s'", paramName)
 	}
