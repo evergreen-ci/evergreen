@@ -644,7 +644,7 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		Identifier:          identifier,
 		UnmarshalStrict:     projectOpts.UnmarshalStrict,
 		LocalModuleIncludes: projectOpts.LocalModuleIncludes,
-		RepeatPatchID:       projectOpts.RepeatPatchID,
+		ReferencePatchID:    projectOpts.ReferencePatchID,
 	}
 	localOpts.UpdateReadFileFrom(include.FileName)
 
@@ -790,7 +790,7 @@ type GetProjectOpts struct {
 	Identifier          string
 	UnmarshalStrict     bool
 	LocalModuleIncludes []patch.LocalModuleInclude
-	RepeatPatchID       string
+	ReferencePatchID    string
 }
 
 type PatchOpts struct {
@@ -902,13 +902,13 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 	}
 
 	// If provided a patch to repeat, use the same githash as the original patch did for the module.
-	if opts.RepeatPatchID != "" {
-		p, err := patch.FindOneId(opts.RepeatPatchID)
+	if opts.ReferencePatchID != "" {
+		p, err := patch.FindOneId(opts.ReferencePatchID)
 		if err != nil {
-			return nil, errors.Wrapf(err, "finding patch to repeat '%s'", opts.RepeatPatchID)
+			return nil, errors.Wrapf(err, "finding patch to repeat '%s'", opts.ReferencePatchID)
 		}
 		if p == nil {
-			return nil, errors.Errorf("patch to repeat '%s' not found", opts.RepeatPatchID)
+			return nil, errors.Errorf("patch to repeat '%s' not found", opts.ReferencePatchID)
 		}
 
 		for _, mod := range p.Patches {

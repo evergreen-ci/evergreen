@@ -308,7 +308,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		var patchConfig *model.PatchConfig
 		repeatPatchID, shouldRepeat := j.intent.RepeatPreviousPatchDefinition()
 		if shouldRepeat {
-			patchDoc.RepeatPatchID = repeatPatchID
+			patchDoc.ReferencePatchID = repeatPatchID
 		}
 		patchedProject, patchConfig, err = model.GetPatchedProject(ctx, j.env.Settings(), patchDoc, token)
 		if err != nil {

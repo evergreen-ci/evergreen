@@ -1,13 +1,3 @@
-modules:
-  - name: sandbox
-    repo: git@github.com:evergreen-ci/commit-queue-sandbox.git
-    prefix: ${workdir}src
-    branch: bynntest
-
-# include:
-#   - filename: include1.yml
-#     module: sandbox
-
 command_type: test
 stepback: true
 ignore:
