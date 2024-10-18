@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -1028,26 +1027,12 @@ func TestAttachToRepo(t *testing.T) {
 	assert.Error(t, pRef.AttachToRepo(ctx, u))
 }
 
-func checkParametersMatchVars(ctx context.Context, t *testing.T, pm ParameterMappings, vars map[string]string) {
-	assert.Len(t, pm, len(vars), "each project var should have exactly one corresponding parameter")
-	fakeParams, err := fakeparameter.FindByIDs(ctx, pm.ParameterNames()...)
-	assert.NoError(t, err)
-	assert.Len(t, fakeParams, len(vars))
-
-	paramNamesMap := pm.ParameterNameMap()
-	for _, fakeParam := range fakeParams {
-		varName := paramNamesMap[fakeParam.Name].Name
-		assert.NotEmpty(t, varName, "parameter should have corresponding project variable")
-		assert.Equal(t, vars[varName], fakeParam.Value, "project variable value should match the parameter value")
-	}
-}
-
 func TestDetachFromRepo(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	for name, test := range map[string]func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser){
-		"ProjectRefIsUpdatedCorrectly": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+		"project ref is updated correctly": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 			pRefFromDB, err := FindBranchProjectRef(pRef.Id)
@@ -1070,7 +1055,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, err)
 			assert.False(t, hasPermission)
 		},
-		"NewRepoVarsAreMerged": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+		"project variables are updated": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 			vars, err := FindOneProjectVars(pRef.Id)
@@ -1083,19 +1068,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.True(t, vars.PrivateVars["in"])
 			assert.True(t, vars.PrivateVars["repo"]) // added from repo
 		},
-		"ProjectAndRepoVarsAreMergedAndStoredInParameterStore": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
-			expectedVars, err := FindMergedProjectVars(pRef.Id)
-			require.NoError(t, err)
-
-			assert.NoError(t, pRef.DetachFromRepo(dbUser))
-			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
-			vars, err := FindOneProjectVars(pRef.Id)
-			require.NoError(t, err)
-			require.NotZero(t, vars)
-
-			checkParametersMatchVars(ctx, t, vars.Parameters, expectedVars.Vars)
-		},
-		"PatchAliases": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+		"patch aliases": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			// no patch aliases are copied if the project has a patch alias
 			projectAlias := ProjectAlias{Alias: "myProjectAlias", ProjectID: pRef.Id}
 			assert.NoError(t, projectAlias.Upsert())
@@ -1121,8 +1094,9 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			assert.Equal(t, aliases[0].Alias, repoAlias.Alias)
+
 		},
-		"InternalAliases": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+		"internal aliases": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			projectAliases := []ProjectAlias{
 				{Alias: evergreen.GitTagAlias, Variant: "projectVariant"},
 				{Alias: evergreen.CommitQueueAlias},
@@ -1158,7 +1132,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.Equal(t, prCount, 1)
 			assert.Equal(t, cqCount, 1)
 		},
-		"Subscriptions": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+		"subscriptions": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			projectSubscription := event.Subscription{
 				Owner:        pRef.Id,
 				OwnerType:    event.OwnerTypeProject,
@@ -1210,7 +1184,7 @@ func TestDetachFromRepo(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
-				evergreen.RoleCollection, user.Collection, event.SubscriptionsCollection, event.EventCollection, ProjectAliasCollection, ProjectVarsCollection, fakeparameter.Collection))
+				evergreen.RoleCollection, user.Collection, event.SubscriptionsCollection, event.EventCollection, ProjectAliasCollection))
 			require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 			pRef := &ProjectRef{
@@ -1239,7 +1213,6 @@ func TestDetachFromRepo(t *testing.T) {
 				PeriodicBuilds: []PeriodicBuildDefinition{
 					{ID: "my_build"},
 				},
-				ParameterStoreEnabled: true,
 			}}
 			assert.NoError(t, repoRef.Upsert())
 
