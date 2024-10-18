@@ -16,9 +16,9 @@ type CedarConfig struct {
 	APIKey      string `bson:"api_key" json:"api_key" yaml:"api_key"`
 	// Insecure disables TLS, this should only be used for testing.
 	Insecure bool `bson:"insecure" json:"insecure" yaml:"insecure"`
-	// SendToCedarDisabled enables sending perf results to cedar. This will be removed when Cedar no longer handles perf results.
+	// SendToCedarDisabled disables sending perf results to cedar. This will be removed when Cedar no longer handles perf results.
 	SendToCedarDisabled bool `bson:"send_to_cedar_disabled" json:"send_to_cedar_disabled" yaml:"send_to_cedar_disabled"`
-	// SPSURL tells Evergreen where to send perf results to.
+	// SPSURL tells Evergreen where the SPS service is.
 	SPSURL string `bson:"sps_url" json:"sps_url" yaml:"sps_url"`
 	// SendRatioSPS is the ratio of perf results to send to SPS. This will be removed when Cedar no longer handles perf results as all results will go to SPS.
 	SendRatioSPS int `bson:"send_ratio_sps" json:"send_ratio_sps" yaml:"send_ratio_sps"`
