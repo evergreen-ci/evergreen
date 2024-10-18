@@ -881,6 +881,7 @@ func getLoadProjectOptsForPatch(p *patch.Patch, githubOauthToken string) (*Proje
 		ReadFileFrom:        ReadFromPatch,
 		Revision:            hash,
 		LocalModuleIncludes: p.LocalModuleIncludes,
+		ReferencePatchID:    p.ReferencePatchID,
 		PatchOpts: &PatchOpts{
 			patch: p,
 		},
