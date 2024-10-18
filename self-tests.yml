@@ -4,9 +4,9 @@ modules:
     prefix: ${workdir}src
     branch: bynntest
 
-include:
-  - filename: include1.yml
-    module: sandbox
+# include:
+#   - filename: include1.yml
+#     module: sandbox
 
 command_type: test
 stepback: true

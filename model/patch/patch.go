@@ -194,6 +194,8 @@ type Patch struct {
 	// LocalModuleIncludes is only used for CLI patches to store local module changes.
 	// Not stored in the database since the DB patch should already include changes from this module.
 	LocalModuleIncludes []LocalModuleInclude `bson:"-"`
+	// RepeatPatchID is used to store the ID of the patch that this patch is a repeating from the CLI.
+	RepeatPatchID string `bson:"-"`
 }
 
 func (p *Patch) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(p) }
