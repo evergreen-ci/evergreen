@@ -338,7 +338,15 @@ include:
      module: module_name
 ```
 
-Warning: YAML anchors currently not supported
+Warning: YAML anchors currently not supported.
+
+#### Limitations and Alternatives
+
+We do limit the [number of included files](../Reference#Include-Limits) that can be given in order to ensure safe GitHub API usage. 
+An alternative to relying on Evergreen for including the files would be to use `evergreen evaluate` as a pre-commit hook. 
+[This command](..#Validating-changes-to-config-files) generates the effective project yaml from all the include files and remove the includes list, 
+so you could have one "generated" yaml that's committed to your repo to use for Evergreen testing that doesn't need to pull files from GitHub.
+**Note that files included from modules aren't supported right now.** If you have questions about this please reach out.
 
 #### Merging Rules
 
