@@ -1204,8 +1204,10 @@ func TestAttachProjectToRepo(t *testing.T) {
 	u, err = user.FindOneById("me")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
-	assert.Contains(t, u.Roles(), serviceModel.GetViewRepoRole(p.RepoRefId))
 	assert.Contains(t, u.Roles(), serviceModel.GetRepoAdminRole(p.RepoRefId))
+	hasPermission, err := serviceModel.UserHasRepoViewPermission(u, p.RepoRefId)
+	assert.NoError(t, err)
+	assert.True(t, hasPermission)
 
 	repoRef, err = serviceModel.FindRepoRefByOwnerAndRepo(h.project.Owner, h.project.Repo)
 	assert.NoError(t, err)
