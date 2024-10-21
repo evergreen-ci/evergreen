@@ -875,14 +875,13 @@ func getLoadProjectOptsForPatch(p *patch.Patch, githubOauthToken string) (*Proje
 		hash = p.GithubMergeData.HeadSHA
 	}
 
-	referencePatchID := ""
-	baseVersion, err := FindBaseVersionForVersion(p.Version)
+	manifestID := ""
+	baseVersion, err := VersionFindOne(BaseVersionByProjectIdAndRevision(p.Project, p.Githash))
 	if err == nil && baseVersion != nil {
-		referencePatchID = baseVersion.Id
+		manifestID = baseVersion.Id
 	}
-
-	if p.ReferencePatchID != "" {
-		referencePatchID = p.ReferencePatchID
+	if p.ReferenceManifestID != "" {
+		manifestID = p.ReferenceManifestID
 	}
 
 	opts := GetProjectOpts{
@@ -891,7 +890,7 @@ func getLoadProjectOptsForPatch(p *patch.Patch, githubOauthToken string) (*Proje
 		ReadFileFrom:        ReadFromPatch,
 		Revision:            hash,
 		LocalModuleIncludes: p.LocalModuleIncludes,
-		ReferencePatchID:    referencePatchID,
+		ReferenceManifestID: manifestID,
 		PatchOpts: &PatchOpts{
 			patch: p,
 		},
