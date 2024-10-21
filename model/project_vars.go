@@ -333,6 +333,7 @@ func GetAWSKeyForProject(projectId string) (*AWSSSHKey, error) {
 const defaultParameterStoreAccessTimeout = 30 * time.Second
 
 func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
+	// kim: TODO: needs updated logic from DEVPROD-11973 to check if PS is enabled.
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
@@ -690,7 +691,6 @@ func fullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *Proj
 	return nil
 }
 
-// kim: TODO: consider testing explicitly since it now uses PS
 func (projectVars *ProjectVars) Insert() error {
 	if err := db.Insert(
 		ProjectVarsCollection,
@@ -702,6 +702,7 @@ func (projectVars *ProjectVars) Insert() error {
 	// This has to be done after inserting the initial document because it
 	// upserts the project vars doc. If this ran first, it would cause the DB
 	// insert to fail due to the ID already existing.
+	// kim: TODO: needs updated logic from DEVPROD-11973 to check if PS is enabled.
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, projectVars.Id)
@@ -737,6 +738,7 @@ func (projectVars *ProjectVars) insertParameterStore(ctx context.Context) error 
 }
 
 func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.ChangeInfo, error) {
+	// kim: TODO: needs updated logic from DEVPROD-11973 to check if PS is enabled.
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, projectVars.Id)
@@ -796,13 +798,10 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	)
 }
 
-// kim: TODO: update FindAndModify tests as well as UpdateProjectVars tests.
 // findAndModifyParameterStore is almost the same functionally as Upsert, except
 // that it only deletes project vars that are explicitly provided in
 // varsToDelete.
 func (projectVars *ProjectVars) findAndModifyParameterStore(ctx context.Context, varsToDelete []string) error {
-	// kim: TODO: reuse logic from DEVPROD-11973 to check if PS is
-	// enabled/synced.
 	projectID := projectVars.Id
 
 	after := projectVars
