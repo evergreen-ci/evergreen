@@ -340,6 +340,7 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":    "could not get project ref to check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
 		"project_id": projectVars.Id,
+		"epic":       "DEVPROD-5552",
 	}))
 	var isPSEnabled bool
 	if ref != nil {
@@ -347,6 +348,7 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
 			"project_id": projectVars.Id,
+			"epic":       "DEVPROD-5552",
 		}))
 	}
 	if isPSEnabled {
@@ -354,11 +356,13 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 			grip.Error(message.WrapError(fullSyncToParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
 				"message":    "could not upsert project vars into Parameter Store; falling back to using the DB",
 				"project_id": projectVars.Id,
+				"epic":       "DEVPROD-5552",
 			}))
 		} else {
 			grip.Error(message.WrapError(projectVars.upsertParameterStore(ctx), message.Fields{
 				"message":    "could not upsert project vars into Parameter Store; falling back to using the DB",
 				"project_id": projectVars.Id,
+				"epic":       "DEVPROD-5552",
 			}))
 		}
 	}
@@ -605,7 +609,19 @@ func (projectVars *ProjectVars) findProjectRef() (ref *ProjectRef, isRepoRef boo
 	return &repoRef.ProjectRef, true, nil
 }
 
+// TODO (DEVPROD-11882): remove full sync logic once the Parameter Store
+// rollout is complete. This functionality only exists to aid the migration
+// process.
 func fullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *ProjectRef, isRepoRef bool) error {
+	grip.Debug(message.Fields{
+		"message":                     "fully syncing project vars to Parameter Store",
+		"num_vars":                    len(vars.Vars),
+		"existing_parameter_mappings": vars.Parameters,
+		"project_id":                  vars.Id,
+		"is_repo_ref":                 isRepoRef,
+		"epic":                        "DEVPROD-5552",
+	})
+
 	// Delete any existing vars to ensure that the project vars are fully synced
 	// starting from a clean state.
 	paramNames := vars.Parameters.ParameterNames()
@@ -640,6 +656,8 @@ func fullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *Proj
 	); err != nil {
 		return errors.Wrap(err, "updating parameter mappings for project vars after full sync")
 	}
+
+	vars.Parameters = updatedParamMappings
 
 	coll := ProjectRefCollection
 	if isRepoRef {
