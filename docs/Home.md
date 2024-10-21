@@ -1,4 +1,4 @@
-[go/evergreen-docs](http://go/evergreen-docs)
+[go/evergreen-docs](ttp://go/evergreen-docs)
 
 # What is Evergreen?
 
