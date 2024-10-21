@@ -347,6 +347,7 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 		isPSEnabled, err = isParameterStoreEnabledForProject(ctx, ref)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
+			"op":         "Upsert",
 			"project_id": projectVars.Id,
 			"epic":       "DEVPROD-5552",
 		}))
@@ -355,12 +356,14 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 		if !ref.ParameterStoreVarsSynced {
 			grip.Error(message.WrapError(fullSyncToParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
 				"message":    "could not upsert project vars into Parameter Store; falling back to using the DB",
+				"op":         "Upsert",
 				"project_id": projectVars.Id,
 				"epic":       "DEVPROD-5552",
 			}))
 		} else {
 			grip.Error(message.WrapError(projectVars.upsertParameterStore(ctx), message.Fields{
 				"message":    "could not upsert project vars into Parameter Store; falling back to using the DB",
+				"op":         "Upsert",
 				"project_id": projectVars.Id,
 				"epic":       "DEVPROD-5552",
 			}))
@@ -401,7 +404,7 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error 
 
 	varsToUpsert, varsToDelete := getProjectVarsDiff(before, after)
 
-	if err := projectVars.syncParameterDiff(ctx, varsToUpsert, varsToDelete); err != nil {
+	if err := projectVars.syncParameterDiff(ctx, before.Parameters, varsToUpsert, varsToDelete); err != nil {
 		return errors.Wrap(err, "syncing project vars diff to Parameter Store")
 	}
 
@@ -411,18 +414,18 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error 
 // syncParameterDiff syncs the diff of project variables to Parameter Store. It
 // adds/updates varsToUpsert, deletes varsToDelete from Parameter Store, and
 // updates the project variable parameter mappings.
-func (projectVars *ProjectVars) syncParameterDiff(ctx context.Context, varsToUpsert map[string]string, varsToDelete map[string]struct{}) error {
-	paramMappingsToUpsert, err := projectVars.upsertParameters(ctx, varsToUpsert)
+func (projectVars *ProjectVars) syncParameterDiff(ctx context.Context, pm ParameterMappings, varsToUpsert map[string]string, varsToDelete map[string]struct{}) error {
+	paramMappingsToUpsert, err := projectVars.upsertParameters(ctx, pm, varsToUpsert)
 	if err != nil {
 		return errors.Wrap(err, "upserting project variables into Parameter Store")
 	}
 
-	paramMappingsToDelete, err := projectVars.deleteParameters(ctx, varsToDelete)
+	paramMappingsToDelete, err := projectVars.deleteParameters(ctx, pm, varsToDelete)
 	if err != nil {
 		return errors.Wrap(err, "deleting project variables from Parameter Store")
 	}
 
-	updatedParamMappings := getUpdatedParamMappings(projectVars.Parameters, paramMappingsToUpsert, paramMappingsToDelete)
+	updatedParamMappings := getUpdatedParamMappings(pm, paramMappingsToUpsert, paramMappingsToDelete)
 
 	if err := projectVars.setParamMappings(updatedParamMappings); err != nil {
 		return errors.Wrap(err, "updating parameter mappings for project vars")
@@ -454,9 +457,9 @@ func (projectVars *ProjectVars) setParamMappings(pm ParameterMappings) error {
 // upsertParameters upserts the parameter mappings for project variables into
 // Parameter Store. It returns the parameter mappings for the upserted
 // variables.
-func (projectVars *ProjectVars) upsertParameters(ctx context.Context, varsToUpsert map[string]string) (map[string]ParameterMapping, error) {
+func (projectVars *ProjectVars) upsertParameters(ctx context.Context, pm ParameterMappings, varsToUpsert map[string]string) (map[string]ParameterMapping, error) {
 	projectID := projectVars.Id
-	nameToExistingParamMapping := projectVars.Parameters.NameMap()
+	nameToExistingParamMapping := pm.NameMap()
 	paramMgr := evergreen.GetEnvironment().ParameterManager()
 
 	paramMappingsToUpsert := map[string]ParameterMapping{}
@@ -501,8 +504,8 @@ func (projectVars *ProjectVars) upsertParameters(ctx context.Context, varsToUpse
 // deleteParameters deletes parameters corresponding to deleted project variables
 // from Parameter Store. It returns the parameter mappings for the deleted
 // variables.
-func (projectVars *ProjectVars) deleteParameters(ctx context.Context, varsToDelete map[string]struct{}) (map[string]ParameterMapping, error) {
-	nameToExistingParamMapping := projectVars.Parameters.NameMap()
+func (projectVars *ProjectVars) deleteParameters(ctx context.Context, pm ParameterMappings, varsToDelete map[string]struct{}) (map[string]ParameterMapping, error) {
+	nameToExistingParamMapping := pm.NameMap()
 	paramMappingsToDelete := make(map[string]ParameterMapping, len(varsToDelete))
 	for varToDelete := range varsToDelete {
 		if paramMapping, ok := nameToExistingParamMapping[varToDelete]; ok {
@@ -687,15 +690,71 @@ func fullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *Proj
 	return nil
 }
 
+// kim: TODO: consider testing explicitly since it now uses PS
 func (projectVars *ProjectVars) Insert() error {
-	return db.Insert(
+	if err := db.Insert(
 		ProjectVarsCollection,
 		projectVars,
-	)
+	); err != nil {
+		return err
+	}
+
+	// This has to be done after inserting the initial document because it
+	// upserts the project vars doc. If this ran first, it would cause the DB
+	// insert to fail due to the ID already existing.
+	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
+	defer cancel()
+	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, projectVars.Id)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message":    "could not check if Parameter Store was enabled for project; assuming it's disabled and falling back to using the DB",
+		"op":         "Insert",
+		"project_id": projectVars.Id,
+		"epic":       "DEVPROD-5552",
+	}))
+	if isPSEnabled {
+		grip.Error(message.WrapError(projectVars.insertParameterStore(ctx), message.Fields{
+			"message":    "could not insert project vars into Parameter Store; falling back to using the DB",
+			"op":         "Insert",
+			"project_id": projectVars.Id,
+			"epic":       "DEVPROD-5552",
+		}))
+	}
+
+	return nil
+}
+
+func (projectVars *ProjectVars) insertParameterStore(ctx context.Context) error {
+	before := &ProjectVars{}
+	after := projectVars
+
+	varsToUpsert, _ := getProjectVarsDiff(before, after)
+
+	if err := projectVars.syncParameterDiff(ctx, ParameterMappings{}, varsToUpsert, nil); err != nil {
+		return errors.Wrap(err, "syncing project vars diff to Parameter Store")
+	}
+
+	return nil
 }
 
 func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.ChangeInfo, error) {
-	// TODO (DEVPROD-9405): use Parameter Store if enabled.
+	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
+	defer cancel()
+	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, projectVars.Id)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message":    "could not check if Parameter Store was enabled for project; assuming it's disabled and falling back to using the DB",
+		"op":         "FindAndModify",
+		"project_id": projectVars.Id,
+		"epic":       "DEVPROD-5552",
+	}))
+	if isPSEnabled {
+		grip.Error(message.WrapError(projectVars.findAndModifyParameterStore(ctx, varsToDelete), message.Fields{
+			"message":    "could not find and modify project vars in Parameter Store; falling back to using the DB",
+			"op":         "FindAndModify",
+			"project_id": projectVars.Id,
+			"epic":       "DEVPROD-5552",
+		}))
+	}
+
 	setUpdate := bson.M{}
 	unsetUpdate := bson.M{}
 	update := bson.M{}
@@ -766,7 +825,7 @@ func (projectVars *ProjectVars) findAndModifyParameterStore(ctx context.Context,
 		varSetToDelete[varName] = struct{}{}
 	}
 
-	if err := projectVars.syncParameterDiff(ctx, varsToUpsert, varSetToDelete); err != nil {
+	if err := projectVars.syncParameterDiff(ctx, before.Parameters, varsToUpsert, varSetToDelete); err != nil {
 		return errors.Wrap(err, "syncing project vars diff to Parameter Store")
 	}
 

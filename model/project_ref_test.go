@@ -1032,7 +1032,7 @@ func checkParametersMatchVars(ctx context.Context, t *testing.T, pm ParameterMap
 	assert.Len(t, pm, len(vars), "each project var should have exactly one corresponding parameter")
 	fakeParams, err := fakeparameter.FindByIDs(ctx, pm.ParameterNames()...)
 	assert.NoError(t, err)
-	assert.Len(t, fakeParams, len(vars))
+	assert.Len(t, fakeParams, len(vars), "number of parameters for project vars should match number of project vars defined")
 
 	paramNamesMap := pm.ParameterNameMap()
 	for _, fakeParam := range fakeParams {
