@@ -293,7 +293,7 @@ func (a *Agent) loop(ctx context.Context) error {
 					// If the amount of time left is less than the next sleep internval, cut down on the sleep interval.
 					if durationLeft < jitteredSleep*2 {
 						// This guarantees that the agent will try to get a new task before the host is considered idle.
-						jitteredSleep %= durationLeft
+						jitteredSleep %= durationLeft / 2
 					}
 				}
 				grip.Debugf("Agent found no task to run, sleeping %s.", jitteredSleep)
