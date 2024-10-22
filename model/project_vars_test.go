@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
@@ -699,5 +700,156 @@ func TestShouldGetAdminOnlyVars(t *testing.T) {
 			}
 		}
 		assert.True(t, tested, fmt.Sprintf("requester '%s' not tested with non-admin", requester))
+	}
+}
+
+func TestFullSyncToParameterStore(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectVarsCollection, fakeparameter.Collection))
+	}()
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
+		"InitiallySyncsAllParametersWithNewProjectVars": func(ctx context.Context, t *testing.T) {
+			projRef := ProjectRef{
+				Id:                    "project_id",
+				ParameterStoreEnabled: true,
+			}
+			require.NoError(t, projRef.Insert())
+			vars := map[string]string{
+				"var1": "value1",
+				"var2": "value2",
+			}
+			projVars := ProjectVars{
+				Id:   "project_id",
+				Vars: vars,
+			}
+
+			require.NoError(t, fullSyncToParameterStore(ctx, &projVars, &projRef, false))
+
+			dbProjVars, err := FindOneProjectVars(projVars.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjVars)
+
+			checkParametersMatchVars(ctx, t, dbProjVars.Parameters, vars)
+
+			dbProjRef, err := FindBranchProjectRef(projRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.True(t, dbProjRef.ParameterStoreVarsSynced)
+		},
+		"InitiallySyncsAllParametersWithPreexistingProjectVars": func(ctx context.Context, t *testing.T) {
+			projRef := ProjectRef{
+				Id:                    "project_id",
+				ParameterStoreEnabled: true,
+			}
+			require.NoError(t, projRef.Insert())
+			vars := map[string]string{
+				"var1": "value1",
+				"var2": "value2",
+			}
+			projVars := ProjectVars{
+				Id:   "project_id",
+				Vars: vars,
+			}
+			require.NoError(t, projVars.Insert())
+
+			require.NoError(t, fullSyncToParameterStore(ctx, &projVars, &projRef, false))
+
+			dbProjVars, err := FindOneProjectVars(projVars.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjVars)
+
+			checkParametersMatchVars(ctx, t, dbProjVars.Parameters, vars)
+
+			dbProjRef, err := FindBranchProjectRef(projRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.True(t, dbProjRef.ParameterStoreVarsSynced)
+		},
+		"InitiallySyncsAllParametersForRepoVars": func(ctx context.Context, t *testing.T) {
+			repoRef := RepoRef{
+				ProjectRef: ProjectRef{
+					Id:                    "repo_id",
+					ParameterStoreEnabled: true,
+				},
+			}
+			require.NoError(t, repoRef.Upsert())
+			vars := map[string]string{
+				"var1": "value1",
+				"var2": "value2",
+			}
+			repoVars := ProjectVars{
+				Id:   "repo_id",
+				Vars: vars,
+			}
+
+			require.NoError(t, fullSyncToParameterStore(ctx, &repoVars, &repoRef.ProjectRef, true))
+
+			dbRepoVars, err := FindOneProjectVars(repoVars.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbRepoVars)
+
+			checkParametersMatchVars(ctx, t, dbRepoVars.Parameters, vars)
+
+			dbRepoRef, err := FindOneRepoRef(repoRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbRepoRef)
+			assert.True(t, dbRepoRef.ParameterStoreVarsSynced)
+		},
+		"DeletesExistingDesyncedParametersAndResyncs": func(ctx context.Context, t *testing.T) {
+			projRef := ProjectRef{
+				Id:                    "project_id",
+				ParameterStoreEnabled: true,
+			}
+			require.NoError(t, projRef.Insert())
+			vars := map[string]string{
+				"var1": "value1",
+				"var2": "value2",
+				"var3": "value3",
+			}
+			projVars := ProjectVars{
+				Id:   "project_id",
+				Vars: vars,
+			}
+
+			require.NoError(t, fullSyncToParameterStore(ctx, &projVars, &projRef, false))
+
+			dbProjVars, err := FindOneProjectVars(projVars.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjVars)
+
+			checkParametersMatchVars(ctx, t, dbProjVars.Parameters, vars)
+
+			dbProjRef, err := FindBranchProjectRef(projRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.True(t, dbProjRef.ParameterStoreVarsSynced)
+
+			newProjRef := *dbProjRef
+			newProjRef.ParameterStoreVarsSynced = false
+			newVars := map[string]string{
+				"var1": "value1",
+				"var3": "new_value3",
+				"var4": "value4",
+			}
+			newProjVars := ProjectVars{
+				Id:   projVars.Id,
+				Vars: newVars,
+			}
+
+			require.NoError(t, fullSyncToParameterStore(ctx, &newProjVars, &newProjRef, false))
+
+			newDBProjVars, err := FindOneProjectVars(projVars.Id)
+			require.NoError(t, err)
+			require.NotZero(t, newDBProjVars)
+
+			checkParametersMatchVars(ctx, t, newDBProjVars.Parameters, newVars)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectVarsCollection, fakeparameter.Collection))
+			tCase(ctx, t)
+		})
 	}
 }

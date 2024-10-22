@@ -144,6 +144,10 @@ type ProjectRef struct {
 	// ParameterStoreEnabled is a temporary feature flag to enable/disable
 	// Parameter Store for storing project secrets.
 	ParameterStoreEnabled bool `bson:"parameter_store_enabled,omitempty" json:"parameter_store_enabled,omitempty" yaml:"parameter_store_enabled,omitempty"`
+	// ParameterStoreVarsSynced is a temporary flag that indicates whether the
+	// project's variables have been synced to Parameter Store. If this is true,
+	// then the project variables can all be found in Parameter Store.
+	ParameterStoreVarsSynced bool `bson:"parameter_store_vars_synced,omitempty" json:"parameter_store_vars_synced,omitempty" yaml:"parameter_store_vars_synced,omitempty"`
 }
 
 // GitHubDynamicTokenPermissionGroup is a permission group for GitHub dynamic access tokens.
@@ -493,6 +497,7 @@ var (
 	projectRefProjectHealthViewKey                  = bsonutil.MustHaveTag(ProjectRef{}, "ProjectHealthView")
 	projectRefGitHubDynamicTokenPermissionGroupsKey = bsonutil.MustHaveTag(ProjectRef{}, "GitHubDynamicTokenPermissionGroups")
 	projectRefGithubPermissionGroupByRequesterKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitHubPermissionGroupByRequester")
+	projectRefParameterStoreVarsSyncedKey           = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreVarsSynced")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	commitQueueMergeQueueKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "MergeQueue")

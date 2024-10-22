@@ -1224,6 +1224,7 @@ func TestDetachFromRepo(t *testing.T) {
 				PRTestingEnabled:      utility.FalsePtr(),          // neither of these should be changed when overwriting
 				GitTagVersionsEnabled: utility.TruePtr(),
 				GithubChecksEnabled:   nil, // for now this is defaulting to repo
+				ParameterStoreEnabled: true,
 			}
 			assert.NoError(t, pRef.Insert())
 
@@ -1256,6 +1257,11 @@ func TestDetachFromRepo(t *testing.T) {
 			_, err := pVars.Upsert()
 			assert.NoError(t, err)
 
+			dbProjRef, err := FindBranchProjectRef(pRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.True(t, dbProjRef.ParameterStoreVarsSynced, "branch project vars should be synced to Parameter Store after Upsert")
+
 			repoVars := &ProjectVars{
 				Id: repoRef.Id,
 				Vars: map[string]string{
@@ -1268,6 +1274,11 @@ func TestDetachFromRepo(t *testing.T) {
 			}
 			_, err = repoVars.Upsert()
 			assert.NoError(t, err)
+
+			dbRepoRef, err := FindOneRepoRef(repoRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbRepoRef)
+			assert.True(t, dbRepoRef.ParameterStoreVarsSynced, "repo vars should be synced to Parameter Store after Upsert")
 
 			u := &user.DBUser{
 				Id: "me",
