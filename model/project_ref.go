@@ -793,12 +793,6 @@ func (p *ProjectRef) AddToRepoScope(u *user.DBUser) error {
 	if err := rm.AddResourceToScope(GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
 		return errors.Wrapf(err, "adding resource to repo '%s' admin scope", p.RepoRefId)
 	}
-	// Only give branch admins view access if the repo isn't restricted.
-	if !repoRef.IsRestricted() {
-		if err := addViewRepoPermissionsToBranchAdmins(p.RepoRefId, p.Admins); err != nil {
-			return errors.Wrapf(err, "giving branch '%s' admins view permission for repo '%s'", p.Id, p.RepoRefId)
-		}
-	}
 	// If the branch is unrestricted, add it to this scope so users who requested all-repo permissions have access.
 	if !p.IsRestricted() {
 		if err := rm.AddResourceToScope(GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
@@ -1011,8 +1005,7 @@ func (p *ProjectRef) addGithubConflictsToUpdate(update bson.M) bson.M {
 	return update
 }
 
-// RemoveFromRepoScope removes the branch from the unrestricted branches under repo scope, removes repo view permission
-// for branch admins, and removes branch edit access for repo admins.
+// RemoveFromRepoScope removes the branch from the unrestricted branches under repo scope and removes branch edit access for repo admins.
 func (p *ProjectRef) RemoveFromRepoScope() error {
 	if p.RepoRefId == "" {
 		return nil
@@ -1022,9 +1015,6 @@ func (p *ProjectRef) RemoveFromRepoScope() error {
 		if err := rm.RemoveResourceFromScope(GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
 			return errors.Wrap(err, "removing resource from unrestricted branches scope")
 		}
-	}
-	if err := removeViewRepoPermissionsFromBranchAdmins(p.RepoRefId, p.Admins); err != nil {
-		return errors.Wrap(err, "removing view repo permissions from branch admins")
 	}
 	if err := rm.RemoveResourceFromScope(GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
 		return errors.Wrapf(err, "removing admin scope from repo '%s'", p.Repo)
@@ -2865,15 +2855,6 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 	if role == nil {
 		return false, errors.Errorf("no admin role for project '%s' found", p.Id)
 	}
-	viewRole := ""
-	allBranchAdmins := []string{}
-	if p.RepoRefId != "" {
-		allBranchAdmins, err = FindBranchAdminsForRepo(p.RepoRefId)
-		if err != nil {
-			return false, errors.Wrapf(err, "finding branch admins for repo '%s'", p.RepoRefId)
-		}
-		viewRole = GetViewRepoRole(p.RepoRefId)
-	}
 
 	catcher := grip.NewBasicCatcher()
 	for _, addedUser := range toAdd {
@@ -2893,12 +2874,6 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 			p.removeFromAdminsList(addedUser)
 			continue
 		}
-		if viewRole != "" {
-			if err = adminUser.AddRole(viewRole); err != nil {
-				catcher.Wrapf(err, "adding role '%s' to user '%s'", viewRole, addedUser)
-				continue
-			}
-		}
 	}
 	for _, removedUser := range toRemove {
 		adminUser, err := user.FindOneById(removedUser)
@@ -2914,12 +2889,6 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 			catcher.Wrapf(err, "removing role '%s' from user '%s'", role.ID, removedUser)
 			p.Admins = append(p.Admins, removedUser)
 			continue
-		}
-		if viewRole != "" && !utility.StringSliceContains(allBranchAdmins, adminUser.Id) {
-			if err = adminUser.RemoveRole(viewRole); err != nil {
-				catcher.Wrapf(err, "removing role '%s' from user '%s'", viewRole, removedUser)
-				continue
-			}
 		}
 	}
 	return true, errors.Wrap(catcher.Resolve(), "updating some admin roles")

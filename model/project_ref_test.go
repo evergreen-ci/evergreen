@@ -830,9 +830,8 @@ func TestAttachToNewRepo(t *testing.T) {
 		Id: "myRepo",
 	}}
 	assert.NoError(t, repoRef.Upsert())
-	u := &user.DBUser{Id: "me",
-		SystemRoles: []string{GetViewRepoRole("myRepo")},
-	}
+	u := &user.DBUser{Id: "me"}
+
 	assert.NoError(t, u.Insert())
 	installation := githubapp.GitHubAppInstallation{
 		Owner:          pRef.Owner,
@@ -877,10 +876,11 @@ func TestAttachToNewRepo(t *testing.T) {
 
 	userFromDB, err := user.FindOneById("me")
 	assert.NoError(t, err)
-	assert.Len(t, userFromDB.SystemRoles, 2)
+	assert.Len(t, userFromDB.SystemRoles, 1)
 	assert.Contains(t, userFromDB.SystemRoles, GetRepoAdminRole(pRefFromDB.RepoRefId))
-	assert.Contains(t, userFromDB.SystemRoles, GetViewRepoRole(pRefFromDB.RepoRefId))
-
+	hasPermission, err := UserHasRepoViewPermission(u, pRefFromDB.RepoRefId)
+	assert.NoError(t, err)
+	assert.True(t, hasPermission)
 	// Attaching a different project to this repo will result in Github conflicts being unset.
 	pRef = ProjectRef{
 		Id:        "mySecondProject",
@@ -983,8 +983,10 @@ func TestAttachToRepo(t *testing.T) {
 	u, err = user.FindOneById("me")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
-	assert.Contains(t, u.Roles(), GetViewRepoRole(pRefFromDB.RepoRefId))
 	assert.Contains(t, u.Roles(), GetRepoAdminRole(pRefFromDB.RepoRefId))
+	hasPermission, err := UserHasRepoViewPermission(u, pRefFromDB.RepoRefId)
+	assert.NoError(t, err)
+	assert.True(t, hasPermission)
 
 	// Try attaching a new project ref, now that a repo does exist.
 	pRef = ProjectRef{
@@ -1064,7 +1066,9 @@ func TestDetachFromRepo(t *testing.T) {
 			dbUser, err = user.FindOneById("me")
 			assert.NoError(t, err)
 			assert.NotNil(t, dbUser)
-			assert.NotContains(t, dbUser.Roles(), GetViewRepoRole(pRefFromDB.RepoRefId))
+			hasPermission, err := UserHasRepoViewPermission(dbUser, pRefFromDB.RepoRefId)
+			assert.NoError(t, err)
+			assert.False(t, hasPermission)
 		},
 		"NewRepoVarsAreMerged": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
@@ -1277,8 +1281,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.True(t, dbRepoRef.ParameterStoreVarsSynced, "repo vars should be synced to Parameter Store after Upsert")
 
 			u := &user.DBUser{
-				Id:          "me",
-				SystemRoles: []string{GetViewRepoRole("myRepo")},
+				Id: "me",
 			}
 			assert.NoError(t, u.Insert())
 			test(t, pRef, u)
