@@ -147,13 +147,11 @@ type AWSSSHKey struct {
 	Value string
 }
 
+// kim: TODO: update tests to use PS for read and write round trip (including
+// those in rest/ and GQL).
 func FindOneProjectVars(projectId string) (*ProjectVars, error) {
-	return findProjectVarsDB(projectId)
-}
-
-func findProjectVarsDB(projectID string) (*ProjectVars, error) {
 	projectVars := &ProjectVars{}
-	q := db.Query(bson.M{projectVarIdKey: projectID})
+	q := db.Query(bson.M{projectVarIdKey: projectId})
 	err := db.FindOneQ(ProjectVarsCollection, q, projectVars)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -161,24 +159,20 @@ func findProjectVarsDB(projectID string) (*ProjectVars, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// kim: TODO: integrate logic to check PS flags and get from PS if possible.
+	// projectVars.findParameterStore(ctx)
+
 	return projectVars, nil
 }
 
-func findVarsInParameterStore(ctx context.Context, projectID string) (*ProjectVars, error) {
-	projectVars, err := findProjectVarsDB(projectID)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding project vars for project '%s'", projectID)
-	}
-	if projectVars == nil {
-		return nil, nil
-	}
-	// kim: TODO: have to check branch/repo ref to see if Parameter Store is
-	// synced.
-
+// findParameterStore finds the project variables from Parameter Store.
+// kim: TODO: have to check branch/repo ref to see if Parameter Store is
+// enabled + synced.
+func (projectVars *ProjectVars) findParameterStore(ctx context.Context) (*ProjectVars, error) {
 	paramMgr := evergreen.GetEnvironment().ParameterManager()
 
-	// kim: TODO: needs DEVPROD-9405
-	params, err := paramMgr.GetStrict(ctx, projectVars.Parameters.ParameterNames())
+	params, err := paramMgr.GetStrict(ctx, projectVars.Parameters.ParameterNames()...)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting parameters for project vars")
 	}
@@ -186,8 +180,7 @@ func findVarsInParameterStore(ctx context.Context, projectID string) (*ProjectVa
 	varsFromPS := map[string]string{}
 	catcher := grip.NewBasicCatcher()
 	for _, p := range params {
-		// kim: TODO: needs DEVPROD-9473
-		varName, varValue, err := convertParamToVar(p.Name, p.Value)
+		varName, varValue, err := convertParamToVar(projectVars.Parameters, p.Name, p.Value)
 		if err != nil {
 			catcher.Wrapf(err, "parameter '%s'", p.Name)
 			continue
@@ -199,8 +192,56 @@ func findVarsInParameterStore(ctx context.Context, projectID string) (*ProjectVa
 		return nil, errors.Wrap(catcher.Resolve(), "converting parameters back to their original project variables")
 	}
 
-	projectVars.Vars = varsFromPS
+	// Check that the parameters retrieved from exactly match the project vars
+	// stored in the DB. This is a data consistency check and doubles as a
+	// fallback. By checking the vars retrieved from Parameter Store, Evergreen
+	// can automatically detect if the Parameter Store integration is returning
+	// incorrect information and if so, fall back to using the project vars
+	// stored in the DB rather than Parameter Store, which avoids using
+	// potentially the wrong variables while the rollout is ongoing.
+	if err := compareProjVars(projectVars.Vars, varsFromPS); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "project vars from Parameter Store do not match project vars stored in the DB",
+			"project": projectVars.Id,
+			"epic":    "DEVPROD-5552",
+		}))
+	} else {
+		projectVars.Vars = varsFromPS
+	}
+
 	return projectVars, nil
+}
+
+// compareProjVars compares the project variables retrieved from the DB and the
+// project vars retrieved from Parameter Store to determine if they're
+// identical. If not, an error will be returned including information about the
+// discrepancies.
+// TODO (DEVPROD-11882): remove temporary logic to check data consistency
+// between the DB and Parameter Store once the rollout is stable.
+func compareProjVars(varsFromDB, varsFromPS map[string]string) error {
+	catcher := grip.NewBasicCatcher()
+	catcher.ErrorfWhen(len(varsFromDB) != len(varsFromPS), "the DB and Parameter Store have different number of variables: (%d != %d)", len(varsFromDB), len(varsFromPS))
+
+	varNamesFromDB := make([]string, 0, len(varsFromDB))
+	for varName := range varsFromDB {
+		varNamesFromDB = append(varNamesFromDB, varName)
+	}
+	varNamesFromPS := make([]string, 0, len(varsFromPS))
+	for varName := range varsFromPS {
+		varNamesFromPS = append(varNamesFromPS, varName)
+	}
+
+	missingFromDB, extraneousFromPS := utility.StringSliceSymmetricDifference(varNamesFromDB, varNamesFromPS)
+	catcher.ErrorfWhen(len(missingFromDB) > 0, "missing some variable names from the DB: %s", missingFromDB)
+	catcher.ErrorfWhen(len(extraneousFromPS) > 0, "found extraneous variables in Parameter Store: %s", extraneousFromPS)
+
+	for varName, varValueFromDB := range varsFromDB {
+		if varValueFromPS, ok := varsFromPS[varName]; ok && varValueFromDB != varValueFromPS {
+			catcher.Errorf("value for project variable '%s' differs between the DB and Parameter Store", varName)
+		}
+	}
+
+	return catcher.Resolve()
 }
 
 // FindMergedProjectVars merges vars from the target project's ProjectVars and its parent repo's vars
