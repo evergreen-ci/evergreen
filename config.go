@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/util"
@@ -556,34 +555,9 @@ func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, le
 	return sender, nil
 }
 
-func (s *Settings) GetGithubOauthString() (string, error) {
-
-	token, ok := s.Credentials["github"]
-	if ok && token != "" {
-		return token, nil
-	}
-
-	return "", errors.New("no github token in settings")
-}
-
-// TODO DEVPROD-1429: Delete this function
+// TODO DEVPROD-2923: Delete this function
 func (s *Settings) GetGithubOauthToken() (string, error) {
-	if s == nil {
-		return "", errors.New("not defined")
-	}
-	if s.ServiceFlags.GlobalGitHubTokenDisabled {
-		return "", nil
-	}
-
-	oauthString, err := s.GetGithubOauthString()
-	if err != nil {
-		return "", nil
-	}
-	splitToken := strings.Split(oauthString, " ")
-	if len(splitToken) != 2 || splitToken[0] != "token" {
-		return "", errors.New("token format was invalid, expected 'token [token]'")
-	}
-	return splitToken[1], nil
+	return "", nil
 }
 
 // PluginConfig holds plugin-specific settings, which are handled.

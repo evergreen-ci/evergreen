@@ -25,7 +25,10 @@ type GithubAppAuth struct {
 // if they exist. If the either are not set, it will return nil.
 func CreateGitHubAppAuth(settings *evergreen.Settings) *GithubAppAuth {
 	if settings.AuthConfig.Github == nil || settings.AuthConfig.Github.AppId == 0 {
-		return nil
+		settings = evergreen.GetEnvironment().Settings()
+		if settings.AuthConfig.Github == nil || settings.AuthConfig.Github.AppId == 0 {
+			return nil
+		}
 	}
 
 	key := settings.Expansions[evergreen.GithubAppPrivateKey]
