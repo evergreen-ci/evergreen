@@ -22,6 +22,14 @@ Evergreen username to the list of Administrators, that user will be able
 to access the Project Settings page for that project only and modify
 repository information, access settings, alerts, and keys.
 
+### Service Users
+
+Service users cannot be managed through MANA. Instead, they have a special
+role called `api_user_access`. This role grants them permission to submit
+patches and to edit tasks (restart, set priority, abort). If a service
+user needs permission to submit patches on behalf of another user, the
+Evergreen team must grant this explicitly.
+
 ### Permissions Requested with MANA
 
 Functionality has been added to Mana to make permission requests more
