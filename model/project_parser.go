@@ -903,20 +903,19 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		Identifier:   include.Module,
 	}
 
-	// If provided a patch to repeat, use the same githash as the original patch did for the module.
+	// If a reference manifest is provided, use the module revision from the manifest.
 	if opts.ReferenceManifestID != "" {
 		m, err := manifest.FindOne(manifest.ById(opts.ReferenceManifestID))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding manifest to reference '%s'", opts.ReferenceManifestID)
 		}
-		if m == nil {
-			return nil, errors.Errorf("manifest '%s' not found", opts.ReferenceManifestID)
-		}
-
-		for name, mod := range m.Modules {
-			if name == include.Module {
-				moduleOpts.Revision = mod.Revision
-				break
+		// Sometimes the manifest might be nil, in which case we don't want to set the revision.
+		if m != nil {
+			for name, mod := range m.Modules {
+				if name == include.Module {
+					moduleOpts.Revision = mod.Revision
+					break
+				}
 			}
 		}
 	}

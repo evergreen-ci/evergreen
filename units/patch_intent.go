@@ -308,6 +308,8 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		var patchConfig *model.PatchConfig
 		repeatPatchID, shouldRepeat := j.intent.RepeatPreviousPatchDefinition()
 		if shouldRepeat {
+			// When we create Manifests, their ID is set to the patch/version
+			// they are created from.
 			patchDoc.ReferenceManifestID = repeatPatchID
 		}
 		patchedProject, patchConfig, err = model.GetPatchedProject(ctx, j.env.Settings(), patchDoc, token)
