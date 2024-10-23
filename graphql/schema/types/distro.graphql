@@ -204,6 +204,7 @@ input PlannerSettingsInput {
   commitQueueFactor: Int!
   expectedRuntimeFactor: Int!
   generateTaskFactor: Int!
+  numDependentsFactor: Float
   groupVersions: Boolean!
   mainlineTimeInQueueFactor: Int!
   patchFactor: Int!
@@ -354,6 +355,7 @@ type PlannerSettings {
   commitQueueFactor: Int!
   expectedRuntimeFactor: Int!
   generateTaskFactor: Int!
+  numDependentsFactor: Float
   groupVersions: Boolean!
   mainlineTimeInQueueFactor: Int!
   patchFactor: Int!

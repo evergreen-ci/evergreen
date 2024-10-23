@@ -254,7 +254,6 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	settings := testutil.TestConfig()
 
 	testutil.ConfigureIntegrationTest(s.T(), settings)
-	env.Settings().Credentials = settings.Credentials
 	env.Settings().Ui.Url = "http://example.com"
 
 	s.patchDoc.GithubPatchData.BaseRepo = "sample"

@@ -220,6 +220,18 @@ var (
 type retryConfig struct {
 	retry    bool
 	retry404 bool
+	// ignoreCodes are http status codes that the retry function should ignore
+	// and not retry on.
+	ignoreCodes []int
+}
+
+func (c *retryConfig) shouldIgnoreCode(statusCode int) bool {
+	for _, ignoreCode := range c.ignoreCodes {
+		if statusCode == ignoreCode {
+			return true
+		}
+	}
+	return false
 }
 
 func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunction {
@@ -261,6 +273,10 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 				"retry_num": index,
 			})
 			return true
+		}
+
+		if config.shouldIgnoreCode(resp.StatusCode) {
+			return false
 		}
 
 		if resp.StatusCode >= http.StatusBadRequest {
@@ -379,7 +395,8 @@ func RevokeInstallationToken(ctx context.Context, token string) error {
 	))
 	defer span.End()
 
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	// Ignore unauthorized responses since the token may have already been revoked.
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true, ignoreCodes: []int{http.StatusUnauthorized}})
 	defer githubClient.Close()
 	resp, err := githubClient.Apps.RevokeInstallationToken(ctx)
 	if resp != nil {
@@ -398,6 +415,12 @@ func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.
 	if err != nil {
 		return "", errors.Wrap(err, "getting evergreen settings")
 	}
+
+	if settings.AuthConfig.Github == nil {
+		settings = evergreen.GetEnvironment().Settings()
+		grip.Info("no Github settings in auth config, using cached settings")
+	}
+
 	token, err := githubapp.CreateCachedInstallationTokenWithDefaultOwnerRepo(ctx, settings, defaultGitHubAPIRequestLifetime, opts)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{

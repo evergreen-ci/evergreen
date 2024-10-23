@@ -22,6 +22,14 @@ Evergreen username to the list of Administrators, that user will be able
 to access the Project Settings page for that project only and modify
 repository information, access settings, alerts, and keys.
 
+### Service Users
+
+Service users cannot be managed through MANA. Instead, they have a special
+role called `api_user_access`. This role grants them permission to submit
+patches and to edit tasks (restart, set priority, abort) in unrestricted 
+projects. If a service user needs permission to submit patches on behalf 
+of another user, the Evergreen team must grant this explicitly.
+
 ### Permissions Requested with MANA
 
 Functionality has been added to Mana to make permission requests more
@@ -123,9 +131,10 @@ file via an expansion.
 
 Options:
 
--   Checking **private** makes the variable redacted so the value won't
-    be visible on the projects page or by API routes. Per  
-    [Evergreen policy](https://mongodb.stackenterprise.co/questions/1232), private variables cannot be retrieved. 
+-   Checking **private** makes the variable redacted so the value won't be
+    visible on the projects page or by API routes. Additionally, private
+    variables will be redacted from task logs. After saving them, private
+    variables cannot be retrieved.
 -   Checking **admin only** ensures that the variable can only be used
     by admins and mainline commits.
 

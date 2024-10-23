@@ -56,6 +56,9 @@ type Distro struct {
 	Mountpoints           []string              `bson:"mountpoints,omitempty" json:"mountpoints,omitempty" mapstructure:"mountpoints,omitempty"`
 	// ImageID is not equivalent to AMI. It is the identifier of the base image for the distro.
 	ImageID string `bson:"image_id,omitempty" json:"image_id,omitempty" mapstructure:"image_id,omitempty"`
+
+	// ExecUser is the user to run shell.exec and subprocess.exec processes as. If unset, processes are run as the regular distro User.
+	ExecUser string `bson:"exec_user,omitempty" json:"exec_user,omitempty" mapstructure:"exec_user,omitempty"`
 }
 
 // DistroData is the same as a distro, with the only difference being that all
@@ -258,6 +261,7 @@ type PlannerSettings struct {
 	MainlineTimeInQueueFactor int64         `bson:"mainline_time_in_queue_factor" json:"mainline_time_in_queue_factor" mapstructure:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor     int64         `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
 	GenerateTaskFactor        int64         `bson:"generate_task_factor" json:"generate_task_factor" mapstructure:"generate_task_factor"`
+	NumDependentsFactor       float64       `bson:"num_dependents_factor" json:"num_dependents_factor" mapstructure:"num_dependents_factor"`
 	StepbackTaskFactor        int64         `bson:"stepback_task_factor" json:"stepback_task_factor" mapstructure:"stepback_task_factor"`
 
 	maxDurationPerHost time.Duration
@@ -341,6 +345,13 @@ func (s *PlannerSettings) GetGenerateTaskFactor() int64 {
 		return 1
 	}
 	return s.GenerateTaskFactor
+}
+
+func (s *PlannerSettings) GetNumDependentsFactor() float64 {
+	if s.NumDependentsFactor <= 0 {
+		return 1
+	}
+	return s.NumDependentsFactor
 }
 
 func (s *PlannerSettings) GetMainlineTimeInQueueFactor() int64 {
@@ -688,6 +699,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 		MainlineTimeInQueueFactor: ps.MainlineTimeInQueueFactor,
 		ExpectedRuntimeFactor:     ps.ExpectedRuntimeFactor,
 		GenerateTaskFactor:        ps.GenerateTaskFactor,
+		NumDependentsFactor:       ps.NumDependentsFactor,
 		maxDurationPerHost:        evergreen.MaxDurationPerDistroHost,
 	}
 
@@ -730,6 +742,9 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	}
 	if resolved.GenerateTaskFactor == 0 {
 		resolved.GenerateTaskFactor = config.GenerateTaskFactor
+	}
+	if resolved.NumDependentsFactor == 0 {
+		resolved.NumDependentsFactor = config.NumDependentsFactor
 	}
 
 	// StepbackTaskFactor isn't configurable by distro

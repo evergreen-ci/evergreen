@@ -51,6 +51,20 @@ func Setup() {
 			"path":    filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings),
 		}))
 
+		// For testing purposes, set up parameter manager so it's backed by the
+		// DB.
+		pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
+			PathPrefix:     env.Settings().Providers.AWS.ParameterStore.Prefix,
+			CachingEnabled: true,
+			SSMClient:      fakeparameter.NewFakeSSMClient(),
+			DB:             env.DB(),
+		})
+		grip.EmergencyPanic(message.WrapError(err, message.Fields{
+			"message": "could not initialize test environment's parameter manager",
+		}))
+
+		env.SetParameterManager(pm)
+
 		evergreen.SetEnvironment(env)
 	}
 }
@@ -198,7 +212,6 @@ func MockConfig() *evergreen.Settings {
 				},
 			},
 		},
-		Credentials:        map[string]string{"k1": "v1"},
 		DomainName:         "example.com",
 		Expansions:         map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg: "org",

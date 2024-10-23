@@ -613,6 +613,7 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 	dv := apimodels.DistroView{
 		DisableShallowClone: host.Distro.DisableShallowClone,
 		Mountpoints:         host.Distro.Mountpoints,
+		ExecUser:            host.Distro.ExecUser,
 	}
 	return gimlet.NewJSONResponse(dv)
 }

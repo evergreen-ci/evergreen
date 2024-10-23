@@ -19,7 +19,6 @@ func NewConfigModel() *APIAdminSettings {
 		Cedar:               &APICedarConfig{},
 		CommitQueue:         &APICommitQueueConfig{},
 		ContainerPools:      &APIContainerPoolsConfig{},
-		Credentials:         map[string]string{},
 		Expansions:          map[string]string{},
 		HostInit:            &APIHostInitConfig{},
 		HostJasper:          &APIHostJasperConfig{},
@@ -62,7 +61,6 @@ type APIAdminSettings struct {
 	CommitQueue         *APICommitQueueConfig             `json:"commit_queue,omitempty"`
 	ConfigDir           *string                           `json:"configdir,omitempty"`
 	ContainerPools      *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
-	Credentials         map[string]string                 `json:"credentials,omitempty"`
 	DomainName          *string                           `json:"domain_name,omitempty"`
 	Expansions          map[string]string                 `json:"expansions,omitempty"`
 	GithubPRCreatorOrg  *string                           `json:"github_pr_creator_org,omitempty"`
@@ -140,7 +138,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.LogPath = &v.LogPath
 		as.Plugins = v.Plugins
 		as.PprofPort = &v.PprofPort
-		as.Credentials = v.Credentials
 		as.Expansions = v.Expansions
 		as.KanopySSHKeyPath = utility.ToStringPtr(v.KanopySSHKeyPath)
 		as.GithubOrgs = v.GithubOrgs
@@ -205,7 +202,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 // ToService returns a service model from an API model
 func (as *APIAdminSettings) ToService() (interface{}, error) {
 	settings := evergreen.Settings{
-		Credentials:        map[string]string{},
 		Expansions:         map[string]string{},
 		Plugins:            evergreen.PluginConfig{},
 		GithubOrgs:         as.GithubOrgs,
@@ -260,9 +256,6 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		}
 		valToSet := reflect.ValueOf(i)
 		dbModelReflect.FieldByName(propName).Set(valToSet)
-	}
-	for k, v := range as.Credentials {
-		settings.Credentials[k] = v
 	}
 	for k, v := range as.Expansions {
 		settings.Expansions[k] = v
@@ -2018,6 +2011,7 @@ type APISchedulerConfig struct {
 	MainlineTimeInQueueFactor     int64   `json:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor         int64   `json:"expected_runtime_factor"`
 	GenerateTaskFactor            int64   `json:"generate_task_factor"`
+	NumDependentsFactor           float64 `json:"num_dependents_factor"`
 	StepbackTaskFactor            int64   `json:"stepback_task_factor"`
 }
 
@@ -2040,6 +2034,7 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.MainlineTimeInQueueFactor = v.MainlineTimeInQueueFactor
 		a.ExpectedRuntimeFactor = v.ExpectedRuntimeFactor
 		a.GenerateTaskFactor = v.GenerateTaskFactor
+		a.NumDependentsFactor = v.NumDependentsFactor
 		a.StepbackTaskFactor = v.StepbackTaskFactor
 	default:
 		return errors.Errorf("programmatic error: expected host scheduler config but got type %T", h)
@@ -2065,6 +2060,7 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 		CommitQueueFactor:             a.CommitQueueFactor,
 		MainlineTimeInQueueFactor:     a.MainlineTimeInQueueFactor,
 		GenerateTaskFactor:            a.GenerateTaskFactor,
+		NumDependentsFactor:           a.NumDependentsFactor,
 		StepbackTaskFactor:            a.StepbackTaskFactor,
 	}, nil
 }

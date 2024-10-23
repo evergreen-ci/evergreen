@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -644,6 +645,7 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		Identifier:          identifier,
 		UnmarshalStrict:     projectOpts.UnmarshalStrict,
 		LocalModuleIncludes: projectOpts.LocalModuleIncludes,
+		ReferenceManifestID: projectOpts.ReferenceManifestID,
 	}
 	localOpts.UpdateReadFileFrom(include.FileName)
 
@@ -789,6 +791,8 @@ type GetProjectOpts struct {
 	Identifier          string
 	UnmarshalStrict     bool
 	LocalModuleIncludes []patch.LocalModuleInclude
+	ReferencePatchID    string
+	ReferenceManifestID string
 }
 
 type PatchOpts struct {
@@ -897,6 +901,23 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		Token:        opts.Token,
 		ReadFileFrom: ReadFromGithub,
 		Identifier:   include.Module,
+	}
+
+	// If a reference manifest is provided, use the module revision from the manifest.
+	if opts.ReferenceManifestID != "" {
+		m, err := manifest.FindOne(manifest.ById(opts.ReferenceManifestID))
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding manifest to reference '%s'", opts.ReferenceManifestID)
+		}
+		// Sometimes the manifest might be nil, in which case we don't want to set the revision.
+		if m != nil {
+			for name, mod := range m.Modules {
+				if name == include.Module {
+					moduleOpts.Revision = mod.Revision
+					break
+				}
+			}
+		}
 	}
 	return retrieveFile(ctx, moduleOpts)
 }

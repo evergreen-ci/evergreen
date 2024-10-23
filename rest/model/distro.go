@@ -20,6 +20,7 @@ type APIPlannerSettings struct {
 	MainlineTimeInQueueFactor int64       `json:"mainline_time_in_queue_factor"`
 	ExpectedRuntimeFactor     int64       `json:"expected_runtime_factor"`
 	GenerateTaskFactor        int64       `json:"generate_task_factor"`
+	NumDependentsFactor       float64     `json:"num_dependents_factor"`
 	CommitQueueFactor         int64       `json:"commit_queue_factor"`
 }
 
@@ -37,6 +38,7 @@ func (s *APIPlannerSettings) BuildFromService(settings distro.PlannerSettings) {
 	s.PatchTimeInQueueFactor = settings.PatchTimeInQueueFactor
 	s.MainlineTimeInQueueFactor = settings.MainlineTimeInQueueFactor
 	s.GenerateTaskFactor = settings.GenerateTaskFactor
+	s.NumDependentsFactor = settings.NumDependentsFactor
 	s.CommitQueueFactor = settings.CommitQueueFactor
 }
 
@@ -54,6 +56,7 @@ func (s *APIPlannerSettings) ToService() distro.PlannerSettings {
 	settings.MainlineTimeInQueueFactor = s.MainlineTimeInQueueFactor
 	settings.ExpectedRuntimeFactor = s.ExpectedRuntimeFactor
 	settings.GenerateTaskFactor = s.GenerateTaskFactor
+	settings.NumDependentsFactor = s.NumDependentsFactor
 	settings.CommitQueueFactor = s.CommitQueueFactor
 
 	return settings
@@ -365,6 +368,7 @@ type APIDistro struct {
 	ValidProjects         []*string                `json:"valid_projects"`
 	Mountpoints           []string                 `json:"mountpoints"`
 	ImageID               *string                  `json:"image_id"`
+	ExecUser              *string                  `json:"exec_user"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -390,6 +394,7 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.ValidProjects = utility.ToStringPtrSlice(d.ValidProjects)
 	apiDistro.Mountpoints = d.Mountpoints
 	apiDistro.ImageID = utility.ToStringPtr(d.ImageID)
+	apiDistro.ExecUser = utility.ToStringPtr(d.ExecUser)
 
 	if d.Expansions != nil {
 		apiDistro.Expansions = []APIExpansion{}
@@ -455,6 +460,7 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 	d.Disabled = apiDistro.Disabled
 	d.ContainerPool = utility.FromStringPtr(apiDistro.ContainerPool)
 	d.ImageID = utility.FromStringPtr(apiDistro.ImageID)
+	d.ExecUser = utility.FromStringPtr(apiDistro.ExecUser)
 
 	d.FinderSettings = apiDistro.FinderSettings.ToService()
 	d.PlannerSettings = apiDistro.PlannerSettings.ToService()
