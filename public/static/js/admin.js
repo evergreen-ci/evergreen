@@ -657,22 +657,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
 
     return user;
   }
-  $scope.addCredential = function (chip) {
-    var obj = {};
-    pieces = chip.split(":");
-    if (pieces.length !== 2) {
-      alert("Input must be in the format of key:value");
-      return null;
-    }
-    var key = pieces[0];
-    if ($scope.tempCredentials[key]) {
-      alert("Duplicate credential: " + key);
-      return null;
-    }
-    obj[key] = pieces[1];
-    $scope.tempCredentials[key] = pieces[1];
-    return obj;
-  }
 
   $scope.addSSHKeyPair = function () {
     if ($scope.tempSSHKeyPairs.length === 0) {
