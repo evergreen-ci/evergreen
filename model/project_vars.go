@@ -149,6 +149,8 @@ type AWSSSHKey struct {
 
 // kim: TODO: update tests to use PS for read and write round trip (including
 // those in rest/ and GQL).
+// kim: TODO: needs FindAndModify + Insert implemented to test functionality
+// more fully.
 func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 	projectVars := &ProjectVars{}
 	q := db.Query(bson.M{projectVarIdKey: projectId})
@@ -160,15 +162,59 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 		return nil, err
 	}
 
-	// kim: TODO: integrate logic to check PS flags and get from PS if possible.
-	// projectVars.findParameterStore(ctx)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
+	defer cancel()
+
+	ref, isRepoRef, err := projectVars.findProjectRef()
+	grip.Error(message.WrapError(err, message.Fields{
+		"message":    "could not get project ref to check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
+		"op":         "FindOneProjectVars",
+		"project_id": projectVars.Id,
+		"epic":       "DEVPROD-5552",
+	}))
+	var isPSEnabled bool
+	if ref != nil {
+		isPSEnabled, err = isParameterStoreEnabledForProject(ctx, ref)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
+			"op":         "FindOneProjectVars",
+			"project_id": projectVars.Id,
+			"epic":       "DEVPROD-5552",
+		}))
+	}
+
+	if isPSEnabled && ref != nil && !ref.ParameterStoreVarsSynced {
+		grip.Debug(message.Fields{
+			"message":     "project has Parameter Store enabled for project vars, but they're not synced; falling back to using the DB",
+			"op":          "FindOneProjectVars",
+			"project_id":  ref.Id,
+			"is_repo_ref": isRepoRef,
+			"epic":        "DEVPROD-5552",
+		})
+	}
+	if isPSEnabled && ref.ParameterStoreVarsSynced {
+		// kim: TODO: convert this to error to see what unit tests fail when
+		// using PS to write/read.
+		projectVarsFromPS, err := projectVars.findParameterStore(ctx)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not find project vars from Parameter Store; falling back to using the DB",
+				"op":      "FindOneProjectVars",
+				"project": projectVars.Id,
+				"epic":    "DEVPROD-5552",
+			}))
+		}
+		if projectVarsFromPS != nil {
+			return projectVarsFromPS, nil
+		}
+		// Intentionally fall through so that it falls back to returning the DB
+		// project vars if Parameter Store errors.
+	}
 
 	return projectVars, nil
 }
 
 // findParameterStore finds the project variables from Parameter Store.
-// kim: TODO: have to check branch/repo ref to see if Parameter Store is
-// enabled + synced.
 func (projectVars *ProjectVars) findParameterStore(ctx context.Context) (*ProjectVars, error) {
 	paramMgr := evergreen.GetEnvironment().ParameterManager()
 
@@ -192,13 +238,17 @@ func (projectVars *ProjectVars) findParameterStore(ctx context.Context) (*Projec
 		return nil, errors.Wrap(catcher.Resolve(), "converting parameters back to their original project variables")
 	}
 
-	// Check that the parameters retrieved from exactly match the project vars
-	// stored in the DB. This is a data consistency check and doubles as a
-	// fallback. By checking the vars retrieved from Parameter Store, Evergreen
-	// can automatically detect if the Parameter Store integration is returning
-	// incorrect information and if so, fall back to using the project vars
-	// stored in the DB rather than Parameter Store, which avoids using
-	// potentially the wrong variables while the rollout is ongoing.
+	// Check that the parameters retrieved from Parameter Store are identical to
+	// the project vars stored in the DB. This is a data consistency check and
+	// doubles as a fallback. By checking the vars retrieved from Parameter
+	// Store, Evergreen can automatically detect if the Parameter Store
+	// integration is returning incorrect information and if so, fall back to
+	// using the project vars stored in the DB rather than Parameter Store,
+	// which avoids using potentially the wrong variables while the rollout is
+	// ongoing.
+	// TODO (DEVPROD-9440): remove this consistency check once the rollout is
+	// complete and everything is prepared to remove the project var values from
+	// the DB.
 	if err := compareProjVars(projectVars.Vars, varsFromPS); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "project vars from Parameter Store do not match project vars stored in the DB",
