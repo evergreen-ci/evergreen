@@ -88,7 +88,7 @@ func getMockProjectSettings() model.ProjectSettings {
 func TestProjectConnectorGetSuite(t *testing.T) {
 	s := new(ProjectConnectorGetSuite)
 	s.setup = func() error {
-		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection))
+		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameters.Collection))
 
 		projects := []*model.ProjectRef{
 			{
@@ -202,7 +202,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 	}
 
 	s.teardown = func() error {
-		return db.Clear(model.ProjectRefCollection)
+		return db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameters.Collection)
 	}
 
 	suite.Run(t, s)

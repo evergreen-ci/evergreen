@@ -333,13 +333,13 @@ func GetAWSKeyForProject(projectId string) (*AWSSSHKey, error) {
 const defaultParameterStoreAccessTimeout = 30 * time.Second
 
 func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
-	// kim: TODO: needs updated logic from DEVPROD-11973 to check if PS is enabled.
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
 	ref, isRepoRef, err := projectVars.findProjectRef()
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":    "could not get project ref to check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
+		"op":         "Upsert",
 		"project_id": projectVars.Id,
 		"epic":       "DEVPROD-5552",
 	}))
@@ -356,7 +356,7 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 	if isPSEnabled {
 		if !ref.ParameterStoreVarsSynced {
 			grip.Error(message.WrapError(fullSyncToParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
-				"message":    "could not upsert project vars into Parameter Store; falling back to using the DB",
+				"message":    "could not fully sync project vars into Parameter Store; falling back to using the DB",
 				"op":         "Upsert",
 				"project_id": projectVars.Id,
 				"epic":       "DEVPROD-5552",
@@ -647,48 +647,7 @@ func fullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *Proj
 		}
 	}
 
-	after := vars
-
-	// Since this is fully syncing all the project vars to Parameter Store,
-	// always perform comparisons against a clean state where there are no
-	// parameters.
-	before := &ProjectVars{}
-
-	// There's no variables to delete because any pre-existing ones were already
-	// deleted above.
-	varsToUpdate, _ := getProjectVarsDiff(before, after)
-
-	paramMappingsToUpdate, err := after.upsertParameters(ctx, before.Parameters, varsToUpdate)
-	if err != nil {
-		return errors.Wrapf(err, "upserting %d parameters for project vars", len(varsToUpdate))
-	}
-
-	updatedParamMappings := getUpdatedParamMappings(before.Parameters, paramMappingsToUpdate, nil)
-
-	if _, err := db.Upsert(ProjectVarsCollection,
-		bson.M{projectVarIdKey: after.Id},
-		bson.M{"$set": bson.M{projectVarsParametersKey: updatedParamMappings}},
-	); err != nil {
-		return errors.Wrap(err, "updating parameter mappings for project vars after full sync")
-	}
-
-	vars.Parameters = updatedParamMappings
-
-	coll := ProjectRefCollection
-	if isRepoRef {
-		coll = RepoRefCollection
-	}
-	if err := db.UpdateId(coll, pRef.Id, bson.M{
-		"$set": bson.M{
-			projectRefParameterStoreVarsSyncedKey: true,
-		},
-	}); err != nil {
-		return errors.Wrapf(err, "marking project/repo '%s' as having its project vars fully synced", pRef.Id)
-	}
-
-	pRef.ParameterStoreVarsSynced = true
-
-	return nil
+	return insertParameterStore(ctx, vars, pRef, isRepoRef)
 }
 
 func (projectVars *ProjectVars) Insert() error {
@@ -702,18 +661,28 @@ func (projectVars *ProjectVars) Insert() error {
 	// This has to be done after inserting the initial document because it
 	// upserts the project vars doc. If this ran first, it would cause the DB
 	// insert to fail due to the ID already existing.
-	// kim: TODO: needs updated logic from DEVPROD-11973 to check if PS is enabled.
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
-	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, projectVars.Id)
+
+	ref, isRepoRef, err := projectVars.findProjectRef()
 	grip.Error(message.WrapError(err, message.Fields{
-		"message":    "could not check if Parameter Store was enabled for project; assuming it's disabled and falling back to using the DB",
+		"message":    "could not get project ref to check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
 		"op":         "Insert",
 		"project_id": projectVars.Id,
 		"epic":       "DEVPROD-5552",
 	}))
+	var isPSEnabled bool
+	if ref != nil {
+		isPSEnabled, err = isParameterStoreEnabledForProject(ctx, ref)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
+			"op":         "Insert",
+			"project_id": projectVars.Id,
+			"epic":       "DEVPROD-5552",
+		}))
+	}
 	if isPSEnabled {
-		grip.Error(message.WrapError(projectVars.insertParameterStore(ctx), message.Fields{
+		grip.Error(message.WrapError(insertParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
 			"message":    "could not insert project vars into Parameter Store; falling back to using the DB",
 			"op":         "Insert",
 			"project_id": projectVars.Id,
@@ -724,37 +693,59 @@ func (projectVars *ProjectVars) Insert() error {
 	return nil
 }
 
-func (projectVars *ProjectVars) insertParameterStore(ctx context.Context) error {
+func insertParameterStore(ctx context.Context, vars *ProjectVars, pRef *ProjectRef, isRepoRef bool) error {
 	before := &ProjectVars{}
-	after := projectVars
-
+	after := vars
 	varsToUpsert, _ := getProjectVarsDiff(before, after)
 
-	if err := projectVars.syncParameterDiff(ctx, ParameterMappings{}, varsToUpsert, nil); err != nil {
+	if err := vars.syncParameterDiff(ctx, ParameterMappings{}, varsToUpsert, nil); err != nil {
 		return errors.Wrap(err, "syncing project vars diff to Parameter Store")
+	}
+
+	if err := pRef.setParameterStoreVarsSynced(true, isRepoRef); err != nil {
+		return errors.Wrapf(err, "marking project/repo ref '%s' as having its project vars fully synced to Parameter Store", pRef.Id)
 	}
 
 	return nil
 }
 
 func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.ChangeInfo, error) {
-	// kim: TODO: needs updated logic from DEVPROD-11973 to check if PS is enabled.
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
-	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, projectVars.Id)
+
+	ref, isRepoRef, err := projectVars.findProjectRef()
 	grip.Error(message.WrapError(err, message.Fields{
-		"message":    "could not check if Parameter Store was enabled for project; assuming it's disabled and falling back to using the DB",
+		"message":    "could not get project ref to check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
 		"op":         "FindAndModify",
 		"project_id": projectVars.Id,
 		"epic":       "DEVPROD-5552",
 	}))
-	if isPSEnabled {
-		grip.Error(message.WrapError(projectVars.findAndModifyParameterStore(ctx, varsToDelete), message.Fields{
-			"message":    "could not find and modify project vars in Parameter Store; falling back to using the DB",
+	var isPSEnabled bool
+	if ref != nil {
+		isPSEnabled, err = isParameterStoreEnabledForProject(ctx, ref)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
 			"op":         "FindAndModify",
 			"project_id": projectVars.Id,
 			"epic":       "DEVPROD-5552",
 		}))
+	}
+	if isPSEnabled {
+		if !ref.ParameterStoreVarsSynced {
+			grip.Error(message.WrapError(fullSyncToParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
+				"message":    "could not fully sync project vars into Parameter Store; falling back to using the DB",
+				"op":         "FindANdModify",
+				"project_id": projectVars.Id,
+				"epic":       "DEVPROD-5552",
+			}))
+		} else {
+			grip.Error(message.WrapError(projectVars.findAndModifyParameterStore(ctx, varsToDelete), message.Fields{
+				"message":    "could not find and modify project vars in Parameter Store; falling back to using the DB",
+				"op":         "FindAndModify",
+				"project_id": projectVars.Id,
+				"epic":       "DEVPROD-5552",
+			}))
+		}
 	}
 
 	setUpdate := bson.M{}
@@ -804,8 +795,6 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 func (projectVars *ProjectVars) findAndModifyParameterStore(ctx context.Context, varsToDelete []string) error {
 	projectID := projectVars.Id
 
-	after := projectVars
-
 	before, err := FindOneProjectVars(projectID)
 	if err != nil {
 		return errors.Wrapf(err, "finding original project vars for project '%s'", projectID)
@@ -817,6 +806,7 @@ func (projectVars *ProjectVars) findAndModifyParameterStore(ctx context.Context,
 	// Ignore the vars that are deleted between before and after because
 	// FindAndModify only deletes variables that are explicitly specified in
 	// varsToDelete.
+	after := projectVars
 	varsToUpsert, _ := getProjectVarsDiff(before, after)
 
 	varSetToDelete := map[string]struct{}{}

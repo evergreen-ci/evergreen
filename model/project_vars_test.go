@@ -53,6 +53,11 @@ func TestFindOneProjectVar(t *testing.T) {
 	assert.Equal(vars, projectVarsFromDB.Vars)
 
 	checkParametersMatchVars(ctx, t, projectVarsFromDB.Parameters, vars)
+
+	dbProjRef, err := FindBranchProjectRef(pRef.Id)
+	require.NoError(t, err)
+	require.NotZero(t, dbProjRef)
+	assert.True(dbProjRef.ParameterStoreVarsSynced)
 }
 
 func TestFindMergedProjectVars(t *testing.T) {
@@ -194,10 +199,17 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 
 			checkParametersMatchVars(ctx, t, dbVars.Parameters, dbVars.Vars)
 
+			dbProjRef, err := FindBranchProjectRef(pRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.True(t, dbProjRef.ParameterStoreVarsSynced, "project vars should be synced to Parameter Store after Insert")
+
 			// want to "fix" b, add c, delete d
-			newVars := *vars
-			newVars.Vars = map[string]string{"b": "2", "c": "3"}
-			newVars.PrivateVars = map[string]bool{"a": true, "b": false}
+			newVars := &ProjectVars{
+				Id:          pRef.Id,
+				Vars:        map[string]string{"b": "2", "c": "3"},
+				PrivateVars: map[string]bool{"a": true, "b": false},
+			}
 			varsToDelete := []string{"d"}
 
 			info, err := newVars.FindAndModify(varsToDelete)
