@@ -413,8 +413,8 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error 
 }
 
 // syncParameterDiff syncs the diff of project variables to Parameter Store. It
-// adds/updates varsToUpsert, deletes varsToDelete from Parameter Store, and
-// updates the project variable parameter mappings.
+// adds/updates varsToUpsert to Parameter Store, deletes varsToDelete from
+// Parameter Store, and updates the project variable parameter mappings.
 func (projectVars *ProjectVars) syncParameterDiff(ctx context.Context, pm ParameterMappings, varsToUpsert map[string]string, varsToDelete map[string]struct{}) error {
 	paramMappingsToUpsert, err := projectVars.upsertParameters(ctx, pm, varsToUpsert)
 	if err != nil {
@@ -693,6 +693,7 @@ func (projectVars *ProjectVars) Insert() error {
 	return nil
 }
 
+// insertParameterStore inserts all project variables into Parameter Store.
 func insertParameterStore(ctx context.Context, vars *ProjectVars, pRef *ProjectRef, isRepoRef bool) error {
 	before := &ProjectVars{}
 	after := vars
@@ -791,6 +792,8 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 
 // findAndModifyParameterStore is almost the same functionally as Upsert, except
 // that it only deletes project vars that are explicitly provided in
+// varsToDelete. In other words, even if a project variable is omitted from
+// projectVars, it won't be deleted unless that variable is explicitly listed in
 // varsToDelete.
 func (projectVars *ProjectVars) findAndModifyParameterStore(ctx context.Context, varsToDelete []string) error {
 	projectID := projectVars.Id
@@ -845,7 +848,6 @@ func shouldGetAdminOnlyVars(t *task.Task) bool {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": fmt.Sprintf("problem with fetching user '%s'", t.ActivatedBy),
 			"task_id": t.Id,
-			"epic":    "DEVPROD-5552",
 		}))
 		return false
 	}
