@@ -143,14 +143,5 @@ func makeDownstreamProjectFromFile(ctx context.Context, ref model.ProjectRef, fi
 		RemotePath: file,
 		Revision:   ref.Branch,
 	}
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return model.ProjectInfo{}, errors.Wrap(err, "getting Evergreen settings")
-	}
-	opts.Token, err = settings.GetGithubOauthToken()
-	if err != nil {
-		return model.ProjectInfo{}, err
-	}
-
 	return model.GetProjectFromFile(context.Background(), opts)
 }

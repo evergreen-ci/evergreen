@@ -132,11 +132,7 @@ func (h *agentCheckGetPullRequestHandler) Parse(ctx context.Context, r *http.Req
 }
 
 func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Responder {
-	token, err := h.settings.GetGithubOauthToken()
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting token"))
-	}
-	pr, err := thirdparty.GetGithubPullRequest(ctx, token, h.req.Owner, h.req.Repo, h.req.PRNum)
+	pr, err := thirdparty.GetGithubPullRequest(ctx, h.req.Owner, h.req.Repo, h.req.PRNum)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
