@@ -74,8 +74,6 @@ type Settings struct {
 	CommitQueue         CommitQueueConfig         `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
 	ConfigDir           string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
 	ContainerPools      ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
-	Credentials         map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
-	CredentialsNew      util.KeyValuePairSlice    `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
 	Database            DBSettings                `yaml:"database" json:"database" bson:"database"`
 	DomainName          string                    `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
 	Expansions          map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
@@ -133,8 +131,6 @@ func (c *Settings) Set(ctx context.Context) error {
 			bannerThemeKey:        c.BannerTheme,
 			commitQueueKey:        c.CommitQueue,
 			configDirKey:          c.ConfigDir,
-			credentialsKey:        c.Credentials,
-			credentialsNewKey:     c.CredentialsNew,
 			domainNameKey:         c.DomainName,
 			expansionsKey:         c.Expansions,
 			expansionsNewKey:      c.ExpansionsNew,
@@ -165,11 +161,6 @@ func (c *Settings) ValidateAndDefault() error {
 		catcher.Add(errors.New("config directory must not be empty"))
 	}
 
-	if len(c.CredentialsNew) > 0 {
-		if c.Credentials, err = c.CredentialsNew.Map(); err != nil {
-			catcher.Add(errors.Wrap(err, "parsing credentials"))
-		}
-	}
 	if len(c.ExpansionsNew) > 0 {
 		if c.Expansions, err = c.ExpansionsNew.Map(); err != nil {
 			catcher.Add(errors.Wrap(err, "parsing expansions"))
