@@ -131,12 +131,8 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "getting admin settings"))
 		return
 	}
-	githubToken, err := conf.GetGithubOauthToken()
-	if err != nil {
-		j.AddError(errors.Wrap(err, "getting global GitHub OAuth token"))
-		return
-	}
-	j.TryUnstick(ctx, cq, projectRef, githubToken)
+
+	j.TryUnstick(ctx, cq, projectRef)
 
 	if cq.Processing() {
 		return
@@ -183,9 +179,9 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		}
 		// create a version with the item and subscribe to its completion
 		if nextItem.Source == commitqueue.SourcePullRequest {
-			j.processGitHubPRItem(ctx, cq, &nextItem, projectRef, githubToken)
+			j.processGitHubPRItem(ctx, cq, &nextItem, projectRef)
 		} else if nextItem.Source == commitqueue.SourceDiff {
-			j.processCLIPatchItem(ctx, cq, &nextItem, projectRef, githubToken)
+			j.processCLIPatchItem(ctx, cq, &nextItem, projectRef)
 		} else {
 			grip.Error(message.Fields{
 				"message": "commit queue entry has unknown source",
@@ -250,7 +246,7 @@ func (j *commitQueueJob) addMergeTaskDependencies(ctx context.Context, cq commit
 	return nil
 }
 
-func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQueue, projectRef *model.ProjectRef, githubToken string) {
+func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQueue, projectRef *model.ProjectRef) {
 	nextItem, valid := cq.Next()
 	if !valid {
 		return
@@ -278,7 +274,7 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 		j.dequeue(ctx, cq, nextItem, err.Error())
 		j.logError(err, nextItem)
 		if nextItem.Source == commitqueue.SourcePullRequest {
-			pr, _, err := checkPR(ctx, githubToken, nextItem.Issue, projectRef.Owner, projectRef.Repo)
+			pr, _, err := checkPR(ctx, nextItem.Issue, projectRef.Owner, projectRef.Repo)
 			if err != nil {
 				j.AddError(err)
 				return
@@ -367,8 +363,8 @@ func (j *commitQueueJob) TryUnstick(ctx context.Context, cq *commitqueue.CommitQ
 	}
 }
 
-func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
-	pr, dequeue, err := checkPR(ctx, githubToken, nextItem.Issue, projectRef.Owner, projectRef.Repo)
+func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef) {
+	pr, dequeue, err := checkPR(ctx, nextItem.Issue, projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		msg := "GitHub PR is not valid for merge"
 		err = errors.Wrap(err, msg)
@@ -382,7 +378,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	v, project, err := updateAndFinalizeCqPatch(ctx, j.env.Settings(), nextItem.PatchId, commitqueue.SourcePullRequest, projectRef, githubToken)
+	v, project, err := updateAndFinalizeCqPatch(ctx, j.env.Settings(), nextItem.PatchId, commitqueue.SourcePullRequest, projectRef)
 	if err != nil {
 		j.logError(err, *nextItem)
 		j.dequeue(ctx, cq, *nextItem, err.Error())
@@ -401,7 +397,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	}
 
 	j.AddError(thirdparty.SendCommitQueueGithubStatus(ctx, j.env, pr, message.GithubStatePending, "preparing to test merge", v.Id))
-	modulePRs, _, err := model.GetModulesFromPR(ctx, githubToken, nextItem.Modules, project)
+	modulePRs, _, err := model.GetModulesFromPR(ctx, nextItem.Modules, project)
 	if err != nil {
 		err = errors.Wrap(err, "getting PR modules")
 		j.logError(err, *nextItem)
@@ -416,8 +412,8 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	event.LogCommitQueueStartTestEvent(v.Id)
 }
 
-func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
-	v, _, err := updateAndFinalizeCqPatch(ctx, j.env.Settings(), nextItem.Issue, commitqueue.SourceDiff, projectRef, githubToken)
+func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef) {
+	v, _, err := updateAndFinalizeCqPatch(ctx, j.env.Settings(), nextItem.Issue, commitqueue.SourceDiff, projectRef)
 	if err != nil {
 		j.logError(err, *nextItem)
 		event.LogCommitQueueEnqueueFailed(nextItem.Issue, err)
@@ -441,7 +437,7 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 	event.LogCommitQueueStartTestEvent(v.Id)
 }
 
-func updateAndFinalizeCqPatch(ctx context.Context, settings *evergreen.Settings, patchId, source string, projectRef *model.ProjectRef, githubToken string) (*model.Version, *model.Project, error) {
+func updateAndFinalizeCqPatch(ctx context.Context, settings *evergreen.Settings, patchId, source string, projectRef *model.ProjectRef) (*model.Version, *model.Project, error) {
 	patchDoc, err := patch.FindOneId(patchId)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "finding patch '%s'", patchId)
@@ -450,7 +446,7 @@ func updateAndFinalizeCqPatch(ctx context.Context, settings *evergreen.Settings,
 		return nil, nil, errors.Errorf("patch '%s' not found", patchId)
 	}
 
-	project, pp, err := updatePatch(ctx, settings, githubToken, projectRef, patchDoc)
+	project, pp, err := updatePatch(ctx, settings, projectRef, patchDoc)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "updating patch")
 	}
@@ -476,7 +472,7 @@ func updateAndFinalizeCqPatch(ctx context.Context, settings *evergreen.Settings,
 	}
 	patchDoc.ProjectStorageMethod = ppStorageMethod
 
-	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
+	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finalizing patch")
 	}
@@ -502,13 +498,13 @@ func (j *commitQueueJob) dequeue(ctx context.Context, cq *commitqueue.CommitQueu
 	j.logError(errors.Wrap(err, "dequeueing commit queue item"), item)
 }
 
-func checkPR(ctx context.Context, githubToken, issue, owner, repo string) (*github.PullRequest, bool, error) {
+func checkPR(ctx context.Context, issue, owner, repo string) (*github.PullRequest, bool, error) {
 	issueInt, err := strconv.Atoi(issue)
 	if err != nil {
 		return nil, true, errors.Wrapf(err, "parsing issue '%s' as int", issue)
 	}
 
-	pr, err := thirdparty.GetGithubPullRequest(ctx, githubToken, owner, repo, issueInt)
+	pr, err := thirdparty.GetGithubPullRequest(ctx, owner, repo, issueInt)
 	if err != nil {
 		return nil, false, errors.Wrap(err, "getting PR from GitHub")
 	}
@@ -687,8 +683,8 @@ func setDefaultNotification(username string) error {
 	return nil
 }
 
-func updatePatch(ctx context.Context, settings *evergreen.Settings, githubToken string, projectRef *model.ProjectRef, patchDoc *patch.Patch) (*model.Project, *model.ParserProject, error) {
-	branch, err := thirdparty.GetBranchEvent(ctx, githubToken, projectRef.Owner, projectRef.Repo, projectRef.Branch)
+func updatePatch(ctx context.Context, settings *evergreen.Settings, projectRef *model.ProjectRef, patchDoc *patch.Patch) (*model.Project, *model.ParserProject, error) {
+	branch, err := thirdparty.GetBranchEvent(ctx, projectRef.Owner, projectRef.Repo, projectRef.Branch)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting branch")
 	}
@@ -703,7 +699,7 @@ func updatePatch(ctx context.Context, settings *evergreen.Settings, githubToken 
 	// rather than loading from the cached information from the patch document.
 	patchDoc.ProjectStorageMethod = ""
 	patchDoc.PatchedProjectConfig = ""
-	project, patchConfig, err := model.GetPatchedProject(ctx, settings, patchDoc, githubToken)
+	project, patchConfig, err := model.GetPatchedProject(ctx, settings, patchDoc)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting updated project config")
 	}
@@ -726,7 +722,7 @@ func updatePatch(ctx context.Context, settings *evergreen.Settings, githubToken 
 			return nil, nil, errors.Wrapf(err, "getting module owner and repo '%s'", module.Name)
 		}
 
-		sha, err = getBranchCommitHash(ctx, owner, repo, module.Branch, githubToken)
+		sha, err = getBranchCommitHash(ctx, owner, repo, module.Branch)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "getting commit hash for branch '%s'", module.Branch)
 		}
@@ -743,8 +739,8 @@ func updatePatch(ctx context.Context, settings *evergreen.Settings, githubToken 
 }
 
 // getBranchCommitHash retrieves the most recent commit hash for branch for the given repo, module, and branch name.
-func getBranchCommitHash(ctx context.Context, owner, repo, moduleBranch, token string) (string, error) {
-	branch, err := thirdparty.GetBranchEvent(ctx, token, owner, repo, moduleBranch)
+func getBranchCommitHash(ctx context.Context, owner, repo, moduleBranch string) (string, error) {
+	branch, err := thirdparty.GetBranchEvent(ctx, owner, repo, moduleBranch)
 	if err != nil {
 		return "", errors.Wrap(err, "getting branch")
 	}

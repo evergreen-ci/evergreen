@@ -1280,7 +1280,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
-	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, "", s.githubPatchData)
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, s.githubPatchData)
 	s.Require().NoError(err)
 	s.Require().Len(summaries, 2)
 	s.NotEmpty(patchContent)
@@ -1347,7 +1347,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
 
-	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, "", s.githubPatchData)
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, s.githubPatchData)
 	s.Require().NoError(err)
 	s.Require().Len(summaries, 2)
 	s.NotEmpty(patchContent)

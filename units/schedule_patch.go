@@ -54,7 +54,7 @@ func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId strin
 			return http.StatusInternalServerError, errors.Wrapf(err, "attaching trigger aliases '%s'", p.Id.Hex())
 		}
 	}
-	_, err = model.FinalizePatch(newCxt, p, p.GetRequester(), "")
+	_, err = model.FinalizePatch(newCxt, p, p.GetRequester())
 	if err != nil {
 		return http.StatusInternalServerError, errors.Wrap(err, "finalizing patch")
 	}

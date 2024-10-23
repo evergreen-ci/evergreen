@@ -22,19 +22,10 @@ const (
 )
 
 func getTracker(conf *evergreen.Settings, project model.ProjectRef) (*RepoTracker, error) {
-	token, err := conf.GetGithubOauthToken()
-	if err != nil {
-		grip.Warning(message.Fields{
-			"runner":  RunnerName,
-			"message": "GitHub credentials not specified in Evergreen credentials file",
-		})
-		return nil, errors.WithStack(err)
-	}
-
 	tracker := &RepoTracker{
 		Settings:   conf,
 		ProjectRef: &project,
-		RepoPoller: NewGithubRepositoryPoller(&project, token),
+		RepoPoller: NewGithubRepositoryPoller(&project),
 	}
 
 	return tracker, nil
@@ -93,9 +84,8 @@ func ActivateBuildsForProject(ctx context.Context, project model.ProjectRef, ts 
 
 // CheckGithubAPIResources returns true when the github API is ready,
 // accessible and with sufficient quota to satisfy our needs
-func CheckGithubAPIResources(ctx context.Context, githubToken string) bool {
-
-	remaining, err := thirdparty.CheckGithubAPILimit(ctx, githubToken)
+func CheckGithubAPIResources(ctx context.Context) bool {
+	remaining, err := thirdparty.CheckGithubAPILimit(ctx)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"runner":  RunnerName,

@@ -15,28 +15,6 @@ describe('AdminSettingsController', function() {
     });
   }));
 
-  describe('addCredential', function () {
-    var validChip = "foo:bar";
-    var invalidChip = "foobar";
-
-    it('returns a chip object for valid input', function() {
-      scope.tempCredentials = {};
-      expect(scope.addCredential(validChip)).toEqual(
-        {"foo": "bar"}
-      );
-      // adding the same thing twice is an error
-      expect(scope.addCredential(validChip)).toBe(
-        null
-      );
-    });
-
-    it('returns null for invalid chips', function() {
-      expect(scope.addCredential(invalidChip)).toBe(
-        null
-      );
-    });
-  });
-
   describe('chipToUserJSON', function () {
     it('returns a chip object for valid json', function() {
       var input = '{"username": "u", "password": "p"}';

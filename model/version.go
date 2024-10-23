@@ -729,7 +729,7 @@ func GetVersionsToModify(projectName string, opts ModifyVersionsOptions, startTi
 }
 
 // constructManifest will construct a manifest from the given project and version.
-func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList, token string) (*manifest.Manifest, error) {
+func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList) (*manifest.Manifest, error) {
 	if len(moduleList) == 0 {
 		return nil, nil
 	}
@@ -773,7 +773,7 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 			}
 		}
 
-		mfstModule, err := getManifestModule(v, projectRef, token, module)
+		mfstModule, err := getManifestModule(v, projectRef, module)
 		if err != nil {
 			return nil, errors.Wrapf(err, "module '%s'", module.Name)
 		}
@@ -784,7 +784,7 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 	return newManifest, nil
 }
 
-func getManifestModule(v *Version, projectRef *ProjectRef, token string, module Module) (*manifest.Module, error) {
+func getManifestModule(v *Version, projectRef *ProjectRef, module Module) (*manifest.Module, error) {
 	owner, repo, err := module.GetOwnerAndRepo()
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
@@ -794,7 +794,7 @@ func getManifestModule(v *Version, projectRef *ProjectRef, token string, module 
 		ghCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 
-		commit, err := thirdparty.GetCommitEvent(ghCtx, token, projectRef.Owner, projectRef.Repo, v.Revision)
+		commit, err := thirdparty.GetCommitEvent(ghCtx, projectRef.Owner, projectRef.Repo, v.Revision)
 		if err != nil {
 			return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", v.Revision, projectRef.Owner, projectRef.Repo)
 		}
@@ -808,7 +808,7 @@ func getManifestModule(v *Version, projectRef *ProjectRef, token string, module 
 			revisionTime = commit.Commit.Committer.GetDate().Time
 		}
 
-		branchCommits, _, err := thirdparty.GetGithubCommits(ghCtx, token, owner, repo, module.Branch, revisionTime, 0)
+		branchCommits, _, err := thirdparty.GetGithubCommits(ghCtx, owner, repo, module.Branch, revisionTime, 0)
 		if err != nil {
 			return nil, errors.Wrapf(err, "retrieving git branch for module '%s'", module.Name)
 		}
@@ -831,7 +831,7 @@ func getManifestModule(v *Version, projectRef *ProjectRef, token string, module 
 	defer cancel()
 
 	sha := module.Ref
-	gitCommit, err := thirdparty.GetCommitEvent(ghCtx, token, owner, repo, module.Ref)
+	gitCommit, err := thirdparty.GetCommitEvent(ghCtx, owner, repo, module.Ref)
 	if err != nil {
 		return nil, errors.Wrapf(err, "retrieving getting git commit for module '%s' with hash '%s'", module.Name, module.Ref)
 	}
@@ -848,11 +848,7 @@ func getManifestModule(v *Version, projectRef *ProjectRef, token string, module 
 
 // CreateManifest inserts a newly constructed manifest into the DB.
 func CreateManifest(v *Version, modules ModuleList, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
-	token, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting GitHub token")
-	}
-	newManifest, err := constructManifest(v, projectRef, modules, token)
+	newManifest, err := constructManifest(v, projectRef, modules)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}

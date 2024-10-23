@@ -18,7 +18,7 @@ type Connector interface {
 	// Get and Set URL provide access to the main url string of the API.
 	GetURL() string
 	SetURL(string)
-	GetProjectFromFile(context.Context, model.ProjectRef, string, string) (model.ProjectInfo, error)
+	GetProjectFromFile(context.Context, model.ProjectRef, string) (model.ProjectInfo, error)
 	CreateVersionFromConfig(context.Context, *model.ProjectInfo, model.VersionMetadata) (*model.Version, error)
 	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
 	AddPatchForPR(context.Context, model.ProjectRef, int, []restModel.APIModule, string) (*patch.Patch, error)

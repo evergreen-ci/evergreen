@@ -410,7 +410,7 @@ func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 	s.NoError(pRef.Insert())
 	s.NoError(projectAlias.Upsert())
 
-	v, err := s.mock.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag, "")
+	v, err := s.mock.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag)
 	s.NoError(err)
 	s.NotNil(v)
 }

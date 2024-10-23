@@ -10,7 +10,6 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v52/github"
-	"github.com/pkg/errors"
 )
 
 type MockGitHubConnectorImpl struct {
@@ -47,10 +46,6 @@ func (pc *MockGitHubConnectorImpl) AddCommentToPR(ctx context.Context, owner, re
 }
 
 func (pc *MockGitHubConnectorImpl) IsAuthorizedToPatchAndMerge(ctx context.Context, settings *evergreen.Settings, args UserRepoInfo) (bool, error) {
-	_, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return false, errors.Wrap(err, "can't get GitHub OAuth token from configuration")
-	}
 
 	permission, ok := pc.UserPermissions[args]
 	if !ok {
@@ -61,7 +56,7 @@ func (pc *MockGitHubConnectorImpl) IsAuthorizedToPatchAndMerge(ctx context.Conte
 	return hasPermission, nil
 }
 
-func (pc *MockGitHubConnectorImpl) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (model.ProjectInfo, error) {
+func (pc *MockGitHubConnectorImpl) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string) (model.ProjectInfo, error) {
 	config := `
 buildvariants:
 - name: v1
@@ -75,7 +70,6 @@ tasks:
 	opts := &model.GetProjectOpts{
 		Ref:          &pRef,
 		RemotePath:   file,
-		Token:        token,
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	pp, err := model.LoadProjectInto(ctx, []byte(config), opts, pRef.Id, p)

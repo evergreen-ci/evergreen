@@ -16,15 +16,13 @@ import (
 // required of a RepoPoller
 type GithubRepositoryPoller struct {
 	ProjectRef *model.ProjectRef
-	OauthToken string
 }
 
 // NewGithubRepositoryPoller constructs and returns a pointer to a
 // GithubRepositoryPoller struct
-func NewGithubRepositoryPoller(projectRef *model.ProjectRef, oauthToken string) *GithubRepositoryPoller {
+func NewGithubRepositoryPoller(projectRef *model.ProjectRef) *GithubRepositoryPoller {
 	return &GithubRepositoryPoller{
 		ProjectRef: projectRef,
-		OauthToken: oauthToken,
 	}
 }
 
@@ -64,7 +62,6 @@ func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(ctx context.Context, 
 		Ref:        projectRef,
 		RemotePath: projectRef.RemotePath,
 		Revision:   projectFileRevision,
-		Token:      gRepoPoller.OauthToken,
 	}
 	return model.GetProjectFromFile(ctx, opts)
 }
@@ -78,7 +75,6 @@ func (gRepoPoller *GithubRepositoryPoller) GetChangedFiles(ctx context.Context, 
 	// get the entire commit, then pull the files from it
 	projectRef := gRepoPoller.ProjectRef
 	commit, err := thirdparty.GetCommitEvent(ctx,
-		gRepoPoller.OauthToken,
 		projectRef.Owner,
 		projectRef.Repo,
 		commitRevision,
@@ -114,8 +110,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 
 	for len(revisions) < maxRevisionsToSearch {
 		var err error
-		commits, commitPage, err = thirdparty.GetGithubCommits(ctx,
-			gRepoPoller.OauthToken, gRepoPoller.ProjectRef.Owner,
+		commits, commitPage, err = thirdparty.GetGithubCommits(ctx, gRepoPoller.ProjectRef.Owner,
 			gRepoPoller.ProjectRef.Repo, gRepoPoller.ProjectRef.Branch, time.Time{}, commitPage)
 		if err != nil {
 			return nil, err
@@ -172,7 +167,6 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 			defer cancel()
 			baseRevision, err = thirdparty.GetGithubMergeBaseRevision(
 				githubCtx,
-				gRepoPoller.OauthToken,
 				gRepoPoller.ProjectRef.Owner,
 				gRepoPoller.ProjectRef.Repo,
 				revision,
@@ -202,7 +196,6 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 
 		// automatically set the newly found base revision as base revision and append revisions
 		commit, err := thirdparty.GetCommitEvent(ctx,
-			gRepoPoller.OauthToken,
 			gRepoPoller.ProjectRef.Owner,
 			gRepoPoller.ProjectRef.Repo,
 			baseRevision,
@@ -254,8 +247,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRecentRevisions(maxRevisions int) 
 	for {
 		var err error
 		var repoCommits []*github.RepositoryCommit
-		repoCommits, commitPage, err = thirdparty.GetGithubCommits(ctx,
-			gRepoPoller.OauthToken, gRepoPoller.ProjectRef.Owner,
+		repoCommits, commitPage, err = thirdparty.GetGithubCommits(ctx, gRepoPoller.ProjectRef.Owner,
 			gRepoPoller.ProjectRef.Repo, gRepoPoller.ProjectRef.Branch,
 			time.Time{}, commitPage)
 		if err != nil {

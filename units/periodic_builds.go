@@ -157,12 +157,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 }
 
 func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.VersionMetadata, configFilePath string) error {
-	token, err := j.env.Settings().GetGithubOauthToken()
-	if err != nil {
-		return errors.Wrap(err, "getting GitHub OAuth token")
-	}
-
-	configFile, err := thirdparty.GetGithubFile(ctx, token, j.project.Owner, j.project.Repo, configFilePath, metadata.Revision.Revision)
+	configFile, err := thirdparty.GetGithubFile(ctx, j.project.Owner, j.project.Repo, configFilePath, metadata.Revision.Revision)
 	if err != nil {
 		return errors.Wrap(err, "getting config file from GitHub")
 	}
@@ -174,7 +169,6 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.Versio
 	opts := &model.GetProjectOpts{
 		Ref:          j.project,
 		Revision:     metadata.Revision.Revision,
-		Token:        token,
 		ReadFileFrom: model.ReadFromGithub,
 	}
 	intermediateProject, err := model.LoadProjectInto(ctx, configBytes, opts, j.project.Id, proj)

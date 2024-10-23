@@ -15,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func GetModulesFromPR(ctx context.Context, githubToken string, modules []commitqueue.Module, projectConfig *Project) ([]*github.PullRequest, []patch.ModulePatch, error) {
+func GetModulesFromPR(ctx context.Context, modules []commitqueue.Module, projectConfig *Project) ([]*github.PullRequest, []patch.ModulePatch, error) {
 	var modulePRs []*github.PullRequest
 	var modulePatches []patch.ModulePatch
 	for _, mod := range modules {
@@ -32,7 +32,7 @@ func GetModulesFromPR(ctx context.Context, githubToken string, modules []commitq
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "malformed PR number for module '%s'", mod.Module)
 		}
-		pr, err := thirdparty.GetMergeablePullRequest(ctx, prNum, githubToken, owner, repo)
+		pr, err := thirdparty.GetMergeablePullRequest(ctx, prNum, owner, repo)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "PR not valid for merge")
 		}
