@@ -248,6 +248,19 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 
+		nextTaskResponse.MaxIdleDuration = h.host.Distro.HostAllocatorSettings.AcceptableHostIdleTime
+		if nextTaskResponse.MaxIdleDuration == 0 {
+			schedulerConfig := evergreen.SchedulerConfig{}
+			err := schedulerConfig.Get(ctx)
+
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem getting scheduler config for idle threshold to send for next task",
+			}))
+			if err == nil {
+				nextTaskResponse.MaxIdleDuration = time.Duration(schedulerConfig.AcceptableHostIdleTimeSeconds) * time.Second
+			}
+		}
+
 		return gimlet.NewJSONResponse(nextTaskResponse)
 	}
 
