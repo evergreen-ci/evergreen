@@ -164,6 +164,8 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageVariablesSection, true, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
+			// kim: TODO: verify saving project settings and finding project
+			// vars still works after DEVPROD-9405.
 			varsFromDb, err := model.FindOneProjectVars(updatedVars.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, varsFromDb)
@@ -180,20 +182,22 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
-			Id:         "myRepoId",
-			Owner:      "evergreen-ci",
-			Repo:       "evergreen",
-			Restricted: utility.FalsePtr(),
-			Admins:     []string{"oldAdmin"},
+			Id:                    "myRepoId",
+			Owner:                 "evergreen-ci",
+			Repo:                  "evergreen",
+			Restricted:            utility.FalsePtr(),
+			Admins:                []string{"oldAdmin"},
+			ParameterStoreEnabled: true,
 		}}
 		assert.NoError(t, repoRef.Upsert())
 
 		pRefThatDefaults := model.ProjectRef{
-			Id:        "myId",
-			Owner:     "evergreen-ci",
-			Repo:      "evergreen",
-			RepoRefId: "myRepoId",
-			Admins:    []string{"oldAdmin"},
+			Id:                    "myId",
+			Owner:                 "evergreen-ci",
+			Repo:                  "evergreen",
+			RepoRefId:             "myRepoId",
+			Admins:                []string{"oldAdmin"},
+			ParameterStoreEnabled: true,
 		}
 		assert.NoError(t, pRefThatDefaults.Upsert())
 
@@ -210,6 +214,10 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			PrivateVars: map[string]bool{"hello": true},
 		}
 		assert.NoError(t, pVars.Insert())
+
+		// kim: TODO: check that inserting vars here work with
+		// FindOneProjectVars round trip after DEVPROD-9405.
+
 		// add scopes
 		allProjectsScope := gimlet.Scope{
 			ID:        evergreen.AllProjectsScope,

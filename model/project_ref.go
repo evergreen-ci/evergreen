@@ -1352,6 +1352,7 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 	commonPrivate := map[string]bool{}
 	commonAdminOnly := map[string]bool{}
 	for i, id := range projectIds {
+		// kim: TODO: update unit tests for project vars
 		vars, err := FindOneProjectVars(id)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding variables for project '%s'", id)
@@ -2020,6 +2021,7 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 }
 
 // GetProjectSettings returns the ProjectSettings of the given identifier and ProjectRef
+// kim: TODO: update unit tests for project vars
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	// Don't error even if there is problem with verifying the GitHub app installation
 	// because a GitHub outage could cause project settings page to not load.

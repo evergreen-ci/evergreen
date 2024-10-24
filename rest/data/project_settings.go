@@ -109,6 +109,7 @@ func disableStartingSettings(p *model.ProjectRef) {
 // PromoteVarsToRepo moves variables from an attached project to its repo.
 // Promoted vars are removed from the project as part of this operation.
 // Variables whose names already appear in the repo settings will be overwritten.
+// kim: TODO: verify vars promotion to repo still works after DEVPROD-9405.
 func PromoteVarsToRepo(projectIdentifier string, varNames []string, userId string) error {
 	project, err := model.GetProjectSettingsById(projectIdentifier, false)
 	if err != nil {

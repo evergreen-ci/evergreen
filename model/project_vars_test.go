@@ -778,6 +778,7 @@ func TestShouldGetAdminOnlyVars(t *testing.T) {
 	}
 }
 
+// kim: TODO: update these tests to check for consistent PS/DB variables.
 func TestFullSyncToParameterStore(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectVarsCollection, fakeparameter.Collection))

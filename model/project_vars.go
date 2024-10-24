@@ -295,6 +295,7 @@ func compareProjVars(varsFromDB, varsFromPS map[string]string) error {
 }
 
 // FindMergedProjectVars merges vars from the target project's ProjectVars and its parent repo's vars
+// kim: TODO: update tests that use this.
 func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 	project, err := FindBranchProjectRef(projectID)
 	if err != nil {
@@ -410,6 +411,8 @@ func (projectVars *ProjectVars) updateSingleVar(key, val string) error {
 
 // CopyProjectVars copies the variables for the first project to the second
 func CopyProjectVars(oldProjectId, newProjectId string) error {
+	// kim: TODO: verify unit tests for copying vars still pass after
+	// DEVPROD-9405.
 	vars, err := FindOneProjectVars(oldProjectId)
 	if err != nil {
 		return errors.Wrapf(err, "finding variables for project '%s'", oldProjectId)
@@ -423,6 +426,8 @@ func CopyProjectVars(oldProjectId, newProjectId string) error {
 	return errors.Wrapf(err, "inserting variables for project '%s", newProjectId)
 }
 
+// kim: TODO: verify any callers using this still pass unit tests after
+// DEVPROD-9405.
 func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
 	vars, err := FindOneProjectVars(projectId)
 	if err != nil {

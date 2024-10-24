@@ -1073,6 +1073,7 @@ func TestDetachFromRepo(t *testing.T) {
 		"NewRepoVarsAreMerged": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
+			// kim: TODO: make sure this still passes after DEVPROD-9405
 			vars, err := FindOneProjectVars(pRef.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, vars)
@@ -1089,6 +1090,7 @@ func TestDetachFromRepo(t *testing.T) {
 
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
+			// kim: TODO: make sure this still passes after DEVPROD-9405
 			vars, err := FindOneProjectVars(pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, vars)
@@ -1460,6 +1462,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 					TicketCreateProject:  "BFG",
 					TicketSearchProjects: []string{"BF", "BFG"},
 				},
+				ParameterStoreEnabled: true,
 			}
 			assert.NoError(t, pRef.Insert())
 
@@ -1468,6 +1471,8 @@ func TestDefaultRepoBySection(t *testing.T) {
 				Vars:        map[string]string{"hello": "world"},
 				PrivateVars: map[string]bool{"hello": true},
 			}
+			// kim: TODO: test that this passes round trip test with
+			// FindOneProjectVars.
 			assert.NoError(t, pVars.Insert())
 
 			aliases := []ProjectAlias{
@@ -1954,6 +1959,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Equal(t, "my message", repoRef.CommitQueue.Message)
 	assert.False(t, repoRef.TaskSync.IsPatchEnabled())
 
+	// kim: TODO: verify this passes after DEVPROD-9405
 	projectVars, err := FindOneProjectVars(repoRef.Id)
 	assert.NoError(t, err)
 	assert.Len(t, projectVars.Vars, 3)
