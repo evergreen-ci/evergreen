@@ -140,17 +140,18 @@ func VersionByProjectIdAndRevisionPrefix(projectId, revisionPrefix string) db.Q 
 		})
 }
 
+// VersionByProjectIdAndCreateTime finds the most recent system-requested version created on or before a specified createTime.
 func VersionByProjectIdAndCreateTime(projectId string, createTime time.Time) db.Q {
 	return db.Query(
 		bson.M{
 			VersionIdentifierKey: projectId,
 			VersionCreateTimeKey: bson.M{
-				"$gte": createTime,
+				"$lte": createTime,
 			},
 			VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
-		})
+		}).Sort([]string{"-" + VersionRevisionOrderNumberKey})
 }
 
 // ByProjectIdAndOrder finds non-patch versions for the given project with revision

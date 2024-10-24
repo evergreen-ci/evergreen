@@ -324,3 +324,62 @@ func TestFindBaseVersionForVersion(t *testing.T) {
 	assert.Nil(t, version)
 
 }
+
+func TestVersionByProjectIdAndRevisionPrefix(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(VersionCollection))
+	day := 24 * time.Hour
+	ts := time.Now()
+	v1 := Version{
+		Id:                  "v1",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-1 * day),
+		RevisionOrderNumber: 5,
+	}
+	v2 := Version{
+		Id:                  "v2",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-2 * day),
+		RevisionOrderNumber: 4,
+	}
+	v3 := Version{
+		Id:                  "v3",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-3 * day).Add(30 * time.Minute),
+		RevisionOrderNumber: 3,
+	}
+	v4 := Version{
+		Id:                  "v4",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-3 * day),
+		RevisionOrderNumber: 2,
+	}
+	v5 := Version{
+		Id:                  "v5",
+		Identifier:          "proj",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          ts.Add(-5 * day),
+		RevisionOrderNumber: 1,
+	}
+
+	assert.NoError(t, db.InsertMany(VersionCollection, v1, v2, v3, v4, v5))
+
+	v, err := VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts))
+	assert.NoError(t, err)
+	assert.Equal(t, v.Id, "v1")
+
+	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-3*day)))
+	assert.NoError(t, err)
+	assert.Equal(t, v.Id, "v4")
+
+	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-2*day).Add(-30*time.Minute)))
+	assert.NoError(t, err)
+	assert.Equal(t, v.Id, "v3")
+
+	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-2*day)))
+	assert.NoError(t, err)
+	assert.Equal(t, v.Id, "v2")
+}
