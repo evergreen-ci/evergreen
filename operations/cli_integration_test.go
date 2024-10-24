@@ -134,6 +134,7 @@ func TestCLIFetchSource(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig)
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
+	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
 	_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": build.Collection})
 	_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": task.Collection})
 	_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": model.VersionCollection})
@@ -213,6 +214,7 @@ func TestCLIFetchArtifacts(t *testing.T) {
 	defer cancel()
 
 	testutil.ConfigureIntegrationTest(t, testConfig)
+	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
 
 	Convey("with API test server running", t, func() {
 		testSetup := setupCLITestHarness(ctx)
@@ -364,6 +366,7 @@ func TestCLIFunctions(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig)
 	testutil.DisablePermissionsForTests()
 	defer testutil.EnablePermissionsForTests()
+	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
 	require.NoError(t, evergreen.UpdateConfig(ctx, testConfig), ShouldBeNil)
 
 	var patches []patch.Patch

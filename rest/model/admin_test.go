@@ -61,7 +61,10 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.GithubPRCreatorOrg, *apiSettings.GithubPRCreatorOrg)
 	assert.Equal(testSettings.LogPath, *apiSettings.LogPath)
 	assert.Equal(testSettings.PprofPort, *apiSettings.PprofPort)
-
+	for k, v := range testSettings.Credentials {
+		assert.Contains(apiSettings.Credentials, k)
+		assert.Equal(v, apiSettings.Credentials[k])
+	}
 	for k, v := range testSettings.Expansions {
 		assert.Contains(apiSettings.Expansions, k)
 		assert.Equal(v, apiSettings.Expansions[k])

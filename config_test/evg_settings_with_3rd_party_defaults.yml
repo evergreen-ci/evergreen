@@ -5,6 +5,7 @@ database:
     wmode: "majority"
 
 configdir: "config_test"
+credentials: { github: "token xxx" }
 
 amboy:
   name: test_queue
@@ -146,3 +147,4 @@ github_pr_creator_org: "10gen"
 
 task_limits:
   max_hourly_patch_tasks: 100
+

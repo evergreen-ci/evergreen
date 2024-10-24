@@ -92,6 +92,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('docker')">Docker</li>
 						<div>Other</div>
 						<li class="link" ng-click="scrollTo('misc')">Misc Settings</li>
+						<li class="link" ng-click="scrollTo('credentials')">Credentials</li>
 						<li class="link" ng-click="scrollTo('buckets')">Bucket Config</li>
 						<li class="link" ng-click="scrollTo('expansions')">Expansions</li>
 						<li class="link" ng-click="scrollTo('host_jasper')">Host Jasper</li>
@@ -2218,7 +2219,17 @@ Admin Settings
 
 						<section layout="row" flex>
 
-							<md-card flex=50 id="credentials">	
+							<md-card flex=50 id="credentials">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Credentials</span>
+									</md-card-title-text>
+								</md-card-title>
+								<md-card-content>
+									<md-chips md-transform-chip="addCredential($chip)" ng-model="tempCredentials"
+										placeholder="Enter each line as a key:value">
+									</md-chips>
+								</md-card-content>
 								<md-card-content>
 									<label>SSH Keys</label>
 									<md-list>

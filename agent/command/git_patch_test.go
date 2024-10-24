@@ -47,7 +47,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		require.NoError(t, err)
 		taskConfig, err := agentutil.MakeTaskConfigFromModelData(ctx, settings, modelData)
 		require.NoError(t, err)
-		taskConfig.Expansions = *util.NewExpansions(map[string]string{})
+		taskConfig.Expansions = *util.NewExpansions(settings.Credentials)
 
 		err = setupTestPatchData(modelData, patchFile, t)
 		require.NoError(t, err)
