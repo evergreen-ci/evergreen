@@ -72,9 +72,16 @@ func (c *perfSend) Execute(ctx context.Context, comm client.Communicator, logger
 	if err != nil {
 		return errors.Wrap(err, "connecting to Cedar")
 	}
+	cedarConfig, err := comm.GetCedarConfig(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting Cedar config for performance results")
+	}
 	opts := rpc.UploadReportOptions{
-		Report:     report,
-		ClientConn: conn,
+		Report:          report,
+		CedarClientConn: conn,
+		SendToCedar:     !cedarConfig.SendToCedarDisabled,
+		SendRatioSPS:    cedarConfig.SendRatioSPS,
+		SPSURL:          cedarConfig.SPSURL,
 	}
 	return errors.Wrap(rpc.UploadReport(ctx, opts), "uploading report to Cedar")
 }

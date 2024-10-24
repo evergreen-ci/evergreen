@@ -44,12 +44,21 @@ func TestEC2AssumeRoleParse(t *testing.T) {
 
 func TestEC2AssumeRoleExecute(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig){
+		"OldMigration": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+			// TODO (DEVPROD-9947): Remove this.
+			c := &ec2AssumeRole{
+				RoleARN:         "randomRoleArn1234567890",
+				DurationSeconds: 10,
+			}
+			assert.EqualError(t, c.Execute(ctx, comm, logger, conf), "no EC2 keys in config")
+		},
 		"BadAWSResponse": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			comm.AssumeRoleResponse = nil
 
 			c := &ec2AssumeRole{
-				RoleARN:         "randomRoleArn1234567890",
-				DurationSeconds: 10,
+				RoleARN:              "randomRoleArn1234567890",
+				DurationSeconds:      10,
+				TemporaryFeatureFlag: true,
 			}
 			assert.EqualError(t, c.Execute(ctx, comm, logger, conf), "nil credentials returned")
 		},
@@ -62,8 +71,9 @@ func TestEC2AssumeRoleExecute(t *testing.T) {
 			}
 
 			c := &ec2AssumeRole{
-				RoleARN:         "randomRoleArn1234567890",
-				DurationSeconds: 10,
+				RoleARN:              "randomRoleArn1234567890",
+				DurationSeconds:      10,
+				TemporaryFeatureFlag: true,
 			}
 			require.NoError(t, c.Execute(ctx, comm, logger, conf))
 

@@ -138,7 +138,7 @@ func TestCreateGitHubAppAuth(t *testing.T) {
 	delete(settings.Expansions, evergreen.GithubAppPrivateKey)
 
 	authFields := CreateGitHubAppAuth(settings)
-	assert.Equal(t, "", authFields.Id)
+	assert.Nil(t, authFields)
 
 	settings.AuthConfig.Github = &evergreen.GithubAuthConfig{
 		AppId: 1234,

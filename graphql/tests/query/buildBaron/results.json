@@ -6,7 +6,7 @@
         "data": null,
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to access 'annotations' for the project 'evergreen'",
+            "message": "user 'testuser' does not have permission to 'view annotations' for the project 'evergreen'",
             "path": ["buildBaron", "taskId"],
             "extensions": {
               "code": "FORBIDDEN"

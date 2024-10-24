@@ -108,6 +108,7 @@ variables:
           env:
             GITHUB_APP_ID: ${staging_github_app_id}
             GITHUB_APP_KEY: ${staging_github_app_key}
+            GITHUB_TOKEN: ${github_token}
           command: bash scripts/setup-smoke-config.sh
       - func: run-make
         vars: { target: "set-smoke-vars" }
@@ -276,6 +277,7 @@ functions:
         silent: true
         working_dir: evergreen
         env:
+          GITHUB_TOKEN: ${github_token}
           GITHUB_APP_ID: ${staging_github_app_id}
           GITHUB_APP_KEY: ${staging_github_app_key}
           JIRA_SERVER: ${jiraserver}
