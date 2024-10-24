@@ -115,6 +115,7 @@ type TaskQueueItem struct {
 	Priority            int64         `bson:"priority" json:"priority"`
 	PriorityRankValue   int64         `bson:"priority_rank_value" json:"priority_rank_value"`
 	Dependencies        []string      `bson:"dependencies" json:"dependencies"`
+	DependenciesMet     bool          `bson:"dependencies_met" json:"dependencies_met"`
 	ActivatedBy         string        `bson:"activated_by" json:"activated_by"`
 }
 
