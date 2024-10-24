@@ -14,6 +14,7 @@ buckets:
 domain_name: "evergreen.localhost"
 
 configdir: "config_test"
+credentials: { github: "token xxx" }
 
 amboy:
   name: test_queue

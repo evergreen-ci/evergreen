@@ -21,6 +21,7 @@ const (
 type WaterfallTask struct {
 	Id          string `bson:"_id" json:"_id"`
 	DisplayName string `bson:"display_name" json:"display_name"`
+	Execution   int    `bson:"execution" json:"execution"`
 	Status      string `bson:"status" json:"status"`
 }
 
@@ -161,7 +162,6 @@ func GetWaterfallBuildVariants(ctx context.Context, versionIds []string) ([]Wate
 		},
 	})
 	pipeline = append(pipeline, bson.M{
-		// TODO DEVPROD-10178: Should be able to filter on build variant ID/name here.
 		"$lookup": bson.M{
 			"from":         build.Collection,
 			"localField":   buildsKey,
@@ -180,12 +180,12 @@ func GetWaterfallBuildVariants(ctx context.Context, versionIds []string) ([]Wate
 			{
 				"$sort": bson.M{task.IdKey: 1},
 			},
-			// TODO DEVPROD-10179, DEVPROD-10180: Should be able to filter on the returned task names and statuses here.
 			{
 				"$project": bson.M{
 					task.IdKey:          1,
 					task.StatusKey:      1,
 					task.DisplayNameKey: 1,
+					task.ExecutionKey:   1,
 				},
 			},
 		},

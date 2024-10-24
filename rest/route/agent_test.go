@@ -465,6 +465,7 @@ func TestAgentCheckGetPullRequestHandler(t *testing.T) {
 
 			env := &mock.Environment{}
 			assert.NoError(t, env.Configure(ctx))
+			env.EvergreenSettings.Credentials = map[string]string{"github": "token globalGitHubOauthToken"}
 
 			tsk := &task.Task{
 				Id:      "t1",

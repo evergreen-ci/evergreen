@@ -181,6 +181,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	foundNotifyEvent := false
 	foundFlagsEvent := false
 	foundProvidersEvent := false
+	foundRootEvent := false
 	foundUiEvent := false
 	for _, evt := range events {
 		s.Equal(event.EventTypeValueChanged, evt.EventType)
@@ -197,6 +198,9 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 			foundProvidersEvent = true
 			s.Require().True(len(v.AWS.EC2Keys) > 0)
 			s.Equal(testSettings.Providers.AWS.EC2Keys[0].Key, v.AWS.EC2Keys[0].Key)
+		case *evergreen.Settings:
+			foundRootEvent = true
+			s.Equal(testSettings.Credentials, v.Credentials)
 		case *evergreen.UIConfig:
 			foundUiEvent = true
 			s.Equal(testSettings.Ui.Url, v.Url)
@@ -206,6 +210,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.True(foundNotifyEvent)
 	s.True(foundFlagsEvent)
 	s.True(foundProvidersEvent)
+	s.True(foundRootEvent)
 	s.True(foundUiEvent)
 
 	// test that updating the model with nil values does not change them
