@@ -327,41 +327,40 @@ func TestFindBaseVersionForVersion(t *testing.T) {
 
 func TestVersionByProjectIdAndRevisionPrefix(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(VersionCollection))
-	day := 24 * time.Hour
 	ts := time.Now()
 	v1 := Version{
 		Id:                  "v1",
 		Identifier:          "proj",
 		Requester:           evergreen.RepotrackerVersionRequester,
-		CreateTime:          ts.Add(-1 * day),
+		CreateTime:          ts.Add(-1 * utility.Day),
 		RevisionOrderNumber: 5,
 	}
 	v2 := Version{
 		Id:                  "v2",
-		Identifier:          "proj",
+		Identifier:          "proj_2",
 		Requester:           evergreen.RepotrackerVersionRequester,
-		CreateTime:          ts.Add(-2 * day),
+		CreateTime:          ts.Add(-2 * utility.Day),
 		RevisionOrderNumber: 4,
 	}
 	v3 := Version{
 		Id:                  "v3",
 		Identifier:          "proj",
 		Requester:           evergreen.RepotrackerVersionRequester,
-		CreateTime:          ts.Add(-3 * day).Add(30 * time.Minute),
+		CreateTime:          ts.Add(-3 * utility.Day).Add(30 * time.Minute),
 		RevisionOrderNumber: 3,
 	}
 	v4 := Version{
 		Id:                  "v4",
 		Identifier:          "proj",
-		Requester:           evergreen.RepotrackerVersionRequester,
-		CreateTime:          ts.Add(-3 * day),
+		Requester:           evergreen.GitTagRequester,
+		CreateTime:          ts.Add(-3 * utility.Day),
 		RevisionOrderNumber: 2,
 	}
 	v5 := Version{
 		Id:                  "v5",
 		Identifier:          "proj",
-		Requester:           evergreen.RepotrackerVersionRequester,
-		CreateTime:          ts.Add(-5 * day),
+		Requester:           evergreen.PatchVersionRequester,
+		CreateTime:          ts.Add(-5 * utility.Day),
 		RevisionOrderNumber: 1,
 	}
 
@@ -371,15 +370,24 @@ func TestVersionByProjectIdAndRevisionPrefix(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, v.Id, "v1")
 
-	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-3*day)))
+	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-3*utility.Day)))
 	assert.NoError(t, err)
 	assert.Equal(t, v.Id, "v4")
 
-	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-2*day).Add(-30*time.Minute)))
+	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-2*utility.Day).Add(-30*time.Minute)))
 	assert.NoError(t, err)
 	assert.Equal(t, v.Id, "v3")
 
-	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-2*day)))
+	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-2*utility.Day)))
+	assert.NoError(t, err)
+	assert.Equal(t, v.Id, "v3")
+
+	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj_2", ts.Add(-2*utility.Day)))
 	assert.NoError(t, err)
 	assert.Equal(t, v.Id, "v2")
+
+	// Does not match on patch requester
+	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-5*utility.Day)))
+	assert.NoError(t, err)
+	assert.Nil(t, v)
 }
