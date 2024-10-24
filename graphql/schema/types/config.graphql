@@ -10,10 +10,10 @@ type SpruceConfig {
   githubOrgs: [String!]!
   jira: JiraConfig
   providers: CloudProviderConfig
+  secretFields: [String!]!
   slack: SlackConfig
   spawnHost: SpawnHostConfig!
-  ui: UIConfig
-  secretFields: [String!]!
+  ui: UIConfig!
 }
 
 type ContainerPoolsConfig {
@@ -30,6 +30,7 @@ type ContainerPool {
 type UIConfig {
   defaultProject: String!
   userVoice: String
+  betaFeatures: BetaFeatures!
 }
 
 type SlackConfig {

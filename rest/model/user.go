@@ -17,9 +17,9 @@ import (
 )
 
 type APIDBUser struct {
-	BetaFeatures APIBetaFeatures `json:"beta_features"`
-	DisplayName  *string         `json:"display_name"`
-	EmailAddress *string         `json:"email_address"`
+	BetaFeatures evergreen.APIBetaFeatures `json:"beta_features"`
+	DisplayName  *string                   `json:"display_name"`
+	EmailAddress *string                   `json:"email_address"`
 	// will be set to true if the user represents a service user
 	OnlyApi         bool               `json:"only_api"`
 	Roles           []string           `json:"roles"`
@@ -41,7 +41,7 @@ func (s *APIDBUser) BuildFromService(usr user.DBUser) {
 	userSettings.BuildFromService(usr.Settings)
 	s.Settings = userSettings
 
-	betaFeatures := APIBetaFeatures{}
+	betaFeatures := evergreen.APIBetaFeatures{}
 	betaFeatures.BuildFromService(usr.BetaFeatures)
 	s.BetaFeatures = betaFeatures
 
@@ -95,20 +95,6 @@ type APIPubKey struct {
 func (pk *APIPubKey) BuildFromService(in user.PubKey) {
 	pk.Name = utility.ToStringPtr(in.Name)
 	pk.Key = utility.ToStringPtr(in.Key)
-}
-
-type APIBetaFeatures struct {
-	SpruceWaterfallEnabled bool `json:"spruce_waterfall_enabled"`
-}
-
-func (b *APIBetaFeatures) BuildFromService(usr user.BetaFeatures) {
-	b.SpruceWaterfallEnabled = usr.SpruceWaterfallEnabled
-}
-
-func (b *APIBetaFeatures) ToService() user.BetaFeatures {
-	return user.BetaFeatures{
-		SpruceWaterfallEnabled: b.SpruceWaterfallEnabled,
-	}
 }
 
 type APIUserSettings struct {

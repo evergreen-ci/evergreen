@@ -1016,7 +1016,7 @@ func TestUpdateBetaFeatures(t *testing.T) {
 	require.NotNil(t, dbUser)
 	assert.Equal(t, false, dbUser.BetaFeatures.SpruceWaterfallEnabled)
 
-	newBetaFeatureSettings := BetaFeatures{
+	newBetaFeatureSettings := evergreen.BetaFeatures{
 		SpruceWaterfallEnabled: true,
 	}
 	err = usr.UpdateBetaFeatures(newBetaFeatureSettings)

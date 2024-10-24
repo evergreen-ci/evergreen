@@ -21,25 +21,25 @@ import (
 )
 
 type DBUser struct {
-	Id                     string           `bson:"_id"`
-	FirstName              string           `bson:"first_name"`
-	LastName               string           `bson:"last_name"`
-	DispName               string           `bson:"display_name"`
-	EmailAddress           string           `bson:"email"`
-	PatchNumber            int              `bson:"patch_number"`
-	PubKeys                []PubKey         `bson:"public_keys" json:"public_keys"`
-	CreatedAt              time.Time        `bson:"created_at"`
-	Settings               UserSettings     `bson:"settings"`
-	APIKey                 string           `bson:"apikey"`
-	SystemRoles            []string         `bson:"roles"`
-	LoginCache             LoginCache       `bson:"login_cache,omitempty"`
-	FavoriteProjects       []string         `bson:"favorite_projects"`
-	OnlyAPI                bool             `bson:"only_api,omitempty"`
-	ParsleyFilters         []parsley.Filter `bson:"parsley_filters"`
-	ParsleySettings        parsley.Settings `bson:"parsley_settings"`
-	NumScheduledPatchTasks int              `bson:"num_scheduled_patch_tasks"`
-	LastScheduledTasksAt   time.Time        `bson:"last_scheduled_tasks_at"`
-	BetaFeatures           BetaFeatures     `bson:"beta_features"`
+	Id                     string                 `bson:"_id"`
+	FirstName              string                 `bson:"first_name"`
+	LastName               string                 `bson:"last_name"`
+	DispName               string                 `bson:"display_name"`
+	EmailAddress           string                 `bson:"email"`
+	PatchNumber            int                    `bson:"patch_number"`
+	PubKeys                []PubKey               `bson:"public_keys" json:"public_keys"`
+	CreatedAt              time.Time              `bson:"created_at"`
+	Settings               UserSettings           `bson:"settings"`
+	APIKey                 string                 `bson:"apikey"`
+	SystemRoles            []string               `bson:"roles"`
+	LoginCache             LoginCache             `bson:"login_cache,omitempty"`
+	FavoriteProjects       []string               `bson:"favorite_projects"`
+	OnlyAPI                bool                   `bson:"only_api,omitempty"`
+	ParsleyFilters         []parsley.Filter       `bson:"parsley_filters"`
+	ParsleySettings        parsley.Settings       `bson:"parsley_settings"`
+	NumScheduledPatchTasks int                    `bson:"num_scheduled_patch_tasks"`
+	LastScheduledTasksAt   time.Time              `bson:"last_scheduled_tasks_at"`
+	BetaFeatures           evergreen.BetaFeatures `bson:"beta_features"`
 }
 
 func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
@@ -61,10 +61,6 @@ type PubKey struct {
 	Name      string    `bson:"name" json:"name"`
 	Key       string    `bson:"key" json:"key"`
 	CreatedAt time.Time `bson:"created_at" json:"created_at"`
-}
-
-type BetaFeatures struct {
-	SpruceWaterfallEnabled bool `bson:"spruce_waterfall_enabled" json:"spruce_waterfall_enabled"`
 }
 
 type UserSettings struct {
@@ -174,7 +170,7 @@ func (u *DBUser) UpdateParsleySettings(settings parsley.Settings) error {
 }
 
 // UpdateBetaFeatures updates a user's beta feature settings.
-func (u *DBUser) UpdateBetaFeatures(betaFeatures BetaFeatures) error {
+func (u *DBUser) UpdateBetaFeatures(betaFeatures evergreen.BetaFeatures) error {
 	update := bson.M{"$set": bson.M{BetaFeaturesKey: betaFeatures}}
 	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
 		return errors.Wrapf(err, "saving beta feature settings for user '%s'", u.Id)
