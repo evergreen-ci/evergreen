@@ -474,18 +474,22 @@ func (d *basicCachedDAGDispatcherImpl) tryMarkItemDispatched(item *TaskQueueItem
 }
 
 func (d *basicCachedDAGDispatcherImpl) tryMarkNextTaskGroupTaskDispatched(taskGroupUnit schedulableUnit) *TaskQueueItem {
-	d.mu.Lock()
-	defer d.mu.Unlock()
 	next := d.nextTaskGroupTask(taskGroupUnit)
 	if next != nil {
-		// next is a *TaskQueueItem, sourced for d.taskGroups (map[string]schedulableUnit) tasks' field, which in turn is a []TaskQueueItem.
-		// taskGroupTask is a *TaskQueueItem sourced from d.nodeItemMap, which is a map[node.ID()]*TaskQueueItem.
-		node := d.getNodeByItemID(next.Id)
-		taskGroupTask := d.getItemByNodeID(node.ID())
-		taskGroupTask.IsDispatched = true
-		return next
+		return d.fetchItemFromNodeMap(next)
 	}
 	return nil
+}
+
+func (d *basicCachedDAGDispatcherImpl) fetchItemFromNodeMap(next *TaskQueueItem) *TaskQueueItem {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	// next is a *TaskQueueItem, sourced for d.taskGroups (map[string]schedulableUnit) tasks' field, which in turn is a []TaskQueueItem.
+	// taskGroupTask is a *TaskQueueItem sourced from d.nodeItemMap, which is a map[node.ID()]*TaskQueueItem.
+	node := d.getNodeByItemID(next.Id)
+	taskGroupTask := d.getItemByNodeID(node.ID())
+	taskGroupTask.IsDispatched = true
+	return next
 }
 
 func (d *basicCachedDAGDispatcherImpl) getTaskGroup(taskGroupID string) (schedulableUnit, bool) {
@@ -572,6 +576,8 @@ func getMaxConcurrentLargeParserProjTasks(settings *evergreen.Settings) int {
 }
 
 func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {
+	var nextItem *TaskQueueItem
+	var foundIndex int
 	for i, nextTaskQueueItem := range unit.tasks {
 		// Dispatch this task if all of the following are true:
 		// (a) it's not marked as dispatched in the in-memory queue.
@@ -581,6 +587,10 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		// (e) all of its dependencies are satisfied.
 
 		if nextTaskQueueItem.IsDispatched {
+			grip.Debug(message.Fields{
+				"investigation": "DEVPROD-12086",
+				"message":       "skipping because already marked dispatched",
+			})
 			continue
 		}
 
@@ -606,17 +616,16 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 			return nil
 		}
 
-		// Cache the task as dispatched from the in-memory queue's point of view.
-		// However, it won't actually be dispatched to a host if it doesn't satisfy all constraints.
-		d.taskGroups[unit.id].tasks[i].IsDispatched = true
-		// unit.tasks[i].IsDispatched = true
-
 		if isBlockedSingleHostTaskGroup(unit, nextTaskFromDB) {
 			delete(d.taskGroups, unit.id)
 			return nil
 		}
 
 		if nextTaskFromDB.StartTime != utility.ZeroTime {
+			grip.Debug(message.Fields{
+				"investigation": "DEVPROD-12086",
+				"message":       "skipping because start time was set",
+			})
 			continue
 		}
 
@@ -635,18 +644,43 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		}
 
 		if !dependenciesMet {
+			grip.Debug(message.Fields{
+				"investigation": "DEVPROD-12086",
+				"message":       "skipping because dependencies not met",
+			})
 			continue
 		}
-
-		// If this is the last task in the schedulableUnit.tasks, delete the task group.
-		if i == len(unit.tasks)-1 {
-			delete(d.taskGroups, unit.id)
-		}
-
-		return &nextTaskQueueItem
+		nextItem = &nextTaskQueueItem
+		foundIndex = i
+		break
 	}
 
-	return nil
+	grip.DebugWhen(nextItem == nil, message.Fields{
+		"investigation": "DEVPROD-12086",
+		"message":       "returned nil for next task group task",
+	})
+	if nextItem == nil || !d.tryMarkTasksDispatched(foundIndex, unit) {
+		return nil
+	}
+	return nextItem
+}
+
+func (d *basicCachedDAGDispatcherImpl) tryMarkTasksDispatched(nextItemIndex int, unit schedulableUnit) bool {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	taskGroup, ok := d.taskGroups[unit.id]
+	if !ok || taskGroup.tasks[nextItemIndex].IsDispatched {
+		return false
+	}
+	for i := 0; i <= nextItemIndex; i++ {
+		taskGroup.tasks[i].IsDispatched = true
+	}
+	// If this is the last task in the schedulableUnit.tasks, delete the task group.
+	if nextItemIndex == len(unit.tasks)-1 {
+		delete(d.taskGroups, unit.id)
+	}
+	return true
 }
 
 // isBlockedSingleHostTaskGroup checks if the task is running in a 1-host task group, has finished,
