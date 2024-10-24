@@ -988,6 +988,19 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		} else {
 			maxOrderOpt = order
 		}
+	} else if options.Date != nil {
+		date := utility.FromTimePtr(options.Date)
+		// Use the end of the provided date to find the most recent version created on or before it
+		eod := time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 0, date.Location())
+		found, err := model.VersionFindOne(model.VersionByProjectIdAndCreateTime(projectId, eod))
+		if err != nil {
+			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("getting version on or before date '%s': %s", eod.Format(time.DateOnly), err)))
+		} else if found == nil {
+			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("version on or before date '%s' not found", eod.Format(time.DateOnly))))
+		} else {
+			// Offset the order number so the specified version lands nearer to the center of the page.
+			maxOrderOpt = found.RevisionOrderNumber + limit/2 + 1
+		}
 	}
 
 	opts := model.WaterfallOptions{
