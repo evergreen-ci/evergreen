@@ -674,11 +674,14 @@ func (a *APIBucketsConfig) ToService() (interface{}, error) {
 }
 
 type APICedarConfig struct {
-	BaseURL     *string `json:"base_url"`
-	GRPCBaseURL *string `json:"grpc_base_url"`
-	RPCPort     *string `json:"rpc_port"`
-	User        *string `json:"user"`
-	APIKey      *string `json:"api_key"`
+	BaseURL             *string `json:"base_url"`
+	GRPCBaseURL         *string `json:"grpc_base_url"`
+	RPCPort             *string `json:"rpc_port"`
+	User                *string `json:"user"`
+	APIKey              *string `json:"api_key"`
+	SendToCedarDisabled *bool   `json:"send_to_cedar_disabled"`
+	SPSURL              *string `json:"sps_url"`
+	SendRatioSPS        *int    `json:"send_ratio_sps"`
 }
 
 func (a *APICedarConfig) BuildFromService(h interface{}) error {
@@ -689,6 +692,9 @@ func (a *APICedarConfig) BuildFromService(h interface{}) error {
 		a.RPCPort = utility.ToStringPtr(v.RPCPort)
 		a.User = utility.ToStringPtr(v.User)
 		a.APIKey = utility.ToStringPtr(v.APIKey)
+		a.SendToCedarDisabled = utility.ToBoolPtr(v.SendToCedarDisabled)
+		a.SPSURL = utility.ToStringPtr(v.SPSURL)
+		a.SendRatioSPS = utility.ToIntPtr(v.SendRatioSPS)
 	default:
 		return errors.Errorf("programmatic error: expected Cedar config but got type %T", h)
 	}
@@ -697,11 +703,14 @@ func (a *APICedarConfig) BuildFromService(h interface{}) error {
 
 func (a *APICedarConfig) ToService() (interface{}, error) {
 	return evergreen.CedarConfig{
-		BaseURL:     utility.FromStringPtr(a.BaseURL),
-		GRPCBaseURL: utility.FromStringPtr(a.GRPCBaseURL),
-		RPCPort:     utility.FromStringPtr(a.RPCPort),
-		User:        utility.FromStringPtr(a.User),
-		APIKey:      utility.FromStringPtr(a.APIKey),
+		BaseURL:             utility.FromStringPtr(a.BaseURL),
+		GRPCBaseURL:         utility.FromStringPtr(a.GRPCBaseURL),
+		RPCPort:             utility.FromStringPtr(a.RPCPort),
+		User:                utility.FromStringPtr(a.User),
+		APIKey:              utility.FromStringPtr(a.APIKey),
+		SendToCedarDisabled: utility.FromBoolPtr(a.SendToCedarDisabled),
+		SPSURL:              utility.FromStringPtr(a.SPSURL),
+		SendRatioSPS:        utility.FromIntPtr(a.SendRatioSPS),
 	}, nil
 }
 
