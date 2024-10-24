@@ -2262,19 +2262,20 @@ func (a *APISplunkConnectionInfo) ToService() send.SplunkConnectionInfo {
 }
 
 type APIUIConfig struct {
-	Url                       *string  `json:"url"`
-	HelpUrl                   *string  `json:"help_url"`
-	UIv2Url                   *string  `json:"uiv2_url"`
-	ParsleyUrl                *string  `json:"parsley_url"`
-	HttpListenAddr            *string  `json:"http_listen_addr"`
-	Secret                    *string  `json:"secret"`
-	DefaultProject            *string  `json:"default_project"`
-	CacheTemplates            bool     `json:"cache_templates"`
-	CsrfKey                   *string  `json:"csrf_key"`
-	CORSOrigins               []string `json:"cors_origins"`
-	FileStreamingContentTypes []string `json:"file_streaming_content_types"`
-	LoginDomain               *string  `json:"login_domain"`
-	UserVoice                 *string  `json:"userVoice"`
+	Url                       *string                   `json:"url"`
+	HelpUrl                   *string                   `json:"help_url"`
+	UIv2Url                   *string                   `json:"uiv2_url"`
+	ParsleyUrl                *string                   `json:"parsley_url"`
+	HttpListenAddr            *string                   `json:"http_listen_addr"`
+	Secret                    *string                   `json:"secret"`
+	DefaultProject            *string                   `json:"default_project"`
+	CacheTemplates            bool                      `json:"cache_templates"`
+	CsrfKey                   *string                   `json:"csrf_key"`
+	CORSOrigins               []string                  `json:"cors_origins"`
+	FileStreamingContentTypes []string                  `json:"file_streaming_content_types"`
+	LoginDomain               *string                   `json:"login_domain"`
+	UserVoice                 *string                   `json:"userVoice"`
+	BetaFeatures              evergreen.APIBetaFeatures `json:"beta_features"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
@@ -2293,6 +2294,10 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.LoginDomain = utility.ToStringPtr(v.LoginDomain)
 		a.UserVoice = utility.ToStringPtr(v.UserVoice)
 		a.FileStreamingContentTypes = v.FileStreamingContentTypes
+
+		betaFeatures := evergreen.APIBetaFeatures{}
+		betaFeatures.BuildFromService(v.BetaFeatures)
+		a.BetaFeatures = betaFeatures
 	default:
 		return errors.Errorf("programmatic error: expected UI config but got type %T", h)
 	}
@@ -2314,6 +2319,7 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 		FileStreamingContentTypes: a.FileStreamingContentTypes,
 		LoginDomain:               utility.FromStringPtr(a.LoginDomain),
 		UserVoice:                 utility.FromStringPtr(a.UserVoice),
+		BetaFeatures:              a.BetaFeatures.ToService(),
 	}, nil
 }
 

@@ -309,7 +309,7 @@ Admin Settings
 													</md-radio-group>
 												</td>
 											</tr>
-                                                                                        <tr>
+                                            <tr>
 												<td>Cache historical statistics</td>
 												<td colspan="2">
 													<md-radio-group
@@ -843,58 +843,27 @@ Admin Settings
 							</md-card>
 						</section>
 
-						<section layout="row" flex>
-							<section layout="column" flex>
-								<md-card flex=50 id="api" style="height:200px">
-									<md-card-title>
-										<md-card-title-text>
-											<span>API</span>
-										</md-card-title-text>
-										<md-button ng-click="clearSection('api')">
-											<i class="fa fa-trash"></i>
-										</md-button>
-									</md-card-title>
-									<md-card-content>
-										<md-input-container class="control" style="width:45%;">
-											<label>HTTP listener address</label>
-											<input type="text" ng-model="Settings.api.http_listen_addr">
-										</md-input-container>
-										<md-input-container class="control" style="width:45%; margin-left:50px;">
-											<label>Github webhook secret</label>
-											<input type="text" ng-model="Settings.api.github_webhook_secret">
-										</md-input-container>
-									</md-card-content>
-								</md-card>
-
-								<md-card flex=50 id="commit_queue">
-									<md-card-title>
-										<md-card-title-text>
-											<span>Commit Queue</span>
-										</md-card-title-text>
-									</md-card-title>
-									<md-card-content>
-										<md-input-container class="control" style="width:45%;">
-											<label>Merge Distro</label>
-											<input type="text" ng-model="Settings.commit_queue.merge_task_distro">
-										</md-input-container>
-										<md-input-container class="control" style="width:45%;">
-											<label>Committer Name</label>
-											<input type="text" ng-model="Settings.commit_queue.committer_name">
-										</md-input-container>
-										<md-input-container class="control" style="width:45%;">
-											<label>Committer Email</label>
-											<input type="text" ng-model="Settings.commit_queue.committer_email">
-										</md-input-container>
-										<md-input-container class="control" style="width:45%;">
-											<label>Batch Size</label>
-											<input type="number" ng-model="Settings.commit_queue.batch_size">
-										</md-input-container>
-										<button ng-click="clearCommitQueues()" class="md-raised md-button">Clear Commit
-											Queues</button>
-									</md-card-content>
-								</md-card>
-							</section>
-
+						<section layout="row" flex>				
+							<md-card flex=50 id="api" style="height:200px">
+								<md-card-title>
+									<md-card-title-text>
+										<span>API</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('api')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>HTTP listener address</label>
+										<input type="text" ng-model="Settings.api.http_listen_addr">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Github webhook secret</label>
+										<input type="text" ng-model="Settings.api.github_webhook_secret">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
 							<md-card flex=50 id="ui">
 								<md-card-title>
 									<md-card-title-text>
@@ -961,8 +930,36 @@ Admin Settings
 										</md-checkbox>
 									</md-input-container>
 								</md-card-content>
+								<md-card>
+									<md-card-title>
+										<md-card-title-text>
+											<span>Beta Features</span>
+										</md-card-title-text>
+									</md-card-title>
+									<md-card-content>
+										<table class="flagsTable">
+											<thead>
+												<tr>
+													<th />
+													<th>Enabled</th>
+													<th>Disabled</th>
+												</tr>
+											</thead>
+											<tbody>
+												<tr>
+													<td>Spruce Waterfall</td>
+													<td colspan="2">
+														<md-radio-group data-ng-model="Settings.ui.beta_features.spruce_waterfall_enabled" layout="row">
+															<md-radio-button data-ng-value="true"></md-radio-button>
+															<md-radio-button data-ng-value="false"></md-radio-button>
+														</md-radio-group>
+													</td>
+												</tr>
+											</tbody>
+										</table>
+									</md-card-content>
+								</md-card>
 							</md-card>
-
 						</section>
 
 						<section layout="row" flex>
@@ -1722,6 +1719,36 @@ Admin Settings
 										<label>Distro for generated tasks</label>
 										<input type="text" ng-model="Settings.triggers.generate_distro">
 									</md-input-container>
+								</md-card-content>
+							</md-card>
+						</section>
+
+						<section layout="row" flex>
+							<md-card flex=50 id="commit_queue">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Commit Queue</span>
+									</md-card-title-text>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>Merge Distro</label>
+										<input type="text" ng-model="Settings.commit_queue.merge_task_distro">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Committer Name</label>
+										<input type="text" ng-model="Settings.commit_queue.committer_name">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Committer Email</label>
+										<input type="text" ng-model="Settings.commit_queue.committer_email">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Batch Size</label>
+										<input type="number" ng-model="Settings.commit_queue.batch_size">
+									</md-input-container>
+									<button ng-click="clearCommitQueues()" class="md-raised md-button">Clear Commit
+										Queues</button>
 								</md-card-content>
 							</md-card>
 						</section>

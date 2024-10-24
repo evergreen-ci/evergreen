@@ -1262,7 +1262,7 @@ func (r *mutationResolver) UpdateBetaFeatures(ctx context.Context, opts UpdateBe
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating beta features: %s", err.Error()))
 	}
 
-	betaFeatures := restModel.APIBetaFeatures{}
+	betaFeatures := evergreen.APIBetaFeatures{}
 	betaFeatures.BuildFromService(usr.BetaFeatures)
 	return &UpdateBetaFeaturesPayload{
 		BetaFeatures: &betaFeatures,
