@@ -244,8 +244,8 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 	// If the host just ran a task group, give it one back.
 	if spec.Group != "" {
 		taskGroupID := compositeGroupID(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
-		taskGroupUnit, ok := d.getTaskGroup(taskGroupID) // schedulableUnit
-		if ok {
+		taskGroupUnit, hasDispatchableTask := d.getTaskGroup(taskGroupID)
+		if hasDispatchableTask {
 			if next := d.tryMarkNextTaskGroupTaskDispatched(taskGroupUnit); next != nil {
 				return next
 			}
@@ -276,6 +276,9 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 
 		// If maxHosts is not set, this is not a task group.
 		if item.GroupMaxHosts == 0 {
+			if !item.DependenciesMet {
+				continue
+			}
 			if itemNotDispatched := d.tryMarkItemDispatched(item); !itemNotDispatched {
 				continue
 			}
@@ -360,6 +363,10 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				continue
 			}
 
+			if !nextTaskFromDB.IsHostDispatchable() {
+				continue
+			}
+
 			// AMI Updated time is only provided if the host is running with an outdated AMI.
 			// If the task was created after the time that the AMI was updated, then we should wait for an updated host.
 			if !utility.IsZeroTime(amiUpdatedTime) && nextTaskFromDB.IngestTime.After(amiUpdatedTime) {
@@ -379,8 +386,8 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 
 		// For a task group task, do some arithmetic to see if the group's next task is dispatchable.
 		taskGroupID := compositeGroupID(item.Group, item.BuildVariant, item.Project, item.Version)
-		taskGroupUnit, ok := d.getTaskGroup(taskGroupID)
-		if !ok {
+		taskGroupUnit, hasDispatchableTask := d.getTaskGroup(taskGroupID)
+		if !hasDispatchableTask {
 			continue
 		}
 
@@ -492,7 +499,24 @@ func (d *basicCachedDAGDispatcherImpl) getTaskGroup(taskGroupID string) (schedul
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	taskGroupUnit, ok := d.taskGroups[taskGroupID]
-	return taskGroupUnit, ok
+	if !ok {
+		return taskGroupUnit, ok
+	}
+	hasDispatchableTask := false
+	for _, item := range taskGroupUnit.tasks {
+		if item.DependenciesMet {
+			hasDispatchableTask = true
+		}
+	}
+	grip.DebugWhen(!hasDispatchableTask, message.Fields{
+		"investigation": "DEVPROD-12086",
+		"message":       "group has no ready tasks, skipping",
+		"group":         taskGroupUnit.group,
+		"variant":       taskGroupUnit.variant,
+		"project":       taskGroupUnit.project,
+		"version":       taskGroupUnit.version,
+	})
+	return taskGroupUnit, hasDispatchableTask
 }
 
 func (d *basicCachedDAGDispatcherImpl) setTaskGroup(taskGroupUnit schedulableUnit, taskGroupID string) {
@@ -635,6 +659,10 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		}
 
 		if !dependenciesMet {
+			continue
+		}
+
+		if !nextTaskFromDB.IsHostDispatchable() {
 			continue
 		}
 
