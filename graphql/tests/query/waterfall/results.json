@@ -18,11 +18,13 @@
                     "tasks": [
                       {
                         "displayName": "Some Task",
+                        "execution": 0,
                         "id": "task_1",
                         "status": "success"
                       },
                       {
                         "displayName": "Some Other Task",
+                        "execution": 1,
                         "id": "task_2",
                         "status": "success"
                       }
@@ -35,11 +37,13 @@
                     "tasks": [
                       {
                         "displayName": "Some Task",
+                        "execution": 0,
                         "id": "task_3",
                         "status": "failed"
                       },
                       {
                         "displayName": "Some Other Task",
+                        "execution": 0,
                         "id": "task_4",
                         "status": "success"
                       }
@@ -56,6 +60,7 @@
                     "tasks": [
                       {
                         "displayName": "Task Number 5",
+                        "execution": 0,
                         "id": "task_5",
                         "status": "success"
                       }
