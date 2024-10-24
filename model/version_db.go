@@ -140,6 +140,19 @@ func VersionByProjectIdAndRevisionPrefix(projectId, revisionPrefix string) db.Q 
 		})
 }
 
+func VersionByProjectIdAndCreateTime(projectId string, createTime time.Time) db.Q {
+	return db.Query(
+		bson.M{
+			VersionIdentifierKey: projectId,
+			VersionCreateTimeKey: bson.M{
+				"$gte": createTime,
+			},
+			VersionRequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
+		})
+}
+
 // ByProjectIdAndOrder finds non-patch versions for the given project with revision
 // order numbers less than or equal to revisionOrderNumber.
 func VersionByProjectIdAndOrder(projectId string, revisionOrderNumber int) db.Q {
