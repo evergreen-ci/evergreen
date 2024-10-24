@@ -3,16 +3,19 @@
     {
       "query_file": "empty_array.graphql",
       "result": {
+        "data": null,
         "errors": [
           {
-            "message": "hostIds cannot be empty",
-            "path": ["updateHostStatus"],
+            "message": "No matching hosts found",
+            "path": [
+              "updateHostStatus",
+              "hostIds"
+            ],
             "extensions": {
-              "code": "INPUT_VALIDATION_ERROR"
+              "code": "RESOURCE_NOT_FOUND"
             }
           }
-        ],
-        "data": null
+        ]
       }
     },
     {
@@ -26,16 +29,19 @@
     {
       "query_file": "no_hosts_found.graphql",
       "result": {
+        "data": null,
         "errors": [
           {
             "message": "No matching hosts found",
-            "path": ["updateHostStatus"],
+            "path": [
+              "updateHostStatus",
+              "hostIds"
+            ],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
           }
-        ],
-        "data": null
+        ]
       }
     },
     {
@@ -49,9 +55,19 @@
     {
       "query_file": "user_has_no_permission_to_edit_host.graphql",
       "result": {
-        "data": {
-          "updateHostStatus": 0
-        }
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'testuser' does not have permission to access host 'i-0d0ae8b83366d22be'",
+            "path": [
+              "updateHostStatus",
+              "hostIds"
+            ],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
       }
     },
     {
