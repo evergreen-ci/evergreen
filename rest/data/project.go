@@ -301,8 +301,6 @@ func FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIP
 // will be fully replaced by those in varsModel. Otherwise, it will only set the
 // value for variables that are explicitly present in varsModel and will not
 // delete variables that are omitted.
-// TODO (DEVPROD-9405): add more test coverage for Parameter Store functionality
-// once FindAndModify is implemented.
 func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
 	if varsModel == nil {
 		return nil
