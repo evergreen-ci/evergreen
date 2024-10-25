@@ -363,10 +363,6 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				continue
 			}
 
-			if !nextTaskFromDB.IsHostDispatchable() {
-				continue
-			}
-
 			// AMI Updated time is only provided if the host is running with an outdated AMI.
 			// If the task was created after the time that the AMI was updated, then we should wait for an updated host.
 			if !utility.IsZeroTime(amiUpdatedTime) && nextTaskFromDB.IngestTime.After(amiUpdatedTime) {
@@ -659,10 +655,6 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		}
 
 		if !dependenciesMet {
-			continue
-		}
-
-		if !nextTaskFromDB.IsHostDispatchable() {
 			continue
 		}
 

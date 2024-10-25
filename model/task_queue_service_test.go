@@ -1981,11 +1981,12 @@ func (s *taskDAGDispatchServiceSuite) TestGenerateTaskLimits() {
 }
 
 func (s *taskDAGDispatchServiceSuite) refreshTaskQueue(service *basicCachedDAGDispatcherImpl) []TaskQueueItem {
-	tasks, _ := task.FindAll(db.Query(bson.M{task.StatusKey: bson.M{"$nin": evergreen.TaskCompletedStatuses}}))
+	tasks, err := task.FindAll(db.Query(bson.M{task.StatusKey: bson.M{"$nin": evergreen.TaskCompletedStatuses}}))
+	s.Require().NoError(err)
 	taskQueue := make([]TaskQueueItem, 0, len(tasks))
 	for _, t := range tasks {
-		t.DependenciesMet(map[string]task.Task{})
-		// Does this task have any dependencies?
+		_, err = t.DependenciesMet(map[string]task.Task{})
+		s.Require().NoError(err)
 		dependencies := make([]string, 0, len(t.DependsOn))
 		for _, d := range t.DependsOn {
 			dependencies = append(dependencies, d.TaskId)
@@ -2010,7 +2011,7 @@ func (s *taskDAGDispatchServiceSuite) refreshTaskQueue(service *basicCachedDAGDi
 			DependenciesMet:     t.HasDependenciesMet(),
 		})
 	}
-	err := service.rebuild(taskQueue)
+	err = service.rebuild(taskQueue)
 	s.Require().NoError(err)
 
 	return taskQueue
