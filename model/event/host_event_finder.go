@@ -3,6 +3,8 @@ package event
 import (
 	"context"
 
+	"github.com/evergreen-ci/utility"
+
 	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
@@ -62,7 +64,8 @@ func getRecentStatusesForHost(ctx context.Context, hostId string, n int) (int, [
 	return hostStatusDistros[0].Count, hostStatusDistros[0].Status
 }
 
-func AllRecentHostEventsMatchStatus(ctx context.Context, hostId string, n int, status string) bool {
+// AllRecentHostEventsMatchStatuses returns true if all recent host events match the given statuses, and false if any of them don't match.
+func AllRecentHostEventsMatchStatuses(ctx context.Context, hostId string, n int, statuses []string) bool {
 	if n == 0 {
 		return false
 	}
@@ -77,7 +80,7 @@ func AllRecentHostEventsMatchStatus(ctx context.Context, hostId string, n int, s
 	}
 
 	for _, stat := range statuses {
-		if stat != status {
+		if !utility.StringSliceContains(statuses, stat) {
 			return false
 		}
 	}
