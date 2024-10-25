@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -829,9 +830,8 @@ func TestAttachToNewRepo(t *testing.T) {
 		Id: "myRepo",
 	}}
 	assert.NoError(t, repoRef.Upsert())
-	u := &user.DBUser{Id: "me",
-		SystemRoles: []string{GetViewRepoRole("myRepo")},
-	}
+	u := &user.DBUser{Id: "me"}
+
 	assert.NoError(t, u.Insert())
 	installation := githubapp.GitHubAppInstallation{
 		Owner:          pRef.Owner,
@@ -876,10 +876,11 @@ func TestAttachToNewRepo(t *testing.T) {
 
 	userFromDB, err := user.FindOneById("me")
 	assert.NoError(t, err)
-	assert.Len(t, userFromDB.SystemRoles, 2)
+	assert.Len(t, userFromDB.SystemRoles, 1)
 	assert.Contains(t, userFromDB.SystemRoles, GetRepoAdminRole(pRefFromDB.RepoRefId))
-	assert.Contains(t, userFromDB.SystemRoles, GetViewRepoRole(pRefFromDB.RepoRefId))
-
+	hasPermission, err := UserHasRepoViewPermission(u, pRefFromDB.RepoRefId)
+	assert.NoError(t, err)
+	assert.True(t, hasPermission)
 	// Attaching a different project to this repo will result in Github conflicts being unset.
 	pRef = ProjectRef{
 		Id:        "mySecondProject",
@@ -982,8 +983,10 @@ func TestAttachToRepo(t *testing.T) {
 	u, err = user.FindOneById("me")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
-	assert.Contains(t, u.Roles(), GetViewRepoRole(pRefFromDB.RepoRefId))
 	assert.Contains(t, u.Roles(), GetRepoAdminRole(pRefFromDB.RepoRefId))
+	hasPermission, err := UserHasRepoViewPermission(u, pRefFromDB.RepoRefId)
+	assert.NoError(t, err)
+	assert.True(t, hasPermission)
 
 	// Try attaching a new project ref, now that a repo does exist.
 	pRef = ProjectRef{
@@ -1025,12 +1028,26 @@ func TestAttachToRepo(t *testing.T) {
 	assert.Error(t, pRef.AttachToRepo(ctx, u))
 }
 
+func checkParametersMatchVars(ctx context.Context, t *testing.T, pm ParameterMappings, vars map[string]string) {
+	assert.Len(t, pm, len(vars), "each project var should have exactly one corresponding parameter")
+	fakeParams, err := fakeparameter.FindByIDs(ctx, pm.ParameterNames()...)
+	assert.NoError(t, err)
+	assert.Len(t, fakeParams, len(vars))
+
+	paramNamesMap := pm.ParameterNameMap()
+	for _, fakeParam := range fakeParams {
+		varName := paramNamesMap[fakeParam.Name].Name
+		assert.NotEmpty(t, varName, "parameter should have corresponding project variable")
+		assert.Equal(t, vars[varName], fakeParam.Value, "project variable value should match the parameter value")
+	}
+}
+
 func TestDetachFromRepo(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	for name, test := range map[string]func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser){
-		"project ref is updated correctly": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+		"ProjectRefIsUpdatedCorrectly": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 			pRefFromDB, err := FindBranchProjectRef(pRef.Id)
@@ -1049,9 +1066,11 @@ func TestDetachFromRepo(t *testing.T) {
 			dbUser, err = user.FindOneById("me")
 			assert.NoError(t, err)
 			assert.NotNil(t, dbUser)
-			assert.NotContains(t, dbUser.Roles(), GetViewRepoRole(pRefFromDB.RepoRefId))
+			hasPermission, err := UserHasRepoViewPermission(dbUser, pRefFromDB.RepoRefId)
+			assert.NoError(t, err)
+			assert.False(t, hasPermission)
 		},
-		"project variables are updated": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+		"NewRepoVarsAreMerged": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 			vars, err := FindOneProjectVars(pRef.Id)
@@ -1064,7 +1083,19 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.True(t, vars.PrivateVars["in"])
 			assert.True(t, vars.PrivateVars["repo"]) // added from repo
 		},
-		"patch aliases": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+		"ProjectAndRepoVarsAreMergedAndStoredInParameterStore": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+			expectedVars, err := FindMergedProjectVars(pRef.Id)
+			require.NoError(t, err)
+
+			assert.NoError(t, pRef.DetachFromRepo(dbUser))
+			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
+			vars, err := FindOneProjectVars(pRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, vars)
+
+			checkParametersMatchVars(ctx, t, vars.Parameters, expectedVars.Vars)
+		},
+		"PatchAliases": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			// no patch aliases are copied if the project has a patch alias
 			projectAlias := ProjectAlias{Alias: "myProjectAlias", ProjectID: pRef.Id}
 			assert.NoError(t, projectAlias.Upsert())
@@ -1090,9 +1121,8 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			assert.Equal(t, aliases[0].Alias, repoAlias.Alias)
-
 		},
-		"internal aliases": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+		"InternalAliases": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			projectAliases := []ProjectAlias{
 				{Alias: evergreen.GitTagAlias, Variant: "projectVariant"},
 				{Alias: evergreen.CommitQueueAlias},
@@ -1128,7 +1158,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.Equal(t, prCount, 1)
 			assert.Equal(t, cqCount, 1)
 		},
-		"subscriptions": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+		"Subscriptions": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			projectSubscription := event.Subscription{
 				Owner:        pRef.Id,
 				OwnerType:    event.OwnerTypeProject,
@@ -1180,7 +1210,7 @@ func TestDetachFromRepo(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
-				evergreen.RoleCollection, user.Collection, event.SubscriptionsCollection, event.EventCollection, ProjectAliasCollection))
+				evergreen.RoleCollection, user.Collection, event.SubscriptionsCollection, event.EventCollection, ProjectAliasCollection, ProjectVarsCollection, fakeparameter.Collection))
 			require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 			pRef := &ProjectRef{
@@ -1194,7 +1224,7 @@ func TestDetachFromRepo(t *testing.T) {
 				PRTestingEnabled:      utility.FalsePtr(),          // neither of these should be changed when overwriting
 				GitTagVersionsEnabled: utility.TruePtr(),
 				GithubChecksEnabled:   nil, // for now this is defaulting to repo
-				//GithubTriggerAliases:  nil,
+				ParameterStoreEnabled: true,
 			}
 			assert.NoError(t, pRef.Insert())
 
@@ -1210,6 +1240,7 @@ func TestDetachFromRepo(t *testing.T) {
 				PeriodicBuilds: []PeriodicBuildDefinition{
 					{ID: "my_build"},
 				},
+				ParameterStoreEnabled: true,
 			}}
 			assert.NoError(t, repoRef.Upsert())
 
@@ -1226,6 +1257,11 @@ func TestDetachFromRepo(t *testing.T) {
 			_, err := pVars.Upsert()
 			assert.NoError(t, err)
 
+			dbProjRef, err := FindBranchProjectRef(pRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.True(t, dbProjRef.ParameterStoreVarsSynced, "branch project vars should be synced to Parameter Store after Upsert")
+
 			repoVars := &ProjectVars{
 				Id: repoRef.Id,
 				Vars: map[string]string{
@@ -1239,9 +1275,13 @@ func TestDetachFromRepo(t *testing.T) {
 			_, err = repoVars.Upsert()
 			assert.NoError(t, err)
 
+			dbRepoRef, err := FindOneRepoRef(repoRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbRepoRef)
+			assert.True(t, dbRepoRef.ParameterStoreVarsSynced, "repo vars should be synced to Parameter Store after Upsert")
+
 			u := &user.DBUser{
-				Id:          "me",
-				SystemRoles: []string{GetViewRepoRole("myRepo")},
+				Id: "me",
 			}
 			assert.NoError(t, u.Insert())
 			test(t, pRef, u)
