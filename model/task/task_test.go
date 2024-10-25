@@ -3523,6 +3523,10 @@ func TestArchiveMany(t *testing.T) {
 		assert.True(t, task.Archived)
 		assert.Equal(t, 0, task.Execution)
 	}
+
+	// We shouldn't error if we try archiving again, in case we got stuck part way.
+	err = ArchiveMany(ctx, tasks)
+	assert.NoError(t, err)
 }
 
 func TestArchiveManyAfterFailedOnly(t *testing.T) {
@@ -3683,6 +3687,9 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 			assert.Error(t, nil, "A task was not accounted for")
 		}
 	}
+
+	// We shouldn't error if we try archiving again, in case we got stuck part way.
+	assert.NoError(t, ArchiveMany(ctx, []Task{t1, t2, *t3Pointer, t4}))
 }
 
 func TestAddParentDisplayTasks(t *testing.T) {
