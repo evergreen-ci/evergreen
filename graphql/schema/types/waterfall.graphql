@@ -1,4 +1,5 @@
 input WaterfallOptions {
+  date: Time
   limit: Int = 5
   "Return versions with an order greater than minOrder. Used for paginating backward."
   minOrder: Int

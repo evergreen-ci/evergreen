@@ -78422,13 +78422,20 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 		asMap["limit"] = 5
 	}
 
-	fieldsInOrder := [...]string{"limit", "minOrder", "maxOrder", "projectIdentifier", "requesters", "revision"}
+	fieldsInOrder := [...]string{"date", "limit", "minOrder", "maxOrder", "projectIdentifier", "requesters", "revision"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "date":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("date"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Date = data
 		case "limit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)

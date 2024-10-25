@@ -428,6 +428,137 @@
           }
         ]
       }
+    },
+    {
+      "query_file": "date.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "nextPageOrder": 39,
+            "prevPageOrder": 42,
+            "versions": [
+              {
+                "version": {
+                  "createTime": "2020-01-02T01:43:00-05:00",
+                  "id": "evergreen_version2",
+                  "order": 42
+                },
+                "inactiveVersions": null
+              },
+              {
+                "version": {
+                  "createTime": "2019-12-31T19:00:00-05:00",
+                  "id": "evergreen_version1",
+                  "order": 41
+                },
+                "inactiveVersions": null
+              },
+              {
+                "version": null,
+                "inactiveVersions": [
+                  {
+                    "createTime": "2019-12-30T19:00:03-05:00",
+                    "id": "evergreen_version0",
+                    "order": 40
+                  }
+                ]
+              },
+              {
+                "version": {
+                  "createTime": "2019-12-29T19:00:03-05:00",
+                  "id": "evergreen_version39",
+                  "order": 39
+                },
+                "inactiveVersions": null
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "date_unmatching.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "nextPageOrder": 39,
+            "prevPageOrder": 0,
+            "versions": [
+              {
+                "version": {
+                  "createTime": "2020-01-05T07:00:00-05:00",
+                  "id": "evergreen_version5",
+                  "order": 45
+                },
+                "inactiveVersions": null
+              },
+              {
+                "version": null,
+                "inactiveVersions": [
+                  {
+                    "createTime": "2020-01-04T03:15:00-05:00",
+                    "id": "evergreen_version4",
+                    "order": 44
+                  }
+                ]
+              },
+              {
+                "version": {
+                  "createTime": "2020-01-03T08:30:00-05:00",
+                  "id": "evergreen_version3",
+                  "order": 43
+                },
+                "inactiveVersions": null
+              },
+              {
+                "version": {
+                  "createTime": "2020-01-02T01:43:00-05:00",
+                  "id": "evergreen_version2",
+                  "order": 42
+                },
+                "inactiveVersions": null
+              },
+              {
+                "version": {
+                  "createTime": "2019-12-31T19:00:00-05:00",
+                  "id": "evergreen_version1",
+                  "order": 41
+                },
+                "inactiveVersions": null
+              },
+              {
+                "version": null,
+                "inactiveVersions": [
+                  {
+                    "createTime": "2019-12-30T19:00:03-05:00",
+                    "id": "evergreen_version0",
+                    "order": 40
+                  }
+                ]
+              },
+              {
+                "version": {
+                  "createTime": "2019-12-29T19:00:03-05:00",
+                  "id": "evergreen_version39",
+                  "order": 39
+                },
+                "inactiveVersions": null
+              }
+            ]
+          }
+        },
+        "errors": [
+          {
+            "message": "version on or before date '2019-11-07' not found",
+            "path": [
+              "waterfall"
+            ],
+            "extensions": {
+              "code": "PARTIAL_ERROR"
+            }
+          }
+        ]
+      }
     }
   ]
 }
