@@ -741,27 +741,32 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.Len(t, buildVariants, 3)
 
 	// Assert build variants are sorted alphabetically
-	assert.Equal(t, buildVariants[0].DisplayName, "01 Build A")
-	assert.Equal(t, buildVariants[1].DisplayName, "02 Build C")
-	assert.Equal(t, buildVariants[2].DisplayName, "03 Build B")
+	assert.Equal(t, "01 Build A", buildVariants[0].DisplayName)
+	assert.Equal(t, "02 Build C", buildVariants[1].DisplayName)
+	assert.Equal(t, "03 Build B", buildVariants[2].DisplayName)
+
+	// Check that build variants have an associated version field.
+	assert.Equal(t, "v_1", buildVariants[0].Version)
+	assert.Equal(t, "v_1", buildVariants[1].Version)
+	assert.Equal(t, "v_1", buildVariants[2].Version)
 
 	// Each variant has 4 builds, corresponding to `limit`
 	assert.Len(t, buildVariants[0].Builds, 4)
 	assert.Len(t, buildVariants[1].Builds, 4)
 	assert.Len(t, buildVariants[2].Builds, 4)
 
-	assert.Equal(t, buildVariants[0].Builds[0].Id, "b_c")
+	assert.Equal(t, "b_c", buildVariants[0].Builds[0].Id)
 	assert.Len(t, buildVariants[0].Builds[0].Tasks, 3)
-	assert.Equal(t, buildVariants[0].Builds[0].Tasks[0].Id, "t_32")
-	assert.Equal(t, buildVariants[0].Builds[0].Tasks[1].Id, "t_66")
-	assert.Equal(t, buildVariants[0].Builds[0].Tasks[2].Id, "t_89")
-	assert.Equal(t, buildVariants[0].Builds[1].Id, "b_e")
+	assert.Equal(t, "t_32", buildVariants[0].Builds[0].Tasks[0].Id)
+	assert.Equal(t, "t_66", buildVariants[0].Builds[0].Tasks[1].Id)
+	assert.Equal(t, "t_89", buildVariants[0].Builds[0].Tasks[2].Id)
+	assert.Equal(t, "b_e", buildVariants[0].Builds[1].Id)
 	assert.Len(t, buildVariants[0].Builds[1].Tasks, 2)
-	assert.Equal(t, buildVariants[0].Builds[1].Tasks[0].Id, "t_473")
-	assert.Equal(t, buildVariants[0].Builds[1].Tasks[1].Id, "t_995")
+	assert.Equal(t, "t_473", buildVariants[0].Builds[1].Tasks[0].Id)
+	assert.Equal(t, "t_995", buildVariants[0].Builds[1].Tasks[1].Id)
 
-	assert.Equal(t, buildVariants[0].Builds[2].Id, "b_g")
+	assert.Equal(t, "b_g", buildVariants[0].Builds[2].Id)
 	assert.Len(t, buildVariants[0].Builds[2].Tasks, 4)
-	assert.Equal(t, buildVariants[0].Builds[3].Id, "b_k")
+	assert.Equal(t, "b_k", buildVariants[0].Builds[3].Id)
 	assert.Len(t, buildVariants[0].Builds[3].Tasks, 2)
 }

@@ -5,7 +5,8 @@ input WaterfallOptions {
   minOrder: Int
   "Return versions with an order lower than maxOrder. Used for paginating forward."
   maxOrder: Int
-  projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)
+  projectIdentifier: String!
+    @requireProjectAccess(permission: TASKS, access: VIEW)
   requesters: [String!]
   revision: String
 }
@@ -29,6 +30,7 @@ type WaterfallBuildVariant {
   id: String!
   displayName: String!
   builds: [WaterfallBuild!]!
+  version: String!
 }
 
 type WaterfallVersion {
