@@ -3084,8 +3084,8 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 
 	_, err = session.WithTransaction(ctx, txFunc)
 
-	// Return nil if the task has already been archived. Because we use a transaction here,
-	// we can trust that either the whole task has already been archived, or none of it.
+	// Return nil if the tasks have already been archived. Because we use a transaction here,
+	// we can trust that either all tasks have already been archived, or none of them.
 	if err == nil || db.IsDuplicateKey(err) || adb.ResultsNotFound(err) {
 		return nil
 	}
