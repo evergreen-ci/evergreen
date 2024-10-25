@@ -222,7 +222,7 @@
         "data": {
           "waterfall": {
             "nextPageOrder": 43,
-            "prevPageOrder": 45,
+            "prevPageOrder": 0,
             "versions": [
               {
                 "inactiveVersions": null,
@@ -419,9 +419,7 @@
         "errors": [
           {
             "message": "version with revision 'foobarbaz' not found",
-            "path": [
-              "waterfall"
-            ],
+            "path": ["waterfall"],
             "extensions": {
               "code": "PARTIAL_ERROR"
             }
@@ -550,9 +548,7 @@
         "errors": [
           {
             "message": "version on or before date '2019-11-07' not found",
-            "path": [
-              "waterfall"
-            ],
+            "path": ["waterfall"],
             "extensions": {
               "code": "PARTIAL_ERROR"
             }
