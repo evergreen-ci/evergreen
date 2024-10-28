@@ -396,6 +396,10 @@ func CopyProjectVars(oldProjectId, newProjectId string) error {
 	}
 
 	vars.Id = newProjectId
+	// Clear the parameter mappings to ensure that the parameters must be copied
+	// to the new project, which prevents the old and new projects from sharing
+	// the same underlying parameters.
+	vars.Parameters = ParameterMappings{}
 	_, err = vars.Upsert()
 	return errors.Wrapf(err, "inserting variables for project '%s", newProjectId)
 }
@@ -1076,6 +1080,8 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 	if repoVars == nil {
 		return
 	}
+
+	repoVarNameToParamMapping := repoVars.Parameters.NameMap()
 	// Branch-level vars have priority, so we only need to add a repo vars if it doesn't already exist in the branch
 	for key, val := range repoVars.Vars {
 		if _, ok := projectVars.Vars[key]; !ok {
@@ -1086,8 +1092,16 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 			if v, ok := repoVars.AdminOnlyVars[key]; ok {
 				projectVars.AdminOnlyVars[key] = v
 			}
+			if repoParamMapping, ok := repoVarNameToParamMapping[key]; ok {
+				// Add any repo parameter mappings if they're defined so that
+				// the merged project vars have both the branch and repo project
+				// parameters.
+				projectVars.Parameters = append(projectVars.Parameters, repoParamMapping)
+			}
 		}
 	}
+
+	sort.Sort(projectVars.Parameters)
 }
 
 // convertVarToParam converts a project variable to its equivalent parameter

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sort"
 	"testing"
 
 	"strings"
@@ -107,15 +108,31 @@ func TestFindMergedProjectVars(t *testing.T) {
 	checkAndSetProjectVarsSynced(t, &repo.ProjectRef, true)
 
 	// Testing merging of project vars and repo vars
+	mergedVars, err := FindMergedProjectVars(project0.Id)
+	assert.NoError(err)
+	require.NotZero(t, mergedVars)
+
+	dbProject0Vars, err := FindOneProjectVars(project0.Id)
+	require.NoError(t, err)
+	require.NotZero(t, dbProject0Vars)
+	dbRepoVars, err := FindOneProjectVars(repo.Id)
+	require.NoError(t, err)
+	require.NotZero(t, dbRepoVars)
 	expectedMergedVars := ProjectVars{
 		Id:            project0.Id,
 		Vars:          map[string]string{"hello": "world", "world": "goodbye", "beep": "boop", "new": "var", "admin": "only"},
 		PrivateVars:   map[string]bool{},
 		AdminOnlyVars: map[string]bool{"admin": true},
 	}
-	mergedVars, err := FindMergedProjectVars(project0.Id)
-	assert.NoError(err)
-	expectedMergedVars.Parameters = mergedVars.Parameters // Don't compare parameters because those are generated dynamically when the project vars are inserted.
+	expectedMergedVars.Parameters = ParameterMappings{}
+	for _, pm := range dbProject0Vars.Parameters {
+		expectedMergedVars.Parameters = append(expectedMergedVars.Parameters, pm)
+	}
+	// Merged parameters should include any repo var that's not present in the
+	// branch project.
+	repoVarNamesToParamMappings := dbRepoVars.Parameters.NameMap()
+	expectedMergedVars.Parameters = append(expectedMergedVars.Parameters, repoVarNamesToParamMappings["hello"], repoVarNamesToParamMappings["beep"], repoVarNamesToParamMappings["admin"])
+	sort.Sort(expectedMergedVars.Parameters)
 	assert.Equal(expectedMergedVars, *mergedVars)
 
 	// Testing existing repo vars but no project vars
@@ -123,15 +140,28 @@ func TestFindMergedProjectVars(t *testing.T) {
 	expectedMergedVars.Id = project1.Id
 	mergedVars, err = FindMergedProjectVars(project1.Id)
 	assert.NoError(err)
+	require.NotZero(t, mergedVars)
+
+	dbRepoVars, err = FindOneProjectVars(repo.Id)
+	require.NoError(t, err)
+	require.NotZero(t, dbRepoVars)
+	expectedMergedVars.Parameters = dbRepoVars.Parameters
 	assert.Equal(expectedMergedVars, *mergedVars)
 
 	// Testing existing project vars but no repo vars
 	require.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection))
 
 	require.NoError(t, project0Vars.Insert())
+
 	mergedVars, err = FindMergedProjectVars(project0.Id)
 	assert.NoError(err)
+	require.NotZero(t, mergedVars)
+
 	assert.Equal(project0Vars.Vars, mergedVars.Vars)
+	dbProject0Vars, err = FindOneProjectVars(project0.Id)
+	require.NoError(t, err)
+	require.NotZero(t, dbProject0Vars)
+	assert.Equal(dbProject0Vars.Parameters, mergedVars.Parameters, "merged parameters for branch project vars should exactly match the branch project vars from the DB when there's no repo vars")
 	assert.Equal(0, len(mergedVars.PrivateVars))
 
 	// Testing ProjectRef.RepoRefId == ""
@@ -140,6 +170,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 	require.NoError(t, project0.Upsert())
 	mergedVars, err = FindMergedProjectVars(project0.Id)
 	assert.NoError(err)
+	require.NotZero(t, mergedVars)
 	assert.Equal(project0Vars, *mergedVars)
 
 	// Testing no project vars and no repo vars
