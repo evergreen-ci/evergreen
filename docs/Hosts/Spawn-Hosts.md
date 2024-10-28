@@ -69,7 +69,7 @@ long-lived hosts.
 Note that stopping the host during off hours means **shutting down the host**, not hibernating the host. If needed, see
 [the FAQ](#faq) for more info.
 
-**All users who did not have been assigned a default sleep schedule. If you'd like your
+**All users are assigned a default sleep schedule. If you'd like your
 unexpirable host to use something other than the default settings, your options are:**
 
 1. [Set a sleep schedule](#sleep-schedule) (Recommended for most users): Set a sleep schedule for each of your existing
