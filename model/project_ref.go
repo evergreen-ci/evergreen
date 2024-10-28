@@ -1285,7 +1285,6 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 		return nil, errors.Wrap(err, "getting common project variables")
 	}
 	commonProjectVars.Id = repoRef.Id
-	commonProjectVars.Parameters = ParameterMappings{}
 	if err = commonProjectVars.Insert(); err != nil {
 		return nil, errors.Wrap(err, "inserting project variables for repo")
 	}

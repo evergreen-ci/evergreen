@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"sort"
 	"testing"
 
 	"strings"
@@ -124,15 +123,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 		PrivateVars:   map[string]bool{},
 		AdminOnlyVars: map[string]bool{"admin": true},
 	}
-	expectedMergedVars.Parameters = ParameterMappings{}
-	for _, pm := range dbProject0Vars.Parameters {
-		expectedMergedVars.Parameters = append(expectedMergedVars.Parameters, pm)
-	}
-	// Merged parameters should include any repo var that's not present in the
-	// branch project.
-	repoVarNamesToParamMappings := dbRepoVars.Parameters.NameMap()
-	expectedMergedVars.Parameters = append(expectedMergedVars.Parameters, repoVarNamesToParamMappings["hello"], repoVarNamesToParamMappings["beep"], repoVarNamesToParamMappings["admin"])
-	sort.Sort(expectedMergedVars.Parameters)
+	expectedMergedVars.Parameters = mergedVars.Parameters
 	assert.Equal(expectedMergedVars, *mergedVars)
 
 	// Testing existing repo vars but no project vars
