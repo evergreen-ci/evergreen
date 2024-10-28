@@ -1806,41 +1806,44 @@ func TestCreateNewRepoRef(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	doc1 := &ProjectRef{
-		Id:                   "id1",
-		Owner:                "mongodb",
-		Repo:                 "mongo",
-		Branch:               "mci",
-		Enabled:              true,
-		Admins:               []string{"bob", "other bob"},
-		PRTestingEnabled:     utility.TruePtr(),
-		RemotePath:           "evergreen.yml",
-		NotifyOnBuildFailure: utility.TruePtr(),
-		CommitQueue:          CommitQueueParams{Message: "my message"},
-		TaskSync:             TaskSyncOptions{PatchEnabled: utility.TruePtr()},
+		Id:                    "id1",
+		Owner:                 "mongodb",
+		Repo:                  "mongo",
+		Branch:                "mci",
+		Enabled:               true,
+		Admins:                []string{"bob", "other bob"},
+		PRTestingEnabled:      utility.TruePtr(),
+		RemotePath:            "evergreen.yml",
+		NotifyOnBuildFailure:  utility.TruePtr(),
+		CommitQueue:           CommitQueueParams{Message: "my message"},
+		TaskSync:              TaskSyncOptions{PatchEnabled: utility.TruePtr()},
+		ParameterStoreEnabled: true,
 	}
 	assert.NoError(t, doc1.Insert())
 	doc2 := &ProjectRef{
-		Id:                   "id2",
-		Identifier:           "identifier",
-		Owner:                "mongodb",
-		Repo:                 "mongo",
-		Branch:               "mci2",
-		Enabled:              true,
-		Admins:               []string{"bob", "other bob"},
-		PRTestingEnabled:     utility.TruePtr(),
-		RemotePath:           "evergreen.yml",
-		NotifyOnBuildFailure: utility.FalsePtr(),
-		GithubChecksEnabled:  utility.TruePtr(),
-		CommitQueue:          CommitQueueParams{Message: "my message"},
-		TaskSync:             TaskSyncOptions{PatchEnabled: utility.TruePtr(), ConfigEnabled: utility.TruePtr()},
+		Id:                    "id2",
+		Identifier:            "identifier",
+		Owner:                 "mongodb",
+		Repo:                  "mongo",
+		Branch:                "mci2",
+		Enabled:               true,
+		Admins:                []string{"bob", "other bob"},
+		PRTestingEnabled:      utility.TruePtr(),
+		RemotePath:            "evergreen.yml",
+		NotifyOnBuildFailure:  utility.FalsePtr(),
+		GithubChecksEnabled:   utility.TruePtr(),
+		CommitQueue:           CommitQueueParams{Message: "my message"},
+		TaskSync:              TaskSyncOptions{PatchEnabled: utility.TruePtr(), ConfigEnabled: utility.TruePtr()},
+		ParameterStoreEnabled: true,
 	}
 	assert.NoError(t, doc2.Insert())
 	doc3 := &ProjectRef{
-		Id:      "id3",
-		Owner:   "mongodb",
-		Repo:    "mongo",
-		Branch:  "mci2",
-		Enabled: false,
+		Id:                    "id3",
+		Owner:                 "mongodb",
+		Repo:                  "mongo",
+		Branch:                "mci2",
+		Enabled:               false,
+		ParameterStoreEnabled: true,
 	}
 	assert.NoError(t, doc3.Insert())
 
@@ -1862,7 +1865,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 				"roses":        "red",
 				"ever":         "green",
 				"also":         "this one",
-				"this is only": "in one doc",
+				"this_is_only": "in one doc",
 			},
 			PrivateVars: map[string]bool{
 				"sdc": true,
@@ -1880,7 +1883,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 		{
 			Id: doc3.Id,
 			Vars: map[string]string{
-				"it's me": "adele",
+				"its_me": "adele",
 			},
 		},
 	}
@@ -1936,6 +1939,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	}
 	u := user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())
+
 	// This will create the new repo ref
 	assert.NoError(t, doc2.AddToRepoScope(&u))
 	assert.NotEmpty(t, doc2.RepoRefId)
@@ -1958,8 +1962,8 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Nil(t, repoRef.GithubChecksEnabled)
 	assert.Equal(t, "my message", repoRef.CommitQueue.Message)
 	assert.False(t, repoRef.TaskSync.IsPatchEnabled())
+	assert.True(t, repoRef.ParameterStoreVarsSynced)
 
-	// kim: TODO: verify this passes after DEVPROD-9405
 	projectVars, err := FindOneProjectVars(repoRef.Id)
 	assert.NoError(t, err)
 	assert.Len(t, projectVars.Vars, 3)

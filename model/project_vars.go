@@ -151,6 +151,8 @@ type AWSSSHKey struct {
 // those in rest/ and GQL).
 // kim: TODO: needs FindAndModify + Insert implemented to test functionality
 // more fully.
+// FindOneProjectVars finds the project variables document for a given project
+// ID.
 func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 	projectVars := &ProjectVars{}
 	q := db.Query(bson.M{projectVarIdKey: projectId})
@@ -214,7 +216,7 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 	return projectVars, nil
 }
 
-// findParameterStore finds the project variables from Parameter Store.
+// findParameterStore finds all the project variables from Parameter Store.
 func (projectVars *ProjectVars) findParameterStore(ctx context.Context) (*ProjectVars, error) {
 	paramMgr := evergreen.GetEnvironment().ParameterManager()
 
@@ -249,7 +251,7 @@ func (projectVars *ProjectVars) findParameterStore(ctx context.Context) (*Projec
 	// TODO (DEVPROD-9440): remove this consistency check once the rollout is
 	// complete and everything is prepared to remove the project var values from
 	// the DB.
-	if err := compareProjVars(projectVars.Vars, varsFromPS); err != nil {
+	if err := compareProjectVars(projectVars.Vars, varsFromPS); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "project vars from Parameter Store do not match project vars stored in the DB",
 			"project": projectVars.Id,
@@ -268,7 +270,7 @@ func (projectVars *ProjectVars) findParameterStore(ctx context.Context) (*Projec
 // discrepancies.
 // TODO (DEVPROD-11882): remove temporary logic to check data consistency
 // between the DB and Parameter Store once the rollout is stable.
-func compareProjVars(varsFromDB, varsFromPS map[string]string) error {
+func compareProjectVars(varsFromDB, varsFromPS map[string]string) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.ErrorfWhen(len(varsFromDB) != len(varsFromPS), "the DB and Parameter Store have different number of variables: (%d != %d)", len(varsFromDB), len(varsFromPS))
 
@@ -638,6 +640,11 @@ func (projectVars *ProjectVars) upsertParameters(ctx context.Context, pm Paramet
 			}
 		}
 	}
+
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+
 	return paramMappingsToUpsert, nil
 }
 
@@ -796,6 +803,8 @@ func fullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *Proj
 // Insert creates a new project vars document and stores all the project
 // variables in the DB. If Parameter Store is enabled for the project, it also
 // stores the variables in Parameter Store.
+// kim: TODO: add log to look for usages of Insert/Upsert/FindAndModify that
+// don't have PS enabled.
 func (projectVars *ProjectVars) Insert() error {
 	if err := db.Insert(
 		ProjectVarsCollection,
