@@ -937,6 +937,9 @@ func (projectVars *ProjectVars) Clear() error {
 	return nil
 }
 
+// checkAndRunParameterStoreOp checks if the project corresponding to the vars
+// has Parameter Store enabled and if so, runs the provided Parameter Store
+// operation.
 func (projectVars *ProjectVars) checkAndRunParameterStoreOp(ctx context.Context, op func(ref *ProjectRef, isRepoRef bool), opName string) error {
 	ref, isRepoRef, err := projectVars.findProjectRef()
 	grip.Error(message.WrapError(err, message.Fields{
