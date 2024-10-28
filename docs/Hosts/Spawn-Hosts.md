@@ -69,8 +69,7 @@ long-lived hosts.
 Note that stopping the host during off hours means **shutting down the host**, not hibernating the host. If needed, see
 [the FAQ](#faq) for more info.
 
-**The beta test period for this feature has ended as of 11 am (Eastern Time) September 3 2024, so all users who did not
-set a sleep schedule or request a permanent exemption have been assigned a default schedule. If you'd like your
+**All users who did not have been assigned a default sleep schedule. If you'd like your
 unexpirable host to use something other than the default settings, your options are:**
 
 1. [Set a sleep schedule](#sleep-schedule) (Recommended for most users): Set a sleep schedule for each of your existing
