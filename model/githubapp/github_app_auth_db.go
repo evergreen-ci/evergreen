@@ -14,15 +14,15 @@ const (
 )
 
 var (
-	ghAuthIdKey         = bsonutil.MustHaveTag(GithubAppAuth{}, "Id")
-	ghAuthAppIdKey      = bsonutil.MustHaveTag(GithubAppAuth{}, "AppID")
-	ghAuthPrivateKeyKey = bsonutil.MustHaveTag(GithubAppAuth{}, "PrivateKey")
+	GhAuthIdKey         = bsonutil.MustHaveTag(GithubAppAuth{}, "Id")
+	GhAuthAppIdKey      = bsonutil.MustHaveTag(GithubAppAuth{}, "AppID")
+	GhAuthPrivateKeyKey = bsonutil.MustHaveTag(GithubAppAuth{}, "PrivateKey")
 )
 
-// FindOneGithubAppAuth finds the github app auth for the given project id
-func FindOneGithubAppAuth(projectId string) (*GithubAppAuth, error) {
+// FindOneGithubAppAuth finds the github app auth for the given project or repo id
+func FindOneGithubAppAuth(projectOrRepoId string) (*GithubAppAuth, error) {
 	githubAppAuth := &GithubAppAuth{}
-	err := db.FindOneQ(GitHubAppAuthCollection, byGithubAppAuthID(projectId), githubAppAuth)
+	err := db.FindOneQ(GitHubAppAuthCollection, byGithubAppAuthID(projectOrRepoId), githubAppAuth)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -32,14 +32,14 @@ func FindOneGithubAppAuth(projectId string) (*GithubAppAuth, error) {
 // byGithubAppAuthID returns a query that finds a github app auth by the given identifier
 // corresponding to the project id
 func byGithubAppAuthID(projectId string) db.Q {
-	return db.Query(bson.M{ghAuthIdKey: projectId})
+	return db.Query(bson.M{GhAuthIdKey: projectId})
 }
 
 // GetGitHubAppID returns the app id for the given project id
 func GetGitHubAppID(projectId string) (*int64, error) {
 	githubAppAuth := &GithubAppAuth{}
 
-	q := byGithubAppAuthID(projectId).WithFields(ghAuthAppIdKey)
+	q := byGithubAppAuthID(projectId).WithFields(GhAuthAppIdKey)
 	err := db.FindOneQ(GitHubAppAuthCollection, q, githubAppAuth)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -53,13 +53,25 @@ func UpsertGithubAppAuth(githubAppAuth *GithubAppAuth) error {
 	_, err := db.Upsert(
 		GitHubAppAuthCollection,
 		bson.M{
-			ghAuthIdKey: githubAppAuth.Id,
+			GhAuthIdKey: githubAppAuth.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				ghAuthAppIdKey:      githubAppAuth.AppID,
-				ghAuthPrivateKeyKey: githubAppAuth.PrivateKey,
+				GhAuthAppIdKey:      githubAppAuth.AppID,
+				GhAuthPrivateKeyKey: githubAppAuth.PrivateKey,
 			},
+		},
+	)
+	return err
+}
+
+func InsertGithubAppAuth(githubAppAuth *GithubAppAuth) error {
+	err := db.Insert(
+		GitHubAppAuthCollection,
+		bson.M{
+			GhAuthIdKey:         githubAppAuth.Id,
+			GhAuthAppIdKey:      githubAppAuth.AppID,
+			GhAuthPrivateKeyKey: githubAppAuth.PrivateKey,
 		},
 	)
 	return err
@@ -69,6 +81,6 @@ func UpsertGithubAppAuth(githubAppAuth *GithubAppAuth) error {
 func RemoveGithubAppAuth(id string) error {
 	return db.Remove(
 		GitHubAppAuthCollection,
-		bson.M{ghAuthIdKey: id},
+		bson.M{GhAuthIdKey: id},
 	)
 }

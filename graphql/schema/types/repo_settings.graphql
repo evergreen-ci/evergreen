@@ -7,6 +7,7 @@ update the settings for a given project.
 input RepoSettingsInput {
   repoId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
   aliases: [ProjectAliasInput!]
+  githubAppAuth: GithubAppAuthInput @redactSecrets
   githubWebhooksEnabled: Boolean
   projectRef: RepoRefInput ## use the repo ref here in order to have stronger types
   subscriptions: [SubscriptionInput!]
@@ -19,6 +20,7 @@ RepoSettings models the settings for a given RepoRef.
 """
 type RepoSettings {
   aliases: [ProjectAlias!]
+  githubAppAuth: GithubAppAuth
   githubWebhooksEnabled: Boolean!
   projectRef: RepoRef @requireProjectSettingsAccess ## use the repo ref here in order to have stronger types
   subscriptions: [GeneralSubscription!]
