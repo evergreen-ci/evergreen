@@ -960,8 +960,6 @@ func (projectVars *ProjectVars) checkAndRunParameterStoreOp(ctx context.Context,
 	}
 
 	op(ref, isRepoRef)
-
-	return
 }
 
 func (projectVars *ProjectVars) GetVars(t *task.Task) map[string]string {
