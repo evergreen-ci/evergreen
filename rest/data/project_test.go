@@ -157,24 +157,24 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		s.NotEmpty(before.Aliases[0].ID)
 		s.NotEmpty(after.Aliases[0].ID)
 
-		h :=
-			event.EventLogEntry{
-				Timestamp:    time.Now(),
-				ResourceType: event.EventResourceTypeProject,
-				EventType:    event.EventTypeProjectModified,
-				ResourceId:   projectId,
-				Data: &model.ProjectChangeEvent{
-					User: username,
-					Before: model.ProjectSettingsEvent{
-						PeriodicBuildsDefault:      true,
-						WorkstationCommandsDefault: true,
-						ProjectSettings:            before,
-					},
-					After: model.ProjectSettingsEvent{
-						ProjectSettings: after,
-					},
-				},
-			}
+		data := model.ProjectChangeEvent{
+			User: username,
+			Before: model.ProjectSettingsEvent{
+				PeriodicBuildsDefault:      true,
+				WorkstationCommandsDefault: true,
+				ProjectSettings:            before,
+			},
+			After: model.ProjectSettingsEvent{
+				ProjectSettings: after,
+			},
+		}
+		h := event.EventLogEntry{
+			Timestamp:    time.Now(),
+			ResourceType: event.EventResourceTypeProject,
+			EventType:    event.EventTypeProjectModified,
+			ResourceId:   projectId,
+			Data:         data,
+		}
 
 		s.Require().NoError(db.ClearCollections(event.EventCollection))
 		for i := 0; i < projEventCount; i++ {
@@ -211,10 +211,10 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 		s.Nil(eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
 		s.NotNil(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands)
 		s.Len(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands, 0)
-		s.Equal(eventLog.Before.Vars.Vars["hello"], "world")
-		s.Equal(eventLog.After.Vars.Vars["hello"], "another_world")
-		s.Equal(eventLog.After.Vars.Vars["world"], evergreen.RedactedAfterValue)
-		s.Equal(eventLog.Before.Vars.Vars["world"], evergreen.RedactedBeforeValue)
+		s.Equal(evergreen.RedactedBeforeValue, eventLog.Before.Vars.Vars["hello"])
+		s.Equal(evergreen.RedactedAfterValue, eventLog.After.Vars.Vars["hello"])
+		s.Equal(evergreen.RedactedBeforeValue, eventLog.Before.Vars.Vars["world"])
+		s.Equal(evergreen.RedactedAfterValue, eventLog.After.Vars.Vars["world"])
 		s.Equal(utility.FromStringPtr(eventLog.Before.GithubAppAuth.PrivateKey), "")
 		s.Equal(utility.FromStringPtr(eventLog.After.GithubAppAuth.PrivateKey), evergreen.RedactedValue)
 	}
@@ -341,17 +341,17 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	eventData := projectEvents[0].Data.(*model.ProjectChangeEvent)
 
 	assert.Equal(t, username, eventData.User)
-	assert.Equal(t, "3", eventData.Before.Vars.Vars["b"])
+	assert.Equal(t, evergreen.RedactedBeforeValue, eventData.Before.Vars.Vars["b"])
 	assert.True(t, eventData.Before.Vars.PrivateVars["b"])
-	assert.Equal(t, "33", eventData.After.Vars.Vars["b"])
+	assert.Equal(t, evergreen.RedactedAfterValue, eventData.After.Vars.Vars["b"])
 	assert.True(t, eventData.After.Vars.PrivateVars["b"])
 
 	require.NotNil(t, projectEvents[1].Data)
 	eventData = projectEvents[1].Data.(*model.ProjectChangeEvent)
 
 	assert.Equal(t, username, eventData.User)
-	assert.Equal(t, "1", eventData.Before.Vars.Vars["a"])
-	assert.Equal(t, "11", eventData.After.Vars.Vars["a"])
+	assert.Equal(t, evergreen.RedactedBeforeValue, eventData.Before.Vars.Vars["a"])
+	assert.Equal(t, evergreen.RedactedAfterValue, eventData.After.Vars.Vars["a"])
 }
 
 func TestUpdateProjectVarsByValueWithEnabledOnly(t *testing.T) {
