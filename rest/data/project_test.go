@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -87,37 +88,52 @@ func getMockProjectSettings() model.ProjectSettings {
 func TestProjectConnectorGetSuite(t *testing.T) {
 	s := new(ProjectConnectorGetSuite)
 	s.setup = func() error {
-		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection))
+		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection))
 
 		projects := []*model.ProjectRef{
 			{
-				Id:          "projectA",
-				Enabled:     true,
-				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
-				Owner:       "evergreen-ci",
-				Repo:        "gimlet",
-				Branch:      "main",
+				Id:                    "projectA",
+				Enabled:               true,
+				CommitQueue:           model.CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:                 "evergreen-ci",
+				Repo:                  "gimlet",
+				Branch:                "main",
+				ParameterStoreEnabled: true,
 			},
 			{
-				Id:          "projectB",
-				Enabled:     true,
-				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
-				Owner:       "evergreen-ci",
-				Repo:        "evergreen",
-				Branch:      "main",
+				Id:                    "projectB",
+				Enabled:               true,
+				CommitQueue:           model.CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:                 "evergreen-ci",
+				Repo:                  "evergreen",
+				Branch:                "main",
+				ParameterStoreEnabled: true,
 			},
 			{
-				Id:          "projectC",
-				Enabled:     true,
-				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
-				Owner:       "mongodb",
-				Repo:        "mongo",
-				Branch:      "main",
+				Id:                    "projectC",
+				Enabled:               true,
+				CommitQueue:           model.CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:                 "mongodb",
+				Repo:                  "mongo",
+				Branch:                "main",
+				ParameterStoreEnabled: true,
 			},
-			{Id: "projectD"},
-			{Id: "projectE"},
-			{Id: "projectF"},
-			{Id: projectId},
+			{
+				Id:                    "projectD",
+				ParameterStoreEnabled: true,
+			},
+			{
+				Id:                    "projectE",
+				ParameterStoreEnabled: true,
+			},
+			{
+				Id:                    "projectF",
+				ParameterStoreEnabled: true,
+			},
+			{
+				Id:                    projectId,
+				ParameterStoreEnabled: true,
+			},
 		}
 
 		for _, p := range projects {
@@ -186,7 +202,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 	}
 
 	s.teardown = func() error {
-		return db.Clear(model.ProjectRefCollection)
+		return db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection)
 	}
 
 	suite.Run(t, s)
@@ -269,7 +285,24 @@ func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 	s.Error(err)
 }
 
+func checkParametersMatchVars(ctx context.Context, t *testing.T, pm model.ParameterMappings, vars map[string]string) {
+	assert.Len(t, pm, len(vars), "each project var should have exactly one corresponding parameter")
+	fakeParams, err := fakeparameter.FindByIDs(ctx, pm.ParameterNames()...)
+	assert.NoError(t, err)
+	assert.Len(t, fakeParams, len(vars), "number of parameters for project vars should match number of project vars defined")
+
+	paramNamesMap := pm.ParameterNameMap()
+	for _, fakeParam := range fakeParams {
+		varName := paramNamesMap[fakeParam.Name].Name
+		assert.NotEmpty(t, varName, "parameter should have corresponding project variable")
+		assert.Equal(t, vars[varName], fakeParam.Value, "project variable value should match the parameter value")
+	}
+}
+
 func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	//successful update
 	varsToDelete := []string{"a"}
 	newVars := restModel.APIProjectVars{
@@ -278,9 +311,10 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 		VarsToDelete: varsToDelete,
 	}
 	s.NoError(UpdateProjectVars(projectId, &newVars, false))
-	s.Equal(newVars.Vars["b"], "") // can't unredact previously redacted  variables
-	s.Equal(newVars.Vars["c"], "")
-	s.Equal(newVars.Vars["d"], "4") // can't overwrite a value with the empty string
+
+	s.Empty(newVars.Vars["b"]) // can't unredact previously redacted variables
+	s.Empty(newVars.Vars["c"])
+	s.Equal("4", newVars.Vars["d"]) // can't overwrite a value with the empty string
 	_, ok := newVars.Vars["a"]
 	s.False(ok)
 
@@ -289,8 +323,39 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	_, ok = newVars.PrivateVars["a"]
 	s.False(ok)
 
+	dbNewVars, err := model.FindOneProjectVars(projectId)
+	s.NoError(err)
+	s.Require().NotZero(dbNewVars)
+
+	s.Len(dbNewVars.Vars, 3)
+	s.Equal("2", dbNewVars.Vars["b"])
+	s.Equal("3", dbNewVars.Vars["c"])
+	s.Equal("4", dbNewVars.Vars["d"])
+	_, ok = dbNewVars.Vars["a"]
+	s.False(ok)
+
+	s.True(newVars.PrivateVars["b"])
+	s.True(newVars.PrivateVars["c"])
+	s.False(newVars.PrivateVars["a"])
+
+	checkParametersMatchVars(ctx, s.T(), dbNewVars.Parameters, dbNewVars.Vars)
+
+	newProjRef := model.ProjectRef{
+		Id:                    "new_project",
+		ParameterStoreEnabled: true,
+	}
+	s.Require().NoError(newProjRef.Insert())
 	// successful upsert
-	s.NoError(UpdateProjectVars("not-an-id", &newVars, false))
+	s.NoError(UpdateProjectVars(newProjRef.Id, &newVars, false))
+
+	dbUpsertedVars, err := model.FindOneProjectVars(newProjRef.Id)
+	s.NoError(err)
+	s.Require().NotZero(dbUpsertedVars)
+
+	s.Len(dbUpsertedVars.Vars, 1)
+	s.Equal("4", dbUpsertedVars.Vars["d"])
+
+	checkParametersMatchVars(ctx, s.T(), dbUpsertedVars.Parameters, dbUpsertedVars.Vars)
 }
 
 func TestUpdateProjectVarsByValue(t *testing.T) {
