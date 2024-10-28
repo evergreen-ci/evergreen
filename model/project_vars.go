@@ -190,36 +190,6 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 		}
 	}, "FindOneProjectVars")
 
-	// kim: TODO: remove
-	// if isPSEnabled && !ref.ParameterStoreVarsSynced {
-	//     grip.Debug(message.Fields{
-	//         "message":     "project has Parameter Store enabled for project vars, but they're not synced; falling back to using the DB",
-	//         "op":          "FindOneProjectVars",
-	//         "project_id":  ref.Id,
-	//         "is_repo_ref": isRepoRef,
-	//         "epic":        "DEVPROD-5552",
-	//         "stack":       string(debug.Stack()),
-	//     })
-	// }
-	// if isPSEnabled && ref.ParameterStoreVarsSynced {
-	//     // kim: TODO: convert this to error to see what unit tests fail when
-	//     // using PS to write/read.
-	//     projectVarsFromPS, err := projectVars.findParameterStore(ctx)
-	//     if err != nil {
-	//         grip.Error(message.WrapError(err, message.Fields{
-	//             "message": "could not find project vars from Parameter Store; falling back to using the DB",
-	//             "op":      "FindOneProjectVars",
-	//             "project": projectVars.Id,
-	//             "epic":    "DEVPROD-5552",
-	//         }))
-	//     }
-	//     if projectVarsFromPS != nil {
-	//         return projectVarsFromPS, nil
-	//     }
-	//     // Intentionally fall through so that it falls back to returning the DB
-	//     // project vars if Parameter Store errors.
-	// }
-
 	return projectVars, nil
 }
 
@@ -504,41 +474,6 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 			}))
 		}
 	}, "Upsert")
-	// kim: TODO: remove
-	// ref, isRepoRef, err := projectVars.findProjectRef()
-	// grip.Error(message.WrapError(err, message.Fields{
-	//     "message":    "could not get project ref to check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
-	//     "op":         "Upsert",
-	//     "project_id": projectVars.Id,
-	//     "epic":       "DEVPROD-5552",
-	// }))
-	// isPSEnabled, err := isParameterStoreEnabledForProject(ctx, ref)
-	// if err != nil {
-	//     return nil, err
-	// }
-	// grip.Error(message.WrapError(err, message.Fields{
-	//     "message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
-	//     "op":         "Upsert",
-	//     "project_id": projectVars.Id,
-	//     "epic":       "DEVPROD-5552",
-	// }))
-	// if isPSEnabled {
-	//     if !ref.ParameterStoreVarsSynced {
-	//         grip.Error(message.WrapError(fullSyncToParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
-	//             "message":    "could not fully sync project vars into Parameter Store; falling back to using the DB",
-	//             "op":         "Upsert",
-	//             "project_id": projectVars.Id,
-	//             "epic":       "DEVPROD-5552",
-	//         }))
-	//     } else {
-	//         grip.Error(message.WrapError(projectVars.upsertParameterStore(ctx), message.Fields{
-	//             "message":    "could not upsert project vars into Parameter Store; falling back to using the DB",
-	//             "op":         "Upsert",
-	//             "project_id": projectVars.Id,
-	//             "epic":       "DEVPROD-5552",
-	//         }))
-	//     }
-	// }
 
 	return db.Upsert(
 		ProjectVarsCollection,
@@ -835,8 +770,6 @@ func fullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *Proj
 // Insert creates a new project vars document and stores all the project
 // variables in the DB. If Parameter Store is enabled for the project, it also
 // stores the variables in Parameter Store.
-// kim: TODO: add log to look for usages of Insert/Upsert/FindAndModify that
-// don't have PS enabled.
 func (projectVars *ProjectVars) Insert() error {
 	if err := db.Insert(
 		ProjectVarsCollection,
@@ -859,33 +792,6 @@ func (projectVars *ProjectVars) Insert() error {
 			"epic":       "DEVPROD-5552",
 		}))
 	}, "Insert")
-
-	// kim: TODO: remove
-	// ref, isRepoRef, err := projectVars.findProjectRef()
-	// grip.Error(message.WrapError(err, message.Fields{
-	//     "message":    "could not get project ref to check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
-	//     "op":         "Insert",
-	//     "project_id": projectVars.Id,
-	//     "epic":       "DEVPROD-5552",
-	// }))
-	// isPSEnabled, err := isParameterStoreEnabledForProject(ctx, ref)
-	// if err != nil {
-	//     return err
-	// }
-	// grip.Error(message.WrapError(err, message.Fields{
-	//     "message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
-	//     "op":         "Insert",
-	//     "project_id": projectVars.Id,
-	//     "epic":       "DEVPROD-5552",
-	// }))
-	// if isPSEnabled {
-	//     grip.Error(message.WrapError(insertParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
-	//         "message":    "could not insert project vars into Parameter Store; falling back to using the DB",
-	//         "op":         "Insert",
-	//         "project_id": projectVars.Id,
-	//         "epic":       "DEVPROD-5552",
-	//     }))
-	// }
 
 	return nil
 }
@@ -932,41 +838,6 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 			}))
 		}
 	}, "FindAndModify")
-	// kim: TODO: remove
-	// ref, isRepoRef, err := projectVars.findProjectRef()
-	// grip.Error(message.WrapError(err, message.Fields{
-	//     "message":    "could not get project ref to check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
-	//     "op":         "FindAndModify",
-	//     "project_id": projectVars.Id,
-	//     "epic":       "DEVPROD-5552",
-	// }))
-	// isPSEnabled, err := isParameterStoreEnabledForProject(ctx, ref)
-	// if !isPSEnabled {
-	//     return nil, err
-	// }
-	// grip.Error(message.WrapError(err, message.Fields{
-	//     "message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and falling back to using the DB",
-	//     "op":         "FindAndModify",
-	//     "project_id": projectVars.Id,
-	//     "epic":       "DEVPROD-5552",
-	// }))
-	// if isPSEnabled {
-	//     if !ref.ParameterStoreVarsSynced {
-	//         grip.Error(message.WrapError(fullSyncToParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
-	//             "message":    "could not fully sync project vars into Parameter Store; falling back to using the DB",
-	//             "op":         "FindANdModify",
-	//             "project_id": projectVars.Id,
-	//             "epic":       "DEVPROD-5552",
-	//         }))
-	//     } else {
-	//         grip.Error(message.WrapError(projectVars.findAndModifyParameterStore(ctx, varsToDelete), message.Fields{
-	//             "message":    "could not find and modify project vars in Parameter Store; falling back to using the DB",
-	//             "op":         "FindAndModify",
-	//             "project_id": projectVars.Id,
-	//             "epic":       "DEVPROD-5552",
-	//         }))
-	//     }
-	// }
 
 	setUpdate := bson.M{}
 	unsetUpdate := bson.M{}
@@ -1074,27 +945,6 @@ func (projectVars *ProjectVars) Clear() error {
 	if err != nil {
 		return err
 	}
-
-	// kim: TODO: remove
-	// ref, _, err := projectVars.findProjectRef()
-	// grip.Error(message.WrapError(err, message.Fields{
-	//     "message":    "could not get project ref to check if Parameter Store is enabled for project; assuming it's disabled and refusing to clear any project variables from Parameter Store",
-	//     "op":         "Clear",
-	//     "project_id": projectVars.Id,
-	//     "epic":       "DEVPROD-5552",
-	// }))
-	// isPSEnabled, err := isParameterStoreEnabledForProject(ctx, ref)
-	// if err != nil {
-	//     return err
-	// }
-	// grip.Error(message.WrapError(err, message.Fields{
-	//     "message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and refusing to clear any project variables from Parameter Store",
-	//     "op":         "Clear",
-	//     "project_id": projectVars.Id,
-	//     "epic":       "DEVPROD-5552",
-	// }))
-	// if isPSEnabled && ref.ParameterStoreVarsSynced {
-	// }
 
 	return nil
 }
