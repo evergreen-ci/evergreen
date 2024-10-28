@@ -37,7 +37,7 @@ var (
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2024-10-25"
+	AgentVersion = "2024-10-28"
 )
 
 const (
@@ -544,11 +544,6 @@ func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, le
 	}
 
 	return sender, nil
-}
-
-// TODO DEVPROD-2923: Delete this function
-func (s *Settings) GetGithubOauthToken() (string, error) {
-	return "", nil
 }
 
 // PluginConfig holds plugin-specific settings, which are handled.
