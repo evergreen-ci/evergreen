@@ -8,7 +8,10 @@
       "activated": true,
       "author": "mohamed.khelif",
       "status": "failed",
-      "order": 39
+      "order": 39,
+      "create_time": {
+        "$date": "2019-12-30T00:00:03Z"
+      }
     },
     {
       "_id": "evergreen_version0",
@@ -19,6 +22,9 @@
       "author": "mohamed.khelif",
       "status": "failed",
       "order": 40,
+      "create_time": {
+        "$date": "2019-12-31T00:00:03Z"
+      },
       "build_variants_status": {
         "activated": false,
         "build_id": "evergreen_version1_build",
@@ -34,6 +40,9 @@
       "author": "mohamed.khelif",
       "status": "success",
       "order": 41,
+      "create_time": {
+        "$date": "2020-01-01T00:00:00Z"
+      },
       "build_variants_status": {
         "activated": true,
         "build_id": "evergreen_version1_build",
@@ -49,6 +58,9 @@
       "author": "mohamed.khelif",
       "status": "success",
       "order": 42,
+      "create_time": {
+        "$date": "2020-01-02T06:43:00Z"
+      },
       "build_variants_status": {
         "activated": true,
         "build_id": "evergreen_version2_build",
@@ -64,6 +76,9 @@
       "author": "mohamed.khelif",
       "status": "created",
       "order": 43,
+      "create_time": {
+        "$date": "2020-01-03T13:30:00Z"
+      },
       "build_variants_status": {
         "activated": true,
         "build_id": "evergreen_version3_build",
@@ -78,7 +93,10 @@
       "activated": false,
       "author": "mohamed.khelif",
       "status": "created",
-      "order": 44
+      "order": 44,
+      "create_time": {
+        "$date": "2020-01-04T08:15:00Z"
+      }
     },
     {
       "_id": "evergreen_version5",
@@ -88,7 +106,10 @@
       "activated": true,
       "author": "mohamed.khelif",
       "status": "created",
-      "order": 45
+      "order": 45,
+      "create_time": {
+        "$date": "2020-01-05T12:00:00Z"
+      }
     },
     {
       "_id": "inactive1",
@@ -134,6 +155,7 @@
       "create_time": {
         "$date": "2020-01-01T00:00:05Z"
       },
+      "execution": 0,
       "display_task_id": ""
     },
     {
@@ -148,6 +170,7 @@
       "create_time": {
         "$date": "2020-01-01T00:00:05Z"
       },
+      "execution": 1,
       "display_task_id": ""
     },
     {
@@ -162,6 +185,7 @@
       "create_time": {
         "$date": "2020-01-01T00:00:05Z"
       },
+      "execution": 0,
       "display_task_id": ""
     },
     {
@@ -176,6 +200,7 @@
       "create_time": {
         "$date": "2020-01-01T00:00:05Z"
       },
+      "execution": 0,
       "display_task_id": ""
     },
     {
@@ -190,6 +215,7 @@
       "create_time": {
         "$date": "2020-01-01T00:00:05Z"
       },
+      "execution": 0,
       "display_task_id": ""
     }
   ],

@@ -1034,8 +1034,8 @@ func (c *awsClientImpl) AssumeRole(ctx context.Context, input *sts.AssumeRoleInp
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
-					if strings.Contains(apiErr.Error(), stsErrorAccessDenied) ||
-						strings.Contains(apiErr.Error(), stsErrorAssumeRoleAccessDenied) {
+					if strings.Contains(apiErr.ErrorCode(), stsErrorAccessDenied) ||
+						strings.Contains(apiErr.ErrorCode(), stsErrorAssumeRoleAccessDenied) {
 						// This means the role does not exist or our role does not have permission to assume it.
 						return false, err
 					}
