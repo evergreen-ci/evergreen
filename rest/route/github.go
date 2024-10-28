@@ -462,7 +462,7 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(event *github.MergeGrou
 		"head_sha": event.GetMergeGroup().GetHeadSHA(),
 		"message":  "merge group received",
 	})
-	// Ensure that a project exists before creating an intent. Otherwise, intent creation will fail.
+	// Ensure that a project exists before creating an intent. Otherwise, intent creation will fail which will always yield an unactionable 'Evergreen error' posted to GitHub.
 	projectRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(org, repo, branch)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding project ref"))
