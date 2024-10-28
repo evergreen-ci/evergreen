@@ -415,6 +415,12 @@ func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.
 	if err != nil {
 		return "", errors.Wrap(err, "getting evergreen settings")
 	}
+
+	if settings.AuthConfig.Github == nil {
+		settings = evergreen.GetEnvironment().Settings()
+		grip.Info("no Github settings in auth config, using cached settings")
+	}
+
 	token, err := githubapp.CreateCachedInstallationTokenWithDefaultOwnerRepo(ctx, settings, defaultGitHubAPIRequestLifetime, opts)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
