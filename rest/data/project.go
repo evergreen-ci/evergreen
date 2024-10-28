@@ -255,7 +255,6 @@ func GetProjectTasksWithOptions(ctx context.Context, projectName string, taskNam
 }
 
 // FindProjectVarsById returns the variables associated with the project and repo (if given).
-// kim: TODO: make sure any unit tests using this still pass after DEVPROD-9405.
 func FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIProjectVars, error) {
 	var repoVars *model.ProjectVars
 	var err error

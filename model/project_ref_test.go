@@ -1031,8 +1031,6 @@ func TestAttachToRepo(t *testing.T) {
 	assert.Error(t, pRef.AttachToRepo(ctx, u))
 }
 
-// kim: TODO: rework this to use project vars from the DB and compare with
-// project vars from PS.
 func checkParametersMatchVars(ctx context.Context, t *testing.T, pm ParameterMappings, vars map[string]string) {
 	assert.Len(t, pm, len(vars), "each project var should have exactly one corresponding parameter")
 	fakeParams, err := fakeparameter.FindByIDs(ctx, pm.ParameterNames()...)
@@ -1104,7 +1102,6 @@ func TestDetachFromRepo(t *testing.T) {
 		"NewRepoVarsAreMerged": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
-			// kim: TODO: make sure this still passes after DEVPROD-9405
 			vars, err := FindOneProjectVars(pRef.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, vars)
@@ -1121,7 +1118,6 @@ func TestDetachFromRepo(t *testing.T) {
 
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
-			// kim: TODO: make sure this still passes after DEVPROD-9405
 			vars, err := FindOneProjectVars(pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, vars)
@@ -2271,7 +2267,6 @@ func TestGithubPermissionGroups(t *testing.T) {
 }
 
 func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
-	t.Skip("kim: TODO: unskip once testing is done (can't enable PS by default for new project ref)")
 	assert := assert.New(t)
 	require := require.New(t)
 

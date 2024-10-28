@@ -1284,12 +1284,6 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	if err != nil {
 		return nil, errors.Wrap(err, "getting common project variables")
 	}
-	// kim: NOTE: this won't enable PS because if creating a brand new repo ref,
-	// there's no pre-existing project ref because it'll be created by
-	// AttachToNewRepo later on. This is a bug in how AttachToNewRepo does order
-	// of operations with AddToRepoScope and the last update for the owner/repo,
-	// because the repo should obey the settings in the project ref that's about
-	// to be created. Oh well.
 	commonProjectVars.Id = repoRef.Id
 	if err = commonProjectVars.Insert(); err != nil {
 		return nil, errors.Wrap(err, "inserting project variables for repo")
@@ -1361,7 +1355,6 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 	commonPrivate := map[string]bool{}
 	commonAdminOnly := map[string]bool{}
 	for i, id := range projectIds {
-		// kim: TODO: update unit tests for project vars
 		vars, err := FindOneProjectVars(id)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding variables for project '%s'", id)
@@ -2030,7 +2023,6 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 }
 
 // GetProjectSettings returns the ProjectSettings of the given identifier and ProjectRef
-// kim: TODO: update unit tests for project vars
 func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 	// Don't error even if there is problem with verifying the GitHub app installation
 	// because a GitHub outage could cause project settings page to not load.

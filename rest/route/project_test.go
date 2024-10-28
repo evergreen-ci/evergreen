@@ -1120,8 +1120,6 @@ func TestDeleteProject(t *testing.T) {
 		skeletonProjVars := serviceModel.ProjectVars{
 			Id: projects[i].Id,
 		}
-		// kim: TODO: verify this still passes after DEVPROD-9405. All project
-		// vars should be deleted.
 		projVars, err := serviceModel.FindOneProjectVars(projects[i].Id)
 		assert.NoError(t, err)
 		assert.Equal(t, skeletonProjVars, *projVars)

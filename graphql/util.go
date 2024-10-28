@@ -642,9 +642,6 @@ func isPopulated(buildVariantOptions *BuildVariantOptions) bool {
 }
 
 func getRedactedAPIVarsForProject(ctx context.Context, projectId string) (*restModel.APIProjectVars, error) {
-	// kim: TODO: this is for the project vars UI. e2e test in staging that PS
-	// vars work.
-	// kim: TODO: update GQL tests to enable PS for tests.
 	vars, err := model.FindOneProjectVars(projectId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project vars for '%s': %s", projectId, err.Error()))
