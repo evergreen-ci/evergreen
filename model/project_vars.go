@@ -1084,8 +1084,6 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 			}
 		}
 	}
-
-	sort.Sort(projectVars.Parameters)
 }
 
 // convertVarToParam converts a project variable to its equivalent parameter
