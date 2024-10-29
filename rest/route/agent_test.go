@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -103,7 +104,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 
 			testutil.ConfigureIntegrationTest(t, env.Settings())
 
-			require.NoError(t, db.ClearCollections(host.Collection, task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, model.VersionCollection, model.ParserProjectCollection))
+			require.NoError(t, db.ClearCollections(host.Collection, task.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, model.VersionCollection, model.ParserProjectCollection))
 
 			const hostID = "host_id"
 			t1 := task.Task{
@@ -118,9 +119,10 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 				Version: "aaaaaaaaaaff001122334456",
 			}
 			pRef := model.ProjectRef{
-				Id:    "p1",
-				Owner: "evergreen-ci",
-				Repo:  "sample",
+				Id:                    "p1",
+				Owner:                 "evergreen-ci",
+				Repo:                  "sample",
+				ParameterStoreEnabled: true,
 			}
 			vars := &model.ProjectVars{
 				Id:          "p1",

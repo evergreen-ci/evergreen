@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -30,25 +31,27 @@ func TestProjectCopySuite(t *testing.T) {
 }
 
 func (s *ProjectCopySuite) SetupSuite() {
-	s.NoError(db.ClearCollections(model.ProjectRefCollection, user.Collection, model.ProjectVarsCollection))
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, user.Collection, model.ProjectVarsCollection, fakeparameter.Collection))
 	pRefs := []model.ProjectRef{
 		{
-			Id:         "12345",
-			Identifier: "projectA",
-			Branch:     "abcd",
-			Owner:      "evergreen-ci",
-			Repo:       "evergreen",
-			Enabled:    true,
-			Admins:     []string{"my-user"},
+			Id:                    "12345",
+			Identifier:            "projectA",
+			Branch:                "abcd",
+			Owner:                 "evergreen-ci",
+			Repo:                  "evergreen",
+			Enabled:               true,
+			Admins:                []string{"my-user"},
+			ParameterStoreEnabled: true,
 		},
 		{
-			Id:         "23456",
-			Identifier: "projectB",
-			Branch:     "bcde",
-			Owner:      "evergreen-ci",
-			Repo:       "evergreen",
-			Enabled:    true,
-			Admins:     []string{"my-user"},
+			Id:                    "23456",
+			Identifier:            "projectB",
+			Branch:                "bcde",
+			Owner:                 "evergreen-ci",
+			Repo:                  "evergreen",
+			Enabled:               true,
+			Admins:                []string{"my-user"},
+			ParameterStoreEnabled: true,
 		},
 	}
 	for _, pRef := range pRefs {
@@ -140,26 +143,29 @@ func TestCopyVariablesSuite(t *testing.T) {
 
 func (s *copyVariablesSuite) SetupTest() {
 	s.route = &copyVariablesHandler{}
-	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, model.RepoRefCollection))
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, model.RepoRefCollection))
 	pRefs := []model.ProjectRef{
 		{
-			Id:      "projectA",
-			Branch:  "abcd",
-			Enabled: true,
-			Admins:  []string{"my-user"},
+			Id:                    "projectA",
+			Branch:                "abcd",
+			Enabled:               true,
+			Admins:                []string{"my-user"},
+			ParameterStoreEnabled: true,
 		},
 		{
-			Id:      "projectB",
-			Branch:  "bcde",
-			Enabled: true,
-			Admins:  []string{"my-user"},
+			Id:                    "projectB",
+			Branch:                "bcde",
+			Enabled:               true,
+			Admins:                []string{"my-user"},
+			ParameterStoreEnabled: true,
 		},
 	}
 	for _, pRef := range pRefs {
 		s.NoError(pRef.Insert())
 	}
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
-		Id: "repoRef",
+		Id:                    "repoRef",
+		ParameterStoreEnabled: true,
 	}}
 	s.NoError(repoRef.Upsert())
 	projectVar1 := &model.ProjectVars{
