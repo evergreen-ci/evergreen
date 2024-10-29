@@ -5,8 +5,6 @@
       "result": {
         "data": {
           "waterfall": {
-            "nextPageOrder": 39,
-            "prevPageOrder": 0,
             "buildVariants": [
               {
                 "id": "enterprise-ubuntu1604-64",
@@ -140,7 +138,11 @@
                   "order": 39
                 }
               }
-            ]
+            ],
+            "pagination": {
+              "nextPageOrder": 39,
+              "prevPageOrder": 0
+            }
           }
         }
       }
@@ -150,8 +152,6 @@
       "result": {
         "data": {
           "waterfall": {
-            "nextPageOrder": 39,
-            "prevPageOrder": 44,
             "versions": [
               {
                 "inactiveVersions": [
@@ -211,7 +211,11 @@
                   "order": 39
                 }
               }
-            ]
+            ],
+            "pagination": {
+              "nextPageOrder": 39,
+              "prevPageOrder": 44
+            }
           }
         }
       }
@@ -221,8 +225,6 @@
       "result": {
         "data": {
           "waterfall": {
-            "nextPageOrder": 43,
-            "prevPageOrder": 45,
             "versions": [
               {
                 "inactiveVersions": null,
@@ -253,7 +255,11 @@
                   "order": 43
                 }
               }
-            ]
+            ],
+            "pagination": {
+              "nextPageOrder": 43,
+              "prevPageOrder": 0
+            }
           }
         }
       }
@@ -263,8 +269,6 @@
       "result": {
         "data": {
           "waterfall": {
-            "nextPageOrder": 1,
-            "prevPageOrder": 0,
             "versions": [
               {
                 "version": null,
@@ -289,7 +293,11 @@
                   }
                 ]
               }
-            ]
+            ],
+            "pagination": {
+              "nextPageOrder": 1,
+              "prevPageOrder": 0
+            }
           }
         }
       }
@@ -299,9 +307,11 @@
       "result": {
         "data": {
           "waterfall": {
-            "nextPageOrder": 0,
-            "prevPageOrder": 0,
-            "versions": []
+            "versions": [],
+            "pagination": {
+              "nextPageOrder": 0,
+              "prevPageOrder": 0
+            }
           }
         }
       }
@@ -311,8 +321,6 @@
       "result": {
         "data": {
           "waterfall": {
-            "nextPageOrder": 39,
-            "prevPageOrder": 41,
             "versions": [
               {
                 "version": {
@@ -340,7 +348,11 @@
                 },
                 "inactiveVersions": null
               }
-            ]
+            ],
+            "pagination": {
+              "nextPageOrder": 39,
+              "prevPageOrder": 41
+            }
           }
         }
       }
@@ -350,8 +362,6 @@
       "result": {
         "data": {
           "waterfall": {
-            "nextPageOrder": 39,
-            "prevPageOrder": 0,
             "versions": [
               {
                 "version": {
@@ -413,15 +423,17 @@
                 },
                 "inactiveVersions": null
               }
-            ]
+            ],
+            "pagination": {
+              "nextPageOrder": 39,
+              "prevPageOrder": 0
+            }
           }
         },
         "errors": [
           {
             "message": "version with revision 'foobarbaz' not found",
-            "path": [
-              "waterfall"
-            ],
+            "path": ["waterfall"],
             "extensions": {
               "code": "PARTIAL_ERROR"
             }
@@ -434,8 +446,6 @@
       "result": {
         "data": {
           "waterfall": {
-            "nextPageOrder": 39,
-            "prevPageOrder": 42,
             "versions": [
               {
                 "version": {
@@ -471,7 +481,11 @@
                 },
                 "inactiveVersions": null
               }
-            ]
+            ],
+            "pagination": {
+              "nextPageOrder": 39,
+              "prevPageOrder": 42
+            }
           }
         }
       }
@@ -481,8 +495,6 @@
       "result": {
         "data": {
           "waterfall": {
-            "nextPageOrder": 39,
-            "prevPageOrder": 0,
             "versions": [
               {
                 "version": {
@@ -544,20 +556,75 @@
                 },
                 "inactiveVersions": null
               }
-            ]
+            ],
+            "pagination": {
+              "nextPageOrder": 39,
+              "prevPageOrder": 0
+            }
           }
         },
         "errors": [
           {
             "message": "version on or before date '2019-11-07' not found",
-            "path": [
-              "waterfall"
-            ],
+            "path": ["waterfall"],
             "extensions": {
               "code": "PARTIAL_ERROR"
             }
           }
         ]
+      }
+    },
+    {
+      "query_file": "flattened_versions.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "flattenedVersions": [
+              {
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version5",
+                "order": 45
+              },
+              {
+                "activated": false,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version4",
+                "order": 44
+              },
+              {
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version3",
+                "order": 43
+              },
+              {
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version2",
+                "order": 42
+              },
+              {
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version1",
+                "order": 41
+              },
+              {
+                "activated": false,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version0",
+                "order": 40
+              },
+              {
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version39",
+                "order": 39
+              }
+            ]
+          }
+        }
       }
     }
   ]

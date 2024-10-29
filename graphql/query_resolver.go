@@ -1033,8 +1033,18 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		// If no order options were specified, we're on the first page and should not put a limit on the first version returned so that we don't omit inactive versions
 		maxVersionOrder = 0
 	} else if maxOrderOpt == 0 {
-		// If we're paginating backwards, use the newest active version as the upper bound
-		maxVersionOrder = activeVersions[0].RevisionOrderNumber
+		// Find the next active version. If it doesn't exist, we're on the first page. If it does,
+		// set the max order to one less than its order so that we fetch all of the inactive versions
+		// in between.
+		nextActiveVersion, err := model.GetNextActiveWaterfallVersion(ctx, projectId, activeVersions[0].RevisionOrderNumber)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching next active waterfall version: %s", err.Error()))
+		}
+		if nextActiveVersion != nil {
+			maxVersionOrder = nextActiveVersion.RevisionOrderNumber - 1
+		} else {
+			maxVersionOrder = 0
+		}
 	}
 
 	allVersions, err := model.GetAllWaterfallVersions(ctx, projectId, minVersionOrder, maxVersionOrder)
@@ -1069,17 +1079,33 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		prevPageOrder = allVersions[0].RevisionOrderNumber
 		nextPageOrder = allVersions[len(allVersions)-1].RevisionOrderNumber
 
-		// If loading base page, there's no prev page to navigate to regardless of max order
-		if maxOrderOpt == 0 && minOrderOpt == 0 {
+		mostRecentWaterfallVersion, err := model.GetMostRecentWaterfallVersion(ctx, projectId)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching most recent waterfall version: %s", err.Error()))
+		}
+		// There's no previous page to navigate to if we've reached the most recent commit.
+		if mostRecentWaterfallVersion.RevisionOrderNumber <= prevPageOrder {
 			prevPageOrder = 0
 		}
 	}
 
+	flattenedVersions := []*restModel.APIVersion{}
+	for _, v := range allVersions {
+		apiVersion := &restModel.APIVersion{}
+		apiVersion.BuildFromService(v)
+		flattenedVersions = append(flattenedVersions, apiVersion)
+	}
+
 	return &Waterfall{
-		BuildVariants: bv,
-		NextPageOrder: nextPageOrder,
-		PrevPageOrder: prevPageOrder,
-		Versions:      waterfallVersions,
+		BuildVariants:     bv,
+		FlattenedVersions: flattenedVersions,
+		Versions:          waterfallVersions,
+		Pagination: &WaterfallPagination{
+			NextPageOrder: nextPageOrder,
+			PrevPageOrder: prevPageOrder,
+			HasNextPage:   nextPageOrder > 0,
+			HasPrevPage:   prevPageOrder > 0,
+		},
 	}, nil
 }
 

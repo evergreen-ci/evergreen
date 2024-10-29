@@ -434,16 +434,21 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	return versions, nil
 }
 
-func getMostRecentMainlineCommit(ctx context.Context, projectId string) (*Version, error) {
+// GetMostRecentWaterfallVersion returns the most recent version, activated or unactivated, on the waterfall.
+func GetMostRecentWaterfallVersion(ctx context.Context, projectId string) (*Version, error) {
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey: bson.M{
 			"$in": evergreen.SystemVersionRequesterTypes,
 		},
 	}
-	pipeline := []bson.M{{"$match": match}, {"$sort": bson.M{VersionRevisionOrderNumberKey: -1}}, {"$limit": 1}}
-	res := []Version{}
+	pipeline := []bson.M{
+		{"$match": match},
+		{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}},
+		{"$limit": 1},
+	}
 
+	res := []Version{}
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
 	if err != nil {
@@ -467,7 +472,7 @@ func GetPreviousPageCommitOrderNumber(ctx context.Context, projectId string, ord
 		return nil, errors.Errorf("invalid requesters %s", invalidRequesters)
 	}
 	// First check if we are already looking at the most recent commit.
-	mostRecentCommit, err := getMostRecentMainlineCommit(ctx, projectId)
+	mostRecentCommit, err := GetMostRecentWaterfallVersion(ctx, projectId)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

@@ -609,10 +609,10 @@ type VolumeHost struct {
 }
 
 type Waterfall struct {
-	BuildVariants []*model1.WaterfallBuildVariant `json:"buildVariants"`
-	NextPageOrder int                             `json:"nextPageOrder"`
-	PrevPageOrder int                             `json:"prevPageOrder"`
-	Versions      []*WaterfallVersion             `json:"versions"`
+	BuildVariants     []*model1.WaterfallBuildVariant `json:"buildVariants"`
+	Versions          []*WaterfallVersion             `json:"versions"`
+	FlattenedVersions []*model.APIVersion             `json:"flattenedVersions"`
+	Pagination        *WaterfallPagination            `json:"pagination"`
 }
 
 type WaterfallOptions struct {
@@ -625,6 +625,13 @@ type WaterfallOptions struct {
 	ProjectIdentifier string   `json:"projectIdentifier"`
 	Requesters        []string `json:"requesters,omitempty"`
 	Revision          *string  `json:"revision,omitempty"`
+}
+
+type WaterfallPagination struct {
+	PrevPageOrder int  `json:"prevPageOrder"`
+	NextPageOrder int  `json:"nextPageOrder"`
+	HasNextPage   bool `json:"hasNextPage"`
+	HasPrevPage   bool `json:"hasPrevPage"`
 }
 
 type WaterfallVersion struct {
