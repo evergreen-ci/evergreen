@@ -163,7 +163,7 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
-	projectVars.checkAndRunParameterStoreOp(ctx, func(ref *ProjectRef, isRepoRef bool) {
+	if err := projectVars.checkAndRunParameterStoreOp(ctx, func(ref *ProjectRef, isRepoRef bool) {
 		if !ref.ParameterStoreVarsSynced {
 			grip.Debug(message.Fields{
 				"message":     "project has Parameter Store enabled for project vars, but they're not synced; falling back to using the DB",
@@ -186,7 +186,9 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 				projectVars = projectVarsFromPS
 			}
 		}
-	}, "FindOneProjectVars")
+	}, "FindOneProjectVars"); err != nil {
+		return nil, errors.Wrap(err, "FindOneProjectVars")
+	}
 
 	return projectVars, nil
 }
@@ -450,7 +452,7 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
-	projectVars.checkAndRunParameterStoreOp(ctx, func(ref *ProjectRef, isRepoRef bool) {
+	if err := projectVars.checkAndRunParameterStoreOp(ctx, func(ref *ProjectRef, isRepoRef bool) {
 		if !ref.ParameterStoreVarsSynced {
 			grip.Error(message.WrapError(fullSyncToParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
 				"message":    "could not fully sync project vars into Parameter Store; falling back to using the DB",
@@ -466,7 +468,9 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 				"epic":       "DEVPROD-5552",
 			}))
 		}
-	}, "Upsert")
+	}, "Upsert"); err != nil {
+		return nil, errors.Wrap(err, "Upsert")
+	}
 
 	return db.Upsert(
 		ProjectVarsCollection,
@@ -533,16 +537,18 @@ func (projectVars *ProjectVars) syncParameterDiff(ctx context.Context, pm Parame
 }
 
 func (projectVars *ProjectVars) setParamMappings(pm ParameterMappings) error {
+	update := bson.M{}
+	if len(pm) == 0 {
+		update["$unset"] = bson.M{projectVarsParametersKey: 1}
+	} else {
+		update["$set"] = bson.M{projectVarsParametersKey: pm}
+	}
 	if _, err := db.Upsert(
 		ProjectVarsCollection,
 		bson.M{
 			projectVarIdKey: projectVars.Id,
 		},
-		bson.M{
-			"$set": bson.M{
-				projectVarsParametersKey: pm,
-			},
-		},
+		update,
 	); err != nil {
 		return errors.Wrap(err, "updating parameter mappings for project vars")
 	}
@@ -690,11 +696,14 @@ func isParameterStoreEnabledForProject(ctx context.Context, ref *ProjectRef) (bo
 		return false, errors.Wrap(err, "getting service flags")
 	}
 	if flags.ParameterStoreDisabled {
-		return false, nil
+		return false, errors.Errorf("test needs update - Parameter Store is disabled globally")
 	}
 
 	if ref == nil {
 		return false, errors.Errorf("ref is nil")
+	}
+	if !ref.ParameterStoreEnabled {
+		return false, errors.Errorf("test needs update - Parameter Store is disabled for project '%s'", ref.Id)
 	}
 	return ref.ParameterStoreEnabled, nil
 }
@@ -733,10 +742,18 @@ func (projectVars *ProjectVars) findProjectRef() (ref *ProjectRef, isRepoRef boo
 // rollout is complete. This functionality only exists to aid the migration
 // process.
 func fullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *ProjectRef, isRepoRef bool) error {
+	before, err := FindOneProjectVars(vars.Id)
+	if err != nil {
+		return errors.Wrapf(err, "finding original project vars for project '%s'", vars.Id)
+	}
+	if before == nil {
+		before = &ProjectVars{}
+	}
+
 	grip.Debug(message.Fields{
 		"message":                     "fully syncing project vars to Parameter Store",
 		"num_vars":                    len(vars.Vars),
-		"existing_parameter_mappings": vars.Parameters,
+		"existing_parameter_mappings": before.Parameters,
 		"project_id":                  vars.Id,
 		"is_repo_ref":                 isRepoRef,
 		"epic":                        "DEVPROD-5552",
@@ -744,7 +761,7 @@ func fullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *Proj
 
 	// Delete any existing vars to ensure that the project vars are fully synced
 	// starting from a clean state.
-	paramNames := vars.Parameters.ParameterNames()
+	paramNames := before.Parameters.ParameterNames()
 	paramMgr := evergreen.GetEnvironment().ParameterManager()
 	if len(paramNames) > 0 {
 		if err := paramMgr.Delete(ctx, paramNames...); err != nil {
@@ -772,14 +789,16 @@ func (projectVars *ProjectVars) Insert() error {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
-	projectVars.checkAndRunParameterStoreOp(ctx, func(ref *ProjectRef, isRepoRef bool) {
+	if err := projectVars.checkAndRunParameterStoreOp(ctx, func(ref *ProjectRef, isRepoRef bool) {
 		grip.Error(message.WrapError(insertParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
 			"message":    "could not insert project vars into Parameter Store; falling back to using the DB",
 			"op":         "Insert",
 			"project_id": projectVars.Id,
 			"epic":       "DEVPROD-5552",
 		}))
-	}, "Insert")
+	}, "Insert"); err != nil {
+		return errors.Wrap(err, "Insert")
+	}
 
 	return nil
 }
@@ -809,7 +828,7 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
-	projectVars.checkAndRunParameterStoreOp(ctx, func(ref *ProjectRef, isRepoRef bool) {
+	if err := projectVars.checkAndRunParameterStoreOp(ctx, func(ref *ProjectRef, isRepoRef bool) {
 		if !ref.ParameterStoreVarsSynced {
 			grip.Error(message.WrapError(fullSyncToParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
 				"message":    "could not fully sync project vars into Parameter Store; falling back to using the DB",
@@ -825,7 +844,9 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 				"epic":       "DEVPROD-5552",
 			}))
 		}
-	}, "FindAndModify")
+	}, "FindAndModify"); err != nil {
+		return nil, errors.Wrap(err, "FindAndModify")
+	}
 
 	setUpdate := bson.M{}
 	unsetUpdate := bson.M{}
@@ -910,7 +931,7 @@ func (projectVars *ProjectVars) Clear() error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
-	projectVars.checkAndRunParameterStoreOp(ctx, func(ref *ProjectRef, isRepoRef bool) {
+	if err := projectVars.checkAndRunParameterStoreOp(ctx, func(ref *ProjectRef, isRepoRef bool) {
 		if ref.ParameterStoreVarsSynced {
 			grip.Error(message.WrapError(projectVars.upsertParameterStore(ctx), message.Fields{
 				"message":    "could not clear project vars from Parameter Store",
@@ -919,7 +940,9 @@ func (projectVars *ProjectVars) Clear() error {
 				"epic":       "DEVPROD-5552",
 			}))
 		}
-	}, "Clear")
+	}, "Clear"); err != nil {
+		return errors.Wrap(err, "Clear")
+	}
 
 	err := db.Update(ProjectVarsCollection,
 		bson.M{ProjectRefIdKey: projectVars.Id},

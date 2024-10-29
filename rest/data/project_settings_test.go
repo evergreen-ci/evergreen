@@ -11,6 +11,7 @@ import (
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -1037,13 +1038,15 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 					},
 				},
 			},
+			ParameterStoreEnabled: true,
 		}
 		assert.NoError(t, pRef.Insert())
 
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
-			Id:               pRef.RepoRefId,
-			Restricted:       utility.TruePtr(),
-			PRTestingEnabled: utility.TruePtr(),
+			Id:                    pRef.RepoRefId,
+			Restricted:            utility.TruePtr(),
+			PRTestingEnabled:      utility.TruePtr(),
+			ParameterStoreEnabled: true,
 		}}
 		assert.NoError(t, repoRef.Upsert())
 
@@ -1053,6 +1056,8 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			PrivateVars: map[string]bool{"hello": true, "private": true, "change": true},
 		}
 		assert.NoError(t, pVars.Insert())
+		checkAndSetProjectVarsSynced(t, &pRef, false)
+
 		// add scopes
 		allProjectsScope := gimlet.Scope{
 			ID:        evergreen.AllProjectsScope,
@@ -1269,16 +1274,17 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			assert.Len(t, repoEvents, 0)
 		},
 	} {
-		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection,
 			user.Collection, model.RepoRefCollection, event.EventCollection))
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
-			Id:         "rId",
-			Owner:      "evergreen-ci",
-			Repo:       "evergreen",
-			Restricted: utility.FalsePtr(),
-			Admins:     []string{"u"},
+			Id:                    "rId",
+			Owner:                 "evergreen-ci",
+			Repo:                  "evergreen",
+			Restricted:            utility.FalsePtr(),
+			Admins:                []string{"u"},
+			ParameterStoreEnabled: true,
 		}}
 		assert.NoError(t, repoRef.Upsert())
 
@@ -1289,15 +1295,17 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			AdminOnlyVars: map[string]bool{"d": true},
 		}
 		assert.NoError(t, rVars.Insert())
+		checkAndSetProjectVarsSynced(t, &repoRef.ProjectRef, true)
 
 		pRef := model.ProjectRef{
-			Id:         "pId",
-			Owner:      "evergreen-ci",
-			Repo:       "evergreen",
-			Branch:     "main",
-			Restricted: utility.FalsePtr(),
-			Admins:     []string{"u"},
-			RepoRefId:  "rId",
+			Id:                    "pId",
+			Owner:                 "evergreen-ci",
+			Repo:                  "evergreen",
+			Branch:                "main",
+			Restricted:            utility.FalsePtr(),
+			Admins:                []string{"u"},
+			RepoRefId:             "rId",
+			ParameterStoreEnabled: true,
 		}
 		assert.NoError(t, pRef.Insert())
 
@@ -1317,6 +1325,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			AdminOnlyVars: map[string]bool{},
 		}
 		assert.NoError(t, pVars.Insert())
+		checkAndSetProjectVarsSynced(t, &pRef, false)
 
 		usr := user.DBUser{
 			Id:          "u",
@@ -1404,7 +1413,7 @@ func TestCopyProject(t *testing.T) {
 			assert.Nil(t, newProject)
 		},
 	} {
-		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, model.ProjectAliasCollection,
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, model.ProjectAliasCollection,
 			event.SubscriptionsCollection, event.EventCollection, evergreen.ScopeCollection, user.Collection, commitqueue.Collection))
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
@@ -1439,16 +1448,18 @@ func TestCopyProject(t *testing.T) {
 					ExternalID:   utility.FromStringPtr(createSecretOut.ARN),
 				},
 			},
+			ParameterStoreEnabled: true,
 		}
 		assert.NoError(t, pRef.Insert())
 
 		pRefInvalidAdmin := model.ProjectRef{
-			Id:         "myIdTwo",
-			Owner:      "evergreen-ci",
-			Repo:       "spruce",
-			Branch:     "main",
-			Restricted: utility.FalsePtr(),
-			Admins:     []string{"unknownAdmin"},
+			Id:                    "myIdTwo",
+			Owner:                 "evergreen-ci",
+			Repo:                  "spruce",
+			Branch:                "main",
+			Restricted:            utility.FalsePtr(),
+			Admins:                []string{"unknownAdmin"},
+			ParameterStoreEnabled: true,
 		}
 		assert.NoError(t, pRefInvalidAdmin.Insert())
 
@@ -1458,6 +1469,7 @@ func TestCopyProject(t *testing.T) {
 			PrivateVars: map[string]bool{"hello": true, "private": true, "change": true},
 		}
 		assert.NoError(t, pVars.Insert())
+		checkAndSetProjectVarsSynced(t, &pRef, false)
 		// add scopes
 		allProjectsScope := gimlet.Scope{
 			ID:        evergreen.AllProjectsScope,
