@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -62,7 +63,8 @@ func getRecentStatusesForHost(ctx context.Context, hostId string, n int) (int, [
 	return hostStatusDistros[0].Count, hostStatusDistros[0].Status
 }
 
-func AllRecentHostEventsMatchStatus(ctx context.Context, hostId string, n int, status string) bool {
+// AllRecentHostEventsAreSystemFailed returns true if all recent host events are system failures, and false if any are not.
+func AllRecentHostEventsAreSystemFailed(ctx context.Context, hostId string, n int) bool {
 	if n == 0 {
 		return false
 	}
@@ -77,7 +79,7 @@ func AllRecentHostEventsMatchStatus(ctx context.Context, hostId string, n int, s
 	}
 
 	for _, stat := range statuses {
-		if stat != status {
+		if !utility.StringSliceContains(evergreen.TaskSystemFailureStatuses, stat) {
 			return false
 		}
 	}
