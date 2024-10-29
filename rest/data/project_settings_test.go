@@ -176,7 +176,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			assert.True(t, varsFromDb.PrivateVars["banana"])
 		},
 	} {
-		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection,
 			event.SubscriptionsCollection, event.EventCollection, evergreen.ScopeCollection, user.Collection))
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
@@ -201,9 +201,10 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 		assert.NoError(t, pRefThatDefaults.Upsert())
 
 		pRefThatDoesNotDefault := model.ProjectRef{
-			Id:    "myId2",
-			Owner: "evergreen-ci",
-			Repo:  "evergreen",
+			Id:                    "myId2",
+			Owner:                 "evergreen-ci",
+			Repo:                  "evergreen",
+			ParameterStoreEnabled: true,
 		}
 		assert.NoError(t, pRefThatDoesNotDefault.Upsert())
 
@@ -213,6 +214,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			PrivateVars: map[string]bool{"hello": true},
 		}
 		assert.NoError(t, pVars.Insert())
+		checkAndSetProjectVarsSynced(t, &repoRef.ProjectRef, true)
 
 		// add scopes
 		allProjectsScope := gimlet.Scope{
@@ -1015,7 +1017,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Len(t, projectFromDB.ParsleyFilters, 2)
 		},
 	} {
-		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection,
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection,
 			event.SubscriptionsCollection, event.EventCollection, evergreen.ScopeCollection, user.Collection,
 			model.RepositoriesCollection, evergreen.ConfigCollection))
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
