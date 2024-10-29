@@ -149,7 +149,7 @@ func (s *commitQueueSuite) TestTryUnstickDequeuesAlreadyFinishedCommitQueueItem(
 		},
 	}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
-	job.TryUnstick(s.ctx, cq, s.projectRef, "")
+	job.TryUnstick(s.ctx, cq, s.projectRef)
 
 	dbCQ, err := commitqueue.FindOneId(cq.ProjectID)
 	s.Require().NoError(err)
@@ -197,7 +197,7 @@ func (s *commitQueueSuite) TestTryUnstickFixesBlockedMergeTask() {
 	}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
 
-	j.TryUnstick(s.ctx, cq, s.projectRef, "")
+	j.TryUnstick(s.ctx, cq, s.projectRef)
 	s.NoError(j.Error())
 
 	dbCQ, err := commitqueue.FindOneId(cq.ProjectID)
@@ -256,7 +256,7 @@ func (s *commitQueueSuite) TestTryUnstickDoesNotUnstickMergeTaskBlockedByResetti
 	}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
 
-	j.TryUnstick(s.ctx, cq, s.projectRef, "")
+	j.TryUnstick(s.ctx, cq, s.projectRef)
 	s.NoError(j.Error())
 
 	dbCQ, err := commitqueue.FindOneId(cq.ProjectID)
@@ -381,7 +381,7 @@ func (s *commitQueueSuite) TestUpdatePatch() {
 		},
 	}
 	testutil.ConfigureIntegrationTest(s.T(), s.settings)
-	projectConfig, pp, err := updatePatch(s.ctx, s.settings, "", projectRef, patchDoc)
+	projectConfig, pp, err := updatePatch(s.ctx, s.settings, projectRef, patchDoc)
 	s.NoError(err)
 	s.NotEqual("abcdef", patchDoc.Patches[0].Githash)
 	s.NotEqual(model.Project{}, projectConfig)

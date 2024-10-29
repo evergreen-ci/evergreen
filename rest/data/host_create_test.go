@@ -323,9 +323,7 @@ buildvariants:
 		pp.Id = "v3"
 		assert.NoError(t, pp.Insert())
 
-		settings := &evergreen.Settings{
-			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
-		}
+		settings := &evergreen.Settings{}
 		assert.NoError(t, evergreen.UpdateConfig(ctx, settings))
 
 		assert.NoError(t, CreateHostsFromTask(ctx, env, &t3, user.DBUser{Id: "me"}, ""))
@@ -391,9 +389,7 @@ buildvariants:
 		pp.Id = "v4"
 		assert.NoError(t, pp.Insert())
 
-		settings := &evergreen.Settings{
-			Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
-		}
+		settings := &evergreen.Settings{}
 		assert.NoError(t, evergreen.UpdateConfig(ctx, settings))
 
 		assert.NoError(t, CreateHostsFromTask(ctx, env, &t4, user.DBUser{Id: "me"}, ""))

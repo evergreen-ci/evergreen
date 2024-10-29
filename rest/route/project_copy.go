@@ -32,7 +32,7 @@ func makeCopyProject(env evergreen.Environment) gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Copy a project
-//	@Description	Restricted to admins of the original project. Create a new project that is identical to indicated project--this project is initially disabled (PR testing and CommitQueue also initially disabled). The unique identifier is passed to the query parameter new_project and is required.  Project variables, aliases, and subscriptions also copied. Returns the new project (but not variables/aliases/subscriptions).
+//	@Description	Restricted to admins of the original project. Create a new, initially disabled project (PR testing and CommitQueue also initially disabled). The unique identifier is passed to the query parameter new_project and is required.  Project variables, aliases, subscriptions, etc are copied but the GitHub app ID and key are not. Returns the new project (but not variables/aliases/subscriptions).
 //	@Tags			projects
 //	@Router			/projects/{project_id}/copy [post]
 //	@Security		Api-User || Api-Key

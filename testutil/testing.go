@@ -80,7 +80,6 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings) {
 		testSettings.Providers.AWS.Pod.ECS.AllowedImages = allowedImages
 	}
 
-	testSettings.Credentials = integrationSettings.Credentials
 	testSettings.Plugins = integrationSettings.Plugins
 	testSettings.Jira = integrationSettings.Jira
 	testSettings.RuntimeEnvironments = integrationSettings.RuntimeEnvironments

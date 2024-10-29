@@ -53,6 +53,11 @@ func TestFindOneProjectVar(t *testing.T) {
 	assert.Equal(vars, projectVarsFromDB.Vars)
 
 	checkParametersMatchVars(ctx, t, projectVarsFromDB.Parameters, vars)
+
+	dbProjRef, err := FindBranchProjectRef(pRef.Id)
+	require.NoError(t, err)
+	require.NotZero(t, dbProjRef)
+	assert.True(dbProjRef.ParameterStoreVarsSynced)
 }
 
 func TestFindMergedProjectVars(t *testing.T) {
@@ -161,45 +166,115 @@ func TestProjectVarsInsert(t *testing.T) {
 }
 
 func TestProjectVarsFindAndModify(t *testing.T) {
-	assert := assert.New(t)
+	defer func() {
+		assert.NoError(t, db.ClearCollections(ProjectVarsCollection, ProjectRefCollection))
+	}()
 
-	require.NoError(t, db.Clear(ProjectVarsCollection),
-		"Error clearing collection")
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
+		"ShouldModifyExistingVars": func(ctx context.Context, t *testing.T) {
+			pRef := ProjectRef{
+				Id:                    "123",
+				ParameterStoreEnabled: true,
+			}
+			require.NoError(t, pRef.Insert())
 
-	vars := &ProjectVars{
-		Id:          "123",
-		Vars:        map[string]string{"a": "1", "b": "3", "d": "4"},
-		PrivateVars: map[string]bool{"b": true, "d": true},
+			vars := &ProjectVars{
+				Id:          pRef.Id,
+				Vars:        map[string]string{"a": "1", "b": "3", "d": "4"},
+				PrivateVars: map[string]bool{"b": true, "d": true},
+			}
+			assert.NoError(t, vars.Insert())
+
+			dbVars, err := FindOneProjectVars(pRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVars)
+
+			assert.Len(t, dbVars.Vars, 3)
+			assert.Equal(t, "1", dbVars.Vars["a"])
+			assert.Equal(t, "3", dbVars.Vars["b"])
+			assert.Equal(t, "4", dbVars.Vars["d"])
+
+			assert.True(t, dbVars.PrivateVars["b"])
+			assert.True(t, dbVars.PrivateVars["d"])
+
+			checkParametersMatchVars(ctx, t, dbVars.Parameters, dbVars.Vars)
+
+			dbProjRef, err := FindBranchProjectRef(pRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.True(t, dbProjRef.ParameterStoreVarsSynced, "project vars should be synced to Parameter Store after Insert")
+
+			// want to "fix" b, add c, delete d
+			newVars := &ProjectVars{
+				Id:          pRef.Id,
+				Vars:        map[string]string{"b": "2", "c": "3"},
+				PrivateVars: map[string]bool{"a": true, "b": false},
+			}
+			varsToDelete := []string{"d"}
+
+			info, err := newVars.FindAndModify(varsToDelete)
+			assert.NoError(t, err)
+			require.NotNil(t, info)
+			assert.Equal(t, info.Updated, 1)
+
+			dbVars, err = FindOneProjectVars(pRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVars)
+
+			assert.Len(t, dbVars.Vars, 3)
+			assert.Equal(t, "1", dbVars.Vars["a"])
+			assert.Equal(t, "2", dbVars.Vars["b"])
+			assert.Equal(t, "3", dbVars.Vars["c"])
+			_, ok := dbVars.Vars["d"]
+			assert.False(t, ok)
+
+			assert.True(t, dbVars.PrivateVars["a"])
+			assert.False(t, dbVars.PrivateVars["b"])
+
+			checkParametersMatchVars(ctx, t, dbVars.Parameters, dbVars.Vars)
+		},
+		"ShouldUpsertNewVars": func(ctx context.Context, t *testing.T) {
+			pRef := ProjectRef{
+				Id:                    "234",
+				ParameterStoreEnabled: true,
+			}
+			require.NoError(t, pRef.Insert())
+
+			vars := &ProjectVars{
+				Id:          pRef.Id,
+				Vars:        map[string]string{"b": "2", "c": "3"},
+				PrivateVars: map[string]bool{"b": false, "a": true},
+			}
+			varsToDelete := []string{"d"}
+			vars.Id = pRef.Id
+			_, err := vars.FindAndModify(varsToDelete)
+			assert.NoError(t, err)
+
+			dbVars, err := FindOneProjectVars(pRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVars)
+
+			assert.Len(t, dbVars.Vars, 2)
+			assert.Equal(t, "2", dbVars.Vars["b"])
+			assert.Equal(t, "3", dbVars.Vars["c"])
+			_, ok := dbVars.Vars["d"]
+			assert.False(t, ok)
+
+			assert.True(t, dbVars.PrivateVars["a"])
+			assert.False(t, dbVars.PrivateVars["b"])
+
+			checkParametersMatchVars(ctx, t, dbVars.Parameters, dbVars.Vars)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			require.NoError(t, db.ClearCollections(ProjectVarsCollection, ProjectRefCollection))
+
+			tCase(ctx, t)
+		})
 	}
-	assert.NoError(vars.Insert())
 
-	// want to "fix" b, add c, delete d
-	newVars := &ProjectVars{
-		Id:          "123",
-		Vars:        map[string]string{"b": "2", "c": "3"},
-		PrivateVars: map[string]bool{"b": false, "a": true},
-	}
-	varsToDelete := []string{"d"}
-
-	info, err := newVars.FindAndModify(varsToDelete)
-	assert.NoError(err)
-	assert.NotNil(info)
-	assert.Equal(info.Updated, 1)
-
-	assert.Equal(newVars.Vars["a"], "1")
-	assert.Equal(newVars.Vars["b"], "2")
-	assert.Equal(newVars.Vars["c"], "3")
-	_, ok := newVars.Vars["d"]
-	assert.False(ok)
-
-	assert.Equal(newVars.PrivateVars["b"], false)
-	assert.Equal(newVars.PrivateVars["a"], true)
-	_, ok = newVars.Vars["d"]
-	assert.False(ok)
-
-	newVars.Id = "234"
-	info, err = newVars.FindAndModify(varsToDelete)
-	assert.NoError(err) // should upsert
 }
 
 func TestRedactPrivateVars(t *testing.T) {

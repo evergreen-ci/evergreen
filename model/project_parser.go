@@ -640,7 +640,6 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		LocalModules:        projectOpts.LocalModules,
 		RemotePath:          include.FileName,
 		Revision:            projectOpts.Revision,
-		Token:               projectOpts.Token,
 		ReadFileFrom:        projectOpts.ReadFileFrom,
 		Identifier:          identifier,
 		UnmarshalStrict:     projectOpts.UnmarshalStrict,
@@ -786,7 +785,6 @@ type GetProjectOpts struct {
 	LocalModules        map[string]string
 	RemotePath          string
 	Revision            string
-	Token               string
 	ReadFileFrom        string
 	Identifier          string
 	UnmarshalStrict     bool
@@ -840,18 +838,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		}
 		return fileContents, nil
 	default:
-		if opts.Token == "" {
-			conf, err := evergreen.GetConfig(ctx)
-			if err != nil {
-				return nil, errors.Wrap(err, "getting evergreen configuration")
-			}
-			ghToken, err := conf.GetGithubOauthToken()
-			if err != nil {
-				return nil, errors.Wrap(err, "getting GitHub OAuth token from configuration")
-			}
-			opts.Token = ghToken
-		}
-		configFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
+		configFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
 		if err != nil {
 			return nil, errors.Wrapf(err, "fetching project file for project '%s' at revision '%s'", opts.Identifier, opts.Revision)
 		}
@@ -898,7 +885,6 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		},
 		RemotePath:   opts.RemotePath,
 		Revision:     module.Branch,
-		Token:        opts.Token,
 		ReadFileFrom: ReadFromGithub,
 		Identifier:   include.Module,
 	}
@@ -930,7 +916,7 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 		return nil, errors.New("project not passed in")
 	}
 	var projectFileBytes []byte
-	githubFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner,
+	githubFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner,
 		opts.Ref.Repo, opts.RemotePath, opts.Revision)
 	if err != nil {
 		// if the project file doesn't exist, but our patch includes a project file,

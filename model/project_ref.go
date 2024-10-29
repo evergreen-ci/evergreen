@@ -2902,7 +2902,7 @@ func (p *ProjectRef) removeFromAdminsList(user string) {
 	}
 }
 
-func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser, token, owner, repo string) bool {
+func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser, owner, repo string) bool {
 	if utility.StringSliceContains(p.GitTagAuthorizedUsers, githubUser) {
 		return true
 	}
@@ -2926,7 +2926,7 @@ func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser, token,
 		}
 	}
 
-	return thirdparty.IsUserInGithubTeam(ctx, p.GitTagAuthorizedTeams, p.Owner, githubUser, token, owner, repo)
+	return thirdparty.IsUserInGithubTeam(ctx, p.GitTagAuthorizedTeams, p.Owner, githubUser, owner, repo)
 }
 
 // GetProjectSetupCommands returns jasper commands for the project's configuration commands
@@ -3096,15 +3096,6 @@ func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 }
 
 func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
-	conf, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return "", errors.Wrap(err, "can't get evergreen configuration")
-	}
-	token, err := conf.GetGithubOauthToken()
-	if err != nil {
-		return "", errors.Wrap(err, "getting GitHub token")
-	}
-
 	pRef, err := GetProjectRefForTask(taskId)
 	if err != nil {
 		return "", errors.Wrap(err, "getting project")
@@ -3113,7 +3104,7 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	if pRef.SpawnHostScriptPath == "" {
 		return "", nil
 	}
-	configFile, err := thirdparty.GetGithubFile(ctx, token, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch)
+	configFile, err := thirdparty.GetGithubFile(ctx, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch)
 	if err != nil {
 		return "", errors.Wrapf(err,
 			"fetching spawn host script for project '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
@@ -3634,4 +3625,29 @@ func ProjectCanDispatchTask(pRef *ProjectRef, t *task.Task) (canDispatch bool, r
 	}
 
 	return true, reason
+}
+
+// setParameterStoreVarsSynced marks the project or repo ref to indicate whether
+// its project variables are fully synced to Parameter Store.
+func (p *ProjectRef) setParameterStoreVarsSynced(isSynced bool, isRepoRef bool) error {
+	if p.ParameterStoreVarsSynced == isSynced {
+		return nil
+	}
+
+	coll := ProjectRefCollection
+	if isRepoRef {
+		coll = RepoRefCollection
+	}
+
+	if err := db.UpdateId(coll, p.Id, bson.M{
+		"$set": bson.M{
+			projectRefParameterStoreVarsSyncedKey: isSynced,
+		},
+	}); err != nil {
+		return errors.Wrapf(err, "updating project/repo ref vars sync state to %t", isSynced)
+	}
+
+	p.ParameterStoreVarsSynced = true
+
+	return nil
 }

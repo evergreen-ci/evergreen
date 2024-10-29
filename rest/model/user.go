@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -332,10 +331,6 @@ func (a *APIQuestionAnswer) ToService() model.QuestionAnswer {
 
 // UpdateUserSettings Returns an updated version of the user settings struct
 func UpdateUserSettings(ctx context.Context, usr *user.DBUser, userSettings APIUserSettings) (*user.UserSettings, error) {
-	adminSettings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting admin settings")
-	}
 	changedSettings := applyUserChanges(usr.Settings, userSettings)
 	updatedUserSettings, err := changedSettings.ToService()
 	if err != nil {
@@ -345,13 +340,8 @@ func UpdateUserSettings(ctx context.Context, usr *user.DBUser, userSettings APIU
 	if len(updatedUserSettings.GithubUser.LastKnownAs) == 0 {
 		updatedUserSettings.GithubUser = user.GithubUser{}
 	} else if usr.Settings.GithubUser.LastKnownAs != updatedUserSettings.GithubUser.LastKnownAs {
-		var token string
 		var ghUser *github.User
-		token, err = adminSettings.GetGithubOauthToken()
-		if err != nil {
-			return nil, errors.Wrapf(err, "getting GitHub OAuth token")
-		}
-		ghUser, err = thirdparty.GetGithubUser(ctx, token, updatedUserSettings.GithubUser.LastKnownAs)
+		ghUser, err = thirdparty.GetGithubUser(ctx, updatedUserSettings.GithubUser.LastKnownAs)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting GitHub user")
 		}

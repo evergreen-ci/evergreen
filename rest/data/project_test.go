@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -87,37 +88,52 @@ func getMockProjectSettings() model.ProjectSettings {
 func TestProjectConnectorGetSuite(t *testing.T) {
 	s := new(ProjectConnectorGetSuite)
 	s.setup = func() error {
-		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection))
+		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection))
 
 		projects := []*model.ProjectRef{
 			{
-				Id:          "projectA",
-				Enabled:     true,
-				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
-				Owner:       "evergreen-ci",
-				Repo:        "gimlet",
-				Branch:      "main",
+				Id:                    "projectA",
+				Enabled:               true,
+				CommitQueue:           model.CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:                 "evergreen-ci",
+				Repo:                  "gimlet",
+				Branch:                "main",
+				ParameterStoreEnabled: true,
 			},
 			{
-				Id:          "projectB",
-				Enabled:     true,
-				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
-				Owner:       "evergreen-ci",
-				Repo:        "evergreen",
-				Branch:      "main",
+				Id:                    "projectB",
+				Enabled:               true,
+				CommitQueue:           model.CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:                 "evergreen-ci",
+				Repo:                  "evergreen",
+				Branch:                "main",
+				ParameterStoreEnabled: true,
 			},
 			{
-				Id:          "projectC",
-				Enabled:     true,
-				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
-				Owner:       "mongodb",
-				Repo:        "mongo",
-				Branch:      "main",
+				Id:                    "projectC",
+				Enabled:               true,
+				CommitQueue:           model.CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:                 "mongodb",
+				Repo:                  "mongo",
+				Branch:                "main",
+				ParameterStoreEnabled: true,
 			},
-			{Id: "projectD"},
-			{Id: "projectE"},
-			{Id: "projectF"},
-			{Id: projectId},
+			{
+				Id:                    "projectD",
+				ParameterStoreEnabled: true,
+			},
+			{
+				Id:                    "projectE",
+				ParameterStoreEnabled: true,
+			},
+			{
+				Id:                    "projectF",
+				ParameterStoreEnabled: true,
+			},
+			{
+				Id:                    projectId,
+				ParameterStoreEnabled: true,
+			},
 		}
 
 		for _, p := range projects {
@@ -157,24 +173,24 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		s.NotEmpty(before.Aliases[0].ID)
 		s.NotEmpty(after.Aliases[0].ID)
 
-		h :=
-			event.EventLogEntry{
-				Timestamp:    time.Now(),
-				ResourceType: event.EventResourceTypeProject,
-				EventType:    event.EventTypeProjectModified,
-				ResourceId:   projectId,
-				Data: &model.ProjectChangeEvent{
-					User: username,
-					Before: model.ProjectSettingsEvent{
-						PeriodicBuildsDefault:      true,
-						WorkstationCommandsDefault: true,
-						ProjectSettings:            before,
-					},
-					After: model.ProjectSettingsEvent{
-						ProjectSettings: after,
-					},
-				},
-			}
+		data := model.ProjectChangeEvent{
+			User: username,
+			Before: model.ProjectSettingsEvent{
+				PeriodicBuildsDefault:      true,
+				WorkstationCommandsDefault: true,
+				ProjectSettings:            before,
+			},
+			After: model.ProjectSettingsEvent{
+				ProjectSettings: after,
+			},
+		}
+		h := event.EventLogEntry{
+			Timestamp:    time.Now(),
+			ResourceType: event.EventResourceTypeProject,
+			EventType:    event.EventTypeProjectModified,
+			ResourceId:   projectId,
+			Data:         data,
+		}
 
 		s.Require().NoError(db.ClearCollections(event.EventCollection))
 		for i := 0; i < projEventCount; i++ {
@@ -186,7 +202,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 	}
 
 	s.teardown = func() error {
-		return db.Clear(model.ProjectRefCollection)
+		return db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection)
 	}
 
 	suite.Run(t, s)
@@ -211,10 +227,10 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 		s.Nil(eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
 		s.NotNil(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands)
 		s.Len(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands, 0)
-		s.Equal(eventLog.Before.Vars.Vars["hello"], "world")
-		s.Equal(eventLog.After.Vars.Vars["hello"], "another_world")
-		s.Equal(eventLog.After.Vars.Vars["world"], evergreen.RedactedAfterValue)
-		s.Equal(eventLog.Before.Vars.Vars["world"], evergreen.RedactedBeforeValue)
+		s.Equal(evergreen.RedactedBeforeValue, eventLog.Before.Vars.Vars["hello"])
+		s.Equal(evergreen.RedactedAfterValue, eventLog.After.Vars.Vars["hello"])
+		s.Equal(evergreen.RedactedBeforeValue, eventLog.Before.Vars.Vars["world"])
+		s.Equal(evergreen.RedactedAfterValue, eventLog.After.Vars.Vars["world"])
 		s.Equal(utility.FromStringPtr(eventLog.Before.GithubAppAuth.PrivateKey), "")
 		s.Equal(utility.FromStringPtr(eventLog.After.GithubAppAuth.PrivateKey), evergreen.RedactedValue)
 	}
@@ -269,7 +285,24 @@ func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 	s.Error(err)
 }
 
+func checkParametersMatchVars(ctx context.Context, t *testing.T, pm model.ParameterMappings, vars map[string]string) {
+	assert.Len(t, pm, len(vars), "each project var should have exactly one corresponding parameter")
+	fakeParams, err := fakeparameter.FindByIDs(ctx, pm.ParameterNames()...)
+	assert.NoError(t, err)
+	assert.Len(t, fakeParams, len(vars), "number of parameters for project vars should match number of project vars defined")
+
+	paramNamesMap := pm.ParameterNameMap()
+	for _, fakeParam := range fakeParams {
+		varName := paramNamesMap[fakeParam.Name].Name
+		assert.NotEmpty(t, varName, "parameter should have corresponding project variable")
+		assert.Equal(t, vars[varName], fakeParam.Value, "project variable value should match the parameter value")
+	}
+}
+
 func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	//successful update
 	varsToDelete := []string{"a"}
 	newVars := restModel.APIProjectVars{
@@ -278,9 +311,10 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 		VarsToDelete: varsToDelete,
 	}
 	s.NoError(UpdateProjectVars(projectId, &newVars, false))
-	s.Equal(newVars.Vars["b"], "") // can't unredact previously redacted  variables
-	s.Equal(newVars.Vars["c"], "")
-	s.Equal(newVars.Vars["d"], "4") // can't overwrite a value with the empty string
+
+	s.Empty(newVars.Vars["b"]) // can't unredact previously redacted variables
+	s.Empty(newVars.Vars["c"])
+	s.Equal("4", newVars.Vars["d"]) // can't overwrite a value with the empty string
 	_, ok := newVars.Vars["a"]
 	s.False(ok)
 
@@ -289,8 +323,39 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	_, ok = newVars.PrivateVars["a"]
 	s.False(ok)
 
+	dbNewVars, err := model.FindOneProjectVars(projectId)
+	s.NoError(err)
+	s.Require().NotZero(dbNewVars)
+
+	s.Len(dbNewVars.Vars, 3)
+	s.Equal("2", dbNewVars.Vars["b"])
+	s.Equal("3", dbNewVars.Vars["c"])
+	s.Equal("4", dbNewVars.Vars["d"])
+	_, ok = dbNewVars.Vars["a"]
+	s.False(ok)
+
+	s.True(newVars.PrivateVars["b"])
+	s.True(newVars.PrivateVars["c"])
+	s.False(newVars.PrivateVars["a"])
+
+	checkParametersMatchVars(ctx, s.T(), dbNewVars.Parameters, dbNewVars.Vars)
+
+	newProjRef := model.ProjectRef{
+		Id:                    "new_project",
+		ParameterStoreEnabled: true,
+	}
+	s.Require().NoError(newProjRef.Insert())
 	// successful upsert
-	s.NoError(UpdateProjectVars("not-an-id", &newVars, false))
+	s.NoError(UpdateProjectVars(newProjRef.Id, &newVars, false))
+
+	dbUpsertedVars, err := model.FindOneProjectVars(newProjRef.Id)
+	s.NoError(err)
+	s.Require().NotZero(dbUpsertedVars)
+
+	s.Len(dbUpsertedVars.Vars, 1)
+	s.Equal("4", dbUpsertedVars.Vars["d"])
+
+	checkParametersMatchVars(ctx, s.T(), dbUpsertedVars.Parameters, dbUpsertedVars.Vars)
 }
 
 func TestUpdateProjectVarsByValue(t *testing.T) {
@@ -341,17 +406,17 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 	eventData := projectEvents[0].Data.(*model.ProjectChangeEvent)
 
 	assert.Equal(t, username, eventData.User)
-	assert.Equal(t, "3", eventData.Before.Vars.Vars["b"])
+	assert.Equal(t, evergreen.RedactedBeforeValue, eventData.Before.Vars.Vars["b"])
 	assert.True(t, eventData.Before.Vars.PrivateVars["b"])
-	assert.Equal(t, "33", eventData.After.Vars.Vars["b"])
+	assert.Equal(t, evergreen.RedactedAfterValue, eventData.After.Vars.Vars["b"])
 	assert.True(t, eventData.After.Vars.PrivateVars["b"])
 
 	require.NotNil(t, projectEvents[1].Data)
 	eventData = projectEvents[1].Data.(*model.ProjectChangeEvent)
 
 	assert.Equal(t, username, eventData.User)
-	assert.Equal(t, "1", eventData.Before.Vars.Vars["a"])
-	assert.Equal(t, "11", eventData.After.Vars.Vars["a"])
+	assert.Equal(t, evergreen.RedactedBeforeValue, eventData.Before.Vars.Vars["a"])
+	assert.Equal(t, evergreen.RedactedAfterValue, eventData.After.Vars.Vars["a"])
 }
 
 func TestUpdateProjectVarsByValueWithEnabledOnly(t *testing.T) {
