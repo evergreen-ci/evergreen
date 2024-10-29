@@ -3509,7 +3509,7 @@ func TestArchiveMany(t *testing.T) {
 	tasks := []Task{t1, t2, dt}
 	err := ArchiveMany(ctx, tasks)
 	assert.NoError(t, err)
-	verifyTasksFunc := func() {
+	verifyTasksState := func() {
 		currentTasks, err := FindAll(db.Query(ByVersion("v")))
 		assert.NoError(t, err)
 		assert.Len(t, currentTasks, 4)
@@ -3525,13 +3525,13 @@ func TestArchiveMany(t *testing.T) {
 			assert.Equal(t, 0, task.Execution)
 		}
 	}
-	verifyTasksFunc()
+	verifyTasksState()
 
 	// We shouldn't error if we try archiving again, in case we got stuck part way.
 	err = ArchiveMany(ctx, tasks)
 	assert.NoError(t, err)
 	// Verify that nothing actually changed when re-archiving.
-	verifyTasksFunc()
+	verifyTasksState()
 }
 
 func TestArchiveManyAfterFailedOnly(t *testing.T) {
@@ -3661,7 +3661,7 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 	// t2 (execution 4)
 	// t3: t1 (execution 2), t2 (execution 2), t3 (execution 2)
 	// t4 (execution 2)
-	verifyTasksFunc := func() {
+	verifyTasksState := func() {
 		currentTasks, err = FindAll(db.Query(ByVersion("v")))
 		assert.NoError(t, err)
 		assert.Len(t, currentTasks, 9)
@@ -3693,12 +3693,12 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 			}
 		}
 	}
-	verifyTasksFunc()
+	verifyTasksState()
 
 	// We shouldn't error if we try archiving again, in case we got stuck part way.
 	assert.NoError(t, ArchiveMany(ctx, []Task{t1, t2, *t3Pointer, t4}))
 	// Verify that nothing actually changed when re-archiving.
-	verifyTasksFunc()
+	verifyTasksState()
 }
 
 func TestAddParentDisplayTasks(t *testing.T) {
