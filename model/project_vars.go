@@ -940,7 +940,7 @@ func (projectVars *ProjectVars) Clear() error {
 // checkAndRunParameterStoreOp checks if the project corresponding to the vars
 // has Parameter Store enabled and if so, runs the provided Parameter Store
 // operation.
-func (projectVars *ProjectVars) checkAndRunParameterStoreOp(ctx context.Context, op func(ref *ProjectRef, isRepoRef bool), opName string) {
+func (projectVars *ProjectVars) checkAndRunParameterStoreOp(ctx context.Context, op func(ref *ProjectRef, isRepoRef bool), opName string) error {
 	ref, isRepoRef, err := projectVars.findProjectRef()
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":    "could not get project ref to check if Parameter Store is enabled for project; assuming it's disabled and refusing to clear any project variables from Parameter Store",
@@ -949,6 +949,9 @@ func (projectVars *ProjectVars) checkAndRunParameterStoreOp(ctx context.Context,
 		"epic":       "DEVPROD-5552",
 	}))
 	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, ref)
+	if err != nil {
+		return err
+	}
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and refusing to clear any project variables from Parameter Store",
 		"op":         opName,
@@ -956,10 +959,12 @@ func (projectVars *ProjectVars) checkAndRunParameterStoreOp(ctx context.Context,
 		"epic":       "DEVPROD-5552",
 	}))
 	if !isPSEnabled {
-		return
+		return errors.Errorf("test needs update - Parameter Store is disabled for project '%s'", projectVars.Id)
 	}
 
 	op(ref, isRepoRef)
+
+	return nil
 }
 
 func (projectVars *ProjectVars) GetVars(t *task.Task) map[string]string {
