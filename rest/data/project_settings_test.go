@@ -180,20 +180,22 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
-			Id:         "myRepoId",
-			Owner:      "evergreen-ci",
-			Repo:       "evergreen",
-			Restricted: utility.FalsePtr(),
-			Admins:     []string{"oldAdmin"},
+			Id:                    "myRepoId",
+			Owner:                 "evergreen-ci",
+			Repo:                  "evergreen",
+			Restricted:            utility.FalsePtr(),
+			Admins:                []string{"oldAdmin"},
+			ParameterStoreEnabled: true,
 		}}
 		assert.NoError(t, repoRef.Upsert())
 
 		pRefThatDefaults := model.ProjectRef{
-			Id:        "myId",
-			Owner:     "evergreen-ci",
-			Repo:      "evergreen",
-			RepoRefId: "myRepoId",
-			Admins:    []string{"oldAdmin"},
+			Id:                    "myId",
+			Owner:                 "evergreen-ci",
+			Repo:                  "evergreen",
+			RepoRefId:             "myRepoId",
+			Admins:                []string{"oldAdmin"},
+			ParameterStoreEnabled: true,
 		}
 		assert.NoError(t, pRefThatDefaults.Upsert())
 
@@ -210,6 +212,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			PrivateVars: map[string]bool{"hello": true},
 		}
 		assert.NoError(t, pVars.Insert())
+
 		// add scopes
 		allProjectsScope := gimlet.Scope{
 			ID:        evergreen.AllProjectsScope,
