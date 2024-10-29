@@ -547,8 +547,8 @@ github.com/mongodb/amboy v0.0.0-20220408184825-b2a14e2c511d/go.mod h1:pyAwlkip3M
 github.com/mongodb/amboy v0.0.0-20240718152556-3b1827bc7168 h1:7zT/+PDqVGZnn4KgJcIVdj/GWhpFOE4mD7U9nhQl36Q=
 github.com/mongodb/amboy v0.0.0-20240718152556-3b1827bc7168/go.mod h1:XtYIRjheNi0/pf4NOV1qnyjdDncEpmUqAv4lRMIfBxo=
 github.com/mongodb/anser v0.0.0-20220408164649-99dd61768f4a/go.mod h1:iiM0FTD1XWGSxZPdM3NkCQeZEqatn9lGqwIZy3RwtgE=
-github.com/mongodb/anser v0.0.0-20231019191251-2a589a5299e6 h1:P0VNeg/cwHMRg/5K44kTxvBSXKMuxWEZpgXC3seWYEs=
-github.com/mongodb/anser v0.0.0-20231019191251-2a589a5299e6/go.mod h1:S55HFuPbd6Fq0e6c/cRbZZlbpvaiIQ7KiS/yZFT/p1c=
+github.com/mongodb/anser v0.0.0-20241029200935-fcf3befed0ea h1:OxW95sY2iU6oD0vnDAdLqEMiJQ8abVxsfvInd6n3i1Q=
+github.com/mongodb/anser v0.0.0-20241029200935-fcf3befed0ea/go.mod h1:S55HFuPbd6Fq0e6c/cRbZZlbpvaiIQ7KiS/yZFT/p1c=
 github.com/mongodb/ftdc v0.0.0-20211018154918-80dd1c22e4cf/go.mod h1:qd800FxWJIh4VUqu2d9Cmzdpv1CGXMqdwkntAKbaLlY=
 github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809 h1:CQVEigRr2M/OFIPn+wQWerSadMioMY1cLp22yZX+Ygk=
 github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809/go.mod h1:zz0HHFUU4/TOxl9TW4P9t3y3Ivx+sTWS2nwnhuYYRdw=
