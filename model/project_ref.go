@@ -3633,9 +3633,6 @@ func ProjectCanDispatchTask(pRef *ProjectRef, t *task.Task) (canDispatch bool, r
 
 // setParameterStoreVarsSynced marks the project or repo ref to indicate whether
 // its project variables are fully synced to Parameter Store.
-// kim: TODO: verify that no functionality that sets this (in the DB only)
-// accidentally unsets it via an Upsert later on. Since we don't pass the
-// project ref into project var DB ops, it has to be manually checked.
 func (p *ProjectRef) setParameterStoreVarsSynced(isSynced bool, isRepoRef bool) error {
 	if p.ParameterStoreVarsSynced == isSynced {
 		return nil
