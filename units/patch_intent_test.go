@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -104,7 +105,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	evergreen.SetEnvironment(s.env)
 	s.NoError(evergreen.UpdateConfig(s.ctx, s.env.Settings()))
 
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, model.ProjectVarsCollection,
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, model.ProjectVarsCollection, fakeparameter.Collection,
 		model.ParserProjectCollection, model.VersionCollection, user.Collection, model.ProjectRefCollection,
 		model.ProjectAliasCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection, distro.Collection))
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
@@ -146,13 +147,14 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	}).Insert())
 
 	s.NoError((&model.ProjectRef{
-		Id:         "childProj",
-		Identifier: "childProj",
-		Owner:      "evergreen-ci",
-		Repo:       "evergreen",
-		Branch:     "main",
-		Enabled:    true,
-		RemotePath: "self-tests.yml",
+		Id:                    "childProj",
+		Identifier:            "childProj",
+		Owner:                 "evergreen-ci",
+		Repo:                  "evergreen",
+		Branch:                "main",
+		Enabled:               true,
+		RemotePath:            "self-tests.yml",
+		ParameterStoreEnabled: true,
 	}).Insert())
 
 	s.NoError((&user.DBUser{
