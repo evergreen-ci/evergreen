@@ -3509,20 +3509,29 @@ func TestArchiveMany(t *testing.T) {
 	tasks := []Task{t1, t2, dt}
 	err := ArchiveMany(ctx, tasks)
 	assert.NoError(t, err)
-	currentTasks, err := FindAll(db.Query(ByVersion("v")))
-	assert.NoError(t, err)
-	assert.Len(t, currentTasks, 4)
-	for _, task := range currentTasks {
-		assert.False(t, task.Aborted)
-		assert.Equal(t, 1, task.Execution)
+	verifyTasksState := func() {
+		currentTasks, err := FindAll(db.Query(ByVersion("v")))
+		assert.NoError(t, err)
+		assert.Len(t, currentTasks, 4)
+		for _, task := range currentTasks {
+			assert.False(t, task.Aborted)
+			assert.Equal(t, 1, task.Execution)
+		}
+		oldTasks, err := FindAllOld(db.Query(ByVersion("v")))
+		assert.NoError(t, err)
+		assert.Len(t, oldTasks, 4)
+		for _, task := range oldTasks {
+			assert.True(t, task.Archived)
+			assert.Equal(t, 0, task.Execution)
+		}
 	}
-	oldTasks, err := FindAllOld(db.Query(ByVersion("v")))
+	verifyTasksState()
+
+	// We shouldn't error if we try archiving again, in case we got stuck part way.
+	err = ArchiveMany(ctx, tasks)
 	assert.NoError(t, err)
-	assert.Len(t, oldTasks, 4)
-	for _, task := range oldTasks {
-		assert.True(t, task.Archived)
-		assert.Equal(t, 0, task.Execution)
-	}
+	// Verify that nothing actually changed when re-archiving.
+	verifyTasksState()
 }
 
 func TestArchiveManyAfterFailedOnly(t *testing.T) {
@@ -3652,37 +3661,44 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 	// t2 (execution 4)
 	// t3: t1 (execution 2), t2 (execution 2), t3 (execution 2)
 	// t4 (execution 2)
+	verifyTasksState := func() {
+		currentTasks, err = FindAll(db.Query(ByVersion("v")))
+		assert.NoError(t, err)
+		assert.Len(t, currentTasks, 9)
 
-	currentTasks, err = FindAll(db.Query(ByVersion("v")))
-	assert.NoError(t, err)
-	assert.Len(t, currentTasks, 9)
-
-	// Every display task or task should have a '0' LatestParentExecution (it is an execution task only field)
-	// For execution tasks, the execution should be their latestparentexecution after archiving all
-	for _, task := range currentTasks {
-		switch task.Id {
-		case t1.Id:
-			assert.Equal(t, 3, task.Execution)
-			assert.Equal(t, 0, task.LatestParentExecution)
-		case et1.Id, et2.Id:
-			assert.Equal(t, 3, task.Execution)
-			assert.Equal(t, task.LatestParentExecution, task.Execution)
-		case t2.Id:
-			assert.Equal(t, 4, task.Execution)
-			assert.Equal(t, 0, task.LatestParentExecution)
-		case t3.Id:
-			assert.Equal(t, 2, task.Execution)
-			assert.Equal(t, 0, task.LatestParentExecution)
-		case et3.Id, et4.Id, et5.Id:
-			assert.Equal(t, 2, task.Execution)
-			assert.Equal(t, task.LatestParentExecution, task.Execution)
-		case t4.Id:
-			assert.Equal(t, 2, task.Execution)
-			assert.Equal(t, 0, task.LatestParentExecution)
-		default:
-			assert.Error(t, nil, "A task was not accounted for")
+		// Every display task or task should have a '0' LatestParentExecution (it is an execution task only field)
+		// For execution tasks, the execution should be their latestparentexecution after archiving all
+		for _, task := range currentTasks {
+			switch task.Id {
+			case t1.Id:
+				assert.Equal(t, 3, task.Execution)
+				assert.Equal(t, 0, task.LatestParentExecution)
+			case et1.Id, et2.Id:
+				assert.Equal(t, 3, task.Execution)
+				assert.Equal(t, task.LatestParentExecution, task.Execution)
+			case t2.Id:
+				assert.Equal(t, 4, task.Execution)
+				assert.Equal(t, 0, task.LatestParentExecution)
+			case t3.Id:
+				assert.Equal(t, 2, task.Execution)
+				assert.Equal(t, 0, task.LatestParentExecution)
+			case et3.Id, et4.Id, et5.Id:
+				assert.Equal(t, 2, task.Execution)
+				assert.Equal(t, task.LatestParentExecution, task.Execution)
+			case t4.Id:
+				assert.Equal(t, 2, task.Execution)
+				assert.Equal(t, 0, task.LatestParentExecution)
+			default:
+				assert.Error(t, nil, "A task was not accounted for")
+			}
 		}
 	}
+	verifyTasksState()
+
+	// We shouldn't error if we try archiving again, in case we got stuck part way.
+	assert.NoError(t, ArchiveMany(ctx, []Task{t1, t2, *t3Pointer, t4}))
+	// Verify that nothing actually changed when re-archiving.
+	verifyTasksState()
 }
 
 func TestAddParentDisplayTasks(t *testing.T) {
