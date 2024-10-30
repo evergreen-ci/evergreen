@@ -147,8 +147,11 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 			if err != nil {
 				return errors.Wrap(err, "getting recursive dependencies")
 			}
-			tasksToActivate = append(tasksToActivate, dependOn...)
-
+			for _, depTask := range dependOn {
+				if depTask.Priority != evergreen.DisabledTaskPriority {
+					tasksToActivate = append(tasksToActivate, depTask)
+				}
+			}
 		}
 		if err = task.ActivateTasks(tasksToActivate, time.Now(), withDependencies, caller); err != nil {
 			return errors.Wrap(err, "updating tasks for activation")
