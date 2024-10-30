@@ -135,7 +135,7 @@ type NextTaskResponse struct {
 	ShouldExit          bool   `json:"should_exit,omitempty"`
 	ShouldTeardownGroup bool   `json:"should_teardown_group,omitempty"`
 	// MaxIdleDuration is included in the response when there is no task to run.
-	// It helps the host be smart about retries to next task.
+	// It helps the host be smart about retries to request the next task.
 	MaxIdleDuration time.Duration `json:"max_idle_duration,omitempty"`
 }
 
