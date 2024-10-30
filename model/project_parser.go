@@ -165,6 +165,10 @@ func (pp *ParserProject) MarshalBSON() ([]byte, error) {
 // it is valid. It only retries when it fails at reading the BSON, not if it encountered
 // an error while marshalling.
 func (pp *ParserProject) RetryMarshalBSON(retries int) ([]byte, error) {
+	return pp.retryMarshalBSON(retries, retries)
+}
+
+func (pp *ParserProject) retryMarshalBSON(maxRetries, retries int) ([]byte, error) {
 	projBytes, err := bson.Marshal(pp)
 	if err != nil {
 		return nil, errors.Wrap(err, "marshalling project")
@@ -172,9 +176,17 @@ func (pp *ParserProject) RetryMarshalBSON(retries int) ([]byte, error) {
 	_, err = GetProjectFromBSON(projBytes)
 	if err != nil {
 		if retries > 0 {
-			return pp.RetryMarshalBSON(retries - 1)
+			return pp.retryMarshalBSON(maxRetries, retries-1)
 		}
 		return nil, errors.Wrap(err, "unmarshalling project to verify it's integrity")
+	}
+	// TODO (TBA-IN-REVIEW): Remove this log line, potentially the whole retry if it's
+	// never been logged since that means the retries are never actually happening.
+	if retries < maxRetries {
+		grip.Debug(message.Fields{
+			"message": "parser project marshalling succeeded after retries",
+			"retries": maxRetries - retries,
+		})
 	}
 	return projBytes, nil
 }
