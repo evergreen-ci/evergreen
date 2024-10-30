@@ -284,16 +284,12 @@ func (a *Agent) loop(ctx context.Context) error {
 
 			if ntr.noTaskToRun {
 				sleepTime := utility.JitterInterval(agentSleepInterval)
-				// Sometimes the MaxIdleDuration is 0 if the app server
-				// fails to find the distro's idle timeout and the
-				// scheduler's global idle timeout.
 				if nextTask.MaxIdleDuration != 0 {
-					// DurationLeft is the time left until the host will be considered idle.
-					durationLeft := nextTask.MaxIdleDuration - time.Since(start)
-					// If the amount of time left is less than the next sleep internval, cut down on the sleep interval.
-					if durationLeft < sleepTime*2 {
+					// This is a simplified estimate of the time remaining till this host is considered idle.
+					estimatedDurationLeft := nextTask.MaxIdleDuration - time.Since(start)
+					if estimatedDurationLeft < sleepTime*2 && estimatedDurationLeft > 0 {
 						// This guarantees that the agent will try to get a new task before the host is considered idle.
-						sleepTime = durationLeft / 2
+						sleepTime = estimatedDurationLeft / 2
 					}
 				}
 				grip.Debugf("Agent found no task to run, sleeping %s.", sleepTime)
