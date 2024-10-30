@@ -39,10 +39,10 @@ type WaterfallVersion {
 }
 
 type WaterfallPagination {
-  prevPageOrder: Int!
-  nextPageOrder: Int!
   hasNextPage: Boolean!
   hasPrevPage: Boolean!
+  nextPageOrder: Int!
+  prevPageOrder: Int!
 }
 
 type Waterfall {

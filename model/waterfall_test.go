@@ -771,7 +771,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.Len(t, buildVariants[0].Builds[3].Tasks, 2)
 }
 
-func TestGetNextActiveWaterfallVersion(t *testing.T) {
+func TestGetNextRecentActiveWaterfallVersion(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -820,7 +820,7 @@ func TestGetNextActiveWaterfallVersion(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert())
 
-	version, err := GetNextActiveWaterfallVersion(ctx, p.Id, 7)
+	version, err := GetNextRecentActiveWaterfallVersion(ctx, p.Id, 7)
 	assert.NoError(t, err)
 	require.NotNil(t, version)
 	assert.Equal(t, "v_1", version.Id)

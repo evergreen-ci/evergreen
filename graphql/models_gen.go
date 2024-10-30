@@ -628,10 +628,10 @@ type WaterfallOptions struct {
 }
 
 type WaterfallPagination struct {
-	PrevPageOrder int  `json:"prevPageOrder"`
-	NextPageOrder int  `json:"nextPageOrder"`
 	HasNextPage   bool `json:"hasNextPage"`
 	HasPrevPage   bool `json:"hasPrevPage"`
+	NextPageOrder int  `json:"nextPageOrder"`
+	PrevPageOrder int  `json:"prevPageOrder"`
 }
 
 type WaterfallVersion struct {

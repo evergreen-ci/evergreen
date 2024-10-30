@@ -229,8 +229,9 @@ func GetWaterfallBuildVariants(ctx context.Context, versionIds []string) ([]Wate
 	return res, nil
 }
 
-// GetNextActiveWaterfallVersion returns the next active version on the waterfall.
-func GetNextActiveWaterfallVersion(ctx context.Context, projectId string, maxOrder int) (*Version, error) {
+// GetNextRecentActiveWaterfallVersion returns the next recent active version on the waterfall, i.e., a newer
+// version that is activated.
+func GetNextRecentActiveWaterfallVersion(ctx context.Context, projectId string, maxOrder int) (*Version, error) {
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey: bson.M{
