@@ -410,7 +410,7 @@ func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 	s.NoError(pRef.Insert())
 	s.NoError(projectAlias.Upsert())
 
-	v, err := s.mock.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag, "")
+	v, err := s.mock.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag)
 	s.NoError(err)
 	s.NotNil(v)
 }
@@ -590,6 +590,13 @@ func TestHandleGitHubMergeGroup(t *testing.T) {
 			// check for error returned by GitHub merge queue handler
 			str := fmt.Sprintf("%#v", response)
 			assert.Contains(t, str, "message ID cannot be empty")
+			assert.NotContains(t, str, "200")
+		},
+		"nonexistentProject": func(t *testing.T) {
+			response := gh.handleMergeGroupChecksRequested(event)
+			// check for error returned by GitHub merge queue handler
+			str := fmt.Sprintf("%#v", response)
+			assert.Contains(t, str, "no matching project ref")
 			assert.NotContains(t, str, "200")
 		},
 	} {

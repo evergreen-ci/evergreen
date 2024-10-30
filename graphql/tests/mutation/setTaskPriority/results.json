@@ -31,7 +31,7 @@
         "data": null,
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to access 'tasks' for the project 'evergreen'",
+            "message": "user 'testuser' does not have permission to 'edit tasks' for the project 'evergreen'",
             "path": ["setTaskPriority", "taskId"],
             "extensions": {
               "code": "FORBIDDEN"

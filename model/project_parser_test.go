@@ -2900,7 +2900,6 @@ func TestUpdateReadFileFrom(t *testing.T) {
 		},
 	}
 	opts := &GetProjectOpts{
-		Token:        "token",
 		RemotePath:   "main.yml",
 		ReadFileFrom: ReadFromPatch,
 		PatchOpts: &PatchOpts{

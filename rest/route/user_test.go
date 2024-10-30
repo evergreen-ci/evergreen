@@ -293,14 +293,6 @@ func TestProjectSettingsUpdateViewRepo(t *testing.T) {
 		Type:      evergreen.ProjectResourceType,
 	}
 	assert.NoError(t, rm.AddScope(scope))
-	newViewRole := gimlet.Role{
-		ID:    model.GetViewRepoRole("myRepo"),
-		Scope: scope.ID,
-		Permissions: gimlet.Permissions{
-			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value,
-		},
-	}
-	assert.NoError(t, rm.UpdateRole(newViewRole))
 
 	u := user.DBUser{
 		Id:          "me",
@@ -308,7 +300,7 @@ func TestProjectSettingsUpdateViewRepo(t *testing.T) {
 	}
 	require.NoError(t, u.Insert())
 
-	// We should add the repo view role for the attached project, and not error because of the unattached project.
+	// We should be able to view the repo because of the attached project, and not error because of the unattached project.
 	handler := userPermissionsPostHandler{rm: rm, userID: u.Id}
 	validBody := `{ "resource_type": "project", "resources": ["attached", "unattached"], "permissions": {"project_settings": 20} }`
 	request, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer([]byte(validBody)))
@@ -319,13 +311,14 @@ func TestProjectSettingsUpdateViewRepo(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	roles, err := rm.GetAllRoles()
 	assert.NoError(t, err)
-	assert.Len(t, roles, 2)
+	require.Len(t, roles, 1)
 	dbUser, err := user.FindOneById(u.Id)
 	assert.NoError(t, err)
-	require.Len(t, dbUser.SystemRoles, 2)
+	require.Len(t, dbUser.SystemRoles, 1)
 	assert.Contains(t, dbUser.SystemRoles, roles[0].ID)
-	assert.Contains(t, dbUser.SystemRoles, roles[1].ID)
-	assert.Contains(t, dbUser.SystemRoles, model.GetViewRepoRole("myRepo"))
+	hasPermission, err := model.UserHasRepoViewPermission(dbUser, "myRepo")
+	assert.NoError(t, err)
+	assert.True(t, hasPermission)
 }
 
 func TestDeleteUserPermissions(t *testing.T) {

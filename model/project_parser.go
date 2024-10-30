@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -639,12 +640,11 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		LocalModules:        projectOpts.LocalModules,
 		RemotePath:          include.FileName,
 		Revision:            projectOpts.Revision,
-		Token:               projectOpts.Token,
 		ReadFileFrom:        projectOpts.ReadFileFrom,
 		Identifier:          identifier,
 		UnmarshalStrict:     projectOpts.UnmarshalStrict,
 		LocalModuleIncludes: projectOpts.LocalModuleIncludes,
-		ReferencePatchID:    projectOpts.ReferencePatchID,
+		ReferenceManifestID: projectOpts.ReferenceManifestID,
 	}
 	localOpts.UpdateReadFileFrom(include.FileName)
 
@@ -785,12 +785,12 @@ type GetProjectOpts struct {
 	LocalModules        map[string]string
 	RemotePath          string
 	Revision            string
-	Token               string
 	ReadFileFrom        string
 	Identifier          string
 	UnmarshalStrict     bool
 	LocalModuleIncludes []patch.LocalModuleInclude
 	ReferencePatchID    string
+	ReferenceManifestID string
 }
 
 type PatchOpts struct {
@@ -838,18 +838,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 		}
 		return fileContents, nil
 	default:
-		if opts.Token == "" {
-			conf, err := evergreen.GetConfig(ctx)
-			if err != nil {
-				return nil, errors.Wrap(err, "getting evergreen configuration")
-			}
-			ghToken, err := conf.GetGithubOauthToken()
-			if err != nil {
-				return nil, errors.Wrap(err, "getting GitHub OAuth token from configuration")
-			}
-			opts.Token = ghToken
-		}
-		configFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
+		configFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner, opts.Ref.Repo, opts.RemotePath, opts.Revision)
 		if err != nil {
 			return nil, errors.Wrapf(err, "fetching project file for project '%s' at revision '%s'", opts.Identifier, opts.Revision)
 		}
@@ -896,25 +885,23 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 		},
 		RemotePath:   opts.RemotePath,
 		Revision:     module.Branch,
-		Token:        opts.Token,
 		ReadFileFrom: ReadFromGithub,
 		Identifier:   include.Module,
 	}
 
-	// If provided a patch to repeat, use the same githash as the original patch did for the module.
-	if opts.ReferencePatchID != "" {
-		p, err := patch.FindOneId(opts.ReferencePatchID)
+	// If a reference manifest is provided, use the module revision from the manifest.
+	if opts.ReferenceManifestID != "" {
+		m, err := manifest.FindOne(manifest.ById(opts.ReferenceManifestID))
 		if err != nil {
-			return nil, errors.Wrapf(err, "finding patch to repeat '%s'", opts.ReferencePatchID)
+			return nil, errors.Wrapf(err, "finding manifest to reference '%s'", opts.ReferenceManifestID)
 		}
-		if p == nil {
-			return nil, errors.Errorf("patch to repeat '%s' not found", opts.ReferencePatchID)
-		}
-
-		for _, mod := range p.Patches {
-			if mod.ModuleName == include.Module {
-				moduleOpts.Revision = mod.Githash
-				break
+		// Sometimes the manifest might be nil, in which case we don't want to set the revision.
+		if m != nil {
+			for name, mod := range m.Modules {
+				if name == include.Module {
+					moduleOpts.Revision = mod.Revision
+					break
+				}
 			}
 		}
 	}
@@ -929,7 +916,7 @@ func getFileForPatchDiff(ctx context.Context, opts GetProjectOpts) ([]byte, erro
 		return nil, errors.New("project not passed in")
 	}
 	var projectFileBytes []byte
-	githubFile, err := thirdparty.GetGithubFile(ctx, opts.Token, opts.Ref.Owner,
+	githubFile, err := thirdparty.GetGithubFile(ctx, opts.Ref.Owner,
 		opts.Ref.Repo, opts.RemotePath, opts.Revision)
 	if err != nil {
 		// if the project file doesn't exist, but our patch includes a project file,

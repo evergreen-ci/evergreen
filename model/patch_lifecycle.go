@@ -261,7 +261,7 @@ func getPatchedProjectYAML(ctx context.Context, projectRef *ProjectRef, opts *Ge
 // information from GitHub and applying the patch to the latest remote
 // configuration. Also returns the condensed yaml string for storage. The error
 // returned can be a validation error.
-func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *patch.Patch, githubOauthToken string) (*Project, *PatchConfig, error) {
+func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *patch.Patch) (*Project, *PatchConfig, error) {
 	if p.Version != "" {
 		return nil, nil, errors.Errorf("patch '%s' already finalized", p.Version)
 	}
@@ -288,7 +288,7 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 		return project, patchConfig, nil
 	}
 
-	projectRef, opts, err := getLoadProjectOptsForPatch(p, githubOauthToken)
+	projectRef, opts, err := getLoadProjectOptsForPatch(p)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "fetching project options for patch")
 	}
@@ -330,7 +330,7 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 // GetPatchedProjectConfig returns the project configuration by fetching the
 // latest commit information from GitHub and applying the patch to the latest
 // remote configuration. The error returned can be a validation error.
-func GetPatchedProjectConfig(ctx context.Context, settings *evergreen.Settings, p *patch.Patch, githubOauthToken string) (string, error) {
+func GetPatchedProjectConfig(ctx context.Context, settings *evergreen.Settings, p *patch.Patch) (string, error) {
 	if p.Version != "" {
 		return "", errors.Errorf("patch '%s' already finalized", p.Version)
 	}
@@ -348,7 +348,7 @@ func GetPatchedProjectConfig(ctx context.Context, settings *evergreen.Settings, 
 
 	// The patch has not been created yet, so do the first-time initialization
 	// to get the parser project and project config.
-	projectRef, opts, err := getLoadProjectOptsForPatch(p, githubOauthToken)
+	projectRef, opts, err := getLoadProjectOptsForPatch(p)
 	if err != nil {
 		return "", errors.Wrap(err, "fetching project options for patch")
 	}
@@ -547,17 +547,7 @@ func parseRenamedOrCopiedFile(patchContents, filename string) string {
 // Creates a version for this patch and links it.
 // Creates builds based on the Version
 // Creates a manifest based on the Version
-func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
-	settings, err := evergreen.GetConfig(ctx)
-	if githubOauthToken == "" {
-		if err != nil {
-			return nil, err
-		}
-		githubOauthToken, err = settings.GetGithubOauthToken()
-		if err != nil {
-			return nil, err
-		}
-	}
+func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Version, error) {
 	projectRef, err := FindMergedProjectRef(p.Project, p.Version, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project '%s'", p.Project)
@@ -566,6 +556,10 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		return nil, errors.Errorf("project '%s' not found", p.Project)
 	}
 
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting evergreen config")
+	}
 	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, p)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding and translating project for patch '%s'", p.Id.Hex())
@@ -639,7 +633,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		AuthorEmail:          authorEmail,
 	}
 
-	mfst, err := constructManifest(patchVersion, projectRef, project.Modules, githubOauthToken)
+	mfst, err := constructManifest(patchVersion, projectRef, project.Modules)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
@@ -800,7 +794,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if p.IsParent() {
 		// finalize child patches or subscribe on parent outcome based on parentStatus
 		for _, childPatchId := range p.Triggers.ChildPatches {
-			err = finalizeOrSubscribeChildPatch(ctx, childPatchId, p, requester, githubOauthToken)
+			err = finalizeOrSubscribeChildPatch(ctx, childPatchId, p, requester)
 			if err != nil {
 				return nil, errors.Wrap(err, "finalizing child patch")
 			}
@@ -856,7 +850,7 @@ func getFullPatchParams(p *patch.Patch) ([]patch.Parameter, error) {
 	return fullParams, nil
 }
 
-func getLoadProjectOptsForPatch(p *patch.Patch, githubOauthToken string) (*ProjectRef, *GetProjectOpts, error) {
+func getLoadProjectOptsForPatch(p *patch.Patch) (*ProjectRef, *GetProjectOpts, error) {
 	projectRef, err := FindMergedProjectRef(p.Project, p.Version, true)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
@@ -875,13 +869,25 @@ func getLoadProjectOptsForPatch(p *patch.Patch, githubOauthToken string) (*Proje
 		hash = p.GithubMergeData.HeadSHA
 	}
 
+	var manifestID string
+	if p.ReferenceManifestID != "" {
+		manifestID = p.ReferenceManifestID
+	} else {
+		baseVersion, err := VersionFindOne(BaseVersionByProjectIdAndRevision(p.Project, p.Githash))
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "finding base version for project '%s' and revision '%s'", p.Project, p.Githash)
+		}
+		if baseVersion != nil {
+			manifestID = baseVersion.Id
+		}
+	}
+
 	opts := GetProjectOpts{
 		Ref:                 projectRef,
-		Token:               githubOauthToken,
 		ReadFileFrom:        ReadFromPatch,
 		Revision:            hash,
 		LocalModuleIncludes: p.LocalModuleIncludes,
-		ReferencePatchID:    p.ReferencePatchID,
+		ReferenceManifestID: manifestID,
 		PatchOpts: &PatchOpts{
 			patch: p,
 		},
@@ -889,7 +895,7 @@ func getLoadProjectOptsForPatch(p *patch.Patch, githubOauthToken string) (*Proje
 	return projectRef, &opts, nil
 }
 
-func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, parentPatch *patch.Patch, requester string, githubOauthToken string) error {
+func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, parentPatch *patch.Patch, requester string) error {
 	intent, err := patch.FindIntent(childPatchId, patch.TriggerIntentType)
 	if err != nil {
 		return errors.Wrap(err, "fetching child patch intent")
@@ -910,7 +916,7 @@ func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, par
 		if childPatchDoc == nil {
 			return errors.Errorf("could not find child patch '%s'", childPatchId)
 		}
-		if _, err := FinalizePatch(ctx, childPatchDoc, requester, githubOauthToken); err != nil {
+		if _, err := FinalizePatch(ctx, childPatchDoc, requester); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "Failed to finalize child patch document",
 				"source":        requester,

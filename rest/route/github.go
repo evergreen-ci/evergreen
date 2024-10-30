@@ -462,6 +462,14 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(event *github.MergeGrou
 		"head_sha": event.GetMergeGroup().GetHeadSHA(),
 		"message":  "merge group received",
 	})
+	// Ensure that a project exists before creating an intent. Otherwise, intent creation will fail which will always yield an unactionable 'Evergreen error' posted to GitHub.
+	projectRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(org, repo, branch)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding project ref"))
+	}
+	if len(projectRefs) == 0 {
+		return gimlet.NewJSONInternalErrorResponse(errors.New("no matching project ref"))
+	}
 	if err := gh.AddIntentForGithubMerge(event); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":   "GitHub hook",
@@ -672,16 +680,7 @@ func getHelpTextFromProjects(repoRef *model.RepoRef, projectRefs []model.Project
 }
 
 func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledBy, alias string, prNumber int) error {
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting admin settings")
-	}
-	githubToken, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return errors.Wrap(err, "getting GitHub OAuth token from admin settings")
-	}
-
-	pr, err := thirdparty.GetGithubPullRequest(ctx, githubToken, owner, repo, prNumber)
+	pr, err := thirdparty.GetGithubPullRequest(ctx, owner, repo, prNumber)
 	if err != nil {
 		return errors.Wrapf(err, "getting PR for repo '%s:%s', PR #%d", owner, repo, prNumber)
 	}
@@ -758,7 +757,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		if len(baseOwnerAndRepo) != 2 {
 			return errors.New("PR base repo name is invalid (expected [owner]/[repo])")
 		}
-		mergeBase, err = thirdparty.GetGithubMergeBaseRevision(ctx, "", baseOwnerAndRepo[0], baseOwnerAndRepo[1], pr.Base.GetRef(), pr.Head.GetRef())
+		mergeBase, err = thirdparty.GetGithubMergeBaseRevision(ctx, baseOwnerAndRepo[0], baseOwnerAndRepo[1], pr.Base.GetRef(), pr.Head.GetRef())
 		if err != nil {
 			return errors.Wrapf(err, "getting merge base between branches '%s' and '%s'", pr.Base.GetRef(), pr.Head.GetRef())
 		}
@@ -890,17 +889,13 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		}))
 		return errors.Wrap(err, "validating event")
 	}
-	token, err := gh.settings.GetGithubOauthToken()
-	if err != nil {
-		return errors.New("getting GitHub token")
-	}
 	pusher := event.GetPusher().GetName()
 	tag := model.GitTag{
 		Tag:    strings.TrimPrefix(event.GetRef(), refTags),
 		Pusher: pusher,
 	}
 	ownerAndRepo := strings.Split(event.Repo.GetFullName(), "/")
-	hash, err := thirdparty.GetTaggedCommitFromGithub(ctx, token, ownerAndRepo[0], ownerAndRepo[1], event.GetRef())
+	hash, err := thirdparty.GetTaggedCommitFromGithub(ctx, ownerAndRepo[0], ownerAndRepo[1], event.GetRef())
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
@@ -997,7 +992,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 					RevisionMessage: existingVersion.Message,
 				}
 				var v *model.Version
-				v, err = gh.createVersionForTag(ctx, pRef, existingVersion, revision, tag, token)
+				v, err = gh.createVersionForTag(ctx, pRef, existingVersion, revision, tag)
 				if err != nil {
 					catcher.Wrapf(err, "adding new version for tag '%s'", tag.Tag)
 					continue
@@ -1037,12 +1032,12 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 }
 
 func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.ProjectRef, existingVersion *model.Version,
-	revision model.Revision, tag model.GitTag, token string) (*model.Version, error) {
+	revision model.Revision, tag model.GitTag) (*model.Version, error) {
 	if !pRef.IsGitTagVersionsEnabled() {
 		return nil, nil
 	}
 
-	if !pRef.AuthorizedForGitTag(ctx, tag.Pusher, token, pRef.Owner, pRef.Repo) {
+	if !pRef.AuthorizedForGitTag(ctx, tag.Pusher, pRef.Owner, pRef.Repo) {
 		grip.Debug(message.Fields{
 			"source":             "GitHub hook",
 			"msg_id":             gh.msgID,
@@ -1120,7 +1115,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 				return nil, errors.Wrap(err, "getting admin settings")
 			}
 		}
-		projectInfo, err = gh.sc.GetProjectFromFile(ctx, pRef, remotePath, token)
+		projectInfo, err = gh.sc.GetProjectFromFile(ctx, pRef, remotePath)
 		if err != nil {
 			return nil, errors.Wrap(err, "loading project info from file")
 		}

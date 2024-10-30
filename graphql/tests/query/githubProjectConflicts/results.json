@@ -36,7 +36,7 @@
         "data": null,
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to access 'settings' for the project 'evergreen'",
+            "message": "user 'testuser' does not have permission to 'view project settings' for the project 'evergreen'",
             "path": ["githubProjectConflicts", "projectId"],
             "extensions": {
               "code": "FORBIDDEN"

@@ -19,7 +19,6 @@ func NewConfigModel() *APIAdminSettings {
 		Cedar:               &APICedarConfig{},
 		CommitQueue:         &APICommitQueueConfig{},
 		ContainerPools:      &APIContainerPoolsConfig{},
-		Credentials:         map[string]string{},
 		Expansions:          map[string]string{},
 		HostInit:            &APIHostInitConfig{},
 		HostJasper:          &APIHostJasperConfig{},
@@ -62,7 +61,6 @@ type APIAdminSettings struct {
 	CommitQueue         *APICommitQueueConfig             `json:"commit_queue,omitempty"`
 	ConfigDir           *string                           `json:"configdir,omitempty"`
 	ContainerPools      *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
-	Credentials         map[string]string                 `json:"credentials,omitempty"`
 	DomainName          *string                           `json:"domain_name,omitempty"`
 	Expansions          map[string]string                 `json:"expansions,omitempty"`
 	GithubPRCreatorOrg  *string                           `json:"github_pr_creator_org,omitempty"`
@@ -140,7 +138,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.LogPath = &v.LogPath
 		as.Plugins = v.Plugins
 		as.PprofPort = &v.PprofPort
-		as.Credentials = v.Credentials
 		as.Expansions = v.Expansions
 		as.KanopySSHKeyPath = utility.ToStringPtr(v.KanopySSHKeyPath)
 		as.GithubOrgs = v.GithubOrgs
@@ -205,7 +202,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 // ToService returns a service model from an API model
 func (as *APIAdminSettings) ToService() (interface{}, error) {
 	settings := evergreen.Settings{
-		Credentials:        map[string]string{},
 		Expansions:         map[string]string{},
 		Plugins:            evergreen.PluginConfig{},
 		GithubOrgs:         as.GithubOrgs,
@@ -260,9 +256,6 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		}
 		valToSet := reflect.ValueOf(i)
 		dbModelReflect.FieldByName(propName).Set(valToSet)
-	}
-	for k, v := range as.Credentials {
-		settings.Credentials[k] = v
 	}
 	for k, v := range as.Expansions {
 		settings.Expansions[k] = v
@@ -674,11 +667,14 @@ func (a *APIBucketsConfig) ToService() (interface{}, error) {
 }
 
 type APICedarConfig struct {
-	BaseURL     *string `json:"base_url"`
-	GRPCBaseURL *string `json:"grpc_base_url"`
-	RPCPort     *string `json:"rpc_port"`
-	User        *string `json:"user"`
-	APIKey      *string `json:"api_key"`
+	BaseURL             *string `json:"base_url"`
+	GRPCBaseURL         *string `json:"grpc_base_url"`
+	RPCPort             *string `json:"rpc_port"`
+	User                *string `json:"user"`
+	APIKey              *string `json:"api_key"`
+	SendToCedarDisabled *bool   `json:"send_to_cedar_disabled"`
+	SPSURL              *string `json:"sps_url"`
+	SendRatioSPS        *int    `json:"send_ratio_sps"`
 }
 
 func (a *APICedarConfig) BuildFromService(h interface{}) error {
@@ -689,6 +685,9 @@ func (a *APICedarConfig) BuildFromService(h interface{}) error {
 		a.RPCPort = utility.ToStringPtr(v.RPCPort)
 		a.User = utility.ToStringPtr(v.User)
 		a.APIKey = utility.ToStringPtr(v.APIKey)
+		a.SendToCedarDisabled = utility.ToBoolPtr(v.SendToCedarDisabled)
+		a.SPSURL = utility.ToStringPtr(v.SPSURL)
+		a.SendRatioSPS = utility.ToIntPtr(v.SendRatioSPS)
 	default:
 		return errors.Errorf("programmatic error: expected Cedar config but got type %T", h)
 	}
@@ -697,11 +696,14 @@ func (a *APICedarConfig) BuildFromService(h interface{}) error {
 
 func (a *APICedarConfig) ToService() (interface{}, error) {
 	return evergreen.CedarConfig{
-		BaseURL:     utility.FromStringPtr(a.BaseURL),
-		GRPCBaseURL: utility.FromStringPtr(a.GRPCBaseURL),
-		RPCPort:     utility.FromStringPtr(a.RPCPort),
-		User:        utility.FromStringPtr(a.User),
-		APIKey:      utility.FromStringPtr(a.APIKey),
+		BaseURL:             utility.FromStringPtr(a.BaseURL),
+		GRPCBaseURL:         utility.FromStringPtr(a.GRPCBaseURL),
+		RPCPort:             utility.FromStringPtr(a.RPCPort),
+		User:                utility.FromStringPtr(a.User),
+		APIKey:              utility.FromStringPtr(a.APIKey),
+		SendToCedarDisabled: utility.FromBoolPtr(a.SendToCedarDisabled),
+		SPSURL:              utility.FromStringPtr(a.SPSURL),
+		SendRatioSPS:        utility.FromIntPtr(a.SendRatioSPS),
 	}, nil
 }
 

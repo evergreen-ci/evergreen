@@ -105,11 +105,8 @@ func TestGetRevisionsSinceWithPaging(t *testing.T) {
 	dropTestDB(t)
 	testutil.ConfigureIntegrationTest(t, testConfig)
 	Convey("When fetching commits from the evergreen repository", t, func() {
-		token, err := testConfig.GetGithubOauthToken()
-		So(err, ShouldBeNil)
 		grp := &GithubRepositoryPoller{
 			ProjectRef: evgProjectRef,
-			OauthToken: token,
 		}
 		Convey("fetching > the size of a github page should succeed", func() {
 			distantEvgRevision, err := getDistantEVGRevision()
@@ -138,9 +135,6 @@ func TestGetRevisionsSince(t *testing.T) {
 	Convey("When fetching github revisions (by commit) - from a repo "+
 		"containing 3 commits - given a valid Oauth token...", t, func() {
 		ghp.ProjectRef = projectRef
-		token, err := testConfig.GetGithubOauthToken()
-		So(err, ShouldBeNil)
-		ghp.OauthToken = token
 
 		Convey("There should be only two revisions since the first revision",
 			func() {
@@ -214,9 +208,6 @@ func TestGetRemoteConfig(t *testing.T) {
 				BatchTime:   60,
 				Hidden:      utility.FalsePtr(),
 			}
-			token, err := testConfig.GetGithubOauthToken()
-			So(err, ShouldBeNil)
-			ghp.OauthToken = token
 
 			Convey("The config file at the requested revision should be "+
 				"exactly what is returned", func() {
@@ -251,9 +242,6 @@ func TestGetAllRevisions(t *testing.T) {
 	Convey("When fetching recent github revisions (by count) - from a repo "+
 		"containing 3 commits - given a valid Oauth token...", t, func() {
 		ghp.ProjectRef = projectRef
-		token, err := testConfig.GetGithubOauthToken()
-		So(err, ShouldBeNil)
-		ghp.OauthToken = token
 
 		// Even though we're requesting far more revisions than exists in the
 		// remote repository, we should only get the revisions that actually

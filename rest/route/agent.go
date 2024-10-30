@@ -54,12 +54,15 @@ func (*agentCedarConfig) Parse(_ context.Context, _ *http.Request) error { retur
 
 func (h *agentCedarConfig) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(apimodels.CedarConfig{
-		BaseURL:     h.config.BaseURL,
-		GRPCBaseURL: h.config.GRPCBaseURL,
-		RPCPort:     h.config.RPCPort,
-		Username:    h.config.User,
-		APIKey:      h.config.APIKey,
-		Insecure:    h.config.Insecure,
+		BaseURL:             h.config.BaseURL,
+		GRPCBaseURL:         h.config.GRPCBaseURL,
+		RPCPort:             h.config.RPCPort,
+		Username:            h.config.User,
+		APIKey:              h.config.APIKey,
+		Insecure:            h.config.Insecure,
+		SendToCedarDisabled: h.config.SendToCedarDisabled,
+		SPSURL:              h.config.SPSURL,
+		SendRatioSPS:        h.config.SendRatioSPS,
 	})
 }
 
@@ -132,11 +135,7 @@ func (h *agentCheckGetPullRequestHandler) Parse(ctx context.Context, r *http.Req
 }
 
 func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Responder {
-	token, err := h.settings.GetGithubOauthToken()
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting token"))
-	}
-	pr, err := thirdparty.GetGithubPullRequest(ctx, token, h.req.Owner, h.req.Repo, h.req.PRNum)
+	pr, err := thirdparty.GetGithubPullRequest(ctx, h.req.Owner, h.req.Repo, h.req.PRNum)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}

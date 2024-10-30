@@ -2585,7 +2585,7 @@ func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task,
 		return nil, nil
 	}
 
-	deps, err := FindWithFields(ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey, ActivatedKey, DisplayNameKey)
+	deps, err := FindWithFields(ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey, ActivatedKey, DisplayNameKey, PriorityKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies")
 	}
@@ -2949,7 +2949,7 @@ func (t *Task) Archive(ctx context.Context) error {
 			},
 			updateDisplayTasksAndTasksExpression,
 		)
-		// return nil if the task has already been archived
+		// Return nil if the task has already been archived
 		if adb.ResultsNotFound(err) {
 			return nil
 		}
@@ -3084,6 +3084,11 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 
 	_, err = session.WithTransaction(ctx, txFunc)
 
+	// Return nil if the tasks have already been archived. Because we use a transaction here,
+	// we can trust that either all tasks have already been archived, or none of them.
+	if err == nil || db.IsDuplicateKey(err) || adb.ResultsNotFound(err) {
+		return nil
+	}
 	return errors.Wrap(err, "archiving execution tasks and updating execution tasks")
 }
 

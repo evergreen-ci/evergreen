@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/cocoa"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -821,17 +822,18 @@ func TestAttachToNewRepo(t *testing.T) {
 		CommitQueue: CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
-		PRTestingEnabled: utility.TruePtr(),
-		TracksPushEvents: utility.TruePtr(),
+		PRTestingEnabled:      utility.TruePtr(),
+		TracksPushEvents:      utility.TruePtr(),
+		ParameterStoreEnabled: true,
 	}
 	assert.NoError(t, pRef.Insert())
 	repoRef := RepoRef{ProjectRef{
-		Id: "myRepo",
+		Id:                    "myRepo",
+		ParameterStoreEnabled: true,
 	}}
 	assert.NoError(t, repoRef.Upsert())
-	u := &user.DBUser{Id: "me",
-		SystemRoles: []string{GetViewRepoRole("myRepo")},
-	}
+	u := &user.DBUser{Id: "me"}
+
 	assert.NoError(t, u.Insert())
 	installation := githubapp.GitHubAppInstallation{
 		Owner:          pRef.Owner,
@@ -876,10 +878,11 @@ func TestAttachToNewRepo(t *testing.T) {
 
 	userFromDB, err := user.FindOneById("me")
 	assert.NoError(t, err)
-	assert.Len(t, userFromDB.SystemRoles, 2)
+	assert.Len(t, userFromDB.SystemRoles, 1)
 	assert.Contains(t, userFromDB.SystemRoles, GetRepoAdminRole(pRefFromDB.RepoRefId))
-	assert.Contains(t, userFromDB.SystemRoles, GetViewRepoRole(pRefFromDB.RepoRefId))
-
+	hasPermission, err := UserHasRepoViewPermission(u, pRefFromDB.RepoRefId)
+	assert.NoError(t, err)
+	assert.True(t, hasPermission)
 	// Attaching a different project to this repo will result in Github conflicts being unset.
 	pRef = ProjectRef{
 		Id:        "mySecondProject",
@@ -942,9 +945,10 @@ func TestAttachToRepo(t *testing.T) {
 		CommitQueue: CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
-		GithubChecksEnabled: utility.TruePtr(),
-		TracksPushEvents:    utility.TruePtr(),
-		Enabled:             true,
+		GithubChecksEnabled:   utility.TruePtr(),
+		TracksPushEvents:      utility.TruePtr(),
+		Enabled:               true,
+		ParameterStoreEnabled: true,
 	}
 	assert.NoError(t, pRef.Insert())
 
@@ -982,8 +986,10 @@ func TestAttachToRepo(t *testing.T) {
 	u, err = user.FindOneById("me")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
-	assert.Contains(t, u.Roles(), GetViewRepoRole(pRefFromDB.RepoRefId))
 	assert.Contains(t, u.Roles(), GetRepoAdminRole(pRefFromDB.RepoRefId))
+	hasPermission, err := UserHasRepoViewPermission(u, pRefFromDB.RepoRefId)
+	assert.NoError(t, err)
+	assert.True(t, hasPermission)
 
 	// Try attaching a new project ref, now that a repo does exist.
 	pRef = ProjectRef{
@@ -1025,12 +1031,52 @@ func TestAttachToRepo(t *testing.T) {
 	assert.Error(t, pRef.AttachToRepo(ctx, u))
 }
 
+func checkParametersMatchVars(ctx context.Context, t *testing.T, pm ParameterMappings, vars map[string]string) {
+	assert.Len(t, pm, len(vars), "each project var should have exactly one corresponding parameter")
+	fakeParams, err := fakeparameter.FindByIDs(ctx, pm.ParameterNames()...)
+	assert.NoError(t, err)
+	assert.Len(t, fakeParams, len(vars), "number of parameters for project vars should match number of project vars defined")
+
+	paramNamesMap := pm.ParameterNameMap()
+	for _, fakeParam := range fakeParams {
+		varName := paramNamesMap[fakeParam.Name].Name
+		assert.NotEmpty(t, varName, "parameter should have corresponding project variable")
+		assert.Equal(t, vars[varName], fakeParam.Value, "project variable value should match the parameter value")
+	}
+}
+
+// checkAndSetProjectVarsSynced checks that the project ref's parameter store
+// vars are synced according to the DB and sets the flag to true. This is mostly
+// helpful as a temporary workaround to ensure that the project ref agrees with
+// the latest one in the DB. In tests where the project ref is inserted
+// initially, then the sync flag is set to true by a project variable operation
+// (e.g. (*ProjectVars).Insert), the local copy of the project ref isn't
+// updated. If the outdated local project ref is used for a later Upsert, the
+// sync flag will be incorrectly cleared.
+func checkAndSetProjectVarsSynced(t *testing.T, projRef *ProjectRef, isRepoRef bool) {
+	var dbProjRef *ProjectRef
+	var err error
+	if isRepoRef {
+		dbRepoRef, err := FindOneRepoRef(projRef.Id)
+		require.NoError(t, err)
+		require.NotZero(t, dbRepoRef)
+		dbProjRef = &dbRepoRef.ProjectRef
+	} else {
+		dbProjRef, err = FindBranchProjectRef(projRef.Id)
+		require.NoError(t, err)
+		require.NotZero(t, dbProjRef)
+	}
+	assert.True(t, dbProjRef.ParameterStoreVarsSynced, "parameter store vars must be synced but they aren't")
+
+	projRef.ParameterStoreVarsSynced = true
+}
+
 func TestDetachFromRepo(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	for name, test := range map[string]func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser){
-		"project ref is updated correctly": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+		"ProjectRefIsUpdatedCorrectly": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 			pRefFromDB, err := FindBranchProjectRef(pRef.Id)
@@ -1049,9 +1095,11 @@ func TestDetachFromRepo(t *testing.T) {
 			dbUser, err = user.FindOneById("me")
 			assert.NoError(t, err)
 			assert.NotNil(t, dbUser)
-			assert.NotContains(t, dbUser.Roles(), GetViewRepoRole(pRefFromDB.RepoRefId))
+			hasPermission, err := UserHasRepoViewPermission(dbUser, pRefFromDB.RepoRefId)
+			assert.NoError(t, err)
+			assert.False(t, hasPermission)
 		},
-		"project variables are updated": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+		"NewRepoVarsAreMerged": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 			vars, err := FindOneProjectVars(pRef.Id)
@@ -1064,7 +1112,19 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.True(t, vars.PrivateVars["in"])
 			assert.True(t, vars.PrivateVars["repo"]) // added from repo
 		},
-		"patch aliases": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+		"ProjectAndRepoVarsAreMergedAndStoredInParameterStore": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+			expectedVars, err := FindMergedProjectVars(pRef.Id)
+			require.NoError(t, err)
+
+			assert.NoError(t, pRef.DetachFromRepo(dbUser))
+			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
+			vars, err := FindOneProjectVars(pRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, vars)
+
+			checkParametersMatchVars(ctx, t, vars.Parameters, expectedVars.Vars)
+		},
+		"PatchAliases": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			// no patch aliases are copied if the project has a patch alias
 			projectAlias := ProjectAlias{Alias: "myProjectAlias", ProjectID: pRef.Id}
 			assert.NoError(t, projectAlias.Upsert())
@@ -1090,9 +1150,8 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			assert.Equal(t, aliases[0].Alias, repoAlias.Alias)
-
 		},
-		"internal aliases": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+		"InternalAliases": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			projectAliases := []ProjectAlias{
 				{Alias: evergreen.GitTagAlias, Variant: "projectVariant"},
 				{Alias: evergreen.CommitQueueAlias},
@@ -1128,7 +1187,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.Equal(t, prCount, 1)
 			assert.Equal(t, cqCount, 1)
 		},
-		"subscriptions": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
+		"Subscriptions": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			projectSubscription := event.Subscription{
 				Owner:        pRef.Id,
 				OwnerType:    event.OwnerTypeProject,
@@ -1180,7 +1239,7 @@ func TestDetachFromRepo(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, evergreen.ScopeCollection,
-				evergreen.RoleCollection, user.Collection, event.SubscriptionsCollection, event.EventCollection, ProjectAliasCollection))
+				evergreen.RoleCollection, user.Collection, event.SubscriptionsCollection, event.EventCollection, ProjectAliasCollection, ProjectVarsCollection, fakeparameter.Collection))
 			require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 			pRef := &ProjectRef{
@@ -1194,7 +1253,7 @@ func TestDetachFromRepo(t *testing.T) {
 				PRTestingEnabled:      utility.FalsePtr(),          // neither of these should be changed when overwriting
 				GitTagVersionsEnabled: utility.TruePtr(),
 				GithubChecksEnabled:   nil, // for now this is defaulting to repo
-				//GithubTriggerAliases:  nil,
+				ParameterStoreEnabled: true,
 			}
 			assert.NoError(t, pRef.Insert())
 
@@ -1210,6 +1269,7 @@ func TestDetachFromRepo(t *testing.T) {
 				PeriodicBuilds: []PeriodicBuildDefinition{
 					{ID: "my_build"},
 				},
+				ParameterStoreEnabled: true,
 			}}
 			assert.NoError(t, repoRef.Upsert())
 
@@ -1226,6 +1286,11 @@ func TestDetachFromRepo(t *testing.T) {
 			_, err := pVars.Upsert()
 			assert.NoError(t, err)
 
+			dbProjRef, err := FindBranchProjectRef(pRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.True(t, dbProjRef.ParameterStoreVarsSynced, "branch project vars should be synced to Parameter Store after Upsert")
+
 			repoVars := &ProjectVars{
 				Id: repoRef.Id,
 				Vars: map[string]string{
@@ -1239,9 +1304,13 @@ func TestDetachFromRepo(t *testing.T) {
 			_, err = repoVars.Upsert()
 			assert.NoError(t, err)
 
+			dbRepoRef, err := FindOneRepoRef(repoRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbRepoRef)
+			assert.True(t, dbRepoRef.ParameterStoreVarsSynced, "repo vars should be synced to Parameter Store after Upsert")
+
 			u := &user.DBUser{
-				Id:          "me",
-				SystemRoles: []string{GetViewRepoRole("myRepo")},
+				Id: "me",
 			}
 			assert.NoError(t, u.Insert())
 			test(t, pRef, u)
@@ -1289,8 +1358,8 @@ func TestDefaultRepoBySection(t *testing.T) {
 			varsFromDb, err := FindOneProjectVars(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, varsFromDb)
-			assert.Nil(t, varsFromDb.Vars)
-			assert.Nil(t, varsFromDb.PrivateVars)
+			assert.Empty(t, varsFromDb.Vars)
+			assert.Empty(t, varsFromDb.PrivateVars)
 			assert.NotEmpty(t, varsFromDb.Id)
 		},
 		ProjectPageGithubAndCQSection: func(t *testing.T, id string) {
@@ -1372,7 +1441,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			assert.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectVarsCollection, ProjectAliasCollection,
+			assert.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectVarsCollection, fakeparameter.Collection, ProjectAliasCollection,
 				event.SubscriptionsCollection, event.EventCollection, RepoRefCollection))
 
 			pRef := ProjectRef{
@@ -1420,6 +1489,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 					TicketCreateProject:  "BFG",
 					TicketSearchProjects: []string{"BF", "BFG"},
 				},
+				ParameterStoreEnabled: true,
 			}
 			assert.NoError(t, pRef.Insert())
 
@@ -1429,6 +1499,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 				PrivateVars: map[string]bool{"hello": true},
 			}
 			assert.NoError(t, pVars.Insert())
+			checkAndSetProjectVarsSynced(t, &pRef, false)
 
 			aliases := []ProjectAlias{
 				{
@@ -1755,47 +1826,50 @@ func TestSetGithubAppCredentials(t *testing.T) {
 
 func TestCreateNewRepoRef(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, user.Collection,
-		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection, githubapp.GitHubAppCollection))
+		evergreen.ScopeCollection, ProjectVarsCollection, ProjectAliasCollection, githubapp.GitHubAppCollection, fakeparameter.Collection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	doc1 := &ProjectRef{
-		Id:                   "id1",
-		Owner:                "mongodb",
-		Repo:                 "mongo",
-		Branch:               "mci",
-		Enabled:              true,
-		Admins:               []string{"bob", "other bob"},
-		PRTestingEnabled:     utility.TruePtr(),
-		RemotePath:           "evergreen.yml",
-		NotifyOnBuildFailure: utility.TruePtr(),
-		CommitQueue:          CommitQueueParams{Message: "my message"},
-		TaskSync:             TaskSyncOptions{PatchEnabled: utility.TruePtr()},
+		Id:                    "id1",
+		Owner:                 "mongodb",
+		Repo:                  "mongo",
+		Branch:                "mci",
+		Enabled:               true,
+		Admins:                []string{"bob", "other bob"},
+		PRTestingEnabled:      utility.TruePtr(),
+		RemotePath:            "evergreen.yml",
+		NotifyOnBuildFailure:  utility.TruePtr(),
+		CommitQueue:           CommitQueueParams{Message: "my message"},
+		TaskSync:              TaskSyncOptions{PatchEnabled: utility.TruePtr()},
+		ParameterStoreEnabled: true,
 	}
 	assert.NoError(t, doc1.Insert())
 	doc2 := &ProjectRef{
-		Id:                   "id2",
-		Identifier:           "identifier",
-		Owner:                "mongodb",
-		Repo:                 "mongo",
-		Branch:               "mci2",
-		Enabled:              true,
-		Admins:               []string{"bob", "other bob"},
-		PRTestingEnabled:     utility.TruePtr(),
-		RemotePath:           "evergreen.yml",
-		NotifyOnBuildFailure: utility.FalsePtr(),
-		GithubChecksEnabled:  utility.TruePtr(),
-		CommitQueue:          CommitQueueParams{Message: "my message"},
-		TaskSync:             TaskSyncOptions{PatchEnabled: utility.TruePtr(), ConfigEnabled: utility.TruePtr()},
+		Id:                    "id2",
+		Identifier:            "identifier",
+		Owner:                 "mongodb",
+		Repo:                  "mongo",
+		Branch:                "mci2",
+		Enabled:               true,
+		Admins:                []string{"bob", "other bob"},
+		PRTestingEnabled:      utility.TruePtr(),
+		RemotePath:            "evergreen.yml",
+		NotifyOnBuildFailure:  utility.FalsePtr(),
+		GithubChecksEnabled:   utility.TruePtr(),
+		CommitQueue:           CommitQueueParams{Message: "my message"},
+		TaskSync:              TaskSyncOptions{PatchEnabled: utility.TruePtr(), ConfigEnabled: utility.TruePtr()},
+		ParameterStoreEnabled: true,
 	}
 	assert.NoError(t, doc2.Insert())
 	doc3 := &ProjectRef{
-		Id:      "id3",
-		Owner:   "mongodb",
-		Repo:    "mongo",
-		Branch:  "mci2",
-		Enabled: false,
+		Id:                    "id3",
+		Owner:                 "mongodb",
+		Repo:                  "mongo",
+		Branch:                "mci2",
+		Enabled:               false,
+		ParameterStoreEnabled: true,
 	}
 	assert.NoError(t, doc3.Insert())
 
@@ -1817,7 +1891,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 				"roses":        "red",
 				"ever":         "green",
 				"also":         "this one",
-				"this is only": "in one doc",
+				"this_is_only": "in one doc",
 			},
 			PrivateVars: map[string]bool{
 				"sdc": true,
@@ -1835,7 +1909,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 		{
 			Id: doc3.Id,
 			Vars: map[string]string{
-				"it's me": "adele",
+				"its_me": "adele",
 			},
 		},
 	}
@@ -1891,6 +1965,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	}
 	u := user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())
+
 	// This will create the new repo ref
 	assert.NoError(t, doc2.AddToRepoScope(&u))
 	assert.NotEmpty(t, doc2.RepoRefId)
@@ -1913,6 +1988,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Nil(t, repoRef.GithubChecksEnabled)
 	assert.Equal(t, "my message", repoRef.CommitQueue.Message)
 	assert.False(t, repoRef.TaskSync.IsPatchEnabled())
+	assert.True(t, repoRef.ParameterStoreVarsSynced)
 
 	projectVars, err := FindOneProjectVars(repoRef.Id)
 	assert.NoError(t, err)
@@ -3111,9 +3187,10 @@ func TestAddEmptyBranch(t *testing.T) {
 	}
 	require.NoError(t, u.Insert())
 	p := ProjectRef{
-		Identifier: "myProject",
-		Owner:      "mongodb",
-		Repo:       "mongo",
+		Identifier:            "myProject",
+		Owner:                 "mongodb",
+		Repo:                  "mongo",
+		ParameterStoreEnabled: true,
 	}
 	assert.NoError(t, p.Add(&u))
 	assert.NotEmpty(t, p.Id)
@@ -3136,11 +3213,12 @@ func TestAddPermissions(t *testing.T) {
 	}
 	assert.NoError(u.Insert())
 	p := ProjectRef{
-		Identifier: "myProject",
-		Owner:      "mongodb",
-		Repo:       "mongo",
-		Branch:     "main",
-		Hidden:     utility.TruePtr(),
+		Identifier:            "myProject",
+		Owner:                 "mongodb",
+		Repo:                  "mongo",
+		Branch:                "main",
+		Hidden:                utility.TruePtr(),
+		ParameterStoreEnabled: true,
 	}
 	assert.NoError(p.Add(&u))
 	assert.NotEmpty(p.Id)

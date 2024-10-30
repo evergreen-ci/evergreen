@@ -16,11 +16,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/oauth2"
 )
 
 type githubStatusUpdateSuite struct {
@@ -241,61 +239,4 @@ func (s *githubStatusUpdateSuite) TestPreamble() {
 	s.NoError(uiConfig.Set(s.ctx))
 
 	s.EqualError(j.preamble(s.ctx), "UI URL is empty")
-}
-
-func (s *githubStatusUpdateSuite) TestWithGithub() {
-	// We always skip this test b/c Github's API only lets the status of a
-	// ref be set 1000 times, and doesn't allow status removal (so runnning
-	// this test in the suite will fail after the 1000th time).
-	// It's still useful for manual testing
-	s.T().Skip("Github Status API is limited")
-
-	env := testutil.NewEnvironment(s.ctx, s.T())
-	settings := testutil.TestConfig()
-
-	testutil.ConfigureIntegrationTest(s.T(), settings)
-	env.Settings().Credentials = settings.Credentials
-	env.Settings().Ui.Url = "http://example.com"
-
-	s.patchDoc.GithubPatchData.BaseRepo = "sample"
-	s.patchDoc.GithubPatchData.HeadOwner = "richardsamuels"
-	s.patchDoc.GithubPatchData.HeadRepo = "sample"
-	s.patchDoc.GithubPatchData.PRNumber = 1
-	s.patchDoc.GithubPatchData.HeadHash = "de724e67df25f1d5fb22102df5ce55baf439209c"
-
-	s.NoError(db.ClearCollections(patch.Collection))
-	s.NoError(s.patchDoc.Insert())
-
-	job, ok := NewGithubStatusUpdateJobForNewPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
-	s.Require().NotNil(job)
-	s.Require().True(ok)
-	job.Run(s.ctx)
-	s.NoError(job.Error())
-
-	githubOauthToken, err := evergreen.GetEnvironment().Settings().GetGithubOauthToken()
-	s.Require().NoError(err)
-
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: githubOauthToken},
-	)
-	ctx, cancel := context.WithTimeout(s.ctx, 10*time.Second)
-	defer cancel()
-	tc := oauth2.NewClient(ctx, ts)
-	client := github.NewClient(tc)
-	statuses, _, err := client.Repositories.ListStatuses(ctx, s.patchDoc.GithubPatchData.BaseOwner,
-		s.patchDoc.GithubPatchData.BaseRepo, s.patchDoc.GithubPatchData.HeadHash, nil)
-	s.Require().NoError(err)
-	s.Require().NotEmpty(statuses)
-
-	lastStatus := statuses[0]
-	s.Require().NotNil(lastStatus)
-	s.Require().NotNil(lastStatus.State)
-	s.Require().NotNil(lastStatus.Description)
-	s.Require().NotNil(lastStatus.Context)
-	s.Require().NotNil(lastStatus.TargetURL)
-
-	s.Equal("failure", *lastStatus.State)
-	s.Equal("finished in 10m0s", *lastStatus.Description)
-	s.Equal("evergreen", *lastStatus.Context)
-	s.Equal(fmt.Sprintf("http://example.com/version/%s", s.patchDoc.Version), *lastStatus.TargetURL)
 }

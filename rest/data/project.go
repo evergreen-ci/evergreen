@@ -296,7 +296,11 @@ func FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIP
 	return &varsModel, nil
 }
 
-// UpdateProjectVars adds new variables, overwrites variables, and deletes variables for the given project.
+// UpdateProjectVars adds new variables, overwrites variables, and deletes
+// variables for the given project. If overwrite is true, the project variables
+// will be fully replaced by those in varsModel. Otherwise, it will only set the
+// value for variables that are explicitly present in varsModel and will not
+// delete variables that are omitted.
 func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
 	if varsModel == nil {
 		return nil
@@ -352,7 +356,7 @@ func GetEventsById(id string, before time.Time, n int) ([]restModel.APIProjectEv
 		return nil, err
 	}
 	events.RedactGitHubPrivateKey()
-	events.RedactPrivateVars()
+	events.RedactVars()
 	events.ApplyDefaults()
 
 	out := []restModel.APIProjectEvent{}
@@ -402,12 +406,11 @@ func getRequesterFromAlias(alias string) string {
 	return evergreen.PatchVersionRequester
 }
 
-func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string, token string) (model.ProjectInfo, error) {
+func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model.ProjectRef, file string) (model.ProjectInfo, error) {
 	opts := model.GetProjectOpts{
 		Ref:        &pRef,
 		Revision:   pRef.Branch,
 		RemotePath: file,
-		Token:      token,
 	}
 	return model.GetProjectFromFile(ctx, opts)
 }

@@ -1,15 +1,15 @@
 {
-  waterfall(options: { projectIdentifier: "spruce-identifier", minOrder: 42 }) {
+  waterfall(
+    options: { projectIdentifier: "spruce", date: "2019-12-31T00:00:00Z" }
+  ) {
     versions {
       version {
-        activated
-        author
+        createTime
         id
         order
       }
       inactiveVersions {
-        activated
-        author
+        createTime
         id
         order
       }

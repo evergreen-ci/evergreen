@@ -144,6 +144,10 @@ type ProjectRef struct {
 	// ParameterStoreEnabled is a temporary feature flag to enable/disable
 	// Parameter Store for storing project secrets.
 	ParameterStoreEnabled bool `bson:"parameter_store_enabled,omitempty" json:"parameter_store_enabled,omitempty" yaml:"parameter_store_enabled,omitempty"`
+	// ParameterStoreVarsSynced is a temporary flag that indicates whether the
+	// project's variables have been synced to Parameter Store. If this is true,
+	// then the project variables can all be found in Parameter Store.
+	ParameterStoreVarsSynced bool `bson:"parameter_store_vars_synced,omitempty" json:"parameter_store_vars_synced,omitempty" yaml:"parameter_store_vars_synced,omitempty"`
 }
 
 // GitHubDynamicTokenPermissionGroup is a permission group for GitHub dynamic access tokens.
@@ -493,6 +497,7 @@ var (
 	projectRefProjectHealthViewKey                  = bsonutil.MustHaveTag(ProjectRef{}, "ProjectHealthView")
 	projectRefGitHubDynamicTokenPermissionGroupsKey = bsonutil.MustHaveTag(ProjectRef{}, "GitHubDynamicTokenPermissionGroups")
 	projectRefGithubPermissionGroupByRequesterKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitHubPermissionGroupByRequester")
+	projectRefParameterStoreVarsSyncedKey           = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreVarsSynced")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	commitQueueMergeQueueKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "MergeQueue")
@@ -788,12 +793,6 @@ func (p *ProjectRef) AddToRepoScope(u *user.DBUser) error {
 	if err := rm.AddResourceToScope(GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
 		return errors.Wrapf(err, "adding resource to repo '%s' admin scope", p.RepoRefId)
 	}
-	// Only give branch admins view access if the repo isn't restricted.
-	if !repoRef.IsRestricted() {
-		if err := addViewRepoPermissionsToBranchAdmins(p.RepoRefId, p.Admins); err != nil {
-			return errors.Wrapf(err, "giving branch '%s' admins view permission for repo '%s'", p.Id, p.RepoRefId)
-		}
-	}
 	// If the branch is unrestricted, add it to this scope so users who requested all-repo permissions have access.
 	if !p.IsRestricted() {
 		if err := rm.AddResourceToScope(GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
@@ -1006,8 +1005,7 @@ func (p *ProjectRef) addGithubConflictsToUpdate(update bson.M) bson.M {
 	return update
 }
 
-// RemoveFromRepoScope removes the branch from the unrestricted branches under repo scope, removes repo view permission
-// for branch admins, and removes branch edit access for repo admins.
+// RemoveFromRepoScope removes the branch from the unrestricted branches under repo scope and removes branch edit access for repo admins.
 func (p *ProjectRef) RemoveFromRepoScope() error {
 	if p.RepoRefId == "" {
 		return nil
@@ -1017,9 +1015,6 @@ func (p *ProjectRef) RemoveFromRepoScope() error {
 		if err := rm.RemoveResourceFromScope(GetUnrestrictedBranchProjectsScope(p.RepoRefId), p.Id); err != nil {
 			return errors.Wrap(err, "removing resource from unrestricted branches scope")
 		}
-	}
-	if err := removeViewRepoPermissionsFromBranchAdmins(p.RepoRefId, p.Admins); err != nil {
-		return errors.Wrap(err, "removing view repo permissions from branch admins")
 	}
 	if err := rm.RemoveResourceFromScope(GetRepoAdminScope(p.RepoRefId), p.Id); err != nil {
 		return errors.Wrapf(err, "removing admin scope from repo '%s'", p.Repo)
@@ -1256,6 +1251,9 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	// Set explicitly in case no project is enabled.
 	repoRef.Owner = p.Owner
 	repoRef.Repo = p.Repo
+	if len(allEnabledProjects) == 0 {
+		repoRef.ParameterStoreEnabled = p.ParameterStoreEnabled
+	}
 	_, err = SetTracksPushEvents(context.Background(), &repoRef.ProjectRef)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
@@ -2387,15 +2385,15 @@ func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId s
 	catcher := grip.NewBasicCatcher()
 	switch section {
 	case ProjectPageVariablesSection:
-		err = db.Update(ProjectVarsCollection,
-			bson.M{ProjectRefIdKey: projectId},
-			bson.M{
-				"$unset": bson.M{
-					projectVarsMapKey:   1,
-					privateVarsMapKey:   1,
-					adminOnlyVarsMapKey: 1,
-				},
-			})
+		vars, err := FindOneProjectVars(projectId)
+		if err != nil {
+			return errors.Wrapf(err, "finding project vars for project '%s'", projectId)
+		}
+		if vars == nil {
+			return errors.Errorf("project vars for project '%s' not found", projectId)
+		}
+
+		err = vars.Clear()
 		if err == nil {
 			modified = true
 		}
@@ -2860,15 +2858,6 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 	if role == nil {
 		return false, errors.Errorf("no admin role for project '%s' found", p.Id)
 	}
-	viewRole := ""
-	allBranchAdmins := []string{}
-	if p.RepoRefId != "" {
-		allBranchAdmins, err = FindBranchAdminsForRepo(p.RepoRefId)
-		if err != nil {
-			return false, errors.Wrapf(err, "finding branch admins for repo '%s'", p.RepoRefId)
-		}
-		viewRole = GetViewRepoRole(p.RepoRefId)
-	}
 
 	catcher := grip.NewBasicCatcher()
 	for _, addedUser := range toAdd {
@@ -2888,12 +2877,6 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 			p.removeFromAdminsList(addedUser)
 			continue
 		}
-		if viewRole != "" {
-			if err = adminUser.AddRole(viewRole); err != nil {
-				catcher.Wrapf(err, "adding role '%s' to user '%s'", viewRole, addedUser)
-				continue
-			}
-		}
 	}
 	for _, removedUser := range toRemove {
 		adminUser, err := user.FindOneById(removedUser)
@@ -2910,12 +2893,6 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 			p.Admins = append(p.Admins, removedUser)
 			continue
 		}
-		if viewRole != "" && !utility.StringSliceContains(allBranchAdmins, adminUser.Id) {
-			if err = adminUser.RemoveRole(viewRole); err != nil {
-				catcher.Wrapf(err, "removing role '%s' from user '%s'", viewRole, removedUser)
-				continue
-			}
-		}
 	}
 	return true, errors.Wrap(catcher.Resolve(), "updating some admin roles")
 }
@@ -2928,7 +2905,7 @@ func (p *ProjectRef) removeFromAdminsList(user string) {
 	}
 }
 
-func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser, token, owner, repo string) bool {
+func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser, owner, repo string) bool {
 	if utility.StringSliceContains(p.GitTagAuthorizedUsers, githubUser) {
 		return true
 	}
@@ -2952,7 +2929,7 @@ func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser, token,
 		}
 	}
 
-	return thirdparty.IsUserInGithubTeam(ctx, p.GitTagAuthorizedTeams, p.Owner, githubUser, token, owner, repo)
+	return thirdparty.IsUserInGithubTeam(ctx, p.GitTagAuthorizedTeams, p.Owner, githubUser, owner, repo)
 }
 
 // GetProjectSetupCommands returns jasper commands for the project's configuration commands
@@ -3122,15 +3099,6 @@ func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 }
 
 func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
-	conf, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return "", errors.Wrap(err, "can't get evergreen configuration")
-	}
-	token, err := conf.GetGithubOauthToken()
-	if err != nil {
-		return "", errors.Wrap(err, "getting GitHub token")
-	}
-
 	pRef, err := GetProjectRefForTask(taskId)
 	if err != nil {
 		return "", errors.Wrap(err, "getting project")
@@ -3139,7 +3107,7 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	if pRef.SpawnHostScriptPath == "" {
 		return "", nil
 	}
-	configFile, err := thirdparty.GetGithubFile(ctx, token, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch)
+	configFile, err := thirdparty.GetGithubFile(ctx, pRef.Owner, pRef.Repo, pRef.SpawnHostScriptPath, pRef.Branch)
 	if err != nil {
 		return "", errors.Wrapf(err,
 			"fetching spawn host script for project '%s' at path '%s'", pRef.Identifier, pRef.SpawnHostScriptPath)
@@ -3660,4 +3628,29 @@ func ProjectCanDispatchTask(pRef *ProjectRef, t *task.Task) (canDispatch bool, r
 	}
 
 	return true, reason
+}
+
+// setParameterStoreVarsSynced marks the project or repo ref to indicate whether
+// its project variables are fully synced to Parameter Store.
+func (p *ProjectRef) setParameterStoreVarsSynced(isSynced bool, isRepoRef bool) error {
+	if p.ParameterStoreVarsSynced == isSynced {
+		return nil
+	}
+
+	coll := ProjectRefCollection
+	if isRepoRef {
+		coll = RepoRefCollection
+	}
+
+	if err := db.UpdateId(coll, p.Id, bson.M{
+		"$set": bson.M{
+			projectRefParameterStoreVarsSyncedKey: isSynced,
+		},
+	}); err != nil {
+		return errors.Wrapf(err, "updating project/repo ref vars sync state to %t", isSynced)
+	}
+
+	p.ParameterStoreVarsSynced = true
+
+	return nil
 }
