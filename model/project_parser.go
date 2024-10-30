@@ -12,7 +12,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -159,7 +158,25 @@ func (pp *ParserProject) Insert() error {
 }
 
 func (pp *ParserProject) MarshalBSON() ([]byte, error) {
-	return mgobson.Marshal(pp)
+	return bson.Marshal(pp)
+}
+
+// MarshalBSON marshals the BSON and attempts to unmarshal it back to make sure
+// it is valid. It only retries when it fails at reading the BSON, not if it encountered
+// an error while marshalling.
+func (pp *ParserProject) RetryMarshalBSON(retries int) ([]byte, error) {
+	projBytes, err := bson.Marshal(pp)
+	if err != nil {
+		return nil, errors.Wrap(err, "marshalling project")
+	}
+	_, err = GetProjectFromBSON(projBytes)
+	if err != nil {
+		if retries > 0 {
+			return pp.RetryMarshalBSON(retries - 1)
+		}
+		return nil, errors.Wrap(err, "unmarshalling project to verify it's integrity")
+	}
+	return projBytes, nil
 }
 
 func (pp *ParserProject) MarshalYAML() (interface{}, error) {
