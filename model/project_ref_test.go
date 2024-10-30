@@ -1072,11 +1072,8 @@ func checkAndSetProjectVarsSynced(t *testing.T, projRef *ProjectRef, isRepoRef b
 	projRef.ParameterStoreVarsSynced = true
 }
 
-// kim: TODO: manually test in staging that it creates parameter copies when:
-// - Copying project.
-// - Copying vars to another project.
-// - Promoting branch vars to repo.
-// - Detaching branch project vars from repo.
+// checkParametersNamespacedByProject checks that the parameter names for the
+// project vars all include the project ID as a prefix.
 func checkParametersNamespacedByProject(t *testing.T, vars ProjectVars) {
 	projectID := vars.Id
 	commonAndProjectIDPrefix := fmt.Sprintf("/%s/%s/", strings.TrimSuffix(strings.TrimPrefix(evergreen.GetEnvironment().Settings().Providers.AWS.ParameterStore.Prefix, "/"), "/"), projectID)

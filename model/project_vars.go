@@ -1082,6 +1082,7 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 		return
 	}
 
+	nameToParamMapping := repoVars.Parameters.NameMap()
 	// Branch-level vars have priority, so we only need to add a repo vars if it doesn't already exist in the branch
 	for key, val := range repoVars.Vars {
 		if _, ok := projectVars.Vars[key]; !ok {
@@ -1092,8 +1093,12 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 			if v, ok := repoVars.AdminOnlyVars[key]; ok {
 				projectVars.AdminOnlyVars[key] = v
 			}
+			if pm, ok := nameToParamMapping[key]; ok {
+				projectVars.Parameters = append(projectVars.Parameters, pm)
+			}
 		}
 	}
+	sort.Sort(projectVars.Parameters)
 }
 
 // convertVarToParam converts a project variable to its equivalent parameter
