@@ -146,7 +146,7 @@ const (
 	// because it was manually aborted.
 	TaskDescriptionAborted = "aborted"
 
-	// Task Statuses that are currently used only by the UI and event logs, and in tests
+	// Task Statuses that are only used by the UI, event log  and tests
 	// (these may be used in old tasks as actual task statuses rather than just
 	// task display statuses).
 	TaskSystemUnresponse = "system-unresponsive"
