@@ -701,14 +701,12 @@ func (s *taskDAGDispatchServiceSuite) TestDependencyCycle() {
 		s.Require().NoError(t.Insert())
 	}
 
-	s.taskQueue = TaskQueue{Queue: []TaskQueueItem{
-		{Id: "t0", Dependencies: []string{"t1"}},
-		{Id: "t1", Dependencies: []string{"t0"}},
-		{Id: "t2"},
-	}}
-
 	dispatcher, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	s.NoError(err)
+
+	s.taskQueue = TaskQueue{
+		Queue: s.refreshTaskQueue(dispatcher),
+	}
 
 	nextTask := dispatcher.FindNextTask(s.ctx, TaskSpec{}, time.Time{})
 	s.Require().NotNil(nextTask)
@@ -1381,6 +1379,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 	next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 	s.Equal("0", next.Id)
 	s.Equal("", next.Group)
+	s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
 
 	currentID := 0
 	var nextInt int
@@ -1465,6 +1464,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		s.Equal(expectedStandaloneTaskOrder[i], next.Id)
 		s.Equal("", next.Group)
 		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
+		s.taskQueue.Queue = s.refreshTaskQueue(service)
 	}
 }
 
