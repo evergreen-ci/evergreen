@@ -1251,6 +1251,9 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	// Set explicitly in case no project is enabled.
 	repoRef.Owner = p.Owner
 	repoRef.Repo = p.Repo
+	if len(allEnabledProjects) == 0 {
+		repoRef.ParameterStoreEnabled = p.ParameterStoreEnabled
+	}
 	_, err = SetTracksPushEvents(context.Background(), &repoRef.ProjectRef)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
@@ -2382,15 +2385,15 @@ func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId s
 	catcher := grip.NewBasicCatcher()
 	switch section {
 	case ProjectPageVariablesSection:
-		err = db.Update(ProjectVarsCollection,
-			bson.M{ProjectRefIdKey: projectId},
-			bson.M{
-				"$unset": bson.M{
-					projectVarsMapKey:   1,
-					privateVarsMapKey:   1,
-					adminOnlyVarsMapKey: 1,
-				},
-			})
+		vars, err := FindOneProjectVars(projectId)
+		if err != nil {
+			return errors.Wrapf(err, "finding project vars for project '%s'", projectId)
+		}
+		if vars == nil {
+			return errors.Errorf("project vars for project '%s' not found", projectId)
+		}
+
+		err = vars.Clear()
 		if err == nil {
 			modified = true
 		}
