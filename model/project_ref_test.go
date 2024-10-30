@@ -2267,8 +2267,6 @@ func TestGithubPermissionGroups(t *testing.T) {
 }
 
 func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
-	// kim: TODO: remove skip once done testing
-	t.Skip("kim: NOTE: skipping this test for now locally because cannot safely create a new skeleton project with PS enabled")
 	assert := assert.New(t)
 	require := require.New(t)
 

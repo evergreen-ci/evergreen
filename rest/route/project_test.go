@@ -600,8 +600,6 @@ func (s *ProjectPutSuite) TestParse() {
 }
 
 func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
-	// kim: TODO: remove skip once tests are all passing
-	s.T().Skip("kim: NOTE: cannot pass because it'll create a project with PS disabled and we can't change default")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
