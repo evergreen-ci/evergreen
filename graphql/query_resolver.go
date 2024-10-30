@@ -1035,8 +1035,8 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	} else if maxOrderOpt == 0 {
 		// Find the next recent active version. If it doesn't exist, that means there are leading inactive versions
 		// on the waterfall and we should just reset to the first page.
-		// If it does exist, we should set the max order to one less than its order. This is guaranteed to be an
-		// inactive version, and will allow us to fetch all of the inactive versions in between.
+		// If it does exist, we should set the max order to one less than its order. This is guaranteed to either be
+		// the 0th version in activeVersions or the most recent inactive version within its collapsed group.
 		nextActiveVersion, err := model.GetNextRecentActiveWaterfallVersion(ctx, projectId, activeVersions[0].RevisionOrderNumber)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching next active waterfall version: %s", err.Error()))
