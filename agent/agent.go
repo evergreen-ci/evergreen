@@ -284,9 +284,9 @@ func (a *Agent) loop(ctx context.Context) error {
 
 			if ntr.noTaskToRun {
 				sleepTime := utility.JitterInterval(agentSleepInterval)
-				if nextTask.MaxIdleDuration != 0 {
+				if nextTask.EstimatedMaxIdleDuration != 0 {
 					// This is a simplified estimate of the time remaining till this host is considered idle.
-					estimatedDurationLeft := nextTask.MaxIdleDuration - time.Since(start)
+					estimatedDurationLeft := nextTask.EstimatedMaxIdleDuration - time.Since(start)
 					if estimatedDurationLeft < sleepTime*2 && estimatedDurationLeft > 0 {
 						// This guarantees that the agent will try to get a new task before the host is considered idle.
 						sleepTime = estimatedDurationLeft / 2
