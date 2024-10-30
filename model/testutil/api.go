@@ -82,7 +82,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	// Create the ref for the project
 	projectRef := &model.ProjectRef{
-		Id:                    project.Identifier,
+		Id:                    project.DisplayName,
 		Owner:                 "evergreen-ci",
 		Repo:                  "sample",
 		Branch:                "main",
@@ -96,7 +96,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	version := &model.Version{
 		Id:         "sample_version",
-		Identifier: project.Identifier,
+		Identifier: project.DisplayName,
 		Requester:  evergreen.RepotrackerVersionRequester,
 	}
 	if err = version.Insert(); err != nil {
@@ -117,7 +117,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		return nil, errors.New("no EC2 Keys in test config")
 	}
 	projectVars := &model.ProjectVars{
-		Id: project.Identifier,
+		Id: project.DisplayName,
 		Vars: map[string]string{
 			"aws_key":    testConfig.Providers.AWS.EC2Keys[0].Key,
 			"aws_secret": testConfig.Providers.AWS.EC2Keys[0].Secret,
@@ -159,7 +159,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		BuildId:        "testBuildId",
 		DistroId:       "test-distro-one",
 		BuildVariant:   variant,
-		Project:        project.Identifier,
+		Project:        project.DisplayName,
 		DisplayName:    taskDisplayName,
 		HostId:         "",
 		Secret:         "testTaskSecret",
