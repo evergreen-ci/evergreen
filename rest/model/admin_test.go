@@ -53,7 +53,6 @@ func TestModelConversion(t *testing.T) {
 
 	// test converting from a db model to an API model
 	assert.NoError(apiSettings.BuildFromService(testSettings))
-	assert.Equal(testSettings.ApiUrl, *apiSettings.ApiUrl)
 	assert.Equal(testSettings.AWSInstanceRole, *apiSettings.AWSInstanceRole)
 	assert.Equal(testSettings.Banner, *apiSettings.Banner)
 	assert.EqualValues(testSettings.BannerTheme, *apiSettings.BannerTheme)
@@ -101,6 +100,7 @@ func TestModelConversion(t *testing.T) {
 		assert.Equal(testSettings.Amboy.NamedQueues[i].LockTimeoutSeconds, apiSettings.Amboy.NamedQueues[i].LockTimeoutSeconds)
 	}
 	assert.EqualValues(testSettings.Api.HttpListenAddr, utility.FromStringPtr(apiSettings.Api.HttpListenAddr))
+	assert.EqualValues(testSettings.Api.URL, utility.FromStringPtr(apiSettings.Api.URL))
 	assert.EqualValues(testSettings.AuthConfig.PreferredType, utility.FromStringPtr(apiSettings.AuthConfig.PreferredType))
 	assert.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, utility.FromStringPtr(apiSettings.AuthConfig.Naive.Users[0].Username))
 	assert.EqualValues(testSettings.AuthConfig.Okta.ClientID, utility.FromStringPtr(apiSettings.AuthConfig.Okta.ClientID))

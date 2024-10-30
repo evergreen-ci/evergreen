@@ -348,7 +348,7 @@ func (apiPatch *APIPatch) buildModuleChanges(p patch.Patch, identifier string) {
 		return
 	}
 	codeChanges := []APIModulePatch{}
-	apiURL := env.Settings().ApiUrl
+	apiURL := env.Settings().Api.URL
 
 	for patchNumber, modPatch := range p.Patches {
 		branchName := modPatch.ModuleName

@@ -279,7 +279,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 
 	// build dockerfile route
 	dockerfileUrl := strings.Join([]string{
-		c.evergreenSettings.ApiUrl,
+		c.evergreenSettings.Api.URL,
 		evergreen.APIRoutePrefix,
 		dockerfileRoute,
 	}, "/")

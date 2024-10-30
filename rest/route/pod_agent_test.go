@@ -45,7 +45,7 @@ func TestPodProvisioningScript(t *testing.T) {
 	t.Run("RunFailsWithNonexistentPod", func(t *testing.T) {
 		env := mock.Environment{
 			EvergreenSettings: &evergreen.Settings{
-				ApiUrl: "www.test.com",
+				Api: evergreen.APIConfig{URL: "www.test.com"},
 			},
 			Clients: evergreen.ClientConfig{S3URLPrefix: "https://foo.com"},
 		}
@@ -104,7 +104,7 @@ func TestPodProvisioningScript(t *testing.T) {
 				}
 				env := mock.Environment{
 					EvergreenSettings: &evergreen.Settings{
-						ApiUrl: "www.test.com",
+						Api: evergreen.APIConfig{URL: "www.test.com"},
 					},
 					Clients: evergreen.ClientConfig{S3URLPrefix: "https://foo.com"},
 				}

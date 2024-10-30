@@ -51,7 +51,6 @@ func NewConfigModel() *APIAdminSettings {
 type APIAdminSettings struct {
 	Amboy               *APIAmboyConfig                   `json:"amboy,omitempty"`
 	Api                 *APIapiConfig                     `json:"api,omitempty"`
-	ApiUrl              *string                           `json:"api_url,omitempty"`
 	AWSInstanceRole     *string                           `json:"aws_instance_role,omitempty"`
 	AuthConfig          *APIAuthConfig                    `json:"auth,omitempty"`
 	Banner              *string                           `json:"banner,omitempty"`
@@ -127,7 +126,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 				return errors.Wrapf(err, "converting admin model section '%s' to API model", propName)
 			}
 		}
-		as.ApiUrl = &v.ApiUrl
 		as.AWSInstanceRole = utility.ToStringPtr(v.AWSInstanceRole)
 		as.Banner = &v.Banner
 		tmp := string(v.BannerTheme)
@@ -206,9 +204,6 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		Plugins:            evergreen.PluginConfig{},
 		GithubOrgs:         as.GithubOrgs,
 		DisabledGQLQueries: as.DisabledGQLQueries,
-	}
-	if as.ApiUrl != nil {
-		settings.ApiUrl = *as.ApiUrl
 	}
 	if as.AWSInstanceRole != nil {
 		settings.AWSInstanceRole = *as.AWSInstanceRole
@@ -486,6 +481,7 @@ func (a *APIAmboyNamedQueueConfig) ToService() evergreen.AmboyNamedQueueConfig {
 type APIapiConfig struct {
 	HttpListenAddr      *string `json:"http_listen_addr"`
 	GithubWebhookSecret *string `json:"github_webhook_secret"`
+	URL                 *string `json:"url"`
 }
 
 func (a *APIapiConfig) BuildFromService(h interface{}) error {
@@ -493,6 +489,7 @@ func (a *APIapiConfig) BuildFromService(h interface{}) error {
 	case evergreen.APIConfig:
 		a.HttpListenAddr = utility.ToStringPtr(v.HttpListenAddr)
 		a.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
+		a.URL = utility.ToStringPtr(v.URL)
 	default:
 		return errors.Errorf("programmatic error: expected REST API config but got type %T", h)
 	}
@@ -503,6 +500,7 @@ func (a *APIapiConfig) ToService() (interface{}, error) {
 	return evergreen.APIConfig{
 		HttpListenAddr:      utility.FromStringPtr(a.HttpListenAddr),
 		GithubWebhookSecret: utility.FromStringPtr(a.GithubWebhookSecret),
+		URL:                 utility.FromStringPtr(a.URL),
 	}, nil
 }
 

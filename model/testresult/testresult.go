@@ -79,7 +79,7 @@ func (tr TestResult) Duration() time.Duration {
 // those fields are reserved for external logs and used to determine URL
 // generation for other log viewers.
 func (tr TestResult) GetLogURL(env evergreen.Environment, viewer evergreen.LogViewer) string {
-	root := env.Settings().ApiUrl
+	root := env.Settings().Api.URL
 	parsleyURL := env.Settings().Ui.ParsleyUrl
 	deprecatedLogkeeperURLs := []string{"https://logkeeper.mongodb.org", "https://logkeeper2.build.10gen.cc"}
 

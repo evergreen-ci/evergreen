@@ -198,7 +198,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 
 	// test that invalid input errors
 	badSettingsOne := testutil.MockConfig()
-	badSettingsOne.ApiUrl = ""
+	badSettingsOne.ConfigDir = ""
 	badSettingsOne.Ui.CsrfKey = "12345"
 	jsonBody, err = json.Marshal(badSettingsOne)
 	s.NoError(err)
@@ -208,7 +208,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.NoError(s.postHandler.Parse(ctx, request))
 	resp = s.postHandler.Run(ctx)
 	s.NotNil(resp)
-	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "API hostname must not be empty")
+	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "config directory must not be empty")
 	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "CSRF key must be 32 characters long")
 
 	// test that invalid container pools errors
@@ -248,7 +248,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	ctx := gimlet.AttachUser(context.Background(), user)
 	s.NotNil(routeManager)
 	changes := restModel.APIAdminSettings{
-		ApiUrl: utility.ToStringPtr("foo"),
+		Banner: utility.ToStringPtr("foo"),
 	}
 	before := testutil.NewEnvironment(ctx, s.T()).Settings()
 	_, err := data.SetEvergreenSettings(ctx, &changes, before, user, true)
