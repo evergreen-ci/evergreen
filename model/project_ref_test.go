@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -1071,6 +1072,19 @@ func checkAndSetProjectVarsSynced(t *testing.T, projRef *ProjectRef, isRepoRef b
 	projRef.ParameterStoreVarsSynced = true
 }
 
+// kim: TODO: manually test in staging that it creates parameter copies when:
+// - Copying project.
+// - Copying vars to another project.
+// - Promoting branch vars to repo.
+// - Detaching branch project vars from repo.
+func checkParametersNamespacedByProject(t *testing.T, vars ProjectVars) {
+	projectID := vars.Id
+	commonAndProjectIDPrefix := fmt.Sprintf("/%s/%s/", strings.TrimSuffix(strings.TrimPrefix(evergreen.GetEnvironment().Settings().Providers.AWS.ParameterStore.Prefix, "/"), "/"), projectID)
+	for _, pm := range vars.Parameters {
+		assert.True(t, strings.HasPrefix(pm.ParameterName, commonAndProjectIDPrefix), "parameter name '%s' should have standard prefix '%s'", pm.ParameterName, commonAndProjectIDPrefix)
+	}
+}
+
 func TestDetachFromRepo(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -1123,6 +1137,7 @@ func TestDetachFromRepo(t *testing.T) {
 			require.NotZero(t, vars)
 
 			checkParametersMatchVars(ctx, t, vars.Parameters, expectedVars.Vars)
+			checkParametersNamespacedByProject(t, *vars)
 		},
 		"PatchAliases": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			// no patch aliases are copied if the project has a patch alias
@@ -1500,6 +1515,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			}
 			assert.NoError(t, pVars.Insert())
 			checkAndSetProjectVarsSynced(t, &pRef, false)
+			checkParametersNamespacedByProject(t, pVars)
 
 			aliases := []ProjectAlias{
 				{

@@ -2,6 +2,8 @@ package data
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -329,6 +331,14 @@ func checkAndSetProjectVarsSynced(t *testing.T, projRef *model.ProjectRef, isRep
 	projRef.ParameterStoreVarsSynced = true
 }
 
+func checkParametersNamespacedByProject(t *testing.T, vars model.ProjectVars) {
+	projectID := vars.Id
+	commonAndProjectIDPrefix := fmt.Sprintf("/%s/%s/", strings.TrimSuffix(strings.TrimPrefix(evergreen.GetEnvironment().Settings().Providers.AWS.ParameterStore.Prefix, "/"), "/"), projectID)
+	for _, pm := range vars.Parameters {
+		assert.True(t, strings.HasPrefix(pm.ParameterName, commonAndProjectIDPrefix), "parameter name '%s' should have standard prefix '%s'", pm.ParameterName, commonAndProjectIDPrefix)
+	}
+}
+
 func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -369,6 +379,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	s.False(dbNewVars.PrivateVars["a"])
 
 	checkParametersMatchVars(ctx, s.T(), dbNewVars.Parameters, dbNewVars.Vars)
+	checkParametersNamespacedByProject(s.T(), *dbNewVars)
 
 	newProjRef := model.ProjectRef{
 		Id:                    "new_project",
@@ -386,6 +397,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	s.Equal("4", dbUpsertedVars.Vars["d"])
 
 	checkParametersMatchVars(ctx, s.T(), dbUpsertedVars.Parameters, dbUpsertedVars.Vars)
+	checkParametersNamespacedByProject(s.T(), *dbNewVars)
 }
 
 func TestUpdateProjectVarsByValue(t *testing.T) {

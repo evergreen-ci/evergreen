@@ -22,6 +22,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// kim: TODO: add tests that check that parameters are not shared when
+// copying/moving variables between projects. Need to check this for write
+// operations (i.e. Insert/Upsert/FindAndModify), can mimic by creating by ID,
+// then changing the ID and redoing the op.
+
 func TestFindOneProjectVar(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -54,6 +59,7 @@ func TestFindOneProjectVar(t *testing.T) {
 
 	checkAndSetProjectVarsSynced(t, &pRef, false)
 	checkParametersMatchVars(ctx, t, projectVarsFromDB.Parameters, vars)
+	checkParametersNamespacedByProject(t, *projectVarsFromDB)
 }
 
 func TestFindMergedProjectVars(t *testing.T) {
@@ -100,7 +106,9 @@ func TestFindMergedProjectVars(t *testing.T) {
 	require.NoError(t, repoVars.Insert())
 	require.NoError(t, project0Vars.Insert())
 	checkAndSetProjectVarsSynced(t, &project0, false)
+	checkParametersNamespacedByProject(t, project0Vars)
 	checkAndSetProjectVarsSynced(t, &repo.ProjectRef, true)
+	checkParametersNamespacedByProject(t, repoVars)
 
 	// Testing merging of project vars and repo vars
 	mergedVars, err := FindMergedProjectVars(project0.Id)
@@ -230,6 +238,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			assert.True(t, dbVars.PrivateVars["d"])
 
 			checkParametersMatchVars(ctx, t, dbVars.Parameters, dbVars.Vars)
+			checkParametersNamespacedByProject(t, *dbVars)
 			checkAndSetProjectVarsSynced(t, &pRef, false)
 
 			// want to "fix" b, add c, delete d
@@ -260,6 +269,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			assert.False(t, dbVars.PrivateVars["b"])
 
 			checkParametersMatchVars(ctx, t, dbVars.Parameters, dbVars.Vars)
+			checkParametersNamespacedByProject(t, *dbVars)
 		},
 		"ShouldUpsertNewVars": func(ctx context.Context, t *testing.T) {
 			pRef := ProjectRef{
@@ -292,6 +302,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			assert.False(t, dbVars.PrivateVars["b"])
 
 			checkParametersMatchVars(ctx, t, dbVars.Parameters, dbVars.Vars)
+			checkParametersNamespacedByProject(t, *dbVars)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -858,6 +869,7 @@ func TestFullSyncToParameterStore(t *testing.T) {
 			require.NotZero(t, dbProjVars)
 
 			checkParametersMatchVars(ctx, t, dbProjVars.Parameters, vars)
+			checkParametersNamespacedByProject(t, *dbProjVars)
 		},
 		"InitiallySyncsAllParametersWithPreexistingProjectVars": func(ctx context.Context, t *testing.T) {
 			projRef := ProjectRef{
@@ -884,6 +896,7 @@ func TestFullSyncToParameterStore(t *testing.T) {
 			require.NotZero(t, dbProjVars)
 
 			checkParametersMatchVars(ctx, t, dbProjVars.Parameters, vars)
+			checkParametersNamespacedByProject(t, *dbProjVars)
 		},
 		"InitiallySyncsAllParametersForRepoVars": func(ctx context.Context, t *testing.T) {
 			repoRef := RepoRef{
@@ -912,6 +925,7 @@ func TestFullSyncToParameterStore(t *testing.T) {
 			require.NotZero(t, dbRepoVars)
 
 			checkParametersMatchVars(ctx, t, dbRepoVars.Parameters, vars)
+			checkParametersNamespacedByProject(t, *dbRepoVars)
 		},
 		"DeletesExistingDesyncedParametersAndResyncs": func(ctx context.Context, t *testing.T) {
 			projRef := ProjectRef{
@@ -937,6 +951,7 @@ func TestFullSyncToParameterStore(t *testing.T) {
 			require.NotZero(t, dbProjVars)
 
 			checkParametersMatchVars(ctx, t, dbProjVars.Parameters, vars)
+			checkParametersNamespacedByProject(t, *dbProjVars)
 
 			require.NoError(t, projRef.setParameterStoreVarsSynced(false, false))
 			newVars := map[string]string{
@@ -956,6 +971,7 @@ func TestFullSyncToParameterStore(t *testing.T) {
 			require.NotZero(t, newDBProjVars)
 
 			checkParametersMatchVars(ctx, t, newDBProjVars.Parameters, newVars)
+			checkParametersNamespacedByProject(t, *newDBProjVars)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
