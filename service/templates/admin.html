@@ -863,6 +863,10 @@ Admin Settings
 											<label>Github webhook secret</label>
 											<input type="text" ng-model="Settings.api.github_webhook_secret">
 										</md-input-container>
+										<md-input-container class="control" style="width:45%;">
+											<label>Backend URL</label>
+											<input type="text" ng-model="Settings.api.url">
+										</md-input-container>
 									</md-card-content>
 								</md-card>
 
@@ -2178,35 +2182,31 @@ Admin Settings
 								</md-card-title>
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
-										<label>API URL</label>
-										<input type="text" ng-model="Settings.api_url">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Config directory</label>
 										<input type="text" ng-model="Settings.configdir">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Domain name</label>
 										<input type="text" ng-model="Settings.domain_name">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Github Organizations</label>
 										<textarea ng-model="Settings.github_orgs" ng-list="&#10;" ng-trim="false"
 											md-select-on-focus></textarea>
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Github PR creator organization</label>
 										<input type="text" ng-model="Settings.github_pr_creator_org">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pprof port</label>
 										<input type="text" ng-model="Settings.pprof_port">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Log path</label>
 										<input type="text" ng-model="Settings.log_path">
 									</md-input-container>
-										<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<md-input-container class="control" style="width:45%;">
 										<label>Shutdown Wait(seconds)</label>
 										<input type="number" ng-model="Settings.shutdown_wait_seconds">
 									</md-input-container>
