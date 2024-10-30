@@ -14,6 +14,7 @@
         "enabled": true,
         "require_signed": false
       },
+      "parameter_store_enabled": true,
       "github_dynamic_token_permission_groups": [
         {
           "name": "permission-group-1",
@@ -31,6 +32,7 @@
     },
     {
       "_id": "second_project_id",
+      "parameter_store_enabled": true,
       "identifier": "new_identifier"
     }
   ],
@@ -38,6 +40,7 @@
     {
       "_id": "myRepo",
       "owner_name": "evergreen-ci",
+      "parameter_store_enabled": true,
       "repo_name": "commit-queue-sandbox"
     }
   ],
