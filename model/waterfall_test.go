@@ -775,7 +775,7 @@ func TestGetNextRecentActiveWaterfallVersion(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
+	assert.NoError(t, db.ClearCollections(VersionCollection, ProjectRefCollection))
 	start := time.Now()
 	p := ProjectRef{
 		Id:         "a_project",
