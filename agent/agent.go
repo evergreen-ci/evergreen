@@ -294,7 +294,7 @@ func (a *Agent) loop(ctx context.Context) error {
 				}
 				grip.Debugf("Agent found no task to run, sleeping %s.", sleepTime)
 				timer.Reset(sleepTime)
-				agentSleepInterval = agentSleepInterval * 2 // 10s, 20s, 40s/ 80s
+				agentSleepInterval = agentSleepInterval * 2
 				if agentSleepInterval > globals.MaxAgentSleepInterval {
 					agentSleepInterval = globals.MaxAgentSleepInterval
 				}
