@@ -1,0 +1,10 @@
+{
+  waterfall(options: { projectIdentifier: "spruce-identifier" }) {
+    flattenedVersions {
+      id
+      activated
+      order
+      author
+    }
+  }
+}

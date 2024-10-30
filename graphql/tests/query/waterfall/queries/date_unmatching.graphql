@@ -1,7 +1,7 @@
 {
-  waterfall(options: { projectIdentifier: "spruce", date: "2019-11-07T00:00:00Z" }) {
-    nextPageOrder
-    prevPageOrder
+  waterfall(
+    options: { projectIdentifier: "spruce", date: "2019-11-07T00:00:00Z" }
+  ) {
     versions {
       version {
         createTime
@@ -13,6 +13,10 @@
         id
         order
       }
+    }
+    pagination {
+      nextPageOrder
+      prevPageOrder
     }
   }
 }

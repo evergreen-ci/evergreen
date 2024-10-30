@@ -1,7 +1,5 @@
 {
   waterfall(options: { projectIdentifier: "mci" }) {
-    nextPageOrder
-    prevPageOrder
     versions {
       version {
         activated
@@ -15,6 +13,10 @@
         id
         order
       }
+    }
+    pagination {
+      nextPageOrder
+      prevPageOrder
     }
   }
 }
