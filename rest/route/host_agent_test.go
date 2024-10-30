@@ -834,6 +834,73 @@ func TestHostEndTask(t *testing.T) {
 			require.NotZero(t, foundTask)
 			require.Equal(t, evergreen.TaskSystemFailed, foundTask.GetDisplayStatus())
 		},
+		"QuarantinesStaticHostWithRepeatedSystemTimedOutTasks": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			h, err := host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			require.NoError(t, host.UpdateOne(ctx, host.ById(hostId), bson.M{
+				"$set": bson.M{
+					host.ProviderKey: evergreen.ProviderNameStatic,
+				},
+			}))
+
+			for i := 0; i < 10; i++ {
+				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemTimedOut)
+			}
+
+			details := &apimodels.TaskEndDetail{
+				Status:   evergreen.TaskFailed,
+				Type:     evergreen.CommandTypeSystem,
+				TimedOut: true,
+			}
+			handler.details = *details
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			require.Equal(t, http.StatusOK, resp.Status())
+			h, err = host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			assert.Equal(t, evergreen.HostQuarantined, h.Status, "static host should be quarantined for consecutive system failed tasks")
+
+			foundTask, err := task.FindOneId(handler.taskID)
+			require.NoError(t, err)
+			require.NotZero(t, foundTask)
+			require.Equal(t, evergreen.TaskSystemTimedOut, foundTask.GetDisplayStatus())
+		},
+		"QuarantinesStaticHostWithRepeatedSystemUnresponsiveTasks": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			h, err := host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			require.NoError(t, host.UpdateOne(ctx, host.ById(hostId), bson.M{
+				"$set": bson.M{
+					host.ProviderKey: evergreen.ProviderNameStatic,
+				},
+			}))
+
+			for i := 0; i < 10; i++ {
+				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
+			}
+
+			details := &apimodels.TaskEndDetail{
+				Status:      evergreen.TaskFailed,
+				Type:        evergreen.CommandTypeSystem,
+				TimedOut:    true,
+				Description: evergreen.TaskDescriptionHeartbeat,
+			}
+			handler.details = *details
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			require.Equal(t, http.StatusOK, resp.Status())
+			h, err = host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			assert.Equal(t, evergreen.HostQuarantined, h.Status, "static host should be quarantined for consecutive system failed tasks")
+
+			foundTask, err := task.FindOneId(handler.taskID)
+			require.NoError(t, err)
+			require.NotZero(t, foundTask)
+			require.Equal(t, evergreen.TaskSystemUnresponse, foundTask.GetDisplayStatus())
+		},
 		"DecommissionsDynamicHostWithRepeatedSystemFailedTasks": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
 			h, err := host.FindOneId(ctx, hostId)
 			require.NoError(t, err)
@@ -865,6 +932,73 @@ func TestHostEndTask(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, foundTask)
 			require.Equal(t, evergreen.TaskSystemFailed, foundTask.GetDisplayStatus())
+		},
+		"DecommissionsDynamicHostWithRepeatedSystemTimedOutTasks": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			h, err := host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			require.NoError(t, host.UpdateOne(ctx, host.ById(hostId), bson.M{
+				"$set": bson.M{
+					host.ProviderKey: evergreen.ProviderNameEc2Fleet,
+				},
+			}))
+
+			for i := 0; i < 10; i++ {
+				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemTimedOut)
+			}
+
+			details := &apimodels.TaskEndDetail{
+				Status:   evergreen.TaskFailed,
+				Type:     evergreen.CommandTypeSystem,
+				TimedOut: true,
+			}
+			handler.details = *details
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			require.Equal(t, http.StatusOK, resp.Status())
+			h, err = host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			assert.Equal(t, evergreen.HostDecommissioned, h.Status, "dynamic host should be decommissioned for consecutive system failed tasks")
+
+			foundTask, err := task.FindOneId(handler.taskID)
+			require.NoError(t, err)
+			require.NotZero(t, foundTask)
+			require.Equal(t, evergreen.TaskSystemTimedOut, foundTask.GetDisplayStatus())
+		},
+		"DecommissionsDynamicHostWithRepeatedSystemTimedUnresponsiveTasks": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			h, err := host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			require.NoError(t, host.UpdateOne(ctx, host.ById(hostId), bson.M{
+				"$set": bson.M{
+					host.ProviderKey: evergreen.ProviderNameEc2Fleet,
+				},
+			}))
+
+			for i := 0; i < 10; i++ {
+				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
+			}
+
+			details := &apimodels.TaskEndDetail{
+				Status:      evergreen.TaskFailed,
+				Type:        evergreen.CommandTypeSystem,
+				TimedOut:    true,
+				Description: evergreen.TaskDescriptionHeartbeat,
+			}
+			handler.details = *details
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			require.Equal(t, http.StatusOK, resp.Status())
+			h, err = host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			assert.Equal(t, evergreen.HostDecommissioned, h.Status, "dynamic host should be decommissioned for consecutive system failed tasks")
+
+			foundTask, err := task.FindOneId(handler.taskID)
+			require.NoError(t, err)
+			require.NotZero(t, foundTask)
+			require.Equal(t, evergreen.TaskSystemUnresponse, foundTask.GetDisplayStatus())
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
