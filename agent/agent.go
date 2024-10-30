@@ -223,7 +223,7 @@ func (a *Agent) Start(ctx context.Context) error {
 func (a *Agent) loop(ctx context.Context) error {
 	agentSleepInterval := globals.MinAgentSleepInterval
 
-	start := time.Now()
+	lastIdleAt := time.Now()
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
@@ -286,7 +286,7 @@ func (a *Agent) loop(ctx context.Context) error {
 				sleepTime := utility.JitterInterval(agentSleepInterval)
 				if nextTask.EstimatedMaxIdleDuration != 0 {
 					// This is a simplified estimate of the time remaining till this host is considered idle.
-					estimatedDurationLeft := nextTask.EstimatedMaxIdleDuration - time.Since(start)
+					estimatedDurationLeft := nextTask.EstimatedMaxIdleDuration - time.Since(lastIdleAt)
 					if estimatedDurationLeft < sleepTime*2 && estimatedDurationLeft > 0 {
 						// This guarantees that the agent will try to get a new task before the host is considered idle.
 						sleepTime = estimatedDurationLeft / 2
@@ -300,7 +300,7 @@ func (a *Agent) loop(ctx context.Context) error {
 				}
 				continue
 			}
-			start = time.Now()
+			lastIdleAt = time.Now()
 			timer.Reset(0)
 			agentSleepInterval = globals.MinAgentSleepInterval
 		}
