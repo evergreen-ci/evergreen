@@ -250,8 +250,9 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				return next
 			}
 		}
-		// If the task group is not present in the TaskGroups map, then all its tasks are considered dispatched.
-		// Fall through to get a task that's not in this task group.
+		// We fall through to get a task that's not in this task group if either of the following are true:
+		// 1. The task group is not present in the TaskGroups map, meaning all of its tasks are considered dispatched.
+		// 2. The task group is present in the TaskGroups map, but none of its remaining tasks are dispatchable.
 	}
 
 	settings := evergreen.GetEnvironment().Settings()

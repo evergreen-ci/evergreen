@@ -379,6 +379,8 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				"investigation": "DEVPROD-12086",
 				"message":       "task was not dispatchable",
 				"task":          nextTask.Id,
+				"variant":       nextTask.BuildVariant,
+				"project":       nextTask.Project,
 			}))
 			// Dequeue the task so we don't get it on another iteration of the loop.
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
@@ -528,6 +530,8 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				"investigation": "DEVPROD-12086",
 				"message":       "task was not dispatched",
 				"task":          nextTask.Id,
+				"variant":       nextTask.BuildVariant,
+				"project":       nextTask.Project,
 			}))
 			continue
 		}

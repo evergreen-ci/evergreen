@@ -42,7 +42,6 @@ func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies(
 	t1 := task.Task{
 		Id:                "taskgroup_task1",
 		BuildId:           "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-		ExecutionPlatform: task.ExecutionPlatformHost,
 		TaskGroup:         "tg_compile_and_test",
 		TaskGroupMaxHosts: 1,
 		StartTime:         utility.ZeroTime,
@@ -60,7 +59,6 @@ func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies(
 	t2 := task.Task{
 		Id:                  "taskgroup_task2",
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-		ExecutionPlatform:   task.ExecutionPlatformHost,
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
 		StartTime:           utility.ZeroTime,
@@ -80,7 +78,6 @@ func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies(
 	t3 := task.Task{
 		Id:                  "taskgroup_task3",
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-		ExecutionPlatform:   task.ExecutionPlatformHost,
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
 		StartTime:           utility.ZeroTime,
@@ -99,7 +96,6 @@ func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies(
 	t4 := task.Task{
 		Id:                  "taskgroup_task4",
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-		ExecutionPlatform:   task.ExecutionPlatformHost,
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
 		StartTime:           utility.ZeroTime,
@@ -118,7 +114,6 @@ func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies(
 	t5 := task.Task{
 		Id:                  "external_task5",
 		BuildId:             "build_1",
-		ExecutionPlatform:   task.ExecutionPlatformHost,
 		TaskGroup:           "",
 		TaskGroupMaxHosts:   0,
 		StartTime:           utility.ZeroTime,
@@ -203,7 +198,6 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 	t1 := task.Task{
 		Id:                  "task1",
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-		ExecutionPlatform:   task.ExecutionPlatformHost,
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
 		StartTime:           utility.ZeroTime,
@@ -239,7 +233,6 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 	t2 := task.Task{
 		Id:                  "task2",
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-		ExecutionPlatform:   task.ExecutionPlatformHost,
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
 		StartTime:           utility.ZeroTime,
@@ -260,7 +253,6 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 	t3 := task.Task{
 		Id:                  "task3",
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-		ExecutionPlatform:   task.ExecutionPlatformHost,
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
 		StartTime:           utility.ZeroTime,
@@ -291,7 +283,6 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 	t4 := task.Task{
 		Id:                  "task4",
 		BuildId:             "genny_archlinux_patch_6273aa2072f8325b8d1ceae2dfff74a775b018fc_5d8cd23da4cf4747f4210333_19_09_26_14_59_10",
-		ExecutionPlatform:   task.ExecutionPlatformHost,
 		TaskGroup:           "tg_compile_and_test",
 		TaskGroupMaxHosts:   1,
 		StartTime:           utility.ZeroTime,
@@ -492,7 +483,6 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 		t := task.Task{
 			Id:                id,
 			DistroId:          distroID,
-			ExecutionPlatform: task.ExecutionPlatformHost,
 			StartTime:         utility.ZeroTime,
 			TaskGroup:         group,
 			BuildVariant:      variant,
@@ -697,9 +687,8 @@ func (s *taskDAGDispatchServiceSuite) TestDependencyCycle() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
 	for _, t := range []task.Task{
 		{
-			Id:                "t0",
-			ExecutionPlatform: task.ExecutionPlatformHost,
-			DependsOn:         []task.Dependency{{TaskId: "t1"}},
+			Id:        "t0",
+			DependsOn: []task.Dependency{{TaskId: "t1"}},
 		},
 		{
 			Id:        "t1",
@@ -732,7 +721,6 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 	t1 := task.Task{
 		Id:                  "1",
 		BuildId:             "ops_manager_kubernetes_init_test_run_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
-		ExecutionPlatform:   task.ExecutionPlatformHost,
 		TaskGroup:           "",
 		StartTime:           utility.ZeroTime,
 		BuildVariant:        "init_test_run",
@@ -750,7 +738,6 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 	t2 := task.Task{
 		Id:                  "2",
 		BuildId:             "ops_manager_kubernetes_e2e_openshift_cloud_qa_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
-		ExecutionPlatform:   task.ExecutionPlatformHost,
 		TaskGroup:           "e2e_core_task_group",
 		TaskGroupMaxHosts:   5,
 		TaskGroupOrder:      2,
@@ -775,7 +762,6 @@ func (s *taskDAGDispatchServiceSuite) TestAddingEdgeWithMissingNodes() {
 	t3 := task.Task{
 		Id:                  "3",
 		BuildId:             "ops_manager_kubernetes_e2e_openshift_cloud_qa_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
-		ExecutionPlatform:   task.ExecutionPlatformHost,
 		TaskGroup:           "e2e_core_task_group",
 		TaskGroupMaxHosts:   5,
 		TaskGroupOrder:      1,
@@ -1001,7 +987,6 @@ func (s *taskDAGDispatchServiceSuite) TestIsRefreshFindNextTaskThreadSafe() {
 		t := task.Task{
 			Id:                fmt.Sprintf("%d", i),
 			BuildVariant:      "variant_1",
-			ExecutionPlatform: task.ExecutionPlatformHost,
 			Version:           "version_1",
 			Project:           "project_1",
 			DistroId:          "distro_1",
@@ -1058,7 +1043,6 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskThreadSafe() {
 		t := task.Task{
 			Id:                fmt.Sprintf("%d", i),
 			BuildVariant:      "variant_1",
-			ExecutionPlatform: task.ExecutionPlatformHost,
 			Version:           "version_1",
 			Project:           "project_1",
 			TaskGroupMaxHosts: 0,
@@ -1122,7 +1106,6 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
 		t := task.Task{
 			Id:                id,
 			TaskGroup:         fmt.Sprintf("group_%d", groupNum),
-			ExecutionPlatform: task.ExecutionPlatformHost,
 			BuildVariant:      "variant_1",
 			Version:           "version_1",
 			TaskGroupMaxHosts: 1,
@@ -1190,7 +1173,6 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
 		t := task.Task{
 			Id:                id,
 			TaskGroup:         fmt.Sprintf("group_%d", groupNum),
-			ExecutionPlatform: task.ExecutionPlatformHost,
 			BuildVariant:      "variant_1",
 			Version:           "version_1",
 			TaskGroupMaxHosts: 1,
@@ -1269,7 +1251,6 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 		t := task.Task{
 			Id:                fmt.Sprintf("%d", i),
 			TaskGroup:         "group_1",
-			ExecutionPlatform: task.ExecutionPlatformHost,
 			BuildVariant:      "variant_1",
 			Version:           "version_1",
 			Project:           "project_1",
@@ -1494,7 +1475,6 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskForOutdatedHostAMI() {
 	t1 := task.Task{
 		Id:                  "1",
 		BuildId:             "ops_manager_kubernetes_init_test_run_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
-		ExecutionPlatform:   task.ExecutionPlatformHost,
 		TaskGroup:           "",
 		IngestTime:          amiUpdateTime.Add(time.Minute), // created after the AMI was updated so we should skip
 		StartTime:           utility.ZeroTime,
@@ -1513,7 +1493,6 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskForOutdatedHostAMI() {
 	t2 := task.Task{
 		Id:                  "2",
 		BuildId:             "ops_manager_kubernetes_e2e_openshift_cloud_qa_patch_1a53e026e05561c3efbb626185e155a7d1e4865d_5d88953e2a60ed61eefe9561_19_09_23_09_49_51",
-		ExecutionPlatform:   task.ExecutionPlatformHost,
 		TaskGroup:           "e2e_core_task_group",
 		TaskGroupMaxHosts:   5,
 		TaskGroupOrder:      2,
@@ -1712,7 +1691,6 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupOrdering() {
 		t := task.Task{
 			Id:                id,
 			TaskGroup:         "group_1",
-			ExecutionPlatform: task.ExecutionPlatformHost,
 			BuildVariant:      "variant_1",
 			Version:           "version_1",
 			TaskGroupMaxHosts: 1,
@@ -1763,7 +1741,6 @@ func (s *taskDAGDispatchServiceSuite) TestInProgressSingleHostTaskGroupLimits() 
 	sampleS3Task := task.Task{
 		Id:                         "sample_s3_task",
 		Version:                    "version_1",
-		ExecutionPlatform:          task.ExecutionPlatformHost,
 		Project:                    "project_1",
 		Status:                     evergreen.TaskStarted,
 		CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3,
@@ -1775,7 +1752,6 @@ func (s *taskDAGDispatchServiceSuite) TestInProgressSingleHostTaskGroupLimits() 
 		t := task.Task{
 			Id:                         id,
 			TaskGroup:                  "group_1",
-			ExecutionPlatform:          task.ExecutionPlatformHost,
 			BuildVariant:               "variant_1",
 			Version:                    "version_1",
 			TaskGroupMaxHosts:          1,
@@ -1821,7 +1797,6 @@ func (s *taskDAGDispatchServiceSuite) TestNewSingleHostTaskGroupLimits() {
 	sampleS3Task := task.Task{
 		Id:                         "sample_s3_task",
 		Version:                    "version_1",
-		ExecutionPlatform:          task.ExecutionPlatformHost,
 		Project:                    "project_1",
 		Status:                     evergreen.TaskStarted,
 		CachedProjectStorageMethod: evergreen.ProjectStorageMethodS3,
@@ -1833,7 +1808,6 @@ func (s *taskDAGDispatchServiceSuite) TestNewSingleHostTaskGroupLimits() {
 		t := task.Task{
 			Id:                         id,
 			TaskGroup:                  "group_1",
-			ExecutionPlatform:          task.ExecutionPlatformHost,
 			BuildVariant:               "variant_1",
 			Version:                    "version_1",
 			TaskGroupMaxHosts:          1,
@@ -1877,7 +1851,6 @@ func (s *taskDAGDispatchServiceSuite) TestGenerateTaskLimits() {
 	running := task.Task{
 		Id:                         "running",
 		BuildId:                    "build_id",
-		ExecutionPlatform:          task.ExecutionPlatformHost,
 		StartTime:                  time.Now(),
 		BuildVariant:               "bv",
 		Version:                    "version",
@@ -1894,7 +1867,6 @@ func (s *taskDAGDispatchServiceSuite) TestGenerateTaskLimits() {
 	t1 := task.Task{
 		Id:                         "t1",
 		BuildId:                    "build_id",
-		ExecutionPlatform:          task.ExecutionPlatformHost,
 		StartTime:                  utility.ZeroTime,
 		BuildVariant:               "bv",
 		Version:                    "version",
@@ -1910,7 +1882,6 @@ func (s *taskDAGDispatchServiceSuite) TestGenerateTaskLimits() {
 	t2 := task.Task{
 		Id:                         "t2",
 		BuildId:                    "build_id",
-		ExecutionPlatform:          task.ExecutionPlatformHost,
 		StartTime:                  utility.ZeroTime,
 		BuildVariant:               "bv",
 		Version:                    "version",
@@ -1924,19 +1895,18 @@ func (s *taskDAGDispatchServiceSuite) TestGenerateTaskLimits() {
 		EstimatedNumGeneratedTasks: utility.ToIntPtr(2),
 	}
 	t3 := task.Task{
-		Id:                "t3",
-		BuildId:           "build_id",
-		ExecutionPlatform: task.ExecutionPlatformHost,
-		StartTime:         utility.ZeroTime,
-		BuildVariant:      "bv",
-		Version:           "version",
-		Project:           "proj",
-		Activated:         true,
-		ActivatedBy:       "",
-		DistroId:          distroID,
-		Requester:         "github_pull_request",
-		Status:            evergreen.TaskUndispatched,
-		Revision:          "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
+		Id:           "t3",
+		BuildId:      "build_id",
+		StartTime:    utility.ZeroTime,
+		BuildVariant: "bv",
+		Version:      "version",
+		Project:      "proj",
+		Activated:    true,
+		ActivatedBy:  "",
+		DistroId:     distroID,
+		Requester:    "github_pull_request",
+		Status:       evergreen.TaskUndispatched,
+		Revision:     "6273aa2072f8325b8d1ceae2dfff74a775b018fc",
 	}
 	s.Require().NoError(running.Insert())
 	s.Require().NoError(t1.Insert())

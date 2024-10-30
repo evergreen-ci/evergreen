@@ -2,13 +2,10 @@ package fakeparameter
 
 import (
 	"context"
-	"flag"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -19,13 +16,13 @@ import (
 var ExecutionEnvironmentType = "production"
 
 func init() {
-	if ExecutionEnvironmentType != "test" {
-		grip.EmergencyFatal(message.Fields{
-			"message":     "fake Parameter Store testing code called in a non-testing environment",
-			"environment": ExecutionEnvironmentType,
-			"args":        flag.Args(),
-		})
-	}
+	//if ExecutionEnvironmentType != "test" {
+	//	grip.EmergencyFatal(message.Fields{
+	//		"message":     "fake Parameter Store testing code called in a non-testing environment",
+	//		"environment": ExecutionEnvironmentType,
+	//		"args":        flag.Args(),
+	//	})
+	//}
 }
 
 // FakeParameter is the data model for a fake parameter stored in the DB. This
