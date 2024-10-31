@@ -148,6 +148,9 @@ type ProjectRef struct {
 	// project's variables have been synced to Parameter Store. If this is true,
 	// then the project variables can all be found in Parameter Store.
 	ParameterStoreVarsSynced bool `bson:"parameter_store_vars_synced,omitempty" json:"parameter_store_vars_synced,omitempty" yaml:"parameter_store_vars_synced,omitempty"`
+	// LastAutoRestartedTaskAt is the TODO
+	LastAutoRestartedTaskAt time.Time `bson:"last_auto_restarted_task_at"`
+	NumAutoRestartedTasks   int       `bson:"num_auto_restarted_tasks"`
 }
 
 // GitHubDynamicTokenPermissionGroup is a permission group for GitHub dynamic access tokens.
@@ -498,6 +501,8 @@ var (
 	projectRefGitHubDynamicTokenPermissionGroupsKey = bsonutil.MustHaveTag(ProjectRef{}, "GitHubDynamicTokenPermissionGroups")
 	projectRefGithubPermissionGroupByRequesterKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitHubPermissionGroupByRequester")
 	projectRefParameterStoreVarsSyncedKey           = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreVarsSynced")
+	projectRefLastAutoRestartedTaskAtKey            = bsonutil.MustHaveTag(ProjectRef{}, "LastAutoRestartedTaskAt")
+	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	commitQueueMergeQueueKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "MergeQueue")
@@ -2540,6 +2545,39 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionC
 	}
 
 	return versionCreateTime, nil
+}
+
+// CheckAndUpdateAutoRestartLimit checks if auto restarting a task for a project is allowed given
+// the global per-project daily auto restarting limit, and updates relevant timestamp and counter used
+// to track the project's usage.
+func (p *ProjectRef) CheckAndUpdateAutoRestartLimit(maxDailyAutoRestarts int) error {
+	if maxDailyAutoRestarts == 0 {
+		return nil
+	}
+	var update bson.M
+	now := time.Now()
+	oneDayAgo := now.Add(-1 * 24 * time.Hour)
+	// If the last time the project auto restarted a task was within the day, increment the number
+	// of auto restarted tasks counter, erroring if the global limit is breached.
+	if p.LastAutoRestartedTaskAt.After(oneDayAgo) {
+		update = bson.M{
+			"$set": bson.M{projectRefLastAutoRestartedTaskAtKey: p.NumAutoRestartedTasks + 1},
+		}
+		if 1+p.NumAutoRestartedTasks >= maxDailyAutoRestarts {
+			minutesRemaining := 24 - int(now.Sub(p.LastAutoRestartedTaskAt).Hours())
+			return errors.Errorf("project '%s' has auto-restarted %d out of %d allowed tasks in the past day, limit refreshes in %d hour(s)", p.Id, p.NumAutoRestartedTasks, maxDailyAutoRestarts, minutesRemaining)
+		}
+	} else {
+		// Otherwise, if the project has not automatically restarted any tasks within the past day, reset the timestamp to now,
+		// and reset the number of auto restarted tasks to 1.
+		update = bson.M{
+			"$set": bson.M{
+				projectRefNumAutoRestartedTasksKey:   1,
+				projectRefLastAutoRestartedTaskAtKey: time.Now(),
+			},
+		}
+	}
+	return db.Update(ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, update)
 }
 
 // isActiveCronTimeRange checks that the proposed cron should activate now or
