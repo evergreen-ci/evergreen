@@ -436,7 +436,7 @@ func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host
 	}
 
 	// Build image containing Evergreen executable.
-	_, err = m.client.BuildImageWithAgent(ctx, parent, image)
+	_, err = m.client.BuildImageWithAgent(ctx, m.env.ClientConfig().S3URLPrefix, parent, image)
 	if err != nil {
 		return errors.Wrapf(err, "building image '%s' with agent on host '%s'", options.Image, parent.Id)
 	}
