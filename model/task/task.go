@@ -770,7 +770,7 @@ func (t *Task) RemoveDependency(dependencyId string) error {
 // used to check rather than fetching from the database. All queries
 // are cached back into the map for later use.
 func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
-	if t.HasDependenciesMet() {
+	if len(t.DependsOn) == 0 || t.OverrideDependencies || !utility.IsZeroTime(t.DependenciesMetTime) {
 		return true, nil
 	}
 
@@ -3418,11 +3418,6 @@ func FindHostSchedulableForAlias(ctx context.Context, id string) ([]Task, error)
 
 func (t *Task) IsPartOfSingleHostTaskGroup() bool {
 	return t.TaskGroup != "" && t.TaskGroupMaxHosts == 1
-}
-
-// HasDependenciesMet indicates whether the task has had its dependencies met.
-func (t *Task) HasDependenciesMet() bool {
-	return len(t.DependsOn) == 0 || t.OverrideDependencies || !utility.IsZeroTime(t.DependenciesMetTime)
 }
 
 // HasCheckRun retruns true if the task specifies a check run path.
