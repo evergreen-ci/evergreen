@@ -62,28 +62,31 @@ func TestFindOneProjectVar(t *testing.T) {
 
 func TestFindMergedProjectVars(t *testing.T) {
 	assert := assert.New(t)
-	require.NoError(t, db.ClearCollections(ProjectVarsCollection, ProjectRefCollection, RepoRefCollection))
+	require.NoError(t, db.ClearCollections(ProjectVarsCollection, ProjectRefCollection, RepoRefCollection, fakeparameter.Collection))
 
 	repo := RepoRef{ProjectRef{
-		Id:    "repo_ref",
-		Owner: "mongodb",
-		Repo:  "test_repo",
+		Id:                    "repo_ref",
+		Owner:                 "mongodb",
+		Repo:                  "test_repo",
+		ParameterStoreEnabled: true,
 	}}
 	require.NoError(t, repo.Upsert())
 
 	project0 := ProjectRef{
-		Id:        "project_0",
-		Owner:     "mongodb",
-		Branch:    "branch_0",
-		Repo:      "test_repo",
-		RepoRefId: "repo_ref",
+		Id:                    "project_0",
+		Owner:                 "mongodb",
+		Branch:                "branch_0",
+		Repo:                  "test_repo",
+		RepoRefId:             "repo_ref",
+		ParameterStoreEnabled: true,
 	}
 	project1 := ProjectRef{
-		Id:        "project_1",
-		Owner:     "mongodb",
-		Branch:    "branch_1",
-		Repo:      "test_repo",
-		RepoRefId: "repo_ref",
+		Id:                    "project_1",
+		Owner:                 "mongodb",
+		Branch:                "branch_1",
+		Repo:                  "test_repo",
+		RepoRefId:             "repo_ref",
+		ParameterStoreEnabled: true,
 	}
 	require.NoError(t, project0.Insert())
 	require.NoError(t, project1.Insert())
@@ -100,16 +103,27 @@ func TestFindMergedProjectVars(t *testing.T) {
 	}
 	require.NoError(t, repoVars.Insert())
 	require.NoError(t, project0Vars.Insert())
+	checkAndSetProjectVarsSynced(t, &project0, false)
+	checkAndSetProjectVarsSynced(t, &repo.ProjectRef, true)
 
 	// Testing merging of project vars and repo vars
+	mergedVars, err := FindMergedProjectVars(project0.Id)
+	assert.NoError(err)
+	require.NotZero(t, mergedVars)
+
+	dbProject0Vars, err := FindOneProjectVars(project0.Id)
+	require.NoError(t, err)
+	require.NotZero(t, dbProject0Vars)
+	dbRepoVars, err := FindOneProjectVars(repo.Id)
+	require.NoError(t, err)
+	require.NotZero(t, dbRepoVars)
 	expectedMergedVars := ProjectVars{
 		Id:            project0.Id,
 		Vars:          map[string]string{"hello": "world", "world": "goodbye", "beep": "boop", "new": "var", "admin": "only"},
 		PrivateVars:   map[string]bool{},
 		AdminOnlyVars: map[string]bool{"admin": true},
 	}
-	mergedVars, err := FindMergedProjectVars(project0.Id)
-	assert.NoError(err)
+	expectedMergedVars.Parameters = mergedVars.Parameters
 	assert.Equal(expectedMergedVars, *mergedVars)
 
 	// Testing existing repo vars but no project vars
@@ -117,25 +131,41 @@ func TestFindMergedProjectVars(t *testing.T) {
 	expectedMergedVars.Id = project1.Id
 	mergedVars, err = FindMergedProjectVars(project1.Id)
 	assert.NoError(err)
+	require.NotZero(t, mergedVars)
+
+	dbRepoVars, err = FindOneProjectVars(repo.Id)
+	require.NoError(t, err)
+	require.NotZero(t, dbRepoVars)
+	expectedMergedVars.Parameters = dbRepoVars.Parameters
 	assert.Equal(expectedMergedVars, *mergedVars)
 
 	// Testing existing project vars but no repo vars
-	require.NoError(t, db.Clear(ProjectVarsCollection))
+	require.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection))
+
 	require.NoError(t, project0Vars.Insert())
+
 	mergedVars, err = FindMergedProjectVars(project0.Id)
 	assert.NoError(err)
+	require.NotZero(t, mergedVars)
+
 	assert.Equal(project0Vars.Vars, mergedVars.Vars)
+	dbProject0Vars, err = FindOneProjectVars(project0.Id)
+	require.NoError(t, err)
+	require.NotZero(t, dbProject0Vars)
+	assert.Equal(dbProject0Vars.Parameters, mergedVars.Parameters, "merged parameters for branch project vars should exactly match the branch project vars from the DB when there's no repo vars")
 	assert.Equal(0, len(mergedVars.PrivateVars))
 
 	// Testing ProjectRef.RepoRefId == ""
 	project0.RepoRefId = ""
+	project0.ParameterStoreVarsSynced = true
 	require.NoError(t, project0.Upsert())
 	mergedVars, err = FindMergedProjectVars(project0.Id)
 	assert.NoError(err)
+	require.NotZero(t, mergedVars)
 	assert.Equal(project0Vars, *mergedVars)
 
 	// Testing no project vars and no repo vars
-	require.NoError(t, db.Clear(ProjectVarsCollection))
+	require.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection))
 	mergedVars, err = FindMergedProjectVars(project1.Id)
 	assert.NoError(err)
 	assert.Nil(mergedVars)
@@ -149,17 +179,23 @@ func TestFindMergedProjectVars(t *testing.T) {
 func TestProjectVarsInsert(t *testing.T) {
 	assert := assert.New(t)
 
-	require.NoError(t, db.Clear(ProjectVarsCollection),
-		"Error clearing collection")
+	require.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection, ProjectRefCollection))
+
+	pRef := ProjectRef{
+		Id:                    "mongodb",
+		ParameterStoreEnabled: true,
+	}
+	require.NoError(t, pRef.Insert())
 
 	vars := &ProjectVars{
-		Id:   "mongodb",
+		Id:   pRef.Id,
 		Vars: map[string]string{"a": "1", "b": "2"},
 	}
 	assert.NoError(vars.Insert())
 
-	projectVarsFromDB, err := FindOneProjectVars("mongodb")
+	projectVarsFromDB, err := FindOneProjectVars(pRef.Id)
 	assert.NoError(err)
+	require.NotZero(t, projectVarsFromDB)
 	assert.Equal("mongodb", projectVarsFromDB.Id)
 	assert.NotEmpty(projectVarsFromDB.Vars)
 	assert.Equal("1", projectVarsFromDB.Vars["a"])
@@ -167,7 +203,7 @@ func TestProjectVarsInsert(t *testing.T) {
 
 func TestProjectVarsFindAndModify(t *testing.T) {
 	defer func() {
-		assert.NoError(t, db.ClearCollections(ProjectVarsCollection, ProjectRefCollection))
+		assert.NoError(t, db.ClearCollections(ProjectVarsCollection, ProjectRefCollection, fakeparameter.Collection))
 	}()
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
@@ -300,21 +336,36 @@ func TestRedactPrivateVars(t *testing.T) {
 func TestGetVarsByValue(t *testing.T) {
 	assert := assert.New(t)
 
-	require.NoError(t, db.Clear(ProjectVarsCollection),
-		"Error clearing collection")
+	require.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection, ProjectRefCollection))
+
+	pRef1 := ProjectRef{
+		Id:                    "mongodb1",
+		ParameterStoreEnabled: true,
+	}
+	require.NoError(t, pRef1.Insert())
+	pRef2 := ProjectRef{
+		Id:                    "mongodb2",
+		ParameterStoreEnabled: true,
+	}
+	require.NoError(t, pRef2.Insert())
+	pRef3 := ProjectRef{
+		Id:                    "mongodb3",
+		ParameterStoreEnabled: true,
+	}
+	require.NoError(t, pRef3.Insert())
 
 	projectVars1 := &ProjectVars{
-		Id:   "mongodb1",
+		Id:   pRef1.Id,
 		Vars: map[string]string{"a": "1", "b": "2"},
 	}
 
 	projectVars2 := &ProjectVars{
-		Id:   "mongodb2",
+		Id:   pRef2.Id,
 		Vars: map[string]string{"c": "1", "d": "2"},
 	}
 
 	projectVars3 := &ProjectVars{
-		Id:   "mongodb3",
+		Id:   pRef3.Id,
 		Vars: map[string]string{"e": "2", "f": "3"},
 	}
 
@@ -324,27 +375,32 @@ func TestGetVarsByValue(t *testing.T) {
 
 	newVars, err := getVarsByValue("1")
 	assert.NoError(err)
+	require.NotZero(t, newVars)
 	assert.Equal(2, len(newVars))
 
 	newVars, err = getVarsByValue("2")
 	assert.NoError(err)
+	require.NotZero(t, newVars)
 	assert.Equal(3, len(newVars))
 
 	newVars, err = getVarsByValue("3")
 	assert.NoError(err)
+	require.NotZero(t, newVars)
 	assert.Equal(1, len(newVars))
 
 	newVars, err = getVarsByValue("0")
 	assert.NoError(err)
+	require.NotZero(t, newVars)
 	assert.Equal(0, len(newVars))
 }
 
 func TestAWSVars(t *testing.T) {
 	require := require.New(t)
-	require.NoError(db.ClearCollections(ProjectVarsCollection, ProjectRefCollection))
+	require.NoError(db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection, ProjectRefCollection))
 	assert := assert.New(t)
 	project := ProjectRef{
-		Id: "mci",
+		Id:                    "mci",
+		ParameterStoreEnabled: true,
 	}
 	assert.NoError(project.Insert())
 
@@ -355,6 +411,7 @@ func TestAWSVars(t *testing.T) {
 	require.NoError(newVars.Insert())
 	k, err := GetAWSKeyForProject(project.Id)
 	assert.NoError(err)
+	require.NotZero(k)
 	assert.Empty(k.Name)
 	assert.Empty(k.Value)
 
@@ -384,6 +441,7 @@ func TestAWSVars(t *testing.T) {
 	// empty aws values
 	k, err = GetAWSKeyForProject(project.Id)
 	assert.NoError(err)
+	require.NotZero(k)
 	assert.Empty(k.Name)
 	assert.Empty(k.Value)
 
@@ -395,12 +453,14 @@ func TestAWSVars(t *testing.T) {
 	assert.NoError(SetAWSKeyForProject(project.Id, k))
 	k, err = GetAWSKeyForProject(project.Id)
 	assert.NoError(err)
+	require.NotZero(k)
 	assert.Equal("aws_key_name", k.Name)
 	assert.Equal("aws_key_value", k.Value)
 
 	// canaries, again
 	found, err = FindOneProjectVars(project.Id)
 	assert.NoError(err)
+	require.NotZero(found)
 	assert.Equal("foo", found.Vars["a"])
 	assert.Equal("bar", found.Vars["b"])
 	assert.Equal(true, found.PrivateVars["a"])
@@ -797,19 +857,18 @@ func TestFullSyncToParameterStore(t *testing.T) {
 				Id:   "project_id",
 				Vars: vars,
 			}
+			require.NoError(t, projVars.Insert())
 
-			require.NoError(t, fullSyncToParameterStore(ctx, &projVars, &projRef, false))
+			dbProjRef, err := FindBranchProjectRef(projRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.True(t, dbProjRef.ParameterStoreVarsSynced)
 
 			dbProjVars, err := FindOneProjectVars(projVars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjVars)
 
 			checkParametersMatchVars(ctx, t, dbProjVars.Parameters, vars)
-
-			dbProjRef, err := FindBranchProjectRef(projRef.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbProjRef)
-			assert.True(t, dbProjRef.ParameterStoreVarsSynced)
 		},
 		"InitiallySyncsAllParametersWithPreexistingProjectVars": func(ctx context.Context, t *testing.T) {
 			projRef := ProjectRef{
@@ -825,20 +884,20 @@ func TestFullSyncToParameterStore(t *testing.T) {
 				Id:   "project_id",
 				Vars: vars,
 			}
-			require.NoError(t, projVars.Insert())
+			require.NoError(t, db.Insert(ProjectVarsCollection, projVars))
 
 			require.NoError(t, fullSyncToParameterStore(ctx, &projVars, &projRef, false))
+
+			dbProjRef, err := FindBranchProjectRef(projRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.True(t, dbProjRef.ParameterStoreVarsSynced)
 
 			dbProjVars, err := FindOneProjectVars(projVars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjVars)
 
 			checkParametersMatchVars(ctx, t, dbProjVars.Parameters, vars)
-
-			dbProjRef, err := FindBranchProjectRef(projRef.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbProjRef)
-			assert.True(t, dbProjRef.ParameterStoreVarsSynced)
 		},
 		"InitiallySyncsAllParametersForRepoVars": func(ctx context.Context, t *testing.T) {
 			repoRef := RepoRef{
@@ -856,19 +915,20 @@ func TestFullSyncToParameterStore(t *testing.T) {
 				Id:   "repo_id",
 				Vars: vars,
 			}
+			require.NoError(t, db.Insert(ProjectVarsCollection, repoVars))
 
 			require.NoError(t, fullSyncToParameterStore(ctx, &repoVars, &repoRef.ProjectRef, true))
+
+			dbRepoRef, err := FindOneRepoRef(repoRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbRepoRef)
+			assert.True(t, dbRepoRef.ParameterStoreVarsSynced)
 
 			dbRepoVars, err := FindOneProjectVars(repoVars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbRepoVars)
 
 			checkParametersMatchVars(ctx, t, dbRepoVars.Parameters, vars)
-
-			dbRepoRef, err := FindOneRepoRef(repoRef.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbRepoRef)
-			assert.True(t, dbRepoRef.ParameterStoreVarsSynced)
 		},
 		"DeletesExistingDesyncedParametersAndResyncs": func(ctx context.Context, t *testing.T) {
 			projRef := ProjectRef{
@@ -885,8 +945,12 @@ func TestFullSyncToParameterStore(t *testing.T) {
 				Id:   "project_id",
 				Vars: vars,
 			}
+			require.NoError(t, projVars.Insert())
 
-			require.NoError(t, fullSyncToParameterStore(ctx, &projVars, &projRef, false))
+			dbProjRef, err := FindBranchProjectRef(projRef.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbProjRef)
+			assert.True(t, dbProjRef.ParameterStoreVarsSynced)
 
 			dbProjVars, err := FindOneProjectVars(projVars.Id)
 			require.NoError(t, err)
@@ -894,13 +958,7 @@ func TestFullSyncToParameterStore(t *testing.T) {
 
 			checkParametersMatchVars(ctx, t, dbProjVars.Parameters, vars)
 
-			dbProjRef, err := FindBranchProjectRef(projRef.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbProjRef)
-			assert.True(t, dbProjRef.ParameterStoreVarsSynced)
-
-			newProjRef := *dbProjRef
-			newProjRef.ParameterStoreVarsSynced = false
+			require.NoError(t, dbProjRef.setParameterStoreVarsSynced(false, false))
 			newVars := map[string]string{
 				"var1": "value1",
 				"var3": "new_value3",
@@ -911,7 +969,7 @@ func TestFullSyncToParameterStore(t *testing.T) {
 				Vars: newVars,
 			}
 
-			require.NoError(t, fullSyncToParameterStore(ctx, &newProjVars, &newProjRef, false))
+			require.NoError(t, fullSyncToParameterStore(ctx, &newProjVars, dbProjRef, false))
 
 			newDBProjVars, err := FindOneProjectVars(projVars.Id)
 			require.NoError(t, err)

@@ -578,9 +578,9 @@ func TestHostNextTask(t *testing.T) {
 			tq := &model.TaskQueue{
 				Distro: distroID,
 				Queue: []model.TaskQueueItem{
-					{Id: "task1"},
-					{Id: "task2"},
-					{Id: "task3"},
+					{Id: "task1", DependenciesMet: true},
+					{Id: "task2", DependenciesMet: true},
+					{Id: "task3", DependenciesMet: true},
 				},
 			}
 
@@ -834,6 +834,73 @@ func TestHostEndTask(t *testing.T) {
 			require.NotZero(t, foundTask)
 			require.Equal(t, evergreen.TaskSystemFailed, foundTask.GetDisplayStatus())
 		},
+		"QuarantinesStaticHostWithRepeatedSystemTimedOutTasks": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			h, err := host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			require.NoError(t, host.UpdateOne(ctx, host.ById(hostId), bson.M{
+				"$set": bson.M{
+					host.ProviderKey: evergreen.ProviderNameStatic,
+				},
+			}))
+
+			for i := 0; i < 10; i++ {
+				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemTimedOut)
+			}
+
+			details := &apimodels.TaskEndDetail{
+				Status:   evergreen.TaskFailed,
+				Type:     evergreen.CommandTypeSystem,
+				TimedOut: true,
+			}
+			handler.details = *details
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			require.Equal(t, http.StatusOK, resp.Status())
+			h, err = host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			assert.Equal(t, evergreen.HostQuarantined, h.Status, "static host should be quarantined for consecutive system failed tasks")
+
+			foundTask, err := task.FindOneId(handler.taskID)
+			require.NoError(t, err)
+			require.NotZero(t, foundTask)
+			require.Equal(t, evergreen.TaskSystemTimedOut, foundTask.GetDisplayStatus())
+		},
+		"QuarantinesStaticHostWithRepeatedSystemUnresponsiveTasks": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			h, err := host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			require.NoError(t, host.UpdateOne(ctx, host.ById(hostId), bson.M{
+				"$set": bson.M{
+					host.ProviderKey: evergreen.ProviderNameStatic,
+				},
+			}))
+
+			for i := 0; i < 10; i++ {
+				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
+			}
+
+			details := &apimodels.TaskEndDetail{
+				Status:      evergreen.TaskFailed,
+				Type:        evergreen.CommandTypeSystem,
+				TimedOut:    true,
+				Description: evergreen.TaskDescriptionHeartbeat,
+			}
+			handler.details = *details
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			require.Equal(t, http.StatusOK, resp.Status())
+			h, err = host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			assert.Equal(t, evergreen.HostQuarantined, h.Status, "static host should be quarantined for consecutive system failed tasks")
+
+			foundTask, err := task.FindOneId(handler.taskID)
+			require.NoError(t, err)
+			require.NotZero(t, foundTask)
+			require.Equal(t, evergreen.TaskSystemUnresponse, foundTask.GetDisplayStatus())
+		},
 		"DecommissionsDynamicHostWithRepeatedSystemFailedTasks": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
 			h, err := host.FindOneId(ctx, hostId)
 			require.NoError(t, err)
@@ -865,6 +932,73 @@ func TestHostEndTask(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, foundTask)
 			require.Equal(t, evergreen.TaskSystemFailed, foundTask.GetDisplayStatus())
+		},
+		"DecommissionsDynamicHostWithRepeatedSystemTimedOutTasks": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			h, err := host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			require.NoError(t, host.UpdateOne(ctx, host.ById(hostId), bson.M{
+				"$set": bson.M{
+					host.ProviderKey: evergreen.ProviderNameEc2Fleet,
+				},
+			}))
+
+			for i := 0; i < 10; i++ {
+				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemTimedOut)
+			}
+
+			details := &apimodels.TaskEndDetail{
+				Status:   evergreen.TaskFailed,
+				Type:     evergreen.CommandTypeSystem,
+				TimedOut: true,
+			}
+			handler.details = *details
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			require.Equal(t, http.StatusOK, resp.Status())
+			h, err = host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			assert.Equal(t, evergreen.HostDecommissioned, h.Status, "dynamic host should be decommissioned for consecutive system failed tasks")
+
+			foundTask, err := task.FindOneId(handler.taskID)
+			require.NoError(t, err)
+			require.NotZero(t, foundTask)
+			require.Equal(t, evergreen.TaskSystemTimedOut, foundTask.GetDisplayStatus())
+		},
+		"DecommissionsDynamicHostWithRepeatedSystemTimedUnresponsiveTasks": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			h, err := host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			require.NoError(t, host.UpdateOne(ctx, host.ById(hostId), bson.M{
+				"$set": bson.M{
+					host.ProviderKey: evergreen.ProviderNameEc2Fleet,
+				},
+			}))
+
+			for i := 0; i < 10; i++ {
+				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
+			}
+
+			details := &apimodels.TaskEndDetail{
+				Status:      evergreen.TaskFailed,
+				Type:        evergreen.CommandTypeSystem,
+				TimedOut:    true,
+				Description: evergreen.TaskDescriptionHeartbeat,
+			}
+			handler.details = *details
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			require.Equal(t, http.StatusOK, resp.Status())
+			h, err = host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			assert.Equal(t, evergreen.HostDecommissioned, h.Status, "dynamic host should be decommissioned for consecutive system failed tasks")
+
+			foundTask, err := task.FindOneId(handler.taskID)
+			require.NoError(t, err)
+			require.NotZero(t, foundTask)
+			require.Equal(t, evergreen.TaskSystemUnresponse, foundTask.GetDisplayStatus())
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -999,7 +1133,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.Equal(t, "", h.RunningTask)
 		},
 		"an invalid task in a task queue should skip it and noop": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
-			d.Tq3.Queue = append([]model.TaskQueueItem{{Id: "invalid"}}, d.Tq3.Queue...)
+			d.Tq3.Queue = append([]model.TaskQueueItem{{Id: "invalid", DependenciesMet: true}}, d.Tq3.Queue...)
 			require.NoError(t, d.Tq3.Save())
 			details := &apimodels.GetNextTaskDetails{}
 			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
@@ -1277,7 +1411,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				Status: evergreen.HostRunning,
 			}
 			require.NoError(t, extraHost.Insert(ctx))
-			d.Tq1.Queue = append(d.Tq1.Queue, model.TaskQueueItem{Id: "tg1-task3"})
+			d.Tq1.Queue = append(d.Tq1.Queue, model.TaskQueueItem{Id: "tg1-task3", DependenciesMet: true})
 			d.Tq1.DistroQueueInfo = model.DistroQueueInfo{
 				Length:         3,
 				TaskGroupInfos: []model.TaskGroupInfo{{Name: "task-group-1", Count: 3}},
@@ -1508,8 +1642,8 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			data.Tq1 = &model.TaskQueue{
 				Distro: data.Distro1.Id,
 				Queue: []model.TaskQueueItem{
-					{Id: data.Tg1Task1.Id},
-					{Id: data.Tg1Task2.Id},
+					{Id: data.Tg1Task1.Id, DependenciesMet: true},
+					{Id: data.Tg1Task2.Id, DependenciesMet: true},
 				},
 				DistroQueueInfo: model.DistroQueueInfo{
 					Length:         2,
@@ -1572,10 +1706,10 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			data.Tq2 = &model.TaskQueue{
 				Distro: data.Distro2.Id,
 				Queue: []model.TaskQueueItem{
-					{Id: data.Tg2Task1.Id},
-					{Id: data.Task1.Id},
-					{Id: data.Task2.Id},
-					{Id: data.Tg2Task2.Id},
+					{Id: data.Tg2Task1.Id, DependenciesMet: true},
+					{Id: data.Task1.Id, DependenciesMet: true},
+					{Id: data.Task2.Id, DependenciesMet: true},
+					{Id: data.Tg2Task2.Id, DependenciesMet: false},
 				},
 				DistroQueueInfo: model.DistroQueueInfo{
 					Length:         4,
@@ -1608,8 +1742,8 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			data.Tq3 = &model.TaskQueue{
 				Distro: data.Distro3.Id,
 				Queue: []model.TaskQueueItem{
-					{Id: data.Task3.Id},
-					{Id: data.Task4.Id},
+					{Id: data.Task3.Id, DependenciesMet: true},
+					{Id: data.Task4.Id, DependenciesMet: true},
 				},
 				DistroQueueInfo: model.DistroQueueInfo{
 					Length:         2,

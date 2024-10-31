@@ -248,6 +248,19 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 
+		nextTaskResponse.EstimatedMaxIdleDuration = h.host.Distro.HostAllocatorSettings.AcceptableHostIdleTime
+		if nextTaskResponse.EstimatedMaxIdleDuration == 0 {
+			schedulerConfig := evergreen.SchedulerConfig{}
+			err := schedulerConfig.Get(ctx)
+
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem getting scheduler config for idle threshold to send for next task",
+			}))
+			if err == nil {
+				nextTaskResponse.EstimatedMaxIdleDuration = time.Duration(schedulerConfig.AcceptableHostIdleTimeSeconds) * time.Second
+			}
+		}
+
 		return gimlet.NewJSONResponse(nextTaskResponse)
 	}
 
@@ -375,6 +388,13 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 
 		// validate that the task can be run, if not fetch the next one in the queue.
 		if !nextTask.IsHostDispatchable() {
+			grip.Debug(message.WrapError(err, message.Fields{
+				"investigation": "DEVPROD-12086",
+				"message":       "task was not dispatchable",
+				"task":          nextTask.Id,
+				"variant":       nextTask.BuildVariant,
+				"project":       nextTask.Project,
+			}))
 			// Dequeue the task so we don't get it on another iteration of the loop.
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
 				"message":   "nextTask.IsHostDispatchable() is false, but there was an issue dequeuing the task",
@@ -519,6 +539,13 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}))
 
 		if !dispatchedTask {
+			grip.Debug(message.WrapError(err, message.Fields{
+				"investigation": "DEVPROD-12086",
+				"message":       "task was not dispatched",
+				"task":          nextTask.Id,
+				"variant":       nextTask.BuildVariant,
+				"project":       nextTask.Project,
+			}))
 			continue
 		}
 
@@ -1240,7 +1267,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 
 	// Disable hosts and prevent them from performing more work if they have
 	// system failed many tasks in a row.
-	if event.AllRecentHostEventsMatchStatus(ctx, currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
+	if event.AllRecentHostEventsAreSystemFailed(ctx, currentHost.Id, consecutiveSystemFailureThreshold) {
 		msg := fmt.Sprintf("host encountered %d consecutive system failures", consecutiveSystemFailureThreshold)
 		grip.Error(message.WrapError(units.HandlePoisonedHost(ctx, h.env, currentHost, msg), message.Fields{
 			"message": "unable to disable poisoned host",
