@@ -1098,6 +1098,8 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 			}
 		}
 	}
+	// Sort the merged branch project and repo project variables so the mappings
+	// are in a predictable order.
 	sort.Sort(projectVars.Parameters)
 }
 
