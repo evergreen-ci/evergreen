@@ -722,7 +722,7 @@ func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 		User:          usr.Username(),
 		APIKey:        usr.GetAPIKey(),
 		UIServerHost:  settings.Ui.Url,
-		APIServerHost: settings.ApiUrl + "/api",
+		APIServerHost: settings.Api.URL + "/api",
 	}
 	return config, nil
 }

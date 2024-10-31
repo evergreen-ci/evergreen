@@ -34,9 +34,6 @@ import (
 
 func TestCurlCommand(t *testing.T) {
 	env := &mock.Environment{
-		EvergreenSettings: &evergreen.Settings{
-			ApiUrl: "www.example.com",
-		},
 		Clients: evergreen.ClientConfig{S3URLPrefix: "https://foo.com"},
 	}
 
@@ -87,9 +84,6 @@ func TestSpawnHostGetTaskDataCommand(t *testing.T) {
 
 func TestCurlCommandWithRetry(t *testing.T) {
 	env := &mock.Environment{
-		EvergreenSettings: &evergreen.Settings{
-			ApiUrl: "www.example.com",
-		},
 		Clients: evergreen.ClientConfig{S3URLPrefix: "https://foo.com"},
 	}
 	h := &Host{
@@ -892,7 +886,7 @@ func TestStartAgentMonitorRequest(t *testing.T) {
 	require.NoError(t, h.Insert(ctx))
 
 	settings := &evergreen.Settings{
-		ApiUrl: "www.example0.com",
+		Api: evergreen.APIConfig{URL: "www.example0.com"},
 		LoggerConfig: evergreen.LoggerConfig{
 			LogkeeperURL: "www.example1.com",
 		},
@@ -1050,7 +1044,7 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 	require.NoError(t, h.Insert(ctx))
 
 	settings := &evergreen.Settings{
-		ApiUrl: "www.example0.com",
+		Api: evergreen.APIConfig{URL: "www.example0.com"},
 		Ui: evergreen.UIConfig{
 			Url: "www.example1.com",
 		},
@@ -1318,7 +1312,7 @@ func TestGenerateFetchProvisioningScriptUserData(t *testing.T) {
 
 	env := &mock.Environment{
 		EvergreenSettings: &evergreen.Settings{
-			ApiUrl: "https://example.com",
+			Api: evergreen.APIConfig{URL: "https://example.com"},
 		},
 		Clients: evergreen.ClientConfig{S3URLPrefix: "https://foo.com"},
 	}

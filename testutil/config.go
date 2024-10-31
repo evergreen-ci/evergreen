@@ -150,6 +150,7 @@ func MockConfig() *evergreen.Settings {
 		Api: evergreen.APIConfig{
 			HttpListenAddr:      "addr",
 			GithubWebhookSecret: "secret",
+			URL:                 "example.com",
 		},
 		ApiUrl: "api",
 		AuthConfig: evergreen.AuthConfig{

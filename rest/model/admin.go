@@ -486,6 +486,7 @@ func (a *APIAmboyNamedQueueConfig) ToService() evergreen.AmboyNamedQueueConfig {
 type APIapiConfig struct {
 	HttpListenAddr      *string `json:"http_listen_addr"`
 	GithubWebhookSecret *string `json:"github_webhook_secret"`
+	URL                 *string `json:"url"`
 }
 
 func (a *APIapiConfig) BuildFromService(h interface{}) error {
@@ -493,6 +494,7 @@ func (a *APIapiConfig) BuildFromService(h interface{}) error {
 	case evergreen.APIConfig:
 		a.HttpListenAddr = utility.ToStringPtr(v.HttpListenAddr)
 		a.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
+		a.URL = utility.ToStringPtr(v.URL)
 	default:
 		return errors.Errorf("programmatic error: expected REST API config but got type %T", h)
 	}
@@ -503,6 +505,7 @@ func (a *APIapiConfig) ToService() (interface{}, error) {
 	return evergreen.APIConfig{
 		HttpListenAddr:      utility.FromStringPtr(a.HttpListenAddr),
 		GithubWebhookSecret: utility.FromStringPtr(a.GithubWebhookSecret),
+		URL:                 utility.FromStringPtr(a.URL),
 	}, nil
 }
 

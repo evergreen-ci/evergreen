@@ -246,6 +246,7 @@ func (s *AdminSuite) TestApiConfig() {
 	config := APIConfig{
 		HttpListenAddr:      "addr",
 		GithubWebhookSecret: "secret",
+		URL:                 "url",
 	}
 
 	err := config.Set(ctx)
