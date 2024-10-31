@@ -23,11 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// kim: TODO: add tests that check that parameters are not shared when
-// copying/moving variables between projects. Need to check this for write
-// operations (i.e. Insert/Upsert/FindAndModify), can mimic by creating by ID,
-// then changing the ID and redoing the op.
-
 func TestFindOneProjectVar(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -189,8 +184,6 @@ func TestFindMergedProjectVars(t *testing.T) {
 	assert.Error(err)
 	assert.Nil(mergedVars)
 }
-
-// kim: TODO: add parameter copy tests for insert/upsert/findandmodify
 
 func TestProjectVarsInsert(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
