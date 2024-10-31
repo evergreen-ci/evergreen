@@ -595,9 +595,6 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	if resp.StatusCode != http.StatusCreated {
 		return nil, NewAPIError(resp)
 	}
-	if resp.StatusCode == http.StatusBadRequest {
-		return nil, NewAPIError(resp)
-	}
 
 	reply := struct {
 		Patch *patch.Patch `json:"patch"`
