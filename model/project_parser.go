@@ -12,6 +12,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -158,7 +159,7 @@ func (pp *ParserProject) Insert() error {
 }
 
 func (pp *ParserProject) MarshalBSON() ([]byte, error) {
-	return bson.Marshal(pp)
+	return mgobson.Marshal(pp)
 }
 
 // MarshalBSON marshals the BSON and attempts to unmarshal it back to make sure
