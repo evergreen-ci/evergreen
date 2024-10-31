@@ -1921,14 +1921,25 @@ func UpdateAdminRoles(project *ProjectRef, toAdd, toDelete []string) error {
 	return err
 }
 
-// FindProjects queries the backing database for the specified projects
-func FindProjects(key string, limit int, sortDir int) ([]ProjectRef, error) {
-	projects, err := FindProjectRefs(key, limit, sortDir)
-	if err != nil {
-		return nil, errors.Wrapf(err, "fetching projects starting at project '%s'", key)
+// FindNonHiddenProjects returns limit visible project refs starting at project id key in the sortDir direction.
+func FindNonHiddenProjects(key string, limit int, sortDir int) ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+	filter := bson.M{
+		ProjectRefHiddenKey: bson.M{"$ne": true},
+	}
+	sortSpec := ProjectRefIdKey
+
+	if sortDir < 0 {
+		sortSpec = "-" + sortSpec
+		filter[ProjectRefIdKey] = bson.M{"$lt": key}
+	} else {
+		filter[ProjectRefIdKey] = bson.M{"$gte": key}
 	}
 
-	return projects, nil
+	q := db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
+	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
+
+	return projectRefs, errors.Wrapf(err, "fetching projects starting at project '%s'", key)
 }
 
 // UpdateProjectRevision updates the given project's revision
@@ -2118,25 +2129,6 @@ func FindPeriodicProjects() ([]ProjectRef, error) {
 	}
 
 	return res, nil
-}
-
-// FindProjectRefs returns limit refs starting at project id key in the sortDir direction.
-func FindProjectRefs(key string, limit int, sortDir int) ([]ProjectRef, error) {
-	projectRefs := []ProjectRef{}
-	filter := bson.M{}
-	sortSpec := ProjectRefIdKey
-
-	if sortDir < 0 {
-		sortSpec = "-" + sortSpec
-		filter[ProjectRefIdKey] = bson.M{"$lt": key}
-	} else {
-		filter[ProjectRefIdKey] = bson.M{"$gte": key}
-	}
-
-	q := db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
-	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
-
-	return projectRefs, err
 }
 
 // ValidateEnabledRepotracker checks if the repotracker is being enabled,
