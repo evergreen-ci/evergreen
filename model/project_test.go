@@ -1639,6 +1639,36 @@ func TestFindProjectsSuite(t *testing.T) {
 				ParameterStoreEnabled: true,
 			},
 			{
+				Id:                    "projectA-hidden",
+				Hidden:                utility.TruePtr(),
+				Enabled:               true,
+				CommitQueue:           CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:                 "evergreen-ci",
+				Repo:                  "gimlet",
+				Branch:                "main",
+				ParameterStoreEnabled: true,
+			},
+			{
+				Id:                    "projectB-hidden",
+				Hidden:                utility.TruePtr(),
+				Enabled:               true,
+				CommitQueue:           CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:                 "evergreen-ci",
+				Repo:                  "evergreen",
+				Branch:                "main",
+				ParameterStoreEnabled: true,
+			},
+			{
+				Id:                    "projectC-hidden",
+				Hidden:                utility.TruePtr(),
+				Enabled:               true,
+				CommitQueue:           CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:                 "mongodb",
+				Repo:                  "mongo",
+				Branch:                "main",
+				ParameterStoreEnabled: true,
+			},
+			{
 				Id:                    "projectD",
 				ParameterStoreEnabled: true,
 			},
@@ -1648,6 +1678,11 @@ func TestFindProjectsSuite(t *testing.T) {
 			},
 			{
 				Id:                    "projectF",
+				ParameterStoreEnabled: true,
+			},
+			{
+				Id:                    "projectF-hidden",
+				Hidden:                utility.TruePtr(),
 				ParameterStoreEnabled: true,
 			},
 			projectWithVars,
@@ -1728,60 +1763,60 @@ func (s *FindProjectsSuite) TearDownSuite() {
 }
 
 func (s *FindProjectsSuite) TestFetchTooManyAsc() {
-	projects, err := FindProjects("", 8, 1)
+	projects, err := FindNonHiddenProjects("", 8, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 7)
 }
 
 func (s *FindProjectsSuite) TestFetchTooManyDesc() {
-	projects, err := FindProjects("zzz", 8, -1)
+	projects, err := FindNonHiddenProjects("zzz", 8, -1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 7)
 }
 
 func (s *FindProjectsSuite) TestFetchExactNumber() {
-	projects, err := FindProjects("", 3, 1)
+	projects, err := FindNonHiddenProjects("", 3, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 3)
 }
 
 func (s *FindProjectsSuite) TestFetchTooFewAsc() {
-	projects, err := FindProjects("", 2, 1)
+	projects, err := FindNonHiddenProjects("", 2, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *FindProjectsSuite) TestFetchTooFewDesc() {
-	projects, err := FindProjects("zzz", 2, -1)
+	projects, err := FindNonHiddenProjects("zzz", 2, -1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyWithinBoundAsc() {
-	projects, err := FindProjects("projectB", 1, 1)
+	projects, err := FindNonHiddenProjects("projectB", 1, 1)
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyWithinBoundDesc() {
-	projects, err := FindProjects("projectD", 1, -1)
+	projects, err := FindNonHiddenProjects("projectD", 1, -1)
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundAsc() {
-	projects, err := FindProjects("zzz", 1, 1)
+	projects, err := FindNonHiddenProjects("zzz", 1, 1)
 	s.NoError(err)
 	s.Len(projects, 0)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundDesc() {
-	projects, err := FindProjects("aaa", 1, -1)
+	projects, err := FindNonHiddenProjects("aaa", 1, -1)
 	s.NoError(err)
 	s.Len(projects, 0)
 }
