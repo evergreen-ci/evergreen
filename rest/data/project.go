@@ -437,13 +437,14 @@ func HideBranch(projectID string) error {
 	}
 
 	skeletonProj := model.ProjectRef{
-		Id:        pRef.Id,
-		Owner:     pRef.Owner,
-		Repo:      pRef.Repo,
-		Branch:    pRef.Branch,
-		RepoRefId: pRef.RepoRefId,
-		Enabled:   false,
-		Hidden:    utility.TruePtr(),
+		Id:                    pRef.Id,
+		Owner:                 pRef.Owner,
+		Repo:                  pRef.Repo,
+		Branch:                pRef.Branch,
+		RepoRefId:             pRef.RepoRefId,
+		Enabled:               false,
+		Hidden:                utility.TruePtr(),
+		ParameterStoreEnabled: pRef.ParameterStoreEnabled,
 	}
 	if err := skeletonProj.Upsert(); err != nil {
 		return errors.Wrapf(err, "updating project '%s'", pRef.Id)

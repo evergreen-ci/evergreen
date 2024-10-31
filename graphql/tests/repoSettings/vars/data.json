@@ -72,6 +72,7 @@
         "setup_commands": null,
         "git_clone": false
       },
+      "parameter_store_enabled": true,
       "hidden": false
     }
   ],
@@ -79,6 +80,7 @@
     {
       "_id": "vars_test",
       "identifier": "varsTest",
+      "parameter_store_enabled": true,
       "display_name": "Vars test"
     }
   ],

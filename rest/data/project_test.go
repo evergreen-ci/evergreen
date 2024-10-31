@@ -90,6 +90,10 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 	s.setup = func() error {
 		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection))
 
+		projWithVars := &model.ProjectRef{
+			Id:                    projectId,
+			ParameterStoreEnabled: true,
+		}
 		projects := []*model.ProjectRef{
 			{
 				Id:                    "projectA",
@@ -130,10 +134,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 				Id:                    "projectF",
 				ParameterStoreEnabled: true,
 			},
-			{
-				Id:                    projectId,
-				ParameterStoreEnabled: true,
-			},
+			projWithVars,
 		}
 
 		for _, p := range projects {
@@ -145,18 +146,29 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			}
 		}
 
-		vars := &model.ProjectVars{
+		projVars := &model.ProjectVars{
 			Id:          projectId,
 			Vars:        map[string]string{"a": "1", "b": "3", "d": "4"},
 			PrivateVars: map[string]bool{"b": true},
 		}
-		s.NoError(vars.Insert())
-		vars = &model.ProjectVars{
+		s.NoError(projVars.Insert())
+		checkAndSetProjectVarsSynced(t, projWithVars, false)
+
+		repoWithVars := &model.RepoRef{
+			ProjectRef: model.ProjectRef{
+				Id:                    repoProjectId,
+				ParameterStoreEnabled: true,
+			},
+		}
+		s.Require().NoError(repoWithVars.Upsert())
+		repoVars := &model.ProjectVars{
 			Id:          repoProjectId,
 			Vars:        map[string]string{"a": "a_from_repo", "c": "new"},
 			PrivateVars: map[string]bool{"a": true},
 		}
-		s.NoError(vars.Insert())
+		s.NoError(repoVars.Insert())
+		checkAndSetProjectVarsSynced(t, &repoWithVars.ProjectRef, true)
+
 		before := getMockProjectSettings()
 		after := getMockProjectSettings()
 		after.GitHubAppAuth = githubapp.GithubAppAuth{
@@ -299,6 +311,24 @@ func checkParametersMatchVars(ctx context.Context, t *testing.T, pm model.Parame
 	}
 }
 
+func checkAndSetProjectVarsSynced(t *testing.T, projRef *model.ProjectRef, isRepoRef bool) {
+	var dbProjRef *model.ProjectRef
+	var err error
+	if isRepoRef {
+		dbRepoRef, err := model.FindOneRepoRef(projRef.Id)
+		require.NoError(t, err)
+		require.NotZero(t, dbRepoRef)
+		dbProjRef = &dbRepoRef.ProjectRef
+	} else {
+		dbProjRef, err = model.FindBranchProjectRef(projRef.Id)
+		require.NoError(t, err)
+		require.NotZero(t, dbProjRef)
+	}
+	assert.True(t, dbProjRef.ParameterStoreVarsSynced, "parameter store vars must be synced but they aren't")
+
+	projRef.ParameterStoreVarsSynced = true
+}
+
 func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -334,9 +364,9 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	_, ok = dbNewVars.Vars["a"]
 	s.False(ok)
 
-	s.True(newVars.PrivateVars["b"])
-	s.True(newVars.PrivateVars["c"])
-	s.False(newVars.PrivateVars["a"])
+	s.True(dbNewVars.PrivateVars["b"])
+	s.True(dbNewVars.PrivateVars["c"])
+	s.False(dbNewVars.PrivateVars["a"])
 
 	checkParametersMatchVars(ctx, s.T(), dbNewVars.Parameters, dbNewVars.Vars)
 
@@ -359,14 +389,21 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 }
 
 func TestUpdateProjectVarsByValue(t *testing.T) {
-	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, event.EventCollection))
+	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, fakeparameter.Collection, event.EventCollection))
+
+	pRef := model.ProjectRef{
+		Id:                    projectId,
+		ParameterStoreEnabled: true,
+	}
+	require.NoError(t, pRef.Insert())
 
 	vars := &model.ProjectVars{
-		Id:          projectId,
+		Id:          pRef.Id,
 		Vars:        map[string]string{"a": "1", "b": "3"},
 		PrivateVars: map[string]bool{"b": true},
 	}
 	require.NoError(t, vars.Insert())
+	checkAndSetProjectVarsSynced(t, &pRef, false)
 
 	resp, err := model.UpdateProjectVarsByValue("1", "11", "user", true, false)
 	assert.NoError(t, err)
@@ -420,36 +457,53 @@ func TestUpdateProjectVarsByValue(t *testing.T) {
 }
 
 func TestUpdateProjectVarsByValueWithEnabledOnly(t *testing.T) {
-	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, event.EventCollection, model.ProjectRefCollection))
-
-	enabledVars := &model.ProjectVars{
-		Id:          "enabledProject",
-		Vars:        map[string]string{"a": "1", "b": "3"},
-		PrivateVars: map[string]bool{"b": true},
-	}
-	disabledVars := &model.ProjectVars{
-		Id:          "disabledProject",
-		Vars:        map[string]string{"a": "1", "b": "3"},
-		PrivateVars: map[string]bool{"b": true},
-	}
-	repoVars := &model.ProjectVars{
-		Id:          "repoProject",
-		Vars:        map[string]string{"a": "1", "b": "3"},
-		PrivateVars: map[string]bool{"b": true},
-	}
-	require.NoError(t, db.InsertMany(model.ProjectVarsCollection, enabledVars, disabledVars, repoVars))
+	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, fakeparameter.Collection, event.EventCollection, model.ProjectRefCollection))
 
 	enabledRef := &model.ProjectRef{
-		Id:         "enabledProject",
-		Identifier: "enabledProjectIdent",
-		Enabled:    true,
+		Id:                    "enabledProject",
+		Identifier:            "enabledProjectIdent",
+		Enabled:               true,
+		ParameterStoreEnabled: true,
 	}
+	require.NoError(t, enabledRef.Insert())
 	disabledRef := &model.ProjectRef{
-		Id:         "disabledProject",
-		Identifier: "disabledProjectIdent",
-		Enabled:    false,
+		Id:                    "disabledProject",
+		Identifier:            "disabledProjectIdent",
+		Enabled:               false,
+		ParameterStoreEnabled: true,
 	}
-	require.NoError(t, db.InsertMany(model.ProjectRefCollection, enabledRef, disabledRef))
+	require.NoError(t, disabledRef.Insert())
+	repoRef := &model.RepoRef{
+		ProjectRef: model.ProjectRef{
+			Id:                    "repoProject",
+			Identifier:            "repoProjectIdent",
+			Enabled:               true,
+			ParameterStoreEnabled: true,
+		},
+	}
+	require.NoError(t, repoRef.Upsert())
+
+	enabledVars := &model.ProjectVars{
+		Id:          enabledRef.Id,
+		Vars:        map[string]string{"a": "1", "b": "3"},
+		PrivateVars: map[string]bool{"b": true},
+	}
+	require.NoError(t, enabledVars.Insert())
+	checkAndSetProjectVarsSynced(t, enabledRef, false)
+	disabledVars := &model.ProjectVars{
+		Id:          disabledRef.Id,
+		Vars:        map[string]string{"a": "1", "b": "3"},
+		PrivateVars: map[string]bool{"b": true},
+	}
+	require.NoError(t, disabledVars.Insert())
+	checkAndSetProjectVarsSynced(t, disabledRef, false)
+	repoVars := &model.ProjectVars{
+		Id:          repoRef.Id,
+		Vars:        map[string]string{"a": "1", "b": "3"},
+		PrivateVars: map[string]bool{"b": true},
+	}
+	require.NoError(t, repoVars.Insert())
+	checkAndSetProjectVarsSynced(t, &repoRef.ProjectRef, true)
 
 	resp, err := model.UpdateProjectVarsByValue("1", "11", "user", true, false)
 	assert.NoError(t, err)
@@ -468,7 +522,12 @@ func TestUpdateProjectVarsByValueWithEnabledOnly(t *testing.T) {
 }
 
 func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
-	s.NoError(model.CopyProjectVars(projectId, "project-copy"))
+	pRef := model.ProjectRef{
+		Id:                    "project-copy",
+		ParameterStoreEnabled: true,
+	}
+	s.Require().NoError(pRef.Insert())
+	s.NoError(model.CopyProjectVars(projectId, pRef.Id))
 	origProj, err := FindProjectVarsById(projectId, "", false)
 	s.NoError(err)
 
@@ -524,7 +583,7 @@ func TestCreateProject(t *testing.T) {
 	defer cancel()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, commitqueue.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, commitqueue.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
 
 		cocoaMock.ResetGlobalSecretCache()
 	}()
@@ -619,7 +678,7 @@ func TestCreateProject(t *testing.T) {
 			tctx, tcancel := context.WithCancel(context.Background())
 			defer tcancel()
 
-			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, commitqueue.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
+			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, commitqueue.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
 
 			cocoaMock.ResetGlobalSecretCache()
 
@@ -627,10 +686,11 @@ func TestCreateProject(t *testing.T) {
 			require.NoError(t, env.Configure(ctx))
 
 			pRef := model.ProjectRef{
-				Id:         "new_project",
-				Identifier: "new project identifier",
-				Owner:      "evergreen-ci",
-				Repo:       "treepo",
+				Id:                    "new_project",
+				Identifier:            "new project identifier",
+				Owner:                 "evergreen-ci",
+				Repo:                  "treepo",
+				ParameterStoreEnabled: true,
 			}
 
 			adminUser := user.DBUser{
@@ -711,7 +771,7 @@ func TestRequestS3Creds(t *testing.T) {
 }
 
 func TestHideBranch(t *testing.T) {
-	require.NoError(t, db.ClearCollections(model.RepoRefCollection, model.ProjectRefCollection, model.ProjectVarsCollection, model.ProjectAliasCollection))
+	require.NoError(t, db.ClearCollections(model.RepoRefCollection, model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, model.ProjectAliasCollection))
 
 	repo := model.RepoRef{
 		ProjectRef: model.ProjectRef{
@@ -723,15 +783,16 @@ func TestHideBranch(t *testing.T) {
 	assert.NoError(t, repo.Upsert())
 
 	project := &model.ProjectRef{
-		Identifier:  projectId,
-		Id:          projectId,
-		DisplayName: "test_project",
-		Owner:       repo.Owner,
-		Repo:        repo.Repo,
-		RepoRefId:   repo.Id,
-		Branch:      "branch",
-		Enabled:     true,
-		Hidden:      utility.ToBoolPtr(false),
+		Identifier:            projectId,
+		Id:                    projectId,
+		DisplayName:           "test_project",
+		Owner:                 repo.Owner,
+		Repo:                  repo.Repo,
+		RepoRefId:             repo.Id,
+		Branch:                "branch",
+		Enabled:               true,
+		Hidden:                utility.ToBoolPtr(false),
+		ParameterStoreEnabled: true,
 	}
 	require.NoError(t, project.Upsert())
 
@@ -749,6 +810,7 @@ func TestHideBranch(t *testing.T) {
 		PrivateVars: map[string]bool{"b": true},
 	}
 	require.NoError(t, vars.Insert())
+	checkAndSetProjectVarsSynced(t, project, false)
 
 	err := HideBranch(project.Id)
 	assert.NoError(t, err)
@@ -756,13 +818,15 @@ func TestHideBranch(t *testing.T) {
 	hiddenProj, err := model.FindMergedProjectRef(project.Id, "", true)
 	assert.NoError(t, err)
 	skeletonProj := model.ProjectRef{
-		Id:        project.Id,
-		Owner:     repo.Owner,
-		Repo:      repo.Repo,
-		Branch:    project.Branch,
-		RepoRefId: repo.Id,
-		Enabled:   false,
-		Hidden:    utility.TruePtr(),
+		Id:                       project.Id,
+		Owner:                    repo.Owner,
+		Repo:                     repo.Repo,
+		Branch:                   project.Branch,
+		RepoRefId:                repo.Id,
+		Enabled:                  false,
+		Hidden:                   utility.TruePtr(),
+		ParameterStoreEnabled:    true,
+		ParameterStoreVarsSynced: true,
 	}
 	assert.Equal(t, skeletonProj, *hiddenProj)
 
@@ -771,7 +835,8 @@ func TestHideBranch(t *testing.T) {
 	assert.Equal(t, 0, len(projAliases))
 
 	skeletonProjVars := model.ProjectVars{
-		Id: project.Id,
+		Id:   project.Id,
+		Vars: map[string]string{},
 	}
 	projVars, err := model.FindOneProjectVars(project.Id)
 	assert.NoError(t, err)

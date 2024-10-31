@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
@@ -4856,7 +4857,7 @@ func TestValidateContainers(t *testing.T) {
 	}
 	assert.NoError(t, evergreen.UpdateConfig(ctx, testutil.TestConfig()))
 	defer func() {
-		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection))
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection))
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, p *model.Project, ref *model.ProjectRef){
 		"SucceedsWithValidProjectAndRef": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
@@ -4943,7 +4944,7 @@ func TestValidateContainers(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection))
+			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection))
 
 			p := &model.Project{
 				Identifier: "proj",
@@ -4985,6 +4986,7 @@ func TestValidateContainers(t *testing.T) {
 						Type:       model.ContainerSecretRepoCreds,
 					},
 				},
+				ParameterStoreEnabled: true,
 			}
 
 			require.NoError(t, ref.Upsert())

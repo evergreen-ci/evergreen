@@ -1254,6 +1254,7 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	if len(allEnabledProjects) == 0 {
 		repoRef.ParameterStoreEnabled = p.ParameterStoreEnabled
 	}
+	repoRef.ParameterStoreVarsSynced = false
 	_, err = SetTracksPushEvents(context.Background(), &repoRef.ProjectRef)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{

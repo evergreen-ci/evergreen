@@ -12,6 +12,7 @@ import (
 	cocoaMock "github.com/evergreen-ci/cocoa/mock"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
@@ -50,7 +51,7 @@ func TestProjectPatchSuite(t *testing.T) {
 }
 
 func (s *ProjectPatchByIDSuite) SetupTest() {
-	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection, serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, serviceModel.RepositoriesCollection, serviceModel.ProjectAliasCollection,
+	s.NoError(db.ClearCollections(serviceModel.RepoRefCollection, user.Collection, serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, fakeparameter.Collection, serviceModel.RepositoriesCollection, serviceModel.ProjectAliasCollection,
 		evergreen.ScopeCollection, evergreen.RoleCollection, evergreen.ConfigCollection))
 	user := user.DBUser{
 		Id:          "langdon.alger",
@@ -228,7 +229,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Require().Equal(http.StatusOK, resp.Status())
+	s.Require().Equal(http.StatusOK, resp.Status(), resp.Data())
 	pRef, err := data.FindProjectById("dimoxinil", false, false)
 	s.NoError(err)
 	s.Require().Equal("EVG", pRef.BuildBaronSettings.TicketCreateProject)
@@ -360,7 +361,7 @@ func (s *ProjectPatchByIDSuite) TestUpdateParsleyFilters() {
 	resp = s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(resp.Status(), http.StatusOK, resp.Data())
 
 	p, err := data.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
@@ -558,7 +559,7 @@ func (s *ProjectPutSuite) SetupTest() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, user.Collection))
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, fakeparameter.Collection, user.Collection))
 	s.NoError(getTestProjectRef().Insert())
 
 	settings := s.env.Settings()
@@ -680,7 +681,7 @@ func TestProjectGetByIDSuite(t *testing.T) {
 }
 
 func (s *ProjectGetByIDSuite) SetupTest() {
-	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, serviceModel.ProjectConfigCollection))
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, fakeparameter.Collection, serviceModel.ProjectConfigCollection))
 	s.NoError(getTestProjectRef().Insert())
 	s.NoError(getTestVar().Insert())
 	s.NoError(getTestProjectConfig().Insert())
@@ -909,11 +910,12 @@ func getTestProjectRef() *serviceModel.ProjectRef {
 		CommitQueue: serviceModel.CommitQueueParams{
 			Enabled: utility.FalsePtr(),
 		},
-		Hidden:               utility.FalsePtr(),
-		PatchingDisabled:     utility.FalsePtr(),
-		Admins:               []string{"langdon.alger"},
-		NotifyOnBuildFailure: utility.FalsePtr(),
-		DisabledStatsCache:   utility.TruePtr(),
+		Hidden:                utility.FalsePtr(),
+		PatchingDisabled:      utility.FalsePtr(),
+		Admins:                []string{"langdon.alger"},
+		NotifyOnBuildFailure:  utility.FalsePtr(),
+		DisabledStatsCache:    utility.TruePtr(),
+		ParameterStoreEnabled: true,
 	}
 }
 
@@ -1028,6 +1030,7 @@ func TestDeleteProject(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(
 		serviceModel.ProjectRefCollection,
 		serviceModel.RepoRefCollection,
+		fakeparameter.Collection,
 		serviceModel.ProjectAliasCollection,
 		serviceModel.ProjectVarsCollection,
 		evergreen.ScopeCollection,
@@ -1040,9 +1043,10 @@ func TestDeleteProject(t *testing.T) {
 
 	repo := serviceModel.RepoRef{
 		ProjectRef: serviceModel.ProjectRef{
-			Id:    "repo_ref",
-			Owner: "mongodb",
-			Repo:  "test_repo",
+			Id:                    "repo_ref",
+			Owner:                 "mongodb",
+			Repo:                  "test_repo",
+			ParameterStoreEnabled: true,
 		},
 	}
 	assert.NoError(t, repo.Upsert())
@@ -1052,21 +1056,23 @@ func TestDeleteProject(t *testing.T) {
 	var projects []serviceModel.ProjectRef
 	for i := 0; i < numGoodProjects; i++ {
 		project := serviceModel.ProjectRef{
-			Id:                   fmt.Sprintf("id_%d", i),
-			Owner:                "mongodb",
-			Repo:                 "test_repo",
-			Branch:               fmt.Sprintf("branch_%d", i),
-			Enabled:              true,
-			DisplayName:          fmt.Sprintf("display_%d", i),
-			RepoRefId:            "repo_ref",
-			TracksPushEvents:     utility.TruePtr(),
-			PRTestingEnabled:     utility.TruePtr(),
-			Admins:               []string{"admin0", "admin1"},
-			NotifyOnBuildFailure: utility.TruePtr(),
+			Id:                    fmt.Sprintf("id_%d", i),
+			Owner:                 "mongodb",
+			Repo:                  "test_repo",
+			Branch:                fmt.Sprintf("branch_%d", i),
+			Enabled:               true,
+			DisplayName:           fmt.Sprintf("display_%d", i),
+			RepoRefId:             "repo_ref",
+			TracksPushEvents:      utility.TruePtr(),
+			PRTestingEnabled:      utility.TruePtr(),
+			Admins:                []string{"admin0", "admin1"},
+			NotifyOnBuildFailure:  utility.TruePtr(),
+			ParameterStoreEnabled: true,
 		}
 
 		projects = append(projects, project)
 		require.NoError(t, project.Add(&u))
+		project.ParameterStoreVarsSynced = true
 	}
 
 	numAliases := 2
@@ -1103,13 +1109,15 @@ func TestDeleteProject(t *testing.T) {
 		hiddenProj, err := serviceModel.FindMergedProjectRef(projects[i].Id, "", true)
 		assert.NoError(t, err)
 		skeletonProj := serviceModel.ProjectRef{
-			Id:        projects[i].Id,
-			Owner:     repo.Owner,
-			Repo:      repo.Repo,
-			Branch:    projects[i].Branch,
-			RepoRefId: repo.Id,
-			Enabled:   false,
-			Hidden:    utility.TruePtr(),
+			Id:                       projects[i].Id,
+			Owner:                    repo.Owner,
+			Repo:                     repo.Repo,
+			Branch:                   projects[i].Branch,
+			RepoRefId:                repo.Id,
+			Enabled:                  false,
+			Hidden:                   utility.TruePtr(),
+			ParameterStoreEnabled:    true,
+			ParameterStoreVarsSynced: true,
 		}
 		assert.Equal(t, skeletonProj, *hiddenProj)
 
@@ -1118,7 +1126,8 @@ func TestDeleteProject(t *testing.T) {
 		assert.Equal(t, 0, len(projAliases))
 
 		skeletonProjVars := serviceModel.ProjectVars{
-			Id: projects[i].Id,
+			Id:   projects[i].Id,
+			Vars: map[string]string{},
 		}
 		projVars, err := serviceModel.FindOneProjectVars(projects[i].Id)
 		assert.NoError(t, err)
@@ -1138,8 +1147,9 @@ func TestDeleteProject(t *testing.T) {
 
 	// Project with UseRepoSettings == false
 	nonTrackingProject := serviceModel.ProjectRef{
-		Id:        "non_tracking_project",
-		RepoRefId: "",
+		Id:                    "non_tracking_project",
+		RepoRefId:             "",
+		ParameterStoreEnabled: true,
 	}
 	require.NoError(t, nonTrackingProject.Insert())
 	pdh.projectName = nonTrackingProject.Id
@@ -1151,21 +1161,22 @@ func TestAttachProjectToRepo(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	assert.NoError(t, db.ClearCollections(serviceModel.ProjectRefCollection,
-		serviceModel.RepoRefCollection, serviceModel.ProjectVarsCollection, user.Collection,
+		serviceModel.RepoRefCollection, serviceModel.ProjectVarsCollection, fakeparameter.Collection, user.Collection,
 		evergreen.ScopeCollection, evergreen.RoleCollection, evergreen.ConfigCollection))
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	u := &user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())
 
 	pRef := serviceModel.ProjectRef{
-		Id:         "project1",
-		Identifier: "projectIdent",
-		Owner:      "evergreen-ci",
-		Repo:       "evergreen",
-		Branch:     "main",
-		RepoRefId:  "hello",
-		Enabled:    true,
-		Admins:     []string{"me"},
+		Id:                    "project1",
+		Identifier:            "projectIdent",
+		Owner:                 "evergreen-ci",
+		Repo:                  "evergreen",
+		Branch:                "main",
+		RepoRefId:             "hello",
+		Enabled:               true,
+		Admins:                []string{"me"},
+		ParameterStoreEnabled: true,
 	}
 	assert.NoError(t, pRef.Insert())
 	projVars := serviceModel.ProjectVars{
@@ -1225,13 +1236,14 @@ func TestDetachProjectFromRepo(t *testing.T) {
 	assert.NoError(t, u.Insert())
 
 	pRef := serviceModel.ProjectRef{
-		Id:         "project1",
-		Identifier: "projectIdent",
-		Owner:      "evergreen-ci",
-		Repo:       "evergreen",
-		Branch:     "main",
-		Enabled:    true,
-		Admins:     []string{"me"},
+		Id:                    "project1",
+		Identifier:            "projectIdent",
+		Owner:                 "evergreen-ci",
+		Repo:                  "evergreen",
+		Branch:                "main",
+		Enabled:               true,
+		Admins:                []string{"me"},
+		ParameterStoreEnabled: true,
 	}
 	assert.NoError(t, pRef.Insert())
 	projVars := serviceModel.ProjectVars{
@@ -1296,9 +1308,9 @@ func TestProjectPutRotateSuite(t *testing.T) {
 }
 
 func (s *ProjectPutRotateSuite) SetupTest() {
-	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection))
-	s.NoError(getTestVar().Insert())
+	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, fakeparameter.Collection))
 	s.NoError(getTestProjectRef().Insert())
+	s.NoError(getTestVar().Insert())
 	s.rm = makeProjectVarsPut().(*projectVarsPutHandler)
 }
 

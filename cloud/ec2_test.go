@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
@@ -69,7 +70,7 @@ func (s *EC2Suite) SetupTest() {
 	}
 	s.env = mockEnv
 
-	s.Require().NoError(db.ClearCollections(host.Collection, host.VolumesCollection, task.Collection, model.ProjectVarsCollection, user.Collection))
+	s.Require().NoError(db.ClearCollections(host.Collection, host.VolumesCollection, task.Collection, model.ProjectVarsCollection, fakeparameter.Collection, user.Collection))
 	s.onDemandOpts = &EC2ManagerOptions{
 		client: &awsClientMock{},
 	}
@@ -470,8 +471,14 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	h.SpawnOptions.SpawnedByTask = true
 	s.Require().NoError(h.Insert(s.ctx))
 	s.Require().NoError(t.Insert())
+
+	pRef := &model.ProjectRef{
+		Id:                    project,
+		ParameterStoreEnabled: true,
+	}
+	s.Require().NoError(pRef.Insert())
 	newVars := &model.ProjectVars{
-		Id: project,
+		Id: pRef.Id,
 		Vars: map[string]string{
 			model.ProjectAWSSSHKeyName:  "evg_auto_example_project",
 			model.ProjectAWSSSHKeyValue: "key_material",
