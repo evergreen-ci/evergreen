@@ -239,6 +239,7 @@ func TestGetTaskSyncReadCredentials(t *testing.T) {
 		Id: evergreen.ParentPatchUser,
 	}
 	newSettings := &model.APIAdminSettings{
+		Api:       &model.APIapiConfig{URL: utility.ToStringPtr("example.com")},
 		ApiUrl:    utility.ToStringPtr("test"),
 		ConfigDir: utility.ToStringPtr("test"),
 		AuthConfig: &model.APIAuthConfig{

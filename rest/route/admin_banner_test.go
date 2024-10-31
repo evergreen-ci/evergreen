@@ -101,6 +101,7 @@ func TestFetchBanner(t *testing.T) {
 	newSettings := &model.APIAdminSettings{
 		Banner:      utility.ToStringPtr("foo"),
 		BannerTheme: utility.ToStringPtr("warning"),
+		Api:         &model.APIapiConfig{URL: utility.ToStringPtr("example.com")},
 		ApiUrl:      utility.ToStringPtr("test"),
 		ConfigDir:   utility.ToStringPtr("test"),
 		AuthConfig: &model.APIAuthConfig{

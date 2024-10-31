@@ -21,6 +21,7 @@ configdir: "config_test"
 api_url: http://localhost:9090
 api:
   github_webhook_secret: "test"
+  url: http://localhost:9090
 ui:
   secret: "secret for UI"
   defaultproject: "mci"

@@ -66,7 +66,7 @@ repotracker:
 
 api:
   github_webhook_secret: "test"
-  url: "www.mongodb.com"
+  url: "https://localhost:8443"
   logfile: "/tmp/api_test.log"
   httplistenaddr: ":9090"
   httpslistenaddr: ":8443"
