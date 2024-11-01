@@ -65,7 +65,7 @@ func expandMap(inputMap reflect.Value, expansions *Expansions) error {
 		case reflect.String:
 			expandedValString, err := expansions.ExpandString(val.String())
 			if err != nil {
-				return errors.Wrapf(err, "expanding value '%v'", val.String())
+				return errors.Wrapf(err, "expanding value '%s'", val.String())
 			}
 			expandedVal = reflect.ValueOf(expandedValString)
 		case reflect.Map:
