@@ -207,7 +207,7 @@ buildvariants:
   tasks:
   - name: compile
   - name: passing_test
-    cron: @daily // overrides build variant cron
+    cron: '@daily' // overrides build variant cron
   - name: failing_test
   - name: timeout_test
 - name: ubuntu

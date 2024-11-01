@@ -41,7 +41,7 @@ buildvariants:
   tasks:
   - name: first_test
   - name: second_test
-    cron: @daily # overrides build variant cron
+    cron: '@daily' # overrides build variant cron
 ```
 
 ### Batchtime
