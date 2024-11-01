@@ -5,10 +5,11 @@
         activated
         id
         tasks {
-          status
           id
           displayName
+          displayStatus
           execution
+          status
         }
         version
       }
