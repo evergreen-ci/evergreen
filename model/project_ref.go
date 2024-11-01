@@ -2556,17 +2556,16 @@ func (p *ProjectRef) CheckAndUpdateAutoRestartLimit(maxDailyAutoRestarts int) er
 		return nil
 	}
 	var update bson.M
-	now := time.Now()
-	oneDayAgo := now.Add(-1 * 24 * time.Hour)
 	// If the last time the project auto restarted a task was within the day, increment the number
 	// of auto restarted tasks counter, erroring if the global limit is breached.
-	if p.LastAutoRestartedTaskAt.After(oneDayAgo) {
+	if util.TimeIsWithinLastDay(p.LastAutoRestartedTaskAt) {
 		update = bson.M{
 			"$set": bson.M{projectRefLastAutoRestartedTaskAtKey: p.NumAutoRestartedTasks + 1},
 		}
 		if 1+p.NumAutoRestartedTasks >= maxDailyAutoRestarts {
-			minutesRemaining := 24 - int(now.Sub(p.LastAutoRestartedTaskAt).Hours())
-			return errors.Errorf("project '%s' has auto-restarted %d out of %d allowed tasks in the past day, limit refreshes in %d hour(s)", p.Id, p.NumAutoRestartedTasks, maxDailyAutoRestarts, minutesRemaining)
+			now := time.Now()
+			hoursRemaining := 24 - int(now.Sub(p.LastAutoRestartedTaskAt).Hours())
+			return errors.Errorf("project '%s' has auto-restarted %d out of %d allowed tasks in the past day, limit refreshes in %d hour(s)", p.Id, p.NumAutoRestartedTasks, maxDailyAutoRestarts, hoursRemaining)
 		}
 	} else {
 		// Otherwise, if the project has not automatically restarted any tasks within the past day, reset the timestamp to now,
@@ -2578,7 +2577,7 @@ func (p *ProjectRef) CheckAndUpdateAutoRestartLimit(maxDailyAutoRestarts int) er
 			},
 		}
 	}
-	return db.Update(ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, update)
+	return errors.Wrap(db.Update(ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, update), "updating project's auto-restart limit")
 }
 
 // isActiveCronTimeRange checks that the proposed cron should activate now or
