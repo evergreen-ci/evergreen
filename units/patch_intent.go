@@ -29,9 +29,10 @@ import (
 )
 
 const (
-	patchIntentJobName    = "patch-intent-processor"
-	githubDependabotUser  = "dependabot[bot]"
-	maxPatchIntentJobTime = 10 * time.Minute
+	patchIntentJobName         = "patch-intent-processor"
+	githubDependabotUser       = "dependabot[bot]"
+	BuildTasksAndVariantsError = "building tasks and variants"
+	maxPatchIntentJobTime      = 10 * time.Minute
 )
 
 func init() {
@@ -357,7 +358,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if err = j.buildTasksAndVariants(patchDoc, patchedProject); err != nil {
-		return err
+		return errors.Wrap(err, BuildTasksAndVariantsError)
 	}
 
 	if (j.intent.ShouldFinalizePatch() || patchDoc.IsCommitQueuePatch()) &&
