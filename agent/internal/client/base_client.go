@@ -279,7 +279,7 @@ func (c *baseCommunicator) GetProject(ctx context.Context, taskData TaskData) (*
 	defer resp.Body.Close()
 
 	respBytes, err := io.ReadAll(resp.Body)
-	if err == nil {
+	if err != nil {
 		return nil, errors.Wrap(err, "reading parser project from response")
 	}
 
