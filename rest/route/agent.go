@@ -30,7 +30,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // GET /rest/v2/agent/cedar_config
@@ -588,7 +587,7 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("parser project '%s' not found", v.Id),
 		})
 	}
-	projBytes, err := bson.Marshal(pp)
+	projBytes, err := pp.RetryMarshalBSON(5)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "marshalling project bytes to bson"))
 	}
