@@ -353,8 +353,18 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 		}
 	}
 
+	var versionDoc *model.Version
+	if confPatch == nil {
+		grip.Info("Fetching version document for description.")
+		versionDoc, err = a.comm.GetTaskVersion(ctx, tc.task, "")
+		if err != nil {
+			// Don't return an error since it's not essential to have the version.
+			grip.Info("Error fetching version document for description.")
+		}
+	}
+
 	grip.Info("Constructing task config.")
-	taskConfig, err := internal.NewTaskConfig(a.opts.WorkingDirectory, confDistro, project, tsk, confRef, confPatch, expansionsAndVars)
+	taskConfig, err := internal.NewTaskConfig(a.opts.WorkingDirectory, confDistro, project, tsk, confRef, confPatch, versionDoc, expansionsAndVars)
 	if err != nil {
 		return nil, err
 	}

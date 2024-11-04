@@ -143,7 +143,7 @@ func (s *AgentSuite) SetupTest() {
 	taskConfig, err := internal.NewTaskConfig(s.testTmpDirName, &apimodels.DistroView{}, project, &s.task, &model.ProjectRef{
 		Id:         "project_id",
 		Identifier: "project_identifier",
-	}, &patch.Patch{}, &apimodels.ExpansionsAndVars{Expansions: util.Expansions{}})
+	}, &patch.Patch{}, nil, &apimodels.ExpansionsAndVars{Expansions: util.Expansions{}})
 	s.Require().NoError(err)
 
 	s.tc = &taskContext{

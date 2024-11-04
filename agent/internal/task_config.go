@@ -56,6 +56,10 @@ type TaskConfig struct {
 	CommandCleanups    []CommandCleanup
 	MaxExecTimeoutSecs int
 
+	// PatchOrVersionDescription holds the description of a patch or
+	// message of a version to be used in the otel attributes.
+	PatchOrVersionDescription string
+
 	mu sync.RWMutex
 }
 
@@ -135,7 +139,12 @@ func (t *TaskConfig) GetExecTimeout() int {
 // NewTaskConfig validates that the required inputs are given and populates the
 // information necessary for a task to run. It is generally preferred to use
 // this function over initializing the TaskConfig struct manually.
-func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t *task.Task, r *model.ProjectRef, patchDoc *patch.Patch, e *apimodels.ExpansionsAndVars) (*TaskConfig, error) {
+// The patchDoc is optional and should be provided if the task is a PR or
+// github merge queue task. It also propogates the patch description to
+// the task config and otel attributes.
+// If the patchDoc is nil, a versionDoc should be provided (optional as well)
+// to get the version description for the otel attributes.
+func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t *task.Task, r *model.ProjectRef, patchDoc *patch.Patch, versionDoc *model.Version, e *apimodels.ExpansionsAndVars) (*TaskConfig, error) {
 	if p == nil {
 		return nil, errors.Errorf("project '%s' is nil", t.Project)
 	}
@@ -196,6 +205,9 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 	if patchDoc != nil {
 		taskConfig.GithubPatchData = patchDoc.GithubPatchData
 		taskConfig.GithubMergeData = patchDoc.GithubMergeData
+		taskConfig.PatchOrVersionDescription = patchDoc.Description
+	} else if versionDoc != nil {
+		taskConfig.PatchOrVersionDescription = versionDoc.Message
 	}
 
 	return taskConfig, nil
@@ -203,18 +215,19 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 
 func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 	attributes := map[string]string{
-		evergreen.TaskIDOtelAttribute:            tc.Task.Id,
-		evergreen.TaskNameOtelAttribute:          tc.Task.DisplayName,
-		evergreen.TaskExecutionOtelAttribute:     strconv.Itoa(tc.Task.Execution),
-		evergreen.VersionIDOtelAttribute:         tc.Task.Version,
-		evergreen.VersionRequesterOtelAttribute:  tc.Task.Requester,
-		evergreen.BuildIDOtelAttribute:           tc.Task.BuildId,
-		evergreen.BuildNameOtelAttribute:         tc.Task.BuildVariant,
-		evergreen.ProjectIdentifierOtelAttribute: tc.ProjectRef.Identifier,
-		evergreen.ProjectOrgOtelAttribute:        tc.ProjectRef.Owner,
-		evergreen.ProjectRepoOtelAttribute:       tc.ProjectRef.Repo,
-		evergreen.ProjectIDOtelAttribute:         tc.ProjectRef.Id,
-		evergreen.DistroIDOtelAttribute:          tc.Task.DistroId,
+		evergreen.TaskIDOtelAttribute:             tc.Task.Id,
+		evergreen.TaskNameOtelAttribute:           tc.Task.DisplayName,
+		evergreen.TaskExecutionOtelAttribute:      strconv.Itoa(tc.Task.Execution),
+		evergreen.VersionIDOtelAttribute:          tc.Task.Version,
+		evergreen.VersionRequesterOtelAttribute:   tc.Task.Requester,
+		evergreen.BuildIDOtelAttribute:            tc.Task.BuildId,
+		evergreen.BuildNameOtelAttribute:          tc.Task.BuildVariant,
+		evergreen.ProjectIdentifierOtelAttribute:  tc.ProjectRef.Identifier,
+		evergreen.ProjectOrgOtelAttribute:         tc.ProjectRef.Owner,
+		evergreen.ProjectRepoOtelAttribute:        tc.ProjectRef.Repo,
+		evergreen.ProjectIDOtelAttribute:          tc.ProjectRef.Id,
+		evergreen.DistroIDOtelAttribute:           tc.Task.DistroId,
+		evergreen.VersionDescriptionOtelAttribute: tc.PatchOrVersionDescription,
 	}
 	if tc.GithubPatchData.PRNumber != 0 {
 		attributes[evergreen.VersionPRNumOtelAttribute] = strconv.Itoa(tc.GithubPatchData.PRNumber)

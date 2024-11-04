@@ -410,6 +410,10 @@ func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData, patchId string) (*
 	return &patchModel.Patch{}, nil
 }
 
+func (c *Mock) GetTaskVersion(ctx context.Context, td TaskData, versionId string) (*serviceModel.Version, error) {
+	return &serviceModel.Version{}, nil
+}
+
 // CreateSpawnHost will return a mock host that would have been intended
 func (*Mock) CreateSpawnHost(ctx context.Context, spawnRequest *model.HostRequestOptions) (*model.APIHost, error) {
 	mockHost := &model.APIHost{

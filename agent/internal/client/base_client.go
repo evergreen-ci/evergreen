@@ -459,7 +459,7 @@ func (c *baseCommunicator) GetPullRequestInfo(ctx context.Context, taskData Task
 // GetTaskPatch tries to get the patch data from the server in json format,
 // and unmarhals it into a patch struct. The GET request is attempted
 // multiple times upon failure. If patchId is not specified, the task's
-// patch is returned
+// patch is returned.
 func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, patchId string) (*patchmodel.Patch, error) {
 	patch := patchmodel.Patch{}
 	info := requestInfo{
@@ -482,6 +482,31 @@ func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, 
 	}
 
 	return &patch, nil
+}
+
+// GetTaskVersion tries to get the patch data from the server in json format,
+// and unmarhals it into a version struct. The GET request is attempted
+// multiple times upon failure. If versionId is not specified, the task's
+// version is returned.
+func (c *baseCommunicator) GetTaskVersion(ctx context.Context, taskData TaskData, versionId string) (*model.Version, error) {
+	info := requestInfo{
+		method:   http.MethodGet,
+		taskData: &taskData,
+	}
+	suffix := "git/version"
+	info.setTaskPathSuffix(suffix)
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, util.RespErrorf(resp, errors.Wrapf(err, "getting version '%s' for task", versionId).Error())
+	}
+	defer resp.Body.Close()
+
+	version := model.Version{}
+	if err = utility.ReadJSON(resp.Body, &version); err != nil {
+		return nil, errors.Wrap(err, "reading version for task from response")
+	}
+
+	return &version, nil
 }
 
 // GetCedarConfig returns the Cedar service configuration.

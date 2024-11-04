@@ -244,6 +244,7 @@ func TestArchiveAutoPackExecute(t *testing.T) {
 				&task.Task{BuildVariant: "bv"},
 				&model.ProjectRef{},
 				&patch.Patch{},
+				nil,
 				&apimodels.ExpansionsAndVars{},
 			)
 			require.NoError(t, err)
