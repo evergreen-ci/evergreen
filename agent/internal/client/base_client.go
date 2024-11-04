@@ -267,8 +267,9 @@ func (c *baseCommunicator) GetDistroAMI(ctx context.Context, distro, region stri
 
 func (c *baseCommunicator) GetProject(ctx context.Context, taskData TaskData) (*model.Project, error) {
 	info := requestInfo{
-		method:   http.MethodGet,
-		taskData: &taskData,
+		method:             http.MethodGet,
+		taskData:           &taskData,
+		retryOnInvalidBody: true, // This route has returned an invalid body for older distros. See DEVPROD-7885.
 	}
 	info.setTaskPathSuffix("parser_project")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -277,15 +278,12 @@ func (c *baseCommunicator) GetProject(ctx context.Context, taskData TaskData) (*
 	}
 	defer resp.Body.Close()
 
-	// Retry reading body since it may error on certain distros for certain go versions.
-	for i := 0; i < c.retry.MaxAttempts; i++ {
-		var respBytes []byte
-		respBytes, err = io.ReadAll(resp.Body)
-		if err == nil {
-			return model.GetProjectFromBSON(respBytes)
-		}
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading parser project from response")
 	}
-	return nil, errors.Wrap(err, "reading parser project from response")
+
+	return model.GetProjectFromBSON(respBytes)
 }
 
 func (c *baseCommunicator) GetExpansions(ctx context.Context, taskData TaskData) (util.Expansions, error) {

@@ -30,7 +30,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // GET /rest/v2/agent/cedar_config
@@ -347,6 +346,24 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task has already reached the maximum (%d) number of automatic restarts", evergreen.MaxAutomaticRestarts),
 		})
 	}
+	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, false)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s' for version '%s'", t.Project, t.Version))
+	}
+	if projectRef == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    errors.Errorf("project '%s' not found", t.Project).Error(),
+		})
+	}
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
+	}
+	maxDailyAutoRestarts := settings.TaskLimits.MaxDailyAutomaticRestarts
+	if err = projectRef.CheckAndUpdateAutoRestartLimit(maxDailyAutoRestarts); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "checking auto restart limit for '%s'", projectRef.Id))
+	}
 	if err = taskToRestart.SetResetWhenFinishedWithInc(); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting reset when finished for task '%s'", h.taskID))
 	}
@@ -570,7 +587,7 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("parser project '%s' not found", v.Id),
 		})
 	}
-	projBytes, err := bson.Marshal(pp)
+	projBytes, err := pp.RetryMarshalBSON(5)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "marshalling project bytes to bson"))
 	}

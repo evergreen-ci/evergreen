@@ -35,10 +35,12 @@ func GetEC2InstanceID(ctx context.Context) (string, error) {
 		minDelay    = time.Second
 		maxDelay    = 10 * time.Second
 	)
-	resp, err := utility.RetryRequest(ctx, req, utility.RetryOptions{
-		MaxAttempts: maxAttempts,
-		MinDelay:    minDelay,
-		MaxDelay:    maxDelay,
+	resp, err := utility.RetryRequest(ctx, req, utility.RetryRequestOptions{
+		RetryOptions: utility.RetryOptions{
+			MaxAttempts: maxAttempts,
+			MinDelay:    minDelay,
+			MaxDelay:    maxDelay,
+		},
 	})
 	if resp != nil {
 		defer resp.Body.Close()
