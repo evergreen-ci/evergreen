@@ -140,7 +140,7 @@ func (t *TaskConfig) GetExecTimeout() int {
 // information necessary for a task to run. It is generally preferred to use
 // this function over initializing the TaskConfig struct manually.
 // The patchDoc is optional and should be provided if the task is a PR or
-// github merge queue task. It also propogates the patch description to
+// github merge queue task. It also propagates the patch description to
 // the task config and otel attributes.
 // If the patchDoc is nil, a versionDoc should be provided (optional as well)
 // to get the version description for the otel attributes.
