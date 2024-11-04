@@ -79,6 +79,31 @@ func (r *permissionsResolver) ProjectPermissions(ctx context.Context, obj *Permi
 	}, nil
 }
 
+// RepoPermissions is the resolver for the repoPermissions field.
+func (r *permissionsResolver) RepoPermissions(ctx context.Context, obj *Permissions, options RepoPermissionsOptions) (*RepoPermissions, error) {
+	usr, err := user.FindOneById(obj.UserID)
+	if err != nil {
+		return nil, ResourceNotFound.Send(ctx, "user not found")
+	}
+	repo, err := model.FindOneRepoRef(options.RepoID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting repo '%s': %s", options.RepoID, err.Error()))
+	}
+	if repo == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("repo '%s' not found", options.RepoID))
+	}
+
+	hasRepoViewPermission, err := model.UserHasRepoViewPermission(usr, repo.Id)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("checking repo view permission for '%s': %s", repo.Id, err.Error()))
+	}
+
+	return &RepoPermissions{
+		Edit: userHasProjectSettingsPermission(usr, repo.Id, evergreen.ProjectSettingsEdit.Value),
+		View: hasRepoViewPermission,
+	}, nil
+}
+
 // Permissions returns PermissionsResolver implementation.
 func (r *Resolver) Permissions() PermissionsResolver { return &permissionsResolver{r} }
 
