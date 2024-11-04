@@ -261,15 +261,59 @@ func TestMarkTaskForReset(t *testing.T) {
 			assert.True(t, foundTask.IsAutomaticRestart)
 			assert.Equal(t, 1, foundTask.NumAutomaticRestarts)
 		},
+		"SuccessfullyChecksMaxRestartLimit": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
+			// Should succeed normally for first task
+			rh.taskID = "t2"
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			foundTask, err := task.FindOneId("t2")
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			assert.True(t, foundTask.ResetWhenFinished)
+			assert.True(t, foundTask.IsAutomaticRestart)
+			assert.Equal(t, 1, foundTask.NumAutomaticRestarts)
+
+			// Should fail on second task since a limit is in place of 1
+			rh.taskID = "t3"
+			resp = rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusInternalServerError, resp.Status())
+			require.NotNil(t, resp.Data())
+			assert.Contains(t, resp.Data().(gimlet.ErrorResponse).Message, "project 'p1' has auto-restarted 1 out of 1 allowed tasks in the past day")
+
+			// Should succeed again if simulating >1 day passing
+			pRef := model.ProjectRef{
+				Id:                      "p1",
+				NumAutoRestartedTasks:   1,
+				LastAutoRestartedTaskAt: time.Now().Add(-25 * time.Hour),
+			}
+			require.NoError(t, pRef.Upsert())
+			rh.taskID = "t4"
+			resp = rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			foundTask, err = task.FindOneId("t4")
+			require.NoError(t, err)
+			require.NotNil(t, foundTask)
+			assert.True(t, foundTask.ResetWhenFinished)
+			assert.True(t, foundTask.IsAutomaticRestart)
+			assert.Equal(t, 1, foundTask.NumAutomaticRestarts)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
-
-			require.NoError(t, db.ClearCollections(task.Collection))
+			require.NoError(t, db.ClearCollections(task.Collection, model.ProjectRefCollection))
+			settings := &evergreen.Settings{
+				TaskLimits: evergreen.TaskLimitsConfig{
+					MaxDailyAutomaticRestarts: 1,
+				},
+			}
+			require.NoError(t, evergreen.UpdateConfig(ctx, settings))
 
 			et1 := task.Task{
 				Id:      "et1",
@@ -293,10 +337,26 @@ func TestMarkTaskForReset(t *testing.T) {
 				Project: "p1",
 				Version: "aaaaaaaaaaff001122334456",
 			}
+			t3 := task.Task{
+				Id:      "t3",
+				Project: "p1",
+				Version: "aaaaaaaaaaff001122334456",
+			}
+			t4 := task.Task{
+				Id:      "t4",
+				Project: "p1",
+				Version: "aaaaaaaaaaff001122334456",
+			}
+			pRef := model.ProjectRef{
+				Id: "p1",
+			}
+			require.NoError(t, pRef.Insert())
 			require.NoError(t, et1.Insert())
 			require.NoError(t, et2.Insert())
 			require.NoError(t, dt.Insert())
 			require.NoError(t, t2.Insert())
+			require.NoError(t, t3.Insert())
+			require.NoError(t, t4.Insert())
 			r, ok := makeMarkTaskForRestart().(*markTaskForRestartHandler)
 			require.True(t, ok)
 

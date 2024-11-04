@@ -347,6 +347,24 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task has already reached the maximum (%d) number of automatic restarts", evergreen.MaxAutomaticRestarts),
 		})
 	}
+	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, false)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s' for version '%s'", t.Project, t.Version))
+	}
+	if projectRef == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    errors.Errorf("project '%s' not found", t.Project).Error(),
+		})
+	}
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
+	}
+	maxDailyAutoRestarts := settings.TaskLimits.MaxDailyAutomaticRestarts
+	if err = projectRef.CheckAndUpdateAutoRestartLimit(maxDailyAutoRestarts); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "checking auto restart limit for '%s'", projectRef.Id))
+	}
 	if err = taskToRestart.SetResetWhenFinishedWithInc(); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting reset when finished for task '%s'", h.taskID))
 	}
