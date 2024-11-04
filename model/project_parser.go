@@ -181,7 +181,7 @@ func (pp *ParserProject) retryMarshalBSON(maxRetries, retries int) ([]byte, erro
 		}
 		return nil, errors.Wrap(err, "unmarshalling project to verify it's integrity")
 	}
-	// TODO (TBA-IN-REVIEW): Remove this log line, potentially the whole retry if it's
+	// TODO (DEVPROD-12560): Remove this log line, potentially the whole retry if it's
 	// never been logged since that means the retries are never actually happening.
 	if retries < maxRetries {
 		grip.Debug(message.Fields{
