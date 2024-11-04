@@ -81,13 +81,22 @@ var (
 
 const Collection = "distro"
 
+// distroDB returns the database to use for distros. When a shared database is configured
+// use it for distros. Otherwise, use the regular database.
+func distroDB() *mongo.Database {
+	if sharedDB := evergreen.GetEnvironment().SharedDB(); sharedDB != nil {
+		return sharedDB
+	}
+	return evergreen.GetEnvironment().DB()
+}
+
 // FindOneId returns one Distro by Id.
 func FindOneId(ctx context.Context, id string) (*Distro, error) {
 	return FindOne(ctx, ById(id))
 }
 
 func FindOne(ctx context.Context, query bson.M, options ...*options.FindOneOptions) (*Distro, error) {
-	res := evergreen.GetEnvironment().DB().Collection(Collection).FindOne(ctx, query, options...)
+	res := distroDB().Collection(Collection).FindOne(ctx, query, options...)
 	if err := res.Err(); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
@@ -103,7 +112,7 @@ func FindOne(ctx context.Context, query bson.M, options ...*options.FindOneOptio
 }
 
 func Find(ctx context.Context, query bson.M, options ...*options.FindOptions) ([]Distro, error) {
-	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Find(ctx, query, options...)
+	cur, err := distroDB().Collection(Collection).Find(ctx, query, options...)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding distros")
 	}
@@ -123,7 +132,7 @@ func (d *Distro) Insert(ctx context.Context) error {
 
 // ReplaceOne replaces one distro.
 func (d *Distro) ReplaceOne(ctx context.Context) error {
-	res, err := evergreen.GetEnvironment().DB().Collection(Collection).ReplaceOne(ctx, bson.M{IdKey: d.Id}, d)
+	res, err := distroDB().Collection(Collection).ReplaceOne(ctx, bson.M{IdKey: d.Id}, d)
 	if err != nil {
 		return errors.Wrapf(err, "updating distro ID '%s'", d.Id)
 	}
@@ -136,7 +145,7 @@ func (d *Distro) ReplaceOne(ctx context.Context) error {
 
 // Remove removes one distro.
 func Remove(ctx context.Context, ID string) error {
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteOne(ctx, bson.M{IdKey: ID})
+	_, err := distroDB().Collection(Collection).DeleteOne(ctx, bson.M{IdKey: ID})
 	if err != nil {
 		return errors.Wrapf(err, "deleting distro ID '%s'", ID)
 	}
