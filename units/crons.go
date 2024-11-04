@@ -1234,6 +1234,16 @@ func PopulateUnexpirableSpawnHostStatsJob() amboy.QueueOperation {
 	}
 }
 
+func sleepSchedulerJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
+	return []amboy.Job{NewSleepSchedulerJob(env, ts.Format(TSFormat))}, nil
+}
+
+func populateParameterStoreSyncJobs() amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		return amboy.EnqueueUniqueJob(ctx, queue, NewParameterStoreSyncJob(utility.RoundPartOfMinute(0).Format(TSFormat)))
+	}
+}
+
 func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGroupName string, factory cronJobFactory, ts time.Time) error {
 	appCtx, _ := env.Context()
 	queueGroup, err := env.RemoteQueueGroup().Get(appCtx, queueGroupName)
@@ -1246,8 +1256,4 @@ func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGro
 	}
 
 	return errors.Wrapf(amboy.EnqueueManyUniqueJobs(ctx, queueGroup, jobs), "populating '%s' queue", queueGroupName)
-}
-
-func sleepSchedulerJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	return []amboy.Job{NewSleepSchedulerJob(env, ts.Format(TSFormat))}, nil
 }

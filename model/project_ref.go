@@ -501,6 +501,7 @@ var (
 	projectRefProjectHealthViewKey                  = bsonutil.MustHaveTag(ProjectRef{}, "ProjectHealthView")
 	projectRefGitHubDynamicTokenPermissionGroupsKey = bsonutil.MustHaveTag(ProjectRef{}, "GitHubDynamicTokenPermissionGroups")
 	projectRefGithubPermissionGroupByRequesterKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitHubPermissionGroupByRequester")
+	projectRefParameterStoreEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreEnabled")
 	projectRefParameterStoreVarsSyncedKey           = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreVarsSynced")
 	projectRefLastAutoRestartedTaskAtKey            = bsonutil.MustHaveTag(ProjectRef{}, "LastAutoRestartedTaskAt")
 	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
@@ -3684,4 +3685,26 @@ func (p *ProjectRef) setParameterStoreVarsSynced(isSynced bool, isRepoRef bool) 
 	p.ParameterStoreVarsSynced = true
 
 	return nil
+}
+
+var psEnabledButNotSyncedQuery = bson.M{
+	projectRefParameterStoreEnabledKey: true,
+	"$or": []bson.M{
+		{projectRefParameterStoreVarsSyncedKey: false},
+		{projectRefParameterStoreVarsSyncedKey: bson.M{"$exists": false}},
+	},
+}
+
+// FindProjectRefsToSync finds all project refs that have Parameter Sore enabled
+// but don't have their project variables synced to Parameter Store yet.
+func FindProjectRefsToSync(ctx context.Context) ([]ProjectRef, error) {
+	cur, err := evergreen.GetEnvironment().DB().Collection(ProjectRefCollection).Find(ctx, psEnabledButNotSyncedQuery)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding project refs to sync")
+	}
+	pRefs := []ProjectRef{}
+	if err := cur.All(ctx, &pRefs); err != nil {
+		return nil, errors.Wrap(err, "decoding project refs to sync")
+	}
+	return pRefs, nil
 }

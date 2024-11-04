@@ -1166,7 +1166,7 @@ func TestFullSyncToParameterStore(t *testing.T) {
 			}
 			require.NoError(t, db.Insert(ProjectVarsCollection, projVars))
 
-			require.NoError(t, fullSyncToParameterStore(ctx, &projVars, &projRef, false))
+			require.NoError(t, FullSyncToParameterStore(ctx, &projVars, &projRef, false))
 
 			checkAndSetProjectVarsSynced(t, &projRef, false)
 
@@ -1195,7 +1195,7 @@ func TestFullSyncToParameterStore(t *testing.T) {
 			}
 			require.NoError(t, db.Insert(ProjectVarsCollection, repoVars))
 
-			require.NoError(t, fullSyncToParameterStore(ctx, &repoVars, &repoRef.ProjectRef, true))
+			require.NoError(t, FullSyncToParameterStore(ctx, &repoVars, &repoRef.ProjectRef, true))
 
 			checkAndSetProjectVarsSynced(t, &repoRef.ProjectRef, true)
 
@@ -1243,7 +1243,7 @@ func TestFullSyncToParameterStore(t *testing.T) {
 				Vars: newVars,
 			}
 
-			require.NoError(t, fullSyncToParameterStore(ctx, &newProjVars, &projRef, false))
+			require.NoError(t, FullSyncToParameterStore(ctx, &newProjVars, &projRef, false))
 
 			newDBProjVars, err := FindOneProjectVars(projVars.Id)
 			require.NoError(t, err)

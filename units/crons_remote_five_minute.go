@@ -51,6 +51,7 @@ func (j *cronsRemoteFiveMinuteJob) Run(ctx context.Context) {
 		PopulateActivationJobs(10),
 		PopulateHostProvisioningConversionJobs(j.env),
 		PopulateHostRestartJasperJobs(j.env),
+		populateParameterStoreSyncJobs(),
 	}
 
 	queue := j.env.RemoteQueue()
