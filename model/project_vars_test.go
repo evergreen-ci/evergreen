@@ -49,6 +49,7 @@ func TestFindOneProjectVar(t *testing.T) {
 
 	projectVarsFromDB, err := FindOneProjectVars("mongodb")
 	assert.NoError(err)
+	require.NotZero(t, projectVarsFromDB)
 
 	assert.Equal("mongodb", projectVarsFromDB.Id)
 	assert.Equal(vars, projectVarsFromDB.Vars)
@@ -207,7 +208,7 @@ func TestProjectVarsInsert(t *testing.T) {
 		aParamMapping := nameToParamMapping["a"]
 		assert.Equal(t, "a", aParamMapping.Name)
 		bParamMapping := nameToParamMapping["b"]
-		assert.NotZero(t, "b", bParamMapping.Name)
+		assert.Equal(t, "b", bParamMapping.Name)
 
 		checkParametersMatchVars(ctx, t, dbProjVars.Parameters, dbProjVars.Vars)
 		checkParametersNamespacedByProject(t, *dbProjVars)
@@ -310,7 +311,7 @@ func TestProjectVarsUpsert(t *testing.T) {
 		aParamMapping := nameToParamMapping["a"]
 		assert.Equal(t, "a", aParamMapping.Name)
 		bParamMapping := nameToParamMapping["b"]
-		assert.NotZero(t, "b", bParamMapping.Name)
+		assert.Equal(t, "b", bParamMapping.Name)
 
 		checkParametersMatchVars(ctx, t, dbProjVars.Parameters, dbProjVars.Vars)
 		checkParametersNamespacedByProject(t, *dbProjVars)
