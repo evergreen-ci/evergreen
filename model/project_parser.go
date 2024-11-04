@@ -162,7 +162,7 @@ func (pp *ParserProject) MarshalBSON() ([]byte, error) {
 	return mgobson.Marshal(pp)
 }
 
-// MarshalBSON marshals the BSON and attempts to unmarshal it back to make sure
+// RetryMarshalBSON marshals the BSON and attempts to unmarshal it back to make sure
 // it is valid. It only retries when it fails at reading the BSON, not if it encountered
 // an error while marshalling.
 func (pp *ParserProject) RetryMarshalBSON(retries int) ([]byte, error) {
