@@ -7,7 +7,7 @@
 {"_id":"mongodb-mongo-master","name":"mongodb-mongo-master_role","scope":"mongodb-mongo-master","permissions":{"project_logs":10,"project_settings":20,"project_tasks":30,"project_patches":10}}
 {"_id":"mongodb-mongo-test","name":"mongodb-mongo-test_role","scope":"mongodb-mongo-test","permissions":{"project_logs":10,"project_settings":20,"project_tasks":30,"project_patches":10}}
 {"_id":"performance","name":"performance_role","scope":"performance","permissions":{"project_logs":10,"project_settings":20,"project_tasks":30,"project_patches":10}}
-{"_id":"sys-perf","name":"sys-perf_role","scope":"sys-perf","permissions":{"project_logs":10,"project_tasks":20}}
+{"_id":"sys-perf","name":"sys-perf_role","scope":"sys-perf","permissions":{"project_logs":10,"project_tasks":20,"project_settings":20}}
 {"_id":"localhostRemove","name":"localhost_role","scope":"localhost","permissions":{"distro_settings":30, "distro_hosts":10}}
 {"_id":"localhostEdit","name":"localhost_role","scope":"localhost","permissions":{"distro_settings":20,"distro_hosts":10}}
 {"_id":"localhost2","name":"localhost2_role","scope":"localhost2","permissions":{"distro_settings":10}}
