@@ -366,7 +366,7 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 	patches, err := patch.Find(patch.ByStringIds(patchIds))
 
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("occurred fetching patches '%s': %s", patchIds, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches '%s': %s", patchIds, err.Error()))
 	}
 
 	for _, p := range patches {
