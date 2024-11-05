@@ -102,6 +102,7 @@ func TestFetchBanner(t *testing.T) {
 		Banner:      utility.ToStringPtr("foo"),
 		BannerTheme: utility.ToStringPtr("warning"),
 		ConfigDir:   utility.ToStringPtr("test"),
+		Api:         &model.APIapiConfig{URL: utility.ToStringPtr("test")},
 		AuthConfig: &model.APIAuthConfig{
 			Github: &model.APIGithubAuthConfig{
 				Organization: utility.ToStringPtr("test"),
