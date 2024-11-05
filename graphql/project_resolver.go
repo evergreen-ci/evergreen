@@ -38,7 +38,7 @@ func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProject
 
 	patches, count, err := patch.ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while fetching patches for this project : %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("while fetching patches for this project : %s", err.Error()))
 	}
 	apiPatches := []*restModel.APIPatch{}
 	for _, p := range patches {

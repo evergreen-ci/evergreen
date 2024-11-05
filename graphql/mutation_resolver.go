@@ -253,7 +253,7 @@ func (r *mutationResolver) ReprovisionToNew(ctx context.Context, hostIds []strin
 
 	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetReprovisionToNewCallback(ctx, evergreen.GetEnvironment(), user.Username()))
 	if err != nil {
-		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, werrors.Errorf("Error marking selected hosts as needing to reprovision: %s", err.Error()))
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, werrors.Errorf("marking selected hosts as needing to reprovision: %s", err.Error()))
 	}
 
 	return hostsUpdated, nil
@@ -270,7 +270,7 @@ func (r *mutationResolver) RestartJasper(ctx context.Context, hostIds []string) 
 
 	hostsUpdated, httpStatus, err := api.ModifyHostsWithPermissions(hosts, permissions, api.GetRestartJasperCallback(ctx, evergreen.GetEnvironment(), user.Username()))
 	if err != nil {
-		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, werrors.Errorf("Error marking selected hosts as needing Jasper service restarted: %s", err.Error()))
+		return 0, mapHTTPStatusToGqlError(ctx, httpStatus, werrors.Errorf("marking selected hosts as needing Jasper service restarted: %s", err.Error()))
 	}
 
 	return hostsUpdated, nil
@@ -302,13 +302,13 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 		if ok {
 			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
 		}
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting patch '%s'", patchID))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting patch '%s'", patchID))
 	}
 
 	projectID := utility.FromStringPtr(existingPatch.ProjectId)
 	proj, err := data.FindProjectById(projectID, false, false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting project '%s': %s", projectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project '%s': %s", projectID, err.Error()))
 	}
 	if proj == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
@@ -346,7 +346,7 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 
 	newPatch, err := data.CreatePatchForMerge(ctx, evergreen.GetEnvironment().Settings(), patchID, utility.FromStringPtr(commitMessage))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating new patch: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating new patch: %s", err.Error()))
 	}
 	item := restModel.APICommitQueueItem{
 		Issue:   newPatch.Id,
@@ -354,7 +354,7 @@ func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, com
 		Source:  utility.ToStringPtr(commitqueue.SourceDiff)}
 	_, err = data.EnqueueItem(utility.FromStringPtr(newPatch.ProjectId), item, false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error enqueuing new patch: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("enqueuing new patch: %s", err.Error()))
 	}
 	return newPatch, nil
 }
@@ -366,7 +366,7 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 	patches, err := patch.Find(patch.ByStringIds(patchIds))
 
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patches '%s': %s", patchIds, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("occurred fetching patches '%s': %s", patchIds, err.Error()))
 	}
 
 	for _, p := range patches {
@@ -375,12 +375,12 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 		}
 		err = p.SetPatchVisibility(hidden)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred setting patch '%s' visibility: %s", p.Id, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("occurred setting patch '%s' visibility: %s", p.Id, err.Error()))
 		}
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(p, &restModel.APIPatchArgs{IncludeProjectIdentifier: true})
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred building patch '%s' API model: %s", p.Id, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("occurred building patch '%s' API model: %s", p.Id, err.Error()))
 		}
 		updatedPatches = append(updatedPatches, &apiPatch)
 	}
@@ -394,15 +394,15 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 	patchUpdateReq.Caller = usr.Id
 	version, err := model.VersionFindOneId(patchID)
 	if err != nil && !adb.ResultsNotFound(err) {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error occurred fetching patch '%s': %s", patchID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("occurred fetching patch '%s': %s", patchID, err.Error()))
 	}
 	statusCode, err := units.SchedulePatch(ctx, evergreen.GetEnvironment(), patchID, version, patchUpdateReq)
 	if err != nil {
-		return nil, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("Error scheduling patch '%s': %s", patchID, err.Error()))
+		return nil, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Errorf("scheduling patch '%s': %s", patchID, err.Error()))
 	}
 	scheduledPatch, err := data.FindPatchById(patchID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting scheduled patch '%s': %s", patchID, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting scheduled patch '%s': %s", patchID, err))
 	}
 	return scheduledPatch, nil
 }
@@ -418,12 +418,12 @@ func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, project M
 	pRef.Repo = project.NewRepo
 
 	if err = pRef.AttachToNewRepo(usr); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating owner/repo: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating owner/repo: %s", err.Error()))
 	}
 
 	res := &restModel.APIProjectRef{}
 	if err = res.BuildFromService(*pRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIProjectRef: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef: %s", err.Error()))
 	}
 	return res, nil
 }
@@ -433,18 +433,18 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID st
 	usr := mustHaveUser(ctx)
 	pRef, err := data.FindProjectById(projectID, false, false)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectID, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding project %s: %s", projectID, err.Error()))
 	}
 	if pRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", projectID))
 	}
 	if err = pRef.AttachToRepo(ctx, usr); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error attaching to repo: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("attaching to repo: %s", err.Error()))
 	}
 
 	res := &restModel.APIProjectRef{}
 	if err := res.BuildFromService(*pRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building project from service: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building project from service: %s", err.Error()))
 	}
 	return res, nil
 }
@@ -453,7 +453,7 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID st
 func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.APIProjectRef, requestS3Creds *bool) (*restModel.APIProjectRef, error) {
 	dbProjectRef, err := project.ToService()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error converting project ref to service model: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project ref to service model: %s", err.Error()))
 	}
 	u := gimlet.GetUser(ctx).(*user.DBUser)
 
@@ -472,19 +472,19 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 
 	projectRef, err := model.FindBranchProjectRef(*project.Identifier)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("looking in project collection: %s", err.Error()))
 	}
 	if projectRef == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project: %s", err.Error()))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	if err = apiProjectRef.BuildFromService(*projectRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service: %s", err.Error()))
 	}
 
 	if utility.FromBoolPtr(requestS3Creds) {
 		if err = data.RequestS3Creds(ctx, *apiProjectRef.Identifier, u.EmailAddress); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request S3 credentials: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating jira ticket to request S3 credentials: %s", err.Error()))
 		}
 	}
 	return &apiProjectRef, nil
@@ -513,7 +513,7 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 	if utility.FromBoolPtr(requestS3Creds) {
 		usr := mustHaveUser(ctx)
 		if err = data.RequestS3Creds(ctx, *projectRef.Identifier, usr.EmailAddress); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("error creating jira ticket to request AWS access: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating jira ticket to request AWS access: %s", err.Error()))
 		}
 	}
 	return projectRef, nil
@@ -532,7 +532,7 @@ func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, opts Deac
 func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, opts DefaultSectionToRepoInput) (*string, error) {
 	usr := mustHaveUser(ctx)
 	if err := model.DefaultSectionToRepo(opts.ProjectID, model.ProjectPageSection(opts.Section), usr.Username()); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error defaulting to repo for section: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("defaulting to repo for section: %s", err.Error()))
 	}
 	return &opts.ProjectID, nil
 }
@@ -581,18 +581,18 @@ func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID 
 	usr := mustHaveUser(ctx)
 	pRef, err := data.FindProjectById(projectID, false, false)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectID, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding project %s: %s", projectID, err.Error()))
 	}
 	if pRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", projectID))
 	}
 	if err = pRef.DetachFromRepo(usr); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error detaching from repo: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("detaching from repo: %s", err.Error()))
 	}
 
 	res := &restModel.APIProjectRef{}
 	if err := res.BuildFromService(*pRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building project from service: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building project from service: %s", err.Error()))
 	}
 	return res, nil
 }
@@ -602,7 +602,7 @@ func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID st
 	ts := utility.RoundPartOfHour(1).Format(units.TSFormat)
 	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectID)
 	if err := amboy.EnqueueUniqueJob(ctx, evergreen.GetEnvironment().RemoteQueue(), j); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("error creating Repotracker job: %s", err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("creating Repotracker job: %s", err.Error()))
 	}
 	return true, nil
 }
@@ -696,7 +696,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	usr := mustHaveUser(ctx)
 	h, err := host.FindOneByIdOrTag(ctx, spawnHost.HostID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host by id: %s", err))
 	}
 	if h == nil {
 		return nil, ResourceNotFound.Send(ctx, "Host not found")
@@ -726,7 +726,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 
 		err = cloud.CheckInstanceTypeValid(ctx, h.Distro, *spawnHost.InstanceType, allowedTypes)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error validating instance type: %s", err))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("validating instance type: %s", err))
 		}
 		opts.InstanceType = *spawnHost.InstanceType
 	}
@@ -746,10 +746,10 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	if spawnHost.Volume != nil {
 		v, err = host.FindVolumeByID(*spawnHost.Volume)
 		if err != nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding requested volume id: %s", err))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding requested volume id: %s", err))
 		}
 		if v.AvailabilityZone != h.Zone {
-			return nil, InputValidationError.Send(ctx, "Error mounting volume to spawn host, They must be in the same availability zone.")
+			return nil, InputValidationError.Send(ctx, "mounting volume to spawn host, They must be in the same availability zone.")
 		}
 		opts.AttachVolume = *spawnHost.Volume
 	}
@@ -782,12 +782,12 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	}
 
 	if err = cloud.ModifySpawnHost(ctx, evergreen.GetEnvironment(), h, opts); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error modifying spawn host: %s", err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("modifying spawn host: %s", err))
 	}
 	if spawnHost.ServicePassword != nil {
 		_, err = cloud.SetHostRDPPassword(ctx, evergreen.GetEnvironment(), h, *spawnHost.ServicePassword)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting spawn host password: %s", err))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting spawn host password: %s", err))
 		}
 	}
 
@@ -816,7 +816,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 
 	spawnHost, err := data.NewIntentHost(ctx, options, usr, evergreen.GetEnvironment())
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error spawning host: %s", err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("spawning host: %s", err))
 	}
 	if spawnHost == nil {
 		return nil, InternalServerError.Send(ctx, "An error occurred Spawn host is nil")
@@ -891,7 +891,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find host %s", hostID))
 	}
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error finding host by id: %s", err))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding host by id: %s", err))
 	}
 	usr := mustHaveUser(ctx)
 	env := evergreen.GetEnvironment()
@@ -934,7 +934,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput UpdateVolumeInput) (bool, error) {
 	volume, err := host.FindVolumeByID(updateVolumeInput.VolumeID)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error finding volume by id %s: %s", updateVolumeInput.VolumeID, err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("finding volume by id %s: %s", updateVolumeInput.VolumeID, err.Error()))
 	}
 	if volume == nil {
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find volume %s", updateVolumeInput.VolumeID))
@@ -961,7 +961,7 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 		var newExpiration time.Time
 		newExpiration, err = restModel.FromTimePtr(updateVolumeInput.Expiration)
 		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("Error parsing time %s", err))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("parsing time %s", err))
 		}
 		updateOptions.Expiration = newExpiration
 	}
@@ -980,7 +980,7 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task by id %s: %s", taskID, err.Error()))
 	}
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
@@ -988,11 +988,11 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	user := gimlet.GetUser(ctx).Username()
 	err = model.AbortTask(ctx, taskID, user)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error aborting task %s: %s", taskID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("aborting task %s: %s", taskID, err.Error()))
 	}
 	t, err = task.FindOneId(taskID)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task by id %s: %s", taskID, err.Error()))
 	}
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
@@ -1006,13 +1006,13 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 	currentUser := mustHaveUser(ctx)
 	t, err := task.FindByIdExecution(taskID, nil)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task %s: %s", taskID, err.Error()))
 	}
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
 	if err = t.SetOverrideDependencies(currentUser.Username()); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error overriding dependencies for task %s: %s", taskID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("overriding dependencies for task %s: %s", taskID, err.Error()))
 	}
 	return getAPITaskFromTask(ctx, r.sc.GetURL(), *t)
 }
@@ -1023,17 +1023,17 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, faile
 	username := usr.Username()
 	t, err := task.FindOneId(taskID)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task '%s': %s", taskID, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskID, err.Error()))
 	}
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id '%s'", taskID))
 	}
 	if err := model.ResetTaskOrDisplayTask(ctx, evergreen.GetEnvironment().Settings(), t, username, evergreen.UIPackage, failedOnly, nil); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error restarting task '%s': %s", taskID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("restarting task '%s': %s", taskID, err.Error()))
 	}
 	t, err = task.FindOneIdAndExecutionWithDisplayStatus(taskID, nil)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id '%s': %s", taskID, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task by id '%s': %s", taskID, err.Error()))
 	}
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id '%s'", taskID))
@@ -1067,7 +1067,7 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, versionID string, 
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task %s: %s", taskID, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task %s: %s", taskID, err.Error()))
 	}
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
@@ -1086,12 +1086,12 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 		}
 	}
 	if err = model.SetTaskPriority(ctx, *t, int64(priority), authUser.Username()); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error setting task priority %v: %v", taskID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting task priority %v: %v", taskID, err.Error()))
 	}
 
 	t, err = task.FindOneId(taskID)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", taskID, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task by id %s: %s", taskID, err.Error()))
 	}
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
@@ -1127,7 +1127,7 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, opts AddFavor
 	apiProjectRef := restModel.APIProjectRef{}
 	err = apiProjectRef.BuildFromService(*p)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service: %s", err.Error()))
 	}
 	return &apiProjectRef, nil
 }
@@ -1138,12 +1138,12 @@ func (r *mutationResolver) ClearMySubscriptions(ctx context.Context) (int, error
 	username := usr.Username()
 	subs, err := event.FindSubscriptionsByOwner(username, event.OwnerTypePerson)
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error retrieving subscriptions %s", err.Error()))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("retrieving subscriptions %s", err.Error()))
 	}
 	subIDs := removeGeneralSubscriptions(usr, subs)
 	err = data.DeleteSubscriptions(username, subIDs)
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting subscriptions '%s'", err.Error()))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("deleting subscriptions '%s'", err.Error()))
 	}
 	return len(subIDs), nil
 }
@@ -1164,7 +1164,7 @@ func (r *mutationResolver) DeleteSubscriptions(ctx context.Context, subscription
 	username := usr.Username()
 
 	if err := data.DeleteSubscriptions(username, subscriptionIds); err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting subscriptions '%s'", err.Error()))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("deleting subscriptions '%s'", err.Error()))
 	}
 	return len(subscriptionIds), nil
 }
@@ -1179,12 +1179,12 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, opts Remov
 	usr := mustHaveUser(ctx)
 	err = usr.RemoveFavoriteProject(opts.ProjectIdentifier)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error removing project : %s : %s", opts.ProjectIdentifier, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("removing project : %s : %s", opts.ProjectIdentifier, err))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	err = apiProjectRef.BuildFromService(*p)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service: %s", err.Error()))
 	}
 	return &apiProjectRef, nil
 }
@@ -1192,11 +1192,11 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, opts Remov
 // RemovePublicKey is the resolver for the removePublicKey field.
 func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) ([]*restModel.APIPubKey, error) {
 	if !doesPublicKeyNameAlreadyExist(ctx, keyName) {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error deleting public key. Provided key name, %s, does not exist.", keyName))
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("deleting public key. Provided key name, %s, does not exist.", keyName))
 	}
 	err := mustHaveUser(ctx).DeletePublicKey(keyName)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error deleting public key: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("deleting public key: %s", err.Error()))
 	}
 	myPublicKeys := getMyPublicKeys(ctx)
 	return myPublicKeys, nil
@@ -1214,7 +1214,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	case "task":
 		t, taskErr := task.FindOneId(id)
 		if taskErr != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding task by id %s: %s", id, taskErr.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding task by id %s: %s", id, taskErr.Error()))
 		}
 		if t == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", id))
@@ -1222,7 +1222,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	case "build":
 		b, buildErr := build.FindOneId(id)
 		if buildErr != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding build by id %s: %s", id, buildErr.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding build by id %s: %s", id, buildErr.Error()))
 		}
 		if b == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find build with id %s", id))
@@ -1230,7 +1230,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	case "version":
 		v, versionErr := model.VersionFindOneId(id)
 		if versionErr != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding version by id %s: %s", id, versionErr.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding version by id %s: %s", id, versionErr.Error()))
 		}
 		if v == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find version with id %s", id))
@@ -1238,7 +1238,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	case "project":
 		p, projectErr := data.FindProjectById(id, false, false)
 		if projectErr != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding project by id %s: %s", id, projectErr.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding project by id %s: %s", id, projectErr.Error()))
 		}
 		if p == nil {
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project with id %s", id))
@@ -1248,7 +1248,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	}
 	err = data.SaveSubscriptions(username, []restModel.APISubscription{subscription}, false)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("error saving subscription: %s", err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("saving subscription: %s", err.Error()))
 	}
 	return true, nil
 }
@@ -1289,10 +1289,10 @@ func (r *mutationResolver) UpdateParsleySettings(ctx context.Context, opts Updat
 // UpdatePublicKey is the resolver for the updatePublicKey field.
 func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName string, updateInfo PublicKeyInput) ([]*restModel.APIPubKey, error) {
 	if !doesPublicKeyNameAlreadyExist(ctx, targetKeyName) {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error updating public key. The target key name, %s, does not exist.", targetKeyName))
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("updating public key. The target key name, %s, does not exist.", targetKeyName))
 	}
 	if updateInfo.Name != targetKeyName && doesPublicKeyNameAlreadyExist(ctx, updateInfo.Name) {
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Error updating public key. The updated key name, %s, already exists.", targetKeyName))
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("updating public key. The updated key name, %s, already exists.", targetKeyName))
 	}
 	err := verifyPublicKey(ctx, updateInfo)
 	if err != nil {
@@ -1301,7 +1301,7 @@ func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName st
 	usr := mustHaveUser(ctx)
 	err = usr.UpdatePublicKey(targetKeyName, updateInfo.Name, updateInfo.Key)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error updating public key, %s: %s", targetKeyName, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating public key, %s: %s", targetKeyName, err.Error()))
 	}
 	myPublicKeys := getMyPublicKeys(ctx)
 	return myPublicKeys, nil
@@ -1317,7 +1317,7 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 	}
 	err = data.UpdateSettings(usr, *updatedUserSettings)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error saving userSettings : %s", err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("saving userSettings : %s", err.Error()))
 	}
 	return true, nil
 }
@@ -1328,7 +1328,7 @@ func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commit
 
 	result, err := data.FindAndRemoveCommitQueueItem(ctx, commitQueueID, issue, usr.DisplayName(), fmt.Sprintf("removed by user '%s'", usr.DisplayName()))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error removing item %s from commit queue %s: %s",
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("removing item %s from commit queue %s: %s",
 			issue, commitQueueID, err.Error()))
 	}
 	if result == nil {
@@ -1356,7 +1356,7 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 		if version.VersionId != nil {
 			v, versionErr := model.VersionFindOneId(*version.VersionId)
 			if versionErr != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding version by id %s: %s", *version.VersionId, versionErr.Error()))
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version by id %s: %s", *version.VersionId, versionErr.Error()))
 			}
 			if v == nil {
 				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find version with id %s", *version.VersionId))

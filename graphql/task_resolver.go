@@ -74,7 +74,7 @@ func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (
 
 	annotation, err := annotations.FindOneByTaskIdAndExecution(*obj.Id, obj.Execution)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding annotation: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding annotation: %s", err.Error()))
 	}
 	if annotation == nil {
 		return nil, nil
@@ -87,7 +87,7 @@ func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (
 func (r *taskResolver) BaseStatus(ctx context.Context, obj *restModel.APITask) (*string, error) {
 	t, err := obj.ToService()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting service model for APITask %s: %s", *obj.Id, err.Error()))
 	}
 	baseStatus := t.BaseTask.Status
 	if baseStatus == "" {
@@ -100,7 +100,7 @@ func (r *taskResolver) BaseStatus(ctx context.Context, obj *restModel.APITask) (
 func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
 	t, err := obj.ToService()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting service model for APITask %s: %s", *obj.Id, err.Error()))
 	}
 
 	var baseTask *task.Task
@@ -108,7 +108,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	if t.BaseTask.Id != "" {
 		baseTask, err = task.FindOneId(t.BaseTask.Id)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s: %s", t.BaseTask.Id, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task %s: %s", t.BaseTask.Id, err.Error()))
 		}
 		if baseTask == nil {
 			return nil, gimlet.ErrorResponse{
@@ -120,12 +120,12 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 		if evergreen.IsPatchRequester(t.Requester) {
 			baseTask, err = t.FindTaskOnBaseCommit()
 			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on base commit: %s", *obj.Id, err.Error()))
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task %s on base commit: %s", *obj.Id, err.Error()))
 			}
 		} else {
 			baseTask, err = t.FindTaskOnPreviousCommit()
 			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding task %s on previous commit: %s", *obj.Id, err.Error()))
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task %s on previous commit: %s", *obj.Id, err.Error()))
 			}
 		}
 	}
@@ -269,7 +269,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([
 
 	t, err := obj.ToService()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting service model for APITask %s: %s", *obj.Id, err.Error()))
 	}
 
 	for _, dep := range obj.DependsOn {
@@ -331,11 +331,11 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITask) (*restModel.APIDuration, error) {
 	t, err := obj.ToService()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while converting task %s to service", *obj.Id))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("while converting task %s to service", *obj.Id))
 	}
 	start, err := model.GetEstimatedStartTime(ctx, *t)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, "error getting estimated start time")
+		return nil, InternalServerError.Send(ctx, "xgetting estimated start time")
 	}
 	duration := restModel.NewAPIDuration(start)
 	return &duration, nil
@@ -348,7 +348,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 	}
 	tasks, err := task.FindByExecutionTasksAndMaxExecution(utility.FromStringPtrSlice(obj.ExecutionTasks), obj.Execution)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding execution tasks for task: %s : %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("xfinding execution tasks for task: %s : %s", *obj.Id, err.Error()))
 	}
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
@@ -366,7 +366,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	dbTask, err := obj.ToService()
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("xgetting service model for APITask %s: %s", *obj.Id, err.Error()))
 	}
 
 	stats, err := dbTask.GetTestResultsStats(ctx, evergreen.GetEnvironment())
@@ -463,7 +463,7 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 	}
 	result, err := apimodels.CedarPerfResultsCount(ctx, opts)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("error requesting perf data from cedar: %s", err))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("xrequesting perf data from cedar: %s", err))
 	}
 	if result.NumberOfResults == 0 {
 		return false, nil
@@ -480,7 +480,7 @@ func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITa
 func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
 	position, err := model.FindMinimumQueuePositionForTask(*obj.Id)
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("error queue position for task: %s", err.Error()))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("xqueue position for task: %s", err.Error()))
 	}
 	if position < 0 {
 		return 0, nil
@@ -513,7 +513,7 @@ func (r *taskResolver) Pod(ctx context.Context, obj *restModel.APITask) (*restMo
 	}
 	pod, err := data.FindAPIPodByID(utility.FromStringPtr(obj.PodID))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding pod: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding pod: %s", err.Error()))
 	}
 	return pod, nil
 }
@@ -522,14 +522,14 @@ func (r *taskResolver) Pod(ctx context.Context, obj *restModel.APITask) (*restMo
 func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*restModel.APIProjectRef, error) {
 	pRef, err := data.FindProjectById(*obj.ProjectId, true, false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project ref for project %s: %s", *obj.ProjectId, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for project %s: %s", *obj.ProjectId, err.Error()))
 	}
 	if pRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find a ProjectRef for project %s", *obj.ProjectId))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	if err = apiProjectRef.BuildFromService(*pRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building APIProject from service: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProject from service: %s", err.Error()))
 	}
 	return &apiProjectRef, nil
 }
@@ -544,7 +544,7 @@ func (r *taskResolver) ProjectIdentifier(ctx context.Context, obj *restModel.API
 func (r *taskResolver) SpawnHostLink(ctx context.Context, obj *restModel.APITask) (*string, error) {
 	host, err := host.FindOne(ctx, host.ById(*obj.HostId))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding host for task %s", *obj.Id))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host for task %s", *obj.Id))
 	}
 	if host == nil {
 		return nil, nil
@@ -577,7 +577,7 @@ func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*T
 func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *TestFilterOptions) (*TaskTestResult, error) {
 	dbTask, err := task.FindOneIdAndExecution(utility.FromStringPtr(obj.Id), obj.Execution)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting service model for APITask %s: %s", *obj.Id, err.Error()))
 	}
 
 	filterOpts, err := convertTestFilterOptions(ctx, dbTask, opts)
@@ -587,7 +587,7 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 
 	taskResults, err := dbTask.GetTestResults(ctx, evergreen.GetEnvironment(), filterOpts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting test results for APITask %s: %s", dbTask.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results for APITask %s: %s", dbTask.Id, err.Error()))
 	}
 
 	apiResults := make([]*restModel.APITest, len(taskResults.Results))
@@ -614,12 +614,12 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	dbTask, err := obj.ToService()
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting service model for APITask %s: %s", *obj.Id, err.Error()))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting service model for APITask %s: %s", *obj.Id, err.Error()))
 	}
 
 	stats, err := dbTask.GetTestResultsStats(ctx, evergreen.GetEnvironment())
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("Error getting test count: %s", err))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err))
 	}
 
 	return stats.TotalCount, nil
