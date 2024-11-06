@@ -54,7 +54,7 @@ func New(apiURL string) Config {
 			}
 		}
 		var requiredLevel int
-		if access == HostAccessLevelEdit {
+		if access == HostAccessLevelEdit || access == HostAccessLevelSpawnEdit {
 			requiredLevel = evergreen.HostsEdit.Value
 		} else {
 			requiredLevel = evergreen.HostsView.Value
@@ -69,7 +69,7 @@ func New(apiURL string) Config {
 		}
 		forbiddenHosts := []string{}
 		for _, h := range hostsToCheck {
-			if !userHasHostPermission(user, h.Distro.Id, requiredLevel) {
+			if !userHasHostPermission(user, h.Distro.Id, requiredLevel) && (access != HostAccessLevelSpawnEdit || user.Username() != h.StartedBy) {
 				forbiddenHosts = append(forbiddenHosts, h.Id)
 			}
 		}

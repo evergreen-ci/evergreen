@@ -289,6 +289,18 @@ func TestRequireHostAccess(t *testing.T) {
 			assert.Equal(t, true, nextCalled)
 			assert.NoError(t, usr.RemoveRole("view_host-id"))
 		},
+		"SpawnEditSucceedsWhenHostIsStartedByUser": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (interface{}, error) {
+				nextCalled = true
+				return nil, nil
+			}
+			obj := interface{}(map[string]interface{}{"hostId": "host1"})
+			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelSpawnEdit)
+			assert.NoError(t, err)
+			assert.Nil(t, res)
+			assert.Equal(t, true, nextCalled)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())

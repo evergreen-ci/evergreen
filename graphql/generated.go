@@ -74846,7 +74846,7 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
 			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
 			directive1 := func(ctx context.Context) (interface{}, error) {
-				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "SPAWN_EDIT")
 				if err != nil {
 					return nil, err
 				}
@@ -78647,7 +78647,7 @@ func (ec *executionContext) unmarshalInputUpdateSpawnHostStatusInput(ctx context
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
 			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
 			directive1 := func(ctx context.Context) (interface{}, error) {
-				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "SPAWN_EDIT")
 				if err != nil {
 					return nil, err
 				}

@@ -47,6 +47,7 @@ directive @requireHostAccess(access: HostAccessLevel!) on ARGUMENT_DEFINITION | 
 enum HostAccessLevel {
   EDIT
   VIEW
+  SPAWN_EDIT
 }
 
 """
