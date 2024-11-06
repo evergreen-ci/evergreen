@@ -536,7 +536,7 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProj
 
 	projects, err := model.FindProjectRefsByIds(projectIds...)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting projects: %v", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting projects: %s", err.Error()))
 	}
 
 	groupedProjects, err := groupProjects(projects, true)
@@ -552,14 +552,14 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 	hosts, err := host.Find(ctx, host.ByUserWithRunningStatus(usr.Username()))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx,
-			fmt.Sprintf("finding running hosts for user '%s' : %s", usr.Username(), err))
+			fmt.Sprintf("finding running hosts for user '%s' : %s", usr.Username(), err.Error()))
 	}
 	duration := time.Duration(5) * time.Minute
 	timestamp := time.Now().Add(-duration) // within last 5 minutes
 	recentlyTerminatedHosts, err := host.Find(ctx, host.ByUserRecentlyTerminated(usr.Username(), timestamp))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx,
-			fmt.Sprintf("finding recently terminated hosts for user '%s': %s", usr.Username(), err))
+			fmt.Sprintf("finding recently terminated hosts for user '%s': %s", usr.Username(), err.Error()))
 	}
 	hosts = append(hosts, recentlyTerminatedHosts...)
 
@@ -640,7 +640,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 	}
 	dbTasks, err := task.FindAll(db.Query(task.ByIds(taskIds)))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding tasks '%s': %s", taskIds, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding tasks '%s': %s", taskIds, err.Error()))
 	}
 	if len(dbTasks) == 0 {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Tasks %s not found", taskIds))
@@ -660,7 +660,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 		}
 		taskOpts, err := dbTask.CreateTestResultsTaskOptions()
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating test results task options for task '%s': %s", dbTask.Id, err))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating test results task options for task '%s': %s", dbTask.Id, err.Error()))
 		}
 
 		apiSamples[i] = &TaskTestResultSample{TaskID: dbTask.Id, Execution: dbTask.Execution}
@@ -673,7 +673,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 	if len(allTaskOpts) > 0 {
 		samples, err := testresult.GetFailedTestSamples(ctx, evergreen.GetEnvironment(), allTaskOpts, failingTests)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err.Error()))
 		}
 
 		for _, sample := range samples {
