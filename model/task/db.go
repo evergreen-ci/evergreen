@@ -184,7 +184,7 @@ var (
 
 	addDisplayStatus = bson.M{
 		"$addFields": bson.M{
-			DisplayStatusKey: displayStatusExpression,
+			DisplayStatusKey: DisplayStatusExpression,
 		},
 	}
 
@@ -201,7 +201,7 @@ var (
 	}
 
 	// This should reflect Task.GetDisplayStatus()
-	displayStatusExpression = bson.M{
+	DisplayStatusExpression = bson.M{
 		"$switch": bson.M{
 			"branches": []bson.M{
 				{
