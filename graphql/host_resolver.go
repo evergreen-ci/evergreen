@@ -83,7 +83,7 @@ func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (
 		volId := utility.FromStringPtr(obj.HomeVolumeID)
 		volume, err := host.FindVolumeByID(volId)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting volume %s: %s", volId, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting volume '%s': %s", volId, err.Error()))
 		}
 		if volume == nil {
 			grip.Error(message.Fields{
