@@ -402,7 +402,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 	}
 	scheduledPatch, err := data.FindPatchById(patchID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting scheduled patch '%s': %s", patchID, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting scheduled patch '%s': %s", patchID, err.Error()))
 	}
 	return scheduledPatch, nil
 }
@@ -696,7 +696,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	usr := mustHaveUser(ctx)
 	h, err := host.FindOneByIdOrTag(ctx, spawnHost.HostID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host by id: %s", err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host by id: %s", err.Error()))
 	}
 	if h == nil {
 		return nil, ResourceNotFound.Send(ctx, "Host not found")
@@ -726,7 +726,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 
 		err = cloud.CheckInstanceTypeValid(ctx, h.Distro, *spawnHost.InstanceType, allowedTypes)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("validating instance type: %s", err))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("validating instance type: %s", err.Error()))
 		}
 		opts.InstanceType = *spawnHost.InstanceType
 	}
@@ -746,7 +746,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	if spawnHost.Volume != nil {
 		v, err = host.FindVolumeByID(*spawnHost.Volume)
 		if err != nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding requested volume id: %s", err))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding requested volume id: %s", err.Error()))
 		}
 		if v.AvailabilityZone != h.Zone {
 			return nil, InputValidationError.Send(ctx, "mounting volume to spawn host, They must be in the same availability zone.")
@@ -782,12 +782,12 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	}
 
 	if err = cloud.ModifySpawnHost(ctx, evergreen.GetEnvironment(), h, opts); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("modifying spawn host: %s", err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("modifying spawn host: %s", err.Error()))
 	}
 	if spawnHost.ServicePassword != nil {
 		_, err = cloud.SetHostRDPPassword(ctx, evergreen.GetEnvironment(), h, *spawnHost.ServicePassword)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting spawn host password: %s", err))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting spawn host password: %s", err.Error()))
 		}
 	}
 
@@ -816,7 +816,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 
 	spawnHost, err := data.NewIntentHost(ctx, options, usr, evergreen.GetEnvironment())
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("spawning host: %s", err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("spawning host: %s", err.Error()))
 	}
 	if spawnHost == nil {
 		return nil, InternalServerError.Send(ctx, "spawn host is nil")
@@ -891,7 +891,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find host %s", hostID))
 	}
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding host by id: %s", err))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding host by id: %s", err.Error()))
 	}
 	usr := mustHaveUser(ctx)
 	env := evergreen.GetEnvironment()
@@ -961,7 +961,7 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 		var newExpiration time.Time
 		newExpiration, err = restModel.FromTimePtr(updateVolumeInput.Expiration)
 		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("parsing time %s", err))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("parsing time %s", err.Error()))
 		}
 		updateOptions.Expiration = newExpiration
 	}
@@ -1179,7 +1179,7 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, opts Remov
 	usr := mustHaveUser(ctx)
 	err = usr.RemoveFavoriteProject(opts.ProjectIdentifier)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("removing project '%s': %s", opts.ProjectIdentifier, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("removing project '%s': %s", opts.ProjectIdentifier, err.Error()))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	err = apiProjectRef.BuildFromService(*p)
