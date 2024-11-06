@@ -123,7 +123,7 @@ func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*
 	for _, volId := range obj.AttachedVolumeIDs {
 		volume, err := host.FindVolumeByID(volId)
 		if err != nil {
-			return volumes, InternalServerError.Send(ctx, fmt.Sprintf("getting volume %s", volId))
+			return volumes, InternalServerError.Send(ctx, fmt.Sprintf("getting volume '%s': %s", volId, err.Error()))
 		}
 		if volume == nil {
 			continue
