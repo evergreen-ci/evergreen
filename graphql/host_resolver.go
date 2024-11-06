@@ -17,7 +17,7 @@ import (
 func (r *hostResolver) Ami(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	host, err := host.FindOneId(ctx, utility.FromStringPtr(obj.Id))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host %s: %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	if host == nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not find host %s", utility.FromStringPtr(obj.Id)))
