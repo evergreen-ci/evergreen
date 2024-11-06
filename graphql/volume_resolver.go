@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 )
 
 // Host is the resolver for the host field.
