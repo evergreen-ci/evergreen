@@ -189,6 +189,10 @@ func MockConfig() *evergreen.Settings {
 				Name: "logs",
 				Type: evergreen.BucketTypeS3,
 			},
+			Credentials: evergreen.S3Credentials{
+				Key:    "aws_key",
+				Secret: "aws_secret",
+			},
 		},
 		Cedar: evergreen.CedarConfig{
 			BaseURL: "url.com",
@@ -287,10 +291,6 @@ func MockConfig() *evergreen.Settings {
 				},
 				DefaultSecurityGroup: "test_security_group",
 				MaxVolumeSizePerUser: 200,
-				TaskOutput: evergreen.S3Credentials{
-					Key:    "aws_key",
-					Secret: "aws_secret",
-				},
 				ParserProject: evergreen.ParserProjectS3Config{
 					S3Credentials: evergreen.S3Credentials{
 						Bucket: "parser_project_bucket",
