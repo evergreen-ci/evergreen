@@ -81,7 +81,7 @@ func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
 func (r *queryResolver) SpruceConfig(ctx context.Context) (*restModel.APIAdminSettings, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Fetching evergreen settings: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching evergreen settings: %s", err.Error()))
 	}
 
 	spruceConfig := restModel.APIAdminSettings{}
@@ -154,13 +154,13 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 	if onlySpawnable {
 		d, err := distro.Find(ctx, distro.BySpawnAllowed())
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("while fetching spawnable distros: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching spawnable distros: %s", err.Error()))
 		}
 		distros = d
 	} else {
 		d, err := distro.AllDistros(ctx)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("while fetching distros: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching distros: %s", err.Error()))
 		}
 		distros = d
 	}
@@ -218,7 +218,7 @@ func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([
 func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.APIHost, error) {
 	host, err := host.GetHostByIdOrTagWithTask(ctx, hostID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Fetching host: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host: %s", err.Error()))
 	}
 	if host == nil {
 		return nil, werrors.Errorf("unable to find host %s", hostID)
@@ -357,7 +357,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error) {
 	queues, err := model.FindAllTaskQueues()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting all task queues: %v", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting all task queues: %s", err.Error()))
 	}
 
 	distros := []*TaskQueueDistro{}
@@ -408,7 +408,7 @@ func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.A
 func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID string) (*model.GithubProjectConflicts, error) {
 	pRef, err := model.FindMergedProjectRef(projectID, "", false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project: %v", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project: %s", err.Error()))
 	}
 	if pRef == nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
@@ -416,7 +416,7 @@ func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID st
 
 	conflicts, err := pRef.GetGithubProjectConflicts()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project conflicts: %v", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project conflicts: %s", err.Error()))
 	}
 	return &conflicts, nil
 }
@@ -425,7 +425,7 @@ func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID st
 func (r *queryResolver) Project(ctx context.Context, projectIdentifier string) (*restModel.APIProjectRef, error) {
 	project, err := data.FindProjectById(projectIdentifier, true, false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project by id %s: %s", projectIdentifier, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project by id '%s': %s", projectIdentifier, err.Error()))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	err = apiProjectRef.BuildFromService(*project)
@@ -440,7 +440,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	usr := mustHaveUser(ctx)
 	viewableProjectIds, err := usr.GetViewableProjects(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting viewable projects for '%s': %s", usr.DispName, err.Error()))
 	}
 	allProjects, err := model.FindMergedEnabledProjectRefsByIds(viewableProjectIds...)
 	if err != nil {
@@ -531,7 +531,7 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProj
 	usr := mustHaveUser(ctx)
 	projectIds, err := usr.GetViewableProjectSettings(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting viewable projects for '%s': %s", usr.DispName, err.Error()))
 	}
 
 	projects, err := model.FindProjectRefsByIds(projectIds...)
@@ -552,14 +552,14 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 	hosts, err := host.Find(ctx, host.ByUserWithRunningStatus(usr.Username()))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx,
-			fmt.Sprintf("finding running hosts for user %s : %s", usr.Username(), err))
+			fmt.Sprintf("finding running hosts for user '%s' : %s", usr.Username(), err))
 	}
 	duration := time.Duration(5) * time.Minute
 	timestamp := time.Now().Add(-duration) // within last 5 minutes
 	recentlyTerminatedHosts, err := host.Find(ctx, host.ByUserRecentlyTerminated(usr.Username(), timestamp))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx,
-			fmt.Sprintf("finding recently terminated hosts for user %s : %s", usr.Username(), err))
+			fmt.Sprintf("finding recently terminated hosts for user '%s': %s", usr.Username(), err))
 	}
 	hosts = append(hosts, recentlyTerminatedHosts...)
 
@@ -640,7 +640,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 	}
 	dbTasks, err := task.FindAll(db.Query(task.ByIds(taskIds)))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding tasks %s: %s", taskIds, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding tasks '%s': %s", taskIds, err))
 	}
 	if len(dbTasks) == 0 {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Tasks %s not found", taskIds))
@@ -840,7 +840,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		if err != nil {
 			// This shouldn't really happen, but if it does, we should return an error and log it
 			grip.Warning(message.WrapError(err, message.Fields{
-				"message":    "getting most recent version",
+				"message":    "Error getting most recent version",
 				"project_id": projectId,
 			}))
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting most recent mainline commit: %s", err.Error()))
@@ -942,14 +942,14 @@ func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectIde
 	}
 	repo, err := model.FindRepository(pid)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("while getting repository for '%s': %s", pid, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting repository for '%s': %s", pid, err.Error()))
 	}
 	if repo == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", pid))
 	}
 	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(pid, buildVariant, repo.RevisionOrderNumber)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("while getting tasks for '%s': %s", buildVariant, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting tasks for '%s': %s", buildVariant, err.Error()))
 	}
 	if buildVariantTasks == nil {
 		return []string{}, nil

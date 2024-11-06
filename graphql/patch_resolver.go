@@ -21,7 +21,7 @@ import (
 func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	usr, err := user.FindOneById(*obj.Author)
 	if err != nil {
-		return "", ResourceNotFound.Send(ctx, fmt.Sprintf("getting user from user ID: %s", err.Error()))
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("getting user from user ID: %s", err.Error()))
 	}
 	if usr == nil {
 		return "", ResourceNotFound.Send(ctx, "Could not find user from user ID")
@@ -33,7 +33,7 @@ func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.AP
 func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
 	baseVersion, err := model.FindBaseVersionForVersion(*obj.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	if baseVersion == nil {
 		return nil, nil
@@ -49,7 +49,7 @@ func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.API
 func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIBuild, error) {
 	builds, err := build.FindBuildsByVersions([]string{*obj.Version})
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding build by version %s: %s", *obj.Version, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding build by version '%s': %s", utility.FromStringPtr(obj.Version), err.Error()))
 	}
 	var apiBuilds []*restModel.APIBuild
 	for _, build := range builds {
@@ -229,7 +229,7 @@ func (r *patchResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIP
 func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) (*int, error) {
 	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id, false)))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task count for patch %s: %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task count for patch '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	return &taskCount, nil
 }
@@ -274,7 +274,7 @@ func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch
 	}
 	v, err := model.VersionFindOneId(*obj.Version)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("while finding version with id: `%s`: %s", *obj.Version, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("while finding version with id '%s': %s", utility.FromStringPtr(obj.Version), err.Error()))
 	}
 	if v == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", *obj.Version))

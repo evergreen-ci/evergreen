@@ -56,7 +56,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 	if obj.Activated == nil {
 		version, err := model.VersionFindOne(model.VersionById(*obj.Id))
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version: %s : %s", *obj.Id, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 		}
 		if err = setVersionActivationStatus(ctx, version); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting version activation status: %s", err.Error()))
@@ -69,7 +69,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 	}
 	groupedBuildVariants, err := generateBuildVariants(ctx, utility.FromStringPtr(obj.Id), options, utility.FromStringPtr(obj.Requester), r.sc.GetURL())
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("generating build variants for version %s : %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("generating build variants for version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	return groupedBuildVariants, nil
 }
@@ -141,7 +141,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *restModel.APIVersion) ([]*ExternalLinkForMetadata, error) {
 	pRef, err := data.FindProjectById(*obj.Project, false, false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project `%s`: %s", *obj.Project, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project '%s': %s", utility.FromStringPtr(obj.Project), err.Error()))
 	}
 	if pRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Project `%s` not found", *obj.Project))
@@ -273,7 +273,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {
 	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id, !obj.IsPatchRequester())))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task count for version `%s`: %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task count for version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	return &taskCount, nil
 }
@@ -418,7 +418,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 
 		apiTask := restModel.APITask{}
 		if err = apiTask.BuildFromService(ctx, upstreamTask, nil); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APITask from service for `%s`: %s", upstreamTask.Id, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APITask from service for '%s': %s", upstreamTask.Id, err.Error()))
 		}
 
 		projectID = upstreamTask.Project
@@ -477,14 +477,14 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIVersion) (*VersionTiming, error) {
 	v, err := model.VersionFindOneId(*obj.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version `%s`: %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	if v == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version `%s`: %s", *obj.Id, "Version not found"))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding version '%s'", utility.FromStringPtr(obj.Id)))
 	}
 	timeTaken, makespan, err := v.GetTimeSpent()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting timing for version `%s`: %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting timing for version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	// return nil if rounded timeTaken/makespan == 0s
 	t := timeTaken.Round(time.Second)
