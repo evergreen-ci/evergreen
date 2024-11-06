@@ -891,7 +891,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find host %s", hostID))
 	}
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding host by id: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host by id: %s", err.Error()))
 	}
 	usr := mustHaveUser(ctx)
 	env := evergreen.GetEnvironment()
@@ -1023,7 +1023,7 @@ func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, faile
 	username := usr.Username()
 	t, err := task.FindOneId(taskID)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskID, err.Error()))
 	}
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id '%s'", taskID))

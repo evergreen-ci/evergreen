@@ -397,10 +397,10 @@ func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.AP
 func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIVersion) (*UpstreamProject, error) {
 	v, err := model.VersionFindOneId(utility.FromStringPtr(obj.Id))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version %s: '%s'", utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	if v == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Version %s not found", utility.FromStringPtr(obj.Id)))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", utility.FromStringPtr(obj.Id)))
 	}
 	if v.TriggerID == "" || v.TriggerType == "" {
 		return nil, nil
@@ -438,10 +438,10 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 
 		upstreamVersion, err := model.VersionFindOneId(utility.FromStringPtr(&upstreamBuild.Version))
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream version %s: '%s'", utility.FromStringPtr(obj.Id), err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 		}
 		if upstreamVersion == nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("upstream version %s not found", utility.FromStringPtr(obj.Id)))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("upstream version '%s' not found", utility.FromStringPtr(obj.Id)))
 		}
 
 		apiVersion := restModel.APIVersion{}
@@ -513,7 +513,7 @@ func (r *versionResolver) Warnings(ctx context.Context, obj *restModel.APIVersio
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version with id `%s`: %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	if v == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version with id `%s`: %s", utility.FromStringPtr(obj.Id), "version not found"))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", utility.FromStringPtr(obj.Id)))
 	}
 	return v.Warnings, nil
 }
