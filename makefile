@@ -81,7 +81,7 @@ goarch := $(shell $(gobin) env GOARCH 2> /dev/null)
 endif
 
 clientBuildDir := clients
-macOSPlatforms := darwin_amd64 $(if $(STAGING_ONLY),,darwin_arm64)
+macOSPlatforms := $(if $(STAGING_ONLY),,darwin_amd64 darwin_arm64)
 linuxPlatforms := linux_amd64 $(if $(STAGING_ONLY),,linux_s390x linux_arm64 linux_ppc64le)
 windowsPlatforms := windows_amd64
 unixBinaryBasename := evergreen
@@ -130,7 +130,6 @@ build-darwin_%: $(clientBuildDir)/darwin_%/$(unixBinaryBasename) $(clientBuildDi
 
 build-linux-staging_%: $(clientBuildDir)/linux_%/$(unixBinaryBasename);
 build-windows-staging_%: $(clientBuildDir)/windows_%/$(windowsBinaryBasename);
-build-darwin-staging_%: $(clientBuildDir)/darwin_%/$(unixBinaryBasename) $(clientBuildDir)/darwin_%/.signed;
 
 build-darwin-unsigned_%: $(clientBuildDir)/darwin_%/$(unixBinaryBasename);
 
