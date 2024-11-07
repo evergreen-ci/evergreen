@@ -11,6 +11,7 @@ import (
 	"time"
 
 	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -96,17 +97,19 @@ type s3put struct {
 	// PatchOnly defaults to false. If set to true, this command will noop without error for non-patch tasks.
 	PatchOnly string `mapstructure:"patch_only" plugin:"patch_only"`
 
-	// SkipExisting, when set to true, will not upload files if they already exist in s3.
+	// SkipExisting, when set to 'true', will not upload files if they already
+	// exist in s3. This will not cause the s3.put command to fail. When set to
+	// 'error' instead, the command will fail if a remote file already exists.
+	// This beavior respects s3's strong read-after-write consistency model.
 	SkipExisting string `mapstructure:"skip_existing" plugin:"expand"`
 
 	// workDir sets the working directory relative to which s3put should look for files to upload.
 	// workDir will be empty if an absolute path is provided to the file.
-	workDir          string
-	skipMissing      bool
-	preservePath     bool
-	skipExistingBool bool
-	isPatchable      bool
-	isPatchOnly      bool
+	workDir      string
+	skipMissing  bool
+	preservePath bool
+	isPatchable  bool
+	isPatchOnly  bool
 
 	bucket pail.Bucket
 
@@ -219,13 +222,6 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		s3pc.preservePath, err = strconv.ParseBool(s3pc.PreservePath)
 		if err != nil {
 			return errors.Wrap(err, "parsing preserve path parameter as a boolean")
-		}
-	}
-
-	if s3pc.SkipExisting != "" {
-		s3pc.skipExistingBool, err = strconv.ParseBool(s3pc.SkipExisting)
-		if err != nil {
-			return errors.Wrap(err, "parsing skip existing parameter as a boolean")
 		}
 	}
 
@@ -349,6 +345,7 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 		err           error
 		uploadedFiles []string
 		filesList     []string
+		skippedFiles  []string
 	)
 
 	timer := time.NewTimer(0)
@@ -390,6 +387,7 @@ retryLoop:
 
 			// reset to avoid duplicated uploaded references
 			uploadedFiles = []string{}
+			skippedFiles = make([]string, 0)
 
 		uploadLoop:
 			for _, fpath := range filesList {
@@ -410,16 +408,6 @@ retryLoop:
 
 				fpath = filepath.Join(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), fpath)
 
-				if s3pc.skipExistingBool {
-					exists, err := s3pc.remoteFileExists(ctx, remoteName)
-					if err != nil {
-						return errors.Wrapf(err, "checking if file '%s' exists", remoteName)
-					}
-					if exists {
-						logger.Task().Infof("Not uploading file '%s' because remote file '%s' already exists. Continuing to upload other files.", fpath, remoteName)
-						continue uploadLoop
-					}
-				}
 				err = s3pc.bucket.Upload(ctx, remoteName, fpath)
 				if err != nil {
 					// retry errors other than "file doesn't exist", which we handle differently based on what
@@ -437,6 +425,26 @@ retryLoop:
 						} else {
 							// single required uploads should return an error asap.
 							return errors.Wrapf(err, "missing file '%s'", fpath)
+						}
+					}
+
+					if s3pc.SkipExisting == "true" || s3pc.SkipExisting == "error" {
+						if s3pc.preservePath {
+							skippedFiles = append(skippedFiles, remoteName)
+						} else {
+							skippedFiles = append(skippedFiles, fpath)
+						}
+
+						var ae smithy.APIError
+
+						if errors.As(err, &ae) {
+							if ae.ErrorCode() == "PreconditionFailed" {
+								if s3pc.SkipExisting == "true" {
+									continue uploadLoop
+								}
+
+								return errors.Wrapf(err, "Remote file already exists")
+							}
 						}
 					}
 
@@ -469,9 +477,11 @@ retryLoop:
 
 	logger.Task().WarningWhen(strings.Contains(s3pc.Bucket, "."), "Bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs.")
 
-	if len(uploadedFiles) != len(filesList) && !s3pc.skipMissing {
-		logger.Task().Infof("Attempted to upload %d files, %d successfully uploaded.", len(filesList), len(uploadedFiles))
-		return errors.Errorf("uploaded %d files of %d requested", len(uploadedFiles), len(filesList))
+	processedCount := len(skippedFiles) + len(uploadedFiles)
+
+	if processedCount != len(filesList) && !s3pc.skipMissing {
+		logger.Task().Infof("Attempted to upload %d files, %d successfully uploaded.", len(filesList), processedCount)
+		return errors.Errorf("uploaded %d files of %d requested", processedCount, len(filesList))
 	}
 
 	return nil
@@ -534,6 +544,7 @@ func (s3pc *s3put) createPailBucket(ctx context.Context, httpClient *http.Client
 	if s3pc.bucket != nil {
 		return nil
 	}
+
 	opts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(s3pc.AwsKey, s3pc.AwsSecret, s3pc.AwsSessionToken),
 		Region:      s3pc.Region,
@@ -541,6 +552,11 @@ func (s3pc *s3put) createPailBucket(ctx context.Context, httpClient *http.Client
 		Permissions: pail.S3Permissions(s3pc.Permissions),
 		ContentType: s3pc.ContentType,
 	}
+
+	if s3pc.SkipExisting == "true" || s3pc.SkipExisting == "error" {
+		opts.IfNotExists = true
+	}
+
 	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(ctx, httpClient, opts)
 	s3pc.bucket = bucket
 	return err
@@ -556,17 +572,4 @@ func (s3pc *s3put) isPrivate(visibility string) bool {
 func (s3pc *s3put) isPublic() bool {
 	return (s3pc.Visibility == "" || s3pc.Visibility == artifact.Public) &&
 		(s3pc.Permissions == string(s3Types.BucketCannedACLPublicRead) || s3pc.Permissions == string(s3Types.BucketCannedACLPublicReadWrite))
-}
-
-func (s3pc *s3put) remoteFileExists(ctx context.Context, remoteName string) (bool, error) {
-	opts := pail.S3Options{
-		Name:        s3pc.Bucket,
-		Credentials: pail.CreateAWSCredentials(s3pc.AwsKey, s3pc.AwsSecret, s3pc.AwsSessionToken),
-		Region:      s3pc.Region,
-	}
-	bucket, err := pail.NewS3Bucket(ctx, opts)
-	if err != nil {
-		return false, errors.Wrap(err, "creating S3 bucket")
-	}
-	return bucket.Exists(ctx, remoteName)
 }
