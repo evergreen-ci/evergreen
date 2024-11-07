@@ -126,7 +126,7 @@ func Find(ctx context.Context, query bson.M, options ...*options.FindOptions) ([
 
 // Insert writes the distro to the database.
 func (d *Distro) Insert(ctx context.Context) error {
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertOne(ctx, d)
+	_, err := distroDB().Collection(Collection).InsertOne(ctx, d)
 	return errors.Wrap(err, "inserting distro")
 }
 
