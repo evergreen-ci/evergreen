@@ -1099,21 +1099,21 @@ func (h *gitServePatchFileHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewTextResponse(patchContents)
 }
 
-// GET /task/{task_id}/git/patch
-type gitServePatchHandler struct {
+// GET /task/{task_id}/patch
+type servePatchHandler struct {
 	taskID  string
 	patchID string
 }
 
-func makeGitServePatch() gimlet.RouteHandler {
-	return &gitServePatchHandler{}
+func makeServePatch() gimlet.RouteHandler {
+	return &servePatchHandler{}
 }
 
-func (h *gitServePatchHandler) Factory() gimlet.RouteHandler {
-	return &gitServePatchHandler{}
+func (h *servePatchHandler) Factory() gimlet.RouteHandler {
+	return &servePatchHandler{}
 }
 
-func (h *gitServePatchHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *servePatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task ID")
 	}
@@ -1123,7 +1123,7 @@ func (h *gitServePatchHandler) Parse(ctx context.Context, r *http.Request) error
 	return nil
 }
 
-func (h *gitServePatchHandler) Run(ctx context.Context) gimlet.Responder {
+func (h *servePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if h.patchID == "" {
 		t, err := task.FindOneId(h.taskID)
 		if err != nil {
@@ -1183,53 +1183,46 @@ func (h *gitServePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(p)
 }
 
-// GET /task/{task_id}/git/version
-type gitServeVersionHandler struct {
-	taskID    string
-	versionID string
+// GET /task/{task_id}/version
+type serveVersionHandler struct {
+	taskID string
 }
 
-func makeGitServeVersion() gimlet.RouteHandler {
-	return &gitServeVersionHandler{}
+func makeServeVersion() gimlet.RouteHandler {
+	return &serveVersionHandler{}
 }
 
-func (h *gitServeVersionHandler) Factory() gimlet.RouteHandler {
-	return &gitServeVersionHandler{}
+func (h *serveVersionHandler) Factory() gimlet.RouteHandler {
+	return &serveVersionHandler{}
 }
 
-func (h *gitServeVersionHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *serveVersionHandler) Parse(ctx context.Context, r *http.Request) error {
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task ID")
-	}
-	if versionParam, exists := r.URL.Query()["version"]; exists {
-		h.versionID = versionParam[0]
 	}
 	return nil
 }
 
-func (h *gitServeVersionHandler) Run(ctx context.Context) gimlet.Responder {
-	if h.versionID == "" {
-		t, err := task.FindOneId(h.taskID)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
-		}
-		if t == nil {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("task '%s' not found", h.taskID),
-			})
-		}
-		h.versionID = t.Version
+func (h *serveVersionHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
 	}
 
-	v, err := model.VersionFindOneId(h.versionID)
+	v, err := model.VersionFindOneId(t.Version)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", h.versionID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", t.Version))
 	}
 	if v == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("version with ID '%s' not found", h.versionID),
+			Message:    fmt.Sprintf("version with ID '%s' not found", t.Version),
 		})
 	}
 

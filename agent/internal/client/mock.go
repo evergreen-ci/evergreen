@@ -410,7 +410,7 @@ func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData, patchId string) (*
 	return &patchModel.Patch{}, nil
 }
 
-func (c *Mock) GetTaskVersion(ctx context.Context, td TaskData, versionId string) (*serviceModel.Version, error) {
+func (c *Mock) GetTaskVersion(ctx context.Context, td TaskData) (*serviceModel.Version, error) {
 	return &serviceModel.Version{}, nil
 }
 

@@ -464,7 +464,7 @@ func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, 
 		method:   http.MethodGet,
 		taskData: &taskData,
 	}
-	suffix := "git/patch"
+	suffix := "patch"
 	if patchId != "" {
 		suffix = fmt.Sprintf("%s?patch=%s", suffix, patchId)
 	}
@@ -484,18 +484,17 @@ func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, 
 
 // GetTaskVersion tries to get the patch data from the server in json format,
 // and unmarhals it into a version struct. The GET request is attempted
-// multiple times upon failure. If versionId is not specified, the task's
-// version is returned.
-func (c *baseCommunicator) GetTaskVersion(ctx context.Context, taskData TaskData, versionId string) (*model.Version, error) {
+// multiple times upon failure. The route can only retrieve the calling task's version.
+func (c *baseCommunicator) GetTaskVersion(ctx context.Context, taskData TaskData) (*model.Version, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
 	}
-	suffix := "git/version"
+	suffix := "version"
 	info.setTaskPathSuffix(suffix)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, util.RespErrorf(resp, errors.Wrapf(err, "getting version '%s' for task", versionId).Error())
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting version for task").Error())
 	}
 	defer resp.Body.Close()
 
