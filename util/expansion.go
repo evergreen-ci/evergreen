@@ -74,7 +74,7 @@ func (exp *Expansions) Remove(expansion string) {
 	delete(*exp, expansion)
 }
 
-// Apply the expansions to a single string.
+// ExpandString applies the expansions to a single string.
 // Return the expanded string, or an error if the input string is malformed.
 func (exp *Expansions) ExpandString(toExpand string) (string, error) {
 	// replace all expandable parts of the string
@@ -116,7 +116,7 @@ func (exp *Expansions) ExpandString(toExpand string) (string, error) {
 		}))
 
 	if malformedFound || strings.Contains(expanded, "${") {
-		return expanded, errors.Errorf("'%s' contains an unclosed expansion", expanded)
+		return expanded, errors.Errorf("'%s' contains an unclosed expansion", toExpand)
 	}
 
 	return expanded, nil

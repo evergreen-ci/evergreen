@@ -27,7 +27,7 @@ func (r *permissionsResolver) CanCreateProject(ctx context.Context, obj *Permiss
 	}
 	canCreate, err := usr.HasProjectCreatePermission()
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Error checking user permission: %s", err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("checking user permission: %s", err.Error()))
 	}
 	return canCreate, nil
 }

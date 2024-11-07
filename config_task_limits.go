@@ -48,6 +48,9 @@ type TaskLimitsConfig struct {
 
 	// MaxTaskExecution is the maximum task (zero based) execution number.
 	MaxTaskExecution int `bson:"max_task_execution" json:"max_task_execution" yaml:"max_task_execution"`
+
+	// MaxDailyAutomaticRestarts is the maximum number of times a project can automatically restart a task within a 24-hour period.
+	MaxDailyAutomaticRestarts int `bson:"max_daily_automatic_restarts" json:"max_daily_automatic_restarts" yaml:"max_daily_automatic_restarts"`
 }
 
 var (
@@ -62,6 +65,7 @@ var (
 	MaxExecTimeoutSecs                               = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxExecTimeoutSecs")
 	maxDegradedModeConcurrentLargeParserProjectTasks = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxDegradedModeConcurrentLargeParserProjectTasks")
 	maxTaskExecutionKey                              = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxTaskExecution")
+	maxDailyAutomaticRestartsKey                     = bsonutil.MustHaveTag(TaskLimitsConfig{}, "MaxDailyAutomaticRestarts")
 )
 
 func (c *TaskLimitsConfig) SectionId() string { return "task_limits" }
@@ -84,6 +88,7 @@ func (c *TaskLimitsConfig) Set(ctx context.Context) error {
 			MaxExecTimeoutSecs:                               c.MaxExecTimeoutSecs,
 			maxDegradedModeConcurrentLargeParserProjectTasks: c.MaxDegradedModeConcurrentLargeParserProjectTasks,
 			maxTaskExecutionKey:                              c.MaxTaskExecution,
+			maxDailyAutomaticRestartsKey:                     c.MaxDailyAutomaticRestarts,
 		},
 	}), "updating config section '%s'", c.SectionId())
 }

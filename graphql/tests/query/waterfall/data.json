@@ -177,6 +177,9 @@
       "_id": "task_3",
       "version": "evergreen_version2",
       "status": "failed",
+      "details": {
+        "type": "setup"
+      },
       "display_name": "Some Task",
       "activated": true,
       "build_variant": "enterprise-ubuntu1604-64",

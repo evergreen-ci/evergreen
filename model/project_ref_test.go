@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -1071,6 +1072,16 @@ func checkAndSetProjectVarsSynced(t *testing.T, projRef *ProjectRef, isRepoRef b
 	projRef.ParameterStoreVarsSynced = true
 }
 
+// checkParametersNamespacedByProject checks that the parameter names for the
+// project vars all include the project ID as a prefix.
+func checkParametersNamespacedByProject(t *testing.T, vars ProjectVars) {
+	projectID := vars.Id
+	commonAndProjectIDPrefix := fmt.Sprintf("/%s/%s/", strings.TrimSuffix(strings.TrimPrefix(evergreen.GetEnvironment().Settings().Providers.AWS.ParameterStore.Prefix, "/"), "/"), projectID)
+	for _, pm := range vars.Parameters {
+		assert.True(t, strings.HasPrefix(pm.ParameterName, commonAndProjectIDPrefix), "parameter name '%s' should have standard prefix '%s'", pm.ParameterName, commonAndProjectIDPrefix)
+	}
+}
+
 func TestDetachFromRepo(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -1123,6 +1134,7 @@ func TestDetachFromRepo(t *testing.T) {
 			require.NotZero(t, vars)
 
 			checkParametersMatchVars(ctx, t, vars.Parameters, expectedVars.Vars)
+			checkParametersNamespacedByProject(t, *vars)
 		},
 		"PatchAliases": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			// no patch aliases are copied if the project has a patch alias
@@ -1439,6 +1451,36 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.PeriodicBuilds)
 		},
+		ProjectPageGithubAppSettingsSection: func(t *testing.T, id string) {
+			pRefFromDb, err := FindBranchProjectRef(id)
+			assert.NoError(t, err)
+
+			auth := githubapp.GithubAppAuth{
+				Id:         pRefFromDb.RepoRefId,
+				AppID:      9999,
+				PrivateKey: []byte("repo-secret"),
+			}
+			err = githubapp.UpsertGithubAppAuth(&auth)
+			assert.NoError(t, err)
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageGithubAppSettingsSection, "me"))
+			pRefFromDb, err = FindBranchProjectRef(id)
+			assert.NoError(t, err)
+			require.NotNil(t, pRefFromDb)
+			assert.Nil(t, pRefFromDb.GitHubDynamicTokenPermissionGroups)
+			assert.Nil(t, pRefFromDb.GitHubPermissionGroupByRequester)
+
+			app, err := pRefFromDb.GetGitHubAppAuth()
+			require.NoError(t, err)
+			require.NotNil(t, app)
+			assert.Equal(t, pRefFromDb.RepoRefId, app.Id)
+		},
+		ProjectPageGithubPermissionsSection: func(t *testing.T, id string) {
+			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageGithubPermissionsSection, "me"))
+			pRefFromDb, err := FindBranchProjectRef(id)
+			assert.NoError(t, err)
+			assert.NotNil(t, pRefFromDb)
+			assert.Nil(t, pRefFromDb.GitHubDynamicTokenPermissionGroups)
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(ProjectRefCollection, ProjectVarsCollection, fakeparameter.Collection, ProjectAliasCollection,
@@ -1500,6 +1542,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			}
 			assert.NoError(t, pVars.Insert())
 			checkAndSetProjectVarsSynced(t, &pRef, false)
+			checkParametersNamespacedByProject(t, pVars)
 
 			aliases := []ProjectAlias{
 				{
@@ -2105,7 +2148,7 @@ func TestGithubPermissionGroups(t *testing.T) {
 	})
 
 	t.Run("Valid group passes validation", func(t *testing.T) {
-		assert.NoError(p.ValidateGitHubPermissionGroups())
+		assert.NoError(p.ValidateGitHubPermissionGroupsByRequester())
 	})
 
 	t.Run("Invalid name in group fails validation", func(t *testing.T) {
@@ -2114,21 +2157,21 @@ func TestGithubPermissionGroups(t *testing.T) {
 				Name: "",
 			},
 		)
-		assert.ErrorContains(p.ValidateGitHubPermissionGroups(), "group name cannot be empty")
+		assert.ErrorContains(p.ValidateGitHubPermissionGroupsByRequester(), "group name cannot be empty")
 	})
 
 	t.Run("Invalid requester in group fails validation", func(t *testing.T) {
 		p.GitHubPermissionGroupByRequester = map[string]string{
 			"second-requester": "some-group",
 		}
-		assert.ErrorContains(p.ValidateGitHubPermissionGroups(), "requester 'second-requester' is not a valid requester")
+		assert.ErrorContains(p.ValidateGitHubPermissionGroupsByRequester(), "requester 'second-requester' is not a valid requester")
 	})
 
 	t.Run("Valid requester pointing to not found group fails validation", func(t *testing.T) {
 		p.GitHubPermissionGroupByRequester = map[string]string{
 			evergreen.GithubPRRequester: "second-group",
 		}
-		assert.ErrorContains(p.ValidateGitHubPermissionGroups(), fmt.Sprintf("group 'second-group' for requester '%s' not found", evergreen.GithubPRRequester))
+		assert.ErrorContains(p.ValidateGitHubPermissionGroupsByRequester(), fmt.Sprintf("group 'second-group' for requester '%s' not found", evergreen.GithubPRRequester))
 	})
 
 	t.Run("Intersection of permissions should return most restrictive", func(t *testing.T) {

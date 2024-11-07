@@ -148,6 +148,10 @@ type ProjectRef struct {
 	// project's variables have been synced to Parameter Store. If this is true,
 	// then the project variables can all be found in Parameter Store.
 	ParameterStoreVarsSynced bool `bson:"parameter_store_vars_synced,omitempty" json:"parameter_store_vars_synced,omitempty" yaml:"parameter_store_vars_synced,omitempty"`
+	// LastAutoRestartedTaskAt is the last timestamp that a task in this project was restarted automatically.
+	LastAutoRestartedTaskAt time.Time `bson:"last_auto_restarted_task_at"`
+	// NumAutoRestartedTasks is the number of tasks this project has restarted automatically in the past 24-hour period.
+	NumAutoRestartedTasks int `bson:"num_auto_restarted_tasks"`
 }
 
 // GitHubDynamicTokenPermissionGroup is a permission group for GitHub dynamic access tokens.
@@ -196,7 +200,29 @@ func (p *ProjectRef) GetGitHubPermissionGroup(requester string) (GitHubDynamicTo
 	return defaultGitHubTokenPermissionGroup, false
 }
 
-func (p *ProjectRef) ValidateGitHubPermissionGroups() error {
+// GetGitHubAppAuth returns the App auth for the given project.
+// If the project defaults to the repo and the app is not defined on the project, it will return the app from the repo.
+func (p *ProjectRef) GetGitHubAppAuth() (*githubapp.GithubAppAuth, error) {
+	appAuth, err := githubapp.FindOneGithubAppAuth(p.Id)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding GitHub app auth")
+	}
+	if appAuth != nil {
+		return appAuth, nil
+	}
+	if !p.UseRepoSettings() {
+		return nil, nil
+	}
+	appAuth, err = githubapp.FindOneGithubAppAuth(p.RepoRefId)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding GitHub app auth")
+	}
+
+	return appAuth, nil
+
+}
+
+func (p *ProjectRef) ValidateGitHubPermissionGroupsByRequester() error {
 	catcher := grip.NewBasicCatcher()
 	for _, group := range p.GitHubDynamicTokenPermissionGroups {
 		catcher.ErrorfWhen(group.Name == "", "group name cannot be empty")
@@ -212,6 +238,14 @@ func (p *ProjectRef) ValidateGitHubPermissionGroups() error {
 			"group '%s' for requester '%s' not found", groupName, requester)
 	}
 	return errors.Wrap(catcher.Resolve(), "invalid GitHub dynamic token permission groups")
+}
+
+func (p *ProjectRef) ValidateGitHubPermissionGroups() error {
+	catcher := grip.NewBasicCatcher()
+	for _, group := range p.GitHubDynamicTokenPermissionGroups {
+		catcher.ErrorfWhen(group.Name == "", "group name cannot be empty")
+	}
+	return nil
 }
 
 // Intersection returns the most restrictive intersection of the two permission groups.
@@ -498,6 +532,8 @@ var (
 	projectRefGitHubDynamicTokenPermissionGroupsKey = bsonutil.MustHaveTag(ProjectRef{}, "GitHubDynamicTokenPermissionGroups")
 	projectRefGithubPermissionGroupByRequesterKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitHubPermissionGroupByRequester")
 	projectRefParameterStoreVarsSyncedKey           = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreVarsSynced")
+	projectRefLastAutoRestartedTaskAtKey            = bsonutil.MustHaveTag(ProjectRef{}, "LastAutoRestartedTaskAt")
+	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	commitQueueMergeQueueKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "MergeQueue")
@@ -768,6 +804,17 @@ func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) err
 		PrivateKey: privateKey,
 	}
 	return githubapp.UpsertGithubAppAuth(&auth)
+}
+
+// DefaultGithubAppCredentialsToRepo defaults the app credentials to the repo by
+// removing the GithubAppAuth entry for the project.
+func DefaultGithubAppCredentialsToRepo(projectId string) error {
+	p, err := FindBranchProjectRef(projectId)
+	if err != nil {
+		return errors.Wrap(err, "finding project ref")
+	}
+	return githubapp.RemoveGithubAppAuth(p.Id)
+
 }
 
 // AddToRepoScope validates that the branch can be attached to the matching repo,
@@ -1300,7 +1347,6 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 			return nil, errors.Wrap(err, "upserting alias for repo")
 		}
 	}
-
 	return repoRef, nil
 }
 
@@ -2423,6 +2469,15 @@ func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId s
 				catcher.Add(err)
 			}
 		}
+	case ProjectPageGithubAppSettingsSection:
+		err = DefaultGithubAppCredentialsToRepo(projectId)
+		if err == nil {
+			modified = true
+		}
+		catcher.Wrapf(err, "defaulting to repo for section '%s'", section)
+		// also default the permission groups when defaulting to the repo
+		_, err = SaveProjectPageForSection(projectId, nil, ProjectPageGithubPermissionsSection, false)
+		catcher.Wrapf(err, "defaulting the github permissions as part of defaulting section '%s'", section)
 	}
 	if modified {
 		catcher.Add(GetAndLogProjectModified(projectId, userId, false, before))
@@ -2533,6 +2588,38 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionC
 	}
 
 	return versionCreateTime, nil
+}
+
+// CheckAndUpdateAutoRestartLimit checks if auto restarting a task for a project is allowed given
+// the global per-project daily auto restarting limit, and updates relevant timestamp and counter used
+// to track the project's usage.
+func (p *ProjectRef) CheckAndUpdateAutoRestartLimit(maxDailyAutoRestarts int) error {
+	if maxDailyAutoRestarts == 0 {
+		return nil
+	}
+	var update bson.M
+	// If the last time the project auto restarted a task was within the day, increment the number
+	// of auto restarted tasks counter, erroring if the global limit is breached.
+	if util.TimeIsWithinLastDay(p.LastAutoRestartedTaskAt) {
+		update = bson.M{
+			"$set": bson.M{projectRefLastAutoRestartedTaskAtKey: p.NumAutoRestartedTasks + 1},
+		}
+		if 1+p.NumAutoRestartedTasks >= maxDailyAutoRestarts {
+			now := time.Now()
+			hoursRemaining := 24 - int(now.Sub(p.LastAutoRestartedTaskAt).Hours())
+			return errors.Errorf("project '%s' has auto-restarted %d out of %d allowed tasks in the past day, limit refreshes in %d hour(s)", p.Id, p.NumAutoRestartedTasks, maxDailyAutoRestarts, hoursRemaining)
+		}
+	} else {
+		// Otherwise, if the project has not automatically restarted any tasks within the past day, reset the timestamp to now,
+		// and reset the number of auto restarted tasks to 1.
+		update = bson.M{
+			"$set": bson.M{
+				projectRefNumAutoRestartedTasksKey:   1,
+				projectRefLastAutoRestartedTaskAtKey: time.Now(),
+			},
+		}
+	}
+	return errors.Wrap(db.Update(ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, update), "updating project's auto-restart limit")
 }
 
 // isActiveCronTimeRange checks that the proposed cron should activate now or

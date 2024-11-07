@@ -2775,6 +2775,8 @@ type APITaskLimitsConfig struct {
 	MaxExecTimeoutSecs *int `json:"max_exec_timeout_secs"`
 	// MaxTaskExecution is the maximum task (zero based) execution number.
 	MaxTaskExecution *int `json:"max_task_execution"`
+	// MaxDailyAutomaticRestarts is the maximum number of times a project can automatically restart a task within a 24-hour period.
+	MaxDailyAutomaticRestarts *int `json:"max_daily_automatic_restarts"`
 }
 
 func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
@@ -2791,6 +2793,7 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 		c.MaxParserProjectSize = utility.ToIntPtr(v.MaxParserProjectSize)
 		c.MaxExecTimeoutSecs = utility.ToIntPtr(v.MaxExecTimeoutSecs)
 		c.MaxTaskExecution = utility.ToIntPtr(v.MaxTaskExecution)
+		c.MaxDailyAutomaticRestarts = utility.ToIntPtr(v.MaxDailyAutomaticRestarts)
 		return nil
 	default:
 		return errors.Errorf("programmatic error: expected task limits config but got type %T", h)
@@ -2810,6 +2813,7 @@ func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 		MaxExecTimeoutSecs:                               utility.FromIntPtr(c.MaxExecTimeoutSecs),
 		MaxDegradedModeConcurrentLargeParserProjectTasks: utility.FromIntPtr(c.MaxDegradedModeConcurrentLargeParserProjectTasks),
 		MaxTaskExecution:                                 utility.FromIntPtr(c.MaxTaskExecution),
+		MaxDailyAutomaticRestarts:                        utility.FromIntPtr(c.MaxDailyAutomaticRestarts),
 	}, nil
 }
 

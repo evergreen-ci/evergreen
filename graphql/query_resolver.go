@@ -81,13 +81,13 @@ func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
 func (r *queryResolver) SpruceConfig(ctx context.Context) (*restModel.APIAdminSettings, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching evergreen settings: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching evergreen settings: %s", err.Error()))
 	}
 
 	spruceConfig := restModel.APIAdminSettings{}
 	err = spruceConfig.BuildFromService(config)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error building api admin settings from service: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building api admin settings from service: %s", err.Error()))
 	}
 	return &spruceConfig, nil
 }
@@ -154,13 +154,13 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 	if onlySpawnable {
 		d, err := distro.Find(ctx, distro.BySpawnAllowed())
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while fetching spawnable distros: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching spawnable distros: %s", err.Error()))
 		}
 		distros = d
 	} else {
 		d, err := distro.AllDistros(ctx)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while fetching distros: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching distros: %s", err.Error()))
 		}
 		distros = d
 	}
@@ -218,7 +218,7 @@ func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([
 func (r *queryResolver) Host(ctx context.Context, hostID string) (*restModel.APIHost, error) {
 	host, err := host.GetHostByIdOrTagWithTask(ctx, hostID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error Fetching host: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host: %s", err.Error()))
 	}
 	if host == nil {
 		return nil, werrors.Errorf("unable to find host %s", hostID)
@@ -335,7 +335,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 
 	hosts, filteredHostsCount, totalHostsCount, err := host.GetPaginatedRunningHosts(ctx, hostsFilterOpts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting hosts: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting hosts: %s", err.Error()))
 	}
 
 	apiHosts := []*restModel.APIHost{}
@@ -357,7 +357,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error) {
 	queues, err := model.FindAllTaskQueues()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting all task queues: %v", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting all task queues: %s", err.Error()))
 	}
 
 	distros := []*TaskQueueDistro{}
@@ -365,7 +365,7 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 	for _, distro := range queues {
 		numHosts, err := host.CountHostsCanRunTasks(ctx, distro.Distro)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting associated hosts: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting associated hosts: %s", err.Error()))
 		}
 		tqd := TaskQueueDistro{
 			ID:        distro.Distro,
@@ -387,7 +387,7 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 func (r *queryResolver) Pod(ctx context.Context, podID string) (*restModel.APIPod, error) {
 	pod, err := data.FindAPIPodByID(podID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding pod: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding pod: %s", err.Error()))
 	}
 	return pod, nil
 }
@@ -408,7 +408,7 @@ func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.A
 func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID string) (*model.GithubProjectConflicts, error) {
 	pRef, err := model.FindMergedProjectRef(projectID, "", false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting project: %v", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project: %s", err.Error()))
 	}
 	if pRef == nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
@@ -416,7 +416,7 @@ func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID st
 
 	conflicts, err := pRef.GetGithubProjectConflicts()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting project conflicts: %v", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project conflicts: %s", err.Error()))
 	}
 	return &conflicts, nil
 }
@@ -425,12 +425,12 @@ func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID st
 func (r *queryResolver) Project(ctx context.Context, projectIdentifier string) (*restModel.APIProjectRef, error) {
 	project, err := data.FindProjectById(projectIdentifier, true, false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding project by id %s: %s", projectIdentifier, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project by id '%s': %s", projectIdentifier, err.Error()))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	err = apiProjectRef.BuildFromService(*project)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProject from service: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProject from service: %s", err.Error()))
 	}
 	return &apiProjectRef, nil
 }
@@ -440,7 +440,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	usr := mustHaveUser(ctx)
 	viewableProjectIds, err := usr.GetViewableProjects(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting viewable projects for '%s': %s", usr.DispName, err.Error()))
 	}
 	allProjects, err := model.FindMergedEnabledProjectRefsByIds(viewableProjectIds...)
 	if err != nil {
@@ -448,7 +448,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	}
 	groupedProjects, err := groupProjects(allProjects, false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("grouping project: %s", err.Error()))
 	}
 	return groupedProjects, nil
 }
@@ -471,7 +471,7 @@ func (r *queryResolver) ProjectEvents(ctx context.Context, projectIdentifier str
 func (r *queryResolver) ProjectSettings(ctx context.Context, projectIdentifier string) (*restModel.APIProjectSettings, error) {
 	projectRef, err := model.FindBranchProjectRef(projectIdentifier)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in project collection: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("looking in project collection: %s", err.Error()))
 	}
 	if projectRef == nil {
 		return nil, ResourceNotFound.Send(ctx, "project doesn't exist")
@@ -481,7 +481,7 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, projectIdentifier s
 		ProjectRef: restModel.APIProjectRef{},
 	}
 	if err = res.ProjectRef.BuildFromService(*projectRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service: %s", err.Error()))
 	}
 	if !projectRef.UseRepoSettings() {
 		// Default values so the UI understands what to do with nil values.
@@ -508,7 +508,7 @@ func (r *queryResolver) RepoEvents(ctx context.Context, repoID string, limit *in
 func (r *queryResolver) RepoSettings(ctx context.Context, repoID string) (*restModel.APIProjectSettings, error) {
 	repoRef, err := model.FindOneRepoRef(repoID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error looking in repo collection: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("looking in repo collection: %s", err.Error()))
 	}
 	if repoRef == nil {
 		return nil, ResourceNotFound.Send(ctx, "repo doesn't exist")
@@ -518,7 +518,7 @@ func (r *queryResolver) RepoSettings(ctx context.Context, repoID string) (*restM
 		ProjectRef: restModel.APIProjectRef{},
 	}
 	if err = res.ProjectRef.BuildFromService(repoRef.ProjectRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building APIProjectRef from service: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service: %s", err.Error()))
 	}
 
 	// Default values so the UI understands what to do with nil values.
@@ -531,17 +531,17 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProj
 	usr := mustHaveUser(ctx)
 	projectIds, err := usr.GetViewableProjectSettings(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error getting viewable projects for '%s': '%s'", usr.DispName, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting viewable projects for '%s': %s", usr.DispName, err.Error()))
 	}
 
 	projects, err := model.FindProjectRefsByIds(projectIds...)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting projects: %v", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting projects: %s", err.Error()))
 	}
 
 	groupedProjects, err := groupProjects(projects, true)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error grouping project: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("grouping project: %s", err.Error()))
 	}
 	return groupedProjects, nil
 }
@@ -564,14 +564,14 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 	hosts, err := host.Find(ctx, host.ByUserWithRunningStatus(usr.Username()))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx,
-			fmt.Sprintf("Error finding running hosts for user %s : %s", usr.Username(), err))
+			fmt.Sprintf("finding running hosts for user '%s' : %s", usr.Username(), err.Error()))
 	}
 	duration := time.Duration(5) * time.Minute
 	timestamp := time.Now().Add(-duration) // within last 5 minutes
 	recentlyTerminatedHosts, err := host.Find(ctx, host.ByUserRecentlyTerminated(usr.Username(), timestamp))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx,
-			fmt.Sprintf("Error finding recently terminated hosts for user %s : %s", usr.Username(), err))
+			fmt.Sprintf("finding recently terminated hosts for user '%s': %s", usr.Username(), err.Error()))
 	}
 	hosts = append(hosts, recentlyTerminatedHosts...)
 
@@ -633,13 +633,13 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 		var apiTask *restModel.APITask
 		apiTask, err = getAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, "error converting task")
+			return nil, InternalServerError.Send(ctx, "converting task")
 		}
 		allTasks = append(allTasks, apiTask)
 	}
 	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *latestTask)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, "error converting task")
+		return nil, InternalServerError.Send(ctx, "converting task")
 	}
 	allTasks = append(allTasks, apiTask)
 	return allTasks, nil
@@ -652,7 +652,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 	}
 	dbTasks, err := task.FindAll(db.Query(task.ByIds(taskIds)))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding tasks %s: %s", taskIds, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding tasks '%s': %s", taskIds, err.Error()))
 	}
 	if len(dbTasks) == 0 {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Tasks %s not found", taskIds))
@@ -672,7 +672,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 		}
 		taskOpts, err := dbTask.CreateTestResultsTaskOptions()
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error creating test results task options for task '%s': %s", dbTask.Id, err))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating test results task options for task '%s': %s", dbTask.Id, err.Error()))
 		}
 
 		apiSamples[i] = &TaskTestResultSample{TaskID: dbTask.Id, Execution: dbTask.Execution}
@@ -685,7 +685,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 	if len(allTaskOpts) > 0 {
 		samples, err := testresult.GetFailedTestSamples(ctx, evergreen.GetEnvironment(), allTaskOpts, failingTests)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting test results sample: %s", err))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err.Error()))
 		}
 
 		for _, sample := range samples {
@@ -752,13 +752,13 @@ func (r *queryResolver) CommitQueue(ctx context.Context, projectIdentifier strin
 	commitQueue, err := data.FindCommitQueueForProject(projectIdentifier)
 	if err != nil {
 		if werrors.Cause(err) == err {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", projectIdentifier, err.Error()))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding commit queue for %s: %s", projectIdentifier, err.Error()))
 		}
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding commit queue for %s: %s", projectIdentifier, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding commit queue for %s: %s", projectIdentifier, err.Error()))
 	}
 	project, err := data.FindProjectById(projectIdentifier, true, true)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project %s: %s", projectIdentifier, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project %s: %s", projectIdentifier, err.Error()))
 	}
 	if project.CommitQueue.Message != "" {
 		commitQueue.Message = &project.CommitQueue.Message
@@ -777,7 +777,7 @@ func (r *queryResolver) CommitQueue(ctx context.Context, projectIdentifier strin
 		if patchId != "" {
 			p, err := data.FindPatchById(patchId)
 			if err != nil {
-				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("error finding patch: %s", err.Error()))
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding patch: %s", err.Error()))
 			}
 			commitQueue.Queue[i].Patch = p
 		}
@@ -840,7 +840,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 	versions, err := model.GetMainlineCommitVersionsWithOptions(ctx, projectId, opts)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Error getting activated versions: %s", err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("getting activated versions: %s", err.Error()))
 	}
 
 	var mainlineCommits MainlineCommits
@@ -855,7 +855,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 				"message":    "Error getting most recent version",
 				"project_id": projectId,
 			}))
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting most recent mainline commit: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting most recent mainline commit: %s", err.Error()))
 		}
 
 		if prevPageCommit != nil {
@@ -954,14 +954,14 @@ func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectIde
 	}
 	repo, err := model.FindRepository(pid)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting repository for '%s': %s", pid, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting repository for '%s': %s", pid, err.Error()))
 	}
 	if repo == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", pid))
 	}
 	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(pid, buildVariant, repo.RevisionOrderNumber)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while getting tasks for '%s': %s", buildVariant, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting tasks for '%s': %s", buildVariant, err.Error()))
 	}
 	if buildVariantTasks == nil {
 		return []string{}, nil
@@ -1006,7 +1006,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		eod := time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 0, date.Location())
 		found, err := model.VersionFindOne(model.VersionByProjectIdAndCreateTime(projectId, eod))
 		if err != nil {
-			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("getting version on or before date '%s': %s", eod.Format(time.DateOnly), err)))
+			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("getting version on or before date '%s': %s", eod.Format(time.DateOnly), err.Error())))
 		} else if found == nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("version on or before date '%s' not found", eod.Format(time.DateOnly))))
 		} else {

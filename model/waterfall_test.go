@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -661,7 +662,10 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_89", DisplayName: "Task 89", Status: evergreen.TaskWillRun}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_32", DisplayName: "Task 32", Status: evergreen.TaskWillRun}
+	tsk = task.Task{Id: "t_32", DisplayName: "Task 32", Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{
+		Type:     evergreen.CommandTypeSystem,
+		TimedOut: true,
+	}}
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_54", DisplayName: "Task 54", Status: evergreen.TaskDispatched}
 	assert.NoError(t, tsk.Insert())
@@ -758,6 +762,8 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.Equal(t, "b_c", buildVariants[0].Builds[0].Id)
 	assert.Len(t, buildVariants[0].Builds[0].Tasks, 3)
 	assert.Equal(t, "t_32", buildVariants[0].Builds[0].Tasks[0].Id)
+	assert.Equal(t, evergreen.TaskFailed, buildVariants[0].Builds[0].Tasks[0].Status)
+	assert.Equal(t, evergreen.TaskSystemTimedOut, buildVariants[0].Builds[0].Tasks[0].DisplayStatus)
 	assert.Equal(t, "t_66", buildVariants[0].Builds[0].Tasks[1].Id)
 	assert.Equal(t, "t_89", buildVariants[0].Builds[0].Tasks[2].Id)
 	assert.Equal(t, "b_e", buildVariants[0].Builds[1].Id)

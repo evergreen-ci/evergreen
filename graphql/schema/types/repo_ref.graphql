@@ -12,6 +12,8 @@ input RepoRefInput {
   enabled: Boolean
   externalLinks: [ExternalLinkInput!]
   githubChecksEnabled: Boolean
+  githubDynamicTokenPermissionGroups: [GitHubDynamicTokenPermissionGroupInput!]
+  githubPermissionGroupByRequester: StringMap
   githubTriggerAliases: [String!]
   gitTagAuthorizedTeams: [String!]
   gitTagAuthorizedUsers: [String!]
@@ -61,6 +63,8 @@ type RepoRef {
   displayName: String!
   enabled: Boolean!
   githubChecksEnabled: Boolean!
+  githubDynamicTokenPermissionGroups: [GitHubDynamicTokenPermissionGroup!]!
+  githubPermissionGroupByRequester: StringMap
   githubTriggerAliases: [String!]
   gitTagAuthorizedTeams: [String!]
   gitTagAuthorizedUsers: [String!]
