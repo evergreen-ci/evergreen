@@ -150,6 +150,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Amboy.Retry, settings.Amboy.Retry)
 	s.EqualValues(testSettings.Amboy.NamedQueues, settings.Amboy.NamedQueues)
 	s.EqualValues(testSettings.Api.HttpListenAddr, settings.Api.HttpListenAddr)
+	s.EqualValues(testSettings.Api.URL, settings.Api.URL)
 	s.EqualValues(testSettings.AuthConfig.Okta.ClientID, settings.AuthConfig.Okta.ClientID)
 	s.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, settings.AuthConfig.Naive.Users[0].Username)
 	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settings.AuthConfig.Github.ClientId)
@@ -198,7 +199,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 
 	// test that invalid input errors
 	badSettingsOne := testutil.MockConfig()
-	badSettingsOne.ApiUrl = ""
+	badSettingsOne.ConfigDir = ""
 	badSettingsOne.Ui.CsrfKey = "12345"
 	jsonBody, err = json.Marshal(badSettingsOne)
 	s.NoError(err)
@@ -208,7 +209,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.NoError(s.postHandler.Parse(ctx, request))
 	resp = s.postHandler.Run(ctx)
 	s.NotNil(resp)
-	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "API hostname must not be empty")
+	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "config directory must not be empty")
 	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "CSRF key must be 32 characters long")
 
 	// test that invalid container pools errors
@@ -248,7 +249,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	ctx := gimlet.AttachUser(context.Background(), user)
 	s.NotNil(routeManager)
 	changes := restModel.APIAdminSettings{
-		ApiUrl: utility.ToStringPtr("foo"),
+		Banner: utility.ToStringPtr("foo"),
 	}
 	before := testutil.NewEnvironment(ctx, s.T()).Settings()
 	_, err := data.SetEvergreenSettings(ctx, &changes, before, user, true)

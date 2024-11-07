@@ -41,13 +41,13 @@ func downloadPodProvisioningScriptCommand(settings *evergreen.Settings, opts pod
 	if opts.OS == pod.OSLinux {
 		// For Linux, run the script using bash syntax to interpolate the
 		// environment variables and pipe the script into another bash instance.
-		return fmt.Sprintf("curl %s -L -H \"%s: ${%s}\" -H \"%s: ${%s}\" %s/rest/v2/pods/${%s}/provisioning_script | bash -s", retryArgs, evergreen.PodHeader, pod.PodIDEnvVar, evergreen.PodSecretHeader, pod.PodSecretEnvVar, strings.TrimSuffix(settings.ApiUrl, "/"), pod.PodIDEnvVar)
+		return fmt.Sprintf("curl %s -L -H \"%s: ${%s}\" -H \"%s: ${%s}\" %s/rest/v2/pods/${%s}/provisioning_script | bash -s", retryArgs, evergreen.PodHeader, pod.PodIDEnvVar, evergreen.PodSecretHeader, pod.PodSecretEnvVar, strings.TrimSuffix(settings.Api.URL, "/"), pod.PodIDEnvVar)
 	}
 
 	// For Windows, run the script using PowerShell syntax to interpolate the
 	// environment variables and pipe the script into another PowerShell
 	// instance.
-	return fmt.Sprintf("curl.exe %s -L -H \"%s: $env:%s\" -H \"%s: $env:%s\" %s/rest/v2/pods/$env:%s/provisioning_script | powershell.exe -noprofile -noninteractive -", retryArgs, evergreen.PodHeader, pod.PodIDEnvVar, evergreen.PodSecretHeader, pod.PodSecretEnvVar, strings.TrimSuffix(settings.ApiUrl, "/"), pod.PodIDEnvVar)
+	return fmt.Sprintf("curl.exe %s -L -H \"%s: $env:%s\" -H \"%s: $env:%s\" %s/rest/v2/pods/$env:%s/provisioning_script | powershell.exe -noprofile -noninteractive -", retryArgs, evergreen.PodHeader, pod.PodIDEnvVar, evergreen.PodSecretHeader, pod.PodSecretEnvVar, strings.TrimSuffix(settings.Api.URL, "/"), pod.PodIDEnvVar)
 }
 
 // curlRetryArgs constructs options to configure the curl retry behavior.
