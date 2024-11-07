@@ -1677,7 +1677,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	}
 
 	// The token also should use the project's GitHub app.
-	githubAppAuth, err := githubapp.FindOneGithubAppAuth(t.Project)
+	githubAppAuth, err := p.GetGitHubAppAuth()
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
