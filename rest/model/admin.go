@@ -13,6 +13,7 @@ import (
 func NewConfigModel() *APIAdminSettings {
 	return &APIAdminSettings{
 		Amboy:               &APIAmboyConfig{},
+		AmboyDB:             &APIAmboyDBConfig{},
 		Api:                 &APIapiConfig{},
 		AuthConfig:          &APIAuthConfig{},
 		Buckets:             &APIBucketsConfig{},
@@ -50,6 +51,7 @@ func NewConfigModel() *APIAdminSettings {
 // APIAdminSettings is the structure of a response to the admin route
 type APIAdminSettings struct {
 	Amboy               *APIAmboyConfig                   `json:"amboy,omitempty"`
+	AmboyDB             *APIAmboyDBConfig                 `json:"amboy_db,omitempty"`
 	Api                 *APIapiConfig                     `json:"api,omitempty"`
 	ApiUrl              *string                           `json:"api_url,omitempty"`
 	AWSInstanceRole     *string                           `json:"aws_instance_role,omitempty"`
@@ -329,9 +331,6 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 	case evergreen.AmboyConfig:
 		a.Name = utility.ToStringPtr(v.Name)
 		a.SingleName = utility.ToStringPtr(v.SingleName)
-		if err := a.DBConnection.BuildFromService(v.DBConnection); err != nil {
-			return errors.Wrap(err, "converting Amboy DB settings to API model")
-		}
 		a.PoolSizeLocal = v.PoolSizeLocal
 		a.PoolSizeRemote = v.PoolSizeRemote
 		a.LocalStorage = v.LocalStorage
@@ -365,15 +364,6 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		return nil, errors.Errorf("programmatic error: expected Amboy retry config but got type %T", i)
 	}
 
-	i, err = a.DBConnection.ToService()
-	if err != nil {
-		return nil, errors.Wrap(err, "converting Amboy DB settings to service model")
-	}
-	db, ok := i.(evergreen.AmboyDBConfig)
-	if !ok {
-		return nil, errors.Errorf("programmatic error: expected Amboy DB config but got type %T", i)
-	}
-
 	var dbNamedQueues []evergreen.AmboyNamedQueueConfig
 	for _, apiNamedQueue := range a.NamedQueues {
 		dbNamedQueues = append(dbNamedQueues, apiNamedQueue.ToService())
@@ -381,7 +371,6 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyConfig{
 		Name:                                  utility.FromStringPtr(a.Name),
 		SingleName:                            utility.FromStringPtr(a.SingleName),
-		DBConnection:                          db,
 		PoolSizeLocal:                         a.PoolSizeLocal,
 		PoolSizeRemote:                        a.PoolSizeRemote,
 		LocalStorage:                          a.LocalStorage,
@@ -399,8 +388,6 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 type APIAmboyDBConfig struct {
 	URL      *string `json:"url"`
 	Database *string `json:"database"`
-	Username *string `json:"username"`
-	Password *string `json:"password"`
 }
 
 func (a *APIAmboyDBConfig) BuildFromService(h interface{}) error {

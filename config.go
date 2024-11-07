@@ -63,6 +63,7 @@ type ConfigSection interface {
 type Settings struct {
 	Id                  string                    `bson:"_id" json:"id" yaml:"id"`
 	Amboy               AmboyConfig               `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
+	AmboyDB             AmboyDBConfig             `yaml:"amboy_db" bson:"amboy_db" json:"amboy_db" id:"amboy_db"`
 	Api                 APIConfig                 `yaml:"api" bson:"api" json:"api" id:"api"`
 	ApiUrl              string                    `yaml:"api_url" bson:"api_url" json:"api_url"`
 	AuthConfig          AuthConfig                `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
