@@ -72,6 +72,8 @@ auth:
 github_pr_creator_org: "10gen"
 
 expansions:
+  aws_key: $AWS_KEY
+  aws_secret: $AWS_SECRET
   papertrail_key_id: $PAPERTRAIL_KEY_ID
   papertrail_secret_key: $PAPERTRAIL_SECRET_KEY
   # Do not edit below this line
