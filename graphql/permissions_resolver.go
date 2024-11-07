@@ -14,7 +14,10 @@ import (
 func (r *permissionsResolver) CanCreateDistro(ctx context.Context, obj *Permissions) (bool, error) {
 	usr, err := user.FindOneById(obj.UserID)
 	if err != nil {
-		return false, ResourceNotFound.Send(ctx, "user not found")
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
+	}
+	if usr == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
 	return userHasDistroCreatePermission(usr), nil
 }
@@ -23,7 +26,10 @@ func (r *permissionsResolver) CanCreateDistro(ctx context.Context, obj *Permissi
 func (r *permissionsResolver) CanCreateProject(ctx context.Context, obj *Permissions) (bool, error) {
 	usr, err := user.FindOneById(obj.UserID)
 	if err != nil {
-		return false, ResourceNotFound.Send(ctx, "user not found")
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
+	}
+	if usr == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
 	canCreate, err := usr.HasProjectCreatePermission()
 	if err != nil {
@@ -36,7 +42,10 @@ func (r *permissionsResolver) CanCreateProject(ctx context.Context, obj *Permiss
 func (r *permissionsResolver) CanEditAdminSettings(ctx context.Context, obj *Permissions) (bool, error) {
 	usr, err := user.FindOneById(obj.UserID)
 	if err != nil {
-		return false, ResourceNotFound.Send(ctx, "user not found")
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
+	}
+	if usr == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
 	opts := gimlet.PermissionOpts{
 		Resource:      evergreen.SuperUserPermissionsID,
@@ -51,7 +60,10 @@ func (r *permissionsResolver) CanEditAdminSettings(ctx context.Context, obj *Per
 func (r *permissionsResolver) DistroPermissions(ctx context.Context, obj *Permissions, options DistroPermissionsOptions) (*DistroPermissions, error) {
 	usr, err := user.FindOneById(obj.UserID)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, "user not found")
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
+	}
+	if usr == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
 	return &DistroPermissions{
 		Admin: userHasDistroPermission(usr, options.DistroID, evergreen.DistroSettingsAdmin.Value),
@@ -64,7 +76,10 @@ func (r *permissionsResolver) DistroPermissions(ctx context.Context, obj *Permis
 func (r *permissionsResolver) ProjectPermissions(ctx context.Context, obj *Permissions, options ProjectPermissionsOptions) (*ProjectPermissions, error) {
 	usr, err := user.FindOneById(obj.UserID)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, "user not found")
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
+	}
+	if usr == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
 	project, err := model.FindBranchProjectRef(options.ProjectIdentifier)
 	if err != nil {
@@ -83,7 +98,10 @@ func (r *permissionsResolver) ProjectPermissions(ctx context.Context, obj *Permi
 func (r *permissionsResolver) RepoPermissions(ctx context.Context, obj *Permissions, options RepoPermissionsOptions) (*RepoPermissions, error) {
 	usr, err := user.FindOneById(obj.UserID)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, "user not found")
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
+	}
+	if usr == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
 	repo, err := model.FindOneRepoRef(options.RepoID)
 	if err != nil {
