@@ -12,11 +12,12 @@ database:
     wmode: majority
 
 amboy:
-  db_connection:
-    url: mongodb://localhost:27017
-    database: amboy_smoke
   name: evg.service
   skip_preferred_indexes: true
+
+amboy_db:
+  database: amboy_test
+  url: "mongodb://localhost:27017"
 
 buckets:
   log_bucket:

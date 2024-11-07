@@ -8,12 +8,13 @@ configdir: "config_test"
 
 amboy:
   name: test_queue
-  db_connection:
-    database: amboy_test
-    url: "mongodb://localhost:27017"
   pool_size_local: 2
   pool_size_remote: 2
   local_storage_size: 2048
+
+amboy_db:
+  database: amboy_test
+  url: "mongodb://localhost:27017"
 
 api_url: "https://localhost:8443"
 

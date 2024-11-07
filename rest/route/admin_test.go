@@ -149,6 +149,8 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Amboy.SampleSize, settings.Amboy.SampleSize)
 	s.EqualValues(testSettings.Amboy.Retry, settings.Amboy.Retry)
 	s.EqualValues(testSettings.Amboy.NamedQueues, settings.Amboy.NamedQueues)
+	s.EqualValues(testSettings.AmboyDB.URL, settings.AmboyDB.URL)
+	s.EqualValues(testSettings.AmboyDB.Database, settings.AmboyDB.Database)
 	s.EqualValues(testSettings.Api.HttpListenAddr, settings.Api.HttpListenAddr)
 	s.EqualValues(testSettings.AuthConfig.Okta.ClientID, settings.AuthConfig.Okta.ClientID)
 	s.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, settings.AuthConfig.Naive.Users[0].Username)
