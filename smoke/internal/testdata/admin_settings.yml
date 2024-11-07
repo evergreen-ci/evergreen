@@ -28,10 +28,10 @@ buckets:
 domain_name: "evergreen.local"
 configdir: "config_test"
 
-api_url: http://localhost:8080
 api:
   github_webhook_secret: "test"
   httplistenaddr: ":8080"
+  url: "http://localhost:8080"
 ui:
   parsley_url: "http://localhost:4173"
   secret: "secret for UI"

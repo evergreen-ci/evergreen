@@ -27,8 +27,6 @@ amboy_db:
   database: amboy_test
   url: "mongodb://localhost:27017"
 
-api_url: "https://localhost:8443"
-
 providers:
   aws:
     ec2_keys:
@@ -66,6 +64,7 @@ repotracker:
   logfile: "/tmp/repotracker_test.log"
 
 api:
+  url: "https://localhost:8443"
   github_webhook_secret: "test"
   logfile: "/tmp/api_test.log"
   httplistenaddr: ":9090"

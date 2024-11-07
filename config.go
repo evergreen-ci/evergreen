@@ -33,7 +33,7 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2024-10-30"
+	ClientVersion = "2024-11-07"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
@@ -65,7 +65,6 @@ type Settings struct {
 	Amboy               AmboyConfig               `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
 	AmboyDB             AmboyDBConfig             `yaml:"amboy_db" bson:"amboy_db" json:"amboy_db" id:"amboy_db"`
 	Api                 APIConfig                 `yaml:"api" bson:"api" json:"api" id:"api"`
-	ApiUrl              string                    `yaml:"api_url" bson:"api_url" json:"api_url"`
 	AuthConfig          AuthConfig                `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
 	AWSInstanceRole     string                    `yaml:"aws_instance_role" bson:"aws_instance_role" json:"aws_instance_role"`
 	Banner              string                    `bson:"banner" json:"banner" yaml:"banner"`
@@ -126,7 +125,6 @@ func (c *Settings) Get(ctx context.Context) error {
 func (c *Settings) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			apiUrlKey:             c.ApiUrl,
 			awsInstanceRoleKey:    c.AWSInstanceRole,
 			bannerKey:             c.Banner,
 			bannerThemeKey:        c.BannerTheme,
@@ -155,9 +153,6 @@ func (c *Settings) Set(ctx context.Context) error {
 func (c *Settings) ValidateAndDefault() error {
 	var err error
 	catcher := grip.NewSimpleCatcher()
-	if c.ApiUrl == "" {
-		catcher.Add(errors.New("API hostname must not be empty"))
-	}
 	if c.ConfigDir == "" {
 		catcher.Add(errors.New("config directory must not be empty"))
 	}

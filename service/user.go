@@ -172,7 +172,7 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 		Regions []string `json:"regions"`
 	}
 	regions := uis.Settings.Providers.AWS.AllowedRegions
-	exampleConf := confFile{currentUser.Id, currentUser.APIKey, uis.Settings.ApiUrl + "/api", uis.Settings.Ui.Url, regions}
+	exampleConf := confFile{currentUser.Id, currentUser.APIKey, uis.Settings.Api.URL + "/api", uis.Settings.Ui.Url, regions}
 	newUILink := ""
 	if len(uis.Settings.Ui.UIv2Url) > 0 {
 		newUILink = fmt.Sprintf("%s/preferences", uis.Settings.Ui.UIv2Url)

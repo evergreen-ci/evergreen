@@ -91,7 +91,7 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		SplunkServerURL:    h.settings.Splunk.SplunkConnectionInfo.ServerURL,
 		SplunkClientToken:  h.settings.Splunk.SplunkConnectionInfo.Token,
 		SplunkChannel:      h.settings.Splunk.SplunkConnectionInfo.Channel,
-		TaskOutput:         h.settings.Providers.AWS.TaskOutput,
+		TaskOutput:         h.settings.Buckets.Credentials,
 		TaskSync:           h.settings.Providers.AWS.TaskSync,
 		EC2Keys:            h.settings.Providers.AWS.EC2Keys,
 		MaxExecTimeoutSecs: h.settings.TaskLimits.MaxExecTimeoutSecs,
@@ -1517,7 +1517,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 
 	gh := p.GithubPatchData
 	if t.CheckRunId != nil {
-		_, err := thirdparty.UpdateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, env.Settings().ApiUrl, utility.FromInt64Ptr(t.CheckRunId), t, h.checkRunOutput)
+		_, err := thirdparty.UpdateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, env.Settings().Api.URL, utility.FromInt64Ptr(t.CheckRunId), t, h.checkRunOutput)
 		if err != nil {
 			errorMessage := fmt.Sprintf("updating checkRun for task: '%s'", t.Id)
 			grip.Error(message.Fields{
@@ -1531,7 +1531,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(fmt.Sprintf("Successfully updated check run for  '%v'", t.Id))
 	}
 
-	checkRun, err := thirdparty.CreateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, gh.HeadHash, env.Settings().ApiUrl, t, h.checkRunOutput)
+	checkRun, err := thirdparty.CreateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, gh.HeadHash, env.Settings().Api.URL, t, h.checkRunOutput)
 
 	if err != nil {
 		errorMessage := fmt.Sprintf("creating checkRun for task: '%s'", t.Id)
