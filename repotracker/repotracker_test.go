@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -1458,7 +1459,7 @@ func TestCreateManifest(t *testing.T) {
 	assert := assert.New(t)
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings)
-	require.NoError(t, db.ClearCollections(model.VersionCollection, model.ProjectRefCollection, model.ProjectVarsCollection))
+	require.NoError(t, db.ClearCollections(model.VersionCollection, model.ProjectRefCollection, model.ProjectVarsCollection), fakeparameter.Collection)
 	// with a revision from 5/31/15
 	v := model.Version{
 		Id:         "aaaaaaaaaaff001122334455",
@@ -1487,10 +1488,11 @@ func TestCreateManifest(t *testing.T) {
 		},
 	}
 	projRef := &model.ProjectRef{
-		Owner:  "evergreen-ci",
-		Repo:   "evergreen",
-		Branch: "main",
-		Id:     "project1",
+		Owner:                 "evergreen-ci",
+		Repo:                  "evergreen",
+		Branch:                "main",
+		Id:                    "project1",
+		ParameterStoreEnabled: true,
 	}
 	require.NoError(t, projRef.Insert())
 
@@ -1501,6 +1503,7 @@ func TestCreateManifest(t *testing.T) {
 		},
 	}
 	require.NoError(t, projVars.Insert())
+	projRef.ParameterStoreVarsSynced = true
 
 	manifest, err := model.CreateManifest(&v, proj.Modules, projRef, settings)
 	assert.NoError(err)

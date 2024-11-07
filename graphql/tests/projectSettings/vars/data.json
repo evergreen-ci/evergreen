@@ -94,6 +94,7 @@
         "git_clone": false
       },
       "hidden": false,
+      "parameter_store_enabled": true,
       "external_links": [
         {
           "display_name": "A link to somewhere",
@@ -105,6 +106,7 @@
     {
       "_id": "vars_test",
       "identifier": "varsTest",
+      "parameter_store_enabled": true,
       "display_name": "Vars test"
     }
   ],

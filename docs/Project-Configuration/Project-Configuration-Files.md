@@ -207,7 +207,7 @@ buildvariants:
   tasks:
   - name: compile
   - name: passing_test
-    cron: @daily // overrides build variant cron
+    cron: '@daily' // overrides build variant cron
   - name: failing_test
   - name: timeout_test
 - name: ubuntu
@@ -1667,7 +1667,8 @@ when it completes, regardless of the failure type.
 
 This is only recommended for commands that are known to be flaky, or fail intermittently.
 **In order to prevent overuse of this feature, the number of times a single
-task can be automatically restarted on failure is limited to 1 time.**
+task can be automatically restarted on failure is limited to 1 time, and a given project may only
+automatically restart a maximum of 200 tasks in a given 24-hour period.**
 
 In the example below, both `task1` and `task2` will retry automatically:
 

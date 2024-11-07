@@ -239,7 +239,7 @@ func Patch() cli.Command {
 
 			newPatch, err := params.createPatch(ac, diffData)
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "creating cli patch")
 			}
 			patchId := newPatch.Id.Hex()
 			if params.IncludeModules {

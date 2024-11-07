@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
@@ -104,7 +105,7 @@ func TestCreateHostsFromTask(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	require.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))
+	require.NoError(t, db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, host.Collection, model.ParserProjectCollection))
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -133,15 +134,17 @@ func TestCreateHostsFromTask(t *testing.T) {
 	}
 	assert.NoError(t, d.Insert(ctx))
 	p := model.ProjectRef{
-		Id:    "p",
-		Owner: "evergreen-ci",
-		Repo:  "sample",
+		Id:                    "p",
+		Owner:                 "evergreen-ci",
+		Repo:                  "sample",
+		ParameterStoreEnabled: true,
 	}
 	assert.NoError(t, p.Insert())
 	pvars := model.ProjectVars{
 		Id: "p",
 	}
 	assert.NoError(t, pvars.Insert())
+	checkAndSetProjectVarsSynced(t, &p, false)
 
 	// Run tests
 	t.Run("Classic", func(t *testing.T) {
@@ -420,7 +423,7 @@ func TestCreateContainerFromTask(t *testing.T) {
 	require := require.New(t)
 
 	require.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection,
-		model.ProjectVarsCollection, host.Collection, model.ParserProjectCollection))
+		model.ProjectVarsCollection, fakeparameter.Collection, host.Collection, model.ParserProjectCollection))
 
 	env := &mock.Environment{}
 	require.NoError(env.Configure(ctx))
@@ -510,15 +513,17 @@ buildvariants:
 	require.NoError(d.Insert(ctx))
 
 	p := model.ProjectRef{
-		Id:    "p",
-		Owner: "evergreen-ci",
-		Repo:  "sample",
+		Id:                    "p",
+		Owner:                 "evergreen-ci",
+		Repo:                  "sample",
+		ParameterStoreEnabled: true,
 	}
 	assert.NoError(p.Insert())
 	pvars := model.ProjectVars{
 		Id: "p",
 	}
 	assert.NoError(pvars.Insert())
+	checkAndSetProjectVarsSynced(t, &p, false)
 
 	assert.NoError(CreateHostsFromTask(ctx, env, &t1, user.DBUser{Id: "me"}, ""))
 

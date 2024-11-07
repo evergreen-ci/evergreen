@@ -36,7 +36,6 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 			Version:             t.Version,
 			ActivatedBy:         t.ActivatedBy,
 			Dependencies:        dependencies,
-			DependenciesMet:     t.HasDependenciesMet(),
 		})
 	}
 

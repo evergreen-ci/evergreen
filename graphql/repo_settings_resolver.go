@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -15,6 +16,22 @@ import (
 // Aliases is the resolver for the aliases field.
 func (r *repoSettingsResolver) Aliases(ctx context.Context, obj *restModel.APIProjectSettings) ([]*restModel.APIProjectAlias, error) {
 	return getAPIAliasesForProject(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
+}
+
+// GithubAppAuth is the resolver for the githubAppAuth field.
+func (r *repoSettingsResolver) GithubAppAuth(ctx context.Context, obj *restModel.APIProjectSettings) (*restModel.APIGithubAppAuth, error) {
+	app, err := githubapp.FindOneGithubAppAuth(utility.FromStringPtr(obj.ProjectRef.Id))
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding GitHub app for project '%s': %s", utility.FromStringPtr(obj.ProjectRef.Id), err.Error()))
+	}
+	// It's valid for a repo to not have a GitHub app defined.
+	if app == nil {
+		return nil, nil
+	}
+	res := &restModel.APIGithubAppAuth{}
+	app = app.RedactPrivateKey()
+	res.BuildFromService(*app)
+	return res, nil
 }
 
 // GithubWebhooksEnabled is the resolver for the githubWebhooksEnabled field.

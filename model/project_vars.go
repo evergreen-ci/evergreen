@@ -533,16 +533,18 @@ func (projectVars *ProjectVars) syncParameterDiff(ctx context.Context, pm Parame
 }
 
 func (projectVars *ProjectVars) setParamMappings(pm ParameterMappings) error {
+	update := bson.M{}
+	if len(pm) == 0 {
+		update["$unset"] = bson.M{projectVarsParametersKey: 1}
+	} else {
+		update["$set"] = bson.M{projectVarsParametersKey: pm}
+	}
 	if _, err := db.Upsert(
 		ProjectVarsCollection,
 		bson.M{
 			projectVarIdKey: projectVars.Id,
 		},
-		bson.M{
-			"$set": bson.M{
-				projectVarsParametersKey: pm,
-			},
-		},
+		update,
 	); err != nil {
 		return errors.Wrap(err, "updating parameter mappings for project vars")
 	}
@@ -564,7 +566,7 @@ func (projectVars *ProjectVars) upsertParameters(ctx context.Context, pm Paramet
 	catcher := grip.NewBasicCatcher()
 
 	for varName, varValue := range varsToUpsert {
-		partialParamName, paramValue, err := convertVarToParam(projectID, projectVars.Parameters, varName, varValue)
+		partialParamName, paramValue, err := convertVarToParam(projectID, pm, varName, varValue)
 		if err != nil {
 			catcher.Wrapf(err, "converting project variable '%s' to parameter", varName)
 			continue
@@ -733,10 +735,18 @@ func (projectVars *ProjectVars) findProjectRef() (ref *ProjectRef, isRepoRef boo
 // rollout is complete. This functionality only exists to aid the migration
 // process.
 func fullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *ProjectRef, isRepoRef bool) error {
+	before, err := FindOneProjectVars(vars.Id)
+	if err != nil {
+		return errors.Wrapf(err, "finding original project vars for project '%s'", vars.Id)
+	}
+	if before == nil {
+		before = &ProjectVars{}
+	}
+
 	grip.Debug(message.Fields{
 		"message":                     "fully syncing project vars to Parameter Store",
 		"num_vars":                    len(vars.Vars),
-		"existing_parameter_mappings": vars.Parameters,
+		"existing_parameter_mappings": before.Parameters,
 		"project_id":                  vars.Id,
 		"is_repo_ref":                 isRepoRef,
 		"epic":                        "DEVPROD-5552",
@@ -744,7 +754,7 @@ func fullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *Proj
 
 	// Delete any existing vars to ensure that the project vars are fully synced
 	// starting from a clean state.
-	paramNames := vars.Parameters.ParameterNames()
+	paramNames := before.Parameters.ParameterNames()
 	paramMgr := evergreen.GetEnvironment().ParameterManager()
 	if len(paramNames) > 0 {
 		if err := paramMgr.Delete(ctx, paramNames...); err != nil {
@@ -1072,6 +1082,7 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 		return
 	}
 
+	nameToParamMapping := repoVars.Parameters.NameMap()
 	// Branch-level vars have priority, so we only need to add a repo vars if it doesn't already exist in the branch
 	for key, val := range repoVars.Vars {
 		if _, ok := projectVars.Vars[key]; !ok {
@@ -1082,8 +1093,14 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 			if v, ok := repoVars.AdminOnlyVars[key]; ok {
 				projectVars.AdminOnlyVars[key] = v
 			}
+			if pm, ok := nameToParamMapping[key]; ok {
+				projectVars.Parameters = append(projectVars.Parameters, pm)
+			}
 		}
 	}
+	// Sort the merged branch project and repo project variables so the mappings
+	// are in a predictable order.
+	sort.Sort(projectVars.Parameters)
 }
 
 // convertVarToParam converts a project variable to its equivalent parameter

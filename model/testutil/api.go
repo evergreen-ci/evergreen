@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -31,7 +32,7 @@ func CleanupAPITestData() error {
 	testCollections := []string{
 		task.Collection, build.Collection, host.Collection,
 		distro.Collection, model.VersionCollection, patch.Collection,
-		model.PushlogCollection, model.ProjectVarsCollection, model.TaskQueuesCollection,
+		model.PushlogCollection, model.ProjectVarsCollection, fakeparameter.Collection, model.TaskQueuesCollection,
 		manifest.Collection, model.ProjectRefCollection, model.ParserProjectCollection}
 
 	if err := db.ClearCollections(testCollections...); err != nil {
@@ -81,11 +82,12 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	// Create the ref for the project
 	projectRef := &model.ProjectRef{
-		Id:      project.DisplayName,
-		Owner:   "evergreen-ci",
-		Repo:    "sample",
-		Branch:  "main",
-		Enabled: true,
+		Id:                    project.DisplayName,
+		Owner:                 "evergreen-ci",
+		Repo:                  "sample",
+		Branch:                "main",
+		Enabled:               true,
+		ParameterStoreEnabled: true,
 	}
 	if err = projectRef.Insert(); err != nil {
 		return nil, errors.Wrap(err, "inserting project ref")

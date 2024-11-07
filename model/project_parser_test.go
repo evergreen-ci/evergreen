@@ -2984,3 +2984,18 @@ func TestFindAndTranslateProjectForPatch(t *testing.T) {
 		})
 	}
 }
+
+func TestMarshalBSON(t *testing.T) {
+	pp := ParserProject{
+		Identifier: utility.ToStringPtr("small"),
+	}
+
+	encoded, err := pp.RetryMarshalBSON(5)
+	require.NoError(t, err)
+	require.NotEmpty(t, encoded)
+
+	decoded, err := GetProjectFromBSON(encoded)
+	require.NoError(t, err)
+	require.NotEmpty(t, decoded)
+	assert.Equal(t, utility.FromStringPtr(pp.Identifier), decoded.Identifier)
+}

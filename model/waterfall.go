@@ -19,10 +19,11 @@ const (
 )
 
 type WaterfallTask struct {
-	Id          string `bson:"_id" json:"_id"`
-	DisplayName string `bson:"display_name" json:"display_name"`
-	Execution   int    `bson:"execution" json:"execution"`
-	Status      string `bson:"status" json:"status"`
+	Id            string `bson:"_id" json:"_id"`
+	DisplayName   string `bson:"display_name" json:"display_name"`
+	DisplayStatus string `bson:"display_status" json:"display_status"`
+	Execution     int    `bson:"execution" json:"execution"`
+	Status        string `bson:"status" json:"status"`
 }
 
 type WaterfallBuild struct {
@@ -182,11 +183,17 @@ func GetWaterfallBuildVariants(ctx context.Context, versionIds []string) ([]Wate
 				"$sort": bson.M{task.IdKey: 1},
 			},
 			{
+				"$addFields": bson.M{
+					task.DisplayStatusKey: task.DisplayStatusExpression,
+				},
+			},
+			{
 				"$project": bson.M{
-					task.IdKey:          1,
-					task.StatusKey:      1,
-					task.DisplayNameKey: 1,
-					task.ExecutionKey:   1,
+					task.IdKey:            1,
+					task.DisplayNameKey:   1,
+					task.DisplayStatusKey: 1,
+					task.ExecutionKey:     1,
+					task.StatusKey:        1,
 				},
 			},
 		},

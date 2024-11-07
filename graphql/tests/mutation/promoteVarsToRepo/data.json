@@ -9,6 +9,7 @@
       "repo_name" : "commit-queue-sandbox",
       "branch_name" : "main",
       "repo_ref_id": "repo_id",
+      "parameter_store_enabled": true,
       "admins": ["me"]
     }
   ],
@@ -16,6 +17,7 @@
     {
       "_id": "repo_id",
       "owner_name": "evergreen-ci",
+      "parameter_store_enabled": true,
       "repo_name": "commit-queue-sandbox"
     }
   ],

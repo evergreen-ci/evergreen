@@ -247,7 +247,12 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	job.Run(r.Context())
 
 	if err = job.Error(); err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error processing patch"))
+		// Return a 400 error if the error is due to the user's input
+		if strings.Contains(err.Error(), units.BuildTasksAndVariantsError) {
+			as.LoggedError(w, r, http.StatusBadRequest, err)
+		} else {
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error processing patch"))
+		}
 		return
 	}
 

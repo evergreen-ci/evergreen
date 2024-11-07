@@ -1133,50 +1133,53 @@ type ComplexityRoot struct {
 	}
 
 	RepoRef struct {
-		Admins                   func(childComplexity int) int
-		BatchTime                func(childComplexity int) int
-		BuildBaronSettings       func(childComplexity int) int
-		CommitQueue              func(childComplexity int) int
-		ContainerSizeDefinitions func(childComplexity int) int
-		DeactivatePrevious       func(childComplexity int) int
-		DisabledStatsCache       func(childComplexity int) int
-		DispatchingDisabled      func(childComplexity int) int
-		DisplayName              func(childComplexity int) int
-		Enabled                  func(childComplexity int) int
-		ExternalLinks            func(childComplexity int) int
-		GitTagAuthorizedTeams    func(childComplexity int) int
-		GitTagAuthorizedUsers    func(childComplexity int) int
-		GitTagVersionsEnabled    func(childComplexity int) int
-		GithubChecksEnabled      func(childComplexity int) int
-		GithubTriggerAliases     func(childComplexity int) int
-		Id                       func(childComplexity int) int
-		ManualPRTestingEnabled   func(childComplexity int) int
-		NotifyOnBuildFailure     func(childComplexity int) int
-		OldestAllowedMergeBase   func(childComplexity int) int
-		Owner                    func(childComplexity int) int
-		PRTestingEnabled         func(childComplexity int) int
-		ParsleyFilters           func(childComplexity int) int
-		PatchTriggerAliases      func(childComplexity int) int
-		PatchingDisabled         func(childComplexity int) int
-		PerfEnabled              func(childComplexity int) int
-		PeriodicBuilds           func(childComplexity int) int
-		RemotePath               func(childComplexity int) int
-		Repo                     func(childComplexity int) int
-		RepotrackerDisabled      func(childComplexity int) int
-		Restricted               func(childComplexity int) int
-		SpawnHostScriptPath      func(childComplexity int) int
-		StepbackBisect           func(childComplexity int) int
-		StepbackDisabled         func(childComplexity int) int
-		TaskAnnotationSettings   func(childComplexity int) int
-		TaskSync                 func(childComplexity int) int
-		TracksPushEvents         func(childComplexity int) int
-		Triggers                 func(childComplexity int) int
-		VersionControlEnabled    func(childComplexity int) int
-		WorkstationConfig        func(childComplexity int) int
+		Admins                             func(childComplexity int) int
+		BatchTime                          func(childComplexity int) int
+		BuildBaronSettings                 func(childComplexity int) int
+		CommitQueue                        func(childComplexity int) int
+		ContainerSizeDefinitions           func(childComplexity int) int
+		DeactivatePrevious                 func(childComplexity int) int
+		DisabledStatsCache                 func(childComplexity int) int
+		DispatchingDisabled                func(childComplexity int) int
+		DisplayName                        func(childComplexity int) int
+		Enabled                            func(childComplexity int) int
+		ExternalLinks                      func(childComplexity int) int
+		GitHubDynamicTokenPermissionGroups func(childComplexity int) int
+		GitHubPermissionGroupByRequester   func(childComplexity int) int
+		GitTagAuthorizedTeams              func(childComplexity int) int
+		GitTagAuthorizedUsers              func(childComplexity int) int
+		GitTagVersionsEnabled              func(childComplexity int) int
+		GithubChecksEnabled                func(childComplexity int) int
+		GithubTriggerAliases               func(childComplexity int) int
+		Id                                 func(childComplexity int) int
+		ManualPRTestingEnabled             func(childComplexity int) int
+		NotifyOnBuildFailure               func(childComplexity int) int
+		OldestAllowedMergeBase             func(childComplexity int) int
+		Owner                              func(childComplexity int) int
+		PRTestingEnabled                   func(childComplexity int) int
+		ParsleyFilters                     func(childComplexity int) int
+		PatchTriggerAliases                func(childComplexity int) int
+		PatchingDisabled                   func(childComplexity int) int
+		PerfEnabled                        func(childComplexity int) int
+		PeriodicBuilds                     func(childComplexity int) int
+		RemotePath                         func(childComplexity int) int
+		Repo                               func(childComplexity int) int
+		RepotrackerDisabled                func(childComplexity int) int
+		Restricted                         func(childComplexity int) int
+		SpawnHostScriptPath                func(childComplexity int) int
+		StepbackBisect                     func(childComplexity int) int
+		StepbackDisabled                   func(childComplexity int) int
+		TaskAnnotationSettings             func(childComplexity int) int
+		TaskSync                           func(childComplexity int) int
+		TracksPushEvents                   func(childComplexity int) int
+		Triggers                           func(childComplexity int) int
+		VersionControlEnabled              func(childComplexity int) int
+		WorkstationConfig                  func(childComplexity int) int
 	}
 
 	RepoSettings struct {
 		Aliases               func(childComplexity int) int
+		GithubAppAuth         func(childComplexity int) int
 		GithubWebhooksEnabled func(childComplexity int) int
 		ProjectRef            func(childComplexity int) int
 		Subscriptions         func(childComplexity int) int
@@ -1717,10 +1720,11 @@ type ComplexityRoot struct {
 	}
 
 	WaterfallTask struct {
-		DisplayName func(childComplexity int) int
-		Execution   func(childComplexity int) int
-		Id          func(childComplexity int) int
-		Status      func(childComplexity int) int
+		DisplayName   func(childComplexity int) int
+		DisplayStatus func(childComplexity int) int
+		Execution     func(childComplexity int) int
+		Id            func(childComplexity int) int
+		Status        func(childComplexity int) int
 	}
 
 	WaterfallVersion struct {
@@ -1993,6 +1997,7 @@ type QueryResolver interface {
 }
 type RepoSettingsResolver interface {
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
+	GithubAppAuth(ctx context.Context, obj *model.APIProjectSettings) (*model.APIGithubAppAuth, error)
 	GithubWebhooksEnabled(ctx context.Context, obj *model.APIProjectSettings) (bool, error)
 
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
@@ -7499,6 +7504,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoRef.ExternalLinks(childComplexity), true
 
+	case "RepoRef.githubDynamicTokenPermissionGroups":
+		if e.complexity.RepoRef.GitHubDynamicTokenPermissionGroups == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.GitHubDynamicTokenPermissionGroups(childComplexity), true
+
+	case "RepoRef.githubPermissionGroupByRequester":
+		if e.complexity.RepoRef.GitHubPermissionGroupByRequester == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.GitHubPermissionGroupByRequester(childComplexity), true
+
 	case "RepoRef.gitTagAuthorizedTeams":
 		if e.complexity.RepoRef.GitTagAuthorizedTeams == nil {
 			break
@@ -7708,6 +7727,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoSettings.Aliases(childComplexity), true
+
+	case "RepoSettings.githubAppAuth":
+		if e.complexity.RepoSettings.GithubAppAuth == nil {
+			break
+		}
+
+		return e.complexity.RepoSettings.GithubAppAuth(childComplexity), true
 
 	case "RepoSettings.githubWebhooksEnabled":
 		if e.complexity.RepoSettings.GithubWebhooksEnabled == nil {
@@ -10328,6 +10354,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.WaterfallTask.DisplayName(childComplexity), true
+
+	case "WaterfallTask.displayStatus":
+		if e.complexity.WaterfallTask.DisplayStatus == nil {
+			break
+		}
+
+		return e.complexity.WaterfallTask.DisplayStatus(childComplexity), true
 
 	case "WaterfallTask.execution":
 		if e.complexity.WaterfallTask.Execution == nil {
@@ -22727,6 +22760,10 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(_ context.Context,
 				return ec.fieldContext_RepoRef_enabled(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_RepoRef_githubChecksEnabled(ctx, field)
+			case "githubDynamicTokenPermissionGroups":
+				return ec.fieldContext_RepoRef_githubDynamicTokenPermissionGroups(ctx, field)
+			case "githubPermissionGroupByRequester":
+				return ec.fieldContext_RepoRef_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_RepoRef_githubTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
@@ -32776,6 +32813,8 @@ func (ec *executionContext) fieldContext_Mutation_saveRepoSettingsForSection(ctx
 			switch field.Name {
 			case "aliases":
 				return ec.fieldContext_RepoSettings_aliases(ctx, field)
+			case "githubAppAuth":
+				return ec.fieldContext_RepoSettings_githubAppAuth(ctx, field)
 			case "githubWebhooksEnabled":
 				return ec.fieldContext_RepoSettings_githubWebhooksEnabled(ctx, field)
 			case "projectRef":
@@ -48477,6 +48516,8 @@ func (ec *executionContext) fieldContext_Query_repoSettings(ctx context.Context,
 			switch field.Name {
 			case "aliases":
 				return ec.fieldContext_RepoSettings_aliases(ctx, field)
+			case "githubAppAuth":
+				return ec.fieldContext_RepoSettings_githubAppAuth(ctx, field)
 			case "githubWebhooksEnabled":
 				return ec.fieldContext_RepoSettings_githubWebhooksEnabled(ctx, field)
 			case "projectRef":
@@ -50988,6 +51029,97 @@ func (ec *executionContext) fieldContext_RepoRef_githubChecksEnabled(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoRef_githubDynamicTokenPermissionGroups(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoRef_githubDynamicTokenPermissionGroups(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GitHubDynamicTokenPermissionGroups, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIGitHubDynamicTokenPermissionGroup)
+	fc.Result = res
+	return ec.marshalNGitHubDynamicTokenPermissionGroup2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroupᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_githubDynamicTokenPermissionGroups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_GitHubDynamicTokenPermissionGroup_name(ctx, field)
+			case "permissions":
+				return ec.fieldContext_GitHubDynamicTokenPermissionGroup_permissions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GitHubDynamicTokenPermissionGroup", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoRef_githubPermissionGroupByRequester(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoRef_githubPermissionGroupByRequester(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GitHubPermissionGroupByRequester, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(map[string]string)
+	fc.Result = res
+	return ec.marshalOStringMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_githubPermissionGroupByRequester(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type StringMap does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoRef_githubTriggerAliases(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoRef_githubTriggerAliases(ctx, field)
 	if err != nil {
@@ -52345,6 +52477,53 @@ func (ec *executionContext) fieldContext_RepoSettings_aliases(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoSettings_githubAppAuth(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoSettings_githubAppAuth(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.RepoSettings().GithubAppAuth(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIGithubAppAuth)
+	fc.Result = res
+	return ec.marshalOGithubAppAuth2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubAppAuth(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoSettings_githubAppAuth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoSettings",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "appId":
+				return ec.fieldContext_GithubAppAuth_appId(ctx, field)
+			case "privateKey":
+				return ec.fieldContext_GithubAppAuth_privateKey(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GithubAppAuth", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoSettings_githubWebhooksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoSettings_githubWebhooksEnabled(ctx, field)
 	if err != nil {
@@ -52469,6 +52648,10 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(_ context.Conte
 				return ec.fieldContext_RepoRef_enabled(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_RepoRef_githubChecksEnabled(ctx, field)
+			case "githubDynamicTokenPermissionGroups":
+				return ec.fieldContext_RepoRef_githubDynamicTokenPermissionGroups(ctx, field)
+			case "githubPermissionGroupByRequester":
+				return ec.fieldContext_RepoRef_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_RepoRef_githubTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
@@ -70307,6 +70490,8 @@ func (ec *executionContext) fieldContext_WaterfallBuild_tasks(_ context.Context,
 				return ec.fieldContext_WaterfallTask_id(ctx, field)
 			case "displayName":
 				return ec.fieldContext_WaterfallTask_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_WaterfallTask_displayStatus(ctx, field)
 			case "execution":
 				return ec.fieldContext_WaterfallTask_execution(ctx, field)
 			case "status":
@@ -70758,6 +70943,50 @@ func (ec *executionContext) _WaterfallTask_displayName(ctx context.Context, fiel
 }
 
 func (ec *executionContext) fieldContext_WaterfallTask_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WaterfallTask",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WaterfallTask_displayStatus(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallTask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WaterfallTask_displayStatus(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayStatus, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WaterfallTask_displayStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "WaterfallTask",
 		Field:      field,
@@ -76946,7 +77175,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77037,6 +77266,20 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.GithubChecksEnabled = data
+		case "githubDynamicTokenPermissionGroups":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubDynamicTokenPermissionGroups"))
+			data, err := ec.unmarshalOGitHubDynamicTokenPermissionGroupInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroupᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GitHubDynamicTokenPermissionGroups = data
+		case "githubPermissionGroupByRequester":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubPermissionGroupByRequester"))
+			data, err := ec.unmarshalOStringMap2map(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GitHubPermissionGroupByRequester = data
 		case "githubTriggerAliases":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubTriggerAliases"))
 			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
@@ -77246,7 +77489,7 @@ func (ec *executionContext) unmarshalInputRepoSettingsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"repoId", "aliases", "githubWebhooksEnabled", "projectRef", "subscriptions", "vars"}
+	fieldsInOrder := [...]string{"repoId", "aliases", "githubAppAuth", "githubWebhooksEnabled", "projectRef", "subscriptions", "vars"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77290,6 +77533,28 @@ func (ec *executionContext) unmarshalInputRepoSettingsInput(ctx context.Context,
 				return it, err
 			}
 			it.Aliases = data
+		case "githubAppAuth":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubAppAuth"))
+			directive0 := func(ctx context.Context) (interface{}, error) {
+				return ec.unmarshalOGithubAppAuthInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubAppAuth(ctx, v)
+			}
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				if ec.directives.RedactSecrets == nil {
+					return nil, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(model.APIGithubAppAuth); ok {
+				it.GithubAppAuth = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be github.com/evergreen-ci/evergreen/rest/model.APIGithubAppAuth`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "githubWebhooksEnabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubWebhooksEnabled"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
@@ -88801,6 +89066,13 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "githubDynamicTokenPermissionGroups":
+			out.Values[i] = ec._RepoRef_githubDynamicTokenPermissionGroups(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "githubPermissionGroupByRequester":
+			out.Values[i] = ec._RepoRef_githubPermissionGroupByRequester(ctx, field, obj)
 		case "githubTriggerAliases":
 			out.Values[i] = ec._RepoRef_githubTriggerAliases(ctx, field, obj)
 		case "gitTagAuthorizedTeams":
@@ -88961,6 +89233,39 @@ func (ec *executionContext) _RepoSettings(ctx context.Context, sel ast.Selection
 					}
 				}()
 				res = ec._RepoSettings_aliases(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "githubAppAuth":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._RepoSettings_githubAppAuth(ctx, field, obj)
 				return res
 			}
 
@@ -94702,6 +95007,11 @@ func (ec *executionContext) _WaterfallTask(ctx context.Context, sel ast.Selectio
 			}
 		case "displayName":
 			out.Values[i] = ec._WaterfallTask_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "displayStatus":
+			out.Values[i] = ec._WaterfallTask_displayStatus(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

@@ -14,7 +14,7 @@ import (
 func (r *projectResolver) IsFavorite(ctx context.Context, obj *restModel.APIProjectRef) (bool, error) {
 	p, err := model.FindBranchProjectRef(*obj.Identifier)
 	if err != nil || p == nil {
-		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *obj.Identifier, err))
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *obj.Identifier, err.Error()))
 	}
 	usr := mustHaveUser(ctx)
 	if utility.StringSliceContains(usr.FavoriteProjects, *obj.Identifier) {
@@ -38,7 +38,7 @@ func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProject
 
 	patches, count, err := patch.ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error while fetching patches for this project : %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches for project '%s': %s", utility.FromStringPtr(opts.Project), err.Error()))
 	}
 	apiPatches := []*restModel.APIPatch{}
 	for _, p := range patches {

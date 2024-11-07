@@ -1061,7 +1061,7 @@ func TestOffboardUserHandlerHosts(t *testing.T) {
 	assert.True(t, hostFromDB.NoExpiration)
 }
 
-func TestOffboardUserHandlerAdminis(t *testing.T) {
+func TestOffboardUserHandlerAdmins(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(host.Collection, host.VolumesCollection, model.ProjectRefCollection))
 	projectRef0 := &model.ProjectRef{
 		Owner:     "mongodb",
