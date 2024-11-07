@@ -633,7 +633,8 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 }
 
 type APIBucketsConfig struct {
-	LogBucket APIBucketConfig `json:"log_bucket"`
+	LogBucket   APIBucketConfig  `json:"log_bucket"`
+	Credentials APIS3Credentials `json:"credentials"`
 }
 
 type APIBucketConfig struct {
@@ -648,6 +649,12 @@ func (a *APIBucketsConfig) BuildFromService(h interface{}) error {
 		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
 		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
 		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
+
+		creds := APIS3Credentials{}
+		if err := creds.BuildFromService(v.Credentials); err != nil {
+			return errors.Wrap(err, "converting S3 credentials to API model")
+		}
+		a.Credentials = creds
 	default:
 		return errors.Errorf("programmatic error: expected bucket config but got type %T", h)
 	}
@@ -655,12 +662,22 @@ func (a *APIBucketsConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APIBucketsConfig) ToService() (interface{}, error) {
+	i, err := a.Credentials.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting S3 credentials to service model")
+	}
+	creds, ok := i.(evergreen.S3Credentials)
+	if !ok {
+		return nil, errors.Errorf("programmatic error: expected S3 credentials but got type %T", i)
+	}
+
 	return evergreen.BucketsConfig{
 		LogBucket: evergreen.BucketConfig{
 			Name:   utility.FromStringPtr(a.LogBucket.Name),
 			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
 			DBName: utility.FromStringPtr(a.LogBucket.DBName),
 		},
+		Credentials: creds,
 	}, nil
 }
 
@@ -1436,7 +1453,6 @@ func (a *APISubnet) ToService() (interface{}, error) {
 type APIAWSConfig struct {
 	EC2Keys              []APIEC2Key               `json:"ec2_keys"`
 	Subnets              []APISubnet               `json:"subnets"`
-	TaskOutput           *APIS3Credentials         `json:"task_output"`
 	TaskSync             *APIS3Credentials         `json:"task_sync"`
 	TaskSyncRead         *APIS3Credentials         `json:"task_sync_read"`
 	ParserProject        *APIParserProjectS3Config `json:"parser_project"`
@@ -1467,12 +1483,6 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 			}
 			a.Subnets = append(a.Subnets, apiSubnet)
 		}
-
-		taskOutput := &APIS3Credentials{}
-		if err := taskOutput.BuildFromService(v.TaskOutput); err != nil {
-			return errors.Wrap(err, "converting task output S3 config to API model")
-		}
-		a.TaskOutput = taskOutput
 
 		taskSync := &APIS3Credentials{}
 		if err := taskSync.BuildFromService(v.TaskSync); err != nil {
@@ -1528,19 +1538,6 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 	var i interface{}
 	var err error
 	var ok bool
-
-	i, err = a.TaskOutput.ToService()
-	if err != nil {
-		return nil, errors.Wrap(err, "converting task output S3 config to service model")
-	}
-	var taskOutput evergreen.S3Credentials
-	if i != nil {
-		taskOutput, ok = i.(evergreen.S3Credentials)
-		if !ok {
-			return nil, errors.Errorf("expecting task output S3 config but got type %T", i)
-		}
-	}
-	config.TaskOutput = taskOutput
 
 	i, err = a.TaskSync.ToService()
 	if err != nil {
