@@ -18,7 +18,7 @@
       "result": {
         "errors": [
           {
-            "message": "Error deleting public key. Provided key name, non-existent-key, does not exist.",
+            "message": "deleting public key. Provided key name, non-existent-key, does not exist.",
             "path": ["removePublicKey"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }

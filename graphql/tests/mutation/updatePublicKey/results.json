@@ -42,7 +42,7 @@
       "result": {
         "errors": [
           {
-            "message": "Error updating public key. The target key name, non-existent!!!, does not exist.",
+            "message": "updating public key. The target key name, 'non-existent!!!', does not exist.",
             "path": ["updatePublicKey"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }
@@ -55,7 +55,7 @@
       "result": {
         "errors": [
           {
-            "message": "Error updating public key. The updated key name, b, already exists.",
+            "message": "updating public key. The updated key name, 'b', already exists.",
             "path": ["updatePublicKey"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }

@@ -17,7 +17,7 @@ import (
 func (r *hostResolver) Ami(ctx context.Context, obj *restModel.APIHost) (*string, error) {
 	host, err := host.FindOneId(ctx, utility.FromStringPtr(obj.Id))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding host %s: %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	if host == nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not find host %s", utility.FromStringPtr(obj.Id)))
@@ -83,7 +83,7 @@ func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (
 		volId := utility.FromStringPtr(obj.HomeVolumeID)
 		volume, err := host.FindVolumeByID(volId)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting volume %s: %s", volId, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting volume '%s': %s", volId, err.Error()))
 		}
 		if volume == nil {
 			grip.Error(message.Fields{
@@ -123,7 +123,7 @@ func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*
 	for _, volId := range obj.AttachedVolumeIDs {
 		volume, err := host.FindVolumeByID(volId)
 		if err != nil {
-			return volumes, InternalServerError.Send(ctx, fmt.Sprintf("Error getting volume %s", volId))
+			return volumes, InternalServerError.Send(ctx, fmt.Sprintf("getting volume '%s': %s", volId, err.Error()))
 		}
 		if volume == nil {
 			continue

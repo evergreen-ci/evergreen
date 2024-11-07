@@ -13,10 +13,10 @@ import (
 func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restModel.APITaskAnnotation) (bool, error) {
 	t, err := task.FindOneId(*obj.TaskId)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("error finding task: %s", err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("finding task: %s", err.Error()))
 	}
 	if t == nil {
-		return false, ResourceNotFound.Send(ctx, "error finding task for the task annotation")
+		return false, ResourceNotFound.Send(ctx, "finding task for the task annotation")
 	}
 	_, ok, _ := model.IsWebhookConfigured(t.Project, t.Version)
 	return ok, nil
