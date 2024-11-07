@@ -136,7 +136,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	apiTask := &restModel.APITask{}
 	err = apiTask.BuildFromService(ctx, baseTask, nil)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert baseTask %s to APITask : %s", baseTask.Id, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to convert baseTask %s to APITask : %s", baseTask.Id, err.Error()))
 	}
 	return apiTask, nil
 }
@@ -371,7 +371,7 @@ func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITa
 
 	stats, err := dbTask.GetTestResultsStats(ctx, evergreen.GetEnvironment())
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting failed test count: %s", err.Error()))
 	}
 
 	return stats.FailedCount, nil
@@ -463,7 +463,7 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 	}
 	result, err := apimodels.CedarPerfResultsCount(ctx, opts)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("requesting perf data from Cedar: %s", err))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("requesting perf data from Cedar: %s", err.Error()))
 	}
 	if result.NumberOfResults == 0 {
 		return false, nil
@@ -619,7 +619,7 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 
 	stats, err := dbTask.GetTestResultsStats(ctx, evergreen.GetEnvironment())
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err.Error()))
 	}
 
 	return stats.TotalCount, nil

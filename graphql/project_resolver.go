@@ -14,7 +14,7 @@ import (
 func (r *projectResolver) IsFavorite(ctx context.Context, obj *restModel.APIProjectRef) (bool, error) {
 	p, err := model.FindBranchProjectRef(*obj.Identifier)
 	if err != nil || p == nil {
-		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *obj.Identifier, err))
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *obj.Identifier, err.Error()))
 	}
 	usr := mustHaveUser(ctx)
 	if utility.StringSliceContains(usr.FavoriteProjects, *obj.Identifier) {

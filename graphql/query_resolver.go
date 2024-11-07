@@ -994,7 +994,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		eod := time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 0, date.Location())
 		found, err := model.VersionFindOne(model.VersionByProjectIdAndCreateTime(projectId, eod))
 		if err != nil {
-			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("getting version on or before date '%s': %s", eod.Format(time.DateOnly), err)))
+			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("getting version on or before date '%s': %s", eod.Format(time.DateOnly), err.Error())))
 		} else if found == nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("version on or before date '%s' not found", eod.Format(time.DateOnly))))
 		} else {
