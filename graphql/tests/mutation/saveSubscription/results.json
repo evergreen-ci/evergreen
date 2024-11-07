@@ -56,7 +56,7 @@
       "result": {
         "errors": [
           {
-            "message": "finding project by id not-real: 404 (Not Found): project 'not-real' not found",
+            "message": "finding project by id 'not-real': 404 (Not Found): project 'not-real' not found",
             "path": ["saveSubscription"],
             "extensions": { "code": "INTERNAL_SERVER_ERROR" }
           }
