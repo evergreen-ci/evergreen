@@ -65,6 +65,7 @@ func UpsertGithubAppAuth(githubAppAuth *GithubAppAuth) error {
 	return err
 }
 
+// InsertGithubAppAuth inserts the app auth for the given project id in the database
 func InsertGithubAppAuth(githubAppAuth *GithubAppAuth) error {
 	err := db.Insert(
 		GitHubAppAuthCollection,

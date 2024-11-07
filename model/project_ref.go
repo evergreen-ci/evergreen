@@ -806,6 +806,8 @@ func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) err
 	return githubapp.UpsertGithubAppAuth(&auth)
 }
 
+// DefaultGithubAppCredentialsToRepo defaults the app credentials to the repo by
+// removing the GithubAppAuth entry for the project.
 func DefaultGithubAppCredentialsToRepo(projectId string) error {
 	p, err := FindBranchProjectRef(projectId)
 	if err != nil {
