@@ -359,7 +359,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 		versionDoc, err = a.comm.GetTaskVersion(ctx, tc.task)
 		if err != nil {
 			// Don't return an error since it's not essential to have the version.
-			grip.Info("Error fetching version document for description.")
+			grip.Error("Error fetching version document for description.")
 		}
 	}
 
