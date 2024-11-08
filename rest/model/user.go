@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -17,9 +16,9 @@ import (
 )
 
 type APIDBUser struct {
-	BetaFeatures evergreen.APIBetaFeatures `json:"beta_features"`
-	DisplayName  *string                   `json:"display_name"`
-	EmailAddress *string                   `json:"email_address"`
+	BetaFeatures APIBetaFeatures `json:"beta_features"`
+	DisplayName  *string         `json:"display_name"`
+	EmailAddress *string         `json:"email_address"`
 	// will be set to true if the user represents a service user
 	OnlyApi         bool               `json:"only_api"`
 	Roles           []string           `json:"roles"`
@@ -41,7 +40,7 @@ func (s *APIDBUser) BuildFromService(usr user.DBUser) {
 	userSettings.BuildFromService(usr.Settings)
 	s.Settings = userSettings
 
-	betaFeatures := evergreen.APIBetaFeatures{}
+	betaFeatures := APIBetaFeatures{}
 	betaFeatures.BuildFromService(usr.BetaFeatures)
 	s.BetaFeatures = betaFeatures
 

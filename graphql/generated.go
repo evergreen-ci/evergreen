@@ -14625,7 +14625,7 @@ func (ec *executionContext) fieldContext_Annotation_webhookConfigured(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _BetaFeatures_spruceWaterfallEnabled(ctx context.Context, field graphql.CollectedField, obj *evergreen.APIBetaFeatures) (ret graphql.Marshaler) {
+func (ec *executionContext) _BetaFeatures_spruceWaterfallEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIBetaFeatures) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_BetaFeatures_spruceWaterfallEnabled(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -55245,12 +55245,12 @@ func (ec *executionContext) fieldContext_SpruceConfig_ui(_ context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "betaFeatures":
+				return ec.fieldContext_UIConfig_betaFeatures(ctx, field)
 			case "defaultProject":
 				return ec.fieldContext_UIConfig_defaultProject(ctx, field)
 			case "userVoice":
 				return ec.fieldContext_UIConfig_userVoice(ctx, field)
-			case "betaFeatures":
-				return ec.fieldContext_UIConfig_betaFeatures(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UIConfig", field.Name)
 		},
@@ -64962,6 +64962,54 @@ func (ec *executionContext) fieldContext_TriggerAlias_unscheduleDownstreamVersio
 	return fc, nil
 }
 
+func (ec *executionContext) _UIConfig_betaFeatures(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UIConfig_betaFeatures(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BetaFeatures, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.APIBetaFeatures)
+	fc.Result = res
+	return ec.marshalNBetaFeatures2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UIConfig_betaFeatures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "spruceWaterfallEnabled":
+				return ec.fieldContext_BetaFeatures_spruceWaterfallEnabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BetaFeatures", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UIConfig_defaultProject(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UIConfig_defaultProject(ctx, field)
 	if err != nil {
@@ -65047,54 +65095,6 @@ func (ec *executionContext) fieldContext_UIConfig_userVoice(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _UIConfig_betaFeatures(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_UIConfig_betaFeatures(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.BetaFeatures, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(evergreen.APIBetaFeatures)
-	fc.Result = res
-	return ec.marshalNBetaFeatures2githubᚗcomᚋevergreenᚑciᚋevergreenᚐAPIBetaFeatures(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_UIConfig_betaFeatures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UIConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "spruceWaterfallEnabled":
-				return ec.fieldContext_BetaFeatures_spruceWaterfallEnabled(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type BetaFeatures", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _UpdateBetaFeaturesPayload_betaFeatures(ctx context.Context, field graphql.CollectedField, obj *UpdateBetaFeaturesPayload) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UpdateBetaFeaturesPayload_betaFeatures(ctx, field)
 	if err != nil {
@@ -65118,9 +65118,9 @@ func (ec *executionContext) _UpdateBetaFeaturesPayload_betaFeatures(ctx context.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*evergreen.APIBetaFeatures)
+	res := resTmp.(*model.APIBetaFeatures)
 	fc.Result = res
-	return ec.marshalOBetaFeatures2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐAPIBetaFeatures(ctx, field.Selections, res)
+	return ec.marshalOBetaFeatures2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UpdateBetaFeaturesPayload_betaFeatures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -65958,9 +65958,9 @@ func (ec *executionContext) _User_betaFeatures(ctx context.Context, field graphq
 		}
 		return graphql.Null
 	}
-	res := resTmp.(evergreen.APIBetaFeatures)
+	res := resTmp.(model.APIBetaFeatures)
 	fc.Result = res
-	return ec.marshalNBetaFeatures2githubᚗcomᚋevergreenᚑciᚋevergreenᚐAPIBetaFeatures(ctx, field.Selections, res)
+	return ec.marshalNBetaFeatures2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_betaFeatures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -74096,8 +74096,8 @@ func (ec *executionContext) unmarshalInputAddFavoriteProjectInput(ctx context.Co
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputBetaFeaturesInput(ctx context.Context, obj interface{}) (evergreen.APIBetaFeatures, error) {
-	var it evergreen.APIBetaFeatures
+func (ec *executionContext) unmarshalInputBetaFeaturesInput(ctx context.Context, obj interface{}) (model.APIBetaFeatures, error) {
+	var it model.APIBetaFeatures
 	asMap := map[string]interface{}{}
 	for k, v := range obj.(map[string]interface{}) {
 		asMap[k] = v
@@ -79043,7 +79043,7 @@ func (ec *executionContext) unmarshalInputUpdateBetaFeaturesInput(ctx context.Co
 		switch k {
 		case "betaFeatures":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("betaFeatures"))
-			data, err := ec.unmarshalNBetaFeaturesInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐAPIBetaFeatures(ctx, v)
+			data, err := ec.unmarshalNBetaFeaturesInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -79978,7 +79978,7 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 
 var betaFeaturesImplementors = []string{"BetaFeatures"}
 
-func (ec *executionContext) _BetaFeatures(ctx context.Context, sel ast.SelectionSet, obj *evergreen.APIBetaFeatures) graphql.Marshaler {
+func (ec *executionContext) _BetaFeatures(ctx context.Context, sel ast.SelectionSet, obj *model.APIBetaFeatures) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, betaFeaturesImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -93703,6 +93703,11 @@ func (ec *executionContext) _UIConfig(ctx context.Context, sel ast.SelectionSet,
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("UIConfig")
+		case "betaFeatures":
+			out.Values[i] = ec._UIConfig_betaFeatures(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "defaultProject":
 			out.Values[i] = ec._UIConfig_defaultProject(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -93710,11 +93715,6 @@ func (ec *executionContext) _UIConfig(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "userVoice":
 			out.Values[i] = ec._UIConfig_userVoice(ctx, field, obj)
-		case "betaFeatures":
-			out.Values[i] = ec._UIConfig_betaFeatures(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -96169,11 +96169,11 @@ func (ec *executionContext) marshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋ
 	return res
 }
 
-func (ec *executionContext) marshalNBetaFeatures2githubᚗcomᚋevergreenᚑciᚋevergreenᚐAPIBetaFeatures(ctx context.Context, sel ast.SelectionSet, v evergreen.APIBetaFeatures) graphql.Marshaler {
+func (ec *executionContext) marshalNBetaFeatures2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx context.Context, sel ast.SelectionSet, v model.APIBetaFeatures) graphql.Marshaler {
 	return ec._BetaFeatures(ctx, sel, &v)
 }
 
-func (ec *executionContext) unmarshalNBetaFeaturesInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐAPIBetaFeatures(ctx context.Context, v interface{}) (*evergreen.APIBetaFeatures, error) {
+func (ec *executionContext) unmarshalNBetaFeaturesInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx context.Context, v interface{}) (*model.APIBetaFeatures, error) {
 	res, err := ec.unmarshalInputBetaFeaturesInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -101432,7 +101432,7 @@ func (ec *executionContext) marshalOAnnotation2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._Annotation(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOBetaFeatures2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐAPIBetaFeatures(ctx context.Context, sel ast.SelectionSet, v *evergreen.APIBetaFeatures) graphql.Marshaler {
+func (ec *executionContext) marshalOBetaFeatures2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx context.Context, sel ast.SelectionSet, v *model.APIBetaFeatures) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

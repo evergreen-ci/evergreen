@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	model1 "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -544,11 +543,11 @@ type TestSortOptions struct {
 }
 
 type UpdateBetaFeaturesInput struct {
-	BetaFeatures *evergreen.APIBetaFeatures `json:"betaFeatures"`
+	BetaFeatures *model.APIBetaFeatures `json:"betaFeatures"`
 }
 
 type UpdateBetaFeaturesPayload struct {
-	BetaFeatures *evergreen.APIBetaFeatures `json:"betaFeatures,omitempty"`
+	BetaFeatures *model.APIBetaFeatures `json:"betaFeatures,omitempty"`
 }
 
 type UpdateParsleySettingsInput struct {

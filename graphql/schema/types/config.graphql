@@ -28,9 +28,9 @@ type ContainerPool {
 }
 
 type UIConfig {
+  betaFeatures: BetaFeatures!
   defaultProject: String!
   userVoice: String
-  betaFeatures: BetaFeatures!
 }
 
 type SlackConfig {

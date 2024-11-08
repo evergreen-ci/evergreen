@@ -14,20 +14,6 @@ type BetaFeatures struct {
 	SpruceWaterfallEnabled bool `bson:"spruce_waterfall_enabled" json:"spruce_waterfall_enabled"`
 }
 
-type APIBetaFeatures struct {
-	SpruceWaterfallEnabled bool `json:"spruce_waterfall_enabled"`
-}
-
-func (a *APIBetaFeatures) BuildFromService(b BetaFeatures) {
-	a.SpruceWaterfallEnabled = b.SpruceWaterfallEnabled
-}
-
-func (a *APIBetaFeatures) ToService() BetaFeatures {
-	return BetaFeatures{
-		SpruceWaterfallEnabled: a.SpruceWaterfallEnabled,
-	}
-}
-
 // UIConfig holds relevant settings for the UI server.
 type UIConfig struct {
 	Url                       string       `bson:"url" json:"url" yaml:"url"`
