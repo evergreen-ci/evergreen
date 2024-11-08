@@ -1,4 +1,4 @@
-# 2024-10-14 Enforce Project Permissions in GraphQL API
+# 2024-11-08 Enforce Project Permissions in GraphQL API
 
 * status: accepted
 * date: 2024-11-08
