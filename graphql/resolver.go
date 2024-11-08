@@ -69,7 +69,7 @@ func New(apiURL string) Config {
 		}
 		forbiddenHosts := []string{}
 		for _, h := range hostsToCheck {
-			if !userHasHostPermission(user, h.Distro.Id, requiredLevel) {
+			if !userHasHostPermission(user, h.Distro.Id, requiredLevel, h.StartedBy) {
 				forbiddenHosts = append(forbiddenHosts, h.Id)
 			}
 		}

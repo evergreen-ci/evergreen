@@ -341,7 +341,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 	usr := mustHaveUser(ctx)
 	apiHosts := []*restModel.APIHost{}
 	for _, h := range hosts {
-		if !userHasHostPermission(usr, h.Distro.Id, evergreen.HostsView.Value) {
+		if !userHasHostPermission(usr, h.Distro.Id, evergreen.HostsView.Value, h.StartedBy) {
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access one or more hosts", usr.Username()))
 		}
 		apiHost := restModel.APIHost{}
