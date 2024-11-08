@@ -59,6 +59,7 @@ type Query {
   repoEvents(repoId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW), limit: Int = 0, before: Time): ProjectEvents!
   repoSettings(repoId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)): RepoSettings!
   viewableProjectRefs: [GroupedProjects!]!
+  isRepo(projectOrRepoId: String!): Boolean!
 
   # spawn
   myHosts: [Host!]!

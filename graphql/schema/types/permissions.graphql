@@ -6,6 +6,10 @@ input ProjectPermissionsOptions {
   projectIdentifier: String!
 }
 
+input RepoPermissionsOptions {
+  repoId: String!
+}
+
 type DistroPermissions {
   admin: Boolean!
   edit: Boolean!
@@ -17,6 +21,11 @@ type ProjectPermissions {
   view: Boolean!
 }
 
+type RepoPermissions {
+  edit: Boolean!
+  view: Boolean!
+}
+
 ###### TYPES ######
 type Permissions {
   canCreateDistro: Boolean!
@@ -24,5 +33,6 @@ type Permissions {
   canEditAdminSettings: Boolean!
   distroPermissions(options: DistroPermissionsOptions!): DistroPermissions!
   projectPermissions(options: ProjectPermissionsOptions!): ProjectPermissions!
+  repoPermissions(options: RepoPermissionsOptions!): RepoPermissions!
   userId: String!
 }

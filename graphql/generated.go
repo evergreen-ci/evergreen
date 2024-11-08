@@ -899,6 +899,7 @@ type ComplexityRoot struct {
 		CanEditAdminSettings func(childComplexity int) int
 		DistroPermissions    func(childComplexity int, options DistroPermissionsOptions) int
 		ProjectPermissions   func(childComplexity int, options ProjectPermissionsOptions) int
+		RepoPermissions      func(childComplexity int, options RepoPermissionsOptions) int
 		UserID               func(childComplexity int) int
 	}
 
@@ -1097,6 +1098,7 @@ type ComplexityRoot struct {
 		Image                    func(childComplexity int, imageID string) int
 		Images                   func(childComplexity int) int
 		InstanceTypes            func(childComplexity int) int
+		IsRepo                   func(childComplexity int, projectOrRepoID string) int
 		LogkeeperBuildMetadata   func(childComplexity int, buildID string) int
 		MainlineCommits          func(childComplexity int, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) int
 		MyHosts                  func(childComplexity int) int
@@ -1130,6 +1132,11 @@ type ComplexityRoot struct {
 		MergeMethod func(childComplexity int) int
 		MergeQueue  func(childComplexity int) int
 		Message     func(childComplexity int) int
+	}
+
+	RepoPermissions struct {
+		Edit func(childComplexity int) int
+		View func(childComplexity int) int
 	}
 
 	RepoRef struct {
@@ -1917,6 +1924,7 @@ type PermissionsResolver interface {
 	CanEditAdminSettings(ctx context.Context, obj *Permissions) (bool, error)
 	DistroPermissions(ctx context.Context, obj *Permissions, options DistroPermissionsOptions) (*DistroPermissions, error)
 	ProjectPermissions(ctx context.Context, obj *Permissions, options ProjectPermissionsOptions) (*ProjectPermissions, error)
+	RepoPermissions(ctx context.Context, obj *Permissions, options RepoPermissionsOptions) (*RepoPermissions, error)
 }
 type PlannerSettingsResolver interface {
 	Version(ctx context.Context, obj *model.APIPlannerSettings) (PlannerVersion, error)
@@ -1975,6 +1983,7 @@ type QueryResolver interface {
 	RepoEvents(ctx context.Context, repoID string, limit *int, before *time.Time) (*ProjectEvents, error)
 	RepoSettings(ctx context.Context, repoID string) (*model.APIProjectSettings, error)
 	ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error)
+	IsRepo(ctx context.Context, projectOrRepoID string) (bool, error)
 	MyHosts(ctx context.Context) ([]*model.APIHost, error)
 	MyVolumes(ctx context.Context) ([]*model.APIVolume, error)
 	LogkeeperBuildMetadata(ctx context.Context, buildID string) (*plank.Build, error)
@@ -6049,6 +6058,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Permissions.ProjectPermissions(childComplexity, args["options"].(ProjectPermissionsOptions)), true
 
+	case "Permissions.repoPermissions":
+		if e.complexity.Permissions.RepoPermissions == nil {
+			break
+		}
+
+		args, err := ec.field_Permissions_repoPermissions_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Permissions.RepoPermissions(childComplexity, args["options"].(RepoPermissionsOptions)), true
+
 	case "Permissions.userId":
 		if e.complexity.Permissions.UserID == nil {
 			break
@@ -7137,6 +7158,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.InstanceTypes(childComplexity), true
 
+	case "Query.isRepo":
+		if e.complexity.Query.IsRepo == nil {
+			break
+		}
+
+		args, err := ec.field_Query_isRepo_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.IsRepo(childComplexity, args["projectOrRepoId"].(string)), true
+
 	case "Query.logkeeperBuildMetadata":
 		if e.complexity.Query.LogkeeperBuildMetadata == nil {
 			break
@@ -7426,6 +7459,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoCommitQueueParams.Message(childComplexity), true
+
+	case "RepoPermissions.edit":
+		if e.complexity.RepoPermissions.Edit == nil {
+			break
+		}
+
+		return e.complexity.RepoPermissions.Edit(childComplexity), true
+
+	case "RepoPermissions.view":
+		if e.complexity.RepoPermissions.View == nil {
+			break
+		}
+
+		return e.complexity.RepoPermissions.View(childComplexity), true
 
 	case "RepoRef.admins":
 		if e.complexity.RepoRef.Admins == nil {
@@ -10562,6 +10609,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPromoteVarsToRepoInput,
 		ec.unmarshalInputPublicKeyInput,
 		ec.unmarshalInputRemoveFavoriteProjectInput,
+		ec.unmarshalInputRepoPermissionsOptions,
 		ec.unmarshalInputRepoRefInput,
 		ec.unmarshalInputRepoSettingsInput,
 		ec.unmarshalInputResourceLimitsInput,
@@ -12528,6 +12576,21 @@ func (ec *executionContext) field_Permissions_projectPermissions_args(ctx contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Permissions_repoPermissions_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 RepoPermissionsOptions
+	if tmp, ok := rawArgs["options"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("options"))
+		arg0, err = ec.unmarshalNRepoPermissionsOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRepoPermissionsOptions(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["options"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Pod_events_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -13028,6 +13091,21 @@ func (ec *executionContext) field_Query_image_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["imageId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_isRepo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["projectOrRepoId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectOrRepoId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectOrRepoId"] = arg0
 	return args, nil
 }
 
@@ -40512,6 +40590,67 @@ func (ec *executionContext) fieldContext_Permissions_projectPermissions(ctx cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Permissions_repoPermissions(ctx context.Context, field graphql.CollectedField, obj *Permissions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Permissions_repoPermissions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Permissions().RepoPermissions(rctx, obj, fc.Args["options"].(RepoPermissionsOptions))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*RepoPermissions)
+	fc.Result = res
+	return ec.marshalNRepoPermissions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRepoPermissions(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Permissions_repoPermissions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Permissions",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "edit":
+				return ec.fieldContext_RepoPermissions_edit(ctx, field)
+			case "view":
+				return ec.fieldContext_RepoPermissions_view(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RepoPermissions", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Permissions_repoPermissions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Permissions_userId(ctx context.Context, field graphql.CollectedField, obj *Permissions) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Permissions_userId(ctx, field)
 	if err != nil {
@@ -48596,6 +48735,61 @@ func (ec *executionContext) fieldContext_Query_viewableProjectRefs(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_isRepo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_isRepo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().IsRepo(rctx, fc.Args["projectOrRepoId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_isRepo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_isRepo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_myHosts(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_myHosts(ctx, field)
 	if err != nil {
@@ -50463,6 +50657,94 @@ func (ec *executionContext) fieldContext_RepoCommitQueueParams_message(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoPermissions_edit(ctx context.Context, field graphql.CollectedField, obj *RepoPermissions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoPermissions_edit(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Edit, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoPermissions_edit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoPermissions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoPermissions_view(ctx context.Context, field graphql.CollectedField, obj *RepoPermissions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoPermissions_view(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.View, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoPermissions_view(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoPermissions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -65937,6 +66219,8 @@ func (ec *executionContext) fieldContext_User_permissions(_ context.Context, fie
 				return ec.fieldContext_Permissions_distroPermissions(ctx, field)
 			case "projectPermissions":
 				return ec.fieldContext_Permissions_projectPermissions(ctx, field)
+			case "repoPermissions":
+				return ec.fieldContext_Permissions_repoPermissions(ctx, field)
 			case "userId":
 				return ec.fieldContext_Permissions_userId(ctx, field)
 			}
@@ -77168,6 +77452,33 @@ func (ec *executionContext) unmarshalInputRemoveFavoriteProjectInput(ctx context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputRepoPermissionsOptions(ctx context.Context, obj interface{}) (RepoPermissionsOptions, error) {
+	var it RepoPermissionsOptions
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"repoId"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "repoId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repoId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RepoID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj interface{}) (model.APIProjectRef, error) {
 	var it model.APIProjectRef
 	asMap := map[string]interface{}{}
@@ -86437,6 +86748,42 @@ func (ec *executionContext) _Permissions(ctx context.Context, sel ast.SelectionS
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "repoPermissions":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Permissions_repoPermissions(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "userId":
 			out.Values[i] = ec._Permissions_userId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -88519,6 +88866,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "isRepo":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_isRepo(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "myHosts":
 			field := field
 
@@ -88972,6 +89341,50 @@ func (ec *executionContext) _RepoCommitQueueParams(ctx context.Context, sel ast.
 			}
 		case "message":
 			out.Values[i] = ec._RepoCommitQueueParams_message(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var repoPermissionsImplementors = []string{"RepoPermissions"}
+
+func (ec *executionContext) _RepoPermissions(ctx context.Context, sel ast.SelectionSet, obj *RepoPermissions) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, repoPermissionsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RepoPermissions")
+		case "edit":
+			out.Values[i] = ec._RepoPermissions_edit(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "view":
+			out.Values[i] = ec._RepoPermissions_view(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -99043,6 +99456,25 @@ func (ec *executionContext) unmarshalNRemoveFavoriteProjectInput2githubᚗcomᚋ
 
 func (ec *executionContext) marshalNRepoCommitQueueParams2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPICommitQueueParams(ctx context.Context, sel ast.SelectionSet, v model.APICommitQueueParams) graphql.Marshaler {
 	return ec._RepoCommitQueueParams(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNRepoPermissions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRepoPermissions(ctx context.Context, sel ast.SelectionSet, v RepoPermissions) graphql.Marshaler {
+	return ec._RepoPermissions(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNRepoPermissions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRepoPermissions(ctx context.Context, sel ast.SelectionSet, v *RepoPermissions) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RepoPermissions(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNRepoPermissionsOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRepoPermissionsOptions(ctx context.Context, v interface{}) (RepoPermissionsOptions, error) {
+	res, err := ec.unmarshalInputRepoPermissionsOptions(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNRepoSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectSettings(ctx context.Context, sel ast.SelectionSet, v model.APIProjectSettings) graphql.Marshaler {

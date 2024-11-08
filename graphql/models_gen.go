@@ -324,6 +324,7 @@ type Permissions struct {
 	CanEditAdminSettings bool                `json:"canEditAdminSettings"`
 	DistroPermissions    *DistroPermissions  `json:"distroPermissions"`
 	ProjectPermissions   *ProjectPermissions `json:"projectPermissions"`
+	RepoPermissions      *RepoPermissions    `json:"repoPermissions"`
 	UserID               string              `json:"userId"`
 }
 
@@ -375,6 +376,15 @@ type Query struct {
 
 type RemoveFavoriteProjectInput struct {
 	ProjectIdentifier string `json:"projectIdentifier"`
+}
+
+type RepoPermissions struct {
+	Edit bool `json:"edit"`
+	View bool `json:"view"`
+}
+
+type RepoPermissionsOptions struct {
+	RepoID string `json:"repoId"`
 }
 
 // SaveDistroInput is the input to the saveDistro mutation.

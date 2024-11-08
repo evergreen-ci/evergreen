@@ -546,6 +546,18 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProj
 	return groupedProjects, nil
 }
 
+// IsRepo is the resolver for the isRepo field.
+func (r *queryResolver) IsRepo(ctx context.Context, projectOrRepoID string) (bool, error) {
+	repo, err := model.FindOneRepoRef(projectOrRepoID)
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("getting repository for '%s': %s", projectOrRepoID, err.Error()))
+	}
+	if repo == nil {
+		return false, nil
+	}
+	return true, nil
+}
+
 // MyHosts is the resolver for the myHosts field.
 func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, error) {
 	usr := mustHaveUser(ctx)
