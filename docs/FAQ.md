@@ -10,6 +10,14 @@ The main difference is that cron and batchtime are tied to activating builds for
 
 #### Dynamic Github Access Tokens
 
+##### Which permissions should the github app have?
+
+The permissions for you app should be limited to only what is necessary. The permissions that are necessary will depend on how you plan to use the generated tokens.
+
+- **contents:read**: To use the app to `git clone`, using [shell.exec](Project-Configuration/Project-Commands/shellexec) or [subprocess.exec](Project-Configuration/Project-Commands/subprocessexec), request `contents:read` under repository permissions. This also applies if you plan to use the token to pass it into [git.get_project](Project-Configuration/Project-Commands/gitget_project).
+- **contents:write**: To use the app to `git push`, request `contents:write` under repository permissions.
+- **checks:write**: To use the app to generate a token to pass into [github check runs](Project-Configuration/Github-Integrations/github-check-runs) (this is not available yet but will be soon), request `checks:write` under repository permissions.
+
 ##### Can more than one app be associated with my project?
 
 No, only one app per project is supported.
