@@ -91,6 +91,7 @@ func FindRepoRefByOwnerAndRepo(owner, repoName string) (*RepoRef, error) {
 
 // FindRepoRefsToSync finds all repo refs that have Parameter Sore enabled but
 // don't have their project variables synced to Parameter Store yet.
+// TODO (DEVPROD-11882): remove this function once the rollout is stable.
 func FindRepoRefsToSync(ctx context.Context) ([]RepoRef, error) {
 	cur, err := evergreen.GetEnvironment().DB().Collection(RepoRefCollection).Find(ctx, psEnabledButNotSyncedQuery)
 	if err != nil {

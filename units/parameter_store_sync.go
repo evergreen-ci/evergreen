@@ -40,6 +40,7 @@ func makeParameterStoreSyncJob() *parameterStoreSyncJob {
 // NewParameterStoreSyncJob creates a job that syncs project variables to SSM
 // Parameter Store for any branch project or repo ref that has Parameter Store
 // enabled but whose vars are not already in sync.
+// TODO (DEVPROD-11882): remove this job once the rollout is stable.
 func NewParameterStoreSyncJob(ts string) amboy.Job {
 	j := makeParameterStoreSyncJob()
 	j.SetID(fmt.Sprintf("%s.%s", parameterStoreSyncJobName, ts))

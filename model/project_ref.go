@@ -3697,6 +3697,7 @@ var psEnabledButNotSyncedQuery = bson.M{
 
 // FindProjectRefsToSync finds all project refs that have Parameter Sore enabled
 // but don't have their project variables synced to Parameter Store yet.
+// TODO (DEVPROD-11882): remove this function once the rollout is stable.
 func FindProjectRefsToSync(ctx context.Context) ([]ProjectRef, error) {
 	cur, err := evergreen.GetEnvironment().DB().Collection(ProjectRefCollection).Find(ctx, psEnabledButNotSyncedQuery)
 	if err != nil {
