@@ -164,15 +164,7 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 	defer cancel()
 
 	projectVars.checkAndRunParameterStoreOp(ctx, func(ref *ProjectRef, isRepoRef bool) {
-		if !ref.ParameterStoreVarsSynced {
-			grip.Debug(message.Fields{
-				"message":     "project has Parameter Store enabled for project vars, but they're not synced; falling back to using the DB",
-				"op":          "FindOneProjectVars",
-				"project_id":  ref.Id,
-				"is_repo_ref": isRepoRef,
-				"epic":        "DEVPROD-5552",
-			})
-		} else {
+		if ref.ParameterStoreVarsSynced {
 			projectVarsFromPS, err := projectVars.findParameterStore(ctx)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
@@ -452,7 +444,7 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 
 	projectVars.checkAndRunParameterStoreOp(ctx, func(ref *ProjectRef, isRepoRef bool) {
 		if !ref.ParameterStoreVarsSynced {
-			grip.Error(message.WrapError(fullSyncToParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
+			grip.Error(message.WrapError(FullSyncToParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
 				"message":    "could not fully sync project vars into Parameter Store; falling back to using the DB",
 				"op":         "Upsert",
 				"project_id": projectVars.Id,
@@ -734,7 +726,7 @@ func (projectVars *ProjectVars) findProjectRef() (ref *ProjectRef, isRepoRef boo
 // TODO (DEVPROD-11882): remove full sync logic once the Parameter Store
 // rollout is complete. This functionality only exists to aid the migration
 // process.
-func fullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *ProjectRef, isRepoRef bool) error {
+func FullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *ProjectRef, isRepoRef bool) error {
 	before, err := FindOneProjectVars(vars.Id)
 	if err != nil {
 		return errors.Wrapf(err, "finding original project vars for project '%s'", vars.Id)
@@ -821,7 +813,7 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 
 	projectVars.checkAndRunParameterStoreOp(ctx, func(ref *ProjectRef, isRepoRef bool) {
 		if !ref.ParameterStoreVarsSynced {
-			grip.Error(message.WrapError(fullSyncToParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
+			grip.Error(message.WrapError(FullSyncToParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
 				"message":    "could not fully sync project vars into Parameter Store; falling back to using the DB",
 				"op":         "FindANdModify",
 				"project_id": projectVars.Id,

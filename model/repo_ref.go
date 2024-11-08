@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
@@ -86,6 +87,21 @@ func FindRepoRefByOwnerAndRepo(owner, repoName string) (*RepoRef, error) {
 		RepoRefOwnerKey: owner,
 		RepoRefRepoKey:  repoName,
 	}))
+}
+
+// FindRepoRefsToSync finds all repo refs that have Parameter Sore enabled but
+// don't have their project variables synced to Parameter Store yet.
+// TODO (DEVPROD-11882): remove this function once the rollout is stable.
+func FindRepoRefsToSync(ctx context.Context) ([]RepoRef, error) {
+	cur, err := evergreen.GetEnvironment().DB().Collection(RepoRefCollection).Find(ctx, psEnabledButNotSyncedQuery)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding repo refs to sync")
+	}
+	repoRefs := []RepoRef{}
+	if err := cur.All(ctx, &repoRefs); err != nil {
+		return nil, errors.Wrap(err, "decoding repo refs to sync")
+	}
+	return repoRefs, nil
 }
 
 // addPermissions adds the repo ref to the general scope and gives the inputted creator admin permissions
