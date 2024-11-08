@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/user"
