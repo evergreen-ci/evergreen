@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -66,7 +67,7 @@ func (j *parameterStoreSyncJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "finding project refs to sync"))
 		return
 	}
-	j.AddError(errors.Wrap(j.sync(ctx, pRefs, false), "syncing project variables for branch project refs"))
+	j.sync(ctx, pRefs, false)
 
 	repoRefs, err := model.FindRepoRefsToSync(ctx)
 	if err != nil {
@@ -78,20 +79,28 @@ func (j *parameterStoreSyncJob) Run(ctx context.Context) {
 	for _, repoRef := range repoRefs {
 		repoProjRefs = append(repoProjRefs, repoRef.ProjectRef)
 	}
-	j.AddError(errors.Wrap(j.sync(ctx, repoProjRefs, true), "syncing project variables for repo refs"))
+	j.sync(ctx, repoProjRefs, true)
 }
 
-func (j *parameterStoreSyncJob) sync(ctx context.Context, pRefs []model.ProjectRef, areRepoRefs bool) error {
-	catcher := grip.NewBasicCatcher()
+func (j *parameterStoreSyncJob) sync(ctx context.Context, pRefs []model.ProjectRef, areRepoRefs bool) {
 	for _, pRef := range pRefs {
 		pVars, err := model.FindOneProjectVars(pRef.Id)
 		if err != nil {
-			catcher.Wrapf(err, "finding project vars for project '%s'", pRef.Id)
+			j.AddError(errors.Wrapf(err, "finding project vars for project '%s'", pRef.Id))
 			continue
 		}
+		if pVars == nil {
+			grip.Notice(message.Fields{
+				"message":     "found project that has no project vars, initializing with empty project vars",
+				"project":     pRef.Id,
+				"is_repo_ref": areRepoRefs,
+				"job":         j.ID(),
+			})
+			pVars = &model.ProjectVars{Id: pRef.Id}
+		}
 		if err := model.FullSyncToParameterStore(ctx, pVars, &pRef, areRepoRefs); err != nil {
-			catcher.Wrapf(err, "syncing project vars for project '%s'", pRef.Id)
+			j.AddError(errors.Wrapf(err, "finding project vars for project '%s'", pRef.Id))
 		}
 	}
-	return catcher.Resolve()
+	return
 }
