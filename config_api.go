@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -88,6 +89,7 @@ func (c *ClientConfig) populateClientBinaries(ctx context.Context, s3URLPrefix s
 type APIConfig struct {
 	HttpListenAddr      string `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
 	GithubWebhookSecret string `bson:"github_webhook_secret" json:"github_webhook_secret" yaml:"github_webhook_secret"`
+	URL                 string `bson:"url" json:"url" yaml:"url"`
 }
 
 func (c *APIConfig) SectionId() string { return "api" }
@@ -96,13 +98,25 @@ func (c *APIConfig) Get(ctx context.Context) error {
 	return getConfigSection(ctx, c)
 }
 
+var (
+	httpListenAddrKey      = bsonutil.MustHaveTag(APIConfig{}, "HttpListenAddr")
+	githubWebhookSecretKey = bsonutil.MustHaveTag(APIConfig{}, "GithubWebhookSecret")
+	urlKey                 = bsonutil.MustHaveTag(APIConfig{}, "URL")
+)
+
 func (c *APIConfig) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			"http_listen_addr":      c.HttpListenAddr,
-			"github_webhook_secret": c.GithubWebhookSecret,
+			httpListenAddrKey:      c.HttpListenAddr,
+			githubWebhookSecretKey: c.GithubWebhookSecret,
+			urlKey:                 c.URL,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
 
-func (c *APIConfig) ValidateAndDefault() error { return nil }
+func (c *APIConfig) ValidateAndDefault() error {
+	if c.URL == "" {
+		return errors.New("URL must not be empty")
+	}
+	return nil
+}

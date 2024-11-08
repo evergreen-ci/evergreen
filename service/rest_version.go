@@ -206,7 +206,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start",
-				BaseURL:         restapi.GetSettings().ApiUrl,
+				BaseURL:         restapi.GetSettings().Api.URL,
 				Key:             nextPageStart,
 				Limit:           l,
 			},

@@ -674,6 +674,7 @@ func processIntermediateProjectIncludes(ctx context.Context, identifier string, 
 		Identifier:          identifier,
 		UnmarshalStrict:     projectOpts.UnmarshalStrict,
 		LocalModuleIncludes: projectOpts.LocalModuleIncludes,
+		ReferencePatchID:    projectOpts.ReferencePatchID,
 		ReferenceManifestID: projectOpts.ReferenceManifestID,
 	}
 	localOpts.UpdateReadFileFrom(include.FileName)
@@ -881,7 +882,17 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 }
 
 func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, include parserInclude) ([]byte, error) {
-	// Check if the module has a local change passed in through the CLI
+	// Check if the module has a local change passed in through the CLI or previous patch.
+	if opts.ReferencePatchID != "" {
+		p, err := patch.FindOneId(opts.ReferencePatchID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding patch to repeat '%s'", opts.ReferencePatchID)
+		}
+		if p == nil {
+			return nil, errors.Errorf("patch to repeat '%s' not found", opts.ReferencePatchID)
+		}
+		opts.LocalModuleIncludes = p.LocalModuleIncludes
+	}
 	for _, patchedInclude := range opts.LocalModuleIncludes {
 		if patchedInclude.Module == include.Module && patchedInclude.FileName == include.FileName {
 			return patchedInclude.FileContent, nil

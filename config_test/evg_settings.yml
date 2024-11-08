@@ -26,8 +26,6 @@ amboy:
   # Ensure that tests depending on the global environment don't depend on indexes to exist in a testing DB.
   skip_preferred_indexes: true
 
-api_url: "https://localhost:8443"
-
 providers:
   aws:
     ec2_keys:
@@ -65,6 +63,7 @@ repotracker:
   logfile: "/tmp/repotracker_test.log"
 
 api:
+  url: "https://localhost:8443"
   github_webhook_secret: "test"
   logfile: "/tmp/api_test.log"
   httplistenaddr: ":9090"
