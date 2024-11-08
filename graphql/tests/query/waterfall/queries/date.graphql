@@ -1,0 +1,22 @@
+{
+  waterfall(
+    options: { projectIdentifier: "spruce", date: "2019-12-31T00:00:00Z" }
+  ) {
+    versions {
+      version {
+        createTime
+        id
+        order
+      }
+      inactiveVersions {
+        createTime
+        id
+        order
+      }
+    }
+    pagination {
+      nextPageOrder
+      prevPageOrder
+    }
+  }
+}

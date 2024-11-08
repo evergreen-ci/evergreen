@@ -19,10 +19,11 @@ const (
 )
 
 type WaterfallTask struct {
-	Id          string `bson:"_id" json:"_id"`
-	DisplayName string `bson:"display_name" json:"display_name"`
-	Execution   int    `bson:"execution" json:"execution"`
-	Status      string `bson:"status" json:"status"`
+	Id            string `bson:"_id" json:"_id"`
+	DisplayName   string `bson:"display_name" json:"display_name"`
+	DisplayStatus string `bson:"display_status" json:"display_status"`
+	Execution     int    `bson:"execution" json:"execution"`
+	Status        string `bson:"status" json:"status"`
 }
 
 type WaterfallBuild struct {
@@ -37,6 +38,7 @@ type WaterfallBuildVariant struct {
 	Id          string           `bson:"_id" json:"_id"`
 	DisplayName string           `bson:"display_name" json:"display_name"`
 	Builds      []WaterfallBuild `bson:"builds" json:"builds"`
+	Version     string           `bson:"version" json:"version"`
 }
 
 type WaterfallOptions struct {
@@ -181,11 +183,17 @@ func GetWaterfallBuildVariants(ctx context.Context, versionIds []string) ([]Wate
 				"$sort": bson.M{task.IdKey: 1},
 			},
 			{
+				"$addFields": bson.M{
+					task.DisplayStatusKey: task.DisplayStatusExpression,
+				},
+			},
+			{
 				"$project": bson.M{
-					task.IdKey:          1,
-					task.StatusKey:      1,
-					task.DisplayNameKey: 1,
-					task.ExecutionKey:   1,
+					task.IdKey:            1,
+					task.DisplayNameKey:   1,
+					task.DisplayStatusKey: 1,
+					task.ExecutionKey:     1,
+					task.StatusKey:        1,
 				},
 			},
 		},
@@ -204,6 +212,9 @@ func GetWaterfallBuildVariants(ctx context.Context, versionIds []string) ([]Wate
 	})
 	pipeline = append(pipeline, bson.M{
 		"$project": bson.M{
+			build.VersionKey: bson.M{
+				"$first": "$" + bsonutil.GetDottedKeyName(buildsKey, build.VersionKey),
+			},
 			build.DisplayNameKey: bson.M{
 				"$first": "$" + bsonutil.GetDottedKeyName(buildsKey, build.DisplayNameKey),
 			},
@@ -223,4 +234,39 @@ func GetWaterfallBuildVariants(ctx context.Context, versionIds []string) ([]Wate
 	}
 
 	return res, nil
+}
+
+// GetNextRecentActiveWaterfallVersion returns the next recent active version on the waterfall, i.e. a newer
+// activated version than the version with the given minOrder.
+func GetNextRecentActiveWaterfallVersion(ctx context.Context, projectId string, minOrder int) (*Version, error) {
+	match := bson.M{
+		VersionIdentifierKey: projectId,
+		VersionRequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
+		VersionRevisionOrderNumberKey: bson.M{
+			"$gt": minOrder,
+		},
+		VersionActivatedKey: true,
+	}
+	pipeline := []bson.M{
+		{"$match": match},
+		{"$sort": bson.M{VersionRevisionOrderNumberKey: 1}},
+		{"$limit": 1},
+	}
+
+	res := []Version{}
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating versions")
+	}
+	err = cursor.All(ctx, &res)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) == 0 {
+		return nil, nil
+	}
+	return &res[0], nil
 }

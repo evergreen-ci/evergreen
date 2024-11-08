@@ -55,7 +55,7 @@ func (c *dockerClientMock) EnsureImageDownloaded(context.Context, *host.Host, ho
 	return c.baseImage, nil
 }
 
-func (c *dockerClientMock) BuildImageWithAgent(context.Context, *host.Host, string) (string, error) {
+func (c *dockerClientMock) BuildImageWithAgent(context.Context, string, *host.Host, string) (string, error) {
 	if c.failBuild {
 		return "", errors.New("failed to build image with agent")
 	}

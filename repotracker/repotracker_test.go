@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -37,11 +38,10 @@ func TestFetchRevisions(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		resetProjectRefs()
-		token := ""
 		repoTracker := RepoTracker{
 			testConfig,
 			evgProjectRef,
-			NewGithubRepositoryPoller(evgProjectRef, token),
+			NewGithubRepositoryPoller(evgProjectRef),
 		}
 
 		Convey("Fetching commits from the repository should not return any errors", func() {
@@ -82,9 +82,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 	Convey("When storing revisions gotten from a repository...", t, func() {
 		err := modelutil.CreateTestLocalConfig(testConfig, "mci-test", "")
 		So(err, ShouldBeNil)
-		token, err := testConfig.GetGithubOauthToken()
-		So(err, ShouldBeNil)
-		repoTracker := RepoTracker{testConfig, evgProjectRef, NewGithubRepositoryPoller(evgProjectRef, token)}
+		repoTracker := RepoTracker{testConfig, evgProjectRef, NewGithubRepositoryPoller(evgProjectRef)}
 
 		// insert distros used in testing.
 		d := distro.Distro{Id: "test-distro-one"}
@@ -298,14 +296,23 @@ buildvariants:
   run_on: d2
   tasks:
   - name: t1
+- name: bv3
+  display_name: bv3_display
+  run_on: d2
+  tasks:
+  - name: t4
 tasks:
 - name: t1
   priority: 3
 - name: t2
   priority: -1
 - name: t3
+  depends_on:
+  - name: t4
+    variant: bv3
+- name: t4
+  priority: -1
 `
-
 	previouslyActivatedVersion := &model.Version{
 		Id:         "previously activated",
 		Identifier: "testproject",
@@ -367,7 +374,7 @@ tasks:
 	v, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
 	require.NoError(t, err)
 	require.NotNil(t, v)
-	assert.Len(t, v.BuildVariants, 2)
+	assert.Len(t, v.BuildVariants, 3)
 	assert.False(t, v.BuildVariants[0].Activated)
 	assert.False(t, v.BuildVariants[1].Activated)
 	bv, _ := findStatus(v, "bv1")
@@ -378,9 +385,10 @@ tasks:
 	ok, err := model.ActivateElapsedBuildsAndTasks(ctx, v)
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	assert.Len(t, v.BuildVariants, 2)
+	assert.Len(t, v.BuildVariants, 3)
 	assert.True(t, v.BuildVariants[0].Activated)
 	assert.True(t, v.BuildVariants[1].Activated)
+	assert.True(t, v.BuildVariants[2].Activated)
 	bv, _ = findStatus(v, "bv1")
 	assert.Len(t, bv.BatchTimeTasks, 1)
 	assert.False(t, bv.BatchTimeTasks[0].Activated)
@@ -405,6 +413,18 @@ tasks:
 			assert.True(t, tsk.Activated)
 		}
 	}
+
+	bv, _ = findStatus(v, "bv3")
+
+	build3, err := build.FindOneId(bv.BuildId)
+	assert.NoError(t, err)
+	require.NotZero(t, build3)
+
+	tasks, err = task.Find(task.ByBuildId(build3.Id))
+	assert.NoError(t, err)
+	require.Len(t, tasks, 1)
+	assert.Equal(t, tasks[0].Priority, evergreen.DisabledTaskPriority)
+	assert.False(t, tasks[0].Activated)
 
 	// now we should update just the task even though the build is activated already
 	for i, bv := range v.BuildVariants {
@@ -1439,7 +1459,7 @@ func TestCreateManifest(t *testing.T) {
 	assert := assert.New(t)
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings)
-	require.NoError(t, db.ClearCollections(model.VersionCollection, model.ProjectRefCollection, model.ProjectVarsCollection))
+	require.NoError(t, db.ClearCollections(model.VersionCollection, model.ProjectRefCollection, model.ProjectVarsCollection), fakeparameter.Collection)
 	// with a revision from 5/31/15
 	v := model.Version{
 		Id:         "aaaaaaaaaaff001122334455",
@@ -1468,10 +1488,11 @@ func TestCreateManifest(t *testing.T) {
 		},
 	}
 	projRef := &model.ProjectRef{
-		Owner:  "evergreen-ci",
-		Repo:   "evergreen",
-		Branch: "main",
-		Id:     "project1",
+		Owner:                 "evergreen-ci",
+		Repo:                  "evergreen",
+		Branch:                "main",
+		Id:                    "project1",
+		ParameterStoreEnabled: true,
 	}
 	require.NoError(t, projRef.Insert())
 
@@ -1482,6 +1503,7 @@ func TestCreateManifest(t *testing.T) {
 		},
 	}
 	require.NoError(t, projVars.Insert())
+	projRef.ParameterStoreVarsSynced = true
 
 	manifest, err := model.CreateManifest(&v, proj.Modules, projRef, settings)
 	assert.NoError(err)

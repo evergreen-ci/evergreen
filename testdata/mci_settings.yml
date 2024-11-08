@@ -4,7 +4,6 @@ configdir: "config_test"
 aws_secret: "AWS SECRET VALUE"
 aws_id: "AWS ID VALUE"
 github_oauth: "token GITHUB OAUTH TOKEN"
-api_url: "mci-motu.10gen.cc"
 domain_name: "evergreen.local"
 keys:
     mci: "/data/home/etc/mci.pem"
@@ -14,6 +13,7 @@ repotracker:
 
 api:
     log_file: "/Users/michaelobrien/mci/logs/api.log"
+    url: "mci-motu.10gen.cc"
 
 ui:
     log_file: "/Users/michaelobrien/mci/logs/ui.log"

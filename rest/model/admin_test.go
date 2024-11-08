@@ -53,7 +53,6 @@ func TestModelConversion(t *testing.T) {
 
 	// test converting from a db model to an API model
 	assert.NoError(apiSettings.BuildFromService(testSettings))
-	assert.Equal(testSettings.ApiUrl, *apiSettings.ApiUrl)
 	assert.Equal(testSettings.AWSInstanceRole, *apiSettings.AWSInstanceRole)
 	assert.Equal(testSettings.Banner, *apiSettings.Banner)
 	assert.EqualValues(testSettings.BannerTheme, *apiSettings.BannerTheme)
@@ -61,10 +60,7 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.GithubPRCreatorOrg, *apiSettings.GithubPRCreatorOrg)
 	assert.Equal(testSettings.LogPath, *apiSettings.LogPath)
 	assert.Equal(testSettings.PprofPort, *apiSettings.PprofPort)
-	for k, v := range testSettings.Credentials {
-		assert.Contains(apiSettings.Credentials, k)
-		assert.Equal(v, apiSettings.Credentials[k])
-	}
+
 	for k, v := range testSettings.Expansions {
 		assert.Contains(apiSettings.Expansions, k)
 		assert.Equal(v, apiSettings.Expansions[k])
@@ -104,6 +100,7 @@ func TestModelConversion(t *testing.T) {
 		assert.Equal(testSettings.Amboy.NamedQueues[i].LockTimeoutSeconds, apiSettings.Amboy.NamedQueues[i].LockTimeoutSeconds)
 	}
 	assert.EqualValues(testSettings.Api.HttpListenAddr, utility.FromStringPtr(apiSettings.Api.HttpListenAddr))
+	assert.EqualValues(testSettings.Api.URL, utility.FromStringPtr(apiSettings.Api.URL))
 	assert.EqualValues(testSettings.AuthConfig.PreferredType, utility.FromStringPtr(apiSettings.AuthConfig.PreferredType))
 	assert.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, utility.FromStringPtr(apiSettings.AuthConfig.Naive.Users[0].Username))
 	assert.EqualValues(testSettings.AuthConfig.Okta.ClientID, utility.FromStringPtr(apiSettings.AuthConfig.Okta.ClientID))
@@ -114,6 +111,8 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Buckets.LogBucket.Name, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Name))
 	assert.EqualValues(testSettings.Buckets.LogBucket.Type, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Type))
 	assert.Equal(testSettings.Buckets.LogBucket.DBName, utility.FromStringPtr(apiSettings.Buckets.LogBucket.DBName))
+	assert.EqualValues(testSettings.Buckets.Credentials.Key, utility.FromStringPtr(apiSettings.Buckets.Credentials.Key))
+	assert.EqualValues(testSettings.Buckets.Credentials.Secret, utility.FromStringPtr(apiSettings.Buckets.Credentials.Secret))
 	assert.Equal(testSettings.Cedar.BaseURL, utility.FromStringPtr(apiSettings.Cedar.BaseURL))
 	assert.Equal(testSettings.Cedar.RPCPort, utility.FromStringPtr(apiSettings.Cedar.RPCPort))
 	assert.Equal(testSettings.Cedar.User, utility.FromStringPtr(apiSettings.Cedar.User))
@@ -153,8 +152,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Secret, utility.FromStringPtr(apiSettings.Providers.AWS.EC2Keys[0].Secret))
 	assert.EqualValues(testSettings.Providers.AWS.DefaultSecurityGroup, utility.FromStringPtr(apiSettings.Providers.AWS.DefaultSecurityGroup))
 	assert.EqualValues(testSettings.Providers.AWS.MaxVolumeSizePerUser, *apiSettings.Providers.AWS.MaxVolumeSizePerUser)
-	assert.EqualValues(testSettings.Providers.AWS.TaskOutput.Key, utility.FromStringPtr(apiSettings.Providers.AWS.TaskOutput.Key))
-	assert.EqualValues(testSettings.Providers.AWS.TaskOutput.Secret, utility.FromStringPtr(apiSettings.Providers.AWS.TaskOutput.Secret))
 	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Key, utility.FromStringPtr(apiSettings.Providers.AWS.TaskSync.Key))
 	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Secret, utility.FromStringPtr(apiSettings.Providers.AWS.TaskSync.Secret))
 	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Bucket, utility.FromStringPtr(apiSettings.Providers.AWS.TaskSync.Bucket))
@@ -244,6 +241,7 @@ func TestModelConversion(t *testing.T) {
 		assert.Equal(testSettings.Amboy.NamedQueues[i].LockTimeoutSeconds, dbSettings.Amboy.NamedQueues[i].LockTimeoutSeconds)
 	}
 	assert.EqualValues(testSettings.Api.HttpListenAddr, dbSettings.Api.HttpListenAddr)
+	assert.EqualValues(testSettings.Api.URL, dbSettings.Api.URL)
 	assert.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, dbSettings.AuthConfig.Naive.Users[0].Username)
 	assert.EqualValues(testSettings.AuthConfig.Github.ClientId, dbSettings.AuthConfig.Github.ClientId)
 	assert.Equal(len(testSettings.AuthConfig.Github.Users), len(dbSettings.AuthConfig.Github.Users))
@@ -252,6 +250,8 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Buckets.LogBucket.Name, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Name))
 	assert.EqualValues(testSettings.Buckets.LogBucket.Type, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Type))
 	assert.Equal(testSettings.Buckets.LogBucket.DBName, utility.FromStringPtr(apiSettings.Buckets.LogBucket.DBName))
+	assert.EqualValues(testSettings.Buckets.Credentials.Key, dbSettings.Buckets.Credentials.Key)
+	assert.EqualValues(testSettings.Buckets.Credentials.Secret, dbSettings.Buckets.Credentials.Secret)
 	assert.Equal(testSettings.Cedar.BaseURL, utility.FromStringPtr(apiSettings.Cedar.BaseURL))
 	assert.Equal(testSettings.Cedar.RPCPort, utility.FromStringPtr(apiSettings.Cedar.RPCPort))
 	assert.Equal(testSettings.Cedar.User, utility.FromStringPtr(apiSettings.Cedar.User))
@@ -283,8 +283,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Providers.AWS.EC2Keys[0].Secret, dbSettings.Providers.AWS.EC2Keys[0].Secret)
 	assert.EqualValues(testSettings.Providers.AWS.DefaultSecurityGroup, dbSettings.Providers.AWS.DefaultSecurityGroup)
 	assert.EqualValues(testSettings.Providers.AWS.MaxVolumeSizePerUser, dbSettings.Providers.AWS.MaxVolumeSizePerUser)
-	assert.EqualValues(testSettings.Providers.AWS.TaskOutput.Key, dbSettings.Providers.AWS.TaskOutput.Key)
-	assert.EqualValues(testSettings.Providers.AWS.TaskOutput.Secret, dbSettings.Providers.AWS.TaskOutput.Secret)
 	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Key, dbSettings.Providers.AWS.TaskSync.Key)
 	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Secret, dbSettings.Providers.AWS.TaskSync.Secret)
 	assert.EqualValues(testSettings.Providers.AWS.TaskSync.Bucket, dbSettings.Providers.AWS.TaskSync.Bucket)

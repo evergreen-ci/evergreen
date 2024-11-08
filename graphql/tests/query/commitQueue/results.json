@@ -57,7 +57,7 @@
         "data": null,
         "errors": [
           {
-            "message": "error finding commit queue for happyAbyssinian: commit queue not found for project 'happyAbyssinian'",
+            "message": "finding commit queue for happyAbyssinian: commit queue not found for project 'happyAbyssinian'",
             "path": ["commitQueue"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"

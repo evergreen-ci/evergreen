@@ -65,16 +65,16 @@ func expandMap(inputMap reflect.Value, expansions *Expansions) error {
 		case reflect.String:
 			expandedValString, err := expansions.ExpandString(val.String())
 			if err != nil {
-				return errors.Wrapf(err, "expanding value '%v'", val.String())
+				return errors.Wrapf(err, "expanding value for key '%s'", key.String())
 			}
 			expandedVal = reflect.ValueOf(expandedValString)
 		case reflect.Map:
 			if err := expandMap(val, expansions); err != nil {
-				return errors.Wrapf(err, "expanding value '%s'", val.String())
+				return errors.Wrapf(err, "expanding value for key '%s'", key.String())
 			}
 			expandedVal = val
 		default:
-			return errors.Errorf("could not expand value '%s' because it is not a string, map, or struct", val.String())
+			return errors.Errorf("could not expand value for key '%s' because it is not a string, map, or struct", key.String())
 		}
 
 		// unset unexpanded key then set expanded key

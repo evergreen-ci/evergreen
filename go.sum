@@ -267,8 +267,8 @@ github.com/evergreen-ci/timber v0.0.0-20240509150854-9d66df03b40e/go.mod h1:dOoy
 github.com/evergreen-ci/utility v0.0.0-20211026201827-97b21fa2660a/go.mod h1:fuEDytmDhOv+UCUwRPG/qD7mjVkUgx37KEv+thUgHVk=
 github.com/evergreen-ci/utility v0.0.0-20220404192535-d16eb64796e6/go.mod h1:wSui4nRyDZzm2db7Ju7ZzBAelLyVLmcTPJEIh1IdSrc=
 github.com/evergreen-ci/utility v0.0.0-20230104160902-3f0e05a638bd/go.mod h1:vkCEVgfCMIDajzbG/PHZURszI2Y1SuFqNWX9EUxmLLI=
-github.com/evergreen-ci/utility v0.0.0-20240812204255-c58f66487604 h1:QIMOonyxTVB6Za1mxzqNIoCEZWyxQ4SEbbiOEBEujyI=
-github.com/evergreen-ci/utility v0.0.0-20240812204255-c58f66487604/go.mod h1:SHfOAE51SKTA4NLJFvm046A4CNLDr0gfRTQoTM5l1Zc=
+github.com/evergreen-ci/utility v0.0.0-20241104181620-267066777913 h1:3rQZj320TrlMKANWd69q80EJzKA5cChbnF+jiYYBUA4=
+github.com/evergreen-ci/utility v0.0.0-20241104181620-267066777913/go.mod h1:SHfOAE51SKTA4NLJFvm046A4CNLDr0gfRTQoTM5l1Zc=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
@@ -547,8 +547,8 @@ github.com/mongodb/amboy v0.0.0-20220408184825-b2a14e2c511d/go.mod h1:pyAwlkip3M
 github.com/mongodb/amboy v0.0.0-20240718152556-3b1827bc7168 h1:7zT/+PDqVGZnn4KgJcIVdj/GWhpFOE4mD7U9nhQl36Q=
 github.com/mongodb/amboy v0.0.0-20240718152556-3b1827bc7168/go.mod h1:XtYIRjheNi0/pf4NOV1qnyjdDncEpmUqAv4lRMIfBxo=
 github.com/mongodb/anser v0.0.0-20220408164649-99dd61768f4a/go.mod h1:iiM0FTD1XWGSxZPdM3NkCQeZEqatn9lGqwIZy3RwtgE=
-github.com/mongodb/anser v0.0.0-20231019191251-2a589a5299e6 h1:P0VNeg/cwHMRg/5K44kTxvBSXKMuxWEZpgXC3seWYEs=
-github.com/mongodb/anser v0.0.0-20231019191251-2a589a5299e6/go.mod h1:S55HFuPbd6Fq0e6c/cRbZZlbpvaiIQ7KiS/yZFT/p1c=
+github.com/mongodb/anser v0.0.0-20241029200935-fcf3befed0ea h1:OxW95sY2iU6oD0vnDAdLqEMiJQ8abVxsfvInd6n3i1Q=
+github.com/mongodb/anser v0.0.0-20241029200935-fcf3befed0ea/go.mod h1:S55HFuPbd6Fq0e6c/cRbZZlbpvaiIQ7KiS/yZFT/p1c=
 github.com/mongodb/ftdc v0.0.0-20211018154918-80dd1c22e4cf/go.mod h1:qd800FxWJIh4VUqu2d9Cmzdpv1CGXMqdwkntAKbaLlY=
 github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809 h1:CQVEigRr2M/OFIPn+wQWerSadMioMY1cLp22yZX+Ygk=
 github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809/go.mod h1:zz0HHFUU4/TOxl9TW4P9t3y3Ivx+sTWS2nwnhuYYRdw=

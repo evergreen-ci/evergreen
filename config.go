@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/util"
@@ -34,11 +33,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2024-10-15"
+	ClientVersion = "2024-11-07"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2024-10-16"
+	AgentVersion = "2024-11-04-ab"
 )
 
 const (
@@ -65,7 +64,6 @@ type Settings struct {
 	Id                  string                    `bson:"_id" json:"id" yaml:"id"`
 	Amboy               AmboyConfig               `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
 	Api                 APIConfig                 `yaml:"api" bson:"api" json:"api" id:"api"`
-	ApiUrl              string                    `yaml:"api_url" bson:"api_url" json:"api_url"`
 	AuthConfig          AuthConfig                `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
 	AWSInstanceRole     string                    `yaml:"aws_instance_role" bson:"aws_instance_role" json:"aws_instance_role"`
 	Banner              string                    `bson:"banner" json:"banner" yaml:"banner"`
@@ -75,8 +73,6 @@ type Settings struct {
 	CommitQueue         CommitQueueConfig         `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
 	ConfigDir           string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
 	ContainerPools      ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
-	Credentials         map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
-	CredentialsNew      util.KeyValuePairSlice    `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
 	Database            DBSettings                `yaml:"database" json:"database" bson:"database"`
 	DomainName          string                    `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
 	Expansions          map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
@@ -128,14 +124,11 @@ func (c *Settings) Get(ctx context.Context) error {
 func (c *Settings) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			apiUrlKey:             c.ApiUrl,
 			awsInstanceRoleKey:    c.AWSInstanceRole,
 			bannerKey:             c.Banner,
 			bannerThemeKey:        c.BannerTheme,
 			commitQueueKey:        c.CommitQueue,
 			configDirKey:          c.ConfigDir,
-			credentialsKey:        c.Credentials,
-			credentialsNewKey:     c.CredentialsNew,
 			domainNameKey:         c.DomainName,
 			expansionsKey:         c.Expansions,
 			expansionsNewKey:      c.ExpansionsNew,
@@ -159,18 +152,10 @@ func (c *Settings) Set(ctx context.Context) error {
 func (c *Settings) ValidateAndDefault() error {
 	var err error
 	catcher := grip.NewSimpleCatcher()
-	if c.ApiUrl == "" {
-		catcher.Add(errors.New("API hostname must not be empty"))
-	}
 	if c.ConfigDir == "" {
 		catcher.Add(errors.New("config directory must not be empty"))
 	}
 
-	if len(c.CredentialsNew) > 0 {
-		if c.Credentials, err = c.CredentialsNew.Map(); err != nil {
-			catcher.Add(errors.Wrap(err, "parsing credentials"))
-		}
-	}
 	if len(c.ExpansionsNew) > 0 {
 		if c.Expansions, err = c.ExpansionsNew.Map(); err != nil {
 			catcher.Add(errors.Wrap(err, "parsing expansions"))
@@ -554,36 +539,6 @@ func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, le
 	}
 
 	return sender, nil
-}
-
-func (s *Settings) GetGithubOauthString() (string, error) {
-
-	token, ok := s.Credentials["github"]
-	if ok && token != "" {
-		return token, nil
-	}
-
-	return "", errors.New("no github token in settings")
-}
-
-// TODO DEVPROD-1429: Delete this function
-func (s *Settings) GetGithubOauthToken() (string, error) {
-	if s == nil {
-		return "", errors.New("not defined")
-	}
-	if s.ServiceFlags.GlobalGitHubTokenDisabled {
-		return "", nil
-	}
-
-	oauthString, err := s.GetGithubOauthString()
-	if err != nil {
-		return "", nil
-	}
-	splitToken := strings.Split(oauthString, " ")
-	if len(splitToken) != 2 || splitToken[0] != "token" {
-		return "", errors.New("token format was invalid, expected 'token [token]'")
-	}
-	return splitToken[1], nil
 }
 
 // PluginConfig holds plugin-specific settings, which are handled.

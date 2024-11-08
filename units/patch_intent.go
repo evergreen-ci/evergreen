@@ -29,9 +29,10 @@ import (
 )
 
 const (
-	patchIntentJobName    = "patch-intent-processor"
-	githubDependabotUser  = "dependabot[bot]"
-	maxPatchIntentJobTime = 10 * time.Minute
+	patchIntentJobName         = "patch-intent-processor"
+	githubDependabotUser       = "dependabot[bot]"
+	BuildTasksAndVariantsError = "building tasks and variants"
+	maxPatchIntentJobTime      = 10 * time.Minute
 )
 
 func init() {
@@ -197,20 +198,17 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 }
 
 func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.Patch) error {
-	token, err := j.env.Settings().GetGithubOauthToken()
-	if err != nil {
-		return errors.Wrap(err, "getting GitHub OAuth token")
-	}
 	catcher := grip.NewBasicCatcher()
 
 	canFinalize := true
+	var err error
 	var patchedProject *model.Project
 	var patchedParserProject *model.ParserProject
 	switch j.IntentType {
 	case patch.CliIntentType:
-		catcher.Wrap(j.buildCliPatchDoc(ctx, patchDoc, token), "building CLI patch document")
+		catcher.Wrap(j.buildCliPatchDoc(ctx, patchDoc), "building CLI patch document")
 	case patch.GithubIntentType:
-		canFinalize, err = j.buildGithubPatchDoc(ctx, patchDoc, token)
+		canFinalize, err = j.buildGithubPatchDoc(ctx, patchDoc)
 		if err != nil {
 			if strings.Contains(err.Error(), thirdparty.Github502Error) {
 				j.gitHubError = GitHubInternalError
@@ -286,7 +284,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if j.IntentType == patch.GithubIntentType && pref.OldestAllowedMergeBase != "" {
-		isMergeBaseAllowed, err := thirdparty.IsMergeBaseAllowed(ctx, token, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo, pref.OldestAllowedMergeBase, patchDoc.GithubPatchData.MergeBase)
+		isMergeBaseAllowed, err := thirdparty.IsMergeBaseAllowed(ctx, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo, pref.OldestAllowedMergeBase, patchDoc.GithubPatchData.MergeBase)
 		if err != nil {
 			return errors.Wrap(err, "checking if merge base is allowed")
 		}
@@ -300,7 +298,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	// Get and validate patched config
 	var patchedProjectConfig string
 	if patchedParserProject != nil {
-		patchedProjectConfig, err = model.GetPatchedProjectConfig(ctx, j.env.Settings(), patchDoc, token)
+		patchedProjectConfig, err = model.GetPatchedProjectConfig(ctx, j.env.Settings(), patchDoc)
 		if err != nil {
 			return errors.Wrap(j.setGitHubPatchingError(err), "getting patched project config")
 		}
@@ -312,7 +310,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			// they are created from.
 			patchDoc.ReferenceManifestID = repeatPatchID
 		}
-		patchedProject, patchConfig, err = model.GetPatchedProject(ctx, j.env.Settings(), patchDoc, token)
+		patchedProject, patchConfig, err = model.GetPatchedProject(ctx, j.env.Settings(), patchDoc)
 		if err != nil {
 			return errors.Wrap(j.setGitHubPatchingError(err), "getting patched project")
 		}
@@ -360,7 +358,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if err = j.buildTasksAndVariants(patchDoc, patchedProject); err != nil {
-		return err
+		return errors.Wrap(err, BuildTasksAndVariantsError)
 	}
 
 	if (j.intent.ShouldFinalizePatch() || patchDoc.IsCommitQueuePatch()) &&
@@ -467,7 +465,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	event.LogPatchStateChangeEvent(patchDoc.Id.Hex(), patchDoc.Status)
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {
-		if _, err = model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity(), token); err != nil {
+		if _, err = model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity()); err != nil {
 			if strings.Contains(err.Error(), thirdparty.Github502Error) {
 				j.gitHubError = GitHubInternalError
 			}
@@ -834,7 +832,7 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 	return nil
 }
 
-func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) error {
+func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *patch.Patch) error {
 	defer func() {
 		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
 			"message":     "could not mark patch intent as processed",
@@ -861,7 +859,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	commit, err := thirdparty.GetCommitEvent(ctx, githubOauthToken, projectRef.Owner,
+	commit, err := thirdparty.GetCommitEvent(ctx, projectRef.Owner,
 		projectRef.Repo, patchDoc.Githash)
 	if err != nil {
 		return errors.Wrapf(err, "finding base revision '%s' for project '%s'",
@@ -947,7 +945,7 @@ func (j *patchIntentProcessor) buildBackportPatchDoc(ctx context.Context, projec
 	return nil
 }
 
-func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) (bool, error) {
+func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc *patch.Patch) (bool, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "checking if GitHub PR testing is disabled")
@@ -996,7 +994,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	}
 
 	isMember, err := j.isUserAuthorized(ctx, patchDoc, mustBeMemberOfOrg,
-		patchDoc.GithubPatchData.Author, githubOauthToken)
+		patchDoc.GithubPatchData.Author)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":     "GitHub API failure",
@@ -1031,7 +1029,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	patchDoc.Author = j.user.Id
 	patchDoc.Project = projectRef.Id
 
-	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubOauthToken, patchDoc.GithubPatchData)
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, patchDoc.GithubPatchData)
 	if err != nil {
 		// Expected error when the PR diff is more than 3000 lines or 300 files.
 		if strings.Contains(err.Error(), thirdparty.PRDiffTooLargeErrorMessage) {
@@ -1069,29 +1067,14 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 		}))
 	}()
 
-	projectRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
+	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(patchDoc.GithubMergeData.Org,
+		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	if err != nil {
 		return errors.Wrapf(err, "fetching project ref for repo '%s/%s' with branch '%s'",
 			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch,
 		)
 	}
-	if len(projectRefs) == 0 {
-		// No Evergreen project exists for this repo
-		return errors.Errorf("project ref for repo '%s/%s' with branch '%s' not found",
-			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
-	}
-
-	commitQueueEnabled := false
-	projectRef := model.ProjectRef{}
-	for _, p := range projectRefs {
-		if p.CommitQueue.IsEnabled() {
-			projectRef = p
-			commitQueueEnabled = true
-			break
-		}
-	}
-
-	if !commitQueueEnabled {
+	if projectRef == nil {
 		j.gitHubError = commitQueueDisabled
 		return errors.Errorf("project ref for repo '%s/%s' with branch '%s' and merge queue enabled not found",
 			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
@@ -1266,7 +1249,7 @@ func findEvergreenUserForGithubMergeGroup() (*user.DBUser, error) {
 	return u, err
 }
 
-func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *patch.Patch, requiredOrganization, githubUser, githubOauthToken string) (bool, error) {
+func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *patch.Patch, requiredOrganization, githubUser string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -1284,7 +1267,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	}
 	// Checking if the GitHub user is in the organization is more permissive than checking permission level
 	// for the owner/repo specified, however this is okay since for the purposes of this check its to run patches.
-	isMember, err := thirdparty.GithubUserInOrganization(ctx, githubOauthToken, requiredOrganization, githubUser)
+	isMember, err := thirdparty.GithubUserInOrganization(ctx, requiredOrganization, githubUser)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"job":          j.ID(),
@@ -1302,7 +1285,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 		return isMember, nil
 	}
 
-	isAuthorizedForOrg, err := thirdparty.AppAuthorizedForOrg(ctx, githubOauthToken, requiredOrganization, githubUser)
+	isAuthorizedForOrg, err := thirdparty.AppAuthorizedForOrg(ctx, requiredOrganization, githubUser)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"job":          j.ID(),
@@ -1320,7 +1303,7 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	}
 
 	// Verify external collaborators separately.
-	hasWritePermission, err := thirdparty.GitHubUserHasWritePermission(ctx, githubOauthToken,
+	hasWritePermission, err := thirdparty.GitHubUserHasWritePermission(ctx,
 		patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo, githubUser)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -1384,7 +1367,7 @@ func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, pa
 // If we don't find rules, we'll send the status default context. We log the error but don't
 // return it, because we might have permission to send statuses but not to get branch protection rules.
 func (j *patchIntentProcessor) getEvergreenBranchProtectionRulesForStatuses(ctx context.Context, owner, repo, branch string) []string {
-	rules, err := thirdparty.GetEvergreenBranchProtectionRules(ctx, "", owner, repo, branch)
+	rules, err := thirdparty.GetEvergreenBranchProtectionRules(ctx, owner, repo, branch)
 	grip.Error(message.WrapError(err, message.Fields{
 		"job":      j.ID(),
 		"job_type": j.Type,

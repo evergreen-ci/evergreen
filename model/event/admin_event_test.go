@@ -54,8 +54,7 @@ func (s *AdminEventSuite) TestEventLogging() {
 
 func (s *AdminEventSuite) TestEventLogging2() {
 	before := evergreen.Settings{
-		ApiUrl:      "api",
-		Credentials: map[string]string{"k1": "v1"},
+		Banner: "testing",
 	}
 	after := evergreen.Settings{}
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
@@ -66,10 +65,8 @@ func (s *AdminEventSuite) TestEventLogging2() {
 	s.NotEmpty(eventData.GUID)
 	beforeVal := eventData.Changes.Before.(*evergreen.Settings)
 	afterVal := eventData.Changes.After.(*evergreen.Settings)
-	s.Equal(before.ApiUrl, beforeVal.ApiUrl)
-	s.Equal(before.Credentials, beforeVal.Credentials)
-	s.Equal("", afterVal.ApiUrl)
-	s.Equal(map[string]string{}, afterVal.Credentials)
+	s.Equal(before.Banner, beforeVal.Banner)
+	s.Equal("", afterVal.Banner)
 }
 
 func (s *AdminEventSuite) TestEventLogging3() {
@@ -97,13 +94,13 @@ func (s *AdminEventSuite) TestEventLogging3() {
 
 func (s *AdminEventSuite) TestNoSpuriousLogging() {
 	before := evergreen.Settings{
-		ApiUrl: "api",
+		Banner: "testing",
 		HostInit: evergreen.HostInitConfig{
 			HostThrottle: 64,
 		},
 	}
 	after := evergreen.Settings{
-		ApiUrl: "api",
+		Banner: "testing",
 		HostInit: evergreen.HostInitConfig{
 			HostThrottle: 128,
 		},
@@ -169,15 +166,13 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 
 	// this verifies that reverting the root document does not revert other sections
 	before := evergreen.Settings{
-		Banner:      "before_banner",
-		Credentials: map[string]string{"k1": "v1"},
+		Banner: "before_banner",
 		Ui: evergreen.UIConfig{
 			Url: "before_url",
 		},
 	}
 	after := evergreen.Settings{
-		Banner:      "after_banner",
-		Credentials: map[string]string{"k2": "v2"},
+		Banner: "after_banner",
 		Ui: evergreen.UIConfig{
 			Url:            "after_url",
 			CacheTemplates: true,
@@ -196,13 +191,11 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 	settings, err := evergreen.GetConfig(ctx)
 	s.NoError(err)
 	s.Equal(after.Banner, settings.Banner)
-	s.Equal(after.Credentials, settings.Credentials)
 	s.Equal(after.Ui, settings.Ui)
 	s.NoError(RevertConfig(ctx, guid, "me"))
 	settings, err = evergreen.GetConfig(ctx)
 	s.NoError(err)
 	s.Equal(before.Banner, settings.Banner)
-	s.Equal(before.Credentials, settings.Credentials)
 	s.Equal(after.Ui, settings.Ui)
 }
 

@@ -27,7 +27,7 @@
       "result": {
         "errors": [
           {
-            "message": "Error aborting task fail_commit_queue: dequeueing and restarting task 'fail_commit_queue': commit queue for project 'spruce' not found",
+            "message": "aborting task fail_commit_queue: dequeueing and restarting task 'fail_commit_queue': commit queue for project 'spruce' not found",
             "path": ["abortTask"],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"
@@ -42,7 +42,7 @@
       "result": {
         "errors": [
           {
-            "message": "Error aborting task completed_task: task 'completed_task' currently has status 'failed' - cannot abort task in this status",
+            "message": "aborting task completed_task: task 'completed_task' currently has status 'failed' - cannot abort task in this status",
             "path": ["abortTask"],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"

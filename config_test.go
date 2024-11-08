@@ -134,12 +134,10 @@ func (s *AdminSuite) TestBaseConfig() {
 	defer cancel()
 
 	config := Settings{
-		ApiUrl:              "api",
 		AWSInstanceRole:     "role",
 		Banner:              "banner",
 		BannerTheme:         Important,
 		ConfigDir:           "cfg_dir",
-		Credentials:         map[string]string{"k1": "v1"},
 		DomainName:          "example.com",
 		Expansions:          map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg:  "org",
@@ -157,12 +155,10 @@ func (s *AdminSuite) TestBaseConfig() {
 	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
-	s.Equal(config.ApiUrl, settings.ApiUrl)
 	s.Equal(config.AWSInstanceRole, settings.AWSInstanceRole)
 	s.Equal(config.Banner, settings.Banner)
 	s.Equal(config.BannerTheme, settings.BannerTheme)
 	s.Equal(config.ConfigDir, settings.ConfigDir)
-	s.Equal(config.Credentials, settings.Credentials)
 	s.Equal(config.DomainName, settings.DomainName)
 	s.Equal(config.Expansions, settings.Expansions)
 	s.Equal(config.GithubPRCreatorOrg, settings.GithubPRCreatorOrg)
@@ -248,6 +244,7 @@ func (s *AdminSuite) TestApiConfig() {
 	config := APIConfig{
 		HttpListenAddr:      "addr",
 		GithubWebhookSecret: "secret",
+		URL:                 "api",
 	}
 
 	err := config.Set(ctx)
@@ -500,7 +497,6 @@ func (s *AdminSuite) TestConfigDefaults() {
 		DefaultProject: "proj",
 		Url:            "url",
 	}
-	config.ApiUrl = "api"
 	config.ConfigDir = "dir"
 	config.ExpansionsNew = util.KeyValuePairSlice{
 		{Key: "k1", Value: "v1"},
@@ -526,11 +522,7 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 	defer cancel()
 
 	config := Settings{
-		ApiUrl:    "foo",
 		ConfigDir: "foo",
-		CredentialsNew: util.KeyValuePairSlice{
-			{Key: "cred1key", Value: "cred1val"},
-		},
 		ExpansionsNew: util.KeyValuePairSlice{
 			{Key: "exp1key", Value: "exp1val"},
 		},
@@ -544,10 +536,8 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 	s.NoError(config.Set(ctx))
 	dbConfig := Settings{}
 	s.NoError(dbConfig.Get(ctx))
-	s.Len(dbConfig.CredentialsNew, 1)
 	s.Len(dbConfig.ExpansionsNew, 1)
 	s.Len(dbConfig.PluginsNew, 1)
-	s.Equal(config.CredentialsNew[0].Value, dbConfig.Credentials[config.CredentialsNew[0].Key])
 	s.Equal(config.ExpansionsNew[0].Value, dbConfig.Expansions[config.ExpansionsNew[0].Key])
 	pluginMap := dbConfig.Plugins[config.PluginsNew[0].Key]
 	s.NotNil(pluginMap)

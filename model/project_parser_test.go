@@ -2900,7 +2900,6 @@ func TestUpdateReadFileFrom(t *testing.T) {
 		},
 	}
 	opts := &GetProjectOpts{
-		Token:        "token",
 		RemotePath:   "main.yml",
 		ReadFileFrom: ReadFromPatch,
 		PatchOpts: &PatchOpts{
@@ -2984,4 +2983,19 @@ func TestFindAndTranslateProjectForPatch(t *testing.T) {
 			tCase(ctx, t, &p, &pp)
 		})
 	}
+}
+
+func TestMarshalBSON(t *testing.T) {
+	pp := ParserProject{
+		Identifier: utility.ToStringPtr("small"),
+	}
+
+	encoded, err := pp.RetryMarshalBSON(5)
+	require.NoError(t, err)
+	require.NotEmpty(t, encoded)
+
+	decoded, err := GetProjectFromBSON(encoded)
+	require.NoError(t, err)
+	require.NotEmpty(t, decoded)
+	assert.Equal(t, utility.FromStringPtr(pp.Identifier), decoded.Identifier)
 }

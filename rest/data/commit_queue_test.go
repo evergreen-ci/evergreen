@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
@@ -411,6 +412,7 @@ func TestCheckCanRemoveCommitQueueItem(t *testing.T) {
 		user.Collection,
 		model.ProjectRefCollection,
 		model.ProjectVarsCollection,
+		fakeparameter.Collection,
 		evergreen.ScopeCollection,
 		evergreen.RoleCollection,
 		patch.Collection,
@@ -438,6 +440,7 @@ func TestCheckCanRemoveCommitQueueItem(t *testing.T) {
 		CommitQueue: model.CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
+		ParameterStoreEnabled: true,
 	}
 	require.NoError(t, project.Add(projectAdmin))
 

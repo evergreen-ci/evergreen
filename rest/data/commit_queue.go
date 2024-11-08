@@ -36,11 +36,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPR(ctx context.Context, projectRef 
 	if err != nil {
 		return nil, errors.Wrap(err, "getting admin settings")
 	}
-	githubToken, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting GitHub OAuth token from admin settings")
-	}
-	pr, err := thirdparty.GetMergeablePullRequest(ctx, prNum, githubToken, projectRef.Owner, projectRef.Repo)
+	pr, err := thirdparty.GetMergeablePullRequest(ctx, prNum, projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +47,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPR(ctx context.Context, projectRef 
 		return nil, errors.Wrap(err, "making commit queue patch")
 	}
 
-	p, patchSummaries, proj, _, err := getPatchInfo(ctx, settings, githubToken, patchDoc)
+	p, patchSummaries, proj, _, err := getPatchInfo(ctx, settings, patchDoc)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +87,7 @@ func (pc *DBCommitQueueConnector) AddPatchForPR(ctx context.Context, projectRef 
 	for _, module := range modules {
 		serviceModules = append(serviceModules, *restModel.APIModuleToService(module))
 	}
-	modulePRs, modulePatches, err := model.GetModulesFromPR(ctx, githubToken, serviceModules, proj)
+	modulePRs, modulePatches, err := model.GetModulesFromPR(ctx, serviceModules, proj)
 	if err != nil {
 		return nil, err
 	}
@@ -113,8 +109,8 @@ func (pc *DBCommitQueueConnector) AddPatchForPR(ctx context.Context, projectRef 
 	return patchDoc, catcher.Resolve()
 }
 
-func getPatchInfo(ctx context.Context, settings *evergreen.Settings, githubToken string, patchDoc *patch.Patch) (string, []thirdparty.Summary, *model.Project, *model.ParserProject, error) {
-	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubToken, patchDoc.GithubPatchData)
+func getPatchInfo(ctx context.Context, settings *evergreen.Settings, patchDoc *patch.Patch) (string, []thirdparty.Summary, *model.Project, *model.ParserProject, error) {
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, patchDoc.GithubPatchData)
 	if err != nil && !strings.Contains(err.Error(), thirdparty.PRDiffTooLargeErrorMessage) {
 		return "", nil, nil, nil, errors.Wrap(err, "getting GitHub PR diff")
 	}
@@ -123,7 +119,7 @@ func getPatchInfo(ctx context.Context, settings *evergreen.Settings, githubToken
 	// Set a higher timeout for this operation.
 	fetchCtx, ctxCancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer ctxCancel()
-	config, patchConfig, err := model.GetPatchedProject(fetchCtx, settings, patchDoc, githubToken)
+	config, patchConfig, err := model.GetPatchedProject(fetchCtx, settings, patchDoc)
 	if err != nil {
 		return "", nil, nil, nil, errors.Wrap(err, "getting remote config file")
 	}
@@ -247,11 +243,6 @@ func NewUserRepoInfo(info commitqueue.EnqueuePRInfo) UserRepoInfo {
 
 func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Context, settings *evergreen.Settings, args UserRepoInfo) (bool, error) {
 	// In the org
-	token, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return false, errors.Wrap(err, "getting GitHub OAuth token from admin settings")
-	}
-
 	requiredOrganization := settings.GithubPRCreatorOrg
 	if requiredOrganization == "" {
 		return false, errors.New("no GitHub PR creator organization configured")
@@ -259,7 +250,7 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 
 	ctxWithCancel, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	inOrg, err := thirdparty.GithubUserInOrganization(ctxWithCancel, token, requiredOrganization, args.Username)
+	inOrg, err := thirdparty.GithubUserInOrganization(ctxWithCancel, requiredOrganization, args.Username)
 	if err != nil {
 		return false, errors.Wrap(err, "checking if user is in required GitHub organization")
 	}
@@ -271,7 +262,7 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 	// See: https://help.github.com/articles/repository-permission-levels-for-an-organization/
 	ctxWithCancel, cancel = context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	hasPermission, err := thirdparty.GitHubUserHasWritePermission(ctxWithCancel, token, args.Owner, args.Repo, args.Username)
+	hasPermission, err := thirdparty.GitHubUserHasWritePermission(ctxWithCancel, args.Owner, args.Repo, args.Username)
 	if err != nil {
 		return false, errors.Wrap(err, "getting GitHub user permissions")
 	}

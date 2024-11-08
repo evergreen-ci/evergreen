@@ -19,6 +19,10 @@
               "projectPermissions": {
                 "edit": true,
                 "view": true
+              },
+              "repoPermissions": {
+                "edit": true,
+                "view": true
               }
             }
           }
@@ -40,6 +44,10 @@
                 "view": false
               },
               "projectPermissions": {
+                "edit": false,
+                "view": false
+              },
+              "repoPermissions": {
                 "edit": false,
                 "view": false
               }

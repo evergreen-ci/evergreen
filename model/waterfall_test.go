@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -217,21 +218,21 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		CreateTime:          start,
 		Activated:           utility.TruePtr(),
 		BuildVariants: []VersionBuildStatus{
-			VersionBuildStatus{
+			{
 				ActivationStatus: ActivationStatus{
 					Activated: true,
 				},
 				BuildVariant: "bv_3",
 				BuildId:      "b_a",
 			},
-			VersionBuildStatus{
+			{
 				ActivationStatus: ActivationStatus{
 					Activated: true,
 				},
 				BuildVariant: "bv_2",
 				BuildId:      "b_b",
 			},
-			VersionBuildStatus{
+			{
 				ActivationStatus: ActivationStatus{
 					Activated: true,
 				},
@@ -250,21 +251,21 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.FalsePtr(),
 		BuildVariants: []VersionBuildStatus{
-			VersionBuildStatus{
+			{
 				ActivationStatus: ActivationStatus{
 					Activated: false,
 				},
 				BuildVariant: "bv_2",
 				BuildId:      "b_d",
 			},
-			VersionBuildStatus{
+			{
 				ActivationStatus: ActivationStatus{
 					Activated: false,
 				},
 				BuildVariant: "bv_1",
 				BuildId:      "b_e",
 			},
-			VersionBuildStatus{
+			{
 				ActivationStatus: ActivationStatus{
 					Activated: false,
 				},
@@ -283,21 +284,21 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.TruePtr(),
 		BuildVariants: []VersionBuildStatus{
-			VersionBuildStatus{
+			{
 				ActivationStatus: ActivationStatus{
 					Activated: true,
 				},
 				BuildVariant: "bv_1",
 				BuildId:      "b_g",
 			},
-			VersionBuildStatus{
+			{
 				ActivationStatus: ActivationStatus{
 					Activated: true,
 				},
 				BuildVariant: "bv_2",
 				BuildId:      "b_h",
 			},
-			VersionBuildStatus{
+			{
 				ActivationStatus: ActivationStatus{
 					Activated: true,
 				},
@@ -316,21 +317,21 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.TruePtr(),
 		BuildVariants: []VersionBuildStatus{
-			VersionBuildStatus{
+			{
 				ActivationStatus: ActivationStatus{
 					Activated: true,
 				},
 				BuildVariant: "bv_3",
 				BuildId:      "b_j",
 			},
-			VersionBuildStatus{
+			{
 				ActivationStatus: ActivationStatus{
 					Activated: true,
 				},
 				BuildVariant: "bv_1",
 				BuildId:      "b_k",
 			},
-			VersionBuildStatus{
+			{
 				ActivationStatus: ActivationStatus{
 					Activated: true,
 				},
@@ -349,21 +350,21 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.TruePtr(),
 		BuildVariants: []VersionBuildStatus{
-			VersionBuildStatus{
+			{
 				ActivationStatus: ActivationStatus{
 					Activated: true,
 				},
 				BuildVariant: "bv_2",
 				BuildId:      "b_m",
 			},
-			VersionBuildStatus{
+			{
 				ActivationStatus: ActivationStatus{
 					Activated: true,
 				},
 				BuildVariant: "bv_1",
 				BuildId:      "b_n",
 			},
-			VersionBuildStatus{
+			{
 				ActivationStatus: ActivationStatus{
 					Activated: true,
 				},
@@ -380,16 +381,16 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		DisplayName: "02 Build C",
 		Version:     "v_1",
 		Tasks: []build.TaskCache{
-			build.TaskCache{
+			{
 				Id: "t_80",
 			},
-			build.TaskCache{
+			{
 				Id: "t_79",
 			},
-			build.TaskCache{
+			{
 				Id: "t_86",
 			},
-			build.TaskCache{
+			{
 				Id: "t_200",
 			},
 		},
@@ -401,10 +402,10 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		DisplayName: "03 Build B",
 		Version:     "v_1",
 		Tasks: []build.TaskCache{
-			build.TaskCache{
+			{
 				Id: "t_45",
 			},
-			build.TaskCache{
+			{
 				Id: "t_12",
 			},
 		},
@@ -416,13 +417,13 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		DisplayName: "01 Build A",
 		Version:     "v_1",
 		Tasks: []build.TaskCache{
-			build.TaskCache{
+			{
 				Id: "t_66",
 			},
-			build.TaskCache{
+			{
 				Id: "t_89",
 			},
-			build.TaskCache{
+			{
 				Id: "t_32",
 			},
 		},
@@ -434,16 +435,16 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		DisplayName: "03 Build B",
 		Version:     "v_2",
 		Tasks: []build.TaskCache{
-			build.TaskCache{
+			{
 				Id: "t_54",
 			},
-			build.TaskCache{
+			{
 				Id: "t_432",
 			},
-			build.TaskCache{
+			{
 				Id: "t_98",
 			},
-			build.TaskCache{
+			{
 				Id: "t_235",
 			},
 		},
@@ -455,10 +456,10 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		DisplayName: "01 Build A",
 		Version:     "v_2",
 		Tasks: []build.TaskCache{
-			build.TaskCache{
+			{
 				Id: "t_995",
 			},
-			build.TaskCache{
+			{
 				Id: "t_473",
 			},
 		},
@@ -470,13 +471,13 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		DisplayName: "02 Build C",
 		Version:     "v_2",
 		Tasks: []build.TaskCache{
-			build.TaskCache{
+			{
 				Id: "t_347",
 			},
-			build.TaskCache{
+			{
 				Id: "t_36",
 			},
-			build.TaskCache{
+			{
 				Id: "t_3632",
 			},
 		},
@@ -488,16 +489,16 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		DisplayName: "01 Build A",
 		Version:     "v_3",
 		Tasks: []build.TaskCache{
-			build.TaskCache{
+			{
 				Id: "t_537",
 			},
-			build.TaskCache{
+			{
 				Id: "t_737",
 			},
-			build.TaskCache{
+			{
 				Id: "t_135",
 			},
-			build.TaskCache{
+			{
 				Id: "t_1",
 			},
 		},
@@ -509,10 +510,10 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		DisplayName: "03 Build B",
 		Version:     "v_3",
 		Tasks: []build.TaskCache{
-			build.TaskCache{
+			{
 				Id: "t_92",
 			},
-			build.TaskCache{
+			{
 				Id: "t_91",
 			},
 		},
@@ -524,13 +525,13 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		DisplayName: "02 Build C",
 		Version:     "v_3",
 		Tasks: []build.TaskCache{
-			build.TaskCache{
+			{
 				Id: "t_9166",
 			},
-			build.TaskCache{
+			{
 				Id: "t_46",
 			},
-			build.TaskCache{
+			{
 				Id: "t_236",
 			},
 		},
@@ -542,16 +543,16 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		DisplayName: "02 Build C",
 		Version:     "v_4",
 		Tasks: []build.TaskCache{
-			build.TaskCache{
+			{
 				Id: "t_23",
 			},
-			build.TaskCache{
+			{
 				Id: "t_3333",
 			},
-			build.TaskCache{
+			{
 				Id: "t_8458",
 			},
-			build.TaskCache{
+			{
 				Id: "t_8423",
 			},
 		},
@@ -563,10 +564,10 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		DisplayName: "01 Build A",
 		Version:     "v_4",
 		Tasks: []build.TaskCache{
-			build.TaskCache{
+			{
 				Id: "t_8648",
 			},
-			build.TaskCache{
+			{
 				Id: "t_845",
 			},
 		},
@@ -578,13 +579,13 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		DisplayName: "03 Build B",
 		Version:     "v_4",
 		Tasks: []build.TaskCache{
-			build.TaskCache{
+			{
 				Id: "t_4834",
 			},
-			build.TaskCache{
+			{
 				Id: "t_233",
 			},
-			build.TaskCache{
+			{
 				Id: "t_37",
 			},
 		},
@@ -596,16 +597,16 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		DisplayName: "03 Build B",
 		Version:     "v_5",
 		Tasks: []build.TaskCache{
-			build.TaskCache{
+			{
 				Id: "t_377",
 			},
-			build.TaskCache{
+			{
 				Id: "t_1366",
 			},
-			build.TaskCache{
+			{
 				Id: "t_2372",
 			},
-			build.TaskCache{
+			{
 				Id: "t_8548",
 			},
 		},
@@ -617,10 +618,10 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		DisplayName: "01 Build A",
 		Version:     "v_5",
 		Tasks: []build.TaskCache{
-			build.TaskCache{
+			{
 				Id: "t_695",
 			},
-			build.TaskCache{
+			{
 				Id: "t_854",
 			},
 		},
@@ -632,13 +633,13 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 		DisplayName: "02 Build C",
 		Version:     "v_5",
 		Tasks: []build.TaskCache{
-			build.TaskCache{
+			{
 				Id: "t_5888",
 			},
-			build.TaskCache{
+			{
 				Id: "t_894",
 			},
-			build.TaskCache{
+			{
 				Id: "t_394",
 			},
 		},
@@ -661,7 +662,10 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_89", DisplayName: "Task 89", Status: evergreen.TaskWillRun}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_32", DisplayName: "Task 32", Status: evergreen.TaskWillRun}
+	tsk = task.Task{Id: "t_32", DisplayName: "Task 32", Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{
+		Type:     evergreen.CommandTypeSystem,
+		TimedOut: true,
+	}}
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_54", DisplayName: "Task 54", Status: evergreen.TaskDispatched}
 	assert.NoError(t, tsk.Insert())
@@ -741,27 +745,89 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.Len(t, buildVariants, 3)
 
 	// Assert build variants are sorted alphabetically
-	assert.Equal(t, buildVariants[0].DisplayName, "01 Build A")
-	assert.Equal(t, buildVariants[1].DisplayName, "02 Build C")
-	assert.Equal(t, buildVariants[2].DisplayName, "03 Build B")
+	assert.Equal(t, "01 Build A", buildVariants[0].DisplayName)
+	assert.Equal(t, "02 Build C", buildVariants[1].DisplayName)
+	assert.Equal(t, "03 Build B", buildVariants[2].DisplayName)
+
+	// Check that build variants have an associated version field.
+	assert.Equal(t, "v_1", buildVariants[0].Version)
+	assert.Equal(t, "v_1", buildVariants[1].Version)
+	assert.Equal(t, "v_1", buildVariants[2].Version)
 
 	// Each variant has 4 builds, corresponding to `limit`
 	assert.Len(t, buildVariants[0].Builds, 4)
 	assert.Len(t, buildVariants[1].Builds, 4)
 	assert.Len(t, buildVariants[2].Builds, 4)
 
-	assert.Equal(t, buildVariants[0].Builds[0].Id, "b_c")
+	assert.Equal(t, "b_c", buildVariants[0].Builds[0].Id)
 	assert.Len(t, buildVariants[0].Builds[0].Tasks, 3)
-	assert.Equal(t, buildVariants[0].Builds[0].Tasks[0].Id, "t_32")
-	assert.Equal(t, buildVariants[0].Builds[0].Tasks[1].Id, "t_66")
-	assert.Equal(t, buildVariants[0].Builds[0].Tasks[2].Id, "t_89")
-	assert.Equal(t, buildVariants[0].Builds[1].Id, "b_e")
+	assert.Equal(t, "t_32", buildVariants[0].Builds[0].Tasks[0].Id)
+	assert.Equal(t, evergreen.TaskFailed, buildVariants[0].Builds[0].Tasks[0].Status)
+	assert.Equal(t, evergreen.TaskSystemTimedOut, buildVariants[0].Builds[0].Tasks[0].DisplayStatus)
+	assert.Equal(t, "t_66", buildVariants[0].Builds[0].Tasks[1].Id)
+	assert.Equal(t, "t_89", buildVariants[0].Builds[0].Tasks[2].Id)
+	assert.Equal(t, "b_e", buildVariants[0].Builds[1].Id)
 	assert.Len(t, buildVariants[0].Builds[1].Tasks, 2)
-	assert.Equal(t, buildVariants[0].Builds[1].Tasks[0].Id, "t_473")
-	assert.Equal(t, buildVariants[0].Builds[1].Tasks[1].Id, "t_995")
+	assert.Equal(t, "t_473", buildVariants[0].Builds[1].Tasks[0].Id)
+	assert.Equal(t, "t_995", buildVariants[0].Builds[1].Tasks[1].Id)
 
-	assert.Equal(t, buildVariants[0].Builds[2].Id, "b_g")
+	assert.Equal(t, "b_g", buildVariants[0].Builds[2].Id)
 	assert.Len(t, buildVariants[0].Builds[2].Tasks, 4)
-	assert.Equal(t, buildVariants[0].Builds[3].Id, "b_k")
+	assert.Equal(t, "b_k", buildVariants[0].Builds[3].Id)
 	assert.Len(t, buildVariants[0].Builds[3].Tasks, 2)
+}
+
+func TestGetNextRecentActiveWaterfallVersion(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert.NoError(t, db.ClearCollections(VersionCollection, ProjectRefCollection))
+	start := time.Now()
+	p := ProjectRef{
+		Id:         "a_project",
+		Identifier: "a_project_identifier",
+	}
+	assert.NoError(t, p.Insert())
+
+	v := Version{
+		Id:                  "v_1",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 10,
+		CreateTime:          start,
+		Activated:           utility.TruePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "v_2",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 9,
+		CreateTime:          start.Add(-2 * time.Minute),
+		Activated:           utility.FalsePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "v_3",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 8,
+		CreateTime:          start.Add(-2 * time.Minute),
+		Activated:           utility.FalsePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "v_4",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 7,
+		CreateTime:          start.Add(-2 * time.Minute),
+		Activated:           utility.TruePtr(),
+	}
+	assert.NoError(t, v.Insert())
+
+	version, err := GetNextRecentActiveWaterfallVersion(ctx, p.Id, 7)
+	assert.NoError(t, err)
+	require.NotNil(t, version)
+	assert.Equal(t, "v_1", version.Id)
 }

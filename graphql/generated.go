@@ -899,6 +899,7 @@ type ComplexityRoot struct {
 		CanEditAdminSettings func(childComplexity int) int
 		DistroPermissions    func(childComplexity int, options DistroPermissionsOptions) int
 		ProjectPermissions   func(childComplexity int, options ProjectPermissionsOptions) int
+		RepoPermissions      func(childComplexity int, options RepoPermissionsOptions) int
 		UserID               func(childComplexity int) int
 	}
 
@@ -1097,6 +1098,7 @@ type ComplexityRoot struct {
 		Image                    func(childComplexity int, imageID string) int
 		Images                   func(childComplexity int) int
 		InstanceTypes            func(childComplexity int) int
+		IsRepo                   func(childComplexity int, projectOrRepoID string) int
 		LogkeeperBuildMetadata   func(childComplexity int, buildID string) int
 		MainlineCommits          func(childComplexity int, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) int
 		MyHosts                  func(childComplexity int) int
@@ -1132,51 +1134,59 @@ type ComplexityRoot struct {
 		Message     func(childComplexity int) int
 	}
 
+	RepoPermissions struct {
+		Edit func(childComplexity int) int
+		View func(childComplexity int) int
+	}
+
 	RepoRef struct {
-		Admins                   func(childComplexity int) int
-		BatchTime                func(childComplexity int) int
-		BuildBaronSettings       func(childComplexity int) int
-		CommitQueue              func(childComplexity int) int
-		ContainerSizeDefinitions func(childComplexity int) int
-		DeactivatePrevious       func(childComplexity int) int
-		DisabledStatsCache       func(childComplexity int) int
-		DispatchingDisabled      func(childComplexity int) int
-		DisplayName              func(childComplexity int) int
-		Enabled                  func(childComplexity int) int
-		ExternalLinks            func(childComplexity int) int
-		GitTagAuthorizedTeams    func(childComplexity int) int
-		GitTagAuthorizedUsers    func(childComplexity int) int
-		GitTagVersionsEnabled    func(childComplexity int) int
-		GithubChecksEnabled      func(childComplexity int) int
-		GithubTriggerAliases     func(childComplexity int) int
-		Id                       func(childComplexity int) int
-		ManualPRTestingEnabled   func(childComplexity int) int
-		NotifyOnBuildFailure     func(childComplexity int) int
-		OldestAllowedMergeBase   func(childComplexity int) int
-		Owner                    func(childComplexity int) int
-		PRTestingEnabled         func(childComplexity int) int
-		ParsleyFilters           func(childComplexity int) int
-		PatchTriggerAliases      func(childComplexity int) int
-		PatchingDisabled         func(childComplexity int) int
-		PerfEnabled              func(childComplexity int) int
-		PeriodicBuilds           func(childComplexity int) int
-		RemotePath               func(childComplexity int) int
-		Repo                     func(childComplexity int) int
-		RepotrackerDisabled      func(childComplexity int) int
-		Restricted               func(childComplexity int) int
-		SpawnHostScriptPath      func(childComplexity int) int
-		StepbackBisect           func(childComplexity int) int
-		StepbackDisabled         func(childComplexity int) int
-		TaskAnnotationSettings   func(childComplexity int) int
-		TaskSync                 func(childComplexity int) int
-		TracksPushEvents         func(childComplexity int) int
-		Triggers                 func(childComplexity int) int
-		VersionControlEnabled    func(childComplexity int) int
-		WorkstationConfig        func(childComplexity int) int
+		Admins                             func(childComplexity int) int
+		BatchTime                          func(childComplexity int) int
+		BuildBaronSettings                 func(childComplexity int) int
+		CommitQueue                        func(childComplexity int) int
+		ContainerSizeDefinitions           func(childComplexity int) int
+		DeactivatePrevious                 func(childComplexity int) int
+		DisabledStatsCache                 func(childComplexity int) int
+		DispatchingDisabled                func(childComplexity int) int
+		DisplayName                        func(childComplexity int) int
+		Enabled                            func(childComplexity int) int
+		ExternalLinks                      func(childComplexity int) int
+		GitHubDynamicTokenPermissionGroups func(childComplexity int) int
+		GitHubPermissionGroupByRequester   func(childComplexity int) int
+		GitTagAuthorizedTeams              func(childComplexity int) int
+		GitTagAuthorizedUsers              func(childComplexity int) int
+		GitTagVersionsEnabled              func(childComplexity int) int
+		GithubChecksEnabled                func(childComplexity int) int
+		GithubTriggerAliases               func(childComplexity int) int
+		Id                                 func(childComplexity int) int
+		ManualPRTestingEnabled             func(childComplexity int) int
+		NotifyOnBuildFailure               func(childComplexity int) int
+		OldestAllowedMergeBase             func(childComplexity int) int
+		Owner                              func(childComplexity int) int
+		PRTestingEnabled                   func(childComplexity int) int
+		ParsleyFilters                     func(childComplexity int) int
+		PatchTriggerAliases                func(childComplexity int) int
+		PatchingDisabled                   func(childComplexity int) int
+		PerfEnabled                        func(childComplexity int) int
+		PeriodicBuilds                     func(childComplexity int) int
+		RemotePath                         func(childComplexity int) int
+		Repo                               func(childComplexity int) int
+		RepotrackerDisabled                func(childComplexity int) int
+		Restricted                         func(childComplexity int) int
+		SpawnHostScriptPath                func(childComplexity int) int
+		StepbackBisect                     func(childComplexity int) int
+		StepbackDisabled                   func(childComplexity int) int
+		TaskAnnotationSettings             func(childComplexity int) int
+		TaskSync                           func(childComplexity int) int
+		TracksPushEvents                   func(childComplexity int) int
+		Triggers                           func(childComplexity int) int
+		VersionControlEnabled              func(childComplexity int) int
+		WorkstationConfig                  func(childComplexity int) int
 	}
 
 	RepoSettings struct {
 		Aliases               func(childComplexity int) int
+		GithubAppAuth         func(childComplexity int) int
 		GithubWebhooksEnabled func(childComplexity int) int
 		ProjectRef            func(childComplexity int) int
 		Subscriptions         func(childComplexity int) int
@@ -1689,10 +1699,10 @@ type ComplexityRoot struct {
 	}
 
 	Waterfall struct {
-		BuildVariants func(childComplexity int) int
-		NextPageOrder func(childComplexity int) int
-		PrevPageOrder func(childComplexity int) int
-		Versions      func(childComplexity int) int
+		BuildVariants     func(childComplexity int) int
+		FlattenedVersions func(childComplexity int) int
+		Pagination        func(childComplexity int) int
+		Versions          func(childComplexity int) int
 	}
 
 	WaterfallBuild struct {
@@ -1707,13 +1717,22 @@ type ComplexityRoot struct {
 		Builds      func(childComplexity int) int
 		DisplayName func(childComplexity int) int
 		Id          func(childComplexity int) int
+		Version     func(childComplexity int) int
+	}
+
+	WaterfallPagination struct {
+		HasNextPage   func(childComplexity int) int
+		HasPrevPage   func(childComplexity int) int
+		NextPageOrder func(childComplexity int) int
+		PrevPageOrder func(childComplexity int) int
 	}
 
 	WaterfallTask struct {
-		DisplayName func(childComplexity int) int
-		Execution   func(childComplexity int) int
-		Id          func(childComplexity int) int
-		Status      func(childComplexity int) int
+		DisplayName   func(childComplexity int) int
+		DisplayStatus func(childComplexity int) int
+		Execution     func(childComplexity int) int
+		Id            func(childComplexity int) int
+		Status        func(childComplexity int) int
 	}
 
 	WaterfallVersion struct {
@@ -1906,6 +1925,7 @@ type PermissionsResolver interface {
 	CanEditAdminSettings(ctx context.Context, obj *Permissions) (bool, error)
 	DistroPermissions(ctx context.Context, obj *Permissions, options DistroPermissionsOptions) (*DistroPermissions, error)
 	ProjectPermissions(ctx context.Context, obj *Permissions, options ProjectPermissionsOptions) (*ProjectPermissions, error)
+	RepoPermissions(ctx context.Context, obj *Permissions, options RepoPermissionsOptions) (*RepoPermissions, error)
 }
 type PlannerSettingsResolver interface {
 	Version(ctx context.Context, obj *model.APIPlannerSettings) (PlannerVersion, error)
@@ -1964,6 +1984,7 @@ type QueryResolver interface {
 	RepoEvents(ctx context.Context, repoID string, limit *int, before *time.Time) (*ProjectEvents, error)
 	RepoSettings(ctx context.Context, repoID string) (*model.APIProjectSettings, error)
 	ViewableProjectRefs(ctx context.Context) ([]*GroupedProjects, error)
+	IsRepo(ctx context.Context, projectOrRepoID string) (bool, error)
 	MyHosts(ctx context.Context) ([]*model.APIHost, error)
 	MyVolumes(ctx context.Context) ([]*model.APIVolume, error)
 	LogkeeperBuildMetadata(ctx context.Context, buildID string) (*plank.Build, error)
@@ -1986,6 +2007,7 @@ type QueryResolver interface {
 }
 type RepoSettingsResolver interface {
 	Aliases(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APIProjectAlias, error)
+	GithubAppAuth(ctx context.Context, obj *model.APIProjectSettings) (*model.APIGithubAppAuth, error)
 	GithubWebhooksEnabled(ctx context.Context, obj *model.APIProjectSettings) (bool, error)
 
 	Subscriptions(ctx context.Context, obj *model.APIProjectSettings) ([]*model.APISubscription, error)
@@ -6037,6 +6059,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Permissions.ProjectPermissions(childComplexity, args["options"].(ProjectPermissionsOptions)), true
 
+	case "Permissions.repoPermissions":
+		if e.complexity.Permissions.RepoPermissions == nil {
+			break
+		}
+
+		args, err := ec.field_Permissions_repoPermissions_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Permissions.RepoPermissions(childComplexity, args["options"].(RepoPermissionsOptions)), true
+
 	case "Permissions.userId":
 		if e.complexity.Permissions.UserID == nil {
 			break
@@ -7125,6 +7159,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.InstanceTypes(childComplexity), true
 
+	case "Query.isRepo":
+		if e.complexity.Query.IsRepo == nil {
+			break
+		}
+
+		args, err := ec.field_Query_isRepo_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.IsRepo(childComplexity, args["projectOrRepoId"].(string)), true
+
 	case "Query.logkeeperBuildMetadata":
 		if e.complexity.Query.LogkeeperBuildMetadata == nil {
 			break
@@ -7415,6 +7461,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoCommitQueueParams.Message(childComplexity), true
 
+	case "RepoPermissions.edit":
+		if e.complexity.RepoPermissions.Edit == nil {
+			break
+		}
+
+		return e.complexity.RepoPermissions.Edit(childComplexity), true
+
+	case "RepoPermissions.view":
+		if e.complexity.RepoPermissions.View == nil {
+			break
+		}
+
+		return e.complexity.RepoPermissions.View(childComplexity), true
+
 	case "RepoRef.admins":
 		if e.complexity.RepoRef.Admins == nil {
 			break
@@ -7491,6 +7551,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoRef.ExternalLinks(childComplexity), true
+
+	case "RepoRef.githubDynamicTokenPermissionGroups":
+		if e.complexity.RepoRef.GitHubDynamicTokenPermissionGroups == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.GitHubDynamicTokenPermissionGroups(childComplexity), true
+
+	case "RepoRef.githubPermissionGroupByRequester":
+		if e.complexity.RepoRef.GitHubPermissionGroupByRequester == nil {
+			break
+		}
+
+		return e.complexity.RepoRef.GitHubPermissionGroupByRequester(childComplexity), true
 
 	case "RepoRef.gitTagAuthorizedTeams":
 		if e.complexity.RepoRef.GitTagAuthorizedTeams == nil {
@@ -7701,6 +7775,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoSettings.Aliases(childComplexity), true
+
+	case "RepoSettings.githubAppAuth":
+		if e.complexity.RepoSettings.GithubAppAuth == nil {
+			break
+		}
+
+		return e.complexity.RepoSettings.GithubAppAuth(childComplexity), true
 
 	case "RepoSettings.githubWebhooksEnabled":
 		if e.complexity.RepoSettings.GithubWebhooksEnabled == nil {
@@ -10210,19 +10291,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Waterfall.BuildVariants(childComplexity), true
 
-	case "Waterfall.nextPageOrder":
-		if e.complexity.Waterfall.NextPageOrder == nil {
+	case "Waterfall.flattenedVersions":
+		if e.complexity.Waterfall.FlattenedVersions == nil {
 			break
 		}
 
-		return e.complexity.Waterfall.NextPageOrder(childComplexity), true
+		return e.complexity.Waterfall.FlattenedVersions(childComplexity), true
 
-	case "Waterfall.prevPageOrder":
-		if e.complexity.Waterfall.PrevPageOrder == nil {
+	case "Waterfall.pagination":
+		if e.complexity.Waterfall.Pagination == nil {
 			break
 		}
 
-		return e.complexity.Waterfall.PrevPageOrder(childComplexity), true
+		return e.complexity.Waterfall.Pagination(childComplexity), true
 
 	case "Waterfall.versions":
 		if e.complexity.Waterfall.Versions == nil {
@@ -10287,12 +10368,54 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.WaterfallBuildVariant.Id(childComplexity), true
 
+	case "WaterfallBuildVariant.version":
+		if e.complexity.WaterfallBuildVariant.Version == nil {
+			break
+		}
+
+		return e.complexity.WaterfallBuildVariant.Version(childComplexity), true
+
+	case "WaterfallPagination.hasNextPage":
+		if e.complexity.WaterfallPagination.HasNextPage == nil {
+			break
+		}
+
+		return e.complexity.WaterfallPagination.HasNextPage(childComplexity), true
+
+	case "WaterfallPagination.hasPrevPage":
+		if e.complexity.WaterfallPagination.HasPrevPage == nil {
+			break
+		}
+
+		return e.complexity.WaterfallPagination.HasPrevPage(childComplexity), true
+
+	case "WaterfallPagination.nextPageOrder":
+		if e.complexity.WaterfallPagination.NextPageOrder == nil {
+			break
+		}
+
+		return e.complexity.WaterfallPagination.NextPageOrder(childComplexity), true
+
+	case "WaterfallPagination.prevPageOrder":
+		if e.complexity.WaterfallPagination.PrevPageOrder == nil {
+			break
+		}
+
+		return e.complexity.WaterfallPagination.PrevPageOrder(childComplexity), true
+
 	case "WaterfallTask.displayName":
 		if e.complexity.WaterfallTask.DisplayName == nil {
 			break
 		}
 
 		return e.complexity.WaterfallTask.DisplayName(childComplexity), true
+
+	case "WaterfallTask.displayStatus":
+		if e.complexity.WaterfallTask.DisplayStatus == nil {
+			break
+		}
+
+		return e.complexity.WaterfallTask.DisplayStatus(childComplexity), true
 
 	case "WaterfallTask.execution":
 		if e.complexity.WaterfallTask.Execution == nil {
@@ -10494,6 +10617,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPromoteVarsToRepoInput,
 		ec.unmarshalInputPublicKeyInput,
 		ec.unmarshalInputRemoveFavoriteProjectInput,
+		ec.unmarshalInputRepoPermissionsOptions,
 		ec.unmarshalInputRepoRefInput,
 		ec.unmarshalInputRepoSettingsInput,
 		ec.unmarshalInputResourceLimitsInput,
@@ -12460,6 +12584,21 @@ func (ec *executionContext) field_Permissions_projectPermissions_args(ctx contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Permissions_repoPermissions_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 RepoPermissionsOptions
+	if tmp, ok := rawArgs["options"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("options"))
+		arg0, err = ec.unmarshalNRepoPermissionsOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRepoPermissionsOptions(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["options"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Pod_events_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -12960,6 +13099,21 @@ func (ec *executionContext) field_Query_image_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["imageId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_isRepo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["projectOrRepoId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectOrRepoId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectOrRepoId"] = arg0
 	return args, nil
 }
 
@@ -22692,6 +22846,10 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(_ context.Context,
 				return ec.fieldContext_RepoRef_enabled(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_RepoRef_githubChecksEnabled(ctx, field)
+			case "githubDynamicTokenPermissionGroups":
+				return ec.fieldContext_RepoRef_githubDynamicTokenPermissionGroups(ctx, field)
+			case "githubPermissionGroupByRequester":
+				return ec.fieldContext_RepoRef_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_RepoRef_githubTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
@@ -32741,6 +32899,8 @@ func (ec *executionContext) fieldContext_Mutation_saveRepoSettingsForSection(ctx
 			switch field.Name {
 			case "aliases":
 				return ec.fieldContext_RepoSettings_aliases(ctx, field)
+			case "githubAppAuth":
+				return ec.fieldContext_RepoSettings_githubAppAuth(ctx, field)
 			case "githubWebhooksEnabled":
 				return ec.fieldContext_RepoSettings_githubWebhooksEnabled(ctx, field)
 			case "projectRef":
@@ -40432,6 +40592,67 @@ func (ec *executionContext) fieldContext_Permissions_projectPermissions(ctx cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Permissions_projectPermissions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Permissions_repoPermissions(ctx context.Context, field graphql.CollectedField, obj *Permissions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Permissions_repoPermissions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Permissions().RepoPermissions(rctx, obj, fc.Args["options"].(RepoPermissionsOptions))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*RepoPermissions)
+	fc.Result = res
+	return ec.marshalNRepoPermissions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRepoPermissions(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Permissions_repoPermissions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Permissions",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "edit":
+				return ec.fieldContext_RepoPermissions_edit(ctx, field)
+			case "view":
+				return ec.fieldContext_RepoPermissions_view(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RepoPermissions", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Permissions_repoPermissions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -48442,6 +48663,8 @@ func (ec *executionContext) fieldContext_Query_repoSettings(ctx context.Context,
 			switch field.Name {
 			case "aliases":
 				return ec.fieldContext_RepoSettings_aliases(ctx, field)
+			case "githubAppAuth":
+				return ec.fieldContext_RepoSettings_githubAppAuth(ctx, field)
 			case "githubWebhooksEnabled":
 				return ec.fieldContext_RepoSettings_githubWebhooksEnabled(ctx, field)
 			case "projectRef":
@@ -48516,6 +48739,61 @@ func (ec *executionContext) fieldContext_Query_viewableProjectRefs(_ context.Con
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GroupedProjects", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_isRepo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_isRepo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().IsRepo(rctx, fc.Args["projectOrRepoId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_isRepo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_isRepo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -49757,12 +50035,12 @@ func (ec *executionContext) fieldContext_Query_waterfall(ctx context.Context, fi
 			switch field.Name {
 			case "buildVariants":
 				return ec.fieldContext_Waterfall_buildVariants(ctx, field)
-			case "nextPageOrder":
-				return ec.fieldContext_Waterfall_nextPageOrder(ctx, field)
-			case "prevPageOrder":
-				return ec.fieldContext_Waterfall_prevPageOrder(ctx, field)
 			case "versions":
 				return ec.fieldContext_Waterfall_versions(ctx, field)
+			case "flattenedVersions":
+				return ec.fieldContext_Waterfall_flattenedVersions(ctx, field)
+			case "pagination":
+				return ec.fieldContext_Waterfall_pagination(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Waterfall", field.Name)
 		},
@@ -50392,6 +50670,94 @@ func (ec *executionContext) fieldContext_RepoCommitQueueParams_message(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoPermissions_edit(ctx context.Context, field graphql.CollectedField, obj *RepoPermissions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoPermissions_edit(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Edit, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoPermissions_edit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoPermissions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoPermissions_view(ctx context.Context, field graphql.CollectedField, obj *RepoPermissions) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoPermissions_view(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.View, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoPermissions_view(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoPermissions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoRef_id(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoRef_id(ctx, field)
 	if err != nil {
@@ -50948,6 +51314,97 @@ func (ec *executionContext) fieldContext_RepoRef_githubChecksEnabled(_ context.C
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoRef_githubDynamicTokenPermissionGroups(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoRef_githubDynamicTokenPermissionGroups(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GitHubDynamicTokenPermissionGroups, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIGitHubDynamicTokenPermissionGroup)
+	fc.Result = res
+	return ec.marshalNGitHubDynamicTokenPermissionGroup2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroupᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_githubDynamicTokenPermissionGroups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_GitHubDynamicTokenPermissionGroup_name(ctx, field)
+			case "permissions":
+				return ec.fieldContext_GitHubDynamicTokenPermissionGroup_permissions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GitHubDynamicTokenPermissionGroup", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepoRef_githubPermissionGroupByRequester(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoRef_githubPermissionGroupByRequester(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GitHubPermissionGroupByRequester, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(map[string]string)
+	fc.Result = res
+	return ec.marshalOStringMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoRef_githubPermissionGroupByRequester(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type StringMap does not have child fields")
 		},
 	}
 	return fc, nil
@@ -52310,6 +52767,53 @@ func (ec *executionContext) fieldContext_RepoSettings_aliases(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _RepoSettings_githubAppAuth(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RepoSettings_githubAppAuth(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.RepoSettings().GithubAppAuth(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIGithubAppAuth)
+	fc.Result = res
+	return ec.marshalOGithubAppAuth2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubAppAuth(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RepoSettings_githubAppAuth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepoSettings",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "appId":
+				return ec.fieldContext_GithubAppAuth_appId(ctx, field)
+			case "privateKey":
+				return ec.fieldContext_GithubAppAuth_privateKey(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GithubAppAuth", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RepoSettings_githubWebhooksEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectSettings) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoSettings_githubWebhooksEnabled(ctx, field)
 	if err != nil {
@@ -52434,6 +52938,10 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(_ context.Conte
 				return ec.fieldContext_RepoRef_enabled(ctx, field)
 			case "githubChecksEnabled":
 				return ec.fieldContext_RepoRef_githubChecksEnabled(ctx, field)
+			case "githubDynamicTokenPermissionGroups":
+				return ec.fieldContext_RepoRef_githubDynamicTokenPermissionGroups(ctx, field)
+			case "githubPermissionGroupByRequester":
+				return ec.fieldContext_RepoRef_githubPermissionGroupByRequester(ctx, field)
 			case "githubTriggerAliases":
 				return ec.fieldContext_RepoRef_githubTriggerAliases(ctx, field)
 			case "gitTagAuthorizedTeams":
@@ -65772,6 +66280,8 @@ func (ec *executionContext) fieldContext_User_permissions(_ context.Context, fie
 				return ec.fieldContext_Permissions_distroPermissions(ctx, field)
 			case "projectPermissions":
 				return ec.fieldContext_Permissions_projectPermissions(ctx, field)
+			case "repoPermissions":
+				return ec.fieldContext_Permissions_repoPermissions(ctx, field)
 			case "userId":
 				return ec.fieldContext_Permissions_userId(ctx, field)
 			}
@@ -69868,100 +70378,14 @@ func (ec *executionContext) fieldContext_Waterfall_buildVariants(_ context.Conte
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_WaterfallBuildVariant_id(ctx, field)
-			case "displayName":
-				return ec.fieldContext_WaterfallBuildVariant_displayName(ctx, field)
 			case "builds":
 				return ec.fieldContext_WaterfallBuildVariant_builds(ctx, field)
+			case "displayName":
+				return ec.fieldContext_WaterfallBuildVariant_displayName(ctx, field)
+			case "version":
+				return ec.fieldContext_WaterfallBuildVariant_version(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type WaterfallBuildVariant", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Waterfall_nextPageOrder(ctx context.Context, field graphql.CollectedField, obj *Waterfall) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Waterfall_nextPageOrder(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.NextPageOrder, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Waterfall_nextPageOrder(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Waterfall",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Waterfall_prevPageOrder(ctx context.Context, field graphql.CollectedField, obj *Waterfall) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Waterfall_prevPageOrder(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.PrevPageOrder, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Waterfall_prevPageOrder(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Waterfall",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -70012,6 +70436,184 @@ func (ec *executionContext) fieldContext_Waterfall_versions(_ context.Context, f
 				return ec.fieldContext_WaterfallVersion_version(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type WaterfallVersion", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Waterfall_flattenedVersions(ctx context.Context, field graphql.CollectedField, obj *Waterfall) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Waterfall_flattenedVersions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FlattenedVersions, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.APIVersion)
+	fc.Result = res
+	return ec.marshalNVersion2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersionᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Waterfall_flattenedVersions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Waterfall",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Version_id(ctx, field)
+			case "activated":
+				return ec.fieldContext_Version_activated(ctx, field)
+			case "author":
+				return ec.fieldContext_Version_author(ctx, field)
+			case "authorEmail":
+				return ec.fieldContext_Version_authorEmail(ctx, field)
+			case "baseTaskStatuses":
+				return ec.fieldContext_Version_baseTaskStatuses(ctx, field)
+			case "baseVersion":
+				return ec.fieldContext_Version_baseVersion(ctx, field)
+			case "branch":
+				return ec.fieldContext_Version_branch(ctx, field)
+			case "buildVariants":
+				return ec.fieldContext_Version_buildVariants(ctx, field)
+			case "buildVariantStats":
+				return ec.fieldContext_Version_buildVariantStats(ctx, field)
+			case "childVersions":
+				return ec.fieldContext_Version_childVersions(ctx, field)
+			case "createTime":
+				return ec.fieldContext_Version_createTime(ctx, field)
+			case "errors":
+				return ec.fieldContext_Version_errors(ctx, field)
+			case "externalLinksForMetadata":
+				return ec.fieldContext_Version_externalLinksForMetadata(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Version_finishTime(ctx, field)
+			case "generatedTaskCounts":
+				return ec.fieldContext_Version_generatedTaskCounts(ctx, field)
+			case "gitTags":
+				return ec.fieldContext_Version_gitTags(ctx, field)
+			case "ignored":
+				return ec.fieldContext_Version_ignored(ctx, field)
+			case "isPatch":
+				return ec.fieldContext_Version_isPatch(ctx, field)
+			case "manifest":
+				return ec.fieldContext_Version_manifest(ctx, field)
+			case "message":
+				return ec.fieldContext_Version_message(ctx, field)
+			case "order":
+				return ec.fieldContext_Version_order(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Version_parameters(ctx, field)
+			case "patch":
+				return ec.fieldContext_Version_patch(ctx, field)
+			case "previousVersion":
+				return ec.fieldContext_Version_previousVersion(ctx, field)
+			case "project":
+				return ec.fieldContext_Version_project(ctx, field)
+			case "projectIdentifier":
+				return ec.fieldContext_Version_projectIdentifier(ctx, field)
+			case "projectMetadata":
+				return ec.fieldContext_Version_projectMetadata(ctx, field)
+			case "repo":
+				return ec.fieldContext_Version_repo(ctx, field)
+			case "requester":
+				return ec.fieldContext_Version_requester(ctx, field)
+			case "revision":
+				return ec.fieldContext_Version_revision(ctx, field)
+			case "startTime":
+				return ec.fieldContext_Version_startTime(ctx, field)
+			case "status":
+				return ec.fieldContext_Version_status(ctx, field)
+			case "taskCount":
+				return ec.fieldContext_Version_taskCount(ctx, field)
+			case "tasks":
+				return ec.fieldContext_Version_tasks(ctx, field)
+			case "taskStatuses":
+				return ec.fieldContext_Version_taskStatuses(ctx, field)
+			case "taskStatusStats":
+				return ec.fieldContext_Version_taskStatusStats(ctx, field)
+			case "upstreamProject":
+				return ec.fieldContext_Version_upstreamProject(ctx, field)
+			case "versionTiming":
+				return ec.fieldContext_Version_versionTiming(ctx, field)
+			case "warnings":
+				return ec.fieldContext_Version_warnings(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Waterfall_pagination(ctx context.Context, field graphql.CollectedField, obj *Waterfall) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Waterfall_pagination(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Pagination, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*WaterfallPagination)
+	fc.Result = res
+	return ec.marshalNWaterfallPagination2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfallPagination(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Waterfall_pagination(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Waterfall",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "hasNextPage":
+				return ec.fieldContext_WaterfallPagination_hasNextPage(ctx, field)
+			case "hasPrevPage":
+				return ec.fieldContext_WaterfallPagination_hasPrevPage(ctx, field)
+			case "nextPageOrder":
+				return ec.fieldContext_WaterfallPagination_nextPageOrder(ctx, field)
+			case "prevPageOrder":
+				return ec.fieldContext_WaterfallPagination_prevPageOrder(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WaterfallPagination", field.Name)
 		},
 	}
 	return fc, nil
@@ -70233,6 +70835,8 @@ func (ec *executionContext) fieldContext_WaterfallBuild_tasks(_ context.Context,
 				return ec.fieldContext_WaterfallTask_id(ctx, field)
 			case "displayName":
 				return ec.fieldContext_WaterfallTask_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_WaterfallTask_displayStatus(ctx, field)
 			case "execution":
 				return ec.fieldContext_WaterfallTask_execution(ctx, field)
 			case "status":
@@ -70276,50 +70880,6 @@ func (ec *executionContext) _WaterfallBuildVariant_id(ctx context.Context, field
 }
 
 func (ec *executionContext) fieldContext_WaterfallBuildVariant_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "WaterfallBuildVariant",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _WaterfallBuildVariant_displayName(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallBuildVariant) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_WaterfallBuildVariant_displayName(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DisplayName, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_WaterfallBuildVariant_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "WaterfallBuildVariant",
 		Field:      field,
@@ -70383,6 +70943,270 @@ func (ec *executionContext) fieldContext_WaterfallBuildVariant_builds(_ context.
 				return ec.fieldContext_WaterfallBuild_tasks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type WaterfallBuild", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WaterfallBuildVariant_displayName(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallBuildVariant) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WaterfallBuildVariant_displayName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WaterfallBuildVariant_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WaterfallBuildVariant",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WaterfallBuildVariant_version(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallBuildVariant) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WaterfallBuildVariant_version(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Version, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WaterfallBuildVariant_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WaterfallBuildVariant",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WaterfallPagination_hasNextPage(ctx context.Context, field graphql.CollectedField, obj *WaterfallPagination) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WaterfallPagination_hasNextPage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HasNextPage, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WaterfallPagination_hasNextPage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WaterfallPagination",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WaterfallPagination_hasPrevPage(ctx context.Context, field graphql.CollectedField, obj *WaterfallPagination) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WaterfallPagination_hasPrevPage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HasPrevPage, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WaterfallPagination_hasPrevPage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WaterfallPagination",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WaterfallPagination_nextPageOrder(ctx context.Context, field graphql.CollectedField, obj *WaterfallPagination) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WaterfallPagination_nextPageOrder(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NextPageOrder, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WaterfallPagination_nextPageOrder(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WaterfallPagination",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WaterfallPagination_prevPageOrder(ctx context.Context, field graphql.CollectedField, obj *WaterfallPagination) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WaterfallPagination_prevPageOrder(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PrevPageOrder, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WaterfallPagination_prevPageOrder(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WaterfallPagination",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -70464,6 +71288,50 @@ func (ec *executionContext) _WaterfallTask_displayName(ctx context.Context, fiel
 }
 
 func (ec *executionContext) fieldContext_WaterfallTask_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WaterfallTask",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WaterfallTask_displayStatus(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallTask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WaterfallTask_displayStatus(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayStatus, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WaterfallTask_displayStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "WaterfallTask",
 		Field:      field,
@@ -76645,6 +77513,33 @@ func (ec *executionContext) unmarshalInputRemoveFavoriteProjectInput(ctx context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputRepoPermissionsOptions(ctx context.Context, obj interface{}) (RepoPermissionsOptions, error) {
+	var it RepoPermissionsOptions
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"repoId"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "repoId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("repoId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RepoID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj interface{}) (model.APIProjectRef, error) {
 	var it model.APIProjectRef
 	asMap := map[string]interface{}{}
@@ -76652,7 +77547,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76743,6 +77638,20 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.GithubChecksEnabled = data
+		case "githubDynamicTokenPermissionGroups":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubDynamicTokenPermissionGroups"))
+			data, err := ec.unmarshalOGitHubDynamicTokenPermissionGroupInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGitHubDynamicTokenPermissionGroupᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GitHubDynamicTokenPermissionGroups = data
+		case "githubPermissionGroupByRequester":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubPermissionGroupByRequester"))
+			data, err := ec.unmarshalOStringMap2map(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GitHubPermissionGroupByRequester = data
 		case "githubTriggerAliases":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubTriggerAliases"))
 			data, err := ec.unmarshalOString2ᚕᚖstringᚄ(ctx, v)
@@ -76952,7 +77861,7 @@ func (ec *executionContext) unmarshalInputRepoSettingsInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"repoId", "aliases", "githubWebhooksEnabled", "projectRef", "subscriptions", "vars"}
+	fieldsInOrder := [...]string{"repoId", "aliases", "githubAppAuth", "githubWebhooksEnabled", "projectRef", "subscriptions", "vars"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76996,6 +77905,28 @@ func (ec *executionContext) unmarshalInputRepoSettingsInput(ctx context.Context,
 				return it, err
 			}
 			it.Aliases = data
+		case "githubAppAuth":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubAppAuth"))
+			directive0 := func(ctx context.Context) (interface{}, error) {
+				return ec.unmarshalOGithubAppAuthInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIGithubAppAuth(ctx, v)
+			}
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				if ec.directives.RedactSecrets == nil {
+					return nil, errors.New("directive redactSecrets is not implemented")
+				}
+				return ec.directives.RedactSecrets(ctx, obj, directive0)
+			}
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(model.APIGithubAppAuth); ok {
+				it.GithubAppAuth = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be github.com/evergreen-ci/evergreen/rest/model.APIGithubAppAuth`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "githubWebhooksEnabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("githubWebhooksEnabled"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
@@ -78483,13 +79414,20 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 		asMap["limit"] = 5
 	}
 
-	fieldsInOrder := [...]string{"limit", "minOrder", "maxOrder", "projectIdentifier", "requesters", "revision"}
+	fieldsInOrder := [...]string{"date", "limit", "minOrder", "maxOrder", "projectIdentifier", "requesters", "revision"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "date":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("date"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Date = data
 		case "limit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
@@ -85871,6 +86809,42 @@ func (ec *executionContext) _Permissions(ctx context.Context, sel ast.SelectionS
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "repoPermissions":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Permissions_repoPermissions(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "userId":
 			out.Values[i] = ec._Permissions_userId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -87953,6 +88927,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "isRepo":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_isRepo(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "myHosts":
 			field := field
 
@@ -88432,6 +89428,50 @@ func (ec *executionContext) _RepoCommitQueueParams(ctx context.Context, sel ast.
 	return out
 }
 
+var repoPermissionsImplementors = []string{"RepoPermissions"}
+
+func (ec *executionContext) _RepoPermissions(ctx context.Context, sel ast.SelectionSet, obj *RepoPermissions) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, repoPermissionsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RepoPermissions")
+		case "edit":
+			out.Values[i] = ec._RepoPermissions_edit(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "view":
+			out.Values[i] = ec._RepoPermissions_view(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var repoRefImplementors = []string{"RepoRef"}
 
 func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, obj *model.APIProjectRef) graphql.Marshaler {
@@ -88500,6 +89540,13 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "githubDynamicTokenPermissionGroups":
+			out.Values[i] = ec._RepoRef_githubDynamicTokenPermissionGroups(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "githubPermissionGroupByRequester":
+			out.Values[i] = ec._RepoRef_githubPermissionGroupByRequester(ctx, field, obj)
 		case "githubTriggerAliases":
 			out.Values[i] = ec._RepoRef_githubTriggerAliases(ctx, field, obj)
 		case "gitTagAuthorizedTeams":
@@ -88660,6 +89707,39 @@ func (ec *executionContext) _RepoSettings(ctx context.Context, sel ast.Selection
 					}
 				}()
 				res = ec._RepoSettings_aliases(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "githubAppAuth":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._RepoSettings_githubAppAuth(ctx, field, obj)
 				return res
 			}
 
@@ -94189,18 +95269,18 @@ func (ec *executionContext) _Waterfall(ctx context.Context, sel ast.SelectionSet
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "nextPageOrder":
-			out.Values[i] = ec._Waterfall_nextPageOrder(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "prevPageOrder":
-			out.Values[i] = ec._Waterfall_prevPageOrder(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "versions":
 			out.Values[i] = ec._Waterfall_versions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "flattenedVersions":
+			out.Values[i] = ec._Waterfall_flattenedVersions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pagination":
+			out.Values[i] = ec._Waterfall_pagination(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -94299,13 +95379,72 @@ func (ec *executionContext) _WaterfallBuildVariant(ctx context.Context, sel ast.
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "builds":
+			out.Values[i] = ec._WaterfallBuildVariant_builds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "displayName":
 			out.Values[i] = ec._WaterfallBuildVariant_displayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "builds":
-			out.Values[i] = ec._WaterfallBuildVariant_builds(ctx, field, obj)
+		case "version":
+			out.Values[i] = ec._WaterfallBuildVariant_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var waterfallPaginationImplementors = []string{"WaterfallPagination"}
+
+func (ec *executionContext) _WaterfallPagination(ctx context.Context, sel ast.SelectionSet, obj *WaterfallPagination) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, waterfallPaginationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WaterfallPagination")
+		case "hasNextPage":
+			out.Values[i] = ec._WaterfallPagination_hasNextPage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "hasPrevPage":
+			out.Values[i] = ec._WaterfallPagination_hasPrevPage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "nextPageOrder":
+			out.Values[i] = ec._WaterfallPagination_nextPageOrder(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "prevPageOrder":
+			out.Values[i] = ec._WaterfallPagination_prevPageOrder(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -94350,6 +95489,11 @@ func (ec *executionContext) _WaterfallTask(ctx context.Context, sel ast.Selectio
 			}
 		case "displayName":
 			out.Values[i] = ec._WaterfallTask_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "displayStatus":
+			out.Values[i] = ec._WaterfallTask_displayStatus(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -98383,6 +99527,25 @@ func (ec *executionContext) marshalNRepoCommitQueueParams2githubᚗcomᚋevergre
 	return ec._RepoCommitQueueParams(ctx, sel, &v)
 }
 
+func (ec *executionContext) marshalNRepoPermissions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRepoPermissions(ctx context.Context, sel ast.SelectionSet, v RepoPermissions) graphql.Marshaler {
+	return ec._RepoPermissions(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNRepoPermissions2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRepoPermissions(ctx context.Context, sel ast.SelectionSet, v *RepoPermissions) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RepoPermissions(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNRepoPermissionsOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐRepoPermissionsOptions(ctx context.Context, v interface{}) (RepoPermissionsOptions, error) {
+	res, err := ec.unmarshalInputRepoPermissionsOptions(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNRepoSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectSettings(ctx context.Context, sel ast.SelectionSet, v model.APIProjectSettings) graphql.Marshaler {
 	return ec._RepoSettings(ctx, sel, &v)
 }
@@ -99519,6 +100682,50 @@ func (ec *executionContext) marshalNVersion2githubᚗcomᚋevergreenᚑciᚋever
 	return ec._Version(ctx, sel, &v)
 }
 
+func (ec *executionContext) marshalNVersion2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.APIVersion) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalNVersion2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIVersion(ctx context.Context, sel ast.SelectionSet, v *model.APIVersion) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -99743,6 +100950,16 @@ func (ec *executionContext) marshalNWaterfallBuildVariant2ᚖgithubᚗcomᚋever
 func (ec *executionContext) unmarshalNWaterfallOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfallOptions(ctx context.Context, v interface{}) (WaterfallOptions, error) {
 	res, err := ec.unmarshalInputWaterfallOptions(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNWaterfallPagination2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐWaterfallPagination(ctx context.Context, sel ast.SelectionSet, v *WaterfallPagination) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._WaterfallPagination(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNWaterfallTask2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐWaterfallTask(ctx context.Context, sel ast.SelectionSet, v model1.WaterfallTask) graphql.Marshaler {

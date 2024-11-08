@@ -192,8 +192,7 @@ type Patch struct {
 	// the merged patch is based off of, if applicable.
 	MergedFrom string `bson:"merged_from,omitempty"`
 	// LocalModuleIncludes is only used for CLI patches to store local module changes.
-	// Not stored in the database since the DB patch should already include changes from this module.
-	LocalModuleIncludes []LocalModuleInclude `bson:"-"`
+	LocalModuleIncludes []LocalModuleInclude `bson:"local_module_includes,omitempty"`
 	// ReferenceManifestID stores the ID of the manifest that this patch is based on.
 	// It is used to determine the module revisions for this patch during creation.
 	// This could potentially reference an invalid manifest, and should not error
@@ -1057,18 +1056,12 @@ func IsMailbox(patchFile string) (bool, error) {
 
 func CreatePatchSetForSHA(ctx context.Context, settings *evergreen.Settings, owner, repo, sha string) (PatchSet, error) {
 	patchSet := PatchSet{}
-
-	githubToken, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return patchSet, errors.Wrap(err, "getting GitHub auth token")
-	}
-
-	diff, err := thirdparty.GetCommitDiff(ctx, githubToken, owner, repo, sha)
+	diff, err := thirdparty.GetCommitDiff(ctx, owner, repo, sha)
 	if err != nil {
 		return patchSet, errors.Wrapf(err, "getting commit diff for '%s/%s:%s'", owner, repo, sha)
 	}
 
-	commitInfo, err := thirdparty.GetCommitEvent(ctx, githubToken, owner, repo, sha)
+	commitInfo, err := thirdparty.GetCommitEvent(ctx, owner, repo, sha)
 	if err != nil {
 		return patchSet, errors.Wrapf(err, "getting commit info for '%s/%s:%s'", owner, repo, sha)
 	}

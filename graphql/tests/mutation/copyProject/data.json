@@ -6,10 +6,12 @@
       "owner_name": "evergreen-ci",
       "repo_name": "evergreen",
       "enabled": true,
+      "parameter_store_enabled": true,
       "repoRefId": "something"
     },
     {
       "_id": "logkeeper",
+      "parameter_store_enabled": true,
       "identifier": "keeperOfLogs"
     }
   ]

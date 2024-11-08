@@ -10,6 +10,7 @@
       "branch_name" : "main",
       "admins": ["me"],
       "spawn_host_script_path": "spawn_script",
+      "parameter_store_enabled": true,
       "commit_queue" : {
         "enabled" : false,
         "require_signed": true
@@ -20,6 +21,7 @@
     {
       "_id": "repo_id",
       "owner_name": "evergreen-ci",
+      "parameter_store_enabled": true,
       "repo_name": "commit-queue-sandbox"
     }
   ],

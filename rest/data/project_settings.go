@@ -394,7 +394,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if err = validateFeaturesHaveAliases(mergedBeforeRef, mergedSection, changes.Aliases); err != nil {
 			return nil, err
 		}
-		if err = mergedSection.ValidateGitHubPermissionGroups(); err != nil {
+		if err = mergedSection.ValidateGitHubPermissionGroupsByRequester(); err != nil {
 			return nil, err
 		}
 		modified, err = updateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
@@ -489,15 +489,15 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 		}
 		mergedSection.GitHubDynamicTokenPermissionGroups = mergedBeforeRef.GitHubDynamicTokenPermissionGroups
-		if err = mergedSection.ValidateGitHubPermissionGroups(); err != nil {
+		if err = mergedSection.ValidateGitHubPermissionGroupsByRequester(); err != nil {
 			return nil, errors.Wrap(err, "invalid GitHub permission group by requester")
 		}
 		modified = true
-	// This section does not support repo-level at this time.
 	case model.ProjectPageGithubPermissionsSection:
 		if err = mergedSection.ValidateGitHubPermissionGroups(); err != nil {
 			return nil, errors.Wrap(err, "invalid GitHub permission groups")
 		}
+		modified = true
 	}
 
 	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)

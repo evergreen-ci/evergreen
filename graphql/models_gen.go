@@ -325,6 +325,7 @@ type Permissions struct {
 	CanEditAdminSettings bool                `json:"canEditAdminSettings"`
 	DistroPermissions    *DistroPermissions  `json:"distroPermissions"`
 	ProjectPermissions   *ProjectPermissions `json:"projectPermissions"`
+	RepoPermissions      *RepoPermissions    `json:"repoPermissions"`
 	UserID               string              `json:"userId"`
 }
 
@@ -376,6 +377,15 @@ type Query struct {
 
 type RemoveFavoriteProjectInput struct {
 	ProjectIdentifier string `json:"projectIdentifier"`
+}
+
+type RepoPermissions struct {
+	Edit bool `json:"edit"`
+	View bool `json:"view"`
+}
+
+type RepoPermissionsOptions struct {
+	RepoID string `json:"repoId"`
 }
 
 // SaveDistroInput is the input to the saveDistro mutation.
@@ -610,14 +620,15 @@ type VolumeHost struct {
 }
 
 type Waterfall struct {
-	BuildVariants []*model1.WaterfallBuildVariant `json:"buildVariants"`
-	NextPageOrder int                             `json:"nextPageOrder"`
-	PrevPageOrder int                             `json:"prevPageOrder"`
-	Versions      []*WaterfallVersion             `json:"versions"`
+	BuildVariants     []*model1.WaterfallBuildVariant `json:"buildVariants"`
+	Versions          []*WaterfallVersion             `json:"versions"`
+	FlattenedVersions []*model.APIVersion             `json:"flattenedVersions"`
+	Pagination        *WaterfallPagination            `json:"pagination"`
 }
 
 type WaterfallOptions struct {
-	Limit *int `json:"limit,omitempty"`
+	Date  *time.Time `json:"date,omitempty"`
+	Limit *int       `json:"limit,omitempty"`
 	// Return versions with an order greater than minOrder. Used for paginating backward.
 	MinOrder *int `json:"minOrder,omitempty"`
 	// Return versions with an order lower than maxOrder. Used for paginating forward.
@@ -625,6 +636,13 @@ type WaterfallOptions struct {
 	ProjectIdentifier string   `json:"projectIdentifier"`
 	Requesters        []string `json:"requesters,omitempty"`
 	Revision          *string  `json:"revision,omitempty"`
+}
+
+type WaterfallPagination struct {
+	HasNextPage   bool `json:"hasNextPage"`
+	HasPrevPage   bool `json:"hasPrevPage"`
+	NextPageOrder int  `json:"nextPageOrder"`
+	PrevPageOrder int  `json:"prevPageOrder"`
 }
 
 type WaterfallVersion struct {

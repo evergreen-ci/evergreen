@@ -247,7 +247,12 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	job.Run(r.Context())
 
 	if err = job.Error(); err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error processing patch"))
+		// Return a 400 error if the error is due to the user's input
+		if strings.Contains(err.Error(), units.BuildTasksAndVariantsError) {
+			as.LoggedError(w, r, http.StatusBadRequest, err)
+		} else {
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error processing patch"))
+		}
 		return
 	}
 
@@ -436,13 +441,6 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 		}
 		gimlet.WriteJSON(w, "patch updated")
 	case "finalize":
-		var githubOauthToken string
-		githubOauthToken, err = as.Settings.GetGithubOauthToken()
-		if err != nil {
-			gimlet.WriteJSONInternalError(w, err)
-			return
-		}
-
 		if p.Activated {
 			http.Error(w, "patch is already finalized", http.StatusBadRequest)
 			return
@@ -452,7 +450,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			// New patches already create the parser project at the same time as
 			// the patch, so there's no need to get the patched parser project
 			// for them.
-			projectConfig, err := model.GetPatchedProjectConfig(ctx, &as.Settings, p, githubOauthToken)
+			projectConfig, err := model.GetPatchedProjectConfig(ctx, &as.Settings, p)
 			if err != nil {
 				as.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
@@ -461,7 +459,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 		} else {
 			// In the fallback case, old unfinalized patches had their parser
 			// projects stored as a string, so it gets stored here.
-			_, patchConfig, err := model.GetPatchedProject(ctx, &as.Settings, p, githubOauthToken)
+			_, patchConfig, err := model.GetPatchedProject(ctx, &as.Settings, p)
 			if err != nil {
 				as.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
@@ -469,7 +467,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			p.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 		}
 
-		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester, githubOauthToken)
+		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

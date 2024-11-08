@@ -30,7 +30,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // GET /rest/v2/agent/cedar_config
@@ -92,7 +91,7 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		SplunkServerURL:    h.settings.Splunk.SplunkConnectionInfo.ServerURL,
 		SplunkClientToken:  h.settings.Splunk.SplunkConnectionInfo.Token,
 		SplunkChannel:      h.settings.Splunk.SplunkConnectionInfo.Channel,
-		TaskOutput:         h.settings.Providers.AWS.TaskOutput,
+		TaskOutput:         h.settings.Buckets.Credentials,
 		TaskSync:           h.settings.Providers.AWS.TaskSync,
 		EC2Keys:            h.settings.Providers.AWS.EC2Keys,
 		MaxExecTimeoutSecs: h.settings.TaskLimits.MaxExecTimeoutSecs,
@@ -135,11 +134,7 @@ func (h *agentCheckGetPullRequestHandler) Parse(ctx context.Context, r *http.Req
 }
 
 func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Responder {
-	token, err := h.settings.GetGithubOauthToken()
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting token"))
-	}
-	pr, err := thirdparty.GetGithubPullRequest(ctx, token, h.req.Owner, h.req.Repo, h.req.PRNum)
+	pr, err := thirdparty.GetGithubPullRequest(ctx, h.req.Owner, h.req.Repo, h.req.PRNum)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
@@ -350,6 +345,24 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("task has already reached the maximum (%d) number of automatic restarts", evergreen.MaxAutomaticRestarts),
 		})
+	}
+	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, false)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s' for version '%s'", t.Project, t.Version))
+	}
+	if projectRef == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    errors.Errorf("project '%s' not found", t.Project).Error(),
+		})
+	}
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
+	}
+	maxDailyAutoRestarts := settings.TaskLimits.MaxDailyAutomaticRestarts
+	if err = projectRef.CheckAndUpdateAutoRestartLimit(maxDailyAutoRestarts); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "checking auto restart limit for '%s'", projectRef.Id))
 	}
 	if err = taskToRestart.SetResetWhenFinishedWithInc(); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting reset when finished for task '%s'", h.taskID))
@@ -574,7 +587,7 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("parser project '%s' not found", v.Id),
 		})
 	}
-	projBytes, err := bson.Marshal(pp)
+	projBytes, err := pp.RetryMarshalBSON(5)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "marshalling project bytes to bson"))
 	}
@@ -1086,21 +1099,21 @@ func (h *gitServePatchFileHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewTextResponse(patchContents)
 }
 
-// GET /task/{task_id}/git/patch
-type gitServePatchHandler struct {
+// GET /task/{task_id}/patch
+type servePatchHandler struct {
 	taskID  string
 	patchID string
 }
 
-func makeGitServePatch() gimlet.RouteHandler {
-	return &gitServePatchHandler{}
+func makeServePatch() gimlet.RouteHandler {
+	return &servePatchHandler{}
 }
 
-func (h *gitServePatchHandler) Factory() gimlet.RouteHandler {
-	return &gitServePatchHandler{}
+func (h *servePatchHandler) Factory() gimlet.RouteHandler {
+	return &servePatchHandler{}
 }
 
-func (h *gitServePatchHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *servePatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task ID")
 	}
@@ -1110,7 +1123,7 @@ func (h *gitServePatchHandler) Parse(ctx context.Context, r *http.Request) error
 	return nil
 }
 
-func (h *gitServePatchHandler) Run(ctx context.Context) gimlet.Responder {
+func (h *servePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if h.patchID == "" {
 		t, err := task.FindOneId(h.taskID)
 		if err != nil {
@@ -1168,6 +1181,52 @@ func (h *gitServePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(p)
+}
+
+// GET /task/{task_id}/version
+type serveVersionHandler struct {
+	taskID string
+}
+
+func makeServeVersion() gimlet.RouteHandler {
+	return &serveVersionHandler{}
+}
+
+func (h *serveVersionHandler) Factory() gimlet.RouteHandler {
+	return &serveVersionHandler{}
+}
+
+func (h *serveVersionHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	return nil
+}
+
+func (h *serveVersionHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+
+	v, err := model.VersionFindOneId(t.Version)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", t.Version))
+	}
+	if v == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("version with ID '%s' not found", t.Version),
+		})
+	}
+
+	return gimlet.NewJSONResponse(v)
 }
 
 // POST /task/{task_id}/keyval/inc
@@ -1504,7 +1563,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 
 	gh := p.GithubPatchData
 	if t.CheckRunId != nil {
-		_, err := thirdparty.UpdateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, env.Settings().ApiUrl, utility.FromInt64Ptr(t.CheckRunId), t, h.checkRunOutput)
+		_, err := thirdparty.UpdateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, env.Settings().Api.URL, utility.FromInt64Ptr(t.CheckRunId), t, h.checkRunOutput)
 		if err != nil {
 			errorMessage := fmt.Sprintf("updating checkRun for task: '%s'", t.Id)
 			grip.Error(message.Fields{
@@ -1518,7 +1577,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(fmt.Sprintf("Successfully updated check run for  '%v'", t.Id))
 	}
 
-	checkRun, err := thirdparty.CreateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, gh.HeadHash, env.Settings().ApiUrl, t, h.checkRunOutput)
+	checkRun, err := thirdparty.CreateCheckRun(ctx, gh.BaseOwner, gh.BaseRepo, gh.HeadHash, env.Settings().Api.URL, t, h.checkRunOutput)
 
 	if err != nil {
 		errorMessage := fmt.Sprintf("creating checkRun for task: '%s'", t.Id)
@@ -1664,7 +1723,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	}
 
 	// The token also should use the project's GitHub app.
-	githubAppAuth, err := githubapp.FindOneGithubAppAuth(t.Project)
+	githubAppAuth, err := p.GetGitHubAppAuth()
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}

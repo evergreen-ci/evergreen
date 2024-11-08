@@ -184,7 +184,7 @@ var (
 
 	addDisplayStatus = bson.M{
 		"$addFields": bson.M{
-			DisplayStatusKey: displayStatusExpression,
+			DisplayStatusKey: DisplayStatusExpression,
 		},
 	}
 
@@ -201,7 +201,7 @@ var (
 	}
 
 	// This should reflect Task.GetDisplayStatus()
-	displayStatusExpression = bson.M{
+	DisplayStatusExpression = bson.M{
 		"$switch": bson.M{
 			"branches": []bson.M{
 				{
@@ -1916,7 +1916,7 @@ func addStatusColorSort(key string) bson.M {
 						},
 						{
 							"case": bson.M{
-								"$in": []interface{}{"$" + key, []string{evergreen.TaskSystemFailed, evergreen.TaskSystemUnresponse, evergreen.TaskSystemTimedOut}},
+								"$in": []interface{}{"$" + key, evergreen.TaskSystemFailureStatuses},
 							},
 							"then": 4, // purple
 						},

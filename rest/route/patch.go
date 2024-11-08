@@ -687,11 +687,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	var project *dbModel.Project
 	var err error
 	if dbVersion == nil {
-		githubOauthToken, err := p.env.Settings().GetGithubOauthToken()
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting GitHub OAuth token"))
-		}
-		project, _, err = dbModel.GetPatchedProject(ctx, p.env.Settings(), &p.patch, githubOauthToken)
+		project, _, err = dbModel.GetPatchedProject(ctx, p.env.Settings(), &p.patch)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project for patch '%s'", p.patchId))
 		}

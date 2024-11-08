@@ -248,6 +248,19 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 
+		nextTaskResponse.EstimatedMaxIdleDuration = h.host.Distro.HostAllocatorSettings.AcceptableHostIdleTime
+		if nextTaskResponse.EstimatedMaxIdleDuration == 0 {
+			schedulerConfig := evergreen.SchedulerConfig{}
+			err := schedulerConfig.Get(ctx)
+
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem getting scheduler config for idle threshold to send for next task",
+			}))
+			if err == nil {
+				nextTaskResponse.EstimatedMaxIdleDuration = time.Duration(schedulerConfig.AcceptableHostIdleTimeSeconds) * time.Second
+			}
+		}
+
 		return gimlet.NewJSONResponse(nextTaskResponse)
 	}
 
@@ -1240,7 +1253,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 
 	// Disable hosts and prevent them from performing more work if they have
 	// system failed many tasks in a row.
-	if event.AllRecentHostEventsMatchStatus(ctx, currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
+	if event.AllRecentHostEventsAreSystemFailed(ctx, currentHost.Id, consecutiveSystemFailureThreshold) {
 		msg := fmt.Sprintf("host encountered %d consecutive system failures", consecutiveSystemFailureThreshold)
 		grip.Error(message.WrapError(units.HandlePoisonedHost(ctx, h.env, currentHost, msg), message.Fields{
 			"message": "unable to disable poisoned host",

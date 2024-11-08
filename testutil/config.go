@@ -150,8 +150,8 @@ func MockConfig() *evergreen.Settings {
 		Api: evergreen.APIConfig{
 			HttpListenAddr:      "addr",
 			GithubWebhookSecret: "secret",
+			URL:                 "api",
 		},
-		ApiUrl: "api",
 		AuthConfig: evergreen.AuthConfig{
 			Okta: &evergreen.OktaConfig{
 				ClientID:           "id",
@@ -189,6 +189,10 @@ func MockConfig() *evergreen.Settings {
 				Name: "logs",
 				Type: evergreen.BucketTypeS3,
 			},
+			Credentials: evergreen.S3Credentials{
+				Key:    "aws_key",
+				Secret: "aws_secret",
+			},
 		},
 		Cedar: evergreen.CedarConfig{
 			BaseURL: "url.com",
@@ -212,7 +216,6 @@ func MockConfig() *evergreen.Settings {
 				},
 			},
 		},
-		Credentials:        map[string]string{"k1": "v1"},
 		DomainName:         "example.com",
 		Expansions:         map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg: "org",
@@ -288,10 +291,6 @@ func MockConfig() *evergreen.Settings {
 				},
 				DefaultSecurityGroup: "test_security_group",
 				MaxVolumeSizePerUser: 200,
-				TaskOutput: evergreen.S3Credentials{
-					Key:    "aws_key",
-					Secret: "aws_secret",
-				},
 				ParserProject: evergreen.ParserProjectS3Config{
 					S3Credentials: evergreen.S3Credentials{
 						Bucket: "parser_project_bucket",

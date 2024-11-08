@@ -1,0 +1,13 @@
+{
+  "tests": [
+    {
+      "query_file": "is_repo.graphql",
+      "result": {
+        "data": {
+          "repo": true,
+          "project": false
+        }
+      }
+    }
+  ]
+}

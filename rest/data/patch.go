@@ -125,12 +125,7 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 	}
 	if activated && p.Version == "" {
 		requester := p.GetRequester()
-
-		token, err := settings.GetGithubOauthToken()
-		if err != nil {
-			return errors.Wrap(err, "getting GitHub OAuth token from admin settings")
-		}
-		if _, err = model.FinalizePatch(ctx, p, requester, token); err != nil {
+		if _, err = model.FinalizePatch(ctx, p, requester); err != nil {
 			return errors.Wrapf(err, "finalizing patch '%s'", p.Id.Hex())
 		}
 		if requester == evergreen.PatchVersionRequester {

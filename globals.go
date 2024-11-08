@@ -146,7 +146,7 @@ const (
 	// because it was manually aborted.
 	TaskDescriptionAborted = "aborted"
 
-	// Task Statuses that are currently used only by the UI, and in tests
+	// Task Statuses that are only used by the UI, event log  and tests
 	// (these may be used in old tasks as actual task statuses rather than just
 	// task display statuses).
 	TaskSystemUnresponse = "system-unresponsive"
@@ -404,6 +404,13 @@ var TaskStatuses = []string{
 	TaskDispatched,
 }
 
+// TaskSystemFailureStatuses contains only system failure statuses used by the UI and event logs.
+var TaskSystemFailureStatuses = []string{
+	TaskSystemFailed,
+	TaskSystemUnresponse,
+	TaskSystemTimedOut,
+}
+
 var InternalAliases = []string{
 	CommitQueueAlias,
 	GithubPRAlias,
@@ -501,6 +508,7 @@ const (
 	VersionMakespanSecondsOtelAttribute  = "evergreen.version.makespan_seconds"
 	VersionTimeTakenSecondsOtelAttribute = "evergreen.version.time_taken_seconds"
 	VersionPRNumOtelAttribute            = "evergreen.version.pr_num"
+	VersionDescriptionOtelAttribute      = "evergreen.version.description"
 
 	// build otel attributes
 	BuildIDOtelAttribute   = "evergreen.build.id"

@@ -267,8 +267,9 @@ func (c *baseCommunicator) GetDistroAMI(ctx context.Context, distro, region stri
 
 func (c *baseCommunicator) GetProject(ctx context.Context, taskData TaskData) (*model.Project, error) {
 	info := requestInfo{
-		method:   http.MethodGet,
-		taskData: &taskData,
+		method:             http.MethodGet,
+		taskData:           &taskData,
+		retryOnInvalidBody: true, // This route has returned an invalid body for older distros. See DEVPROD-7885.
 	}
 	info.setTaskPathSuffix("parser_project")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -277,15 +278,12 @@ func (c *baseCommunicator) GetProject(ctx context.Context, taskData TaskData) (*
 	}
 	defer resp.Body.Close()
 
-	// Retry reading body since it may error on certain distros for certain go versions.
-	for i := 0; i < c.retry.MaxAttempts; i++ {
-		var respBytes []byte
-		respBytes, err = io.ReadAll(resp.Body)
-		if err == nil {
-			return model.GetProjectFromBSON(respBytes)
-		}
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading parser project from response")
 	}
-	return nil, errors.Wrap(err, "reading parser project from response")
+
+	return model.GetProjectFromBSON(respBytes)
 }
 
 func (c *baseCommunicator) GetExpansions(ctx context.Context, taskData TaskData) (util.Expansions, error) {
@@ -459,14 +457,14 @@ func (c *baseCommunicator) GetPullRequestInfo(ctx context.Context, taskData Task
 // GetTaskPatch tries to get the patch data from the server in json format,
 // and unmarhals it into a patch struct. The GET request is attempted
 // multiple times upon failure. If patchId is not specified, the task's
-// patch is returned
+// patch is returned.
 func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, patchId string) (*patchmodel.Patch, error) {
 	patch := patchmodel.Patch{}
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
 	}
-	suffix := "git/patch"
+	suffix := "patch"
 	if patchId != "" {
 		suffix = fmt.Sprintf("%s?patch=%s", suffix, patchId)
 	}
@@ -482,6 +480,30 @@ func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, 
 	}
 
 	return &patch, nil
+}
+
+// GetTaskVersion tries to get the patch data from the server in json format,
+// and unmarhals it into a version struct. The GET request is attempted
+// multiple times upon failure. The route can only retrieve the calling task's version.
+func (c *baseCommunicator) GetTaskVersion(ctx context.Context, taskData TaskData) (*model.Version, error) {
+	info := requestInfo{
+		method:   http.MethodGet,
+		taskData: &taskData,
+	}
+	suffix := "version"
+	info.setTaskPathSuffix(suffix)
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting version for task").Error())
+	}
+	defer resp.Body.Close()
+
+	version := model.Version{}
+	if err = utility.ReadJSON(resp.Body, &version); err != nil {
+		return nil, errors.Wrap(err, "reading version for task from response")
+	}
+
+	return &version, nil
 }
 
 // GetCedarConfig returns the Cedar service configuration.

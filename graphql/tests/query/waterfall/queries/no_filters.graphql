@@ -1,16 +1,15 @@
 {
   waterfall(options: { projectIdentifier: "spruce-identifier" }) {
-    nextPageOrder
-    prevPageOrder
     buildVariants {
       builds {
         activated
         id
         tasks {
-          status
           id
           displayName
+          displayStatus
           execution
+          status
         }
         version
       }
@@ -30,6 +29,10 @@
         id
         order
       }
+    }
+    pagination {
+      nextPageOrder
+      prevPageOrder
     }
   }
 }

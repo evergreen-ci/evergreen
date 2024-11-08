@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
@@ -104,7 +105,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	evergreen.SetEnvironment(s.env)
 	s.NoError(evergreen.UpdateConfig(s.ctx, s.env.Settings()))
 
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, model.ProjectVarsCollection,
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, task.Collection, model.ProjectVarsCollection, fakeparameter.Collection,
 		model.ParserProjectCollection, model.VersionCollection, user.Collection, model.ProjectRefCollection,
 		model.ProjectAliasCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection, distro.Collection))
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
@@ -128,6 +129,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 				TaskSpecifiers: []patch.TaskSpecifier{{PatchAlias: "childProj-patch-alias"}},
 			},
 		},
+		ParameterStoreEnabled: true,
 	}).Insert())
 
 	s.NoError((&model.ProjectRef{
@@ -143,16 +145,18 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 			Enabled: utility.TruePtr(),
 		},
 		OldestAllowedMergeBase: "536cde7f7b29f7e117371a48a3e59540a44af1ac",
+		ParameterStoreEnabled:  true,
 	}).Insert())
 
 	s.NoError((&model.ProjectRef{
-		Id:         "childProj",
-		Identifier: "childProj",
-		Owner:      "evergreen-ci",
-		Repo:       "evergreen",
-		Branch:     "main",
-		Enabled:    true,
-		RemotePath: "self-tests.yml",
+		Id:                    "childProj",
+		Identifier:            "childProj",
+		Owner:                 "evergreen-ci",
+		Repo:                  "evergreen",
+		Branch:                "main",
+		Enabled:               true,
+		RemotePath:            "self-tests.yml",
+		ParameterStoreEnabled: true,
 	}).Insert())
 
 	s.NoError((&user.DBUser{
@@ -385,53 +389,6 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithDisabledCommitQueue() {
 	s.Error(err)
 	s.NotEmpty(j.gitHubError)
 	s.Equal(j.gitHubError, commitQueueDisabled)
-}
-
-func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoProject() {
-	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
-	headRef := "refs/heads/gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
-	orgName := "evergreen-ci"
-	repoName := "commit-queue-sandbox"
-	headSHA := "foo"
-	baseSHA := "bar"
-
-	disabledMergeQueueProject := model.ProjectRef{
-		Id: repoName,
-		CommitQueue: model.CommitQueueParams{
-			Enabled: utility.FalsePtr(),
-		},
-	}
-	s.Require().NoError(disabledMergeQueueProject.Upsert())
-
-	org := github.Organization{
-		Login: &orgName,
-	}
-	repo := github.Repository{
-		Name: &repoName,
-	}
-	mg := github.MergeGroup{
-		HeadSHA: &headSHA,
-		HeadRef: &headRef,
-		BaseSHA: &baseSHA,
-	}
-	mge := github.MergeGroupEvent{
-		MergeGroup: &mg,
-		Org:        &org,
-		Repo:       &repo,
-	}
-	intent, err := patch.NewGithubMergeIntent("id", "auto", &mge)
-
-	s.NoError(err)
-	s.Require().NotNil(intent)
-	s.NoError(intent.Insert())
-
-	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
-
-	patchDoc := intent.NewPatch()
-	err = j.finishPatch(s.ctx, patchDoc)
-	s.Error(err)
-	s.Equal("building GitHub merge queue patch document: project ref for repo 'evergreen-ci/commit-queue-sandbox' with branch 'main' not found", err.Error())
-	s.Empty(j.gitHubError)
 }
 
 func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
@@ -1280,7 +1237,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
-	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, "", s.githubPatchData)
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, s.githubPatchData)
 	s.Require().NoError(err)
 	s.Require().Len(summaries, 2)
 	s.NotEmpty(patchContent)
@@ -1347,7 +1304,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
 
-	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, "", s.githubPatchData)
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(s.ctx, s.githubPatchData)
 	s.Require().NoError(err)
 	s.Require().Len(summaries, 2)
 	s.NotEmpty(patchContent)

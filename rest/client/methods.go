@@ -1513,10 +1513,12 @@ func (c *communicatorImpl) PostHostIsUp(ctx context.Context, ec2InstanceID strin
 	if err != nil {
 		return nil, errors.Wrap(err, "creating request")
 	}
-	resp, err := utility.RetryRequest(ctx, r, utility.RetryOptions{
-		MaxAttempts: c.maxAttempts,
-		MinDelay:    c.timeoutStart,
-		MaxDelay:    c.timeoutMax,
+	resp, err := utility.RetryRequest(ctx, r, utility.RetryRequestOptions{
+		RetryOptions: utility.RetryOptions{
+			MaxAttempts: c.maxAttempts,
+			MinDelay:    c.timeoutStart,
+			MaxDelay:    c.timeoutMax,
+		},
 	})
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrapf(err, "sending request to indicate host '%s' is up", c.hostID).Error())
@@ -1541,10 +1543,12 @@ func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context) (*res
 	if err != nil {
 		return nil, errors.Wrap(err, "creating request")
 	}
-	resp, err := utility.RetryRequest(ctx, r, utility.RetryOptions{
-		MaxAttempts: c.maxAttempts,
-		MinDelay:    c.timeoutStart,
-		MaxDelay:    c.timeoutMax,
+	resp, err := utility.RetryRequest(ctx, r, utility.RetryRequestOptions{
+		RetryOptions: utility.RetryOptions{
+			MaxAttempts: c.maxAttempts,
+			MinDelay:    c.timeoutStart,
+			MaxDelay:    c.timeoutMax,
+		},
 	})
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrapf(err, "sending request to get provisioning options for host '%s'", c.hostID).Error())
