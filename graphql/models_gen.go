@@ -1039,20 +1039,18 @@ func (e FinderVersion) MarshalGQL(w io.Writer) {
 type HostAccessLevel string
 
 const (
-	HostAccessLevelEdit      HostAccessLevel = "EDIT"
-	HostAccessLevelView      HostAccessLevel = "VIEW"
-	HostAccessLevelSpawnEdit HostAccessLevel = "SPAWN_EDIT"
+	HostAccessLevelEdit HostAccessLevel = "EDIT"
+	HostAccessLevelView HostAccessLevel = "VIEW"
 )
 
 var AllHostAccessLevel = []HostAccessLevel{
 	HostAccessLevelEdit,
 	HostAccessLevelView,
-	HostAccessLevelSpawnEdit,
 }
 
 func (e HostAccessLevel) IsValid() bool {
 	switch e {
-	case HostAccessLevelEdit, HostAccessLevelView, HostAccessLevelSpawnEdit:
+	case HostAccessLevelEdit, HostAccessLevelView:
 		return true
 	}
 	return false
