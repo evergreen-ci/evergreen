@@ -489,7 +489,7 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error 
 		return errors.Wrapf(err, "finding original project vars for project '%s'", projectID)
 	}
 	if before == nil {
-		before = &ProjectVars{}
+		before = &ProjectVars{Id: projectID}
 	}
 
 	varsToUpsert, varsToDelete := getProjectVarsDiff(before, after)
@@ -732,7 +732,7 @@ func FullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *Proj
 		return errors.Wrapf(err, "finding original project vars for project '%s'", vars.Id)
 	}
 	if before == nil {
-		before = &ProjectVars{}
+		before = &ProjectVars{Id: vars.Id}
 	}
 
 	grip.Debug(message.Fields{
@@ -788,7 +788,7 @@ func (projectVars *ProjectVars) Insert() error {
 
 // insertParameterStore inserts all project variables into Parameter Store.
 func insertParameterStore(ctx context.Context, vars *ProjectVars, pRef *ProjectRef, isRepoRef bool) error {
-	before := &ProjectVars{}
+	before := &ProjectVars{Id: vars.Id}
 	after := vars
 	varsToUpsert, _ := getProjectVarsDiff(before, after)
 
@@ -883,7 +883,7 @@ func (projectVars *ProjectVars) findAndModifyParameterStore(ctx context.Context,
 		return errors.Wrapf(err, "finding original project vars for project '%s'", projectID)
 	}
 	if before == nil {
-		before = &ProjectVars{}
+		before = &ProjectVars{Id: projectID}
 	}
 
 	// Ignore the vars that are deleted between before and after because

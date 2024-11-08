@@ -67,7 +67,7 @@ func (j *parameterStoreSyncJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "finding project refs to sync"))
 		return
 	}
-	j.sync(ctx, pRefs, false)
+	j.AddError(errors.Wrap(j.sync(ctx, pRefs, false), "syncing project variables for branch project refs"))
 
 	repoRefs, err := model.FindRepoRefsToSync(ctx)
 	if err != nil {
@@ -79,14 +79,15 @@ func (j *parameterStoreSyncJob) Run(ctx context.Context) {
 	for _, repoRef := range repoRefs {
 		repoProjRefs = append(repoProjRefs, repoRef.ProjectRef)
 	}
-	j.sync(ctx, repoProjRefs, true)
+	j.AddError(errors.Wrap(j.sync(ctx, repoProjRefs, true), "syncing project variables for repo refs"))
 }
 
-func (j *parameterStoreSyncJob) sync(ctx context.Context, pRefs []model.ProjectRef, areRepoRefs bool) {
+func (j *parameterStoreSyncJob) sync(ctx context.Context, pRefs []model.ProjectRef, areRepoRefs bool) error {
+	catcher := grip.NewBasicCatcher()
 	for _, pRef := range pRefs {
 		pVars, err := model.FindOneProjectVars(pRef.Id)
 		if err != nil {
-			j.AddError(errors.Wrapf(err, "finding project vars for project '%s'", pRef.Id))
+			catcher.Wrapf(err, "finding project vars for project '%s'", pRef.Id)
 			continue
 		}
 		if pVars == nil {
@@ -99,8 +100,8 @@ func (j *parameterStoreSyncJob) sync(ctx context.Context, pRefs []model.ProjectR
 			pVars = &model.ProjectVars{Id: pRef.Id}
 		}
 		if err := model.FullSyncToParameterStore(ctx, pVars, &pRef, areRepoRefs); err != nil {
-			j.AddError(errors.Wrapf(err, "finding project vars for project '%s'", pRef.Id))
+			catcher.Wrapf(err, "syncing project vars for project '%s'", pRef.Id)
 		}
 	}
-	return
+	return catcher.Resolve()
 }
