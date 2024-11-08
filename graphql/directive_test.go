@@ -295,7 +295,7 @@ func TestRequireHostAccess(t *testing.T) {
 				nextCalled = true
 				return nil, nil
 			}
-			obj := interface{}(map[string]interface{}{"hostId": "host1"})
+			obj := interface{}(map[string]interface{}{"hostId": "host2"})
 			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelEdit)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
@@ -312,13 +312,20 @@ func TestRequireHostAccess(t *testing.T) {
 			ctx = gimlet.AttachUser(ctx, usr)
 			assert.NotNil(t, ctx)
 			h1 := host.Host{
-				Id:        "host1",
-				StartedBy: "testuser",
+				Id: "host1",
 				Distro: distro.Distro{
 					Id: "distro-id",
 				},
 			}
 			assert.NoError(t, h1.Insert(ctx))
+			h2 := host.Host{
+				Id:        "host2",
+				StartedBy: "testuser",
+				Distro: distro.Distro{
+					Id: "distro-id",
+				},
+			}
+			assert.NoError(t, h2.Insert(ctx))
 			config := New("/graphql")
 			assert.NotNil(t, config)
 			next := func(rctx context.Context) (interface{}, error) {
