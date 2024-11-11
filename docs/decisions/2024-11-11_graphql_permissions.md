@@ -14,7 +14,7 @@ An investigation revealed that the GraphQL API only had partial support for proj
 | :------------- | :------------- |
 | View/Edit access to project settings | ✅ |
 | View/Edit access to project tasks | ❌ |
-| View/Edit access to project task annotations | ❌ |
+| View/Edit access to project annotations | ❌ |
 | View/Edit access to project patches | ❌ |
 | View access to project logs | ❌ |
 
