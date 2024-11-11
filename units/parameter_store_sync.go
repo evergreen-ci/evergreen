@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -88,6 +89,15 @@ func (j *parameterStoreSyncJob) sync(ctx context.Context, pRefs []model.ProjectR
 		if err != nil {
 			catcher.Wrapf(err, "finding project vars for project '%s'", pRef.Id)
 			continue
+		}
+		if pVars == nil {
+			grip.Notice(message.Fields{
+				"message":     "found project that has no project vars, initializing with empty project vars",
+				"project":     pRef.Id,
+				"is_repo_ref": areRepoRefs,
+				"job":         j.ID(),
+			})
+			pVars = &model.ProjectVars{Id: pRef.Id}
 		}
 		if err := model.FullSyncToParameterStore(ctx, pVars, &pRef, areRepoRefs); err != nil {
 			catcher.Wrapf(err, "syncing project vars for project '%s'", pRef.Id)
