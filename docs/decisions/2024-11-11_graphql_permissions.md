@@ -6,23 +6,26 @@
 
 ## Context and Problem Statement
 
-In February 2024, it was brought to the attention of the Evergreen team that all users had the ability to modify tasks and patches in restricted projects on Spruce ([DEVPROD-5221](https://jira.mongodb.org/browse/DEVPROD-5221)). Notably, this behavior differed from that of the legacy UI, which correctly enforced project permissions.
+Ticket: [DEVPROD-5221](https://jira.mongodb.org/browse/DEVPROD-5221)
 
-An investigation revealed that the GraphQL API only had partial support for project permissions, i.e.:
-* Not implemented:
-    * View/edit access to project tasks.
-    * View/edit access to project task annotations.
-    * View/edit access to project patches.
-    * View access to project logs.
-* Implemented:
-    * View/edit access to project settings.
+In February 2024, it was brought to the attention of the Evergreen team that all users had the ability to modify tasks and patches in restricted projects on Spruce. Notably, this behavior differed from that of the legacy UI, which correctly enforced project permissions.
+
+An investigation revealed that the GraphQL API only had partial support for project permissions, as shown by the table below:
+
+| Project Permission | Implemented |
+| ------------- | ------------- |
+| View/edit access to project settings | ✅ |
+| View/edit access to project tasks | ❌ |
+| View/edit access to project task annotations | ❌ |
+| View/edit access to project patches | ❌ |
+| View access to project logs | ❌ |
 
 This meant that the Evergreen team needed to retroactively add the missing permission logic to the GraphQL API, which had already undergone significant development since its introduction.
 
 ## Decision Outcome
 ### Mirroring the REST API
 To enforce project permissions, the REST API uses a middleware function called [`RequiresProjectPermission`](https://github.com/evergreen-ci/evergreen/blob/af18e60d63f99d5c0fbfe4679d86a96829bc7098/rest/route/middleware.go#L605-L615). This function has two main roles:   
-1. Determine the project ID from the given path parameters (e.g. `version_id`, `task_id`) via [`urlVarsToProjectScopes`](https://github.com/evergreen-ci/evergreen/blob/af18e60d63f99d5c0fbfe4679d86a96829bc7098/rest/route/middleware.go#L639). 
+1. Determine the project ID from the given path parameters via [`urlVarsToProjectScopes`](https://github.com/evergreen-ci/evergreen/blob/af18e60d63f99d5c0fbfe4679d86a96829bc7098/rest/route/middleware.go#L639). 
 2. Check the user's permission for the project associated with that ID.
 
 Since [directives](https://the-guild.dev/graphql/tools/docs/schema-directives) were already being used as a form of access control in the GraphQL schema, the team decided to implement a new directive that would mirror the functionality of `RequiresProjectPermission`. Directives are evaluated before the execution of a query or mutation and can be used as middleware to restrict access.
@@ -35,4 +38,4 @@ The REST API's implementation relies on uniform path parameter names. For exampl
 Before any permission work could be completed, all queries and mutations had to be updated with more descriptive argument names (e.g. `taskId`, `versionId`, `distroId`) to identify the target object. This work was completed in [DEVPROD-5460](https://jira.mongodb.org/browse/DEVPROD-5460).
 
 ## More Information
-For more information about completed and ongoing GraphQL permissions work, please refer to [this document](https://docs.google.com/document/d/10xqHg94Ynqcd33-qSkK6XtelGcajGWteNBdG-gUGUHI/edit?usp=sharing).
+For more information about completed and ongoing GraphQL permission work, please refer to [this document](https://docs.google.com/document/d/10xqHg94Ynqcd33-qSkK6XtelGcajGWteNBdG-gUGUHI/edit?usp=sharing).
