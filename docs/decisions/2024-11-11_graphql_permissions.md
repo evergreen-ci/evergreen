@@ -10,15 +10,19 @@ Ticket: [DEVPROD-5221](https://jira.mongodb.org/browse/DEVPROD-5221)
 
 In February 2024, it was brought to the attention of the Evergreen team that all users had the ability to modify tasks and patches in restricted projects on Spruce. Notably, this behavior differed from that of the legacy UI, which correctly enforced project permissions.
 
-An investigation revealed that the GraphQL API only had partial support for project permissions, as shown by the table below:
+An investigation revealed that the GraphQL API only had partial support for project permissions, i.e.:
+
+<center>
 
 | Project Permission | Implemented |
-| ------------- | ------------- |
+| :------------- | :------------- |
 | View/edit access to project settings | ✅ |
 | View/edit access to project tasks | ❌ |
 | View/edit access to project task annotations | ❌ |
 | View/edit access to project patches | ❌ |
 | View access to project logs | ❌ |
+
+</center>
 
 This meant that the Evergreen team needed to retroactively add the missing permission logic to the GraphQL API, which had already undergone significant development since its introduction.
 
