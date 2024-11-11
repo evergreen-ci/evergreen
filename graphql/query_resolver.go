@@ -747,44 +747,6 @@ func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSet
 	return &userSettings, nil
 }
 
-// CommitQueue is the resolver for the commitQueue field.
-func (r *queryResolver) CommitQueue(ctx context.Context, projectIdentifier string) (*restModel.APICommitQueue, error) {
-	commitQueue, err := data.FindCommitQueueForProject(projectIdentifier)
-	if err != nil {
-		if werrors.Cause(err) == err {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding commit queue for %s: %s", projectIdentifier, err.Error()))
-		}
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding commit queue for %s: %s", projectIdentifier, err.Error()))
-	}
-	project, err := data.FindProjectById(projectIdentifier, true, true)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project %s: %s", projectIdentifier, err.Error()))
-	}
-	if project.CommitQueue.Message != "" {
-		commitQueue.Message = &project.CommitQueue.Message
-	}
-	commitQueue.Owner = &project.Owner
-	commitQueue.Repo = &project.Repo
-
-	for i, item := range commitQueue.Queue {
-		patchId := ""
-		if utility.FromStringPtr(item.Version) != "" {
-			patchId = utility.FromStringPtr(item.Version)
-		} else if utility.FromStringPtr(item.PatchId) != "" {
-			patchId = utility.FromStringPtr(item.PatchId)
-		}
-
-		if patchId != "" {
-			p, err := data.FindPatchById(patchId)
-			if err != nil {
-				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding patch: %s", err.Error()))
-			}
-			commitQueue.Queue[i].Patch = p
-		}
-	}
-	return commitQueue, nil
-}
-
 // BuildVariantsForTaskName is the resolver for the buildVariantsForTaskName field.
 func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectIdentifier string, taskName string) ([]*task.BuildVariantTuple, error) {
 	pid, err := model.GetIdForProject(projectIdentifier)

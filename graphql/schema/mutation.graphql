@@ -50,8 +50,6 @@ type Mutation {
     notes: String = ""
   ): Int!
 
-  # patch
-  enqueuePatch(patchId: String! @requireProjectAccess(permission: PATCHES, access: EDIT), commitMessage: String): Patch!
   """
   setPatchVisibility takes a list of patch ids and a boolean to set the visibility on the my patches queries
   """
@@ -108,9 +106,6 @@ type Mutation {
     updateInfo: PublicKeyInput!
   ): [PublicKey!]!
   updateUserSettings(userSettings: UserSettingsInput): Boolean!
-
-  # commit queue
-  removeItemFromCommitQueue(commitQueueId: String!, issue: String! @requireCommitQueueItemOwner): String
 
   # version
   restartVersions(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]

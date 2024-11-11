@@ -60,36 +60,6 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 	return apiBuilds, nil
 }
 
-// CanEnqueueToCommitQueue is the resolver for the canEnqueueToCommitQueue field.
-func (r *patchResolver) CanEnqueueToCommitQueue(ctx context.Context, obj *restModel.APIPatch) (bool, error) {
-	patchID := utility.FromStringPtr(obj.Id)
-	p, err := patch.FindOneId(patchID)
-	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchID, err.Error()))
-	}
-	if p == nil {
-		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
-	}
-
-	proj, err := model.FindMergedProjectRef(p.Project, p.Version, false)
-	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("getting project '%s': %s", p.Project, err.Error()))
-	}
-	if proj == nil {
-		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", p.Project))
-	}
-	// Projects that use the GitHub merge queue cannot enqueue to the commit queue.
-	return (p.HasValidGitInfo() || p.IsGithubPRPatch()) && proj.CommitQueue.MergeQueue != model.MergeQueueGitHub, nil
-}
-
-// CommitQueuePosition is the resolver for the commitQueuePosition field.
-func (r *patchResolver) CommitQueuePosition(ctx context.Context, obj *restModel.APIPatch) (*int, error) {
-	if err := obj.GetCommitQueuePosition(); err != nil {
-		return nil, InternalServerError.Send(ctx, err.Error())
-	}
-	return obj.CommitQueuePosition, nil
-}
-
 // Duration is the resolver for the duration field.
 func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
 	query := db.Query(task.ByVersion(*obj.Id)).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)

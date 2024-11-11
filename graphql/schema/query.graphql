@@ -83,9 +83,6 @@ type Query {
   userConfig: UserConfig
   userSettings: UserSettings
 
-  # commit queue
-  commitQueue(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)): CommitQueue!
-
   # mainline commits
   buildVariantsForTaskName(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW), taskName: String!): [BuildVariantTuple!]
   mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits # Has directive on MainlineCommitsOptions.
