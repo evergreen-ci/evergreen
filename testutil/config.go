@@ -107,12 +107,8 @@ func loadConfig(path ...string) *evergreen.Settings {
 func MockConfig() *evergreen.Settings {
 	return &evergreen.Settings{
 		Amboy: evergreen.AmboyConfig{
-			Name:       "amboy",
-			SingleName: "single",
-			DBConnection: evergreen.AmboyDBConfig{
-				Database: "db",
-				URL:      "mongodb://localhost:27017",
-			},
+			Name:                                  "amboy",
+			SingleName:                            "single",
 			PoolSizeLocal:                         10,
 			PoolSizeRemote:                        20,
 			LocalStorage:                          30,
@@ -146,6 +142,10 @@ func MockConfig() *evergreen.Settings {
 					LockTimeoutSeconds: 50,
 				},
 			},
+		},
+		AmboyDB: evergreen.AmboyDBConfig{
+			Database: "db",
+			URL:      "mongodb://localhost:27017",
 		},
 		Api: evergreen.APIConfig{
 			HttpListenAddr:      "addr",

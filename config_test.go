@@ -212,12 +212,8 @@ func (s *AdminSuite) TestAmboyConfig() {
 	defer cancel()
 
 	config := AmboyConfig{
-		Name:       "amboy",
-		SingleName: "single",
-		DBConnection: AmboyDBConfig{
-			URL:      "mongodb://localhost:27017",
-			Database: "db",
-		},
+		Name:                                  "amboy",
+		SingleName:                            "single",
 		PoolSizeLocal:                         10,
 		PoolSizeRemote:                        20,
 		LocalStorage:                          30,
@@ -235,6 +231,23 @@ func (s *AdminSuite) TestAmboyConfig() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Amboy)
+}
+
+func (s *AdminSuite) TestAdminDBConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config := AmboyDBConfig{
+		URL:      "mongodb://localhost:27017",
+		Database: "db",
+	}
+
+	err := config.Set(ctx)
+	s.NoError(err)
+	settings, err := GetConfig(ctx)
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.AmboyDB)
 }
 
 func (s *AdminSuite) TestApiConfig() {
