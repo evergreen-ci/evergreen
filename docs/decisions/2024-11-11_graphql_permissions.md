@@ -6,23 +6,17 @@
 
 ## Context and Problem Statement
 
-Ticket: [DEVPROD-5221](https://jira.mongodb.org/browse/DEVPROD-5221)
+In February 2024, it was brought to the attention of the Evergreen team that all users had the ability to modify tasks and patches in restricted projects on Spruce ([DEVPROD-5221](https://jira.mongodb.org/browse/DEVPROD-5221)). Notably, this behavior differed from that of the legacy UI, which correctly enforced project permissions.
 
-In February 2024, it was brought to the attention of the Evergreen team that all users had the ability to modify tasks and patches in restricted projects on Spruce. Notably, this behavior differed from that of the legacy UI, which correctly enforced project permissions.
-
-An investigation revealed that the GraphQL API only had partial support for project permissions, i.e.:
-
-<center>
+An investigation revealed that the GraphQL API only had partial support for project permissions, as outlined in the table below:
 
 | Project Permission | Implemented |
 | :------------- | :------------- |
-| View/edit access to project settings | ✅ |
-| View/edit access to project tasks | ❌ |
-| View/edit access to project task annotations | ❌ |
-| View/edit access to project patches | ❌ |
+| View/Edit access to project settings | ✅ |
+| View/Edit access to project tasks | ❌ |
+| View/Edit access to project task annotations | ❌ |
+| View/Edit access to project patches | ❌ |
 | View access to project logs | ❌ |
-
-</center>
 
 This meant that the Evergreen team needed to retroactively add the missing permission logic to the GraphQL API, which had already undergone significant development since its introduction.
 
@@ -36,7 +30,7 @@ Since [directives](https://the-guild.dev/graphql/tools/docs/schema-directives) w
 
 The [`@requireProjectAccess` directive](https://github.com/evergreen-ci/evergreen/blob/7fd7c2065599850a41b445de4b1ff75e624fa622/graphql/schema/directives.graphql#L6-L23) was introduced and applied on top of existing queries and mutations in [DEVPROD-5459](https://jira.mongodb.org/browse/DEVPROD-5459). Similar to `RequiresProjectPermission`, the directive looks up the project ID based on the provided input arguments, and then determines if the user has the appropriate permissions for that project and GraphQL operation.
 
-### Standardization of GraphQL arguments
+### Standardization of GraphQL Arguments
 The REST API's implementation relies on uniform path parameter names. For example, an operation on a task will always expect the path parameter `task_id`. This proved to be the first obstacle for implementing permission checks in the GraphQL API, as argument names were not standardized. Many queries simply used an argument of `id`, making it impossible to tell if the object being operated on was a host, a task, a patch, or otherwise.
 
 Before any permission work could be completed, all queries and mutations had to be updated with more descriptive argument names (e.g. `taskId`, `versionId`, `distroId`) to identify the target object. This work was completed in [DEVPROD-5460](https://jira.mongodb.org/browse/DEVPROD-5460).
