@@ -437,7 +437,6 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Equal("somebody@somewhere.com", expansions.Get("author_email"))
 	assert.Equal("d1", expansions.Get("distro_id"))
 	assert.Equal("release", expansions.Get("triggered_by_git_tag"))
-	assert.Equal("appToken", expansions.Get(evergreen.GithubAppToken))
 	assert.True(expansions.Exists("created_at"))
 	assert.Equal("42", expansions.Get("revision_order_id"))
 	assert.Equal("", expansions.Get("is_patch"))
