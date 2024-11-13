@@ -52,10 +52,6 @@ func (e *ProjectChangeEvent) RedactSecrets() {
 	modifiedVarKeys := e.getModifiedProjectVars()
 	e.Before.Vars.Vars = getRedactedVarsCopy(e.Before.Vars.Vars, modifiedVarKeys, evergreen.RedactedBeforeValue)
 	e.After.Vars.Vars = getRedactedVarsCopy(e.After.Vars.Vars, modifiedVarKeys, evergreen.RedactedAfterValue)
-	// kim: TODO: add test
-	// kim: TODO: test in staging
-	// kim: TODO: make sure that deleting and then re-adding the app with
-	// different credentials produces an event log change.
 	e.Before.GitHubAppAuth = getRedactedGitHubAppCopy(e.Before.GitHubAppAuth, evergreen.RedactedValue)
 	e.After.GitHubAppAuth = getRedactedGitHubAppCopy(e.After.GitHubAppAuth, evergreen.RedactedValue)
 }
