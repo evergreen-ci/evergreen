@@ -215,20 +215,11 @@ func (p *ProjectChangeEvents) RedactGitHubPrivateKey() {
 // are migrated to not store any project var values or GitHub app credentials.
 // Project change events should already redact those secret values when the log
 // is inserted into the DB (see (ProjectChangeEvent).RedactSecrets).
-func (p *ProjectChangeEvents) RedactSecrets(read bool) {
+func (p *ProjectChangeEvents) RedactSecrets() {
 	for _, event := range *p {
 		changeEvent, isChangeEvent := event.Data.(*ProjectChangeEvent)
 		if !isChangeEvent {
 			continue
-		}
-		if read {
-			grip.Debug(message.Fields{
-				"message":            "kim: read GH app creds from DB",
-				"before_private_key": string(changeEvent.Before.GitHubAppAuth.PrivateKey),
-				"before_app_id":      changeEvent.Before.GitHubAppAuth.AppID,
-				"after_private_key":  string(changeEvent.After.GitHubAppAuth.PrivateKey),
-				"after_app_id":       changeEvent.After.GitHubAppAuth.AppID,
-			})
 		}
 		changeEvent.RedactSecrets()
 		event.EventLogEntry.Data = changeEvent
