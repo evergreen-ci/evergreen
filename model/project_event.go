@@ -1,6 +1,7 @@
 package model
 
 import (
+	"bytes"
 	"reflect"
 	"time"
 
@@ -52,8 +53,9 @@ func (e *ProjectChangeEvent) RedactSecrets() {
 	modifiedVarKeys := e.getModifiedProjectVars()
 	e.Before.Vars.Vars = getRedactedVarsCopy(e.Before.Vars.Vars, modifiedVarKeys, evergreen.RedactedBeforeValue)
 	e.After.Vars.Vars = getRedactedVarsCopy(e.After.Vars.Vars, modifiedVarKeys, evergreen.RedactedAfterValue)
-	e.Before.GitHubAppAuth = getRedactedGitHubAppCopy(e.Before.GitHubAppAuth, evergreen.RedactedValue)
-	e.After.GitHubAppAuth = getRedactedGitHubAppCopy(e.After.GitHubAppAuth, evergreen.RedactedValue)
+	isGHAppKeyModified := !bytes.Equal(e.Before.GitHubAppAuth.PrivateKey, e.After.GitHubAppAuth.PrivateKey)
+	e.Before.GitHubAppAuth = getRedactedGitHubAppCopy(e.Before.GitHubAppAuth, isGHAppKeyModified, evergreen.RedactedBeforeValue)
+	e.After.GitHubAppAuth = getRedactedGitHubAppCopy(e.After.GitHubAppAuth, isGHAppKeyModified, evergreen.RedactedAfterValue)
 }
 
 // getModifiedProjectVars returns the set of project variables in the change
@@ -115,13 +117,15 @@ func getRedactedVarsCopy(vars map[string]string, modifiedVarNames map[string]str
 // This intentionally makes a copy to avoid potentially modifying the original
 // GitHub app auth, which may be shared by the actual project settings. That
 // way, callers can still access the unredacted auth credentials.
-func getRedactedGitHubAppCopy(auth githubapp.GithubAppAuth, placeholder string) githubapp.GithubAppAuth {
+func getRedactedGitHubAppCopy(auth githubapp.GithubAppAuth, isGHAppKeyModified bool, placeholder string) githubapp.GithubAppAuth {
 	if len(auth.PrivateKey) == 0 {
 		return auth
 	}
 	redactedAuth := auth
-	if len(redactedAuth.PrivateKey) > 0 {
+	if len(redactedAuth.PrivateKey) > 0 && isGHAppKeyModified {
 		redactedAuth.PrivateKey = []byte(placeholder)
+	} else if len(redactedAuth.PrivateKey) > 0 {
+		redactedAuth.PrivateKey = []byte{}
 	}
 	return redactedAuth
 }

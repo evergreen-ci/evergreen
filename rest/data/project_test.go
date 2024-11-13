@@ -225,8 +225,8 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 		s.Equal(evergreen.RedactedAfterValue, eventLog.After.Vars.Vars["hello"])
 		s.Equal(evergreen.RedactedBeforeValue, eventLog.Before.Vars.Vars["world"])
 		s.Equal(evergreen.RedactedAfterValue, eventLog.After.Vars.Vars["world"])
-		s.Equal(utility.FromStringPtr(eventLog.Before.GithubAppAuth.PrivateKey), "")
-		s.Equal(utility.FromStringPtr(eventLog.After.GithubAppAuth.PrivateKey), evergreen.RedactedValue)
+		s.Empty(utility.FromStringPtr(eventLog.Before.GithubAppAuth.PrivateKey))
+		s.Equal(evergreen.RedactedAfterValue, utility.FromStringPtr(eventLog.After.GithubAppAuth.PrivateKey))
 	}
 
 	// No error for empty events
