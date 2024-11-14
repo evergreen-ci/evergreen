@@ -255,9 +255,9 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				}
 			}
 		}
-		// We fall through to get a task that's not in this task group if either of the following are true:
+		// We fall through to get a task that's not in this task group if any of the following are true:
 		// 1. The task group is not present in the TaskGroups map, meaning all of its tasks are considered dispatched.
-		// 2. The task group is present in the TaskGroups map, but none of its remaining tasks are dispatchable.
+		// 2. The task group is not a single host task group, and none of its remaining tasks are dispatchable.
 	}
 
 	settings := evergreen.GetEnvironment().Settings()
@@ -388,8 +388,8 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 
 		// For a task group task, do some arithmetic to see if the group's next task is dispatchable.
 		taskGroupID := compositeGroupID(item.Group, item.BuildVariant, item.Project, item.Version)
-		taskGroupUnit, ok, hasDispatchableTask := d.getTaskGroup(taskGroupID)
-		if !ok || !hasDispatchableTask {
+		taskGroupUnit, _, hasDispatchableTask := d.getTaskGroup(taskGroupID)
+		if !hasDispatchableTask {
 			continue
 		}
 
@@ -497,12 +497,15 @@ func (d *basicCachedDAGDispatcherImpl) tryMarkNextTaskGroupTaskDispatched(taskGr
 	return nil
 }
 
+// getTaskGroup fetches a task group from the dispatcher's in-memory map. ok denotes whether the task
+// group corresponding to the input taskGroupID was found, and hasDispatchableTask denotes whether
+// the task group has non-dispatched tasks that are ready to dispatch (because their dependencies are met).
 func (d *basicCachedDAGDispatcherImpl) getTaskGroup(taskGroupID string) (schedulableUnit, bool, bool) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	taskGroupUnit, ok := d.taskGroups[taskGroupID]
 	if !ok {
-		return taskGroupUnit, ok, false
+		return taskGroupUnit, false, false
 	}
 	hasDispatchableTask := false
 	for _, item := range taskGroupUnit.tasks {
@@ -518,7 +521,7 @@ func (d *basicCachedDAGDispatcherImpl) getTaskGroup(taskGroupID string) (schedul
 		"project":       taskGroupUnit.project,
 		"version":       taskGroupUnit.version,
 	})
-	return taskGroupUnit, ok, hasDispatchableTask
+	return taskGroupUnit, true, hasDispatchableTask
 }
 
 func (d *basicCachedDAGDispatcherImpl) setTaskGroup(taskGroupUnit schedulableUnit, taskGroupID string) {
@@ -607,6 +610,11 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		// (e) all of its dependencies are satisfied.
 
 		if nextTaskQueueItem.IsDispatched {
+			grip.Info(message.Fields{
+				"message": "nextTaskQueueItem already dispatched, skipping",
+				"item":    nextTaskQueueItem.Id,
+				"group":   nextTaskQueueItem.Group,
+			})
 			continue
 		}
 
@@ -634,10 +642,20 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 
 		if isBlockedSingleHostTaskGroup(unit, nextTaskFromDB) {
 			delete(d.taskGroups, unit.id)
+			grip.Info(message.Fields{
+				"message": "nextTaskQueueItem already blocked, returning nil",
+				"item":    nextTaskQueueItem.Id,
+				"group":   nextTaskQueueItem.Group,
+			})
 			return nil
 		}
 
 		if nextTaskFromDB.StartTime != utility.ZeroTime {
+			grip.Info(message.Fields{
+				"message": "nextTaskQueueItem already has start time, skipping",
+				"item":    nextTaskQueueItem.Id,
+				"group":   nextTaskQueueItem.Group,
+			})
 			continue
 		}
 
@@ -656,6 +674,11 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		}
 
 		if !dependenciesMet {
+			grip.Info(message.Fields{
+				"message": "nextTaskQueueItem dependencies are not met, skipping",
+				"item":    nextTaskQueueItem.Id,
+				"group":   nextTaskQueueItem.Group,
+			})
 			continue
 		}
 
@@ -665,12 +688,21 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 
 		// If this is the last task in the schedulableUnit.tasks, delete the task group.
 		if i == len(unit.tasks)-1 {
+			grip.Info(message.Fields{
+				"message": "deleting group",
+				"item":    nextTaskQueueItem.Id,
+				"group":   nextTaskQueueItem.Group,
+			})
 			delete(d.taskGroups, unit.id)
 		}
 
 		return &nextTaskQueueItem
 	}
-
+	grip.Info(message.Fields{
+		"message": "made it to the end, returning nil",
+		"item":    unit.group,
+		"group":   unit.id,
+	})
 	return nil
 }
 

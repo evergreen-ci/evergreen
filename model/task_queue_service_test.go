@@ -1099,14 +1099,14 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
 			BuildVariant:  "variant_1",
 			Version:       "version_1",
 			Project:       "project_1",
-			GroupMaxHosts: 1,
+			GroupMaxHosts: 2,
 		})
 		t := task.Task{
 			Id:                id,
 			TaskGroup:         fmt.Sprintf("group_%d", groupNum),
 			BuildVariant:      "variant_1",
 			Version:           "version_1",
-			TaskGroupMaxHosts: 1,
+			TaskGroupMaxHosts: 2,
 			Project:           "project_1",
 			StartTime:         utility.ZeroTime,
 			FinishTime:        utility.ZeroTime,
@@ -1166,14 +1166,14 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
 			BuildVariant:  "variant_1",
 			Version:       "version_1",
 			Project:       "project_1",
-			GroupMaxHosts: 1,
+			GroupMaxHosts: 2,
 		})
 		t := task.Task{
 			Id:                id,
 			TaskGroup:         fmt.Sprintf("group_%d", groupNum),
 			BuildVariant:      "variant_1",
 			Version:           "version_1",
-			TaskGroupMaxHosts: 1,
+			TaskGroupMaxHosts: 2,
 			Project:           "project_1",
 			StartTime:         utility.ZeroTime,
 			FinishTime:        utility.ZeroTime,
@@ -1216,6 +1216,65 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
 	}
 	s.Equal(len(dispatchedTasks), numGoroutines)
 	s.Equal(dispatchedCount, numGoroutines)
+
+	s.Require().NoError(db.ClearCollections(task.Collection))
+	items = []TaskQueueItem{}
+	for i := 0; i < 20; i++ {
+		groupNum := i / 5
+		id := fmt.Sprintf("%d", i)
+		items = append(items, TaskQueueItem{
+			Id:            id,
+			Group:         fmt.Sprintf("group_%d", groupNum),
+			BuildVariant:  "variant_1",
+			Version:       "version_1",
+			Project:       "project_1",
+			GroupMaxHosts: 1,
+		})
+		t := task.Task{
+			Id:                id,
+			TaskGroup:         fmt.Sprintf("group_%d", groupNum),
+			BuildVariant:      "variant_1",
+			Version:           "version_1",
+			TaskGroupMaxHosts: 1,
+			Project:           "project_1",
+			StartTime:         utility.ZeroTime,
+			FinishTime:        utility.ZeroTime,
+		}
+		s.Require().NoError(t.Insert())
+	}
+
+	service, err = newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+	s.taskQueue.Queue = s.refreshTaskQueue(service)
+
+	// Since single host task groups can return nil if the next task is not found, do not
+	// make promises on the number of tasks dispatched by a large burst of async next task requests
+	// and instead just verify thread safety.
+	spec = TaskSpec{
+		Group:        "group_1",
+		BuildVariant: "variant_1",
+		Version:      "version_1",
+		Project:      "project_1",
+	}
+	wait = make(chan struct{})
+	wg.Add(numGoroutines)
+	for i := 0; i < numGoroutines; i++ {
+		go func() {
+			defer wg.Done()
+			<-wait
+			item := service.FindNextTask(s.ctx, spec, utility.ZeroTime)
+			if item != nil {
+				mu.Lock()
+				dispatchedTasks[item.Id] = true
+				mu.Unlock()
+			}
+		}()
+	}
+	close(wait)
+	wg.Wait()
+
+	s.Greater(len(dispatchedTasks), 0)
+	s.Greater(numGoroutines, 0)
 }
 
 func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
@@ -1610,7 +1669,7 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
 	s.Require().NotNil(next)
 	s.Equal(expectedOrder[0], next.Id)
 	s.Equal("1", taskGroup.tasks[0].Id)
-	s.Equal(true, taskGroup.tasks[0].IsDispatched) // Even though this task was not actually dispatched, we still set IsDispatched = true.
+	s.Equal(false, taskGroup.tasks[0].IsDispatched)
 	s.Equal("6", taskGroup.tasks[1].Id)
 	s.Equal(true, taskGroup.tasks[1].IsDispatched)
 	s.Equal("11", taskGroup.tasks[2].Id)
