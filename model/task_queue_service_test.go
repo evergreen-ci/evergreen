@@ -1610,7 +1610,7 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
 	s.Require().NotNil(next)
 	s.Equal(expectedOrder[0], next.Id)
 	s.Equal("1", taskGroup.tasks[0].Id)
-	s.Equal(true, taskGroup.tasks[0].IsDispatched) // Even though this task was not actually dispatched, we still set IsDispatched = true.
+	s.Equal(false, taskGroup.tasks[0].IsDispatched)
 	s.Equal("6", taskGroup.tasks[1].Id)
 	s.Equal(true, taskGroup.tasks[1].IsDispatched)
 	s.Equal("11", taskGroup.tasks[2].Id)

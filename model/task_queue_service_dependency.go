@@ -244,15 +244,14 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 	// If the host just ran a task group, give it one back.
 	if spec.Group != "" {
 		taskGroupID := compositeGroupID(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
-		taskGroupUnit, hasDispatchableTask := d.getTaskGroup(taskGroupID)
-		if hasDispatchableTask {
+		taskGroupUnit, ok, _ := d.getTaskGroup(taskGroupID)
+		if ok {
 			if next := d.tryMarkNextTaskGroupTaskDispatched(taskGroupUnit); next != nil {
 				return next
 			}
 		}
-		// We fall through to get a task that's not in this task group if either of the following are true:
-		// 1. The task group is not present in the TaskGroups map, meaning all of its tasks are considered dispatched.
-		// 2. The task group is present in the TaskGroups map, but none of its remaining tasks are dispatchable.
+		// If the task group is not present in the TaskGroups map, then all its tasks are considered dispatched.
+		// Fall through to get a task that's not in this task group.
 	}
 
 	settings := evergreen.GetEnvironment().Settings()
@@ -383,7 +382,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 
 		// For a task group task, do some arithmetic to see if the group's next task is dispatchable.
 		taskGroupID := compositeGroupID(item.Group, item.BuildVariant, item.Project, item.Version)
-		taskGroupUnit, hasDispatchableTask := d.getTaskGroup(taskGroupID)
+		taskGroupUnit, _, hasDispatchableTask := d.getTaskGroup(taskGroupID)
 		if !hasDispatchableTask {
 			continue
 		}
@@ -492,16 +491,19 @@ func (d *basicCachedDAGDispatcherImpl) tryMarkNextTaskGroupTaskDispatched(taskGr
 	return nil
 }
 
-func (d *basicCachedDAGDispatcherImpl) getTaskGroup(taskGroupID string) (schedulableUnit, bool) {
+// getTaskGroup fetches a task group from the dispatcher's in-memory map. ok denotes whether the task
+// group corresponding to the input taskGroupID was found, and hasDispatchableTask denotes whether
+// the task group has non-dispatched tasks that are ready to dispatch (because their dependencies are met).
+func (d *basicCachedDAGDispatcherImpl) getTaskGroup(taskGroupID string) (schedulableUnit, bool, bool) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	taskGroupUnit, ok := d.taskGroups[taskGroupID]
 	if !ok {
-		return taskGroupUnit, ok
+		return taskGroupUnit, false, false
 	}
 	hasDispatchableTask := false
 	for _, item := range taskGroupUnit.tasks {
-		if item.DependenciesMet {
+		if item.DependenciesMet && !item.IsDispatched {
 			hasDispatchableTask = true
 		}
 	}
@@ -513,7 +515,7 @@ func (d *basicCachedDAGDispatcherImpl) getTaskGroup(taskGroupID string) (schedul
 		"project":       taskGroupUnit.project,
 		"version":       taskGroupUnit.version,
 	})
-	return taskGroupUnit, hasDispatchableTask
+	return taskGroupUnit, true, hasDispatchableTask
 }
 
 func (d *basicCachedDAGDispatcherImpl) setTaskGroup(taskGroupUnit schedulableUnit, taskGroupID string) {
@@ -627,11 +629,6 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 			return nil
 		}
 
-		// Cache the task as dispatched from the in-memory queue's point of view.
-		// However, it won't actually be dispatched to a host if it doesn't satisfy all constraints.
-		d.taskGroups[unit.id].tasks[i].IsDispatched = true
-		// unit.tasks[i].IsDispatched = true
-
 		if isBlockedSingleHostTaskGroup(unit, nextTaskFromDB) {
 			delete(d.taskGroups, unit.id)
 			return nil
@@ -658,6 +655,10 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		if !dependenciesMet {
 			continue
 		}
+
+		// Cache the task as dispatched from the in-memory queue's point of view.
+		// However, it won't actually be dispatched to a host if it doesn't satisfy all constraints.
+		d.taskGroups[unit.id].tasks[i].IsDispatched = true
 
 		// If this is the last task in the schedulableUnit.tasks, delete the task group.
 		if i == len(unit.tasks)-1 {
