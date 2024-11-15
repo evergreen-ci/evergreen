@@ -1164,13 +1164,15 @@ func TestFullSyncToParameterStore(t *testing.T) {
 			}
 			require.NoError(t, db.Insert(ProjectVarsCollection, projVars))
 
-			require.NoError(t, FullSyncToParameterStore(ctx, &projVars, &projRef, false))
+			pm, err := FullSyncToParameterStore(ctx, &projVars, &projRef, false)
+			require.NoError(t, err)
 
 			checkAndSetProjectVarsSynced(t, &projRef, false)
 
 			dbProjVars, err := FindOneProjectVars(projVars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjVars)
+			dbProjVars.Parameters = *pm
 
 			checkParametersMatchVars(ctx, t, dbProjVars.Parameters, vars)
 			checkParametersNamespacedByProject(t, *dbProjVars)
@@ -1193,13 +1195,15 @@ func TestFullSyncToParameterStore(t *testing.T) {
 			}
 			require.NoError(t, db.Insert(ProjectVarsCollection, repoVars))
 
-			require.NoError(t, FullSyncToParameterStore(ctx, &repoVars, &repoRef.ProjectRef, true))
+			pm, err := FullSyncToParameterStore(ctx, &repoVars, &repoRef.ProjectRef, true)
+			require.NoError(t, err)
 
 			checkAndSetProjectVarsSynced(t, &repoRef.ProjectRef, true)
 
 			dbRepoVars, err := FindOneProjectVars(repoVars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbRepoVars)
+			dbRepoVars.Parameters = *pm
 
 			checkParametersMatchVars(ctx, t, dbRepoVars.Parameters, vars)
 			checkParametersNamespacedByProject(t, *dbRepoVars)
@@ -1241,11 +1245,13 @@ func TestFullSyncToParameterStore(t *testing.T) {
 				Vars: newVars,
 			}
 
-			require.NoError(t, FullSyncToParameterStore(ctx, &newProjVars, &projRef, false))
+			pm, err := FullSyncToParameterStore(ctx, &newProjVars, &projRef, false)
+			require.NoError(t, err)
 
 			newDBProjVars, err := FindOneProjectVars(projVars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, newDBProjVars)
+			newDBProjVars.Parameters = *pm
 
 			checkParametersMatchVars(ctx, t, newDBProjVars.Parameters, newVars)
 			checkParametersNamespacedByProject(t, *newDBProjVars)
