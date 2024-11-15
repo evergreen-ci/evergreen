@@ -764,16 +764,6 @@ func TestConvertVarToParam(t *testing.T) {
 		assert.Equal(t, "project_id/var_name", paramName, "new parameter name should include project ID prefix")
 		assert.Equal(t, varValue, paramValue, "variable value is valid and should be unchanged")
 	})
-	t.Run("ReturnsNewParamNameAndEmptyValueForValidVarNameAndValue", func(t *testing.T) {
-		const (
-			varName  = "var_name"
-			varValue = ""
-		)
-		paramName, paramValue, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
-		require.NoError(t, err)
-		assert.Equal(t, "project_id/var_name", paramName, "new parameter name should include project ID prefix")
-		assert.Equal(t, varValue, paramValue, "variable value is empty, which is valid, so parameter value should also be empty")
-	})
 	t.Run("ReturnsValidParamNameForVarContainingDisallowedAWSPrefix", func(t *testing.T) {
 		const (
 			varName  = "aws_secret"
@@ -862,6 +852,14 @@ func TestConvertVarToParam(t *testing.T) {
 		)
 		_, _, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
 		assert.Error(t, err, "should not allow variable with empty name")
+	})
+	t.Run("ReturnsErrorForEmptyVariableValue", func(t *testing.T) {
+		const (
+			varName  = "var_name"
+			varValue = ""
+		)
+		_, _, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
+		assert.Error(t, err, "should not allow variable with empty value")
 	})
 	t.Run("ReturnsErrorForVariableNameEndingInGzipExtension", func(t *testing.T) {
 		const (

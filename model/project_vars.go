@@ -1105,6 +1105,9 @@ func convertVarToParam(projectID string, pm ParameterMappings, varName, varValue
 	if err := validateVarNameCharset(varName); err != nil {
 		return "", "", errors.Wrapf(err, "validating project variable name '%s'", varName)
 	}
+	if len(varValue) == 0 {
+		return "", "", errors.Errorf("project variable '%s' cannot have an empty value", varName)
+	}
 
 	varsToParams := pm.NameMap()
 	m, ok := varsToParams[varName]
