@@ -30,9 +30,15 @@ func (b BucketType) validate() error {
 // Evergreen data bucket storage.
 type BucketsConfig struct {
 	LogBucket BucketConfig `bson:"log_bucket" json:"log_bucket" yaml:"log_bucket"`
+
+	// Credentials for accessing the buckets.
+	Credentials S3Credentials `bson:"credentials" json:"credentials" yaml:"credentials"`
 }
 
-var bucketsConfigLogBucketKey = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
+var (
+	bucketsConfigLogBucketKey   = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
+	bucketsConfigCredentialsKey = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
+)
 
 // BucketConfig represents the admin config for an individual bucket.
 type BucketConfig struct {
@@ -62,7 +68,8 @@ func (c *BucketsConfig) Get(ctx context.Context) error {
 func (c *BucketsConfig) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			bucketsConfigLogBucketKey: c.LogBucket,
+			bucketsConfigLogBucketKey:   c.LogBucket,
+			bucketsConfigCredentialsKey: c.Credentials,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

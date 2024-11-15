@@ -3,7 +3,14 @@
 { "_id" : "restricted_projects", "name" : "restricted projects", "type" : "project", "parent" : "all_projects", "resources": [] }
 { "_id" : "logkeeper", "name" : "logkeeper project", "type" : "project", "resources" : [ "logkeeper" ] }
 { "_id" : "evergreen", "name" : "evergreen project", "type" : "project", "resources" : [ "evergreen" ] }
+{ "_id" : "evergreen_view", "name" : "evergreen_view project", "type" : "project", "resources" : [ "evergreen" ] }
+{ "_id" : "evergreen_repo", "name" : "evergreen repo", "type" : "project", "resources" : [ "602d70a2b2373672ee493184" ] }
+{ "_id" : "spruce", "name" : "spruce project", "type" : "project", "resources" : [ "spruce" ] }
+{ "_id" : "parsley", "name" : "parsley project", "type" : "project", "resources" : [ "602d70a2b2373672ee493189" ] }
 { "_id" : "sys-perf", "name" : "sys-perf project", "type" : "project", "resources" : [ "sys-perf" ] }
+{ "_id" : "mongodb-mongo-master", "name" : "mongodb-mongo-master project", "type" : "project", "resources" : [ "mongodb-mongo-master" ] }
+{ "_id" : "mongodb-mongo-test", "name" : "mongodb-mongo-test project", "type" : "project", "resources" : [ "mongodb-mongo-test" ] }
+{ "_id" : "performance", "name" : "performance project", "type" : "project", "resources" : [ "performance" ] }
 { "_id" : "localhost", "name" : "localhost distro", "type" : "distro", "resources" : [ "localhost" ] }
 { "_id" : "localhost2", "name" : "localhost2 distro", "type" : "distro", "resources" : [ "localhost2" ] }
 { "_id" : "super", "name" : "super user", "type" : "super_user", "resources" : [ "super_user" ] }

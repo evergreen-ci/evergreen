@@ -134,7 +134,6 @@ func (s *AdminSuite) TestBaseConfig() {
 	defer cancel()
 
 	config := Settings{
-		ApiUrl:              "api",
 		AWSInstanceRole:     "role",
 		Banner:              "banner",
 		BannerTheme:         Important,
@@ -156,7 +155,6 @@ func (s *AdminSuite) TestBaseConfig() {
 	settings, err := GetConfig(ctx)
 	s.NoError(err)
 	s.NotNil(settings)
-	s.Equal(config.ApiUrl, settings.ApiUrl)
 	s.Equal(config.AWSInstanceRole, settings.AWSInstanceRole)
 	s.Equal(config.Banner, settings.Banner)
 	s.Equal(config.BannerTheme, settings.BannerTheme)
@@ -214,12 +212,8 @@ func (s *AdminSuite) TestAmboyConfig() {
 	defer cancel()
 
 	config := AmboyConfig{
-		Name:       "amboy",
-		SingleName: "single",
-		DBConnection: AmboyDBConfig{
-			URL:      "mongodb://localhost:27017",
-			Database: "db",
-		},
+		Name:                                  "amboy",
+		SingleName:                            "single",
 		PoolSizeLocal:                         10,
 		PoolSizeRemote:                        20,
 		LocalStorage:                          30,
@@ -239,6 +233,23 @@ func (s *AdminSuite) TestAmboyConfig() {
 	s.Equal(config, settings.Amboy)
 }
 
+func (s *AdminSuite) TestAdminDBConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config := AmboyDBConfig{
+		URL:      "mongodb://localhost:27017",
+		Database: "db",
+	}
+
+	err := config.Set(ctx)
+	s.NoError(err)
+	settings, err := GetConfig(ctx)
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.AmboyDB)
+}
+
 func (s *AdminSuite) TestApiConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -246,6 +257,7 @@ func (s *AdminSuite) TestApiConfig() {
 	config := APIConfig{
 		HttpListenAddr:      "addr",
 		GithubWebhookSecret: "secret",
+		URL:                 "api",
 	}
 
 	err := config.Set(ctx)
@@ -498,7 +510,6 @@ func (s *AdminSuite) TestConfigDefaults() {
 		DefaultProject: "proj",
 		Url:            "url",
 	}
-	config.ApiUrl = "api"
 	config.ConfigDir = "dir"
 	config.ExpansionsNew = util.KeyValuePairSlice{
 		{Key: "k1", Value: "v1"},
@@ -524,7 +535,6 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 	defer cancel()
 
 	config := Settings{
-		ApiUrl:    "foo",
 		ConfigDir: "foo",
 		ExpansionsNew: util.KeyValuePairSlice{
 			{Key: "exp1key", Value: "exp1val"},

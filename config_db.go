@@ -24,7 +24,6 @@ var (
 	bannerThemeKey        = bsonutil.MustHaveTag(Settings{}, "BannerTheme")
 	serviceFlagsKey       = bsonutil.MustHaveTag(Settings{}, "ServiceFlags")
 	configDirKey          = bsonutil.MustHaveTag(Settings{}, "ConfigDir")
-	apiUrlKey             = bsonutil.MustHaveTag(Settings{}, "ApiUrl")
 	awsInstanceRoleKey    = bsonutil.MustHaveTag(Settings{}, "AWSInstanceRole")
 	cedarKey              = bsonutil.MustHaveTag(Settings{}, "Cedar")
 	hostJasperKey         = bsonutil.MustHaveTag(Settings{}, "HostJasper")

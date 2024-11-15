@@ -200,7 +200,29 @@ func (p *ProjectRef) GetGitHubPermissionGroup(requester string) (GitHubDynamicTo
 	return defaultGitHubTokenPermissionGroup, false
 }
 
-func (p *ProjectRef) ValidateGitHubPermissionGroups() error {
+// GetGitHubAppAuth returns the App auth for the given project.
+// If the project defaults to the repo and the app is not defined on the project, it will return the app from the repo.
+func (p *ProjectRef) GetGitHubAppAuth() (*githubapp.GithubAppAuth, error) {
+	appAuth, err := githubapp.FindOneGithubAppAuth(p.Id)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding GitHub app auth")
+	}
+	if appAuth != nil {
+		return appAuth, nil
+	}
+	if !p.UseRepoSettings() {
+		return nil, nil
+	}
+	appAuth, err = githubapp.FindOneGithubAppAuth(p.RepoRefId)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding GitHub app auth")
+	}
+
+	return appAuth, nil
+
+}
+
+func (p *ProjectRef) ValidateGitHubPermissionGroupsByRequester() error {
 	catcher := grip.NewBasicCatcher()
 	for _, group := range p.GitHubDynamicTokenPermissionGroups {
 		catcher.ErrorfWhen(group.Name == "", "group name cannot be empty")
@@ -216,6 +238,14 @@ func (p *ProjectRef) ValidateGitHubPermissionGroups() error {
 			"group '%s' for requester '%s' not found", groupName, requester)
 	}
 	return errors.Wrap(catcher.Resolve(), "invalid GitHub dynamic token permission groups")
+}
+
+func (p *ProjectRef) ValidateGitHubPermissionGroups() error {
+	catcher := grip.NewBasicCatcher()
+	for _, group := range p.GitHubDynamicTokenPermissionGroups {
+		catcher.ErrorfWhen(group.Name == "", "group name cannot be empty")
+	}
+	return nil
 }
 
 // Intersection returns the most restrictive intersection of the two permission groups.
@@ -501,6 +531,7 @@ var (
 	projectRefProjectHealthViewKey                  = bsonutil.MustHaveTag(ProjectRef{}, "ProjectHealthView")
 	projectRefGitHubDynamicTokenPermissionGroupsKey = bsonutil.MustHaveTag(ProjectRef{}, "GitHubDynamicTokenPermissionGroups")
 	projectRefGithubPermissionGroupByRequesterKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitHubPermissionGroupByRequester")
+	projectRefParameterStoreEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreEnabled")
 	projectRefParameterStoreVarsSyncedKey           = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreVarsSynced")
 	projectRefLastAutoRestartedTaskAtKey            = bsonutil.MustHaveTag(ProjectRef{}, "LastAutoRestartedTaskAt")
 	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
@@ -774,6 +805,17 @@ func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) err
 		PrivateKey: privateKey,
 	}
 	return githubapp.UpsertGithubAppAuth(&auth)
+}
+
+// DefaultGithubAppCredentialsToRepo defaults the app credentials to the repo by
+// removing the GithubAppAuth entry for the project.
+func DefaultGithubAppCredentialsToRepo(projectId string) error {
+	p, err := FindBranchProjectRef(projectId)
+	if err != nil {
+		return errors.Wrap(err, "finding project ref")
+	}
+	return githubapp.RemoveGithubAppAuth(p.Id)
+
 }
 
 // AddToRepoScope validates that the branch can be attached to the matching repo,
@@ -1306,7 +1348,6 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 			return nil, errors.Wrap(err, "upserting alias for repo")
 		}
 	}
-
 	return repoRef, nil
 }
 
@@ -2429,6 +2470,15 @@ func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId s
 				catcher.Add(err)
 			}
 		}
+	case ProjectPageGithubAppSettingsSection:
+		err = DefaultGithubAppCredentialsToRepo(projectId)
+		if err == nil {
+			modified = true
+		}
+		catcher.Wrapf(err, "defaulting to repo for section '%s'", section)
+		// also default the permission groups when defaulting to the repo
+		_, err = SaveProjectPageForSection(projectId, nil, ProjectPageGithubPermissionsSection, false)
+		catcher.Wrapf(err, "defaulting the github permissions as part of defaulting section '%s'", section)
 	}
 	if modified {
 		catcher.Add(GetAndLogProjectModified(projectId, userId, false, before))
@@ -3684,4 +3734,27 @@ func (p *ProjectRef) setParameterStoreVarsSynced(isSynced bool, isRepoRef bool) 
 	p.ParameterStoreVarsSynced = true
 
 	return nil
+}
+
+var psEnabledButNotSyncedQuery = bson.M{
+	projectRefParameterStoreEnabledKey: true,
+	"$or": []bson.M{
+		{projectRefParameterStoreVarsSyncedKey: false},
+		{projectRefParameterStoreVarsSyncedKey: bson.M{"$exists": false}},
+	},
+}
+
+// FindProjectRefsToSync finds all project refs that have Parameter Sore enabled
+// but don't have their project variables synced to Parameter Store yet.
+// TODO (DEVPROD-11882): remove this function once the rollout is stable.
+func FindProjectRefsToSync(ctx context.Context) ([]ProjectRef, error) {
+	cur, err := evergreen.GetEnvironment().DB().Collection(ProjectRefCollection).Find(ctx, psEnabledButNotSyncedQuery)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding project refs to sync")
+	}
+	pRefs := []ProjectRef{}
+	if err := cur.All(ctx, &pRefs); err != nil {
+		return nil, errors.Wrap(err, "decoding project refs to sync")
+	}
+	return pRefs, nil
 }

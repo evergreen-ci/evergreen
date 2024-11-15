@@ -13,6 +13,7 @@ import (
 func NewConfigModel() *APIAdminSettings {
 	return &APIAdminSettings{
 		Amboy:               &APIAmboyConfig{},
+		AmboyDB:             &APIAmboyDBConfig{},
 		Api:                 &APIapiConfig{},
 		AuthConfig:          &APIAuthConfig{},
 		Buckets:             &APIBucketsConfig{},
@@ -50,8 +51,8 @@ func NewConfigModel() *APIAdminSettings {
 // APIAdminSettings is the structure of a response to the admin route
 type APIAdminSettings struct {
 	Amboy               *APIAmboyConfig                   `json:"amboy,omitempty"`
+	AmboyDB             *APIAmboyDBConfig                 `json:"amboy_db,omitempty"`
 	Api                 *APIapiConfig                     `json:"api,omitempty"`
-	ApiUrl              *string                           `json:"api_url,omitempty"`
 	AWSInstanceRole     *string                           `json:"aws_instance_role,omitempty"`
 	AuthConfig          *APIAuthConfig                    `json:"auth,omitempty"`
 	Banner              *string                           `json:"banner,omitempty"`
@@ -127,7 +128,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 				return errors.Wrapf(err, "converting admin model section '%s' to API model", propName)
 			}
 		}
-		as.ApiUrl = &v.ApiUrl
 		as.AWSInstanceRole = utility.ToStringPtr(v.AWSInstanceRole)
 		as.Banner = &v.Banner
 		tmp := string(v.BannerTheme)
@@ -206,9 +206,6 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		Plugins:            evergreen.PluginConfig{},
 		GithubOrgs:         as.GithubOrgs,
 		DisabledGQLQueries: as.DisabledGQLQueries,
-	}
-	if as.ApiUrl != nil {
-		settings.ApiUrl = *as.ApiUrl
 	}
 	if as.AWSInstanceRole != nil {
 		settings.AWSInstanceRole = *as.AWSInstanceRole
@@ -310,7 +307,6 @@ func (a *APISESConfig) ToService() (interface{}, error) {
 type APIAmboyConfig struct {
 	Name                                  *string                    `json:"name"`
 	SingleName                            *string                    `json:"single_name"`
-	DBConnection                          APIAmboyDBConfig           `json:"db_connection"`
 	PoolSizeLocal                         int                        `json:"pool_size_local"`
 	PoolSizeRemote                        int                        `json:"pool_size_remote"`
 	LocalStorage                          int                        `json:"local_storage_size"`
@@ -329,9 +325,6 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 	case evergreen.AmboyConfig:
 		a.Name = utility.ToStringPtr(v.Name)
 		a.SingleName = utility.ToStringPtr(v.SingleName)
-		if err := a.DBConnection.BuildFromService(v.DBConnection); err != nil {
-			return errors.Wrap(err, "converting Amboy DB settings to API model")
-		}
 		a.PoolSizeLocal = v.PoolSizeLocal
 		a.PoolSizeRemote = v.PoolSizeRemote
 		a.LocalStorage = v.LocalStorage
@@ -365,15 +358,6 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 		return nil, errors.Errorf("programmatic error: expected Amboy retry config but got type %T", i)
 	}
 
-	i, err = a.DBConnection.ToService()
-	if err != nil {
-		return nil, errors.Wrap(err, "converting Amboy DB settings to service model")
-	}
-	db, ok := i.(evergreen.AmboyDBConfig)
-	if !ok {
-		return nil, errors.Errorf("programmatic error: expected Amboy DB config but got type %T", i)
-	}
-
 	var dbNamedQueues []evergreen.AmboyNamedQueueConfig
 	for _, apiNamedQueue := range a.NamedQueues {
 		dbNamedQueues = append(dbNamedQueues, apiNamedQueue.ToService())
@@ -381,7 +365,6 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyConfig{
 		Name:                                  utility.FromStringPtr(a.Name),
 		SingleName:                            utility.FromStringPtr(a.SingleName),
-		DBConnection:                          db,
 		PoolSizeLocal:                         a.PoolSizeLocal,
 		PoolSizeRemote:                        a.PoolSizeRemote,
 		LocalStorage:                          a.LocalStorage,
@@ -399,8 +382,6 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 type APIAmboyDBConfig struct {
 	URL      *string `json:"url"`
 	Database *string `json:"database"`
-	Username *string `json:"username"`
-	Password *string `json:"password"`
 }
 
 func (a *APIAmboyDBConfig) BuildFromService(h interface{}) error {
@@ -486,6 +467,7 @@ func (a *APIAmboyNamedQueueConfig) ToService() evergreen.AmboyNamedQueueConfig {
 type APIapiConfig struct {
 	HttpListenAddr      *string `json:"http_listen_addr"`
 	GithubWebhookSecret *string `json:"github_webhook_secret"`
+	URL                 *string `json:"url"`
 }
 
 func (a *APIapiConfig) BuildFromService(h interface{}) error {
@@ -493,6 +475,7 @@ func (a *APIapiConfig) BuildFromService(h interface{}) error {
 	case evergreen.APIConfig:
 		a.HttpListenAddr = utility.ToStringPtr(v.HttpListenAddr)
 		a.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
+		a.URL = utility.ToStringPtr(v.URL)
 	default:
 		return errors.Errorf("programmatic error: expected REST API config but got type %T", h)
 	}
@@ -503,6 +486,7 @@ func (a *APIapiConfig) ToService() (interface{}, error) {
 	return evergreen.APIConfig{
 		HttpListenAddr:      utility.FromStringPtr(a.HttpListenAddr),
 		GithubWebhookSecret: utility.FromStringPtr(a.GithubWebhookSecret),
+		URL:                 utility.FromStringPtr(a.URL),
 	}, nil
 }
 
@@ -635,7 +619,8 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 }
 
 type APIBucketsConfig struct {
-	LogBucket APIBucketConfig `json:"log_bucket"`
+	LogBucket   APIBucketConfig  `json:"log_bucket"`
+	Credentials APIS3Credentials `json:"credentials"`
 }
 
 type APIBucketConfig struct {
@@ -650,6 +635,12 @@ func (a *APIBucketsConfig) BuildFromService(h interface{}) error {
 		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
 		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
 		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
+
+		creds := APIS3Credentials{}
+		if err := creds.BuildFromService(v.Credentials); err != nil {
+			return errors.Wrap(err, "converting S3 credentials to API model")
+		}
+		a.Credentials = creds
 	default:
 		return errors.Errorf("programmatic error: expected bucket config but got type %T", h)
 	}
@@ -657,12 +648,22 @@ func (a *APIBucketsConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APIBucketsConfig) ToService() (interface{}, error) {
+	i, err := a.Credentials.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "converting S3 credentials to service model")
+	}
+	creds, ok := i.(evergreen.S3Credentials)
+	if !ok {
+		return nil, errors.Errorf("programmatic error: expected S3 credentials but got type %T", i)
+	}
+
 	return evergreen.BucketsConfig{
 		LogBucket: evergreen.BucketConfig{
 			Name:   utility.FromStringPtr(a.LogBucket.Name),
 			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
 			DBName: utility.FromStringPtr(a.LogBucket.DBName),
 		},
+		Credentials: creds,
 	}, nil
 }
 
@@ -1438,7 +1439,6 @@ func (a *APISubnet) ToService() (interface{}, error) {
 type APIAWSConfig struct {
 	EC2Keys              []APIEC2Key               `json:"ec2_keys"`
 	Subnets              []APISubnet               `json:"subnets"`
-	TaskOutput           *APIS3Credentials         `json:"task_output"`
 	TaskSync             *APIS3Credentials         `json:"task_sync"`
 	TaskSyncRead         *APIS3Credentials         `json:"task_sync_read"`
 	ParserProject        *APIParserProjectS3Config `json:"parser_project"`
@@ -1469,12 +1469,6 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 			}
 			a.Subnets = append(a.Subnets, apiSubnet)
 		}
-
-		taskOutput := &APIS3Credentials{}
-		if err := taskOutput.BuildFromService(v.TaskOutput); err != nil {
-			return errors.Wrap(err, "converting task output S3 config to API model")
-		}
-		a.TaskOutput = taskOutput
 
 		taskSync := &APIS3Credentials{}
 		if err := taskSync.BuildFromService(v.TaskSync); err != nil {
@@ -1530,19 +1524,6 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 	var i interface{}
 	var err error
 	var ok bool
-
-	i, err = a.TaskOutput.ToService()
-	if err != nil {
-		return nil, errors.Wrap(err, "converting task output S3 config to service model")
-	}
-	var taskOutput evergreen.S3Credentials
-	if i != nil {
-		taskOutput, ok = i.(evergreen.S3Credentials)
-		if !ok {
-			return nil, errors.Errorf("expecting task output S3 config but got type %T", i)
-		}
-	}
-	config.TaskOutput = taskOutput
 
 	i, err = a.TaskSync.ToService()
 	if err != nil {

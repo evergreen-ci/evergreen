@@ -54,7 +54,7 @@ func (s *AdminEventSuite) TestEventLogging() {
 
 func (s *AdminEventSuite) TestEventLogging2() {
 	before := evergreen.Settings{
-		ApiUrl: "api",
+		Banner: "testing",
 	}
 	after := evergreen.Settings{}
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
@@ -65,8 +65,8 @@ func (s *AdminEventSuite) TestEventLogging2() {
 	s.NotEmpty(eventData.GUID)
 	beforeVal := eventData.Changes.Before.(*evergreen.Settings)
 	afterVal := eventData.Changes.After.(*evergreen.Settings)
-	s.Equal(before.ApiUrl, beforeVal.ApiUrl)
-	s.Equal("", afterVal.ApiUrl)
+	s.Equal(before.Banner, beforeVal.Banner)
+	s.Equal("", afterVal.Banner)
 }
 
 func (s *AdminEventSuite) TestEventLogging3() {
@@ -94,13 +94,13 @@ func (s *AdminEventSuite) TestEventLogging3() {
 
 func (s *AdminEventSuite) TestNoSpuriousLogging() {
 	before := evergreen.Settings{
-		ApiUrl: "api",
+		Banner: "testing",
 		HostInit: evergreen.HostInitConfig{
 			HostThrottle: 64,
 		},
 	}
 	after := evergreen.Settings{
-		ApiUrl: "api",
+		Banner: "testing",
 		HostInit: evergreen.HostInitConfig{
 			HostThrottle: 128,
 		},

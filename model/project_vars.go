@@ -164,15 +164,7 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 	defer cancel()
 
 	projectVars.checkAndRunParameterStoreOp(ctx, func(ref *ProjectRef, isRepoRef bool) {
-		if !ref.ParameterStoreVarsSynced {
-			grip.Debug(message.Fields{
-				"message":     "project has Parameter Store enabled for project vars, but they're not synced; falling back to using the DB",
-				"op":          "FindOneProjectVars",
-				"project_id":  ref.Id,
-				"is_repo_ref": isRepoRef,
-				"epic":        "DEVPROD-5552",
-			})
-		} else {
+		if ref.ParameterStoreVarsSynced {
 			projectVarsFromPS, err := projectVars.findParameterStore(ctx)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
@@ -452,7 +444,7 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 
 	projectVars.checkAndRunParameterStoreOp(ctx, func(ref *ProjectRef, isRepoRef bool) {
 		if !ref.ParameterStoreVarsSynced {
-			grip.Error(message.WrapError(fullSyncToParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
+			grip.Error(message.WrapError(FullSyncToParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
 				"message":    "could not fully sync project vars into Parameter Store; falling back to using the DB",
 				"op":         "Upsert",
 				"project_id": projectVars.Id,
@@ -497,7 +489,7 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) error 
 		return errors.Wrapf(err, "finding original project vars for project '%s'", projectID)
 	}
 	if before == nil {
-		before = &ProjectVars{}
+		before = &ProjectVars{Id: projectID}
 	}
 
 	varsToUpsert, varsToDelete := getProjectVarsDiff(before, after)
@@ -734,13 +726,13 @@ func (projectVars *ProjectVars) findProjectRef() (ref *ProjectRef, isRepoRef boo
 // TODO (DEVPROD-11882): remove full sync logic once the Parameter Store
 // rollout is complete. This functionality only exists to aid the migration
 // process.
-func fullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *ProjectRef, isRepoRef bool) error {
+func FullSyncToParameterStore(ctx context.Context, vars *ProjectVars, pRef *ProjectRef, isRepoRef bool) error {
 	before, err := FindOneProjectVars(vars.Id)
 	if err != nil {
 		return errors.Wrapf(err, "finding original project vars for project '%s'", vars.Id)
 	}
 	if before == nil {
-		before = &ProjectVars{}
+		before = &ProjectVars{Id: vars.Id}
 	}
 
 	grip.Debug(message.Fields{
@@ -796,7 +788,7 @@ func (projectVars *ProjectVars) Insert() error {
 
 // insertParameterStore inserts all project variables into Parameter Store.
 func insertParameterStore(ctx context.Context, vars *ProjectVars, pRef *ProjectRef, isRepoRef bool) error {
-	before := &ProjectVars{}
+	before := &ProjectVars{Id: vars.Id}
 	after := vars
 	varsToUpsert, _ := getProjectVarsDiff(before, after)
 
@@ -821,7 +813,7 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 
 	projectVars.checkAndRunParameterStoreOp(ctx, func(ref *ProjectRef, isRepoRef bool) {
 		if !ref.ParameterStoreVarsSynced {
-			grip.Error(message.WrapError(fullSyncToParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
+			grip.Error(message.WrapError(FullSyncToParameterStore(ctx, projectVars, ref, isRepoRef), message.Fields{
 				"message":    "could not fully sync project vars into Parameter Store; falling back to using the DB",
 				"op":         "FindANdModify",
 				"project_id": projectVars.Id,
@@ -891,7 +883,7 @@ func (projectVars *ProjectVars) findAndModifyParameterStore(ctx context.Context,
 		return errors.Wrapf(err, "finding original project vars for project '%s'", projectID)
 	}
 	if before == nil {
-		before = &ProjectVars{}
+		before = &ProjectVars{Id: projectID}
 	}
 
 	// Ignore the vars that are deleted between before and after because
@@ -1112,6 +1104,9 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 func convertVarToParam(projectID string, pm ParameterMappings, varName, varValue string) (paramName string, paramValue string, err error) {
 	if err := validateVarNameCharset(varName); err != nil {
 		return "", "", errors.Wrapf(err, "validating project variable name '%s'", varName)
+	}
+	if len(varValue) == 0 {
+		return "", "", errors.Errorf("project variable '%s' cannot have an empty value", varName)
 	}
 
 	varsToParams := pm.NameMap()

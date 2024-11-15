@@ -397,7 +397,7 @@ func (e *envState) createRemoteQueues(ctx context.Context, tracer trace.Tracer) 
 	ctx, span := tracer.Start(ctx, "CreateRemoteQueues")
 	defer span.End()
 
-	url := e.settings.Amboy.DBConnection.URL
+	url := e.settings.AmboyDB.URL
 	if url == "" {
 		url = DefaultAmboyDatabaseURL
 	}
@@ -481,7 +481,7 @@ func (e *envState) createApplicationQueue(ctx context.Context, client *mongo.Cli
 	// queue.
 	opts := queue.DefaultMongoDBOptions()
 	opts.Client = client
-	opts.DB = e.settings.Amboy.DBConnection.Database
+	opts.DB = e.settings.AmboyDB.Database
 	opts.Collection = e.settings.Amboy.Name
 	opts.SkipQueueIndexBuilds = true
 	opts.SkipReportingIndexBuilds = true
@@ -559,7 +559,7 @@ func (e *envState) createRemoteQueueGroup(ctx context.Context, client *mongo.Cli
 func (e *envState) getRemoteQueueGroupDBOptions(client *mongo.Client) queue.MongoDBOptions {
 	opts := queue.DefaultMongoDBOptions()
 	opts.Client = client
-	opts.DB = e.settings.Amboy.DBConnection.Database
+	opts.DB = e.settings.AmboyDB.Database
 	opts.Collection = e.settings.Amboy.Name
 	opts.SkipQueueIndexBuilds = true
 	opts.SkipReportingIndexBuilds = true

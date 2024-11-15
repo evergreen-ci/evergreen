@@ -18,7 +18,7 @@
         },
         {
             "_id": "global",
-            "api_url": "localhost:9090",
+            "api": {"url": "localhost:9090"},
             "configdir": "../config",
             "domain_name": "localhost",
             "banner": "This is an important notification",

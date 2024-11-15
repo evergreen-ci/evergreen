@@ -18,8 +18,8 @@ domain_name: "evergreen.local"
 
 configdir: "config_test"
 
-api_url: http://localhost:9090
 api:
+  url: "http://localhost:9090"
   github_webhook_secret: "test"
 ui:
   secret: "secret for UI"

@@ -770,9 +770,6 @@ tasks:
   - <<: *build-and-push-client
     name: build-windows-staging_amd64
     tags: ["build-staging"]
-  - <<: *build-and-push-client
-    name: build-darwin-staging_amd64
-    tags: ["build-staging"]
   - <<: *tar-and-push-static-assets
     name: tar-and-push-static-assets-staging
     tags: ["build-staging"]

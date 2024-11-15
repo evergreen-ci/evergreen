@@ -99,6 +99,7 @@ func Patch() cli.Command {
 			mutuallyExclusiveArgs(false, patchDescriptionFlagName, autoDescriptionFlag),
 			mutuallyExclusiveArgs(false, preserveCommitsFlag, uncommittedChangesFlag),
 			mutuallyExclusiveArgs(false, repeatDefinitionFlag, repeatPatchIdFlag),
+			mutuallyExclusiveArgs(false, repeatPatchIdFlag, includeModulesFlag),
 			func(c *cli.Context) error {
 				catcher := grip.NewBasicCatcher()
 				for _, status := range utility.SplitCommas(c.StringSlice(syncStatusesFlagName)) {
