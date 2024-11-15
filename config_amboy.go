@@ -16,7 +16,6 @@ import (
 type AmboyConfig struct {
 	Name                                  string                  `bson:"name" json:"name" yaml:"name"`
 	SingleName                            string                  `bson:"single_name" json:"single_name" yaml:"single_name"`
-	DBConnection                          AmboyDBConfig           `bson:"db_connection" json:"db_connection" yaml:"db_connection"`
 	PoolSizeLocal                         int                     `bson:"pool_size_local" json:"pool_size_local" yaml:"pool_size_local"`
 	PoolSizeRemote                        int                     `bson:"pool_size_remote" json:"pool_size_remote" yaml:"pool_size_remote"`
 	LocalStorage                          int                     `bson:"local_storage_size" json:"local_storage_size" yaml:"local_storage_size"`
@@ -33,12 +32,6 @@ type AmboyConfig struct {
 	// configured in production, but is useful to explicitly set for testing
 	// environments, where the required indexes may not be set up.
 	SkipPreferredIndexes bool `bson:"skip_preferred_indexes" json:"skip_preferred_indexes" yaml:"skip_preferred_indexes"`
-}
-
-// AmboyDBConfig configures Amboy's database connection.
-type AmboyDBConfig struct {
-	URL      string `bson:"url" json:"url" yaml:"url"`
-	Database string `bson:"database" json:"database" yaml:"database"`
 }
 
 // AmboyRetryConfig represents configuration settings for Amboy's retryability
@@ -65,7 +58,6 @@ type AmboyNamedQueueConfig struct {
 var (
 	amboyNameKey                                  = bsonutil.MustHaveTag(AmboyConfig{}, "Name")
 	amboySingleNameKey                            = bsonutil.MustHaveTag(AmboyConfig{}, "SingleName")
-	amboyDBConnectionKey                          = bsonutil.MustHaveTag(AmboyConfig{}, "DBConnection")
 	amboyPoolSizeLocalKey                         = bsonutil.MustHaveTag(AmboyConfig{}, "PoolSizeLocal")
 	amboyPoolSizeRemoteKey                        = bsonutil.MustHaveTag(AmboyConfig{}, "PoolSizeRemote")
 	amboyLocalStorageKey                          = bsonutil.MustHaveTag(AmboyConfig{}, "LocalStorage")
@@ -90,7 +82,6 @@ func (c *AmboyConfig) Set(ctx context.Context) error {
 		"$set": bson.M{
 			amboyNameKey:                                  c.Name,
 			amboySingleNameKey:                            c.SingleName,
-			amboyDBConnectionKey:                          c.DBConnection,
 			amboyPoolSizeLocalKey:                         c.PoolSizeLocal,
 			amboyPoolSizeRemoteKey:                        c.PoolSizeRemote,
 			amboyLocalStorageKey:                          c.LocalStorage,
@@ -143,10 +134,6 @@ func (c *AmboyConfig) ValidateAndDefault() error {
 
 	if c.SingleName == "" {
 		c.SingleName = defaultSingleAmboyQueueName
-	}
-
-	if c.DBConnection.Database == "" {
-		c.DBConnection.Database = defaultAmboyDBName
 	}
 
 	if c.PoolSizeLocal == 0 {

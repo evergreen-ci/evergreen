@@ -302,6 +302,8 @@ models:
         resolver: true
       projectPermissions:
         resolver: true
+      repoPermissions:
+        resolver: true
   PlannerSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPlannerSettings
   PlannerSettingsInput:

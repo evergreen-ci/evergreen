@@ -17,16 +17,15 @@ configdir: "config_test"
 
 amboy:
   name: test_queue
-  db_connection:
-    database: amboy_test
-    url: "mongodb://localhost:27017"
   pool_size_local: 2
   pool_size_remote: 2
   local_storage_size: 2048
   # Ensure that tests depending on the global environment don't depend on indexes to exist in a testing DB.
   skip_preferred_indexes: true
 
-api_url: "https://localhost:8443"
+amboy_db:
+  database: amboy_test
+  url: "mongodb://localhost:27017"
 
 providers:
   aws:
@@ -65,6 +64,7 @@ repotracker:
   logfile: "/tmp/repotracker_test.log"
 
 api:
+  url: "https://localhost:8443"
   github_webhook_secret: "test"
   logfile: "/tmp/api_test.log"
   httplistenaddr: ":9090"

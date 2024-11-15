@@ -12,9 +12,8 @@ import (
 func TestBootstrapContainerCommand(t *testing.T) {
 	const workingDir = "/data/mci"
 
-	settings := evergreen.Settings{
-		ApiUrl: "https://example.com",
-	}
+	settings := evergreen.Settings{}
+	settings.Api.URL = "https://example.com"
 
 	t.Run("Linux", func(t *testing.T) {
 		opts := pod.TaskContainerCreationOptions{

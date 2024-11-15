@@ -12,11 +12,12 @@ database:
     wmode: majority
 
 amboy:
-  db_connection:
-    url: mongodb://localhost:27017
-    database: amboy_smoke
   name: evg.service
   skip_preferred_indexes: true
+
+amboy_db:
+  database: amboy_test
+  url: "mongodb://localhost:27017"
 
 buckets:
   log_bucket:
@@ -27,10 +28,10 @@ buckets:
 domain_name: "evergreen.local"
 configdir: "config_test"
 
-api_url: http://localhost:8080
 api:
   github_webhook_secret: "test"
   httplistenaddr: ":8080"
+  url: "http://localhost:8080"
 ui:
   parsley_url: "http://localhost:4173"
   secret: "secret for UI"

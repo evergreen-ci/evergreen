@@ -887,6 +887,7 @@ func getLoadProjectOptsForPatch(p *patch.Patch) (*ProjectRef, *GetProjectOpts, e
 		ReadFileFrom:        ReadFromPatch,
 		Revision:            hash,
 		LocalModuleIncludes: p.LocalModuleIncludes,
+		ReferencePatchID:    p.ReferenceManifestID,
 		ReferenceManifestID: manifestID,
 		PatchOpts: &PatchOpts{
 			patch: p,

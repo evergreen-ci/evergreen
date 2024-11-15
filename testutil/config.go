@@ -107,12 +107,8 @@ func loadConfig(path ...string) *evergreen.Settings {
 func MockConfig() *evergreen.Settings {
 	return &evergreen.Settings{
 		Amboy: evergreen.AmboyConfig{
-			Name:       "amboy",
-			SingleName: "single",
-			DBConnection: evergreen.AmboyDBConfig{
-				Database: "db",
-				URL:      "mongodb://localhost:27017",
-			},
+			Name:                                  "amboy",
+			SingleName:                            "single",
 			PoolSizeLocal:                         10,
 			PoolSizeRemote:                        20,
 			LocalStorage:                          30,
@@ -147,11 +143,15 @@ func MockConfig() *evergreen.Settings {
 				},
 			},
 		},
+		AmboyDB: evergreen.AmboyDBConfig{
+			Database: "db",
+			URL:      "mongodb://localhost:27017",
+		},
 		Api: evergreen.APIConfig{
 			HttpListenAddr:      "addr",
 			GithubWebhookSecret: "secret",
+			URL:                 "api",
 		},
-		ApiUrl: "api",
 		AuthConfig: evergreen.AuthConfig{
 			Okta: &evergreen.OktaConfig{
 				ClientID:           "id",
@@ -188,6 +188,10 @@ func MockConfig() *evergreen.Settings {
 			LogBucket: evergreen.BucketConfig{
 				Name: "logs",
 				Type: evergreen.BucketTypeS3,
+			},
+			Credentials: evergreen.S3Credentials{
+				Key:    "aws_key",
+				Secret: "aws_secret",
 			},
 		},
 		Cedar: evergreen.CedarConfig{
@@ -287,10 +291,6 @@ func MockConfig() *evergreen.Settings {
 				},
 				DefaultSecurityGroup: "test_security_group",
 				MaxVolumeSizePerUser: 200,
-				TaskOutput: evergreen.S3Credentials{
-					Key:    "aws_key",
-					Secret: "aws_secret",
-				},
 				ParserProject: evergreen.ParserProjectS3Config{
 					S3Credentials: evergreen.S3Credentials{
 						Bucket: "parser_project_bucket",

@@ -867,6 +867,10 @@ Admin Settings
 											<label>Github webhook secret</label>
 											<input type="text" ng-model="Settings.api.github_webhook_secret">
 										</md-input-container>
+										<md-input-container class="control" style="width:45%;">
+											<label>Backend URL</label>
+											<input type="text" ng-model="Settings.api.url">
+										</md-input-container>
 									</md-card-content>
 								</md-card>
 
@@ -1517,11 +1521,11 @@ Admin Settings
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>DB URL</label>
-										<input type="text" ng-model="Settings.amboy.db_connection.url">
+										<input type="text" ng-model="Settings.amboy_db.url">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>DB name</label>
-										<input type="text" ng-model="Settings.amboy.db_connection.database">
+										<input type="text" ng-model="Settings.amboy_db.database">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Local pool size</label>
@@ -1832,14 +1836,6 @@ Admin Settings
 									<label>Parameter Store Prefix</label>
 									<input type="text" ng-model="Settings.providers.aws.parameter_store.prefix">
 								</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left: 50px;">
-										<label>Task Output S3 Key</label>
-										<input type="text" ng-model="Settings.providers.aws.task_output.key">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Task Output S3 Secret</label>
-										<input type="text" ng-model="Settings.providers.aws.task_output.secret">
-									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left: 50px;">
 										<label>Task S3 Key</label>
 										<input type="text" ng-model="Settings.providers.aws.task_sync.key">
@@ -2182,35 +2178,31 @@ Admin Settings
 								</md-card-title>
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
-										<label>API URL</label>
-										<input type="text" ng-model="Settings.api_url">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Config directory</label>
 										<input type="text" ng-model="Settings.configdir">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Domain name</label>
 										<input type="text" ng-model="Settings.domain_name">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Github Organizations</label>
 										<textarea ng-model="Settings.github_orgs" ng-list="&#10;" ng-trim="false"
 											md-select-on-focus></textarea>
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Github PR creator organization</label>
 										<input type="text" ng-model="Settings.github_pr_creator_org">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pprof port</label>
 										<input type="text" ng-model="Settings.pprof_port">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Log path</label>
 										<input type="text" ng-model="Settings.log_path">
 									</md-input-container>
-										<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<md-input-container class="control" style="width:45%;">
 										<label>Shutdown Wait(seconds)</label>
 										<input type="number" ng-model="Settings.shutdown_wait_seconds">
 									</md-input-container>
@@ -2227,6 +2219,14 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>Log Bucket</label>
 										<input type="text" ng-model="Settings.buckets.log_bucket.name">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left: 50px;">
+										<label>S3 Key</label>
+										<input type="text" ng-model="Settings.buckets.credentials.key">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>S3 Secret</label>
+										<input type="text" ng-model="Settings.buckets.credentials.secret">
 									</md-input-container>
 								</md-card-content>
 							</md-card>

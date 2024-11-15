@@ -21,5 +21,5 @@ EOF
 
 COPY <<EOF /docker-entrypoint-initdb.d/02_replace-amboy-url.js
 db = db.getSiblingDB( "${DB_NAME}" );
-db.admin.updateOne({_id:"amboy"}, {"\$set": {"db_connection.url": "mongodb://mongo:27017"}})
+db.admin.updateOne({_id:"amboy_db"}, {"\$set": {"url": "mongodb://mongo:27017"}})
 EOF

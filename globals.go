@@ -506,6 +506,7 @@ const (
 	VersionMakespanSecondsOtelAttribute  = "evergreen.version.makespan_seconds"
 	VersionTimeTakenSecondsOtelAttribute = "evergreen.version.time_taken_seconds"
 	VersionPRNumOtelAttribute            = "evergreen.version.pr_num"
+	VersionDescriptionOtelAttribute      = "evergreen.version.description"
 
 	// build otel attributes
 	BuildIDOtelAttribute   = "evergreen.build.id"

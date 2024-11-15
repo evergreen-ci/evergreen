@@ -1022,7 +1022,7 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 	return []string{
 		executablePath,
 		"agent",
-		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
+		fmt.Sprintf("--api_server=%s", settings.Api.URL),
 		"--mode=host",
 		fmt.Sprintf("--host_id=%s", h.Id),
 		fmt.Sprintf("--host_secret=%s", h.Secret),
@@ -1142,7 +1142,7 @@ func (h *Host) spawnHostConfig(settings *evergreen.Settings) ([]byte, error) {
 	}{
 		User:          owner.Id,
 		APIKey:        owner.APIKey,
-		APIServerHost: settings.ApiUrl + "/api",
+		APIServerHost: settings.Api.URL + "/api",
 		UIServerHost:  settings.Ui.Url,
 	}
 
@@ -1267,7 +1267,7 @@ func (h *Host) GenerateFetchProvisioningScriptUserData(ctx context.Context, env 
 		filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()),
 		"host",
 		"provision",
-		fmt.Sprintf("--api_server=%s", env.Settings().ApiUrl),
+		fmt.Sprintf("--api_server=%s", env.Settings().Api.URL),
 		fmt.Sprintf("--host_id=%s", h.Id),
 		fmt.Sprintf("--host_secret=%s", h.Secret),
 		fmt.Sprintf("--provider=%s", h.Distro.Provider),
