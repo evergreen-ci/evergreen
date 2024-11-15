@@ -40,7 +40,7 @@ enum DistroSettingsAccess {
 }
 
 """
-requireHostAccess is used to restrict view, and edit access for hosts.
+requireHostAccess is used to restrict view and edit access for hosts.
 """
 directive @requireHostAccess(access: HostAccessLevel!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
 
