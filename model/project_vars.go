@@ -536,37 +536,33 @@ func (projectVars *ProjectVars) syncParameterDiff(ctx context.Context, pm Parame
 	}
 
 	updatedParamMappings := getUpdatedParamMappings(pm, paramMappingsToUpsert, paramMappingsToDelete)
-	//
-	// // kim: TODO: return param mappings rather than upsert.
-	// if err := projectVars.setParamMappings(updatedParamMappings); err != nil {
-	//     return nil, errors.Wrap(err, "updating parameter mappings for project vars")
-	// }
 
 	return &updatedParamMappings, nil
 }
 
-// kim: TODO: remove once absorbed into atomic DB ops
-// func (projectVars *ProjectVars) setParamMappings(pm ParameterMappings) error {
-//     update := bson.M{}
-//     if len(pm) == 0 {
-//         update["$unset"] = bson.M{projectVarsParametersKey: 1}
-//     } else {
-//         update["$set"] = bson.M{projectVarsParametersKey: pm}
-//     }
-//     if _, err := db.Upsert(
-//         ProjectVarsCollection,
-//         bson.M{
-//             projectVarIdKey: projectVars.Id,
-//         },
-//         update,
-//     ); err != nil {
-//         return errors.Wrap(err, "updating parameter mappings for project vars")
-//     }
-//
-//     projectVars.Parameters = pm
-//
-//     return nil
-// }
+// SetParamMappings sets the parameter mappings for project variables.
+// TODO (DEVPROD-11882): remove this function once the rollout is stable.
+func (projectVars *ProjectVars) SetParamMappings(pm ParameterMappings) error {
+	update := bson.M{}
+	if len(pm) == 0 {
+		update["$unset"] = bson.M{projectVarsParametersKey: 1}
+	} else {
+		update["$set"] = bson.M{projectVarsParametersKey: pm}
+	}
+	if _, err := db.Upsert(
+		ProjectVarsCollection,
+		bson.M{
+			projectVarIdKey: projectVars.Id,
+		},
+		update,
+	); err != nil {
+		return errors.Wrap(err, "updating parameter mappings for project vars")
+	}
+
+	projectVars.Parameters = pm
+
+	return nil
+}
 
 // upsertParameters upserts the parameter mappings for project variables into
 // Parameter Store. It returns the parameter mappings for the upserted
