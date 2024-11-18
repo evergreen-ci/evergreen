@@ -117,6 +117,8 @@ func (s *ProjectEventSuite) TestModifyProjectEventRedactsAllVars() {
 	after.Vars.Vars["added"] = "added_value"
 	after.Vars.Vars["modified"] = "new_value"
 	after.Vars.Vars["unmodified"] = "same_value"
+	after.GitHubAppAuth.AppID = 12345
+	after.GitHubAppAuth.PrivateKey = []byte("secret")
 
 	s.NoError(LogProjectModified(projectId, username, &before, &after))
 
@@ -143,6 +145,8 @@ func (s *ProjectEventSuite) TestModifyProjectEventRedactsAllVars() {
 	s.Equal(evergreen.RedactedBeforeValue, eventData.Before.Vars.Vars["deleted"], "deleted var should be redacted")
 	s.Equal(evergreen.RedactedBeforeValue, eventData.Before.Vars.Vars["modified"], "modified var should be redacted")
 	s.Empty(eventData.Before.Vars.Vars["unmodified"], "unmodified var should be present but empty to indicate it wasn't changed")
+	s.Empty(eventData.Before.GitHubAppAuth.AppID)
+	s.Empty(eventData.Before.GitHubAppAuth.PrivateKey)
 	s.Equal(before.Aliases, eventData.Before.Aliases)
 	s.Equal(before.Subscriptions, eventData.Before.Subscriptions)
 
@@ -158,6 +162,8 @@ func (s *ProjectEventSuite) TestModifyProjectEventRedactsAllVars() {
 	s.Equal(evergreen.RedactedAfterValue, eventData.After.Vars.Vars["added"], "newly-added var should be redacted")
 	s.Equal(evergreen.RedactedAfterValue, eventData.After.Vars.Vars["modified"], "modified var should be redacted")
 	s.Empty(eventData.After.Vars.Vars["unmodified"], "unmodified var should be present but empty to indicate it wasn't changed")
+	s.Equal(after.GitHubAppAuth.AppID, eventData.After.GitHubAppAuth.AppID)
+	s.Equal(evergreen.RedactedAfterValue, string(eventData.After.GitHubAppAuth.PrivateKey))
 	s.Equal(after.Aliases, eventData.After.Aliases)
 	s.Equal(after.Subscriptions, eventData.After.Subscriptions)
 }

@@ -187,29 +187,9 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		s.NotEmpty(before.Aliases[0].ID)
 		s.NotEmpty(after.Aliases[0].ID)
 
-		data := model.ProjectChangeEvent{
-			User: username,
-			Before: model.ProjectSettingsEvent{
-				PeriodicBuildsDefault:      true,
-				WorkstationCommandsDefault: true,
-				ProjectSettings:            before,
-			},
-			After: model.ProjectSettingsEvent{
-				ProjectSettings: after,
-			},
-		}
-		h := event.EventLogEntry{
-			Timestamp:    time.Now(),
-			ResourceType: event.EventResourceTypeProject,
-			EventType:    event.EventTypeProjectModified,
-			ResourceId:   projectId,
-			Data:         data,
-		}
-
 		s.Require().NoError(db.ClearCollections(event.EventCollection))
 		for i := 0; i < projEventCount; i++ {
-			eventShallowCpy := h
-			s.NoError(eventShallowCpy.Log())
+			s.NoError(model.LogProjectModified(projectId, username, &before, &after))
 		}
 
 		return nil
@@ -245,8 +225,8 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 		s.Equal(evergreen.RedactedAfterValue, eventLog.After.Vars.Vars["hello"])
 		s.Equal(evergreen.RedactedBeforeValue, eventLog.Before.Vars.Vars["world"])
 		s.Equal(evergreen.RedactedAfterValue, eventLog.After.Vars.Vars["world"])
-		s.Equal(utility.FromStringPtr(eventLog.Before.GithubAppAuth.PrivateKey), "")
-		s.Equal(utility.FromStringPtr(eventLog.After.GithubAppAuth.PrivateKey), evergreen.RedactedValue)
+		s.Empty(utility.FromStringPtr(eventLog.Before.GithubAppAuth.PrivateKey))
+		s.Equal(evergreen.RedactedAfterValue, utility.FromStringPtr(eventLog.After.GithubAppAuth.PrivateKey))
 	}
 
 	// No error for empty events

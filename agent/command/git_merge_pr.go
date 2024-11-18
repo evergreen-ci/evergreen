@@ -68,12 +68,14 @@ func (c *gitMergePR) Execute(ctx context.Context, comm client.Communicator, logg
 		return errors.Wrap(err, "getting patch")
 	}
 
-	token := c.Token
-
-	appToken := conf.Expansions.Get(evergreen.GithubAppToken)
+	// Otherwise, create an installation token for to clone the module.
+	appToken, err := comm.CreateInstallationToken(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, conf.ProjectRef.Owner, conf.ProjectRef.Owner)
+	if err != nil {
+		return errors.Wrap(err, "creating app token")
+	}
 
 	c.statusSender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-		Token:       token,
+		Token:       appToken,
 		MinDelay:    evergreen.GithubRetryMinDelay,
 		MaxAttempts: evergreen.GitHubRetryAttempts,
 	}, "")

@@ -334,8 +334,6 @@ const (
 
 	DefaultJasperPort = 2385
 
-	// TODO (DEVPROD-778): Remove GithubAppToken
-	GithubAppToken      = "github_app_token"
 	GithubAppPrivateKey = "github_app_key"
 	GithubKnownHosts    = "github_known_hosts"
 	GithubCheckRun      = "github_check_run"
