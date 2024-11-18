@@ -91,16 +91,16 @@ type Task struct {
 	// Priority is a specifiable value that adds weight to the prioritization that task will be given in its
 	// corresponding distro task queue.
 	Priority int64 `bson:"priority" json:"priority"`
-	// PriorityRankValue is not persisted to the db, but stored in memory and passed to the task queue document.
+	// RankValueBreakdown is not persisted to the db, but stored in memory and passed to the task queue document.
 	// It is a mixture of Priority and the various task queue ranking factors that multiply on top of Priority.
-	PriorityRankValue int64  `bson:"priority_rank_value" json:"priority_rank_value"`
-	TaskGroup         string `bson:"task_group" json:"task_group"`
-	TaskGroupMaxHosts int    `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
-	TaskGroupOrder    int    `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
-	ResultsService    string `bson:"results_service,omitempty" json:"results_service,omitempty"`
-	HasCedarResults   bool   `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
-	ResultsFailed     bool   `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
-	MustHaveResults   bool   `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
+	RankValueBreakdown RankBreakdown `bson:"rank_value_breakdown" json:"rank_value_breakdown"`
+	TaskGroup          string        `bson:"task_group" json:"task_group"`
+	TaskGroupMaxHosts  int           `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
+	TaskGroupOrder     int           `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
+	ResultsService     string        `bson:"results_service,omitempty" json:"results_service,omitempty"`
+	HasCedarResults    bool          `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
+	ResultsFailed      bool          `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
+	MustHaveResults    bool          `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
 	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
@@ -4031,4 +4031,50 @@ func (t *Task) FindAbortingAndResettingDependencies() ([]Task, error) {
 		},
 	})
 	return FindAll(q)
+}
+
+type RankBreakdown struct {
+	BasePriority           int64
+	Length                 int64
+	InitialPriority        int64
+	TaskGroupImpact        int64
+	GenerateTaskImpact     int64
+	PatchImpact            PatchBreakdown
+	CommitQueueImpact      int64
+	MainlineTaskImpact     MainlineBreakdown
+	NumDependentsImpact    int64
+	EstimatedRuntimeImpact int64
+	TotalValue             int64
+}
+
+type PatchBreakdown struct {
+	BaseImpact     int64
+	WaitTimeImpact int64
+}
+
+type MainlineBreakdown struct {
+	WaitTimeImpact     int64
+	StepbackTaskImpact int64
+}
+
+func (r RankBreakdown) ImpactAnalysis() map[string]float64 {
+	total := float64(r.TotalValue)
+	if total == 0 {
+		return nil
+	}
+	impacts := map[string]float64{
+		evergreen.BaseImpact:                   float64(r.BasePriority) / total * 100,
+		evergreen.LengthImpact:                 float64(r.Length) / total * 100,
+		evergreen.InitialPriorityImpact:        float64(r.InitialPriority) / total * 100,
+		evergreen.TaskGroupImpact:              float64(r.TaskGroupImpact) / total * 100,
+		evergreen.GenerateTaskImpact:           float64(r.GenerateTaskImpact) / total * 100,
+		evergreen.BasePatchImpact:              float64(r.PatchImpact.BaseImpact) / total * 100,
+		evergreen.WaitTimePatchImpact:          float64(r.PatchImpact.WaitTimeImpact) / total * 100,
+		evergreen.CommitQueueImpact:            float64(r.CommitQueueImpact) / total * 100,
+		evergreen.WaitTimeMainlineTaskImpact:   float64(r.MainlineTaskImpact.WaitTimeImpact) / total * 100,
+		evergreen.StepbackImpact:               float64(r.MainlineTaskImpact.StepbackTaskImpact) / total * 100,
+		evergreen.NumDependentsImpact:          float64(r.NumDependentsImpact) / total * 100,
+		evergreen.EstimatedRuntimeImpactImpact: float64(r.EstimatedRuntimeImpact) / total * 100,
+	}
+	return impacts
 }

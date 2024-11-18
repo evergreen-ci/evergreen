@@ -29,7 +29,7 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 			Project:             t.Project,
 			ExpectedDuration:    t.ExpectedDuration,
 			Priority:            t.Priority,
-			PriorityRankValue:   t.PriorityRankValue,
+			RankValueBreakdown:  t.RankValueBreakdown,
 			Group:               t.TaskGroup,
 			GroupMaxHosts:       t.TaskGroupMaxHosts,
 			GroupIndex:          t.TaskGroupOrder,
@@ -47,8 +47,8 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 
 	// track scheduled time for prioritized tasks
 	if err := task.SetTasksScheduledTime(tasks, startAt); err != nil {
-		return errors.Wrapf(err, "error setting scheduled time for prioritized tasks for distro '%s'", distro)
+		return errors.Wrapf(err, "setting scheduled time for prioritized tasks for distro '%s'", distro)
 	}
-
+	analyzeRankValueBreakdowns(distro, tasks)
 	return nil
 }
