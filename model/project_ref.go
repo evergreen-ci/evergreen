@@ -148,6 +148,11 @@ type ProjectRef struct {
 	// project's variables have been synced to Parameter Store. If this is true,
 	// then the project variables can all be found in Parameter Store.
 	ParameterStoreVarsSynced bool `bson:"parameter_store_vars_synced,omitempty" json:"parameter_store_vars_synced,omitempty" yaml:"parameter_store_vars_synced,omitempty"`
+	// ParameterStoreGitHubAppSynced is a temporary flag that indicates whether
+	// the project's GitHub app's private key have been synced to Parameter
+	// Store. If this is true, then the project's GitHub app private key can be
+	// found in Parameter Store.
+	ParameterStoreGitHubAppSynced bool `bson:"parameter_store_github_app_synced,omitempty" json:"parameter_store_github_app_synced,omitempty" yaml:"parameter_store_github_app_synced,omitempty"`
 	// LastAutoRestartedTaskAt is the last timestamp that a task in this project was restarted automatically.
 	LastAutoRestartedTaskAt time.Time `bson:"last_auto_restarted_task_at"`
 	// NumAutoRestartedTasks is the number of tasks this project has restarted automatically in the past 24-hour period.
