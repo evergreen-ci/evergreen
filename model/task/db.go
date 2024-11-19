@@ -1826,6 +1826,7 @@ func updateAllTasksForAllMatchingDependencies(ctx context.Context, taskIDs []str
 					"else": false,
 				}}},
 			},
+			addDisplayStatus,
 		},
 	); err != nil {
 		return errors.Wrap(err, "updating matching dependencies")
@@ -2702,6 +2703,7 @@ func activateTasks(taskIDs []string, caller string, activationTime time.Time) er
 					ActivatedTimeKey: activationTime,
 				},
 			},
+			addDisplayStatus,
 		})
 	if err != nil {
 		return errors.Wrap(err, "setting tasks to active")
@@ -2732,9 +2734,12 @@ func enableDisabledTasks(taskIDs []string) error {
 func SetHasAnnotations(taskId string, execution int) error {
 	err := UpdateOne(
 		ByIdAndExecution(taskId, execution),
-		bson.M{"$set": bson.M{
-			HasAnnotationsKey: true,
-		}})
+		[]bson.M{
+			bson.M{"$set": bson.M{
+				HasAnnotationsKey: true,
+			}},
+			addDisplayStatus,
+		})
 	return errors.Wrapf(err, "marking task '%s' as having annotations", taskId)
 }
 
@@ -2758,9 +2763,12 @@ func (t *Task) IncNumNextTaskDispatches() error {
 func UnsetHasAnnotations(taskId string, execution int) error {
 	err := UpdateOne(
 		ByIdAndExecution(taskId, execution),
-		bson.M{"$set": bson.M{
-			HasAnnotationsKey: false,
-		}})
+		[]bson.M{
+			bson.M{"$set": bson.M{
+				HasAnnotationsKey: false,
+			}},
+			addDisplayStatus,
+		})
 	return errors.Wrapf(err, "marking task '%s' as having no annotations", taskId)
 }
 
@@ -2837,6 +2845,7 @@ func abortAndMarkResetTasks(ctx context.Context, filter bson.M, taskIDs []string
 				AbortedKey:           true,
 				AbortInfoKey:         AbortInfo{User: caller},
 				ResetWhenFinishedKey: true,
+				DisplayStatusKey:     DisplayStatusExpression,
 			},
 			"$unset": bson.M{
 				ResetFailedWhenFinishedKey: 1,
