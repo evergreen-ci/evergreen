@@ -71,7 +71,7 @@ type ProjectSettingsEvent struct {
 	// project variables are not stored in the database for security reasons.
 	// However, the project event model needs to keep track of which project
 	// variables changed, hence the need for a separate model in that situation.
-	ProjectRef         ProjectRef              `bson:"project_ref" json:"project_ref"`
+	ProjectRef         ProjectRef              `bson:"proj_ref" json:"proj_ref"`
 	GithubHooksEnabled bool                    `bson:"github_hooks_enabled" json:"github_hooks_enabled"`
 	Aliases            []ProjectAlias          `bson:"aliases" json:"aliases"`
 	Subscriptions      []event.Subscription    `bson:"subscriptions" json:"subscriptions"`
