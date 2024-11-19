@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -69,14 +71,22 @@ func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
-		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		apiErr := errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		grip.Error(message.WrapError(apiErr, message.Fields{
+			"message":     "bad response code from image visibility API",
+			"status_code": resp.StatusCode,
+		}))
+		return nil, apiErr
 	}
 	var images []string
 	if err := gimlet.GetJSON(resp.Body, &images); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "parsing response from image visibility API",
+		}))
 		return nil, errors.Wrap(err, "decoding http body")
 	}
 	if len(images) == 0 {
-		return nil, errors.New("No corresponding images")
+		return nil, errors.New("no corresponding images")
 	}
 	return images, nil
 }
@@ -128,10 +138,20 @@ func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFi
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
-		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		apiErr := errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		grip.Error(message.WrapError(apiErr, message.Fields{
+			"message":     "bad response code from image visibility API",
+			"params":      params,
+			"status_code": resp.StatusCode,
+		}))
+		return nil, apiErr
 	}
 	osInfo := &OSInfoResponse{}
 	if err := gimlet.GetJSON(resp.Body, &osInfo); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "parsing response from image visibility API",
+			"params":  params,
+		}))
 		return nil, errors.Wrap(err, "decoding http body")
 	}
 	return osInfo, nil
@@ -186,10 +206,20 @@ func (c *RuntimeEnvironmentsClient) GetPackages(ctx context.Context, opts Packag
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
-		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		apiErr := errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		grip.Error(message.WrapError(apiErr, message.Fields{
+			"message":     "bad response code from image visibility API",
+			"params":      params,
+			"status_code": resp.StatusCode,
+		}))
+		return nil, apiErr
 	}
 	packages := &APIPackageResponse{}
 	if err := gimlet.GetJSON(resp.Body, &packages); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "parsing response from image visibility API",
+			"params":  params,
+		}))
 		return nil, errors.Wrap(err, "decoding http body")
 	}
 	return packages, nil
@@ -244,10 +274,20 @@ func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts Tool
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
-		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		apiErr := errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		grip.Error(message.WrapError(apiErr, message.Fields{
+			"message":     "bad response code from image visibility API",
+			"params":      params,
+			"status_code": resp.StatusCode,
+		}))
+		return nil, errors.Errorf("getting toolchains: %s", apiErr.Error())
 	}
 	toolchains := &APIToolchainResponse{}
 	if err := gimlet.GetJSON(resp.Body, &toolchains); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "parsing response from image visibility API",
+			"params":  params,
+		}))
 		return nil, errors.Wrap(err, "decoding http body")
 	}
 	return toolchains, nil
@@ -295,10 +335,20 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts diffF
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
-		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		apiErr := errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		grip.Error(message.WrapError(apiErr, message.Fields{
+			"message":     "bad response code from image visibility API",
+			"params":      params,
+			"status_code": resp.StatusCode,
+		}))
+		return nil, apiErr
 	}
 	changes := &APIDiffResponse{}
 	if err := gimlet.GetJSON(resp.Body, &changes); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "parsing response from image visibility API",
+			"params":  params,
+		}))
 		return nil, errors.Wrap(err, "decoding http body")
 	}
 	filteredChanges := []ImageDiffChange{}
@@ -355,10 +405,20 @@ func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts history
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
-		return nil, errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		apiErr := errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		grip.Error(message.WrapError(apiErr, message.Fields{
+			"message":     "bad response code from image visibility API",
+			"params":      params,
+			"status_code": resp.StatusCode,
+		}))
+		return nil, apiErr
 	}
 	amiHistory := &APIHistoryResponse{}
 	if err := gimlet.GetJSON(resp.Body, &amiHistory); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "parsing response from image visibility API",
+			"params":  params,
+		}))
 		return nil, errors.Wrap(err, "decoding http body")
 	}
 	return amiHistory.Data, nil
@@ -456,6 +516,10 @@ func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID st
 		return nil, errors.Wrapf(err, "getting latest AMI and timestamp")
 	}
 	if len(amiHistory) != 1 {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "expected exactly 1 history result for image",
+			"image_id": imageID,
+		}))
 		return nil, errors.Errorf("expected exactly 1 history result for image '%s'", imageID)
 	}
 	return &DistroImage{
