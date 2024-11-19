@@ -91,7 +91,9 @@ func (s *ProjectEventSuite) TestModifyProjectEvent() {
 	s.Equal(before.ProjectRef.Admins, eventData.Before.ProjectRef.Admins)
 	s.True(eventData.Before.PeriodicBuildsDefault)
 	s.Equal(before.GithubHooksEnabled, eventData.Before.GithubHooksEnabled)
-	s.Equal(before.Vars, eventData.Before.Vars)
+	s.Equal(before.Vars.Vars, eventData.Before.Vars.Vars)
+	s.Equal(before.Vars.PrivateVars, eventData.Before.Vars.PrivateVars)
+	s.Equal(before.Vars.AdminOnlyVars, eventData.Before.Vars.AdminOnlyVars)
 	s.Equal(before.Aliases, eventData.Before.Aliases)
 	s.Equal(before.Subscriptions, eventData.Before.Subscriptions)
 
@@ -103,7 +105,9 @@ func (s *ProjectEventSuite) TestModifyProjectEvent() {
 	s.Equal(after.ProjectRef.Id, eventData.After.ProjectRef.Id)
 	s.Equal(after.ProjectRef.Admins, eventData.After.ProjectRef.Admins)
 	s.Equal(after.GithubHooksEnabled, eventData.After.GithubHooksEnabled)
-	s.Equal(after.Vars, eventData.After.Vars)
+	s.Equal(after.Vars.Vars, eventData.After.Vars.Vars)
+	s.Equal(after.Vars.PrivateVars, eventData.After.Vars.PrivateVars)
+	s.Equal(after.Vars.AdminOnlyVars, eventData.After.Vars.AdminOnlyVars)
 	s.Equal(after.Aliases, eventData.After.Aliases)
 	s.Equal(after.Subscriptions, eventData.After.Subscriptions)
 }
