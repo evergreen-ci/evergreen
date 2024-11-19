@@ -473,17 +473,13 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 		privateVarsMapKey:   projectVars.PrivateVars,
 		adminOnlyVarsMapKey: projectVars.AdminOnlyVars,
 	}
-	unsetUpdate := bson.M{}
 	update := bson.M{}
 	if len(projectVars.Parameters) > 0 {
 		setUpdate[projectVarsParametersKey] = projectVars.Parameters
 	} else {
-		unsetUpdate[projectVarsParametersKey] = 1
+		update["$unset"] = bson.M{projectVarsParametersKey: 1}
 	}
 	update["$set"] = setUpdate
-	if len(unsetUpdate) > 0 {
-		update["$unset"] = unsetUpdate
-	}
 
 	return db.Upsert(
 		ProjectVarsCollection,
@@ -798,14 +794,10 @@ func (projectVars *ProjectVars) Insert() error {
 		}
 	}, "Insert")
 
-	if err := db.Insert(
+	return db.Insert(
 		ProjectVarsCollection,
 		projectVars,
-	); err != nil {
-		return err
-	}
-
-	return nil
+	)
 }
 
 // insertParameterStore inserts all project variables into Parameter Store.
