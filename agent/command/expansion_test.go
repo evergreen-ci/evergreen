@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -300,7 +299,6 @@ func TestExpansionWriter(t *testing.T) {
 		"foo":                      "bar",
 		"baz":                      "qux",
 		"password":                 "hunter2",
-		evergreen.GithubAppToken:   "app_token",
 		globals.AWSAccessKeyId:     "aws_key_id",
 		globals.AWSSecretAccessKey: "aws_secret_key",
 		globals.AWSSessionToken:    "aws_token",

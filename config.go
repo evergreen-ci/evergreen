@@ -37,7 +37,7 @@ var (
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2024-11-04-ab"
+	AgentVersion = "2024-11-19"
 )
 
 const (
@@ -63,6 +63,7 @@ type ConfigSection interface {
 type Settings struct {
 	Id                  string                    `bson:"_id" json:"id" yaml:"id"`
 	Amboy               AmboyConfig               `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
+	AmboyDB             AmboyDBConfig             `yaml:"amboy_db" bson:"amboy_db" json:"amboy_db" id:"amboy_db"`
 	Api                 APIConfig                 `yaml:"api" bson:"api" json:"api" id:"api"`
 	AuthConfig          AuthConfig                `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
 	AWSInstanceRole     string                    `yaml:"aws_instance_role" bson:"aws_instance_role" json:"aws_instance_role"`

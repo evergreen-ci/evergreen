@@ -81,8 +81,6 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.ShutdownWaitSeconds, *apiSettings.ShutdownWaitSeconds)
 
 	assert.EqualValues(testSettings.Amboy.Name, utility.FromStringPtr(apiSettings.Amboy.Name))
-	assert.EqualValues(testSettings.Amboy.DBConnection.URL, utility.FromStringPtr(apiSettings.Amboy.DBConnection.URL))
-	assert.EqualValues(testSettings.Amboy.DBConnection.Database, utility.FromStringPtr(apiSettings.Amboy.DBConnection.Database))
 	assert.EqualValues(testSettings.Amboy.LocalStorage, apiSettings.Amboy.LocalStorage)
 	assert.EqualValues(testSettings.Amboy.GroupDefaultWorkers, apiSettings.Amboy.GroupDefaultWorkers)
 	assert.EqualValues(testSettings.Amboy.GroupBackgroundCreateFrequencyMinutes, apiSettings.Amboy.GroupBackgroundCreateFrequencyMinutes)
@@ -99,6 +97,8 @@ func TestModelConversion(t *testing.T) {
 		assert.Equal(testSettings.Amboy.NamedQueues[i].SampleSize, apiSettings.Amboy.NamedQueues[i].SampleSize)
 		assert.Equal(testSettings.Amboy.NamedQueues[i].LockTimeoutSeconds, apiSettings.Amboy.NamedQueues[i].LockTimeoutSeconds)
 	}
+	assert.EqualValues(testSettings.AmboyDB.URL, utility.FromStringPtr(apiSettings.AmboyDB.URL))
+	assert.EqualValues(testSettings.AmboyDB.Database, utility.FromStringPtr(apiSettings.AmboyDB.Database))
 	assert.EqualValues(testSettings.Api.HttpListenAddr, utility.FromStringPtr(apiSettings.Api.HttpListenAddr))
 	assert.EqualValues(testSettings.Api.URL, utility.FromStringPtr(apiSettings.Api.URL))
 	assert.EqualValues(testSettings.AuthConfig.PreferredType, utility.FromStringPtr(apiSettings.AuthConfig.PreferredType))
@@ -223,7 +223,7 @@ func TestModelConversion(t *testing.T) {
 	assert.NoError(err)
 	dbSettings := dbInterface.(evergreen.Settings)
 	assert.EqualValues(testSettings.Amboy.Name, dbSettings.Amboy.Name)
-	assert.EqualValues(testSettings.Amboy.DBConnection, dbSettings.Amboy.DBConnection)
+	assert.EqualValues(testSettings.AmboyDB, dbSettings.AmboyDB)
 	assert.EqualValues(testSettings.Amboy.LocalStorage, dbSettings.Amboy.LocalStorage)
 	assert.EqualValues(testSettings.Amboy.GroupDefaultWorkers, dbSettings.Amboy.GroupDefaultWorkers)
 	assert.EqualValues(testSettings.Amboy.GroupBackgroundCreateFrequencyMinutes, dbSettings.Amboy.GroupBackgroundCreateFrequencyMinutes)
@@ -240,6 +240,8 @@ func TestModelConversion(t *testing.T) {
 		assert.Equal(testSettings.Amboy.NamedQueues[i].SampleSize, dbSettings.Amboy.NamedQueues[i].SampleSize)
 		assert.Equal(testSettings.Amboy.NamedQueues[i].LockTimeoutSeconds, dbSettings.Amboy.NamedQueues[i].LockTimeoutSeconds)
 	}
+	assert.EqualValues(testSettings.AmboyDB.URL, dbSettings.AmboyDB.URL)
+	assert.EqualValues(testSettings.AmboyDB.Database, dbSettings.AmboyDB.Database)
 	assert.EqualValues(testSettings.Api.HttpListenAddr, dbSettings.Api.HttpListenAddr)
 	assert.EqualValues(testSettings.Api.URL, dbSettings.Api.URL)
 	assert.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, dbSettings.AuthConfig.Naive.Users[0].Username)

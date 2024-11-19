@@ -23,6 +23,7 @@ type ConfigSections struct {
 func NewConfigSections() ConfigSections {
 	sections := []ConfigSection{
 		&AmboyConfig{},
+		&AmboyDBConfig{},
 		&APIConfig{},
 		&AuthConfig{},
 		&BucketsConfig{},
