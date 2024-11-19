@@ -26,6 +26,23 @@ type ProjectSettings struct {
 	Subscriptions      []event.Subscription    `bson:"subscriptions" json:"subscriptions"`
 }
 
+// NewProjectSettingsFromEvent creates project settings from a project settings
+// event.
+func NewProjectSettingsFromEvent(e ProjectSettingsEvent) ProjectSettings {
+	return ProjectSettings{
+		ProjectRef:         e.ProjectRef,
+		GitHubAppAuth:      e.GitHubAppAuth,
+		GithubHooksEnabled: e.GithubHooksEnabled,
+		Vars: ProjectVars{
+			Vars:          e.Vars.Vars,
+			PrivateVars:   e.Vars.PrivateVars,
+			AdminOnlyVars: e.Vars.AdminOnlyVars,
+		},
+		Aliases:       e.Aliases,
+		Subscriptions: e.Subscriptions,
+	}
+}
+
 // ProjectEventVars contains the project variable data relevant to project
 // modification events.
 type ProjectEventVars struct {
@@ -38,6 +55,8 @@ type ProjectEventVars struct {
 	AdminOnlyVars map[string]bool   `bson:"admin_only_vars" json:"admin_only_vars"`
 }
 
+// ProjectSettingsEvent contains the event data about a single revision of a
+// project's settings.
 type ProjectSettingsEvent struct {
 	// kim: TODO: remove in favor of copy-pasted fields
 	// ProjectSettings `bson:",inline"`
@@ -68,6 +87,25 @@ type ProjectSettingsEvent struct {
 	PeriodicBuildsDefault        bool `bson:"periodic_builds_default,omitempty" json:"periodic_builds_default,omitempty"`
 	TriggersDefault              bool `bson:"triggers_default,omitempty" json:"triggers_default,omitempty"`
 	WorkstationCommandsDefault   bool `bson:"workstation_commands_default,omitempty" json:"workstation_commands_default,omitempty"`
+}
+
+// NewProjectSettingsEvent creates project settings event data from project
+// settings.
+func NewProjectSettingsEvent(p ProjectSettings) ProjectSettingsEvent {
+	return ProjectSettingsEvent{
+		// kim: TODO: remove
+		// ProjectSettings:    *p,
+		ProjectRef:         p.ProjectRef,
+		GithubHooksEnabled: p.GithubHooksEnabled,
+		Aliases:            p.Aliases,
+		Subscriptions:      p.Subscriptions,
+		GitHubAppAuth:      p.GitHubAppAuth,
+		Vars: ProjectEventVars{
+			Vars:          p.Vars.Vars,
+			PrivateVars:   p.Vars.PrivateVars,
+			AdminOnlyVars: p.Vars.AdminOnlyVars,
+		},
+	}
 }
 
 type ProjectChangeEvent struct {
@@ -386,20 +424,7 @@ func GetAndLogProjectRepoAttachment(id, userId, attachmentType string, isRepo bo
 // ProjectChangeEvents must be cast to a generic interface to utilize event logging, which casts all nil objects of array types to empty arrays.
 // Set flags if these values should indeed be nil so that we can correct these values when the event log is read from the database.
 func (p *ProjectSettings) resolveDefaults() *ProjectSettingsEvent {
-	projectSettingsEvent := &ProjectSettingsEvent{
-		// kim: TODO: remove
-		// ProjectSettings:    *p,
-		ProjectRef:         p.ProjectRef,
-		GithubHooksEnabled: p.GithubHooksEnabled,
-		Aliases:            p.Aliases,
-		Subscriptions:      p.Subscriptions,
-		GitHubAppAuth:      p.GitHubAppAuth,
-		Vars: ProjectEventVars{
-			Vars:          p.Vars.Vars,
-			PrivateVars:   p.Vars.PrivateVars,
-			AdminOnlyVars: p.Vars.AdminOnlyVars,
-		},
-	}
+	projectSettingsEvent := NewProjectSettingsEvent(*p)
 
 	if p.ProjectRef.GitTagAuthorizedTeams == nil {
 		projectSettingsEvent.GitTagAuthorizedTeamsDefault = true
@@ -419,7 +444,7 @@ func (p *ProjectSettings) resolveDefaults() *ProjectSettingsEvent {
 	if p.ProjectRef.WorkstationConfig.SetupCommands == nil {
 		projectSettingsEvent.WorkstationCommandsDefault = true
 	}
-	return projectSettingsEvent
+	return &projectSettingsEvent
 }
 
 // LogProjectModified logs an event for a modification of a project's settings.

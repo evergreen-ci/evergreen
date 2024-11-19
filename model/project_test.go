@@ -1732,8 +1732,8 @@ func TestFindProjectsSuite(t *testing.T) {
 				ResourceId:   projectId,
 				Data: &ProjectChangeEvent{
 					User:   username,
-					Before: *before.resolveDefaults(),
-					After:  *after.resolveDefaults(),
+					Before: NewProjectSettingsEvent(before),
+					After:  NewProjectSettingsEvent(after),
 				},
 			}
 
