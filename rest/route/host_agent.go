@@ -539,13 +539,13 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}))
 
 		if !dispatchedTask {
-			grip.Debug(message.WrapError(err, message.Fields{
+			grip.Debug(message.Fields{
 				"investigation": "DEVPROD-12086",
 				"message":       "task was not dispatched",
 				"task":          nextTask.Id,
 				"variant":       nextTask.BuildVariant,
 				"project":       nextTask.Project,
-			}))
+			})
 			continue
 		}
 
