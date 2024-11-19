@@ -2731,8 +2731,9 @@ func enableDisabledTasks(taskIDs []string) error {
 // SetHasAnnotations sets a task's HasAnnotations flag, indicating
 // that there are annotations with populated IssuesKey for its
 // id / execution pair.
-func SetHasAnnotations(taskId string, execution int) error {
-	err := UpdateOne(
+func SetHasAnnotations(ctx context.Context, taskId string, execution int) error {
+	err := UpdateOneContext(
+		ctx,
 		ByIdAndExecution(taskId, execution),
 		[]bson.M{
 			bson.M{"$set": bson.M{
@@ -2760,8 +2761,9 @@ func (t *Task) IncNumNextTaskDispatches() error {
 // UnsetHasAnnotations unsets a task's HasAnnotations flag, indicating
 // that there are no longer any annotations with populated IssuesKey for its
 // id / execution pair.
-func UnsetHasAnnotations(taskId string, execution int) error {
-	err := UpdateOne(
+func UnsetHasAnnotations(ctx context.Context, taskId string, execution int) error {
+	err := UpdateOneContext(
+		ctx,
 		ByIdAndExecution(taskId, execution),
 		[]bson.M{
 			bson.M{"$set": bson.M{

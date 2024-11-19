@@ -1,6 +1,7 @@
 package task
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -14,7 +15,7 @@ import (
 // MoveIssueToSuspectedIssue removes an issue from an existing annotation and adds it to its suspected issues,
 // and unsets its associated task document as having annotations if this was the last issue removed from the
 // annotation.
-func MoveIssueToSuspectedIssue(taskId string, taskExecution int, issue annotations.IssueLink, username string) error {
+func MoveIssueToSuspectedIssue(ctx context.Context, taskId string, taskExecution int, issue annotations.IssueLink, username string) error {
 	newIssue := issue
 	newIssue.Source = &annotations.Source{Requester: annotations.UIRequester, Author: username, Time: time.Now()}
 	q := annotations.ByTaskIdAndExecution(taskId, taskExecution)
@@ -37,14 +38,14 @@ func MoveIssueToSuspectedIssue(taskId string, taskExecution int, issue annotatio
 		return errors.Wrapf(err, "finding and modifying task annotation for execution %d of task '%s'", taskExecution, taskId)
 	}
 	if annotation != nil && len(annotation.Issues) == 0 {
-		return UnsetHasAnnotations(taskId, taskExecution)
+		return UnsetHasAnnotations(ctx, taskId, taskExecution)
 	}
 	return nil
 }
 
 // MoveSuspectedIssueToIssue removes a suspected issue from an existing annotation and adds it to its issues,
 // and marks its associated task document as having annotations.
-func MoveSuspectedIssueToIssue(taskId string, taskExecution int, issue annotations.IssueLink, username string) error {
+func MoveSuspectedIssueToIssue(ctx context.Context, taskId string, taskExecution int, issue annotations.IssueLink, username string) error {
 	newIssue := issue
 	newIssue.Source = &annotations.Source{Requester: annotations.UIRequester, Author: username, Time: time.Now()}
 	q := annotations.ByTaskIdAndExecution(taskId, taskExecution)
@@ -59,12 +60,12 @@ func MoveSuspectedIssueToIssue(taskId string, taskExecution int, issue annotatio
 	); err != nil {
 		return err
 	}
-	return SetHasAnnotations(taskId, taskExecution)
+	return SetHasAnnotations(ctx, taskId, taskExecution)
 }
 
 // AddIssueToAnnotation adds an issue onto an existing annotation and marks its associated task document
 // as having annotations.
-func AddIssueToAnnotation(taskId string, execution int, issue annotations.IssueLink, username string) error {
+func AddIssueToAnnotation(ctx context.Context, taskId string, execution int, issue annotations.IssueLink, username string) error {
 	issue.Source = &annotations.Source{
 		Author:    username,
 		Time:      time.Now(),
@@ -79,12 +80,12 @@ func AddIssueToAnnotation(taskId string, execution int, issue annotations.IssueL
 	); err != nil {
 		return errors.Wrapf(err, "adding task annotation issue for task '%s'", taskId)
 	}
-	return SetHasAnnotations(taskId, execution)
+	return SetHasAnnotations(ctx, taskId, execution)
 }
 
 // RemoveIssueFromAnnotation removes an issue from an existing annotation, and unsets its
 // associated task document as having annotations if this was the last issue removed from the annotation.
-func RemoveIssueFromAnnotation(taskId string, execution int, issue annotations.IssueLink) error {
+func RemoveIssueFromAnnotation(ctx context.Context, taskId string, execution int, issue annotations.IssueLink) error {
 	annotation := &annotations.TaskAnnotation{}
 	_, err := db.FindAndModify(
 		annotations.Collection,
@@ -100,14 +101,14 @@ func RemoveIssueFromAnnotation(taskId string, execution int, issue annotations.I
 		return errors.Wrapf(err, "finding and removing issue for task annotation for execution %d of task '%s'", execution, taskId)
 	}
 	if annotation != nil && len(annotation.Issues) == 0 {
-		return UnsetHasAnnotations(taskId, execution)
+		return UnsetHasAnnotations(ctx, taskId, execution)
 	}
 	return nil
 }
 
 // UpsertAnnotation upserts a task annotation, and marks its associated task document
 // as having annotations if the upsert includes a non-nil Issues field.
-func UpsertAnnotation(a *annotations.TaskAnnotation, userDisplayName string) error {
+func UpsertAnnotation(ctx context.Context, a *annotations.TaskAnnotation, userDisplayName string) error {
 	source := &annotations.Source{
 		Author:    userDisplayName,
 		Time:      time.Now(),
@@ -153,14 +154,14 @@ func UpsertAnnotation(a *annotations.TaskAnnotation, userDisplayName string) err
 		return errors.Wrapf(err, "adding task annotation for task '%s'", a.TaskId)
 	}
 	if a.Issues != nil && len(a.Issues) > 0 {
-		return SetHasAnnotations(a.TaskId, a.TaskExecution)
+		return SetHasAnnotations(ctx, a.TaskId, a.TaskExecution)
 	}
 	return nil
 }
 
 // PatchAnnotation adds issues onto existing annotations, and marks its associated task document
 // as having annotations if the patch includes a non-nil Issues field.
-func PatchAnnotation(a *annotations.TaskAnnotation, userDisplayName string, upsert bool) error {
+func PatchAnnotation(ctx context.Context, a *annotations.TaskAnnotation, userDisplayName string, upsert bool) error {
 	existingAnnotation, err := annotations.FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
 	if err != nil {
 		return errors.Wrapf(err, "finding annotation for task '%s' and execution %d", a.TaskId, a.TaskExecution)
@@ -169,7 +170,7 @@ func PatchAnnotation(a *annotations.TaskAnnotation, userDisplayName string, upse
 		if !upsert {
 			return errors.Errorf("annotation for task '%s' and execution %d not found", a.TaskId, a.TaskExecution)
 		} else {
-			return UpsertAnnotation(a, userDisplayName)
+			return UpsertAnnotation(ctx, a, userDisplayName)
 		}
 	}
 
@@ -196,7 +197,7 @@ func PatchAnnotation(a *annotations.TaskAnnotation, userDisplayName string, upse
 		return errors.Wrapf(err, "updating task annotation for '%s'", a.TaskId)
 	}
 	if a.Issues != nil && len(a.Issues) > 0 {
-		return SetHasAnnotations(a.TaskId, a.TaskExecution)
+		return SetHasAnnotations(ctx, a.TaskId, a.TaskExecution)
 	}
 	return nil
 }
