@@ -1068,31 +1068,12 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 	return nil
 }
 
-// MarkAsHostDispatched marks that the task has been dispatched onto a
-// particular host. If the task is part of a display task, the display task is
-// also marked as dispatched to a host. Returns an error if any of the database
-// updates fail.
-func (t *Task) MarkAsHostDispatched(hostID, distroID, agentRevision string, dispatchTime time.Time) error {
-	doUpdate := func(update interface{}) error {
-		return UpdateOne(bson.M{IdKey: t.Id}, update)
-	}
-	if err := t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime); err != nil {
-		return err
-	}
-
-	// When dispatching an execution task, mark its parent as dispatched.
-	if dt, _ := t.GetDisplayTask(); dt != nil && dt.DispatchTime == utility.ZeroTime {
-		return dt.MarkAsHostDispatched("", "", "", dispatchTime)
-	}
-	return nil
-}
-
 // MarkAsHostDispatchedWithContext marks that the task has been dispatched onto
 // a particular host. Unlike MarkAsHostDispatched, this does not update the
 // parent display task.
 func (t *Task) MarkAsHostDispatchedWithContext(ctx context.Context, env evergreen.Environment, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
 	doUpdate := func(update interface{}) error {
-		return UpdateOne(bson.M{IdKey: t.Id}, update)
+		return UpdateOneContext(ctx, bson.M{IdKey: t.Id}, update)
 	}
 	return t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime)
 }
@@ -1114,10 +1095,12 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update interface{}) er
 	if err := doUpdate([]bson.M{
 		bson.M{
 			"$set": set,
-			"$unset": bson.M{
-				AbortedKey:   "",
-				AbortInfoKey: "",
-				DetailsKey:   "",
+		},
+		bson.M{
+			"$unset": []string{
+				AbortedKey,
+				AbortInfoKey,
+				DetailsKey,
 			},
 		},
 		addDisplayStatus,

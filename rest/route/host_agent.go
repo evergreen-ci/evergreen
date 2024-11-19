@@ -1020,7 +1020,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 
 	if t.IsHostDispatchable() {
 		grip.Notice(getMessage("marking task as dispatched because it is not currently dispatched"))
-		if err := model.MarkHostTaskDispatched(t, h); err != nil {
+		if err := model.MarkHostTaskDispatched(ctx, env, t, h); err != nil {
 			grip.Error(message.WrapError(err, getMessage("could not mark task as dispatched to host")))
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -2654,7 +2655,7 @@ func TestCreateTasksFromGroup(t *testing.T) {
 	}
 }
 
-func TestMarkAsHostDispatched(t *testing.T) {
+func TestMarkAsHostDispatchedWithContext(t *testing.T) {
 
 	var (
 		taskId       string
@@ -2667,6 +2668,11 @@ func TestMarkAsHostDispatched(t *testing.T) {
 	)
 
 	Convey("With a task", t, func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		env := &mock.Environment{}
+		require.NoError(t, env.Configure(ctx))
 
 		taskId = "t1"
 		hostId = "h1"
@@ -2690,7 +2696,7 @@ func TestMarkAsHostDispatched(t *testing.T) {
 			" the task, the host it is on, and the build it is a part of"+
 			" should be set to reflect this", func() {
 
-			So(taskDoc.MarkAsHostDispatched(hostId, distroId, agentVersion, time.Now()), ShouldBeNil)
+			So(taskDoc.MarkAsHostDispatchedWithContext(ctx, env, hostId, distroId, agentVersion, time.Now()), ShouldBeNil)
 
 			// make sure the task's fields were updated, both in ©memory and
 			// in the db

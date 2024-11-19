@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -3619,6 +3620,12 @@ func TestMarkStart(t *testing.T) {
 
 func TestMarkDispatched(t *testing.T) {
 	Convey("With a task, build and version", t, func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		env := &mock.Environment{}
+		require.NoError(t, env.Configure(ctx))
+
 		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection))
 		displayName := "testName"
 		b := &build.Build{
@@ -3646,7 +3653,7 @@ func TestMarkDispatched(t *testing.T) {
 				},
 				AgentRevision: "testAgentVersion",
 			}
-			So(MarkHostTaskDispatched(testTask, sampleHost), ShouldBeNil)
+			So(MarkHostTaskDispatched(ctx, env, testTask, sampleHost), ShouldBeNil)
 			var err error
 			testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
