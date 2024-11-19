@@ -4039,12 +4039,12 @@ type RankBreakdown struct {
 	InitialPriority        int64
 	TaskGroupImpact        int64
 	GenerateTaskImpact     int64
-	PatchImpact            PatchBreakdown
 	CommitQueueImpact      int64
-	MainlineTaskImpact     MainlineBreakdown
 	NumDependentsImpact    int64
 	EstimatedRuntimeImpact int64
 	TotalValue             int64
+	MainlineTaskImpact     MainlineBreakdown
+	PatchImpact            PatchBreakdown
 }
 
 type PatchBreakdown struct {
@@ -4057,6 +4057,8 @@ type MainlineBreakdown struct {
 	StepbackTaskImpact int64
 }
 
+// ImpactAnalysis computes the percentage influence every queue ranking factor had
+// on the overall rank value of a single task in a queue.
 func (r RankBreakdown) ImpactAnalysis() map[string]float64 {
 	total := float64(r.TotalValue)
 	if total == 0 {

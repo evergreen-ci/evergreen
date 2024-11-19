@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"math"
 	"sort"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,12 +10,10 @@ import (
 )
 
 type FactorStats struct {
-	Mean          float64
-	Median        float64
-	Max           float64
-	MinNonZero    float64
-	FrequencyUsed float64
-	StdDev        float64
+	Mean              float64
+	Max               float64
+	MinNonZero        float64
+	PercentageNonZero float64
 }
 
 type FactorSummary struct {
@@ -25,16 +22,16 @@ type FactorSummary struct {
 	RelativeImpact float64
 }
 
-func analyzeRankValueBreakdowns(distro string, tasks []task.Task) {
+func generateFactorBreakdownReport(distro string, tasks []task.Task) {
 	if len(tasks) == 0 {
 		return
 	}
 	analysis := analyzeFactors(tasks)
 	grip.Info(message.Fields{
-		"message":  "queue ranking analysis report",
-		"distro":   distro,
-		"tasks":    len(tasks),
-		"analysis": analysis,
+		"message":      "queue ranking analysis report",
+		"distro":       distro,
+		"queue_length": len(tasks),
+		"analysis":     analysis,
 	})
 }
 
@@ -54,12 +51,12 @@ func analyzeFactors(tasks []task.Task) []FactorSummary {
 		evergreen.EstimatedRuntimeImpactImpact,
 	}
 	summaries := make([]FactorSummary, 0, len(factorNames))
-	for _, name := range factorNames {
-		values := getFactorValues(name, tasks)
-		stats := computeStats(values)
-		impact := computeAverageImpact(name, tasks)
+	for _, factorName := range factorNames {
+		values := getFactorValues(factorName, tasks)
+		stats := getStats(values)
+		impact := getAvgPercentageImpact(factorName, tasks)
 		summaries = append(summaries, FactorSummary{
-			Name:           name,
+			Name:           factorName,
 			Stats:          stats,
 			RelativeImpact: impact,
 		})
@@ -70,14 +67,13 @@ func analyzeFactors(tasks []task.Task) []FactorSummary {
 	return summaries
 }
 
-func getFactorValues(name string, tasks []task.Task) []float64 {
+// getFactorValues takes a lists of tasks from a task queue and computes a new list of the
+// queue rank value breakdown values of those tasks for a specific factor.
+func getFactorValues(factorName string, tasks []task.Task) []float64 {
 	values := []float64{}
 	for _, t := range tasks {
-		if t.RankValueBreakdown == (task.RankBreakdown{}) {
-			continue
-		}
 		var value float64
-		switch name {
+		switch factorName {
 		case evergreen.TaskGroupImpact:
 			value = float64(t.RankValueBreakdown.TaskGroupImpact)
 		case evergreen.GenerateTaskImpact:
@@ -102,12 +98,14 @@ func getFactorValues(name string, tasks []task.Task) []float64 {
 	return values
 }
 
-func computeAverageImpact(name string, tasks []task.Task) float64 {
+// getAvgPercentageImpact computes the average percentage impact that a ranking
+// factor had on all tasks in a queue.
+func getAvgPercentageImpact(factorName string, tasks []task.Task) float64 {
 	var totalImpact float64
 	var count int
 	for _, t := range tasks {
 		impacts := t.RankValueBreakdown.ImpactAnalysis()
-		if impact, exists := impacts[name]; exists {
+		if impact, exists := impacts[factorName]; exists {
 			totalImpact += impact
 			count++
 		}
@@ -118,7 +116,11 @@ func computeAverageImpact(name string, tasks []task.Task) float64 {
 	return totalImpact / float64(count)
 }
 
-func computeStats(values []float64) FactorStats {
+// getStats takes in a list of values for a specific factor in a task queue
+// and computes the max, min, and mean values for that factor on tasks
+// in that queue, as well as the percentage of tasks in the queue that were influenced
+// by that factor.
+func getStats(values []float64) FactorStats {
 	if len(values) == 0 {
 		return FactorStats{}
 	}
@@ -129,21 +131,10 @@ func computeStats(values []float64) FactorStats {
 		sum += v
 	}
 	stats.Mean = sum / float64(len(values))
-	var sqDiff float64
-	for _, v := range values {
-		diff := v - stats.Mean
-		sqDiff += diff * diff
-	}
-	stats.StdDev = math.Sqrt(sqDiff / float64(len(values)))
 
 	sorted := make([]float64, len(values))
 	copy(sorted, values)
 	sort.Float64s(sorted)
-
-	mid := len(sorted) / 2
-	if len(sorted)%2 == 0 {
-		stats.Median = (sorted[mid-1] + sorted[mid]) / 2
-	}
 
 	stats.Max = sorted[len(sorted)-1]
 	stats.MinNonZero = stats.Max
@@ -157,6 +148,6 @@ func computeStats(values []float64) FactorStats {
 		}
 	}
 
-	stats.FrequencyUsed = float64(nonZeroCount) / float64(len(values))
+	stats.PercentageNonZero = float64(nonZeroCount) / float64(len(values)) * 100
 	return stats
 }
