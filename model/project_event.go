@@ -46,8 +46,6 @@ func NewProjectSettingsFromEvent(e ProjectSettingsEvent) ProjectSettings {
 // ProjectEventVars contains the project variable data relevant to project
 // modification events.
 type ProjectEventVars struct {
-	// kim: TODO: verify if ID is needed. It's present in the project event
-	// model, but I don't think it visually displays at all nor is it relevant.
 	// Vars contain the names of project variables and redacted placeholders for
 	// their values.
 	Vars          map[string]string `bson:"vars" json:"vars"`
@@ -58,15 +56,9 @@ type ProjectEventVars struct {
 // ProjectSettingsEvent contains the event data about a single revision of a
 // project's settings.
 type ProjectSettingsEvent struct {
-	// kim: TODO: remove in favor of copy-pasted fields
-	// ProjectSettings `bson:",inline"`
-
-	// kim: NOTE: easier to just copy-paste the struct rather than make a new
-	// field because don't need to fix all the tests, update the GQL models,
-	// etc. It's also consistent with existing model.
 	// These fields are mostly copied from ProjectSettings, except for a few
 	// where the data available to project events differs from the original data
-	// model due to security concerns.
+	// model.
 	// For example, the ProjectVars model cannot be used as-is because the
 	// project variables are not stored in the database for security reasons.
 	// However, the project event model needs to keep track of which project
@@ -93,8 +85,6 @@ type ProjectSettingsEvent struct {
 // settings.
 func NewProjectSettingsEvent(p ProjectSettings) ProjectSettingsEvent {
 	return ProjectSettingsEvent{
-		// kim: TODO: remove
-		// ProjectSettings:    *p,
 		ProjectRef:         p.ProjectRef,
 		GithubHooksEnabled: p.GithubHooksEnabled,
 		Aliases:            p.Aliases,
