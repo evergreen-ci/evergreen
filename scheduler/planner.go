@@ -197,91 +197,102 @@ type unitInfo struct {
 }
 
 func (u *unitInfo) value() task.RankBreakdown {
-	var breakdown task.RankBreakdown
-
 	length := int64(len(u.TaskIDs))
-	priority := 1 + (u.TotalPriority / length)
-
-	breakdown.TaskGroupLength = length
-	breakdown.InitialPriority = u.TotalPriority / length
-	breakdown.BasePriority = priority
-
-	if !u.ContainsNonGroupTasks {
-		// if all tasks in the unit are in a task group then
-		// we should give it a little bump, so that task
-		// groups tasks are sorted together even when they
-		// would also be scheduled in a version.
-		breakdown.TaskGroupImpact = length
-		priority += length
-	}
-	if u.ContainsGenerateTask {
-		// give generators a boost so people don't have to wait twice.
-		originalPriority := priority
-		priority = priority * u.Settings.GetGenerateTaskFactor()
-		breakdown.GenerateTaskImpact = priority - originalPriority
-	}
-
-	var value int64
-	if u.ContainsInPatch {
-		breakdown.PatchImpact = priority * u.Settings.GetPatchFactor()
-		breakdown.PatchWaitTimeImpact = priority * u.Settings.GetPatchTimeInQueueFactor() * int64(math.Floor(u.TimeInQueue.Minutes()/float64(length)))
-		// give patches a bump, over non-patches. patches that have spent more time in the queue
-		// should get worked on first (because people are waiting on the results), and because FIFO feels
-		// fair in this context.
-		value += breakdown.PatchImpact
-		value += breakdown.PatchWaitTimeImpact
-	} else if u.ContainsInCommitQueue {
-		// give commit queue patches a boost over everything else
-		priority += 200
-		breakdown.CommitQueueImpact = priority * u.Settings.GetCommitQueueFactor()
-		value += breakdown.CommitQueueImpact
-	} else {
-		// for mainline builds that are more recent, give them a bit
-		// of a bump, to avoid running older builds first.
-		avgLifeTime := u.TimeInQueue / time.Duration(length)
-
-		var mainlinePriority int64
-		if avgLifeTime < time.Duration(7*24)*time.Hour {
-			breakdown.MainlineWaitTimeImpact = u.Settings.GetMainlineTimeInQueueFactor() * int64((7*24*time.Hour - avgLifeTime).Hours())
-			mainlinePriority += breakdown.MainlineWaitTimeImpact
-		}
-		if u.ContainsStepbackTask {
-			breakdown.StepbackImpact = u.Settings.GetStepbackTaskFactor()
-			mainlinePriority += breakdown.StepbackImpact
-		}
-
-		value += priority * mainlinePriority
-	}
-
+	initialPriority := 1 + (u.TotalPriority / length)
+	modifiedPriority := u.modifyBasePriority(initialPriority)
 	// Start with the number of tasks so that units with more
 	// tasks get sorted above one-offs, and then add the priority
 	// setting as a base.
-	value += length
-	value += priority
+	breakdown := task.RankBreakdown{
+		TaskGroupLength: length,
+		BasePriority:    modifiedPriority,
+		TotalValue:      length + modifiedPriority,
+	}
+	requesterValue := u.addByRequester(initialPriority, modifiedPriority, length, &breakdown)
 
-	// The remaining values are normalized per tasks, to avoid
-	// situations where larger units are always prioritized above
-	// smaller groups.
-	//
-	// Additionally, all these values are multiplied by the
-	// priority, to avoid situations where the impact of changing
-	// priority is obviated by other factors.
+	breakdown.TotalValue += requesterValue
+	return breakdown
+}
 
+func (u *unitInfo) addByRequester(initialPriority, modifiedPriority, length int64, breakdown *task.RankBreakdown) int64 {
+	var patchValue, patchWaitTimeValue int64
+	var commitQueueValue int64
+	var mainlineWaitTimeValue, stepbackValue int64
+	if u.ContainsInPatch {
+		// Give patches a bump, over non-patches. patches that have spent more time in the queue
+		// should get worked on first (because people are waiting on the results), and because FIFO feels
+		// fair in this context.
+		patchValue = u.Settings.GetPatchFactor()
+		patchWaitTimeValue = u.Settings.GetPatchTimeInQueueFactor() * int64(math.Floor(u.TimeInQueue.Minutes()/float64(length)))
+	} else if u.ContainsInCommitQueue {
+		// Give commit queue patches a boost over everything else
+		commitQueueValue = u.Settings.GetCommitQueueFactor()
+	} else {
+		// For mainline builds that are more recent, give them a bit
+		// of a bump, to avoid running older builds first.
+		avgLifeTime := u.TimeInQueue / time.Duration(length)
+		if avgLifeTime < time.Duration(7*24)*time.Hour {
+			mainlineWaitTimeValue = u.Settings.GetMainlineTimeInQueueFactor() * int64((7*24*time.Hour - avgLifeTime).Hours())
+		}
+		if u.ContainsStepbackTask {
+			stepbackValue = u.Settings.GetStepbackTaskFactor()
+		}
+	}
 	// Increase the value for the number of dependents, so that
 	// tasks (and units) which block other tasks run before tasks
 	// that don't block other tasks.
-	breakdown.NumDependentsImpact = int64(float64(priority) * u.Settings.GetNumDependentsFactor() * float64(u.NumDependents/length))
-	value += breakdown.NumDependentsImpact
+	numDependentsValue := int64(u.Settings.GetNumDependentsFactor() * float64(u.NumDependents/length))
 
 	// Increase the value for tasks with longer runtimes, given
 	// that most of our workloads have different runtimes, and we
 	// don't want to have longer makespans if longer running tasks
 	// have to execute after shorter running tasks.
-	breakdown.EstimatedRuntimeImpact = priority * u.Settings.GetExpectedRuntimeFactor() * int64(math.Floor(u.ExpectedRuntime.Minutes()/float64(length)))
-	value += breakdown.EstimatedRuntimeImpact
+	estimatedRuntimeValue := u.Settings.GetExpectedRuntimeFactor() * int64(math.Floor(u.ExpectedRuntime.Minutes()/float64(length)))
 
-	breakdown.TotalValue = value
-	return breakdown
+	totalValue := patchValue +
+		patchWaitTimeValue +
+		mainlineWaitTimeValue +
+		stepbackValue +
+		commitQueueValue +
+		numDependentsValue +
+		estimatedRuntimeValue
+
+	priorityScaledValue := modifiedPriority * totalValue
+	breakdown.NumDependentsImpact = initialPriority * numDependentsValue
+	breakdown.EstimatedRuntimeImpact = initialPriority * estimatedRuntimeValue
+	breakdown.PatchImpact = initialPriority * patchValue
+	breakdown.PatchWaitTimeImpact = initialPriority * patchWaitTimeValue
+	breakdown.MainlineWaitTimeImpact = initialPriority * mainlineWaitTimeValue
+	breakdown.StepbackImpact = initialPriority * stepbackValue
+
+	breakdown.GenerateTaskImpact = priorityScaledValue - (priorityScaledValue / u.Settings.GetGenerateTaskFactor())
+	if u.ContainsInCommitQueue {
+		breakdown.CommitQueueImpact = initialPriority*commitQueueValue + totalValue*200
+	}
+	if !u.ContainsNonGroupTasks {
+		breakdown.TaskGroupImpact = totalValue * length
+	}
+	return priorityScaledValue
+}
+
+func (u *unitInfo) modifyBasePriority(initialPriority int64) int64 {
+
+	length := int64(len(u.TaskIDs))
+	if !u.ContainsNonGroupTasks {
+		// If all tasks in the unit are in a task group then
+		// we should give it a little bump, so that task
+		// groups tasks are sorted together even when they
+		// would also be scheduled in a version.
+		initialPriority += length
+	}
+	if u.ContainsGenerateTask {
+		// Give generators a boost so people don't have to wait twice.
+		initialPriority = initialPriority * u.Settings.GetGenerateTaskFactor()
+	}
+	if u.ContainsInCommitQueue {
+		initialPriority += 200
+	}
+	return initialPriority
 }
 
 func (unit *Unit) info() unitInfo {
