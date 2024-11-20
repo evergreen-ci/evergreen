@@ -99,8 +99,13 @@ func (j *parameterStoreSyncJob) sync(ctx context.Context, pRefs []model.ProjectR
 			})
 			pVars = &model.ProjectVars{Id: pRef.Id}
 		}
-		if err := model.FullSyncToParameterStore(ctx, pVars, &pRef, areRepoRefs); err != nil {
+		pm, err := model.FullSyncToParameterStore(ctx, pVars, &pRef, areRepoRefs)
+		if err != nil {
 			catcher.Wrapf(err, "syncing project vars for project '%s'", pRef.Id)
+			continue
+		}
+		if err := pVars.SetParamMappings(*pm); err != nil {
+			catcher.Wrapf(err, "updating parameter mappings for project '%s'", pRef.Id)
 		}
 	}
 	return catcher.Resolve()
