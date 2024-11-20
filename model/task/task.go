@@ -228,8 +228,7 @@ type Task struct {
 
 	// HostCreateDetails stores information about why host.create failed for this task
 	HostCreateDetails []HostCreateDetail `bson:"host_create_details,omitempty" json:"host_create_details,omitempty"`
-	// DisplayStatus is not persisted to the db. It is the status to display in the UI.
-	// It may be added via aggregation
+	// DisplayStatus is updated whenever one of the fields used in calculating it is modified
 	DisplayStatus string `bson:"display_status,omitempty" json:"display_status,omitempty"`
 	// BaseTask is not persisted to the db. It is the data of the task on the base commit
 	// It may be added via aggregation
@@ -1551,12 +1550,10 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) ([
 		return nil, errors.Wrap(err, "finding matching tasks")
 	}
 	update := []bson.M{
-		bson.M{
-			"$set": bson.M{
-				PriorityKey:  evergreen.DisabledTaskPriority,
-				ActivatedKey: false,
-			},
-		},
+		bson.M{"$set": bson.M{
+			PriorityKey:  evergreen.DisabledTaskPriority,
+			ActivatedKey: false,
+		}},
 		addDisplayStatus,
 	}
 
@@ -1662,9 +1659,7 @@ func (t *Task) SetAborted(ctx context.Context, reason AbortInfo) error {
 			IdKey: t.Id,
 		},
 		[]bson.M{
-			bson.M{
-				"$set": taskAbortUpdate(reason),
-			},
+			bson.M{"$set": taskAbortUpdate(reason)},
 			addDisplayStatus,
 		},
 	)
@@ -3015,17 +3010,8 @@ func (t *Task) Archive(ctx context.Context) error {
 				},
 			},
 			[]bson.M{
-				bson.M{"$set": bson.M{
-					CanResetKey: true,
-					ExecutionKey: bson.M{
-						"$add": []interface{}{"$" + ExecutionKey, 1},
-					},
-				}},
-				bson.M{"$unset": bson.A{
-					AbortedKey,
-					AbortInfoKey,
-					OverrideDependenciesKey,
-				}},
+				updateDisplayTasksAndTasksSet,
+				updateDisplayTasksAndTasksUnset,
 				addDisplayStatus,
 			},
 		)
@@ -3123,17 +3109,8 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 					},
 				},
 				[]bson.M{
-					bson.M{"$set": bson.M{
-						CanResetKey: true,
-						ExecutionKey: bson.M{
-							"$add": []interface{}{"$" + ExecutionKey, 1},
-						},
-					}},
-					bson.M{"$unset": bson.A{
-						AbortedKey,
-						AbortInfoKey,
-						OverrideDependenciesKey,
-					}},
+					updateDisplayTasksAndTasksSet,
+					updateDisplayTasksAndTasksUnset,
 					addDisplayStatus,
 				},
 			)

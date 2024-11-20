@@ -188,17 +188,17 @@ var (
 		},
 	}
 
-	updateDisplayTasksAndTasksExpression = bson.M{
-		"$set": bson.M{
-			CanResetKey: true,
+	updateDisplayTasksAndTasksSet = bson.M{"$set": bson.M{
+		CanResetKey: true,
+		ExecutionKey: bson.M{
+			"$add": bson.A{"$" + ExecutionKey, 1},
 		},
-		"$unset": bson.M{
-			AbortedKey:              "",
-			AbortInfoKey:            "",
-			OverrideDependenciesKey: "",
-		},
-		"$inc": bson.M{ExecutionKey: 1},
-	}
+	}}
+	updateDisplayTasksAndTasksUnset = bson.M{"$unset": bson.A{
+		AbortedKey,
+		AbortInfoKey,
+		OverrideDependenciesKey,
+	}}
 
 	// This should reflect Task.GetDisplayStatus()
 	DisplayStatusExpression = bson.M{
