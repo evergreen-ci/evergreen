@@ -2085,8 +2085,8 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 
 // MarkHostTaskDispatched marks a task as being dispatched to the host. If it's
 // part of a display task, update the display task as necessary.
-func MarkHostTaskDispatched(ctx context.Context, env evergreen.Environment, t *task.Task, h *host.Host) error {
-	if err := t.MarkAsHostDispatchedWithContext(ctx, env, h.Id, h.Distro.Id, h.AgentRevision, time.Now()); err != nil {
+func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
+	if err := t.MarkAsHostDispatched(h.Id, h.Distro.Id, h.AgentRevision, time.Now()); err != nil {
 		return errors.Wrapf(err, "marking task '%s' as dispatched "+
 			"on host '%s'", t.Id, h.Id)
 	}
