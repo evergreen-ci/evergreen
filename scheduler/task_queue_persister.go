@@ -50,6 +50,5 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 	if err := task.SetTasksScheduledTime(tasks, startAt); err != nil {
 		return errors.Wrapf(err, "setting scheduled time for prioritized tasks for distro '%s'", distro)
 	}
-	generateFactorBreakdownReport(distro, tasks)
 	return nil
 }

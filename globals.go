@@ -1516,19 +1516,3 @@ func ValidateSSHKey(key string) error {
 	return errors.Errorf("either an invalid Evergreen-managed key name has been provided, "+
 		"or the key value is not one of the valid types: %s", validKeyTypes)
 }
-
-// TODO comment
-const (
-	BaseImpact                   = "Base"
-	LengthImpact                 = "Length"
-	InitialPriorityImpact        = "InitialRank"
-	TaskGroupImpact              = "TaskGroup"
-	GenerateTaskImpact           = "GenerateTask"
-	BasePatchImpact              = "BasePatch"
-	WaitTimePatchImpact          = "WaitTimePatch"
-	CommitQueueImpact            = "CommitQueue"
-	WaitTimeMainlineTaskImpact   = "WaitTimeMainline"
-	StepbackImpact               = "Stepback"
-	NumDependentsImpact          = "NumDependents"
-	EstimatedRuntimeImpactImpact = "EstimatedRuntime"
-)

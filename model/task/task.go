@@ -30,6 +30,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
@@ -4040,48 +4042,55 @@ func (t *Task) FindAbortingAndResettingDependencies() ([]Task, error) {
 
 type RankBreakdown struct {
 	BasePriority           int64
-	Length                 int64
 	InitialPriority        int64
+	TaskGroupLength        int64
 	TaskGroupImpact        int64
 	GenerateTaskImpact     int64
 	CommitQueueImpact      int64
 	NumDependentsImpact    int64
 	EstimatedRuntimeImpact int64
 	TotalValue             int64
-	MainlineTaskImpact     MainlineBreakdown
-	PatchImpact            PatchBreakdown
+	MainlineWaitTimeImpact int64
+	StepbackImpact         int64
+	PatchImpact            int64
+	PatchWaitTimeImpact    int64
 }
 
-type PatchBreakdown struct {
-	BaseImpact     int64
-	WaitTimeImpact int64
-}
+const (
+	queueBreakdownAttributePrefix = "evergreen.queue_factor_breakdown"
+)
 
-type MainlineBreakdown struct {
-	WaitTimeImpact     int64
-	StepbackTaskImpact int64
-}
-
-// ImpactAnalysis computes the percentage influence every queue ranking factor had
-// on the overall rank value of a single task in a queue.
-func (r RankBreakdown) ImpactAnalysis() map[string]float64 {
-	total := float64(r.TotalValue)
-	if total == 0 {
-		return nil
-	}
-	impacts := map[string]float64{
-		evergreen.BaseImpact:                   float64(r.BasePriority) / total * 100,
-		evergreen.LengthImpact:                 float64(r.Length) / total * 100,
-		evergreen.InitialPriorityImpact:        float64(r.InitialPriority) / total * 100,
-		evergreen.TaskGroupImpact:              float64(r.TaskGroupImpact) / total * 100,
-		evergreen.GenerateTaskImpact:           float64(r.GenerateTaskImpact) / total * 100,
-		evergreen.BasePatchImpact:              float64(r.PatchImpact.BaseImpact) / total * 100,
-		evergreen.WaitTimePatchImpact:          float64(r.PatchImpact.WaitTimeImpact) / total * 100,
-		evergreen.CommitQueueImpact:            float64(r.CommitQueueImpact) / total * 100,
-		evergreen.WaitTimeMainlineTaskImpact:   float64(r.MainlineTaskImpact.WaitTimeImpact) / total * 100,
-		evergreen.StepbackImpact:               float64(r.MainlineTaskImpact.StepbackTaskImpact) / total * 100,
-		evergreen.NumDependentsImpact:          float64(r.NumDependentsImpact) / total * 100,
-		evergreen.EstimatedRuntimeImpactImpact: float64(r.EstimatedRuntimeImpact) / total * 100,
-	}
-	return impacts
+func (t *Task) SetRankBreakdown(ctx context.Context, breakdown RankBreakdown) {
+	_, span := tracer.Start(ctx, "queue-factor-breakdown", trace.WithNewRoot())
+	defer span.End()
+	span.SetAttributes(
+		attribute.String(evergreen.DistroIDOtelAttribute, t.DistroId),
+		attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
+		attribute.Int64(fmt.Sprintf("%s.total_value", queueBreakdownAttributePrefix), breakdown.TotalValue),
+		attribute.Int64(fmt.Sprintf("%s.base_priority", queueBreakdownAttributePrefix), breakdown.BasePriority),
+		attribute.Int64(fmt.Sprintf("%s.length", queueBreakdownAttributePrefix), breakdown.TaskGroupLength),
+		attribute.Int64(fmt.Sprintf("%s.initial_priority", queueBreakdownAttributePrefix), breakdown.InitialPriority),
+		attribute.Int64(fmt.Sprintf("%s.task_group", queueBreakdownAttributePrefix), breakdown.TaskGroupImpact),
+		attribute.Int64(fmt.Sprintf("%s.generate_task", queueBreakdownAttributePrefix), breakdown.GenerateTaskImpact),
+		attribute.Int64(fmt.Sprintf("%s.patch", queueBreakdownAttributePrefix), breakdown.PatchImpact),
+		attribute.Int64(fmt.Sprintf("%s.patch_wait_time", queueBreakdownAttributePrefix), breakdown.PatchWaitTimeImpact),
+		attribute.Int64(fmt.Sprintf("%s.commit_queue", queueBreakdownAttributePrefix), breakdown.CommitQueueImpact),
+		attribute.Int64(fmt.Sprintf("%s.mainline_wait_time", queueBreakdownAttributePrefix), breakdown.MainlineWaitTimeImpact),
+		attribute.Int64(fmt.Sprintf("%s.stepback", queueBreakdownAttributePrefix), breakdown.StepbackImpact),
+		attribute.Int64(fmt.Sprintf("%s.num_dependents", queueBreakdownAttributePrefix), breakdown.NumDependentsImpact),
+		attribute.Int64(fmt.Sprintf("%s.estimated_runtime", queueBreakdownAttributePrefix), breakdown.EstimatedRuntimeImpact),
+		attribute.Float64(fmt.Sprintf("%s.base_priority_pct", queueBreakdownAttributePrefix), float64(breakdown.BasePriority/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.length_pct", queueBreakdownAttributePrefix), float64(breakdown.TaskGroupLength/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.initial_priority_pct", queueBreakdownAttributePrefix), float64(breakdown.InitialPriority/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.task_group_pct", queueBreakdownAttributePrefix), float64(breakdown.TaskGroupImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.generate_task_pct", queueBreakdownAttributePrefix), float64(breakdown.GenerateTaskImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.patch_pct", queueBreakdownAttributePrefix), float64(breakdown.PatchImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.patch_wait_time_pct", queueBreakdownAttributePrefix), float64(breakdown.PatchWaitTimeImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.commit_queue_pct", queueBreakdownAttributePrefix), float64(breakdown.CommitQueueImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.mainline_wait_time_pct", queueBreakdownAttributePrefix), float64(breakdown.MainlineWaitTimeImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.stepback_pct", queueBreakdownAttributePrefix), float64(breakdown.StepbackImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.num_dependents_pct", queueBreakdownAttributePrefix), float64(breakdown.NumDependentsImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.estimated_runtime_pct", queueBreakdownAttributePrefix), float64(breakdown.EstimatedRuntimeImpact/breakdown.TotalValue*100)),
+	)
+	t.RankValueBreakdown = breakdown
 }

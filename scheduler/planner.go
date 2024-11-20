@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"crypto/sha1"
 	"fmt"
 	"io"
@@ -201,7 +202,7 @@ func (u *unitInfo) value() task.RankBreakdown {
 	length := int64(len(u.TaskIDs))
 	priority := 1 + (u.TotalPriority / length)
 
-	breakdown.Length = length
+	breakdown.TaskGroupLength = length
 	breakdown.InitialPriority = u.TotalPriority / length
 	breakdown.BasePriority = priority
 
@@ -222,15 +223,13 @@ func (u *unitInfo) value() task.RankBreakdown {
 
 	var value int64
 	if u.ContainsInPatch {
-		breakdown.PatchImpact = task.PatchBreakdown{
-			BaseImpact:     priority * u.Settings.GetPatchFactor(),
-			WaitTimeImpact: priority * u.Settings.GetPatchTimeInQueueFactor() * int64(math.Floor(u.TimeInQueue.Minutes()/float64(length))),
-		}
+		breakdown.PatchImpact = priority * u.Settings.GetPatchFactor()
+		breakdown.PatchWaitTimeImpact = priority * u.Settings.GetPatchTimeInQueueFactor() * int64(math.Floor(u.TimeInQueue.Minutes()/float64(length)))
 		// give patches a bump, over non-patches. patches that have spent more time in the queue
 		// should get worked on first (because people are waiting on the results), and because FIFO feels
 		// fair in this context.
-		value += breakdown.PatchImpact.BaseImpact
-		value += breakdown.PatchImpact.WaitTimeImpact
+		value += breakdown.PatchImpact
+		value += breakdown.PatchWaitTimeImpact
 	} else if u.ContainsInCommitQueue {
 		// give commit queue patches a boost over everything else
 		priority += 200
@@ -243,12 +242,12 @@ func (u *unitInfo) value() task.RankBreakdown {
 
 		var mainlinePriority int64
 		if avgLifeTime < time.Duration(7*24)*time.Hour {
-			breakdown.MainlineTaskImpact.WaitTimeImpact = u.Settings.GetMainlineTimeInQueueFactor() * int64((7*24*time.Hour - avgLifeTime).Hours())
-			mainlinePriority += breakdown.MainlineTaskImpact.WaitTimeImpact
+			breakdown.MainlineWaitTimeImpact = u.Settings.GetMainlineTimeInQueueFactor() * int64((7*24*time.Hour - avgLifeTime).Hours())
+			mainlinePriority += breakdown.MainlineWaitTimeImpact
 		}
 		if u.ContainsStepbackTask {
-			breakdown.MainlineTaskImpact.StepbackTaskImpact = u.Settings.GetStepbackTaskFactor()
-			mainlinePriority += breakdown.MainlineTaskImpact.StepbackTaskImpact
+			breakdown.StepbackImpact = u.Settings.GetStepbackTaskFactor()
+			mainlinePriority += breakdown.StepbackImpact
 		}
 
 		value += priority * mainlinePriority
@@ -433,7 +432,7 @@ func PrepareTasksForPlanning(distro *distro.Distro, tasks []task.Task) TaskPlan 
 }
 
 // Export sorts the TaskPlan returning a unique list of tasks.
-func (tpl TaskPlan) Export() []task.Task {
+func (tpl TaskPlan) Export(ctx context.Context) []task.Task {
 	sort.Sort(tpl)
 
 	output := []task.Task{}
@@ -446,7 +445,7 @@ func (tpl TaskPlan) Export() []task.Task {
 			if seen.Visit(tasks[i].Id) {
 				continue
 			}
-			tasks[i].RankValueBreakdown = rankValueBreakdown
+			tasks[i].SetRankBreakdown(ctx, rankValueBreakdown)
 			output = append(output, tasks[i])
 		}
 	}

@@ -52,7 +52,7 @@ func CompareTasks(ctx context.Context, taskIds []string, useLegacy bool) ([]stri
 			return nil, nil, errors.Errorf("distro '%s' not found", distroId)
 		}
 		taskPlan := scheduler.PrepareTasksForPlanning(d, tasks)
-		tasks = taskPlan.Export()
+		tasks = taskPlan.Export(ctx)
 	}
 	prioritizedIds := []string{}
 	for _, t := range tasks {
