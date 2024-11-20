@@ -1156,7 +1156,15 @@ func convertVarToParam(projectID string, pm ParameterMappings, varName, varValue
 		return "", "", errors.Wrapf(err, "getting compressed parameter name and value for project variable '%s'", varName)
 	}
 
-	prefix := fmt.Sprintf("%s/", projectID)
+	// Include a hash of the project ID in the parameter name for uniqueness.
+	// The hashing is necessary because project IDs are unique but some
+	// existing projects contain characters (e.g. spaces) that are invalid for
+	// parameter names.
+	hasher := utility.NewSHA256Hash()
+	hasher.Add(projectID)
+	hashedProjectID := hasher.Sum()
+
+	prefix := fmt.Sprintf("%s/", hashedProjectID)
 	if !strings.Contains(paramName, prefix) {
 		paramName = fmt.Sprintf("%s%s", prefix, paramName)
 	}
