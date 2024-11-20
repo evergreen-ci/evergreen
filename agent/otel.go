@@ -68,11 +68,7 @@ func (a *Agent) initOtel(ctx context.Context) error {
 		return nil
 	}
 
-	r, err := hostResource(ctx)
-	if err != nil {
-		return errors.Wrap(err, "making host resource")
-	}
-
+	var err error
 	a.otelGrpcConn, err = grpc.DialContext(ctx,
 		a.opts.TraceCollectorEndpoint,
 		grpc.WithTransportCredentials(credentials.NewTLS(nil)),
@@ -88,7 +84,7 @@ func (a *Agent) initOtel(ctx context.Context) error {
 	}
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(traceExporter),
-		sdktrace.WithResource(r),
+		sdktrace.WithResource(hostResource(ctx)),
 	)
 	tp.RegisterSpanProcessor(utility.NewAttributeSpanProcessor())
 	otel.SetTracerProvider(tp)
@@ -123,12 +119,7 @@ func (a *Agent) startMetrics(ctx context.Context, tc *internal.TaskConfig) (func
 		return nil, errors.Wrap(err, "making otel metrics exporter")
 	}
 
-	r, err := hostResource(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "making resource")
-	}
-
-	r, err = resource.Merge(r, resource.NewSchemaless(tc.TaskAttributes()...))
+	r, err := resource.Merge(hostResource(ctx), resource.NewSchemaless(tc.TaskAttributes()...))
 	if err != nil {
 		return nil, errors.Wrap(err, "merging host resource with task attributes")
 	}
@@ -358,12 +349,41 @@ func addNetworkMetrics(meter metric.Meter) error {
 	return errors.Wrap(err, "registering network io callback")
 }
 
-func hostResource(ctx context.Context) (*resource.Resource, error) {
-	return resource.New(ctx,
-		resource.WithAttributes(semconv.ServiceName("evergreen-agent")),
-		resource.WithAttributes(semconv.ServiceVersion(evergreen.BuildRevision)),
-		resource.WithDetectors(ec2.NewResourceDetector(), ecs.NewResourceDetector()),
+func hostResource(ctx context.Context) *resource.Resource {
+	r := resource.NewSchemaless(
+		semconv.ServiceName("evergreen-agent"),
+		semconv.ServiceVersion(evergreen.BuildRevision),
 	)
+
+	mergedResource, err := addEnvironmentAttributes(ctx, r)
+	grip.Error(errors.Wrap(err, "adding environment attributes"))
+	if err == nil {
+		r = mergedResource
+	}
+
+	return r
+}
+
+// addEnvironmentAttributes adds attributes to the resource about the environment itself. When running in EC2
+// this includes information like the instance id and when running in ECS this includes information like the
+// container name. This will noop if not running in EC2/ECS.
+func addEnvironmentAttributes(ctx context.Context, r *resource.Resource) (*resource.Resource, error) {
+	for name, detector := range map[string]resource.Detector{
+		"ec2": ec2.NewResourceDetector(),
+		"ecs": ecs.NewResourceDetector(),
+	} {
+		detectedResource, err := detector.Detect(ctx)
+		if err != nil {
+			return nil, errors.Wrapf(err, "detecting resource '%s'", name)
+		}
+		mergedResource, err := resource.Merge(r, detectedResource)
+		if err != nil {
+			return nil, errors.Wrapf(err, "merging resource for detector '%s'", name)
+		}
+		r = mergedResource
+	}
+
+	return r, nil
 }
 
 // uploadTraces finds all the trace files in taskDir, uploads their contents
@@ -373,6 +393,10 @@ func hostResource(ctx context.Context) (*resource.Resource, error) {
 // [OTel JSON protobuf encoding] https://opentelemetry.io/docs/specs/otel/protocol/otlp/#json-protobuf-encoding
 // [file exporter] https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter
 func (a *Agent) uploadTraces(ctx context.Context, taskDir string) error {
+	if a.otelGrpcConn == nil {
+		return errors.New("OTel gRPC connection has not been configured")
+	}
+
 	files, err := getTraceFiles(taskDir)
 	if err != nil {
 		return errors.Wrapf(err, "getting trace files for '%s'", taskDir)
