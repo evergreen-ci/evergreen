@@ -1,0 +1,11 @@
+query {
+  spruceConfig {
+    ui {
+      defaultProject
+      userVoice
+      betaFeatures {
+        spruceWaterfallEnabled
+      }
+    }
+  }
+}
