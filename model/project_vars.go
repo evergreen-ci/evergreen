@@ -707,10 +707,9 @@ func isParameterStoreEnabledForProject(ctx context.Context, ref *ProjectRef) (bo
 	return ref.ParameterStoreEnabled, nil
 }
 
-// findProjectRef finds the project ref associated with the project variables.
+// findProjectRef finds the project ref associated with the ID.
 // Returns a bool indicating if it's a branch project ref or a repo ref.
-func (projectVars *ProjectVars) findProjectRef() (ref *ProjectRef, isRepoRef bool, err error) {
-	projectID := projectVars.Id
+func findProjectRef(projectID string) (ref *ProjectRef, isRepoRef bool, err error) {
 	// This intentionally looks for a branch project ref without merging with
 	// its repo ref because project vars for a branch project are stored
 	// separately from project vars for a repo. Therefore, a branch project and
@@ -974,16 +973,16 @@ func (projectVars *ProjectVars) Clear() error {
 // has Parameter Store enabled and if so, runs the provided Parameter Store
 // operation.
 func (projectVars *ProjectVars) checkAndRunParameterStoreOp(ctx context.Context, op func(ref *ProjectRef, isRepoRef bool), opName string) {
-	ref, isRepoRef, err := projectVars.findProjectRef()
+	ref, isRepoRef, err := findProjectRef(projectVars.Id)
 	grip.Error(message.WrapError(err, message.Fields{
-		"message":    "could not get project ref to check if Parameter Store is enabled for project; assuming it's disabled and refusing to clear any project variables from Parameter Store",
+		"message":    "could not get project ref to check if Parameter Store is enabled for project; assuming it's disabled and will not use Parameter Store",
 		"op":         opName,
 		"project_id": projectVars.Id,
 		"epic":       "DEVPROD-5552",
 	}))
 	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, ref)
 	grip.Error(message.WrapError(err, message.Fields{
-		"message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and refusing to clear any project variables from Parameter Store",
+		"message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and will not use Parameter Store",
 		"op":         opName,
 		"project_id": projectVars.Id,
 		"epic":       "DEVPROD-5552",
