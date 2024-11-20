@@ -7,7 +7,7 @@ type APIBetaFeatures struct {
 	SpruceWaterfallEnabled bool `json:"spruce_waterfall_enabled"`
 }
 
-// BuildFromService converts from service level BetaFeatures to an
+// BuildFromService converts from service level BetaFeatures to
 // APIBetaFeatures.
 func (a *APIBetaFeatures) BuildFromService(b evergreen.BetaFeatures) {
 	a.SpruceWaterfallEnabled = b.SpruceWaterfallEnabled
