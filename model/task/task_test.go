@@ -1520,6 +1520,9 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 }
 
 func TestDeactivateStepbackTasksForProject(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
 	runningStepbackTask := Task{
@@ -1588,7 +1591,7 @@ func TestDeactivateStepbackTasksForProject(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(Collection, taskDependingOnStepbackTask, wrongProjectTask,
 		wrongTaskNameTask, wrongVariantTask, runningStepbackTask, notStepbackTask))
-	assert.NoError(t, DeactivateStepbackTask("p1", "myVariant", "myTask", "me"))
+	assert.NoError(t, DeactivateStepbackTask(ctx, "p1", "myVariant", "myTask", "me"))
 
 	events, err := event.Find(db.Q{})
 	assert.NoError(t, err)

@@ -688,18 +688,17 @@ func (t *Task) isSystemUnresponsive() bool {
 
 func (t *Task) SetOverrideDependencies(userID string) error {
 	t.OverrideDependencies = true
+	t.DisplayStatus = t.findDisplayStatus()
 	event.LogTaskDependenciesOverridden(t.Id, t.Execution, userID)
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
-		[]bson.M{
-			bson.M{
-				"$set": bson.M{
-					OverrideDependenciesKey: true,
-				},
+		bson.M{
+			"$set": bson.M{
+				OverrideDependenciesKey: true,
+				DisplayStatusKey:        t.DisplayStatus,
 			},
-			addDisplayStatus,
 		},
 	)
 }
@@ -733,13 +732,13 @@ func (t *Task) AddDependency(ctx context.Context, d Dependency) error {
 		bson.M{
 			IdKey: t.Id,
 		},
-		[]bson.M{
-			bson.M{
-				"$push": bson.M{
-					DependsOnKey: d,
-				},
+		bson.M{
+			"$push": bson.M{
+				DependsOnKey: d,
 			},
-			addDisplayStatus,
+			"$set": bson.M{
+				DisplayStatusKey: t.DisplayStatus,
+			},
 		},
 	)
 }
@@ -763,15 +762,15 @@ func (t *Task) RemoveDependency(dependencyId string) error {
 	}
 
 	query := bson.M{IdKey: t.Id}
-	update := []bson.M{
-		bson.M{
-			"$pull": bson.M{
-				DependsOnKey: bson.M{
-					DependencyTaskIdKey: dependencyId,
-				},
+	update := bson.M{
+		"$pull": bson.M{
+			DependsOnKey: bson.M{
+				DependencyTaskIdKey: dependencyId,
 			},
 		},
-		addDisplayStatus,
+		"$set": bson.M{
+			DisplayStatusKey: t.DisplayStatus,
+		},
 	}
 	return db.Update(Collection, query, update)
 }
@@ -804,11 +803,11 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	t.DisplayStatus = t.findDisplayStatus()
 	err = UpdateOne(
 		bson.M{IdKey: t.Id},
-		[]bson.M{
-			bson.M{
-				"$set": bson.M{DependenciesMetTimeKey: t.DependenciesMetTime},
+		bson.M{
+			"$set": bson.M{
+				DependenciesMetTimeKey: t.DependenciesMetTime,
+				DisplayStatusKey:       t.DisplayStatus,
 			},
-			addDisplayStatus,
 		})
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": "task.DependenciesMet() failed to update task",
@@ -975,6 +974,7 @@ func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) erro
 			},
 			addDisplayStatus,
 		},
+		// TODO: Remove SetArrayFilters usage
 		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
 			bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},
 		}}),
@@ -1541,7 +1541,7 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) ([
 }
 
 // DeactivateStepbackTask deactivates and aborts the matching stepback task.
-func DeactivateStepbackTask(projectId, buildVariantName, taskName, caller string) error {
+func DeactivateStepbackTask(ctx context.Context, projectId, buildVariantName, taskName, caller string) error {
 	t, err := FindActivatedStepbackTaskByName(projectId, buildVariantName, taskName)
 	if err != nil {
 		return err
@@ -1555,7 +1555,7 @@ func DeactivateStepbackTask(projectId, buildVariantName, taskName, caller string
 	}
 	if t.IsAbortable() {
 		event.LogTaskAbortRequest(t.Id, t.Execution, caller)
-		if err = t.SetAborted(AbortInfo{User: caller}); err != nil {
+		if err = t.SetAborted(ctx, AbortInfo{User: caller}); err != nil {
 			return errors.Wrap(err, "setting task aborted")
 		}
 	}
@@ -1570,13 +1570,11 @@ func (t *Task) MarkFailed() error {
 		bson.M{
 			IdKey: t.Id,
 		},
-		[]bson.M{
-			bson.M{
-				"$set": bson.M{
-					StatusKey: evergreen.TaskFailed,
-				},
+		bson.M{
+			"$set": bson.M{
+				StatusKey:        evergreen.TaskFailed,
+				DisplayStatusKey: t.DisplayStatus,
 			},
-			addDisplayStatus,
 		},
 	)
 }
@@ -1623,10 +1621,11 @@ func GetSystemFailureDetails(description string) apimodels.TaskEndDetail {
 
 // SetAborted sets the abort field and abort info of task to aborted
 // and prevents the task from being reset when finished.
-func (t *Task) SetAborted(reason AbortInfo) error {
+func (t *Task) SetAborted(ctx context.Context, reason AbortInfo) error {
 	t.Aborted = true
 	t.DisplayStatus = t.findDisplayStatus()
-	return UpdateOne(
+	return UpdateOneContext(
+		ctx,
 		bson.M{
 			IdKey: t.Id,
 		},
@@ -2321,21 +2320,19 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		bson.M{
 			IdKey: t.Id,
 		},
-		[]bson.M{
-			bson.M{
-				"$set": bson.M{
-					FinishTimeKey:         finishTime,
-					StatusKey:             detail.Status,
-					TimeTakenKey:          t.TimeTaken,
-					DetailsKey:            detail,
-					StartTimeKey:          t.StartTime,
-					ContainerAllocatedKey: false,
-				},
-				"$unset": bson.M{
-					ContainerAllocatedTimeKey: 1,
-				},
+		bson.M{
+			"$set": bson.M{
+				FinishTimeKey:         finishTime,
+				StatusKey:             detail.Status,
+				TimeTakenKey:          t.TimeTaken,
+				DetailsKey:            detail,
+				StartTimeKey:          t.StartTime,
+				ContainerAllocatedKey: false,
+				DisplayStatusKey:      t.DisplayStatus,
 			},
-			addDisplayStatus,
+			"$unset": bson.M{
+				ContainerAllocatedTimeKey: 1,
+			},
 		})
 }
 
@@ -2682,15 +2679,13 @@ func (t *Task) MarkStart(startTime time.Time) error {
 		bson.M{
 			IdKey: t.Id,
 		},
-		[]bson.M{
-			bson.M{
-				"$set": bson.M{
-					StatusKey:        evergreen.TaskStarted,
-					LastHeartbeatKey: startTime,
-					StartTimeKey:     startTime,
-				},
+		bson.M{
+			"$set": bson.M{
+				StatusKey:        evergreen.TaskStarted,
+				LastHeartbeatKey: startTime,
+				StartTimeKey:     startTime,
+				DisplayStatusKey: t.DisplayStatus,
 			},
-			addDisplayStatus,
 		},
 	)
 }
@@ -2703,13 +2698,11 @@ func (t *Task) MarkUnscheduled() error {
 		bson.M{
 			IdKey: t.Id,
 		},
-		[]bson.M{
-			bson.M{
-				"$set": bson.M{
-					StatusKey: evergreen.TaskUndispatched,
-				},
+		bson.M{
+			"$set": bson.M{
+				StatusKey:        evergreen.TaskUndispatched,
+				DisplayStatusKey: t.DisplayStatus,
 			},
-			addDisplayStatus,
 		},
 	)
 
@@ -2975,7 +2968,8 @@ func (t *Task) Archive(ctx context.Context) error {
 			return errors.Wrap(err, "inserting archived task into old tasks")
 		}
 		t.Aborted = false
-		err = UpdateOne(
+		err = UpdateOneContext(
+			ctx,
 			bson.M{
 				IdKey:     t.Id,
 				StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
@@ -2989,7 +2983,17 @@ func (t *Task) Archive(ctx context.Context) error {
 				},
 			},
 			[]bson.M{
-				updateDisplayTasksAndTasksExpression,
+				bson.M{"$set": bson.M{
+					CanResetKey: true,
+					ExecutionKey: bson.M{
+						"$add": []interface{}{"$" + ExecutionKey, 1},
+					},
+				}},
+				bson.M{"$unset": bson.A{
+					AbortedKey,
+					AbortInfoKey,
+					OverrideDependenciesKey,
+				}},
 				addDisplayStatus,
 			},
 		)
@@ -3074,22 +3078,32 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 		}
 		if len(taskIds) > 0 {
 			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
-				bson.A{
-					bson.M{
-						IdKey:     bson.M{"$in": taskIds},
-						StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
-						"$or": []bson.M{
-							{
-								CanResetKey: bson.M{"$exists": false},
-							},
-							{
-								CanResetKey: false,
-							},
+				bson.M{
+					IdKey:     bson.M{"$in": taskIds},
+					StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
+					"$or": []bson.M{
+						{
+							CanResetKey: bson.M{"$exists": false},
+						},
+						{
+							CanResetKey: false,
 						},
 					},
+				},
+				[]bson.M{
+					bson.M{"$set": bson.M{
+						CanResetKey: true,
+						ExecutionKey: bson.M{
+							"$add": []interface{}{"$" + ExecutionKey, 1},
+						},
+					}},
+					bson.M{"$unset": bson.A{
+						AbortedKey,
+						AbortInfoKey,
+						OverrideDependenciesKey,
+					}},
 					addDisplayStatus,
 				},
-				updateDisplayTasksAndTasksExpression,
 			)
 			if err != nil {
 				return nil, errors.Wrap(err, "archiving tasks")
@@ -3956,7 +3970,11 @@ func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 			}},
 		},
 		[]bson.M{
-			bson.M{"$push": bson.M{DependsOnKey: bson.M{"$each": newDependencies}}},
+			bson.M{"$set": bson.M{
+				DependsOnKey: bson.M{
+					"$concatArrays": []interface{}{"$" + DependsOnKey, newDependencies},
+				},
+			}},
 			addDisplayStatus,
 		},
 	)

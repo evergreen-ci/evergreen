@@ -1729,7 +1729,7 @@ func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
 	assert.Equal(t, false, dbVersion.Aborted)
 
 	// abort started task
-	assert.NoError(t, testTask.SetAborted(task.AbortInfo{}))
+	assert.NoError(t, testTask.SetAborted(ctx, task.AbortInfo{}))
 	assert.NoError(t, testTask.MarkFailed())
 	assert.NoError(t, UpdateBuildAndVersionStatusForTask(ctx, &testTask))
 	dbBuild1, err = build.FindOneId(b1.Id)

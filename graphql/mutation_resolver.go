@@ -522,7 +522,7 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 // DeactivateStepbackTask is the resolver for the deactivateStepbackTask field.
 func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, opts DeactivateStepbackTaskInput) (bool, error) {
 	usr := mustHaveUser(ctx)
-	if err := task.DeactivateStepbackTask(opts.ProjectID, opts.BuildVariantName, opts.TaskName, usr.Username()); err != nil {
+	if err := task.DeactivateStepbackTask(ctx, opts.ProjectID, opts.BuildVariantName, opts.TaskName, usr.Username()); err != nil {
 		return false, InternalServerError.Send(ctx, err.Error())
 	}
 	return true, nil
