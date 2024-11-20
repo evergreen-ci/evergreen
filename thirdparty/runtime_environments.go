@@ -71,9 +71,10 @@ func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
-		apiErr := errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		apiErr := errors.New(string(msg))
 		grip.Error(message.WrapError(apiErr, message.Fields{
 			"message":     "bad response code from image visibility API",
+			"reason":      "runtime environments API alerting",
 			"status_code": resp.StatusCode,
 		}))
 		return nil, apiErr
@@ -82,6 +83,7 @@ func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string
 	if err := gimlet.GetJSON(resp.Body, &images); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
+			"reason":  "runtime environments API alerting",
 		}))
 		return nil, errors.Wrap(err, "decoding http body")
 	}
@@ -138,9 +140,10 @@ func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFi
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
-		apiErr := errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		apiErr := errors.New(string(msg))
 		grip.Error(message.WrapError(apiErr, message.Fields{
 			"message":     "bad response code from image visibility API",
+			"reason":      "runtime environments API alerting",
 			"params":      params,
 			"status_code": resp.StatusCode,
 		}))
@@ -150,6 +153,7 @@ func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFi
 	if err := gimlet.GetJSON(resp.Body, &osInfo); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
+			"reason":  "runtime environments API alerting",
 			"params":  params,
 		}))
 		return nil, errors.Wrap(err, "decoding http body")
@@ -206,9 +210,10 @@ func (c *RuntimeEnvironmentsClient) GetPackages(ctx context.Context, opts Packag
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
-		apiErr := errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		apiErr := errors.New(string(msg))
 		grip.Error(message.WrapError(apiErr, message.Fields{
 			"message":     "bad response code from image visibility API",
+			"reason":      "runtime environments API alerting",
 			"params":      params,
 			"status_code": resp.StatusCode,
 		}))
@@ -218,6 +223,7 @@ func (c *RuntimeEnvironmentsClient) GetPackages(ctx context.Context, opts Packag
 	if err := gimlet.GetJSON(resp.Body, &packages); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
+			"reason":  "runtime environments API alerting",
 			"params":  params,
 		}))
 		return nil, errors.Wrap(err, "decoding http body")
@@ -274,9 +280,10 @@ func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts Tool
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
-		apiErr := errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		apiErr := errors.New(string(msg))
 		grip.Error(message.WrapError(apiErr, message.Fields{
 			"message":     "bad response code from image visibility API",
+			"reason":      "runtime environments API alerting",
 			"params":      params,
 			"status_code": resp.StatusCode,
 		}))
@@ -286,6 +293,7 @@ func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts Tool
 	if err := gimlet.GetJSON(resp.Body, &toolchains); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
+			"reason":  "runtime environments API alerting",
 			"params":  params,
 		}))
 		return nil, errors.Wrap(err, "decoding http body")
@@ -335,9 +343,10 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts diffF
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
-		apiErr := errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		apiErr := errors.New(string(msg))
 		grip.Error(message.WrapError(apiErr, message.Fields{
 			"message":     "bad response code from image visibility API",
+			"reason":      "runtime environments API alerting",
 			"params":      params,
 			"status_code": resp.StatusCode,
 		}))
@@ -347,6 +356,7 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts diffF
 	if err := gimlet.GetJSON(resp.Body, &changes); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
+			"reason":  "runtime environments API alerting",
 			"params":  params,
 		}))
 		return nil, errors.Wrap(err, "decoding http body")
@@ -405,9 +415,10 @@ func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts history
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
-		apiErr := errors.Errorf("HTTP request returned unexpected status '%s': %s", resp.Status, string(msg))
+		apiErr := errors.New(string(msg))
 		grip.Error(message.WrapError(apiErr, message.Fields{
 			"message":     "bad response code from image visibility API",
+			"reason":      "runtime environments API alerting",
 			"params":      params,
 			"status_code": resp.StatusCode,
 		}))
@@ -417,6 +428,7 @@ func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts history
 	if err := gimlet.GetJSON(resp.Body, &amiHistory); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
+			"reason":  "runtime environments API alerting",
 			"params":  params,
 		}))
 		return nil, errors.Wrap(err, "decoding http body")
@@ -516,10 +528,11 @@ func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID st
 		return nil, errors.Wrapf(err, "getting latest AMI and timestamp")
 	}
 	if len(amiHistory) != 1 {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Error(message.Fields{
 			"message":  "expected exactly 1 history result for image",
+			"reason":   "runtime environments API alerting",
 			"image_id": imageID,
-		}))
+		})
 		return nil, errors.Errorf("expected exactly 1 history result for image '%s'", imageID)
 	}
 	return &DistroImage{
