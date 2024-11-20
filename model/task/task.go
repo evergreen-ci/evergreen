@@ -969,15 +969,23 @@ func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) erro
 			}},
 		},
 		[]bson.M{
-			bson.M{
-				"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedKey): finished},
+			bson.M{"$set": bson.M{
+				DependsOnKey: bson.M{
+					"$map": bson.M{"input": "$" + DependsOnKey,
+						"in": bson.M{"$cond": bson.M{
+							"if": bson.M{"$eq": []string{bsonutil.GetDottedKeyName("$$this", DependencyTaskIdKey), t.Id}},
+							"then": bson.M{"$setField": bson.M{
+								"field": DependencyFinishedKey,
+								"input": "$$this",
+								"value": finished,
+							}},
+							"else": "$$this",
+						}},
+					}},
+			},
 			},
 			addDisplayStatus,
 		},
-		// TODO: Remove SetArrayFilters usage
-		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
-			bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},
-		}}),
 	)
 	if err != nil {
 		return errors.Wrap(err, "marking finished dependencies")
