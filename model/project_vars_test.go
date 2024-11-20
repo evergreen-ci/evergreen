@@ -764,16 +764,6 @@ func TestConvertVarToParam(t *testing.T) {
 		assert.Equal(t, "project_id/var_name", paramName, "new parameter name should include project ID prefix")
 		assert.Equal(t, varValue, paramValue, "variable value is valid and should be unchanged")
 	})
-	t.Run("ReturnsNewParamNameAndEmptyValueForValidVarNameAndValue", func(t *testing.T) {
-		const (
-			varName  = "var_name"
-			varValue = ""
-		)
-		paramName, paramValue, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
-		require.NoError(t, err)
-		assert.Equal(t, "project_id/var_name", paramName, "new parameter name should include project ID prefix")
-		assert.Equal(t, varValue, paramValue, "variable value is empty, which is valid, so parameter value should also be empty")
-	})
 	t.Run("ReturnsValidParamNameForVarContainingDisallowedAWSPrefix", func(t *testing.T) {
 		const (
 			varName  = "aws_secret"
@@ -862,6 +852,14 @@ func TestConvertVarToParam(t *testing.T) {
 		)
 		_, _, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
 		assert.Error(t, err, "should not allow variable with empty name")
+	})
+	t.Run("ReturnsErrorForEmptyVariableValue", func(t *testing.T) {
+		const (
+			varName  = "var_name"
+			varValue = ""
+		)
+		_, _, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
+		assert.Error(t, err, "should not allow variable with empty value")
 	})
 	t.Run("ReturnsErrorForVariableNameEndingInGzipExtension", func(t *testing.T) {
 		const (
@@ -1166,13 +1164,15 @@ func TestFullSyncToParameterStore(t *testing.T) {
 			}
 			require.NoError(t, db.Insert(ProjectVarsCollection, projVars))
 
-			require.NoError(t, FullSyncToParameterStore(ctx, &projVars, &projRef, false))
+			pm, err := FullSyncToParameterStore(ctx, &projVars, &projRef, false)
+			require.NoError(t, err)
 
 			checkAndSetProjectVarsSynced(t, &projRef, false)
 
 			dbProjVars, err := FindOneProjectVars(projVars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjVars)
+			dbProjVars.Parameters = *pm
 
 			checkParametersMatchVars(ctx, t, dbProjVars.Parameters, vars)
 			checkParametersNamespacedByProject(t, *dbProjVars)
@@ -1195,13 +1195,15 @@ func TestFullSyncToParameterStore(t *testing.T) {
 			}
 			require.NoError(t, db.Insert(ProjectVarsCollection, repoVars))
 
-			require.NoError(t, FullSyncToParameterStore(ctx, &repoVars, &repoRef.ProjectRef, true))
+			pm, err := FullSyncToParameterStore(ctx, &repoVars, &repoRef.ProjectRef, true)
+			require.NoError(t, err)
 
 			checkAndSetProjectVarsSynced(t, &repoRef.ProjectRef, true)
 
 			dbRepoVars, err := FindOneProjectVars(repoVars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbRepoVars)
+			dbRepoVars.Parameters = *pm
 
 			checkParametersMatchVars(ctx, t, dbRepoVars.Parameters, vars)
 			checkParametersNamespacedByProject(t, *dbRepoVars)
@@ -1243,11 +1245,13 @@ func TestFullSyncToParameterStore(t *testing.T) {
 				Vars: newVars,
 			}
 
-			require.NoError(t, FullSyncToParameterStore(ctx, &newProjVars, &projRef, false))
+			pm, err := FullSyncToParameterStore(ctx, &newProjVars, &projRef, false)
+			require.NoError(t, err)
 
 			newDBProjVars, err := FindOneProjectVars(projVars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, newDBProjVars)
+			newDBProjVars.Parameters = *pm
 
 			checkParametersMatchVars(ctx, t, newDBProjVars.Parameters, newVars)
 			checkParametersNamespacedByProject(t, *newDBProjVars)

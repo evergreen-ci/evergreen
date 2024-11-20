@@ -98,6 +98,7 @@ type DirectiveRoot struct {
 	RedactSecrets                func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireCommitQueueItemOwner  func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireDistroAccess          func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (res interface{}, err error)
+	RequireHostAccess            func(ctx context.Context, obj interface{}, next graphql.Resolver, access HostAccessLevel) (res interface{}, err error)
 	RequireProjectAccess         func(ctx context.Context, obj interface{}, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res interface{}, err error)
 	RequireProjectAdmin          func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
@@ -1561,6 +1562,7 @@ type ComplexityRoot struct {
 	}
 
 	UIConfig struct {
+		BetaFeatures   func(childComplexity int) int
 		DefaultProject func(childComplexity int) int
 		UserVoice      func(childComplexity int) int
 	}
@@ -9565,6 +9567,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TriggerAlias.UnscheduleDownstreamVersions(childComplexity), true
 
+	case "UIConfig.betaFeatures":
+		if e.complexity.UIConfig.BetaFeatures == nil {
+			break
+		}
+
+		return e.complexity.UIConfig.BetaFeatures(childComplexity), true
+
 	case "UIConfig.defaultProject":
 		if e.complexity.UIConfig.DefaultProject == nil {
 			break
@@ -10808,6 +10817,21 @@ func (ec *executionContext) dir_requireDistroAccess_args(ctx context.Context, ra
 	return args, nil
 }
 
+func (ec *executionContext) dir_requireHostAccess_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 HostAccessLevel
+	if tmp, ok := rawArgs["access"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("access"))
+		arg0, err = ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["access"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -11799,9 +11823,28 @@ func (ec *executionContext) field_Mutation_reprovisionToNew_args(ctx context.Con
 	var arg0 []string
 	if tmp, ok := rawArgs["hostIds"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIds"))
-		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireHostAccess == nil {
+				return nil, errors.New("directive requireHostAccess is not implemented")
+			}
+			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.([]string); ok {
+			arg0 = data
+		} else if tmp == nil {
+			arg0 = nil
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
 		}
 	}
 	args["hostIds"] = arg0
@@ -11814,9 +11857,28 @@ func (ec *executionContext) field_Mutation_restartJasper_args(ctx context.Contex
 	var arg0 []string
 	if tmp, ok := rawArgs["hostIds"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIds"))
-		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireHostAccess == nil {
+				return nil, errors.New("directive requireHostAccess is not implemented")
+			}
+			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.([]string); ok {
+			arg0 = data
+		} else if tmp == nil {
+			arg0 = nil
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
 		}
 	}
 	args["hostIds"] = arg0
@@ -12435,9 +12497,28 @@ func (ec *executionContext) field_Mutation_updateHostStatus_args(ctx context.Con
 	var arg0 []string
 	if tmp, ok := rawArgs["hostIds"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIds"))
-		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireHostAccess == nil {
+				return nil, errors.New("directive requireHostAccess is not implemented")
+			}
+			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.([]string); ok {
+			arg0 = data
+		} else if tmp == nil {
+			arg0 = nil
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
 		}
 	}
 	args["hostIds"] = arg0
@@ -12941,9 +13022,26 @@ func (ec *executionContext) field_Query_hostEvents_args(ctx context.Context, raw
 	var arg0 string
 	if tmp, ok := rawArgs["hostId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "VIEW")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireHostAccess == nil {
+				return nil, errors.New("directive requireHostAccess is not implemented")
+			}
+			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["hostId"] = arg0
@@ -12983,9 +13081,26 @@ func (ec *executionContext) field_Query_host_args(ctx context.Context, rawArgs m
 	var arg0 string
 	if tmp, ok := rawArgs["hostId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "VIEW")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RequireHostAccess == nil {
+				return nil, errors.New("directive requireHostAccess is not implemented")
+			}
+			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
+		}
+
+		tmp, err = directive1(ctx)
 		if err != nil {
-			return nil, err
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if data, ok := tmp.(string); ok {
+			arg0 = data
+		} else {
+			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
 		}
 	}
 	args["hostId"] = arg0
@@ -47237,14 +47352,14 @@ func (ec *executionContext) fieldContext_Query_spruceConfig(_ context.Context, f
 				return ec.fieldContext_SpruceConfig_jira(ctx, field)
 			case "providers":
 				return ec.fieldContext_SpruceConfig_providers(ctx, field)
+			case "secretFields":
+				return ec.fieldContext_SpruceConfig_secretFields(ctx, field)
 			case "slack":
 				return ec.fieldContext_SpruceConfig_slack(ctx, field)
 			case "spawnHost":
 				return ec.fieldContext_SpruceConfig_spawnHost(ctx, field)
 			case "ui":
 				return ec.fieldContext_SpruceConfig_ui(ctx, field)
-			case "secretFields":
-				return ec.fieldContext_SpruceConfig_secretFields(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SpruceConfig", field.Name)
 		},
@@ -55057,6 +55172,50 @@ func (ec *executionContext) fieldContext_SpruceConfig_providers(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _SpruceConfig_secretFields(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpruceConfig_secretFields(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.SpruceConfig().SecretFields(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpruceConfig_secretFields(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpruceConfig",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SpruceConfig_slack(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SpruceConfig_slack(ctx, field)
 	if err != nil {
@@ -55175,11 +55334,14 @@ func (ec *executionContext) _SpruceConfig_ui(ctx context.Context, field graphql.
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*model.APIUIConfig)
 	fc.Result = res
-	return ec.marshalOUIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUIConfig(ctx, field.Selections, res)
+	return ec.marshalNUIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUIConfig(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SpruceConfig_ui(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -55190,56 +55352,14 @@ func (ec *executionContext) fieldContext_SpruceConfig_ui(_ context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "betaFeatures":
+				return ec.fieldContext_UIConfig_betaFeatures(ctx, field)
 			case "defaultProject":
 				return ec.fieldContext_UIConfig_defaultProject(ctx, field)
 			case "userVoice":
 				return ec.fieldContext_UIConfig_userVoice(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UIConfig", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SpruceConfig_secretFields(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SpruceConfig_secretFields(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.SpruceConfig().SecretFields(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]string)
-	fc.Result = res
-	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SpruceConfig_secretFields(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SpruceConfig",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -64944,6 +65064,54 @@ func (ec *executionContext) fieldContext_TriggerAlias_unscheduleDownstreamVersio
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UIConfig_betaFeatures(ctx context.Context, field graphql.CollectedField, obj *model.APIUIConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UIConfig_betaFeatures(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BetaFeatures, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.APIBetaFeatures)
+	fc.Result = res
+	return ec.marshalNBetaFeatures2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UIConfig_betaFeatures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UIConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "spruceWaterfallEnabled":
+				return ec.fieldContext_BetaFeatures_spruceWaterfallEnabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BetaFeatures", field.Name)
 		},
 	}
 	return fc, nil
@@ -75196,11 +75364,28 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 			it.Expiration = data
 		case "hostId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+				if err != nil {
+					return nil, err
+				}
+				if ec.directives.RequireHostAccess == nil {
+					return nil, errors.New("directive requireHostAccess is not implemented")
+				}
+				return ec.directives.RequireHostAccess(ctx, obj, directive0, access)
 			}
-			it.HostID = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.HostID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "instanceType":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceType"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -79043,11 +79228,28 @@ func (ec *executionContext) unmarshalInputUpdateSpawnHostStatusInput(ctx context
 			it.Action = data
 		case "hostId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
+			directive1 := func(ctx context.Context) (interface{}, error) {
+				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+				if err != nil {
+					return nil, err
+				}
+				if ec.directives.RequireHostAccess == nil {
+					return nil, errors.New("directive requireHostAccess is not implemented")
+				}
+				return ec.directives.RequireHostAccess(ctx, obj, directive0, access)
 			}
-			it.HostID = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.HostID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "shouldKeepOff":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("shouldKeepOff"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -90464,15 +90666,6 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._SpruceConfig_jira(ctx, field, obj)
 		case "providers":
 			out.Values[i] = ec._SpruceConfig_providers(ctx, field, obj)
-		case "slack":
-			out.Values[i] = ec._SpruceConfig_slack(ctx, field, obj)
-		case "spawnHost":
-			out.Values[i] = ec._SpruceConfig_spawnHost(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "ui":
-			out.Values[i] = ec._SpruceConfig_ui(ctx, field, obj)
 		case "secretFields":
 			field := field
 
@@ -90509,6 +90702,18 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "slack":
+			out.Values[i] = ec._SpruceConfig_slack(ctx, field, obj)
+		case "spawnHost":
+			out.Values[i] = ec._SpruceConfig_spawnHost(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "ui":
+			out.Values[i] = ec._SpruceConfig_ui(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -93639,6 +93844,11 @@ func (ec *executionContext) _UIConfig(ctx context.Context, sel ast.SelectionSet,
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("UIConfig")
+		case "betaFeatures":
+			out.Values[i] = ec._UIConfig_betaFeatures(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "defaultProject":
 			out.Values[i] = ec._UIConfig_defaultProject(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -97278,6 +97488,16 @@ func (ec *executionContext) marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 	return ec._Host(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx context.Context, v interface{}) (HostAccessLevel, error) {
+	var res HostAccessLevel
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx context.Context, sel ast.SelectionSet, v HostAccessLevel) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNHostAllocatorSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHostAllocatorSettings(ctx context.Context, sel ast.SelectionSet, v model.APIHostAllocatorSettings) graphql.Marshaler {
 	return ec._HostAllocatorSettings(ctx, sel, &v)
 }
@@ -100489,6 +100709,16 @@ func (ec *executionContext) marshalNTriggerAlias2ᚕgithubᚗcomᚋevergreenᚑc
 func (ec *executionContext) unmarshalNTriggerAliasInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITriggerDefinition(ctx context.Context, v interface{}) (model.APITriggerDefinition, error) {
 	res, err := ec.unmarshalInputTriggerAliasInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNUIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUIConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIUIConfig) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._UIConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNUpdateBetaFeaturesInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpdateBetaFeaturesInput(ctx context.Context, v interface{}) (UpdateBetaFeaturesInput, error) {
@@ -103933,13 +104163,6 @@ func (ec *executionContext) unmarshalOTriggerAliasInput2ᚕgithubᚗcomᚋevergr
 		}
 	}
 	return res, nil
-}
-
-func (ec *executionContext) marshalOUIConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUIConfig(ctx context.Context, sel ast.SelectionSet, v *model.APIUIConfig) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._UIConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOUpdateBetaFeaturesPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐUpdateBetaFeaturesPayload(ctx context.Context, sel ast.SelectionSet, v *UpdateBetaFeaturesPayload) graphql.Marshaler {

@@ -20,8 +20,9 @@ import (
 )
 
 const (
-	agentMonitorDeployJobName = "agent-monitor-deploy"
-	agentMonitorPutRetries    = 25
+	agentMonitorDeployJobName    = "agent-monitor-deploy"
+	agentMonitorPutRetries       = 25
+	maxAgentMonitorDeployJobTime = 10 * time.Minute
 )
 
 func init() {
@@ -59,6 +60,9 @@ func NewAgentMonitorDeployJob(env evergreen.Environment, h host.Host, id string)
 	j.env = env
 	j.SetScopes([]string{fmt.Sprintf("%s.%s", agentMonitorDeployJobName, j.HostID)})
 	j.SetEnqueueAllScopes(true)
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		MaxTime: maxAgentMonitorDeployJobTime,
+	})
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
 		MaxAttempts: utility.ToIntPtr(agentMonitorPutRetries),

@@ -1,0 +1,10 @@
+query {
+  hosts {
+    filteredHostsCount
+    totalHostsCount
+    hosts {
+      id
+      status
+    }
+  }
+}

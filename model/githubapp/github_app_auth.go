@@ -19,6 +19,9 @@ type GithubAppAuth struct {
 
 	AppID      int64  `bson:"app_id" json:"app_id"`
 	PrivateKey []byte `bson:"private_key" json:"private_key"`
+	// PrivateKeyParameter is the name of the parameter that holds the
+	// GitHub app's private key.
+	PrivateKeyParameter string `bson:"private_key_parameter" json:"private_key_parameter"`
 }
 
 // CreateGitHubAppAuth returns the Evergreen-internal app id and app private key

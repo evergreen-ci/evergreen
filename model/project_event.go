@@ -1,6 +1,7 @@
 package model
 
 import (
+	"bytes"
 	"reflect"
 	"time"
 
@@ -45,13 +46,16 @@ type ProjectChangeEvent struct {
 	After  ProjectSettingsEvent `bson:"after" json:"after"`
 }
 
-// RedactVars redacts project variables from a project change event. Project
+// RedactSecrets redacts project secrets from a project change event. Project
 // variables that are not changed are cleared and project variables that are
 // changed are replaced with redacted placeholders.
-func (e *ProjectChangeEvent) RedactVars() {
+func (e *ProjectChangeEvent) RedactSecrets() {
 	modifiedVarKeys := e.getModifiedProjectVars()
 	e.Before.Vars.Vars = getRedactedVarsCopy(e.Before.Vars.Vars, modifiedVarKeys, evergreen.RedactedBeforeValue)
 	e.After.Vars.Vars = getRedactedVarsCopy(e.After.Vars.Vars, modifiedVarKeys, evergreen.RedactedAfterValue)
+	isGHAppKeyModified := !bytes.Equal(e.Before.GitHubAppAuth.PrivateKey, e.After.GitHubAppAuth.PrivateKey)
+	e.Before.GitHubAppAuth = getRedactedGitHubAppCopy(e.Before.GitHubAppAuth, isGHAppKeyModified, evergreen.RedactedBeforeValue)
+	e.After.GitHubAppAuth = getRedactedGitHubAppCopy(e.After.GitHubAppAuth, isGHAppKeyModified, evergreen.RedactedAfterValue)
 }
 
 // getModifiedProjectVars returns the set of project variables in the change
@@ -106,6 +110,24 @@ func getRedactedVarsCopy(vars map[string]string, modifiedVarNames map[string]str
 		}
 	}
 	return redactedVars
+}
+
+// getRedactedGitHubAppCopy returns a copy of the GitHub app auth with the
+// GitHub app's private key redacted if it is set.
+// This intentionally makes a copy to avoid potentially modifying the original
+// GitHub app auth, which may be shared by the actual project settings. That
+// way, callers can still access the unredacted auth credentials.
+func getRedactedGitHubAppCopy(auth githubapp.GithubAppAuth, isGHAppKeyModified bool, placeholder string) githubapp.GithubAppAuth {
+	if len(auth.PrivateKey) == 0 {
+		return auth
+	}
+	redactedAuth := auth
+	if len(redactedAuth.PrivateKey) > 0 && isGHAppKeyModified {
+		redactedAuth.PrivateKey = []byte(placeholder)
+	} else if len(redactedAuth.PrivateKey) > 0 {
+		redactedAuth.PrivateKey = []byte{}
+	}
+	return redactedAuth
 }
 
 type ProjectChangeEvents []ProjectChangeEventEntry
@@ -191,19 +213,19 @@ func (p *ProjectChangeEvents) RedactGitHubPrivateKey() {
 	}
 }
 
-// RedactVars redacts project variables from all the project modification
+// RedactSecrets redacts project variables from all the project modification
 // events.
-// TODO (DEVPROD-9384): this can be removed entirely once project event logs are
-// migrated to not store any project var values. Project change events should
-// already redact all variable values when the log is inserted into the DB (see
-// (ProjectChangeEvent).RedactVars).
-func (p *ProjectChangeEvents) RedactVars() {
+// TODO (DEVPROD-11827): this can be removed entirely once project event logs
+// are migrated to not store any project var values or GitHub app credentials.
+// Project change events should already redact those secret values when the log
+// is inserted into the DB (see (ProjectChangeEvent).RedactSecrets).
+func (p *ProjectChangeEvents) RedactSecrets() {
 	for _, event := range *p {
 		changeEvent, isChangeEvent := event.Data.(*ProjectChangeEvent)
 		if !isChangeEvent {
 			continue
 		}
-		changeEvent.RedactVars()
+		changeEvent.RedactSecrets()
 		event.EventLogEntry.Data = changeEvent
 	}
 }
@@ -283,7 +305,7 @@ func ProjectEventsBefore(id string, before time.Time, n int) (ProjectChangeEvent
 
 // LogProjectEvent logs a project event.
 func LogProjectEvent(eventType string, projectId string, eventData ProjectChangeEvent) error {
-	eventData.RedactVars()
+	eventData.RedactSecrets()
 	projectEvent := event.EventLogEntry{
 		Timestamp:    time.Now(),
 		ResourceType: event.EventResourceTypeProject,

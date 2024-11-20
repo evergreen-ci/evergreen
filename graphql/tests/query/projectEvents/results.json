@@ -61,7 +61,7 @@
                   },
                   "githubAppAuth": {
                     "appId": 11111,
-                    "privateKey": "{REDACTED}"
+                    "privateKey": ""
                   },
                   "githubWebhooksEnabled": false
                 },
@@ -71,7 +71,7 @@
                   },
                   "githubAppAuth": {
                     "appId": 11111,
-                    "privateKey": "{REDACTED}"
+                    "privateKey": ""
                   },
                   "githubWebhooksEnabled": false
                 }
