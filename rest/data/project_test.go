@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
@@ -313,9 +314,7 @@ func checkAndSetProjectVarsSynced(t *testing.T, projRef *model.ProjectRef, isRep
 
 func checkParametersNamespacedByProject(t *testing.T, vars model.ProjectVars) {
 	projectID := vars.Id
-	hasher := utility.NewSHA256Hash()
-	hasher.Add(projectID)
-	hashedProjectID := hasher.Sum()
+	hashedProjectID := util.GetSHA256Hash(projectID)
 
 	commonAndProjectIDPrefix := fmt.Sprintf("/%s/%s/", strings.TrimSuffix(strings.TrimPrefix(evergreen.GetEnvironment().Settings().Providers.AWS.ParameterStore.Prefix, "/"), "/"), hashedProjectID)
 	for _, pm := range vars.Parameters {

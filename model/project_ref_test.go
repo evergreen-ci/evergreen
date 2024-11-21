@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v52/github"
@@ -1076,9 +1077,7 @@ func checkAndSetProjectVarsSynced(t *testing.T, projRef *ProjectRef, isRepoRef b
 // project vars all include the project ID as a prefix.
 func checkParametersNamespacedByProject(t *testing.T, vars ProjectVars) {
 	projectID := vars.Id
-	hasher := utility.NewSHA256Hash()
-	hasher.Add(projectID)
-	hashedProjectID := hasher.Sum()
+	hashedProjectID := util.GetSHA256Hash(projectID)
 
 	commonAndProjectIDPrefix := fmt.Sprintf("/%s/%s/", strings.TrimSuffix(strings.TrimPrefix(evergreen.GetEnvironment().Settings().Providers.AWS.ParameterStore.Prefix, "/"), "/"), hashedProjectID)
 	for _, pm := range vars.Parameters {
