@@ -379,7 +379,7 @@ retryLoop:
 				}
 				filesList, err = b.Build()
 				if err != nil {
-					// Skip erroring since local local files include filter should treat files as optional.
+					// Skip erroring since local files include filter should treat files as optional.
 					if strings.Contains(err.Error(), utility.WalkThroughError) {
 						logger.Task().Warningf("Error while building file list: %s", err.Error())
 						return nil
