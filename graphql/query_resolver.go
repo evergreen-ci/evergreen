@@ -1124,12 +1124,12 @@ func (r *queryResolver) Version(ctx context.Context, versionID string) (*restMod
 func (r *queryResolver) Image(ctx context.Context, imageID string) (*restModel.APIImage, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: '%s'", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: %s", err.Error()))
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	result, err := c.GetImageInfo(ctx, imageID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting image info: '%s'", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting image info: %s", err.Error()))
 	}
 	apiImage := restModel.APIImage{}
 	apiImage.BuildFromService(*result)
