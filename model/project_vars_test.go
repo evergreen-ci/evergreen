@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
@@ -763,7 +762,7 @@ func TestConvertVarToParam(t *testing.T) {
 		)
 		paramName, paramValue, err := convertVarToParam(projectID, ParameterMappings{}, varName, varValue)
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%s/%s", util.GetSHA256Hash(projectID), varName), paramName, "new parameter name should include project ID prefix")
+		assert.Equal(t, fmt.Sprintf("%s/%s", GetVarsParameterPath(projectID), varName), paramName, "new parameter name should include project ID prefix")
 		assert.Equal(t, varValue, paramValue, "variable value is valid and should be unchanged")
 	})
 	t.Run("ReturnsValidParamNameForVarContainingDisallowedAWSPrefix", func(t *testing.T) {
@@ -774,7 +773,7 @@ func TestConvertVarToParam(t *testing.T) {
 		)
 		paramName, paramValue, err := convertVarToParam(projectID, ParameterMappings{}, varName, varValue)
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%s/_%s", util.GetSHA256Hash(projectID), varName), paramName, "new parameter name should prevent invalid 'aws' prefix from appearing in basename")
+		assert.Equal(t, fmt.Sprintf("%s/_%s", GetVarsParameterPath(projectID), varName), paramName, "new parameter name should prevent invalid 'aws' prefix from appearing in basename")
 		assert.Equal(t, varValue, paramValue, "parameter value should match variable value because variable value is valid")
 	})
 	t.Run("ReturnsValidParamNameForVarContainingDisallowedSSMPrefix", func(t *testing.T) {
@@ -785,7 +784,7 @@ func TestConvertVarToParam(t *testing.T) {
 		)
 		paramName, paramValue, err := convertVarToParam(projectID, ParameterMappings{}, varName, varValue)
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%s/_%s", util.GetSHA256Hash(projectID), varName), paramName, "new parameter name should prevent invalid 'ssm' prefix from appearing in basename")
+		assert.Equal(t, fmt.Sprintf("%s/_%s", GetVarsParameterPath(projectID), varName), paramName, "new parameter name should prevent invalid 'ssm' prefix from appearing in basename")
 		assert.Equal(t, varValue, paramValue, "parameter value should match variable value because variable value is valid")
 	})
 	t.Run("ReturnsExistingParameterNameAndNewVarValueForVarWithExistingParameter", func(t *testing.T) {
@@ -794,7 +793,7 @@ func TestConvertVarToParam(t *testing.T) {
 			varValue  = "var_value"
 			projectID = "project_id"
 		)
-		existingParamName := fmt.Sprintf("/prefix/%s/%s", util.GetSHA256Hash(projectID), varName)
+		existingParamName := fmt.Sprintf("/prefix/%s/%s", GetVarsParameterPath(projectID), varName)
 		pm := ParameterMappings{
 			{
 				Name:          varName,
@@ -817,7 +816,7 @@ func TestConvertVarToParam(t *testing.T) {
 
 		paramName, paramValue, err := convertVarToParam(projectID, ParameterMappings{}, varName, longVarValue)
 		require.NoError(t, err)
-		assert.Equal(t, fmt.Sprintf("%s/%s.gz", util.GetSHA256Hash(projectID), varName), paramName, "should include project ID prefix and gzip extension to indicate the value was compressed")
+		assert.Equal(t, fmt.Sprintf("%s/%s.gz", GetVarsParameterPath(projectID), varName), paramName, "should include project ID prefix and gzip extension to indicate the value was compressed")
 		assert.NotEqual(t, longVarValue, paramValue, "compressed value should not match original variable value")
 
 		gzr, err := gzip.NewReader(strings.NewReader(paramValue))
@@ -831,7 +830,7 @@ func TestConvertVarToParam(t *testing.T) {
 			varName   = "var_name"
 			projectID = "project_id"
 		)
-		existingParamName := fmt.Sprintf("/prefix/%s/%s", util.GetSHA256Hash(projectID), varName)
+		existingParamName := fmt.Sprintf("/prefix/%s/%s", GetVarsParameterPath(projectID), varName)
 		pm := ParameterMappings{
 			{
 				Name:          varName,
@@ -903,7 +902,7 @@ func TestConvertVarToParam(t *testing.T) {
 		pm := ParameterMappings{
 			{
 				Name:          "_aws_secret",
-				ParameterName: fmt.Sprintf("/prefix/%s/_%s", util.GetSHA256Hash(projectID), varName),
+				ParameterName: fmt.Sprintf("/prefix/%s/_%s", GetVarsParameterPath(projectID), varName),
 			},
 		}
 
@@ -919,7 +918,7 @@ func TestConvertParamToVar(t *testing.T) {
 			varValue  = "var_value"
 			projectID = "project_id"
 		)
-		paramName := fmt.Sprintf("/prefix/%s/%s", util.GetSHA256Hash(projectID), varName)
+		paramName := fmt.Sprintf("/prefix/%s/%s", GetVarsParameterPath(projectID), varName)
 		pm := ParameterMappings{
 			{
 				Name:          varName,
@@ -937,7 +936,7 @@ func TestConvertParamToVar(t *testing.T) {
 			varValue  = "super_secret"
 			projectID = "project_Id"
 		)
-		paramName := fmt.Sprintf("/prefix/%s/_%s", util.GetSHA256Hash(projectID), varName)
+		paramName := fmt.Sprintf("/prefix/%s/_%s", GetVarsParameterPath(projectID), varName)
 		pm := ParameterMappings{
 			{
 				Name:          varName,
@@ -957,7 +956,7 @@ func TestConvertParamToVar(t *testing.T) {
 		pm := ParameterMappings{
 			{
 				Name:          varName,
-				ParameterName: fmt.Sprintf("/prefix/%s/%s", util.GetSHA256Hash(projectID), varName),
+				ParameterName: fmt.Sprintf("/prefix/%s/%s", GetVarsParameterPath(projectID), varName),
 			},
 		}
 		varNameFromParam, varValueFromParam, err := convertParamToVar(pm, "some_other_var_name", "some_other_var_value")
@@ -970,7 +969,7 @@ func TestConvertParamToVar(t *testing.T) {
 			projectID = "project_id"
 			varName   = "var_name"
 		)
-		paramName := fmt.Sprintf("/prefix/%s/%s", util.GetSHA256Hash(projectID), varName)
+		paramName := fmt.Sprintf("/prefix/%s/%s", GetVarsParameterPath(projectID), varName)
 		pm := ParameterMappings{
 			{
 				ParameterName: paramName,
@@ -986,7 +985,7 @@ func TestConvertParamToVar(t *testing.T) {
 			varName   = "var_name"
 			projectID = "project_id"
 		)
-		paramName := fmt.Sprintf("/prefix/%s/%s.gz", util.GetSHA256Hash(projectID), varName)
+		paramName := fmt.Sprintf("/prefix/%s/%s.gz", GetVarsParameterPath(projectID), varName)
 
 		longVarValue := strings.Repeat("abc", parameterstore.ParamValueMaxLength)
 		assert.Greater(t, len(longVarValue), parameterstore.ParamValueMaxLength)

@@ -1126,6 +1126,17 @@ func (projectVars *ProjectVars) MergeWithRepoVars(repoVars *ProjectVars) {
 	sort.Sort(projectVars.Parameters)
 }
 
+// GetVarsParameterPath returns the parameter path for project variables in the
+// given project.
+func GetVarsParameterPath(projectID string) string {
+	// Include a hash of the project ID in the parameter name for uniqueness.
+	// The hashing is necessary because project IDs are unique but some
+	// existing projects contain characters (e.g. spaces) that are invalid for
+	// parameter names.
+	hashedProjectID := util.GetSHA256Hash(projectID)
+	return fmt.Sprintf("vars/%s", hashedProjectID)
+}
+
 // convertVarToParam converts a project variable to its equivalent parameter
 // name and value. In particular, it validates that the variable name and value
 // fits within parameter constraints and if the name or value doesn't fit in the
@@ -1140,12 +1151,7 @@ func convertVarToParam(projectID string, pm ParameterMappings, varName, varValue
 		return "", "", errors.Errorf("project variable '%s' cannot have an empty value", varName)
 	}
 
-	// Include a hash of the project ID in the parameter name for uniqueness.
-	// The hashing is necessary because project IDs are unique but some
-	// existing projects contain characters (e.g. spaces) that are invalid for
-	// parameter names.
-	hashedProjectID := util.GetSHA256Hash(projectID)
-	prefix := fmt.Sprintf("%s/", hashedProjectID)
+	prefix := GetVarsParameterPath(projectID) + "/"
 
 	varsToParams := pm.NameMap()
 	m, ok := varsToParams[varName]
