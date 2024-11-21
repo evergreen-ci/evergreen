@@ -63,13 +63,9 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 	afterSettings.ProjectRef.Enabled = false
 
 	s.event = model.ProjectChangeEvent{
-		User: "me",
-		Before: model.ProjectSettingsEvent{
-			ProjectSettings: beforeSettings,
-		},
-		After: model.ProjectSettingsEvent{
-			ProjectSettings: afterSettings,
-		},
+		User:   "me",
+		Before: model.NewProjectSettingsEvent(beforeSettings),
+		After:  model.NewProjectSettingsEvent(afterSettings),
 	}
 
 	s.NoError(db.ClearCollections(event.EventCollection, model.ProjectRefCollection))
