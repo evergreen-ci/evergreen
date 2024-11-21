@@ -487,7 +487,6 @@ func verifyRankBreakdown(t *testing.T, breakdown task.RankBreakdown) {
 		breakdown.MainlineWaitTimeImpact +
 		breakdown.GenerateTaskImpact +
 		breakdown.TaskGroupImpact +
-		breakdown.TaskGroupLength +
 		breakdown.EstimatedRuntimeImpact +
 		breakdown.NumDependentsImpact +
 		breakdown.CommitQueueImpact

@@ -1971,7 +1971,7 @@ func (s *taskDAGDispatchServiceSuite) refreshTaskQueue(service *basicCachedDAGDi
 			Project:             t.Project,
 			ExpectedDuration:    t.ExpectedDuration,
 			Priority:            t.Priority,
-			PriorityRankValue:   t.PriorityRankValue,
+			RankValueBreakdown:  t.RankValueBreakdown,
 			Group:               t.TaskGroup,
 			GroupMaxHosts:       t.TaskGroupMaxHosts,
 			GroupIndex:          t.TaskGroupOrder,
