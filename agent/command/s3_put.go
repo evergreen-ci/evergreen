@@ -379,8 +379,7 @@ retryLoop:
 				}
 				filesList, err = b.Build()
 				if err != nil {
-					// Should replicate default behavior of not erroring when filter doesn't match any files
-					// when we error while looking through deleted directories.
+					// Skip erroring since local local files include filter should treat files as optional.
 					if strings.Contains(err.Error(), utility.WalkThroughError) {
 						logger.Task().Warningf("Error while building file list: %s", err.Error())
 						return nil
