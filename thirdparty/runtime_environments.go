@@ -76,7 +76,7 @@ func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
 		apiErr := errors.New(string(msg))
-		grip.Error(message.WrapError(apiErr, message.Fields{
+		grip.Debug(message.WrapError(apiErr, message.Fields{
 			"message":     "bad response code from image visibility API",
 			"reason":      runtimeEnvironmentsAPIAlert,
 			"status_code": resp.StatusCode,
@@ -85,7 +85,7 @@ func (c *RuntimeEnvironmentsClient) GetImageNames(ctx context.Context) ([]string
 	}
 	var images []string
 	if err := gimlet.GetJSON(resp.Body, &images); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
 		}))
@@ -145,7 +145,7 @@ func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFi
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
 		apiErr := errors.New(string(msg))
-		grip.Error(message.WrapError(apiErr, message.Fields{
+		grip.Debug(message.WrapError(apiErr, message.Fields{
 			"message":     "bad response code from image visibility API",
 			"reason":      runtimeEnvironmentsAPIAlert,
 			"params":      params,
@@ -155,7 +155,7 @@ func (c *RuntimeEnvironmentsClient) GetOSInfo(ctx context.Context, opts OSInfoFi
 	}
 	osInfo := &OSInfoResponse{}
 	if err := gimlet.GetJSON(resp.Body, &osInfo); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
 			"params":  params,
@@ -215,7 +215,7 @@ func (c *RuntimeEnvironmentsClient) GetPackages(ctx context.Context, opts Packag
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
 		apiErr := errors.New(string(msg))
-		grip.Error(message.WrapError(apiErr, message.Fields{
+		grip.Debug(message.WrapError(apiErr, message.Fields{
 			"message":     "bad response code from image visibility API",
 			"reason":      runtimeEnvironmentsAPIAlert,
 			"params":      params,
@@ -225,7 +225,7 @@ func (c *RuntimeEnvironmentsClient) GetPackages(ctx context.Context, opts Packag
 	}
 	packages := &APIPackageResponse{}
 	if err := gimlet.GetJSON(resp.Body, &packages); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
 			"params":  params,
@@ -285,7 +285,7 @@ func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts Tool
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
 		apiErr := errors.New(string(msg))
-		grip.Error(message.WrapError(apiErr, message.Fields{
+		grip.Debug(message.WrapError(apiErr, message.Fields{
 			"message":     "bad response code from image visibility API",
 			"reason":      runtimeEnvironmentsAPIAlert,
 			"params":      params,
@@ -295,7 +295,7 @@ func (c *RuntimeEnvironmentsClient) GetToolchains(ctx context.Context, opts Tool
 	}
 	toolchains := &APIToolchainResponse{}
 	if err := gimlet.GetJSON(resp.Body, &toolchains); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
 			"params":  params,
@@ -348,7 +348,7 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts diffF
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
 		apiErr := errors.New(string(msg))
-		grip.Error(message.WrapError(apiErr, message.Fields{
+		grip.Debug(message.WrapError(apiErr, message.Fields{
 			"message":     "bad response code from image visibility API",
 			"reason":      runtimeEnvironmentsAPIAlert,
 			"params":      params,
@@ -358,7 +358,7 @@ func (c *RuntimeEnvironmentsClient) getImageDiff(ctx context.Context, opts diffF
 	}
 	changes := &APIDiffResponse{}
 	if err := gimlet.GetJSON(resp.Body, &changes); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
 			"params":  params,
@@ -420,7 +420,7 @@ func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts history
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(resp.Body)
 		apiErr := errors.New(string(msg))
-		grip.Error(message.WrapError(apiErr, message.Fields{
+		grip.Debug(message.WrapError(apiErr, message.Fields{
 			"message":     "bad response code from image visibility API",
 			"reason":      runtimeEnvironmentsAPIAlert,
 			"params":      params,
@@ -430,7 +430,7 @@ func (c *RuntimeEnvironmentsClient) getHistory(ctx context.Context, opts history
 	}
 	amiHistory := &APIHistoryResponse{}
 	if err := gimlet.GetJSON(resp.Body, &amiHistory); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "parsing response from image visibility API",
 			"reason":  runtimeEnvironmentsAPIAlert,
 			"params":  params,
@@ -532,7 +532,7 @@ func (c *RuntimeEnvironmentsClient) GetImageInfo(ctx context.Context, imageID st
 		return nil, errors.Wrapf(err, "getting latest AMI and timestamp")
 	}
 	if len(amiHistory) != 1 {
-		grip.Error(message.Fields{
+		grip.Debug(message.Fields{
 			"message":  "expected exactly 1 history result for image",
 			"reason":   runtimeEnvironmentsAPIAlert,
 			"image_id": imageID,
