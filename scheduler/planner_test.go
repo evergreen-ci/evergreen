@@ -480,7 +480,7 @@ func TestPlanner(t *testing.T) {
 }
 
 func verifyRankBreakdown(t *testing.T, breakdown task.RankBreakdown) {
-	totalImpact := breakdown.BasePriority +
+	totalImpact := breakdown.InitialPriority +
 		breakdown.StepbackImpact +
 		breakdown.PatchImpact +
 		breakdown.PatchWaitTimeImpact +

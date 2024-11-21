@@ -205,8 +205,8 @@ func (u *unitInfo) value() task.RankBreakdown {
 	// setting as a base.
 	breakdown := task.RankBreakdown{
 		TaskGroupLength: length,
-		BasePriority:    modifiedPriority,
 		TotalValue:      length + modifiedPriority,
+		InitialPriority: initialPriority,
 	}
 	requesterValue := u.addByRequester(initialPriority, modifiedPriority, length, &breakdown)
 
@@ -265,7 +265,9 @@ func (u *unitInfo) addByRequester(initialPriority, modifiedPriority, length int6
 	breakdown.MainlineWaitTimeImpact = initialPriority * mainlineWaitTimeValue
 	breakdown.StepbackImpact = initialPriority * stepbackValue
 
-	breakdown.GenerateTaskImpact = priorityScaledValue - (priorityScaledValue / u.Settings.GetGenerateTaskFactor())
+	if u.ContainsGenerateTask {
+		breakdown.GenerateTaskImpact = priorityScaledValue - (priorityScaledValue / u.Settings.GetGenerateTaskFactor())
+	}
 	if u.ContainsInCommitQueue {
 		breakdown.CommitQueueImpact = initialPriority*commitQueueValue + totalValue*200
 	}

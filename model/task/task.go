@@ -4041,7 +4041,7 @@ func (t *Task) FindAbortingAndResettingDependencies() ([]Task, error) {
 }
 
 type RankBreakdown struct {
-	BasePriority           int64
+	InitialPriority        int64
 	TaskGroupLength        int64
 	TaskGroupImpact        int64
 	GenerateTaskImpact     int64
@@ -4066,7 +4066,7 @@ func (t *Task) SetRankBreakdown(ctx context.Context, breakdown RankBreakdown) {
 		attribute.String(evergreen.DistroIDOtelAttribute, t.DistroId),
 		attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
 		attribute.Int64(fmt.Sprintf("%s.total_value", queueBreakdownAttributePrefix), breakdown.TotalValue),
-		attribute.Int64(fmt.Sprintf("%s.base_priority", queueBreakdownAttributePrefix), breakdown.BasePriority),
+		attribute.Int64(fmt.Sprintf("%s.base_priority", queueBreakdownAttributePrefix), breakdown.InitialPriority),
 		attribute.Int64(fmt.Sprintf("%s.length", queueBreakdownAttributePrefix), breakdown.TaskGroupLength),
 		attribute.Int64(fmt.Sprintf("%s.task_group", queueBreakdownAttributePrefix), breakdown.TaskGroupImpact),
 		attribute.Int64(fmt.Sprintf("%s.generate_task", queueBreakdownAttributePrefix), breakdown.GenerateTaskImpact),
@@ -4077,7 +4077,7 @@ func (t *Task) SetRankBreakdown(ctx context.Context, breakdown RankBreakdown) {
 		attribute.Int64(fmt.Sprintf("%s.stepback", queueBreakdownAttributePrefix), breakdown.StepbackImpact),
 		attribute.Int64(fmt.Sprintf("%s.num_dependents", queueBreakdownAttributePrefix), breakdown.NumDependentsImpact),
 		attribute.Int64(fmt.Sprintf("%s.estimated_runtime", queueBreakdownAttributePrefix), breakdown.EstimatedRuntimeImpact),
-		attribute.Float64(fmt.Sprintf("%s.base_priority_pct", queueBreakdownAttributePrefix), float64(breakdown.BasePriority/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.base_priority_pct", queueBreakdownAttributePrefix), float64(breakdown.InitialPriority/breakdown.TotalValue*100)),
 		attribute.Float64(fmt.Sprintf("%s.length_pct", queueBreakdownAttributePrefix), float64(breakdown.TaskGroupLength/breakdown.TotalValue*100)),
 		attribute.Float64(fmt.Sprintf("%s.task_group_pct", queueBreakdownAttributePrefix), float64(breakdown.TaskGroupImpact/breakdown.TotalValue*100)),
 		attribute.Float64(fmt.Sprintf("%s.generate_task_pct", queueBreakdownAttributePrefix), float64(breakdown.GenerateTaskImpact/breakdown.TotalValue*100)),
