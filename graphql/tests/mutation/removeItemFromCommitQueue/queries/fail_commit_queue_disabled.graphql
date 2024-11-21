@@ -1,6 +1,0 @@
-mutation {
-  removeItemFromCommitQueue(
-    commitQueueId: "cq_disabled_project_id"
-    issue: "random"
-  )
-}

@@ -507,14 +507,6 @@ func (d *basicCachedDAGDispatcherImpl) getTaskGroup(taskGroupID string) (schedul
 			hasDispatchableTask = true
 		}
 	}
-	grip.DebugWhen(!hasDispatchableTask, message.Fields{
-		"investigation": "DEVPROD-12086",
-		"message":       "group has no ready tasks, skipping",
-		"group":         taskGroupUnit.group,
-		"variant":       taskGroupUnit.variant,
-		"project":       taskGroupUnit.project,
-		"version":       taskGroupUnit.version,
-	})
 	return taskGroupUnit, true, hasDispatchableTask
 }
 

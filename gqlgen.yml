@@ -48,10 +48,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIClientConfig
   CloudProviderConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APICloudProviders
-  CommitQueue:
-    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueue
-  CommitQueueItem:
-    model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueItem
   CommitQueueParams:
     model: github.com/evergreen-ci/evergreen/rest/model.APICommitQueueParams
   CommitQueueParamsInput:
@@ -279,8 +275,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatch
     fields:
       projectIdentifier:
-        resolver: true
-      commitQueuePosition:
         resolver: true
   PatchTriggerAlias:
     model: github.com/evergreen-ci/evergreen/rest/model.APIPatchTriggerDefinition
