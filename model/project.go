@@ -1023,6 +1023,8 @@ func PopulateExpansions(t *task.Task, h *host.Host, appToken, knownHosts string)
 		return nil, errors.Wrap(err, "finding project ref")
 	}
 
+	// When adding expansions, please make sure to document them in
+	// the expansions documentation.
 	expansions := util.Expansions{}
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("version_id", t.Version)
