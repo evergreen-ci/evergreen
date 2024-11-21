@@ -50,12 +50,6 @@ enum HostAccessLevel {
 }
 
 """
-requireCommitQueueItemOwner is used to restrict changes to commit queue patches.
-"""
-directive @requireCommitQueueItemOwner on ARGUMENT_DEFINITION
-
-"""
 redactSecrets is used to mark input fields that should not be logged or exposed in any way and should be redacted.
 """
 directive @redactSecrets on INPUT_FIELD_DEFINITION | ARGUMENT_DEFINITION | INPUT_OBJECT
-
