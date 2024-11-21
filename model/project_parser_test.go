@@ -2990,7 +2990,7 @@ func TestMarshalBSON(t *testing.T) {
 		Identifier: utility.ToStringPtr("small"),
 	}
 
-	encoded, err := pp.RetryMarshalBSON(5)
+	encoded, err := pp.MarshalBSON()
 	require.NoError(t, err)
 	require.NotEmpty(t, encoded)
 
