@@ -2599,6 +2599,7 @@ func tryUpdateDisplayTaskAtomically(dt task.Task) (updated *task.Task, err error
 	dt.Details = statusTask.Details
 	dt.Details.TraceID = "" // Unset TraceID because display tasks don't have corresponding traces.
 	dt.TimeTaken = timeTaken
+	dt.DisplayStatus = statusTask.FindDisplayStatus()
 
 	update := bson.M{
 		task.StatusKey:        dt.Status,
@@ -2606,6 +2607,7 @@ func tryUpdateDisplayTaskAtomically(dt task.Task) (updated *task.Task, err error
 		task.ActivatedTimeKey: dt.ActivatedTime,
 		task.TimeTakenKey:     dt.TimeTaken,
 		task.DetailsKey:       dt.Details,
+		task.DisplayStatusKey: dt.DisplayStatus,
 	}
 
 	if startTime != time.Unix(1<<62, 0) {

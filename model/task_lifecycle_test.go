@@ -2951,6 +2951,7 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 			assert.NoError(err)
 			assert.NotNil(t1)
 			assert.Equal(evergreen.TaskUndispatched, t1.Status)
+			assert.Equal(evergreen.TaskWillRun, t1.DisplayStatus)
 			t2, err := task.FindOneId(t2Id)
 			assert.NoError(err)
 			assert.NotNil(t2)
@@ -3567,6 +3568,7 @@ func TestMarkStart(t *testing.T) {
 			testTask, err = task.FindOne(db.Query(task.ById(testTask.Id)))
 			So(err, ShouldBeNil)
 			So(testTask.Status, ShouldEqual, evergreen.TaskStarted)
+			So(testTask.DisplayStatus, ShouldEqual, evergreen.TaskStarted)
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
@@ -5961,6 +5963,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.Equal(evergreen.TaskFailed, dbTask.Status)
+	assert.Equal(evergreen.TaskFailed, dbTask.DisplayStatus)
 
 	// a display task should not set its start time to any exec tasks that have zero start time
 	assert.NoError(UpdateDisplayTaskForTask(&task11))

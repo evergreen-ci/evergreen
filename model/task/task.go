@@ -2373,6 +2373,12 @@ func (t *Task) GetDisplayStatus() string {
 	return t.DisplayStatus
 }
 
+// FindDisplayStatus publicly exports findDisplayStatus
+// TODO: replace all instances of findDisplayStatus, probably
+func (t *Task) FindDisplayStatus() string {
+	return t.findDisplayStatus()
+}
+
 func (t *Task) findDisplayStatus() string {
 	if t.HasAnnotations {
 		return evergreen.TaskKnownIssue
@@ -2515,7 +2521,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 		t.DisplayStatus = t.findDisplayStatus()
 	}
 	update := []bson.M{
-		{
+		bson.M{
 			"$set": bson.M{
 				ActivatedKey:                   true,
 				ActivatedTimeKey:               now,
@@ -2533,7 +2539,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 				NumNextTaskDispatchesKey:       0,
 			},
 		},
-		{
+		bson.M{
 			"$unset": []string{
 				DetailsKey,
 				TaskOutputInfoKey,

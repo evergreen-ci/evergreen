@@ -266,9 +266,12 @@ func TestBuildRestart(t *testing.T) {
 			taskOne, err = task.FindOne(db.Query(task.ById("task1")))
 			So(err, ShouldBeNil)
 			So(taskOne.Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(taskOne.Activated, ShouldEqual, true)
+			So(taskOne.DisplayStatus, ShouldEqual, evergreen.TaskWillRun)
 			taskTwo, err = task.FindOne(db.Query(task.ById("task2")))
 			So(err, ShouldBeNil)
 			So(taskTwo.Aborted, ShouldEqual, true)
+			So(taskTwo.DisplayStatus, ShouldEqual, evergreen.TaskAborted)
 			So(taskTwo.ResetWhenFinished, ShouldBeTrue)
 		})
 
@@ -280,6 +283,7 @@ func TestBuildRestart(t *testing.T) {
 				BuildId:       b.Id,
 				DisplayTaskId: utility.ToStringPtr(""),
 				Status:        evergreen.TaskSucceeded,
+				DisplayStatus: evergreen.TaskSucceeded,
 				Activated:     true,
 			}
 			So(taskThree.Insert(), ShouldBeNil)
@@ -290,6 +294,7 @@ func TestBuildRestart(t *testing.T) {
 				BuildId:       b.Id,
 				DisplayTaskId: utility.ToStringPtr(""),
 				Status:        evergreen.TaskDispatched,
+				DisplayStatus: evergreen.TaskDispatched,
 				Activated:     true,
 			}
 			So(taskFour.Insert(), ShouldBeNil)
@@ -302,10 +307,12 @@ func TestBuildRestart(t *testing.T) {
 			taskThree, err = task.FindOne(db.Query(task.ById("task3")))
 			So(err, ShouldBeNil)
 			So(taskThree.Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(taskThree.DisplayStatus, ShouldEqual, evergreen.TaskWillRun)
 			taskFour, err = task.FindOne(db.Query(task.ById("task4")))
 			So(err, ShouldBeNil)
 			So(taskFour.Aborted, ShouldEqual, false)
 			So(taskFour.Status, ShouldEqual, evergreen.TaskDispatched)
+			So(taskFour.DisplayStatus, ShouldEqual, evergreen.TaskDispatched)
 		})
 
 		Convey("single host task group tasks be omitted from the immediate restart logic", func() {
@@ -395,9 +402,11 @@ func TestBuildRestart(t *testing.T) {
 			taskEight, err = task.FindOne(db.Query(task.ById("task8")))
 			So(err, ShouldBeNil)
 			So(taskEight.Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(taskEight.DisplayStatus, ShouldEqual, evergreen.TaskWillRun)
 			taskNine, err = task.FindOne(db.Query(task.ById("task9")))
 			So(err, ShouldBeNil)
 			So(taskNine.Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(taskNine.DisplayStatus, ShouldEqual, evergreen.TaskWillRun)
 		})
 
 	})

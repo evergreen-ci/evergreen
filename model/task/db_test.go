@@ -421,6 +421,7 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 	task, err = FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, utility.ToIntPtr(0))
 	assert.NoError(err)
 	assert.NotNil(task)
+	assert.Equal(task.Status, evergreen.TaskUndispatched)
 	assert.Equal(task.DisplayStatus, evergreen.TaskUnscheduled)
 }
 

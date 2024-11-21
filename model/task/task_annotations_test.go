@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/birch"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/stretchr/testify/assert"
@@ -54,7 +55,7 @@ func TestRemoveIssueFromAnnotation(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 	a := annotations.TaskAnnotation{TaskId: "t1", Issues: []annotations.IssueLink{issue1, issue2}}
 	assert.NoError(t, a.Upsert())
-	task := Task{Id: "t1", HasAnnotations: true}
+	task := Task{Id: "t1", HasAnnotations: true, Status: evergreen.TaskFailed, DisplayStatus: evergreen.TaskKnownIssue}
 	assert.NoError(t, task.Insert())
 
 	// Task should still have annotations key set after first issue is removed
@@ -68,6 +69,7 @@ func TestRemoveIssueFromAnnotation(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, dbTask)
 	assert.True(t, dbTask.HasAnnotations)
+	assert.Equal(t, evergreen.TaskKnownIssue, dbTask.DisplayStatus)
 
 	// Removing the second issue should mark the task as no longer having annotations
 	assert.NoError(t, RemoveIssueFromAnnotation(ctx, "t1", 0, issue2))
@@ -79,6 +81,7 @@ func TestRemoveIssueFromAnnotation(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, dbTask)
 	assert.False(t, dbTask.HasAnnotations)
+	assert.Equal(t, evergreen.TaskFailed, dbTask.DisplayStatus)
 }
 
 func TestMoveIssueToSuspectedIssue(t *testing.T) {
@@ -152,6 +155,7 @@ func TestMoveSuspectedIssueToIssue(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, dbTask)
 	assert.True(t, dbTask.HasAnnotations)
+	assert.Equal(t, evergreen.TaskKnownIssue, dbTask.DisplayStatus)
 }
 
 func TestPatchIssue(t *testing.T) {
