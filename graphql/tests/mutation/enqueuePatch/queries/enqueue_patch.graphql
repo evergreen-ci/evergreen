@@ -1,5 +1,0 @@
-mutation {
-  enqueuePatch(patchId: "5dd2e89cd1fe07048e43bb9c", commitMessage: "hello world") {
-    author
-  }
-}
