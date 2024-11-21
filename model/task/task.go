@@ -4040,6 +4040,8 @@ func (t *Task) FindAbortingAndResettingDependencies() ([]Task, error) {
 	return FindAll(q)
 }
 
+// SortingValueBreakdown is the full breakdown of the final value used to sort on in the queue,
+// with accompanying breakdowns of priority and rank value.
 type SortingValueBreakdown struct {
 	TaskGroupLength    int64
 	TotalValue         int64
