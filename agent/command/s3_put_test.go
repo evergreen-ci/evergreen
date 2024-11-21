@@ -611,7 +611,7 @@ func TestPreservePath(t *testing.T) {
 		Expansions:   util.Expansions{},
 		Task:         task.Task{Id: "mock_id", Secret: "mock_secret"},
 		Project:      model.Project{},
-		WorkDir:      dir,
+		WorkDir:      t.TempDir(),
 		BuildVariant: model.BuildVariant{},
 	}
 	logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
