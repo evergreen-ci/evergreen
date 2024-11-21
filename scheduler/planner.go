@@ -94,7 +94,7 @@ func (cache UnitCache) Export() TaskPlan {
 // in a Unit must be unique with regards to their ID.
 type Unit struct {
 	tasks       map[string]task.Task
-	cachedValue task.RankBreakdown
+	cachedValue task.SortingValueBreakdown
 	id          string
 	distro      *distro.Distro
 }
@@ -196,104 +196,90 @@ type unitInfo struct {
 	ContainsStepbackTask bool `json:"contains_stepback_task"`
 }
 
-func (u *unitInfo) value() task.RankBreakdown {
-	length := int64(len(u.TaskIDs))
-	initialPriority := 1 + (u.TotalPriority / length)
-	modifiedPriority := u.modifyBasePriority(initialPriority)
-	// Start with the number of tasks so that units with more
-	// tasks get sorted above one-offs, and then add the priority
-	// setting as a base.
-	breakdown := task.RankBreakdown{
-		TaskGroupLength: length,
-		TotalValue:      length + modifiedPriority,
-		InitialPriority: length + modifiedPriority,
-	}
-	requesterValue := u.addByRequester(initialPriority, modifiedPriority, length, &breakdown)
-
-	breakdown.TotalValue += requesterValue
+// value computes a full SortingValueBreakdown, containing the final value by which the unit
+// will be sorted in its queue (stored in TotalValue), and the numerical influences that
+// the unit's properties had on computing that final value. Currently, the formula for
+// computing this value is (custom_priority * custom_rankValue) + unit_length, where custom_priority
+// and custom_rankValue are both derived from specific properties of the unit and various
+// scheduler constants.
+func (u *unitInfo) value() task.SortingValueBreakdown {
+	var breakdown task.SortingValueBreakdown
+	priority := u.computePriority(&breakdown)
+	rankValue := u.computeRankValue(breakdown.TaskGroupLength, &breakdown)
+	breakdown.TotalValue = priority*rankValue + breakdown.TaskGroupLength
 	return breakdown
 }
 
-func (u *unitInfo) addByRequester(initialPriority, modifiedPriority, length int64, breakdown *task.RankBreakdown) int64 {
-	var patchValue, patchWaitTimeValue int64
-	var commitQueueValue int64
-	var mainlineWaitTimeValue, stepbackValue int64
+// computeRankValue computes the custom rank value for this unit, which will later be multiplied with the
+// custom priority to compute a final value by which the unit will be sorted on in the queue.
+func (u *unitInfo) computeRankValue(unitLength int64, breakdown *task.SortingValueBreakdown) int64 {
 	if u.ContainsInPatch {
 		// Give patches a bump, over non-patches. patches that have spent more time in the queue
 		// should get worked on first (because people are waiting on the results), and because FIFO feels
 		// fair in this context.
-		patchValue = u.Settings.GetPatchFactor()
-		patchWaitTimeValue = u.Settings.GetPatchTimeInQueueFactor() * int64(math.Floor(u.TimeInQueue.Minutes()/float64(length)))
+		breakdown.RankValueBreakdown.PatchImpact = u.Settings.GetPatchFactor()
+		breakdown.RankValueBreakdown.PatchWaitTimeImpact = u.Settings.GetPatchTimeInQueueFactor() * int64(math.Floor(u.TimeInQueue.Minutes()/float64(unitLength)))
 	} else if u.ContainsInCommitQueue {
 		// Give commit queue patches a boost over everything else
-		commitQueueValue = u.Settings.GetCommitQueueFactor()
+		breakdown.RankValueBreakdown.CommitQueueImpact = u.Settings.GetCommitQueueFactor()
 	} else {
 		// For mainline builds that are more recent, give them a bit
 		// of a bump, to avoid running older builds first.
-		avgLifeTime := u.TimeInQueue / time.Duration(length)
+		avgLifeTime := u.TimeInQueue / time.Duration(unitLength)
 		if avgLifeTime < time.Duration(7*24)*time.Hour {
-			mainlineWaitTimeValue = u.Settings.GetMainlineTimeInQueueFactor() * int64((7*24*time.Hour - avgLifeTime).Hours())
+			breakdown.RankValueBreakdown.MainlineWaitTimeImpact = u.Settings.GetMainlineTimeInQueueFactor() * int64((7*24*time.Hour - avgLifeTime).Hours())
 		}
 		if u.ContainsStepbackTask {
-			stepbackValue = u.Settings.GetStepbackTaskFactor()
+			breakdown.RankValueBreakdown.StepbackImpact = u.Settings.GetStepbackTaskFactor()
 		}
 	}
 	// Increase the value for the number of dependents, so that
 	// tasks (and units) which block other tasks run before tasks
 	// that don't block other tasks.
-	numDependentsValue := int64(u.Settings.GetNumDependentsFactor() * float64(u.NumDependents/length))
+	breakdown.RankValueBreakdown.NumDependentsImpact = int64(u.Settings.GetNumDependentsFactor() * float64(u.NumDependents/unitLength))
 
 	// Increase the value for tasks with longer runtimes, given
 	// that most of our workloads have different runtimes, and we
 	// don't want to have longer makespans if longer running tasks
 	// have to execute after shorter running tasks.
-	estimatedRuntimeValue := u.Settings.GetExpectedRuntimeFactor() * int64(math.Floor(u.ExpectedRuntime.Minutes()/float64(length)))
+	breakdown.RankValueBreakdown.EstimatedRuntimeImpact = u.Settings.GetExpectedRuntimeFactor() * int64(math.Floor(u.ExpectedRuntime.Minutes()/float64(unitLength)))
 
-	totalValue := patchValue +
-		patchWaitTimeValue +
-		mainlineWaitTimeValue +
-		stepbackValue +
-		commitQueueValue +
-		numDependentsValue +
-		estimatedRuntimeValue
-
-	priorityScaledValue := modifiedPriority * totalValue
-	breakdown.NumDependentsImpact = initialPriority * numDependentsValue
-	breakdown.EstimatedRuntimeImpact = initialPriority * estimatedRuntimeValue
-	breakdown.PatchImpact = initialPriority * patchValue
-	breakdown.PatchWaitTimeImpact = initialPriority * patchWaitTimeValue
-	breakdown.MainlineWaitTimeImpact = initialPriority * mainlineWaitTimeValue
-	breakdown.StepbackImpact = initialPriority * stepbackValue
-
-	if u.ContainsGenerateTask {
-		breakdown.GenerateTaskImpact = initialPriority * totalValue * (u.Settings.GetGenerateTaskFactor() - 1)
-	}
-	if u.ContainsInCommitQueue {
-		baseScaledVal := initialPriority * totalValue
-		valueScaledByCommitQueue := (initialPriority + 200) * totalValue
-		breakdown.CommitQueueImpact = valueScaledByCommitQueue - baseScaledVal + (initialPriority * commitQueueValue)
-	}
-	if !u.ContainsNonGroupTasks {
-		breakdown.TaskGroupImpact = totalValue * length
-	}
-	return priorityScaledValue
+	return 1 + breakdown.RankValueBreakdown.PatchImpact +
+		breakdown.RankValueBreakdown.PatchWaitTimeImpact +
+		breakdown.RankValueBreakdown.MainlineWaitTimeImpact +
+		breakdown.RankValueBreakdown.CommitQueueImpact +
+		breakdown.RankValueBreakdown.StepbackImpact +
+		breakdown.RankValueBreakdown.NumDependentsImpact +
+		breakdown.RankValueBreakdown.EstimatedRuntimeImpact
 }
 
-func (u *unitInfo) modifyBasePriority(initialPriority int64) int64 {
-
-	length := int64(len(u.TaskIDs))
+// computePriority computes the custom priority value for this unit, which will later be multiplied with the
+// custom rank value to compute a final value by which the unit will be sorted on in the queue.
+func (u *unitInfo) computePriority(breakdown *task.SortingValueBreakdown) int64 {
+	unitLength := int64(len(u.TaskIDs))
+	initialPriority := 1 + (u.TotalPriority / unitLength)
+	breakdown.PriorityBreakdown.InitialPriorityImpact = initialPriority
+	breakdown.TaskGroupLength = unitLength
 	if !u.ContainsNonGroupTasks {
 		// If all tasks in the unit are in a task group then
 		// we should give it a little bump, so that task
 		// groups tasks are sorted together even when they
 		// would also be scheduled in a version.
-		initialPriority += length
+		breakdown.PriorityBreakdown.TaskGroupImpact = unitLength
+		initialPriority += unitLength
 	}
 	if u.ContainsGenerateTask {
 		// Give generators a boost so people don't have to wait twice.
+		prevPriority := initialPriority
 		initialPriority = initialPriority * u.Settings.GetGenerateTaskFactor()
+		breakdown.PriorityBreakdown.GenerateTaskImpact = initialPriority - prevPriority
+		if !u.ContainsNonGroupTasks {
+			breakdown.PriorityBreakdown.TaskGroupImpact *= u.Settings.GetGenerateTaskFactor()
+			breakdown.PriorityBreakdown.GenerateTaskImpact -= unitLength * u.Settings.GetGenerateTaskFactor()
+		}
 	}
 	if u.ContainsInCommitQueue {
+		breakdown.PriorityBreakdown.CommitQueueImpact = 200
 		initialPriority += 200
 	}
 	return initialPriority
@@ -330,13 +316,13 @@ func (unit *Unit) info() unitInfo {
 	return info
 }
 
-// rankValueBreakdown returns a point value for the tasks in the unit that can
+// sortingValueBreakdown returns a point value for the tasks in the unit that can
 // be used to compare units with each other.
 //
 // Generally, higher point values are given to larger units and for
 // units that have been in the queue for longer, with longer expected
 // runtimes. The tasks' priority acts as a multiplying factor.
-func (unit *Unit) rankValueBreakdown() task.RankBreakdown {
+func (unit *Unit) sortingValueBreakdown() task.SortingValueBreakdown {
 	if unit.cachedValue.TotalValue > 0 {
 		return unit.cachedValue
 	}
@@ -397,12 +383,12 @@ func (tl TaskList) Less(i, j int) bool {
 
 // TaskPlan provides a sortable interface on top of a slice of
 // schedulable units, with ordering of units provided by the
-// implementation of RankValueBreakdown.
+// implementation of SortingValueBreakdown.
 type TaskPlan []*Unit
 
 func (tpl TaskPlan) Len() int { return len(tpl) }
 func (tpl TaskPlan) Less(i, j int) bool {
-	return tpl[i].rankValueBreakdown().TotalValue > tpl[j].rankValueBreakdown().TotalValue
+	return tpl[i].sortingValueBreakdown().TotalValue > tpl[j].sortingValueBreakdown().TotalValue
 }
 func (tpl TaskPlan) Swap(i, j int) { tpl[i], tpl[j] = tpl[j], tpl[i] }
 
@@ -453,14 +439,14 @@ func (tpl TaskPlan) Export(ctx context.Context) []task.Task {
 	output := []task.Task{}
 	seen := StringSet{}
 	for _, unit := range tpl {
-		rankValueBreakdown := unit.rankValueBreakdown()
+		sortingValueBreakdown := unit.sortingValueBreakdown()
 		tasks := unit.Export()
 		sort.Sort(tasks)
 		for i := range tasks {
 			if seen.Visit(tasks[i].Id) {
 				continue
 			}
-			tasks[i].SetRankBreakdown(ctx, rankValueBreakdown)
+			tasks[i].SetSortingValueBreakdown(ctx, sortingValueBreakdown)
 			output = append(output, tasks[i])
 		}
 	}
