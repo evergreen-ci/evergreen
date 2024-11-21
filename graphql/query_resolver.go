@@ -944,7 +944,6 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		if limitOpt > model.MaxWaterfallVersionLimit {
 			return nil, InputValidationError.Send(ctx, fmt.Sprintf("limit exceeds max limit of %d", model.MaxWaterfallVersionLimit))
 		}
-
 		limit = limitOpt
 	}
 
@@ -974,8 +973,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		} else if found == nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("version on or before date '%s' not found", eod.Format(time.DateOnly))))
 		} else {
-			// Offset the order number so the specified version lands nearer to the center of the page.
-			maxOrderOpt = found.RevisionOrderNumber + limit/2 + 1
+			maxOrderOpt = found.RevisionOrderNumber + 1
 		}
 	}
 
