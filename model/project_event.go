@@ -26,8 +26,49 @@ type ProjectSettings struct {
 	Subscriptions      []event.Subscription    `bson:"subscriptions" json:"subscriptions"`
 }
 
+// NewProjectSettingsFromEvent creates project settings from a project settings
+// event.
+func NewProjectSettingsFromEvent(e ProjectSettingsEvent) ProjectSettings {
+	return ProjectSettings{
+		ProjectRef:         e.ProjectRef,
+		GitHubAppAuth:      e.GitHubAppAuth,
+		GithubHooksEnabled: e.GithubHooksEnabled,
+		Vars: ProjectVars{
+			Vars:          e.Vars.Vars,
+			PrivateVars:   e.Vars.PrivateVars,
+			AdminOnlyVars: e.Vars.AdminOnlyVars,
+		},
+		Aliases:       e.Aliases,
+		Subscriptions: e.Subscriptions,
+	}
+}
+
+// ProjectEventVars contains the project variable data relevant to project
+// modification events.
+type ProjectEventVars struct {
+	// Vars contain the names of project variables and redacted placeholders for
+	// their values.
+	Vars          map[string]string `bson:"vars" json:"vars"`
+	PrivateVars   map[string]bool   `bson:"private_vars" json:"private_vars"`
+	AdminOnlyVars map[string]bool   `bson:"admin_only_vars" json:"admin_only_vars"`
+}
+
+// ProjectSettingsEvent contains the event data about a single revision of a
+// project's settings.
 type ProjectSettingsEvent struct {
-	ProjectSettings `bson:",inline"`
+	// These fields are mostly copied from ProjectSettings, except for a few
+	// where the data available to project events differs from the original data
+	// model.
+	// For example, the ProjectVars model cannot be used as-is because the
+	// project variables are not stored in the database for security reasons.
+	// However, the project event model needs to keep track of which project
+	// variables changed, hence the need for a separate model in that situation.
+	ProjectRef         ProjectRef              `bson:"proj_ref" json:"proj_ref"`
+	GithubHooksEnabled bool                    `bson:"github_hooks_enabled" json:"github_hooks_enabled"`
+	Aliases            []ProjectAlias          `bson:"aliases" json:"aliases"`
+	Subscriptions      []event.Subscription    `bson:"subscriptions" json:"subscriptions"`
+	GitHubAppAuth      githubapp.GithubAppAuth `bson:"github_app_auth" json:"github_app_auth"`
+	Vars               ProjectEventVars        `bson:"vars" json:"vars"`
 
 	// The following boolean fields are flags that indicate that a given
 	// field is nil instead of [], since this information is lost when
@@ -38,6 +79,23 @@ type ProjectSettingsEvent struct {
 	PeriodicBuildsDefault        bool `bson:"periodic_builds_default,omitempty" json:"periodic_builds_default,omitempty"`
 	TriggersDefault              bool `bson:"triggers_default,omitempty" json:"triggers_default,omitempty"`
 	WorkstationCommandsDefault   bool `bson:"workstation_commands_default,omitempty" json:"workstation_commands_default,omitempty"`
+}
+
+// NewProjectSettingsEvent creates project settings event data from project
+// settings.
+func NewProjectSettingsEvent(p ProjectSettings) ProjectSettingsEvent {
+	return ProjectSettingsEvent{
+		ProjectRef:         p.ProjectRef,
+		GithubHooksEnabled: p.GithubHooksEnabled,
+		Aliases:            p.Aliases,
+		Subscriptions:      p.Subscriptions,
+		GitHubAppAuth:      p.GitHubAppAuth,
+		Vars: ProjectEventVars{
+			Vars:          p.Vars.Vars,
+			PrivateVars:   p.Vars.PrivateVars,
+			AdminOnlyVars: p.Vars.AdminOnlyVars,
+		},
+	}
 }
 
 type ProjectChangeEvent struct {
@@ -356,9 +414,7 @@ func GetAndLogProjectRepoAttachment(id, userId, attachmentType string, isRepo bo
 // ProjectChangeEvents must be cast to a generic interface to utilize event logging, which casts all nil objects of array types to empty arrays.
 // Set flags if these values should indeed be nil so that we can correct these values when the event log is read from the database.
 func (p *ProjectSettings) resolveDefaults() *ProjectSettingsEvent {
-	projectSettingsEvent := &ProjectSettingsEvent{
-		ProjectSettings: *p,
-	}
+	projectSettingsEvent := NewProjectSettingsEvent(*p)
 
 	if p.ProjectRef.GitTagAuthorizedTeams == nil {
 		projectSettingsEvent.GitTagAuthorizedTeamsDefault = true
@@ -378,7 +434,7 @@ func (p *ProjectSettings) resolveDefaults() *ProjectSettingsEvent {
 	if p.ProjectRef.WorkstationConfig.SetupCommands == nil {
 		projectSettingsEvent.WorkstationCommandsDefault = true
 	}
-	return projectSettingsEvent
+	return &projectSettingsEvent
 }
 
 // LogProjectModified logs an event for a modification of a project's settings.

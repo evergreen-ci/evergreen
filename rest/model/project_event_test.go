@@ -75,13 +75,9 @@ func (s *ProjectEventSuite) SetupTest() {
 			EventType:    event.EventTypeProjectModified,
 			ResourceId:   projectId,
 			Data: &model.ProjectChangeEvent{
-				User: username,
-				Before: model.ProjectSettingsEvent{
-					ProjectSettings: before,
-				},
-				After: model.ProjectSettingsEvent{
-					ProjectSettings: after,
-				},
+				User:   username,
+				Before: model.NewProjectSettingsEvent(before),
+				After:  model.NewProjectSettingsEvent(after),
 			},
 		},
 	}
@@ -150,7 +146,7 @@ func checkProjRef(suite *ProjectEventSuite, in model.ProjectRef, out APIProjectR
 	suite.Equal(in.NotifyOnBuildFailure, out.NotifyOnBuildFailure)
 }
 
-func checkVars(suite *ProjectEventSuite, in model.ProjectVars, out APIProjectVars) {
+func checkVars(suite *ProjectEventSuite, in model.ProjectEventVars, out APIProjectVars) {
 	suite.Require().Equal(len(in.Vars), len(out.Vars))
 	for k, v := range in.Vars {
 		suite.Equal(v, out.Vars[k])

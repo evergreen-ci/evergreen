@@ -712,8 +712,8 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 		ResourceId:   projectId,
 		Data: map[string]interface{}{
 			"user":   username,
-			"before": before,
-			"after":  after,
+			"before": model.NewProjectSettingsEvent(before),
+			"after":  model.NewProjectSettingsEvent(after),
 		},
 	}
 
@@ -721,7 +721,7 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 
 	events, err := GetProjectEventLog(projectId, time.Now(), 0)
 	require.NoError(t, err)
-	require.Equal(t, len(events), 1)
+	require.Len(t, events, 1)
 	eventLog := events[0]
 	require.NotNil(t, eventLog)
 
