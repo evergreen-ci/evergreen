@@ -14,6 +14,11 @@
       "_id": "container-task",
       "branch": "spruce",
       "container": "ubuntu1604-container"
+    },
+    {
+      "_id": "nonexistent-distro-task",
+      "branch": "spruce",
+      "distro": "i-was-deleted"
     }
   ],
   "distro": [

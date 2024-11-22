@@ -29,6 +29,16 @@
           }
         }
       }
+    },
+    {
+      "query_file": "nonexistent_distro_task.graphql",
+      "result": {
+        "data": {
+          "task": {
+            "imageId": ""
+          }
+        }
+      }
     }
   ]
 }
