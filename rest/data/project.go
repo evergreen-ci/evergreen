@@ -67,8 +67,8 @@ func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) er
 	if settings.ProjectCreation.JiraProject == "" {
 		return nil
 	}
-	summary := fmt.Sprintf("Create AWS key for s3 uploads for '%s' project", projectIdentifier)
-	description := fmt.Sprintf("Could you create an s3 key for the new [%s|%s/project/%s/settings/general] project?", projectIdentifier, settings.Ui.UIv2Url, projectIdentifier)
+	summary := fmt.Sprintf("Create AWS bucket for s3 uploads for '%s' project", projectIdentifier)
+	description := fmt.Sprintf("Could you create an s3 bucket and role arn for the new [%s|%s/project/%s/settings/general] project?", projectIdentifier, settings.Ui.UIv2Url, projectIdentifier)
 	jiraIssue := message.JiraIssue{
 		Project:     settings.ProjectCreation.JiraProject,
 		Summary:     summary,
