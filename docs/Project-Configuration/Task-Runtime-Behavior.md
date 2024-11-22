@@ -133,6 +133,8 @@ If `share_procs` is true, the task group will not clean up processes for the
 entire duration of the task. It will only clean up those processes once the
 entire task group is finished.
 
+Check the Agent Logs on a task to see logs about the process cleanup.
+
 ### Task Directory Cleanup
 
 The task working directory is removed when a task finishes as part of cleaning
