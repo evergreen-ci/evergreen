@@ -2170,8 +2170,8 @@ func (h *Host) Replace(ctx context.Context) error {
 // GetElapsedCommunicationTime returns how long since this host has communicated with evergreen or vice versa
 func (h *Host) GetElapsedCommunicationTime() time.Duration {
 	// If the host is currently tearing down a task group, it is not considered idle, and
-	// can acceptably not communicate with evergreen because the task has completed and will
-	// no longer be sending heartbeat requests.
+	// it is expected that it will not communicate with evergreen because the task has completed
+	// and will no longer be sending heartbeat requests.
 	if h.IsTearingDown() {
 		return 0
 	}
