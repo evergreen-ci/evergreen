@@ -1,4 +1,4 @@
-# TStatuses
+# Statuses
 
 This document provides an overview of the various statuses used in our
 system, along with their meanings, usage contexts, and the logic that determines
