@@ -1663,6 +1663,7 @@ func (h *Host) MarkAsReprovisioning(ctx context.Context) error {
 		needsAgentMonitor = h.StartedBy == evergreen.User
 	}
 
+	now := time.Now()
 	err := UpdateOne(ctx, bson.M{
 		IdKey:               h.Id,
 		NeedsReprovisionKey: h.NeedsReprovision,
@@ -1670,11 +1671,12 @@ func (h *Host) MarkAsReprovisioning(ctx context.Context) error {
 	},
 		bson.M{
 			"$set": bson.M{
-				AgentStartTimeKey:       utility.ZeroTime,
-				ProvisionedKey:          false,
-				StatusKey:               evergreen.HostProvisioning,
-				NeedsNewAgentKey:        needsAgent,
-				NeedsNewAgentMonitorKey: needsAgentMonitor,
+				AgentStartTimeKey:        utility.ZeroTime,
+				ProvisionedKey:           false,
+				StatusKey:                evergreen.HostProvisioning,
+				NeedsNewAgentKey:         needsAgent,
+				NeedsNewAgentMonitorKey:  needsAgentMonitor,
+				LastCommunicationTimeKey: now,
 			},
 		},
 	)
@@ -1687,6 +1689,7 @@ func (h *Host) MarkAsReprovisioning(ctx context.Context) error {
 	h.Status = evergreen.HostProvisioning
 	h.NeedsNewAgent = needsAgent
 	h.NeedsNewAgentMonitor = needsAgentMonitor
+	h.LastCommunicationTime = now
 
 	return nil
 }
