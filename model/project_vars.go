@@ -1151,7 +1151,7 @@ func convertVarToParam(projectID string, pm ParameterMappings, varName, varValue
 		return "", "", errors.Errorf("project variable '%s' cannot have an empty value", varName)
 	}
 
-	prefix := GetVarsParameterPath(projectID) + "/"
+	prefix := fmt.Sprintf("%s/", GetVarsParameterPath(projectID))
 
 	varsToParams := pm.NameMap()
 	m, ok := varsToParams[varName]
