@@ -61,10 +61,8 @@ type Patch {
   authorDisplayName: String!
   baseTaskStatuses: [String!]!
   builds: [Build!]!
-  canEnqueueToCommitQueue: Boolean!
   childPatchAliases: [ChildPatchAlias!]
   childPatches: [Patch!]
-  commitQueuePosition: Int
   createTime: Time
   description: String!
   duration: PatchDuration

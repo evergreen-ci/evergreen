@@ -3,36 +3,40 @@
         {
             "query_file": "terminate_host.graphql",
             "result": {
-              "errors": [
+                "data": null,
+                "errors": [
                   {
-                      "message": "You are not authorized to modify this host",
-                      "path": [
-                          "updateSpawnHostStatus"
-                      ],
-                      "extensions": {
-                          "code": "FORBIDDEN"
-                      }
+                    "message": "user 'testuser' does not have permission to access host 'i-085085e236d598a60'",
+                    "path": [
+                      "updateSpawnHostStatus",
+                      "updateSpawnHostStatusInput",
+                      "hostId"
+                    ],
+                    "extensions": {
+                      "code": "FORBIDDEN"
+                    }
                   }
-              ],
-              "data": null
+                ]
             }
         },
         {
             "query_file": "stop_host.graphql",
             "result": {
-              "errors": [
+                "data": null,
+                "errors": [
                   {
-                      "message": "You are not authorized to modify this host",
-                      "path": [
-                          "updateSpawnHostStatus"
-                      ],
-                      "extensions": {
-                          "code": "FORBIDDEN"
-                      }
+                    "message": "user 'testuser' does not have permission to access host 'i-085085e236d598a60'",
+                    "path": [
+                      "updateSpawnHostStatus",
+                      "updateSpawnHostStatusInput",
+                      "hostId"
+                    ],
+                    "extensions": {
+                      "code": "FORBIDDEN"
+                    }
                   }
-              ],
-              "data": null
-            }
+                ]
+              }
         }
     ]
 }

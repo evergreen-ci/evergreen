@@ -587,7 +587,7 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("parser project '%s' not found", v.Id),
 		})
 	}
-	projBytes, err := pp.RetryMarshalBSON(5)
+	projBytes, err := pp.MarshalBSON()
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "marshalling project bytes to bson"))
 	}

@@ -18,9 +18,9 @@ type Query {
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
 
   # hosts
-  host(hostId: String!): Host
+  host(hostId: String! @requireHostAccess(access: VIEW)): Host
   hostEvents(
-    hostId: String!
+    hostId: String!  @requireHostAccess(access: VIEW)
     hostTag: String = ""
     limit: Int = 0
     page: Int = 0
@@ -82,9 +82,6 @@ type Query {
   user(userId: String): User! 
   userConfig: UserConfig
   userSettings: UserSettings
-
-  # commit queue
-  commitQueue(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)): CommitQueue!
 
   # mainline commits
   buildVariantsForTaskName(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW), taskName: String!): [BuildVariantTuple!]

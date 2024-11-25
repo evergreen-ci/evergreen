@@ -96,20 +96,6 @@ func (pk *APIPubKey) BuildFromService(in user.PubKey) {
 	pk.Key = utility.ToStringPtr(in.Key)
 }
 
-type APIBetaFeatures struct {
-	SpruceWaterfallEnabled bool `json:"spruce_waterfall_enabled"`
-}
-
-func (b *APIBetaFeatures) BuildFromService(usr user.BetaFeatures) {
-	b.SpruceWaterfallEnabled = usr.SpruceWaterfallEnabled
-}
-
-func (b *APIBetaFeatures) ToService() user.BetaFeatures {
-	return user.BetaFeatures{
-		SpruceWaterfallEnabled: b.SpruceWaterfallEnabled,
-	}
-}
-
 type APIUserSettings struct {
 	Timezone         *string                     `json:"timezone"`
 	Region           *string                     `json:"region"`

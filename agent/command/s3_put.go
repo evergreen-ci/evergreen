@@ -379,11 +379,17 @@ retryLoop:
 				}
 				filesList, err = b.Build()
 				if err != nil {
-					return errors.Wrapf(err, "processing local files include filter '%s'",
-						strings.Join(s3pc.LocalFilesIncludeFilter, " "))
+					// Skip erroring since local files include filter should treat files as optional.
+					if strings.Contains(err.Error(), utility.WalkThroughError) {
+						logger.Task().Warningf("Error while building file list: %s", err.Error())
+						return nil
+					} else {
+						return errors.Wrapf(err, "processing local files include filter '%s'",
+							strings.Join(s3pc.LocalFilesIncludeFilter, " "))
+					}
 				}
 				if len(filesList) == 0 {
-					logger.Task().Infof("File filter '%s' matched no files.", strings.Join(s3pc.LocalFilesIncludeFilter, " "))
+					logger.Task().Warningf("File filter '%s' matched no files.", strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 					return nil
 				}
 			}

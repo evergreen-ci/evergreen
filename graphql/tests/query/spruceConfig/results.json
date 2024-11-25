@@ -1,24 +1,16 @@
 {
   "tests": [
     {
-      "query_file": "default_project.graphql",
+      "query_file": "ui.graphql",
       "result": {
         "data": {
           "spruceConfig": {
             "ui": {
-              "defaultProject": "evergreen"
-            }
-          }
-        }
-      }
-    },
-    {
-      "query_file": "user_voice.graphql",
-      "result": {
-        "data": {
-          "spruceConfig": {
-            "ui": {
-              "userVoice": "https://uservoice.com"
+              "defaultProject": "evergreen",
+              "userVoice": "https://uservoice.com",
+              "betaFeatures": {
+                "spruceWaterfallEnabled": true
+              }
             }
           }
         }

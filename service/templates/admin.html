@@ -969,8 +969,36 @@ Admin Settings
 										</md-checkbox>
 									</md-input-container>
 								</md-card-content>
+								<md-card>
+									<md-card-title>
+										<md-card-title-text>
+											<span>Beta Features</span>
+										</md-card-title-text>
+									</md-card-title>
+									<md-card-content>
+										<table class="flagsTable">
+											<thead>
+												<tr>
+													<th />
+													<th>Enabled</th>
+													<th>Disabled</th>
+												</tr>
+											</thead>
+											<tbody>
+												<tr>
+													<td>Spruce Waterfall</td>
+													<td colspan="2">
+														<md-radio-group data-ng-model="Settings.ui.beta_features.spruce_waterfall_enabled" layout="row">
+															<md-radio-button data-ng-value="true"></md-radio-button>
+															<md-radio-button data-ng-value="false"></md-radio-button>
+														</md-radio-group>
+													</td>
+												</tr>
+											</tbody>
+										</table>
+									</md-card-content>
+								</md-card>
 							</md-card>
-
 						</section>
 
 						<section layout="row" flex>

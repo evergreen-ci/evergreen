@@ -40,12 +40,16 @@ enum DistroSettingsAccess {
 }
 
 """
-requireCommitQueueItemOwner is used to restrict changes to commit queue patches.
+requireHostAccess is used to restrict view and edit access for hosts.
 """
-directive @requireCommitQueueItemOwner on ARGUMENT_DEFINITION
+directive @requireHostAccess(access: HostAccessLevel!) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
+
+enum HostAccessLevel {
+  EDIT
+  VIEW
+}
 
 """
 redactSecrets is used to mark input fields that should not be logged or exposed in any way and should be redacted.
 """
 directive @redactSecrets on INPUT_FIELD_DEFINITION | ARGUMENT_DEFINITION | INPUT_OBJECT
-
