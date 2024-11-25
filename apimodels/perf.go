@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 
-	"github.com/evergreen-ci/timber"
-	"github.com/evergreen-ci/timber/perf"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
@@ -19,32 +20,37 @@ type GetCedarPerfCountOptions struct {
 	Execution int    `json:"_"`
 }
 
-func (opts GetCedarPerfCountOptions) convert() perf.GetOptions {
-	return perf.GetOptions{
-		Cedar: timber.GetOptions{
-			BaseURL: fmt.Sprintf("https://%s", opts.BaseURL),
-		},
-		TaskID:    opts.TaskID,
-		Execution: utility.ToIntPtr(opts.Execution),
-		Count:     true,
-	}
-}
-
 // CedarPerfCount holds one element, NumberOfResults, matching the json returned by
 // Cedar's perf count rest route.
 type CedarPerfCount struct {
 	NumberOfResults int `json:"number_of_results"`
 }
 
-// CedarPerfResultsCount queries Cedar for the number of perf results attached to a task.
+// CedarPerfResultsCount queries SPS for the number of perf results attached to a task.
 func CedarPerfResultsCount(ctx context.Context, opts GetCedarPerfCountOptions) (*CedarPerfCount, error) {
-	data, err := perf.Get(ctx, opts.convert())
+	client := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(client)
+
+	requestURL := fmt.Sprintf("%s/raw_perf_results/tasks/%s/%d/count", opts.BaseURL, url.PathEscape(opts.TaskID), opts.Execution)
+	response, err := client.Get(requestURL)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting test results from Cedar")
+		return nil, errors.Wrap(err, "sending request to get perf results count")
+	}
+	if response.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(response.Body)
+		if err == nil {
+			return nil, errors.Errorf("unexpected status code: %d: %s", response.StatusCode, body)
+		} else {
+			return nil, errors.Wrapf(err, "unexpected status code: %d", response.StatusCode)
+		}
 	}
 
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading response body when getting perf results count")
+	}
 	testCount := &CedarPerfCount{}
-	if err = json.Unmarshal(data, testCount); err != nil {
+	if err = json.Unmarshal(body, testCount); err != nil {
 		return nil, errors.Wrap(err, "unmarshaling test results from Cedar")
 	}
 
