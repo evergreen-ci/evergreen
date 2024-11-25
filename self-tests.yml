@@ -290,6 +290,10 @@ functions:
           PAPERTRAIL_SECRET_KEY: ${papertrail_secret_key}
           RUNTIME_ENVIRONMENTS_BASE_URL: ${staging_runtime_environments_base_url}
           RUNTIME_ENVIRONMENTS_API_KEY: ${staging_runtime_environments_api_key}
+          AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+          AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+          AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
+
         command: bash scripts/setup-credentials.sh
 
   setup-mongodb:

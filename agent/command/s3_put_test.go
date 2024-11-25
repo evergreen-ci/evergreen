@@ -2,18 +2,25 @@ package command
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip/send"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -638,4 +645,86 @@ func TestPreservePath(t *testing.T) {
 		require.True(t, exists, item)
 	}
 
+}
+
+func TestS3PutSkipExisting(t *testing.T) {
+	if skip, _ := strconv.ParseBool(os.Getenv("SKIP_INTEGRATION_TESTS")); skip {
+		t.Skip("SKIP_INTEGRATION_TESTS is set, skipping integration test")
+	}
+
+	temproot := t.TempDir()
+
+	settings := testutil.GetIntegrationFile(t)
+
+	firstFilePath := filepath.Join(temproot, "first-file.txt")
+	secondFilePath := filepath.Join(temproot, "second-file.txt")
+
+	payload := []byte("hello world")
+	require.NoError(t, os.WriteFile(firstFilePath, payload, 0755))
+	require.NoError(t, os.WriteFile(secondFilePath, []byte("second file"), 0755))
+
+	accessKeyID := settings.Expansions["aws_key"]
+	secretAccessKey := settings.Expansions["aws_secret"]
+	token := settings.Expansions["aws_token"]
+	bucketName := settings.Expansions["bucket"]
+	region := "us-east-1"
+
+	id := utility.RandomString()
+
+	remoteFile := fmt.Sprintf("tests/%s/%s", t.Name(), id)
+
+	cmd := s3PutFactory()
+	params := map[string]any{
+		"aws_key":           accessKeyID,
+		"aws_secret":        secretAccessKey,
+		"aws_session_token": token,
+		"local_file":        firstFilePath,
+		"remote_file":       remoteFile,
+		"bucket":            bucketName,
+		"region":            region,
+		"skip_existing":     "true",
+		"content_type":      "text/plain",
+		"permissions":       "private",
+	}
+
+	require.NoError(t, cmd.ParseParams(params))
+
+	tconf := &internal.TaskConfig{
+		Task:    task.Task{},
+		WorkDir: temproot,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sender := send.MakeInternalLogger()
+	logger := client.NewSingleChannelLogHarness("test", sender)
+	comm := client.NewMock("")
+
+	require.NoError(t, cmd.Execute(ctx, comm, logger, tconf))
+
+	params["local_file"] = secondFilePath
+	require.NoError(t, cmd.ParseParams(params))
+
+	require.NoError(t, cmd.Execute(ctx, comm, logger, tconf))
+
+	creds := credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, token)
+
+	opts := pail.S3Options{
+		Region:      region,
+		Name:        bucketName,
+		Credentials: creds,
+	}
+
+	bucket, err := pail.NewS3Bucket(ctx, opts)
+	require.NoError(t, err)
+
+	got, err := bucket.Get(ctx, remoteFile)
+	require.NoError(t, err)
+
+	content, err := io.ReadAll(got)
+	require.NoError(t, err)
+
+	// verify that file content wasn't overwritten by the second file
+	assert.Equal(t, payload, content)
 }
