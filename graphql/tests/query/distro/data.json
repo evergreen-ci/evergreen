@@ -1,0 +1,103 @@
+{
+  "distro": [
+    {
+      "_id": "rhel71-power8-large",
+      "aliases": ["rhel71-power8", "rhel71-power8-build"],
+      "arch": "linux_ppc64le",
+      "work_dir": "/data/mci",
+      "provider": "static",
+      "provider_settings": [
+        {
+          "hosts": [
+            {
+              "name": "rhel71-ppc-1.pic.build.10gen.cc"
+            },
+            {
+              "name": "rhel71-ppc-4.pic.build.10gen.cc"
+            }
+          ]
+        }
+      ],
+      "user": "mci-exec",
+      "bootstrap_settings": {
+        "method": "legacy-ssh",
+        "communication": "legacy-ssh",
+        "client_dir": "/home/mci-exec/evergreen_provisioning",
+        "jasper_binary_dir": "/home/mci-exec/evergreen_provisioning",
+        "jasper_credentials_path": "/home/mci-exec/evergreen_provisioning/jasper_credentials.json",
+        "shell_path": "/bin/bash",
+        "resource_limits": {
+          "num_files": 64000,
+          "num_processes": -1,
+          "locked_memory": -1,
+          "virtual_memory": -1
+        }
+      },
+      "clone_method": "legacy-ssh",
+      "ssh_options": [
+        "StrictHostKeyChecking=no",
+        "BatchMode=yes",
+        "ConnectTimeout=10"
+      ],
+      "spawn_allowed": true,
+      "expansions": [
+        {
+          "key": "decompress",
+          "value": "tar xzvf"
+        },
+        {
+          "key": "ps",
+          "value": "ps aux"
+        },
+        {
+          "key": "kill_pid",
+          "value": "kill -- -$(ps opgid= %v)"
+        }
+      ],
+      "finder_settings": {
+        "version": "legacy"
+      },
+      "planner_settings": {
+        "version": "tunable",
+        "target_time": {
+          "$numberLong": "0"
+        },
+        "group_versions": false,
+        "patch_zipper_factor": {
+          "$numberLong": "0"
+        },
+        "patch_time_in_queue_factor": {
+          "$numberLong": "0"
+        },
+        "commit_queue_factor": {
+          "$numberLong": "0"
+        },
+        "mainline_time_in_queue_factor": {
+          "$numberLong": "0"
+        },
+        "expected_runtime_factor": {
+          "$numberLong": "0"
+        }
+      },
+      "dispatcher_settings": {
+        "version": "revised-with-dependencies"
+      },
+      "host_allocator_settings": {
+        "version": "utilization",
+        "minimum_hosts": 0,
+        "maximum_hosts": 0,
+        "acceptable_host_idle_time": {
+          "$numberLong": "0"
+        }
+      },
+      "disable_shallow_clone": false,
+      "note": "",
+      "is_virtual_workstation": false,
+      "is_cluster": false,
+      "home_volume_settings": {
+        "format_command": ""
+      },
+      "icecream_settings": {}
+    }
+  ]
+}

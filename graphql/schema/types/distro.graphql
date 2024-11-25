@@ -124,6 +124,7 @@ input DistroInput {
   disabled: Boolean!
   disableShallowClone: Boolean!
   dispatcherSettings: DispatcherSettingsInput!
+  execUser: String
   expansions: [ExpansionInput!]!
   finderSettings: FinderSettingsInput!
   homeVolumeSettings: HomeVolumeSettingsInput!
@@ -275,6 +276,7 @@ type Distro {
   disabled: Boolean!
   disableShallowClone: Boolean!
   dispatcherSettings: DispatcherSettings!
+  execUser: String!
   expansions: [Expansion!]!
   finderSettings: FinderSettings!
   homeVolumeSettings: HomeVolumeSettings!

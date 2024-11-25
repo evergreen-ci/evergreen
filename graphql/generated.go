@@ -257,6 +257,7 @@ type ComplexityRoot struct {
 		DisableShallowClone   func(childComplexity int) int
 		Disabled              func(childComplexity int) int
 		DispatcherSettings    func(childComplexity int) int
+		ExecUser              func(childComplexity int) int
 		Expansions            func(childComplexity int) int
 		FinderSettings        func(childComplexity int) int
 		HomeVolumeSettings    func(childComplexity int) int
@@ -2771,6 +2772,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Distro.DispatcherSettings(childComplexity), true
+
+	case "Distro.execUser":
+		if e.complexity.Distro.ExecUser == nil {
+			break
+		}
+
+		return e.complexity.Distro.ExecUser(childComplexity), true
 
 	case "Distro.expansions":
 		if e.complexity.Distro.Expansions == nil {
@@ -17473,6 +17481,50 @@ func (ec *executionContext) fieldContext_Distro_dispatcherSettings(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Distro_execUser(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Distro_execUser(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExecUser, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Distro_execUser(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Distro_expansions(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Distro_expansions(ctx, field)
 	if err != nil {
@@ -25594,6 +25646,8 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 				return ec.fieldContext_Distro_disableShallowClone(ctx, field)
 			case "dispatcherSettings":
 				return ec.fieldContext_Distro_dispatcherSettings(ctx, field)
+			case "execUser":
+				return ec.fieldContext_Distro_execUser(ctx, field)
 			case "expansions":
 				return ec.fieldContext_Distro_expansions(ctx, field)
 			case "finderSettings":
@@ -46274,6 +46328,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_disableShallowClone(ctx, field)
 			case "dispatcherSettings":
 				return ec.fieldContext_Distro_dispatcherSettings(ctx, field)
+			case "execUser":
+				return ec.fieldContext_Distro_execUser(ctx, field)
 			case "expansions":
 				return ec.fieldContext_Distro_expansions(ctx, field)
 			case "finderSettings":
@@ -46454,6 +46510,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_disableShallowClone(ctx, field)
 			case "dispatcherSettings":
 				return ec.fieldContext_Distro_dispatcherSettings(ctx, field)
+			case "execUser":
+				return ec.fieldContext_Distro_execUser(ctx, field)
 			case "expansions":
 				return ec.fieldContext_Distro_expansions(ctx, field)
 			case "finderSettings":
@@ -52546,6 +52604,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 				return ec.fieldContext_Distro_disableShallowClone(ctx, field)
 			case "dispatcherSettings":
 				return ec.fieldContext_Distro_dispatcherSettings(ctx, field)
+			case "execUser":
+				return ec.fieldContext_Distro_execUser(ctx, field)
 			case "expansions":
 				return ec.fieldContext_Distro_expansions(ctx, field)
 			case "finderSettings":
@@ -73768,7 +73828,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "imageId", "isCluster", "isVirtualWorkStation", "name", "warningNote", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "sshOptions", "user", "userSpawnAllowed", "validProjects", "workDir", "mountpoints"}
+	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "imageId", "isCluster", "isVirtualWorkStation", "name", "warningNote", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "sshOptions", "user", "userSpawnAllowed", "validProjects", "workDir", "mountpoints"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -73840,6 +73900,13 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 				return it, err
 			}
 			it.DispatcherSettings = data
+		case "execUser":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("execUser"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExecUser = data
 		case "expansions":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expansions"))
 			data, err := ec.unmarshalNExpansionInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExpansionᚄ(ctx, v)
@@ -79917,6 +79984,11 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "dispatcherSettings":
 			out.Values[i] = ec._Distro_dispatcherSettings(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "execUser":
+			out.Values[i] = ec._Distro_execUser(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
