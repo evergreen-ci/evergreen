@@ -123,6 +123,7 @@ func (c *tarballCreate) Execute(ctx context.Context,
 			return errors.WithStack(err)
 		}
 		if filesArchived == 0 {
+			logger.Execution().Warning("No files were archived.")
 			deleteErr := os.Remove(c.Target)
 			if deleteErr != nil {
 				logger.Execution().Infof("Problem deleting empty archive: %s.", deleteErr.Error())

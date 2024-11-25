@@ -749,44 +749,6 @@ func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSet
 	return &userSettings, nil
 }
 
-// CommitQueue is the resolver for the commitQueue field.
-func (r *queryResolver) CommitQueue(ctx context.Context, projectIdentifier string) (*restModel.APICommitQueue, error) {
-	commitQueue, err := data.FindCommitQueueForProject(projectIdentifier)
-	if err != nil {
-		if werrors.Cause(err) == err {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding commit queue for %s: %s", projectIdentifier, err.Error()))
-		}
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding commit queue for %s: %s", projectIdentifier, err.Error()))
-	}
-	project, err := data.FindProjectById(projectIdentifier, true, true)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project %s: %s", projectIdentifier, err.Error()))
-	}
-	if project.CommitQueue.Message != "" {
-		commitQueue.Message = &project.CommitQueue.Message
-	}
-	commitQueue.Owner = &project.Owner
-	commitQueue.Repo = &project.Repo
-
-	for i, item := range commitQueue.Queue {
-		patchId := ""
-		if utility.FromStringPtr(item.Version) != "" {
-			patchId = utility.FromStringPtr(item.Version)
-		} else if utility.FromStringPtr(item.PatchId) != "" {
-			patchId = utility.FromStringPtr(item.PatchId)
-		}
-
-		if patchId != "" {
-			p, err := data.FindPatchById(patchId)
-			if err != nil {
-				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding patch: %s", err.Error()))
-			}
-			commitQueue.Queue[i].Patch = p
-		}
-	}
-	return commitQueue, nil
-}
-
 // BuildVariantsForTaskName is the resolver for the buildVariantsForTaskName field.
 func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectIdentifier string, taskName string) ([]*task.BuildVariantTuple, error) {
 	pid, err := model.GetIdForProject(projectIdentifier)
@@ -982,7 +944,6 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		if limitOpt > model.MaxWaterfallVersionLimit {
 			return nil, InputValidationError.Send(ctx, fmt.Sprintf("limit exceeds max limit of %d", model.MaxWaterfallVersionLimit))
 		}
-
 		limit = limitOpt
 	}
 
@@ -1012,8 +973,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		} else if found == nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("version on or before date '%s' not found", eod.Format(time.DateOnly))))
 		} else {
-			// Offset the order number so the specified version lands nearer to the center of the page.
-			maxOrderOpt = found.RevisionOrderNumber + limit/2 + 1
+			maxOrderOpt = found.RevisionOrderNumber + 1
 		}
 	}
 
@@ -1164,12 +1124,12 @@ func (r *queryResolver) Version(ctx context.Context, versionID string) (*restMod
 func (r *queryResolver) Image(ctx context.Context, imageID string) (*restModel.APIImage, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: '%s'", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: %s", err.Error()))
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	result, err := c.GetImageInfo(ctx, imageID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting image info: '%s'", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting image info: %s", err.Error()))
 	}
 	apiImage := restModel.APIImage{}
 	apiImage.BuildFromService(*result)

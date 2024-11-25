@@ -388,12 +388,11 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 
 		// validate that the task can be run, if not fetch the next one in the queue.
 		if !nextTask.IsHostDispatchable() {
-			grip.Debug(message.Fields{
-				"investigation": "DEVPROD-12086",
-				"message":       "task was not dispatchable",
-				"task":          nextTask.Id,
-				"variant":       nextTask.BuildVariant,
-				"project":       nextTask.Project,
+			grip.Warning(message.Fields{
+				"message": "task was not dispatchable",
+				"task":    nextTask.Id,
+				"variant": nextTask.BuildVariant,
+				"project": nextTask.Project,
 			})
 			// Dequeue the task so we don't get it on another iteration of the loop.
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
@@ -539,12 +538,11 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}))
 
 		if !dispatchedTask {
-			grip.Debug(message.Fields{
-				"investigation": "DEVPROD-12086",
-				"message":       "task was not dispatched",
-				"task":          nextTask.Id,
-				"variant":       nextTask.BuildVariant,
-				"project":       nextTask.Project,
+			grip.Warning(message.Fields{
+				"message": "task was not dispatched",
+				"task":    nextTask.Id,
+				"variant": nextTask.BuildVariant,
+				"project": nextTask.Project,
 			})
 			continue
 		}

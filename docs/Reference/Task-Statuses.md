@@ -1,6 +1,6 @@
-# Task Statuses
+# Statuses
 
-This document provides an overview of the various task statuses used in our
+This document provides an overview of the various statuses used in our
 system, along with their meanings, usage contexts, and the logic that determines
 these statuses.
 
@@ -20,6 +20,7 @@ these statuses.
   - [Status Determination Logic](#status-determination-logic)
   - [Display Statuses](#display-statuses)
 - [Task Icon Reference](#task-icon-reference)
+- [Version Statuses](#version-statuses)
 - [Notes](#notes)
 
 ---
@@ -29,7 +30,7 @@ these statuses.
 These statuses indicate tasks that are currently in progress or scheduled to
 run.
 
-### `undispatched`
+#### `undispatched`
 
 **Description**: Indicates one of the following:
 
@@ -42,7 +43,7 @@ run.
 
 ---
 
-### `dispatched`
+#### `dispatched`
 
 **Description**: An [agent](./Glossary.md) has received the task, but the agent
 has not yet notified the system that it's running the task.
@@ -52,7 +53,7 @@ execution.
 
 ---
 
-### `started`
+#### `started`
 
 **Description**: The task is currently running on an agent.
 
@@ -64,7 +65,7 @@ execution.
 
 These statuses indicate that a task has completed its execution.
 
-### `success`
+#### `success`
 
 **Description**: The task has finished successfully without any errors.
 
@@ -75,7 +76,7 @@ These statuses indicate that a task has completed its execution.
 
 ---
 
-### `failed`
+#### `failed`
 
 **Description**: The task has finished but encountered failures. This status
 covers any failure reason, which can be detailed in the task's end details.
@@ -298,6 +299,49 @@ Tasks commonly appear in the UI with an icon that reflects their status. Below
 are the icons used for each task status:
 
 ## ![Task Status Legend](../images/task_status_icon_legend.png)
+
+### Version Statuses
+
+Version statuses are very similar to task statuses, and are listed below for additional clarity. 
+
+
+#### `created`
+
+**Description**: Indicates one of the following:
+
+1. **Not Scheduled to Run**: The version is not activated
+   (`version.activated == false`), i.e. no tasks are scheduled.
+2. **Scheduled to Run**: The version is activated (`version.activated == true`) but
+   tasks have not yet been dispatched to an agent.
+
+This is similar to the `undispatched/dispatched` statuses for tasks.
+
+**Usage**: Reflects version that has been created but has run no tasks, regardless of whether they're scheduled to run.
+
+---
+
+#### `started`
+
+**Description**: The version has tasks that are currently running on an agent.
+
+**Usage**: Indicates active execution of version tasks.
+
+---
+
+#### `success`
+
+**Description**: All scheduled version tasks have completed successfully.
+
+**Usage**: Denotes version that have met all requirements and passed all tests for scheduled tasks.
+
+---
+
+#### `failed`
+
+**Description**: The version has finished but all tasks have not succeeded. This
+covers any failure reason, which can be detailed in the individual task's end details.
+
+**Usage**: General failure status for versions that did not complete successfully.
 
 ## Notes
 

@@ -167,11 +167,6 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 			return nil
 		}})
 
-	if err := a.initOtel(ctx); err != nil {
-		grip.Error(errors.Wrap(err, "initializing otel"))
-		a.tracer = otel.GetTracerProvider().Tracer("noop_tracer")
-	}
-
 	return a, nil
 }
 
@@ -206,6 +201,10 @@ func (a *Agent) Close(ctx context.Context) {
 // at interval agentSleepInterval and runs them.
 func (a *Agent) Start(ctx context.Context) error {
 	defer recovery.LogStackTraceAndExit("main agent thread")
+
+	if err := a.initOtel(ctx); err != nil {
+		a.tracer = otel.GetTracerProvider().Tracer("noop_tracer")
+	}
 
 	err := a.startStatusServer(ctx, a.opts.StatusPort)
 	if err != nil {
@@ -1275,6 +1274,18 @@ func (a *Agent) clearGitConfig(tc *taskContext) {
 	}
 
 	logger.Info("Cleared git config.")
+
+	logger.Infof("Clearing git credentials.")
+	globalGitCredentialsPath := filepath.Join(a.opts.HomeDirectory, ".git-credentials")
+	if _, err := os.Stat(globalGitCredentialsPath); os.IsNotExist(err) {
+		logger.Info("Global git credentials file does not exist.")
+		return
+	}
+	if err := os.Remove(globalGitCredentialsPath); err != nil {
+		logger.Error(errors.Wrap(err, "removing global git credentials file"))
+		return
+	}
+	logger.Info("Cleared git credentials.")
 }
 
 func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {

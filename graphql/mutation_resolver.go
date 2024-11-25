@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
@@ -291,72 +290,6 @@ func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []strin
 	}
 
 	return hostsUpdated, nil
-}
-
-// EnqueuePatch is the resolver for the enqueuePatch field.
-func (r *mutationResolver) EnqueuePatch(ctx context.Context, patchID string, commitMessage *string) (*restModel.APIPatch, error) {
-	user := mustHaveUser(ctx)
-	existingPatch, err := data.FindPatchById(patchID)
-	if err != nil {
-		gimletErr, ok := err.(gimlet.ErrorResponse)
-		if ok {
-			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
-		}
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting patch '%s'", patchID))
-	}
-
-	projectID := utility.FromStringPtr(existingPatch.ProjectId)
-	proj, err := data.FindProjectById(projectID, false, false)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project '%s': %s", projectID, err.Error()))
-	}
-	if proj == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
-	}
-	if proj.CommitQueue.MergeQueue == model.MergeQueueGitHub {
-		return nil, Forbidden.Send(ctx, "Can't enqueue patches for projects with GitHub merge queue. Click the merge button on the PR instead.")
-	}
-
-	patch, err := existingPatch.ToService()
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting APIPatch to patch '%s'", patchID))
-	}
-	if !userCanModifyPatch(user, patch) {
-		return nil, Forbidden.Send(ctx, "can't enqueue another user's patch")
-	}
-
-	if commitMessage == nil {
-		commitMessage = existingPatch.Description
-	}
-
-	if utility.FromStringPtr(existingPatch.Requester) == evergreen.GithubPRRequester {
-		info := commitqueue.EnqueuePRInfo{
-			PR:            existingPatch.GithubPatchData.PRNumber,
-			Repo:          utility.FromStringPtr(existingPatch.GithubPatchData.BaseRepo),
-			Owner:         utility.FromStringPtr(existingPatch.GithubPatchData.BaseOwner),
-			CommitMessage: utility.FromStringPtr(commitMessage),
-			Username:      utility.FromStringPtr(existingPatch.GithubPatchData.Author),
-		}
-		newPatch, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), r.sc, info)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("enqueueing patch '%s': %s", patchID, err.Error()))
-		}
-		return newPatch, nil
-	}
-
-	newPatch, err := data.CreatePatchForMerge(ctx, evergreen.GetEnvironment().Settings(), patchID, utility.FromStringPtr(commitMessage))
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating new patch: %s", err.Error()))
-	}
-	item := restModel.APICommitQueueItem{
-		Issue:   newPatch.Id,
-		PatchId: newPatch.Id,
-		Source:  utility.ToStringPtr(commitqueue.SourceDiff)}
-	_, err = data.EnqueueItem(utility.FromStringPtr(newPatch.ProjectId), item, false)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("enqueuing new patch: %s", err.Error()))
-	}
-	return newPatch, nil
 }
 
 // SetPatchVisibility is the resolver for the setPatchVisibility field.
@@ -1320,21 +1253,6 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("saving user settings: %s", err.Error()))
 	}
 	return true, nil
-}
-
-// RemoveItemFromCommitQueue is the resolver for the removeItemFromCommitQueue field.
-func (r *mutationResolver) RemoveItemFromCommitQueue(ctx context.Context, commitQueueID string, issue string) (*string, error) {
-	usr := mustHaveUser(ctx)
-
-	result, err := data.FindAndRemoveCommitQueueItem(ctx, commitQueueID, issue, usr.DisplayName(), fmt.Sprintf("removed by user '%s'", usr.DisplayName()))
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("removing item %s from commit queue %s: %s",
-			issue, commitQueueID, err.Error()))
-	}
-	if result == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("couldn't remove item %s from commit queue %s", issue, commitQueueID))
-	}
-	return &issue, nil
 }
 
 // RestartVersions is the resolver for the restartVersions field.

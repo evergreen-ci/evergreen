@@ -133,6 +133,8 @@ If `share_procs` is true, the task group will not clean up processes for the
 entire duration of the task. It will only clean up those processes once the
 entire task group is finished.
 
+Check the Agent Logs on a task to see logs about the process cleanup.
+
 ### Task Directory Cleanup
 
 The task working directory is removed when a task finishes as part of cleaning
@@ -147,10 +149,12 @@ a task group, it will keep the task directory as long as it is running tasks
 in the same task group. Once all the task group tasks have finished, it will
 clean up the task directory.
 
-### Global Git Config Cleanup
-For tasks not in a task group, the global git config will be reset at the end of the 
-task after all commands have finished running. For a tasks in a task group, the reset 
-will occur after the all the tasks in the task group tasks have finished.
+### Global Git Config and Git Credentials Cleanup
+For tasks not in a task group, the global git config and git credentials will be reset 
+at the end of the task after all commands have finished running. This will be done by 
+deleting the .git-credentials and .gitconfig files from the home directory. 
+For a tasks in a task group, the reset will occur after the all the tasks in the task 
+group tasks have finished.
 
 ## Task Timeouts
 

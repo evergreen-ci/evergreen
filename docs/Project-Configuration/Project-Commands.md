@@ -493,6 +493,8 @@ Notes:
     tasks to the variant). It is a validation error to define a function, task,
     or variant more than once in the JSON document passed to the command _except_
     to specify a variant multiple times in order to append additional tasks to the variant.
+-   Generated task's [tags](Project-Configuration-Files#task-and-variant-tags) will not be
+    re-evaluate when added and retroactivately activated in accordance with the variant's tags.
 -   The calls to generate.tasks may not in aggregate in a single version
     generate more than 100 variants or more than 1000 tasks.
 -   Because generate.tasks retries on errors that aren't known to us,

@@ -7,12 +7,9 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -771,98 +768,4 @@ func TestRequireProjectSettingsAccess(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, res)
 	assert.Equal(t, 2, callCount)
-}
-
-func TestRequireCommitQueueItemOwner(t *testing.T) {
-	setupPermissions(t)
-	config := New("/graphql")
-	require.NotNil(t, config)
-	ctx := context.Background()
-
-	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.RepoRefCollection, patch.Collection, commitqueue.Collection))
-
-	// callCount keeps track of how many times the function is called
-	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		callCount++
-		return nil, nil
-	}
-
-	usr, err := setupUser(t)
-	require.NoError(t, err)
-	require.NotNil(t, usr)
-
-	ctx = gimlet.AttachUser(ctx, usr)
-	require.NotNil(t, ctx)
-
-	projectRef := model.ProjectRef{
-		Id: "project_id",
-	}
-	require.NoError(t, projectRef.Insert())
-
-	patch := patch.Patch{
-		Id:     bson.NewObjectId(),
-		Author: usr.Id,
-	}
-	require.NoError(t, patch.Insert())
-
-	cq := commitqueue.CommitQueue{
-		ProjectID: projectRef.Id,
-		Queue: []commitqueue.CommitQueueItem{
-			{Issue: patch.Id.Hex()},
-		},
-	}
-	require.NoError(t, commitqueue.InsertQueue(&cq))
-
-	res, err := config.Directives.RequireCommitQueueItemOwner(ctx, interface{}(nil), next)
-	assert.EqualError(t, err, "input: converting mutation args into map")
-	assert.Nil(t, res)
-	assert.Equal(t, 0, callCount)
-
-	res, err = config.Directives.RequireCommitQueueItemOwner(ctx, map[string]interface{}{}, next)
-	assert.EqualError(t, err, "input: commit queue id was not provided")
-	assert.Nil(t, res)
-	assert.Equal(t, 0, callCount)
-
-	res, err = config.Directives.RequireCommitQueueItemOwner(ctx, map[string]interface{}{
-		"commitQueueId": "commit_queue_id",
-	}, next)
-	assert.EqualError(t, err, "input: issue was not provided")
-	assert.Nil(t, res)
-	assert.Equal(t, 0, callCount)
-
-	res, err = config.Directives.RequireCommitQueueItemOwner(ctx, map[string]interface{}{
-		"commitQueueId": "bad_project",
-		"issue":         "123",
-	}, next)
-	assert.EqualError(t, err, "input: 404 (Not Found): project 'bad_project' not found")
-	assert.Nil(t, res)
-	assert.Equal(t, 0, callCount)
-
-	res, err = config.Directives.RequireCommitQueueItemOwner(ctx, map[string]interface{}{
-		"commitQueueId": projectRef.Id,
-		"issue":         patch.Id.Hex(),
-	}, next)
-	assert.EqualError(t, err, "input: 400 (Bad Request): commit queue is not enabled for project 'project_id'")
-	assert.Nil(t, res)
-	assert.Equal(t, 0, callCount)
-
-	projectRef.RepoRefId = "repo_id"
-	require.NoError(t, projectRef.Upsert())
-
-	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
-		Id:          projectRef.RepoRefId,
-		CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
-	}}
-	require.NoError(t, repoRef.Upsert())
-
-	// Should work since the repo and project are merged.
-	res, err = config.Directives.RequireCommitQueueItemOwner(ctx, map[string]interface{}{
-		"commitQueueId": projectRef.Id,
-		"issue":         patch.Id.Hex(),
-	}, next)
-	assert.NoError(t, err)
-	assert.Nil(t, res)
-	assert.Equal(t, 1, callCount)
 }

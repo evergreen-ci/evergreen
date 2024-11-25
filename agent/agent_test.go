@@ -2734,14 +2734,19 @@ func (s *AgentSuite) TestClearsGitConfig() {
 	s.setupRunTask(defaultProjYml)
 	// create a fake git config file
 	gitConfigPath := filepath.Join(s.a.opts.HomeDirectory, ".gitconfig")
-	gitConfigContents := `
+	gitCredentialsPath := filepath.Join(s.a.opts.HomeDirectory, ".git-credentials")
+	contents := `
 [user]
   name = foo bar
   email = foo@bar.com
 `
-	err := os.WriteFile(gitConfigPath, []byte(gitConfigContents), 0600)
+	err := os.WriteFile(gitConfigPath, []byte(contents), 0600)
 	s.Require().NoError(err)
 	s.Require().FileExists(gitConfigPath)
+
+	err = os.WriteFile(gitCredentialsPath, []byte(contents), 0600)
+	s.Require().NoError(err)
+	s.Require().FileExists(gitCredentialsPath)
 
 	s.a.runTeardownGroupCommands(s.ctx, s.tc)
 	s.NoError(err)
@@ -2750,12 +2755,15 @@ func (s *AgentSuite) TestClearsGitConfig() {
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Clearing git config.",
 		"Cleared git config.",
+		"Clearing git credentials.",
+		"Cleared git credentials.",
 	}, []string{
 		panicLog,
 		"Running task commands failed",
 	})
 
 	s.Assert().NoFileExists(gitConfigPath)
+	s.Assert().NoFileExists(gitCredentialsPath)
 }
 
 func (s *AgentSuite) TestShouldRunSetupGroup() {
