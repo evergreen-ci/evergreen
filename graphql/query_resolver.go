@@ -944,7 +944,6 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		if limitOpt > model.MaxWaterfallVersionLimit {
 			return nil, InputValidationError.Send(ctx, fmt.Sprintf("limit exceeds max limit of %d", model.MaxWaterfallVersionLimit))
 		}
-
 		limit = limitOpt
 	}
 
@@ -974,8 +973,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		} else if found == nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("version on or before date '%s' not found", eod.Format(time.DateOnly))))
 		} else {
-			// Offset the order number so the specified version lands nearer to the center of the page.
-			maxOrderOpt = found.RevisionOrderNumber + limit/2 + 1
+			maxOrderOpt = found.RevisionOrderNumber + 1
 		}
 	}
 
@@ -1126,12 +1124,12 @@ func (r *queryResolver) Version(ctx context.Context, versionID string) (*restMod
 func (r *queryResolver) Image(ctx context.Context, imageID string) (*restModel.APIImage, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: '%s'", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: %s", err.Error()))
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	result, err := c.GetImageInfo(ctx, imageID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting image info: '%s'", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting image info: %s", err.Error()))
 	}
 	apiImage := restModel.APIImage{}
 	apiImage.BuildFromService(*result)

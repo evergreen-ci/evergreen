@@ -453,22 +453,6 @@
           "waterfall": {
             "versions": [
               {
-                "version": {
-                  "createTime": "2020-01-02T01:43:00-05:00",
-                  "id": "evergreen_version2",
-                  "order": 42
-                },
-                "inactiveVersions": null
-              },
-              {
-                "version": {
-                  "createTime": "2019-12-31T19:00:00-05:00",
-                  "id": "evergreen_version1",
-                  "order": 41
-                },
-                "inactiveVersions": null
-              },
-              {
                 "version": null,
                 "inactiveVersions": [
                   {
@@ -489,7 +473,7 @@
             ],
             "pagination": {
               "nextPageOrder": 39,
-              "prevPageOrder": 42
+              "prevPageOrder": 40
             }
           }
         }

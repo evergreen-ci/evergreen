@@ -30,8 +30,11 @@ type ProjectSettings struct {
 // event.
 func NewProjectSettingsFromEvent(e ProjectSettingsEvent) ProjectSettings {
 	return ProjectSettings{
-		ProjectRef:         e.ProjectRef,
-		GitHubAppAuth:      e.GitHubAppAuth,
+		ProjectRef: e.ProjectRef,
+		GitHubAppAuth: githubapp.GithubAppAuth{
+			AppID:      e.GitHubAppAuth.AppID,
+			PrivateKey: e.GitHubAppAuth.PrivateKey,
+		},
 		GithubHooksEnabled: e.GithubHooksEnabled,
 		Vars: ProjectVars{
 			Vars:          e.Vars.Vars,
@@ -53,6 +56,21 @@ type ProjectEventVars struct {
 	AdminOnlyVars map[string]bool   `bson:"admin_only_vars" json:"admin_only_vars"`
 }
 
+// ProjectEventGitHubAppAuth contains the GitHub app auth data relevant to
+// project modification events.
+type ProjectEventGitHubAppAuth struct {
+	AppID int64 `bson:"app_id" json:"app_id"`
+	//  PriavetKey contains a redacted placeholder for the private key.
+	PrivateKey []byte `bson:"private_key" json:"private_key"`
+}
+
+// redactPrivateKey redacts the GitHub app's private key so that it's not
+// exposed via the UI or GraphQL.
+func (g *ProjectEventGitHubAppAuth) redactPrivateKey() *ProjectEventGitHubAppAuth {
+	g.PrivateKey = []byte(evergreen.RedactedValue)
+	return g
+}
+
 // ProjectSettingsEvent contains the event data about a single revision of a
 // project's settings.
 type ProjectSettingsEvent struct {
@@ -63,12 +81,12 @@ type ProjectSettingsEvent struct {
 	// project variables are not stored in the database for security reasons.
 	// However, the project event model needs to keep track of which project
 	// variables changed, hence the need for a separate model in that situation.
-	ProjectRef         ProjectRef              `bson:"proj_ref" json:"proj_ref"`
-	GithubHooksEnabled bool                    `bson:"github_hooks_enabled" json:"github_hooks_enabled"`
-	Aliases            []ProjectAlias          `bson:"aliases" json:"aliases"`
-	Subscriptions      []event.Subscription    `bson:"subscriptions" json:"subscriptions"`
-	GitHubAppAuth      githubapp.GithubAppAuth `bson:"github_app_auth" json:"github_app_auth"`
-	Vars               ProjectEventVars        `bson:"vars" json:"vars"`
+	ProjectRef         ProjectRef                `bson:"proj_ref" json:"proj_ref"`
+	GithubHooksEnabled bool                      `bson:"github_hooks_enabled" json:"github_hooks_enabled"`
+	Aliases            []ProjectAlias            `bson:"aliases" json:"aliases"`
+	Subscriptions      []event.Subscription      `bson:"subscriptions" json:"subscriptions"`
+	GitHubAppAuth      ProjectEventGitHubAppAuth `bson:"github_app_auth" json:"github_app_auth"`
+	Vars               ProjectEventVars          `bson:"vars" json:"vars"`
 
 	// The following boolean fields are flags that indicate that a given
 	// field is nil instead of [], since this information is lost when
@@ -89,7 +107,10 @@ func NewProjectSettingsEvent(p ProjectSettings) ProjectSettingsEvent {
 		GithubHooksEnabled: p.GithubHooksEnabled,
 		Aliases:            p.Aliases,
 		Subscriptions:      p.Subscriptions,
-		GitHubAppAuth:      p.GitHubAppAuth,
+		GitHubAppAuth: ProjectEventGitHubAppAuth{
+			AppID:      p.GitHubAppAuth.AppID,
+			PrivateKey: p.GitHubAppAuth.PrivateKey,
+		},
 		Vars: ProjectEventVars{
 			Vars:          p.Vars.Vars,
 			PrivateVars:   p.Vars.PrivateVars,
@@ -175,7 +196,7 @@ func getRedactedVarsCopy(vars map[string]string, modifiedVarNames map[string]str
 // This intentionally makes a copy to avoid potentially modifying the original
 // GitHub app auth, which may be shared by the actual project settings. That
 // way, callers can still access the unredacted auth credentials.
-func getRedactedGitHubAppCopy(auth githubapp.GithubAppAuth, isGHAppKeyModified bool, placeholder string) githubapp.GithubAppAuth {
+func getRedactedGitHubAppCopy(auth ProjectEventGitHubAppAuth, isGHAppKeyModified bool, placeholder string) ProjectEventGitHubAppAuth {
 	if len(auth.PrivateKey) == 0 {
 		return auth
 	}
@@ -256,16 +277,16 @@ func (p *ProjectChangeEvents) RedactGitHubPrivateKey() {
 		}
 		if len(changeEvent.After.GitHubAppAuth.PrivateKey) > 0 && len(changeEvent.Before.GitHubAppAuth.PrivateKey) > 0 {
 			if string(changeEvent.After.GitHubAppAuth.PrivateKey) == string(changeEvent.Before.GitHubAppAuth.PrivateKey) {
-				changeEvent.After.GitHubAppAuth.RedactPrivateKey()
-				changeEvent.Before.GitHubAppAuth.RedactPrivateKey()
+				changeEvent.After.GitHubAppAuth.redactPrivateKey()
+				changeEvent.Before.GitHubAppAuth.redactPrivateKey()
 			} else {
 				changeEvent.After.GitHubAppAuth.PrivateKey = []byte(evergreen.RedactedAfterValue)
 				changeEvent.Before.GitHubAppAuth.PrivateKey = []byte(evergreen.RedactedBeforeValue)
 			}
 		} else if len(changeEvent.After.GitHubAppAuth.PrivateKey) > 0 {
-			changeEvent.After.GitHubAppAuth.RedactPrivateKey()
+			changeEvent.After.GitHubAppAuth.redactPrivateKey()
 		} else if len(changeEvent.Before.GitHubAppAuth.PrivateKey) > 0 {
-			changeEvent.Before.GitHubAppAuth.RedactPrivateKey()
+			changeEvent.Before.GitHubAppAuth.redactPrivateKey()
 		}
 		event.EventLogEntry.Data = changeEvent
 	}
