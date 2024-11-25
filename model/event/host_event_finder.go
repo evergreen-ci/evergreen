@@ -22,7 +22,7 @@ type hostStatusDistro struct {
 func (s *hostStatusDistro) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(s) }
 func (s *hostStatusDistro) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, s) }
 
-func getRecentStatusesForHost(ctx context.Context, hostId string, hostProvisionTime time.Time, n int) (int, []string) {
+func getRecentFinishedStatusesForHost(ctx context.Context, hostId string, hostProvisionTime time.Time, n int) (int, []string) {
 	query := ResourceTypeKeyIs(ResourceTypeHost)
 	query[TypeKey] = EventHostTaskFinished
 	query[ResourceIdKey] = hostId
@@ -66,13 +66,13 @@ func getRecentStatusesForHost(ctx context.Context, hostId string, hostProvisionT
 }
 
 // AllRecentHostEventsAreSystemFailed returns true if all recent host events are system failures, and false if any are not.
-// Only takes into account events that occurred since the last time the task started running.
+// Only takes into account task finished events that occurred since the last time the task started running.
 func AllRecentHostEventsAreSystemFailed(ctx context.Context, hostId string, hostProvisionTime time.Time, n int) bool {
 	if n == 0 {
 		return false
 	}
 
-	count, statuses := getRecentStatusesForHost(ctx, hostId, hostProvisionTime, n)
+	count, statuses := getRecentFinishedStatusesForHost(ctx, hostId, hostProvisionTime, n)
 	if count == 0 {
 		return false
 	}
