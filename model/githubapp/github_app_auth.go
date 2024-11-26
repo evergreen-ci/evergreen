@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v66/github"
 	"github.com/pkg/errors"
 )
 

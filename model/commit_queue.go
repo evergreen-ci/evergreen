@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v66/github"
 	"github.com/pkg/errors"
 )
 

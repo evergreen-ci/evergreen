@@ -18,7 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v66/github"
 	"github.com/gregjones/httpcache"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -778,7 +778,7 @@ func GetBranchEvent(ctx context.Context, owner, repo, branch string) (*github.Br
 
 	grip.Debugf("requesting github commit for '%s/%s': branch: %s\n", owner, repo, branch)
 
-	branchEvent, resp, err := githubClient.Repositories.GetBranch(ctx, owner, repo, branch, false)
+	branchEvent, resp, err := githubClient.Repositories.GetBranch(ctx, owner, repo, branch, 0)
 	if resp != nil {
 		defer resp.Body.Close()
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
@@ -1710,8 +1710,8 @@ func GetBranchProtectionRules(ctx context.Context, owner, repo, branch string) (
 		return nil, errors.Wrap(err, "can't get branch protection rules")
 	}
 	checks := []string{}
-	if requiredStatusChecks := protection.GetRequiredStatusChecks(); requiredStatusChecks != nil {
-		for _, check := range requiredStatusChecks.Checks {
+	if requiredStatusChecks := protection.GetRequiredStatusChecks(); requiredStatusChecks != nil && requiredStatusChecks.Checks != nil {
+		for _, check := range *requiredStatusChecks.Checks {
 			checks = append(checks, check.Context)
 		}
 		return checks, nil

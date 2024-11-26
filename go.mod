@@ -1,6 +1,8 @@
 module github.com/evergreen-ci/evergreen
 
-go 1.20
+go 1.21
+
+toolchain go1.21.4
 
 require (
 	github.com/99designs/gqlgen v0.17.49
@@ -29,7 +31,6 @@ require (
 	github.com/evergreen-ci/timber v0.0.0-20240509150854-9d66df03b40e
 	github.com/evergreen-ci/utility v0.0.0-20241104181620-267066777913
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/google/go-github/v52 v52.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gorilla/csrf v1.7.2
 	github.com/gorilla/mux v1.8.1
@@ -200,6 +201,7 @@ require (
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
+	github.com/google/go-github/v66 v66.0.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/mongodb/jasper v0.0.0-20240903162551-472a0fcb2344
 	github.com/shirou/gopsutil/v3 v3.24.5
