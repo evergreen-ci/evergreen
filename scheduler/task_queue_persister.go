@@ -20,23 +20,23 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 			dependencies = append(dependencies, d.TaskId)
 		}
 		taskQueue = append(taskQueue, model.TaskQueueItem{
-			Id:                  t.Id,
-			DisplayName:         t.DisplayName,
-			BuildVariant:        t.BuildVariant,
-			RevisionOrderNumber: t.RevisionOrderNumber,
-			Requester:           t.Requester,
-			Revision:            t.Revision,
-			Project:             t.Project,
-			ExpectedDuration:    t.ExpectedDuration,
-			Priority:            t.Priority,
-			PriorityRankValue:   t.PriorityRankValue,
-			Group:               t.TaskGroup,
-			GroupMaxHosts:       t.TaskGroupMaxHosts,
-			GroupIndex:          t.TaskGroupOrder,
-			Version:             t.Version,
-			ActivatedBy:         t.ActivatedBy,
-			Dependencies:        dependencies,
-			DependenciesMet:     t.HasDependenciesMet(),
+			Id:                    t.Id,
+			DisplayName:           t.DisplayName,
+			BuildVariant:          t.BuildVariant,
+			RevisionOrderNumber:   t.RevisionOrderNumber,
+			Requester:             t.Requester,
+			Revision:              t.Revision,
+			Project:               t.Project,
+			ExpectedDuration:      t.ExpectedDuration,
+			Priority:              t.Priority,
+			SortingValueBreakdown: t.SortingValueBreakdown,
+			Group:                 t.TaskGroup,
+			GroupMaxHosts:         t.TaskGroupMaxHosts,
+			GroupIndex:            t.TaskGroupOrder,
+			Version:               t.Version,
+			ActivatedBy:           t.ActivatedBy,
+			Dependencies:          dependencies,
+			DependenciesMet:       t.HasDependenciesMet(),
 		})
 	}
 
@@ -48,8 +48,7 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 
 	// track scheduled time for prioritized tasks
 	if err := task.SetTasksScheduledTime(tasks, startAt); err != nil {
-		return errors.Wrapf(err, "error setting scheduled time for prioritized tasks for distro '%s'", distro)
+		return errors.Wrapf(err, "setting scheduled time for prioritized tasks for distro '%s'", distro)
 	}
-
 	return nil
 }

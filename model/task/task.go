@@ -30,6 +30,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
@@ -91,16 +93,16 @@ type Task struct {
 	// Priority is a specifiable value that adds weight to the prioritization that task will be given in its
 	// corresponding distro task queue.
 	Priority int64 `bson:"priority" json:"priority"`
-	// PriorityRankValue is not persisted to the db, but stored in memory and passed to the task queue document.
-	// It is a mixture of Priority and the various task queue ranking factors that multiply on top of Priority.
-	PriorityRankValue int64  `bson:"priority_rank_value" json:"priority_rank_value"`
-	TaskGroup         string `bson:"task_group" json:"task_group"`
-	TaskGroupMaxHosts int    `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
-	TaskGroupOrder    int    `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
-	ResultsService    string `bson:"results_service,omitempty" json:"results_service,omitempty"`
-	HasCedarResults   bool   `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
-	ResultsFailed     bool   `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
-	MustHaveResults   bool   `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
+	// SortingValueBreakdown is not persisted to the db, but stored in memory and passed to the task queue document.
+	// It contains information on what factors led to the overall queue ranking value for the task.
+	SortingValueBreakdown SortingValueBreakdown `bson:"-" json:"sorting_value_breakdown"`
+	TaskGroup             string                `bson:"task_group" json:"task_group"`
+	TaskGroupMaxHosts     int                   `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
+	TaskGroupOrder        int                   `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
+	ResultsService        string                `bson:"results_service,omitempty" json:"results_service,omitempty"`
+	HasCedarResults       bool                  `bson:"has_cedar_results,omitempty" json:"has_cedar_results,omitempty"`
+	ResultsFailed         bool                  `bson:"results_failed,omitempty" json:"results_failed,omitempty"`
+	MustHaveResults       bool                  `bson:"must_have_results,omitempty" json:"must_have_results,omitempty"`
 	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
@@ -4036,4 +4038,101 @@ func (t *Task) FindAbortingAndResettingDependencies() ([]Task, error) {
 		},
 	})
 	return FindAll(q)
+}
+
+// SortingValueBreakdown is the full breakdown of the final value used to sort on in the queue,
+// with accompanying breakdowns of priority and rank value.
+type SortingValueBreakdown struct {
+	TaskGroupLength    int64
+	TotalValue         int64
+	PriorityBreakdown  PriorityBreakdown
+	RankValueBreakdown RankValueBreakdown
+}
+
+// PriorityBreakdown contains information on how much various factors impacted the custom
+// priority value that is used in the queue sorting value equation.
+type PriorityBreakdown struct {
+	// InitialPriorityImpact represents how much of the total priority can be attributed to the
+	// original priority set on a task.
+	InitialPriorityImpact int64
+	// TaskGroupImpact represents how much of the total priority can be attributed to a
+	// task being in a task group.
+	TaskGroupImpact int64
+	// GeneratorTaskImpact represents how much of the total priority can be attributed to a
+	// task having a generate.tasks command in it.
+	GeneratorTaskImpact int64
+	// CommitQueueImpact represents how much of the total priority can be attributed to a task
+	// being in the commit queue.
+	CommitQueueImpact int64
+}
+
+// RankValueBreakdown contains information on how much various factors impacted the custom
+// rank value that is used in the queue sorting value equation.
+type RankValueBreakdown struct {
+	// CommitQueueImpact represents how much of the total rank value can be attributed to a task
+	// being in the commit queue.
+	CommitQueueImpact int64
+	// NumDependentsImpact represents how much of the total rank value can be attributed to the number
+	// of tasks that are dependents of a task.
+	NumDependentsImpact int64
+	// EstimatedRuntimeImpact represents how much of the total rank value can be attributed to the
+	// estimated runtime of a task.
+	EstimatedRuntimeImpact int64
+	// MainlineWaitTimeImpact represents how much of the total rank value can be attributed to
+	// how long a mainline task has been waiting for dispatch.
+	MainlineWaitTimeImpact int64
+	// StepbackImpact represents how much of the total rank value can be attributed to
+	// a task being activated by the stepback process.
+	StepbackImpact int64
+	// PatchImpact represents how much of the total rank value can be attributed to a task
+	// being part of a patch.
+	PatchImpact int64
+	// PatchWaitTimeImpact represents how much of the total rank value can be attributed to
+	// how long a patch task has been waiting for dispatch.
+	PatchWaitTimeImpact int64
+}
+
+const (
+	priorityBreakdownAttributePrefix = "evergreen.priority_breakdown"
+	rankBreakdownAttributePrefix     = "evergreen.rank_breakdown"
+	priorityScaledRankAttribute      = "evergreen.priority_scaled_rank"
+)
+
+// SetSortingValueBreakdownAttributes saves a full breakdown which compartmentalizes each factor that played a role in computing the
+// overall value used to sort it in the queue, and creates a honeycomb trace with this data to enable dashboards/analysis.
+func (t *Task) SetSortingValueBreakdownAttributes(ctx context.Context, breakdown SortingValueBreakdown) {
+	_, span := tracer.Start(ctx, "queue-factor-breakdown", trace.WithNewRoot())
+	defer span.End()
+	span.SetAttributes(
+		attribute.String(evergreen.DistroIDOtelAttribute, t.DistroId),
+		attribute.String(evergreen.TaskIDOtelAttribute, t.Id),
+		attribute.Int64(priorityScaledRankAttribute, breakdown.TotalValue),
+		// Priority values
+		attribute.Int64(fmt.Sprintf("%s.base_priority", priorityBreakdownAttributePrefix), breakdown.PriorityBreakdown.InitialPriorityImpact),
+		attribute.Int64(fmt.Sprintf("%s.task_group", priorityBreakdownAttributePrefix), breakdown.PriorityBreakdown.TaskGroupImpact),
+		attribute.Int64(fmt.Sprintf("%s.generate_task", priorityBreakdownAttributePrefix), breakdown.PriorityBreakdown.GeneratorTaskImpact),
+		attribute.Int64(fmt.Sprintf("%s.commit_queue", priorityBreakdownAttributePrefix), breakdown.PriorityBreakdown.CommitQueueImpact),
+		// Rank values
+		attribute.Int64(fmt.Sprintf("%s.commit_queue", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.CommitQueueImpact),
+		attribute.Int64(fmt.Sprintf("%s.patch", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.PatchImpact),
+		attribute.Int64(fmt.Sprintf("%s.patch_wait_time", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.PatchWaitTimeImpact),
+		attribute.Int64(fmt.Sprintf("%s.mainline_wait_time", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.MainlineWaitTimeImpact),
+		attribute.Int64(fmt.Sprintf("%s.stepback", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.StepbackImpact),
+		attribute.Int64(fmt.Sprintf("%s.num_dependents", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.NumDependentsImpact),
+		attribute.Int64(fmt.Sprintf("%s.estimated_runtime", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.EstimatedRuntimeImpact),
+		// Priority percentage values
+		attribute.Float64(fmt.Sprintf("%s.base_priority_pct", priorityBreakdownAttributePrefix), float64(breakdown.PriorityBreakdown.InitialPriorityImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.task_group_pct", priorityBreakdownAttributePrefix), float64(breakdown.PriorityBreakdown.TaskGroupImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.generate_task_pct", priorityBreakdownAttributePrefix), float64(breakdown.PriorityBreakdown.GeneratorTaskImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.commit_queue_pct", priorityBreakdownAttributePrefix), float64(breakdown.PriorityBreakdown.CommitQueueImpact/breakdown.TotalValue*100)),
+		// Rank value percentage values
+		attribute.Float64(fmt.Sprintf("%s.patch_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.PatchImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.patch_wait_time_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.PatchWaitTimeImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.commit_queue_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.CommitQueueImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.mainline_wait_time_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.MainlineWaitTimeImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.stepback_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.StepbackImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.num_dependents_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.NumDependentsImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.estimated_runtime_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.EstimatedRuntimeImpact/breakdown.TotalValue*100)),
+	)
+	t.SortingValueBreakdown = breakdown
 }
