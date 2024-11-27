@@ -2,6 +2,7 @@ package event
 
 import (
 	"context"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
@@ -21,13 +22,14 @@ type hostStatusDistro struct {
 func (s *hostStatusDistro) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(s) }
 func (s *hostStatusDistro) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, s) }
 
-func getRecentStatusesForHost(ctx context.Context, hostId string, n int) (int, []string) {
-	or := ResourceTypeKeyIs(ResourceTypeHost)
-	or[TypeKey] = EventHostTaskFinished
-	or[ResourceIdKey] = hostId
+func getRecentFinishedStatusesForHost(ctx context.Context, hostId string, hostProvisionTime time.Time, n int) (int, []string) {
+	query := ResourceTypeKeyIs(ResourceTypeHost)
+	query[TypeKey] = EventHostTaskFinished
+	query[ResourceIdKey] = hostId
+	query[TimestampKey] = bson.M{"$gte": hostProvisionTime}
 
 	pipeline := []bson.M{
-		{"$match": or},
+		{"$match": query},
 		{"$sort": bson.M{TimestampKey: -1}},
 		{"$limit": n},
 		{"$group": bson.M{
@@ -64,12 +66,13 @@ func getRecentStatusesForHost(ctx context.Context, hostId string, n int) (int, [
 }
 
 // AllRecentHostEventsAreSystemFailed returns true if all recent host events are system failures, and false if any are not.
-func AllRecentHostEventsAreSystemFailed(ctx context.Context, hostId string, n int) bool {
+// Only takes into account task finished events that occurred since the last time the task started running.
+func AllRecentHostEventsAreSystemFailed(ctx context.Context, hostId string, hostProvisionTime time.Time, n int) bool {
 	if n == 0 {
 		return false
 	}
 
-	count, statuses := getRecentStatusesForHost(ctx, hostId, n)
+	count, statuses := getRecentFinishedStatusesForHost(ctx, hostId, hostProvisionTime, n)
 	if count == 0 {
 		return false
 	}
