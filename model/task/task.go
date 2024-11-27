@@ -95,7 +95,7 @@ type Task struct {
 	Priority int64 `bson:"priority" json:"priority"`
 	// SortingValueBreakdown is not persisted to the db, but stored in memory and passed to the task queue document.
 	// It contains information on what factors led to the overall queue ranking value for the task.
-	SortingValueBreakdown SortingValueBreakdown `bson:"sorting_value_breakdown" json:"sorting_value_breakdown"`
+	SortingValueBreakdown SortingValueBreakdown `bson:"-" json:"sorting_value_breakdown"`
 	TaskGroup             string                `bson:"task_group" json:"task_group"`
 	TaskGroupMaxHosts     int                   `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
 	TaskGroupOrder        int                   `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
@@ -4053,14 +4053,14 @@ type SortingValueBreakdown struct {
 // priority value that is used in the queue sorting value equation.
 type PriorityBreakdown struct {
 	// InitialPriorityImpact represents how much of the total priority can be attributed to the
-	// original priority set on a task by a user.
+	// original priority set on a task.
 	InitialPriorityImpact int64
 	// TaskGroupImpact represents how much of the total priority can be attributed to a
 	// task being in a task group.
 	TaskGroupImpact int64
-	// GenerateTaskImpact represents how much of the total priority can be attributed to a
+	// GeneratorTaskImpact represents how much of the total priority can be attributed to a
 	// task having a generate.tasks command in it.
-	GenerateTaskImpact int64
+	GeneratorTaskImpact int64
 	// CommitQueueImpact represents how much of the total priority can be attributed to a task
 	// being in the commit queue.
 	CommitQueueImpact int64
@@ -4098,9 +4098,9 @@ const (
 	priorityScaledRankAttribute      = "evergreen.priority_scaled_rank"
 )
 
-// SetSortingValueBreakdown saves a full breakdown which compartmentalizes each factor that played a role in computing the
+// SetSortingValueBreakdownAttributes saves a full breakdown which compartmentalizes each factor that played a role in computing the
 // overall value used to sort it in the queue, and creates a honeycomb trace with this data to enable dashboards/analysis.
-func (t *Task) SetSortingValueBreakdown(ctx context.Context, breakdown SortingValueBreakdown) {
+func (t *Task) SetSortingValueBreakdownAttributes(ctx context.Context, breakdown SortingValueBreakdown) {
 	_, span := tracer.Start(ctx, "queue-factor-breakdown", trace.WithNewRoot())
 	defer span.End()
 	span.SetAttributes(
@@ -4110,7 +4110,7 @@ func (t *Task) SetSortingValueBreakdown(ctx context.Context, breakdown SortingVa
 		// Priority values
 		attribute.Int64(fmt.Sprintf("%s.base_priority", priorityBreakdownAttributePrefix), breakdown.PriorityBreakdown.InitialPriorityImpact),
 		attribute.Int64(fmt.Sprintf("%s.task_group", priorityBreakdownAttributePrefix), breakdown.PriorityBreakdown.TaskGroupImpact),
-		attribute.Int64(fmt.Sprintf("%s.generate_task", priorityBreakdownAttributePrefix), breakdown.PriorityBreakdown.GenerateTaskImpact),
+		attribute.Int64(fmt.Sprintf("%s.generate_task", priorityBreakdownAttributePrefix), breakdown.PriorityBreakdown.GeneratorTaskImpact),
 		attribute.Int64(fmt.Sprintf("%s.commit_queue", priorityBreakdownAttributePrefix), breakdown.PriorityBreakdown.CommitQueueImpact),
 		// Rank values
 		attribute.Int64(fmt.Sprintf("%s.commit_queue", rankBreakdownAttributePrefix), breakdown.RankValueBreakdown.CommitQueueImpact),
@@ -4123,7 +4123,7 @@ func (t *Task) SetSortingValueBreakdown(ctx context.Context, breakdown SortingVa
 		// Priority percentage values
 		attribute.Float64(fmt.Sprintf("%s.base_priority_pct", priorityBreakdownAttributePrefix), float64(breakdown.PriorityBreakdown.InitialPriorityImpact/breakdown.TotalValue*100)),
 		attribute.Float64(fmt.Sprintf("%s.task_group_pct", priorityBreakdownAttributePrefix), float64(breakdown.PriorityBreakdown.TaskGroupImpact/breakdown.TotalValue*100)),
-		attribute.Float64(fmt.Sprintf("%s.generate_task_pct", priorityBreakdownAttributePrefix), float64(breakdown.PriorityBreakdown.GenerateTaskImpact/breakdown.TotalValue*100)),
+		attribute.Float64(fmt.Sprintf("%s.generate_task_pct", priorityBreakdownAttributePrefix), float64(breakdown.PriorityBreakdown.GeneratorTaskImpact/breakdown.TotalValue*100)),
 		attribute.Float64(fmt.Sprintf("%s.commit_queue_pct", priorityBreakdownAttributePrefix), float64(breakdown.PriorityBreakdown.CommitQueueImpact/breakdown.TotalValue*100)),
 		// Rank value percentage values
 		attribute.Float64(fmt.Sprintf("%s.patch_pct", rankBreakdownAttributePrefix), float64(breakdown.RankValueBreakdown.PatchImpact/breakdown.TotalValue*100)),

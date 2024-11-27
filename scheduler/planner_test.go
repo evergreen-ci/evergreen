@@ -489,7 +489,7 @@ func verifyRankBreakdown(t *testing.T, breakdown task.SortingValueBreakdown) {
 		breakdown.RankValueBreakdown.CommitQueueImpact
 	totalPriorityValue := breakdown.PriorityBreakdown.InitialPriorityImpact +
 		breakdown.PriorityBreakdown.CommitQueueImpact +
-		breakdown.PriorityBreakdown.GenerateTaskImpact +
+		breakdown.PriorityBreakdown.GeneratorTaskImpact +
 		breakdown.PriorityBreakdown.TaskGroupImpact
 	assert.Equal(t, totalPriorityValue+breakdown.TaskGroupLength+totalRankValue*totalPriorityValue, breakdown.TotalValue)
 }

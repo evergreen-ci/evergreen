@@ -204,17 +204,22 @@ type unitInfo struct {
 // scheduler constants.
 func (u *unitInfo) value() task.SortingValueBreakdown {
 	var breakdown task.SortingValueBreakdown
+	unitLength := int64(len(u.TaskIDs))
+	breakdown.TaskGroupLength = unitLength
 	priority := u.computePriority(&breakdown)
-	rankValue := u.computeRankValue(breakdown.TaskGroupLength, &breakdown)
+	rankValue := u.computeRankValue(&breakdown)
 	breakdown.TotalValue = priority*rankValue + breakdown.TaskGroupLength
 	return breakdown
 }
 
 // computeRankValue computes the custom rank value for this unit, which will later be multiplied with the
-// custom priority to compute a final value by which the unit will be sorted on in the queue.
-func (u *unitInfo) computeRankValue(unitLength int64, breakdown *task.SortingValueBreakdown) int64 {
+// computed priority to compute a final value by which the unit will be sorted on in the queue. It also
+// modifies the RankValueBreakdown field of the passed in SortingValueBreakdown struct, which is used for
+// statistically analyzing the queue's state.
+func (u *unitInfo) computeRankValue(breakdown *task.SortingValueBreakdown) int64 {
+	unitLength := breakdown.TaskGroupLength
 	if u.ContainsInPatch {
-		// Give patches a bump, over non-patches. patches that have spent more time in the queue
+		// Give patches a bump over non-patches. Patches that have spent more time in the queue
 		// should get worked on first (because people are waiting on the results), and because FIFO feels
 		// fair in this context.
 		breakdown.RankValueBreakdown.PatchImpact = u.Settings.GetPatchFactor()
@@ -254,12 +259,13 @@ func (u *unitInfo) computeRankValue(unitLength int64, breakdown *task.SortingVal
 }
 
 // computePriority computes the custom priority value for this unit, which will later be multiplied with the
-// custom rank value to compute a final value by which the unit will be sorted on in the queue.
+// custom rank value to compute a final value by which the unit will be sorted on in the queue. It also
+// modifies the PriorityBreakdown field of the passed in SortingValueBreakdown struct, which is used for
+// statistically analyzing the queue's state.
 func (u *unitInfo) computePriority(breakdown *task.SortingValueBreakdown) int64 {
-	unitLength := int64(len(u.TaskIDs))
+	unitLength := breakdown.TaskGroupLength
 	initialPriority := 1 + (u.TotalPriority / unitLength)
 	breakdown.PriorityBreakdown.InitialPriorityImpact = initialPriority
-	breakdown.TaskGroupLength = unitLength
 	if !u.ContainsNonGroupTasks {
 		// If all tasks in the unit are in a task group then
 		// we should give it a little bump, so that task
@@ -272,10 +278,10 @@ func (u *unitInfo) computePriority(breakdown *task.SortingValueBreakdown) int64 
 		// Give generators a boost so people don't have to wait twice.
 		prevPriority := initialPriority
 		initialPriority = initialPriority * u.Settings.GetGenerateTaskFactor()
-		breakdown.PriorityBreakdown.GenerateTaskImpact = initialPriority - prevPriority
+		breakdown.PriorityBreakdown.GeneratorTaskImpact = initialPriority - prevPriority
 		if !u.ContainsNonGroupTasks {
 			breakdown.PriorityBreakdown.TaskGroupImpact *= u.Settings.GetGenerateTaskFactor()
-			breakdown.PriorityBreakdown.GenerateTaskImpact -= unitLength * u.Settings.GetGenerateTaskFactor()
+			breakdown.PriorityBreakdown.GeneratorTaskImpact -= unitLength * u.Settings.GetGenerateTaskFactor()
 		}
 	}
 	if u.ContainsInCommitQueue {
@@ -316,7 +322,7 @@ func (unit *Unit) info() unitInfo {
 	return info
 }
 
-// sortingValueBreakdown returns a point value for the tasks in the unit that can
+// sortingValueBreakdown returns a breakdown for the tasks in the unit that can
 // be used to compare units with each other.
 //
 // Generally, higher point values are given to larger units and for
@@ -446,7 +452,7 @@ func (tpl TaskPlan) Export(ctx context.Context) []task.Task {
 			if seen.Visit(tasks[i].Id) {
 				continue
 			}
-			tasks[i].SetSortingValueBreakdown(ctx, sortingValueBreakdown)
+			tasks[i].SetSortingValueBreakdownAttributes(ctx, sortingValueBreakdown)
 			output = append(output, tasks[i])
 		}
 	}
