@@ -12,22 +12,22 @@ import (
 	"github.com/pkg/errors"
 )
 
-// GetCedarPerfCountOptions represents the arguments for getting a count
+// GetPerfCountOptions represents the arguments for getting a count
 // of perf results for a given task id from Cedar.
-type GetCedarPerfCountOptions struct {
+type GetPerfCountOptions struct {
 	BaseURL   string `json:"-"`
 	TaskID    string `json:"-"`
 	Execution int    `json:"_"`
 }
 
-// CedarPerfCount holds one element, NumberOfResults, matching the json returned by
+// PerfCount holds one element, NumberOfResults, matching the json returned by
 // Cedar's perf count rest route.
-type CedarPerfCount struct {
+type PerfCount struct {
 	NumberOfResults int `json:"number_of_results"`
 }
 
-// CedarPerfResultsCount queries SPS for the number of perf results attached to a task.
-func CedarPerfResultsCount(ctx context.Context, opts GetCedarPerfCountOptions) (*CedarPerfCount, error) {
+// PerfResultsCount queries SPS for the number of perf results attached to a task.
+func PerfResultsCount(ctx context.Context, opts GetPerfCountOptions) (*PerfCount, error) {
 	client := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(client)
 
@@ -49,9 +49,9 @@ func CedarPerfResultsCount(ctx context.Context, opts GetCedarPerfCountOptions) (
 	if err != nil {
 		return nil, errors.Wrap(err, "reading response body when getting perf results count")
 	}
-	testCount := &CedarPerfCount{}
+	testCount := &PerfCount{}
 	if err = json.Unmarshal(body, testCount); err != nil {
-		return nil, errors.Wrap(err, "unmarshaling test results from Cedar")
+		return nil, errors.Wrap(err, "unmarshaling perf results")
 	}
 
 	return testCount, nil
