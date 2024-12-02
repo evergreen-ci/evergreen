@@ -258,14 +258,24 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 			Tasks: vtasks,
 		})
 	}
-	for _, task := range execTasksToRemove {
-		for i, vt := range variantTasks {
-			for j, t := range vt.Tasks {
+	// Go through all the variant tasks and remove the tasks that are in the execTasksToRemove list.
+	for i, vt := range variantTasks {
+		tasks := []*string{}
+		for j, t := range vt.Tasks {
+			keepTask := true
+			// If the task is in the execTasksToRemove, we
+			// do not keep it in the list of tasks.
+			for _, task := range execTasksToRemove {
 				if t == utility.ToStringPtr(task) {
-					variantTasks[i].Tasks = append(vt.Tasks[:j], vt.Tasks[j+1:]...)
+					keepTask = false
+					break
 				}
 			}
+			if keepTask {
+				tasks = append(tasks, vt.Tasks[j])
+			}
 		}
+		variantTasks[i].Tasks = tasks
 	}
 	apiPatch.VariantsTasks = variantTasks
 	apiPatch.Activated = p.Activated
