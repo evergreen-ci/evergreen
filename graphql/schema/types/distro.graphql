@@ -285,7 +285,7 @@ type Distro {
   imageId: String!
   isCluster: Boolean!
   isVirtualWorkStation: Boolean!
-  mountpoints: [String!]
+  mountpoints: [String!]!
   name: String!
   note: String!
   plannerSettings: PlannerSettings!
