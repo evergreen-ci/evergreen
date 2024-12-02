@@ -754,8 +754,8 @@ func TestRequestS3Creds(t *testing.T) {
 	target := n[0].Subscriber.Target.(*event.JIRAIssueSubscriber)
 	assert.Equal(t, "BUILD", target.Project)
 	payload := n[0].Payload.(*message.JiraIssue)
-	summary := "Create AWS key for s3 uploads for 'identifier' project"
-	description := "Could you create an s3 key for the new [identifier|/project/identifier/settings/general] project?"
+	summary := "Create AWS bucket for s3 uploads for 'identifier' project"
+	description := "Could you create an s3 bucket and role arn for the new [identifier|/project/identifier/settings/general] project?"
 	assert.Equal(t, "BUILD", payload.Project)
 	assert.Equal(t, summary, payload.Summary)
 	assert.Equal(t, description, payload.Description)

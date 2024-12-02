@@ -346,9 +346,10 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 	backoffCounter := getS3OpBackoff()
 
 	var (
-		err           error
-		uploadedFiles []string
-		filesList     []string
+		err               error
+		uploadedFiles     []string
+		filesList         []string
+		skippedFilesCount int
 	)
 
 	timer := time.NewTimer(0)
@@ -396,6 +397,7 @@ retryLoop:
 
 			// reset to avoid duplicated uploaded references
 			uploadedFiles = []string{}
+			skippedFilesCount = 0
 
 		uploadLoop:
 			for _, fpath := range filesList {
@@ -422,6 +424,8 @@ retryLoop:
 						return errors.Wrapf(err, "checking if file '%s' exists", remoteName)
 					}
 					if exists {
+						skippedFilesCount++
+
 						logger.Task().Infof("Not uploading file '%s' because remote file '%s' already exists. Continuing to upload other files.", fpath, remoteName)
 						continue uploadLoop
 					}
@@ -475,9 +479,11 @@ retryLoop:
 
 	logger.Task().WarningWhen(strings.Contains(s3pc.Bucket, "."), "Bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs.")
 
-	if len(uploadedFiles) != len(filesList) && !s3pc.skipMissing {
-		logger.Task().Infof("Attempted to upload %d files, %d successfully uploaded.", len(filesList), len(uploadedFiles))
-		return errors.Errorf("uploaded %d files of %d requested", len(uploadedFiles), len(filesList))
+	processedCount := skippedFilesCount + len(uploadedFiles)
+
+	if processedCount != len(filesList) && !s3pc.skipMissing {
+		logger.Task().Infof("Attempted to upload %d files, %d successfully uploaded.", len(filesList), processedCount)
+		return errors.Errorf("uploaded %d files of %d requested", processedCount, len(filesList))
 	}
 
 	return nil

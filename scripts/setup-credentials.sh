@@ -74,6 +74,10 @@ github_pr_creator_org: "10gen"
 expansions:
   papertrail_key_id: $PAPERTRAIL_KEY_ID
   papertrail_secret_key: $PAPERTRAIL_SECRET_KEY
+  aws_key: $AWS_ACCESS_KEY_ID
+  aws_secret: $AWS_SECRET_ACCESS_KEY
+  aws_token: $AWS_SESSION_TOKEN
+  bucket: evergreen-integration-testing
   # Do not edit below this line
   github_app_key: |
 EOF

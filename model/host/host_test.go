@@ -1791,11 +1791,17 @@ func TestHostElapsedCommTime(t *testing.T) {
 		Id:           "hostWithOnlyCreateTime",
 		CreationTime: now.Add(-7 * time.Minute),
 	}
+	hostThatsRunningTeardown := Host{
+		Id:                         "hostThatsRunningTeardown",
+		CreationTime:               now.Add(-7 * time.Minute),
+		TaskGroupTeardownStartTime: now.Add(-1 * time.Minute),
+	}
 
 	assert.InDelta(int64(10*time.Minute), int64(hostThatRanTask.GetElapsedCommunicationTime()), float64(1*time.Millisecond))
 	assert.InDelta(int64(1*time.Minute), int64(hostThatJustStarted.GetElapsedCommunicationTime()), float64(1*time.Millisecond))
 	assert.InDelta(int64(15*time.Minute), int64(hostWithNoCreateTime.GetElapsedCommunicationTime()), float64(1*time.Millisecond))
 	assert.InDelta(int64(7*time.Minute), int64(hostWithOnlyCreateTime.GetElapsedCommunicationTime()), float64(1*time.Millisecond))
+	assert.Zero(hostThatsRunningTeardown.GetElapsedCommunicationTime())
 }
 
 func TestHostUpsert(t *testing.T) {

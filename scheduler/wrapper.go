@@ -102,7 +102,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	/////////////////
 
 	planningPhaseBegins := time.Now()
-	prioritizedTasks, err := PrioritizeTasks(distro, tasks, TaskPlannerOptions{
+	prioritizedTasks, err := PrioritizeTasks(ctx, distro, tasks, TaskPlannerOptions{
 		StartedAt:        taskFindingBegins,
 		ID:               schedulerInstanceID,
 		IsSecondaryQueue: false,

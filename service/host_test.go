@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,8 +62,9 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	t.Run("SuccessfullyUnquarantinesHostAndMarksAsReprovisioning", func(t *testing.T) {
 		user := user.DBUser{Id: "user"}
 		h := host.Host{
-			Id:     "h2",
-			Status: evergreen.HostQuarantined,
+			Id:       "h2",
+			Provider: evergreen.ProviderNameStatic,
+			Status:   evergreen.HostQuarantined,
 			Distro: distro.Distro{
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodSSH,
@@ -70,6 +72,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 				},
 			},
 			NumAgentCleanupFailures: 10,
+			LastCommunicationTime:   time.Now().Add(-24 * time.Hour),
 		}
 		require.NoError(h.Insert(ctx))
 
@@ -79,10 +82,16 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		assert.Equal(h.Status, evergreen.HostProvisioning)
 		assert.Equal(host.ReprovisionToNew, h.NeedsReprovision)
 
+		// Verify that host monitoring job does not immediately re-quarantine host
+		// due to long time since last communication
+		j := units.NewHostMonitoringCheckJob(env, &h, "job_id")
+		j.Run(ctx)
+
 		dbHost, err := host.FindOneId(ctx, h.Id)
 		require.NoError(err)
 		require.NotNil(t, dbHost)
 		assert.Equal(0, dbHost.NumAgentCleanupFailures)
+		assert.Equal(evergreen.HostProvisioning, dbHost.Status)
 	})
 	t.Run("FailsToDecommissionStaticHosts", func(t *testing.T) {
 		user := user.DBUser{Id: "user"}
