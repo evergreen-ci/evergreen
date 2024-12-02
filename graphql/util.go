@@ -1080,16 +1080,6 @@ func userHasDistroPermission(u *user.DBUser, distroId string, requiredLevel int)
 	return u.HasPermission(opts)
 }
 
-func userHasHostPermission(u *user.DBUser, distroId string, requiredLevel int, startedBy string) bool {
-	opts := gimlet.PermissionOpts{
-		Resource:      distroId,
-		ResourceType:  evergreen.DistroResourceType,
-		Permission:    evergreen.PermissionHosts,
-		RequiredLevel: requiredLevel,
-	}
-	return u.Username() == startedBy || u.HasPermission(opts)
-}
-
 func userHasProjectSettingsPermission(u *user.DBUser, projectId string, requiredLevel int) bool {
 	opts := gimlet.PermissionOpts{
 		Resource:      projectId,

@@ -42,10 +42,10 @@ type Mutation {
   saveDistro(opts: SaveDistroInput!): SaveDistroPayload! # Has directive on SaveDistroInput.
 
   # hosts
-  reprovisionToNew(hostIds: [String!]! @requireHostAccess(access: EDIT)): Int!
-  restartJasper(hostIds: [String!]! @requireHostAccess(access: EDIT)): Int!
+  reprovisionToNew(hostIds: [String!]!): Int!
+  restartJasper(hostIds: [String!]!): Int!
   updateHostStatus(
-    hostIds: [String!]! @requireHostAccess(access: EDIT)
+    hostIds: [String!]!
     status: String!
     notes: String = ""
   ): Int!

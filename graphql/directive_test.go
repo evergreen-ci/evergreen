@@ -8,8 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -162,20 +160,6 @@ func setupPermissions(t *testing.T) {
 	}
 	require.NoError(t, roleManager.UpdateRole(distroViewRole))
 
-	hostEditRole := gimlet.Role{
-		ID:          "edit_host-id",
-		Scope:       distroScope.ID,
-		Permissions: map[string]int{evergreen.PermissionHosts: evergreen.HostsEdit.Value},
-	}
-	require.NoError(t, roleManager.UpdateRole(hostEditRole))
-
-	hostViewRole := gimlet.Role{
-		ID:          "view_host-id",
-		Scope:       distroScope.ID,
-		Permissions: map[string]int{evergreen.PermissionHosts: evergreen.HostsView.Value},
-	}
-	require.NoError(t, roleManager.UpdateRole(hostViewRole))
-
 	taskAdminRole := gimlet.Role{
 		ID:          "admin_task",
 		Scope:       projectScope.ID,
@@ -232,118 +216,7 @@ func setupPermissions(t *testing.T) {
 	}
 	require.NoError(t, roleManager.UpdateRole(logViewRole))
 }
-func TestRequireHostAccess(t *testing.T) {
-	defer func() {
-		require.NoError(t, db.ClearCollections(host.Collection, user.Collection),
-			"unable to clear user or host collection")
-	}()
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser){
-		"FailsWhenHostIdIsNotSpecified": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			obj := interface{}(nil)
-			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
-			assert.EqualError(t, err, "input: host not specified")
-		},
-		"FailsWhenHostDoesNotExist": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			obj := interface{}(map[string]interface{}{"hostId": "a-non-existent-host-id"})
-			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
-			assert.EqualError(t, err, "input: No matching hosts found")
-		},
-		"ViewFailsWhenUserDoesNotHaveViewPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			obj := interface{}(map[string]interface{}{"hostId": "host1"})
-			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelView)
-			assert.EqualError(t, err, "input: user 'testuser' does not have permission to access host 'host1'")
-		},
-		"EditFailsWhenUserDoesNotHaveEditPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			obj := interface{}(map[string]interface{}{"hostId": "host1"})
-			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
-			assert.EqualError(t, err, "input: user 'testuser' does not have permission to access host 'host1'")
-		},
-		"ViewSucceedsWhenUserHasViewPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			assert.NoError(t, usr.AddRole("view_host-id"))
-			nextCalled := false
-			wrappedNext := func(rctx context.Context) (interface{}, error) {
-				nextCalled = true
-				return nil, nil
-			}
-			obj := interface{}(map[string]interface{}{"hostId": "host1"})
-			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelView)
-			assert.NoError(t, err)
-			assert.Nil(t, res)
-			assert.Equal(t, true, nextCalled)
-			assert.NoError(t, usr.RemoveRole("view_host-id"))
-		},
-		"EditSucceedsWhenUserHasEditPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			assert.NoError(t, usr.AddRole("edit_host-id"))
-			nextCalled := false
-			wrappedNext := func(rctx context.Context) (interface{}, error) {
-				nextCalled = true
-				return nil, nil
-			}
-			obj := interface{}(map[string]interface{}{"hostId": "host1"})
-			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelEdit)
-			assert.NoError(t, err)
-			assert.Nil(t, res)
-			assert.Equal(t, true, nextCalled)
-			assert.NoError(t, usr.RemoveRole("edit_host-id"))
-		},
-		"ViewSucceedsWhenHostIsStartedByUser": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			nextCalled := false
-			wrappedNext := func(rctx context.Context) (interface{}, error) {
-				nextCalled = true
-				return nil, nil
-			}
-			obj := interface{}(map[string]interface{}{"hostId": "host2"})
-			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelView)
-			assert.NoError(t, err)
-			assert.Nil(t, res)
-			assert.Equal(t, true, nextCalled)
-		},
-		"EditSucceedsWhenHostIsStartedByUser": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			nextCalled := false
-			wrappedNext := func(rctx context.Context) (interface{}, error) {
-				nextCalled = true
-				return nil, nil
-			}
-			obj := interface{}(map[string]interface{}{"hostId": "host2"})
-			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelEdit)
-			assert.NoError(t, err)
-			assert.Nil(t, res)
-			assert.Equal(t, true, nextCalled)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			setupPermissions(t)
-			usr, err := setupUser(t)
-			assert.NoError(t, err)
-			assert.NotNil(t, usr)
-			ctx = gimlet.AttachUser(ctx, usr)
-			assert.NotNil(t, ctx)
-			h1 := host.Host{
-				Id: "host1",
-				Distro: distro.Distro{
-					Id: "distro-id",
-				},
-			}
-			assert.NoError(t, h1.Insert(ctx))
-			h2 := host.Host{
-				Id:        "host2",
-				StartedBy: "testuser",
-				Distro: distro.Distro{
-					Id: "distro-id",
-				},
-			}
-			assert.NoError(t, h2.Insert(ctx))
-			config := New("/graphql")
-			assert.NotNil(t, config)
-			next := func(rctx context.Context) (interface{}, error) {
-				return nil, nil
-			}
-			tCase(ctx, t, next, config, usr)
-		})
-	}
-}
+
 func TestRequireDistroAccess(t *testing.T) {
 	setupPermissions(t)
 	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, user.Collection),
