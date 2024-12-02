@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -257,33 +256,14 @@ func TestPreselectedDisplayTasks(t *testing.T) {
 	require.Len(t, a.VariantsTasks, 1)
 	assert.Len(t, a.VariantsTasks[0].Tasks, 3)
 
-	foundTask1 := false
-	foundTask2 := false
-	foundExecTask1 := false
-	foundExecTask2 := false
-	foundDisplayTask := false
-
-	for _, vt := range a.VariantsTasks {
-		for _, task := range vt.Tasks {
-			fmt.Println("Task:", utility.FromStringPtr(task))
-			switch utility.FromStringPtr(task) {
-			case "variant_task_1":
-				foundTask1 = true
-			case "variant_task_2":
-				foundTask2 = true
-			case "display_task":
-				foundDisplayTask = true
-			case "exec1":
-				foundExecTask1 = true
-			case "exec2":
-				foundExecTask2 = true
-			}
-		}
+	tasks := []string{}
+	for _, task := range a.VariantsTasks[0].Tasks {
+		tasks = append(tasks, utility.FromStringPtr(task))
 	}
 
-	assert.True(t, foundTask1)
-	assert.True(t, foundTask2)
-	assert.False(t, foundExecTask1)
-	assert.False(t, foundExecTask2)
-	assert.True(t, foundDisplayTask)
+	assert.Contains(t, tasks, "variant_task_1")
+	assert.Contains(t, tasks, "variant_task_2")
+	assert.NotContains(t, tasks, "exec1")
+	assert.NotContains(t, tasks, "exec2")
+	assert.Contains(t, tasks, "display_task")
 }
