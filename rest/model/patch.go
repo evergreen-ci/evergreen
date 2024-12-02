@@ -150,6 +150,7 @@ type APIPatchArgs struct {
 }
 
 // BuildFromService converts from service level structs to an APIPatch.
+// An APIPatch expects the VariantTasks to be populated with only non-execution tasks and display tasks.
 // If args are set, includes identifier, commit queue position, and/or child patches from the DB, if applicable.
 func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) error {
 	apiPatch.buildBasePatch(p)
@@ -243,6 +244,8 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	}
 	apiPatch.Tasks = tasks
 	variantTasks := []VariantTask{}
+
+	// We remove the execution tasks from selected display tasks to avoid duplication.
 	execTasksToRemove := []string{}
 	for _, vt := range p.VariantsTasks {
 		vtasks := make([]*string, 0)
@@ -258,15 +261,12 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 			Tasks: vtasks,
 		})
 	}
-	// Go through all the variant tasks and remove the tasks that are in the execTasksToRemove list.
 	for i, vt := range variantTasks {
 		tasks := []*string{}
 		for j, t := range vt.Tasks {
 			keepTask := true
-			// If the task is in the execTasksToRemove, we
-			// do not keep it in the list of tasks.
 			for _, task := range execTasksToRemove {
-				if t == utility.ToStringPtr(task) {
+				if utility.FromStringPtr(t) == task {
 					keepTask = false
 					break
 				}

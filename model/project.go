@@ -1683,6 +1683,28 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 // unmatched requester (e.g. a patch-only task for a mainline commit).
 func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(patchDoc, patchDoc.GetRequester(), alias, true)
+
+	// Connect the execution tasks to the display tasks.
+	displayTasksToExecTasks := map[string][]string{}
+	for _, bv := range p.BuildVariants {
+		for _, dt := range bv.DisplayTasks {
+			displayTasksToExecTasks[dt.Name] = dt.ExecTasks
+		}
+	}
+
+	vts := []patch.VariantTasks{}
+	for _, vt := range patchDoc.VariantsTasks {
+		dts := []patch.DisplayTask{}
+		for _, dt := range vt.DisplayTasks {
+			if ets, ok := displayTasksToExecTasks[dt.Name]; ok {
+				dt.ExecTasks = ets
+			}
+			dts = append(dts, dt)
+		}
+		vt.DisplayTasks = dts
+		vts = append(vts, vt)
+	}
+	patchDoc.VariantsTasks = vts
 }
 
 // ResolvePatchVTs resolves a list of build variants and tasks into a list of

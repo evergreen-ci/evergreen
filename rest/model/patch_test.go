@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -223,4 +224,66 @@ func TestDownstreamTasks(t *testing.T) {
 	assert.Equal(*a.DownstreamTasks[0].Project, childPatch.Project)
 	assert.Len(a.DownstreamTasks[0].Tasks, 2)
 	assert.Len(a.DownstreamTasks[0].VariantTasks, 1)
+}
+
+func TestPreselectedDisplayTasks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(patch.Collection, model.ProjectRefCollection))
+
+	p := patch.Patch{
+		Id:          mgobson.NewObjectId(),
+		Description: "test",
+		Project:     "mci",
+		Tasks:       []string{"variant_task_1", "variant_task_2", "exec1", "exec2"},
+		VariantsTasks: []patch.VariantTasks{
+			{
+				Variant: "coverage",
+				Tasks:   []string{"variant_task_1", "variant_task_2", "exec1", "exec2"},
+				DisplayTasks: []patch.DisplayTask{
+					{
+						Name:      "display_task",
+						ExecTasks: []string{"exec1", "exec2"},
+					},
+				},
+			},
+		},
+	}
+	require.NoError(t, p.Insert())
+
+	a := APIPatch{}
+	err := a.BuildFromService(p, nil)
+	require.NoError(t, err)
+
+	// We expect the tasks from the patch to be only non-execution tasks + display tasks.
+	require.Len(t, a.VariantsTasks, 1)
+	assert.Len(t, a.VariantsTasks[0].Tasks, 3)
+
+	foundTask1 := false
+	foundTask2 := false
+	foundExecTask1 := false
+	foundExecTask2 := false
+	foundDisplayTask := false
+
+	for _, vt := range a.VariantsTasks {
+		for _, task := range vt.Tasks {
+			fmt.Println("Task:", utility.FromStringPtr(task))
+			switch utility.FromStringPtr(task) {
+			case "variant_task_1":
+				foundTask1 = true
+			case "variant_task_2":
+				foundTask2 = true
+			case "display_task":
+				foundDisplayTask = true
+			case "exec1":
+				foundExecTask1 = true
+			case "exec2":
+				foundExecTask2 = true
+			}
+		}
+	}
+
+	assert.True(t, foundTask1)
+	assert.True(t, foundTask2)
+	assert.False(t, foundExecTask1)
+	assert.False(t, foundExecTask2)
+	assert.True(t, foundDisplayTask)
 }
