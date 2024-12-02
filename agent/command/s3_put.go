@@ -22,6 +22,17 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+)
+
+const (
+	s3PutAttribute = "evergreen.command.s3_put"
+)
+
+var (
+	s3PutBucketAttribute               = fmt.Sprintf("%s.bucket", s3PutAttribute)
+	s3PutTemporaryCredentialsAttribute = fmt.Sprintf("%s.temporary_credentials", s3PutAttribute)
 )
 
 // s3pc is a command to put a resource to an S3 bucket and download it to
@@ -284,6 +295,11 @@ func (s3pc *s3put) Execute(ctx context.Context,
 		logger.Task().Infof("Skipping command '%s' because the command is patch only and this task is not part of a patch.", s3pc.Name())
 		return nil
 	}
+
+	trace.SpanFromContext(ctx).SetAttributes(
+		attribute.String(s3PutBucketAttribute, s3pc.Bucket),
+		attribute.Bool(s3PutTemporaryCredentialsAttribute, s3pc.AwsSessionToken != ""),
+	)
 
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()
