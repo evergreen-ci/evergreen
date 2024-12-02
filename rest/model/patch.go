@@ -314,7 +314,6 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 			for _, task := range vt.Tasks {
 				vtasks = append(vtasks, utility.ToStringPtr(task))
 			}
-			// TODO FIX
 			variantTasks = append(variantTasks, VariantTask{
 				Name:  utility.ToStringPtr(vt.Variant),
 				Tasks: vtasks,
@@ -458,7 +457,6 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 		for _, task := range vt.Tasks {
 			vtasks = append(vtasks, utility.FromStringPtr(task))
 		}
-		// TODO FIX
 		variantTasks = append(variantTasks, patch.VariantTasks{
 			Variant: utility.FromStringPtr(vt.Name),
 			Tasks:   vtasks,
