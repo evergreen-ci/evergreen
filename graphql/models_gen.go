@@ -1046,47 +1046,6 @@ func (e FinderVersion) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-type HostAccessLevel string
-
-const (
-	HostAccessLevelEdit HostAccessLevel = "EDIT"
-	HostAccessLevelView HostAccessLevel = "VIEW"
-)
-
-var AllHostAccessLevel = []HostAccessLevel{
-	HostAccessLevelEdit,
-	HostAccessLevelView,
-}
-
-func (e HostAccessLevel) IsValid() bool {
-	switch e {
-	case HostAccessLevelEdit, HostAccessLevelView:
-		return true
-	}
-	return false
-}
-
-func (e HostAccessLevel) String() string {
-	return string(e)
-}
-
-func (e *HostAccessLevel) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = HostAccessLevel(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid HostAccessLevel", str)
-	}
-	return nil
-}
-
-func (e HostAccessLevel) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
 type HostAllocatorVersion string
 
 const (

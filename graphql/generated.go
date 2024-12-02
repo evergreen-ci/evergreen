@@ -97,7 +97,6 @@ type ResolverRoot interface {
 type DirectiveRoot struct {
 	RedactSecrets                func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireDistroAccess          func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (res interface{}, err error)
-	RequireHostAccess            func(ctx context.Context, obj interface{}, next graphql.Resolver, access HostAccessLevel) (res interface{}, err error)
 	RequireProjectAccess         func(ctx context.Context, obj interface{}, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res interface{}, err error)
 	RequireProjectAdmin          func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
@@ -10649,21 +10648,6 @@ func (ec *executionContext) dir_requireDistroAccess_args(ctx context.Context, ra
 	return args, nil
 }
 
-func (ec *executionContext) dir_requireHostAccess_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 HostAccessLevel
-	if tmp, ok := rawArgs["access"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("access"))
-		arg0, err = ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["access"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -11573,28 +11557,9 @@ func (ec *executionContext) field_Mutation_reprovisionToNew_args(ctx context.Con
 	var arg0 []string
 	if tmp, ok := rawArgs["hostIds"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIds"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireHostAccess == nil {
-				return nil, errors.New("directive requireHostAccess is not implemented")
-			}
-			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.([]string); ok {
-			arg0 = data
-		} else if tmp == nil {
-			arg0 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
+			return nil, err
 		}
 	}
 	args["hostIds"] = arg0
@@ -11607,28 +11572,9 @@ func (ec *executionContext) field_Mutation_restartJasper_args(ctx context.Contex
 	var arg0 []string
 	if tmp, ok := rawArgs["hostIds"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIds"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireHostAccess == nil {
-				return nil, errors.New("directive requireHostAccess is not implemented")
-			}
-			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.([]string); ok {
-			arg0 = data
-		} else if tmp == nil {
-			arg0 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
+			return nil, err
 		}
 	}
 	args["hostIds"] = arg0
@@ -12247,28 +12193,9 @@ func (ec *executionContext) field_Mutation_updateHostStatus_args(ctx context.Con
 	var arg0 []string
 	if tmp, ok := rawArgs["hostIds"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIds"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireHostAccess == nil {
-				return nil, errors.New("directive requireHostAccess is not implemented")
-			}
-			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.([]string); ok {
-			arg0 = data
-		} else if tmp == nil {
-			arg0 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
+			return nil, err
 		}
 	}
 	args["hostIds"] = arg0
@@ -12736,26 +12663,9 @@ func (ec *executionContext) field_Query_hostEvents_args(ctx context.Context, raw
 	var arg0 string
 	if tmp, ok := rawArgs["hostId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "VIEW")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireHostAccess == nil {
-				return nil, errors.New("directive requireHostAccess is not implemented")
-			}
-			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(string); ok {
-			arg0 = data
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+			return nil, err
 		}
 	}
 	args["hostId"] = arg0
@@ -12795,26 +12705,9 @@ func (ec *executionContext) field_Query_host_args(ctx context.Context, rawArgs m
 	var arg0 string
 	if tmp, ok := rawArgs["hostId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "VIEW")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireHostAccess == nil {
-				return nil, errors.New("directive requireHostAccess is not implemented")
-			}
-			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(string); ok {
-			arg0 = data
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+			return nil, err
 		}
 	}
 	args["hostId"] = arg0
@@ -74164,28 +74057,11 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 			it.Expiration = data
 		case "hostId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
-			directive1 := func(ctx context.Context) (interface{}, error) {
-				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
-				if err != nil {
-					return nil, err
-				}
-				if ec.directives.RequireHostAccess == nil {
-					return nil, errors.New("directive requireHostAccess is not implemented")
-				}
-				return ec.directives.RequireHostAccess(ctx, obj, directive0, access)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(string); ok {
-				it.HostID = data
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.HostID = data
 		case "instanceType":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceType"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -78028,28 +77904,11 @@ func (ec *executionContext) unmarshalInputUpdateSpawnHostStatusInput(ctx context
 			it.Action = data
 		case "hostId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
-			directive1 := func(ctx context.Context) (interface{}, error) {
-				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
-				if err != nil {
-					return nil, err
-				}
-				if ec.directives.RequireHostAccess == nil {
-					return nil, errors.New("directive requireHostAccess is not implemented")
-				}
-				return ec.directives.RequireHostAccess(ctx, obj, directive0, access)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(string); ok {
-				it.HostID = data
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.HostID = data
 		case "shouldKeepOff":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("shouldKeepOff"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -96046,16 +95905,6 @@ func (ec *executionContext) marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 		return graphql.Null
 	}
 	return ec._Host(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx context.Context, v interface{}) (HostAccessLevel, error) {
-	var res HostAccessLevel
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx context.Context, sel ast.SelectionSet, v HostAccessLevel) graphql.Marshaler {
-	return v
 }
 
 func (ec *executionContext) marshalNHostAllocatorSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHostAllocatorSettings(ctx context.Context, sel ast.SelectionSet, v model.APIHostAllocatorSettings) graphql.Marshaler {

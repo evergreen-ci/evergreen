@@ -18,9 +18,9 @@ type Query {
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
 
   # hosts
-  host(hostId: String! @requireHostAccess(access: VIEW)): Host
+  host(hostId: String!): Host
   hostEvents(
-    hostId: String!  @requireHostAccess(access: VIEW)
+    hostId: String!
     hostTag: String = ""
     limit: Int = 0
     page: Int = 0
