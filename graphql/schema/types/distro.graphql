@@ -133,8 +133,8 @@ input DistroInput {
   imageId: String!
   isCluster: Boolean!
   isVirtualWorkStation: Boolean!
+  mountpoints: [String!]
   name: String! @requireDistroAccess(access: EDIT)
-  warningNote: String
   note: String!
   plannerSettings: PlannerSettingsInput!
   provider: Provider!
@@ -145,8 +145,8 @@ input DistroInput {
   user: String!
   userSpawnAllowed: Boolean!
   validProjects: [String!]!
+  warningNote: String
   workDir: String!
-  mountpoints: [String!]
 }
 
 input BootstrapSettingsInput {
@@ -205,9 +205,9 @@ input PlannerSettingsInput {
   commitQueueFactor: Int!
   expectedRuntimeFactor: Int!
   generateTaskFactor: Int!
-  numDependentsFactor: Float
   groupVersions: Boolean!
   mainlineTimeInQueueFactor: Int!
+  numDependentsFactor: Float
   patchFactor: Int!
   patchTimeInQueueFactor: Int!
   targetTime: Int!
@@ -285,9 +285,9 @@ type Distro {
   imageId: String!
   isCluster: Boolean!
   isVirtualWorkStation: Boolean!
+  mountpoints: [String!]
   name: String!
   note: String!
-  warningNote: String!
   plannerSettings: PlannerSettings!
   provider: Provider!
   providerSettingsList: [Map!]!
@@ -297,8 +297,8 @@ type Distro {
   user: String!
   userSpawnAllowed: Boolean!
   validProjects: [String!]!
+  warningNote: String!
   workDir: String!
-  mountpoints: [String!]
 }
 
 type BootstrapSettings {
