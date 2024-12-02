@@ -1,0 +1,40 @@
+{
+  "tests": [
+    {
+      "query_file": "distro.graphql",
+      "result": {
+        "data": {
+          "distro": {
+            "adminOnly": false,
+            "bootstrapSettings": {
+              "communication": "LEGACY_SSH",
+              "resourceLimits": {
+                "numFiles": 64000,
+                "numProcesses": -1
+              }
+            },
+            "execUser": "",
+            "name": "rhel71-power8-large",
+            "plannerSettings": {
+              "mainlineTimeInQueueFactor": 0
+            },
+            "provider": "STATIC",
+            "providerSettingsList": [
+              {
+                "hosts": [
+                  {
+                    "name": "rhel71-ppc-1.pic.build.10gen.cc"
+                  },
+                  {
+                    "name": "rhel71-ppc-4.pic.build.10gen.cc"
+                  }
+                ]
+              }
+            ],
+            "user": "mci-exec"
+          }
+        }
+      }
+    }
+  ]
+}
