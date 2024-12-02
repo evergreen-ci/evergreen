@@ -547,8 +547,8 @@ github.com/mongodb/amboy v0.0.0-20220408184825-b2a14e2c511d/go.mod h1:pyAwlkip3M
 github.com/mongodb/amboy v0.0.0-20240718152556-3b1827bc7168 h1:7zT/+PDqVGZnn4KgJcIVdj/GWhpFOE4mD7U9nhQl36Q=
 github.com/mongodb/amboy v0.0.0-20240718152556-3b1827bc7168/go.mod h1:XtYIRjheNi0/pf4NOV1qnyjdDncEpmUqAv4lRMIfBxo=
 github.com/mongodb/anser v0.0.0-20220408164649-99dd61768f4a/go.mod h1:iiM0FTD1XWGSxZPdM3NkCQeZEqatn9lGqwIZy3RwtgE=
-github.com/mongodb/anser v0.0.0-20241127170517-ea9e8f6f8a85 h1:U46FETSU/Kwj96271zWp8eoImozOy8yzKCu+tdnZaWE=
-github.com/mongodb/anser v0.0.0-20241127170517-ea9e8f6f8a85/go.mod h1:StO4IeoZVYpcnJ2rIt9A/+ulq/o39jUxO2cSbfm8sfM=
+github.com/mongodb/anser v0.0.0-20241202171131-c7638e91972a h1:6icVkO50EeHwvdQTIudOtzmJwWbv4PCi31HGb5rDmAg=
+github.com/mongodb/anser v0.0.0-20241202171131-c7638e91972a/go.mod h1:StO4IeoZVYpcnJ2rIt9A/+ulq/o39jUxO2cSbfm8sfM=
 github.com/mongodb/ftdc v0.0.0-20211018154918-80dd1c22e4cf/go.mod h1:qd800FxWJIh4VUqu2d9Cmzdpv1CGXMqdwkntAKbaLlY=
 github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809 h1:CQVEigRr2M/OFIPn+wQWerSadMioMY1cLp22yZX+Ygk=
 github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809/go.mod h1:zz0HHFUU4/TOxl9TW4P9t3y3Ivx+sTWS2nwnhuYYRdw=
