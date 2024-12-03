@@ -3108,16 +3108,15 @@ func (t *Task) makeArchivedTask() *Task {
 // PopulateTestResults populates the task's LocalTestResults field with any
 // test results the task may have. If the results are already populated, this
 // function no-ops.
-func (t *Task) PopulateTestResults() error {
+func (t *Task) PopulateTestResults(ctx context.Context) error {
 	if len(t.LocalTestResults) > 0 {
 		return nil
 	}
 
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	taskTestResults, err := t.GetTestResults(ctx, env, nil)
+	taskTestResults, err := t.GetTestResults(ctx, evergreen.GetEnvironment(), nil)
 	if err != nil {
 		return errors.Wrap(err, "populating test results")
 	}

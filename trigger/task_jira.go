@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -221,8 +222,8 @@ func makeSummaryPrefix(t *task.Task, failed int) string {
 	}
 }
 
-func (j *jiraBuilder) build() (*message.JiraIssue, error) {
-	if err := j.data.Task.PopulateTestResults(); err != nil {
+func (j *jiraBuilder) build(ctx context.Context) (*message.JiraIssue, error) {
+	if err := j.data.Task.PopulateTestResults(ctx); err != nil {
 		return nil, errors.Wrap(err, "populating test results")
 	}
 

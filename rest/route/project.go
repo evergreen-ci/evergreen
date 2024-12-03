@@ -170,7 +170,7 @@ func (h *legacyVersionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding latest version for project '%s'", projRefId))
 	}
 
-	versions, err := data.GetVersionsAndVariants(h.offset, h.limit, proj)
+	versions, err := data.GetVersionsAndVariants(ctx, h.offset, h.limit, proj)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting versions and variants"))
 	}

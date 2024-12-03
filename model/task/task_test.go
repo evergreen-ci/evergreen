@@ -3880,7 +3880,7 @@ func TestArchive(t *testing.T) {
 		assert.Zero(t, dbTask.AbortInfo)
 	}
 
-	checkEventLogHostTaskExecutions := func(t *testing.T, hostID, oldTaskID string, execution int) {
+	checkEventLogHostTaskExecutions := func(t *testing.T, hostID, oldTaskID string, _ int) {
 		dbTask, err := FindOneOldId(oldTaskID)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
@@ -4013,7 +4013,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 		assert.Nil(t, nextExecution)
 	}
 
-	checkEventLogHostTaskExecutions := func(t *testing.T, hostID, oldTaskID string, execution int) {
+	checkEventLogHostTaskExecutions := func(t *testing.T, hostID, oldTaskID string, _ int) {
 		dbTask, err := FindOneOldId(oldTaskID)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)

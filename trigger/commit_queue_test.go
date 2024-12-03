@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -80,7 +81,10 @@ func (s *commitQueueSuite) SetupTest() {
 }
 
 func (s *commitQueueSuite) TestEmailUnescapesDescription() {
-	n, err := s.t.commitQueueOutcome(&s.subs[0])
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	n, err := s.t.commitQueueOutcome(ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 	payload, ok := n.Payload.(*message.Email)

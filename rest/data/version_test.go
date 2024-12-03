@@ -230,7 +230,9 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 	for _, t := range tasks {
 		s.NoError(t.Insert())
 	}
-	results, err := GetVersionsAndVariants(0, 10, &proj)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	results, err := GetVersionsAndVariants(ctx, 0, 10, &proj)
 	s.NoError(err)
 
 	bv1 := results.Rows["bv1"]

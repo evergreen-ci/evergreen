@@ -67,35 +67,38 @@ func (s *spawnHostTriggersSuite) TestSuccessfulSpawn() {
 		Subscriber: event.NewSlackSubscriber("@test.user"),
 	}
 
-	n, err := s.tProvisioning.Process(&sub)
+	ctx, cancel := context.WithCancel(s.ctx)
+	defer cancel()
+
+	n, err := s.tProvisioning.Process(ctx, &sub)
 	s.NotNil(n)
 	s.NoError(err)
 
 	sub.Subscriber = event.NewEmailSubscriber("example@domain.invalid")
-	n, err = s.tProvisioning.Process(&sub)
+	n, err = s.tProvisioning.Process(ctx, &sub)
 	s.NotNil(n)
 	s.NoError(err)
 
 	sub.Subscriber.Type = event.JIRAIssueSubscriberType
-	n, err = s.tProvisioning.Process(&sub)
+	n, err = s.tProvisioning.Process(ctx, &sub)
 	s.Nil(n)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "unsupported subscriber type")
 
 	sub.Subscriber.Type = event.JIRACommentSubscriberType
-	n, err = s.tProvisioning.Process(&sub)
+	n, err = s.tProvisioning.Process(ctx, &sub)
 	s.Nil(n)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "unsupported subscriber type")
 
 	sub.Subscriber.Type = event.GithubPullRequestSubscriberType
-	n, err = s.tProvisioning.Process(&sub)
+	n, err = s.tProvisioning.Process(ctx, &sub)
 	s.Nil(n)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "unsupported subscriber type")
 
 	sub.Subscriber.Type = event.EvergreenWebhookSubscriberType
-	n, err = s.tProvisioning.Process(&sub)
+	n, err = s.tProvisioning.Process(ctx, &sub)
 	s.Nil(n)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "unsupported subscriber type")
@@ -112,35 +115,38 @@ func (s *spawnHostTriggersSuite) TestFailedSpawn() {
 		Subscriber: event.NewSlackSubscriber("@test.user"),
 	}
 
-	n, err := s.tProvisioning.Process(&sub)
+	ctx, cancel := context.WithCancel(s.ctx)
+	defer cancel()
+
+	n, err := s.tProvisioning.Process(ctx, &sub)
 	s.NotNil(n)
 	s.NoError(err)
 
 	sub.Subscriber = event.NewEmailSubscriber("example@domain.invalid")
-	n, err = s.tProvisioning.Process(&sub)
+	n, err = s.tProvisioning.Process(ctx, &sub)
 	s.NotNil(n)
 	s.NoError(err)
 
 	sub.Subscriber.Type = event.JIRAIssueSubscriberType
-	n, err = s.tProvisioning.Process(&sub)
+	n, err = s.tProvisioning.Process(ctx, &sub)
 	s.Nil(n)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "unsupported subscriber type")
 
 	sub.Subscriber.Type = event.JIRACommentSubscriberType
-	n, err = s.tProvisioning.Process(&sub)
+	n, err = s.tProvisioning.Process(ctx, &sub)
 	s.Nil(n)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "unsupported subscriber type")
 
 	sub.Subscriber.Type = event.GithubPullRequestSubscriberType
-	n, err = s.tProvisioning.Process(&sub)
+	n, err = s.tProvisioning.Process(ctx, &sub)
 	s.Nil(n)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "unsupported subscriber type")
 
 	sub.Subscriber.Type = event.EvergreenWebhookSubscriberType
-	n, err = s.tProvisioning.Process(&sub)
+	n, err = s.tProvisioning.Process(ctx, &sub)
 	s.Nil(n)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "unsupported subscriber type")
@@ -156,32 +162,35 @@ func (s *spawnHostTriggersSuite) TestSpawnHostStateChange() {
 		Subscriber: event.NewSlackSubscriber("@test.user"),
 	}
 
-	n, err := s.tStateChange.Process(&sub)
+	ctx, cancel := context.WithCancel(s.ctx)
+	defer cancel()
+
+	n, err := s.tStateChange.Process(ctx, &sub)
 	s.NotNil(n)
 	s.NoError(err)
 
 	sub.Subscriber = event.NewEmailSubscriber("example@domain.invalid")
-	n, err = s.tStateChange.Process(&sub)
+	n, err = s.tStateChange.Process(ctx, &sub)
 	s.NotNil(n)
 	s.NoError(err)
 
 	sub.Subscriber.Type = event.JIRAIssueSubscriberType
-	n, err = s.tStateChange.Process(&sub)
+	n, err = s.tStateChange.Process(ctx, &sub)
 	s.Nil(n)
 	s.Error(err)
 
 	sub.Subscriber.Type = event.JIRACommentSubscriberType
-	n, err = s.tStateChange.Process(&sub)
+	n, err = s.tStateChange.Process(ctx, &sub)
 	s.Nil(n)
 	s.Error(err)
 
 	sub.Subscriber.Type = event.GithubPullRequestSubscriberType
-	n, err = s.tStateChange.Process(&sub)
+	n, err = s.tStateChange.Process(ctx, &sub)
 	s.Nil(n)
 	s.Error(err)
 
 	sub.Subscriber.Type = event.EvergreenWebhookSubscriberType
-	n, err = s.tStateChange.Process(&sub)
+	n, err = s.tStateChange.Process(ctx, &sub)
 	s.Nil(n)
 	s.Error(err)
 }
@@ -200,12 +209,15 @@ func (s *spawnHostTriggersSuite) TestSpawnHostSuccessfulStopForSleepScheduleDoes
 		Subscriber: event.NewSlackSubscriber("@test.user"),
 	}
 
-	n, err := s.tStateChange.Process(&sub)
+	ctx, cancel := context.WithCancel(s.ctx)
+	defer cancel()
+
+	n, err := s.tStateChange.Process(ctx, &sub)
 	s.Nil(n)
 	s.NoError(err, "should suppress notification for successfully stopping spawn host")
 
 	sub.Subscriber = event.NewEmailSubscriber("example@domain.invalid")
-	n, err = s.tStateChange.Process(&sub)
+	n, err = s.tStateChange.Process(ctx, &sub)
 	s.Nil(n, "should suppress notification for successfully stopping spawn host")
 	s.NoError(err)
 }
@@ -224,12 +236,15 @@ func (s *spawnHostTriggersSuite) TestSpawnHostUnsuccessfulStopForSleepScheduleCr
 		Subscriber: event.NewSlackSubscriber("@test.user"),
 	}
 
-	n, err := s.tStateChange.Process(&sub)
+	ctx, cancel := context.WithCancel(s.ctx)
+	defer cancel()
+
+	n, err := s.tStateChange.Process(ctx, &sub)
 	s.NotNil(n, "should create notification for error trying to stop spawn host")
 	s.NoError(err)
 
 	sub.Subscriber = event.NewEmailSubscriber("example@domain.invalid")
-	n, err = s.tStateChange.Process(&sub)
+	n, err = s.tStateChange.Process(ctx, &sub)
 	s.NotNil(n, "should create notification for error trying to stop spawn host")
 	s.NoError(err)
 }
