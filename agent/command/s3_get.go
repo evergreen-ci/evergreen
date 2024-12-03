@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,6 +17,17 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+)
+
+const (
+	s3GetAttribute = "evergreen.command.s3_get"
+)
+
+var (
+	s3GetBucketAttribute               = fmt.Sprintf("%s.bucket", s3GetAttribute)
+	s3GetTemporaryCredentialsAttribute = fmt.Sprintf("%s.temporary_credentials", s3GetAttribute)
 )
 
 // s3get is a command to fetch a resource from an S3 bucket and download it to
@@ -158,6 +170,11 @@ func (c *s3get) Execute(ctx context.Context,
 	if err := c.validateParams(); err != nil {
 		return errors.Wrap(err, "validating expanded params")
 	}
+
+	trace.SpanFromContext(ctx).SetAttributes(
+		attribute.String(s3GetBucketAttribute, c.Bucket),
+		attribute.Bool(s3GetTemporaryCredentialsAttribute, c.AwsSessionToken != ""),
+	)
 
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()
