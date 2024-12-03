@@ -60,20 +60,19 @@ func PerfResultsCount(ctx context.Context, opts GetPerfCountOptions) (*PerfCount
 		}
 
 		return testCount, nil
-	} else {
-		// Otherwise, use Cedar to get the perf results count.
-		data, err := perf.Get(ctx, opts.convert())
-		if err != nil {
-			return nil, errors.Wrap(err, "getting test results from Cedar")
-		}
-
-		testCount := &PerfCount{}
-		if err = json.Unmarshal(data, testCount); err != nil {
-			return nil, errors.Wrap(err, "unmarshaling test results from Cedar")
-		}
-
-		return testCount, nil
 	}
+	// Otherwise, use Cedar to get the perf results count.
+	data, err := perf.Get(ctx, opts.convert())
+	if err != nil {
+		return nil, errors.Wrap(err, "getting test results from Cedar")
+	}
+
+	testCount := &PerfCount{}
+	if err = json.Unmarshal(data, testCount); err != nil {
+		return nil, errors.Wrap(err, "unmarshaling test results from Cedar")
+	}
+
+	return testCount, nil
 }
 
 // LEGACY CEDAR CODE BELOW, ONLY AROUND TO HELP WITH MIGRATION
