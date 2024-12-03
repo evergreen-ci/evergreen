@@ -668,12 +668,13 @@ func (a *APIBucketsConfig) ToService() (interface{}, error) {
 }
 
 type APICedarConfig struct {
-	BaseURL     *string `json:"base_url"`
-	GRPCBaseURL *string `json:"grpc_base_url"`
-	RPCPort     *string `json:"rpc_port"`
-	User        *string `json:"user"`
-	APIKey      *string `json:"api_key"`
-	SPSURL      *string `json:"sps_url"`
+	BaseURL      *string `json:"base_url"`
+	GRPCBaseURL  *string `json:"grpc_base_url"`
+	RPCPort      *string `json:"rpc_port"`
+	User         *string `json:"user"`
+	APIKey       *string `json:"api_key"`
+	SPSURL       *string `json:"sps_url"`
+	SPSKanopyURL *string `json:"sps_kanopy_url"`
 }
 
 func (a *APICedarConfig) BuildFromService(h interface{}) error {
@@ -685,6 +686,7 @@ func (a *APICedarConfig) BuildFromService(h interface{}) error {
 		a.User = utility.ToStringPtr(v.User)
 		a.APIKey = utility.ToStringPtr(v.APIKey)
 		a.SPSURL = utility.ToStringPtr(v.SPSURL)
+		a.SPSKanopyURL = utility.ToStringPtr(v.SPSKanopyURL)
 	default:
 		return errors.Errorf("programmatic error: expected Cedar config but got type %T", h)
 	}
@@ -693,12 +695,13 @@ func (a *APICedarConfig) BuildFromService(h interface{}) error {
 
 func (a *APICedarConfig) ToService() (interface{}, error) {
 	return evergreen.CedarConfig{
-		BaseURL:     utility.FromStringPtr(a.BaseURL),
-		GRPCBaseURL: utility.FromStringPtr(a.GRPCBaseURL),
-		RPCPort:     utility.FromStringPtr(a.RPCPort),
-		User:        utility.FromStringPtr(a.User),
-		APIKey:      utility.FromStringPtr(a.APIKey),
-		SPSURL:      utility.FromStringPtr(a.SPSURL),
+		BaseURL:      utility.FromStringPtr(a.BaseURL),
+		GRPCBaseURL:  utility.FromStringPtr(a.GRPCBaseURL),
+		RPCPort:      utility.FromStringPtr(a.RPCPort),
+		User:         utility.FromStringPtr(a.User),
+		APIKey:       utility.FromStringPtr(a.APIKey),
+		SPSURL:       utility.FromStringPtr(a.SPSURL),
+		SPSKanopyURL: utility.FromStringPtr(a.SPSKanopyURL),
 	}, nil
 }
 

@@ -83,3 +83,4 @@ cedar:
   api_key: "key"
   insecure: true
   sps_url: "http://localhost:8080"
+  sps_kanopy_url: "http://localhost:8080"

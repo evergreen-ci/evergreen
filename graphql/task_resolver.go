@@ -454,11 +454,12 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 		return false, nil
 	}
 	opts := apimodels.GetPerfCountOptions{
-		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.SPSURL,
-		TaskID:    utility.FromStringPtr(obj.Id),
-		Execution: obj.Execution,
+		SPSBaseURL:   evergreen.GetEnvironment().Settings().Cedar.SPSKanopyURL,
+		TaskID:       utility.FromStringPtr(obj.Id),
+		Execution:    obj.Execution,
+		CedarBaseURL: evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 	}
-	if opts.BaseURL == "" {
+	if opts.SPSBaseURL == "" && opts.CedarBaseURL == "" {
 		return false, nil
 	}
 	result, err := apimodels.PerfResultsCount(ctx, opts)

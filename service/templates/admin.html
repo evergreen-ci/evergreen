@@ -1481,8 +1481,12 @@ Admin Settings
 										<input type="text" ng-model="Settings.cedar.rpc_port">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-										<label>SPS URL</label>
+										<label>SPS URL (Vanity, for hosts only)</label>
 										<input type="text" ng-model="Settings.cedar.sps_url">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>SPS Kanopy URL (Kanopy internal DNS, for app servers only)</label>
+										<input type="text" ng-model="Settings.cedar.sps_kanopy_url">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>User</label>

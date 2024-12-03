@@ -16,8 +16,10 @@ type CedarConfig struct {
 	APIKey      string `bson:"api_key" json:"api_key" yaml:"api_key"`
 	// Insecure disables TLS, this should only be used for testing.
 	Insecure bool `bson:"insecure" json:"insecure" yaml:"insecure"`
-	// SPSURL tells Evergreen where the SPS service is.
+	// SPSURL tells Evergreen where the SPS vanity service is. This is only for Evergreen hosts.
 	SPSURL string `bson:"sps_url" json:"sps_url" yaml:"sps_url"`
+	// SPSKanopyURL tells Evergreen where the SPS internal service is. This is only for Evergreen app servers.
+	SPSKanopyURL string `bson:"sps_kanopy_url" json:"sps_kanopy_url" yaml:"sps_kanopy_url"`
 }
 
 var (
@@ -28,6 +30,7 @@ var (
 	cedarConfigAPIKeyKey      = bsonutil.MustHaveTag(CedarConfig{}, "APIKey")
 	cedarConfigInsecureKey    = bsonutil.MustHaveTag(CedarConfig{}, "Insecure")
 	cedarSPSURLKey            = bsonutil.MustHaveTag(CedarConfig{}, "SPSURL")
+	cedarSPSKanopyURLKey      = bsonutil.MustHaveTag(CedarConfig{}, "SPSKanopyURL")
 )
 
 func (*CedarConfig) SectionId() string { return "cedar" }
@@ -46,6 +49,7 @@ func (c *CedarConfig) Set(ctx context.Context) error {
 			cedarConfigAPIKeyKey:      c.APIKey,
 			cedarConfigInsecureKey:    c.Insecure,
 			cedarSPSURLKey:            c.SPSURL,
+			cedarSPSKanopyURLKey:      c.SPSKanopyURL,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
