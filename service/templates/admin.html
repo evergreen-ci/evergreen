@@ -1481,17 +1481,12 @@ Admin Settings
 										<input type="text" ng-model="Settings.cedar.rpc_port">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-										<label>SPS URL</label>
+										<label>SPS URL (Vanity, for hosts only)</label>
 										<input type="text" ng-model="Settings.cedar.sps_url">
 									</md-input-container>
-									<label>Disable Sending Performance Data to Cedar</label>
-									<md-radio-group data-ng-model="Settings.cedar.send_to_cedar_disabled" layout="row">
-										<md-radio-button data-ng-value="false">False</md-radio-button>
-										<md-radio-button data-ng-value="true">True</md-radio-button>
-									</md-radio-group>
 									<md-input-container class="control" style="width:45%;">
-										<label>Send Ratio to Cedar (1/x), 0 is off</label>
-										<input type="number" ng-model="Settings.cedar.send_ratio_sps">
+										<label>SPS Kanopy URL (Kanopy internal DNS, for app servers only)</label>
+										<input type="text" ng-model="Settings.cedar.sps_kanopy_url">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>User</label>

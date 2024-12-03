@@ -453,15 +453,16 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 	if !model.IsPerfEnabledForProject(*obj.ProjectId) {
 		return false, nil
 	}
-	opts := apimodels.GetCedarPerfCountOptions{
-		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		TaskID:    utility.FromStringPtr(obj.Id),
-		Execution: obj.Execution,
+	opts := apimodels.GetPerfCountOptions{
+		SPSBaseURL:   evergreen.GetEnvironment().Settings().Cedar.SPSKanopyURL,
+		TaskID:       utility.FromStringPtr(obj.Id),
+		Execution:    obj.Execution,
+		CedarBaseURL: evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 	}
-	if opts.BaseURL == "" {
+	if opts.SPSBaseURL == "" && opts.CedarBaseURL == "" {
 		return false, nil
 	}
-	result, err := apimodels.CedarPerfResultsCount(ctx, opts)
+	result, err := apimodels.PerfResultsCount(ctx, opts)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("requesting perf data from Cedar: %s", err.Error()))
 	}
