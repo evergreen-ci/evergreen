@@ -823,8 +823,7 @@ The following expansions are available unless a task was from an
 -   `${project_id}` is the project ID the task belongs to (note that for
     later projects, this is the unique hash, whereas for earlier
     projects this is the same as `${project}`. If you aren't sure which
-    you are, you can check using this API route:
-    `https://evergreen.mongodb.com/rest/v2/<project_id>`)
+    you are, you can use the [projects get route](../API/REST-V2-Usage#tag/projects/paths/~1projects~1%7Bproject_id%7D/get)).
 
 The following expansions are available if a task was triggered by an
 inter-project dependency:
