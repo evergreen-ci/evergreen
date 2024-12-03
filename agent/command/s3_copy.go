@@ -29,7 +29,8 @@ const (
 )
 
 var (
-	s3CopyBucketAttribute               = fmt.Sprintf("%s.bucket", s3CopyAttribute)
+	s3CopySourceBucketAttribute         = fmt.Sprintf("%s.source_bucket", s3CopyAttribute)
+	s3CopyDestinationBucketAttribute    = fmt.Sprintf("%s.destination_bucket", s3CopyAttribute)
 	s3CopyTemporaryCredentialsAttribute = fmt.Sprintf("%s.temporary_credentials", s3CopyAttribute)
 )
 
@@ -171,13 +172,15 @@ func (c *s3copy) Execute(ctx context.Context,
 		return errors.Wrap(err, "validating params")
 	}
 
-	buckets := []string{}
+	sourceBuckets, destinationBuckets := []string{}, []string{}
 	for _, s3CopyFile := range c.S3CopyFiles {
-		buckets = append(buckets, s3CopyFile.Source.Bucket, s3CopyFile.Destination.Bucket)
+		sourceBuckets = append(sourceBuckets, s3CopyFile.Source.Bucket)
+		destinationBuckets = append(sourceBuckets, s3CopyFile.Destination.Bucket)
 	}
 
 	trace.SpanFromContext(ctx).SetAttributes(
-		attribute.StringSlice(s3CopyBucketAttribute, buckets),
+		attribute.StringSlice(s3CopySourceBucketAttribute, sourceBuckets),
+		attribute.StringSlice(s3CopyDestinationBucketAttribute, destinationBuckets),
 		attribute.Bool(s3CopyTemporaryCredentialsAttribute, c.AwsSessionToken != ""),
 	)
 
