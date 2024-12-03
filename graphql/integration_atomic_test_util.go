@@ -222,7 +222,7 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 		ID:        evergreen.AllDistrosScope,
 		Name:      "modify host scope",
 		Type:      evergreen.DistroResourceType,
-		Resources: []string{"ubuntu1604-small", "ubuntu1604-large", "localhost", "localhost2", "rhel71-power8-large", "windows-64-vs2015-small", "ubuntu1604-power8-large", "centos6-perf", "macos-1014", "debian92-small", "ubuntu1804-power8-small"},
+		Resources: []string{"ubuntu1604-small", "ubuntu1604-large", "localhost", "localhost2", "rhel71-power8-large", "windows-64-vs2015-small"},
 	}
 	err = roleManager.AddScope(distroScope)
 	require.NoError(t, err)

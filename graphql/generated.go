@@ -97,7 +97,6 @@ type ResolverRoot interface {
 type DirectiveRoot struct {
 	RedactSecrets                func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireDistroAccess          func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (res interface{}, err error)
-	RequireHostAccess            func(ctx context.Context, obj interface{}, next graphql.Resolver, access HostAccessLevel) (res interface{}, err error)
 	RequireProjectAccess         func(ctx context.Context, obj interface{}, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res interface{}, err error)
 	RequireProjectAdmin          func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
@@ -257,6 +256,7 @@ type ComplexityRoot struct {
 		DisableShallowClone   func(childComplexity int) int
 		Disabled              func(childComplexity int) int
 		DispatcherSettings    func(childComplexity int) int
+		ExecUser              func(childComplexity int) int
 		Expansions            func(childComplexity int) int
 		FinderSettings        func(childComplexity int) int
 		HomeVolumeSettings    func(childComplexity int) int
@@ -2771,6 +2771,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Distro.DispatcherSettings(childComplexity), true
+
+	case "Distro.execUser":
+		if e.complexity.Distro.ExecUser == nil {
+			break
+		}
+
+		return e.complexity.Distro.ExecUser(childComplexity), true
 
 	case "Distro.expansions":
 		if e.complexity.Distro.Expansions == nil {
@@ -10641,21 +10648,6 @@ func (ec *executionContext) dir_requireDistroAccess_args(ctx context.Context, ra
 	return args, nil
 }
 
-func (ec *executionContext) dir_requireHostAccess_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 HostAccessLevel
-	if tmp, ok := rawArgs["access"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("access"))
-		arg0, err = ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["access"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -11565,28 +11557,9 @@ func (ec *executionContext) field_Mutation_reprovisionToNew_args(ctx context.Con
 	var arg0 []string
 	if tmp, ok := rawArgs["hostIds"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIds"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireHostAccess == nil {
-				return nil, errors.New("directive requireHostAccess is not implemented")
-			}
-			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.([]string); ok {
-			arg0 = data
-		} else if tmp == nil {
-			arg0 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
+			return nil, err
 		}
 	}
 	args["hostIds"] = arg0
@@ -11599,28 +11572,9 @@ func (ec *executionContext) field_Mutation_restartJasper_args(ctx context.Contex
 	var arg0 []string
 	if tmp, ok := rawArgs["hostIds"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIds"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireHostAccess == nil {
-				return nil, errors.New("directive requireHostAccess is not implemented")
-			}
-			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.([]string); ok {
-			arg0 = data
-		} else if tmp == nil {
-			arg0 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
+			return nil, err
 		}
 	}
 	args["hostIds"] = arg0
@@ -12239,28 +12193,9 @@ func (ec *executionContext) field_Mutation_updateHostStatus_args(ctx context.Con
 	var arg0 []string
 	if tmp, ok := rawArgs["hostIds"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIds"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireHostAccess == nil {
-				return nil, errors.New("directive requireHostAccess is not implemented")
-			}
-			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.([]string); ok {
-			arg0 = data
-		} else if tmp == nil {
-			arg0 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
+			return nil, err
 		}
 	}
 	args["hostIds"] = arg0
@@ -12728,26 +12663,9 @@ func (ec *executionContext) field_Query_hostEvents_args(ctx context.Context, raw
 	var arg0 string
 	if tmp, ok := rawArgs["hostId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "VIEW")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireHostAccess == nil {
-				return nil, errors.New("directive requireHostAccess is not implemented")
-			}
-			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(string); ok {
-			arg0 = data
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+			return nil, err
 		}
 	}
 	args["hostId"] = arg0
@@ -12787,26 +12705,9 @@ func (ec *executionContext) field_Query_host_args(ctx context.Context, rawArgs m
 	var arg0 string
 	if tmp, ok := rawArgs["hostId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "VIEW")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireHostAccess == nil {
-				return nil, errors.New("directive requireHostAccess is not implemented")
-			}
-			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(string); ok {
-			arg0 = data
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+			return nil, err
 		}
 	}
 	args["hostId"] = arg0
@@ -17473,6 +17374,50 @@ func (ec *executionContext) fieldContext_Distro_dispatcherSettings(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Distro_execUser(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Distro_execUser(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExecUser, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Distro_execUser(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Distro_expansions(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Distro_expansions(ctx, field)
 	if err != nil {
@@ -17863,6 +17808,50 @@ func (ec *executionContext) fieldContext_Distro_isVirtualWorkStation(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _Distro_mountpoints(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Distro_mountpoints(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Mountpoints, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Distro_mountpoints(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Distro_name(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Distro_name(ctx, field)
 	if err != nil {
@@ -17939,50 +17928,6 @@ func (ec *executionContext) _Distro_note(ctx context.Context, field graphql.Coll
 }
 
 func (ec *executionContext) fieldContext_Distro_note(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Distro",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Distro_warningNote(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Distro_warningNote(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.WarningNote, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Distro_warningNote(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Distro",
 		Field:      field,
@@ -18413,6 +18358,50 @@ func (ec *executionContext) fieldContext_Distro_validProjects(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Distro_warningNote(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Distro_warningNote(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WarningNote, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Distro_warningNote(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Distro_workDir(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Distro_workDir(ctx, field)
 	if err != nil {
@@ -18445,47 +18434,6 @@ func (ec *executionContext) _Distro_workDir(ctx context.Context, field graphql.C
 }
 
 func (ec *executionContext) fieldContext_Distro_workDir(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Distro",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Distro_mountpoints(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Distro_mountpoints(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Mountpoints, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]string)
-	fc.Result = res
-	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Distro_mountpoints(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Distro",
 		Field:      field,
@@ -25594,6 +25542,8 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 				return ec.fieldContext_Distro_disableShallowClone(ctx, field)
 			case "dispatcherSettings":
 				return ec.fieldContext_Distro_dispatcherSettings(ctx, field)
+			case "execUser":
+				return ec.fieldContext_Distro_execUser(ctx, field)
 			case "expansions":
 				return ec.fieldContext_Distro_expansions(ctx, field)
 			case "finderSettings":
@@ -25610,12 +25560,12 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 				return ec.fieldContext_Distro_isCluster(ctx, field)
 			case "isVirtualWorkStation":
 				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
+			case "mountpoints":
+				return ec.fieldContext_Distro_mountpoints(ctx, field)
 			case "name":
 				return ec.fieldContext_Distro_name(ctx, field)
 			case "note":
 				return ec.fieldContext_Distro_note(ctx, field)
-			case "warningNote":
-				return ec.fieldContext_Distro_warningNote(ctx, field)
 			case "plannerSettings":
 				return ec.fieldContext_Distro_plannerSettings(ctx, field)
 			case "provider":
@@ -25634,10 +25584,10 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 				return ec.fieldContext_Distro_userSpawnAllowed(ctx, field)
 			case "validProjects":
 				return ec.fieldContext_Distro_validProjects(ctx, field)
+			case "warningNote":
+				return ec.fieldContext_Distro_warningNote(ctx, field)
 			case "workDir":
 				return ec.fieldContext_Distro_workDir(ctx, field)
-			case "mountpoints":
-				return ec.fieldContext_Distro_mountpoints(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Distro", field.Name)
 		},
@@ -46274,6 +46224,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_disableShallowClone(ctx, field)
 			case "dispatcherSettings":
 				return ec.fieldContext_Distro_dispatcherSettings(ctx, field)
+			case "execUser":
+				return ec.fieldContext_Distro_execUser(ctx, field)
 			case "expansions":
 				return ec.fieldContext_Distro_expansions(ctx, field)
 			case "finderSettings":
@@ -46290,12 +46242,12 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_isCluster(ctx, field)
 			case "isVirtualWorkStation":
 				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
+			case "mountpoints":
+				return ec.fieldContext_Distro_mountpoints(ctx, field)
 			case "name":
 				return ec.fieldContext_Distro_name(ctx, field)
 			case "note":
 				return ec.fieldContext_Distro_note(ctx, field)
-			case "warningNote":
-				return ec.fieldContext_Distro_warningNote(ctx, field)
 			case "plannerSettings":
 				return ec.fieldContext_Distro_plannerSettings(ctx, field)
 			case "provider":
@@ -46314,10 +46266,10 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_userSpawnAllowed(ctx, field)
 			case "validProjects":
 				return ec.fieldContext_Distro_validProjects(ctx, field)
+			case "warningNote":
+				return ec.fieldContext_Distro_warningNote(ctx, field)
 			case "workDir":
 				return ec.fieldContext_Distro_workDir(ctx, field)
-			case "mountpoints":
-				return ec.fieldContext_Distro_mountpoints(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Distro", field.Name)
 		},
@@ -46454,6 +46406,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_disableShallowClone(ctx, field)
 			case "dispatcherSettings":
 				return ec.fieldContext_Distro_dispatcherSettings(ctx, field)
+			case "execUser":
+				return ec.fieldContext_Distro_execUser(ctx, field)
 			case "expansions":
 				return ec.fieldContext_Distro_expansions(ctx, field)
 			case "finderSettings":
@@ -46470,12 +46424,12 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_isCluster(ctx, field)
 			case "isVirtualWorkStation":
 				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
+			case "mountpoints":
+				return ec.fieldContext_Distro_mountpoints(ctx, field)
 			case "name":
 				return ec.fieldContext_Distro_name(ctx, field)
 			case "note":
 				return ec.fieldContext_Distro_note(ctx, field)
-			case "warningNote":
-				return ec.fieldContext_Distro_warningNote(ctx, field)
 			case "plannerSettings":
 				return ec.fieldContext_Distro_plannerSettings(ctx, field)
 			case "provider":
@@ -46494,10 +46448,10 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_userSpawnAllowed(ctx, field)
 			case "validProjects":
 				return ec.fieldContext_Distro_validProjects(ctx, field)
+			case "warningNote":
+				return ec.fieldContext_Distro_warningNote(ctx, field)
 			case "workDir":
 				return ec.fieldContext_Distro_workDir(ctx, field)
-			case "mountpoints":
-				return ec.fieldContext_Distro_mountpoints(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Distro", field.Name)
 		},
@@ -52546,6 +52500,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 				return ec.fieldContext_Distro_disableShallowClone(ctx, field)
 			case "dispatcherSettings":
 				return ec.fieldContext_Distro_dispatcherSettings(ctx, field)
+			case "execUser":
+				return ec.fieldContext_Distro_execUser(ctx, field)
 			case "expansions":
 				return ec.fieldContext_Distro_expansions(ctx, field)
 			case "finderSettings":
@@ -52562,12 +52518,12 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 				return ec.fieldContext_Distro_isCluster(ctx, field)
 			case "isVirtualWorkStation":
 				return ec.fieldContext_Distro_isVirtualWorkStation(ctx, field)
+			case "mountpoints":
+				return ec.fieldContext_Distro_mountpoints(ctx, field)
 			case "name":
 				return ec.fieldContext_Distro_name(ctx, field)
 			case "note":
 				return ec.fieldContext_Distro_note(ctx, field)
-			case "warningNote":
-				return ec.fieldContext_Distro_warningNote(ctx, field)
 			case "plannerSettings":
 				return ec.fieldContext_Distro_plannerSettings(ctx, field)
 			case "provider":
@@ -52586,10 +52542,10 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 				return ec.fieldContext_Distro_userSpawnAllowed(ctx, field)
 			case "validProjects":
 				return ec.fieldContext_Distro_validProjects(ctx, field)
+			case "warningNote":
+				return ec.fieldContext_Distro_warningNote(ctx, field)
 			case "workDir":
 				return ec.fieldContext_Distro_workDir(ctx, field)
-			case "mountpoints":
-				return ec.fieldContext_Distro_mountpoints(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Distro", field.Name)
 		},
@@ -73768,7 +73724,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "imageId", "isCluster", "isVirtualWorkStation", "name", "warningNote", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "sshOptions", "user", "userSpawnAllowed", "validProjects", "workDir", "mountpoints"}
+	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "imageId", "isCluster", "isVirtualWorkStation", "mountpoints", "name", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "sshOptions", "user", "userSpawnAllowed", "validProjects", "warningNote", "workDir"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -73840,6 +73796,13 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 				return it, err
 			}
 			it.DispatcherSettings = data
+		case "execUser":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("execUser"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExecUser = data
 		case "expansions":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expansions"))
 			data, err := ec.unmarshalNExpansionInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExpansionᚄ(ctx, v)
@@ -73896,6 +73859,13 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 				return it, err
 			}
 			it.IsVirtualWorkstation = data
+		case "mountpoints":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mountpoints"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Mountpoints = data
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚖstring(ctx, v) }
@@ -73922,13 +73892,6 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 				err := fmt.Errorf(`unexpected type %T from directive, should be *string`, tmp)
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
-		case "warningNote":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("warningNote"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.WarningNote = data
 		case "note":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("note"))
 			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
@@ -74003,6 +73966,13 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 				return it, err
 			}
 			it.ValidProjects = data
+		case "warningNote":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("warningNote"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WarningNote = data
 		case "workDir":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workDir"))
 			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
@@ -74010,13 +73980,6 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 				return it, err
 			}
 			it.WorkDir = data
-		case "mountpoints":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mountpoints"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Mountpoints = data
 		}
 	}
 
@@ -74094,28 +74057,11 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 			it.Expiration = data
 		case "hostId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
-			directive1 := func(ctx context.Context) (interface{}, error) {
-				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
-				if err != nil {
-					return nil, err
-				}
-				if ec.directives.RequireHostAccess == nil {
-					return nil, errors.New("directive requireHostAccess is not implemented")
-				}
-				return ec.directives.RequireHostAccess(ctx, obj, directive0, access)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(string); ok {
-				it.HostID = data
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.HostID = data
 		case "instanceType":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceType"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -75474,7 +75420,7 @@ func (ec *executionContext) unmarshalInputPlannerSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"commitQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "numDependentsFactor", "groupVersions", "mainlineTimeInQueueFactor", "patchFactor", "patchTimeInQueueFactor", "targetTime", "version"}
+	fieldsInOrder := [...]string{"commitQueueFactor", "expectedRuntimeFactor", "generateTaskFactor", "groupVersions", "mainlineTimeInQueueFactor", "numDependentsFactor", "patchFactor", "patchTimeInQueueFactor", "targetTime", "version"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -75502,13 +75448,6 @@ func (ec *executionContext) unmarshalInputPlannerSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.GenerateTaskFactor = data
-		case "numDependentsFactor":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("numDependentsFactor"))
-			data, err := ec.unmarshalOFloat2float64(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.NumDependentsFactor = data
 		case "groupVersions":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("groupVersions"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -75523,6 +75462,13 @@ func (ec *executionContext) unmarshalInputPlannerSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.MainlineTimeInQueueFactor = data
+		case "numDependentsFactor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("numDependentsFactor"))
+			data, err := ec.unmarshalOFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NumDependentsFactor = data
 		case "patchFactor":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchFactor"))
 			data, err := ec.unmarshalNInt2int64(ctx, v)
@@ -77958,28 +77904,11 @@ func (ec *executionContext) unmarshalInputUpdateSpawnHostStatusInput(ctx context
 			it.Action = data
 		case "hostId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
-			directive1 := func(ctx context.Context) (interface{}, error) {
-				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
-				if err != nil {
-					return nil, err
-				}
-				if ec.directives.RequireHostAccess == nil {
-					return nil, errors.New("directive requireHostAccess is not implemented")
-				}
-				return ec.directives.RequireHostAccess(ctx, obj, directive0, access)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(string); ok {
-				it.HostID = data
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.HostID = data
 		case "shouldKeepOff":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("shouldKeepOff"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -79920,6 +79849,11 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "execUser":
+			out.Values[i] = ec._Distro_execUser(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "expansions":
 			out.Values[i] = ec._Distro_expansions(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -79960,6 +79894,11 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "mountpoints":
+			out.Values[i] = ec._Distro_mountpoints(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "name":
 			out.Values[i] = ec._Distro_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -79967,11 +79906,6 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "note":
 			out.Values[i] = ec._Distro_note(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "warningNote":
-			out.Values[i] = ec._Distro_warningNote(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -80082,13 +80016,16 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "warningNote":
+			out.Values[i] = ec._Distro_warningNote(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "workDir":
 			out.Values[i] = ec._Distro_workDir(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "mountpoints":
-			out.Values[i] = ec._Distro_mountpoints(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -95968,16 +95905,6 @@ func (ec *executionContext) marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 		return graphql.Null
 	}
 	return ec._Host(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx context.Context, v interface{}) (HostAccessLevel, error) {
-	var res HostAccessLevel
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx context.Context, sel ast.SelectionSet, v HostAccessLevel) graphql.Marshaler {
-	return v
 }
 
 func (ec *executionContext) marshalNHostAllocatorSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHostAllocatorSettings(ctx context.Context, sel ast.SelectionSet, v model.APIHostAllocatorSettings) graphql.Marshaler {

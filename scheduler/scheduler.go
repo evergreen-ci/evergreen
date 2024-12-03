@@ -24,18 +24,18 @@ type TaskPlannerOptions struct {
 
 type TaskPlanner func(*distro.Distro, []task.Task, TaskPlannerOptions) ([]task.Task, error)
 
-func PrioritizeTasks(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
+func PrioritizeTasks(ctx context.Context, d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
 	opts.IncludesDependencies = d.DispatcherSettings.Version == evergreen.DispatcherVersionRevisedWithDependencies
 
 	switch d.PlannerSettings.Version {
 	case evergreen.PlannerVersionTunable:
-		return runTunablePlanner(d, tasks, opts)
+		return runTunablePlanner(ctx, d, tasks, opts)
 	default:
 		return runLegacyPlanner(d, tasks, opts)
 	}
 }
 
-func runTunablePlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
+func runTunablePlanner(ctx context.Context, d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
 	var err error
 
 	tasks, err = PopulateCaches(opts.ID, tasks)
@@ -43,11 +43,10 @@ func runTunablePlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOpti
 		return nil, errors.WithStack(err)
 	}
 
-	plan := PrepareTasksForPlanning(d, tasks).Export()
+	plan := PrepareTasksForPlanning(d, tasks).Export(ctx)
 	info := GetDistroQueueInfo(d.Id, plan, d.GetTargetTime(), opts)
 	info.SecondaryQueue = opts.IsSecondaryQueue
 	info.PlanCreatedAt = opts.StartedAt
-
 	if err = PersistTaskQueue(d.Id, plan, info); err != nil {
 		return nil, errors.WithStack(err)
 	}

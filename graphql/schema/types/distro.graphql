@@ -124,6 +124,7 @@ input DistroInput {
   disabled: Boolean!
   disableShallowClone: Boolean!
   dispatcherSettings: DispatcherSettingsInput!
+  execUser: String
   expansions: [ExpansionInput!]!
   finderSettings: FinderSettingsInput!
   homeVolumeSettings: HomeVolumeSettingsInput!
@@ -132,8 +133,8 @@ input DistroInput {
   imageId: String!
   isCluster: Boolean!
   isVirtualWorkStation: Boolean!
+  mountpoints: [String!]
   name: String! @requireDistroAccess(access: EDIT)
-  warningNote: String
   note: String!
   plannerSettings: PlannerSettingsInput!
   provider: Provider!
@@ -144,8 +145,8 @@ input DistroInput {
   user: String!
   userSpawnAllowed: Boolean!
   validProjects: [String!]!
+  warningNote: String
   workDir: String!
-  mountpoints: [String!]
 }
 
 input BootstrapSettingsInput {
@@ -204,9 +205,9 @@ input PlannerSettingsInput {
   commitQueueFactor: Int!
   expectedRuntimeFactor: Int!
   generateTaskFactor: Int!
-  numDependentsFactor: Float
   groupVersions: Boolean!
   mainlineTimeInQueueFactor: Int!
+  numDependentsFactor: Float
   patchFactor: Int!
   patchTimeInQueueFactor: Int!
   targetTime: Int!
@@ -275,6 +276,7 @@ type Distro {
   disabled: Boolean!
   disableShallowClone: Boolean!
   dispatcherSettings: DispatcherSettings!
+  execUser: String!
   expansions: [Expansion!]!
   finderSettings: FinderSettings!
   homeVolumeSettings: HomeVolumeSettings!
@@ -283,9 +285,9 @@ type Distro {
   imageId: String!
   isCluster: Boolean!
   isVirtualWorkStation: Boolean!
+  mountpoints: [String!]!
   name: String!
   note: String!
-  warningNote: String!
   plannerSettings: PlannerSettings!
   provider: Provider!
   providerSettingsList: [Map!]!
@@ -295,8 +297,8 @@ type Distro {
   user: String!
   userSpawnAllowed: Boolean!
   validProjects: [String!]!
+  warningNote: String!
   workDir: String!
-  mountpoints: [String!]
 }
 
 type BootstrapSettings {

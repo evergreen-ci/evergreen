@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -99,24 +100,24 @@ type TaskDep struct {
 }
 
 type TaskQueueItem struct {
-	Id                  string        `bson:"_id" json:"_id"`
-	IsDispatched        bool          `bson:"dispatched" json:"dispatched"`
-	DisplayName         string        `bson:"display_name" json:"display_name"`
-	Group               string        `bson:"group_name" json:"group_name"`
-	GroupMaxHosts       int           `bson:"group_max_hosts,omitempty" json:"group_max_hosts,omitempty"`
-	GroupIndex          int           `bson:"group_index,omitempty" json:"group_index,omitempty"`
-	Version             string        `bson:"version" json:"version"`
-	BuildVariant        string        `bson:"build_variant" json:"build_variant"`
-	RevisionOrderNumber int           `bson:"order" json:"order"`
-	Requester           string        `bson:"requester" json:"requester"`
-	Revision            string        `bson:"gitspec" json:"gitspec"`
-	Project             string        `bson:"project" json:"project"`
-	ExpectedDuration    time.Duration `bson:"exp_dur" json:"exp_dur"`
-	Priority            int64         `bson:"priority" json:"priority"`
-	PriorityRankValue   int64         `bson:"priority_rank_value" json:"priority_rank_value"`
-	Dependencies        []string      `bson:"dependencies" json:"dependencies"`
-	DependenciesMet     bool          `bson:"dependencies_met" json:"dependencies_met"`
-	ActivatedBy         string        `bson:"activated_by" json:"activated_by"`
+	Id                    string                     `bson:"_id" json:"_id"`
+	IsDispatched          bool                       `bson:"dispatched" json:"dispatched"`
+	DisplayName           string                     `bson:"display_name" json:"display_name"`
+	Group                 string                     `bson:"group_name" json:"group_name"`
+	GroupMaxHosts         int                        `bson:"group_max_hosts,omitempty" json:"group_max_hosts,omitempty"`
+	GroupIndex            int                        `bson:"group_index,omitempty" json:"group_index,omitempty"`
+	Version               string                     `bson:"version" json:"version"`
+	BuildVariant          string                     `bson:"build_variant" json:"build_variant"`
+	RevisionOrderNumber   int                        `bson:"order" json:"order"`
+	Requester             string                     `bson:"requester" json:"requester"`
+	Revision              string                     `bson:"gitspec" json:"gitspec"`
+	Project               string                     `bson:"project" json:"project"`
+	ExpectedDuration      time.Duration              `bson:"exp_dur" json:"exp_dur"`
+	Priority              int64                      `bson:"priority" json:"priority"`
+	SortingValueBreakdown task.SortingValueBreakdown `bson:"sorting_value_breakdown" json:"sorting_value_breakdown"`
+	Dependencies          []string                   `bson:"dependencies" json:"dependencies"`
+	DependenciesMet       bool                       `bson:"dependencies_met" json:"dependencies_met"`
+	ActivatedBy           string                     `bson:"activated_by" json:"activated_by"`
 }
 
 // must not no-lint these values

@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -19,6 +20,18 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+)
+
+const (
+	s3CopyAttribute = "evergreen.command.s3_copy"
+)
+
+var (
+	s3CopySourceBucketAttribute         = fmt.Sprintf("%s.source_bucket", s3CopyAttribute)
+	s3CopyDestinationBucketAttribute    = fmt.Sprintf("%s.destination_bucket", s3CopyAttribute)
+	s3CopyTemporaryCredentialsAttribute = fmt.Sprintf("%s.temporary_credentials", s3CopyAttribute)
 )
 
 const (
@@ -158,6 +171,18 @@ func (c *s3copy) Execute(ctx context.Context,
 	if err := c.validate(); err != nil {
 		return errors.Wrap(err, "validating params")
 	}
+
+	sourceBuckets, destinationBuckets := []string{}, []string{}
+	for _, s3CopyFile := range c.S3CopyFiles {
+		sourceBuckets = append(sourceBuckets, s3CopyFile.Source.Bucket)
+		destinationBuckets = append(sourceBuckets, s3CopyFile.Destination.Bucket)
+	}
+
+	trace.SpanFromContext(ctx).SetAttributes(
+		attribute.StringSlice(s3CopySourceBucketAttribute, sourceBuckets),
+		attribute.StringSlice(s3CopyDestinationBucketAttribute, destinationBuckets),
+		attribute.Bool(s3CopyTemporaryCredentialsAttribute, c.AwsSessionToken != ""),
+	)
 
 	errChan := make(chan error)
 	go func() {

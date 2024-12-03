@@ -27,7 +27,6 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/otel"
@@ -354,23 +353,22 @@ func getCollectionName(command bson.Raw) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "getting element value")
 	}
-	if v.Type != bsontype.String {
+	if v.Type != bson.TypeString {
 		return "", errors.Errorf("element value was of unexpected type '%s'", v.Type)
 	}
 	return v.StringValue(), nil
 }
 
 // redactSensitiveCollections satisfies the apm.CommandTransformer interface.
-// Returns an empty string when the command is a CRUD command on a sensitive collection
+// Returns nil when the command is a CRUD command on a sensitive collection
 // or if we can't determine the collection the command is on.
-func redactSensitiveCollections(command bson.Raw) string {
+func redactSensitiveCollections(command bson.Raw) bson.Raw {
 	collectionName, err := getCollectionName(command)
 	if err != nil || utility.StringSliceContains(sensitiveCollections, collectionName) {
-		return ""
+		return nil
 	}
 
-	b, _ := bson.MarshalExtJSON(command, false, false)
-	return string(b)
+	return command
 }
 
 func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace.Tracer) error {

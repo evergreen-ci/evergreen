@@ -313,7 +313,7 @@ func checkAndSetProjectVarsSynced(t *testing.T, projRef *model.ProjectRef, isRep
 
 func checkParametersNamespacedByProject(t *testing.T, vars model.ProjectVars) {
 	projectID := vars.Id
-	commonAndProjectIDPrefix := fmt.Sprintf("/%s/%s/", strings.TrimSuffix(strings.TrimPrefix(evergreen.GetEnvironment().Settings().Providers.AWS.ParameterStore.Prefix, "/"), "/"), projectID)
+	commonAndProjectIDPrefix := fmt.Sprintf("/%s/%s/", strings.TrimSuffix(strings.TrimPrefix(evergreen.GetEnvironment().Settings().Providers.AWS.ParameterStore.Prefix, "/"), "/"), model.GetVarsParameterPath(projectID))
 	for _, pm := range vars.Parameters {
 		assert.True(t, strings.HasPrefix(pm.ParameterName, commonAndProjectIDPrefix), "parameter name '%s' should have standard prefix '%s'", pm.ParameterName, commonAndProjectIDPrefix)
 	}
@@ -754,8 +754,8 @@ func TestRequestS3Creds(t *testing.T) {
 	target := n[0].Subscriber.Target.(*event.JIRAIssueSubscriber)
 	assert.Equal(t, "BUILD", target.Project)
 	payload := n[0].Payload.(*message.JiraIssue)
-	summary := "Create AWS key for s3 uploads for 'identifier' project"
-	description := "Could you create an s3 key for the new [identifier|/project/identifier/settings/general] project?"
+	summary := "Create AWS bucket for s3 uploads for 'identifier' project"
+	description := "Could you create an s3 bucket and role arn for the new [identifier|/project/identifier/settings/general] project?"
 	assert.Equal(t, "BUILD", payload.Project)
 	assert.Equal(t, summary, payload.Summary)
 	assert.Equal(t, description, payload.Description)

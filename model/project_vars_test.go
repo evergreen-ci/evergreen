@@ -756,60 +756,67 @@ func TestAWSVars(t *testing.T) {
 func TestConvertVarToParam(t *testing.T) {
 	t.Run("ReturnsNewParamNameForValidVarNameAndValue", func(t *testing.T) {
 		const (
-			varName  = "var_name"
-			varValue = "var_value"
+			varName   = "var_name"
+			varValue  = "var_value"
+			projectID = "project_id"
 		)
-		paramName, paramValue, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
+		paramName, paramValue, err := convertVarToParam(projectID, ParameterMappings{}, varName, varValue)
 		require.NoError(t, err)
-		assert.Equal(t, "project_id/var_name", paramName, "new parameter name should include project ID prefix")
+		assert.Equal(t, fmt.Sprintf("%s/%s", GetVarsParameterPath(projectID), varName), paramName, "new parameter name should include project ID prefix")
 		assert.Equal(t, varValue, paramValue, "variable value is valid and should be unchanged")
 	})
 	t.Run("ReturnsValidParamNameForVarContainingDisallowedAWSPrefix", func(t *testing.T) {
 		const (
-			varName  = "aws_secret"
-			varValue = "super_secret"
+			varName   = "aws_secret"
+			varValue  = "super_secret"
+			projectID = "project_id"
 		)
-		paramName, paramValue, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
+		paramName, paramValue, err := convertVarToParam(projectID, ParameterMappings{}, varName, varValue)
 		require.NoError(t, err)
-		assert.Equal(t, "project_id/_aws_secret", paramName, "new parameter name should prevent invalid 'aws' prefix from appearing in basename")
+		assert.Equal(t, fmt.Sprintf("%s/_%s", GetVarsParameterPath(projectID), varName), paramName, "new parameter name should prevent invalid 'aws' prefix from appearing in basename")
 		assert.Equal(t, varValue, paramValue, "parameter value should match variable value because variable value is valid")
 	})
 	t.Run("ReturnsValidParamNameForVarContainingDisallowedSSMPrefix", func(t *testing.T) {
 		const (
-			varName  = "ssm_secret"
-			varValue = "super_secret"
+			varName   = "ssm_secret"
+			varValue  = "super_secret"
+			projectID = "project_id"
 		)
-		paramName, paramValue, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
+		paramName, paramValue, err := convertVarToParam(projectID, ParameterMappings{}, varName, varValue)
 		require.NoError(t, err)
-		assert.Equal(t, "project_id/_ssm_secret", paramName, "new parameter name should prevent invalid 'ssm' prefix from appearing in basename")
+		assert.Equal(t, fmt.Sprintf("%s/_%s", GetVarsParameterPath(projectID), varName), paramName, "new parameter name should prevent invalid 'ssm' prefix from appearing in basename")
 		assert.Equal(t, varValue, paramValue, "parameter value should match variable value because variable value is valid")
 	})
 	t.Run("ReturnsExistingParameterNameAndNewVarValueForVarWithExistingParameter", func(t *testing.T) {
 		const (
-			varName           = "var_name"
-			varValue          = "var_value"
-			existingParamName = "/prefix/project_id/var_name"
+			varName   = "var_name"
+			varValue  = "var_value"
+			projectID = "project_id"
 		)
+		existingParamName := fmt.Sprintf("/prefix/%s/%s", GetVarsParameterPath(projectID), varName)
 		pm := ParameterMappings{
 			{
 				Name:          varName,
 				ParameterName: existingParamName,
 			},
 		}
-		paramName, paramValue, err := convertVarToParam("project_id", pm, varName, varValue)
+		paramName, paramValue, err := convertVarToParam(projectID, pm, varName, varValue)
 		require.NoError(t, err)
 		assert.Equal(t, existingParamName, paramName, "should return already-existing parameter name")
 		assert.Equal(t, varValue, paramValue, "parameter value should match variable value")
 	})
 	t.Run("ReturnsNewParameterNameAndCompressedParameterValueWhenVarValueExceedsLimit", func(t *testing.T) {
-		const varName = "var_name"
+		const (
+			varName   = "var_name"
+			projectID = "project_id"
+		)
 
 		longVarValue := strings.Repeat("abc", parameterstore.ParamValueMaxLength)
 		assert.Greater(t, len(longVarValue), parameterstore.ParamValueMaxLength)
 
-		paramName, paramValue, err := convertVarToParam("project_id", ParameterMappings{}, varName, longVarValue)
+		paramName, paramValue, err := convertVarToParam(projectID, ParameterMappings{}, varName, longVarValue)
 		require.NoError(t, err)
-		assert.Equal(t, "project_id/var_name.gz", paramName, "should include project ID prefix and gzip extension to indicate the value was compressed")
+		assert.Equal(t, fmt.Sprintf("%s/%s.gz", GetVarsParameterPath(projectID), varName), paramName, "should include project ID prefix and gzip extension to indicate the value was compressed")
 		assert.NotEqual(t, longVarValue, paramValue, "compressed value should not match original variable value")
 
 		gzr, err := gzip.NewReader(strings.NewReader(paramValue))
@@ -820,9 +827,10 @@ func TestConvertVarToParam(t *testing.T) {
 	})
 	t.Run("ReturnsNewParameterNameAndCompressedParameterValueWhenLengthOfExistingVarIncreasesBeyondLimit", func(t *testing.T) {
 		const (
-			varName           = "var_name"
-			existingParamName = "/prefix/project_id/var_name"
+			varName   = "var_name"
+			projectID = "project_id"
 		)
+		existingParamName := fmt.Sprintf("/prefix/%s/%s", GetVarsParameterPath(projectID), varName)
 		pm := ParameterMappings{
 			{
 				Name:          varName,
@@ -833,10 +841,10 @@ func TestConvertVarToParam(t *testing.T) {
 		longVarValue := strings.Repeat("abc", parameterstore.ParamValueMaxLength)
 		assert.Greater(t, len(longVarValue), parameterstore.ParamValueMaxLength)
 
-		paramName, paramValue, err := convertVarToParam("project_id", pm, varName, longVarValue)
+		paramName, paramValue, err := convertVarToParam(projectID, pm, varName, longVarValue)
 		require.NoError(t, err)
 		assert.NotEqual(t, existingParamName, paramName)
-		assert.Equal(t, existingParamName+gzipCompressedParamExtension, paramName, "project variable that was previously short but now is long enoguh to require compression should have its parameter name changed")
+		assert.Equal(t, fmt.Sprintf("%s.gz", existingParamName), paramName, "project variable that was previously short but now is long enough to require compression should have its parameter name changed")
 		assert.NotEqual(t, longVarValue, paramValue)
 
 		gzr, err := gzip.NewReader(strings.NewReader(paramValue))
@@ -847,51 +855,58 @@ func TestConvertVarToParam(t *testing.T) {
 	})
 	t.Run("ReturnsErrorForEmptyVariableName", func(t *testing.T) {
 		const (
-			varName  = ""
-			varValue = "var_value"
+			varName   = ""
+			varValue  = "var_value"
+			projectID = "project_id"
 		)
-		_, _, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
+		_, _, err := convertVarToParam(projectID, ParameterMappings{}, varName, varValue)
 		assert.Error(t, err, "should not allow variable with empty name")
 	})
 	t.Run("ReturnsErrorForEmptyVariableValue", func(t *testing.T) {
 		const (
-			varName  = "var_name"
-			varValue = ""
+			varName   = "var_name"
+			varValue  = ""
+			projectID = "project_id"
 		)
-		_, _, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
+		_, _, err := convertVarToParam(projectID, ParameterMappings{}, varName, varValue)
 		assert.Error(t, err, "should not allow variable with empty value")
 	})
 	t.Run("ReturnsErrorForVariableNameEndingInGzipExtension", func(t *testing.T) {
 		const (
-			varName  = "var_name.gz"
-			varValue = "var_value"
+			varName   = "var_name.gz"
+			varValue  = "var_value"
+			projectID = "project_id"
 		)
-		_, _, err := convertVarToParam("project_id", ParameterMappings{}, varName, varValue)
+		_, _, err := convertVarToParam(projectID, ParameterMappings{}, varName, varValue)
 		assert.Error(t, err, "should not allow variable with gzip extension")
 	})
 	t.Run("ReturnsErrorForVarValueThatExceedsMaxLengthAfterCompression", func(t *testing.T) {
-		const varName = "var_name"
+		const (
+			varName   = "var_name"
+			projectID = "project_id"
+		)
 		// Since this is a purely random string, there's no realistic way to
 		// compress it to fit within the max length limit.
 		longVarValue := utility.MakeRandomString(10 * parameterstore.ParamValueMaxLength)
 		assert.Greater(t, len(longVarValue), parameterstore.ParamValueMaxLength)
 
-		_, _, err := convertVarToParam("project_id", ParameterMappings{}, varName, longVarValue)
+		_, _, err := convertVarToParam(projectID, ParameterMappings{}, varName, longVarValue)
 		assert.Error(t, err)
 	})
 	t.Run("ReturnsErrorForNewParameterThatWouldConflictWithExistingParameter", func(t *testing.T) {
 		const (
-			varName  = "aws_secret"
-			varValue = "super_secret"
+			varName   = "aws_secret"
+			varValue  = "super_secret"
+			projectID = "project_id"
 		)
 		pm := ParameterMappings{
 			{
 				Name:          "_aws_secret",
-				ParameterName: "/prefix/project_id/_aws_secret",
+				ParameterName: fmt.Sprintf("/prefix/%s/_%s", GetVarsParameterPath(projectID), varName),
 			},
 		}
 
-		_, _, err := convertVarToParam("project_id", pm, varName, varValue)
+		_, _, err := convertVarToParam(projectID, pm, varName, varValue)
 		assert.Error(t, err, "should not allow creation of new parameter whose name conflicts with an already-existing parameter")
 	})
 }
@@ -901,8 +916,9 @@ func TestConvertParamToVar(t *testing.T) {
 		const (
 			varName   = "var_name"
 			varValue  = "var_value"
-			paramName = "/prefix/project_id/var_name"
+			projectID = "project_id"
 		)
+		paramName := fmt.Sprintf("/prefix/%s/%s", GetVarsParameterPath(projectID), varName)
 		pm := ParameterMappings{
 			{
 				Name:          varName,
@@ -918,8 +934,9 @@ func TestConvertParamToVar(t *testing.T) {
 		const (
 			varName   = "aws_secret"
 			varValue  = "super_secret"
-			paramName = "/prefix/project_id/_aws_secret"
+			projectID = "project_Id"
 		)
+		paramName := fmt.Sprintf("/prefix/%s/_%s", GetVarsParameterPath(projectID), varName)
 		pm := ParameterMappings{
 			{
 				Name:          varName,
@@ -932,10 +949,14 @@ func TestConvertParamToVar(t *testing.T) {
 		assert.Equal(t, varValue, varValueFromParam, "should return original variable value")
 	})
 	t.Run("ReturnsErrorForVariableMissingParameterMapping", func(t *testing.T) {
+		const (
+			varName   = "var_name"
+			projectID = "project_id"
+		)
 		pm := ParameterMappings{
 			{
-				Name:          "var_name",
-				ParameterName: "/prefix/project_id/var_name",
+				Name:          varName,
+				ParameterName: fmt.Sprintf("/prefix/%s/%s", GetVarsParameterPath(projectID), varName),
 			},
 		}
 		varNameFromParam, varValueFromParam, err := convertParamToVar(pm, "some_other_var_name", "some_other_var_value")
@@ -945,8 +966,10 @@ func TestConvertParamToVar(t *testing.T) {
 	})
 	t.Run("ReturnsErrorForParameterThatMapsToEmptyVariable", func(t *testing.T) {
 		const (
-			paramName = "/prefix/project_id/var_name"
+			projectID = "project_id"
+			varName   = "var_name"
 		)
+		paramName := fmt.Sprintf("/prefix/%s/%s", GetVarsParameterPath(projectID), varName)
 		pm := ParameterMappings{
 			{
 				ParameterName: paramName,
@@ -960,8 +983,9 @@ func TestConvertParamToVar(t *testing.T) {
 	t.Run("DecompressesParameterValueToOriginalVariableValue", func(t *testing.T) {
 		const (
 			varName   = "var_name"
-			paramName = "/prefix/project_id/var_name.gz"
+			projectID = "project_id"
 		)
+		paramName := fmt.Sprintf("/prefix/%s/%s.gz", GetVarsParameterPath(projectID), varName)
 
 		longVarValue := strings.Repeat("abc", parameterstore.ParamValueMaxLength)
 		assert.Greater(t, len(longVarValue), parameterstore.ParamValueMaxLength)

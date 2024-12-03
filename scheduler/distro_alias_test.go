@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -41,6 +42,9 @@ func TestDistroAliases(t *testing.T) {
 	require.NoError(t, db.Clear(model.VersionCollection))
 	require.NoError(t, (&model.Version{Id: "foo"}).Insert())
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	t.Run("VerifyPrimaryQueue", func(t *testing.T) {
 		distroOne := &distro.Distro{
 			Id: "one",
@@ -50,7 +54,7 @@ func TestDistroAliases(t *testing.T) {
 			require.NoError(t, db.Clear(model.TaskQueuesCollection))
 
 			distroOne.PlannerSettings.Version = evergreen.PlannerVersionTunable
-			output, err := PrioritizeTasks(distroOne, tasks, TaskPlannerOptions{ID: "tunable-0"})
+			output, err := PrioritizeTasks(ctx, distroOne, tasks, TaskPlannerOptions{ID: "tunable-0"})
 			require.NoError(t, err)
 			require.Len(t, output, 2)
 			require.Equal(t, "one", output[0].Id)
@@ -68,7 +72,7 @@ func TestDistroAliases(t *testing.T) {
 			require.NoError(t, db.Clear(model.TaskQueuesCollection))
 
 			distroOne.PlannerSettings.Version = evergreen.PlannerVersionLegacy
-			output, err := PrioritizeTasks(distroOne, tasks, TaskPlannerOptions{ID: "legacy-1"})
+			output, err := PrioritizeTasks(ctx, distroOne, tasks, TaskPlannerOptions{ID: "legacy-1"})
 			require.NoError(t, err)
 			require.Len(t, output, 2)
 			require.Equal(t, "one", output[0].Id)
@@ -96,7 +100,7 @@ func TestDistroAliases(t *testing.T) {
 			require.NoError(t, db.Clear(model.TaskSecondaryQueuesCollection))
 
 			distroTwo.PlannerSettings.Version = evergreen.PlannerVersionTunable
-			output, err := PrioritizeTasks(distroTwo, tasks, TaskPlannerOptions{ID: "tunable-0", IsSecondaryQueue: true})
+			output, err := PrioritizeTasks(ctx, distroTwo, tasks, TaskPlannerOptions{ID: "tunable-0", IsSecondaryQueue: true})
 			require.NoError(t, err)
 			require.Len(t, output, 2)
 			require.Equal(t, "one", output[0].Id)
@@ -115,7 +119,7 @@ func TestDistroAliases(t *testing.T) {
 			require.NoError(t, db.Clear(model.TaskSecondaryQueuesCollection))
 
 			distroTwo.PlannerSettings.Version = evergreen.PlannerVersionLegacy
-			output, err := PrioritizeTasks(distroTwo, tasks, TaskPlannerOptions{ID: "legacy-0", IsSecondaryQueue: true})
+			output, err := PrioritizeTasks(ctx, distroTwo, tasks, TaskPlannerOptions{ID: "legacy-0", IsSecondaryQueue: true})
 			require.NoError(t, err)
 			require.Len(t, output, 2)
 			require.Equal(t, "one", output[0].Id)

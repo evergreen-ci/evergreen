@@ -1076,7 +1076,8 @@ func checkAndSetProjectVarsSynced(t *testing.T, projRef *ProjectRef, isRepoRef b
 // project vars all include the project ID as a prefix.
 func checkParametersNamespacedByProject(t *testing.T, vars ProjectVars) {
 	projectID := vars.Id
-	commonAndProjectIDPrefix := fmt.Sprintf("/%s/%s/", strings.TrimSuffix(strings.TrimPrefix(evergreen.GetEnvironment().Settings().Providers.AWS.ParameterStore.Prefix, "/"), "/"), projectID)
+
+	commonAndProjectIDPrefix := fmt.Sprintf("/%s/%s/", strings.TrimSuffix(strings.TrimPrefix(evergreen.GetEnvironment().Settings().Providers.AWS.ParameterStore.Prefix, "/"), "/"), GetVarsParameterPath(projectID))
 	for _, pm := range vars.Parameters {
 		assert.True(t, strings.HasPrefix(pm.ParameterName, commonAndProjectIDPrefix), "parameter name '%s' should have standard prefix '%s'", pm.ParameterName, commonAndProjectIDPrefix)
 	}

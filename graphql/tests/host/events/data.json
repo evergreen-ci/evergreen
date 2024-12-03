@@ -2,10 +2,7 @@
   "hosts": [
     {
       "_id": "i-0f81a2d39744003dd",
-      "tag": "evg-ubuntu1604-large-20200720180108-7236635000257959768",
-      "distro": {
-        "_id": "rhel71-power8-large"
-      }
+      "tag": "evg-ubuntu1604-large-20200720180108-7236635000257959768"
     }
   ],
   "events": [

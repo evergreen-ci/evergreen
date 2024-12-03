@@ -901,6 +901,39 @@ func TestHostEndTask(t *testing.T) {
 			require.NotZero(t, foundTask)
 			require.Equal(t, evergreen.TaskSystemUnresponse, foundTask.GetDisplayStatus())
 		},
+		"SkipQuarantiningRecentlyProvisionedStaticHostWithFailures": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			h, err := host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+
+			for i := 0; i < 10; i++ {
+				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemFailed)
+			}
+			require.NoError(t, host.UpdateOne(ctx, host.ById(hostId), bson.M{
+				"$set": bson.M{
+					host.ProviderKey:      evergreen.ProviderNameStatic,
+					host.ProvisionTimeKey: time.Now(), // i.e. this host was re-provisioned after all of these failures
+				},
+			}))
+
+			details := &apimodels.TaskEndDetail{
+				Status: evergreen.TaskFailed,
+				Type:   evergreen.CommandTypeSystem,
+			}
+			handler.details = *details
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			require.Equal(t, http.StatusOK, resp.Status())
+			h, err = host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			assert.NotEqual(t, evergreen.HostQuarantined, h.Status)
+
+			foundTask, err := task.FindOneId(handler.taskID)
+			require.NoError(t, err)
+			require.NotZero(t, foundTask)
+			require.Equal(t, evergreen.TaskSystemFailed, foundTask.GetDisplayStatus())
+		},
 		"DecommissionsDynamicHostWithRepeatedSystemFailedTasks": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
 			h, err := host.FindOneId(ctx, hostId)
 			require.NoError(t, err)
@@ -1000,6 +1033,45 @@ func TestHostEndTask(t *testing.T) {
 			require.NotZero(t, foundTask)
 			require.Equal(t, evergreen.TaskSystemUnresponse, foundTask.GetDisplayStatus())
 		},
+		"SkipDecommissioningRecentlyProvisionedDynamicHostWithFailures": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+			h, err := host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			for i := 0; i < 8; i++ {
+				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
+			}
+
+			require.NoError(t, host.UpdateOne(ctx, host.ById(hostId), bson.M{
+				"$set": bson.M{
+					host.ProviderKey:      evergreen.ProviderNameEc2Fleet,
+					host.ProvisionTimeKey: time.Now(), // i.e. this host was re-provisioned before two of these failures
+				},
+			}))
+
+			for i := 8; i < 10; i++ {
+				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
+			}
+
+			details := &apimodels.TaskEndDetail{
+				Status:      evergreen.TaskFailed,
+				Type:        evergreen.CommandTypeSystem,
+				TimedOut:    true,
+				Description: evergreen.TaskDescriptionHeartbeat,
+			}
+			handler.details = *details
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			require.Equal(t, http.StatusOK, resp.Status())
+			h, err = host.FindOneId(ctx, hostId)
+			require.NoError(t, err)
+			require.NotZero(t, h)
+			assert.NotEqual(t, evergreen.HostDecommissioned, h.Status)
+
+			foundTask, err := task.FindOneId(handler.taskID)
+			require.NoError(t, err)
+			require.NotZero(t, foundTask)
+			require.Equal(t, evergreen.TaskSystemUnresponse, foundTask.GetDisplayStatus())
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -1040,6 +1112,7 @@ func TestHostEndTask(t *testing.T) {
 			}
 			require.NoError(t, task1.Insert())
 
+			now := time.Now()
 			sampleHost := host.Host{
 				Id: hostId,
 				Distro: distro.Distro{
@@ -1051,6 +1124,7 @@ func TestHostEndTask(t *testing.T) {
 				Status:                evergreen.HostRunning,
 				AgentRevision:         evergreen.AgentVersion,
 				LastTaskCompletedTime: time.Now().Add(-20 * time.Minute).Round(time.Second),
+				ProvisionTime:         now.Add(-time.Hour), // provisioned before any of the events
 			}
 			require.NoError(t, sampleHost.Insert(ctx))
 

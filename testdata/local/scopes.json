@@ -14,4 +14,4 @@
 { "_id" : "localhost", "name" : "localhost distro", "type" : "distro", "resources" : [ "localhost" ] }
 { "_id" : "localhost2", "name" : "localhost2 distro", "type" : "distro", "resources" : [ "localhost2" ] }
 { "_id" : "super", "name" : "super user", "type" : "super_user", "resources" : [ "super_user" ] }
-{ "_id" : "all_distros", "name" : "all distros"  , "type" : "distro"  , "resources":["ubuntu1604-power8-large", "ubuntu2204-workstation-x86_64", "centos6-perf", "ubuntu1804-power8-small", "localhost", "ubuntu1804-workstation", "localhost2", "rhel71-power8-large", "windows-64-vs2015-small", "ubuntu1604-container-test", "ubuntu1604-parent", "archlinux-test", "ubuntu1604-small", "ubuntu1604-large", "debian92-small", "macos-1014"]}
+{ "_id" : "all_distros", "name" : "all distros"  , "type" : "distro"  , "resources":["localhost", "ubuntu1804-workstation", "localhost2", "rhel71-power8-large", "windows-64-vs2015-small", "ubuntu1604-container-test", "ubuntu1604-parent", "archlinux-test", "ubuntu1604-small", "ubuntu1604-large"]}

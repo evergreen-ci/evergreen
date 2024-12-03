@@ -8,6 +8,7 @@ query {
         numProcesses
       }
     }
+    execUser
     name
     plannerSettings {
       mainlineTimeInQueueFactor

@@ -22,6 +22,17 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+)
+
+const (
+	s3PutAttribute = "evergreen.command.s3_put"
+)
+
+var (
+	s3PutBucketAttribute               = fmt.Sprintf("%s.bucket", s3PutAttribute)
+	s3PutTemporaryCredentialsAttribute = fmt.Sprintf("%s.temporary_credentials", s3PutAttribute)
 )
 
 // s3pc is a command to put a resource to an S3 bucket and download it to
@@ -285,6 +296,11 @@ func (s3pc *s3put) Execute(ctx context.Context,
 		return nil
 	}
 
+	trace.SpanFromContext(ctx).SetAttributes(
+		attribute.String(s3PutBucketAttribute, s3pc.Bucket),
+		attribute.Bool(s3PutTemporaryCredentialsAttribute, s3pc.AwsSessionToken != ""),
+	)
+
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout
@@ -346,9 +362,10 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 	backoffCounter := getS3OpBackoff()
 
 	var (
-		err           error
-		uploadedFiles []string
-		filesList     []string
+		err               error
+		uploadedFiles     []string
+		filesList         []string
+		skippedFilesCount int
 	)
 
 	timer := time.NewTimer(0)
@@ -379,17 +396,24 @@ retryLoop:
 				}
 				filesList, err = b.Build()
 				if err != nil {
-					return errors.Wrapf(err, "processing local files include filter '%s'",
-						strings.Join(s3pc.LocalFilesIncludeFilter, " "))
+					// Skip erroring since local files include filter should treat files as optional.
+					if strings.Contains(err.Error(), utility.WalkThroughError) {
+						logger.Task().Warningf("Error while building file list: %s", err.Error())
+						return nil
+					} else {
+						return errors.Wrapf(err, "processing local files include filter '%s'",
+							strings.Join(s3pc.LocalFilesIncludeFilter, " "))
+					}
 				}
 				if len(filesList) == 0 {
-					logger.Task().Infof("File filter '%s' matched no files.", strings.Join(s3pc.LocalFilesIncludeFilter, " "))
+					logger.Task().Warningf("File filter '%s' matched no files.", strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 					return nil
 				}
 			}
 
 			// reset to avoid duplicated uploaded references
 			uploadedFiles = []string{}
+			skippedFilesCount = 0
 
 		uploadLoop:
 			for _, fpath := range filesList {
@@ -416,6 +440,8 @@ retryLoop:
 						return errors.Wrapf(err, "checking if file '%s' exists", remoteName)
 					}
 					if exists {
+						skippedFilesCount++
+
 						logger.Task().Infof("Not uploading file '%s' because remote file '%s' already exists. Continuing to upload other files.", fpath, remoteName)
 						continue uploadLoop
 					}
@@ -469,9 +495,11 @@ retryLoop:
 
 	logger.Task().WarningWhen(strings.Contains(s3pc.Bucket, "."), "Bucket names containing dots that are created after Sept. 30, 2020 are not guaranteed to have valid attached URLs.")
 
-	if len(uploadedFiles) != len(filesList) && !s3pc.skipMissing {
-		logger.Task().Infof("Attempted to upload %d files, %d successfully uploaded.", len(filesList), len(uploadedFiles))
-		return errors.Errorf("uploaded %d files of %d requested", len(uploadedFiles), len(filesList))
+	processedCount := skippedFilesCount + len(uploadedFiles)
+
+	if processedCount != len(filesList) && !s3pc.skipMissing {
+		logger.Task().Infof("Attempted to upload %d files, %d successfully uploaded.", len(filesList), processedCount)
+		return errors.Errorf("uploaded %d files of %d requested", processedCount, len(filesList))
 	}
 
 	return nil

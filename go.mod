@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go v1.55.5 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.30.3
 	github.com/aws/aws-sdk-go-v2/config v1.27.27
-	github.com/aws/aws-sdk-go-v2/credentials v1.17.27 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.27
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.168.0
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.44.1
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.23.1
@@ -27,7 +27,7 @@ require (
 	github.com/evergreen-ci/poplar v0.0.0-20241121172741-9545e54b1b67
 	github.com/evergreen-ci/shrub v0.0.0-20231121224157-600e066f9de6
 	github.com/evergreen-ci/timber v0.0.0-20240509150854-9d66df03b40e
-	github.com/evergreen-ci/utility v0.0.0-20241104181620-267066777913
+	github.com/evergreen-ci/utility v0.0.0-20241121161208-c965546993da
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-github/v52 v52.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
@@ -41,7 +41,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mongodb/amboy v0.0.0-20240718152556-3b1827bc7168
-	github.com/mongodb/anser v0.0.0-20241029200935-fcf3befed0ea
+	github.com/mongodb/anser v0.0.0-20241202171131-c7638e91972a
 	github.com/mongodb/grip v0.0.0-20240213223901-f906268d82b9
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.15.0
