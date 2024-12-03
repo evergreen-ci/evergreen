@@ -18,9 +18,9 @@ import (
 // of perf results for a given task id from Cedar.
 type GetPerfCountOptions struct {
 	SPSBaseURL   string `json:"-"`
-	CedarBaseURL string `json:"_"`
+	CedarBaseURL string `json:"-"`
 	TaskID       string `json:"-"`
-	Execution    int    `json:"_"`
+	Execution    int    `json:"-"`
 }
 
 // PerfCount holds one element, NumberOfResults, matching the json returned by
