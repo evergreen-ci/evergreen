@@ -233,7 +233,7 @@ type Task struct {
 	// DisplayStatus is not persisted to the db. It is the status to display in the UI.
 	// It may be added via aggregation
 	DisplayStatus string `bson:"display_status,omitempty" json:"display_status,omitempty"`
-	// DisplayStatusCache is persisted to the db, unlike DisplayStatus.
+	// DisplayStatusCache semantically the same as DisplayStatus, but is persisted to the db, unlike DisplayStatus.
 	DisplayStatusCache string `bson:"display_status_cache,omitempty" json:"display_status_cache,omitempty"`
 	// BaseTask is not persisted to the db. It is the data of the task on the base commit
 	// It may be added via aggregation
