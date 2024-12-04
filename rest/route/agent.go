@@ -53,15 +53,14 @@ func (*agentCedarConfig) Parse(_ context.Context, _ *http.Request) error { retur
 
 func (h *agentCedarConfig) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(apimodels.CedarConfig{
-		BaseURL:             h.config.BaseURL,
-		GRPCBaseURL:         h.config.GRPCBaseURL,
-		RPCPort:             h.config.RPCPort,
-		Username:            h.config.User,
-		APIKey:              h.config.APIKey,
-		Insecure:            h.config.Insecure,
-		SendToCedarDisabled: h.config.SendToCedarDisabled,
-		SPSURL:              h.config.SPSURL,
-		SendRatioSPS:        h.config.SendRatioSPS,
+		BaseURL:      h.config.BaseURL,
+		GRPCBaseURL:  h.config.GRPCBaseURL,
+		RPCPort:      h.config.RPCPort,
+		Username:     h.config.User,
+		APIKey:       h.config.APIKey,
+		Insecure:     h.config.Insecure,
+		SPSURL:       h.config.SPSURL,
+		SPSKanopyURL: h.config.SPSKanopyURL,
 	})
 }
 

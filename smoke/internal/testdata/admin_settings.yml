@@ -82,6 +82,5 @@ cedar:
   user: "user"
   api_key: "key"
   insecure: true
-  send_to_cedar_disabled: true
   sps_url: "http://localhost:8080"
-  send_ratio_sps: 0
+  sps_kanopy_url: "http://localhost:8080"

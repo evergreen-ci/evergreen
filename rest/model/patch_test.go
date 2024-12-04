@@ -224,3 +224,46 @@ func TestDownstreamTasks(t *testing.T) {
 	assert.Len(a.DownstreamTasks[0].Tasks, 2)
 	assert.Len(a.DownstreamTasks[0].VariantTasks, 1)
 }
+
+func TestPreselectedDisplayTasks(t *testing.T) {
+	require.NoError(t, db.ClearCollections(patch.Collection, model.ProjectRefCollection))
+
+	p := patch.Patch{
+		Id:          mgobson.NewObjectId(),
+		Description: "test",
+		Project:     "mci",
+		Tasks:       []string{"variant_task_1", "variant_task_2", "exec1", "exec2"},
+		VariantsTasks: []patch.VariantTasks{
+			{
+				Variant: "coverage",
+				Tasks:   []string{"variant_task_1", "variant_task_2", "exec1", "exec2"},
+				DisplayTasks: []patch.DisplayTask{
+					{
+						Name:      "display_task",
+						ExecTasks: []string{"exec1", "exec2"},
+					},
+				},
+			},
+		},
+	}
+	require.NoError(t, p.Insert())
+
+	a := APIPatch{}
+	err := a.BuildFromService(p, nil)
+	require.NoError(t, err)
+
+	// We expect the tasks from the patch to be only non-execution tasks + display tasks.
+	require.Len(t, a.VariantsTasks, 1)
+	assert.Len(t, a.VariantsTasks[0].Tasks, 3)
+
+	tasks := []string{}
+	for _, task := range a.VariantsTasks[0].Tasks {
+		tasks = append(tasks, utility.FromStringPtr(task))
+	}
+
+	assert.Contains(t, tasks, "variant_task_1")
+	assert.Contains(t, tasks, "variant_task_2")
+	assert.NotContains(t, tasks, "exec1")
+	assert.NotContains(t, tasks, "exec2")
+	assert.Contains(t, tasks, "display_task")
+}
