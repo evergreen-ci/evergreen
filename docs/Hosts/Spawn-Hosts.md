@@ -24,7 +24,7 @@ To connect to your spawn host over a port (to, for example, test a UI or API),
 please use SSH port forwarding:
 
 ```sh
-ssh -L <local_port>:localhost:<remote_port> <user>@<host>
+ssh -L <local_port>:localhost:<remote_port> <user>@<remote_host>
 ```
 
 Please do not attempt to make a port publicly accessible on the internet. This
