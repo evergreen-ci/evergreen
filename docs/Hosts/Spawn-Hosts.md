@@ -28,7 +28,7 @@ ssh -L <local_port>:localhost:<remote_port> <user>@<host>
 ```
 
 Please do not attempt to make a port publicly accessible on the internet. This
-is disallowed by our security policy.
+is prohibited by our security policy.
 
 ## Making a distro "spawnable"
 
