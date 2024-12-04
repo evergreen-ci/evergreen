@@ -36,7 +36,7 @@ func TestUpsertGitHubAppAuth(t *testing.T) {
 	}
 	require.NoError(t, githubAppAuthUpsert(appAuth))
 
-	dbAppAuth, err := githubapp.FindOneGithubAppAuth(projectID)
+	dbAppAuth, err := GitHubAppAuthFindOne(projectID)
 	require.NoError(t, err)
 	require.NotZero(t, dbAppAuth)
 	checkParameterMatchesPrivateKey(ctx, t, dbAppAuth)
@@ -45,7 +45,7 @@ func TestUpsertGitHubAppAuth(t *testing.T) {
 	appAuth.PrivateKey = []byte("new_private_key")
 	require.NoError(t, githubAppAuthUpsert(appAuth))
 
-	dbAppAuth, err = githubapp.FindOneGithubAppAuth(projectID)
+	dbAppAuth, err = GitHubAppAuthFindOne(projectID)
 	require.NoError(t, err)
 	require.NotZero(t, dbAppAuth)
 	checkParameterMatchesPrivateKey(ctx, t, dbAppAuth)
@@ -72,7 +72,7 @@ func TestRemoveGitHubAppAuth(t *testing.T) {
 	}
 	require.NoError(t, githubAppAuthUpsert(appAuth))
 
-	dbAppAuth, err := githubapp.FindOneGithubAppAuth(projectID)
+	dbAppAuth, err := GitHubAppAuthFindOne(projectID)
 	require.NoError(t, err)
 	require.NotZero(t, dbAppAuth)
 	checkParameterMatchesPrivateKey(ctx, t, appAuth)
@@ -80,7 +80,7 @@ func TestRemoveGitHubAppAuth(t *testing.T) {
 
 	require.NoError(t, GitHubAppAuthRemove(dbAppAuth))
 
-	dbAppAuth, err = githubapp.FindOneGithubAppAuth(projectID)
+	dbAppAuth, err = GitHubAppAuthFindOne(projectID)
 	assert.NoError(t, err)
 	assert.Zero(t, dbAppAuth)
 
