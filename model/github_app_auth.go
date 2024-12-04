@@ -12,10 +12,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-// TODO (DEVPROD-11883): move all of this logic into githubapp package once all
-// project GitHub apps are using Parameter Store and the rollout is stable. The
-// functions are only here temporarily to avoid a dependency cycle between
-// githubapp and model packages due to the project ref feature flag.
+// TODO (DEVPROD-11883): move all of this logic into the githubapp package once
+// all project GitHub apps are using Parameter Store and the rollout is stable.
+// The functions are only here temporarily to avoid a dependency cycle between
+// the githubapp and model packages due to the project ref feature flag.
 
 // githubAppCheckAndRunParameterStoreOp checks if the project corresponding to
 // the GitHub app auth has Parameter Store enabled, and if so, runs the given
