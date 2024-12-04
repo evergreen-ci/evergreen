@@ -359,10 +359,11 @@ const (
 	// to tear down a task group. This is set one minute longer than the agent's maxTeardownGroupTimeout.
 	MaxTeardownGroupThreshold = 4 * time.Minute
 
-	SaveGenerateTasksError     = "error saving config in `generate.tasks`"
-	TasksAlreadyGeneratedError = "generator already ran and generated tasks"
-	KeyTooLargeToIndexError    = "key too large to index"
-	InvalidDivideInputError    = "$divide only supports numeric types"
+	SaveGenerateTasksError          = "error saving config in `generate.tasks`"
+	TasksAlreadyGeneratedError      = "generator already ran and generated tasks"
+	KeyTooLargeToIndexError         = "key too large to index"
+	InvalidDivideInputError         = "$divide only supports numeric types"
+	FetchingTaskDataUnfinishedError = "fetching task data not finished"
 
 	// ContainerHealthDashboard is the name of the Splunk dashboard that displays
 	// charts relating to the health of container tasks.

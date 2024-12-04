@@ -22,6 +22,8 @@ func init() {
 	registry.AllowSubscription(ResourceTypeHost, EventHostStarted)
 	registry.AllowSubscription(ResourceTypeHost, EventHostStopped)
 	registry.AllowSubscription(ResourceTypeHost, EventHostModified)
+	registry.AllowSubscription(ResourceTypeHost, EventHostScriptExecuted)
+	registry.AllowSubscription(ResourceTypeHost, EventHostScriptExecuteFailed)
 }
 
 const (
@@ -295,11 +297,11 @@ func LogSpawnHostIdleNotification(hostID string) {
 }
 
 func LogHostScriptExecuted(hostID string, logs string) {
-	LogHostEvent(hostID, EventHostScriptExecuted, HostEventData{Logs: logs})
+	LogHostEvent(hostID, EventHostScriptExecuted, HostEventData{Logs: logs, Successful: true})
 }
 
 func LogHostScriptExecuteFailed(hostID string, err error) {
-	LogHostEvent(hostID, EventHostScriptExecuteFailed, HostEventData{Logs: err.Error()})
+	LogHostEvent(hostID, EventHostScriptExecuteFailed, HostEventData{Logs: err.Error(), Successful: false})
 }
 
 // LogVolumeMigrationFailed is used when a volume is unable to migrate to a new host.

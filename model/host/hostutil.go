@@ -936,8 +936,8 @@ func (h *Host) CheckTaskDataFetched(ctx context.Context, env evergreen.Environme
 
 	const (
 		checkAttempts      = 10
-		checkRetryMinDelay = time.Second
-		checkRetryMaxDelay = 45 * time.Second
+		checkRetryMinDelay = 3 * time.Second
+		checkRetryMaxDelay = time.Minute
 	)
 
 	return h.withTaggedProcs(ctx, env, evergreen.HostFetchTag, func(procs []jasper.Process) error {
