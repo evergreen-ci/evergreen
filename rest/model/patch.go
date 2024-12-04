@@ -77,6 +77,7 @@ type ChildPatch struct {
 	PatchID *string `json:"patch_id"`
 	Status  *string `json:"status"`
 }
+
 type VariantTask struct {
 	// Name of build variant
 	Name *string `json:"name"`
@@ -149,6 +150,7 @@ type APIPatchArgs struct {
 }
 
 // BuildFromService converts from service level structs to an APIPatch.
+// An APIPatch expects the VariantTasks to be populated with only non-execution tasks and display tasks.
 // If args are set, includes identifier, commit queue position, and/or child patches from the DB, if applicable.
 func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) error {
 	apiPatch.buildBasePatch(p)
@@ -242,15 +244,38 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	}
 	apiPatch.Tasks = tasks
 	variantTasks := []VariantTask{}
+
+	// We remove the execution tasks from selected display tasks to avoid duplication.
+	execTasksToRemove := []string{}
 	for _, vt := range p.VariantsTasks {
 		vtasks := make([]*string, 0)
 		for _, task := range vt.Tasks {
 			vtasks = append(vtasks, utility.ToStringPtr(task))
 		}
+		for _, task := range vt.DisplayTasks {
+			vtasks = append(vtasks, utility.ToStringPtr(task.Name))
+			execTasksToRemove = append(execTasksToRemove, task.ExecTasks...)
+		}
 		variantTasks = append(variantTasks, VariantTask{
 			Name:  utility.ToStringPtr(vt.Variant),
 			Tasks: vtasks,
 		})
+	}
+	for i, vt := range variantTasks {
+		tasks := []*string{}
+		for j, t := range vt.Tasks {
+			keepTask := true
+			for _, task := range execTasksToRemove {
+				if utility.FromStringPtr(t) == task {
+					keepTask = false
+					break
+				}
+			}
+			if keepTask {
+				tasks = append(tasks, vt.Tasks[j])
+			}
+		}
+		variantTasks[i].Tasks = tasks
 	}
 	apiPatch.VariantsTasks = variantTasks
 	apiPatch.Activated = p.Activated
