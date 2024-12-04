@@ -10,8 +10,6 @@ import (
 
 const (
 	clientS3BucketFlagName    = "client_s3_bucket"
-	commitMessageFlag         = "commit-message"
-	commitsFlagName           = "commits"
 	confFlagName              = "conf"
 	dirFlagName               = "dir"
 	displayNameFlagName       = "name"
@@ -262,13 +260,6 @@ func addRefFlag(flags ...cli.Flag) []cli.Flag {
 		Name:  refFlagName,
 		Usage: "diff with `REF`",
 		Value: "HEAD",
-	})
-}
-
-func addCommitsFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.StringFlag{
-		Name:  joinFlagNames(commitsFlagName, "c"),
-		Usage: "specify commit hash <hash1> (can also be a range <hash1>..<hash2>, where hash1 is excluded)",
 	})
 }
 
