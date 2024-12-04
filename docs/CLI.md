@@ -414,9 +414,6 @@ evergreen task build TaskLogs --task_id <task_id> --execution <execution> --type
 evergreen task build TestLogs --task_id <task_id> --execution <execution> --log_path <test_log_path>
 ```
 
-#### Commit Queue
-The command `evergreen commit-queue` contains subcommands for interacting with the commit queue. See [Commit Queue](Project-Configuration/Commit-Queue).
-
 ### Server Side (for Evergreen admins)
 
 To enable auto-updating of client binaries, add a section like this to the settings file for your server:
