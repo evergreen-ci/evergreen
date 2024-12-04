@@ -42,8 +42,8 @@ func githubAppCheckAndRunParameterStoreOp(ctx context.Context, appAuth *githubap
 	op(ref, isRepoRef)
 }
 
-// kim: TODO: write test similar to one for vars.Upsert.
 // kim: TODO: migrate usages of auth.Upsert to use this function temporarily.
+// kim: TODO: write test similar to one for vars.Upsert.
 // GitHubAppAuthUpsert upserts the GitHub app auth into the database and to
 // Parameter Store if enabled.
 func GitHubAppAuthUpsert(appAuth *githubapp.GithubAppAuth) error {
@@ -51,10 +51,6 @@ func GitHubAppAuthUpsert(appAuth *githubapp.GithubAppAuth) error {
 	defer cancel()
 
 	githubAppCheckAndRunParameterStoreOp(ctx, appAuth, func(ref *ProjectRef, isRepoRef bool) {
-		// kim: NOTE: no need to check if app is synced here because it uploads
-		// the one field rather than doing a smarter diff like project vars have
-		// to. Only the sync job needs that info to determine which GitHub apps
-		// to sync.
 		paramName, err := githubAppAuthUpsertParameterStore(ctx, appAuth, ref, isRepoRef)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "could not upsert GitHub app auth into Parameter Store",
@@ -99,10 +95,10 @@ func githubAppAuthUpsertParameterStore(ctx context.Context, appAuth *githubapp.G
 	return paramName, nil
 }
 
-// kim: TODO: write test similar to one for vars.Clear.
 // kim: TODO: migrate usages of auth.Remove to use this function temporarily.
 // GitHubAppAuthRemove deletes the GitHub app auth from the database and
 // Parameter Store if enabled.
+// kim: TODO: write test similar to one for vars.Clear.
 func GitHubAppAuthRemove(appAuth *githubapp.GithubAppAuth) error {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()

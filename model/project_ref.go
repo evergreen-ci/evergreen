@@ -799,7 +799,13 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 // are empty, the entry is deleted.
 func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) error {
 	if appID == 0 && len(privateKey) == 0 {
-		return githubapp.RemoveGithubAppAuth(p.Id)
+		ghApp, err := githubapp.FindOneGithubAppAuth(p.Id)
+		if err != nil {
+			return errors.Wrap(err, "finding GitHub app auth")
+		}
+		if ghApp != nil {
+			return GitHubAppAuthRemove(ghApp)
+		}
 	}
 
 	if appID == 0 || len(privateKey) == 0 {
@@ -810,7 +816,7 @@ func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) err
 		AppID:      appID,
 		PrivateKey: privateKey,
 	}
-	return githubapp.UpsertGithubAppAuth(&auth)
+	return GitHubAppAuthUpsert(&auth)
 }
 
 // DefaultGithubAppCredentialsToRepo defaults the app credentials to the repo by
@@ -820,8 +826,15 @@ func DefaultGithubAppCredentialsToRepo(projectId string) error {
 	if err != nil {
 		return errors.Wrap(err, "finding project ref")
 	}
-	return githubapp.RemoveGithubAppAuth(p.Id)
 
+	ghApp, err := githubapp.FindOneGithubAppAuth(p.Id)
+	if err != nil {
+		return errors.Wrap(err, "finding GitHub app auth")
+	}
+	if ghApp != nil {
+		return GitHubAppAuthRemove(ghApp)
+	}
+	return nil
 }
 
 // AddToRepoScope validates that the branch can be attached to the matching repo,
