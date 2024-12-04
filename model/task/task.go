@@ -233,6 +233,8 @@ type Task struct {
 	// DisplayStatus is not persisted to the db. It is the status to display in the UI.
 	// It may be added via aggregation
 	DisplayStatus string `bson:"display_status,omitempty" json:"display_status,omitempty"`
+	// DisplayStatusCache is semantically the same as DisplayStatus, but is persisted to the DB, unlike DisplayStatus.
+	DisplayStatusCache string `bson:"display_status_cache,omitempty" json:"display_status_cache,omitempty"`
 	// BaseTask is not persisted to the db. It is the data of the task on the base commit
 	// It may be added via aggregation
 	BaseTask BaseTaskInfo `bson:"base_task" json:"base_task"`
@@ -1532,7 +1534,7 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) ([
 }
 
 // DeactivateStepbackTask deactivates and aborts the matching stepback task.
-func DeactivateStepbackTask(projectId, buildVariantName, taskName, caller string) error {
+func DeactivateStepbackTask(ctx context.Context, projectId, buildVariantName, taskName, caller string) error {
 	t, err := FindActivatedStepbackTaskByName(projectId, buildVariantName, taskName)
 	if err != nil {
 		return err
@@ -1546,7 +1548,7 @@ func DeactivateStepbackTask(projectId, buildVariantName, taskName, caller string
 	}
 	if t.IsAbortable() {
 		event.LogTaskAbortRequest(t.Id, t.Execution, caller)
-		if err = t.SetAborted(AbortInfo{User: caller}); err != nil {
+		if err = t.SetAborted(ctx, AbortInfo{User: caller}); err != nil {
 			return errors.Wrap(err, "setting task aborted")
 		}
 	}
@@ -1610,14 +1612,17 @@ func GetSystemFailureDetails(description string) apimodels.TaskEndDetail {
 
 // SetAborted sets the abort field and abort info of task to aborted
 // and prevents the task from being reset when finished.
-func (t *Task) SetAborted(reason AbortInfo) error {
+func (t *Task) SetAborted(ctx context.Context, reason AbortInfo) error {
 	t.Aborted = true
-	return UpdateOne(
+	t.DisplayStatus = t.findDisplayStatus()
+	return UpdateOneContext(
+		ctx,
 		bson.M{
 			IdKey: t.Id,
 		},
-		bson.M{
-			"$set": taskAbortUpdate(reason),
+		[]bson.M{
+			bson.M{"$set": taskAbortUpdate(reason)},
+			addDisplayStatusCache,
 		},
 	)
 }
@@ -2886,7 +2891,10 @@ func abortTasksByQuery(q bson.M, reason AbortInfo) error {
 	}
 	_, err = UpdateAll(
 		ByIds(ids),
-		bson.M{"$set": taskAbortUpdate(reason)},
+		[]bson.M{
+			bson.M{"$set": taskAbortUpdate(reason)},
+			addDisplayStatusCache,
+		},
 	)
 	if err != nil {
 		return errors.Wrap(err, "setting aborted statuses")
