@@ -52,7 +52,7 @@ func TestUpsertGitHubAppAuth(t *testing.T) {
 	assert.Equal(t, paramName, dbAppAuth.PrivateKeyParameter, "private key parameter name should remain the same on following upsert")
 }
 
-func TestRemoveGithubAppAuth(t *testing.T) {
+func TestRemoveGitHubAppAuth(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	require.NoError(t, db.ClearCollections(ProjectRefCollection, githubapp.GitHubAppAuthCollection, fakeparameter.Collection))
