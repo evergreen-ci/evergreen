@@ -96,6 +96,7 @@ type Task {
   logs: TaskLogLinks!
   minQueuePosition: Int!
   order: Int!
+  originalStatus: String!
   patch: Patch
   patchNumber: Int
   pod: Pod
