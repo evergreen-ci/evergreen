@@ -986,14 +986,9 @@ func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) erro
 							"else": "$$this",
 						}},
 					}},
-			},
-			},
+			}},
 			addDisplayStatusCache,
-		},
-		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
-			bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},
-		}}),
-	)
+		})
 	if err != nil {
 		return errors.Wrap(err, "marking finished dependencies")
 	}
