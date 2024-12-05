@@ -1797,6 +1797,7 @@ func TestAddDependency(t *testing.T) {
 			require.NotZero(t, updated)
 			require.Len(t, updated.DependsOn, len(depTaskIds))
 			assert.True(t, updated.DependsOn[0].Unattainable)
+			assert.Equal(t, evergreen.TaskStatusBlocked, updated.DisplayStatus)
 		},
 		"AddsDependencyForSameTaskButDifferentStatus": func(t *testing.T, tsk *Task) {
 			assert.NoError(t, tsk.AddDependency(ctx, Dependency{
@@ -1821,6 +1822,7 @@ func TestAddDependency(t *testing.T) {
 			for _, d := range updated.DependsOn {
 				assert.NotEqual(t, d.TaskId, tsk.Id, "task should not add dependency on itself")
 			}
+			assert.Equal(t, evergreen.TaskWillRun, updated.DisplayStatus)
 		},
 		"RemoveDependency": func(t *testing.T, tsk *Task) {
 			assert.NoError(t, tsk.RemoveDependency(depTaskIds[2].TaskId))
@@ -1839,7 +1841,7 @@ func TestAddDependency(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection))
 
-			tsk := &Task{Id: "t1", DependsOn: depTaskIds}
+			tsk := &Task{Id: "t1", DependsOn: depTaskIds, Status: evergreen.TaskUndispatched, Activated: true}
 			require.NoError(t, tsk.Insert())
 
 			tCase(t, tsk)

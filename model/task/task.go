@@ -692,6 +692,7 @@ func (t *Task) isSystemUnresponsive() bool {
 
 func (t *Task) SetOverrideDependencies(userID string) error {
 	t.OverrideDependencies = true
+	t.DisplayStatusCache = t.findDisplayStatus()
 	event.LogTaskDependenciesOverridden(t.Id, t.Execution, userID)
 	return UpdateOne(
 		bson.M{
@@ -700,6 +701,7 @@ func (t *Task) SetOverrideDependencies(userID string) error {
 		bson.M{
 			"$set": bson.M{
 				OverrideDependenciesKey: true,
+				DisplayStatusCacheKey:   t.DisplayStatusCache,
 			},
 		},
 	)
@@ -729,6 +731,7 @@ func (t *Task) AddDependency(ctx context.Context, d Dependency) error {
 		}
 	}
 	t.DependsOn = append(t.DependsOn, d)
+	t.DisplayStatusCache = t.findDisplayStatus()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -736,6 +739,9 @@ func (t *Task) AddDependency(ctx context.Context, d Dependency) error {
 		bson.M{
 			"$push": bson.M{
 				DependsOnKey: d,
+			},
+			"$set": bson.M{
+				DisplayStatusCacheKey: t.DisplayStatusCache,
 			},
 		},
 	)
@@ -750,6 +756,7 @@ func (t *Task) RemoveDependency(dependencyId string) error {
 			dependsOn = append(dependsOn, t.DependsOn[:i]...)
 			dependsOn = append(dependsOn, t.DependsOn[i+1:]...)
 			t.DependsOn = dependsOn
+			t.DisplayStatusCache = t.findDisplayStatus()
 			found = true
 			break
 		}
@@ -764,6 +771,9 @@ func (t *Task) RemoveDependency(dependencyId string) error {
 			DependsOnKey: bson.M{
 				DependencyTaskIdKey: dependencyId,
 			},
+		},
+		"$set": bson.M{
+			DisplayStatusCacheKey: t.DisplayStatusCache,
 		},
 	}
 	return db.Update(Collection, query, update)
@@ -794,10 +804,14 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	}
 	// this is not exact, but depTask.FinishTime is not always set in time to use that
 	t.DependenciesMetTime = time.Now()
+	t.DisplayStatusCache = t.findDisplayStatus()
 	err = UpdateOne(
 		bson.M{IdKey: t.Id},
 		bson.M{
-			"$set": bson.M{DependenciesMetTimeKey: t.DependenciesMetTime},
+			"$set": bson.M{
+				DependenciesMetTimeKey: t.DependenciesMetTime,
+				DisplayStatusCacheKey:  t.DisplayStatusCache,
+			},
 		})
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": "task.DependenciesMet() failed to update task",
@@ -958,8 +972,23 @@ func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) erro
 				DependencyTaskIdKey: t.Id,
 			}},
 		},
-		bson.M{
-			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedKey): finished},
+		[]bson.M{
+			bson.M{"$set": bson.M{
+				DependsOnKey: bson.M{
+					"$map": bson.M{"input": "$" + DependsOnKey,
+						"in": bson.M{"$cond": bson.M{
+							"if": bson.M{"$eq": []string{bsonutil.GetDottedKeyName("$$this", DependencyTaskIdKey), t.Id}},
+							"then": bson.M{"$setField": bson.M{
+								"field": DependencyFinishedKey,
+								"input": "$$this",
+								"value": finished,
+							}},
+							"else": "$$this",
+						}},
+					}},
+			},
+			},
+			addDisplayStatusCache,
 		},
 		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
 			bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},
@@ -3920,7 +3949,14 @@ func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 				DependencyOmitGeneratedTasksKey: bson.M{"$ne": true},
 			}},
 		},
-		bson.M{"$push": bson.M{DependsOnKey: bson.M{"$each": newDependencies}}},
+		[]bson.M{
+			bson.M{"$set": bson.M{
+				DependsOnKey: bson.M{
+					"$concatArrays": []interface{}{"$" + DependsOnKey, newDependencies},
+				},
+			}},
+			addDisplayStatusCache,
+		},
 	)
 
 	return errors.Wrap(err, "updating dependencies")
