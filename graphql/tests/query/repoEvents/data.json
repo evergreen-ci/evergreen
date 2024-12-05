@@ -101,7 +101,7 @@
           "vars": {
             "_id": "repo_id",
             "vars": {
-              "hello": "world"
+              "hello": "{REDACTED_BEFORE}"
             }
           }
         },
@@ -117,7 +117,7 @@
           "vars": {
             "_id": "repo_id",
             "vars": {
-              "hello": "universe"
+              "hello": "{REDACTED_AFTER}"
             }
           }
         }
