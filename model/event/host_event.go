@@ -297,11 +297,11 @@ func LogSpawnHostIdleNotification(hostID string) {
 }
 
 func LogHostScriptExecuted(hostID string, logs string) {
-	LogHostEvent(hostID, EventHostScriptExecuted, HostEventData{Logs: logs, Successful: true})
+	LogHostEvent(hostID, EventHostScriptExecuted, HostEventData{Logs: logs})
 }
 
 func LogHostScriptExecuteFailed(hostID string, err error) {
-	LogHostEvent(hostID, EventHostScriptExecuteFailed, HostEventData{Logs: err.Error(), Successful: false})
+	LogHostEvent(hostID, EventHostScriptExecuteFailed, HostEventData{Logs: err.Error()})
 }
 
 // LogVolumeMigrationFailed is used when a volume is unable to migrate to a new host.

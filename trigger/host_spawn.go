@@ -305,7 +305,7 @@ func (t *spawnHostSetupScriptTriggers) makePayload(sub *event.Subscription) (int
 	}
 
 	var result string
-	if t.data.Successful {
+	if t.event.EventType == event.EventHostScriptExecuted {
 		result = "succeeded"
 	} else {
 		result = "failed"
