@@ -2334,6 +2334,9 @@ func (t *Task) findDisplayStatus() string {
 	if t.Status == evergreen.TaskSucceeded {
 		return evergreen.TaskSucceeded
 	}
+	if t.HasAnnotations {
+		return evergreen.TaskKnownIssue
+	}
 	if t.Details.Type == evergreen.CommandTypeSetup {
 		return evergreen.TaskSetupFailed
 	}

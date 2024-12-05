@@ -180,10 +180,8 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 	for _, foundTask := range taskResults {
 		switch foundTask.Id {
 		case t1.Id:
-			// GetDisplayStatus should return "failed" for t1 since it does not
-			// check the annotations collection.
 			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskKnownIssue)
-			assert.Equal(t, t1.GetDisplayStatus(), evergreen.TaskFailed)
+			assert.Equal(t, t1.GetDisplayStatus(), evergreen.TaskKnownIssue)
 		case t2.Id:
 			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskAborted)
 			assert.Equal(t, t2.GetDisplayStatus(), evergreen.TaskAborted)
