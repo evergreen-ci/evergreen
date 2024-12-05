@@ -96,6 +96,9 @@ type Task {
   logs: TaskLogLinks!
   minQueuePosition: Int!
   order: Int!
+  """
+  The originalStatus field represents the original status of the task without a display status applied.
+  """
   originalStatus: String!
   patch: Patch
   patchNumber: Int
@@ -110,6 +113,9 @@ type Task {
   scheduledTime: Time
   spawnHostLink: String
   startTime: Time
+  """
+  This is a tasks display status and is what is commonly used on the UI.
+  """
   status: String!
   tags: [String!]!
   taskGroup: String
