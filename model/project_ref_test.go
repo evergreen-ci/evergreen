@@ -1536,6 +1536,14 @@ func TestDefaultRepoBySection(t *testing.T) {
 			}
 			assert.NoError(t, pRef.Insert())
 
+			repoRef := RepoRef{
+				ProjectRef: ProjectRef{
+					Id:                    pRef.RepoRefId,
+					ParameterStoreEnabled: true,
+				},
+			}
+			assert.NoError(t, repoRef.Upsert())
+
 			pVars := ProjectVars{
 				Id:          pRef.Id,
 				Vars:        map[string]string{"hello": "world"},
@@ -1860,7 +1868,8 @@ func TestSetGithubAppCredentials(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(ProjectRefCollection, githubapp.GitHubAppAuthCollection))
 			p := &ProjectRef{
-				Id: "id1",
+				Id:                    "id1",
+				ParameterStoreEnabled: true,
 			}
 			require.NoError(t, p.Insert())
 			test(t, p)
