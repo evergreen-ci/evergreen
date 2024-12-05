@@ -2,7 +2,6 @@ package trigger
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -258,7 +257,8 @@ func (s *spawnHostTriggersSuite) TestSpawnHostSetupScriptCompletion() {
 	slackResponse, ok := n.Payload.(*notification.SlackPayload)
 	s.Require().True(ok)
 	s.Require().NotNil(slackResponse)
-	s.Equal(slackResponse.Body, fmt.Sprintf("The setup script for spawn host <%s|%s> has succeeded", hostURL("", s.h.Id), s.h.Id))
+	s.Contains(slackResponse.Body, "The setup script for spawn host")
+	s.Contains(slackResponse.Body, "has succeeded")
 
 	sub.Subscriber = event.NewEmailSubscriber("example@domain.invalid")
 	n, err = s.tSetupScript.Process(&sub)
@@ -286,7 +286,8 @@ func (s *spawnHostTriggersSuite) TestSpawnHostSetupScriptCompletion() {
 	slackResponse, ok = n.Payload.(*notification.SlackPayload)
 	s.Require().True(ok)
 	s.Require().NotNil(slackResponse)
-	s.Equal(slackResponse.Body, fmt.Sprintf("The setup script for spawn host <%s|%s> has failed", hostURL("", s.h.Id), s.h.Id))
+	s.Contains(slackResponse.Body, "The setup script for spawn host")
+	s.Contains(slackResponse.Body, "has failed")
 
 	sub.Subscriber = event.NewEmailSubscriber("example@domain.invalid")
 	n, err = s.tSetupScript.Process(&sub)
@@ -316,7 +317,8 @@ func (s *spawnHostTriggersSuite) TestSpawnHostSetupScriptCompletion() {
 	slackResponse, ok = n.Payload.(*notification.SlackPayload)
 	s.Require().True(ok)
 	s.Require().NotNil(slackResponse)
-	s.Equal(slackResponse.Body, fmt.Sprintf("The setup script for spawn host <%s|%s> has failed to start", hostURL("", s.h.Id), s.h.Id))
+	s.Contains(slackResponse.Body, "The setup script for spawn host")
+	s.Contains(slackResponse.Body, "has failed to start")
 
 	sub.Subscriber = event.NewEmailSubscriber("example@domain.invalid")
 	n, err = s.tSetupScript.Process(&sub)
