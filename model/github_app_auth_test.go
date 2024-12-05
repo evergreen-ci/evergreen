@@ -34,7 +34,7 @@ func TestUpsertGitHubAppAuth(t *testing.T) {
 		AppID:      1234,
 		PrivateKey: key,
 	}
-	require.NoError(t, GitHubAppAuthUpsert(appAuth))
+	require.NoError(t, githubAppAuthUpsert(appAuth))
 
 	dbAppAuth, err := githubapp.FindOneGithubAppAuth(projectID)
 	require.NoError(t, err)
@@ -43,7 +43,7 @@ func TestUpsertGitHubAppAuth(t *testing.T) {
 	paramName := appAuth.PrivateKeyParameter
 
 	appAuth.PrivateKey = []byte("new_private_key")
-	require.NoError(t, GitHubAppAuthUpsert(appAuth))
+	require.NoError(t, githubAppAuthUpsert(appAuth))
 
 	dbAppAuth, err = githubapp.FindOneGithubAppAuth(projectID)
 	require.NoError(t, err)
@@ -70,7 +70,7 @@ func TestRemoveGitHubAppAuth(t *testing.T) {
 		AppID:      1234,
 		PrivateKey: key,
 	}
-	require.NoError(t, GitHubAppAuthUpsert(appAuth))
+	require.NoError(t, githubAppAuthUpsert(appAuth))
 
 	dbAppAuth, err := githubapp.FindOneGithubAppAuth(projectID)
 	require.NoError(t, err)

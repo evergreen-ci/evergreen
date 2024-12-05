@@ -42,9 +42,9 @@ func githubAppCheckAndRunParameterStoreOp(ctx context.Context, appAuth *githubap
 	op(ref, isRepoRef)
 }
 
-// GitHubAppAuthUpsert upserts the GitHub app auth into the database and to
+// githubAppAuthUpsert upserts the GitHub app auth into the database and to
 // Parameter Store if enabled.
-func GitHubAppAuthUpsert(appAuth *githubapp.GithubAppAuth) error {
+func githubAppAuthUpsert(appAuth *githubapp.GithubAppAuth) error {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
