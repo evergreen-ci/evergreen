@@ -96,8 +96,9 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 			Args:               args,
 			StandardInputBytes: []byte(j.Script),
 		})
+		logs = strings.Join(output, "\n")
 		if err != nil {
-			event.LogHostScriptExecuteFailed(j.host.Id, err)
+			event.LogHostScriptExecuteFailed(j.host.Id, logs, err)
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":          "script failed during execution",
 				"legacy_bootstrap": j.host.Distro.LegacyBootstrap(),
@@ -109,12 +110,11 @@ func (j *hostExecuteJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
-		logs = strings.Join(output, "\n")
 	} else {
 		var err error
 		logs, err = j.host.RunSSHShellScript(ctx, j.Script, j.Sudo, j.SudoUser)
 		if err != nil {
-			event.LogHostScriptExecuteFailed(j.host.Id, err)
+			event.LogHostScriptExecuteFailed(j.host.Id, logs, err)
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "script failed during execution",
 				"host_id": j.host.Id,

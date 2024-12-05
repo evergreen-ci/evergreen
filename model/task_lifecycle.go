@@ -427,7 +427,7 @@ func AbortTask(ctx context.Context, taskId, caller string) error {
 		return err
 	}
 	event.LogTaskAbortRequest(t.Id, t.Execution, caller)
-	return t.SetAborted(task.AbortInfo{User: caller})
+	return t.SetAborted(ctx, task.AbortInfo{User: caller})
 }
 
 // DeactivatePreviousTasks deactivates any previously activated but undispatched
