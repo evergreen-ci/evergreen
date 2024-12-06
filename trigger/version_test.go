@@ -175,51 +175,51 @@ func (s *VersionSuite) TestAllTriggers() {
 }
 
 func (s *VersionSuite) TestVersionSuccess() {
-	n, err := s.t.versionSuccess(&s.subs[1])
+	n, err := s.t.versionSuccess(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	n, err = s.t.versionSuccess(&s.subs[1])
+	n, err = s.t.versionSuccess(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionSucceeded
-	n, err = s.t.versionSuccess(&s.subs[1])
+	n, err = s.t.versionSuccess(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *VersionSuite) TestVersionFailure() {
 	s.data.Status = evergreen.VersionCreated
-	n, err := s.t.versionOutcome(&s.subs[0])
+	n, err := s.t.versionOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionSucceeded
-	n, err = s.t.versionFailure(&s.subs[2])
+	n, err = s.t.versionFailure(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	n, err = s.t.versionFailure(&s.subs[2])
+	n, err = s.t.versionFailure(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *VersionSuite) TestVersionOutcome() {
 	s.data.Status = evergreen.VersionCreated
-	n, err := s.t.versionOutcome(&s.subs[0])
+	n, err := s.t.versionOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionSucceeded
-	n, err = s.t.versionOutcome(&s.subs[0])
+	n, err = s.t.versionOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	n, err = s.t.versionOutcome(&s.subs[0])
+	n, err = s.t.versionOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -239,7 +239,7 @@ func (s *VersionSuite) TestVersionRegression() {
 
 	// a successful version should not generate
 	s.data.Status = evergreen.VersionSucceeded
-	n, err := s.t.versionRegression(&s.subs[3])
+	n, err := s.t.versionRegression(s.ctx, &s.subs[3])
 	s.NoError(err)
 	s.Nil(n)
 
@@ -256,7 +256,7 @@ func (s *VersionSuite) TestVersionRegression() {
 	}
 	s.NoError(t2.Insert())
 	s.data.Status = evergreen.VersionFailed
-	n, err = s.t.versionRegression(&s.subs[3])
+	n, err = s.t.versionRegression(s.ctx, &s.subs[3])
 	s.NoError(err)
 	s.NotNil(n)
 
@@ -274,7 +274,7 @@ func (s *VersionSuite) TestVersionRegression() {
 	}
 	s.NoError(t3.Insert())
 	s.NoError(newAlertRecord(s.subs[3].ID, &t3, alertrecord.TaskFailTransitionId).Insert())
-	n, err = s.t.versionRegression(&s.subs[3])
+	n, err = s.t.versionRegression(s.ctx, &s.subs[3])
 	s.NoError(err)
 	s.Nil(n)
 }
@@ -287,20 +287,20 @@ func (s *VersionSuite) TestVersionExceedsTime() {
 	s.t.data.Status = evergreen.VersionSucceeded
 	s.t.version.FinishTime = time.Now()
 	s.t.version.StartTime = s.t.version.FinishTime.Add(-20 * time.Minute)
-	n, err := s.t.versionExceedsDuration(&s.subs[4])
+	n, err := s.t.versionExceedsDuration(s.ctx, &s.subs[4])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// build that does not exceed should not generate
 	s.t.version.StartTime = s.t.version.FinishTime.Add(-4 * time.Minute)
-	n, err = s.t.versionExceedsDuration(&s.subs[4])
+	n, err = s.t.versionExceedsDuration(s.ctx, &s.subs[4])
 	s.NoError(err)
 	s.Nil(n)
 
 	// unfinished build should not generate
 	s.t.data.Status = evergreen.VersionStarted
 	s.t.version.StartTime = s.t.version.FinishTime.Add(-20 * time.Minute)
-	n, err = s.t.versionExceedsDuration(&s.subs[4])
+	n, err = s.t.versionExceedsDuration(s.ctx, &s.subs[4])
 	s.NoError(err)
 	s.Nil(n)
 }
@@ -313,7 +313,7 @@ func (s *VersionSuite) TestVersionRuntimeChange() {
 		EventType: event.VersionStateChange,
 	}
 	s.t.data.Status = evergreen.VersionSucceeded
-	n, err := s.t.versionRuntimeChange(&s.subs[5])
+	n, err := s.t.versionRuntimeChange(s.ctx, &s.subs[5])
 	s.NoError(err)
 	s.Nil(n)
 
@@ -327,19 +327,19 @@ func (s *VersionSuite) TestVersionRuntimeChange() {
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	s.NoError(lastGreen.Insert())
-	n, err = s.t.versionRuntimeChange(&s.subs[5])
+	n, err = s.t.versionRuntimeChange(s.ctx, &s.subs[5])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// version that does not exceed threshold should not generate
 	s.t.version.StartTime = s.t.version.FinishTime.Add(-11 * time.Minute)
-	n, err = s.t.versionRuntimeChange(&s.subs[5])
+	n, err = s.t.versionRuntimeChange(s.ctx, &s.subs[5])
 	s.NoError(err)
 	s.Nil(n)
 
 	// build that finished too quickly should generate
 	s.t.version.StartTime = s.t.version.FinishTime.Add(-4 * time.Minute)
-	n, err = s.t.versionRuntimeChange(&s.subs[5])
+	n, err = s.t.versionRuntimeChange(s.ctx, &s.subs[5])
 	s.NoError(err)
 	s.NotNil(n)
 }

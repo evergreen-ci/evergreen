@@ -43,7 +43,7 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error) {
 	execString := strconv.Itoa(execution)
 
-	searchReturnInfo, bbConfig, err := model.GetSearchReturnInfo(taskID, execString)
+	searchReturnInfo, bbConfig, err := model.GetSearchReturnInfo(ctx, taskID, execString)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}

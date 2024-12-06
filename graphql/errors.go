@@ -44,7 +44,7 @@ func (err GqlError) Send(ctx context.Context, message string) *gqlerror.Error {
 	}
 }
 
-func formError(ctx context.Context, msg string, code GqlError) *gqlerror.Error {
+func formError(_ context.Context, msg string, code GqlError) *gqlerror.Error {
 	return &gqlerror.Error{
 		Message: msg,
 		Extensions: map[string]interface{}{

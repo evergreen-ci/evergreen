@@ -94,7 +94,7 @@ func (t *volumeTriggers) generate(sub *event.Subscription) (*notification.Notifi
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
-func (t *volumeTriggers) volumeExpiration(sub *event.Subscription) (*notification.Notification, error) {
+func (t *volumeTriggers) volumeExpiration(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	timeZone := time.Local
 	if sub.OwnerType == event.OwnerTypePerson {
 		userTimeZone, err := getUserTimeZone(sub.Owner)

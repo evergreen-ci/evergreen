@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -34,7 +35,7 @@ func makeSpawnHostProvisioningTriggers() eventHandler {
 	return t
 }
 
-func (t *spawnHostProvisioningTriggers) hostSpawnProvisionOutcome(sub *event.Subscription) (*notification.Notification, error) {
+func (t *spawnHostProvisioningTriggers) hostSpawnProvisionOutcome(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if !t.host.UserHost {
 		return nil, nil
 	}
@@ -173,7 +174,7 @@ func makeSpawnHostStateChangeTriggers() eventHandler {
 	return t
 }
 
-func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Subscription) (*notification.Notification, error) {
+func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if !t.host.UserHost {
 		return nil, nil
 	}

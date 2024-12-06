@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -13,6 +14,8 @@ import (
 )
 
 func TestGetTestResults(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	testutil.Setup()
 
@@ -32,6 +35,6 @@ func TestGetTestResults(t *testing.T) {
 		},
 	}
 	uiTask := uiTaskData{}
-	results := uis.getTestResults(projectContext, &uiTask)
+	results := uis.getTestResults(ctx, projectContext, &uiTask)
 	assert.Nil(t, results)
 }

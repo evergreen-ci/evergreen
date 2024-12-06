@@ -144,7 +144,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	destTask.StatusDetails.TimeoutStage = srcTask.Details.Description
 
 	// Copy over the test results.
-	if err := srcTask.PopulateTestResults(); err != nil {
+	if err := srcTask.PopulateTestResults(r.Context()); err != nil {
 		err = errors.Wrapf(err, "Error finding test results for task '%s'", srcTask.Id)
 		grip.Error(err)
 		gimlet.WriteJSONInternalError(w, responseError{Message: err.Error()})
@@ -207,7 +207,7 @@ func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error finding task"})
 		return
 	}
-	if err := task.PopulateTestResults(); err != nil {
+	if err := task.PopulateTestResults(r.Context()); err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error populating test results"})
 		return
 	}

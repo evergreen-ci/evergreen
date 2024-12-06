@@ -470,34 +470,34 @@ func (s *taskSuite) TestExecutionTask() {
 }
 
 func (s *taskSuite) TestSuccess() {
-	n, err := s.t.taskSuccess(&s.subs[1])
+	n, err := s.t.taskSuccess(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.TaskFailed
-	n, err = s.t.taskSuccess(&s.subs[1])
+	n, err = s.t.taskSuccess(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.TaskSucceeded
-	n, err = s.t.taskSuccess(&s.subs[1])
+	n, err = s.t.taskSuccess(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *taskSuite) TestFailure() {
-	n, err := s.t.taskFailure(&s.subs[2])
+	n, err := s.t.taskFailure(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.TaskSucceeded
-	n, err = s.t.taskFailure(&s.subs[2])
+	n, err = s.t.taskFailure(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	for _, status := range evergreen.TaskFailureStatuses {
 		s.data.Status = status
-		n, err = s.t.taskFailure(&s.subs[2])
+		n, err = s.t.taskFailure(s.ctx, &s.subs[2])
 		s.NoError(err)
 		if status == evergreen.TaskSetupFailed {
 			s.Nil(n, "should not notify for setup failure")
@@ -509,18 +509,18 @@ func (s *taskSuite) TestFailure() {
 
 func (s *taskSuite) TestOutcome() {
 	s.data.Status = evergreen.TaskStarted
-	n, err := s.t.taskOutcome(&s.subs[0])
+	n, err := s.t.taskOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.TaskSucceeded
-	n, err = s.t.taskOutcome(&s.subs[0])
+	n, err = s.t.taskOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 
 	for _, status := range evergreen.TaskFailureStatuses {
 		s.data.Status = status
-		n, err = s.t.taskFailure(&s.subs[0])
+		n, err = s.t.taskFailure(s.ctx, &s.subs[0])
 		s.NoError(err)
 		if status == evergreen.TaskSetupFailed {
 			s.Nil(n, "should not notify for setup failure")
@@ -541,12 +541,12 @@ func (s *taskSuite) TestFailedOrBlocked() {
 			Unattainable: false,
 		},
 	}
-	n, err := s.t.taskFailedOrBlocked(&s.subs[7])
+	n, err := s.t.taskFailedOrBlocked(s.ctx, &s.subs[7])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.t.task.DependsOn[0].Unattainable = true
-	n, err = s.t.taskFailedOrBlocked(&s.subs[7])
+	n, err = s.t.taskFailedOrBlocked(s.ctx, &s.subs[7])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -556,19 +556,19 @@ func (s *taskSuite) TestFirstFailureInVersion() {
 	s.task.Status = evergreen.TaskFailed
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
-	n, err := s.t.taskFirstFailureInVersion(&s.subs[2])
+	n, err := s.t.taskFirstFailureInVersion(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// rerun that fails should not do anything
-	n, err = s.t.taskFirstFailureInVersion(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersion(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	// subsequent runs with other tasks should not do anything
 	s.task.Id = "task2"
 	s.NoError(s.task.Insert())
-	n, err = s.t.taskFirstFailureInVersion(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersion(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
@@ -578,14 +578,14 @@ func (s *taskSuite) TestFirstFailureInVersion() {
 	s.task.BuildId = "test2"
 	s.task.BuildVariant = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	n, err = s.t.taskFirstFailureInVersion(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersion(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	// subsequent runs with other tasks in other versions should still generate
 	s.task.Version = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	n, err = s.t.taskFirstFailureInVersion(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersion(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -595,19 +595,19 @@ func (s *taskSuite) TestFirstFailureInBuild() {
 	s.task.Status = evergreen.TaskFailed
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
-	n, err := s.t.taskFirstFailureInBuild(&s.subs[2])
+	n, err := s.t.taskFirstFailureInBuild(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// rerun that fails should not do anything
-	n, err = s.t.taskFirstFailureInBuild(&s.subs[2])
+	n, err = s.t.taskFirstFailureInBuild(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	// subsequent runs with other tasks should not do anything
 	s.task.Id = "task2"
 	s.NoError(s.task.Insert())
-	n, err = s.t.taskFirstFailureInBuild(&s.subs[2])
+	n, err = s.t.taskFirstFailureInBuild(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
@@ -617,14 +617,14 @@ func (s *taskSuite) TestFirstFailureInBuild() {
 	s.task.BuildId = "test2"
 	s.task.BuildVariant = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	n, err = s.t.taskFirstFailureInBuild(&s.subs[2])
+	n, err = s.t.taskFirstFailureInBuild(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// subsequent runs with other tasks in other versions should generate
 	s.task.Version = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	n, err = s.t.taskFirstFailureInBuild(&s.subs[2])
+	n, err = s.t.taskFirstFailureInBuild(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -634,19 +634,19 @@ func (s *taskSuite) TestFirstFailureInVersionWithName() {
 	s.task.Status = evergreen.TaskFailed
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
-	n, err := s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err := s.t.taskFirstFailureInVersionWithName(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// rerun that fails should not do anything
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersionWithName(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	// subsequent runs with other tasks should not do anything
 	s.task.Id = "task2"
 	s.NoError(s.task.Insert())
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersionWithName(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
@@ -656,14 +656,14 @@ func (s *taskSuite) TestFirstFailureInVersionWithName() {
 	s.task.BuildId = "test2"
 	s.task.BuildVariant = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersionWithName(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	// subsequent runs in other versions should generate
 	s.task.Version = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersionWithName(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -678,7 +678,7 @@ func (s *taskSuite) TestRegression() {
 	s.task.RevisionOrderNumber = 1
 	s.task.Id = "task1"
 	s.NoError(s.task.Insert())
-	n, err := s.t.taskRegression(&s.subs[2])
+	n, err := s.t.taskRegression(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
@@ -687,7 +687,7 @@ func (s *taskSuite) TestRegression() {
 	s.task.Id = "test2"
 	s.NoError(s.task.Insert())
 
-	n, err = s.t.taskRegression(&s.subs[2])
+	n, err = s.t.taskRegression(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
@@ -702,7 +702,7 @@ func (s *taskSuite) TestRegression() {
 	s.data.Status = evergreen.TaskSucceeded
 	s.NoError(s.task.Insert())
 
-	n, err = s.t.taskRegression(&s.subs[2])
+	n, err = s.t.taskRegression(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
@@ -717,7 +717,7 @@ func (s *taskSuite) TestRegression() {
 	s.data.Status = evergreen.TaskFailed
 	s.NoError(s.task.Insert())
 
-	n, err = s.t.taskRegression(&s.subs[2])
+	n, err = s.t.taskRegression(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
@@ -729,7 +729,7 @@ func (s *taskSuite) TestRegression() {
 	s.task.BuildId = "test5"
 	s.task.RevisionOrderNumber = 5
 	s.NoError(s.task.Insert())
-	n, err = s.t.taskRegression(&s.subs[2])
+	n, err = s.t.taskRegression(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
@@ -748,13 +748,13 @@ func (s *taskSuite) TestRegression() {
 	s.task.BuildId = "test6"
 	s.task.RevisionOrderNumber = 6
 	s.NoError(s.task.Insert())
-	n, err = s.t.taskRegression(&s.subs[2])
+	n, err = s.t.taskRegression(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	// but should renotify if after the interval
 	s.subs[2].TriggerData = nil // use the default value of 48 hours
-	n, err = s.t.taskRegression(&s.subs[2])
+	n, err = s.t.taskRegression(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
@@ -777,7 +777,7 @@ func (s *taskSuite) TestRegression() {
 	s.task.RevisionOrderNumber = 8
 	s.task.Status = evergreen.TaskFailed
 	s.NoError(s.task.Insert())
-	n, err = s.t.taskRegression(&s.subs[2])
+	n, err = s.t.taskRegression(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
@@ -788,7 +788,7 @@ func (s *taskSuite) TestRegression() {
 	s.NotZero(*task4)
 	task4.Execution = 1
 	s.task = *task4
-	n, err = s.t.taskRegression(&s.subs[2])
+	n, err = s.t.taskRegression(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 }
@@ -829,7 +829,7 @@ func (s *taskSuite) makeTest(ctx context.Context, testName, testStatus string) {
 
 func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
 	s.t = s.makeTaskTriggers(s.task.Id, s.task.Execution)
-	n, err := s.t.taskRegressionByTest(&s.subs[2])
+	n, err := s.t.taskRegressionByTest(s.ctx, &s.subs[2])
 	s.NoError(err)
 	msg := fmt.Sprintf("expected nil notification; got '%s'", s.task.Id)
 	if shouldGenerate {
@@ -838,7 +838,7 @@ func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
 	s.Equal(shouldGenerate, n != nil, msg)
 
 	// triggering the notification again should not generate anything
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	n, err = s.t.taskRegressionByTest(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 }
@@ -1191,7 +1191,7 @@ func (s *taskSuite) TestTaskExceedsTime() {
 	}
 	s.t.data.Status = evergreen.TaskSucceeded
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	n, err := s.t.taskExceedsDuration(&s.subs[3])
+	n, err := s.t.taskExceedsDuration(s.ctx, &s.subs[3])
 	s.NoError(err)
 	s.NotNil(n)
 
@@ -1202,13 +1202,13 @@ func (s *taskSuite) TestTaskExceedsTime() {
 		FinishTime: now.Add(1 * time.Minute),
 	}
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	n, err = s.t.taskExceedsDuration(&s.subs[3])
+	n, err = s.t.taskExceedsDuration(s.ctx, &s.subs[3])
 	s.NoError(err)
 	s.Nil(n)
 
 	// unfinished task should not generate
 	s.event.EventType = event.TaskStarted
-	n, err = s.t.taskExceedsDuration(&s.subs[3])
+	n, err = s.t.taskExceedsDuration(s.ctx, &s.subs[3])
 	s.NoError(err)
 	s.Nil(n)
 }
@@ -1220,14 +1220,14 @@ func (s *taskSuite) TestSuccessfulTaskExceedsTime() {
 	}
 	s.t.data.Status = evergreen.TaskSucceeded
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	n, err := s.t.taskExceedsDuration(&s.subs[3])
+	n, err := s.t.taskExceedsDuration(s.ctx, &s.subs[3])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// task that is not successful should not generate
 	s.t.data.Status = evergreen.TaskFailed
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	n, err = s.t.taskSuccessfulExceedsDuration(&s.subs[3])
+	n, err = s.t.taskSuccessfulExceedsDuration(s.ctx, &s.subs[3])
 	s.NoError(err)
 	s.Nil(n)
 }
@@ -1237,7 +1237,7 @@ func (s *taskSuite) TestTaskRuntimeChange() {
 	s.t.event = &event.EventLogEntry{
 		EventType: event.TaskFinished,
 	}
-	n, err := s.t.taskRuntimeChange(&s.subs[4])
+	n, err := s.t.taskRuntimeChange(s.ctx, &s.subs[4])
 	s.NoError(err)
 	s.Nil(n)
 
@@ -1256,19 +1256,19 @@ func (s *taskSuite) TestTaskRuntimeChange() {
 	lastGreen.FinishTime = lastGreen.StartTime.Add(10 * time.Minute)
 	s.NoError(lastGreen.Insert())
 	s.t.task.Status = evergreen.TaskSucceeded
-	n, err = s.t.taskRuntimeChange(&s.subs[4])
+	n, err = s.t.taskRuntimeChange(s.ctx, &s.subs[4])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// task that does not exceed threshold should not generate
 	s.task.FinishTime = s.task.StartTime.Add(13 * time.Minute)
-	n, err = s.t.taskRuntimeChange(&s.subs[4])
+	n, err = s.t.taskRuntimeChange(s.ctx, &s.subs[4])
 	s.NoError(err)
 	s.Nil(n)
 
 	// task that finished too quickly should generate
 	s.task.FinishTime = s.task.StartTime.Add(2 * time.Minute)
-	n, err = s.t.taskRuntimeChange(&s.subs[4])
+	n, err = s.t.taskRuntimeChange(s.ctx, &s.subs[4])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -1307,25 +1307,25 @@ func (s *taskSuite) TestBuildBreak() {
 
 	// successful task should not trigger
 	s.task.Status = evergreen.TaskSucceeded
-	n, err := s.t.buildBreak(&s.subs[6])
+	n, err := s.t.buildBreak(s.ctx, &s.subs[6])
 	s.NoError(err)
 	s.Nil(n)
 
 	// system unresponsive shouldn't trigger
 	s.task.Status = evergreen.TaskFailed
 	s.task.Details.Description = evergreen.TaskDescriptionHeartbeat
-	n, err = s.t.buildBreak(&s.subs[6])
+	n, err = s.t.buildBreak(s.ctx, &s.subs[6])
 	s.NoError(err)
 	s.Nil(n)
 
 	// task regression should trigger
 	s.task.Details.Description = ""
-	n, err = s.t.buildBreak(&s.subs[6])
+	n, err = s.t.buildBreak(s.ctx, &s.subs[6])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// another regression in the same version should not trigger
-	n, err = s.t.buildBreak(&s.subs[6])
+	n, err = s.t.buildBreak(s.ctx, &s.subs[6])
 	s.NoError(err)
 	s.Nil(n)
 }
@@ -1414,13 +1414,13 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 
 	// don't alert for an execution task
 	tr.task = &tasks[1]
-	notification, err := tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
+	notification, err := tr.taskRegressionByTest(ctx, &event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 	assert.NoError(t, err)
 	assert.Nil(t, notification)
 
 	// alert for the first run of this display task with failing execution task et0, failing test f0
 	tr.task = &tasks[0]
-	notification, err = tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
+	notification, err = tr.taskRegressionByTest(ctx, &event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 	assert.NoError(t, err)
 	require.NotNil(t, notification)
 	assert.Equal(t, "dt0_0", notification.Metadata.TaskID)
@@ -1433,13 +1433,13 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 		Status:   evergreen.TestFailedStatus,
 	}))
 	require.NoError(t, tasks[4].SetResultsInfo(testresult.TestResultsServiceLocal, true))
-	notification, err = tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
+	notification, err = tr.taskRegressionByTest(ctx, &event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 	assert.NoError(t, err)
 	require.NotNil(t, notification)
 	assert.Equal(t, "dt0_1", notification.Metadata.TaskID)
 
 	// don't alert on the second run of the display task for a different execution task (et1) that contains the same test (f0)
-	notification, err = tr.taskRegressionByTest(&event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
+	notification, err = tr.taskRegressionByTest(ctx, &event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 	assert.NoError(t, err)
 	assert.Nil(t, notification)
 }

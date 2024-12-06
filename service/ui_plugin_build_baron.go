@@ -132,7 +132,7 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 	taskId := vars["task_id"]
 	exec := vars["execution"]
 
-	searchReturnInfo, bbConfig, err := model.GetSearchReturnInfo(taskId, exec)
+	searchReturnInfo, bbConfig, err := model.GetSearchReturnInfo(r.Context(), taskId, exec)
 	if err != nil {
 		gimlet.WriteJSONInternalError(rw, err.Error())
 		return

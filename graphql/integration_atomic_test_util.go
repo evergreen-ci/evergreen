@@ -191,7 +191,7 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 
 	require.NoError(t, setupDBIndexes())
 	require.NoError(t, setupDBData(ctx, env, state.DBData))
-	require.NoError(t, setupTaskOutputData(ctx, env, state))
+	require.NoError(t, setupTaskOutputData(ctx, state))
 	roleManager := env.RoleManager()
 
 	roles, err := roleManager.GetAllRoles()
@@ -410,7 +410,7 @@ func setupDBData(ctx context.Context, env evergreen.Environment, data map[string
 	return catcher.Resolve()
 }
 
-func setupTaskOutputData(ctx context.Context, env evergreen.Environment, state *AtomicGraphQLState) error {
+func setupTaskOutputData(ctx context.Context, state *AtomicGraphQLState) error {
 	for taskOutputType, data := range state.TaskOutputData {
 		switch taskOutputType {
 		case taskoutput.TaskLogOutput{}.ID():
