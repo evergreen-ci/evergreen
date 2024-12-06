@@ -294,14 +294,15 @@ const (
 	DefaultSleepScheduleTimeZone     = "America/New_York"
 
 	// host resource tag names
-	TagName             = "name"
-	TagDistro           = "distro"
-	TagEvergreenService = "evergreen-service"
-	TagUsername         = "username"
-	TagOwner            = "owner"
-	TagMode             = "mode"
-	TagStartTime        = "start-time"
-	TagExpireOn         = "expire-on"
+	TagName              = "name"
+	TagDistro            = "distro"
+	TagEvergreenService  = "evergreen-service"
+	TagUsername          = "username"
+	TagOwner             = "owner"
+	TagMode              = "mode"
+	TagStartTime         = "start-time"
+	TagExpireOn          = "expire-on"
+	TagAllowRemoteAccess = "AllowRemoteAccess"
 
 	FinderVersionLegacy    = "legacy"
 	FinderVersionParallel  = "parallel"

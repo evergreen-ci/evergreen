@@ -161,6 +161,7 @@ func makeTags(intentHost *host.Host) []host.Tag {
 		{Key: evergreen.TagMode, Value: "production", CanBeModified: false},
 		{Key: evergreen.TagStartTime, Value: intentHost.CreationTime.Format(evergreen.NameTimeFormat), CanBeModified: false},
 		{Key: evergreen.TagExpireOn, Value: expireOn, CanBeModified: false},
+		{Key: evergreen.TagAllowRemoteAccess, Value: "true", CanBeModified: false},
 	}
 
 	if intentHost.UserHost {
