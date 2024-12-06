@@ -620,6 +620,7 @@ type VolumeHost struct {
 
 type Waterfall struct {
 	BuildVariants     []*model1.WaterfallBuildVariant `json:"buildVariants"`
+	FlattenedBuilds   []*model1.WaterfallBuild        `json:"flattenedBuilds"`
 	Versions          []*WaterfallVersion             `json:"versions"`
 	FlattenedVersions []*model.APIVersion             `json:"flattenedVersions"`
 	Pagination        *WaterfallPagination            `json:"pagination"`
