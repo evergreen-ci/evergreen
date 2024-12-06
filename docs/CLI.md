@@ -404,7 +404,7 @@ evergreen last-green -p mci -v ubuntu
 ```
 
 #### Tasks
-The command `evergeen task` contains subcommands for interacting with task run data, including task output (build) data.
+The command `evergreen task` contains subcommands for interacting with task run data, including task output (build) data.
 
 ```
 # Fetch task logs
