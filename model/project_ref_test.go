@@ -1461,7 +1461,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 				AppID:      9999,
 				PrivateKey: []byte("repo-secret"),
 			}
-			err = githubapp.UpsertGithubAppAuth(&auth)
+			err = githubAppAuthUpsert(&auth)
 			assert.NoError(t, err)
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageGithubAppSettingsSection, "me"))
 			pRefFromDb, err = FindBranchProjectRef(id)

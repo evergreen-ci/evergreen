@@ -84,7 +84,7 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
-			event.LogHostScriptExecuteFailed(j.HostID, j.Error())
+			event.LogHostScriptExecuteFailed(j.HostID, "", j.Error())
 		}
 	}()
 

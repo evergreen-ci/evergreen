@@ -81,8 +81,6 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 		}
 		var loggedProjectEvents model.ProjectChangeEvents
 		loggedProjectEvents, err = model.MostRecentProjectEvents(resourceID, 200)
-		loggedProjectEvents.RedactSecrets()
-		loggedProjectEvents.RedactGitHubPrivateKey()
 		for _, event := range loggedProjectEvents {
 			loggedEvents = append(loggedEvents, event.EventLogEntry)
 		}

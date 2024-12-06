@@ -484,6 +484,9 @@ func (d *basicCachedDAGDispatcherImpl) tryMarkNextTaskGroupTaskDispatched(taskGr
 		// next is a *TaskQueueItem, sourced for d.taskGroups (map[string]schedulableUnit) tasks' field, which in turn is a []TaskQueueItem.
 		// taskGroupTask is a *TaskQueueItem sourced from d.nodeItemMap, which is a map[node.ID()]*TaskQueueItem.
 		node := d.getNodeByItemID(next.Id)
+		if node == nil {
+			return nil
+		}
 		taskGroupTask := d.getItemByNodeID(node.ID())
 		if taskGroupTask == nil {
 			return nil

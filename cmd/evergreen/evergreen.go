@@ -58,7 +58,6 @@ func buildApp() *cli.App {
 		operations.List(),
 		operations.LastGreen(),
 		operations.Subscriptions(),
-		operations.CommitQueue(),
 		operations.Scheduler(),
 		operations.Client(),
 
