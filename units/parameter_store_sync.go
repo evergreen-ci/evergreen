@@ -112,7 +112,7 @@ func (j *parameterStoreSyncJob) sync(ctx context.Context, pRefs []model.ProjectR
 		}
 
 		if !pRef.ParameterStoreGitHubAppSynced {
-			ghAppAuth, err := model.GitHubAppAuthFindOne(pRef.Owner)
+			ghAppAuth, err := model.GitHubAppAuthFindOne(pRef.Id)
 			if err != nil {
 				catcher.Wrapf(err, "finding GitHub App auth for project '%s'", pRef.Id)
 				continue
