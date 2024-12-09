@@ -80,6 +80,9 @@ func githubAppAuthFindParameterStore(ctx context.Context, appAuth *githubapp.Git
 	if err != nil {
 		return errors.Wrapf(err, "getting GitHub app private key from Parameter Store")
 	}
+	if len(params) != 1 {
+		return errors.Errorf("expected to get exactly one parameter '%s', but actually got %d", appAuth.PrivateKeyParameter, len(params))
+	}
 
 	privKey := []byte(params[0].Value)
 
