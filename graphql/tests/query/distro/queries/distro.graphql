@@ -16,5 +16,6 @@ query {
     provider
     providerSettingsList
     user
+    singleTaskDistro
   }
 }
