@@ -955,7 +955,7 @@ func (h *Host) CheckTaskDataFetched(ctx context.Context, env evergreen.Environme
 					if proc.Complete(ctx) {
 						return false, nil
 					}
-					return true, errors.New("fetching task data not finished")
+					return true, errors.New(evergreen.FetchingTaskDataUnfinishedError)
 				}, utility.RetryOptions{
 					MaxAttempts: checkAttempts,
 					MinDelay:    checkRetryMinDelay,

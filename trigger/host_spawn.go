@@ -300,18 +300,17 @@ func (t *spawnHostSetupScriptTriggers) spawnHostSetupScriptOutcome(sub *event.Su
 }
 
 func (t *spawnHostSetupScriptTriggers) makePayload(sub *event.Subscription) (interface{}, error) {
-	if t.event.EventType != event.EventHostScriptExecuteFailed && t.event.EventType != event.EventHostScriptExecuted {
-		return nil, errors.Errorf("unexpected event type '%s'", t.event.EventType)
-	}
-
 	var result string
-	if t.event.EventType == event.EventHostScriptExecuted {
+	switch t.event.EventType {
+	case event.EventHostScriptExecuted:
 		result = "succeeded"
-	} else {
+	case event.EventHostScriptExecuteFailed:
 		result = "failed"
 		if strings.Contains(t.data.Logs, evergreen.FetchingTaskDataUnfinishedError) {
 			result = "failed to start"
 		}
+	default:
+		return nil, errors.Errorf("unexpected event type '%s'", t.event.EventType)
 	}
 	var spawnHostScriptPath string
 	if t.host.ProvisionOptions != nil && t.host.ProvisionOptions.TaskId != "" {
@@ -360,7 +359,7 @@ func (t *spawnHostSetupScriptTriggers) slackPayload(spawnHostScriptPath, result,
 			})
 		attachment.Fields = append(attachment.Fields,
 			&message.SlackAttachmentField{
-				Title: "Setup Script Command",
+				Title: "Setup Script Path",
 				Value: spawnHostScriptPath,
 			})
 	}
