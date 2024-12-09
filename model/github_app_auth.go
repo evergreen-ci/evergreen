@@ -110,9 +110,11 @@ func githubAppAuthFindParameterStore(ctx context.Context, appAuth *githubapp.Git
 	return nil
 }
 
-// githubAppAuthUpsert upserts the GitHub app auth into the database and upserts
+// GitHubAppAuthUpsert upserts the GitHub app auth into the database and upserts
 // the private key to Parameter Store if enabled.
-func githubAppAuthUpsert(appAuth *githubapp.GithubAppAuth) error {
+// GitHubAppAuthUpsert upserts the GitHub app auth into the database and to
+// Parameter Store if enabled.
+func GitHubAppAuthUpsert(appAuth *githubapp.GithubAppAuth) error {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
