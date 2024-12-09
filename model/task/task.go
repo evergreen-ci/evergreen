@@ -3113,9 +3113,6 @@ func (t *Task) PopulateTestResults(ctx context.Context) error {
 		return nil
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	taskTestResults, err := t.GetTestResults(ctx, evergreen.GetEnvironment(), nil)
 	if err != nil {
 		return errors.Wrap(err, "populating test results")
