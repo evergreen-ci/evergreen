@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
-	dbModel "github.com/evergreen-ci/evergreen/model"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -42,14 +41,14 @@ func (s *patchSuite) SetupSuite() {
 func (s *patchSuite) SetupTest() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 
-	s.NoError(db.ClearCollections(event.EventCollection, patch.Collection, event.SubscriptionsCollection, dbModel.ProjectRefCollection, model.VersionCollection))
+	s.NoError(db.ClearCollections(event.EventCollection, patch.Collection, event.SubscriptionsCollection, model.ProjectRefCollection, model.VersionCollection))
 	startTime := time.Now().Truncate(time.Millisecond)
 
 	patchID := mgobson.ObjectIdHex("5aeb4514f27e4f9984646d97")
 
 	childPatchId := "5aab4514f27e4f9984646d97"
 
-	pRef := dbModel.ProjectRef{
+	pRef := model.ProjectRef{
 		Id:         "test",
 		Identifier: "testing",
 	}
@@ -180,51 +179,51 @@ func (s *patchSuite) TestAllTriggers() {
 }
 
 func (s *patchSuite) TestPatchSuccess() {
-	n, err := s.t.patchSuccess(&s.subs[1])
+	n, err := s.t.patchSuccess(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	n, err = s.t.patchSuccess(&s.subs[1])
+	n, err = s.t.patchSuccess(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionSucceeded
-	n, err = s.t.patchSuccess(&s.subs[1])
+	n, err = s.t.patchSuccess(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *patchSuite) TestPatchFailure() {
 	s.data.Status = evergreen.VersionCreated
-	n, err := s.t.patchFailure(&s.subs[2])
+	n, err := s.t.patchFailure(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionSucceeded
-	n, err = s.t.patchFailure(&s.subs[2])
+	n, err = s.t.patchFailure(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	n, err = s.t.patchFailure(&s.subs[2])
+	n, err = s.t.patchFailure(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *patchSuite) TestPatchOutcome() {
 	s.data.Status = evergreen.VersionCreated
-	n, err := s.t.patchOutcome(&s.subs[0])
+	n, err := s.t.patchOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionSucceeded
-	n, err = s.t.patchOutcome(&s.subs[0])
+	n, err = s.t.patchOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	n, err = s.t.patchOutcome(&s.subs[0])
+	n, err = s.t.patchOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -265,9 +264,8 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 	for i := range s.subs {
 		s.NoError(s.subs[i].Upsert())
 	}
-
 	s.data.Status = evergreen.VersionSucceeded
-	n, err := s.t.patchOutcome(&s.subs[0])
+	n, err := s.t.patchOutcome(s.ctx, &s.subs[0])
 	// there is no token set up in settings, but hitting this error
 	// means it's trying to finalize the patch
 	s.Require().Error(err)
@@ -275,19 +273,19 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	n, err = s.t.patchOutcome(&s.subs[1])
+	n, err = s.t.patchOutcome(s.ctx, &s.subs[1])
 	s.Require().Error(err)
 	s.Contains(err.Error(), "finalizing child patch")
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionSucceeded
-	n, err = s.t.patchOutcome(&s.subs[2])
+	n, err = s.t.patchOutcome(s.ctx, &s.subs[2])
 	s.Require().Error(err)
 	s.Contains(err.Error(), "finalizing child patch")
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	n, err = s.t.patchOutcome(&s.subs[2])
+	n, err = s.t.patchOutcome(s.ctx, &s.subs[2])
 	s.Require().Error(err)
 	s.Contains(err.Error(), "finalizing child patch")
 	s.Nil(n)
@@ -295,12 +293,12 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 }
 
 func (s *patchSuite) TestPatchStarted() {
-	n, err := s.t.patchStarted(&s.subs[0])
+	n, err := s.t.patchStarted(s.ctx, &s.subs[0])
 	s.Nil(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionStarted
-	n, err = s.t.patchStarted(&s.subs[0])
+	n, err = s.t.patchStarted(s.ctx, &s.subs[0])
 	s.Nil(err)
 	s.NotNil(n)
 }

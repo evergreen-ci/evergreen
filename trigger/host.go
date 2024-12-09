@@ -217,7 +217,7 @@ func (t *hostTemplateData) hostSlackPayload(messageString string, linkTitle stri
 	}, nil
 }
 
-func (t *hostTriggers) hostExpiration(sub *event.Subscription) (*notification.Notification, error) {
+func (t *hostTriggers) hostExpiration(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	switch t.event.EventType {
 	case event.EventHostExpirationWarningSent:
 		return t.makeHostExpirationNotification(sub)
@@ -263,7 +263,7 @@ func (t *hostTriggers) getTimeZone(sub *event.Subscription, trigger string) *tim
 	return time.Local
 }
 
-func (t *hostTriggers) spawnHostIdle(sub *event.Subscription) (*notification.Notification, error) {
+func (t *hostTriggers) spawnHostIdle(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	shouldNotify, err := t.host.ShouldNotifyStoppedSpawnHostIdle()
 	if err != nil {
 		return nil, err

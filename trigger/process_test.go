@@ -270,7 +270,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection, evergreen.ConfigCollection,
 		model.ProjectRefCollection, model.RepositoriesCollection, model.ProjectAliasCollection, model.ParserProjectCollection, manifest.Collection))
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
+	_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": model.ParserProjectCollection})
 
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
@@ -400,7 +400,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection, evergreen.ConfigCollection,
 		model.ProjectRefCollection, model.RepositoriesCollection, model.ProjectAliasCollection, model.ParserProjectCollection, manifest.Collection))
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
+	_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": model.ParserProjectCollection})
 
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)
@@ -533,7 +533,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	require := require.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection, evergreen.ConfigCollection,
 		model.ProjectRefCollection, model.RepositoriesCollection, model.ProjectAliasCollection, model.ParserProjectCollection, manifest.Collection))
-	_ = evergreen.GetEnvironment().DB().RunCommand(nil, map[string]string{"create": model.ParserProjectCollection})
+	_ = evergreen.GetEnvironment().DB().RunCommand(ctx, map[string]string{"create": model.ParserProjectCollection})
 
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config)

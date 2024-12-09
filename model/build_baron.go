@@ -125,9 +125,9 @@ type buildBaronConfig struct {
 	TicketCreationDefined bool
 }
 
-func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnInfo, buildBaronConfig, error) {
+func GetSearchReturnInfo(ctx context.Context, taskId string, exec string) (*thirdparty.SearchReturnInfo, buildBaronConfig, error) {
 	bbConfig := buildBaronConfig{}
-	t, err := BbGetTask(taskId, exec)
+	t, err := BbGetTask(ctx, taskId, exec)
 	if err != nil {
 		return nil, bbConfig, err
 	}
@@ -177,7 +177,7 @@ func GetSearchReturnInfo(taskId string, exec string) (*thirdparty.SearchReturnIn
 	return &thirdparty.SearchReturnInfo{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL}, bbConfig, nil
 }
 
-func BbGetTask(taskId string, executionString string) (*task.Task, error) {
+func BbGetTask(ctx context.Context, taskId string, executionString string) (*task.Task, error) {
 	execution, err := strconv.Atoi(executionString)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid execution number")
@@ -191,7 +191,7 @@ func BbGetTask(taskId string, executionString string) (*task.Task, error) {
 		return nil, errors.Errorf("no task found for task '%s' and execution %d", taskId, execution)
 	}
 
-	if err = t.PopulateTestResults(); err != nil {
+	if err = t.PopulateTestResults(ctx); err != nil {
 		return nil, errors.Wrap(err, "populating test results")
 	}
 

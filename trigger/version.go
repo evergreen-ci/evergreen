@@ -200,7 +200,7 @@ func (t *versionTriggers) generate(sub *event.Subscription, pastTenseOverride st
 
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
-func (t *versionTriggers) versionOutcome(sub *event.Subscription) (*notification.Notification, error) {
+func (t *versionTriggers) versionOutcome(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if !evergreen.IsFinishedVersionStatus(t.data.Status) || t.event.EventType == event.VersionChildrenCompletion {
 		return nil, nil
 	}
@@ -208,7 +208,7 @@ func (t *versionTriggers) versionOutcome(sub *event.Subscription) (*notification
 	return t.generate(sub, "")
 }
 
-func (t *versionTriggers) versionGithubCheckOutcome(sub *event.Subscription) (*notification.Notification, error) {
+func (t *versionTriggers) versionGithubCheckOutcome(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if !evergreen.IsFinishedVersionStatus(t.data.Status) {
 		return nil, nil
 	}
@@ -216,7 +216,7 @@ func (t *versionTriggers) versionGithubCheckOutcome(sub *event.Subscription) (*n
 	return t.generate(sub, "")
 }
 
-func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification.Notification, error) {
+func (t *versionTriggers) versionFailure(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.VersionFailed || t.event.EventType == event.VersionChildrenCompletion {
 		return nil, nil
 	}
@@ -239,7 +239,7 @@ func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification
 	return t.generate(sub, "")
 }
 
-func (t *versionTriggers) versionSuccess(sub *event.Subscription) (*notification.Notification, error) {
+func (t *versionTriggers) versionSuccess(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.VersionSucceeded || t.event.EventType == event.VersionChildrenCompletion {
 		return nil, nil
 	}
@@ -247,7 +247,7 @@ func (t *versionTriggers) versionSuccess(sub *event.Subscription) (*notification
 	return t.generate(sub, "")
 }
 
-func (t *versionTriggers) versionExceedsDuration(sub *event.Subscription) (*notification.Notification, error) {
+func (t *versionTriggers) versionExceedsDuration(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if !evergreen.IsFinishedVersionStatus(t.data.Status) {
 		return nil, nil
 	}
@@ -266,7 +266,7 @@ func (t *versionTriggers) versionExceedsDuration(sub *event.Subscription) (*noti
 	}
 	return t.generate(sub, fmt.Sprintf("exceeded %d seconds", threshold))
 }
-func (t *versionTriggers) versionFamilyOutcome(sub *event.Subscription) (*notification.Notification, error) {
+func (t *versionTriggers) versionFamilyOutcome(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if !evergreen.IsFinishedVersionStatus(t.data.Status) {
 		return nil, nil
 	}
@@ -276,7 +276,7 @@ func (t *versionTriggers) versionFamilyOutcome(sub *event.Subscription) (*notifi
 	return t.generate(sub, "")
 }
 
-func (t *versionTriggers) versionFamilyFailure(sub *event.Subscription) (*notification.Notification, error) {
+func (t *versionTriggers) versionFamilyFailure(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.VersionFailed || t.event.EventType != event.VersionChildrenCompletion {
 		return nil, nil
 	}
@@ -300,7 +300,7 @@ func (t *versionTriggers) versionFamilyFailure(sub *event.Subscription) (*notifi
 	return t.generate(sub, "")
 }
 
-func (t *versionTriggers) versionFamilySuccess(sub *event.Subscription) (*notification.Notification, error) {
+func (t *versionTriggers) versionFamilySuccess(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.VersionSucceeded || t.event.EventType != event.VersionChildrenCompletion {
 		return nil, nil
 	}
@@ -308,7 +308,7 @@ func (t *versionTriggers) versionFamilySuccess(sub *event.Subscription) (*notifi
 	return t.generate(sub, "")
 }
 
-func (t *versionTriggers) versionRuntimeChange(sub *event.Subscription) (*notification.Notification, error) {
+func (t *versionTriggers) versionRuntimeChange(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if !evergreen.IsFinishedVersionStatus(t.data.Status) {
 		return nil, nil
 	}
@@ -337,7 +337,7 @@ func (t *versionTriggers) versionRuntimeChange(sub *event.Subscription) (*notifi
 	return t.generate(sub, fmt.Sprintf("changed in runtime by %.1f%% (over threshold of %s%%)", percentChange, percentString))
 }
 
-func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notification.Notification, error) {
+func (t *versionTriggers) versionRegression(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.VersionFailed || !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.version.Requester) {
 		return nil, nil
 	}

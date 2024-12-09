@@ -111,14 +111,14 @@ func (t *buildTriggers) Attributes() event.Attributes {
 	return attributes
 }
 
-func (t *buildTriggers) buildGithubCheckOutcome(sub *event.Subscription) (*notification.Notification, error) {
+func (t *buildTriggers) buildGithubCheckOutcome(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.GithubCheckStatus != evergreen.BuildSucceeded && t.data.GithubCheckStatus != evergreen.BuildFailed {
 		return nil, nil
 	}
 	return t.generate(sub, "")
 }
 
-func (t *buildTriggers) buildOutcome(sub *event.Subscription) (*notification.Notification, error) {
+func (t *buildTriggers) buildOutcome(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.BuildSucceeded && t.data.Status != evergreen.BuildFailed {
 		return nil, nil
 	}
@@ -126,7 +126,7 @@ func (t *buildTriggers) buildOutcome(sub *event.Subscription) (*notification.Not
 	return t.generate(sub, "")
 }
 
-func (t *buildTriggers) buildFailure(sub *event.Subscription) (*notification.Notification, error) {
+func (t *buildTriggers) buildFailure(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.BuildFailed {
 		return nil, nil
 	}
@@ -134,7 +134,7 @@ func (t *buildTriggers) buildFailure(sub *event.Subscription) (*notification.Not
 	return t.generate(sub, "")
 }
 
-func (t *buildTriggers) buildSuccess(sub *event.Subscription) (*notification.Notification, error) {
+func (t *buildTriggers) buildSuccess(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.BuildSucceeded {
 		return nil, nil
 	}
@@ -142,7 +142,7 @@ func (t *buildTriggers) buildSuccess(sub *event.Subscription) (*notification.Not
 	return t.generate(sub, "")
 }
 
-func (t *buildTriggers) buildExceedsDuration(sub *event.Subscription) (*notification.Notification, error) {
+func (t *buildTriggers) buildExceedsDuration(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.BuildSucceeded && t.data.Status != evergreen.BuildFailed {
 		return nil, nil
 	}
@@ -162,7 +162,7 @@ func (t *buildTriggers) buildExceedsDuration(sub *event.Subscription) (*notifica
 	return t.generate(sub, fmt.Sprintf("exceeded %d seconds", threshold))
 }
 
-func (t *buildTriggers) buildRuntimeChange(sub *event.Subscription) (*notification.Notification, error) {
+func (t *buildTriggers) buildRuntimeChange(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.BuildSucceeded && t.data.Status != evergreen.BuildFailed {
 		return nil, nil
 	}

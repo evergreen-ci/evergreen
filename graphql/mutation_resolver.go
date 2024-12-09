@@ -408,7 +408,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("looking in project collection: %s", err.Error()))
 	}
 	if projectRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding project: %s", err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding project: %s", utility.FromStringPtr(project.Id)))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	if err = apiProjectRef.BuildFromService(*projectRef); err != nil {
