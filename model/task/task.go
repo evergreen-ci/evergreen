@@ -804,13 +804,11 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	}
 	// this is not exact, but depTask.FinishTime is not always set in time to use that
 	t.DependenciesMetTime = time.Now()
-	t.DisplayStatusCache = t.findDisplayStatus()
 	err = UpdateOne(
 		bson.M{IdKey: t.Id},
 		bson.M{
 			"$set": bson.M{
 				DependenciesMetTimeKey: t.DependenciesMetTime,
-				DisplayStatusCacheKey:  t.DisplayStatusCache,
 			},
 		})
 	grip.Error(message.WrapError(err, message.Fields{
@@ -972,23 +970,13 @@ func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) erro
 				DependencyTaskIdKey: t.Id,
 			}},
 		},
-		[]bson.M{
-			bson.M{"$set": bson.M{
-				DependsOnKey: bson.M{
-					"$map": bson.M{"input": "$" + DependsOnKey,
-						"in": bson.M{"$cond": bson.M{
-							"if": bson.M{"$eq": []string{bsonutil.GetDottedKeyName("$$this", DependencyTaskIdKey), t.Id}},
-							"then": bson.M{"$setField": bson.M{
-								"field": DependencyFinishedKey,
-								"input": "$$this",
-								"value": finished,
-							}},
-							"else": "$$this",
-						}},
-					}},
-			}},
-			addDisplayStatusCache,
-		})
+		bson.M{
+			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedKey): finished},
+		},
+		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
+			bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},
+		}}),
+	)
 	if err != nil {
 		return errors.Wrap(err, "marking finished dependencies")
 	}
