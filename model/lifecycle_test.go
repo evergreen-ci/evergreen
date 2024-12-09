@@ -2159,6 +2159,7 @@ func TestVersionRestart(t *testing.T) {
 			require.Len(t.DependsOn, 1)
 			assert.Equal("task1", t.DependsOn[0].TaskId)
 			assert.False(t.DependsOn[0].Finished, "restarting task1 should have marked dependency as unfinished")
+			assert.Equal(evergreen.TaskWillRun, t.DisplayStatusCache)
 		}
 	}
 	for _, b := range builds {
