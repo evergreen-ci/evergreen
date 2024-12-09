@@ -74000,7 +74000,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 			it.SetupAsSudo = data
 		case "singleTaskDistro":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("singleTaskDistro"))
-			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
