@@ -118,6 +118,14 @@ func (j *parameterStoreSyncJob) sync(ctx context.Context, pRefs []model.ProjectR
 				continue
 			}
 			if ghAppAuth != nil {
+				grip.Info(message.Fields{
+					"message":                 "syncing project GitHub app private key to Parameter Store",
+					"existing_parameter_name": ghAppAuth.PrivateKeyParameter,
+					"project_id":              pRef.Id,
+					"is_repo_ref":             areRepoRefs,
+					"epic":                    "DEVPROD-5552",
+					"job":                     j.ID(),
+				})
 				if err := model.GitHubAppAuthUpsert(ghAppAuth); err != nil {
 					catcher.Wrapf(err, "syncing GitHub app private key for project '%s' to Parameter Store", pRef.Id)
 					continue
