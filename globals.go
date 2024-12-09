@@ -558,6 +558,7 @@ const (
 	ContentLengthHeader = "Content-Length"
 	APIUserHeader       = "Api-User"
 	APIKeyHeader        = "Api-Key"
+	EnvironmentHeader   = "X-Evergreen-Environment"
 )
 
 const (
