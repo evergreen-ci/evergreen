@@ -3760,6 +3760,8 @@ var psEnabledButNotSyncedQuery = bson.M{
 	"$or": []bson.M{
 		{projectRefParameterStoreVarsSyncedKey: false},
 		{projectRefParameterStoreVarsSyncedKey: bson.M{"$exists": false}},
+		{projectRefParameterStoreGitHubAppSyncedKey: false},
+		{projectRefParameterStoreGitHubAppSyncedKey: bson.M{"$exists": false}},
 	},
 }
 

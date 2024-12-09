@@ -85,45 +85,45 @@ func (j *parameterStoreSyncJob) Run(ctx context.Context) {
 func (j *parameterStoreSyncJob) sync(ctx context.Context, pRefs []model.ProjectRef, areRepoRefs bool) error {
 	catcher := grip.NewBasicCatcher()
 	for _, pRef := range pRefs {
-		pVars, err := model.FindOneProjectVars(pRef.Id)
-		if err != nil {
-			catcher.Wrapf(err, "finding project vars for project '%s'", pRef.Id)
-			continue
-		}
-		if pVars == nil {
-			grip.Notice(message.Fields{
-				"message":     "found project that has no project vars, initializing with empty project vars",
-				"project":     pRef.Id,
-				"is_repo_ref": areRepoRefs,
-				"job":         j.ID(),
-			})
-			pVars = &model.ProjectVars{Id: pRef.Id}
-		}
-		pm, err := model.FullSyncToParameterStore(ctx, pVars, &pRef, areRepoRefs)
-		if err != nil {
-			catcher.Wrapf(err, "syncing project vars for project '%s'", pRef.Id)
-			continue
-		}
-		if err := pVars.SetParamMappings(*pm); err != nil {
-			catcher.Wrapf(err, "updating parameter mappings for project '%s'", pRef.Id)
-			continue
-		}
-
-		// kim: TODO: test in staging that GH app private key syncs to PS.
-
-		// kim: TODO: needs DEVPROD-9430.
-		ghAppAuth, err := model.GitHubAppAuthFindOne(pRef.Owner)
-		if err != nil {
-			catcher.Wrapf(err, "finding GitHub App auth for project '%s'", pRef.Id)
-			continue
-		}
-		if ghAppAuth != nil {
-			if err := model.GitHubAppAuthUpsert(ghAppAuth); err != nil {
-				catcher.Wrapf(err, "syncing GitHub app private key for project '%s' to Parameter Store", pRef.Id)
+		if !pRef.ParameterStoreVarsSynced {
+			pVars, err := model.FindOneProjectVars(pRef.Id)
+			if err != nil {
+				catcher.Wrapf(err, "finding project vars for project '%s'", pRef.Id)
+				continue
+			}
+			if pVars == nil {
+				grip.Notice(message.Fields{
+					"message":     "found project that has no project vars, initializing with empty project vars",
+					"project":     pRef.Id,
+					"is_repo_ref": areRepoRefs,
+					"job":         j.ID(),
+				})
+				pVars = &model.ProjectVars{Id: pRef.Id}
+			}
+			pm, err := model.FullSyncToParameterStore(ctx, pVars, &pRef, areRepoRefs)
+			if err != nil {
+				catcher.Wrapf(err, "syncing project vars for project '%s'", pRef.Id)
+				continue
+			}
+			if err := pVars.SetParamMappings(*pm); err != nil {
+				catcher.Wrapf(err, "updating parameter mappings for project '%s'", pRef.Id)
 				continue
 			}
 		}
 
+		if !pRef.ParameterStoreGitHubAppSynced {
+			ghAppAuth, err := model.GitHubAppAuthFindOne(pRef.Owner)
+			if err != nil {
+				catcher.Wrapf(err, "finding GitHub App auth for project '%s'", pRef.Id)
+				continue
+			}
+			if ghAppAuth != nil {
+				if err := model.GitHubAppAuthUpsert(ghAppAuth); err != nil {
+					catcher.Wrapf(err, "syncing GitHub app private key for project '%s' to Parameter Store", pRef.Id)
+					continue
+				}
+			}
+		}
 	}
 	return catcher.Resolve()
 }
