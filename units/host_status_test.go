@@ -160,7 +160,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
 			require.NoError(t, h.Insert(ctx))
 
-			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, mockInstance.Status))
+			require.NoError(t, j.setCloudHostStatus(ctx, *h, mockInstance.Status))
 
 			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
@@ -178,7 +178,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
 			require.NoError(t, h.Insert(ctx))
 
-			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, mockInstance.Status))
+			require.NoError(t, j.setCloudHostStatus(ctx, *h, mockInstance.Status))
 
 			dbHost, err := host.FindOneId(ctx, h.Id)
 			require.NoError(t, err)
@@ -188,7 +188,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 		},
 		"NonExistentStatusInitiatesTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
 			require.NoError(t, h.Insert(ctx))
-			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, cloud.StatusNonExistent))
+			require.NoError(t, j.setCloudHostStatus(ctx, *h, cloud.StatusNonExistent))
 
 			queue, err := env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
 			require.NoError(t, err)
@@ -202,7 +202,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 		},
 		"FailedStatusInitiatesTermination": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, j *cloudHostReadyJob, mockMgr cloud.Manager) {
 			require.NoError(t, h.Insert(ctx))
-			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, cloud.StatusFailed))
+			require.NoError(t, j.setCloudHostStatus(ctx, *h, cloud.StatusFailed))
 
 			queue, err := env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
 			require.NoError(t, err)
@@ -223,7 +223,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 			require.NoError(t, tsk.Insert())
 			h.RunningTask = tsk.Id
 			require.NoError(t, h.Insert(ctx))
-			require.NoError(t, j.setCloudHostStatus(ctx, mockMgr, *h, cloud.StatusStopped))
+			require.NoError(t, j.setCloudHostStatus(ctx, *h, cloud.StatusStopped))
 
 			queue, err := env.RemoteQueueGroup().Get(ctx, terminateHostQueueGroup)
 			require.NoError(t, err)

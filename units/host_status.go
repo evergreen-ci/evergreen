@@ -127,7 +127,7 @@ clientsLoop:
 					}))
 					statuses[hostID] = cloud.StatusNonExistent
 				}
-				j.AddError(errors.Wrapf(j.setCloudHostStatus(ctx, m, hosts[i], status), "setting status for host '%s' based on its cloud instance's status", hosts[i].Id))
+				j.AddError(errors.Wrapf(j.setCloudHostStatus(ctx, hosts[i], status), "setting status for host '%s' based on its cloud instance's status", hosts[i].Id))
 			}
 
 			continue
@@ -141,7 +141,7 @@ clientsLoop:
 				j.AddError(errors.Wrapf(err, "checking instance status of host '%s'", h.Id))
 				continue clientsLoop
 			}
-			j.AddError(errors.Wrapf(j.setCloudHostStatus(ctx, m, h, cloudInfo.Status), "setting status for host '%s' based on its cloud instance's status", h.Id))
+			j.AddError(errors.Wrapf(j.setCloudHostStatus(ctx, h, cloudInfo.Status), "setting status for host '%s' based on its cloud instance's status", h.Id))
 		}
 	}
 }
@@ -184,7 +184,7 @@ func (j *cloudHostReadyJob) terminateUnknownHosts(ctx context.Context, awsErr st
 // determine the next step in the host lifecycle. Hosts that are running
 // in the cloud can successfully transition to the next step in the lifecycle.
 // Hosts found in an unrecoverable state are terminated.
-func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, cloudStatus cloud.CloudStatus) error {
+func (j *cloudHostReadyJob) setCloudHostStatus(ctx context.Context, h host.Host, cloudStatus cloud.CloudStatus) error {
 	switch cloudStatus {
 	case cloud.StatusFailed, cloud.StatusTerminated, cloud.StatusStopped, cloud.StatusStopping, cloud.StatusNonExistent:
 		j.logHostStatusMessage(&h, cloudStatus)

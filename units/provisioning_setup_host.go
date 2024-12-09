@@ -592,7 +592,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context) error {
 	}
 	var output string
 	var err error
-	fetchTimeout := 15 * time.Minute
+	fetchTimeout := 20 * time.Minute
 	getTaskDataCtx, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
 	if j.host.Distro.LegacyBootstrap() {
