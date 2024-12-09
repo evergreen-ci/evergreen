@@ -32,7 +32,7 @@
               }
             ],
             "user": "mci-exec",
-            "single_task_distro": true
+            "singleTaskDistro": true
           }
         }
       }
