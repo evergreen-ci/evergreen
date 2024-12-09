@@ -27,11 +27,13 @@ type WaterfallTask struct {
 }
 
 type WaterfallBuild struct {
-	Id          string          `bson:"_id" json:"_id"`
-	Activated   bool            `bson:"activated" json:"activated"`
-	DisplayName string          `bson:"display_name" json:"display_name"`
-	Version     string          `bson:"version" json:"version"`
-	Tasks       []WaterfallTask `bson:"tasks" json:"tasks"`
+	Id           string          `bson:"_id" json:"_id"`
+	BuildVariant string          `bson:"build_variant" json:"build_variant"`
+	Activated    bool            `bson:"activated" json:"activated"`
+	DisplayName  string          `bson:"display_name" json:"display_name"`
+	Version      string          `bson:"version" json:"version"`
+	Tasks        []WaterfallTask `bson:"tasks" json:"tasks"`
+	Order        int             `bson:"order" json:"order"`
 }
 
 type WaterfallBuildVariant struct {
