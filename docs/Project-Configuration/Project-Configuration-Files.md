@@ -1631,7 +1631,7 @@ To address this, project files can define a top-level `ignore`
 list of gitignore-style globs which tell Evergreen to not automatically
 run tasks for commits that only change ignored files, and we will not 
 create PR patches but instead send a successful status for all required
-checks as well as the base `evergeen` check. 
+checks as well as the base `evergreen` check. 
 
 ``` yaml
 ignore:

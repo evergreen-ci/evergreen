@@ -480,7 +480,7 @@ func (r *mutationResolver) DeleteGithubAppCredentials(ctx context.Context, opts 
 	if app == nil {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("project '%s' does not have a GitHub app defined", opts.ProjectID))
 	}
-	if err = githubapp.RemoveGithubAppAuth(opts.ProjectID); err != nil {
+	if err = model.GitHubAppAuthRemove(app); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("removing GitHub app auth for project '%s': %s", opts.ProjectID, err.Error()))
 	}
 	before := model.ProjectSettings{
