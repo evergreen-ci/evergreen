@@ -106,7 +106,24 @@ func (j *parameterStoreSyncJob) sync(ctx context.Context, pRefs []model.ProjectR
 		}
 		if err := pVars.SetParamMappings(*pm); err != nil {
 			catcher.Wrapf(err, "updating parameter mappings for project '%s'", pRef.Id)
+			continue
 		}
+
+		// kim: TODO: test in staging that GH app private key syncs to PS.
+
+		// kim: TODO: needs DEVPROD-9430.
+		ghAppAuth, err := model.GitHubAppAuthFindOne(pRef.Owner)
+		if err != nil {
+			catcher.Wrapf(err, "finding GitHub App auth for project '%s'", pRef.Id)
+			continue
+		}
+		if ghAppAuth != nil {
+			if err := model.GitHubAppAuthUpsert(ghAppAuth); err != nil {
+				catcher.Wrapf(err, "syncing GitHub app private key for project '%s' to Parameter Store", pRef.Id)
+				continue
+			}
+		}
+
 	}
 	return catcher.Resolve()
 }

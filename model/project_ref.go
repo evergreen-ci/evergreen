@@ -816,7 +816,7 @@ func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) err
 		AppID:      appID,
 		PrivateKey: privateKey,
 	}
-	return githubAppAuthUpsert(&auth)
+	return GitHubAppAuthUpsert(&auth)
 }
 
 // DefaultGithubAppCredentialsToRepo defaults the app credentials to the repo by
