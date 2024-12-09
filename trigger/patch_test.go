@@ -179,60 +179,51 @@ func (s *patchSuite) TestAllTriggers() {
 }
 
 func (s *patchSuite) TestPatchSuccess() {
-	ctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
-
-	n, err := s.t.patchSuccess(ctx, &s.subs[1])
+	n, err := s.t.patchSuccess(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	n, err = s.t.patchSuccess(ctx, &s.subs[1])
+	n, err = s.t.patchSuccess(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionSucceeded
-	n, err = s.t.patchSuccess(ctx, &s.subs[1])
+	n, err = s.t.patchSuccess(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *patchSuite) TestPatchFailure() {
-	ctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
-
 	s.data.Status = evergreen.VersionCreated
-	n, err := s.t.patchFailure(ctx, &s.subs[2])
+	n, err := s.t.patchFailure(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionSucceeded
-	n, err = s.t.patchFailure(ctx, &s.subs[2])
+	n, err = s.t.patchFailure(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	n, err = s.t.patchFailure(ctx, &s.subs[2])
+	n, err = s.t.patchFailure(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *patchSuite) TestPatchOutcome() {
-	ctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
-
 	s.data.Status = evergreen.VersionCreated
-	n, err := s.t.patchOutcome(ctx, &s.subs[0])
+	n, err := s.t.patchOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionSucceeded
-	n, err = s.t.patchOutcome(ctx, &s.subs[0])
+	n, err = s.t.patchOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	n, err = s.t.patchOutcome(ctx, &s.subs[0])
+	n, err = s.t.patchOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -273,11 +264,8 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 	for i := range s.subs {
 		s.NoError(s.subs[i].Upsert())
 	}
-	ctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
-
 	s.data.Status = evergreen.VersionSucceeded
-	n, err := s.t.patchOutcome(ctx, &s.subs[0])
+	n, err := s.t.patchOutcome(s.ctx, &s.subs[0])
 	// there is no token set up in settings, but hitting this error
 	// means it's trying to finalize the patch
 	s.Require().Error(err)
@@ -285,19 +273,19 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	n, err = s.t.patchOutcome(ctx, &s.subs[1])
+	n, err = s.t.patchOutcome(s.ctx, &s.subs[1])
 	s.Require().Error(err)
 	s.Contains(err.Error(), "finalizing child patch")
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionSucceeded
-	n, err = s.t.patchOutcome(ctx, &s.subs[2])
+	n, err = s.t.patchOutcome(s.ctx, &s.subs[2])
 	s.Require().Error(err)
 	s.Contains(err.Error(), "finalizing child patch")
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	n, err = s.t.patchOutcome(ctx, &s.subs[2])
+	n, err = s.t.patchOutcome(s.ctx, &s.subs[2])
 	s.Require().Error(err)
 	s.Contains(err.Error(), "finalizing child patch")
 	s.Nil(n)
@@ -305,15 +293,12 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 }
 
 func (s *patchSuite) TestPatchStarted() {
-	ctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
-
-	n, err := s.t.patchStarted(ctx, &s.subs[0])
+	n, err := s.t.patchStarted(s.ctx, &s.subs[0])
 	s.Nil(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionStarted
-	n, err = s.t.patchStarted(ctx, &s.subs[0])
+	n, err = s.t.patchStarted(s.ctx, &s.subs[0])
 	s.Nil(err)
 	s.NotNil(n)
 }
