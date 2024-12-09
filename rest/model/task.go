@@ -83,7 +83,7 @@ type APITask struct {
 	// The status of this task that is displayed in the UI (possible values are
 	// "will-run", "unscheduled", "blocked", "dispatched", "started", "success",
 	// "failed", "aborted", "system-failed", "system-unresponsive",
-	// "system-timed-out", "task-timed-out")
+	// "system-timed-out", "task-timed-out", "known-issue")
 	DisplayStatus *string `json:"display_status"`
 	// Object containing additional information about the status
 	Details ApiTaskEndDetail `json:"status_details"`

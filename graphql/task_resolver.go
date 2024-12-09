@@ -489,6 +489,11 @@ func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APIT
 	return position, nil
 }
 
+// OriginalStatus is the resolver for the originalStatus field.
+func (r *taskResolver) OriginalStatus(ctx context.Context, obj *restModel.APITask) (string, error) {
+	return *obj.Status, nil
+}
+
 // Patch is the resolver for the patch field.
 func (r *taskResolver) Patch(ctx context.Context, obj *restModel.APITask) (*restModel.APIPatch, error) {
 	if !evergreen.IsPatchRequester(*obj.Requester) {

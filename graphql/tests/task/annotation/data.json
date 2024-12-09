@@ -62,15 +62,21 @@
       "distro": "ubuntu1604-build",
       "build_variant": "ubuntu1604",
       "depends_on": [],
-      "distro_aliases": ["ubuntu1604-build"],
+      "distro_aliases": [
+        "ubuntu1604-build"
+      ],
       "display_name": "test-db",
-      "tags": ["db", "test"],
+      "tags": [
+        "db",
+        "test"
+      ],
       "host_id": "i-08a7180011eb1616b",
       "restarts": 0,
       "execution": 0,
       "order": 2567,
       "r": "github_pull_request",
-      "status": "success",
+      "status": "failed",
+      "has_annotations": true,
       "time_taken": {
         "$numberLong": "22722855668"
       },
@@ -94,7 +100,7 @@
           "$numberLong": "6810024276"
         },
         "details": {
-          "status": "success",
+          "status": "failed",
           "type": "test",
           "desc": "'subprocess.exec' in \"run-make\" (#1)"
         },
