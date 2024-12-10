@@ -605,9 +605,9 @@ func (p *APIGitHubDynamicTokenPermissionGroup) BuildFromService(h model.GitHubDy
 
 type APIProjectRef struct {
 	Id *string `json:"id"`
-	// Owner of project repository.
+	// GitHub org name.
 	Owner *string `json:"owner_name"`
-	// Repository name.
+	// GitHub repository name.
 	Repo *string `json:"repo_name"`
 	// Name of tracking branch.
 	Branch *string `json:"branch_name"`

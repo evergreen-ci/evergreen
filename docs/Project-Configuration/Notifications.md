@@ -20,7 +20,7 @@ For all new patches you create in the future (including GitHub Pull Requests), y
 For new tasks that fit the desired requester and finish type, you'll receive a notification. Note that for system unresponsive tasks, we only send a notification on the last execution, since we auto-retry these.
 
 ### Spawn Host Outcome
-For your spawn hosts, you will receive notifications when a host is started, stopped, modified, or terminated.
+For your spawn hosts, you will receive notifications when a host is started, stopped, modified, or terminated. You will also receive notifications when your project-specific host setup script succeeds or fails to run on the spawn host.
 
 ### Spawn Host Expiration
 Receive notifications that your spawn host is going to expire soon, so you can update expiration accordingly if you don't want to lose the host.
