@@ -9,6 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -21,6 +23,7 @@ type spawnHostTriggersSuite struct {
 	h             host.Host
 	tProvisioning *spawnHostProvisioningTriggers
 	tStateChange  *spawnHostStateChangeTriggers
+	tSetupScript  *spawnHostSetupScriptTriggers
 	ctx           context.Context
 	cancel        context.CancelFunc
 
@@ -50,6 +53,7 @@ func (s *spawnHostTriggersSuite) SetupTest() {
 	s.Require().NotPanics(func() {
 		s.tProvisioning = makeSpawnHostProvisioningTriggers().(*spawnHostProvisioningTriggers)
 		s.tStateChange = makeSpawnHostStateChangeTriggers().(*spawnHostStateChangeTriggers)
+		s.tSetupScript = makeSpawnHostSetupScriptTriggers().(*spawnHostSetupScriptTriggers)
 	})
 }
 
@@ -247,4 +251,96 @@ func (s *spawnHostTriggersSuite) TestSpawnHostUnsuccessfulStopForSleepScheduleCr
 	n, err = s.tStateChange.Process(ctx, &sub)
 	s.NotNil(n, "should create notification for error trying to stop spawn host")
 	s.NoError(err)
+}
+
+func (s *spawnHostTriggersSuite) TestSpawnHostSetupScriptCompletion() {
+	// Host script succeeded
+	s.e.EventType = event.EventHostScriptExecuted
+	_, ok := s.e.Data.(*event.HostEventData)
+	s.Require().True(ok)
+	s.NoError(s.h.Insert(s.ctx))
+	s.NoError(s.tSetupScript.Fetch(s.ctx, &s.e))
+
+	sub := event.Subscription{
+		Trigger:    event.TriggerOutcome,
+		Subscriber: event.NewSlackSubscriber("@test.user"),
+	}
+
+	n, err := s.tSetupScript.Process(&sub)
+	s.Require().NotNil(n, "should create notification for setup script completion")
+	s.NoError(err)
+	slackResponse, ok := n.Payload.(*notification.SlackPayload)
+	s.Require().True(ok)
+	s.Require().NotNil(slackResponse)
+	s.Contains(slackResponse.Body, "The setup script for spawn host")
+	s.Contains(slackResponse.Body, "has succeeded")
+
+	sub.Subscriber = event.NewEmailSubscriber("example@domain.invalid")
+	n, err = s.tSetupScript.Process(&sub)
+	s.Require().NotNil(n, "should create notification for setup script completion")
+	s.NoError(err)
+	emailResponse, ok := n.Payload.(*message.Email)
+	s.Require().True(ok)
+	s.Require().NotNil(emailResponse)
+	s.Equal(emailResponse.Subject, "The setup script for spawn host has succeeded")
+
+	// Host script failed
+	s.e.EventType = event.EventHostScriptExecuteFailed
+	_, ok = s.e.Data.(*event.HostEventData)
+	s.Require().True(ok)
+	s.NoError(s.tSetupScript.Fetch(s.ctx, &s.e))
+
+	sub = event.Subscription{
+		Trigger:    event.TriggerOutcome,
+		Subscriber: event.NewSlackSubscriber("@test.user"),
+	}
+
+	n, err = s.tSetupScript.Process(&sub)
+	s.Require().NotNil(n, "should create notification for setup script completion")
+	s.NoError(err)
+	slackResponse, ok = n.Payload.(*notification.SlackPayload)
+	s.Require().True(ok)
+	s.Require().NotNil(slackResponse)
+	s.Contains(slackResponse.Body, "The setup script for spawn host")
+	s.Contains(slackResponse.Body, "has failed")
+
+	sub.Subscriber = event.NewEmailSubscriber("example@domain.invalid")
+	n, err = s.tSetupScript.Process(&sub)
+	s.Require().NotNil(n, "should create notification for setup script completion")
+	s.NoError(err)
+	emailResponse, ok = n.Payload.(*message.Email)
+	s.Require().True(ok)
+	s.Require().NotNil(emailResponse)
+	s.Equal(emailResponse.Subject, "The setup script for spawn host has failed")
+
+	// Host script failed to start
+	s.e.Data = &event.HostEventData{
+		Logs: evergreen.FetchingTaskDataUnfinishedError,
+	}
+	_, ok = s.e.Data.(*event.HostEventData)
+	s.Require().True(ok)
+	s.NoError(s.tSetupScript.Fetch(s.ctx, &s.e))
+
+	sub = event.Subscription{
+		Trigger:    event.TriggerOutcome,
+		Subscriber: event.NewSlackSubscriber("@test.user"),
+	}
+
+	n, err = s.tSetupScript.Process(&sub)
+	s.Require().NotNil(n, "should create notification for setup script completion")
+	s.NoError(err)
+	slackResponse, ok = n.Payload.(*notification.SlackPayload)
+	s.Require().True(ok)
+	s.Require().NotNil(slackResponse)
+	s.Contains(slackResponse.Body, "The setup script for spawn host")
+	s.Contains(slackResponse.Body, "has failed to start")
+
+	sub.Subscriber = event.NewEmailSubscriber("example@domain.invalid")
+	n, err = s.tSetupScript.Process(&sub)
+	s.Require().NotNil(n, "should create notification for setup script completion")
+	s.NoError(err)
+	emailResponse, ok = n.Payload.(*message.Email)
+	s.Require().True(ok)
+	s.Require().NotNil(emailResponse)
+	s.Equal(emailResponse.Subject, "The setup script for spawn host has failed to start")
 }

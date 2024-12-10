@@ -22,6 +22,8 @@ func init() {
 	registry.AllowSubscription(ResourceTypeHost, EventHostStarted)
 	registry.AllowSubscription(ResourceTypeHost, EventHostStopped)
 	registry.AllowSubscription(ResourceTypeHost, EventHostModified)
+	registry.AllowSubscription(ResourceTypeHost, EventHostScriptExecuted)
+	registry.AllowSubscription(ResourceTypeHost, EventHostScriptExecuteFailed)
 }
 
 const (
