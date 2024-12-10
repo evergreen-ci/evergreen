@@ -14,9 +14,10 @@ const (
 )
 
 var (
-	GhAuthIdKey         = bsonutil.MustHaveTag(GithubAppAuth{}, "Id")
-	GhAuthAppIdKey      = bsonutil.MustHaveTag(GithubAppAuth{}, "AppID")
-	GhAuthPrivateKeyKey = bsonutil.MustHaveTag(GithubAppAuth{}, "PrivateKey")
+	GhAuthIdKey                  = bsonutil.MustHaveTag(GithubAppAuth{}, "Id")
+	GhAuthAppIdKey               = bsonutil.MustHaveTag(GithubAppAuth{}, "AppID")
+	GhAuthPrivateKeyKey          = bsonutil.MustHaveTag(GithubAppAuth{}, "PrivateKey")
+	GhAuthPrivateKeyParameterKey = bsonutil.MustHaveTag(GithubAppAuth{}, "PrivateKeyParameter")
 )
 
 // FindOneGithubAppAuth finds the github app auth for the given project or repo id
@@ -57,22 +58,10 @@ func UpsertGithubAppAuth(githubAppAuth *GithubAppAuth) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				GhAuthAppIdKey:      githubAppAuth.AppID,
-				GhAuthPrivateKeyKey: githubAppAuth.PrivateKey,
+				GhAuthAppIdKey:               githubAppAuth.AppID,
+				GhAuthPrivateKeyKey:          githubAppAuth.PrivateKey,
+				GhAuthPrivateKeyParameterKey: githubAppAuth.PrivateKeyParameter,
 			},
-		},
-	)
-	return err
-}
-
-// InsertGithubAppAuth inserts the app auth for the given project id in the database
-func InsertGithubAppAuth(githubAppAuth *GithubAppAuth) error {
-	err := db.Insert(
-		GitHubAppAuthCollection,
-		bson.M{
-			GhAuthIdKey:         githubAppAuth.Id,
-			GhAuthAppIdKey:      githubAppAuth.AppID,
-			GhAuthPrivateKeyKey: githubAppAuth.PrivateKey,
 		},
 	)
 	return err

@@ -208,7 +208,7 @@ func (p *ProjectRef) GetGitHubPermissionGroup(requester string) (GitHubDynamicTo
 // GetGitHubAppAuth returns the App auth for the given project.
 // If the project defaults to the repo and the app is not defined on the project, it will return the app from the repo.
 func (p *ProjectRef) GetGitHubAppAuth() (*githubapp.GithubAppAuth, error) {
-	appAuth, err := githubapp.FindOneGithubAppAuth(p.Id)
+	appAuth, err := GitHubAppAuthFindOne(p.Id)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding GitHub app auth")
 	}
@@ -218,7 +218,7 @@ func (p *ProjectRef) GetGitHubAppAuth() (*githubapp.GithubAppAuth, error) {
 	if !p.UseRepoSettings() {
 		return nil, nil
 	}
-	appAuth, err = githubapp.FindOneGithubAppAuth(p.RepoRefId)
+	appAuth, err = GitHubAppAuthFindOne(p.RepoRefId)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding GitHub app auth")
 	}
@@ -538,6 +538,7 @@ var (
 	projectRefGithubPermissionGroupByRequesterKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitHubPermissionGroupByRequester")
 	projectRefParameterStoreEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreEnabled")
 	projectRefParameterStoreVarsSyncedKey           = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreVarsSynced")
+	projectRefParameterStoreGitHubAppSyncedKey      = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreGitHubAppSynced")
 	projectRefLastAutoRestartedTaskAtKey            = bsonutil.MustHaveTag(ProjectRef{}, "LastAutoRestartedTaskAt")
 	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
 
@@ -798,7 +799,13 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 // are empty, the entry is deleted.
 func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) error {
 	if appID == 0 && len(privateKey) == 0 {
-		return githubapp.RemoveGithubAppAuth(p.Id)
+		ghApp, err := GitHubAppAuthFindOne(p.Id)
+		if err != nil {
+			return errors.Wrap(err, "finding GitHub app auth")
+		}
+		if ghApp != nil {
+			return GitHubAppAuthRemove(ghApp)
+		}
 	}
 
 	if appID == 0 || len(privateKey) == 0 {
@@ -809,7 +816,7 @@ func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) err
 		AppID:      appID,
 		PrivateKey: privateKey,
 	}
-	return githubapp.UpsertGithubAppAuth(&auth)
+	return githubAppAuthUpsert(&auth)
 }
 
 // DefaultGithubAppCredentialsToRepo defaults the app credentials to the repo by
@@ -819,8 +826,15 @@ func DefaultGithubAppCredentialsToRepo(projectId string) error {
 	if err != nil {
 		return errors.Wrap(err, "finding project ref")
 	}
-	return githubapp.RemoveGithubAppAuth(p.Id)
 
+	ghApp, err := GitHubAppAuthFindOne(p.Id)
+	if err != nil {
+		return errors.Wrap(err, "finding GitHub app auth")
+	}
+	if ghApp != nil {
+		return GitHubAppAuthRemove(ghApp)
+	}
+	return nil
 }
 
 // AddToRepoScope validates that the branch can be attached to the matching repo,
@@ -2108,7 +2122,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 		return nil, errors.Wrapf(err, "finding subscription for project '%s'", p.Id)
 	}
 
-	githubApp, err := githubapp.FindOneGithubAppAuth(p.Id)
+	githubApp, err := GitHubAppAuthFindOne(p.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding GitHub app for project '%s'", p.Id)
 	}
@@ -3747,6 +3761,29 @@ var psEnabledButNotSyncedQuery = bson.M{
 		{projectRefParameterStoreVarsSyncedKey: false},
 		{projectRefParameterStoreVarsSyncedKey: bson.M{"$exists": false}},
 	},
+}
+
+// setParameterStoreGitHubAppAuthSynced marks the project or repo ref to indicate whether
+// its GitHub app auth is synced to Parameter Store.
+func (p *ProjectRef) setParameterStoreGitHubAppAuthSynced(isSynced bool, isRepoRef bool) error {
+	if p.ParameterStoreGitHubAppSynced == isSynced {
+		return nil
+	}
+
+	coll := ProjectRefCollection
+	if isRepoRef {
+		coll = RepoRefCollection
+	}
+
+	if err := db.UpdateId(coll, p.Id, bson.M{
+		"$set": bson.M{
+			projectRefParameterStoreGitHubAppSyncedKey: isSynced,
+		},
+	}); err != nil {
+		return errors.Wrapf(err, "updating project/repo ref GitHub app auth sync state to %t", isSynced)
+	}
+
+	return nil
 }
 
 // FindProjectRefsToSync finds all project refs that have Parameter Sore enabled

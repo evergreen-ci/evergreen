@@ -404,7 +404,7 @@ evergreen last-green -p mci -v ubuntu
 ```
 
 #### Tasks
-The command `evergeen task` contains subcommands for interacting with task run data, including task output (build) data.
+The command `evergreen task` contains subcommands for interacting with task run data, including task output (build) data.
 
 ```
 # Fetch task logs
@@ -413,9 +413,6 @@ evergreen task build TaskLogs --task_id <task_id> --execution <execution> --type
 # Fetch test logs
 evergreen task build TestLogs --task_id <task_id> --execution <execution> --log_path <test_log_path>
 ```
-
-#### Commit Queue
-The command `evergreen commit-queue` contains subcommands for interacting with the commit queue. See [Commit Queue](Project-Configuration/Commit-Queue).
 
 ### Server Side (for Evergreen admins)
 

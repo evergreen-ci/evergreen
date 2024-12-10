@@ -64,13 +64,6 @@ type ProjectEventGitHubAppAuth struct {
 	PrivateKey []byte `bson:"private_key" json:"private_key"`
 }
 
-// redactPrivateKey redacts the GitHub app's private key so that it's not
-// exposed via the UI or GraphQL.
-func (g *ProjectEventGitHubAppAuth) redactPrivateKey() *ProjectEventGitHubAppAuth {
-	g.PrivateKey = []byte(evergreen.RedactedValue)
-	return g
-}
-
 // ProjectSettingsEvent contains the event data about a single revision of a
 // project's settings.
 type ProjectSettingsEvent struct {
@@ -266,47 +259,6 @@ func (p *ProjectChangeEvents) ApplyDefaults() {
 		}
 	}
 
-}
-
-// RedactGitHubPrivateKey redacts the GitHub app's private key from the project modification event.
-func (p *ProjectChangeEvents) RedactGitHubPrivateKey() {
-	for _, event := range *p {
-		changeEvent, isChangeEvent := event.Data.(*ProjectChangeEvent)
-		if !isChangeEvent {
-			continue
-		}
-		if len(changeEvent.After.GitHubAppAuth.PrivateKey) > 0 && len(changeEvent.Before.GitHubAppAuth.PrivateKey) > 0 {
-			if string(changeEvent.After.GitHubAppAuth.PrivateKey) == string(changeEvent.Before.GitHubAppAuth.PrivateKey) {
-				changeEvent.After.GitHubAppAuth.redactPrivateKey()
-				changeEvent.Before.GitHubAppAuth.redactPrivateKey()
-			} else {
-				changeEvent.After.GitHubAppAuth.PrivateKey = []byte(evergreen.RedactedAfterValue)
-				changeEvent.Before.GitHubAppAuth.PrivateKey = []byte(evergreen.RedactedBeforeValue)
-			}
-		} else if len(changeEvent.After.GitHubAppAuth.PrivateKey) > 0 {
-			changeEvent.After.GitHubAppAuth.redactPrivateKey()
-		} else if len(changeEvent.Before.GitHubAppAuth.PrivateKey) > 0 {
-			changeEvent.Before.GitHubAppAuth.redactPrivateKey()
-		}
-		event.EventLogEntry.Data = changeEvent
-	}
-}
-
-// RedactSecrets redacts project variables from all the project modification
-// events.
-// TODO (DEVPROD-11827): this can be removed entirely once project event logs
-// are migrated to not store any project var values or GitHub app credentials.
-// Project change events should already redact those secret values when the log
-// is inserted into the DB (see (ProjectChangeEvent).RedactSecrets).
-func (p *ProjectChangeEvents) RedactSecrets() {
-	for _, event := range *p {
-		changeEvent, isChangeEvent := event.Data.(*ProjectChangeEvent)
-		if !isChangeEvent {
-			continue
-		}
-		changeEvent.RedactSecrets()
-		event.EventLogEntry.Data = changeEvent
-	}
 }
 
 type ProjectChangeEventEntry struct {

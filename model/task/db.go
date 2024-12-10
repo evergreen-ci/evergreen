@@ -119,6 +119,7 @@ var (
 	IsAutomaticRestartKey                  = bsonutil.MustHaveTag(Task{}, "IsAutomaticRestart")
 	CommitQueueMergeKey                    = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
 	DisplayStatusKey                       = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
+	DisplayStatusCacheKey                  = bsonutil.MustHaveTag(Task{}, "DisplayStatusCache")
 	BaseTaskKey                            = bsonutil.MustHaveTag(Task{}, "BaseTask")
 	BuildVariantDisplayNameKey             = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
 	IsEssentialToSucceedKey                = bsonutil.MustHaveTag(Task{}, "IsEssentialToSucceed")
@@ -185,6 +186,12 @@ var (
 	addDisplayStatus = bson.M{
 		"$addFields": bson.M{
 			DisplayStatusKey: DisplayStatusExpression,
+		},
+	}
+
+	addDisplayStatusCache = bson.M{
+		"$addFields": bson.M{
+			DisplayStatusCacheKey: DisplayStatusExpression,
 		},
 	}
 
@@ -2832,15 +2839,21 @@ func abortAndMarkResetTasks(ctx context.Context, filter bson.M, taskIDs []string
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(
 		ctx,
 		filter,
-		bson.M{
-			"$set": bson.M{
-				AbortedKey:           true,
-				AbortInfoKey:         AbortInfo{User: caller},
-				ResetWhenFinishedKey: true,
+		[]bson.M{
+			bson.M{
+				"$set": bson.M{
+					AbortedKey:           true,
+					AbortInfoKey:         AbortInfo{User: caller},
+					ResetWhenFinishedKey: true,
+					DisplayStatusKey:     DisplayStatusExpression,
+				},
 			},
-			"$unset": bson.M{
-				ResetFailedWhenFinishedKey: 1,
+			bson.M{
+				"$unset": []string{
+					ResetFailedWhenFinishedKey,
+				},
 			},
+			addDisplayStatusCache,
 		},
 	)
 

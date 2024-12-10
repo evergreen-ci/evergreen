@@ -455,7 +455,7 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 // DeactivateStepbackTask is the resolver for the deactivateStepbackTask field.
 func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, opts DeactivateStepbackTaskInput) (bool, error) {
 	usr := mustHaveUser(ctx)
-	if err := task.DeactivateStepbackTask(opts.ProjectID, opts.BuildVariantName, opts.TaskName, usr.Username()); err != nil {
+	if err := task.DeactivateStepbackTask(ctx, opts.ProjectID, opts.BuildVariantName, opts.TaskName, usr.Username()); err != nil {
 		return false, InternalServerError.Send(ctx, err.Error())
 	}
 	return true, nil
@@ -473,14 +473,14 @@ func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, opts Defaul
 // DeleteGithubAppCredentials is the resolver for the deleteGithubAppCredentials field.
 func (r *mutationResolver) DeleteGithubAppCredentials(ctx context.Context, opts DeleteGithubAppCredentialsInput) (*DeleteGithubAppCredentialsPayload, error) {
 	usr := mustHaveUser(ctx)
-	app, err := githubapp.FindOneGithubAppAuth(opts.ProjectID)
+	app, err := model.GitHubAppAuthFindOne(opts.ProjectID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding GitHub app for project '%s': %s", opts.ProjectID, err.Error()))
 	}
 	if app == nil {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("project '%s' does not have a GitHub app defined", opts.ProjectID))
 	}
-	if err = githubapp.RemoveGithubAppAuth(opts.ProjectID); err != nil {
+	if err = model.GitHubAppAuthRemove(app); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("removing GitHub app auth for project '%s': %s", opts.ProjectID, err.Error()))
 	}
 	before := model.ProjectSettings{
