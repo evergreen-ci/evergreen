@@ -283,7 +283,7 @@ func makePatchProjectByID(settings *evergreen.Settings) gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Modify a project
-//	@Description	Modify an existing project (restricted to project admins). Will enable webhooks if an enabled project, and enable PR testing and the commit queue if specified.  For lists, if there is a complementary "delete" field, then the former field indicates items to be added, while the "delete" field indicates items to be deleted. Otherwise, the given list will overwrite the original list (the only exception is for project variables -- we will ignore any empty project variables to avoid accidentally overwriting private variables).
+//	@Description	Modify an existing project (restricted to project admins -- the fetch all projects route can be used for non-admins). Will enable webhooks if an enabled project, and enable PR testing and the commit queue if specified.  For lists, if there is a complementary "delete" field, then the former field indicates items to be added, while the "delete" field indicates items to be deleted. Otherwise, the given list will overwrite the original list (the only exception is for project variables -- we will ignore any empty project variables to avoid accidentally overwriting private variables).
 //	@Tags			projects
 //	@Router			/projects/{project_id} [patch]
 //	@Security		Api-User || Api-Key
