@@ -50,6 +50,7 @@ func NewConfigSections() ConfigSections {
 		&Settings{},
 		&JIRANotificationsConfig{},
 		&TaskLimitsConfig{},
+		&TestSelectionConfig{},
 		&TriggerConfig{},
 		&SpawnHostConfig{},
 		&TracerConfig{},

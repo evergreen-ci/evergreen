@@ -106,6 +106,7 @@ type Settings struct {
 	SleepSchedule       SleepScheduleConfig       `yaml:"sleep_schedule" bson:"sleep_schedule" json:"sleep_schedule" id:"sleep_schedule"`
 	Splunk              SplunkConfig              `yaml:"splunk" bson:"splunk" json:"splunk" id:"splunk"`
 	TaskLimits          TaskLimitsConfig          `yaml:"task_limits" bson:"task_limits" json:"task_limits" id:"task_limits"`
+	TestSelection       TestSelectionConfig       `yaml:"test_selection" bson:"test_selection" json:"test_selection" id:"test_selection"`
 	Triggers            TriggerConfig             `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
 	Ui                  UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
 	Spawnhost           SpawnHostConfig           `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`

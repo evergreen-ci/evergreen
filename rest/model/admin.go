@@ -40,6 +40,7 @@ func NewConfigModel() *APIAdminSettings {
 		SleepSchedule:       &APISleepScheduleConfig{},
 		Splunk:              &APISplunkConfig{},
 		TaskLimits:          &APITaskLimitsConfig{},
+		TestSelection:       &APITestSelectionConfig{},
 		Triggers:            &APITriggerConfig{},
 		Ui:                  &APIUIConfig{},
 		Spawnhost:           &APISpawnHostConfig{},
@@ -91,6 +92,7 @@ type APIAdminSettings struct {
 	SSHKeyPairs         []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
 	Splunk              *APISplunkConfig                  `json:"splunk,omitempty"`
 	TaskLimits          *APITaskLimitsConfig              `json:"task_limits,omitempty"`
+	TestSelection       *APITestSelectionConfig           `json:"test_selection,omitempty"`
 	Triggers            *APITriggerConfig                 `json:"triggers,omitempty"`
 	Ui                  *APIUIConfig                      `json:"ui,omitempty"`
 	Spawnhost           *APISpawnHostConfig               `json:"spawnhost,omitempty"`
@@ -2798,6 +2800,26 @@ func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 		MaxDegradedModeConcurrentLargeParserProjectTasks: utility.FromIntPtr(c.MaxDegradedModeConcurrentLargeParserProjectTasks),
 		MaxTaskExecution:                                 utility.FromIntPtr(c.MaxTaskExecution),
 		MaxDailyAutomaticRestarts:                        utility.FromIntPtr(c.MaxDailyAutomaticRestarts),
+	}, nil
+}
+
+type APITestSelectionConfig struct {
+	URL *string `json:"url"`
+}
+
+func (c *APITestSelectionConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.TestSelectionConfig:
+		c.URL = utility.ToStringPtr(v.URL)
+		return nil
+	default:
+		return errors.Errorf("programmatic error: expected test selection config but got type %T", h)
+	}
+}
+
+func (c *APITestSelectionConfig) ToService() (interface{}, error) {
+	return evergreen.TestSelectionConfig{
+		URL: utility.FromStringPtr(c.URL),
 	}, nil
 }
 

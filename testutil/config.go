@@ -427,6 +427,9 @@ func MockConfig() *evergreen.Settings {
 				Channel:   "channel",
 			},
 		},
+		TestSelection: evergreen.TestSelectionConfig{
+			URL: "test_selection_url",
+		},
 		Triggers: evergreen.TriggerConfig{
 			GenerateTaskDistro: "distro",
 		},
