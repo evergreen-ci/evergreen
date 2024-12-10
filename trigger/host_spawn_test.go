@@ -266,7 +266,10 @@ func (s *spawnHostTriggersSuite) TestSpawnHostSetupScriptCompletion() {
 		Subscriber: event.NewSlackSubscriber("@test.user"),
 	}
 
-	n, err := s.tSetupScript.Process(&sub)
+	ctx, cancel := context.WithCancel(s.ctx)
+	defer cancel()
+
+	n, err := s.tSetupScript.Process(ctx, &sub)
 	s.Require().NotNil(n, "should create notification for setup script completion")
 	s.NoError(err)
 	slackResponse, ok := n.Payload.(*notification.SlackPayload)
@@ -276,7 +279,7 @@ func (s *spawnHostTriggersSuite) TestSpawnHostSetupScriptCompletion() {
 	s.Contains(slackResponse.Body, "has succeeded")
 
 	sub.Subscriber = event.NewEmailSubscriber("example@domain.invalid")
-	n, err = s.tSetupScript.Process(&sub)
+	n, err = s.tSetupScript.Process(ctx, &sub)
 	s.Require().NotNil(n, "should create notification for setup script completion")
 	s.NoError(err)
 	emailResponse, ok := n.Payload.(*message.Email)
@@ -295,7 +298,7 @@ func (s *spawnHostTriggersSuite) TestSpawnHostSetupScriptCompletion() {
 		Subscriber: event.NewSlackSubscriber("@test.user"),
 	}
 
-	n, err = s.tSetupScript.Process(&sub)
+	n, err = s.tSetupScript.Process(ctx, &sub)
 	s.Require().NotNil(n, "should create notification for setup script completion")
 	s.NoError(err)
 	slackResponse, ok = n.Payload.(*notification.SlackPayload)
@@ -305,7 +308,7 @@ func (s *spawnHostTriggersSuite) TestSpawnHostSetupScriptCompletion() {
 	s.Contains(slackResponse.Body, "has failed")
 
 	sub.Subscriber = event.NewEmailSubscriber("example@domain.invalid")
-	n, err = s.tSetupScript.Process(&sub)
+	n, err = s.tSetupScript.Process(ctx, &sub)
 	s.Require().NotNil(n, "should create notification for setup script completion")
 	s.NoError(err)
 	emailResponse, ok = n.Payload.(*message.Email)
@@ -326,7 +329,7 @@ func (s *spawnHostTriggersSuite) TestSpawnHostSetupScriptCompletion() {
 		Subscriber: event.NewSlackSubscriber("@test.user"),
 	}
 
-	n, err = s.tSetupScript.Process(&sub)
+	n, err = s.tSetupScript.Process(ctx, &sub)
 	s.Require().NotNil(n, "should create notification for setup script completion")
 	s.NoError(err)
 	slackResponse, ok = n.Payload.(*notification.SlackPayload)
@@ -336,7 +339,7 @@ func (s *spawnHostTriggersSuite) TestSpawnHostSetupScriptCompletion() {
 	s.Contains(slackResponse.Body, "has failed to start")
 
 	sub.Subscriber = event.NewEmailSubscriber("example@domain.invalid")
-	n, err = s.tSetupScript.Process(&sub)
+	n, err = s.tSetupScript.Process(ctx, &sub)
 	s.Require().NotNil(n, "should create notification for setup script completion")
 	s.NoError(err)
 	emailResponse, ok = n.Payload.(*message.Email)

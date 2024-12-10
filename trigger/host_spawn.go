@@ -289,7 +289,7 @@ func makeSpawnHostSetupScriptTriggers() eventHandler {
 	return t
 }
 
-func (t *spawnHostSetupScriptTriggers) spawnHostSetupScriptOutcome(sub *event.Subscription) (*notification.Notification, error) {
+func (t *spawnHostSetupScriptTriggers) spawnHostSetupScriptOutcome(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if !t.host.UserHost {
 		return nil, nil
 	}
