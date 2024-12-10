@@ -73,6 +73,7 @@ type Task {
   details: TaskEndDetail
   dispatchTime: Time
   displayName: String!
+  displayStatus: String!
   displayOnly: Boolean
   displayTask: Task
   distroId: String!
@@ -96,10 +97,6 @@ type Task {
   logs: TaskLogLinks!
   minQueuePosition: Int!
   order: Int!
-  """
-  The originalStatus field represents the original status of the task without a display status applied.
-  """
-  originalStatus: String!
   patch: Patch
   patchNumber: Int
   pod: Pod
@@ -115,8 +112,9 @@ type Task {
   startTime: Time
   """
   This is a tasks display status and is what is commonly used on the UI.
+  In future releases this will be migrated to represent the original status of the task
   """
-  status: String!
+  status: String! @deprecated(reason: "use displayStatus instead. Status will be migrated to reflect the original status")
   tags: [String!]!
   taskGroup: String
   taskGroupMaxHosts: Int

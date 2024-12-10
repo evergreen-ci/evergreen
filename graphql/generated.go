@@ -1309,6 +1309,7 @@ type ComplexityRoot struct {
 		DispatchTime            func(childComplexity int) int
 		DisplayName             func(childComplexity int) int
 		DisplayOnly             func(childComplexity int) int
+		DisplayStatus           func(childComplexity int) int
 		DisplayTask             func(childComplexity int) int
 		DistroId                func(childComplexity int) int
 		EstimatedStart          func(childComplexity int) int
@@ -1332,7 +1333,6 @@ type ComplexityRoot struct {
 		Logs                    func(childComplexity int) int
 		MinQueuePosition        func(childComplexity int) int
 		Order                   func(childComplexity int) int
-		OriginalStatus          func(childComplexity int) int
 		Patch                   func(childComplexity int) int
 		PatchNumber             func(childComplexity int) int
 		Pod                     func(childComplexity int) int
@@ -2030,7 +2030,6 @@ type TaskResolver interface {
 
 	MinQueuePosition(ctx context.Context, obj *model.APITask) (int, error)
 
-	OriginalStatus(ctx context.Context, obj *model.APITask) (string, error)
 	Patch(ctx context.Context, obj *model.APITask) (*model.APIPatch, error)
 	PatchNumber(ctx context.Context, obj *model.APITask) (*int, error)
 	Pod(ctx context.Context, obj *model.APITask) (*model.APIPod, error)
@@ -8283,6 +8282,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.DisplayOnly(childComplexity), true
 
+	case "Task.displayStatus":
+		if e.complexity.Task.DisplayStatus == nil {
+			break
+		}
+
+		return e.complexity.Task.DisplayStatus(childComplexity), true
+
 	case "Task.displayTask":
 		if e.complexity.Task.DisplayTask == nil {
 			break
@@ -8443,13 +8449,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.Order(childComplexity), true
-
-	case "Task.originalStatus":
-		if e.complexity.Task.OriginalStatus == nil {
-			break
-		}
-
-		return e.complexity.Task.OriginalStatus(childComplexity), true
 
 	case "Task.patch":
 		if e.complexity.Task.Patch == nil {
@@ -21502,6 +21501,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -21548,8 +21549,6 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -25805,6 +25804,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -25851,8 +25852,6 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -28311,6 +28310,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -28357,8 +28358,6 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -32778,6 +32777,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -32824,8 +32825,6 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -32987,6 +32986,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -33033,8 +33034,6 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -33196,6 +33195,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -33242,8 +33243,6 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -33405,6 +33404,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -33451,8 +33452,6 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -33614,6 +33613,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -33660,8 +33661,6 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -33823,6 +33822,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -33869,8 +33870,6 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -34983,6 +34982,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -35029,8 +35030,6 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -40278,6 +40277,8 @@ func (ec *executionContext) fieldContext_Pod_task(_ context.Context, field graph
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -40324,8 +40325,6 @@ func (ec *executionContext) fieldContext_Pod_task(_ context.Context, field graph
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -40821,6 +40820,8 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(_ context.Context,
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -40867,8 +40868,6 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(_ context.Context,
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -48038,6 +48037,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -48084,8 +48085,6 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -48247,6 +48246,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -48293,8 +48294,6 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -55283,6 +55282,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -55329,8 +55330,6 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -56234,6 +56233,50 @@ func (ec *executionContext) fieldContext_Task_displayName(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Task_displayStatus(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_displayStatus(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayStatus, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_displayStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Task_displayOnly(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Task_displayOnly(ctx, field)
 	if err != nil {
@@ -56369,6 +56412,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -56415,8 +56460,6 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -56734,6 +56777,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -56780,8 +56825,6 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -57531,50 +57574,6 @@ func (ec *executionContext) fieldContext_Task_order(_ context.Context, field gra
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Task_originalStatus(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Task_originalStatus(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().OriginalStatus(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Task_originalStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Task",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -64385,6 +64384,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -64431,8 +64432,6 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -68376,6 +68375,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -68422,8 +68423,6 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_minQueuePosition(ctx, field)
 			case "order":
 				return ec.fieldContext_Task_order(ctx, field)
-			case "originalStatus":
-				return ec.fieldContext_Task_originalStatus(ctx, field)
 			case "patch":
 				return ec.fieldContext_Task_patch(ctx, field)
 			case "patchNumber":
@@ -90056,6 +90055,11 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "displayStatus":
+			out.Values[i] = ec._Task_displayStatus(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "displayOnly":
 			out.Values[i] = ec._Task_displayOnly(ctx, field, obj)
 		case "displayTask":
@@ -90445,42 +90449,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "originalStatus":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Task_originalStatus(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "patch":
 			field := field
 
