@@ -172,73 +172,73 @@ func (s *buildSuite) TestAllTriggers() {
 }
 
 func (s *buildSuite) TestSuccess() {
-	n, err := s.t.buildSuccess(&s.subs[1])
+	n, err := s.t.buildSuccess(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.BuildFailed
-	n, err = s.t.buildSuccess(&s.subs[1])
+	n, err = s.t.buildSuccess(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.BuildSucceeded
-	n, err = s.t.buildSuccess(&s.subs[1])
+	n, err = s.t.buildSuccess(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *buildSuite) TestFailure() {
-	n, err := s.t.buildFailure(&s.subs[2])
+	n, err := s.t.buildFailure(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.BuildSucceeded
-	n, err = s.t.buildFailure(&s.subs[2])
+	n, err = s.t.buildFailure(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.BuildFailed
-	n, err = s.t.buildFailure(&s.subs[2])
+	n, err = s.t.buildFailure(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *buildSuite) TestOutcome() {
-	n, err := s.t.buildOutcome(&s.subs[1])
+	n, err := s.t.buildOutcome(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
-	n, err = s.t.buildOutcome(&s.subs[0])
+	n, err = s.t.buildOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.BuildSucceeded
-	n, err = s.t.buildOutcome(&s.subs[0])
+	n, err = s.t.buildOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 
 	s.data.Status = evergreen.BuildFailed
-	n, err = s.t.buildOutcome(&s.subs[0])
+	n, err = s.t.buildOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *buildSuite) TestGithubCheckOutcome() {
-	n, err := s.t.buildGithubCheckOutcome(&s.subs[1])
+	n, err := s.t.buildGithubCheckOutcome(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
-	n, err = s.t.buildGithubCheckOutcome(&s.subs[0])
+	n, err = s.t.buildGithubCheckOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.GithubCheckStatus = evergreen.BuildSucceeded
-	n, err = s.t.buildGithubCheckOutcome(&s.subs[0])
+	n, err = s.t.buildGithubCheckOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 
 	s.data.GithubCheckStatus = evergreen.BuildFailed
-	n, err = s.t.buildGithubCheckOutcome(&s.subs[0])
+	n, err = s.t.buildGithubCheckOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -250,20 +250,20 @@ func (s *buildSuite) TestBuildExceedsTime() {
 	}
 	s.t.data.Status = evergreen.BuildSucceeded
 	s.t.build.TimeTaken = 20 * time.Minute
-	n, err := s.t.buildExceedsDuration(&s.subs[3])
+	n, err := s.t.buildExceedsDuration(s.ctx, &s.subs[3])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// build that does not exceed should not generate
 	s.t.build.TimeTaken = 4 * time.Minute
-	n, err = s.t.buildExceedsDuration(&s.subs[3])
+	n, err = s.t.buildExceedsDuration(s.ctx, &s.subs[3])
 	s.NoError(err)
 	s.Nil(n)
 
 	// unfinished build should not generate
 	s.t.data.Status = evergreen.BuildStarted
 	s.t.build.TimeTaken = 20 * time.Minute
-	n, err = s.t.buildExceedsDuration(&s.subs[3])
+	n, err = s.t.buildExceedsDuration(s.ctx, &s.subs[3])
 	s.NoError(err)
 	s.Nil(n)
 }
@@ -275,7 +275,7 @@ func (s *buildSuite) TestBuildRuntimeChange() {
 		ResourceType: event.BuildStateChange,
 	}
 	s.t.data.Status = evergreen.BuildSucceeded
-	n, err := s.t.buildRuntimeChange(&s.subs[4])
+	n, err := s.t.buildRuntimeChange(s.ctx, &s.subs[4])
 	s.NoError(err)
 	s.Nil(n)
 
@@ -289,19 +289,19 @@ func (s *buildSuite) TestBuildRuntimeChange() {
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	s.NoError(lastGreen.Insert())
-	n, err = s.t.buildRuntimeChange(&s.subs[4])
+	n, err = s.t.buildRuntimeChange(s.ctx, &s.subs[4])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// build that does not exceed threshold should not generate
 	s.build.TimeTaken = 11 * time.Minute
-	n, err = s.t.buildRuntimeChange(&s.subs[4])
+	n, err = s.t.buildRuntimeChange(s.ctx, &s.subs[4])
 	s.NoError(err)
 	s.Nil(n)
 
 	// build that finished too quickly should generate
 	s.build.TimeTaken = 4 * time.Minute
-	n, err = s.t.buildRuntimeChange(&s.subs[4])
+	n, err = s.t.buildRuntimeChange(s.ctx, &s.subs[4])
 	s.NoError(err)
 	s.NotNil(n)
 }

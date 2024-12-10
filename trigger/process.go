@@ -64,7 +64,7 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 
 	catcher := grip.NewSimpleCatcher()
 	for i := range subscriptions {
-		n, err := h.Process(&subscriptions[i])
+		n, err := h.Process(ctx, &subscriptions[i])
 		msg := message.Fields{
 			"source":              "events-processing",
 			"message":             "processed subscription and created notifications",

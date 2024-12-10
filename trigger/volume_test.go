@@ -88,7 +88,7 @@ func TestVolumeExpiration(t *testing.T) {
 			sub.Subscriber = event.Subscriber{Type: event.EmailSubscriberType}
 			sub.Selectors = []event.Selector{{Type: event.SelectorID, Data: v.ID}}
 			sub.Trigger = "t"
-			n, err := triggers.volumeExpiration(sub)
+			n, err := triggers.volumeExpiration(ctx, sub)
 			assert.NoError(t, err)
 			assert.NotNil(t, n)
 		},
