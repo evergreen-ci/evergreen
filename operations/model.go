@@ -197,21 +197,21 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 	}
 
 	ac := &legacyClient{
-		APIRoot:     s.APIServerHost,
-		APIRootV2:   s.APIServerHost + "/rest/v2",
-		User:        s.User,
-		APIKey:      s.APIKey,
-		UIRoot:      s.UIServerHost,
-		environment: s.StagingEnvironment,
+		APIRoot:            s.APIServerHost,
+		APIRootV2:          s.APIServerHost + "/rest/v2",
+		User:               s.User,
+		APIKey:             s.APIKey,
+		UIRoot:             s.UIServerHost,
+		stagingEnvironment: s.StagingEnvironment,
 	}
 
 	rc := &legacyClient{
-		APIRoot:     apiURL.Scheme + "://" + apiURL.Host + "/rest/v1",
-		APIRootV2:   apiURL.Scheme + "://" + apiURL.Host + "/rest/v2",
-		User:        s.User,
-		APIKey:      s.APIKey,
-		UIRoot:      s.UIServerHost,
-		environment: s.StagingEnvironment,
+		APIRoot:            apiURL.Scheme + "://" + apiURL.Host + "/rest/v1",
+		APIRootV2:          apiURL.Scheme + "://" + apiURL.Host + "/rest/v2",
+		User:               s.User,
+		APIKey:             s.APIKey,
+		UIRoot:             s.UIServerHost,
+		stagingEnvironment: s.StagingEnvironment,
 	}
 
 	return ac, rc, nil

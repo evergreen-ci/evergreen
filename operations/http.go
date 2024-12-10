@@ -27,13 +27,13 @@ import (
 // legacyClient manages requests to the API server endpoints, and unmarshaling the results into
 // usable structures.
 type legacyClient struct {
-	APIRoot     string
-	httpClient  http.Client
-	User        string
-	APIKey      string
-	APIRootV2   string
-	UIRoot      string
-	environment string
+	APIRoot            string
+	httpClient         http.Client
+	User               string
+	APIKey             string
+	APIRootV2          string
+	UIRoot             string
+	stagingEnvironment string
 }
 
 // APIError is an implementation of error for reporting unexpected results from API calls.
@@ -83,8 +83,8 @@ func (ac *legacyClient) doReq(method, path string, apiVersion int, body io.Reade
 
 	req.Header.Add(evergreen.APIKeyHeader, ac.APIKey)
 	req.Header.Add(evergreen.APIUserHeader, ac.User)
-	if ac.environment != "" {
-		req.Header.Add(evergreen.EnvironmentHeader, ac.environment)
+	if ac.stagingEnvironment != "" {
+		req.Header.Add(evergreen.EnvironmentHeader, ac.stagingEnvironment)
 	}
 
 	resp, err := ac.httpClient.Do(req)
