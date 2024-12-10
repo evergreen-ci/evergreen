@@ -62,6 +62,9 @@ type s3put struct {
 	// within an S3 bucket. Is a prefix when multiple files are uploaded via LocalFilesIncludeFilter.
 	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
 
+	// remoteFile is the file path without any expansions applied.
+	remoteFile string
+
 	// PreservePath, when set to true, causes multi part uploads uploaded with LocalFilesIncludeFilter to
 	// preserve the original folder structure instead of putting all the files into the same folder
 	PreservePath string ` mapstructure:"preserve_path" plugin:"expand"`
@@ -208,6 +211,8 @@ func (s3pc *s3put) validate() error {
 // Apply the expansions from the relevant task config
 // to all appropriate fields of the s3put.
 func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
+	s3pc.remoteFile = s3pc.RemoteFile
+
 	var err error
 	if err = util.ExpandValues(s3pc, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
@@ -304,7 +309,7 @@ func (s3pc *s3put) Execute(ctx context.Context,
 		attribute.Bool(s3PutTemporaryCredentialsAttribute, s3pc.AwsSessionToken != ""),
 		attribute.String(s3PutVisibilityAttribute, s3pc.Visibility),
 		attribute.String(s3PutPermissionsAttribute, s3pc.Permissions),
-		attribute.String(s3PutRemotePathAttribute, s3pc.RemoteFile),
+		attribute.String(s3PutRemotePathAttribute, s3pc.remoteFile),
 	)
 
 	// create pail bucket
