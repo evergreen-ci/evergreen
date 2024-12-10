@@ -2333,14 +2333,14 @@ func (t *Task) GetDisplayStatus() string {
 }
 
 func (t *Task) findDisplayStatus() string {
+	if t.HasAnnotations {
+		return evergreen.TaskKnownIssue
+	}
 	if t.Aborted {
 		return evergreen.TaskAborted
 	}
 	if t.Status == evergreen.TaskSucceeded {
 		return evergreen.TaskSucceeded
-	}
-	if t.HasAnnotations {
-		return evergreen.TaskKnownIssue
 	}
 	if t.Details.Type == evergreen.CommandTypeSetup {
 		return evergreen.TaskSetupFailed
