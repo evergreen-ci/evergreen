@@ -36,7 +36,7 @@ func MoveIssueToSuspectedIssue(taskId string, taskExecution int, issue annotatio
 	if err != nil {
 		return errors.Wrapf(err, "finding and modifying task annotation for execution %d of task '%s'", taskExecution, taskId)
 	}
-	if annotation != nil && len(annotation.Issues) == 0 {
+	if len(annotation.Issues) == 0 {
 		return UnsetHasAnnotations(taskId, taskExecution)
 	}
 	return nil
@@ -99,7 +99,7 @@ func RemoveIssueFromAnnotation(taskId string, execution int, issue annotations.I
 	if err != nil {
 		return errors.Wrapf(err, "finding and removing issue for task annotation for execution %d of task '%s'", execution, taskId)
 	}
-	if annotation != nil && len(annotation.Issues) == 0 {
+	if len(annotation.Issues) == 0 {
 		return UnsetHasAnnotations(taskId, execution)
 	}
 	return nil
@@ -152,8 +152,12 @@ func UpsertAnnotation(a *annotations.TaskAnnotation, userDisplayName string) err
 	); err != nil {
 		return errors.Wrapf(err, "adding task annotation for task '%s'", a.TaskId)
 	}
-	if a.Issues != nil && len(a.Issues) > 0 {
-		return SetHasAnnotations(a.TaskId, a.TaskExecution)
+	if a.Issues != nil {
+		if len(a.Issues) == 0 {
+			return UnsetHasAnnotations(a.TaskId, a.TaskExecution)
+		} else {
+			return SetHasAnnotations(a.TaskId, a.TaskExecution)
+		}
 	}
 	return nil
 }
@@ -195,8 +199,12 @@ func PatchAnnotation(a *annotations.TaskAnnotation, userDisplayName string, upse
 	); err != nil {
 		return errors.Wrapf(err, "updating task annotation for '%s'", a.TaskId)
 	}
-	if a.Issues != nil && len(a.Issues) > 0 {
-		return SetHasAnnotations(a.TaskId, a.TaskExecution)
+	if a.Issues != nil {
+		if len(a.Issues) == 0 {
+			return UnsetHasAnnotations(a.TaskId, a.TaskExecution)
+		} else {
+			return SetHasAnnotations(a.TaskId, a.TaskExecution)
+		}
 	}
 	return nil
 }
