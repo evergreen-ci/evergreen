@@ -2733,18 +2733,6 @@ func enableDisabledTasks(taskIDs []string) error {
 	return err
 }
 
-// SetHasAnnotations sets a task's HasAnnotations flag, indicating
-// that there are annotations with populated IssuesKey for its
-// id / execution pair.
-func SetHasAnnotations(taskId string, execution int) error {
-	err := UpdateOne(
-		ByIdAndExecution(taskId, execution),
-		bson.M{"$set": bson.M{
-			HasAnnotationsKey: true,
-		}})
-	return errors.Wrapf(err, "marking task '%s' as having annotations", taskId)
-}
-
 // IncNumNextTaskDispatches sets the number of times a host has requested this
 // task and execution as its next task.
 func (t *Task) IncNumNextTaskDispatches() error {
@@ -2759,16 +2747,15 @@ func (t *Task) IncNumNextTaskDispatches() error {
 	return nil
 }
 
-// UnsetHasAnnotations unsets a task's HasAnnotations flag, indicating
-// that there are no longer any annotations with populated IssuesKey for its
-// id / execution pair.
-func UnsetHasAnnotations(taskId string, execution int) error {
+// UpdateHasAnnotations updates a task's HasAnnotations flag, indicating if there
+// are any annotations with populated IssuesKey for its id / execution pair.
+func UpdateHasAnnotations(taskId string, execution int, hasAnnotations bool) error {
 	err := UpdateOne(
 		ByIdAndExecution(taskId, execution),
 		bson.M{"$set": bson.M{
-			HasAnnotationsKey: false,
+			HasAnnotationsKey: hasAnnotations,
 		}})
-	return errors.Wrapf(err, "marking task '%s' as having no annotations", taskId)
+	return errors.Wrapf(err, "updating hasAnnotations field for task '%s'", taskId)
 }
 
 type NumExecutionsForIntervalInput struct {
