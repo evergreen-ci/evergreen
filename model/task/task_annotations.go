@@ -153,8 +153,12 @@ func UpsertAnnotation(a *annotations.TaskAnnotation, userDisplayName string) err
 		return errors.Wrapf(err, "adding task annotation for task '%s'", a.TaskId)
 	}
 
-	hasAnnotations := len(a.Issues) > 0
-	return UpdateHasAnnotations(a.TaskId, a.TaskExecution, hasAnnotations)
+	if a.Issues != nil {
+		hasAnnotations := len(a.Issues) > 0
+		return UpdateHasAnnotations(a.TaskId, a.TaskExecution, hasAnnotations)
+	}
+
+	return nil
 }
 
 // PatchAnnotation adds issues onto existing annotations, and marks its associated task document
@@ -195,6 +199,10 @@ func PatchAnnotation(a *annotations.TaskAnnotation, userDisplayName string, upse
 		return errors.Wrapf(err, "updating task annotation for '%s'", a.TaskId)
 	}
 
-	hasAnnotations := len(a.Issues) > 0
-	return UpdateHasAnnotations(a.TaskId, a.TaskExecution, hasAnnotations)
+	if a.Issues != nil {
+		hasAnnotations := len(a.Issues) > 0
+		return UpdateHasAnnotations(a.TaskId, a.TaskExecution, hasAnnotations)
+	}
+
+	return nil
 }
