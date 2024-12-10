@@ -35,6 +35,7 @@ var (
 	s3PutTemporaryCredentialsAttribute = fmt.Sprintf("%s.temporary_credentials", s3PutAttribute)
 	s3PutVisibilityAttribute           = fmt.Sprintf("%s.visibility", s3PutAttribute)
 	s3PutPermissionsAttribute          = fmt.Sprintf("%s.permissions", s3PutAttribute)
+	s3PutRemotePathAttribute           = fmt.Sprintf("%s.remote_path", s3PutAttribute)
 )
 
 // s3pc is a command to put a resource to an S3 bucket and download it to
@@ -303,6 +304,7 @@ func (s3pc *s3put) Execute(ctx context.Context,
 		attribute.Bool(s3PutTemporaryCredentialsAttribute, s3pc.AwsSessionToken != ""),
 		attribute.String(s3PutVisibilityAttribute, s3pc.Visibility),
 		attribute.String(s3PutPermissionsAttribute, s3pc.Permissions),
+		attribute.String(s3PutRemotePathAttribute, s3pc.RemoteFile),
 	)
 
 	// create pail bucket
