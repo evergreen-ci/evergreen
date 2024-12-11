@@ -367,6 +367,7 @@ type APIDistro struct {
 	WarningNote           *string                  `json:"warning_note"`
 	ValidProjects         []*string                `json:"valid_projects"`
 	Mountpoints           []string                 `json:"mountpoints"`
+	SingleTaskDistro      bool                     `json:"single_task_distro"`
 	ImageID               *string                  `json:"image_id"`
 	ExecUser              *string                  `json:"exec_user"`
 }
@@ -393,6 +394,7 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.WarningNote = utility.ToStringPtr(d.WarningNote)
 	apiDistro.ValidProjects = utility.ToStringPtrSlice(d.ValidProjects)
 	apiDistro.Mountpoints = d.Mountpoints
+	apiDistro.SingleTaskDistro = d.SingleTaskDistro
 	apiDistro.ImageID = utility.ToStringPtr(d.ImageID)
 	apiDistro.ExecUser = utility.ToStringPtr(d.ExecUser)
 
@@ -453,6 +455,7 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 	d.AuthorizedKeysFile = utility.FromStringPtr(apiDistro.AuthorizedKeysFile)
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed
 	d.Mountpoints = apiDistro.Mountpoints
+	d.SingleTaskDistro = apiDistro.SingleTaskDistro
 	d.Expansions = []distro.Expansion{}
 	for _, e := range apiDistro.Expansions {
 		d.Expansions = append(d.Expansions, e.ToService())

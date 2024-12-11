@@ -97,7 +97,8 @@
       "home_volume_settings": {
         "format_command": ""
       },
-      "icecream_settings": {}
+      "icecream_settings": {},
+      "single_task_distro": true
     }
   ]
 }
