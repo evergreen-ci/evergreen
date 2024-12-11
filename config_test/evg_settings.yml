@@ -27,6 +27,9 @@ amboy_db:
   database: amboy_test
   url: "mongodb://localhost:27017"
 
+parameter_store:
+  prefix: "/evg-test"
+
 providers:
   aws:
     ec2_keys:
@@ -43,8 +46,6 @@ providers:
         client_type: "mock"
       secrets_manager:
         client_type: "mock"
-    parameter_store:
-      prefix: "/evg-test"
   docker:
     api_version: 1.32
 

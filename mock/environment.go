@@ -128,7 +128,7 @@ func (e *Environment) Configure(ctx context.Context) error {
 
 	// For testing purposes, set up parameter manager so it's backed by the DB.
 	pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
-		PathPrefix:     e.EvergreenSettings.Providers.AWS.ParameterStore.Prefix,
+		PathPrefix:     e.EvergreenSettings.ParameterStore.Prefix,
 		CachingEnabled: true,
 		SSMClient:      fakeparameter.NewFakeSSMClient(),
 		DB:             e.MongoClient.Database(e.DatabaseName),
