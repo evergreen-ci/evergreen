@@ -68,7 +68,7 @@ func (t *commitQueueTriggers) Attributes() event.Attributes {
 	}
 }
 
-func (t *commitQueueTriggers) commitQueueOutcome(sub *event.Subscription) (*notification.Notification, error) {
+func (t *commitQueueTriggers) commitQueueOutcome(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	data, err := t.makeData(sub)
 	if err != nil {
 		return nil, errors.Wrap(err, "collecting patch data")

@@ -146,7 +146,7 @@ func TestGetHostDNS(t *testing.T) {
 	require.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"host_id": "i-1234"})
 
-	uis := UIServer{hostCache: map[string]hostCacheItem{"i-1234": hostCacheItem{dnsName: "www.example.com", inserted: time.Now()}}}
+	uis := UIServer{hostCache: map[string]hostCacheItem{"i-1234": {dnsName: "www.example.com", inserted: time.Now()}}}
 	path, err := uis.getHostDNS((r))
 	assert.NoError(t, err)
 	assert.Len(t, path, 1)

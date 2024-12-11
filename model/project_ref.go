@@ -208,7 +208,7 @@ func (p *ProjectRef) GetGitHubPermissionGroup(requester string) (GitHubDynamicTo
 // GetGitHubAppAuth returns the App auth for the given project.
 // If the project defaults to the repo and the app is not defined on the project, it will return the app from the repo.
 func (p *ProjectRef) GetGitHubAppAuth() (*githubapp.GithubAppAuth, error) {
-	appAuth, err := githubapp.FindOneGithubAppAuth(p.Id)
+	appAuth, err := GitHubAppAuthFindOne(p.Id)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding GitHub app auth")
 	}
@@ -218,7 +218,7 @@ func (p *ProjectRef) GetGitHubAppAuth() (*githubapp.GithubAppAuth, error) {
 	if !p.UseRepoSettings() {
 		return nil, nil
 	}
-	appAuth, err = githubapp.FindOneGithubAppAuth(p.RepoRefId)
+	appAuth, err = GitHubAppAuthFindOne(p.RepoRefId)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding GitHub app auth")
 	}
@@ -799,7 +799,7 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 // are empty, the entry is deleted.
 func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) error {
 	if appID == 0 && len(privateKey) == 0 {
-		ghApp, err := githubapp.FindOneGithubAppAuth(p.Id)
+		ghApp, err := GitHubAppAuthFindOne(p.Id)
 		if err != nil {
 			return errors.Wrap(err, "finding GitHub app auth")
 		}
@@ -816,7 +816,7 @@ func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) err
 		AppID:      appID,
 		PrivateKey: privateKey,
 	}
-	return githubAppAuthUpsert(&auth)
+	return GitHubAppAuthUpsert(&auth)
 }
 
 // DefaultGithubAppCredentialsToRepo defaults the app credentials to the repo by
@@ -827,7 +827,7 @@ func DefaultGithubAppCredentialsToRepo(projectId string) error {
 		return errors.Wrap(err, "finding project ref")
 	}
 
-	ghApp, err := githubapp.FindOneGithubAppAuth(p.Id)
+	ghApp, err := GitHubAppAuthFindOne(p.Id)
 	if err != nil {
 		return errors.Wrap(err, "finding GitHub app auth")
 	}
@@ -2122,7 +2122,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 		return nil, errors.Wrapf(err, "finding subscription for project '%s'", p.Id)
 	}
 
-	githubApp, err := githubapp.FindOneGithubAppAuth(p.Id)
+	githubApp, err := GitHubAppAuthFindOne(p.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding GitHub app for project '%s'", p.Id)
 	}
@@ -3760,6 +3760,8 @@ var psEnabledButNotSyncedQuery = bson.M{
 	"$or": []bson.M{
 		{projectRefParameterStoreVarsSyncedKey: false},
 		{projectRefParameterStoreVarsSyncedKey: bson.M{"$exists": false}},
+		{projectRefParameterStoreGitHubAppSyncedKey: false},
+		{projectRefParameterStoreGitHubAppSyncedKey: bson.M{"$exists": false}},
 	},
 }
 

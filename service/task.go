@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -332,7 +333,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	testResults := uis.getTestResults(projCtx, &uiTask)
+	testResults := uis.getTestResults(r.Context(), projCtx, &uiTask)
 	if projCtx.Patch != nil {
 		var taskOnBaseCommit *task.Task
 		var testResultsOnBaseCommit []testresult.TestResult
@@ -343,7 +344,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 		taskPatch := &uiPatch{Patch: *projCtx.Patch}
 		if taskOnBaseCommit != nil {
-			if err = taskOnBaseCommit.PopulateTestResults(); err != nil {
+			if err = taskOnBaseCommit.PopulateTestResults(r.Context()); err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
@@ -893,8 +894,8 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (uis *UIServer) getTestResults(projCtx projectContext, uiTask *uiTaskData) []testresult.TestResult {
-	if err := projCtx.Task.PopulateTestResults(); err != nil {
+func (uis *UIServer) getTestResults(ctx context.Context, projCtx projectContext, uiTask *uiTaskData) []testresult.TestResult {
+	if err := projCtx.Task.PopulateTestResults(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"task_id": projCtx.Task.Id,
 			"message": "fetching test results for task",

@@ -136,7 +136,7 @@ func makeJiraNotification(ctx context.Context, settings *evergreen.Settings, t *
 	if err := mappings.Get(ctx); err != nil {
 		return nil, errors.Wrap(err, "getting Jira mappings")
 	}
-	payload, err := trigger.JIRATaskPayload(trigger.JiraIssueParameters{
+	payload, err := trigger.JIRATaskPayload(ctx, trigger.JiraIssueParameters{
 		Project:  jiraOpts.project,
 		UiURL:    settings.Ui.Url,
 		Mappings: mappings,
