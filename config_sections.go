@@ -37,6 +37,7 @@ func NewConfigSections() ConfigSections {
 		&LoggerConfig{},
 		&NewRelicConfig{},
 		&NotifyConfig{},
+		&ParameterStoreConfig{},
 		&PodLifecycleConfig{},
 		&ProjectCreationConfig{},
 		&RepoTrackerConfig{},
