@@ -923,7 +923,7 @@ func (e *envState) initParameterManager(ctx context.Context, tracer trace.Tracer
 	defer span.End()
 
 	pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
-		PathPrefix:     e.settings.ParameterStore.Prefix,
+		PathPrefix:     e.settings.Providers.AWS.ParameterStore.Prefix,
 		CachingEnabled: true,
 		DB:             e.client.Database(e.dbName),
 	})
