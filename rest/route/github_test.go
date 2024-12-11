@@ -59,7 +59,7 @@ func (s *GithubWebhookRouteSuite) SetupSuite() {
 	s.env = env
 	s.NotNil(s.env.Settings())
 	s.NotNil(s.env.Settings().Api)
-	s.NotEmpty(s.env.Settings().Api.GithubWebhookSecret)
+	s.NotEmpty(s.env.Settings().GithubWebhookSecret)
 
 	s.conf = testutil.TestConfig()
 	s.NotNil(s.conf)
@@ -78,8 +78,8 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 		MockGitHubConnectorImpl: data.MockGitHubConnectorImpl{},
 	}
 
-	s.rm = makeGithubHooksRoute(s.sc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), s.env.Settings())
-	s.mockRm = makeGithubHooksRoute(s.mockSc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), s.env.Settings())
+	s.rm = makeGithubHooksRoute(s.sc, s.queue, []byte(s.conf.GithubWebhookSecret), s.env.Settings())
+	s.mockRm = makeGithubHooksRoute(s.mockSc, s.queue, []byte(s.conf.GithubWebhookSecret), s.env.Settings())
 
 	s.Require().NoError(commitqueue.InsertQueue(&commitqueue.CommitQueue{ProjectID: "mci"}))
 
@@ -167,7 +167,7 @@ func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 
 func (s *GithubWebhookRouteSuite) TestParseAndValidateFailsWithoutSignature() {
 	ctx := context.Background()
-	secret := []byte(s.conf.Api.GithubWebhookSecret)
+	secret := []byte(s.conf.GithubWebhookSecret)
 	req, err := makeRequest("1", "pull_request", s.prBody, secret)
 	s.NoError(err)
 	req.Header.Del("X-Hub-Signature")
@@ -179,7 +179,7 @@ func (s *GithubWebhookRouteSuite) TestParseAndValidateFailsWithoutSignature() {
 
 func (s *GithubWebhookRouteSuite) TestParseAndValidate() {
 	ctx := context.Background()
-	secret := []byte(s.conf.Api.GithubWebhookSecret)
+	secret := []byte(s.conf.GithubWebhookSecret)
 	req, err := makeRequest("1", "pull_request", s.prBody, secret)
 	req = setGitHubPayload(req, s.prBody)
 	s.NoError(err)

@@ -66,6 +66,7 @@ type APIAdminSettings struct {
 	Expansions          map[string]string                 `json:"expansions,omitempty"`
 	GithubPRCreatorOrg  *string                           `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs          []string                          `json:"github_orgs,omitempty"`
+	GithubWebhookSecret *string                           `json:"github_webhook_secret,omitempty"`
 	DisabledGQLQueries  []string                          `json:"disabled_gql_queries"`
 	HostInit            *APIHostInitConfig                `json:"hostinit,omitempty"`
 	HostJasper          *APIHostJasperConfig              `json:"host_jasper,omitempty"`
@@ -141,6 +142,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.Expansions = v.Expansions
 		as.KanopySSHKeyPath = utility.ToStringPtr(v.KanopySSHKeyPath)
 		as.GithubOrgs = v.GithubOrgs
+		as.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
 		as.DisabledGQLQueries = v.DisabledGQLQueries
 		as.SSHKeyDirectory = utility.ToStringPtr(v.SSHKeyDirectory)
 		as.SSHKeyPairs = []APISSHKeyPair{}
@@ -224,6 +226,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if as.GithubPRCreatorOrg != nil {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
 	}
+	settings.GithubWebhookSecret = utility.FromStringPtr(as.GithubWebhookSecret)
 	if as.LogPath != nil {
 		settings.LogPath = *as.LogPath
 	}
@@ -465,16 +468,14 @@ func (a *APIAmboyNamedQueueConfig) ToService() evergreen.AmboyNamedQueueConfig {
 }
 
 type APIapiConfig struct {
-	HttpListenAddr      *string `json:"http_listen_addr"`
-	GithubWebhookSecret *string `json:"github_webhook_secret"`
-	URL                 *string `json:"url"`
+	HttpListenAddr *string `json:"http_listen_addr"`
+	URL            *string `json:"url"`
 }
 
 func (a *APIapiConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.APIConfig:
 		a.HttpListenAddr = utility.ToStringPtr(v.HttpListenAddr)
-		a.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
 		a.URL = utility.ToStringPtr(v.URL)
 	default:
 		return errors.Errorf("programmatic error: expected REST API config but got type %T", h)
@@ -484,9 +485,8 @@ func (a *APIapiConfig) BuildFromService(h interface{}) error {
 
 func (a *APIapiConfig) ToService() (interface{}, error) {
 	return evergreen.APIConfig{
-		HttpListenAddr:      utility.FromStringPtr(a.HttpListenAddr),
-		GithubWebhookSecret: utility.FromStringPtr(a.GithubWebhookSecret),
-		URL:                 utility.FromStringPtr(a.URL),
+		HttpListenAddr: utility.FromStringPtr(a.HttpListenAddr),
+		URL:            utility.FromStringPtr(a.URL),
 	}, nil
 }
 

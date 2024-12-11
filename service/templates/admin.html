@@ -864,10 +864,6 @@ Admin Settings
 											<input type="text" ng-model="Settings.api.http_listen_addr">
 										</md-input-container>
 										<md-input-container class="control" style="width:45%; margin-left:50px;">
-											<label>Github webhook secret</label>
-											<input type="text" ng-model="Settings.api.github_webhook_secret">
-										</md-input-container>
-										<md-input-container class="control" style="width:45%;">
 											<label>Backend URL</label>
 											<input type="text" ng-model="Settings.api.url">
 										</md-input-container>
@@ -2218,14 +2214,18 @@ Admin Settings
 										<input type="text" ng-model="Settings.github_pr_creator_org">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
+										<label>Github webhook secret</label>
+										<input type="text" ng-model="Settings.github_webhook_secret">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Pprof port</label>
 										<input type="text" ng-model="Settings.pprof_port">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Log path</label>
 										<input type="text" ng-model="Settings.log_path">
 									</md-input-container>
-										<md-input-container class="control" style="width:45%;">
+										<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Shutdown Wait(seconds)</label>
 										<input type="number" ng-model="Settings.shutdown_wait_seconds">
 									</md-input-container>
