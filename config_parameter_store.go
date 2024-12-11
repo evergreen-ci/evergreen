@@ -15,7 +15,7 @@ type ParameterStoreConfig struct {
 }
 
 var (
-	prefixKey = bsonutil.MustHaveTag(BucketsConfig{}, "Prefix")
+	prefixKey = bsonutil.MustHaveTag(ParameterStoreConfig{}, "Prefix")
 )
 
 func (*ParameterStoreConfig) SectionId() string { return "parameter_store" }
