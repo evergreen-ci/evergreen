@@ -1797,6 +1797,7 @@ func TestAddDependency(t *testing.T) {
 			require.NotZero(t, updated)
 			require.Len(t, updated.DependsOn, len(depTaskIds))
 			assert.True(t, updated.DependsOn[0].Unattainable)
+			assert.Equal(t, evergreen.TaskStatusBlocked, updated.DisplayStatusCache)
 		},
 		"AddsDependencyForSameTaskButDifferentStatus": func(t *testing.T, tsk *Task) {
 			assert.NoError(t, tsk.AddDependency(ctx, Dependency{
@@ -1834,12 +1835,13 @@ func TestAddDependency(t *testing.T) {
 			for _, d := range updated.DependsOn {
 				assert.NotEqual(t, d.TaskId, depTaskIds[2].TaskId)
 			}
+			assert.Equal(t, evergreen.TaskWillRun, updated.DisplayStatusCache)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection))
 
-			tsk := &Task{Id: "t1", DependsOn: depTaskIds}
+			tsk := &Task{Id: "t1", DependsOn: depTaskIds, Status: evergreen.TaskUndispatched, Activated: true}
 			require.NoError(t, tsk.Insert())
 
 			tCase(t, tsk)
