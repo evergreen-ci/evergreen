@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -487,7 +486,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 
-			githubAppFromDB, err := githubapp.FindOneGithubAppAuth(ref.Id)
+			githubAppFromDB, err := model.GitHubAppAuthFindOne(ref.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, githubAppFromDB)
 			assert.Equal(t, githubAppFromDB.AppID, int64(12345))
@@ -504,7 +503,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 
-			githubAppFromDB, err = githubapp.FindOneGithubAppAuth(ref.Id)
+			githubAppFromDB, err = model.GitHubAppAuthFindOne(ref.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, githubAppFromDB)
 			assert.Equal(t, githubAppFromDB.AppID, int64(12345))
@@ -521,7 +520,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 
-			githubAppFromDB, err = githubapp.FindOneGithubAppAuth(ref.Id)
+			githubAppFromDB, err = model.GitHubAppAuthFindOne(ref.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, githubAppFromDB)
 			assert.Equal(t, githubAppFromDB.AppID, int64(12345))
@@ -538,7 +537,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 
-			githubAppFromDB, err = githubapp.FindOneGithubAppAuth(ref.Id)
+			githubAppFromDB, err = model.GitHubAppAuthFindOne(ref.Id)
 			assert.NoError(t, err)
 			assert.Nil(t, githubAppFromDB)
 

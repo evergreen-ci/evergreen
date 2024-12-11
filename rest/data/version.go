@@ -38,7 +38,7 @@ func GetProjectVersionsWithOptions(projectName string, opts model.GetVersionsOpt
 // The skip value indicates how many versions back in time should be skipped
 // before starting to fetch versions, the project indicates which project the
 // returned versions should be a part of.
-func GetVersionsAndVariants(skip, numVersionElements int, project *model.Project) (*restModel.VersionVariantData, error) {
+func GetVersionsAndVariants(ctx context.Context, skip, numVersionElements int, project *model.Project) (*restModel.VersionVariantData, error) {
 	// the final array of versions to return
 	finalVersions := []restModel.APIVersions{}
 
@@ -174,7 +174,7 @@ func GetVersionsAndVariants(skip, numVersionElements int, project *model.Project
 
 		}
 
-		if err = addFailedAndStartedTests(buildList, failedAndStartedTasks); err != nil {
+		if err = addFailedAndStartedTests(ctx, buildList, failedAndStartedTasks); err != nil {
 			return nil, err
 		}
 	}
@@ -193,9 +193,9 @@ func GetVersionsAndVariants(skip, numVersionElements int, project *model.Project
 }
 
 // addFailedAndStartedTests adds all of the failed tests associated with a task
-func addFailedAndStartedTests(rows map[string]restModel.BuildList, failedAndStartedTasks []task.Task) error {
+func addFailedAndStartedTests(ctx context.Context, rows map[string]restModel.BuildList, failedAndStartedTasks []task.Task) error {
 	for i := range failedAndStartedTasks {
-		if err := failedAndStartedTasks[i].PopulateTestResults(); err != nil {
+		if err := failedAndStartedTasks[i].PopulateTestResults(ctx); err != nil {
 			return errors.Wrap(err, "populating test results")
 		}
 	}
