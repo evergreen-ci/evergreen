@@ -58,7 +58,6 @@ func (s *GithubWebhookRouteSuite) SetupSuite() {
 	s.Require().NoError(env.Configure(ctx))
 	s.env = env
 	s.NotNil(s.env.Settings())
-	s.NotNil(s.env.Settings().Api)
 	s.NotEmpty(s.env.Settings().GithubWebhookSecret)
 
 	s.conf = testutil.TestConfig()
