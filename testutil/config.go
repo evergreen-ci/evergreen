@@ -148,9 +148,8 @@ func MockConfig() *evergreen.Settings {
 			URL:      "mongodb://localhost:27017",
 		},
 		Api: evergreen.APIConfig{
-			HttpListenAddr:      "addr",
-			GithubWebhookSecret: "secret",
-			URL:                 "api",
+			HttpListenAddr: "addr",
+			URL:            "api",
 		},
 		AuthConfig: evergreen.AuthConfig{
 			Okta: &evergreen.OktaConfig{
@@ -216,9 +215,10 @@ func MockConfig() *evergreen.Settings {
 				},
 			},
 		},
-		DomainName:         "example.com",
-		Expansions:         map[string]string{"k2": "v2"},
-		GithubPRCreatorOrg: "org",
+		DomainName:          "example.com",
+		Expansions:          map[string]string{"k2": "v2"},
+		GithubPRCreatorOrg:  "org",
+		GithubWebhookSecret: "secret",
 		HostInit: evergreen.HostInitConfig{
 			HostThrottle:         64,
 			ProvisioningThrottle: 100,

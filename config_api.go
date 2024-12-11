@@ -87,9 +87,8 @@ func (c *ClientConfig) populateClientBinaries(ctx context.Context, s3URLPrefix s
 
 // APIConfig holds relevant log and listener settings for the API server.
 type APIConfig struct {
-	HttpListenAddr      string `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
-	GithubWebhookSecret string `bson:"github_webhook_secret" json:"github_webhook_secret" yaml:"github_webhook_secret"`
-	URL                 string `bson:"url" json:"url" yaml:"url"`
+	HttpListenAddr string `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
+	URL            string `bson:"url" json:"url" yaml:"url"`
 }
 
 func (c *APIConfig) SectionId() string { return "api" }
@@ -99,17 +98,15 @@ func (c *APIConfig) Get(ctx context.Context) error {
 }
 
 var (
-	httpListenAddrKey      = bsonutil.MustHaveTag(APIConfig{}, "HttpListenAddr")
-	githubWebhookSecretKey = bsonutil.MustHaveTag(APIConfig{}, "GithubWebhookSecret")
-	urlKey                 = bsonutil.MustHaveTag(APIConfig{}, "URL")
+	httpListenAddrKey = bsonutil.MustHaveTag(APIConfig{}, "HttpListenAddr")
+	urlKey            = bsonutil.MustHaveTag(APIConfig{}, "URL")
 )
 
 func (c *APIConfig) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			httpListenAddrKey:      c.HttpListenAddr,
-			githubWebhookSecretKey: c.GithubWebhookSecret,
-			urlKey:                 c.URL,
+			httpListenAddrKey: c.HttpListenAddr,
+			urlKey:            c.URL,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

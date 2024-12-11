@@ -811,7 +811,7 @@ func NewGithubAuthMiddleware() gimlet.Middleware {
 type githubAuthMiddleware struct{}
 
 func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	githubSecret := []byte(evergreen.GetEnvironment().Settings().Api.GithubWebhookSecret)
+	githubSecret := []byte(evergreen.GetEnvironment().Settings().GithubWebhookSecret)
 
 	payload, err := github.ValidatePayload(r, githubSecret)
 	if err != nil {
