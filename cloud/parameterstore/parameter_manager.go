@@ -100,6 +100,15 @@ func (pm *ParameterManager) Put(ctx context.Context, name, value string) (*Param
 	}
 
 	fullName := pm.getPrefixedName(name)
+	if len(value) > 4000 {
+		grip.Info(message.Fields{
+			"message":            "kim: inserting long parameter value",
+			"partial_param_name": name,
+			"param_name":         fullName,
+			"param_value_len":    len(value),
+			"param_value_prefix": value[:100],
+		})
+	}
 	if _, err := pm.ssmClient.PutParameter(ctx, &ssm.PutParameterInput{
 		Name:      aws.String(fullName),
 		Value:     aws.String(value),
