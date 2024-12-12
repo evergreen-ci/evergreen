@@ -1833,6 +1833,7 @@ func updateAllTasksForAllMatchingDependencies(ctx context.Context, taskIDs []str
 					"else": false,
 				}}},
 			},
+			addDisplayStatusCache,
 		},
 	); err != nil {
 		return errors.Wrap(err, "updating matching dependencies")
