@@ -31,8 +31,9 @@ func TestDistroBuildFromService(t *testing.T) {
 			SchedulerHost: "host",
 			ConfigPath:    "config_path",
 		},
-		Mountpoints: []string{"/", "/data"},
-		ExecUser:    "exec_user",
+		Mountpoints:      []string{"/", "/data"},
+		ExecUser:         "exec_user",
+		SingleTaskDistro: true,
 	}
 	apiDistro := &APIDistro{}
 	apiDistro.BuildFromService(d)
@@ -49,6 +50,7 @@ func TestDistroBuildFromService(t *testing.T) {
 	assert.Equal(t, d.IceCreamSettings.SchedulerHost, utility.FromStringPtr(apiDistro.IcecreamSettings.SchedulerHost))
 	assert.Equal(t, d.IceCreamSettings.ConfigPath, utility.FromStringPtr(apiDistro.IcecreamSettings.ConfigPath))
 	assert.Equal(t, d.Mountpoints, apiDistro.Mountpoints)
+	assert.Equal(t, d.SingleTaskDistro, apiDistro.SingleTaskDistro)
 	assert.Equal(t, d.ExecUser, utility.FromStringPtr(apiDistro.ExecUser))
 }
 
