@@ -109,6 +109,15 @@ func (j *parameterStoreSyncJob) sync(ctx context.Context, pRefs []model.ProjectR
 				catcher.Wrapf(err, "updating parameter mappings for project '%s'", pRef.Id)
 				continue
 			}
+
+			// Double check that the project vars that were just synced agree
+			// with the project vars in the DB when read out of Parameter Store.
+			// This is mostly to cover inactive projects that may not have users
+			// actively using them (and therefore the project vars never get
+			// read out of Parameter Store to trigger a consistency check).
+			// The consistency check happens internally within FindOne, so
+			// the actual return value doesn't matter.
+			_, _ = model.FindOneProjectVars(pRef.Id)
 		}
 
 		if !pRef.ParameterStoreGitHubAppSynced {
@@ -130,6 +139,16 @@ func (j *parameterStoreSyncJob) sync(ctx context.Context, pRefs []model.ProjectR
 					catcher.Wrapf(err, "syncing GitHub app private key for project '%s' to Parameter Store", pRef.Id)
 					continue
 				}
+
+				// Double check that the GitHub app private key that was just
+				// synced agrees with the private key in the DB when read out of
+				// Parameter Store. This is to cover inactive projects that may
+				// not have users actively using them (and therefore the GitHub
+				// app private key may never get read out of Parameter Store to
+				// trigger a consistency check).
+				// The consistency check happens internally within FindOne, so
+				// the actual return value doesn't matter.
+				_, _ = model.GitHubAppAuthFindOne(pRef.Id)
 			}
 		}
 	}
