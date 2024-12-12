@@ -28,6 +28,7 @@ const (
 var (
 	s3GetBucketAttribute               = fmt.Sprintf("%s.bucket", s3GetAttribute)
 	s3GetTemporaryCredentialsAttribute = fmt.Sprintf("%s.temporary_credentials", s3GetAttribute)
+	s3GetRemoteFileAttribute           = fmt.Sprintf("%s.remote_file", s3GetAttribute)
 )
 
 // s3get is a command to fetch a resource from an S3 bucket and download it to
@@ -41,6 +42,9 @@ type s3get struct {
 
 	// RemoteFile is the file path of the file to get, within its bucket.
 	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
+
+	// remoteFile is the file path without any expansions applied.
+	remoteFile string
 
 	// Region is the S3 region where the bucket is located. It defaults to
 	// "us-east-1".
@@ -143,6 +147,8 @@ func (c *s3get) shouldRunForVariant(buildVariantName string) bool {
 // Apply the expansions from the relevant task config
 // to all appropriate fields of the s3get.
 func (c *s3get) expandParams(conf *internal.TaskConfig) error {
+	c.remoteFile = c.RemoteFile
+
 	var err error
 	if err = util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
@@ -174,6 +180,7 @@ func (c *s3get) Execute(ctx context.Context,
 	trace.SpanFromContext(ctx).SetAttributes(
 		attribute.String(s3GetBucketAttribute, c.Bucket),
 		attribute.Bool(s3GetTemporaryCredentialsAttribute, c.AwsSessionToken != ""),
+		attribute.String(s3GetRemoteFileAttribute, c.remoteFile),
 	)
 
 	// create pail bucket
