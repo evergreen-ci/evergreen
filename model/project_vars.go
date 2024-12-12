@@ -1173,14 +1173,6 @@ func getCompressedParamForVar(varName, varValue string) (paramName string, param
 	// gzip-compressed value in Parameter Store.
 	compressedBase64Value := base64.StdEncoding.EncodeToString(compressedValue.Bytes())
 
-	grip.Info(message.Fields{
-		"message":                             "kim: created compressed base64-encoded parameter",
-		"var_name":                            varName,
-		"uncompressed_value_len":              len(varValue),
-		"compressed_value_len":                compressedValue.Len(),
-		"compressed_base64_encoded_value_len": len(compressedBase64Value),
-	})
-
 	if len(compressedBase64Value) >= parameterstore.ParamValueMaxLength {
 		return "", "", errors.Errorf("project variable value exceeds maximum length, even after attempted compression (value is %d bytes, compressed value is %d bytes, maximum is %d bytes)", len(varValue), len(compressedBase64Value), parameterstore.ParamValueMaxLength)
 	}
@@ -1192,22 +1184,10 @@ func getCompressedParamForVar(varName, varValue string) (paramName string, param
 // name and value. This is the inverse operation of convertVarToParam.
 func convertParamToVar(pm ParameterMappings, paramName, paramValue string) (varName, varValue string, err error) {
 	if strings.HasSuffix(paramName, gzipCompressedParamExtension) {
-		grip.Info(message.Fields{
-			"message":                             "kim: found compressed base64-encoded parameter",
-			"param_name":                          paramName,
-			"compressed_base64_encoded_param_len": len(paramValue),
-			"compressed_base64_encoded_param_value_prefix": paramValue[:100],
-		})
 		compressedValue, err := base64.StdEncoding.DecodeString(paramValue)
 		if err != nil {
 			return "", "", errors.Wrap(err, "decoding base64-encoded compressed parameter value")
 		}
-		grip.Info(message.Fields{
-			"message":                       "kim: found compressed parameter (with base64 encoding removed)",
-			"param_name":                    paramName,
-			"compressed_param_len":          len(compressedValue),
-			"compressed_param_value_prefix": compressedValue[:100],
-		})
 		gzr, err := gzip.NewReader(bytes.NewReader(compressedValue))
 		if err != nil {
 			return "", "", errors.Wrap(err, "creating gzip reader for compressed project variable")
