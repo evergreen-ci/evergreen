@@ -1,8 +1,10 @@
 package model
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"sort"
@@ -758,7 +760,10 @@ func TestConvertVarToParam(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("%s/%s.gz", GetVarsParameterPath(projectID), varName), paramName, "should include project ID prefix and gzip extension to indicate the value was compressed")
 		assert.NotEqual(t, longVarValue, paramValue, "compressed value should not match original variable value")
 
-		gzr, err := gzip.NewReader(strings.NewReader(paramValue))
+		compressedValue, err := base64.StdEncoding.DecodeString(paramValue)
+		require.NoError(t, err)
+
+		gzr, err := gzip.NewReader(bytes.NewReader(compressedValue))
 		require.NoError(t, err)
 		decompressed, err := io.ReadAll(gzr)
 		require.NoError(t, err)
@@ -786,11 +791,14 @@ func TestConvertVarToParam(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("%s.gz", existingParamName), paramName, "project variable that was previously short but now is long enough to require compression should have its parameter name changed")
 		assert.NotEqual(t, longVarValue, paramValue)
 
-		gzr, err := gzip.NewReader(strings.NewReader(paramValue))
+		compressedValue, err := base64.StdEncoding.DecodeString(paramValue)
+		require.NoError(t, err)
+
+		gzr, err := gzip.NewReader(bytes.NewReader(compressedValue))
 		require.NoError(t, err)
 		decompressed, err := io.ReadAll(gzr)
 		require.NoError(t, err)
-		assert.Equal(t, longVarValue, string(decompressed))
+		assert.Equal(t, longVarValue, string(decompressed), "decompressed value should match original value")
 	})
 	t.Run("ReturnsErrorForEmptyVariableName", func(t *testing.T) {
 		const (

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"regexp"
@@ -1158,8 +1159,8 @@ func getCompressedParamForVar(varName, varValue string) (paramName string, param
 		return varName, varValue, nil
 	}
 
-	compressedValue := bytes.NewBuffer(make([]byte, 0, len(varValue)))
-	gzw := gzip.NewWriter(compressedValue)
+	var compressedValue bytes.Buffer
+	gzw := gzip.NewWriter(&compressedValue)
 	if _, err := gzw.Write([]byte(varValue)); err != nil {
 		return "", "", errors.Wrap(err, "compressing long project variable value")
 	}
@@ -1167,18 +1168,27 @@ func getCompressedParamForVar(varName, varValue string) (paramName string, param
 		return "", "", errors.Wrap(err, "closing gzip writer after compressing long project variable value")
 	}
 
-	if compressedValue.Len() >= parameterstore.ParamValueMaxLength {
-		return "", "", errors.Errorf("project variable value exceeds maximum length, even after attempted compression (value is %d bytes, compressed value is %d bytes, maximum is %d bytes)", len(varValue), compressedValue.Len(), parameterstore.ParamValueMaxLength)
+	// gzip produces raw binary data, whereas Parameter Store can only handle
+	// strings. Encoding it as a base64 string makes it possible to store the
+	// gzip-compressed value in Parameter Store.
+	compressedBase64Value := base64.StdEncoding.EncodeToString(compressedValue.Bytes())
+
+	if len(compressedBase64Value) >= parameterstore.ParamValueMaxLength {
+		return "", "", errors.Errorf("project variable value exceeds maximum length, even after attempted compression (value is %d bytes, compressed value is %d bytes, maximum is %d bytes)", len(varValue), len(compressedBase64Value), parameterstore.ParamValueMaxLength)
 	}
 
-	return fmt.Sprintf("%s%s", varName, gzipCompressedParamExtension), compressedValue.String(), nil
+	return fmt.Sprintf("%s%s", varName, gzipCompressedParamExtension), compressedBase64Value, nil
 }
 
 // convertParamToVar converts a parameter back to its original project variable
 // name and value. This is the inverse operation of convertVarToParam.
 func convertParamToVar(pm ParameterMappings, paramName, paramValue string) (varName, varValue string, err error) {
 	if strings.HasSuffix(paramName, gzipCompressedParamExtension) {
-		gzr, err := gzip.NewReader(strings.NewReader(paramValue))
+		compressedValue, err := base64.StdEncoding.DecodeString(paramValue)
+		if err != nil {
+			return "", "", errors.Wrap(err, "decoding base64-encoded compressed parameter value")
+		}
+		gzr, err := gzip.NewReader(bytes.NewReader(compressedValue))
 		if err != nil {
 			return "", "", errors.Wrap(err, "creating gzip reader for compressed project variable")
 		}
