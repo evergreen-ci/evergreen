@@ -1,41 +1,49 @@
-# Evergreen Data Retention Policy
 
-Evergreen has implemented data retention policies to optimize storage usage, reduce costs, and streamline operations. Here are the key retention strategies for different types of data:
+# Evergreen Data Retention Reference
 
-### General Retention Policy
-- **Live Task and Host Data**: Stored for 365 days. This includes database documents, artifacts, and logs in S3.
+### Overview
+- **Primary Storage (MongoDB, S3):**  
+  - **Live Task & Host Data:** Retained for **365 days**
+  
+- **Data Warehouse (Trino):**  
+  - **Task & Host Metadata:** Retained for **1825 days** (5 years)  
+  - **Test Results Metadata:** Retained for **1825 days** (5 years)
 
-### Metadata Retention
-- **Task and Host Metadata**: Stored in a data warehouse for 1825 days.
-- **Test Results Metadata**: Retained for 730 days.
+---
 
-### Specific Data Retention Policies
+### Detailed Retention by Data Type
 
-#### Task Artifacts
-- **S3 Policy**: 
-  - Transition to Standard-IA after 30 days.
-  - Expire after 365 days.
+**Tasks & Hosts**
+- **MongoDB:** Retained for **365 days** from `create_time` or `termination_time` (as applicable).  
+- **Trino (Data Warehouse):** Retained for **1825 days** for tasks and hosts data.
 
-#### DB Task Artifacts
-- **Policy**: 365-day TTL index on the `create_time` field.
+**Artifacts**
+- **S3:**  
+  - Transitioned to Standard-IA after **30 days**  
+  - Permanently deleted after **365 days**  
+- **MongoDB (Task Artifacts):** Expire after **365 days** based on `create_time`.
 
-#### Logs
-- **S3 Storage**: All logs expire after 365 days.
+**Logs**
+- **S3 Logs:** Deleted after **365 days**.
 
-#### Test Results
-- **MongoDB**: 365-day TTL index on the `created_at` field.
-- **S3**: Expire after 730 days.
+**Test Results**
+- **MongoDB Test Results:** Expire after **365 days** based on `created_at`.  
+- **S3 Test Results:** Deleted after **730 days** (2 years).
 
-#### Versions, Builds, Patches, and Tasks
-- **Policy**: 365-day TTL index on the relevant `create_time` field.
+**Versions, Builds, Patches, and Tasks**
+- **MongoDB:** Expire after **365 days** based on `create_time`.
 
-#### Hosts/Pods
-- **Policy**: 365-day TTL index on the `termination_time` field for applicable hosts.
+**Hosts/Pods**
+- **MongoDB:** Expire after **365 days** based on `termination_time` if applicable.
 
-### Trino Specific Data
-- **Retention**: Tasks and hosts data are stored for 1825 days in `mongodatalake-dev-prod-live` and `mongodatalake-dev-prod-staging`.
+---
 
-### General Policy for Trino Data
-- **Default Retention**: 1825 days for data in `dev_prod_live` and `dev_prod_staging` schemas. Custom per-dataset policies may be applied as needed.
+### Additional Notes
 
-These policies help manage storage costs and improve operational efficiency while preserving the ability to conduct historical analysis as required.
+- **Data Warehouse (Trino):**  
+  - Default retention for data in `dev_prod_live` and `dev_prod_staging` is **1825 days**.  
+  - Custom per-dataset policies may be applied as necessary.
+
+- **Lifecycle Management:**  
+  - Automated TTL (Time-to-Live) indices and S3 lifecycle rules ensure smooth transitions from live storage to deletion, optimizing cost and storage usage.
+
