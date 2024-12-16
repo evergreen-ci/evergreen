@@ -80,6 +80,7 @@ type Settings struct {
 	ExpansionsNew       util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
 	GithubPRCreatorOrg  string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
 	GithubOrgs          []string                  `yaml:"github_orgs" bson:"github_orgs" json:"github_orgs"`
+	GithubWebhookSecret string                    `yaml:"github_webhook_secret" bson:"github_webhook_secret" json:"github_webhook_secret"`
 	DisabledGQLQueries  []string                  `yaml:"disabled_gql_queries" bson:"disabled_gql_queries" json:"disabled_gql_queries"`
 	HostInit            HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
 	HostJasper          HostJasperConfig          `yaml:"host_jasper" bson:"host_jasper" json:"host_jasper" id:"host_jasper"`
@@ -127,27 +128,28 @@ func (c *Settings) Get(ctx context.Context) error {
 func (c *Settings) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			awsInstanceRoleKey:    c.AWSInstanceRole,
-			bannerKey:             c.Banner,
-			bannerThemeKey:        c.BannerTheme,
-			commitQueueKey:        c.CommitQueue,
-			configDirKey:          c.ConfigDir,
-			domainNameKey:         c.DomainName,
-			expansionsKey:         c.Expansions,
-			expansionsNewKey:      c.ExpansionsNew,
-			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
-			githubOrgsKey:         c.GithubOrgs,
-			disabledGQLQueriesKey: c.DisabledGQLQueries,
-			kanopySSHKeyPathKey:   c.KanopySSHKeyPath,
-			logPathKey:            c.LogPath,
-			pprofPortKey:          c.PprofPort,
-			pluginsKey:            c.Plugins,
-			pluginsNewKey:         c.PluginsNew,
-			splunkKey:             c.Splunk,
-			sshKeyDirectoryKey:    c.SSHKeyDirectory,
-			sshKeyPairsKey:        c.SSHKeyPairs,
-			spawnhostKey:          c.Spawnhost,
-			shutdownWaitKey:       c.ShutdownWaitSeconds,
+			awsInstanceRoleKey:     c.AWSInstanceRole,
+			bannerKey:              c.Banner,
+			bannerThemeKey:         c.BannerTheme,
+			commitQueueKey:         c.CommitQueue,
+			configDirKey:           c.ConfigDir,
+			domainNameKey:          c.DomainName,
+			expansionsKey:          c.Expansions,
+			expansionsNewKey:       c.ExpansionsNew,
+			githubPRCreatorOrgKey:  c.GithubPRCreatorOrg,
+			githubOrgsKey:          c.GithubOrgs,
+			githubWebhookSecretKey: c.GithubWebhookSecret,
+			disabledGQLQueriesKey:  c.DisabledGQLQueries,
+			kanopySSHKeyPathKey:    c.KanopySSHKeyPath,
+			logPathKey:             c.LogPath,
+			pprofPortKey:           c.PprofPort,
+			pluginsKey:             c.Plugins,
+			pluginsNewKey:          c.PluginsNew,
+			splunkKey:              c.Splunk,
+			sshKeyDirectoryKey:     c.SSHKeyDirectory,
+			sshKeyPairsKey:         c.SSHKeyPairs,
+			spawnhostKey:           c.Spawnhost,
+			shutdownWaitKey:        c.ShutdownWaitSeconds,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
