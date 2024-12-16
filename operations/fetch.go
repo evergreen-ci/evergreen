@@ -256,7 +256,7 @@ func clone(opts cloneOptions) error {
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
-			return errors.Errorf("repository does not exist or is private an no token was provided: %d", resp.StatusCode)
+			return errors.Errorf("%s/%s does not exist or is private an no token was provided: %d", opts.owner, opts.repository, resp.StatusCode)
 		}
 	}
 	var cloneArgs []string
