@@ -510,7 +510,9 @@ func (j *patchIntentProcessor) setGitHubPatchingError(err error) error {
 	if strings.Contains(err.Error(), thirdparty.Github502Error) {
 		j.gitHubError = GitHubInternalError
 	}
-	if strings.Contains(err.Error(), model.LoadProjectError) {
+	if strings.Contains(err.Error(), model.LoadProjectError) ||
+		strings.Contains(err.Error(), model.TranslateProjectConfigError) {
+		// We use the same GitHub error in these cases, because the remedy is the same.
 		j.gitHubError = InvalidConfig
 	}
 	return err
