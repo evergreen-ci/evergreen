@@ -1511,9 +1511,9 @@ Parameters:
 -   `max_retries`: Optional. The maximum number of times it will attempt
     to pull a file from S3.
 
-## s3Copy.copy
+## s3Copy.copy (Deprecated)
 
-`s3Copy.copy` copies files from one s3 location to another
+`s3Copy.copy` is deprecated. Please use `s3.put` instead.
 
 ``` yaml
 - command: s3Copy.copy

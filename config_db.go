@@ -121,6 +121,9 @@ var (
 
 	// GithubCheckRun keys
 	checkRunLimitKey = bsonutil.MustHaveTag(GitHubCheckRunConfig{}, "CheckRunLimit")
+
+	// Single Task Distro keys
+	singleTaskDistroSettings = bsonutil.MustHaveTag(SingleTaskDistroConfig{}, "Settings")
 )
 
 func byId(id string) bson.M {
