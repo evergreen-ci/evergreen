@@ -91,7 +91,8 @@ func (s *ParserProjectS3Storage) UpsertOne(ctx context.Context, pp *ParserProjec
 		if isDegradedMode {
 			serviceMode = "degraded"
 		}
-		errMsg := fmt.Sprintf("parser project exceeds the %s system limit (%v > %v bytes).", serviceMode, parserProjectLen, maxSize)
+		parserProjectMB := float64(parserProjectLen) / (1024 * 1024)
+		errMsg := fmt.Sprintf("parser project exceeds the %s system limit (%f MB > %v MB).", serviceMode, parserProjectMB, maxSize)
 		return errors.New(errMsg)
 	}
 	return s.UpsertOneBSON(ctx, pp.Id, bsonPP)
