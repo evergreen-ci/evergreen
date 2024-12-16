@@ -96109,6 +96109,7 @@ var (
 		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
 		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
 		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"SPAWN_HOST_CREATED_ERROR":                         event.EventSpawnHostCreatedError,
 		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
 		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
 	}
@@ -96142,6 +96143,7 @@ var (
 		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
 		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
 		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventSpawnHostCreatedError:                       "SPAWN_HOST_CREATED_ERROR",
 		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
 		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
 	}
@@ -96239,6 +96241,7 @@ var (
 		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
 		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
 		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"SPAWN_HOST_CREATED_ERROR":                         event.EventSpawnHostCreatedError,
 		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
 		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
 	}
@@ -96272,6 +96275,7 @@ var (
 		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
 		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
 		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventSpawnHostCreatedError:                       "SPAWN_HOST_CREATED_ERROR",
 		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
 		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
 	}
@@ -100991,6 +100995,7 @@ var (
 		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
 		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
 		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"SPAWN_HOST_CREATED_ERROR":                         event.EventSpawnHostCreatedError,
 		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
 		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
 	}
@@ -101024,6 +101029,7 @@ var (
 		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
 		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
 		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventSpawnHostCreatedError:                       "SPAWN_HOST_CREATED_ERROR",
 		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
 		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
 	}
@@ -101077,6 +101083,7 @@ var (
 		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
 		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
 		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"SPAWN_HOST_CREATED_ERROR":                         event.EventSpawnHostCreatedError,
 		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
 		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
 	}
@@ -101110,6 +101117,7 @@ var (
 		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
 		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
 		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventSpawnHostCreatedError:                       "SPAWN_HOST_CREATED_ERROR",
 		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
 		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
 	}
