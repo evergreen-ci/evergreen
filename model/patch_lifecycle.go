@@ -738,6 +738,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			},
 		)
 	}
+	SetNumDependents(tasksToInsert)
 	numActivatedTasks := 0
 	for _, t := range tasksToInsert {
 		if t.Activated {

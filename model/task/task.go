@@ -3978,12 +3978,12 @@ func (t *Task) SetCheckRunId(checkRunId int64) error {
 func (t *Task) SetNumDependents() error {
 	update := bson.M{
 		"$set": bson.M{
-			NumDepsKey: t.NumDependents,
+			NumDependentsKey: t.NumDependents,
 		},
 	}
 	if t.NumDependents == 0 {
 		update = bson.M{"$unset": bson.M{
-			NumDepsKey: "",
+			NumDependentsKey: "",
 		}}
 	}
 	return UpdateOne(bson.M{

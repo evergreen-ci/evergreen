@@ -63,7 +63,7 @@ var (
 	DependsOnKey                   = bsonutil.MustHaveTag(Task{}, "DependsOn")
 	UnattainableDependencyKey      = bsonutil.MustHaveTag(Task{}, "UnattainableDependency")
 	OverrideDependenciesKey        = bsonutil.MustHaveTag(Task{}, "OverrideDependencies")
-	NumDepsKey                     = bsonutil.MustHaveTag(Task{}, "NumDependents")
+	NumDependentsKey               = bsonutil.MustHaveTag(Task{}, "NumDependents")
 	DisplayNameKey                 = bsonutil.MustHaveTag(Task{}, "DisplayName")
 	ExecutionPlatformKey           = bsonutil.MustHaveTag(Task{}, "ExecutionPlatform")
 	HostIdKey                      = bsonutil.MustHaveTag(Task{}, "HostId")

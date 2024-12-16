@@ -980,6 +980,8 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		})
 	}
 
+	model.SetNumDependents(tasksToCreate)
+
 	grip.ErrorWhen(len(buildsToCreate) == 0, message.Fields{
 		"message":           "version has no builds",
 		"version":           v.Id,
