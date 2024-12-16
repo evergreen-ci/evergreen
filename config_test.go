@@ -255,9 +255,8 @@ func (s *AdminSuite) TestApiConfig() {
 	defer cancel()
 
 	config := APIConfig{
-		HttpListenAddr:      "addr",
-		GithubWebhookSecret: "secret",
-		URL:                 "api",
+		HttpListenAddr: "addr",
+		URL:            "api",
 	}
 
 	err := config.Set(ctx)
@@ -367,6 +366,22 @@ func (s *AdminSuite) TestPodLifecycleConfig() {
 	s.Equal(config, settings.PodLifecycle)
 }
 
+func (s *AdminSuite) TestParameterStoreConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config := ParameterStoreConfig{
+		Prefix: "/evergreen",
+	}
+
+	err := config.Set(ctx)
+	s.NoError(err)
+	settings, err := GetConfig(ctx)
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.ParameterStore)
+}
+
 func (s *AdminSuite) TestProvidersConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -378,9 +393,6 @@ func (s *AdminSuite) TestProvidersConfig() {
 					Secret: "aws_secret",
 					Key:    "aws",
 				},
-			},
-			ParameterStore: ParameterStoreConfig{
-				Prefix: "/evergreen",
 			},
 		},
 		Docker: DockerConfig{

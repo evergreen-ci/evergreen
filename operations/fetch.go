@@ -29,7 +29,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const defaultCloneDepth = 500
+const defaultCloneDepth = 1000
 const fileNameMaxLength = 250
 
 func Fetch() cli.Command {

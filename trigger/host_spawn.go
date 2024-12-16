@@ -18,7 +18,7 @@ import (
 func init() {
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisioned, makeSpawnHostProvisioningTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisionFailed, makeSpawnHostProvisioningTriggers)
-	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostCreatedError, makeSpawnHostStateChangeTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventSpawnHostCreatedError, makeSpawnHostStateChangeTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostStarted, makeSpawnHostStateChangeTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostStopped, makeSpawnHostStateChangeTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostModified, makeSpawnHostStateChangeTriggers)
@@ -190,7 +190,7 @@ func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(ctx context.C
 		return nil, nil
 	}
 	if t.data.Successful && t.data.Source == string(evergreen.ModifySpawnHostSleepSchedule) {
-		// Skip notifying for host modifications due to the sleep schedule they
+		// Skip notifying for host modifications due to the sleep schedule. They
 		// can be noisy if users regularly receive them.
 		return nil, nil
 	}
@@ -206,7 +206,7 @@ func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(ctx context.C
 func (t *spawnHostStateChangeTriggers) makePayload(sub *event.Subscription) (interface{}, error) {
 	var action string
 	switch t.event.EventType {
-	case event.EventHostCreatedError:
+	case event.EventSpawnHostCreatedError, event.EventHostCreatedError:
 		action = "Creating"
 	case event.EventHostStarted:
 		action = "Starting"

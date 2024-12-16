@@ -340,6 +340,14 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 
 	hostReplaced, err := j.spawnAndReplaceHost(ctx, cloudManager)
 	if err != nil {
+		if j.host.UserHost {
+			// Log a more specific event than the generic host created error
+			// when the host is a spawn host. This makes subscriptions on spawn
+			// host errors more efficient because the notification system can
+			// process just spawn host errors rather than every single host
+			// creation error.
+			event.LogSpawnHostCreatedError(j.host.Id, err.Error())
+		}
 		event.LogHostCreatedError(j.host.Id, err.Error())
 		return errors.Wrapf(err, "spawning and updating host '%s'", j.host.Id)
 	}
