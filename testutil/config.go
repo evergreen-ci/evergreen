@@ -54,7 +54,7 @@ func Setup() {
 		// For testing purposes, set up parameter manager so it's backed by the
 		// DB.
 		pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
-			PathPrefix:     env.Settings().Providers.AWS.ParameterStore.Prefix,
+			PathPrefix:     env.Settings().ParameterStore.Prefix,
 			CachingEnabled: true,
 			SSMClient:      fakeparameter.NewFakeSSMClient(),
 			DB:             env.DB(),
@@ -74,7 +74,7 @@ func NewEnvironment(ctx context.Context, t *testing.T) evergreen.Environment {
 	require.NoError(t, err)
 	// For testing purposes, set up parameter manager so it's backed by the DB.
 	pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
-		PathPrefix:     env.Settings().Providers.AWS.ParameterStore.Prefix,
+		PathPrefix:     env.Settings().ParameterStore.Prefix,
 		CachingEnabled: true,
 		SSMClient:      fakeparameter.NewFakeSSMClient(),
 		DB:             env.DB(),
@@ -262,6 +262,9 @@ func MockConfig() *evergreen.Settings {
 				SenderAddress: "from",
 			},
 		},
+		ParameterStore: evergreen.ParameterStoreConfig{
+			Prefix: "/prefix",
+		},
 		Plugins: map[string]map[string]interface{}{"k4": {"k5": "v5"}},
 		PodLifecycle: evergreen.PodLifecycleConfig{
 			MaxParallelPodRequests:      2000,
@@ -354,9 +357,6 @@ func MockConfig() *evergreen.Settings {
 					SecretsManager: evergreen.SecretsManagerConfig{
 						SecretPrefix: "secret_prefix",
 					},
-				},
-				ParameterStore: evergreen.ParameterStoreConfig{
-					Prefix: "/prefix",
 				},
 			},
 			Docker: evergreen.DockerConfig{
