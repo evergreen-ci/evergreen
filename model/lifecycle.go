@@ -1029,8 +1029,12 @@ func RecomputeNumDependents(ctx context.Context, t task.Task) error {
 	for i := range depTasks {
 		taskPtrs = append(taskPtrs, &depTasks[i])
 	}
-
-	versionTasks, err := task.FindAll(db.Query(task.ByVersion(t.Version)))
+	query := task.ByVersion(t.Version)
+	_, err = task.UpdateAll(query, bson.M{"$set": bson.M{task.NumDependentsKey: 0}})
+	if err != nil {
+		return errors.Wrap(err, "resetting num dependents")
+	}
+	versionTasks, err := task.FindAll(db.Query(query))
 	if err != nil {
 		return errors.Wrap(err, "getting tasks in version")
 	}
@@ -1758,7 +1762,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 	SetNumDependents(allTasks)
 	// update each build to hold the new tasks
 	for _, b := range existingBuilds {
-		if err = RefreshTasksCache(creationInfo.Build.Id); err != nil {
+		if err = RefreshTasksCache(b.Id); err != nil {
 			return nil, errors.Wrapf(err, "updating task cache for '%s'", b.Id)
 		}
 	}
