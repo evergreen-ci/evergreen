@@ -2756,7 +2756,7 @@ func UpdateHasAnnotations(taskId string, execution int, hasAnnotations bool) err
 		bson.M{"$set": bson.M{
 			HasAnnotationsKey: hasAnnotations,
 		}})
-	return errors.Wrapf(err, "updating hasAnnotations field for task '%s'", taskId)
+	return errors.Wrapf(err, "updating HasAnnotations field for task '%s'", taskId)
 }
 
 type NumExecutionsForIntervalInput struct {

@@ -195,10 +195,10 @@ func TestPatchIssue(t *testing.T) {
 	assert.Equal(t, "should work", annotation.Note.Message)
 
 	badInsert := annotations.TaskAnnotation{TaskId: "t1", TaskExecution: 1, Note: &annotations.Note{Message: "shouldn't work"}}
-	assert.Error(t, PatchAnnotation(&badInsert, "error out ", true))
+	assert.Error(t, PatchAnnotation(&badInsert, "error out", true))
 
 	badInsert2 := annotations.TaskAnnotation{TaskId: "t1", TaskExecution: 1, Metadata: &birch.Document{}}
-	assert.Error(t, PatchAnnotation(&badInsert2, "error out ", false))
+	assert.Error(t, PatchAnnotation(&badInsert2, "error out", false))
 
 	// Check that HasAnnotations field is correctly in sync when patching issues array.
 	t2 := Task{Id: "t2"}
