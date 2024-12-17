@@ -1,8 +1,10 @@
 package model
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"sort"
@@ -615,67 +617,6 @@ func TestRedactPrivateVars(t *testing.T) {
 	assert.NotEqual("", projectVars.Vars["a"], "original vars should not be modified")
 }
 
-func TestGetVarsByValue(t *testing.T) {
-	assert := assert.New(t)
-
-	require.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection, ProjectRefCollection))
-
-	pRef1 := ProjectRef{
-		Id:                    "mongodb1",
-		ParameterStoreEnabled: true,
-	}
-	require.NoError(t, pRef1.Insert())
-	pRef2 := ProjectRef{
-		Id:                    "mongodb2",
-		ParameterStoreEnabled: true,
-	}
-	require.NoError(t, pRef2.Insert())
-	pRef3 := ProjectRef{
-		Id:                    "mongodb3",
-		ParameterStoreEnabled: true,
-	}
-	require.NoError(t, pRef3.Insert())
-
-	projectVars1 := &ProjectVars{
-		Id:   pRef1.Id,
-		Vars: map[string]string{"a": "1", "b": "2"},
-	}
-
-	projectVars2 := &ProjectVars{
-		Id:   pRef2.Id,
-		Vars: map[string]string{"c": "1", "d": "2"},
-	}
-
-	projectVars3 := &ProjectVars{
-		Id:   pRef3.Id,
-		Vars: map[string]string{"e": "2", "f": "3"},
-	}
-
-	require.NoError(t, projectVars1.Insert())
-	require.NoError(t, projectVars2.Insert())
-	require.NoError(t, projectVars3.Insert())
-
-	newVars, err := getVarsByValue("1")
-	assert.NoError(err)
-	require.NotZero(t, newVars)
-	assert.Equal(2, len(newVars))
-
-	newVars, err = getVarsByValue("2")
-	assert.NoError(err)
-	require.NotZero(t, newVars)
-	assert.Equal(3, len(newVars))
-
-	newVars, err = getVarsByValue("3")
-	assert.NoError(err)
-	require.NotZero(t, newVars)
-	assert.Equal(1, len(newVars))
-
-	newVars, err = getVarsByValue("0")
-	assert.NoError(err)
-	require.NotZero(t, newVars)
-	assert.Equal(0, len(newVars))
-}
-
 func TestAWSVars(t *testing.T) {
 	require := require.New(t)
 	require.NoError(db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection, ProjectRefCollection))
@@ -819,7 +760,10 @@ func TestConvertVarToParam(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("%s/%s.gz", GetVarsParameterPath(projectID), varName), paramName, "should include project ID prefix and gzip extension to indicate the value was compressed")
 		assert.NotEqual(t, longVarValue, paramValue, "compressed value should not match original variable value")
 
-		gzr, err := gzip.NewReader(strings.NewReader(paramValue))
+		compressedValue, err := base64.StdEncoding.DecodeString(paramValue)
+		require.NoError(t, err)
+
+		gzr, err := gzip.NewReader(bytes.NewReader(compressedValue))
 		require.NoError(t, err)
 		decompressed, err := io.ReadAll(gzr)
 		require.NoError(t, err)
@@ -847,11 +791,14 @@ func TestConvertVarToParam(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("%s.gz", existingParamName), paramName, "project variable that was previously short but now is long enough to require compression should have its parameter name changed")
 		assert.NotEqual(t, longVarValue, paramValue)
 
-		gzr, err := gzip.NewReader(strings.NewReader(paramValue))
+		compressedValue, err := base64.StdEncoding.DecodeString(paramValue)
+		require.NoError(t, err)
+
+		gzr, err := gzip.NewReader(bytes.NewReader(compressedValue))
 		require.NoError(t, err)
 		decompressed, err := io.ReadAll(gzr)
 		require.NoError(t, err)
-		assert.Equal(t, longVarValue, string(decompressed))
+		assert.Equal(t, longVarValue, string(decompressed), "decompressed value should match original value")
 	})
 	t.Run("ReturnsErrorForEmptyVariableName", func(t *testing.T) {
 		const (

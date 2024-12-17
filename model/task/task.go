@@ -692,6 +692,7 @@ func (t *Task) isSystemUnresponsive() bool {
 
 func (t *Task) SetOverrideDependencies(userID string) error {
 	t.OverrideDependencies = true
+	t.DisplayStatusCache = t.findDisplayStatus()
 	event.LogTaskDependenciesOverridden(t.Id, t.Execution, userID)
 	return UpdateOne(
 		bson.M{
@@ -700,6 +701,7 @@ func (t *Task) SetOverrideDependencies(userID string) error {
 		bson.M{
 			"$set": bson.M{
 				OverrideDependenciesKey: true,
+				DisplayStatusCacheKey:   t.DisplayStatusCache,
 			},
 		},
 	)
@@ -729,6 +731,7 @@ func (t *Task) AddDependency(ctx context.Context, d Dependency) error {
 		}
 	}
 	t.DependsOn = append(t.DependsOn, d)
+	t.DisplayStatusCache = t.findDisplayStatus()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -736,6 +739,9 @@ func (t *Task) AddDependency(ctx context.Context, d Dependency) error {
 		bson.M{
 			"$push": bson.M{
 				DependsOnKey: d,
+			},
+			"$set": bson.M{
+				DisplayStatusCacheKey: t.DisplayStatusCache,
 			},
 		},
 	)
@@ -750,6 +756,7 @@ func (t *Task) RemoveDependency(dependencyId string) error {
 			dependsOn = append(dependsOn, t.DependsOn[:i]...)
 			dependsOn = append(dependsOn, t.DependsOn[i+1:]...)
 			t.DependsOn = dependsOn
+			t.DisplayStatusCache = t.findDisplayStatus()
 			found = true
 			break
 		}
@@ -764,6 +771,9 @@ func (t *Task) RemoveDependency(dependencyId string) error {
 			DependsOnKey: bson.M{
 				DependencyTaskIdKey: dependencyId,
 			},
+		},
+		"$set": bson.M{
+			DisplayStatusCacheKey: t.DisplayStatusCache,
 		},
 	}
 	return db.Update(Collection, query, update)
@@ -797,7 +807,9 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	err = UpdateOne(
 		bson.M{IdKey: t.Id},
 		bson.M{
-			"$set": bson.M{DependenciesMetTimeKey: t.DependenciesMetTime},
+			"$set": bson.M{
+				DependenciesMetTimeKey: t.DependenciesMetTime,
+			},
 		})
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": "task.DependenciesMet() failed to update task",
@@ -3120,16 +3132,12 @@ func (t *Task) makeArchivedTask() *Task {
 // PopulateTestResults populates the task's LocalTestResults field with any
 // test results the task may have. If the results are already populated, this
 // function no-ops.
-func (t *Task) PopulateTestResults() error {
+func (t *Task) PopulateTestResults(ctx context.Context) error {
 	if len(t.LocalTestResults) > 0 {
 		return nil
 	}
 
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-
-	taskTestResults, err := t.GetTestResults(ctx, env, nil)
+	taskTestResults, err := t.GetTestResults(ctx, evergreen.GetEnvironment(), nil)
 	if err != nil {
 		return errors.Wrap(err, "populating test results")
 	}
@@ -3924,7 +3932,14 @@ func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 				DependencyOmitGeneratedTasksKey: bson.M{"$ne": true},
 			}},
 		},
-		bson.M{"$push": bson.M{DependsOnKey: bson.M{"$each": newDependencies}}},
+		[]bson.M{
+			bson.M{"$set": bson.M{
+				DependsOnKey: bson.M{
+					"$concatArrays": []interface{}{"$" + DependsOnKey, newDependencies},
+				},
+			}},
+			addDisplayStatusCache,
+		},
 	)
 
 	return errors.Wrap(err, "updating dependencies")

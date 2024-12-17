@@ -1,11 +1,13 @@
 package trigger
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
@@ -16,10 +18,12 @@ import (
 func init() {
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisioned, makeSpawnHostProvisioningTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisionFailed, makeSpawnHostProvisioningTriggers)
-	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostCreatedError, makeSpawnHostStateChangeTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventSpawnHostCreatedError, makeSpawnHostStateChangeTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostStarted, makeSpawnHostStateChangeTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostStopped, makeSpawnHostStateChangeTriggers)
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostModified, makeSpawnHostStateChangeTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostScriptExecuted, makeSpawnHostSetupScriptTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostScriptExecuteFailed, makeSpawnHostSetupScriptTriggers)
 }
 
 type spawnHostProvisioningTriggers struct {
@@ -34,7 +38,7 @@ func makeSpawnHostProvisioningTriggers() eventHandler {
 	return t
 }
 
-func (t *spawnHostProvisioningTriggers) hostSpawnProvisionOutcome(sub *event.Subscription) (*notification.Notification, error) {
+func (t *spawnHostProvisioningTriggers) hostSpawnProvisionOutcome(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if !t.host.UserHost {
 		return nil, nil
 	}
@@ -173,7 +177,7 @@ func makeSpawnHostStateChangeTriggers() eventHandler {
 	return t
 }
 
-func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Subscription) (*notification.Notification, error) {
+func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if !t.host.UserHost {
 		return nil, nil
 	}
@@ -186,7 +190,7 @@ func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Su
 		return nil, nil
 	}
 	if t.data.Successful && t.data.Source == string(evergreen.ModifySpawnHostSleepSchedule) {
-		// Skip notifying for host modifications due to the sleep schedule they
+		// Skip notifying for host modifications due to the sleep schedule. They
 		// can be noisy if users regularly receive them.
 		return nil, nil
 	}
@@ -202,7 +206,7 @@ func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(sub *event.Su
 func (t *spawnHostStateChangeTriggers) makePayload(sub *event.Subscription) (interface{}, error) {
 	var action string
 	switch t.event.EventType {
-	case event.EventHostCreatedError:
+	case event.EventSpawnHostCreatedError, event.EventHostCreatedError:
 		action = "Creating"
 	case event.EventHostStarted:
 		action = "Starting"
@@ -265,6 +269,122 @@ func (t *spawnHostStateChangeTriggers) emailPayload(action, result, hostID, url,
 	</body>
 	</html>
 	`, action, hostURL, hostID, result, url)
+
+	return &message.Email{
+		Subject:           subject,
+		Body:              body,
+		PlainTextContents: false,
+	}
+}
+
+type spawnHostSetupScriptTriggers struct {
+	hostBase
+}
+
+func makeSpawnHostSetupScriptTriggers() eventHandler {
+	t := &spawnHostSetupScriptTriggers{}
+	t.triggers = map[string]trigger{
+		event.TriggerOutcome: t.spawnHostSetupScriptOutcome,
+	}
+	return t
+}
+
+func (t *spawnHostSetupScriptTriggers) spawnHostSetupScriptOutcome(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
+	if !t.host.UserHost {
+		return nil, nil
+	}
+	payload, err := t.makePayload(sub)
+	if err != nil {
+		return nil, errors.Wrap(err, "making payload")
+	}
+	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
+}
+
+func (t *spawnHostSetupScriptTriggers) makePayload(sub *event.Subscription) (interface{}, error) {
+	var result string
+	switch t.event.EventType {
+	case event.EventHostScriptExecuted:
+		result = "succeeded"
+	case event.EventHostScriptExecuteFailed:
+		result = "failed"
+		if strings.Contains(t.data.Logs, evergreen.FetchingTaskDataUnfinishedError) {
+			result = "failed to start"
+		}
+	default:
+		return nil, errors.Errorf("unexpected event type '%s'", t.event.EventType)
+	}
+	var spawnHostScriptPath string
+	if t.host.ProvisionOptions != nil && t.host.ProvisionOptions.TaskId != "" {
+		pRef, err := model.GetProjectRefForTask(t.host.ProvisionOptions.TaskId)
+		if err != nil {
+			return "", errors.Wrap(err, "getting project")
+		}
+		if pRef != nil {
+			spawnHostScriptPath = pRef.SpawnHostScriptPath
+		}
+	}
+
+	switch sub.Subscriber.Type {
+	case event.SlackSubscriberType:
+		return t.slackPayload(spawnHostScriptPath, result, t.host.Id, spawnHostURL(t.uiConfig.Url), hostURL(t.uiConfig.Url, t.host.Id)), nil
+	case event.EmailSubscriberType:
+		return t.emailPayload(spawnHostScriptPath, result, t.host.Id, spawnHostURL(t.uiConfig.Url), hostURL(t.uiConfig.Url, t.host.Id)), nil
+	default:
+		return nil, errors.Errorf("unexpected subscriber type '%s'", sub.Subscriber.Type)
+	}
+}
+
+func (t *spawnHostSetupScriptTriggers) slackPayload(spawnHostScriptPath, result, hostID, url, hostURL string) *notification.SlackPayload {
+	color := evergreenSuccessColor
+	if !t.data.Successful {
+		color = evergreenFailColor
+	}
+
+	attachment := message.SlackAttachment{
+		Title:     "Spawn hosts page",
+		TitleLink: url,
+		Color:     color,
+		Fields: []*message.SlackAttachmentField{
+			{
+				Title: "SSH Command",
+				Value: fmt.Sprintf("`%s`", sshCommand(t.host)),
+			},
+		},
+	}
+	if spawnHostScriptPath != "" {
+		attachment.Fields = append(attachment.Fields,
+			&message.SlackAttachmentField{
+				Title: "With data from task",
+				Value: fmt.Sprintf("<%s|%s>", taskLink(t.uiConfig.Url, t.host.ProvisionOptions.TaskId, -1), t.host.ProvisionOptions.TaskId),
+				Short: true,
+			})
+		attachment.Fields = append(attachment.Fields,
+			&message.SlackAttachmentField{
+				Title: "Setup Script Path",
+				Value: spawnHostScriptPath,
+			})
+	}
+	payload := &notification.SlackPayload{
+		Body:        fmt.Sprintf("The setup script for spawn host <%s|%s> has %s", hostURL, hostID, result),
+		Attachments: []message.SlackAttachment{attachment},
+	}
+	return payload
+}
+
+func (t *spawnHostSetupScriptTriggers) emailPayload(spawnHostScriptPath, result, hostID, url, hostURL string) *message.Email {
+	subject := fmt.Sprintf("The setup script for spawn host has %s", result)
+	body := fmt.Sprintf(`<html>
+	<head>
+	</head>
+	<body>
+	<p>Hi,</p>
+	<p>The setup script '%s' for spawn host <a href="%s">%s</a> has %s.</p>
+	<p>Manage spawn hosts from <a href="%s">your hosts page</a> or the Evergreen CLI</p>
+
+
+	</body>
+	</html>
+	`, spawnHostScriptPath, hostURL, hostID, result, url)
 
 	return &message.Email{
 		Subject:           subject,

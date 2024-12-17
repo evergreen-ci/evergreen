@@ -204,7 +204,7 @@ func (s *hostSuite) TestAllTriggers() {
 }
 
 func (s *hostSuite) TestHostExpiration() {
-	n, err := s.t.hostExpiration(&s.subs[0])
+	n, err := s.t.hostExpiration(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -220,7 +220,7 @@ func (s *hostSuite) TestHostTemporaryExemptionExpiration() {
 	s.t.host.ExpirationTime = time.Now().Add(evergreen.SpawnHostExpireDays * evergreen.SpawnHostNoExpirationDuration)
 	s.t.host.SleepSchedule.TemporarilyExemptUntil = time.Now().Add(time.Hour)
 
-	n, err := s.t.hostExpiration(&s.subs[0])
+	n, err := s.t.hostExpiration(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -228,7 +228,7 @@ func (s *hostSuite) TestHostTemporaryExemptionExpiration() {
 func (s *hostSuite) TestSpawnHostIdle() {
 	s.t.host.NoExpiration = true
 	s.t.host.Status = evergreen.HostStopped
-	n, err := s.t.spawnHostIdle(&s.subs[1])
+	n, err := s.t.spawnHostIdle(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
 }

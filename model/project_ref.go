@@ -816,7 +816,7 @@ func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) err
 		AppID:      appID,
 		PrivateKey: privateKey,
 	}
-	return githubAppAuthUpsert(&auth)
+	return GitHubAppAuthUpsert(&auth)
 }
 
 // DefaultGithubAppCredentialsToRepo defaults the app credentials to the repo by
@@ -3760,6 +3760,8 @@ var psEnabledButNotSyncedQuery = bson.M{
 	"$or": []bson.M{
 		{projectRefParameterStoreVarsSyncedKey: false},
 		{projectRefParameterStoreVarsSyncedKey: bson.M{"$exists": false}},
+		{projectRefParameterStoreGitHubAppSyncedKey: false},
+		{projectRefParameterStoreGitHubAppSyncedKey: bson.M{"$exists": false}},
 	},
 }
 

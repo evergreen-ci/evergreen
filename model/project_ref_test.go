@@ -1077,7 +1077,7 @@ func checkAndSetProjectVarsSynced(t *testing.T, projRef *ProjectRef, isRepoRef b
 func checkParametersNamespacedByProject(t *testing.T, vars ProjectVars) {
 	projectID := vars.Id
 
-	commonAndProjectIDPrefix := fmt.Sprintf("/%s/%s/", strings.TrimSuffix(strings.TrimPrefix(evergreen.GetEnvironment().Settings().Providers.AWS.ParameterStore.Prefix, "/"), "/"), GetVarsParameterPath(projectID))
+	commonAndProjectIDPrefix := fmt.Sprintf("/%s/%s/", strings.TrimSuffix(strings.TrimPrefix(evergreen.GetEnvironment().Settings().ParameterStore.Prefix, "/"), "/"), GetVarsParameterPath(projectID))
 	for _, pm := range vars.Parameters {
 		assert.True(t, strings.HasPrefix(pm.ParameterName, commonAndProjectIDPrefix), "parameter name '%s' should have standard prefix '%s'", pm.ParameterName, commonAndProjectIDPrefix)
 	}
@@ -1461,7 +1461,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 				AppID:      9999,
 				PrivateKey: []byte("repo-secret"),
 			}
-			err = githubAppAuthUpsert(&auth)
+			err = GitHubAppAuthUpsert(&auth)
 			assert.NoError(t, err)
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageGithubAppSettingsSection, "me"))
 			pRefFromDb, err = FindBranchProjectRef(id)

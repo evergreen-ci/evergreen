@@ -27,6 +27,9 @@ amboy_db:
   database: amboy_test
   url: "mongodb://localhost:27017"
 
+parameter_store:
+  prefix: "/evg-test"
+
 providers:
   aws:
     ec2_keys:
@@ -43,8 +46,6 @@ providers:
         client_type: "mock"
       secrets_manager:
         client_type: "mock"
-    parameter_store:
-      prefix: "/evg-test"
   docker:
     api_version: 1.32
 
@@ -65,7 +66,6 @@ repotracker:
 
 api:
   url: "https://localhost:8443"
-  github_webhook_secret: "test"
   logfile: "/tmp/api_test.log"
   httplistenaddr: ":9090"
   httpslistenaddr: ":8443"
@@ -165,6 +165,7 @@ expansions:
 
 github_orgs: ["evergreen-ci", "newOwner"]
 github_pr_creator_org: "10gen"
+github_webhook_secret: "test"
 
 spawnhost:
   unexpirable_hosts_per_user: 2

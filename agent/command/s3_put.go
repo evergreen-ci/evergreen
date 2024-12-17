@@ -33,6 +33,9 @@ const (
 var (
 	s3PutBucketAttribute               = fmt.Sprintf("%s.bucket", s3PutAttribute)
 	s3PutTemporaryCredentialsAttribute = fmt.Sprintf("%s.temporary_credentials", s3PutAttribute)
+	s3PutVisibilityAttribute           = fmt.Sprintf("%s.visibility", s3PutAttribute)
+	s3PutPermissionsAttribute          = fmt.Sprintf("%s.permissions", s3PutAttribute)
+	s3PutRemotePathAttribute           = fmt.Sprintf("%s.remote_path", s3PutAttribute)
 )
 
 // s3pc is a command to put a resource to an S3 bucket and download it to
@@ -58,6 +61,9 @@ type s3put struct {
 	// RemoteFile is the filepath to store the file to,
 	// within an S3 bucket. Is a prefix when multiple files are uploaded via LocalFilesIncludeFilter.
 	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
+
+	// remoteFile is the file path without any expansions applied.
+	remoteFile string
 
 	// PreservePath, when set to true, causes multi part uploads uploaded with LocalFilesIncludeFilter to
 	// preserve the original folder structure instead of putting all the files into the same folder
@@ -205,6 +211,8 @@ func (s3pc *s3put) validate() error {
 // Apply the expansions from the relevant task config
 // to all appropriate fields of the s3put.
 func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
+	s3pc.remoteFile = s3pc.RemoteFile
+
 	var err error
 	if err = util.ExpandValues(s3pc, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
@@ -299,6 +307,9 @@ func (s3pc *s3put) Execute(ctx context.Context,
 	trace.SpanFromContext(ctx).SetAttributes(
 		attribute.String(s3PutBucketAttribute, s3pc.Bucket),
 		attribute.Bool(s3PutTemporaryCredentialsAttribute, s3pc.AwsSessionToken != ""),
+		attribute.String(s3PutVisibilityAttribute, s3pc.Visibility),
+		attribute.String(s3PutPermissionsAttribute, s3pc.Permissions),
+		attribute.String(s3PutRemotePathAttribute, s3pc.remoteFile),
 	)
 
 	// create pail bucket
