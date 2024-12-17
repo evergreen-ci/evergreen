@@ -47,6 +47,8 @@ import (
 )
 
 const (
+	testUser = "test_user"
+
 	adminUser      = "admin_user"
 	privilegedUser = "privileged_user"
 	regularUser    = "regular_user"
