@@ -408,8 +408,8 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 		_, ymlFmtErr := errors.Cause(err).(thirdparty.YAMLFormatError)
 		_, noFileErr := errors.Cause(err).(thirdparty.FileNotFoundError)
 		parsingErr := strings.Contains(err.Error(), model.TranslateProjectError)
-		mergingErr := strings.Contains(err.Error(), model.MergeProjectConfigError)
-		if apiReqErr || noFileErr || ymlFmtErr || parsingErr || mergingErr {
+		configErr := strings.Contains(err.Error(), model.TranslateProjectConfigError) || strings.Contains(err.Error(), model.MergeProjectConfigError)
+		if apiReqErr || noFileErr || ymlFmtErr || parsingErr || configErr {
 			// If there's an error getting the remote config, e.g. because it
 			// does not exist, we treat this the same as when the remote config
 			// is invalid - but add a different error message
