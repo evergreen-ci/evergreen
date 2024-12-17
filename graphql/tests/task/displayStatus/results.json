@@ -1,12 +1,12 @@
 {
     "tests": [
         {
-            "query_file": "original_status.graphql",
+            "query_file": "display_status.graphql",
             "result": {
                 "data": {
                     "task": {
                         "status": "known-issue",
-                        "originalStatus": "failed"
+                        "displayStatus": "known-issue"
                     }
                 }
             }

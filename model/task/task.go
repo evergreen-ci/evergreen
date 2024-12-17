@@ -1626,7 +1626,7 @@ func GetSystemFailureDetails(description string) apimodels.TaskEndDetail {
 // and prevents the task from being reset when finished.
 func (t *Task) SetAborted(ctx context.Context, reason AbortInfo) error {
 	t.Aborted = true
-	t.DisplayStatus = t.calculateDisplayStatus()
+	t.DisplayStatus = t.findDisplayStatus()
 	return UpdateOneContext(
 		ctx,
 		bson.M{
@@ -2340,12 +2340,12 @@ func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
 	}
-	t.DisplayStatus = t.calculateDisplayStatus()
+	t.DisplayStatus = t.findDisplayStatus()
 	return t.DisplayStatus
 }
 
-// calculateDisplayStatus calculates the display status for a task based on its current state.
-func (t *Task) calculateDisplayStatus() string {
+// findDisplayStatus calculates the display status for a task based on its current state.
+func (t *Task) findDisplayStatus() string {
 	if t.HasAnnotations {
 		return evergreen.TaskKnownIssue
 	}

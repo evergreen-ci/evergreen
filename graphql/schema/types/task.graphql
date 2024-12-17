@@ -111,7 +111,7 @@ type Task {
   spawnHostLink: String
   startTime: Time
   """
-  This is a tasks display status and is what is commonly used on the UI.
+  This is a task's display status and is what is commonly used on the UI.
   In future releases this will be migrated to represent the original status of the task
   """
   status: String! @deprecated(reason: "use displayStatus instead. Status will be migrated to reflect the original status")
