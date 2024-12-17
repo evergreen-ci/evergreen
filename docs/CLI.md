@@ -349,7 +349,7 @@ Specify the optional `--auto` argument to enable automatic CLI upgrades before e
 
 #### Fetch
 
-The command `evergreen fetch` can automate downloading of the binaries associated with a particular task, or cloning the repo for the task and setting up patches/modules appropriately.
+The command `evergreen fetch` can automate downloading of the binaries associated with a particular task, or cloning the repo for the task and setting up patches/modules appropriately. The default cloning depth for fetch is 1000.
 
 Example that downloads the artifacts for the given task ID and cloning its source:
 ```
