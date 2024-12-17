@@ -9,14 +9,14 @@
       }
     },
     {
-      "query_file": "unattached_project.graphql",
+      "query_file": "default_repo.graphql",
       "result": {
         "data": {
           "defaultSectionToRepo": null
         },
         "errors": [
           {
-            "message": "project 'repo_id' not found",
+            "message": "project 'sandbox_repo_id' not found",
             "path": ["defaultSectionToRepo", "opts", "projectId"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
@@ -27,13 +27,14 @@
     },
     {
       "query_file": "no_admin.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": {
           "defaultSectionToRepo": null
         },
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to 'edit project settings' for the project 'evergreen_id'",
+            "message": "user 'regular_user' does not have permission to 'edit project settings' for the project 'sandbox_project_id'",
             "path": ["defaultSectionToRepo", "opts", "projectId"],
             "extensions": {
               "code": "FORBIDDEN"

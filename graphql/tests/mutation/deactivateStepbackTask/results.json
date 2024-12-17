@@ -2,11 +2,12 @@
   "tests": [
     {
       "query_file": "no_admin.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": null,
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to 'edit project settings' for the project 'evergreen_id'",
+            "message": "user 'regular_user' does not have permission to 'edit project settings' for the project 'evergreen_id'",
             "path": ["deactivateStepbackTask", "opts", "projectId"],
             "extensions": {
               "code": "FORBIDDEN"

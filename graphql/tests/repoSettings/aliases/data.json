@@ -1,7 +1,7 @@
 {
   "repo_ref": [
     {
-      "_id": "repo_id",
+      "_id": "sandbox_repo_id",
       "display_name": "Sandbox",
       "enabled": null,
       "owner_name": "evergreen-ci",
@@ -14,18 +14,6 @@
       "batch_time": 2,
       "deactivate_previous": true,
       "triggers": [],
-      "patch_trigger_aliases": [
-        {
-          "alias": "my_alias_sandbox",
-          "child_project": "vars_test",
-          "task_specifiers": [
-            {
-              "task_regex": "test-util",
-              "variant_regex": "^ubuntu1604$"
-            }
-          ]
-        }
-      ],
       "commit_queue": {
         "enabled": true,
         "require_signed": false,
@@ -75,19 +63,12 @@
       "hidden": false
     }
   ],
-  "project_ref": [
-    {
-      "_id": "vars_test",
-      "identifier": "varsTest",
-      "display_name": "Vars test"
-    }
-  ],
   "project_aliases": [
     {
       "_id": { "$oid": "5ffe393097b1d3759dd3c1aa" },
       "alias": "__commit_queue",
       "git_tag": "",
-      "project_id": "repo_id",
+      "project_id": "sandbox_repo_id",
       "remote_path": "",
       "tags": [],
       "task": "unit_tests",
@@ -98,14 +79,14 @@
       "_id": { "$oid": "5ffe393097b1d3759dd3c1ac" },
       "alias": "__git_tag",
       "git_tag": ".*",
-      "project_id": "repo_id",
+      "project_id": "sandbox_repo_id",
       "remote_path": "release.yml"
     },
     {
       "_id": { "$oid": "5ffe393097b1d3759dd3c1ab" },
       "alias": "test_alias",
       "git_tag": "",
-      "project_id": "repo_id",
+      "project_id": "sandbox_repo_id",
       "remote_path": "",
       "tags": ["git"],
       "variant_tags": ["tag"]

@@ -18,14 +18,13 @@
     },
     {
       "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": null,
         "errors": [
           {
             "message": "insufficient permission for modifying annotation",
-            "path": [
-              "moveAnnotationIssue"
-            ],
+            "path": ["moveAnnotationIssue"],
             "extensions": {
               "code": "FORBIDDEN"
             }
