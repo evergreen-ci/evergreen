@@ -1032,6 +1032,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	waterfallVersions := groupInactiveVersions(allVersions)
 	bv := []*model.WaterfallBuildVariant{}
+	flattenedBuilds := []*model.WaterfallBuild{}
 
 	if len(activeVersionIds) > 0 {
 		buildVariants, err := model.GetWaterfallBuildVariants(ctx, activeVersionIds)
@@ -1042,6 +1043,10 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		for _, b := range buildVariants {
 			bCopy := b
 			bv = append(bv, &bCopy)
+			for _, build := range b.Builds {
+				buildCopy := build
+				flattenedBuilds = append(flattenedBuilds, &buildCopy)
+			}
 		}
 	}
 
@@ -1071,6 +1076,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	return &Waterfall{
 		BuildVariants:     bv,
+		FlattenedBuilds:   flattenedBuilds,
 		FlattenedVersions: flattenedVersions,
 		Versions:          waterfallVersions,
 		Pagination: &WaterfallPagination{

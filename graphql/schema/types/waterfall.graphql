@@ -22,9 +22,11 @@ type WaterfallTask {
 type WaterfallBuild {
   id: String!
   activated: Boolean
+  buildVariant: String!
   displayName: String!
   version: String!
   tasks: [WaterfallTask!]!
+  order: Int!
 }
 
 type WaterfallBuildVariant {
@@ -48,6 +50,7 @@ type WaterfallPagination {
 
 type Waterfall {
   buildVariants: [WaterfallBuildVariant!]!
+  flattenedBuilds: [WaterfallBuild!]!
   versions: [WaterfallVersion!]!
   flattenedVersions: [Version!]!
   pagination: WaterfallPagination!
