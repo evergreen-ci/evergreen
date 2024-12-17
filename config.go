@@ -33,11 +33,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2024-12-05"
+	ClientVersion = "2024-12-17"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2024-12-03-a"
+	AgentVersion = "2024-12-10"
 )
 
 const (
@@ -80,6 +80,7 @@ type Settings struct {
 	ExpansionsNew       util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
 	GithubPRCreatorOrg  string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
 	GithubOrgs          []string                  `yaml:"github_orgs" bson:"github_orgs" json:"github_orgs"`
+	GithubWebhookSecret string                    `yaml:"github_webhook_secret" bson:"github_webhook_secret" json:"github_webhook_secret"`
 	DisabledGQLQueries  []string                  `yaml:"disabled_gql_queries" bson:"disabled_gql_queries" json:"disabled_gql_queries"`
 	HostInit            HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
 	HostJasper          HostJasperConfig          `yaml:"host_jasper" bson:"host_jasper" json:"host_jasper" id:"host_jasper"`
@@ -90,6 +91,7 @@ type Settings struct {
 	LogPath             string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
 	NewRelic            NewRelicConfig            `yaml:"newrelic" bson:"newrelic" json:"newrelic" id:"newrelic"`
 	Notify              NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
+	ParameterStore      ParameterStoreConfig      `yaml:"parameter_store" bson:"parameter_store" json:"parameter_store" id:"parameter_store"`
 	Plugins             PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
 	PluginsNew          util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
 	PodLifecycle        PodLifecycleConfig        `yaml:"pod_lifecycle" bson:"pod_lifecycle" json:"pod_lifecycle" id:"pod_lifecycle"`
@@ -106,6 +108,7 @@ type Settings struct {
 	SleepSchedule       SleepScheduleConfig       `yaml:"sleep_schedule" bson:"sleep_schedule" json:"sleep_schedule" id:"sleep_schedule"`
 	Splunk              SplunkConfig              `yaml:"splunk" bson:"splunk" json:"splunk" id:"splunk"`
 	TaskLimits          TaskLimitsConfig          `yaml:"task_limits" bson:"task_limits" json:"task_limits" id:"task_limits"`
+	TestSelection       TestSelectionConfig       `yaml:"test_selection" bson:"test_selection" json:"test_selection" id:"test_selection"`
 	Triggers            TriggerConfig             `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
 	Ui                  UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
 	Spawnhost           SpawnHostConfig           `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
@@ -125,27 +128,28 @@ func (c *Settings) Get(ctx context.Context) error {
 func (c *Settings) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			awsInstanceRoleKey:    c.AWSInstanceRole,
-			bannerKey:             c.Banner,
-			bannerThemeKey:        c.BannerTheme,
-			commitQueueKey:        c.CommitQueue,
-			configDirKey:          c.ConfigDir,
-			domainNameKey:         c.DomainName,
-			expansionsKey:         c.Expansions,
-			expansionsNewKey:      c.ExpansionsNew,
-			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
-			githubOrgsKey:         c.GithubOrgs,
-			disabledGQLQueriesKey: c.DisabledGQLQueries,
-			kanopySSHKeyPathKey:   c.KanopySSHKeyPath,
-			logPathKey:            c.LogPath,
-			pprofPortKey:          c.PprofPort,
-			pluginsKey:            c.Plugins,
-			pluginsNewKey:         c.PluginsNew,
-			splunkKey:             c.Splunk,
-			sshKeyDirectoryKey:    c.SSHKeyDirectory,
-			sshKeyPairsKey:        c.SSHKeyPairs,
-			spawnhostKey:          c.Spawnhost,
-			shutdownWaitKey:       c.ShutdownWaitSeconds,
+			awsInstanceRoleKey:     c.AWSInstanceRole,
+			bannerKey:              c.Banner,
+			bannerThemeKey:         c.BannerTheme,
+			commitQueueKey:         c.CommitQueue,
+			configDirKey:           c.ConfigDir,
+			domainNameKey:          c.DomainName,
+			expansionsKey:          c.Expansions,
+			expansionsNewKey:       c.ExpansionsNew,
+			githubPRCreatorOrgKey:  c.GithubPRCreatorOrg,
+			githubOrgsKey:          c.GithubOrgs,
+			githubWebhookSecretKey: c.GithubWebhookSecret,
+			disabledGQLQueriesKey:  c.DisabledGQLQueries,
+			kanopySSHKeyPathKey:    c.KanopySSHKeyPath,
+			logPathKey:             c.LogPath,
+			pprofPortKey:           c.PprofPort,
+			pluginsKey:             c.Plugins,
+			pluginsNewKey:          c.PluginsNew,
+			splunkKey:              c.Splunk,
+			sshKeyDirectoryKey:     c.SSHKeyDirectory,
+			sshKeyPairsKey:         c.SSHKeyPairs,
+			spawnhostKey:           c.Spawnhost,
+			shutdownWaitKey:        c.ShutdownWaitSeconds,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

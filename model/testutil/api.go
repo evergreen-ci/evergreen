@@ -105,7 +105,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	versionParserProject := &model.ParserProject{}
 	if err = util.UnmarshalYAMLWithFallback(projectConfig, &versionParserProject); err != nil {
-		return nil, errors.Wrap(err, "unmarshalling project config from YAML")
+		return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
 	}
 	versionParserProject.Id = "sample_version"
 	if err = versionParserProject.Insert(); err != nil {

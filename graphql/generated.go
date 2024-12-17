@@ -274,6 +274,7 @@ type ComplexityRoot struct {
 		SSHOptions            func(childComplexity int) int
 		Setup                 func(childComplexity int) int
 		SetupAsSudo           func(childComplexity int) int
+		SingleTaskDistro      func(childComplexity int) int
 		User                  func(childComplexity int) int
 		UserSpawnAllowed      func(childComplexity int) int
 		ValidProjects         func(childComplexity int) int
@@ -2897,6 +2898,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Distro.SetupAsSudo(childComplexity), true
+
+	case "Distro.singleTaskDistro":
+		if e.complexity.Distro.SingleTaskDistro == nil {
+			break
+		}
+
+		return e.complexity.Distro.SingleTaskDistro(childComplexity), true
 
 	case "Distro.user":
 		if e.complexity.Distro.User == nil {
@@ -18182,6 +18190,50 @@ func (ec *executionContext) fieldContext_Distro_setupAsSudo(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Distro_singleTaskDistro(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Distro_singleTaskDistro(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SingleTaskDistro, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Distro_singleTaskDistro(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Distro_sshOptions(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Distro_sshOptions(ctx, field)
 	if err != nil {
@@ -25576,6 +25628,8 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 				return ec.fieldContext_Distro_setup(ctx, field)
 			case "setupAsSudo":
 				return ec.fieldContext_Distro_setupAsSudo(ctx, field)
+			case "singleTaskDistro":
+				return ec.fieldContext_Distro_singleTaskDistro(ctx, field)
 			case "sshOptions":
 				return ec.fieldContext_Distro_sshOptions(ctx, field)
 			case "user":
@@ -46258,6 +46312,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_setup(ctx, field)
 			case "setupAsSudo":
 				return ec.fieldContext_Distro_setupAsSudo(ctx, field)
+			case "singleTaskDistro":
+				return ec.fieldContext_Distro_singleTaskDistro(ctx, field)
 			case "sshOptions":
 				return ec.fieldContext_Distro_sshOptions(ctx, field)
 			case "user":
@@ -46440,6 +46496,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_setup(ctx, field)
 			case "setupAsSudo":
 				return ec.fieldContext_Distro_setupAsSudo(ctx, field)
+			case "singleTaskDistro":
+				return ec.fieldContext_Distro_singleTaskDistro(ctx, field)
 			case "sshOptions":
 				return ec.fieldContext_Distro_sshOptions(ctx, field)
 			case "user":
@@ -52534,6 +52592,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 				return ec.fieldContext_Distro_setup(ctx, field)
 			case "setupAsSudo":
 				return ec.fieldContext_Distro_setupAsSudo(ctx, field)
+			case "singleTaskDistro":
+				return ec.fieldContext_Distro_singleTaskDistro(ctx, field)
 			case "sshOptions":
 				return ec.fieldContext_Distro_sshOptions(ctx, field)
 			case "user":
@@ -73724,7 +73784,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "imageId", "isCluster", "isVirtualWorkStation", "mountpoints", "name", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "sshOptions", "user", "userSpawnAllowed", "validProjects", "warningNote", "workDir"}
+	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "imageId", "isCluster", "isVirtualWorkStation", "mountpoints", "name", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "singleTaskDistro", "sshOptions", "user", "userSpawnAllowed", "validProjects", "warningNote", "workDir"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -73938,6 +73998,13 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 				return it, err
 			}
 			it.SetupAsSudo = data
+		case "singleTaskDistro":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("singleTaskDistro"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SingleTaskDistro = data
 		case "sshOptions":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sshOptions"))
 			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
@@ -79993,6 +80060,11 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "setupAsSudo":
 			out.Values[i] = ec._Distro_setupAsSudo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "singleTaskDistro":
+			out.Values[i] = ec._Distro_singleTaskDistro(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -96037,6 +96109,7 @@ var (
 		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
 		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
 		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"SPAWN_HOST_CREATED_ERROR":                         event.EventSpawnHostCreatedError,
 		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
 		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
 	}
@@ -96070,6 +96143,7 @@ var (
 		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
 		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
 		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventSpawnHostCreatedError:                       "SPAWN_HOST_CREATED_ERROR",
 		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
 		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
 	}
@@ -96167,6 +96241,7 @@ var (
 		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
 		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
 		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"SPAWN_HOST_CREATED_ERROR":                         event.EventSpawnHostCreatedError,
 		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
 		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
 	}
@@ -96200,6 +96275,7 @@ var (
 		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
 		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
 		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventSpawnHostCreatedError:                       "SPAWN_HOST_CREATED_ERROR",
 		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
 		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
 	}
@@ -100919,6 +100995,7 @@ var (
 		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
 		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
 		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"SPAWN_HOST_CREATED_ERROR":                         event.EventSpawnHostCreatedError,
 		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
 		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
 	}
@@ -100952,6 +101029,7 @@ var (
 		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
 		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
 		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventSpawnHostCreatedError:                       "SPAWN_HOST_CREATED_ERROR",
 		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
 		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
 	}
@@ -101005,6 +101083,7 @@ var (
 		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
 		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
 		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"SPAWN_HOST_CREATED_ERROR":                         event.EventSpawnHostCreatedError,
 		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
 		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
 	}
@@ -101038,6 +101117,7 @@ var (
 		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
 		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
 		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventSpawnHostCreatedError:                       "SPAWN_HOST_CREATED_ERROR",
 		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
 		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
 	}

@@ -28,6 +28,7 @@ func NewConfigModel() *APIAdminSettings {
 		LoggerConfig:        &APILoggerConfig{},
 		NewRelic:            &APINewRelicConfig{},
 		Notify:              &APINotifyConfig{},
+		ParameterStore:      &APIParameterStoreConfig{},
 		Plugins:             map[string]map[string]interface{}{},
 		PodLifecycle:        &APIPodLifecycleConfig{},
 		ProjectCreation:     &APIProjectCreationConfig{},
@@ -40,6 +41,7 @@ func NewConfigModel() *APIAdminSettings {
 		SleepSchedule:       &APISleepScheduleConfig{},
 		Splunk:              &APISplunkConfig{},
 		TaskLimits:          &APITaskLimitsConfig{},
+		TestSelection:       &APITestSelectionConfig{},
 		Triggers:            &APITriggerConfig{},
 		Ui:                  &APIUIConfig{},
 		Spawnhost:           &APISpawnHostConfig{},
@@ -66,6 +68,7 @@ type APIAdminSettings struct {
 	Expansions          map[string]string                 `json:"expansions,omitempty"`
 	GithubPRCreatorOrg  *string                           `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs          []string                          `json:"github_orgs,omitempty"`
+	GithubWebhookSecret *string                           `json:"github_webhook_secret,omitempty"`
 	DisabledGQLQueries  []string                          `json:"disabled_gql_queries"`
 	HostInit            *APIHostInitConfig                `json:"hostinit,omitempty"`
 	HostJasper          *APIHostJasperConfig              `json:"host_jasper,omitempty"`
@@ -76,6 +79,7 @@ type APIAdminSettings struct {
 	LogPath             *string                           `json:"log_path,omitempty"`
 	NewRelic            *APINewRelicConfig                `json:"newrelic,omitempty"`
 	Notify              *APINotifyConfig                  `json:"notify,omitempty"`
+	ParameterStore      *APIParameterStoreConfig          `json:"parameter_store,omitempty"`
 	Plugins             map[string]map[string]interface{} `json:"plugins,omitempty"`
 	PodLifecycle        *APIPodLifecycleConfig            `json:"pod_lifecycle,omitempty"`
 	PprofPort           *string                           `json:"pprof_port,omitempty"`
@@ -91,6 +95,7 @@ type APIAdminSettings struct {
 	SSHKeyPairs         []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
 	Splunk              *APISplunkConfig                  `json:"splunk,omitempty"`
 	TaskLimits          *APITaskLimitsConfig              `json:"task_limits,omitempty"`
+	TestSelection       *APITestSelectionConfig           `json:"test_selection,omitempty"`
 	Triggers            *APITriggerConfig                 `json:"triggers,omitempty"`
 	Ui                  *APIUIConfig                      `json:"ui,omitempty"`
 	Spawnhost           *APISpawnHostConfig               `json:"spawnhost,omitempty"`
@@ -141,6 +146,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.Expansions = v.Expansions
 		as.KanopySSHKeyPath = utility.ToStringPtr(v.KanopySSHKeyPath)
 		as.GithubOrgs = v.GithubOrgs
+		as.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
 		as.DisabledGQLQueries = v.DisabledGQLQueries
 		as.SSHKeyDirectory = utility.ToStringPtr(v.SSHKeyDirectory)
 		as.SSHKeyPairs = []APISSHKeyPair{}
@@ -224,6 +230,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if as.GithubPRCreatorOrg != nil {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
 	}
+	settings.GithubWebhookSecret = utility.FromStringPtr(as.GithubWebhookSecret)
 	if as.LogPath != nil {
 		settings.LogPath = *as.LogPath
 	}
@@ -465,16 +472,14 @@ func (a *APIAmboyNamedQueueConfig) ToService() evergreen.AmboyNamedQueueConfig {
 }
 
 type APIapiConfig struct {
-	HttpListenAddr      *string `json:"http_listen_addr"`
-	GithubWebhookSecret *string `json:"github_webhook_secret"`
-	URL                 *string `json:"url"`
+	HttpListenAddr *string `json:"http_listen_addr"`
+	URL            *string `json:"url"`
 }
 
 func (a *APIapiConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.APIConfig:
 		a.HttpListenAddr = utility.ToStringPtr(v.HttpListenAddr)
-		a.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
 		a.URL = utility.ToStringPtr(v.URL)
 	default:
 		return errors.Errorf("programmatic error: expected REST API config but got type %T", h)
@@ -484,9 +489,8 @@ func (a *APIapiConfig) BuildFromService(h interface{}) error {
 
 func (a *APIapiConfig) ToService() (interface{}, error) {
 	return evergreen.APIConfig{
-		HttpListenAddr:      utility.FromStringPtr(a.HttpListenAddr),
-		GithubWebhookSecret: utility.FromStringPtr(a.GithubWebhookSecret),
-		URL:                 utility.FromStringPtr(a.URL),
+		HttpListenAddr: utility.FromStringPtr(a.HttpListenAddr),
+		URL:            utility.FromStringPtr(a.URL),
 	}, nil
 }
 
@@ -1174,6 +1178,26 @@ func (a *APINotifyConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APIParameterStoreConfig struct {
+	Prefix *string `json:"prefix"`
+}
+
+func (a *APIParameterStoreConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.ParameterStoreConfig:
+		a.Prefix = utility.ToStringPtr(v.Prefix)
+	default:
+		return errors.Errorf("programmatic error: expected Parameter Store config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIParameterStoreConfig) ToService() (interface{}, error) {
+	return evergreen.ParameterStoreConfig{
+		Prefix: utility.FromStringPtr(a.Prefix),
+	}, nil
+}
+
 type APIOwnerRepo struct {
 	Owner *string `json:"owner"`
 	Repo  *string `json:"repo"`
@@ -1445,7 +1469,6 @@ type APIAWSConfig struct {
 	AllowedRegions       []*string                 `json:"allowed_regions"`
 	MaxVolumeSizePerUser *int                      `json:"max_volume_size"`
 	Pod                  *APIAWSPodConfig          `json:"pod"`
-	ParameterStore       *APIParameterStoreConfig  `json:"parameter_store"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h interface{}) error {
@@ -1499,10 +1522,6 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		var pod APIAWSPodConfig
 		pod.BuildFromService(v.Pod)
 		a.Pod = &pod
-
-		var ps APIParameterStoreConfig
-		ps.BuildFromService(v.ParameterStore)
-		a.ParameterStore = &ps
 	default:
 		return errors.Errorf("programmatic error: expected AWS config but got type %T", h)
 	}
@@ -1610,8 +1629,6 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		return nil, errors.Wrap(err, "converting ECS configuration to service model")
 	}
 	config.Pod = *pod
-
-	config.ParameterStore = a.ParameterStore.ToService()
 
 	return config, nil
 }
@@ -2801,6 +2818,26 @@ func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APITestSelectionConfig struct {
+	URL *string `json:"url"`
+}
+
+func (c *APITestSelectionConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.TestSelectionConfig:
+		c.URL = utility.ToStringPtr(v.URL)
+		return nil
+	default:
+		return errors.Errorf("programmatic error: expected test selection config but got type %T", h)
+	}
+}
+
+func (c *APITestSelectionConfig) ToService() (interface{}, error) {
+	return evergreen.TestSelectionConfig{
+		URL: utility.FromStringPtr(c.URL),
+	}, nil
+}
+
 type APIRuntimeEnvironmentsConfig struct {
 	BaseURL *string `json:"base_url"`
 	APIKey  *string `json:"api_key"`
@@ -2822,21 +2859,4 @@ func (a *APIRuntimeEnvironmentsConfig) ToService() (interface{}, error) {
 		BaseURL: utility.FromStringPtr(a.BaseURL),
 		APIKey:  utility.FromStringPtr(a.APIKey),
 	}, nil
-}
-
-type APIParameterStoreConfig struct {
-	Prefix *string `json:"prefix"`
-}
-
-func (a *APIParameterStoreConfig) BuildFromService(ps evergreen.ParameterStoreConfig) {
-	a.Prefix = utility.ToStringPtr(ps.Prefix)
-}
-
-func (a *APIParameterStoreConfig) ToService() evergreen.ParameterStoreConfig {
-	if a == nil {
-		return evergreen.ParameterStoreConfig{}
-	}
-	return evergreen.ParameterStoreConfig{
-		Prefix: utility.FromStringPtr(a.Prefix),
-	}
 }

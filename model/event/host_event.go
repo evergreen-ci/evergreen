@@ -18,7 +18,7 @@ func init() {
 	registry.AllowSubscription(ResourceTypeHost, EventSpawnHostIdleNotification)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisioned)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisionFailed)
-	registry.AllowSubscription(ResourceTypeHost, EventHostCreatedError)
+	registry.AllowSubscription(ResourceTypeHost, EventSpawnHostCreatedError)
 	registry.AllowSubscription(ResourceTypeHost, EventHostStarted)
 	registry.AllowSubscription(ResourceTypeHost, EventHostStopped)
 	registry.AllowSubscription(ResourceTypeHost, EventHostModified)
@@ -33,6 +33,7 @@ const (
 	// event types
 	EventHostCreated                                 = "HOST_CREATED"
 	EventHostCreatedError                            = "HOST_CREATED_ERROR"
+	EventSpawnHostCreatedError                       = "SPAWN_HOST_CREATED_ERROR"
 	EventHostStarted                                 = "HOST_STARTED"
 	EventHostStopped                                 = "HOST_STOPPED"
 	EventHostModified                                = "HOST_MODIFIED"
@@ -141,6 +142,14 @@ func LogManyHostsCreated(hostIDs []string) {
 // was being created.
 func LogHostCreatedError(hostID, logs string) {
 	LogHostEvent(hostID, EventHostCreatedError, HostEventData{Successful: false, Logs: logs})
+}
+
+// LogSpawnHostCreatedError is the same as LogHostCreatedError but specifically
+// for spawn hosts. The spawn host event is separate from the more general host
+// creation errors to make notifications on spawn host creation errors more
+// efficient.
+func LogSpawnHostCreatedError(hostID, logs string) {
+	LogHostEvent(hostID, EventSpawnHostCreatedError, HostEventData{Successful: false, Logs: logs})
 }
 
 // LogHostStartSucceeded logs an event indicating that the host was successfully

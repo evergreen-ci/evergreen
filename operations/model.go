@@ -91,6 +91,9 @@ type ClientSettings struct {
 	LoadedFrom            string              `json:"-" yaml:"-"`
 	DisableAutoDefaulting bool                `json:"disable_auto_defaulting" yaml:"disable_auto_defaulting"`
 	ProjectsForDirectory  map[string]string   `json:"projects_for_directory,omitempty" yaml:"projects_for_directory,omitempty"`
+
+	// StagingEnvironment configures which staging environment to point to.
+	StagingEnvironment string `json:"staging_environment,omitempty" yaml:"staging_environment,omitempty"`
 }
 
 func NewClientSettings(fn string) (*ClientSettings, error) {
@@ -194,19 +197,21 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 	}
 
 	ac := &legacyClient{
-		APIRoot:   s.APIServerHost,
-		APIRootV2: s.APIServerHost + "/rest/v2",
-		User:      s.User,
-		APIKey:    s.APIKey,
-		UIRoot:    s.UIServerHost,
+		APIRoot:            s.APIServerHost,
+		APIRootV2:          s.APIServerHost + "/rest/v2",
+		User:               s.User,
+		APIKey:             s.APIKey,
+		UIRoot:             s.UIServerHost,
+		stagingEnvironment: s.StagingEnvironment,
 	}
 
 	rc := &legacyClient{
-		APIRoot:   apiURL.Scheme + "://" + apiURL.Host + "/rest/v1",
-		APIRootV2: apiURL.Scheme + "://" + apiURL.Host + "/rest/v2",
-		User:      s.User,
-		APIKey:    s.APIKey,
-		UIRoot:    s.UIServerHost,
+		APIRoot:            apiURL.Scheme + "://" + apiURL.Host + "/rest/v1",
+		APIRootV2:          apiURL.Scheme + "://" + apiURL.Host + "/rest/v2",
+		User:               s.User,
+		APIKey:             s.APIKey,
+		UIRoot:             s.UIServerHost,
+		stagingEnvironment: s.StagingEnvironment,
 	}
 
 	return ac, rc, nil

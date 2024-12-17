@@ -31,7 +31,8 @@
                 ]
               }
             ],
-            "user": "mci-exec"
+            "user": "mci-exec",
+            "singleTaskDistro": true
           }
         }
       }

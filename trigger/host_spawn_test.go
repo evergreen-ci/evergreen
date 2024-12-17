@@ -347,3 +347,26 @@ func (s *spawnHostTriggersSuite) TestSpawnHostSetupScriptCompletion() {
 	s.Require().NotNil(emailResponse)
 	s.Equal(emailResponse.Subject, "The setup script for spawn host has failed to start")
 }
+
+func (s *spawnHostTriggersSuite) TestSpawnHostCreationErrorCreatesNotification() {
+	s.e.EventType = event.EventSpawnHostCreatedError
+	s.NoError(s.h.Insert(s.ctx))
+	s.NoError(s.tStateChange.Fetch(s.ctx, &s.e))
+
+	sub := event.Subscription{
+		Trigger:    event.TriggerOutcome,
+		Subscriber: event.NewSlackSubscriber("@test.user"),
+	}
+
+	ctx, cancel := context.WithCancel(s.ctx)
+	defer cancel()
+
+	n, err := s.tStateChange.Process(ctx, &sub)
+	s.NoError(err)
+	s.NotZero(n, "should create Slack notification for spawn host creation error and user subscribed to spawn host outcomes")
+
+	sub.Subscriber = event.NewEmailSubscriber("example@domain.invalid")
+	n, err = s.tStateChange.Process(ctx, &sub)
+	s.NoError(err)
+	s.NotZero(n, "should create email notification for spawn host creation error and user subscribed to spawn host outcomes")
+}

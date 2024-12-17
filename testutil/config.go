@@ -54,7 +54,7 @@ func Setup() {
 		// For testing purposes, set up parameter manager so it's backed by the
 		// DB.
 		pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
-			PathPrefix:     env.Settings().Providers.AWS.ParameterStore.Prefix,
+			PathPrefix:     env.Settings().ParameterStore.Prefix,
 			CachingEnabled: true,
 			SSMClient:      fakeparameter.NewFakeSSMClient(),
 			DB:             env.DB(),
@@ -74,7 +74,7 @@ func NewEnvironment(ctx context.Context, t *testing.T) evergreen.Environment {
 	require.NoError(t, err)
 	// For testing purposes, set up parameter manager so it's backed by the DB.
 	pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
-		PathPrefix:     env.Settings().Providers.AWS.ParameterStore.Prefix,
+		PathPrefix:     env.Settings().ParameterStore.Prefix,
 		CachingEnabled: true,
 		SSMClient:      fakeparameter.NewFakeSSMClient(),
 		DB:             env.DB(),
@@ -148,9 +148,8 @@ func MockConfig() *evergreen.Settings {
 			URL:      "mongodb://localhost:27017",
 		},
 		Api: evergreen.APIConfig{
-			HttpListenAddr:      "addr",
-			GithubWebhookSecret: "secret",
-			URL:                 "api",
+			HttpListenAddr: "addr",
+			URL:            "api",
 		},
 		AuthConfig: evergreen.AuthConfig{
 			Okta: &evergreen.OktaConfig{
@@ -216,9 +215,10 @@ func MockConfig() *evergreen.Settings {
 				},
 			},
 		},
-		DomainName:         "example.com",
-		Expansions:         map[string]string{"k2": "v2"},
-		GithubPRCreatorOrg: "org",
+		DomainName:          "example.com",
+		Expansions:          map[string]string{"k2": "v2"},
+		GithubPRCreatorOrg:  "org",
+		GithubWebhookSecret: "secret",
 		HostInit: evergreen.HostInitConfig{
 			HostThrottle:         64,
 			ProvisioningThrottle: 100,
@@ -261,6 +261,9 @@ func MockConfig() *evergreen.Settings {
 			SES: evergreen.SESConfig{
 				SenderAddress: "from",
 			},
+		},
+		ParameterStore: evergreen.ParameterStoreConfig{
+			Prefix: "/prefix",
 		},
 		Plugins: map[string]map[string]interface{}{"k4": {"k5": "v5"}},
 		PodLifecycle: evergreen.PodLifecycleConfig{
@@ -355,9 +358,6 @@ func MockConfig() *evergreen.Settings {
 						SecretPrefix: "secret_prefix",
 					},
 				},
-				ParameterStore: evergreen.ParameterStoreConfig{
-					Prefix: "/prefix",
-				},
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",
@@ -426,6 +426,9 @@ func MockConfig() *evergreen.Settings {
 				Token:     "token",
 				Channel:   "channel",
 			},
+		},
+		TestSelection: evergreen.TestSelectionConfig{
+			URL: "test_selection_url",
 		},
 		Triggers: evergreen.TriggerConfig{
 			GenerateTaskDistro: "distro",
