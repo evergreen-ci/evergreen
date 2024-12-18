@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -38,7 +40,7 @@ func TestPeriodicBuildsJob(t *testing.T) {
 		RemotePath: "evergreen.yml",
 		Branch:     "main",
 		PeriodicBuilds: []model.PeriodicBuildDefinition{
-			{IntervalHours: 1, ID: "abc", ConfigFile: "evergreen.yml", Alias: "alias", NextRunTime: now.Add(time.Hour)},
+			{IntervalHours: 1, ID: "abc", ConfigFile: "evergreen.yml", NextRunTime: now.Add(time.Hour)},
 		},
 	}
 	assert.NoError(sampleProject.Insert())
@@ -65,7 +67,7 @@ func TestPeriodicBuildsJob(t *testing.T) {
 	assert.Equal(evergreen.AdHocRequester, createdVersion.Requester)
 	assert.Equal(prevVersion.Revision, createdVersion.Revision)
 	tasks, err := task.Find(task.ByVersion(createdVersion.Id))
-	assert.NoError(err)
+	require.NoError(t, err)
 	assert.True(tasks[0].Activated)
 	dbProject, err := model.FindBranchProjectRef(sampleProject.Id)
 	assert.NoError(err)

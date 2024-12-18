@@ -978,6 +978,53 @@ tasks:
 	s.Len(dbTasks, 0)
 }
 
+func (s *CreateVersionFromConfigSuite) TestInvalidAliasErrors() {
+	configYml := `
+buildvariants:
+- name: bv
+  display_name: "bv_display"
+  run_on: d
+  tasks:
+  - name: task1
+  - name: task2
+tasks:
+- name: task1
+- name: task2
+`
+	p := &model.Project{}
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
+	s.NoError(err)
+	projectInfo := &model.ProjectInfo{
+		Ref:                 s.ref,
+		IntermediateProject: pp,
+		Project:             p,
+	}
+	v, err := CreateVersionFromConfig(s.ctx, projectInfo, model.VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion, Alias: "gibberish"}, false, nil)
+	s.NoError(err)
+	s.Require().NotNil(v)
+
+	dbVersion, err := model.VersionFindOneId(v.Id)
+	s.NoError(err)
+	s.NotNil(dbVersion)
+	s.Require().Len(dbVersion.Errors, 1)
+	s.Equal("requested alias 'gibberish' is undefined", dbVersion.Errors[0])
+
+	s.Equal(evergreen.ProjectStorageMethodDB, dbVersion.ProjectStorageMethod)
+	dbParserProject, err := model.ParserProjectFindOneByID(s.ctx, s.env.Settings(), dbVersion.ProjectStorageMethod, dbVersion.Id)
+	s.Require().NoError(err)
+	s.Require().NotZero(dbParserProject)
+	s.Len(dbParserProject.BuildVariants, 1)
+	s.Len(dbParserProject.Tasks, 2)
+
+	dbBuild, err := build.FindOne(build.ByVersion(v.Id))
+	s.NoError(err)
+	s.Nil(dbBuild)
+
+	dbTasks, err := task.Find(task.ByVersion(v.Id))
+	s.NoError(err)
+	s.Len(dbTasks, 0)
+}
+
 func (s *CreateVersionFromConfigSuite) TestErrorsMerged() {
 	configYml := `
 buildvariants:
