@@ -4,6 +4,8 @@ Users are now able to pass parameters during patch creation and configuration, w
 
 This allows projects to maintain non-secret project variables in their project config, rather than the project page, for wider edit/view access. Tests can be written to have different behavior for different parameter values, allowing patches to be more configurable. Parameters can also be used in dynamic variants.
 
+**Secrets should not be passed in via Parameterized Builds, since these values are not private.**
+
 ## Hierarchy
 
 Parameters can be defined in multiple different places, and can overwrite existing project variables. This leads to a specific hierarchy (listed from highest priority to lowest):
@@ -40,7 +42,7 @@ If the project configuration is modified, patches will use this value unless ove
 
 #### Command Line Usage
 
-When creating a patch, use `--param KEY=VALUE` to define each parameter. These will override parameter defaults and project variables, if they exist for the key. Note that the `=` character is not acceptable in a parameter key or value.
+When creating a patch, use `--param KEY=VALUE` to define each parameter. These will override parameter defaults and project variables, if they exist for the key. Note that the `=` character is not acceptable in a parameter key or value. **Reminder that this should not be used to pass secrets, since these values are not private.**
 
 If the user doesn't currently have parameter defaults (and hasn't included `--yes` to skip prompts), they will receive a prompt to add defaults to their local configuration. Defaults are added to the local configuration as a mapping: 
 
