@@ -963,8 +963,7 @@ func shouldSyncTask(syncVariantsTasks []patch.VariantTasks, bv, task string) boo
 }
 
 // SetNumDependents sets NumDependents for each task in tasks.
-// NumDependents is the number of tasks depending on the task. Only tasks created at the same time
-// and in the same variant are included.
+// NumDependents is the number of tasks depending on the task.
 func SetNumDependents(tasks []*task.Task) {
 	idToTask := make(map[string]*task.Task)
 	for i, task := range tasks {
