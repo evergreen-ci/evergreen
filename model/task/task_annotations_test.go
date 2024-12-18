@@ -143,8 +143,8 @@ func TestMoveSuspectedIssueToIssue(t *testing.T) {
 
 func TestPatchIssue(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
-	task := Task{Id: "t1"}
-	assert.NoError(t, task.Insert())
+	t1 := Task{Id: "t1"}
+	assert.NoError(t, t1.Insert())
 	issue1 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float64(91.23)}
 	assert.NoError(t, AddIssueToAnnotation("t1", 0, issue1, "bynn.lee"))
 	issue2 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345"}
@@ -195,8 +195,28 @@ func TestPatchIssue(t *testing.T) {
 	assert.Equal(t, "should work", annotation.Note.Message)
 
 	badInsert := annotations.TaskAnnotation{TaskId: "t1", TaskExecution: 1, Note: &annotations.Note{Message: "shouldn't work"}}
-	assert.Error(t, PatchAnnotation(&badInsert, "error out ", true))
+	assert.Error(t, PatchAnnotation(&badInsert, "error out", true))
 
 	badInsert2 := annotations.TaskAnnotation{TaskId: "t1", TaskExecution: 1, Metadata: &birch.Document{}}
-	assert.Error(t, PatchAnnotation(&badInsert2, "error out ", false))
+	assert.Error(t, PatchAnnotation(&badInsert2, "error out", false))
+
+	// Check that HasAnnotations field is correctly in sync when patching issues array.
+	t2 := Task{Id: "t2"}
+	assert.NoError(t, t2.Insert())
+
+	annotationUpdate := annotations.TaskAnnotation{TaskId: "t2", TaskExecution: 0, Issues: []annotations.IssueLink{issue3}}
+	assert.NoError(t, PatchAnnotation(&annotationUpdate, "jane.smith", true))
+
+	foundTask, err := FindOneId(t2.Id)
+	require.NoError(t, err)
+	require.NotNil(t, foundTask)
+	assert.Equal(t, true, foundTask.HasAnnotations)
+
+	annotationUpdate = annotations.TaskAnnotation{TaskId: "t2", TaskExecution: 0, Issues: []annotations.IssueLink{}}
+	assert.NoError(t, PatchAnnotation(&annotationUpdate, "jane.smith", true))
+
+	foundTask, err = FindOneId(t2.Id)
+	require.NoError(t, err)
+	require.NotNil(t, foundTask)
+	assert.Equal(t, false, foundTask.HasAnnotations)
 }
