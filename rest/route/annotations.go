@@ -229,7 +229,7 @@ func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 // PUT /rest/v2/tasks/{task_id}/annotation
 
 // Parsing logic for task annotation put and patch routes.
-func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (string, *restModel.APITaskAnnotation, error) {
+func annotationByTaskPutOrPatchParser(_ context.Context, r *http.Request) (string, *restModel.APITaskAnnotation, error) {
 	var taskId string
 	var annotation *restModel.APITaskAnnotation
 	var err error

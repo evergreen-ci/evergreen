@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -225,7 +224,7 @@ func TestCqMessageForPatch(t *testing.T) {
 
 func TestAdditionalPatches(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(commitqueue.Collection, patch.Collection))
-	patchId := bson.NewObjectId()
+	patchId := mgobson.NewObjectId()
 	p := patch.Patch{
 		Id:      patchId,
 		Project: "proj",

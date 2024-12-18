@@ -484,7 +484,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}
 
 		lockErr := dispatchHostTaskAtomically(ctx, env, currentHost, nextTask)
-		if err != nil && !db.IsDuplicateKey(lockErr) {
+		if lockErr != nil && !db.IsDuplicateKey(lockErr) {
 			return nil, false, errors.Wrapf(err, "dispatching task '%s' to host '%s'", nextTask.Id, currentHost.Id)
 		}
 		dispatchedTask := lockErr == nil

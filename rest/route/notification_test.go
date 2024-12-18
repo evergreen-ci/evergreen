@@ -152,5 +152,5 @@ func (s *EmailNotificationSuite) TestParseValidJSON() {
 	s.Equal(utility.ToStringPtr("This is the email's subject"), apiEmail.Subject)
 	s.Equal(utility.ToStringPtr("This is the email's body"), apiEmail.Body)
 	s.Equal(true, apiEmail.PlainTextContents)
-	s.Equal(map[string][]string{"h1": []string{"v11", "v12"}, "h2": []string{"v21", "v22"}}, apiEmail.Headers)
+	s.Equal(map[string][]string{"h1": {"v11", "v12"}, "h2": {"v21", "v22"}}, apiEmail.Headers)
 }

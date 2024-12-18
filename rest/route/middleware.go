@@ -295,6 +295,7 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("task '%s' not found", h.StartedBy),
 		}))
+		return
 	}
 	if _, code, err := model.ValidateHost(t.HostId, r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{

@@ -576,7 +576,6 @@ func TestTaskByBuildPaginator(t *testing.T) {
 	Convey("When paginating with a Connector", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
 		Convey("and there are tasks to be found", func() {
-			cachedTasks := []task.Task{}
 			cachedOldTasks := []task.Task{}
 			for i := 0; i < numTasks; i++ {
 				prefix := int(math.Log10(float64(i)))
@@ -587,7 +586,6 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					Id: fmt.Sprintf("%dbuild%d", prefix, i),
 				}
 				So(db.Insert(task.Collection, nextTask), ShouldBeNil)
-				cachedTasks = append(cachedTasks, nextTask)
 			}
 			for i := 0; i < 5; i++ {
 				prefix := int(math.Log10(float64(i)))

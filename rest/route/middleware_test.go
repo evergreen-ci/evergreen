@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
-	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
@@ -78,8 +77,6 @@ func TestPrefetchProject(t *testing.T) {
 				So(err, ShouldResemble, errToResemble)
 			})
 			Convey("should error if patch exists and no user is set", func() {
-				opCtx := model.Context{}
-				opCtx.Patch = &patch.Patch{}
 				ctx, err = PrefetchProjectContext(ctx, req, map[string]string{"patch_id": "aabbccddeeff112233445566"})
 				So(ctx.Value(RequestContext), ShouldBeNil)
 
