@@ -19,7 +19,7 @@
         "type": "slack",
         "target": "@me"
       },
-      "owner": "testuser",
+      "owner": "regular_user",
       "owner_type": "person",
       "trigger_data": {
         "requester": "gitter_request"

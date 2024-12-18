@@ -31,9 +31,9 @@
       ]
     },
     {
-      "_id": "second_project_id",
+      "_id": "spruce",
       "parameter_store_enabled": true,
-      "identifier": "new_identifier"
+      "identifier": "spruce"
     }
   ],
   "repo_ref": [

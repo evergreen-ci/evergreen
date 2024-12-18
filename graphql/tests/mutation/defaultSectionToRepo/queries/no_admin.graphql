@@ -1,6 +1,5 @@
 mutation {
-    defaultSectionToRepo(opts: {
-        projectId: "evergreen_id",
-        section: GENERAL
-    })
+  defaultSectionToRepo(
+    opts: { projectId: "sandbox_project_id", section: GENERAL }
+  )
 }

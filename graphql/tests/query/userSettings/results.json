@@ -2,13 +2,14 @@
   "tests": [
     {
       "query_file": "user_settings.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": {
           "userSettings": {
             "timezone": "America/New_York",
             "region": "",
             "githubUser": { "lastKnownAs": "" },
-            "slackUsername": "testslackuser",
+            "slackUsername": "regular_slackuser",
             "slackMemberId": "12345member"
           }
         }

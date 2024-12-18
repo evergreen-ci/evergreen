@@ -1,24 +1,24 @@
 {
   "tests": [
     {
-      "query_file":"viewable_projects.graphql",
+      "query_file": "viewable_projects.graphql",
       "result": {
         "data": {
           "viewableProjectRefs": [
             {
-              "groupDisplayName": "animals_display",
+              "groupDisplayName": "Sandbox Repo",
               "projects": [
                 {
-                  "identifier": "catVideos",
-                  "repo": "catGenerator",
-                  "owner": "theCat",
-                  "repoRefId": "animals"
+                  "identifier": "Happy Abyssinian",
+                  "repo": "sandbox",
+                  "owner": "evergreen-ci",
+                  "repoRefId": "sandbox_repo_id"
                 },
                 {
-                  "identifier": "abyssinianVideos",
-                  "repo": "catGenerator",
-                  "owner": "theCat",
-                  "repoRefId": "animals"
+                  "identifier": "sandbox",
+                  "repo": "sandbox",
+                  "owner": "evergreen-ci",
+                  "repoRefId": "sandbox_repo_id"
                 }
               ]
             }

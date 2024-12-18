@@ -1,17 +1,18 @@
-  { 
-     "tests": [{
+{
+  "tests": [
+    {
       "query_file": "projects.graphql",
       "result": {
         "data": {
           "projects": [
             {
-              "groupDisplayName": "evergreen-ci/evergreen",
+              "groupDisplayName": "evergreen-ci/sandbox",
               "projects": [
                 {
-                  "identifier": "mci",
-                  "repo": "evergreen",
+                  "identifier": "sandbox",
+                  "repo": "sandbox",
                   "owner": "evergreen-ci",
-                  "displayName": "Evergreen Self-Tests",
+                  "displayName": "Sandbox",
                   "isFavorite": false
                 }
               ]

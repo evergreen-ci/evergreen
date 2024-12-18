@@ -1,7 +1,7 @@
 {
   "repo_ref": [
     {
-      "_id": "repo_id",
+      "_id": "sandbox_repo_id",
       "display_name": "Sandbox",
       "enabled": null,
       "owner_name": "evergreen-ci",

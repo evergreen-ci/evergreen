@@ -1,5 +1,5 @@
 {
-  user(userId: "testuser") {
+  user {
     includeHidden: patches(patchesInput: { includeHidden: true }) {
       patches {
         id

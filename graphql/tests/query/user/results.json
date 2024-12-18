@@ -2,12 +2,13 @@
   "tests": [
     {
       "query_file": "user.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": {
           "user": {
-            "displayName": "testuser",
-            "userId": "testuser",
-            "emailAddress": "testuser@mongodb.com"
+            "displayName": "Regular User",
+            "userId": "regular_user",
+            "emailAddress": "regular_user@mongodb.com"
           }
         }
       }

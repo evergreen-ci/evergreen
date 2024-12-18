@@ -97,6 +97,19 @@ added, it's a good idea to check the setup functions defined in this file.
 
 Note: Tests for directives are located in `directive_test.go`.
 
+#### Specifying User to Run GraphQL Test
+
+The GraphQL schema restricts access to certain queries and mutations based on a user's permissions. In order to test that these restrictions are working properly, you may want to run a GraphQL test as a particular user.
+
+There are three users available by default: 
+- `admin_user`: A superuser with admin project and distro access.
+- `privileged_user`: Not a superuser, but has admin project and distro access.
+- `regular_user`: Only has basic project and distro access.
+
+Note that you can also create other users in the corresponding `data.json` file if none of these users work for your test.
+
+To run a test as a particular user, specify the `test_user_id` field in the corresponding `results.json` file. If this field is not included, it will default to `admin_user`.
+
 ### Running GraphQL tests
 
 Before running any tests, ensure you have a creds.yml file set up. If you don't

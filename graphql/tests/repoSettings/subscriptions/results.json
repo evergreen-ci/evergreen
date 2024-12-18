@@ -45,7 +45,7 @@
                 "selectors": [
                   {
                     "type": "project",
-                    "data": "repo_id"
+                    "data": "sandbox_repo_id"
                   },
                   {
                     "type": "requester",

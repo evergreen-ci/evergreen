@@ -1,7 +1,7 @@
 {
   "repo_ref": [
     {
-      "_id": "repo_id",
+      "_id": "sandbox_repo_id",
       "display_name": "Sandbox",
       "enabled": null,
       "owner_name": "evergreen-ci",
@@ -17,7 +17,7 @@
       "patch_trigger_aliases": [
         {
           "alias": "my_alias_sandbox",
-          "child_project": "vars_test",
+          "child_project": "spruce",
           "task_specifiers": [
             {
               "task_regex": "test-util",
@@ -78,15 +78,15 @@
   ],
   "project_ref": [
     {
-      "_id": "vars_test",
-      "identifier": "varsTest",
+      "_id": "spruce",
+      "identifier": "spruce",
       "parameter_store_enabled": true,
-      "display_name": "Vars test"
+      "display_name": "Spruce"
     }
   ],
   "project_vars": [
     {
-      "_id": "repo_id",
+      "_id": "sandbox_repo_id",
       "vars": { "hello": "world", "foo": "bar" },
       "private_vars": { "hello": true, "foo": false }
     }

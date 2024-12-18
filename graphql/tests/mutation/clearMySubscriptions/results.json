@@ -1,17 +1,18 @@
 {
-    "tests": [
-      {
-          "query_file": "success.graphql",
-          "result": {
-            "data": {"clearMySubscriptions":1}
-          }
-        },
-        {
-          "query_file": "success.graphql",
-          "result": {
-            "data": {"clearMySubscriptions":0}
-          }
-        }
-    ]
-  }
-  
+  "tests": [
+    {
+      "query_file": "success.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": { "clearMySubscriptions": 1 }
+      }
+    },
+    {
+      "query_file": "success.graphql",
+      "test_user_id": "privileged_user",
+      "result": {
+        "data": { "clearMySubscriptions": 0 }
+      }
+    }
+  ]
+}

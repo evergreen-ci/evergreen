@@ -26,7 +26,7 @@
       "patch_trigger_aliases": [
         {
           "alias": "my_alias_sandbox",
-          "child_project": "vars_test",
+          "child_project": "spruce",
           "task_specifiers": [
             {
               "task_regex": "test-util",
@@ -104,10 +104,10 @@
       ]
     },
     {
-      "_id": "vars_test",
-      "identifier": "varsTest",
+      "_id": "spruce",
+      "identifier": "spruce",
       "parameter_store_enabled": true,
-      "display_name": "Vars test"
+      "display_name": "Spruce"
     }
   ],
   "project_vars": [
@@ -118,7 +118,7 @@
       "admin_only_vars": { "admintest": true }
     },
     {
-      "_id": "vars_test",
+      "_id": "spruce",
       "vars": { "both": "dos" },
       "private_vars": { "both": true },
       "admin_only_vars": { "both": true }

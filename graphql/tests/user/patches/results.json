@@ -2,6 +2,7 @@
   "tests": [
     {
       "query_file": "all_params.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": {
           "user": {
@@ -30,6 +31,7 @@
     },
     {
       "query_file": "default_params.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": {
           "user": {
@@ -50,6 +52,7 @@
     },
     {
       "query_file": "include_hidden_patches.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": {
           "user": {
@@ -142,6 +145,7 @@
     },
     {
       "query_file": "include_commit_queue.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": {
           "user": {
@@ -177,6 +181,7 @@
     },
     {
       "query_file": "pagination.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": {
           "page0": {
@@ -204,6 +209,7 @@
     },
     {
       "query_file": "patch_name.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": {
           "user": {
@@ -221,6 +227,7 @@
     },
     {
       "query_file": "statuses.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": {
           "user": {
@@ -237,6 +244,7 @@
     },
     {
       "query_file": "requesters.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": {
           "user": {
