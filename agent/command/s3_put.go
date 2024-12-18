@@ -543,8 +543,12 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 		}
 		var key, secret, bucket, fileKey string
 		if s3pc.Visibility == artifact.Signed {
-			key = s3pc.AwsKey
-			secret = s3pc.AwsSecret
+			// If the bucket is mciuploads, we don't need to provide credentials.
+			// The Evergreen app servers will use their IRSA credentials.
+			if s3pc.Bucket != "mciuploads" {
+				key = s3pc.AwsKey
+				secret = s3pc.AwsSecret
+			}
 			bucket = s3pc.Bucket
 			fileKey = remoteFileName
 		}
