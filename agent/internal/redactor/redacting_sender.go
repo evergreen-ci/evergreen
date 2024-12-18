@@ -2,6 +2,7 @@ package redactor
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/agent/globals"
@@ -35,12 +36,17 @@ func (r *redactingSender) Send(m message.Composer) {
 	}
 
 	msg := m.String()
+	allRedacted := r.expansions.GetRedacted()
 	for _, expansion := range r.expansionsToRedact {
 		if val := r.expansions.Get(expansion); val != "" {
-			msg = strings.ReplaceAll(msg, val, fmt.Sprintf(redactedVariableTemplate, expansion))
+			allRedacted = append(allRedacted, util.RedactInfo{Key: expansion, Value: val})
 		}
 	}
-	for _, info := range r.expansions.GetRedacted() {
+	// Sort redacted info based on value length to ensure we're redacting longer values first.
+	sort.Slice(allRedacted, func(i, j int) bool {
+		return len(allRedacted[i].Value) > len(allRedacted[j].Value)
+	})
+	for _, info := range allRedacted {
 		msg = strings.ReplaceAll(msg, info.Value, fmt.Sprintf(redactedVariableTemplate, info.Key))
 	}
 	r.Sender.Send(message.NewDefaultMessage(m.Priority(), msg))
