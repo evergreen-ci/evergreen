@@ -2750,12 +2750,16 @@ func (t *Task) IncNumNextTaskDispatches() error {
 
 // UpdateHasAnnotations updates a task's HasAnnotations flag, indicating if there
 // are any annotations with populated IssuesKey for its id / execution pair.
-func UpdateHasAnnotations(taskId string, execution int, hasAnnotations bool) error {
-	err := UpdateOne(
+func UpdateHasAnnotations(ctx context.Context, taskId string, execution int, hasAnnotations bool) error {
+	err := UpdateOneContext(
+		ctx,
 		ByIdAndExecution(taskId, execution),
-		bson.M{"$set": bson.M{
-			HasAnnotationsKey: hasAnnotations,
-		}})
+		[]bson.M{
+			bson.M{"$set": bson.M{
+				HasAnnotationsKey: hasAnnotations,
+			}},
+			addDisplayStatusCache,
+		})
 	return errors.Wrapf(err, "updating HasAnnotations field for task '%s'", taskId)
 }
 
