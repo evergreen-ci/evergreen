@@ -634,9 +634,9 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 		if err != nil {
 			return v, errors.Wrap(err, "error finding project alias")
 		}
-		if metadata.Alias != "" && len(aliases) == 0 {
-			aliasErr = fmt.Sprintf("requested alias '%s' is undefined", metadata.Alias)
-		}
+	}
+	if metadata.Alias != "" && len(aliases) == 0 {
+		aliasErr = fmt.Sprintf("requested alias '%s' is undefined", metadata.Alias)
 	}
 
 	verrs := validator.CheckProject(ctx, projectInfo.Project, projectInfo.Config, projectInfo.Ref, true, projectInfo.Ref.Id, nil)
