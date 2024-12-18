@@ -554,7 +554,7 @@ func TestGetDockerLogs(t *testing.T) {
 
 	// valid Run
 	cloudClient := cloud.GetMockClient()
-	logs, err := cloudClient.GetDockerLogs(nil, "containerId", handler.host, types.ContainerLogsOptions{})
+	logs, err := cloudClient.GetDockerLogs(ctx, "containerId", handler.host, types.ContainerLogsOptions{})
 	assert.NoError(err)
 	buf := new(strings.Builder)
 	_, err = io.Copy(buf, logs)
@@ -636,7 +636,7 @@ func TestGetDockerStatus(t *testing.T) {
 
 	// valid Run
 	cloudClient := cloud.GetMockClient()
-	status, err := cloudClient.GetDockerStatus(nil, "containerId", handler.host)
+	status, err := cloudClient.GetDockerStatus(ctx, "containerId", handler.host)
 	assert.NoError(err)
 	require.NotNil(status)
 	require.True(status.HasStarted)
