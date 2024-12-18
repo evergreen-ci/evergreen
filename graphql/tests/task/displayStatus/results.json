@@ -1,0 +1,15 @@
+{
+    "tests": [
+        {
+            "query_file": "display_status.graphql",
+            "result": {
+                "data": {
+                    "task": {
+                        "status": "known-issue",
+                        "displayStatus": "known-issue"
+                    }
+                }
+            }
+        }
+    ]
+}
