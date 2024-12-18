@@ -274,6 +274,113 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 	})
 }
 
+func TestCountNumDependentsAcrossVariants(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	assert.NoError(t, db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection,
+		build.Collection, task.Collection, model.ProjectConfigCollection, model.ProjectRefCollection))
+
+	simpleYml := `
+buildvariants:
+- name: bv1
+  display_name: "bv_display"
+  run_on: d1
+  tasks:
+  - name: t1
+  - name: t2
+  - name: t3
+  - name: t4
+- name: bv2
+  display_name: bv2_display
+  run_on: d2
+  tasks:
+  - name: t1
+- name: bv3
+  display_name: bv3_display
+  run_on: d2
+  tasks:
+  - name: t4
+    depends_on:
+    - name: t1
+      variant: bv1
+tasks:
+- name: t1
+- name: t2
+  depends_on:
+  - name: t1
+- name: t3
+  depends_on:
+  - name: t1
+- name: t4
+  depends_on:
+  - name: t2
+  - name: t3
+`
+	previouslyActivatedVersion := &model.Version{
+		Id:         "previously activated",
+		Identifier: "testproject",
+		Requester:  evergreen.RepotrackerVersionRequester,
+		BuildVariants: []model.VersionBuildStatus{
+			{
+				BuildVariant: "bv1",
+				BatchTimeTasks: []model.BatchTimeTaskStatus{
+					{
+						TaskName: "t1",
+						ActivationStatus: model.ActivationStatus{
+							Activated:  true,
+							ActivateAt: time.Now().Add(-11 * time.Minute),
+						},
+					},
+				},
+				ActivationStatus: model.ActivationStatus{
+					Activated:  true,
+					ActivateAt: time.Now().Add(-11 * time.Minute),
+				},
+			},
+			{
+				BuildVariant: "bv2",
+				ActivationStatus: model.ActivationStatus{
+					Activated:  true,
+					ActivateAt: time.Now().Add(-11 * time.Minute),
+				},
+			},
+		},
+	}
+	assert.NoError(t, previouslyActivatedVersion.Insert())
+
+	// insert distros used in testing.
+	d := distro.Distro{Id: "d1"}
+	assert.NoError(t, d.Insert(ctx))
+	d.Id = "d2"
+	assert.NoError(t, d.Insert(ctx))
+
+	pRef := &model.ProjectRef{
+		Id:        "testproject",
+		BatchTime: 0,
+	}
+	require.NoError(t, pRef.Insert())
+
+	p := &model.Project{}
+	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
+	assert.NoError(t, err)
+
+	// create new version to use for activating
+	revisions := []model.Revision{
+		*createTestRevision("yes", time.Now()),
+	}
+	repoTracker := RepoTracker{
+		testConfig,
+		pRef,
+		NewMockRepoPoller(pp, revisions),
+	}
+	assert.NoError(t, repoTracker.StoreRevisions(ctx, revisions))
+
+	bv1t1, err := task.FindOne(db.Query(bson.M{task.BuildVariantKey: "bv1", task.DisplayNameKey: "t1"}))
+	require.NoError(t, err)
+	require.NotNil(t, bv1t1)
+	assert.Equal(t, bv1t1.NumDependents, 4)
+}
+
 func TestBatchTimeForTasks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
