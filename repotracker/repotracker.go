@@ -621,7 +621,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 	v.Ignored = ignore
 
-	// Compute aliases first, so we can include this in the version errors if  there's a problem.
+	// Compute aliases first, so we can include this in the version errors if there's a problem.
 	var aliases model.ProjectAliases
 	var aliasErr string
 	if metadata.Alias == evergreen.GitTagAlias {
