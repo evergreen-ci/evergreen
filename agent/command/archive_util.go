@@ -157,7 +157,7 @@ func extractTarArchive(ctx context.Context, tarReader *tar.Reader, rootPath stri
 				return errors.WithStack(err)
 			}
 		} else if hdr.Typeflag == tar.TypeSymlink {
-			if err = os.Symlink(hdr.Name, filepath.Join(rootPath, hdr.Linkname)); err != nil {
+			if err = os.Symlink(filepath.Join(rootPath, hdr.Linkname), filepath.Join(rootPath, hdr.Name)); err != nil {
 				return errors.WithStack(err)
 			}
 		} else if hdr.Typeflag == tar.TypeReg || hdr.Typeflag == tar.TypeRegA {
