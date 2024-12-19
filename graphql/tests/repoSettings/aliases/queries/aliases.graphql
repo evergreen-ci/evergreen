@@ -1,14 +1,14 @@
 {
-    repoSettings(repoId: "repo_id") {
-        aliases {
-            id
-            alias
-            gitTag
-            variant
-            task
-            remotePath
-            variantTags
-            taskTags
-        }
+  repoSettings(repoId: "sandbox_repo_id") {
+    aliases {
+      id
+      alias
+      gitTag
+      variant
+      task
+      remotePath
+      variantTags
+      taskTags
     }
+  }
 }

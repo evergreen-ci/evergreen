@@ -1,4 +1,4 @@
 query {
-  repo: isRepo(projectOrRepoId: "repo_id")
+  repo: isRepo(projectOrRepoId: "sandbox_repo_id")
   project: isRepo(projectOrRepoId: "sandbox_project_id")
 }

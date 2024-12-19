@@ -1,28 +1,28 @@
 query {
-    repoEvents(repoId: "repo_id") {
-        eventLogEntries {
-            user
-            timestamp
-            before {
-                projectRef {
-                    branch
-                }
-                githubWebhooksEnabled
-                vars{
-                    vars
-                }
-            }
-            after {
-                projectRef {
-                    branch
-                }
-                # todo in EVG-16608: investigate why this field returns the wrong data
-                githubWebhooksEnabled  
-                vars{
-                    vars
-                }
-            }
+  repoEvents(repoId: "sandbox_repo_id") {
+    eventLogEntries {
+      user
+      timestamp
+      before {
+        projectRef {
+          branch
         }
-        count
+        githubWebhooksEnabled
+        vars {
+          vars
+        }
+      }
+      after {
+        projectRef {
+          branch
+        }
+        # todo in EVG-16608: investigate why this field returns the wrong data
+        githubWebhooksEnabled
+        vars {
+          vars
+        }
+      }
     }
+    count
+  }
 }

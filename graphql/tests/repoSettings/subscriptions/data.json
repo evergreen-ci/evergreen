@@ -1,7 +1,7 @@
 {
   "repo_ref": [
     {
-      "_id": "repo_id",
+      "_id": "sandbox_repo_id",
       "display_name": "Sandbox",
       "enabled": null,
       "owner_name": "evergreen-ci",
@@ -14,18 +14,6 @@
       "batch_time": 2,
       "deactivate_previous": true,
       "triggers": [],
-      "patch_trigger_aliases": [
-        {
-          "alias": "my_alias_sandbox",
-          "child_project": "vars_test",
-          "task_specifiers": [
-            {
-              "task_regex": "test-util",
-              "variant_regex": "^ubuntu1604$"
-            }
-          ]
-        }
-      ],
       "commit_queue": {
         "enabled": true,
         "require_signed": false,
@@ -75,13 +63,6 @@
       "hidden": false
     }
   ],
-  "project_ref": [
-    {
-      "_id": "vars_test",
-      "identifier": "varsTest",
-      "display_name": "Vars test"
-    }
-  ],
   "subscriptions": [
     {
       "_id": "61326406a620e4737f57003e",
@@ -102,7 +83,7 @@
         "type": "slack",
         "target": "@me"
       },
-      "owner": "repo_id",
+      "owner": "sandbox_repo_id",
       "owner_type": "project",
       "trigger_data": {
         "requester": "gitter_request"
@@ -113,7 +94,7 @@
       "selectors": [
         {
           "type": "project",
-          "data": "repo_id"
+          "data": "sandbox_repo_id"
         },
         {
           "type": "requester",
@@ -128,7 +109,7 @@
           "issue_type": "1212"
         }
       },
-      "owner": "repo_id",
+      "owner": "sandbox_repo_id",
       "owner_type": "project",
       "trigger_data": {
         "requester": "patch_request"
@@ -156,7 +137,7 @@
           ]
         }
       },
-      "owner": "repo_id",
+      "owner": "sandbox_repo_id",
       "owner_type": "project",
       "trigger_data": {
         "task-duration-secs": "10"

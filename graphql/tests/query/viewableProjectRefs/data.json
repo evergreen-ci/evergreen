@@ -1,25 +1,17 @@
 {
   "repo_ref": [
     {
-      "_id": "animals",
-      "identifier": "animals",
-      "display_name": "animals_display"
+      "_id": "sandbox_repo_id",
+      "identifier": "",
+      "display_name": "Sandbox Repo"
     }
   ],
   "project_ref": [
     {
-      "_id": "evergreen",
-      "identifier": "evergreen",
+      "_id": "random_id",
+      "identifier": "random",
       "owner_name": "evergreen-ci",
-      "repo_name": "evergreen",
-      "enabled": true,
-      "repoRefId": "something"
-    },
-    {
-      "_id": "evergreen_2",
-      "identifier": "evergreen",
-      "owner_name": "evergreen-ci",
-      "repo_name": "evergreen",
+      "repo_name": "random",
       "enabled": true,
       "repoRefId": "something"
     },
@@ -28,44 +20,20 @@
       "identifier": "keeperOfLogs"
     },
     {
-      "_id": "grumpyCat",
-      "identifier": "catVideos",
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox",
       "display_name": "",
-      "owner_name": "theCat",
-      "repo_name": "catGenerator",
-      "branch_name": "main",
-      "remote_path": "",
-      "batch_time": 0,
-      "triggers": null,
-      "patch_trigger_aliases": null,
-      "github_trigger_aliases": null,
-      "periodic_builds": null,
-      "commit_queue": {
-        "enabled": null,
-        "merge_method": ""
-      },
-      "admins": null,
-      "repo_ref_id": "animals"
+      "owner_name": "evergreen-ci",
+      "repo_name": "sandbox",
+      "repo_ref_id": "sandbox_repo_id"
     },
     {
       "_id": "happyAbyssinian",
-      "identifier": "abyssinianVideos",
+      "identifier": "Happy Abyssinian",
       "display_name": "",
-      "owner_name": "theCat",
-      "repo_name": "catGenerator",
-      "branch_name": "main",
-      "remote_path": "",
-      "batch_time": 0,
-      "triggers": null,
-      "patch_trigger_aliases": null,
-      "github_trigger_aliases": null,
-      "periodic_builds": null,
-      "commit_queue": {
-        "enabled": null,
-        "merge_method": ""
-      },
-      "admins": null,
-      "repo_ref_id": "animals"
+      "owner_name": "evergreen-ci",
+      "repo_name": "sandbox",
+      "repo_ref_id": "sandbox_repo_id"
     }
   ]
 }

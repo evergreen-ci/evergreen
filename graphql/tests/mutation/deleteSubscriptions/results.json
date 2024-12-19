@@ -1,11 +1,11 @@
 {
-    "tests": [
-      {
-        "query_file": "success.graphql",
-        "result": {
-          "data": {"deleteSubscriptions":2}
-        }
+  "tests": [
+    {
+      "query_file": "success.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": { "deleteSubscriptions": 2 }
       }
-    ]
-  }
-  
+    }
+  ]
+}

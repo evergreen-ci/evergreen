@@ -1,5 +1,5 @@
 {
-  user(userId: "testuser") {
+  user {
     patches(
       patchesInput: {
         includeCommitQueue: true

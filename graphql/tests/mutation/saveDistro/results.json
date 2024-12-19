@@ -43,11 +43,12 @@
     },
     {
       "query_file": "insufficient_permissions.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": null,
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to access settings for the distro 'fake'",
+            "message": "user 'regular_user' does not have permission to access settings for the distro 'fake'",
             "path": ["saveDistro", "opts", "distro", "name"],
             "extensions": {
               "code": "FORBIDDEN"

@@ -1,5 +1,5 @@
 {
-  repoSettings(repoId: "repo_id") {
+  repoSettings(repoId: "sandbox_repo_id") {
     githubWebhooksEnabled
     projectRef {
       id

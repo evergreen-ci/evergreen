@@ -1,8 +1,8 @@
 {
-    repoSettings(repoId: "repo_id") {
-        vars{
-            vars
-            privateVars
-        }
+  repoSettings(repoId: "sandbox_repo_id") {
+    vars {
+      vars
+      privateVars
     }
+  }
 }

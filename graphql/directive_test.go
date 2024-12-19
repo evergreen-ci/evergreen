@@ -222,7 +222,7 @@ func TestRequireDistroAccess(t *testing.T) {
 	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, user.Collection),
 		"unable to clear user or project ref collection")
 	dbUser := &user.DBUser{
-		Id: apiUser,
+		Id: testUser,
 		Settings: user.UserSettings{
 			SlackUsername: "testuser",
 			SlackMemberId: "testuser",
@@ -246,7 +246,7 @@ func TestRequireDistroAccess(t *testing.T) {
 		return nil, nil
 	}
 
-	usr, err := user.GetOrCreateUser(apiUser, "User Name", email, accessToken, refreshToken, []string{})
+	usr, err := user.GetOrCreateUser(testUser, "User Name", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
 	require.NotNil(t, usr)
 
@@ -258,7 +258,7 @@ func TestRequireDistroAccess(t *testing.T) {
 	assert.EqualError(t, err, "input: distro not specified")
 
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessCreate)
-	assert.EqualError(t, err, "input: user 'testuser' does not have create distro permissions")
+	assert.EqualError(t, err, "input: user 'test_user' does not have create distro permissions")
 
 	// superuser should be successful for create with no distro ID specified
 	require.NoError(t, usr.AddRole("superuser"))
@@ -316,7 +316,7 @@ func TestRequireDistroAccess(t *testing.T) {
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
 	assert.Nil(t, res)
-	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.EqualError(t, err, "input: user 'test_user' does not have permission to access settings for the distro 'distro-id'")
 	assert.Equal(t, 7, callCount)
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
@@ -336,11 +336,11 @@ func TestRequireDistroAccess(t *testing.T) {
 
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
 	assert.Equal(t, 9, callCount)
-	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.EqualError(t, err, "input: user 'test_user' does not have permission to access settings for the distro 'distro-id'")
 
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
 	assert.Equal(t, 9, callCount)
-	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.EqualError(t, err, "input: user 'test_user' does not have permission to access settings for the distro 'distro-id'")
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
 	assert.NoError(t, err)
@@ -352,15 +352,15 @@ func TestRequireDistroAccess(t *testing.T) {
 	// no access fails all query attempts
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
 	assert.Equal(t, 10, callCount)
-	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.EqualError(t, err, "input: user 'test_user' does not have permission to access settings for the distro 'distro-id'")
 
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
 	assert.Equal(t, 10, callCount)
-	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.EqualError(t, err, "input: user 'test_user' does not have permission to access settings for the distro 'distro-id'")
 
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
 	assert.Equal(t, 10, callCount)
-	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.EqualError(t, err, "input: user 'test_user' does not have permission to access settings for the distro 'distro-id'")
 }
 
 func TestRequireProjectAdmin(t *testing.T) {
@@ -368,7 +368,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 	require.NoError(t, db.Clear(user.Collection),
 		"unable to clear user collection")
 	dbUser := &user.DBUser{
-		Id: apiUser,
+		Id: testUser,
 		Settings: user.UserSettings{
 			SlackUsername: "testuser",
 			SlackMemberId: "testuser",
@@ -392,7 +392,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 		return nil, nil
 	}
 
-	usr, err := user.GetOrCreateUser(apiUser, "Mohamed Khelif", email, accessToken, refreshToken, []string{})
+	usr, err := user.GetOrCreateUser(testUser, "Mohamed Khelif", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
 	require.NotNil(t, usr)
 
@@ -429,7 +429,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 		},
 	}
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	assert.EqualError(t, err, "input: user testuser does not have permission to access the CreateProject resolver")
+	assert.EqualError(t, err, "input: user test_user does not have permission to access the CreateProject resolver")
 	assert.Nil(t, res)
 	assert.Equal(t, 1, callCount)
 
@@ -452,7 +452,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 		},
 	}
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	assert.EqualError(t, err, "input: user testuser does not have permission to access the CopyProject resolver")
+	assert.EqualError(t, err, "input: user test_user does not have permission to access the CopyProject resolver")
 	assert.Nil(t, res)
 	assert.Equal(t, 2, callCount)
 
@@ -474,7 +474,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 	ctx = graphql.WithOperationContext(ctx, operationContext)
 	obj = map[string]interface{}{"projectId": "anything"}
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	assert.EqualError(t, err, "input: user testuser does not have permission to access the DeleteProject resolver")
+	assert.EqualError(t, err, "input: user test_user does not have permission to access the DeleteProject resolver")
 	assert.Nil(t, res)
 	assert.Equal(t, 3, callCount)
 
@@ -527,7 +527,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 	}
 	require.NoError(t, usr.RemoveRole("admin_project"))
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	assert.EqualError(t, err, "input: user testuser does not have permission to access the SetLastRevision resolver")
+	assert.EqualError(t, err, "input: user test_user does not have permission to access the SetLastRevision resolver")
 	assert.Nil(t, res)
 	assert.Equal(t, 5, callCount)
 
@@ -537,7 +537,7 @@ func setupUser(t *testing.T) (*user.DBUser, error) {
 	require.NoError(t, db.Clear(user.Collection),
 		"unable to clear user collection")
 	dbUser := &user.DBUser{
-		Id: apiUser,
+		Id: testUser,
 		Settings: user.UserSettings{
 			SlackUsername: "testuser",
 			SlackMemberId: "testuser",
@@ -547,7 +547,7 @@ func setupUser(t *testing.T) (*user.DBUser, error) {
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
-	return user.GetOrCreateUser(apiUser, "Evergreen User", email, accessToken, refreshToken, []string{})
+	return user.GetOrCreateUser(testUser, "Evergreen User", email, accessToken, refreshToken, []string{})
 }
 
 func TestRequireProjectSettingsAccess(t *testing.T) {
