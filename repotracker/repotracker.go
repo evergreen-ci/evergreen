@@ -621,11 +621,32 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 	v.Ignored = ignore
 
+	// Compute aliases first to include undefined requested alias in the stub version errors list.
+	var aliases model.ProjectAliases
+	if metadata.Alias == evergreen.GitTagAlias {
+		aliases, err = model.FindMatchingGitTagAliasesInProject(projectInfo.Ref.Id, metadata.GitTag.Tag)
+		if err != nil {
+			return v, errors.Wrapf(err, "error finding project alias for tag '%s'", metadata.GitTag.Tag)
+		}
+	} else if metadata.Alias != "" {
+		aliases, err = model.FindAliasInProjectRepoOrConfig(projectInfo.Ref.Id, metadata.Alias)
+		if err != nil {
+			return v, errors.Wrap(err, "error finding project alias")
+		}
+	}
+	var aliasErr string
+	if metadata.Alias != "" && len(aliases) == 0 {
+		aliasErr = fmt.Sprintf("requested alias '%s' is undefined", metadata.Alias)
+	}
+
 	verrs := validator.CheckProject(ctx, projectInfo.Project, projectInfo.Config, projectInfo.Ref, true, projectInfo.Ref.Id, nil)
-	if len(verrs) > 0 || versionErrs != nil {
+	if len(verrs) > 0 || versionErrs != nil || aliasErr != "" {
 		// We have errors in the project.
 		// Format them, as we need to store + display them to the user
 		var projectErrors, projectWarnings []string
+		if aliasErr != "" {
+			projectErrors = append(projectErrors, aliasErr)
+		}
 		for _, e := range verrs {
 			if e.Level == validator.Error {
 				projectErrors = append(projectErrors, e.Error())
@@ -652,26 +673,6 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 			}
 			return v, nil
 
-		}
-	}
-
-	var aliases model.ProjectAliases
-	if metadata.Alias == evergreen.GitTagAlias {
-		aliases, err = model.FindMatchingGitTagAliasesInProject(projectInfo.Ref.Id, metadata.GitTag.Tag)
-		if err != nil {
-			return v, errors.Wrapf(err, "error finding project alias for tag '%s'", metadata.GitTag.Tag)
-		}
-		grip.Debug(message.Fields{
-			"message":            "aliases for creating version",
-			"tag":                metadata.GitTag.Tag,
-			"project":            projectInfo.Ref.Id,
-			"project_identifier": projectInfo.Ref.Identifier,
-			"aliases":            aliases,
-		})
-	} else if metadata.Alias != "" {
-		aliases, err = model.FindAliasInProjectRepoOrConfig(projectInfo.Ref.Id, metadata.Alias)
-		if err != nil {
-			return v, errors.Wrap(err, "error finding project alias")
 		}
 	}
 
