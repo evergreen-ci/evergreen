@@ -14,6 +14,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	stagingEnvironmentCookieName = "evg-staging-environment"
+)
+
 func (uis *UIServer) loginPage(w http.ResponseWriter, r *http.Request) {
 	if uis.env.UserManager().IsRedirect() {
 		http.Redirect(w, r, "/login/redirect", http.StatusFound)
@@ -133,6 +137,14 @@ func (uis *UIServer) userGetKey(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {
 	uis.umconf.ClearCookie(w)
+	if uis.Settings.Ui.StagingEnvironment != "" {
+		http.SetCookie(w, &http.Cookie{
+			Name:   stagingEnvironmentCookieName,
+			Value:  uis.Settings.Ui.StagingEnvironment,
+			Domain: uis.Settings.Ui.LoginDomain,
+		})
+	}
+
 	loginURL := fmt.Sprintf("%v/login", uis.RootURL)
 	http.Redirect(w, r, loginURL, http.StatusFound)
 }
