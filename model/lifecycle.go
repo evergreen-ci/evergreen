@@ -1755,10 +1755,10 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 			buildIdsToActivate = append(buildIdsToActivate, b.Id)
 		}
 	}
+	SetNumDependents(allTasks)
 	if err = allTasks.InsertUnordered(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting tasks")
 	}
-	SetNumDependents(allTasks)
 	// update each build to hold the new tasks
 	for _, b := range existingBuilds {
 		if err = RefreshTasksCache(b.Id); err != nil {

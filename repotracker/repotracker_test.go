@@ -84,7 +84,6 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 		So(err, ShouldBeNil)
 		repoTracker := RepoTracker{testConfig, evgProjectRef, NewGithubRepositoryPoller(evgProjectRef)}
 
-		// insert distros used in testing.
 		d := distro.Distro{Id: "test-distro-one"}
 		So(d.Insert(ctx), ShouldBeNil)
 		d.Id = "test-distro-two"
@@ -191,7 +190,6 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			poller,
 		}
 
-		// insert distros used in testing.
 		d := distro.Distro{Id: "test-distro-one"}
 		So(d.Insert(ctx), ShouldBeNil)
 		d.Id = "test-distro-two"
@@ -277,7 +275,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 func TestCountNumDependentsAcrossVariants(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	assert.NoError(t, db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection,
+	require.NoError(t, db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection,
 		build.Collection, task.Collection, model.ProjectConfigCollection, model.ProjectRefCollection))
 
 	simpleYml := `
@@ -346,13 +344,12 @@ tasks:
 			},
 		},
 	}
-	assert.NoError(t, previouslyActivatedVersion.Insert())
+	require.NoError(t, previouslyActivatedVersion.Insert())
 
-	// insert distros used in testing.
 	d := distro.Distro{Id: "d1"}
-	assert.NoError(t, d.Insert(ctx))
+	require.NoError(t, d.Insert(ctx))
 	d.Id = "d2"
-	assert.NoError(t, d.Insert(ctx))
+	require.NoError(t, d.Insert(ctx))
 
 	pRef := &model.ProjectRef{
 		Id:        "testproject",
@@ -363,8 +360,9 @@ tasks:
 	p := &model.Project{}
 	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
 	assert.NoError(t, err)
+	require.NotNil(t, pp)
 
-	// create new version to use for activating
+	// Create new version to use for activating
 	revisions := []model.Revision{
 		*createTestRevision("yes", time.Now()),
 	}
@@ -452,7 +450,6 @@ tasks:
 	}
 	assert.NoError(t, previouslyActivatedVersion.Insert())
 
-	// insert distros used in testing.
 	d := distro.Distro{Id: "d1"}
 	assert.NoError(t, d.Insert(ctx))
 	d.Id = "d2"
@@ -468,7 +465,7 @@ tasks:
 	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
 	assert.NoError(t, err)
 
-	// create new version to use for activating
+	// Create new version to use for activating
 	revisions := []model.Revision{
 		*createTestRevision("yes", time.Now()),
 	}
@@ -586,7 +583,6 @@ func TestBatchTimes(t *testing.T) {
 
 		So(previouslyActivatedVersion.Insert(), ShouldBeNil)
 
-		// insert distros used in testing.
 		d := distro.Distro{Id: "test-distro-one"}
 		So(d.Insert(ctx), ShouldBeNil)
 		d.Id = "test-distro-two"
@@ -752,7 +748,6 @@ func TestBatchTimes(t *testing.T) {
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		So(previouslyActivatedVersion.Insert(), ShouldBeNil)
-		// insert distros used in testing.
 		d := distro.Distro{Id: "test-distro-one"}
 		So(d.Insert(ctx), ShouldBeNil)
 		d.Id = "test-distro-two"
