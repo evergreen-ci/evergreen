@@ -195,17 +195,19 @@ var (
 		},
 	}
 
-	updateDisplayTasksAndTasksExpression = bson.M{
+	updateDisplayTasksAndTasksSet = bson.M{
 		"$set": bson.M{
 			CanResetKey: true,
-		},
-		"$unset": bson.M{
-			AbortedKey:              "",
-			AbortInfoKey:            "",
-			OverrideDependenciesKey: "",
-		},
-		"$inc": bson.M{ExecutionKey: 1},
-	}
+			ExecutionKey: bson.M{
+				"$add": bson.A{"$" + ExecutionKey, 1},
+			},
+		}}
+	updateDisplayTasksAndTasksUnset = bson.M{
+		"$unset": bson.A{
+			AbortedKey,
+			AbortInfoKey,
+			OverrideDependenciesKey,
+		}}
 
 	// This should reflect Task.GetDisplayStatus()
 	DisplayStatusExpression = bson.M{
@@ -2710,6 +2712,7 @@ func activateTasks(taskIDs []string, caller string, activationTime time.Time) er
 					ActivatedTimeKey: activationTime,
 				},
 			},
+			addDisplayStatusCache,
 		})
 	if err != nil {
 		return errors.Wrap(err, "setting tasks to active")
