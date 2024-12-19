@@ -1047,7 +1047,12 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 	if ok {
 		set[TaskOutputInfoKey] = output
 	}
-	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, bson.M{"$set": set})
+	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, []bson.M{
+		bson.M{
+			"$set": set,
+		},
+		addDisplayStatusCache,
+	})
 	if err != nil {
 		return errors.Wrap(err, "updating task")
 	}
@@ -1061,6 +1066,7 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 	t.PodID = podID
 	t.AgentVersion = agentVersion
 	t.TaskOutputInfo = output
+	t.DisplayStatusCache = t.findDisplayStatus()
 
 	return nil
 }
@@ -1070,8 +1076,9 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 // also marked as dispatched to a host. Returns an error if any of the database
 // updates fail.
 func (t *Task) MarkAsHostDispatched(hostID, distroID, agentRevision string, dispatchTime time.Time) error {
-	doUpdate := func(update bson.M) error {
-		return UpdateOne(bson.M{IdKey: t.Id}, update)
+	ctx := context.Background()
+	doUpdate := func(update []bson.M) error {
+		return UpdateOneContext(ctx, bson.M{IdKey: t.Id}, update)
 	}
 	if err := t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime); err != nil {
 		return err
@@ -1088,14 +1095,14 @@ func (t *Task) MarkAsHostDispatched(hostID, distroID, agentRevision string, disp
 // a particular host. Unlike MarkAsHostDispatched, this does not update the
 // parent display task.
 func (t *Task) MarkAsHostDispatchedWithContext(ctx context.Context, env evergreen.Environment, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
-	doUpdate := func(update bson.M) error {
+	doUpdate := func(update []bson.M) error {
 		_, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, update)
 		return err
 	}
 	return t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime)
 }
 
-func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
+func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update []bson.M) error, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
 
 	set := bson.M{
 		DispatchTimeKey:  dispatchTime,
@@ -1109,13 +1116,18 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, 
 	if ok {
 		set[TaskOutputInfoKey] = output
 	}
-	if err := doUpdate(bson.M{
-		"$set": set,
-		"$unset": bson.M{
-			AbortedKey:   "",
-			AbortInfoKey: "",
-			DetailsKey:   "",
+	if err := doUpdate([]bson.M{
+		bson.M{
+			"$set": set,
 		},
+		bson.M{
+			"$unset": []string{
+				AbortedKey,
+				AbortInfoKey,
+				DetailsKey,
+			},
+		},
+		addDisplayStatusCache,
 	}); err != nil {
 		return err
 	}
@@ -1130,6 +1142,7 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, 
 	t.Aborted = false
 	t.AbortInfo = AbortInfo{}
 	t.Details = apimodels.TaskEndDetail{}
+	t.DisplayStatusCache = t.findDisplayStatus()
 
 	return nil
 }
@@ -1139,28 +1152,33 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, 
 // undoing the dispatch updates. This is the inverse operation of
 // MarkAsHostDispatchedWithContext.
 func (t *Task) MarkAsHostUndispatchedWithContext(ctx context.Context, env evergreen.Environment) error {
-	doUpdate := func(update bson.M) error {
+	doUpdate := func(update []bson.M) error {
 		_, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, update)
 		return err
 	}
 	return t.markAsHostUndispatchedWithFunc(doUpdate)
 }
 
-func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update bson.M) error) error {
-	update := bson.M{
-		"$set": bson.M{
-			StatusKey:        evergreen.TaskUndispatched,
-			DispatchTimeKey:  utility.ZeroTime,
-			LastHeartbeatKey: utility.ZeroTime,
+func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update []bson.M) error) error {
+	update := []bson.M{
+		bson.M{
+			"$set": bson.M{
+				StatusKey:        evergreen.TaskUndispatched,
+				DispatchTimeKey:  utility.ZeroTime,
+				LastHeartbeatKey: utility.ZeroTime,
+			},
 		},
-		"$unset": bson.M{
-			HostIdKey:         "",
-			AgentVersionKey:   "",
-			TaskOutputInfoKey: "",
-			AbortedKey:        "",
-			AbortInfoKey:      "",
-			DetailsKey:        "",
+		bson.M{
+			"$unset": bson.M{
+				HostIdKey:         "",
+				AgentVersionKey:   "",
+				TaskOutputInfoKey: "",
+				AbortedKey:        "",
+				AbortInfoKey:      "",
+				DetailsKey:        "",
+			},
 		},
+		addDisplayStatusCache,
 	}
 
 	if err := doUpdate(update); err != nil {
@@ -1176,6 +1194,7 @@ func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update bson.M) error
 	t.Aborted = false
 	t.AbortInfo = AbortInfo{}
 	t.Details = apimodels.TaskEndDetail{}
+	t.DisplayStatusCache = t.findDisplayStatus()
 
 	return nil
 }
@@ -1526,11 +1545,14 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) ([
 	if err != nil {
 		return nil, errors.Wrap(err, "finding matching tasks")
 	}
-	update := bson.M{
-		"$set": bson.M{
-			PriorityKey:  evergreen.DisabledTaskPriority,
-			ActivatedKey: false,
+	update := []bson.M{
+		bson.M{
+			"$set": bson.M{
+				PriorityKey:  evergreen.DisabledTaskPriority,
+				ActivatedKey: false,
+			},
 		},
+		addDisplayStatusCache,
 	}
 
 	// Force the query to use 'distro_1_status_1_activated_1_priority_1_override_dependencies_1_unattainable_dependency_1'
@@ -1570,13 +1592,15 @@ func DeactivateStepbackTask(ctx context.Context, projectId, buildVariantName, ta
 // MarkFailed changes the state of the task to failed.
 func (t *Task) MarkFailed() error {
 	t.Status = evergreen.TaskFailed
+	t.DisplayStatusCache = t.findDisplayStatus()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey: evergreen.TaskFailed,
+				StatusKey:             evergreen.TaskFailed,
+				DisplayStatusCacheKey: t.DisplayStatusCache,
 			},
 		},
 	)
@@ -2077,6 +2101,7 @@ func activateDeactivatedDependencies(tasksToActivate map[string]Task, taskIDsToA
 					ActivatedTimeKey:            time.Now(),
 				},
 			},
+			addDisplayStatusCache,
 		},
 	)
 	if err != nil {
@@ -2315,6 +2340,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 	t.Details = *detail
 	t.ContainerAllocated = false
 	t.ContainerAllocatedTime = time.Time{}
+	t.DisplayStatusCache = t.findDisplayStatus()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -2327,6 +2353,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 				DetailsKey:            detail,
 				StartTimeKey:          t.StartTime,
 				ContainerAllocatedKey: false,
+				DisplayStatusCacheKey: t.DisplayStatusCache,
 			},
 			"$unset": bson.M{
 				ContainerAllocatedTimeKey: 1,
@@ -2342,6 +2369,12 @@ func (t *Task) GetDisplayStatus() string {
 	}
 	t.DisplayStatus = t.findDisplayStatus()
 	return t.DisplayStatus
+}
+
+// FindDisplayStatus publicly exports findDisplayStatus
+// TODO: replace all instances of findDisplayStatus, probably
+func (t *Task) FindDisplayStatus() string {
+	return t.findDisplayStatus()
 }
 
 // findDisplayStatus calculates the display status for a task based on its current state.
@@ -2484,9 +2517,10 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 		t.CanReset = false
 		t.IsAutomaticRestart = false
 		t.HasAnnotations = false
+		t.DisplayStatusCache = t.findDisplayStatus()
 	}
 	update := []bson.M{
-		{
+		bson.M{
 			"$set": bson.M{
 				ActivatedKey:                   true,
 				ActivatedTimeKey:               now,
@@ -2504,7 +2538,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 				NumNextTaskDispatchesKey:       0,
 			},
 		},
-		{
+		bson.M{
 			"$unset": []string{
 				DetailsKey,
 				TaskOutputInfoKey,
@@ -2523,6 +2557,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 				HasAnnotationsKey,
 			},
 		},
+		addDisplayStatusCache,
 	}
 	return update
 }
@@ -2671,15 +2706,17 @@ func (t *Task) MarkStart(startTime time.Time) error {
 	// record the start time in the in-memory task
 	t.StartTime = startTime
 	t.Status = evergreen.TaskStarted
+	t.DisplayStatusCache = t.findDisplayStatus()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey:        evergreen.TaskStarted,
-				LastHeartbeatKey: startTime,
-				StartTimeKey:     startTime,
+				StatusKey:             evergreen.TaskStarted,
+				LastHeartbeatKey:      startTime,
+				StartTimeKey:          startTime,
+				DisplayStatusCacheKey: t.DisplayStatusCache,
 			},
 		},
 	)
@@ -2688,13 +2725,15 @@ func (t *Task) MarkStart(startTime time.Time) error {
 // MarkUnscheduled marks the task as undispatched and updates it in the database
 func (t *Task) MarkUnscheduled() error {
 	t.Status = evergreen.TaskUndispatched
+	t.DisplayStatusCache = t.findDisplayStatus()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey: evergreen.TaskUndispatched,
+				StatusKey:             evergreen.TaskUndispatched,
+				DisplayStatusCacheKey: t.DisplayStatusCache,
 			},
 		},
 	)
@@ -2923,6 +2962,7 @@ func abortTasksByQuery(q bson.M, reason AbortInfo) error {
 func (t *Task) String() (taskStruct string) {
 	taskStruct += fmt.Sprintf("Id: %v\n", t.Id)
 	taskStruct += fmt.Sprintf("Status: %v\n", t.Status)
+	taskStruct += fmt.Sprintf("Display Status: %v\n", t.DisplayStatusCache)
 	taskStruct += fmt.Sprintf("Host: %v\n", t.HostId)
 	taskStruct += fmt.Sprintf("ScheduledTime: %v\n", t.ScheduledTime)
 	taskStruct += fmt.Sprintf("ContainerAllocatedTime: %v\n", t.ContainerAllocatedTime)
@@ -2960,7 +3000,8 @@ func (t *Task) Archive(ctx context.Context) error {
 			return errors.Wrap(err, "inserting archived task into old tasks")
 		}
 		t.Aborted = false
-		err = UpdateOne(
+		err = UpdateOneContext(
+			ctx,
 			bson.M{
 				IdKey:     t.Id,
 				StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
@@ -2973,7 +3014,11 @@ func (t *Task) Archive(ctx context.Context) error {
 					},
 				},
 			},
-			updateDisplayTasksAndTasksExpression,
+			[]bson.M{
+				updateDisplayTasksAndTasksSet,
+				updateDisplayTasksAndTasksUnset,
+				addDisplayStatusCache,
+			},
 		)
 		// Return nil if the task has already been archived
 		if adb.ResultsNotFound(err) {
@@ -3068,7 +3113,11 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 						},
 					},
 				},
-				updateDisplayTasksAndTasksExpression,
+				[]bson.M{
+					updateDisplayTasksAndTasksSet,
+					updateDisplayTasksAndTasksUnset,
+					addDisplayStatusCache,
+				},
 			)
 			if err != nil {
 				return nil, errors.Wrap(err, "archiving tasks")
@@ -3083,6 +3132,7 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 							"$" + LatestParentExecutionKey, 1,
 						}},
 					}},
+					addDisplayStatusCache,
 				})
 
 			if err != nil {
@@ -3101,7 +3151,9 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 						AbortedKey,
 						AbortInfoKey,
 						OverrideDependenciesKey,
-					}}})
+					}},
+					addDisplayStatusCache,
+				})
 
 			return nil, errors.Wrap(err, "updating restarting exec tasks")
 		}

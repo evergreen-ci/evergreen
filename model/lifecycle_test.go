@@ -266,31 +266,36 @@ func TestBuildRestart(t *testing.T) {
 			taskOne, err = task.FindOne(db.Query(task.ById("task1")))
 			So(err, ShouldBeNil)
 			So(taskOne.Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(taskOne.Activated, ShouldEqual, true)
+			So(taskOne.DisplayStatusCache, ShouldEqual, evergreen.TaskWillRun)
 			taskTwo, err = task.FindOne(db.Query(task.ById("task2")))
 			So(err, ShouldBeNil)
 			So(taskTwo.Aborted, ShouldEqual, true)
+			So(taskTwo.DisplayStatusCache, ShouldEqual, evergreen.TaskAborted)
 			So(taskTwo.ResetWhenFinished, ShouldBeTrue)
 		})
 
 		Convey("without task abort should update the status"+
 			" of only those build tasks not in-progress", func() {
 			taskThree := &task.Task{
-				Id:            "task3",
-				DisplayName:   "task3",
-				BuildId:       b.Id,
-				DisplayTaskId: utility.ToStringPtr(""),
-				Status:        evergreen.TaskSucceeded,
-				Activated:     true,
+				Id:                 "task3",
+				DisplayName:        "task3",
+				BuildId:            b.Id,
+				DisplayTaskId:      utility.ToStringPtr(""),
+				Status:             evergreen.TaskSucceeded,
+				DisplayStatusCache: evergreen.TaskSucceeded,
+				Activated:          true,
 			}
 			So(taskThree.Insert(), ShouldBeNil)
 
 			taskFour := &task.Task{
-				Id:            "task4",
-				DisplayName:   "task4",
-				BuildId:       b.Id,
-				DisplayTaskId: utility.ToStringPtr(""),
-				Status:        evergreen.TaskDispatched,
-				Activated:     true,
+				Id:                 "task4",
+				DisplayName:        "task4",
+				BuildId:            b.Id,
+				DisplayTaskId:      utility.ToStringPtr(""),
+				Status:             evergreen.TaskDispatched,
+				DisplayStatusCache: evergreen.TaskSucceeded,
+				Activated:          true,
 			}
 			So(taskFour.Insert(), ShouldBeNil)
 
@@ -302,10 +307,12 @@ func TestBuildRestart(t *testing.T) {
 			taskThree, err = task.FindOne(db.Query(task.ById("task3")))
 			So(err, ShouldBeNil)
 			So(taskThree.Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(taskThree.DisplayStatusCache, ShouldEqual, evergreen.TaskWillRun)
 			taskFour, err = task.FindOne(db.Query(task.ById("task4")))
 			So(err, ShouldBeNil)
 			So(taskFour.Aborted, ShouldEqual, false)
 			So(taskFour.Status, ShouldEqual, evergreen.TaskDispatched)
+			So(taskFour.DisplayStatusCache, ShouldEqual, evergreen.TaskDispatched)
 		})
 
 		Convey("single host task group tasks be omitted from the immediate restart logic", func() {
@@ -395,9 +402,11 @@ func TestBuildRestart(t *testing.T) {
 			taskEight, err = task.FindOne(db.Query(task.ById("task8")))
 			So(err, ShouldBeNil)
 			So(taskEight.Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(taskEight.DisplayStatusCache, ShouldEqual, evergreen.TaskWillRun)
 			taskNine, err = task.FindOne(db.Query(task.ById("task9")))
 			So(err, ShouldBeNil)
 			So(taskNine.Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(taskNine.DisplayStatusCache, ShouldEqual, evergreen.TaskWillRun)
 		})
 
 	})
@@ -2159,6 +2168,7 @@ func TestVersionRestart(t *testing.T) {
 			require.Len(t.DependsOn, 1)
 			assert.Equal("task1", t.DependsOn[0].TaskId)
 			assert.False(t.DependsOn[0].Finished, "restarting task1 should have marked dependency as unfinished")
+			assert.Equal(evergreen.TaskWillRun, t.DisplayStatusCache)
 		}
 	}
 	for _, b := range builds {

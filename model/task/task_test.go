@@ -1509,11 +1509,13 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	dbTask, err := FindOneId("t1")
 	assert.NoError(err)
 	assert.False(dbTask.Activated)
+	assert.Equal(evergreen.TaskUnscheduled, dbTask.DisplayStatusCache)
 	assert.EqualValues(-1, dbTask.Priority)
 
 	dbTask, err = FindOneId("t2")
 	assert.NoError(err)
 	assert.False(dbTask.Activated)
+	assert.Equal(evergreen.TaskUnscheduled, dbTask.DisplayStatusCache)
 	assert.EqualValues(-1, dbTask.Priority)
 }
 
