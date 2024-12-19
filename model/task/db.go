@@ -2836,7 +2836,6 @@ func abortAndMarkResetTasks(ctx context.Context, filter bson.M, taskIDs []string
 					AbortedKey:           true,
 					AbortInfoKey:         AbortInfo{User: caller},
 					ResetWhenFinishedKey: true,
-					DisplayStatusKey:     DisplayStatusExpression,
 				},
 			},
 			bson.M{

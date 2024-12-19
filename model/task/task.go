@@ -1169,13 +1169,13 @@ func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update []bson.M) err
 			},
 		},
 		bson.M{
-			"$unset": bson.M{
-				HostIdKey:         "",
-				AgentVersionKey:   "",
-				TaskOutputInfoKey: "",
-				AbortedKey:        "",
-				AbortInfoKey:      "",
-				DetailsKey:        "",
+			"$unset": bson.A{
+				HostIdKey,
+				AgentVersionKey,
+				TaskOutputInfoKey,
+				AbortedKey,
+				AbortInfoKey,
+				DetailsKey,
 			},
 		},
 		addDisplayStatusCache,

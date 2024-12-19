@@ -294,7 +294,7 @@ func TestBuildRestart(t *testing.T) {
 				BuildId:            b.Id,
 				DisplayTaskId:      utility.ToStringPtr(""),
 				Status:             evergreen.TaskDispatched,
-				DisplayStatusCache: evergreen.TaskSucceeded,
+				DisplayStatusCache: evergreen.TaskDispatched,
 				Activated:          true,
 			}
 			So(taskFour.Insert(), ShouldBeNil)
