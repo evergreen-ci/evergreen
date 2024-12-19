@@ -53,6 +53,15 @@ func TestRedactingSender(t *testing.T) {
 			inputString:        "secret_val",
 			expected:           fmt.Sprintf(redactedVariableTemplate, "secret_key1"),
 		},
+		"LargerExpansionRedactedFirst": {
+			expansions: map[string]string{
+				"secret_key1": "value",
+				"secret_key2": "longer_value",
+			},
+			expansionsToRedact: []string{"secret_key1", "secret_key2"},
+			inputString:        "longer_value",
+			expected:           fmt.Sprintf(redactedVariableTemplate, "secret_key2"),
+		},
 		"NonexistantExpansion": {
 			expansions: map[string]string{
 				"secret_key": "secret_val",
