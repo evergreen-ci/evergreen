@@ -30,12 +30,12 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 			}
 
 			for i := range containers {
-				catcher.Wrapf(DisableAndNotifyPoisonedHost(ctx, env, &containers[i], true, reason), "disabling poisoned container '%s' under parent '%s'", containers[i].Id, h.ParentID)
+				catcher.Wrapf(DisableAndNotifyPoisonedHost(ctx, env, &containers[i], true, reason, ""), "disabling poisoned container '%s' under parent '%s'", containers[i].Id, h.ParentID)
 			}
-			catcher.Wrapf(DisableAndNotifyPoisonedHost(ctx, env, parent, true, reason), "disabling poisoned parent '%s' of container '%s'", h.ParentID, h.Id)
+			catcher.Wrapf(DisableAndNotifyPoisonedHost(ctx, env, parent, true, reason, ""), "disabling poisoned parent '%s' of container '%s'", h.ParentID, h.Id)
 		}
 	} else {
-		catcher.Wrapf(DisableAndNotifyPoisonedHost(ctx, env, h, true, reason), "disabling poisoned host '%s'", h.Id)
+		catcher.Wrapf(DisableAndNotifyPoisonedHost(ctx, env, h, true, reason, ""), "disabling poisoned host '%s'", h.Id)
 	}
 
 	return catcher.Resolve()
@@ -46,17 +46,20 @@ func HandlePoisonedHost(ctx context.Context, env evergreen.Environment, h *host.
 // a job to notify that a host was disabled. If canDecommission is true and the
 // host is an ephemeral host, it will decommission the host instead of
 // quarantine it.
-func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment, h *host.Host, canDecommission bool, reason string) error {
+func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment, h *host.Host, canDecommission bool, reason string, usr string) error {
 	if utility.StringSliceContains(evergreen.DownHostStatus, h.Status) {
 		return nil
 	}
+	if usr == "" {
+		usr = evergreen.User
+	}
 
 	if canDecommission && h.Provider != evergreen.ProviderNameStatic {
-		if err := h.SetDecommissioned(ctx, evergreen.User, true, reason); err != nil {
+		if err := h.SetDecommissioned(ctx, usr, true, reason); err != nil {
 			return errors.Wrapf(err, "decommissioning host '%s'", h.Id)
 		}
 	} else {
-		if err := h.SetQuarantined(ctx, evergreen.User, reason); err != nil {
+		if err := h.SetQuarantined(ctx, usr, reason); err != nil {
 			return errors.Wrapf(err, "quarantining host '%s'", h.Id)
 		}
 	}
@@ -65,7 +68,7 @@ func DisableAndNotifyPoisonedHost(ctx context.Context, env evergreen.Environment
 		return errors.Wrap(err, "clearing stranded task from host")
 	}
 
-	return errors.Wrapf(amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewDecoHostNotifyJob(env, h.Id, reason)), "enqueueing decohost notify job for host '%s'", h.Id)
+	return errors.Wrapf(amboy.EnqueueUniqueJob(ctx, env.RemoteQueue(), NewDecoHostNotifyJob(env, h.Id, reason, usr)), "enqueueing decohost notify job for host '%s'", h.Id)
 }
 
 // EnqueueHostReprovisioningJob enqueues a job to reprovision a host. For hosts

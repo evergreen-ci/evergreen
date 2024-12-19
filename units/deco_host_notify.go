@@ -25,6 +25,7 @@ func init() {
 type decoHostNotifyJob struct {
 	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
 	Message  string `bson:"message" json:"message" yaml:"message"`
+	User     string `bson:"user" json:"user" yaml:"user"`
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 
 	host *host.Host
@@ -45,11 +46,12 @@ func makeDecoHostNotifyJob() *decoHostNotifyJob {
 
 // NewDecoHostNotifyJob notifies the relevant team that a host has been
 // decommissioned/quarantined and needs investigation.
-func NewDecoHostNotifyJob(env evergreen.Environment, hostID, message string) amboy.Job {
+func NewDecoHostNotifyJob(env evergreen.Environment, hostID, message, usr string) amboy.Job {
 	j := makeDecoHostNotifyJob()
 	j.env = env
 	j.HostID = hostID
 	j.Message = message
+	j.User = usr
 
 	j.SetID(fmt.Sprintf("%s.%s.%s", decoHostNotifyJobName, hostID, utility.RoundPartOfMinute(0)))
 	return j
@@ -81,6 +83,7 @@ func (j *decoHostNotifyJob) Run(ctx context.Context) {
 		"provider":         j.host.Provider,
 		"host_id":          j.host.Id,
 		"host_status":      j.host.Status,
+		"modified_by":      j.User,
 	}
 	if j.host.Provider != evergreen.ProviderNameStatic {
 		uptime := time.Since(j.host.CreationTime)
