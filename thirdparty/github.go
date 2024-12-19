@@ -247,6 +247,12 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":   "EOF error from github",
+					"method":    req.Method,
+					"url":       url,
+					"retry_num": index,
+				}))
 				return true
 			}
 			temporary := utility.IsTemporaryError(err)
