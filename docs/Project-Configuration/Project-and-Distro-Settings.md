@@ -675,7 +675,9 @@ patch_aliases:
     task: "^test.*$"
     parameters:
         - key: "myParam"
-        - value: "defaultValue"
+          value: "defaultValue"
+        - key: "myOtherParam"
+          value: "anotherOne"
 ```
 
 ### Merge Queue Aliases
