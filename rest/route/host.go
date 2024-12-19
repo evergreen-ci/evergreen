@@ -84,7 +84,7 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 		case evergreen.HostTerminated:
 			err = errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), foundHost, user.Id, "terminated via REST API"))
 		case evergreen.HostQuarantined:
-			err = units.DisableAndNotifyPoisonedHost(ctx, evergreen.GetEnvironment(), foundHost, false, fmt.Sprintf("quarantined via REST API by user '%s'", user.Id))
+			err = units.DisableAndNotifyPoisonedHost(ctx, evergreen.GetEnvironment(), foundHost, false, fmt.Sprintf("quarantined via REST API by user '%s'", user.Id), user.Id)
 		default:
 			err = foundHost.SetStatus(ctx, status.Status, user.Id, fmt.Sprintf("changed by %s from API", user.Id))
 		}
