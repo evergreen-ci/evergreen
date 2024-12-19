@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/utility"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -42,12 +43,13 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	}
 
 	if distro.Disabled {
-		// we can just clear these queues, the tasks will persist
-		// and get rescheduled once the distro is no longer disabled
+		// We can just clear these queues, the tasks will persist
+		// and get rescheduled once the distro is no longer disabled.
 		var queueInfo model.DistroQueueInfo
 		queueInfo, err = model.GetDistroQueueInfo(distro.Id)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			// Skip erroring if the queue doesn't exist, since we would've just cleared it anyway.
+			grip.ErrorWhen(!adb.ResultsNotFound(err), message.WrapError(err, message.Fields{
 				"message": "cannot get distro queue information for disabled distro",
 				"distro":  distro.Id,
 			}))
