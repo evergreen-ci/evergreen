@@ -1,13 +1,3 @@
 ---
 linters:
-  disable-all: true
-  enable:
-    - asciicheck
-    - errcheck
-    - ineffassign
-    - goimports
-    - gosimple
-    - govet
-    - misspell
-    - unconvert
-    - unused
+  enable-all: true
