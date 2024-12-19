@@ -260,18 +260,19 @@ func (h *testCountGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 	t := projCtx.Task
+	originalTask := t
 	if t.Execution != h.execution {
 		t, err := task.FindOneIdOldOrNew(t.Id, h.execution)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
-				Message:    errors.Wrapf(err, "finding task '%s' with execution %d", t.Id, h.execution).Error(),
+				Message:    errors.Wrapf(err, "finding task '%s' with execution %d", originalTask.Id, h.execution).Error(),
 			})
 		}
 		if t == nil {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("task '%s' with execution %d not found", t.Id, h.execution),
+				Message:    fmt.Sprintf("task '%s' with execution %d not found", originalTask.Id, h.execution),
 			})
 		}
 	}

@@ -20,8 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/rest/model"
-	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
@@ -71,7 +70,7 @@ func (s *PatchByIdSuite) TestFindById() {
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status(), "%+v", res.Data())
 
-	p, ok := res.Data().(*model.APIPatch)
+	p, ok := res.Data().(*restModel.APIPatch)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr(s.objIds[0]), p.Id)
 }
@@ -180,15 +179,15 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	s.NotNil(payload)
 
 	s.Len(payload, 2)
-	s.Equal(s.now.Add(time.Second*6), *(payload[0]).(model.APIPatch).CreateTime)
-	s.Equal(s.now.Add(time.Second*4), *(payload[1]).(model.APIPatch).CreateTime)
+	s.Equal(s.now.Add(time.Second*6), *(payload[0]).(restModel.APIPatch).CreateTime)
+	s.Equal(s.now.Add(time.Second*4), *(payload[1]).(restModel.APIPatch).CreateTime)
 
 	pages := resp.Pages()
 	s.NotNil(pages)
 	s.Nil(pages.Prev)
 	s.NotNil(pages.Next)
 
-	nextTime := s.now.Format(model.APITimeFormat)
+	nextTime := s.now.Format(restModel.APITimeFormat)
 	s.Equal(nextTime, pages.Next.Key)
 }
 
@@ -302,7 +301,7 @@ func (s *PatchAbortSuite) TestAbort() {
 	task2, err := task.FindOneId("task2")
 	s.NoError(err)
 	s.False(task2.Aborted)
-	p, ok := (res.Data()).(*model.APIPatch)
+	p, ok := (res.Data()).(*restModel.APIPatch)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr(s.objIds[0]), p.Id)
 
@@ -317,7 +316,7 @@ func (s *PatchAbortSuite) TestAbort() {
 	task2, err = task.FindOneId("task2")
 	s.NoError(err)
 	s.True(task2.Aborted)
-	p, ok = (res.Data()).(*model.APIPatch)
+	p, ok = (res.Data()).(*restModel.APIPatch)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr(s.objIds[1]), p.Id)
 
@@ -545,15 +544,15 @@ func (s *PatchesByUserSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	payload := resp.Data().([]interface{})
 
 	s.Len(payload, 2)
-	s.Equal(s.now.Add(time.Second*6), *(payload[0]).(model.APIPatch).CreateTime)
-	s.Equal(s.now.Add(time.Second*4), *(payload[1]).(model.APIPatch).CreateTime)
+	s.Equal(s.now.Add(time.Second*6), *(payload[0]).(restModel.APIPatch).CreateTime)
+	s.Equal(s.now.Add(time.Second*4), *(payload[1]).(restModel.APIPatch).CreateTime)
 
 	pageData := resp.Pages()
 
 	s.Nil(pageData.Prev)
 	s.NotNil(pageData.Next)
 
-	nextTime := s.now.Format(model.APITimeFormat)
+	nextTime := s.now.Format(restModel.APITimeFormat)
 	s.Equal(nextTime, pageData.Next.Key)
 }
 
@@ -663,7 +662,7 @@ func (s *CountEstimatedGeneratedTasksSuite) TestFindById() {
 	res := s.route.Run(context.TODO())
 	s.Require().NotNil(res)
 	s.Require().Equal(http.StatusOK, res.Status())
-	result := (res.Data()).(*restmodel.APINumTasksToFinalize)
+	result := (res.Data()).(*restModel.APINumTasksToFinalize)
 	s.Equal(utility.ToIntPtr(120), result.NumTasksToFinalize)
 }
 
@@ -713,7 +712,7 @@ func TestPatchRawModulesHandler(t *testing.T) {
 	defer cancel()
 	response := route.Run(ctx)
 
-	rawModulesResponse, ok := response.Data().(*restmodel.APIRawPatch)
+	rawModulesResponse, ok := response.Data().(*restModel.APIRawPatch)
 	require.True(t, ok)
 
 	rp := rawModulesResponse.Patch
@@ -979,7 +978,7 @@ buildvariants:
 	assert.NoError(t, err)
 	assert.NoError(t, handler.Parse(ctx, req))
 	resp := handler.Run(ctx)
-	respVersion := resp.Data().(model.APIVersion)
+	respVersion := resp.Data().(restModel.APIVersion)
 	assert.Equal(t, unfinalized.Id.Hex(), *respVersion.Id)
 	assert.Equal(t, description, *respVersion.Message)
 	tasks, err := task.Find(task.ByVersion(*respVersion.Id))
@@ -1015,7 +1014,7 @@ buildvariants:
 	assert.NoError(t, err)
 	assert.NoError(t, handler.Parse(ctx, req))
 	resp = handler.Run(ctx)
-	respVersion = resp.Data().(model.APIVersion)
+	respVersion = resp.Data().(restModel.APIVersion)
 	assert.Equal(t, unfinalized.Id.Hex(), *respVersion.Id)
 	assert.Equal(t, description, *respVersion.Message)
 	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
@@ -1072,7 +1071,7 @@ buildvariants:
 	assert.NoError(t, err)
 	assert.NoError(t, handler.Parse(ctx, req))
 	resp = handler.Run(ctx)
-	respVersion = resp.Data().(model.APIVersion)
+	respVersion = resp.Data().(restModel.APIVersion)
 	assert.Equal(t, patch2.Id.Hex(), *respVersion.Id)
 	assert.Equal(t, "", *respVersion.Message)
 	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
@@ -1105,7 +1104,7 @@ buildvariants:
 	assert.NoError(t, err)
 	assert.NoError(t, handler.Parse(ctx, req))
 	resp = handler.Run(ctx)
-	respVersion = resp.Data().(model.APIVersion)
+	respVersion = resp.Data().(restModel.APIVersion)
 	assert.Equal(t, patch3.Id.Hex(), *respVersion.Id)
 	assert.Equal(t, "", *respVersion.Message)
 	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
@@ -1392,7 +1391,7 @@ tasks:
 	assert.NoError(t, err)
 	assert.NoError(t, handler.Parse(ctx, req))
 	resp := handler.Run(ctx)
-	respVersion := resp.Data().(model.APIVersion)
+	respVersion := resp.Data().(restModel.APIVersion)
 	assert.Equal(t, unfinalized.Id.Hex(), *respVersion.Id)
 	assert.Equal(t, description, *respVersion.Message)
 	tasks, err := task.Find(task.ByVersion(*respVersion.Id))
@@ -1424,7 +1423,7 @@ tasks:
 	assert.NoError(t, err)
 	assert.NoError(t, handler.Parse(ctx, req))
 	resp = handler.Run(ctx)
-	respVersion = resp.Data().(model.APIVersion)
+	respVersion = resp.Data().(restModel.APIVersion)
 	assert.Equal(t, unfinalized.Id.Hex(), *respVersion.Id)
 	assert.Equal(t, description, *respVersion.Message)
 	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
@@ -1451,7 +1450,7 @@ tasks:
 	assert.NoError(t, handler.Parse(ctx, req))
 	resp = handler.Run(ctx)
 
-	respVersion = resp.Data().(model.APIVersion)
+	respVersion = resp.Data().(restModel.APIVersion)
 	assert.Equal(t, unfinalized.Id.Hex(), *respVersion.Id)
 	assert.Equal(t, description, *respVersion.Message)
 	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
