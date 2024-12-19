@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -139,9 +140,10 @@ func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {
 	uis.umconf.ClearCookie(w)
 	if uis.Settings.Ui.StagingEnvironment != "" {
 		http.SetCookie(w, &http.Cookie{
-			Name:   stagingEnvironmentCookieName,
-			Value:  uis.Settings.Ui.StagingEnvironment,
-			Domain: uis.Settings.Ui.LoginDomain,
+			Name:    stagingEnvironmentCookieName,
+			Value:   uis.Settings.Ui.StagingEnvironment,
+			Domain:  uis.Settings.Ui.LoginDomain,
+			Expires: time.Now().Add(evergreen.LoginCookieTTL),
 		})
 	}
 
