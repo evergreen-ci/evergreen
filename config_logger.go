@@ -3,6 +3,7 @@ package evergreen
 import (
 	"context"
 
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
@@ -17,6 +18,14 @@ type LoggerConfig struct {
 	LogkeeperURL   string       `bson:"logkeeper_url" json:"logkeeper_url" yaml:"logkeeper_url"`
 	RedactKeys     []string     `bson:"redact_keys" json:"redact_keys" yaml:"redact_keys"`
 }
+
+var (
+	bufferKey         = bsonutil.MustHaveTag(LoggerConfig{}, "Buffer")
+	defaultLevelKey   = bsonutil.MustHaveTag(LoggerConfig{}, "DefaultLevel")
+	thresholdLevelKey = bsonutil.MustHaveTag(LoggerConfig{}, "ThresholdLevel")
+	logkeeperURLKey   = bsonutil.MustHaveTag(LoggerConfig{}, "LogkeeperURL")
+	redactKeysKey     = bsonutil.MustHaveTag(LoggerConfig{}, "RedactKeys")
+)
 
 func (c LoggerConfig) Info() send.LevelInfo {
 	return send.LevelInfo{
@@ -34,10 +43,11 @@ func (c *LoggerConfig) Get(ctx context.Context) error {
 func (c *LoggerConfig) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			"buffer":          c.Buffer,
-			"default_level":   c.DefaultLevel,
-			"threshold_level": c.ThresholdLevel,
-			"logkeeper_url":   c.LogkeeperURL,
+			bufferKey:         c.Buffer,
+			defaultLevelKey:   c.DefaultLevel,
+			thresholdLevelKey: c.ThresholdLevel,
+			logkeeperURLKey:   c.LogkeeperURL,
+			redactKeysKey:     c.RedactKeys,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
