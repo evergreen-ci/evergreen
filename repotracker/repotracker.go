@@ -621,9 +621,8 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 	v.Ignored = ignore
 
-	// Compute aliases first, so we can include this in the version errors if there's a problem.
+	// Compute aliases first to include undefined requested alias in the stub version errors list.
 	var aliases model.ProjectAliases
-	var aliasErr string
 	if metadata.Alias == evergreen.GitTagAlias {
 		aliases, err = model.FindMatchingGitTagAliasesInProject(projectInfo.Ref.Id, metadata.GitTag.Tag)
 		if err != nil {
@@ -635,6 +634,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 			return v, errors.Wrap(err, "error finding project alias")
 		}
 	}
+	var aliasErr string
 	if metadata.Alias != "" && len(aliases) == 0 {
 		aliasErr = fmt.Sprintf("requested alias '%s' is undefined", metadata.Alias)
 	}
