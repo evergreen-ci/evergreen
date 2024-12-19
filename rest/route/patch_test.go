@@ -21,7 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
@@ -663,7 +663,7 @@ func (s *CountEstimatedGeneratedTasksSuite) TestFindById() {
 	res := s.route.Run(context.TODO())
 	s.Require().NotNil(res)
 	s.Require().Equal(http.StatusOK, res.Status())
-	result := (res.Data()).(*restModel.APINumTasksToFinalize)
+	result := (res.Data()).(*restmodel.APINumTasksToFinalize)
 	s.Equal(utility.ToIntPtr(120), result.NumTasksToFinalize)
 }
 
@@ -713,7 +713,7 @@ func TestPatchRawModulesHandler(t *testing.T) {
 	defer cancel()
 	response := route.Run(ctx)
 
-	rawModulesResponse, ok := response.Data().(*restModel.APIRawPatch)
+	rawModulesResponse, ok := response.Data().(*restmodel.APIRawPatch)
 	require.True(t, ok)
 
 	rp := rawModulesResponse.Patch
