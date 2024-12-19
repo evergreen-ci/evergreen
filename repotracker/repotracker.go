@@ -980,6 +980,8 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			},
 		})
 	}
+	// We must set the NumDependents field for tasks prior to inserting them in the DB.
+	model.SetNumDependents(tasksToCreate)
 
 	grip.ErrorWhen(len(buildsToCreate) == 0, message.Fields{
 		"message":           "version has no builds",
