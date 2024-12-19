@@ -246,6 +246,9 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 		url := req.URL.String()
 
 		if err != nil {
+			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+				return true
+			}
 			temporary := utility.IsTemporaryError(err)
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":   "failed trying to call github",
