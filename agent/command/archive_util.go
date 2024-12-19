@@ -17,6 +17,19 @@ import (
 	"github.com/pkg/errors"
 )
 
+// isRel checks if the candidate path is relative to the target path.
+func isRel(candidate, target string) bool {
+	if filepath.IsAbs(candidate) {
+		return false
+	}
+	realpath, err := filepath.EvalSymlinks(filepath.Join(target, candidate))
+	if err != nil {
+		return false
+	}
+	relpath, err := filepath.Rel(target, realpath)
+	return err == nil && !strings.HasPrefix(filepath.Clean(relpath), "..")
+}
+
 // buildArchive reads the rootPath directory into the tar.Writer,
 // taking included and excluded strings into account.
 // Returns the number of files that were added to the archive
@@ -157,7 +170,10 @@ func extractTarArchive(ctx context.Context, tarReader *tar.Reader, rootPath stri
 				return errors.WithStack(err)
 			}
 		} else if hdr.Typeflag == tar.TypeSymlink {
-			if err = os.Symlink(filepath.Join(rootPath, hdr.Linkname), filepath.Join(rootPath, hdr.Name)); err != nil {
+			if !isRel(hdr.Linkname, rootPath) || !isRel(hdr.Name, rootPath) {
+				return errors.Wrap(errors.WithStack(err), "symlinks must be relative to the root path")
+			}
+			if err = os.Symlink(hdr.Linkname, hdr.Name); err != nil {
 				return errors.WithStack(err)
 			}
 		} else if hdr.Typeflag == tar.TypeReg || hdr.Typeflag == tar.TypeRegA {
