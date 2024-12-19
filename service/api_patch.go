@@ -158,7 +158,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		RequiredLevel: evergreen.PatchSubmit.Value,
 	})
 	if !hasPermission {
-		as.LoggedError(w, r, http.StatusUnauthorized, errors.Errorf("not authorized to patch for project '%s', please ensure you have Patches: Submit and Edit permission in MANA", data.Project))
+		as.LoggedError(w, r, http.StatusUnauthorized, errors.Errorf("not authorized to patch for project '%s', please ensure you have 'Patches: Submit and Edit' permission in MANA", data.Project))
 		return
 	}
 
