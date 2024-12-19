@@ -199,6 +199,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.TaskLimits.MaxTasksPerVersion, settings.TaskLimits.MaxTasksPerVersion)
 	s.EqualValues(testSettings.TestSelection.URL, settings.TestSelection.URL)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settings.Ui.HttpListenAddr)
+	s.EqualValues(testSettings.Ui.StagingEnvironment, settings.Ui.StagingEnvironment)
 
 	// test that invalid input errors
 	badSettingsOne := testutil.MockConfig()

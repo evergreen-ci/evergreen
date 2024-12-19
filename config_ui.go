@@ -30,6 +30,7 @@ type UIConfig struct {
 	LoginDomain               string       `bson:"login_domain" json:"login_domain" yaml:"login_domain"`                                                 // domain for the login cookie (defaults to domain of app)
 	UserVoice                 string       `bson:"userVoice" json:"userVoice" yaml:"userVoice"`
 	BetaFeatures              BetaFeatures `bson:"beta_features" json:"beta_features" yaml:"beta_features"`
+	StagingEnvironment        string       `bson:"staging_environment,omitempty" json:"staging_environment" yaml:"staging_environment"`
 }
 
 func (c *UIConfig) SectionId() string { return "ui" }
@@ -55,6 +56,7 @@ func (c *UIConfig) Set(ctx context.Context) error {
 			"login_domain":                 c.LoginDomain,
 			"userVoice":                    c.UserVoice,
 			"beta_features":                c.BetaFeatures,
+			"staging_environment":          c.StagingEnvironment,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

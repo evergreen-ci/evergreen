@@ -168,7 +168,7 @@ func SetLoginToken(token, domain string, w http.ResponseWriter) {
 		HttpOnly: true,
 		Path:     "/",
 		Domain:   domain,
-		Expires:  time.Now().Add(365 * 24 * time.Hour),
+		Expires:  time.Now().Add(evergreen.LoginCookieTTL),
 		Secure:   true,
 	}
 	http.SetCookie(w, authTokenCookie)

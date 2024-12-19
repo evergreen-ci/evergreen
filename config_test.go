@@ -489,13 +489,14 @@ func (s *AdminSuite) TestUiConfig() {
 	defer cancel()
 
 	config := UIConfig{
-		Url:            "url",
-		HelpUrl:        "helpurl",
-		HttpListenAddr: "addr",
-		Secret:         "secret",
-		DefaultProject: "mci",
-		CacheTemplates: true,
-		CsrfKey:        "csrf",
+		Url:                "url",
+		HelpUrl:            "helpurl",
+		HttpListenAddr:     "addr",
+		Secret:             "secret",
+		DefaultProject:     "mci",
+		CacheTemplates:     true,
+		CsrfKey:            "csrf",
+		StagingEnvironment: "mine",
 	}
 
 	err := config.Set(ctx)
