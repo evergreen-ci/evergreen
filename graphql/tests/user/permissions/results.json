@@ -5,8 +5,8 @@
       "result": {
         "data": {
           "user": {
-            "displayName": "testuser",
-            "userId": "testuser",
+            "displayName": "Admin User",
+            "userId": "admin_user",
             "permissions": {
               "canCreateDistro": true,
               "canCreateProject": true,

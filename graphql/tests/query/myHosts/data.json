@@ -18,7 +18,7 @@
       "display_name": "",
       "project": "",
       "zone": "us-east-1e",
-      "persistent_dns_name": "testuser-123.workstations.build.10gen.cc",
+      "persistent_dns_name": "regular_user-123.workstations.build.10gen.cc",
       "provisioned": true,
       "priv_attempts": 1,
       "last_task": "",
@@ -43,7 +43,7 @@
         "$date": "2020-07-20T18:58:51.025Z"
       },
       "status": "provisioning",
-      "started_by": "testuser",
+      "started_by": "regular_user",
       "user_host": false,
       "agent_revision": "2020-07-18",
       "needs_agent": false,
@@ -214,7 +214,7 @@
         "$date": "2020-07-20T19:08:41.928Z"
       },
       "status": "running",
-      "started_by": "testuser",
+      "started_by": "regular_user",
       "user_host": false,
       "agent_revision": "2020-07-18",
       "needs_agent": false,
@@ -446,7 +446,7 @@
         "$date": "2020-07-20T19:08:41.928Z"
       },
       "status": "running",
-      "started_by": "testuser",
+      "started_by": "regular_user",
       "user_host": false,
       "agent_revision": "2020-07-18",
       "needs_agent": false,
@@ -568,7 +568,7 @@
         "$date": "2020-07-20T18:58:51.025Z"
       },
       "status": "terminated",
-      "started_by": "testuser",
+      "started_by": "regular_user",
       "user_host": false,
       "agent_revision": "2020-07-18",
       "needs_agent": false,
@@ -635,7 +635,7 @@
         "$date": "2020-05-04T18:58:51.025Z"
       },
       "status": "terminated",
-      "started_by": "testuser",
+      "started_by": "regular_user",
       "user_host": false,
       "agent_revision": "2020-05-04",
       "needs_agent": false,

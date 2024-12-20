@@ -1,49 +1,49 @@
 {
-    repoSettings(repoId: "repo_id") {
-        subscriptions{
-            id
-            resourceType
-            trigger
-            selectors{
-                type
-                data
+  repoSettings(repoId: "sandbox_repo_id") {
+    subscriptions {
+      id
+      resourceType
+      trigger
+      selectors {
+        type
+        data
+      }
+      regexSelectors {
+        type
+        data
+      }
+      ownerType
+      triggerData
+      subscriber {
+        type
+        subscriber {
+          githubPRSubscriber {
+            owner
+            repo
+            ref
+            prNumber
+          }
+          githubCheckSubscriber {
+            owner
+            repo
+            ref
+          }
+          webhookSubscriber {
+            url
+            headers {
+              key
+              value
             }
-            regexSelectors{
-                type
-                data
-            }
-            ownerType
-            triggerData
-            subscriber{
-                type
-                subscriber{
-                    githubPRSubscriber{
-                        owner
-                        repo
-                        ref
-                        prNumber
-                    }
-                    githubCheckSubscriber{
-                        owner
-                        repo
-                        ref
-                    }
-                    webhookSubscriber{
-                        url
-                        headers{
-                            key
-                            value
-                        }
-                    }
-                    jiraIssueSubscriber{
-                        project
-                        issueType
-                    }
-                    jiraCommentSubscriber
-                    emailSubscriber
-                    slackSubscriber
-                }
-            }
+          }
+          jiraIssueSubscriber {
+            project
+            issueType
+          }
+          jiraCommentSubscriber
+          emailSubscriber
+          slackSubscriber
         }
+      }
     }
+  }
 }
