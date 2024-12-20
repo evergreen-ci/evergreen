@@ -548,11 +548,9 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 		if s3pc.Visibility == artifact.Signed {
 			bucket = s3pc.Bucket
 			fileKey = remoteFileName
-			// Buckets that are not devprod owned require AWS credentials.
-			if !utility.StringSliceContains(s3pc.devprodOwnedBuckets, s3pc.Bucket) {
-				key = s3pc.AwsKey
-				secret = s3pc.AwsSecret
-			}
+			// TODO (DEVPROD-13658): Check if the bucket is devprod owned and do not send the credentials if it is.
+			key = s3pc.AwsKey
+			secret = s3pc.AwsSecret
 		}
 
 		files = append(files, &artifact.File{
