@@ -87,14 +87,16 @@ func (h *agentSetup) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 	data := apimodels.AgentSetupData{
-		SplunkServerURL:    h.settings.Splunk.SplunkConnectionInfo.ServerURL,
-		SplunkClientToken:  h.settings.Splunk.SplunkConnectionInfo.Token,
-		SplunkChannel:      h.settings.Splunk.SplunkConnectionInfo.Channel,
-		TaskOutput:         h.settings.Buckets.Credentials,
-		TaskSync:           h.settings.Providers.AWS.TaskSync,
-		EC2Keys:            h.settings.Providers.AWS.EC2Keys,
-		MaxExecTimeoutSecs: h.settings.TaskLimits.MaxExecTimeoutSecs,
+		SplunkServerURL:     h.settings.Splunk.SplunkConnectionInfo.ServerURL,
+		SplunkClientToken:   h.settings.Splunk.SplunkConnectionInfo.Token,
+		SplunkChannel:       h.settings.Splunk.SplunkConnectionInfo.Channel,
+		TaskOutput:          h.settings.Buckets.Credentials,
+		TaskSync:            h.settings.Providers.AWS.TaskSync,
+		EC2Keys:             h.settings.Providers.AWS.EC2Keys,
+		DevProdOwnedBuckets: h.settings.DevProdOwnedBuckets,
+		MaxExecTimeoutSecs:  h.settings.TaskLimits.MaxExecTimeoutSecs,
 	}
+
 	if h.settings.Tracer.Enabled {
 		data.TraceCollectorEndpoint = h.settings.Tracer.CollectorEndpoint
 	}

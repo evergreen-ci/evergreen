@@ -27,6 +27,7 @@ var (
 	awsInstanceRoleKey     = bsonutil.MustHaveTag(Settings{}, "AWSInstanceRole")
 	cedarKey               = bsonutil.MustHaveTag(Settings{}, "Cedar")
 	hostJasperKey          = bsonutil.MustHaveTag(Settings{}, "HostJasper")
+	devProdOwnedBucketsKey = bsonutil.MustHaveTag(Settings{}, "devProdOwnedBuckets")
 	domainNameKey          = bsonutil.MustHaveTag(Settings{}, "DomainName")
 	jiraKey                = bsonutil.MustHaveTag(Settings{}, "Jira")
 	splunkKey              = bsonutil.MustHaveTag(Settings{}, "Splunk")

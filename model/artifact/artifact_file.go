@@ -7,7 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -71,9 +73,10 @@ func (f *File) validate() error {
 	catcher.ErrorfWhen(f.Bucket == "", "bucket is required")
 	catcher.ErrorfWhen(f.FileKey == "", "file key is required")
 
-	if f.Bucket != "mciuploads" {
-		catcher.ErrorfWhen(f.AwsKey == "", "aws key is required")
-		catcher.ErrorfWhen(f.AwsSecret == "", "aws secret is required")
+	// Buckets that are not devprod owned require AWS credentials.
+	if !isDevProdOwnedBucket(f.Bucket) {
+		catcher.ErrorfWhen(f.AwsKey == "", "AWS key is required")
+		catcher.ErrorfWhen(f.AwsSecret == "", "AWS secret is required")
 	}
 
 	return catcher.Resolve()
@@ -108,8 +111,10 @@ func presignFile(ctx context.Context, file File) (string, error) {
 		return "", errors.Wrap(err, "file validation failed")
 	}
 
-	// The AWS SDK will use IRSA to sign the URL when no credentials are provided.
-	if file.Bucket == "mciuploads" {
+	// If this bucket is a devprod owned one, we sign the URL
+	// with the app's server IRSA credentials (which is used
+	// when no credentials are provided).
+	if isDevProdOwnedBucket(file.Bucket) {
 		file.AwsKey = ""
 		file.AwsSecret = ""
 	}
@@ -119,7 +124,7 @@ func presignFile(ctx context.Context, file File) (string, error) {
 		FileKey:               file.FileKey,
 		AwsKey:                file.AwsKey,
 		AwsSecret:             file.AwsSecret,
-		SignatureExpiryWindow: 15 * time.Minute,
+		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
 	}
 	return pail.PreSign(ctx, requestParams)
 }
@@ -191,4 +196,8 @@ func escapeFile(path string) string {
 		return path
 	}
 	return path[:i] + strings.Replace(path[i:], base, url.QueryEscape(base), 1)
+}
+
+func isDevProdOwnedBucket(bucketName string) bool {
+	return utility.StringSliceContains(evergreen.GetEnvironment().Settings().DevProdOwnedBuckets, bucketName)
 }

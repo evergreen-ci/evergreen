@@ -60,6 +60,10 @@ type TaskConfig struct {
 	// message of a version to be used in the otel attributes.
 	PatchOrVersionDescription string
 
+	// DevProdOwnedBuckets holds the list of buckets that are owned by
+	// DevProd.
+	DevProdOwnedBuckets []string
+
 	mu sync.RWMutex
 }
 
