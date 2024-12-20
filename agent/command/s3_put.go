@@ -125,7 +125,8 @@ type s3put struct {
 	isPatchable      bool
 	isPatchOnly      bool
 
-	bucket pail.Bucket
+	bucket              pail.Bucket
+	devprodOwnedBuckets []string
 
 	taskdata client.TaskData
 	base
@@ -311,6 +312,8 @@ func (s3pc *s3put) Execute(ctx context.Context,
 		attribute.String(s3PutPermissionsAttribute, s3pc.Permissions),
 		attribute.String(s3PutRemotePathAttribute, s3pc.remoteFile),
 	)
+
+	s3pc.devprodOwnedBuckets = conf.DevProdOwnedBuckets
 
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()
@@ -543,14 +546,13 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 		}
 		var key, secret, bucket, fileKey string
 		if s3pc.Visibility == artifact.Signed {
-			// If the bucket is mciuploads, we don't need to provide credentials.
-			// The Evergreen app servers will use their IRSA credentials.
-			if s3pc.Bucket != "mciuploads" {
+			bucket = s3pc.Bucket
+			fileKey = remoteFileName
+			// Buckets that are not devprod owned require AWS credentials.
+			if !utility.StringSliceContains(s3pc.devprodOwnedBuckets, s3pc.Bucket) {
 				key = s3pc.AwsKey
 				secret = s3pc.AwsSecret
 			}
-			bucket = s3pc.Bucket
-			fileKey = remoteFileName
 		}
 
 		files = append(files, &artifact.File{
