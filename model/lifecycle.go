@@ -502,10 +502,6 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		return nil, nil, errors.Wrapf(err, "creating tasks for build '%s'", creationInfo.Build.Id)
 	}
 
-	if err = tasks.InsertUnordered(ctx); err != nil {
-		return nil, nil, errors.Wrapf(err, "inserting tasks for build '%s'", creationInfo.Build.Id)
-	}
-
 	var hasGitHubCheck bool
 	var hasUnfinishedEssentialTask bool
 	for _, t := range tasks {
@@ -523,11 +519,6 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 	}
 	if err := creationInfo.Build.SetHasUnfinishedEssentialTask(hasUnfinishedEssentialTask); err != nil {
 		return nil, nil, errors.Wrapf(err, "setting build '%s' as having an unfinished essential task", creationInfo.Build.Id)
-	}
-
-	// update the build to hold the new tasks
-	if err = RefreshTasksCache(creationInfo.Build.Id); err != nil {
-		return nil, nil, errors.Wrapf(err, "updating task cache for '%s'", creationInfo.Build.Id)
 	}
 
 	batchTimeTaskStatuses := []BatchTimeTaskStatus{}
@@ -862,10 +853,6 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 		tasks = append(tasks, t)
 	}
 
-	// Set the NumDependents field
-	// Existing tasks in the db and tasks in other builds are not updated
-	setNumDeps(tasks)
-
 	sort.Stable(tasks)
 
 	// return all of the tasks created
@@ -975,28 +962,26 @@ func shouldSyncTask(syncVariantsTasks []patch.VariantTasks, bv, task string) boo
 	return false
 }
 
-// setNumDeps sets NumDependents for each task in tasks.
-// NumDependents is the number of tasks depending on the task. Only tasks created at the same time
-// and in the same variant are included.
-func setNumDeps(tasks []*task.Task) {
+// SetNumDependents sets NumDependents for each task in tasks.
+// NumDependents is the number of tasks depending on the task.
+func SetNumDependents(tasks []*task.Task) {
 	idToTask := make(map[string]*task.Task)
 	for i, task := range tasks {
 		idToTask[task.Id] = tasks[i]
 	}
 	deduplicatedTasks := []*task.Task{}
 	for _, task := range idToTask {
-		task.NumDependents = 0
 		deduplicatedTasks = append(deduplicatedTasks, task)
 	}
 	for _, task := range deduplicatedTasks {
 		// Recursively find all tasks that task depends on and increments their NumDependents field
-		setNumDepsRec(task, idToTask, make(map[string]bool))
+		setNumDependentsRec(task, idToTask, make(map[string]bool))
 	}
 }
 
-// setNumDepsRec recursively finds all tasks that task depends on and increments their NumDependents field.
+// setNumDependentsRec recursively finds all tasks that task depends on and increments their NumDependents field.
 // tasks not in idToTasks are not affected.
-func setNumDepsRec(t *task.Task, idToTasks map[string]*task.Task, seen map[string]bool) {
+func setNumDependentsRec(t *task.Task, idToTasks map[string]*task.Task, seen map[string]bool) {
 	for _, dep := range t.DependsOn {
 		// Check whether this dependency is included in the tasks we're currently creating
 		depTask, ok := idToTasks[dep.TaskId]
@@ -1008,7 +993,7 @@ func setNumDepsRec(t *task.Task, idToTasks map[string]*task.Task, seen map[strin
 		if !seen[depTask.Id] {
 			seen[depTask.Id] = true
 			depTask.NumDependents = depTask.NumDependents + 1
-			setNumDepsRec(depTask, idToTasks, seen)
+			setNumDependentsRec(depTask, idToTasks, seen)
 		}
 	}
 }
@@ -1043,8 +1028,12 @@ func RecomputeNumDependents(ctx context.Context, t task.Task) error {
 	for i := range depTasks {
 		taskPtrs = append(taskPtrs, &depTasks[i])
 	}
-
-	versionTasks, err := task.FindAll(db.Query(task.ByVersion(t.Version)))
+	query := task.ByVersion(t.Version)
+	_, err = task.UpdateAll(query, bson.M{"$set": bson.M{task.NumDependentsKey: 0}})
+	if err != nil {
+		return errors.Wrap(err, "resetting num dependents")
+	}
+	versionTasks, err := task.FindAll(db.Query(query))
 	if err != nil {
 		return errors.Wrap(err, "getting tasks in version")
 	}
@@ -1052,7 +1041,7 @@ func RecomputeNumDependents(ctx context.Context, t task.Task) error {
 		taskPtrs = append(taskPtrs, &versionTasks[i])
 	}
 
-	setNumDeps(taskPtrs)
+	SetNumDependents(taskPtrs)
 	catcher := grip.NewBasicCatcher()
 	for _, t := range taskPtrs {
 		catcher.Add(t.SetNumDependents())
@@ -1532,6 +1521,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 	newActivatedTasks := []task.Task{}
 	newBuildStatuses := make([]VersionBuildStatus, 0)
 	numEstimatedActivatedGeneratedTasks := 0
+	allTasks := task.Tasks{}
 
 	variantsProcessed := map[string]bool{}
 	for _, b := range existingBuilds {
@@ -1588,11 +1578,9 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			continue
 		}
 
+		allTasks = append(allTasks, tasks...)
 		if err = build.Insert(); err != nil {
 			return nil, errors.Wrapf(err, "inserting build '%s'", build.Id)
-		}
-		if err = tasks.InsertUnordered(ctx); err != nil {
-			return nil, errors.Wrapf(err, "inserting tasks for build '%s'", build.Id)
 		}
 		newBuildIds = append(newBuildIds, build.Id)
 
@@ -1638,6 +1626,10 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 				},
 			},
 		)
+	}
+	SetNumDependents(allTasks)
+	if err = allTasks.InsertUnordered(ctx); err != nil {
+		return nil, errors.Wrap(err, "inserting tasks")
 	}
 	numTasksModified := numEstimatedActivatedGeneratedTasks + len(newActivatedTaskIds)
 	if err = task.UpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, numTasksModified, true); err != nil {
@@ -1694,6 +1686,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 
 	activatedTaskIds := []string{}
 	activatedTasks := []task.Task{}
+	allTasks := task.Tasks{}
 	var buildIdsToActivate []string
 	for _, b := range existingBuilds {
 		wasActivated := b.Activated
@@ -1746,6 +1739,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 			return nil, err
 		}
 
+		allTasks = append(allTasks, tasks...)
 		for _, t := range tasks {
 			if t.Activated {
 				activatedTaskIds = append(activatedTaskIds, t.Id)
@@ -1759,6 +1753,16 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		// update build activation status if tasks have since been activated
 		if !wasActivated && b.Activated {
 			buildIdsToActivate = append(buildIdsToActivate, b.Id)
+		}
+	}
+	SetNumDependents(allTasks)
+	if err = allTasks.InsertUnordered(ctx); err != nil {
+		return nil, errors.Wrap(err, "inserting tasks")
+	}
+	// update each build to hold the new tasks
+	for _, b := range existingBuilds {
+		if err = RefreshTasksCache(b.Id); err != nil {
+			return nil, errors.Wrapf(err, "updating task cache for '%s'", b.Id)
 		}
 	}
 	if err = task.CheckUsersPatchTaskLimit(creationInfo.Version.Requester, creationInfo.Version.Author, false, activatedTasks...); err != nil {
