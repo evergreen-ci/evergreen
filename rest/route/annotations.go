@@ -229,7 +229,7 @@ func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 // PUT /rest/v2/tasks/{task_id}/annotation
 
 // Parsing logic for task annotation put and patch routes.
-func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (string, *restModel.APITaskAnnotation, error) {
+func annotationByTaskPutOrPatchParser(_ context.Context, r *http.Request) (string, *restModel.APITaskAnnotation, error) {
 	var taskId string
 	var annotation *restModel.APITaskAnnotation
 	var err error
@@ -343,7 +343,7 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 }
 
 func (h *annotationByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
-	err := task.UpsertAnnotation(restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName())
+	err := task.UpsertAnnotation(ctx, restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName())
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "updating annotation"))
 	}
@@ -398,7 +398,7 @@ func (h *annotationByTaskPatchHandler) Parse(ctx context.Context, r *http.Reques
 }
 
 func (h *annotationByTaskPatchHandler) Run(ctx context.Context) gimlet.Responder {
-	err := task.PatchAnnotation(restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName(), h.upsert)
+	err := task.PatchAnnotation(ctx, restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName(), h.upsert)
 	if err != nil {
 		gimlet.NewJSONInternalErrorResponse(err)
 	}

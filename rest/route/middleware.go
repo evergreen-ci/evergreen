@@ -295,6 +295,7 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("task '%s' not found", h.StartedBy),
 		}))
+		return
 	}
 	if _, code, err := model.ValidateHost(t.HostId, r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -811,7 +812,7 @@ func NewGithubAuthMiddleware() gimlet.Middleware {
 type githubAuthMiddleware struct{}
 
 func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	githubSecret := []byte(evergreen.GetEnvironment().Settings().Api.GithubWebhookSecret)
+	githubSecret := []byte(evergreen.GetEnvironment().Settings().GithubWebhookSecret)
 
 	payload, err := github.ValidatePayload(r, githubSecret)
 	if err != nil {

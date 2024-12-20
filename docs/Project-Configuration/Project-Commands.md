@@ -604,7 +604,7 @@ Parameters:
     expansion. For example, you could provide an expansion called
     "github_token" and then set this field to \${github_token}.
     Evergreen will populate the expansion when it parses the project
-    yaml.
+    yaml. This token is *only* used for the source repository, not modules.
 -   `is_oauth`: If a project token is provided and that token is an OAuth token and not a
     GitHub app token, `is_oauth` must be set to true so that the clone command is formatted properly.
 -   `clone_depth`: Clone with `git clone --depth <clone_depth>`. For
@@ -1511,9 +1511,9 @@ Parameters:
 -   `max_retries`: Optional. The maximum number of times it will attempt
     to pull a file from S3.
 
-## s3Copy.copy
+## s3Copy.copy (Deprecated)
 
-`s3Copy.copy` copies files from one s3 location to another
+`s3Copy.copy` is deprecated. Please use `s3.put` instead.
 
 ``` yaml
 - command: s3Copy.copy

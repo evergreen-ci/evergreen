@@ -298,25 +298,26 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 		return nil, nil, errors.Wrap(err, "getting patched project file as YAML")
 	}
 
-	var pc string
-	if projectRef.IsVersionControlEnabled() {
-		pc, err = getProjectConfigYAML(p, projectFileBytes)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "getting patched project config")
-		}
-	}
-
 	project := &Project{}
 	pp, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
+
 	// LoadProjectInto does not set the parser project's identifier, so set it
 	// here.
 	pp.Identifier = utility.ToStringPtr(p.Project)
 	ppOut, err := yaml.Marshal(pp)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "marshalling parser project into YAML")
+	}
+
+	var pc string
+	if projectRef.IsVersionControlEnabled() {
+		pc, err = getProjectConfigYAML(p, projectFileBytes)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "getting patched project config")
+		}
 	}
 
 	patchConfig := &PatchConfig{

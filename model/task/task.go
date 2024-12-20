@@ -2344,7 +2344,11 @@ func (t *Task) GetDisplayStatus() string {
 	return t.DisplayStatus
 }
 
+// findDisplayStatus calculates the display status for a task based on its current state.
 func (t *Task) findDisplayStatus() string {
+	if t.HasAnnotations {
+		return evergreen.TaskKnownIssue
+	}
 	if t.Aborted {
 		return evergreen.TaskAborted
 	}

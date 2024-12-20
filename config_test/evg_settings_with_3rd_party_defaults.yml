@@ -41,7 +41,6 @@ repotracker:
 
 api:
   url: "https://localhost:8443"
-  github_webhook_secret: "test"
   logfile: "/tmp/api_test.log"
   httplistenaddr: ":9090"
   httpslistenaddr: ":8443"
@@ -143,6 +142,7 @@ expansions:
   api_httpscert_path: "/data/api_httpscert_path.pem"
 
 github_pr_creator_org: "10gen"
+github_webhook_secret: "test"
 
 task_limits:
   max_hourly_patch_tasks: 100

@@ -29,7 +29,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const defaultCloneDepth = 500
+const defaultCloneDepth = 1000
 const fileNameMaxLength = 250
 
 func Fetch() cli.Command {
@@ -248,6 +248,17 @@ type cloneOptions struct {
 }
 
 func clone(opts cloneOptions) error {
+	// Check repository existence if no token is provided
+	if opts.token == "" {
+		resp, err := http.Get(thirdparty.FormGitURLForApp("github.com", opts.owner, opts.repository, opts.token))
+		if err != nil {
+			return errors.Errorf("failed to check if %s/%s exists: %v", opts.owner, opts.repository, err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return errors.Errorf("%s/%s does not exist or is private an no token was provided: %d", opts.owner, opts.repository, resp.StatusCode)
+		}
+	}
 	var cloneArgs []string
 	// clone the repo first
 	if opts.isAppToken {

@@ -4,17 +4,6 @@ query {
     execution: 0
   ) {
     status
-    annotation {
-      taskId
-      taskExecution
-      note {
-        source {
-          author
-          time
-          requester
-        }
-        message
-      }
-    }
+    displayStatus
   }
 }
