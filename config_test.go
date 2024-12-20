@@ -597,6 +597,24 @@ func (s *AdminSuite) TestNotifyConfig() {
 	s.Equal(config, settings.Notify)
 }
 
+func (s *AdminSuite) TestLoggerConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config := LoggerConfig{
+		RedactKeys: []string{
+			"secret",
+			"github token",
+		},
+	}
+	err := config.Set(ctx)
+	s.NoError(err)
+	settings, err := GetConfig(ctx)
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.LoggerConfig)
+}
+
 func (s *AdminSuite) TestContainerPoolsConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
