@@ -310,7 +310,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 	// Set up scopes and roles for distros.
 	distroScope := gimlet.Scope{
 		ID:        evergreen.AllDistrosScope,
-		Name:      "modify host scope",
+		Name:      "all distros",
 		Type:      evergreen.DistroResourceType,
 		Resources: []string{"ubuntu1604-small", "ubuntu1604-large", "localhost", "localhost2", "rhel71-power8-large", "windows-64-vs2015-small"},
 	}
