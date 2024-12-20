@@ -2280,6 +2280,7 @@ type APIUIConfig struct {
 	LoginDomain               *string         `json:"login_domain"`
 	UserVoice                 *string         `json:"userVoice"`
 	BetaFeatures              APIBetaFeatures `json:"beta_features"`
+	StagingEnvironment        *string         `json:"staging_environment"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
@@ -2298,6 +2299,7 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.LoginDomain = utility.ToStringPtr(v.LoginDomain)
 		a.UserVoice = utility.ToStringPtr(v.UserVoice)
 		a.FileStreamingContentTypes = v.FileStreamingContentTypes
+		a.StagingEnvironment = utility.ToStringPtr(v.StagingEnvironment)
 
 		betaFeatures := APIBetaFeatures{}
 		betaFeatures.BuildFromService(v.BetaFeatures)
@@ -2324,6 +2326,7 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 		LoginDomain:               utility.FromStringPtr(a.LoginDomain),
 		UserVoice:                 utility.FromStringPtr(a.UserVoice),
 		BetaFeatures:              a.BetaFeatures.ToService(),
+		StagingEnvironment:        utility.FromStringPtr(a.StagingEnvironment),
 	}, nil
 }
 
