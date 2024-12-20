@@ -17,15 +17,15 @@ import (
 )
 
 // isRel checks if the candidate path is relative to the target path.
-func isRel(candidate, target string) bool {
-	if filepath.IsAbs(candidate) {
+func isRel(filePath, rootPath string) bool {
+	if filepath.IsAbs(filePath) {
 		return false
 	}
-	realpath, err := filepath.EvalSymlinks(filepath.Join(target, candidate))
+	realpath, err := filepath.EvalSymlinks(filepath.Join(rootPath, filePath))
 	if err != nil {
 		return false
 	}
-	relpath, err := filepath.Rel(target, realpath)
+	relpath, err := filepath.Rel(rootPath, realpath)
 	return err == nil && !strings.HasPrefix(filepath.Clean(relpath), "..")
 }
 
@@ -162,7 +162,7 @@ tarReaderLoop:
 		}
 
 		if !isRel(hdr.Linkname, rootPath) || !isRel(hdr.Name, rootPath) {
-			return errors.Wrap(err, "symlinks must be relative to the root path")
+			return errors.Wrap(err, "artifact paths should be relative to the root path")
 		}
 
 		namePath := filepath.Join(rootPath, hdr.Name)
