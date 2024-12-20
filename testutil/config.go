@@ -399,6 +399,14 @@ func MockConfig() *evergreen.Settings {
 			CPUDegradedModeDisabled:         true,
 			ParameterStoreDisabled:          true,
 		},
+		SingleTaskDistro: evergreen.SingleTaskDistroConfig{
+			ProjectTasksPairs: []evergreen.ProjectTasksPair{
+				{
+					ProjectID:    "project",
+					AllowedTasks: []string{"task0", "task1"},
+				},
+			},
+		},
 		SleepSchedule: evergreen.SleepScheduleConfig{
 			PermanentlyExemptHosts: []string{"host0", "host1"},
 		},

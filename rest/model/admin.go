@@ -37,6 +37,7 @@ func NewConfigModel() *APIAdminSettings {
 		RuntimeEnvironments: &APIRuntimeEnvironmentsConfig{},
 		Scheduler:           &APISchedulerConfig{},
 		ServiceFlags:        &APIServiceFlags{},
+		SingleTaskDistro:    &APISingleTaskDistroConfig{},
 		Slack:               &APISlackConfig{},
 		SleepSchedule:       &APISleepScheduleConfig{},
 		Splunk:              &APISplunkConfig{},
@@ -89,6 +90,7 @@ type APIAdminSettings struct {
 	RuntimeEnvironments *APIRuntimeEnvironmentsConfig     `json:"runtime_environments,omitempty"`
 	Scheduler           *APISchedulerConfig               `json:"scheduler,omitempty"`
 	ServiceFlags        *APIServiceFlags                  `json:"service_flags,omitempty"`
+	SingleTaskDistro    *APISingleTaskDistroConfig        `json:"single_task_distro,omitempty"`
 	Slack               *APISlackConfig                   `json:"slack,omitempty"`
 	SleepSchedule       *APISleepScheduleConfig           `json:"sleep_schedule,omitempty"`
 	SSHKeyDirectory     *string                           `json:"ssh_key_directory,omitempty"`
@@ -2111,6 +2113,65 @@ type APIServiceFlags struct {
 	EmailNotificationsDisabled   bool `json:"email_notifications_disabled"`
 	WebhookNotificationsDisabled bool `json:"webhook_notifications_disabled"`
 	GithubStatusAPIDisabled      bool `json:"github_status_api_disabled"`
+}
+
+type APIProjectTasksPair struct {
+	ProjectID    string   `json:"project_id"`
+	AllowedTasks []string `json:"allowed_tasks"`
+}
+
+func (a *APIProjectTasksPair) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.ProjectTasksPair:
+		a.ProjectID = v.ProjectID
+		a.AllowedTasks = v.AllowedTasks
+	default:
+		return errors.Errorf("programmatic error: expected project tasks pair but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIProjectTasksPair) ToService() (interface{}, error) {
+	return evergreen.ProjectTasksPair{
+		ProjectID:    a.ProjectID,
+		AllowedTasks: a.AllowedTasks,
+	}, nil
+}
+
+type APISingleTaskDistroConfig struct {
+	ProjectTasksPairs []APIProjectTasksPair `json:"project_tasks_pair"`
+}
+
+func (a *APISingleTaskDistroConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.SingleTaskDistroConfig:
+		apiPairs := []APIProjectTasksPair{}
+		for _, pair := range v.ProjectTasksPairs {
+			apiPair := APIProjectTasksPair{}
+			if err := apiPair.BuildFromService(pair); err != nil {
+				return errors.Wrap(err, "converting project tasks pair to API model")
+			}
+			apiPairs = append(apiPairs, apiPair)
+		}
+		a.ProjectTasksPairs = apiPairs
+	default:
+		return errors.Errorf("programmatic error: expected single task distro config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APISingleTaskDistroConfig) ToService() (interface{}, error) {
+	pairs := []evergreen.ProjectTasksPair{}
+	for _, pair := range a.ProjectTasksPairs {
+		p, err := pair.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "converting project tasks pair to service model")
+		}
+		pairs = append(pairs, p.(evergreen.ProjectTasksPair))
+	}
+	return evergreen.SingleTaskDistroConfig{
+		ProjectTasksPairs: pairs,
+	}, nil
 }
 
 type APISSHKeyPair struct {
