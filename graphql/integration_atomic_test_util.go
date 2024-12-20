@@ -47,6 +47,7 @@ import (
 )
 
 const (
+	// Use this for GraphQL tests that are written in Golang (e.g. directive_test.go).
 	testUser = "test_user"
 
 	adminUser      = "admin_user"
