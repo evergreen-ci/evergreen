@@ -129,7 +129,7 @@ func (j *hostMonitorExternalStateCheckJob) handleUnresponsiveStaticHost(ctx cont
 		"job":                                j.ID(),
 	})
 
-	return DisableAndNotifyPoisonedHost(ctx, j.env, j.host, false, fmt.Sprintf("static host has not communicated with Evergreen for %s", timeSinceLastCommunication.String()))
+	return DisableAndNotifyPoisonedHost(ctx, j.env, j.host, false, fmt.Sprintf("static host has not communicated with Evergreen for %s", timeSinceLastCommunication.String()), "")
 }
 
 // handleExternallyTerminatedHost will check if a host from a dynamic provider
