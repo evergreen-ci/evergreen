@@ -27,11 +27,12 @@
     },
     {
       "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": null,
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to 'view tasks' for the project 'evergreen'",
+            "message": "user 'regular_user' does not have permission to 'view tasks' for the project 'evergreen'",
             "path": ["version", "versionId"],
             "extensions": {
               "code": "FORBIDDEN"

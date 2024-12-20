@@ -46,18 +46,22 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+const (
+	// Use this for GraphQL tests that are written in Golang (e.g. directive_test.go).
+	testUser = "test_user"
+
+	adminUser      = "admin_user"
+	privilegedUser = "privileged_user"
+	regularUser    = "regular_user"
+)
+
 type AtomicGraphQLState struct {
 	ServerURL      string
-	ApiUser        string
-	ApiKey         string
 	Directory      string
 	DBData         map[string]json.RawMessage
 	TaskOutputData map[string]json.RawMessage
 	Settings       *evergreen.Settings
 }
-
-const apiUser = "testuser"
-const apiKey = "testapikey"
 
 func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t *testing.T) {
 	return func(t *testing.T) {
@@ -87,7 +91,15 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 		err = json.Unmarshal(data, &tests)
 		require.NoError(t, errors.Wrapf(err, "unmarshalling results file for %s", resultsFilePath))
 
-		setup(ctx, t, state)
+		// Reset database and populate with current test suite's data.
+		env := evergreen.GetEnvironment()
+		require.NoError(t, env.DB().Drop(ctx))
+		require.NoError(t, setupDBIndexes())
+		require.NoError(t, setupDBData(ctx, env, state.DBData))
+		require.NoError(t, setupTaskOutputData(ctx, state))
+		setupUsers(t)
+		setupScopesAndRoles(t, state)
+
 		for _, testCase := range tests.Tests {
 			singleTest := func(t *testing.T) {
 				f, err := os.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "queries", testCase.QueryFile))
@@ -97,8 +109,17 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 				client := http.Client{}
 				r, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/graphql/query", state.ServerURL), body)
 				require.NoError(t, err)
-				r.Header.Add(evergreen.APIKeyHeader, state.ApiKey)
-				r.Header.Add(evergreen.APIUserHeader, state.ApiUser)
+
+				testUserId := utility.FromStringPtr(testCase.TestUserId)
+				// Default to the admin user if no user is specified to run the test as.
+				if testUserId == "" {
+					testUserId = adminUser
+				}
+				foundUser, err := user.FindOneById(testUserId)
+				require.NoError(t, err)
+				r.Header.Add(evergreen.APIUserHeader, foundUser.Id)
+				r.Header.Add(evergreen.APIKeyHeader, foundUser.APIKey)
+
 				r.Header.Add("content-type", "application/json")
 				//nolint:bodyclose
 				resp, err := client.Do(r)
@@ -137,136 +158,222 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 	}
 }
 
-func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
-	const slackUsername = "testslackuser"
-	const slackMemberId = "12345member"
-	const email = "testuser@mongodb.com"
+func setupUsers(t *testing.T) {
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
-	pubKeys := []user.PubKey{
-		{Name: "z", Key: "zKey", CreatedAt: time.Time{}},
-		{Name: "c", Key: "cKey", CreatedAt: time.Time{}},
-		{Name: "d", Key: "dKey", CreatedAt: time.Time{}},
-		{Name: "a", Key: "aKey", CreatedAt: time.Time{}},
-		{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
-	}
-	systemRoles := []string{"unrestrictedTaskAccess", "modify_host", "superuser", "project_grumpyCat", "project_happyAbyssinian", "superuser_distro_access", "project_spruce", "project_sandbox"}
-	env := evergreen.GetEnvironment()
-	require.NoError(t, env.DB().Drop(ctx))
 
-	require.NoError(t, db.Clear(user.Collection),
-		"unable to clear user collection")
-
-	usr := user.DBUser{
-		Id:           apiUser,
-		DispName:     apiUser,
-		EmailAddress: email,
+	// Admin user is a superuser with admin project and distro access.
+	adminUsr := user.DBUser{
+		Id:           adminUser,
+		DispName:     "Admin User",
+		EmailAddress: "admin_user@mongodb.com",
 		Settings: user.UserSettings{
-			SlackUsername: "testuser",
-			SlackMemberId: "testuser",
+			SlackUsername: "admin_slackuser",
+			SlackMemberId: "12345member",
 			UseSpruceOptions: user.UseSpruceOptions{
 				SpruceV1: true,
 			},
+			Timezone: "America/New_York",
 		},
 		LoginCache: user.LoginCache{
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
 		},
-		APIKey: apiKey,
+		APIKey: "admin_api_key",
+		PubKeys: []user.PubKey{
+			{Name: "z", Key: "zKey", CreatedAt: time.Time{}},
+			{Name: "c", Key: "cKey", CreatedAt: time.Time{}},
+			{Name: "d", Key: "dKey", CreatedAt: time.Time{}},
+			{Name: "a", Key: "aKey", CreatedAt: time.Time{}},
+			{Name: "b", Key: "bKey", CreatedAt: time.Time{}},
+		},
+		SystemRoles: []string{
+			evergreen.SuperUserRole,
+			evergreen.SuperUserProjectAccessRole,
+			evergreen.SuperUserDistroAccessRole,
+			"project_grumpyCat",
+			"project_spruce",
+			"project_sandbox",
+			"project_evergreen",
+			"repo_sandbox",
+		},
 	}
-	assert.NoError(t, usr.Insert())
+	assert.NoError(t, adminUsr.Insert())
 
-	for _, pk := range pubKeys {
-		err := usr.AddPublicKey(pk.Name, pk.Key)
-		require.NoError(t, err)
+	// Privileged user has admin project and distro access, but is not a superuser.
+	privilegedUsr := user.DBUser{
+		Id:           privilegedUser,
+		DispName:     "Privileged User",
+		EmailAddress: "privileged_user@mongodb.com",
+		Settings: user.UserSettings{
+			SlackUsername: "privileged_slackuser",
+			SlackMemberId: "12345member",
+			UseSpruceOptions: user.UseSpruceOptions{
+				SpruceV1: true,
+			},
+			Timezone: "America/New_York",
+		},
+		LoginCache: user.LoginCache{
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+		},
+		APIKey: "privileged_api_key",
+		SystemRoles: []string{
+			evergreen.SuperUserProjectAccessRole,
+			evergreen.SuperUserDistroAccessRole,
+			"project_happyAbyssinian",
+		},
 	}
-	err := usr.UpdateSettings(user.UserSettings{Timezone: "America/New_York", SlackUsername: slackUsername, SlackMemberId: slackMemberId})
-	require.NoError(t, err)
+	assert.NoError(t, privilegedUsr.Insert())
 
-	for _, role := range systemRoles {
-		err = usr.AddRole(role)
-		require.NoError(t, err)
+	// Regular user only has basic project and distro access.
+	regularUser := user.DBUser{
+		Id:           regularUser,
+		DispName:     "Regular User",
+		EmailAddress: "regular_user@mongodb.com",
+		Settings: user.UserSettings{
+			SlackUsername: "regular_slackuser",
+			SlackMemberId: "12345member",
+			UseSpruceOptions: user.UseSpruceOptions{
+				SpruceV1: true,
+			},
+			Timezone: "America/New_York",
+		},
+		LoginCache: user.LoginCache{
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+		},
+		APIKey: "regular_api_key",
+		SystemRoles: []string{
+			evergreen.BasicProjectAccessRole,
+			evergreen.BasicDistroAccessRole,
+		},
 	}
+	assert.NoError(t, regularUser.Insert())
+}
 
-	require.NoError(t, usr.UpdateAPIKey(apiKey))
-
-	require.NoError(t, setupDBIndexes())
-	require.NoError(t, setupDBData(ctx, env, state.DBData))
-	require.NoError(t, setupTaskOutputData(ctx, state))
+func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
+	env := evergreen.GetEnvironment()
 	roleManager := env.RoleManager()
 
 	roles, err := roleManager.GetAllRoles()
 	require.NoError(t, err)
 	require.Len(t, roles, 0)
 
+	// Set up scopes and roles for projects.
+	allProjectScope := gimlet.Scope{
+		ID:        evergreen.AllProjectsScope,
+		Name:      "all projects",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"mci", "happyAbyssinian", "grumpyCat", "spruce", "evergreen", "repo_sandbox", "project_sandbox"},
+	}
+	err = roleManager.AddScope(allProjectScope)
+	require.NoError(t, err)
+
 	unrestrictedProjectScope := gimlet.Scope{
 		ID:        evergreen.UnrestrictedProjectsScope,
 		Name:      "unrestricted projects",
 		Type:      evergreen.ProjectResourceType,
-		Resources: []string{"mci", "ui"},
+		Resources: []string{"spruce"},
 	}
 	err = roleManager.AddScope(unrestrictedProjectScope)
 	require.NoError(t, err)
 
+	adminProjectAccessRole := gimlet.Role{
+		ID:    evergreen.SuperUserProjectAccessRole,
+		Name:  "admin access",
+		Scope: evergreen.AllProjectsScope,
+		Permissions: map[string]int{
+			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsView.Value,
+			evergreen.PermissionTasks:           evergreen.TasksBasic.Value,
+			evergreen.PermissionPatches:         evergreen.PatchNone.Value,
+			evergreen.PermissionLogs:            evergreen.LogsView.Value,
+			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
+		},
+	}
+	err = roleManager.UpdateRole(adminProjectAccessRole)
+	require.NoError(t, err)
+
 	basicProjectAccessRole := gimlet.Role{
-		ID:          evergreen.BasicProjectAccessRole,
-		Name:        "basic access",
-		Scope:       evergreen.UnrestrictedProjectsScope,
-		Permissions: map[string]int{"project_tasks": 20, "project_patches": 10, "project_logs": 10, "project_task_annotations": 10},
+		ID:    evergreen.BasicProjectAccessRole,
+		Name:  "basic access",
+		Scope: evergreen.UnrestrictedProjectsScope,
+		Permissions: map[string]int{
+			evergreen.PermissionTasks:       evergreen.TasksBasic.Value,
+			evergreen.PermissionPatches:     evergreen.PatchNone.Value,
+			evergreen.PermissionLogs:        evergreen.LogsView.Value,
+			evergreen.PermissionAnnotations: evergreen.AnnotationsModify.Value,
+		},
 	}
 	err = roleManager.UpdateRole(basicProjectAccessRole)
 	require.NoError(t, err)
-	err = usr.AddRole(evergreen.BasicProjectAccessRole)
-	require.NoError(t, err)
 
+	// Set up scopes and roles for distros.
 	distroScope := gimlet.Scope{
 		ID:        evergreen.AllDistrosScope,
-		Name:      "modify host scope",
+		Name:      "all distros",
 		Type:      evergreen.DistroResourceType,
 		Resources: []string{"ubuntu1604-small", "ubuntu1604-large", "localhost", "localhost2", "rhel71-power8-large", "windows-64-vs2015-small"},
 	}
 	err = roleManager.AddScope(distroScope)
 	require.NoError(t, err)
 
-	superUserDistroRole := gimlet.Role{
+	adminDistroAccessRole := gimlet.Role{
 		ID:    evergreen.SuperUserDistroAccessRole,
 		Name:  "admin access",
 		Scope: evergreen.AllDistrosScope,
 		Permissions: map[string]int{
-			"distro_settings": 30,
-			"distro_hosts":    20,
+			evergreen.PermissionDistroSettings: evergreen.DistroSettingsAdmin.Value,
+			evergreen.PermissionHosts:          evergreen.HostsEdit.Value,
 		},
 	}
-	require.NoError(t, roleManager.UpdateRole(superUserDistroRole))
+	require.NoError(t, roleManager.UpdateRole(adminDistroAccessRole))
 
-	modifyHostRole := gimlet.Role{
-		ID:          "modify_host",
-		Name:        evergreen.HostsEdit.Description,
-		Scope:       evergreen.AllDistrosScope,
-		Permissions: map[string]int{evergreen.PermissionHosts: evergreen.HostsEdit.Value},
+	basicDistroAccessRole := gimlet.Role{
+		ID:    evergreen.BasicDistroAccessRole,
+		Name:  "basic access",
+		Scope: evergreen.AllDistrosScope,
+		Permissions: map[string]int{
+			evergreen.PermissionDistroSettings: evergreen.DistroSettingsView.Value,
+			evergreen.PermissionHosts:          evergreen.HostsView.Value,
+		},
 	}
-	err = roleManager.UpdateRole(modifyHostRole)
+	err = roleManager.UpdateRole(basicDistroAccessRole)
 	require.NoError(t, err)
 
-	superUserRole := gimlet.Role{
-		ID:          "superuser",
-		Name:        "superuser",
-		Scope:       "superuser_scope",
-		Permissions: map[string]int{"admin_settings": 10, "project_settings": 20, "project_create": 10, "distro_create": 10, "modify_roles": 10},
-	}
-	err = roleManager.UpdateRole(superUserRole)
-	require.NoError(t, err)
-
+	// Set up scopes and roles for superuser.
 	superUserScope := gimlet.Scope{
 		ID:        "superuser_scope",
 		Name:      "superuser scope",
 		Type:      evergreen.SuperUserResourceType,
-		Resources: []string{"super_user", "sandbox_project_id", "second_project_id", "repo_id", "vars_test"},
+		Resources: []string{evergreen.SuperUserPermissionsID},
 	}
 	err = roleManager.AddScope(superUserScope)
 	require.NoError(t, err)
 
-	// Scopes and roles for testing viewable projects for testuser
+	superUserRole := gimlet.Role{
+		ID:    evergreen.SuperUserRole,
+		Name:  "superuser",
+		Scope: superUserScope.ID,
+		Permissions: map[string]int{
+			evergreen.PermissionAdminSettings: evergreen.AdminSettingsEdit.Value,
+			evergreen.PermissionProjectCreate: evergreen.ProjectCreate.Value,
+			evergreen.PermissionDistroCreate:  evergreen.DistroCreate.Value,
+			evergreen.PermissionRoleModify:    evergreen.RoleModify.Value,
+		},
+	}
+	err = roleManager.UpdateRole(superUserRole)
+	require.NoError(t, err)
+
+	// Set up scopes and roles for individual projects.
+	projectPermissions := map[string]int{
+		evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
+		evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
+		evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
+		evergreen.PermissionPatches:         evergreen.PatchSubmitAdmin.Value,
+		evergreen.PermissionLogs:            evergreen.LogsView.Value,
+	}
+
 	projectSpruceScope := gimlet.Scope{
 		ID:        "project_spruce_scope",
 		Name:      "spruce",
@@ -277,19 +384,30 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 	require.NoError(t, err)
 
 	projectSpruceRole := gimlet.Role{
-		ID:    "project_spruce",
-		Name:  "spruce",
-		Scope: projectSpruceScope.ID,
-		Permissions: map[string]int{
-			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
-			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
-			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
-			evergreen.PermissionPatches:         evergreen.PatchSubmitAdmin.Value,
-			evergreen.PermissionLogs:            evergreen.LogsView.Value,
-		},
-		Owners: []string{"testuser"},
+		ID:          "project_spruce",
+		Name:        "spruce",
+		Scope:       projectSpruceScope.ID,
+		Permissions: projectPermissions,
 	}
 	err = roleManager.UpdateRole(projectSpruceRole)
+	require.NoError(t, err)
+
+	projectEvergreenScope := gimlet.Scope{
+		ID:        "project_evergreen_scope",
+		Name:      "evergreen",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"evergreen"},
+	}
+	err = roleManager.AddScope(projectEvergreenScope)
+	require.NoError(t, err)
+
+	projectEvergreenRole := gimlet.Role{
+		ID:          "project_evergreen",
+		Name:        "evergreen",
+		Scope:       projectEvergreenScope.ID,
+		Permissions: projectPermissions,
+	}
+	err = roleManager.UpdateRole(projectEvergreenRole)
 	require.NoError(t, err)
 
 	projectSandboxScope := gimlet.Scope{
@@ -302,17 +420,10 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 	require.NoError(t, err)
 
 	projectSandboxRole := gimlet.Role{
-		ID:    "project_sandbox",
-		Name:  "sandbox",
-		Scope: projectSandboxScope.ID,
-		Permissions: map[string]int{
-			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
-			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
-			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
-			evergreen.PermissionPatches:         evergreen.PatchSubmitAdmin.Value,
-			evergreen.PermissionLogs:            evergreen.LogsView.Value,
-		},
-		Owners: []string{"testuser"},
+		ID:          "project_sandbox",
+		Name:        "sandbox",
+		Scope:       projectSandboxScope.ID,
+		Permissions: projectPermissions,
 	}
 	err = roleManager.UpdateRole(projectSandboxRole)
 	require.NoError(t, err)
@@ -327,17 +438,10 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 	require.NoError(t, err)
 
 	projectGrumpyCatRole := gimlet.Role{
-		ID:    "project_grumpyCat",
-		Name:  "grumpyCat",
-		Scope: projectGrumpyCatScope.ID,
-		Permissions: map[string]int{
-			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
-			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
-			evergreen.PermissionTasks:           evergreen.TasksAdmin.Value,
-			evergreen.PermissionPatches:         evergreen.PatchSubmitAdmin.Value,
-			evergreen.PermissionLogs:            evergreen.LogsView.Value,
-		},
-		Owners: []string{"testuser"},
+		ID:          "project_grumpyCat",
+		Name:        "grumpyCat",
+		Scope:       projectGrumpyCatScope.ID,
+		Permissions: projectPermissions,
 	}
 	err = roleManager.UpdateRole(projectGrumpyCatRole)
 	require.NoError(t, err)
@@ -352,24 +456,32 @@ func setup(ctx context.Context, t *testing.T, state *AtomicGraphQLState) {
 	require.NoError(t, err)
 
 	projectHappyAbyssinianRole := gimlet.Role{
-		ID:    "project_happyAbyssinian",
-		Name:  "happyAbyssinian",
-		Scope: projectHappyAbyssinianScope.ID,
-		Permissions: map[string]int{
-			evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value,
-			evergreen.PermissionAnnotations:     evergreen.AnnotationsModify.Value,
-			// Note: this project only gives basic, not admin, task permissions.
-			evergreen.PermissionTasks:   evergreen.TasksBasic.Value,
-			evergreen.PermissionPatches: evergreen.PatchSubmitAdmin.Value,
-			evergreen.PermissionLogs:    evergreen.LogsView.Value,
-		},
-		Owners: []string{"testuser"},
+		ID:          "project_happyAbyssinian",
+		Name:        "happyAbyssinian",
+		Scope:       projectHappyAbyssinianScope.ID,
+		Permissions: projectPermissions,
 	}
 	err = roleManager.UpdateRole(projectHappyAbyssinianRole)
 	require.NoError(t, err)
 
-	state.ApiKey = apiKey
-	state.ApiUser = apiUser
+	// Set up scopes and roles for individual repos.
+	repoSandboxScope := gimlet.Scope{
+		ID:        "repo_sandbox_scope",
+		Name:      "repo_sandbox",
+		Type:      evergreen.ProjectResourceType,
+		Resources: []string{"sandbox_repo_id"},
+	}
+	err = roleManager.AddScope(repoSandboxScope)
+	require.NoError(t, err)
+
+	repoSandboxRole := gimlet.Role{
+		ID:          "repo_sandbox",
+		Name:        "repo_sandbox",
+		Scope:       repoSandboxScope.ID,
+		Permissions: projectPermissions,
+	}
+	err = roleManager.UpdateRole(repoSandboxRole)
+	require.NoError(t, err)
 
 	directorySpecificTestSetup(t, *state)
 }
@@ -379,8 +491,9 @@ type testsCases struct {
 }
 
 type test struct {
-	QueryFile string          `json:"query_file"`
-	Result    json.RawMessage `json:"result"`
+	QueryFile  string          `json:"query_file"`
+	TestUserId *string         `json:"test_user_id"`
+	Result     json.RawMessage `json:"result"`
 }
 
 // escapeGQLQuery replaces literal newlines with '\n' and literal double quotes with '\"'
@@ -514,7 +627,7 @@ func spawnTestHostAndVolume(t *testing.T) {
 	mountedVolume := host.Volume{
 		ID:               "vol-0603934da6f024db5",
 		DisplayName:      "cd372fb85148700fa88095e3492d3f9f5beb43e555e5ff26d95f5a6adc36f8e6",
-		CreatedBy:        apiUser,
+		CreatedBy:        adminUser,
 		Type:             "6937b1605cf6131b7313c515fb4cd6a3b27605ba318c9d6424584499bc312c0b",
 		Size:             500,
 		AvailabilityZone: "us-east-1a",
@@ -528,7 +641,7 @@ func spawnTestHostAndVolume(t *testing.T) {
 	h := host.Host{
 		Id:     "i-1104943f",
 		Host:   "i-1104943f",
-		User:   apiUser,
+		User:   adminUser,
 		Secret: "",
 		Tag:    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 		Distro: distro.Distro{

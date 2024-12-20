@@ -1,20 +1,20 @@
 {
   "project_ref": [
     {
-      "_id" : "sandbox_project_id",
-      "identifier" : "sandbox",
-      "display_name" : "Sandbox",
-      "enabled" : null,
-      "owner_name" : "evergreen-ci",
-      "repo_name" : "commit-queue-sandbox",
-      "branch_name" : "main",
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox",
+      "display_name": "Sandbox",
+      "enabled": null,
+      "owner_name": "evergreen-ci",
+      "repo_name": "commit-queue-sandbox",
+      "branch_name": "main",
       "parameter_store_enabled": true,
       "admins": ["me"]
     }
   ],
-  "repo_ref":[
+  "repo_ref": [
     {
-      "_id": "repo_id",
+      "_id": "sandbox_repo_id",
       "owner_name": "evergreen-ci",
       "parameter_store_enabled": true,
       "repo_name": "commit-queue-sandbox"
@@ -23,8 +23,8 @@
   "project_vars": [
     {
       "_id": "sandbox_project_id",
-      "vars": {"hello": "world", "foo":  "bar"},
-      "private_vars": {"hello":  true, "foo":  false}
+      "vars": { "hello": "world", "foo": "bar" },
+      "private_vars": { "hello": true, "foo": false }
     }
   ]
 }

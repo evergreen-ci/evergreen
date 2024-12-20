@@ -24,12 +24,12 @@
       "repo_name": "commit-queue-sandbox",
       "branch_name": "main",
       "admins": ["me"],
-      "repo_ref_id": "repo_id"
+      "repo_ref_id": "sandbox_repo_id"
     }
   ],
   "repo_ref": [
     {
-      "_id": "repo_id",
+      "_id": "sandbox_repo_id",
       "identifier": "",
       "owner_name": "evergreen-ci",
       "repo_name": "commit-queue-sandbox",

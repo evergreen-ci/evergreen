@@ -5,7 +5,7 @@
         "$oid": "5e4ff3abe3c3317e352062e4"
       },
       "branch": "myProject",
-      "author": "testuser",
+      "author": "regular_user",
       "create_time": {
         "$date": "2020-01-01T00:00:01Z"
       },
@@ -18,7 +18,7 @@
         "$oid": "5e4ff3abe3c3317e352062e5"
       },
       "branch": "myProject",
-      "author": "testuser",
+      "author": "regular_user",
       "create_time": {
         "$date": "2020-01-01T00:00:02Z"
       },
@@ -31,7 +31,7 @@
         "$oid": "5e4ff3abe3c3317e352062e6"
       },
       "branch": "myProject",
-      "author": "testuser",
+      "author": "regular_user",
       "create_time": {
         "$date": "2020-01-01T00:00:03Z"
       },
@@ -44,7 +44,7 @@
         "$oid": "5e4ff3abe3c3317e352062e7"
       },
       "branch": "myProject",
-      "author": "testuser",
+      "author": "regular_user",
       "create_time": {
         "$date": "2020-01-01T00:00:04Z"
       },
@@ -58,7 +58,7 @@
         "$oid": "5e4ff3abe3c3317e352062e8"
       },
       "branch": "myProject",
-      "author": "testuser",
+      "author": "regular_user",
       "create_time": {
         "$date": "2020-01-01T00:00:05Z"
       },
@@ -71,7 +71,7 @@
         "$oid": "5e4ff3abe3c3317e352062e9"
       },
       "branch": "myProject",
-      "author": "testuser",
+      "author": "regular_user",
       "create_time": {
         "$date": "2019-01-01T00:00:06Z"
       },

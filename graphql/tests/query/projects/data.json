@@ -1,128 +1,33 @@
 {
   "project_ref": [
     {
-      "_id": "mci",
-      "batch_time": 1200,
+      "_id": "sandbox_project_id",
       "branch_name": "main",
-      "display_name": "Evergreen Self-Tests",
+      "display_name": "Sandbox",
       "enabled": true,
-      "file_name": "mci",
-      "identifier": "mci",
+      "restricted": false,
+      "identifier": "sandbox",
       "owner_name": "evergreen-ci",
-      "remote": true,
-      "remote_path": "self-tests.yml",
-      "repo_kind": "github",
-      "repo_name": "evergreen",
-      "source_kind": "github",
-      "hidden": false,
-      "local_config": "",
-      "deactivate_previous": true,
-      "repotracker_error": {
-        "exists": false,
-        "invalid_revision": "",
-        "merge_base_revision": ""
-      },
-      "admins": [
-        "john.liu"
-      ],
-      "tracks_push_events": true,
-      "pr_testing_enabled": false,
-      "patching_disabled": false,
-      "notify_on_failure": true,
-      "jira": {
-        "failing_tasks_field": "customfield_12950",
-        "failing_tests_field": "",
-        "failing_variant_field": "customfield_14277",
-        "failing_revision_field": "customfield_14851",
-        "project_field": "customfield_14278"
-      },
-      "triggers": [],
-      "files_ignored_from_cache": null,
-      "disabled_stats_cache": false,
-      "commit_queue_config_file": "",
-      "commit_queue_enabled": false,
-      "commit_queue_merge_method": "",
-      "commit_queue": {
-        "enabled": false,
-        "merge_method": "squash"
-      },
-      "periodic_builds": [],
-      "repotracker_disabled": false
+      "repo_name": "sandbox",
+      "repo_ref_id": "sandbox_repo_id"
     },
+
     {
       "_id": "logkeeper",
       "owner_name": "evergreen-ci",
       "repo_name": "logkeeper",
       "branch_name": "main",
-      "repo_kind": "github",
       "enabled": true,
       "restricted": true,
-      "batch_time": 0,
-      "remote_path": ".evg.yml",
       "identifier": "logkeeper",
-      "display_name": "Logkeeper",
-      "local_config": "",
-      "deactivate_previous": true,
-      "hidden": false,
-      "admins": [],
-      "repotracker_error": {
-        "exists": false,
-        "invalid_revision": "",
-        "merge_base_revision": ""
-      },
-      "tracks_push_events": true,
-      "pr_testing_enabled": true,
-      "notify_on_failure": false,
-      "patching_disabled": false,
-      "commit_queue": {
-        "enabled": false,
-        "merge_method": "squash"
-      },
-      "disabled_stats_cache": false,
-      "files_ignored_from_cache": null,
-      "periodic_builds": [],
-      "triggers": []
-    },
-    {
-      "_id": "ui",
-      "owner_name": "evergreen-ci",
-      "repo_name": "ui",
-      "branch_name": "main",
-      "repo_kind": "github",
-      "enabled": true,
-      "restricted": true,
-      "batch_time": 0,
-      "remote_path": ".evg.yml",
-      "identifier": "ui",
-      "display_name": "ui",
-      "local_config": "",
-      "deactivate_previous": true,
-      "hidden": true,
-      "admins": [],
-      "repotracker_error": {
-        "exists": false,
-        "invalid_revision": "",
-        "merge_base_revision": ""
-      },
-      "tracks_push_events": true,
-      "pr_testing_enabled": true,
-      "notify_on_failure": false,
-      "patching_disabled": false,
-      "commit_queue": {
-        "enabled": false,
-        "merge_method": "squash"
-      },
-      "disabled_stats_cache": false,
-      "files_ignored_from_cache": null,
-      "periodic_builds": [],
-      "triggers": []
+      "display_name": "Logkeeper"
     }
   ],
   "repo_ref": [
     {
-      "_id": "myEvergreenRepo",
+      "_id": "sandbox_repo_id",
       "owner_name": "evergreen-ci",
-      "repo_name": "evergreen"
+      "repo_name": "sandbox"
     }
   ]
 }
