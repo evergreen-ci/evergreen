@@ -2136,7 +2136,7 @@ func (a *APIProjectTasksPair) ToService() (interface{}, error) {
 }
 
 type APISingleTaskDistroConfig struct {
-	APIProjectTasksPair []APIProjectTasksPair `json:"project_tasks_pair"`
+	ProjectTasksPairs []APIProjectTasksPair `json:"project_tasks_pair"`
 }
 
 func (a *APISingleTaskDistroConfig) BuildFromService(h interface{}) error {
@@ -2150,7 +2150,7 @@ func (a *APISingleTaskDistroConfig) BuildFromService(h interface{}) error {
 			}
 			apiPairs = append(apiPairs, apiPair)
 		}
-		a.APIProjectTasksPair = apiPairs
+		a.ProjectTasksPairs = apiPairs
 	default:
 		return errors.Errorf("programmatic error: expected single task distro config but got type %T", h)
 	}
@@ -2159,7 +2159,7 @@ func (a *APISingleTaskDistroConfig) BuildFromService(h interface{}) error {
 
 func (a *APISingleTaskDistroConfig) ToService() (interface{}, error) {
 	pairs := []evergreen.ProjectTasksPair{}
-	for _, pair := range a.APIProjectTasksPair {
+	for _, pair := range a.ProjectTasksPairs {
 		p, err := pair.ToService()
 		if err != nil {
 			return nil, errors.Wrap(err, "converting project tasks pair to service model")
