@@ -203,6 +203,8 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, apiSettings.ServiceFlags.SystemFailedTaskRestartDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.CPUDegradedModeDisabled, apiSettings.ServiceFlags.DegradedModeDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.ParameterStoreDisabled, apiSettings.ServiceFlags.ParameterStoreDisabled)
+	assert.EqualValues(testSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID, apiSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID)
+	assert.ElementsMatch(testSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks, apiSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks)
 	assert.EqualValues(testSettings.Slack.Level, utility.FromStringPtr(apiSettings.Slack.Level))
 	assert.EqualValues(testSettings.Slack.Options.Channel, utility.FromStringPtr(apiSettings.Slack.Options.Channel))
 	assert.ElementsMatch(testSettings.SleepSchedule.PermanentlyExemptHosts, apiSettings.SleepSchedule.PermanentlyExemptHosts)
@@ -319,6 +321,8 @@ func TestModelConversion(t *testing.T) {
 		assert.Equal(dbSettings.SSHKeyPairs[i].Public, testSettings.SSHKeyPairs[i].Public)
 		assert.Equal(dbSettings.SSHKeyPairs[i].Private, testSettings.SSHKeyPairs[i].Private)
 	}
+	assert.EqualValues(testSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID, dbSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID)
+	assert.ElementsMatch(testSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks, dbSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks)
 	assert.EqualValues(testSettings.Slack.Level, dbSettings.Slack.Level)
 	assert.EqualValues(testSettings.Slack.Options.Channel, dbSettings.Slack.Options.Channel)
 	assert.ElementsMatch(testSettings.SleepSchedule.PermanentlyExemptHosts, apiSettings.SleepSchedule.PermanentlyExemptHosts)
