@@ -19,7 +19,7 @@ func PatchSetModule() cli.Command {
 		Aliases: []string{"set-module"},
 		Usage:   "update or add module to an existing patch",
 		Flags: mergeFlagSlices(addModuleFlag(), addSkipConfirmFlag(), addRefFlag(), addUncommittedChangesFlag(),
-			addPatchFinalizeFlag(), addPreserveCommitsFlag(
+			addPatchFinalizeFlag(
 				cli.BoolFlag{
 					Name:  largeFlagName,
 					Usage: "enable submitting larger patches (>16MB)",
