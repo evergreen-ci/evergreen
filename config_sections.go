@@ -29,7 +29,6 @@ func NewConfigSections() ConfigSections {
 		&BucketsConfig{},
 		&CedarConfig{},
 		&CloudProviders{},
-		&CommitQueueConfig{},
 		&ContainerPoolsConfig{},
 		&HostInitConfig{},
 		&HostJasperConfig{},

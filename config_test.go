@@ -715,26 +715,6 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 	s.EqualError(c.ValidateAndDefault(), "template: this-is:1: bad character U+007D '}'")
 }
 
-func (s *AdminSuite) TestCommitQueueConfig() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	config := CommitQueueConfig{
-		MergeTaskDistro: "distro",
-		CommitterName:   "Evergreen",
-		CommitterEmail:  "evergreen@mongodb.com",
-	}
-
-	s.NoError(config.ValidateAndDefault())
-	s.NoError(config.Set(ctx))
-
-	settings, err := GetConfig(ctx)
-	s.NoError(err)
-	s.Require().NotNil(settings)
-
-	s.Equal(config, settings.CommitQueue)
-}
-
 func (s *AdminSuite) TestHostJasperConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
