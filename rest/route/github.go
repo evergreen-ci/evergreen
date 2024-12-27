@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -508,17 +507,6 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 	commentBody := event.Comment.GetBody()
 	commentAction := event.GetAction()
 	if commentAction == "deleted" {
-		return nil
-	}
-	if triggersCommitQueue(event.Comment.GetBody()) {
-		grip.Info(gh.getCommentLogWithMessage(event, "commit queue triggered"))
-
-		_, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), gh.sc, createEnqueuePRInfo(event))
-		if err != nil {
-			grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event, "can't enqueue on commit queue")))
-			return errors.Wrap(err, "enqueueing in commit queue")
-		}
-
 		return nil
 	}
 
@@ -1185,32 +1173,6 @@ func validatePushTagEvent(event *github.PushEvent) error {
 	return nil
 }
 
-func createEnqueuePRInfo(event *github.IssueCommentEvent) commitqueue.EnqueuePRInfo {
-	return commitqueue.EnqueuePRInfo{
-		Username:      *event.Comment.User.Login,
-		Owner:         *event.Repo.Owner.Login,
-		Repo:          *event.Repo.Name,
-		PR:            *event.Issue.Number,
-		CommitMessage: *event.Comment.Body,
-	}
-}
-
-func isItemOnCommitQueue(id, item string) (bool, error) {
-	cq, err := commitqueue.FindOneId(id)
-	if err != nil {
-		return false, errors.Wrapf(err, "finding commit queue '%s'", id)
-	}
-	if cq == nil {
-		return false, errors.Errorf("commit queue '%s' not found", id)
-	}
-
-	pos := cq.FindItem(item)
-	if pos >= 0 {
-		return true, nil
-	}
-	return false, nil
-}
-
 func trimComment(comment string) string {
 	// strings.Join(strings.Fields()) is to handle multiple spaces between words
 	return strings.Join(strings.Fields(strings.ToLower(comment)), " ")
@@ -1222,12 +1184,6 @@ func isRetryComment(comment string) bool {
 
 func isPatchComment(comment string) bool {
 	return strings.HasPrefix(trimComment(comment), patchComment)
-}
-
-// triggersCommitQueue checks if "evergreen merge" is present in the comment, as
-// it may be followed by a newline and a message.
-func triggersCommitQueue(comment string) bool {
-	return strings.HasPrefix(trimComment(comment), commitQueueMergeComment)
 }
 
 func isKeepDefinitionsComment(comment string) bool {

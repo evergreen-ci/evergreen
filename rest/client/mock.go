@@ -232,44 +232,6 @@ func (c *Mock) GetSubscriptions(_ context.Context) ([]event.Subscription, error)
 	}, nil
 }
 
-func (c *Mock) GetCommitQueue(ctx context.Context, projectID string) (*model.APICommitQueue, error) {
-	return &model.APICommitQueue{
-		ProjectID: utility.ToStringPtr("mci"),
-		Queue: []model.APICommitQueueItem{
-			{
-				Issue: utility.ToStringPtr("123"),
-				Modules: []model.APIModule{
-					{
-						Module: utility.ToStringPtr("test_module"),
-						Issue:  utility.ToStringPtr("345"),
-					},
-				},
-			},
-			{
-				Issue: utility.ToStringPtr("345"),
-				Modules: []model.APIModule{
-					{
-						Module: utility.ToStringPtr("test_module2"),
-						Issue:  utility.ToStringPtr("567"),
-					},
-				},
-			},
-		},
-	}, nil
-}
-
-func (c *Mock) DeleteCommitQueueItem(ctx context.Context, item string) error {
-	return nil
-}
-
-func (c *Mock) EnqueueItem(ctx context.Context, patchID string, force bool) (int, error) {
-	return 0, nil
-}
-
-func (c *Mock) CreatePatchForMerge(ctx context.Context, patchID, commitMessage string) (*model.APIPatch, error) {
-	return nil, nil
-}
-
 func (c *Mock) SendNotification(_ context.Context, _ string, _ interface{}) error {
 	return nil
 }

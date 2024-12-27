@@ -112,24 +112,6 @@ func TestGithubWebhookRouteSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func (s *GithubWebhookRouteSuite) TestIsItemOnCommitQueue() {
-	pos, err := data.EnqueueItem("mci", restModel.APICommitQueueItem{Source: utility.ToStringPtr(commitqueue.SourceDiff), Issue: utility.ToStringPtr("1")}, false)
-	s.Require().NoError(err)
-	s.Require().Equal(0, pos)
-
-	exists, err := isItemOnCommitQueue("mci", "1")
-	s.NoError(err)
-	s.True(exists)
-
-	exists, err = isItemOnCommitQueue("mci", "2")
-	s.NoError(err)
-	s.False(exists)
-
-	exists, err = isItemOnCommitQueue("not-a-project", "1")
-	s.Error(err)
-	s.False(exists)
-}
-
 func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 	s.NoError(db.ClearCollections(model.ProjectRefCollection, patch.IntentCollection))
 
@@ -254,51 +236,6 @@ func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
 	}
 }
 
-func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
-	s.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))
-	cq := &commitqueue.CommitQueue{ProjectID: "proj"}
-	s.NoError(commitqueue.InsertQueue(cq))
-	p := model.ProjectRef{
-		Id:      "proj",
-		Owner:   "baxterthehacker",
-		Repo:    "public-repo",
-		Branch:  "main",
-		Enabled: true,
-		CommitQueue: model.CommitQueueParams{
-			Enabled: utility.TruePtr(),
-		},
-	}
-	s.NoError(p.Insert())
-	event, err := github.ParseWebHook("issue_comment", s.commitQueueCommentBody)
-	args1 := data.UserRepoInfo{
-		Username: "baxterthehacker",
-		Owner:    "baxterthehacker",
-		Repo:     "public-repo",
-	}
-	s.mockSc.MockGitHubConnectorImpl.UserPermissions = map[data.UserRepoInfo]string{
-		args1: "admin",
-	}
-	s.NotNil(event)
-	s.NoError(err)
-	s.mock.event = event
-	s.mock.msgID = "1"
-	ctx := context.Background()
-	resp := s.mock.Run(ctx)
-	if s.NotNil(resp) {
-		s.Equal(http.StatusOK, resp.Status())
-	}
-
-	s.NoError(err)
-	cq, err = commitqueue.FindOneId("proj")
-	s.NoError(err)
-	if s.Len(cq.Queue, 1) {
-		s.Equal("1", utility.FromStringPtr(&cq.Queue[0].Issue))
-		s.Equal("test_module", utility.FromStringPtr(&cq.Queue[0].Modules[0].Module))
-		s.Equal("1234", utility.FromStringPtr(&cq.Queue[0].Modules[0].Issue))
-	}
-
-}
-
 func (s *GithubWebhookRouteSuite) TestRetryCommentTrigger() {
 	event, err := github.ParseWebHook("issue_comment", s.retryCommentBody)
 	s.NoError(err)
@@ -346,26 +283,16 @@ func (s *GithubWebhookRouteSuite) TestPatchCommentTrigger() {
 	s.Equal("patch-alias", parsePRCommentForAlias(commentString))
 }
 
-func (s *CommitQueueSuite) TestCommentTrigger() {
-	comment := "no dice"
-	s.False(triggersCommitQueue(comment))
+func (s *GithubWebhookRouteSuite) TestCommentCleanup() {
+	legacyStr := " \n Evergreen       \n  Merge \n It's me, hi, I'm the comment it's me \n "
+	patchStr := " \n Evergreen       \n  Patch \n "
+	retryStr := " \n Evergreen       \n  Retry \n "
 
-	comment = commitQueueMergeComment
-	s.True(triggersCommitQueue(comment))
-}
+	s.False(isPatchComment(retryStr))
+	s.False(isRetryComment(legacyStr))
 
-func (s *CommitQueueSuite) TestCommentCleanup() {
-	trigger := " \n Evergreen       \n  Merge \n It's me, hi, I'm the comment it's me \n "
-	patch := " \n Evergreen       \n  Patch \n "
-	retry := " \n Evergreen       \n  Retry \n "
-
-	s.False(triggersCommitQueue(patch))
-	s.False(isPatchComment(retry))
-	s.False(isRetryComment(trigger))
-
-	s.True(triggersCommitQueue(trigger))
-	s.True(isPatchComment(patch))
-	s.True(isRetryComment(retry))
+	s.True(isPatchComment(patchStr))
+	s.True(isRetryComment(retryStr))
 }
 
 func (s *GithubWebhookRouteSuite) TestUnknownEventType() {
