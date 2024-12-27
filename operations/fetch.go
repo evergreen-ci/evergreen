@@ -317,6 +317,12 @@ func clone(opts cloneOptions) error {
 		c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, opts.rootDir
 		return c.Run()
 	}
+	// Reset Git remote URL to SSH after source has been fetched
+	// because the token in the https URL will be revoked.
+	if opts.isAppToken {
+		resetGitRemoteToSSH(opts.owner, opts.repository, opts.rootDir)
+	}
+
 	return nil
 }
 
@@ -442,6 +448,14 @@ func revokeFetchTokens(ctx context.Context, comm client.Communicator, taskId, to
 		tokens = append(tokens, moduleToken)
 	}
 	return comm.RevokeGitHubDynamicAccessTokens(ctx, taskId, tokens)
+}
+
+func resetGitRemoteToSSH(owner, repository, rootDir string) error {
+	sshURL := fmt.Sprintf("git@github.com:%s/%s.git", owner, repository)
+
+	c := exec.Command("git", "remote", "set-url", "origin", sshURL)
+	c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, rootDir
+	return c.Run()
 }
 
 func fetchArtifacts(rc *legacyClient, taskId string, rootDir string, shallow bool) error {
