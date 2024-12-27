@@ -12,13 +12,11 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -173,32 +171,6 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("Error aborting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}
-		if projCtx.Build.Requester == evergreen.MergeTestRequester {
-			p, err := patch.FindOneId(projCtx.Build.Version)
-			if err != nil {
-				http.Error(w, "Error finding patch", http.StatusInternalServerError)
-				return
-			}
-			if p == nil {
-				http.Error(w, "Patch not found", http.StatusNotFound)
-				return
-			}
-			err = model.SendCommitQueueResult(r.Context(), p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", user.DisplayName()))
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "unable to send github status",
-				"patch":   projCtx.Build.Version,
-			}))
-			err = model.RestartItemsAfterVersion(r.Context(), nil, projCtx.Build.Project, projCtx.Build.Version, user.Id)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			_, err = model.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Id, projCtx.Build.Version, user.Id)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		}
 	case evergreen.SetPriorityAction:
 		var priority int64
 		priority, err = strconv.ParseInt(putParams.Priority, 10, 64)
@@ -226,7 +198,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case evergreen.SetActiveAction:
-		if projCtx.Build.Requester == evergreen.MergeTestRequester && putParams.Active {
+		if projCtx.Build.Requester == evergreen.GithubMergeRequester && putParams.Active {
 			http.Error(w, "commit queue merges cannot be manually scheduled", http.StatusBadRequest)
 		}
 		err = model.ActivateBuildsAndTasks(r.Context(), []string{projCtx.Build.Id}, putParams.Active, user.Id)
@@ -238,32 +210,6 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		if !putParams.Active && putParams.Abort {
 			if err = task.AbortBuildTasks(projCtx.Build.Id, task.AbortInfo{User: user.Id}); err != nil {
 				http.Error(w, "Error unscheduling tasks", http.StatusInternalServerError)
-				return
-			}
-		}
-		if !putParams.Active && projCtx.Build.Requester == evergreen.MergeTestRequester {
-			p, err := patch.FindOneId(projCtx.Build.Version)
-			if err != nil {
-				http.Error(w, "Error finding patch", http.StatusInternalServerError)
-				return
-			}
-			if p == nil {
-				http.Error(w, "Patch not found", http.StatusNotFound)
-				return
-			}
-			err = model.SendCommitQueueResult(r.Context(), p, message.GithubStateError, fmt.Sprintf("deactivated by '%s'", user.DisplayName()))
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "unable to send github status",
-				"patch":   projCtx.Build.Version,
-			}))
-			err = model.RestartItemsAfterVersion(r.Context(), nil, projCtx.Build.Project, projCtx.Build.Version, user.Id)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			_, err = model.RemoveCommitQueueItemForVersion(projCtx.ProjectRef.Id, projCtx.Build.Version, user.Id)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		}

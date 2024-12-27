@@ -358,8 +358,7 @@ type ExternalLink struct {
 type MergeQueue string
 
 const (
-	MergeQueueEvergreen MergeQueue = "EVERGREEN"
-	MergeQueueGitHub    MergeQueue = "GITHUB"
+	MergeQueueGitHub MergeQueue = "GITHUB"
 )
 
 type CommitQueueParams struct {

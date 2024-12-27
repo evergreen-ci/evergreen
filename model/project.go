@@ -1124,7 +1124,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, appToken, knownHosts string)
 			expansions.Put("is_commit_queue", "true")
 		}
 
-		if p.IsPRMergePatch() || v.Requester == evergreen.GithubPRRequester {
+		if v.Requester == evergreen.GithubPRRequester {
 			expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
 			expansions.Put("github_org", p.GithubPatchData.BaseOwner)
 			expansions.Put("github_repo", p.GithubPatchData.BaseRepo)

@@ -388,15 +388,15 @@ func TestFinalizePatch(t *testing.T) {
 			p.VariantsTasks = []patch.VariantTasks{}
 			require.NoError(t, p.Insert())
 
-			_, err := FinalizePatch(ctx, p, evergreen.MergeTestRequester)
+			_, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "cannot finalize patch with no tasks")
 
 			// commit queue patch should fail with different error
 			p.Alias = evergreen.CommitQueueAlias
-			_, err = FinalizePatch(ctx, p, evergreen.MergeTestRequester)
+			_, err = FinalizePatch(ctx, p, evergreen.GithubMergeRequester)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "no builds or tasks for commit queue version")
+			assert.Contains(t, err.Error(), "no builds or tasks for merge queue version")
 		},
 		"GitHubPRPatchCreatesAllEssentialTasks": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
 			patchConfig.PatchedParserProject.Id = p.Id.Hex()

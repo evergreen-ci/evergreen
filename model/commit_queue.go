@@ -7,28 +7,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func RemoveCommitQueueItemForVersion(projectId, version string, user string) (*commitqueue.CommitQueueItem, error) {
-	cq, err := commitqueue.FindOneId(projectId)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting commit queue for project '%s'", projectId)
-	}
-	if cq == nil {
-		return nil, errors.Errorf("no commit queue found for project '%s'", projectId)
-	}
-
-	issue := ""
-	for _, item := range cq.Queue {
-		if item.Version == version {
-			issue = item.Issue
-		}
-	}
-	if issue == "" {
-		return nil, nil
-	}
-
-	return RemoveItemAndPreventMerge(cq, issue, user)
-}
-
 // RemoveItemAndPreventMerge removes an item from the commit queue and disables the merge task, if applicable.
 func RemoveItemAndPreventMerge(cq *commitqueue.CommitQueue, issue string, user string) (*commitqueue.CommitQueueItem, error) {
 	removed, err := cq.Remove(issue)

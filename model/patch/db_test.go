@@ -110,18 +110,6 @@ func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
 			require.Equal(t, 1, len(patches))
 			assert.Equal(t, "GH Merge Patch", patches[0].Description)
 		},
-		"MergeTestRequester": func(ctx context.Context, t *testing.T) {
-			opts := ByPatchNameStatusesCommitQueuePaginatedOptions{
-				Project:    utility.ToStringPtr("evergreen"),
-				Requesters: []string{evergreen.MergeTestRequester},
-			}
-			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
-			assert.NoError(t, err)
-			assert.Equal(t, 2, count)
-			require.Equal(t, 2, len(patches))
-			assert.Equal(t, "Merge Test Patch - Alias", patches[0].Description)
-			assert.Equal(t, "Merge Test Patch - PR", patches[1].Description)
-		},
 		"PatchVersionRequester": func(ctx context.Context, t *testing.T) {
 			opts := ByPatchNameStatusesCommitQueuePaginatedOptions{
 				Project:    utility.ToStringPtr("evergreen"),

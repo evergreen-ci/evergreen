@@ -596,31 +596,6 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForGitHubMergeQueue() {
 	}))
 }
 
-func (s *GitGetProjectSuite) TestBuildSourceCommandForCLIMergeTests() {
-	conf := s.taskConfig2
-
-	c := gitFetchProject{
-		Directory: "dir",
-		Token:     projectGitHubToken,
-	}
-
-	opts := cloneOpts{
-		method: cloneMethodOAuth,
-		branch: conf.ProjectRef.Branch,
-		owner:  conf.ProjectRef.Owner,
-		repo:   conf.ProjectRef.Repo,
-		dir:    c.Directory,
-		token:  c.Token,
-	}
-	s.Require().NoError(opts.setLocation())
-
-	s.taskConfig2.Task.Requester = evergreen.MergeTestRequester
-	cmds, err := c.buildSourceCloneCommand(conf, opts)
-	s.NoError(err)
-	s.Len(cmds, 10)
-	s.True(strings.HasSuffix(cmds[6], fmt.Sprintf("--branch '%s'", s.taskConfig2.ProjectRef.Branch)))
-}
-
 func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	conf := s.taskConfig2
 	c := gitFetchProject{

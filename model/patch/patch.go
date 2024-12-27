@@ -806,14 +806,10 @@ func (p *Patch) IsGithubPRPatch() bool {
 	return p.GithubPatchData.HeadOwner != ""
 }
 
-func (p *Patch) IsPRMergePatch() bool {
-	return p.GithubPatchData.MergeCommitSHA != ""
-}
-
-// IsCommitQueuePatch returns true if the the patch is part of any commit queue:
+// IsMergeQueuePatch returns true if the the patch is part of any commit queue:
 // either Evergreen's commit queue or GitHub's merge queue.
-func (p *Patch) IsCommitQueuePatch() bool {
-	return p.Alias == evergreen.CommitQueueAlias || p.IsPRMergePatch() || p.IsGithubMergePatch()
+func (p *Patch) IsMergeQueuePatch() bool {
+	return p.Alias == evergreen.CommitQueueAlias || p.IsGithubMergePatch()
 }
 
 // IsGithubMergePatch returns true if the patch is from the GitHub merge queue.
@@ -864,9 +860,9 @@ func (p *Patch) IsParent() bool {
 }
 
 // ShouldPatchFileWithDiff returns true if the patch should read with diff
-// (i.e. is not a PR or CQ patch) and the config has changed.
+// (i.e. is not a PR patch) and the config has changed.
 func (p *Patch) ShouldPatchFileWithDiff(path string) bool {
-	return !(p.IsGithubPRPatch() || p.IsPRMergePatch()) && p.ConfigChanged(path)
+	return !p.IsGithubPRPatch() && p.ConfigChanged(path)
 }
 
 func (p *Patch) GetPatchIndex(parentPatch *Patch) (int, error) {

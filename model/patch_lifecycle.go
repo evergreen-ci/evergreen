@@ -225,16 +225,13 @@ func getPatchedProjectYAML(ctx context.Context, projectRef *ProjectRef, opts *Ge
 	if p.IsGithubPRPatch() {
 		hash = p.GithubPatchData.HeadHash
 	}
-	if p.IsPRMergePatch() {
-		hash = p.GithubPatchData.MergeCommitSHA
-	}
 	if p.IsGithubMergePatch() {
 		hash = p.GithubMergeData.HeadSHA
 	}
 	opts.Revision = hash
 
 	path := projectRef.RemotePath
-	if p.Path != "" && !p.IsGithubPRPatch() && !p.IsCommitQueuePatch() {
+	if p.Path != "" && !p.IsGithubPRPatch() && !p.IsMergeQueuePatch() {
 		path = p.Path
 	}
 	opts.RemotePath = path
@@ -659,8 +656,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 
 	// if variant tasks is still empty, then the patch is empty and we shouldn't finalize
 	if len(p.VariantsTasks) == 0 {
-		if p.IsCommitQueuePatch() {
-			return nil, errors.Errorf("no builds or tasks for commit queue version in projects '%s', githash '%s'", p.Project, p.Githash)
+		if p.IsMergeQueuePatch() {
+			return nil, errors.Errorf("no builds or tasks for merge queue version in projects '%s', githash '%s'", p.Project, p.Githash)
 		}
 		return nil, errors.New("cannot finalize patch with no tasks")
 	}
@@ -862,9 +859,6 @@ func getLoadProjectOptsForPatch(p *patch.Patch) (*ProjectRef, *GetProjectOpts, e
 	if p.IsGithubPRPatch() {
 		hash = p.GithubPatchData.HeadHash
 	}
-	if p.IsPRMergePatch() {
-		hash = p.GithubPatchData.MergeCommitSHA
-	}
 	if p.IsGithubMergePatch() {
 		hash = p.GithubMergeData.HeadSHA
 	}
@@ -990,36 +984,20 @@ func AbortPatchesWithGithubPatchData(ctx context.Context, createdBefore time.Tim
 			continue
 		}
 
-		if p.IsCommitQueuePatch() {
-			mergeTask, err := task.FindMergeTaskForVersion(p.Version)
-			if err != nil {
-				return errors.Wrap(err, "finding merge task for version")
-			}
-			if mergeTask == nil {
-				return errors.New("no merge task found")
-			}
-			if mergeTask.Status == evergreen.TaskStarted || evergreen.IsFinishedTaskStatus(mergeTask.Status) {
-				// If the merge task already started, the PR merge is
-				// already ongoing, so it's better to just let it complete.
-				continue
-			}
-			catcher.Add(DequeueAndRestartForTask(ctx, nil, mergeTask, message.GithubStateFailure, evergreen.APIServerTaskActivator, "new push to pull request"))
-		} else {
-			err = CancelPatch(ctx, &p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed})
-			msg := message.Fields{
-				"source":         "github hook",
-				"created_before": createdBefore.String(),
-				"owner":          owner,
-				"repo":           repo,
-				"message":        "aborting patch's version",
-				"patch_id":       p.Id.Hex(),
-				"pr":             p.GithubPatchData.PRNumber,
-				"project":        p.Project,
-				"version":        p.Version,
-			}
-			grip.Error(message.WrapError(err, msg))
-			catcher.Add(err)
+		err = CancelPatch(ctx, &p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed})
+		msg := message.Fields{
+			"source":         "github hook",
+			"created_before": createdBefore.String(),
+			"owner":          owner,
+			"repo":           repo,
+			"message":        "aborting patch's version",
+			"patch_id":       p.Id.Hex(),
+			"pr":             p.GithubPatchData.PRNumber,
+			"project":        p.Project,
+			"version":        p.Version,
 		}
+		grip.Error(message.WrapError(err, msg))
+		catcher.Add(err)
 	}
 
 	return errors.Wrap(catcher.Resolve(), "aborting patches")
