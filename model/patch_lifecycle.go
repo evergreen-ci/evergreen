@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -23,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -1169,50 +1167,4 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 	}
 
 	return patchDoc, nil
-}
-
-// SendCommitQueueResult sends an updated GitHub PR status for a commit queue
-// result. If the patch is not part of a PR, this is a no-op.
-func SendCommitQueueResult(ctx context.Context, p *patch.Patch, status message.GithubState, description string) error {
-	if p.GithubPatchData.PRNumber == 0 {
-		return nil
-	}
-	projectRef, err := FindMergedProjectRef(p.Project, p.Version, true)
-	if err != nil {
-		return errors.Wrap(err, "finding project")
-	}
-	if projectRef == nil {
-		return errors.New("no project found for patch")
-	}
-	url := ""
-	if p.Version != "" {
-		settings, err := evergreen.GetConfig(ctx)
-		if err != nil {
-			return errors.Wrap(err, "unable to get settings")
-		}
-		url = fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", settings.Ui.Url, p.Version)
-	}
-	msg := message.GithubStatus{
-		Owner:       projectRef.Owner,
-		Repo:        projectRef.Repo,
-		Ref:         p.GithubPatchData.HeadHash,
-		Context:     commitqueue.GithubContext,
-		State:       status,
-		Description: description,
-		URL:         url,
-	}
-
-	env := evergreen.GetEnvironment()
-	sender, err := env.GetGitHubSender(projectRef.Owner, projectRef.Repo, githubapp.CreateGitHubAppAuth(env.Settings()).CreateGitHubSenderInstallationToken)
-	if err != nil {
-		return errors.Wrap(err, "getting GitHub sender")
-	}
-	sender.Send(message.NewGithubStatusMessageWithRepo(level.Notice, msg))
-	grip.Info(message.Fields{
-		"ticket":   thirdparty.GithubInvestigation,
-		"message":  "called github status send",
-		"caller":   "commit queue result",
-		"patch_id": p.Id,
-	})
-	return nil
 }

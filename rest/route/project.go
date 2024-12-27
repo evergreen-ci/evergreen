@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	dbModel "github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -637,7 +636,7 @@ func canEnableCommitQueue(projectRef *dbModel.ProjectRef) error {
 		return errors.Errorf("cannot enable commit queue in this repo, must disable in other projects first")
 	}
 
-	return commitqueue.EnsureCommitQueueExistsForProject(projectRef.Id)
+	return nil
 }
 
 // canEnablePRTesting determines if PR testing can be enabled for the given project.

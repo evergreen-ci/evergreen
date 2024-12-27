@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/parsley"
@@ -729,13 +728,6 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 	err := db.Insert(ProjectRefCollection, p)
 	if err != nil {
 		return errors.Wrap(err, "inserting project ref")
-	}
-	if err = commitqueue.EnsureCommitQueueExistsForProject(p.Id); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":            "error ensuring commit queue exists",
-			"project_id":         p.Id,
-			"project_identifier": p.Identifier,
-		}))
 	}
 
 	newProjectVars := ProjectVars{
