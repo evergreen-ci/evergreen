@@ -342,12 +342,9 @@ func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 }
 
 func TestGetHelpTextFromProjects(t *testing.T) {
-	cqAndPREnabledProject := model.ProjectRef{
-		Id:      "cqEnabled",
-		Enabled: true,
-		CommitQueue: model.CommitQueueParams{
-			Enabled: utility.TruePtr(),
-		},
+	prEnabledProject := model.ProjectRef{
+		Id:               "prEnabled",
+		Enabled:          true,
 		PRTestingEnabled: utility.TruePtr(),
 	}
 	manualPRProject := model.ProjectRef{
@@ -355,13 +352,9 @@ func TestGetHelpTextFromProjects(t *testing.T) {
 		Enabled:                true,
 		ManualPRTestingEnabled: utility.TruePtr(),
 	}
-	cqDisabledWithTextProject := model.ProjectRef{
-		Id:      "cqDisabled",
+	prTestingDefaultProject := model.ProjectRef{
+		Id:      "defaulted-project",
 		Enabled: true,
-		CommitQueue: model.CommitQueueParams{
-			Enabled: utility.FalsePtr(),
-			Message: "this commit queue isn't enabled",
-		},
 	}
 	disabledProject := model.ProjectRef{
 		Id:      "disabled",
@@ -378,20 +371,10 @@ func TestGetHelpTextFromProjects(t *testing.T) {
 	}}
 
 	for testCase, test := range map[string]func(*testing.T){
-		"cqEnabledAndDisabled": func(t *testing.T) {
-			pRefs := []model.ProjectRef{cqAndPREnabledProject, cqDisabledWithTextProject}
-			helpText := getHelpTextFromProjects(nil, pRefs)
-			assert.Contains(t, helpText, refreshStatusComment)
-			assert.Contains(t, helpText, commitQueueMergeComment)
-			assert.NotContains(t, helpText, cqDisabledWithTextProject.CommitQueue.Message)
-			assert.Contains(t, helpText, retryComment)
-			assert.NotContains(t, helpText, patchComment)
-		},
 		"manualAndAutomaticPRTestingEnabled": func(t *testing.T) {
-			pRefs := []model.ProjectRef{cqAndPREnabledProject, manualPRProject}
+			pRefs := []model.ProjectRef{prEnabledProject, manualPRProject}
 			helpText := getHelpTextFromProjects(nil, pRefs)
 			assert.Contains(t, helpText, refreshStatusComment)
-			assert.Contains(t, helpText, commitQueueMergeComment)
 			assert.Contains(t, helpText, patchComment)
 			assert.Contains(t, helpText, retryComment)
 		},
@@ -401,31 +384,19 @@ func TestGetHelpTextFromProjects(t *testing.T) {
 			assert.Contains(t, helpText, refreshStatusComment)
 			assert.Contains(t, helpText, patchComment)
 			assert.NotContains(t, helpText, retryComment)
-			assert.NotContains(t, helpText, commitQueueMergeComment)
-		},
-		"cqDisabled": func(t *testing.T) {
-			pRefs := []model.ProjectRef{cqDisabledWithTextProject}
-			helpText := getHelpTextFromProjects(nil, pRefs)
-			assert.Contains(t, helpText, commitQueueMergeComment)
-			assert.Contains(t, helpText, cqDisabledWithTextProject.CommitQueue.Message)
-			assert.NotContains(t, helpText, refreshStatusComment)
-			assert.NotContains(t, helpText, retryComment)
-			assert.NotContains(t, helpText, patchComment)
 		},
 		"repoPRTestingEnabled": func(t *testing.T) {
-			pRefs := []model.ProjectRef{cqDisabledWithTextProject}
+			pRefs := []model.ProjectRef{prTestingDefaultProject}
 			helpText := getHelpTextFromProjects(repoRefWithPRTesting, pRefs)
-			assert.Contains(t, helpText, commitQueueMergeComment)
-			assert.Contains(t, helpText, cqDisabledWithTextProject.CommitQueue.Message)
+			assert.Contains(t, helpText, prTestingDefaultProject.CommitQueue.Message)
 			assert.Contains(t, helpText, refreshStatusComment)
 			assert.Contains(t, helpText, patchComment)
 			assert.Contains(t, helpText, retryComment)
 		},
 		"repoNoTestingEnabled": func(t *testing.T) {
-			pRefs := []model.ProjectRef{cqDisabledWithTextProject}
+			pRefs := []model.ProjectRef{prTestingDefaultProject}
 			helpText := getHelpTextFromProjects(repoRefWithoutPRTesting, pRefs)
-			assert.Contains(t, helpText, commitQueueMergeComment)
-			assert.Contains(t, helpText, cqDisabledWithTextProject.CommitQueue.Message)
+			assert.Contains(t, helpText, prTestingDefaultProject.CommitQueue.Message)
 			assert.NotContains(t, helpText, refreshStatusComment)
 			assert.NotContains(t, helpText, patchComment)
 			assert.NotContains(t, helpText, retryComment)
@@ -437,7 +408,6 @@ func TestGetHelpTextFromProjects(t *testing.T) {
 			assert.NotContains(t, helpText, refreshStatusComment)
 			assert.NotContains(t, helpText, patchComment)
 			assert.NotContains(t, helpText, retryComment)
-			assert.NotContains(t, helpText, commitQueueMergeComment)
 		},
 	} {
 

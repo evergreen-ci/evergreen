@@ -513,7 +513,7 @@ func TestPodAgentEndTask(t *testing.T) {
 				PodID:             podID,
 				ExecutionPlatform: task.ExecutionPlatformContainer,
 				BuildVariant:      "bv1",
-				Requester:         evergreen.MergeTestRequester,
+				Requester:         evergreen.GithubMergeRequester,
 				DisplayName:       "some_task",
 			}
 			taskToInsert2 := &task.Task{

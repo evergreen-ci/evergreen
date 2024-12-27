@@ -970,36 +970,29 @@ func TestGetRequester(t *testing.T) {
 
 	p1 := Patch{
 		Id:    bson.NewObjectId(),
-		Alias: evergreen.CommitQueueAlias,
-	}
-	require.NoError(t, p1.Insert())
-
-	p2 := Patch{
-		Id:    bson.NewObjectId(),
 		Alias: "",
 		GithubPatchData: thirdparty.GithubPatch{
 			HeadOwner: "me",
 		},
 	}
-	require.NoError(t, p2.Insert())
+	require.NoError(t, p1.Insert())
 
-	p3 := Patch{
+	p2 := Patch{
 		Id:    bson.NewObjectId(),
 		Alias: evergreen.CommitQueueAlias,
 		GithubMergeData: thirdparty.GithubMergeGroup{
 			HeadSHA: "1234567",
 		},
 	}
-	require.NoError(t, p3.Insert())
+	require.NoError(t, p2.Insert())
 
-	p4 := Patch{
+	p3 := Patch{
 		Id:    bson.NewObjectId(),
 		Alias: "",
 	}
-	require.NoError(t, p4.Insert())
+	require.NoError(t, p3.Insert())
 
-	require.Equal(t, p1.GetRequester(), evergreen.MergeTestRequester)
-	require.Equal(t, p2.GetRequester(), evergreen.GithubPRRequester)
-	require.Equal(t, p3.GetRequester(), evergreen.GithubMergeRequester)
-	require.Equal(t, p4.GetRequester(), evergreen.PatchVersionRequester)
+	require.Equal(t, p1.GetRequester(), evergreen.GithubPRRequester)
+	require.Equal(t, p2.GetRequester(), evergreen.GithubMergeRequester)
+	require.Equal(t, p3.GetRequester(), evergreen.PatchVersionRequester)
 }

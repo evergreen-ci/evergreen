@@ -174,8 +174,6 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandUsesHTTPS() {
 		Token:     projectGitHubToken,
 	}
 	conf := s.taskConfig1
-	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
-	s.Require().NoError(err)
 
 	opts := cloneOpts{
 		method: cloneMethodOAuth,
@@ -186,7 +184,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandUsesHTTPS() {
 		token:  c.Token,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, _ := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
+	cmds, _ := c.buildSourceCloneCommand(conf, opts)
 	s.True(utility.StringSliceContains(cmds, "git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'"))
 }
 
@@ -238,8 +236,6 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandCloneDepth() {
 		Directory: "dir",
 	}
 	conf := s.taskConfig2
-	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
-	s.Require().NoError(err)
 
 	opts := cloneOpts{
 		method:     cloneMethodAccessToken,
@@ -251,7 +247,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandCloneDepth() {
 		cloneDepth: 50,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildSourceCloneCommand(conf, opts)
 	s.Require().NoError(err)
 	combined := strings.Join(cmds, " ")
 	s.Contains(combined, "--depth 50")
@@ -509,8 +505,6 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 
 func (s *GitGetProjectSuite) TestBuildSourceCommand() {
 	conf := s.taskConfig1
-	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
-	s.Require().NoError(err)
 
 	c := gitFetchProject{
 		Directory: "dir",
@@ -529,8 +523,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommand() {
 	opts.method = cloneMethodOAuth
 	opts.token = c.Token
 	s.Require().NoError(opts.setLocation())
-	s.Require().NoError(err)
-	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildSourceCloneCommand(conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 11)
 	s.True(utility.ContainsOrderedSubset([]string{
@@ -550,8 +543,6 @@ func (s *GitGetProjectSuite) TestBuildSourceCommand() {
 
 func (s *GitGetProjectSuite) TestBuildSourceCommandForPullRequests() {
 	conf := s.taskConfig3
-	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
-	s.Require().NoError(err)
 
 	c := gitFetchProject{
 		Directory: "dir",
@@ -567,7 +558,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForPullRequests() {
 	}
 	s.Require().NoError(opts.setLocation())
 
-	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildSourceCloneCommand(conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 13)
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
@@ -579,8 +570,6 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForPullRequests() {
 }
 func (s *GitGetProjectSuite) TestBuildSourceCommandForGitHubMergeQueue() {
 	conf := s.taskConfig6
-	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
-	s.Require().NoError(err)
 
 	c := gitFetchProject{
 		Directory: "dir",
@@ -596,7 +585,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForGitHubMergeQueue() {
 	}
 	s.Require().NoError(opts.setLocation())
 
-	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildSourceCloneCommand(conf, opts)
 	s.NoError(err)
 	s.Len(cmds, 13)
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
@@ -609,8 +598,6 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForGitHubMergeQueue() {
 
 func (s *GitGetProjectSuite) TestBuildSourceCommandForCLIMergeTests() {
 	conf := s.taskConfig2
-	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
-	s.Require().NoError(err)
 
 	c := gitFetchProject{
 		Directory: "dir",
@@ -628,7 +615,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForCLIMergeTests() {
 	s.Require().NoError(opts.setLocation())
 
 	s.taskConfig2.Task.Requester = evergreen.MergeTestRequester
-	cmds, err := c.buildSourceCloneCommand(s.ctx, s.comm, logger, conf, opts)
+	cmds, err := c.buildSourceCloneCommand(conf, opts)
 	s.NoError(err)
 	s.Len(cmds, 10)
 	s.True(strings.HasSuffix(cmds[6], fmt.Sprintf("--branch '%s'", s.taskConfig2.ProjectRef.Branch)))

@@ -373,7 +373,6 @@ func TestTranslateTasks(t *testing.T) {
 				AllowedRequesters: []evergreen.UserRequester{
 					evergreen.PatchVersionUserRequester,
 					evergreen.GithubPRUserRequester,
-					evergreen.MergeTestUserRequester,
 					evergreen.GithubMergeUserRequester,
 				},
 				Tasks: parserBVTaskUnits{
@@ -511,7 +510,6 @@ func TestTranslateTasks(t *testing.T) {
 	assert.ElementsMatch(t, []evergreen.UserRequester{
 		evergreen.PatchVersionUserRequester,
 		evergreen.GithubPRUserRequester,
-		evergreen.MergeTestUserRequester,
 		evergreen.GithubMergeUserRequester,
 	}, patchRequestersAllowedBV.Tasks[0].AllowedRequesters)
 	assert.Equal(t, "a_task_with_allowed_requesters", patchRequestersAllowedBV.Tasks[1].Name)

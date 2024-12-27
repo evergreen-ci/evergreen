@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -1192,124 +1191,6 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 	}
 
 	return patchDoc, nil
-}
-
-func RetryCommitQueueItems(projectID string, opts RestartOptions) ([]string, []string, error) {
-	patches, err := patch.FindFailedCommitQueuePatchesInTimeRange(projectID, opts.StartTime, opts.EndTime)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "finding failed commit queue patches for project in time range")
-	}
-	cq, err := commitqueue.FindOneId(projectID)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "finding commit queue '%s'", projectID)
-	}
-	if cq == nil {
-		return nil, nil, errors.Errorf("commit queue '%s' not found", projectID)
-	}
-
-	// don't requeue items, just return what would be requeued
-	if opts.DryRun {
-		toBeRequeued := []string{}
-		for _, p := range patches {
-			toBeRequeued = append(toBeRequeued, p.Id.Hex())
-		}
-		return toBeRequeued, nil, nil
-	}
-	patchesRestarted := []string{}
-	patchesFailed := []string{}
-	for _, p := range patches {
-		// use the PR number to determine if this is a PR or diff patch. Currently there
-		// is not a reliable field that is set for diff patches
-		var err error
-		if p.GithubPatchData.PRNumber > 0 {
-			err = restartPRItem(p, cq)
-		} else {
-			err = restartDiffItem(p, cq)
-		}
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"patch":        p.Id,
-				"commit_queue": cq.ProjectID,
-				"message":      "error restarting commit queue item",
-				"pr_number":    p.GithubPatchData.PRNumber,
-			}))
-			patchesFailed = append(patchesFailed, p.Id.Hex())
-		} else {
-			patchesRestarted = append(patchesRestarted, p.Id.Hex())
-		}
-	}
-
-	return patchesRestarted, patchesFailed, nil
-}
-
-func restartPRItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
-	// reconstruct commit queue item from patch
-	modules := []commitqueue.Module{}
-	for _, modulePatch := range p.Patches {
-		if modulePatch.ModuleName != "" {
-			module := commitqueue.Module{
-				Module: modulePatch.ModuleName,
-				Issue:  modulePatch.PatchSet.Patch,
-			}
-			modules = append(modules, module)
-		}
-	}
-	item := commitqueue.CommitQueueItem{
-		Issue:   strconv.Itoa(p.GithubPatchData.PRNumber),
-		Modules: modules,
-		Source:  commitqueue.SourcePullRequest,
-	}
-	if _, err := cq.Enqueue(item); err != nil {
-		return errors.Wrap(err, "enqueuing item")
-	}
-
-	return nil
-}
-
-func restartDiffItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
-	u, err := user.FindOne(user.ById(p.Author))
-	if err != nil {
-		return errors.Wrapf(err, "finding user '%s'", p.Author)
-	}
-	if u == nil {
-		return errors.Errorf("user '%s' not found", p.Author)
-	}
-	patchNumber, err := u.IncPatchNumber()
-	if err != nil {
-		return errors.Wrap(err, "incrementing patch number")
-	}
-	newPatch := patch.Patch{
-		Id:              mgobson.NewObjectId(),
-		Project:         p.Project,
-		Author:          p.Author,
-		Githash:         p.Githash,
-		CreateTime:      time.Now(),
-		Status:          evergreen.VersionCreated,
-		Description:     p.Description,
-		GithubPatchData: p.GithubPatchData,
-		Tasks:           p.Tasks,
-		VariantsTasks:   p.VariantsTasks,
-		BuildVariants:   p.BuildVariants,
-		Alias:           p.Alias,
-		Patches:         p.Patches,
-		PatchNumber:     patchNumber,
-	}
-
-	// The parser project is typically inserted at the same time as the patch.
-	// However, commit queue items made from CLI patches are a special exception
-	// that do not follow this behavior, because the existing patch may have be
-	// very outdated compared to the tracking branch's latest commit. The commit
-	// queue should ideally test against the most recent available project
-	// config, so it will resolve the parser project later on, when it's
-	// processed in the commit queue.
-
-	if err = newPatch.Insert(); err != nil {
-		return errors.Wrap(err, "inserting patch")
-	}
-	if _, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: newPatch.Id.Hex(), PatchId: newPatch.Id.Hex(), Source: commitqueue.SourceDiff}); err != nil {
-		return errors.Wrap(err, "enqueuing item")
-	}
-	return nil
 }
 
 // SendCommitQueueResult sends an updated GitHub PR status for a commit queue

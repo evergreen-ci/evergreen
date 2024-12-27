@@ -41,7 +41,6 @@ const (
 	refreshStatusComment    = "evergreen refresh"
 	patchComment            = "evergreen patch"
 	aliasArgument           = "--alias"
-	commitQueueMergeComment = "evergreen merge"
 	evergreenHelpComment    = "evergreen help"
 	keepDefinitionsComment  = "evergreen keep-definitions"
 	resetDefinitionsComment = "evergreen reset-definitions"
@@ -605,8 +604,7 @@ func (gh *githubHookApi) displayHelpText(ctx context.Context, owner, repo string
 }
 
 func getHelpTextFromProjects(repoRef *model.RepoRef, projectRefs []model.ProjectRef) string {
-	var manualPRProjectEnabled, autoPRProjectEnabled, cqProjectEnabled bool
-	var cqProjectMessage string
+	var manualPRProjectEnabled, autoPRProjectEnabled bool
 
 	canInheritRepoPRSettings := true
 	for _, p := range projectRefs {
@@ -619,12 +617,6 @@ func getHelpTextFromProjects(repoRef *model.RepoRef, projectRefs []model.Project
 		// If the project is explicitly disabled, then we shouldn't consider if the repo allows for PR testing.
 		if !p.Enabled {
 			canInheritRepoPRSettings = false
-		}
-
-		if err := p.CommitQueueIsOn(); err == nil {
-			cqProjectEnabled = true
-		} else if cqMessage := p.CommitQueue.Message; cqMessage != "" {
-			cqProjectMessage += cqMessage
 		}
 	}
 
@@ -639,7 +631,6 @@ func getHelpTextFromProjects(repoRef *model.RepoRef, projectRefs []model.Project
 	}
 
 	formatStr := "- `%s`    - %s\n"
-	formatStrStrikethrough := "- ~`%s`~ \n    - %s\n"
 	res := fmt.Sprintf("### %s\n", "Available Evergreen Comment Commands")
 	if autoPRProjectEnabled {
 		res += fmt.Sprintf(formatStr, retryComment, "attempts to create a new PR patch; "+
@@ -654,14 +645,7 @@ func getHelpTextFromProjects(repoRef *model.RepoRef, projectRefs []model.Project
 		res += fmt.Sprintf(formatStr, resetDefinitionsComment, "reset the patch tasks to the original definition")
 		res += fmt.Sprintf(formatStr, refreshStatusComment, "resyncs PR GitHub checks")
 	}
-	if cqProjectEnabled {
-		res += fmt.Sprintf(formatStr, commitQueueMergeComment, "adds PR to the commit queue")
-	} else if cqProjectMessage != "" {
-		// Should only display this if the commit queue isn't enabled for a different branch.
-		text := fmt.Sprintf("the commit queue is NOT enabled for this branch: %s", cqProjectMessage)
-		res += fmt.Sprintf(formatStrStrikethrough, commitQueueMergeComment, text)
-	}
-	if !autoPRProjectEnabled && !manualPRProjectEnabled && !cqProjectEnabled && cqProjectMessage == "" {
+	if !autoPRProjectEnabled && !manualPRProjectEnabled {
 		res = "No commands available for this branch."
 	}
 	return res
