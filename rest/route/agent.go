@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -1145,37 +1144,6 @@ func (h *servePatchHandler) Run(ctx context.Context) gimlet.Responder {
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("patch with ID '%s' not found", h.patchID),
 		})
-	}
-
-	// add on the merge status for the patch, if applicable
-	if p.GetRequester() == evergreen.MergeTestRequester {
-		builds, err := build.Find(build.ByVersion(p.Version))
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "retrieving builds for task"))
-		}
-		tasks, err := task.FindWithFields(task.ByVersion(p.Version), task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding tasks for version"))
-		}
-
-		p.MergeStatus = evergreen.VersionSucceeded
-		for _, b := range builds {
-			if b.BuildVariant == evergreen.MergeTaskVariant {
-				continue
-			}
-			complete, buildStatus, err := b.AllUnblockedTasksFinished(tasks)
-			if err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking build tasks"))
-			}
-			if !complete {
-				p.MergeStatus = evergreen.VersionStarted
-				break
-			}
-			if buildStatus == evergreen.BuildFailed {
-				p.MergeStatus = evergreen.VersionFailed
-				break
-			}
-		}
 	}
 
 	return gimlet.NewJSONResponse(p)
