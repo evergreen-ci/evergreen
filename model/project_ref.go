@@ -2164,26 +2164,6 @@ func UpdateOwnerAndRepoForBranchProjects(repoId, owner, repo string) error {
 		})
 }
 
-// FindProjectRefIdsWithCommitQueueEnabled returns a list of project IDs that have the commit queue enabled.
-// We don't return the full projects since they aren't actually merged with the repo documents, so they
-// aren't necessarily accurate.
-func FindProjectRefIdsWithCommitQueueEnabled() ([]string, error) {
-	projectRefs := []ProjectRef{}
-	res := []string{}
-	err := db.Aggregate(
-		ProjectRefCollection,
-		projectRefPipelineForCommitQueueEnabled(),
-		&projectRefs)
-	if err != nil {
-		return nil, err
-	}
-	for _, p := range projectRefs {
-		res = append(res, p.Id)
-	}
-
-	return res, nil
-}
-
 // FindPeriodicProjects returns a list of merged projects that have periodic builds defined.
 func FindPeriodicProjects() ([]ProjectRef, error) {
 	res := []ProjectRef{}
@@ -3516,36 +3496,6 @@ func projectRefPipelineForMatchingTrigger(project string) []bson.M {
 				}},
 			}},
 		},
-	}
-}
-
-// projectRefPipelineForCommitQueue is an aggregation pipeline to find projects that are
-// 1) explicitly enabled, or that default to the repo which is enabled, and
-// 2) the commit queue is explicitly enabled, or defaults to the repo which has the commit queue enabled
-func projectRefPipelineForCommitQueueEnabled() []bson.M {
-	return []bson.M{
-		lookupRepoStep,
-		{"$match": bson.M{
-			"$and": []bson.M{
-				{"$or": []bson.M{
-					{ProjectRefEnabledKey: true},
-				}},
-				{"$or": []bson.M{
-					{
-						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueEnabledKey):    true,
-						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueMergeQueueKey): bson.M{"$ne": MergeQueueGitHub},
-					},
-					{
-						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueEnabledKey):             nil,
-						bsonutil.GetDottedKeyName("repo_ref", RepoRefCommitQueueKey, commitQueueEnabledKey):    true,
-						bsonutil.GetDottedKeyName("repo_ref", RepoRefCommitQueueKey, commitQueueMergeQueueKey): bson.M{"$ne": MergeQueueGitHub},
-					},
-				}},
-			}},
-		},
-		{"$project": bson.M{
-			ProjectRefIdKey: 1,
-		}},
 	}
 }
 
