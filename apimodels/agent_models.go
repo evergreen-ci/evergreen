@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -201,7 +202,8 @@ type RegistrySettings struct {
 
 // Token is a struct which wraps a GitHub generated token.
 type Token struct {
-	Token string `json:"token"`
+	Token       string                          `json:"token"`
+	Permissions *github.InstallationPermissions `json:"permissions"`
 }
 
 // AssumeRoleRequest is the details of what role to assume.
