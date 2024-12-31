@@ -60,9 +60,9 @@ type TaskConfig struct {
 	// message of a version to be used in the otel attributes.
 	PatchOrVersionDescription string
 
-	// DevProdOwnedBuckets holds the list of buckets that are owned by
-	// DevProd.
-	DevProdOwnedBuckets []string
+	// InternalBuckets are the buckets that Evergreen's app servers have access to
+	// via their IRSA role.
+	InternalBuckets []string
 
 	mu sync.RWMutex
 }

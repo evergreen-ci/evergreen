@@ -31,13 +31,18 @@ func (b BucketType) validate() error {
 type BucketsConfig struct {
 	LogBucket BucketConfig `bson:"log_bucket" json:"log_bucket" yaml:"log_bucket"`
 
+	// InternalBuckets are the buckets that Evergreen's app servers have access to
+	// via their IRSA role.
+	InternalBuckets []string `yaml:"internal_buckets" bson:"internal_buckets" json:"internal_buckets"`
+
 	// Credentials for accessing the buckets.
 	Credentials S3Credentials `bson:"credentials" json:"credentials" yaml:"credentials"`
 }
 
 var (
-	bucketsConfigLogBucketKey   = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
-	bucketsConfigCredentialsKey = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
+	bucketsConfigLogBucketKey       = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
+	bucketsConfigInternalBucketsKey = bsonutil.MustHaveTag(BucketsConfig{}, "InternalBuckets")
+	bucketsConfigCredentialsKey     = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
 )
 
 // BucketConfig represents the admin config for an individual bucket.
@@ -68,8 +73,9 @@ func (c *BucketsConfig) Get(ctx context.Context) error {
 func (c *BucketsConfig) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			bucketsConfigLogBucketKey:   c.LogBucket,
-			bucketsConfigCredentialsKey: c.Credentials,
+			bucketsConfigLogBucketKey:       c.LogBucket,
+			bucketsConfigInternalBucketsKey: c.InternalBuckets,
+			bucketsConfigCredentialsKey:     c.Credentials,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

@@ -964,6 +964,10 @@ func (s *AdminSuite) TestBucketsConfig() {
 			Name: "logs",
 			Type: "s3",
 		},
+		InternalBuckets: []string{
+			"test-bucket",
+			"test2-bucket",
+		},
 	}
 
 	err := config.Set(ctx)
@@ -974,6 +978,7 @@ func (s *AdminSuite) TestBucketsConfig() {
 	s.Equal(config, settings.Buckets)
 
 	config.LogBucket.Name = "logs-2"
+	config.InternalBuckets = []string{"new-bucket"}
 	s.NoError(config.Set(ctx))
 
 	settings, err = GetConfig(ctx)

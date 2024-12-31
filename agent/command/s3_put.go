@@ -125,8 +125,8 @@ type s3put struct {
 	isPatchable      bool
 	isPatchOnly      bool
 
-	bucket              pail.Bucket
-	devprodOwnedBuckets []string
+	bucket          pail.Bucket
+	internalBuckets []string
 
 	taskdata client.TaskData
 	base
@@ -313,7 +313,7 @@ func (s3pc *s3put) Execute(ctx context.Context,
 		attribute.String(s3PutRemotePathAttribute, s3pc.remoteFile),
 	)
 
-	s3pc.devprodOwnedBuckets = conf.DevProdOwnedBuckets
+	s3pc.internalBuckets = conf.InternalBuckets
 
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()

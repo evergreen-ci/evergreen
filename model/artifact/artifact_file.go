@@ -74,7 +74,7 @@ func (f *File) validate() error {
 	catcher.ErrorfWhen(f.FileKey == "", "file key is required")
 
 	// Buckets that are not devprod owned require AWS credentials.
-	if !isDevProdOwnedBucket(f.Bucket) {
+	if !isInternalBucket(f.Bucket) {
 		catcher.ErrorfWhen(f.AwsKey == "", "AWS key is required")
 		catcher.ErrorfWhen(f.AwsSecret == "", "AWS secret is required")
 	}
@@ -114,7 +114,7 @@ func presignFile(ctx context.Context, file File) (string, error) {
 	// If this bucket is a devprod owned one, we sign the URL
 	// with the app's server IRSA credentials (which is used
 	// when no credentials are provided).
-	if isDevProdOwnedBucket(file.Bucket) {
+	if isInternalBucket(file.Bucket) {
 		file.AwsKey = ""
 		file.AwsSecret = ""
 	}
@@ -198,6 +198,8 @@ func escapeFile(path string) string {
 	return path[:i] + strings.Replace(path[i:], base, url.QueryEscape(base), 1)
 }
 
-func isDevProdOwnedBucket(bucketName string) bool {
-	return utility.StringSliceContains(evergreen.GetEnvironment().Settings().DevProdOwnedBuckets, bucketName)
+// isInternalBucket returns true if the bucket can be accessed by the app server's
+// IRSA role.
+func isInternalBucket(bucketName string) bool {
+	return utility.StringSliceContains(evergreen.GetEnvironment().Settings().Buckets.InternalBuckets, bucketName)
 }

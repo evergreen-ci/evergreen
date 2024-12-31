@@ -75,7 +75,6 @@ type Settings struct {
 	ConfigDir           string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
 	ContainerPools      ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
 	Database            DBSettings                `yaml:"database" json:"database" bson:"database"`
-	DevProdOwnedBuckets []string                  `yaml:"dev_prod_owned_buckets" bson:"dev_prod_owned_buckets" json:"dev_prod_owned_buckets"`
 	DomainName          string                    `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
 	Expansions          map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
 	ExpansionsNew       util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`

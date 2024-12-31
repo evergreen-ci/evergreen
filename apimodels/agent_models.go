@@ -122,7 +122,7 @@ type AgentSetupData struct {
 	EC2Keys                []evergreen.EC2Key      `json:"ec2_keys"`
 	TraceCollectorEndpoint string                  `json:"trace_collector_endpoint"`
 	MaxExecTimeoutSecs     int                     `json:"max_exec_timeout_secs"`
-	DevProdOwnedBuckets    []string                `json:"dev_prod_owned_buckets"`
+	InternalBuckets        []string                `json:"internal_buckets"`
 }
 
 // NextTaskResponse represents the response sent back when an agent asks for a next task

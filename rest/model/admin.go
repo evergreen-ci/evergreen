@@ -623,8 +623,9 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 }
 
 type APIBucketsConfig struct {
-	LogBucket   APIBucketConfig  `json:"log_bucket"`
-	Credentials APIS3Credentials `json:"credentials"`
+	LogBucket       APIBucketConfig  `json:"log_bucket"`
+	InternalBuckets []string         `json:"internal_buckets"`
+	Credentials     APIS3Credentials `json:"credentials"`
 }
 
 type APIBucketConfig struct {
@@ -639,6 +640,8 @@ func (a *APIBucketsConfig) BuildFromService(h interface{}) error {
 		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
 		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
 		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
+
+		a.InternalBuckets = v.InternalBuckets
 
 		creds := APIS3Credentials{}
 		if err := creds.BuildFromService(v.Credentials); err != nil {
@@ -667,7 +670,8 @@ func (a *APIBucketsConfig) ToService() (interface{}, error) {
 			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
 			DBName: utility.FromStringPtr(a.LogBucket.DBName),
 		},
-		Credentials: creds,
+		InternalBuckets: a.InternalBuckets,
+		Credentials:     creds,
 	}, nil
 }
 
