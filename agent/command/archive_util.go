@@ -16,17 +16,29 @@ import (
 	"github.com/pkg/errors"
 )
 
-// isRel checks if the candidate path is relative to the target path.
-func isRel(filePath, rootPath string) bool {
+// isRel checks if the filePath is relative to the rootpath.
+func isRel(filePath, rootPath string) error {
 	if filepath.IsAbs(filePath) {
-		return false
+		return errors.New("filepath is absolute")
 	}
-	realpath, err := filepath.EvalSymlinks(filepath.Join(rootPath, filePath))
+	realPath := filepath.Join(rootPath, filePath)
+	resolvedPath, err := filepath.EvalSymlinks(realPath)
+	// If the error is a non-existence error, we can ignore it.
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return errors.Wrap(err, "evaluating symlinks")
+	}
+	// If the path was resolved, use the resolved path.
+	if err == nil {
+		realPath = resolvedPath
+	}
+	relpath, err := filepath.Rel(rootPath, realPath)
 	if err != nil {
-		return false
+		return errors.Wrap(err, "getting relative path")
 	}
-	relpath, err := filepath.Rel(rootPath, realpath)
-	return err == nil && !strings.HasPrefix(filepath.Clean(relpath), "..")
+	if strings.HasPrefix(filepath.Clean(relpath), "..") {
+		return errors.New("relative path starts with '..'")
+	}
+	return nil
 }
 
 // buildArchive reads the rootPath directory into the tar.Writer,
@@ -136,7 +148,7 @@ func extractTarball(ctx context.Context, reader io.Reader, rootPath string, excl
 	}
 
 	tarReader := tar.NewReader(gzipReader)
-	err = extractTarArchive(ctx, tarReader, rootPath, excludes)
+	err = extractTarballArchive(ctx, tarReader, rootPath, excludes)
 	if err != nil {
 		return errors.Wrapf(err, "extracting path '%s'", rootPath)
 	}
@@ -144,13 +156,21 @@ func extractTarball(ctx context.Context, reader io.Reader, rootPath string, excl
 	return nil
 }
 
-// extractTarArchive unpacks the tar.Reader into rootPath.
-func extractTarArchive(ctx context.Context, tarReader *tar.Reader, rootPath string, excludes []string) error {
+// extractTarballArchive unpacks the tar.Reader into rootPath.
+func extractTarballArchive(ctx context.Context, tarReader *tar.Reader, rootPath string, excludes []string) error {
+	// Link files and symlink files are extracted after all other files are extracted.
+	linkFiles := []func() error{}
 tarReaderLoop:
 	for {
 		hdr, err := tarReader.Next()
 		if err == io.EOF {
-			// This means we've reached the end of the archive file.
+			// This means we've reached the end of the archive file and
+			// we can do the link and symlink files.
+			for _, f := range linkFiles {
+				if err := f(); err != nil {
+					return errors.Wrap(err, "")
+				}
+			}
 			return nil
 		}
 		if err != nil {
@@ -161,15 +181,20 @@ tarReaderLoop:
 			return errors.Wrap(err, "extraction operation canceled")
 		}
 
-		if !isRel(hdr.Linkname, rootPath) || !isRel(hdr.Name, rootPath) {
-			return errors.Wrap(err, "artifact paths should be relative to the root path")
+		name := hdr.Name
+		linkname := hdr.Linkname
+		if isRel(name, rootPath) != nil {
+			return errors.Wrapf(err, "artifact path '%s' should be relative to the root path", name)
+		}
+		if linkname != "" && isRel(linkname, rootPath) != nil {
+			return errors.Wrapf(err, "artifact path '%s' should be relative to the root path", name)
 		}
 
-		namePath := filepath.Join(rootPath, hdr.Name)
-		linkNamePath := filepath.Join(rootPath, hdr.Linkname)
+		namePath := filepath.Join(rootPath, name)
+		linkNamePath := filepath.Join(rootPath, linkname)
 
 		for _, ignore := range excludes {
-			if match, _ := filepath.Match(ignore, hdr.Name); match {
+			if match, _ := filepath.Match(ignore, name); match {
 				continue tarReaderLoop
 			}
 		}
@@ -182,14 +207,14 @@ tarReaderLoop:
 			}
 		case tar.TypeLink:
 			// Tar entry for a hard link.
-			if err = os.Link(linkNamePath, namePath); err != nil {
-				return errors.WithStack(err)
-			}
+			linkFiles = append(linkFiles, func() error {
+				return os.Link(linkNamePath, namePath)
+			})
 		case tar.TypeSymlink:
 			// Tar entry for a symbolic link.
-			if err = os.Symlink(linkNamePath, namePath); err != nil {
-				return errors.WithStack(err)
-			}
+			linkFiles = append(linkFiles, func() error {
+				return os.Symlink(linkNamePath, namePath)
+			})
 		case tar.TypeReg, tar.TypeRegA:
 			// Tar entry for a regular file.
 			// First, ensure the file's parent directory exists.
@@ -212,7 +237,9 @@ func writeFileWithContentsAndPermission(path string, contents io.Reader, mode fs
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	defer grip.Error(errors.Wrapf(f.Close(), "closing file '%s'", path))
+	defer func() {
+		grip.Error(errors.Wrapf(f.Close(), "closing file '%s'", path))
+	}()
 
 	if _, err = io.Copy(f, contents); err != nil {
 		return errors.Wrap(err, "copying tar contents to local file")
