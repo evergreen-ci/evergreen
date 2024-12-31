@@ -35,7 +35,7 @@ func validateRelativePath(filePath, rootPath string) error {
 	if err != nil {
 		return errors.Wrap(err, "getting relative path")
 	}
-	if strings.HasPrefix(filepath.Clean(relpath), "..") {
+	if strings.Contains(relpath, "..") {
 		return errors.New("relative path starts with '..'")
 	}
 	return nil
