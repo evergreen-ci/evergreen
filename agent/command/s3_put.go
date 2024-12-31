@@ -548,7 +548,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 		if s3pc.Visibility == artifact.Signed {
 			bucket = s3pc.Bucket
 			fileKey = remoteFileName
-			// TODO (DEVPROD-13658): Check if the bucket is devprod owned and do not send the credentials if it is.
+			// TODO (DEVPROD-13658): Check if the bucket is internal and use the app's server IRSA credentials.
 			key = s3pc.AwsKey
 			secret = s3pc.AwsSecret
 		}
