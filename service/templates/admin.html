@@ -1785,9 +1785,7 @@ Admin Settings
 								</md-card-content>
 							</md-card>
 						</section>
-
 						<section layout="row" flex>
-
 							<md-card flex=50 id="containerpools" style="max-width:49%">
 								<md-card-title>
 									<md-card-title-text>
@@ -1801,11 +1799,9 @@ Admin Settings
 									</md-input-container>
 								</md-card-content>
 							</md-card>
-
 						</section>
 
 						<section layout="row" flex>
-
 							<md-card flex=50 id="aws">
 								<md-card-title>
 									<md-card-title-text>
@@ -1859,6 +1855,44 @@ Admin Settings
 														<i class="fa fa-plus"></i>
 													</button>
 													<label class="control">[[ invalidSubnet ]]</label>
+												</div>
+											</section>
+										</md-card-content>
+									</md-card>
+									<md-card style="margin-bottom:20px;">
+										<md-card-title>
+											<md-card-title-text>
+												<span>Internal Buckets</span>
+											</md-card-title-text>
+										</md-card-title>
+										<md-card-content>
+											<div id="internal-buckets" class="form-group"
+												ng-repeat="(index, bucketName) in Settings.buckets.internal_buckets">
+												<section layout="row" flex>
+													<md-input-container class="control" flex=25>
+														<input class="control" type="text" ng-model="bucketName"
+															placeholder="Bucket Name">
+													</md-input-container>
+													<div style="margin-top: 1%;">
+														<button class="btn btn-default btn-danger" type="button"
+															style="float: left" ng-click="deleteInternalBucket(index)">
+															<i class="fa fa-trash"></i>
+														</button>
+													</div>
+												</section>
+											</div>
+											<section layout="row" flex>
+												<md-input-container class="control" flex=25>
+													<input class="control" type="text" ng-model="new_internal_bucket"
+														placeholder="Bucket Name">
+												</md-input-container>
+												<div style="margin-top: 1%;">
+													<button class="plus-button btn btn-primary"
+														ng-disabled="!validInternalBucket(new_internal_bucket)" type="button"
+														style="float: left" ng-click="addInternalBucket()">
+														<i class="fa fa-plus"></i>
+													</button>
+													<label class="control">[[ invalidBucket ]]</label>
 												</div>
 											</section>
 										</md-card-content>
