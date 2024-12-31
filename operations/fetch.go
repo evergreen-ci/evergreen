@@ -320,7 +320,10 @@ func clone(opts cloneOptions) error {
 	// Reset Git remote URL to SSH after source has been fetched
 	// because the token in the https URL will be revoked.
 	if opts.isAppToken {
-		resetGitRemoteToSSH(opts.owner, opts.repository, opts.rootDir)
+		err = resetGitRemoteToSSH(opts.owner, opts.repository, opts.rootDir)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
