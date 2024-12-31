@@ -19,24 +19,24 @@ import (
 func TestArchiveTarballExtractParseParams(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, cmd *tarballExtract){
 		"ArchivePathMustBeDefined": func(t *testing.T, cmd *tarballExtract) {
-			assert.Error(t, cmd.ParseParams(map[string]interface{}{
-				"archive_path": "",
-				"destination":  "bar",
-			}))
+			assert.ErrorContains(t, cmd.ParseParams(map[string]interface{}{
+				"path":        "",
+				"destination": "bar",
+			}), "archive path")
 		},
 		"DestinationMustBeDefined": func(t *testing.T, cmd *tarballExtract) {
 			assert.Error(t, cmd.ParseParams(map[string]interface{}{
-				"archive_path": "foo",
-				"destination":  "",
-			}))
+				"path":        "foo",
+				"destination": "",
+			}), "target directory")
 		},
 		"SucceedsWithValidParams": func(t *testing.T, cmd *tarballExtract) {
 			params := map[string]interface{}{
-				"archive_path": "foo",
-				"destination":  "bar",
+				"path":        "foo",
+				"destination": "bar",
 			}
 			require.NoError(t, cmd.ParseParams(params))
-			assert.Equal(t, params["archive_path"], cmd.ArchivePath)
+			assert.Equal(t, params["path"], cmd.ArchivePath)
 			assert.Equal(t, params["destination"], cmd.TargetDirectory)
 		},
 	} {
