@@ -1,6 +1,0 @@
-mutation {
-    defaultSectionToRepo(opts: {
-        projectId: "repo_id",
-        section: GENERAL
-    })
-}

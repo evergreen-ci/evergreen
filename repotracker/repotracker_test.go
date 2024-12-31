@@ -84,7 +84,6 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 		So(err, ShouldBeNil)
 		repoTracker := RepoTracker{testConfig, evgProjectRef, NewGithubRepositoryPoller(evgProjectRef)}
 
-		// insert distros used in testing.
 		d := distro.Distro{Id: "test-distro-one"}
 		So(d.Insert(ctx), ShouldBeNil)
 		d.Id = "test-distro-two"
@@ -191,7 +190,6 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			poller,
 		}
 
-		// insert distros used in testing.
 		d := distro.Distro{Id: "test-distro-one"}
 		So(d.Insert(ctx), ShouldBeNil)
 		d.Id = "test-distro-two"
@@ -274,6 +272,113 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 	})
 }
 
+func TestCountNumDependentsAcrossVariants(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	require.NoError(t, db.ClearCollections(model.VersionCollection, distro.Collection, model.ParserProjectCollection,
+		build.Collection, task.Collection, model.ProjectConfigCollection, model.ProjectRefCollection))
+
+	simpleYml := `
+buildvariants:
+- name: bv1
+  display_name: "bv_display"
+  run_on: d1
+  tasks:
+  - name: t1
+  - name: t2
+  - name: t3
+  - name: t4
+- name: bv2
+  display_name: bv2_display
+  run_on: d2
+  tasks:
+  - name: t1
+- name: bv3
+  display_name: bv3_display
+  run_on: d2
+  tasks:
+  - name: t4
+    depends_on:
+    - name: t1
+      variant: bv1
+tasks:
+- name: t1
+- name: t2
+  depends_on:
+  - name: t1
+- name: t3
+  depends_on:
+  - name: t1
+- name: t4
+  depends_on:
+  - name: t2
+  - name: t3
+`
+	previouslyActivatedVersion := &model.Version{
+		Id:         "previously activated",
+		Identifier: "testproject",
+		Requester:  evergreen.RepotrackerVersionRequester,
+		BuildVariants: []model.VersionBuildStatus{
+			{
+				BuildVariant: "bv1",
+				BatchTimeTasks: []model.BatchTimeTaskStatus{
+					{
+						TaskName: "t1",
+						ActivationStatus: model.ActivationStatus{
+							Activated:  true,
+							ActivateAt: time.Now().Add(-11 * time.Minute),
+						},
+					},
+				},
+				ActivationStatus: model.ActivationStatus{
+					Activated:  true,
+					ActivateAt: time.Now().Add(-11 * time.Minute),
+				},
+			},
+			{
+				BuildVariant: "bv2",
+				ActivationStatus: model.ActivationStatus{
+					Activated:  true,
+					ActivateAt: time.Now().Add(-11 * time.Minute),
+				},
+			},
+		},
+	}
+	require.NoError(t, previouslyActivatedVersion.Insert())
+
+	d := distro.Distro{Id: "d1"}
+	require.NoError(t, d.Insert(ctx))
+	d.Id = "d2"
+	require.NoError(t, d.Insert(ctx))
+
+	pRef := &model.ProjectRef{
+		Id:        "testproject",
+		BatchTime: 0,
+	}
+	require.NoError(t, pRef.Insert())
+
+	p := &model.Project{}
+	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
+	assert.NoError(t, err)
+	require.NotNil(t, pp)
+
+	// Create new version to use for activating
+	revisions := []model.Revision{
+		*createTestRevision("yes", time.Now()),
+	}
+	repoTracker := RepoTracker{
+		testConfig,
+		pRef,
+		NewMockRepoPoller(pp, revisions),
+	}
+	assert.NoError(t, repoTracker.StoreRevisions(ctx, revisions))
+
+	bv1t1, err := task.FindOne(db.Query(bson.M{task.BuildVariantKey: "bv1", task.DisplayNameKey: "t1"}))
+	require.NoError(t, err)
+	require.NotNil(t, bv1t1)
+	assert.Equal(t, bv1t1.NumDependents, 4)
+}
+
 func TestBatchTimeForTasks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -345,7 +450,6 @@ tasks:
 	}
 	assert.NoError(t, previouslyActivatedVersion.Insert())
 
-	// insert distros used in testing.
 	d := distro.Distro{Id: "d1"}
 	assert.NoError(t, d.Insert(ctx))
 	d.Id = "d2"
@@ -361,7 +465,7 @@ tasks:
 	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
 	assert.NoError(t, err)
 
-	// create new version to use for activating
+	// Create new version to use for activating
 	revisions := []model.Revision{
 		*createTestRevision("yes", time.Now()),
 	}
@@ -479,7 +583,6 @@ func TestBatchTimes(t *testing.T) {
 
 		So(previouslyActivatedVersion.Insert(), ShouldBeNil)
 
-		// insert distros used in testing.
 		d := distro.Distro{Id: "test-distro-one"}
 		So(d.Insert(ctx), ShouldBeNil)
 		d.Id = "test-distro-two"
@@ -645,7 +748,6 @@ func TestBatchTimes(t *testing.T) {
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		So(previouslyActivatedVersion.Insert(), ShouldBeNil)
-		// insert distros used in testing.
 		d := distro.Distro{Id: "test-distro-one"}
 		So(d.Insert(ctx), ShouldBeNil)
 		d.Id = "test-distro-two"
@@ -961,6 +1063,53 @@ tasks:
 	s.Equal("buildvariant 'bv' must either specify run_on field or have every task specify run_on", dbVersion.Errors[0])
 	s.Equal("task 'task1' does not contain any commands", dbVersion.Warnings[0])
 	s.Equal("task 'task2' does not contain any commands", dbVersion.Warnings[1])
+
+	s.Equal(evergreen.ProjectStorageMethodDB, dbVersion.ProjectStorageMethod)
+	dbParserProject, err := model.ParserProjectFindOneByID(s.ctx, s.env.Settings(), dbVersion.ProjectStorageMethod, dbVersion.Id)
+	s.Require().NoError(err)
+	s.Require().NotZero(dbParserProject)
+	s.Len(dbParserProject.BuildVariants, 1)
+	s.Len(dbParserProject.Tasks, 2)
+
+	dbBuild, err := build.FindOne(build.ByVersion(v.Id))
+	s.NoError(err)
+	s.Nil(dbBuild)
+
+	dbTasks, err := task.Find(task.ByVersion(v.Id))
+	s.NoError(err)
+	s.Len(dbTasks, 0)
+}
+
+func (s *CreateVersionFromConfigSuite) TestInvalidAliasErrors() {
+	configYml := `
+buildvariants:
+- name: bv
+  display_name: "bv_display"
+  run_on: d
+  tasks:
+  - name: task1
+  - name: task2
+tasks:
+- name: task1
+- name: task2
+`
+	p := &model.Project{}
+	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
+	s.NoError(err)
+	projectInfo := &model.ProjectInfo{
+		Ref:                 s.ref,
+		IntermediateProject: pp,
+		Project:             p,
+	}
+	v, err := CreateVersionFromConfig(s.ctx, projectInfo, model.VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion, Alias: "gibberish"}, false, nil)
+	s.NoError(err)
+	s.Require().NotNil(v)
+
+	dbVersion, err := model.VersionFindOneId(v.Id)
+	s.NoError(err)
+	s.NotNil(dbVersion)
+	s.Require().Len(dbVersion.Errors, 1)
+	s.Equal("requested alias 'gibberish' is undefined", dbVersion.Errors[0])
 
 	s.Equal(evergreen.ProjectStorageMethodDB, dbVersion.ProjectStorageMethod)
 	dbParserProject, err := model.ParserProjectFindOneByID(s.ctx, s.env.Settings(), dbVersion.ProjectStorageMethod, dbVersion.Id)

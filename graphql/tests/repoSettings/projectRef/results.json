@@ -7,7 +7,7 @@
           "repoSettings": {
             "githubWebhooksEnabled": true,
             "projectRef": {
-              "id": "repo_id",
+              "id": "sandbox_repo_id",
               "commitQueue": {
                 "enabled": true,
                 "mergeMethod": "squash"
@@ -21,22 +21,7 @@
               "gitTagAuthorizedUsers": ["ablack12"],
               "gitTagAuthorizedTeams": null,
               "triggers": [],
-              "patchTriggerAliases": [
-                {
-                  "alias": "my_alias_sandbox",
-                  "childProjectIdentifier": "varsTest",
-                  "taskSpecifiers": [
-                    {
-                      "taskRegex": "test-util",
-                      "variantRegex": "^ubuntu1604$"
-                    }
-                  ]
-                }
-              ],
-              "taskSync": {
-                "configEnabled": false,
-                "patchEnabled": true
-              },
+              "patchTriggerAliases": null,
               "perfEnabled": true,
               "buildBaronSettings": {
                 "ticketCreateProject": "EVG",
@@ -48,7 +33,6 @@
                 "bfSuggestionUsername": "",
                 "ticketCreateIssueType": ""
               },
-
               "taskAnnotationSettings": {
                 "fileTicketWebhook": {
                   "endpoint": "endpoint",
@@ -66,7 +50,11 @@
                   "cpu": 2,
                   "memoryMb": 2048
                 }
-              ]
+              ],
+              "taskSync": {
+                "configEnabled": false,
+                "patchEnabled": true
+              }
             }
           }
         }
@@ -78,10 +66,10 @@
         "data": null,
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to 'view project settings' for the project 'evergreen'",
+            "message": "repo 'evergreen_repo_id' not found",
             "path": ["repoSettings", "repoId"],
             "extensions": {
-              "code": "FORBIDDEN"
+              "code": "RESOURCE_NOT_FOUND"
             }
           }
         ]

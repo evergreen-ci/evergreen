@@ -36,13 +36,12 @@ func getTestProjectSettings(projectId string) model.ProjectSettings {
 			Vars:        map[string]string{},
 			PrivateVars: map[string]bool{},
 		},
-		Aliases: []model.ProjectAlias{model.ProjectAlias{
+		Aliases: []model.ProjectAlias{{
 			Alias:   "alias1",
 			Variant: "ubuntu",
 			Task:    "subcommand",
-		},
-		},
-		Subscriptions: []event.Subscription{event.Subscription{
+		}},
+		Subscriptions: []event.Subscription{{
 			ID:           "subscription1",
 			ResourceType: "project",
 			Owner:        "admin",
@@ -50,8 +49,7 @@ func getTestProjectSettings(projectId string) model.ProjectSettings {
 				Type:   event.GithubPullRequestSubscriberType,
 				Target: restModel.APIGithubPRSubscriber{},
 			},
-		},
-		},
+		}},
 	}
 }
 

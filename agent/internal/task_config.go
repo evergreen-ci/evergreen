@@ -49,7 +49,6 @@ type TaskConfig struct {
 	Timeout            Timeout
 	TaskOutput         evergreen.S3Credentials
 	TaskSync           evergreen.S3Credentials
-	EC2Keys            []evergreen.EC2Key
 	ModulePaths        map[string]string
 	CedarTestResultsID string
 	TaskGroup          *model.TaskGroup

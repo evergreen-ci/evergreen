@@ -400,6 +400,14 @@ func MockConfig() *evergreen.Settings {
 			CPUDegradedModeDisabled:         true,
 			ParameterStoreDisabled:          true,
 		},
+		SingleTaskDistro: evergreen.SingleTaskDistroConfig{
+			ProjectTasksPairs: []evergreen.ProjectTasksPair{
+				{
+					ProjectID:    "project",
+					AllowedTasks: []string{"task0", "task1"},
+				},
+			},
+		},
 		SleepSchedule: evergreen.SleepScheduleConfig{
 			PermanentlyExemptHosts: []string{"host0", "host1"},
 		},
@@ -435,13 +443,14 @@ func MockConfig() *evergreen.Settings {
 			GenerateTaskDistro: "distro",
 		},
 		Ui: evergreen.UIConfig{
-			Url:            "url",
-			HelpUrl:        "helpurl",
-			HttpListenAddr: "addr",
-			Secret:         "secret",
-			DefaultProject: "mci",
-			CacheTemplates: true,
-			CsrfKey:        "12345678901234567890123456789012",
+			Url:                "url",
+			HelpUrl:            "helpurl",
+			HttpListenAddr:     "addr",
+			Secret:             "secret",
+			DefaultProject:     "mci",
+			CacheTemplates:     true,
+			CsrfKey:            "12345678901234567890123456789012",
+			StagingEnvironment: "mine",
 		},
 		Spawnhost: evergreen.SpawnHostConfig{
 			SpawnHostsPerUser:         5,

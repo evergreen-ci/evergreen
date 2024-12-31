@@ -93,7 +93,6 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		TaskOutput:         h.settings.Buckets.Credentials,
 		InternalBuckets:    h.settings.Buckets.InternalBuckets,
 		TaskSync:           h.settings.Providers.AWS.TaskSync,
-		EC2Keys:            h.settings.Providers.AWS.EC2Keys,
 		MaxExecTimeoutSecs: h.settings.TaskLimits.MaxExecTimeoutSecs,
 	}
 

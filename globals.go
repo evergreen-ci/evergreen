@@ -552,6 +552,7 @@ var UserTriggeredOrigins = []string{
 
 const (
 	AuthTokenCookie     = "mci-token"
+	LoginCookieTTL      = 365 * 24 * time.Hour
 	TaskHeader          = "Task-Id"
 	TaskSecretHeader    = "Task-Secret"
 	HostHeader          = "Host-Id"

@@ -2,6 +2,7 @@
   "tests": [
     {
       "query_file": "my_hosts.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": {
           "myHosts": [
@@ -9,7 +10,7 @@
               "id": "i-06f80fa6e28f93b7d",
               "distroId": "ubuntu1604-small",
               "distro": { "workDir": "/data/mci", "id": "ubuntu1604-small" },
-              "persistentDnsName": "testuser-123.workstations.build.10gen.cc",
+              "persistentDnsName": "regular_user-123.workstations.build.10gen.cc",
               "volumes": []
             },
             {
@@ -45,6 +46,7 @@
     },
     {
       "query_file": "expired_time.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": {
           "myHosts": [

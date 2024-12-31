@@ -1,25 +1,26 @@
 mutation {
-    saveRepoSettingsForSection(
-        repoSettings: {
-            repoId: "repo_id"
-            projectRef: {
-                id: "repo_id"
-                owner: "hello",
-                repo: "world",
-                enabled: true,
-                remotePath: "my_path_is_new"
-            }
-        },
-        section: GENERAL
-    ) {
-        projectRef {
-            enabled
-            remotePath
-            spawnHostScriptPath ## overwritten
-        }
-        vars { ## should be unchanged
-            vars
-            privateVars
-        }
+  saveRepoSettingsForSection(
+    repoSettings: {
+      repoId: "sandbox_repo_id"
+      projectRef: {
+        id: "sandbox_repo_id"
+        owner: "hello"
+        repo: "world"
+        enabled: true
+        remotePath: "my_path_is_new"
+      }
     }
+    section: GENERAL
+  ) {
+    projectRef {
+      enabled
+      remotePath
+      spawnHostScriptPath ## overwritten
+    }
+    vars {
+      ## should be unchanged
+      vars
+      privateVars
+    }
+  }
 }
