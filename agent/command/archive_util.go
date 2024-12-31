@@ -16,8 +16,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// isRel checks if the filePath is relative to the rootpath.
-func isRel(filePath, rootPath string) error {
+// validateRelativePath checks if the filePath is relative to the rootpath.
+func validateRelativePath(filePath, rootPath string) error {
 	if filepath.IsAbs(filePath) {
 		return errors.New("filepath is absolute")
 	}
@@ -183,11 +183,13 @@ tarReaderLoop:
 
 		name := hdr.Name
 		linkname := hdr.Linkname
-		if isRel(name, rootPath) != nil {
-			return errors.Wrapf(err, "artifact path '%s' should be relative to the root path", name)
+		if err := validateRelativePath(name, rootPath); err != nil {
+			return errors.Wrapf(err, "artifact path name '%s' should be relative to the root path", name)
 		}
-		if linkname != "" && isRel(linkname, rootPath) != nil {
-			return errors.Wrapf(err, "artifact path '%s' should be relative to the root path", name)
+		if linkname != "" {
+			if err := validateRelativePath(linkname, rootPath); err != nil {
+				return errors.Wrapf(err, "artifact path link name '%s' should be relative to the root path", name)
+			}
 		}
 
 		namePath := filepath.Join(rootPath, name)
