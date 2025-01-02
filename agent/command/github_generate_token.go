@@ -34,7 +34,7 @@ type githubGenerateToken struct {
 	Repo string `mapstructure:"repo" plugin:"expand"`
 
 	// ExpansionName is what the generated token will be saved as.
-	ExpansionName string `mapstructure:"expansion_name"`
+	ExpansionName string `mapstructure:"expansion_name" plugin:"expand"`
 
 	// Permissions to grant the token. If not provided, set to nil to grant all permissions.
 	// The command can never specify to restrict all permissions- as it would
