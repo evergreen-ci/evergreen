@@ -132,6 +132,8 @@ func (apiBuild *APIBuild) BuildFromService(v build.Build, pp *model.ParserProjec
 		origin = commitOrigin
 	case evergreen.GithubPRRequester:
 		origin = patchOrigin
+	case evergreen.GithubMergeRequester:
+		origin = patchOrigin
 	case evergreen.PatchVersionRequester:
 		origin = patchOrigin
 	case evergreen.TriggerRequester:

@@ -3228,25 +3228,6 @@ func (t *TriggerDefinition) Validate(downstreamProject string) error {
 	return nil
 }
 
-func GetMessageForPatch(patchID string) (string, error) {
-	requestedPatch, err := patch.FindOneId(patchID)
-	if err != nil {
-		return "", errors.Wrap(err, "finding patch")
-	}
-	if requestedPatch == nil {
-		return "", errors.New("no patch found")
-	}
-	project, err := FindMergedProjectRef(requestedPatch.Project, requestedPatch.Version, true)
-	if err != nil {
-		return "", errors.Wrap(err, "finding project for patch")
-	}
-	if project == nil {
-		return "", errors.New("patch has nonexistent project")
-	}
-
-	return project.CommitQueue.Message, nil
-}
-
 // ValidateContainers inspects the list of containers defined in the project YAML and checks that each
 // are properly configured, and that their definitions can coexist with what is defined for container sizes
 // on the project admin page.

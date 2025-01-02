@@ -89,17 +89,16 @@ type gitFetchProject struct {
 }
 
 type cloneOpts struct {
-	method                 string
-	location               string
-	owner                  string
-	repo                   string
-	branch                 string
-	dir                    string
-	token                  string
-	recurseSubmodules      bool
-	useVerbose             bool
-	usePatchMergeCommitSha bool
-	cloneDepth             int
+	method            string
+	location          string
+	owner             string
+	repo              string
+	branch            string
+	dir               string
+	token             string
+	recurseSubmodules bool
+	useVerbose        bool
+	cloneDepth        int
 }
 
 // validateCloneMethod checks that the clone mechanism is one of the supported
@@ -355,14 +354,13 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opt
 func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
 	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
 	opts := cloneOpts{
-		method:                 projectMethod,
-		owner:                  conf.ProjectRef.Owner,
-		repo:                   conf.ProjectRef.Repo,
-		branch:                 conf.ProjectRef.Branch,
-		dir:                    c.Directory,
-		token:                  projectToken,
-		recurseSubmodules:      c.RecurseSubmodules,
-		usePatchMergeCommitSha: true,
+		method:            projectMethod,
+		owner:             conf.ProjectRef.Owner,
+		repo:              conf.ProjectRef.Repo,
+		branch:            conf.ProjectRef.Branch,
+		dir:               c.Directory,
+		token:             projectToken,
+		recurseSubmodules: c.RecurseSubmodules,
 	}
 	cloneDepth := c.CloneDepth
 	if cloneDepth == 0 && c.ShallowClone {
@@ -491,10 +489,6 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 					"num_attempts": gitFetchProjectRetries,
 					"attempt":      attemptNum,
 				})
-			}
-			if isSource && attemptNum > 0 {
-				// If clone failed once with the cached merge SHA, do not use it again for the source repo.
-				opts.usePatchMergeCommitSha = false
 			}
 			if err := fetch(opts); err != nil {
 				attemptNum++

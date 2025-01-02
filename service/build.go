@@ -199,7 +199,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		}
 	case evergreen.SetActiveAction:
 		if projCtx.Build.Requester == evergreen.GithubMergeRequester && putParams.Active {
-			http.Error(w, "commit queue merges cannot be manually scheduled", http.StatusBadRequest)
+			http.Error(w, "merge queue patches cannot be manually scheduled", http.StatusBadRequest)
 		}
 		err = model.ActivateBuildsAndTasks(r.Context(), []string{projCtx.Build.Id}, putParams.Active, user.Id)
 		if err != nil {

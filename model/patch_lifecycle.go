@@ -958,12 +958,10 @@ func CancelPatch(ctx context.Context, p *patch.Patch, reason task.AbortInfo) err
 	return errors.WithStack(patch.Remove(patch.ById(p.Id)))
 }
 
-// AbortPatchesWithGithubPatchData aborts patches and commit queue items created
+// AbortPatchesWithGithubPatchData aborts patches created
 // before the given time, with the same PR number, and base repository. Tasks
 // which are abortable will be aborted, while completed tasks will not be
-// affected. This function makes one exception for commit queue items so that if
-// the item is currently running the merge task, then that patch is not aborted
-// and is allowed to finish.
+// affected.
 func AbortPatchesWithGithubPatchData(ctx context.Context, createdBefore time.Time, closed bool, newPatch, owner, repo string, prNumber int) error {
 	patches, err := patch.Find(patch.ByGithubPRAndCreatedBefore(createdBefore, owner, repo, prNumber))
 	if err != nil {

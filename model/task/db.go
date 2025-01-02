@@ -1566,17 +1566,6 @@ func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {
 	return tasks, nil
 }
 
-func FindMergeTaskForVersion(versionId string) (*Task, error) {
-	task := &Task{}
-	query := db.Query(bson.M{
-		VersionKey:          versionId,
-		CommitQueueMergeKey: true,
-	})
-	err := db.FindOneQ(Collection, query, task)
-
-	return task, err
-}
-
 // FindOld returns all non-display tasks from the old tasks collection that
 // satisfy the given query.
 func FindOld(filter bson.M) ([]Task, error) {
