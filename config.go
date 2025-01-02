@@ -71,7 +71,6 @@ type Settings struct {
 	BannerTheme         BannerTheme               `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
 	Buckets             BucketsConfig             `bson:"buckets" json:"buckets" yaml:"buckets" id:"buckets"`
 	Cedar               CedarConfig               `bson:"cedar" json:"cedar" yaml:"cedar" id:"cedar"`
-	CommitQueue         CommitQueueConfig         `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
 	ConfigDir           string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
 	ContainerPools      ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
 	Database            DBSettings                `yaml:"database" json:"database" bson:"database"`
@@ -132,7 +131,6 @@ func (c *Settings) Set(ctx context.Context) error {
 			awsInstanceRoleKey:     c.AWSInstanceRole,
 			bannerKey:              c.Banner,
 			bannerThemeKey:         c.BannerTheme,
-			commitQueueKey:         c.CommitQueue,
 			configDirKey:           c.ConfigDir,
 			domainNameKey:          c.DomainName,
 			expansionsKey:          c.Expansions,
