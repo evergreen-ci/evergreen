@@ -51,7 +51,7 @@ func enableTaskReliability() error {
 	return configureTaskReliability(false)
 }
 
-func setupTest(t *testing.T) error {
+func setupTest(_ *testing.T) error {
 	return enableTaskReliability()
 }
 

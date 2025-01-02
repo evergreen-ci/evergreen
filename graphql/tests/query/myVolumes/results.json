@@ -2,13 +2,14 @@
   "tests": [
     {
       "query_file": "my_volumes.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": {
           "myVolumes": [
             {
               "id": "1de2728dd9de82efc02dc21f6ca046eaa559462414d28e0b6bba6436436ac873",
               "displayName": "",
-              "createdBy": "testuser",
+              "createdBy": "regular_user",
               "availabilityZone": "bcc3edcc1ecf38f75c2d62a8a50c99337509bd80a7f42db062efcda148bf6ff7",
               "size": 500,
               "expiration": "2020-06-06T14:43:06.287Z",
@@ -25,7 +26,7 @@
             {
               "id": "1da2d18d7fea548ed83a05895764056bc7437d6cac1c13d78f5fd2f27eb40a84",
               "displayName": "a real display name",
-              "createdBy": "testuser",
+              "createdBy": "regular_user",
               "availabilityZone": "bcc3edcc1ecf38f75c2d62a8a50c99337509bd80a7f42db062efcda148bf6ff7",
               "size": 500,
               "expiration": "2020-06-06T15:43:18.436Z",
@@ -42,7 +43,7 @@
             {
               "id": "randomid",
               "displayName": "",
-              "createdBy": "testuser",
+              "createdBy": "regular_user",
               "availabilityZone": "bcc3edcc1ecf38f75c2d62a8a50c99337509bd80a7f42db062efcda148bf6ff7",
               "size": 500,
               "expiration": "2020-06-06T15:43:18.436Z",
