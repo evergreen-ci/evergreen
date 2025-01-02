@@ -85,8 +85,8 @@ func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
 
 			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 			assert.NoError(t, err)
-			assert.Equal(t, 5, count)
-			require.Equal(t, 5, len(patches))
+			assert.Equal(t, 3, count)
+			require.Equal(t, 3, len(patches))
 		},
 		"GithubPRRequester": func(ctx context.Context, t *testing.T) {
 			opts := ByPatchNameStatusesCommitQueuePaginatedOptions{
@@ -139,8 +139,8 @@ func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
 			}
 			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 			assert.NoError(t, err)
-			assert.Equal(t, 5, count)
-			require.Equal(t, 5, len(patches))
+			assert.Equal(t, 3, count)
+			require.Equal(t, 3, len(patches))
 
 			opts = ByPatchNameStatusesCommitQueuePaginatedOptions{
 				Project:    utility.ToStringPtr("evergreen"),
@@ -148,8 +148,8 @@ func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
 			}
 			patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 			assert.NoError(t, err)
-			assert.Equal(t, 5, count)
-			require.Equal(t, 5, len(patches))
+			assert.Equal(t, 3, count)
+			require.Equal(t, 3, len(patches))
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -174,23 +174,7 @@ func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
 				},
 			}
 			assert.NoError(t, ghMergePatch.Insert())
-			mergeTestPatchAlias := Patch{
-				Id:          bson.NewObjectId(),
-				Project:     "evergreen",
-				Description: "Merge Test Patch - Alias",
-				Alias:       evergreen.CommitQueueAlias, // indicates merge_test requester
-			}
-			assert.NoError(t, mergeTestPatchAlias.Insert())
-			mergeTestPatchPR := Patch{
-				Id:          bson.NewObjectId(),
-				Project:     "evergreen",
-				Description: "Merge Test Patch - PR",
-				Alias:       "fake alias",
-				GithubPatchData: thirdparty.GithubPatch{
-					MergeCommitSHA: "merge_commit_sha_value", // indicates merge_test requester
-				},
-			}
-			assert.NoError(t, mergeTestPatchPR.Insert())
+
 			patchRequestPatch := Patch{
 				Id:          bson.NewObjectId(),
 				Project:     "evergreen",

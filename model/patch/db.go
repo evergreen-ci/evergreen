@@ -180,6 +180,12 @@ var requesterExpression = bson.M{
 				},
 				"then": evergreen.GithubMergeRequester,
 			},
+			{
+				"case": bson.M{
+					"$eq": []string{"$" + AliasKey, evergreen.CommitQueueAlias},
+				},
+				"then": evergreen.GithubMergeRequester,
+			},
 		},
 		"default": evergreen.PatchVersionRequester,
 	},

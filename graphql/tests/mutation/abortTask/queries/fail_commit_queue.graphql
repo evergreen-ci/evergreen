@@ -1,6 +1,0 @@
-mutation {
-  abortTask(taskId: "fail_commit_queue") {
-    aborted
-    activated
-  }
-}

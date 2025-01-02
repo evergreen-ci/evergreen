@@ -3179,10 +3179,6 @@ func TestAddEmptyBranch(t *testing.T) {
 	assert.NoError(t, p.Add(&u))
 	assert.NotEmpty(t, p.Id)
 	assert.Empty(t, p.Branch)
-
-	cq, err := commitqueue.FindOneId(p.Id)
-	assert.NoError(t, err)
-	assert.NotNil(t, cq)
 }
 
 func TestAddPermissions(t *testing.T) {
@@ -3207,10 +3203,6 @@ func TestAddPermissions(t *testing.T) {
 	assert.NoError(p.Add(&u))
 	assert.NotEmpty(p.Id)
 	assert.True(mgobson.IsObjectIdHex(p.Id))
-
-	cq, err := commitqueue.FindOneId(p.Id)
-	assert.NoError(err)
-	assert.NotNil(cq)
 
 	rm := env.RoleManager()
 	scope, err := rm.FindScopeForResources(evergreen.ProjectResourceType, p.Id)
@@ -3238,10 +3230,6 @@ func TestAddPermissions(t *testing.T) {
 	assert.NotEmpty(p.Id)
 	assert.True(mgobson.IsObjectIdHex(p.Id))
 	assert.Equal(projectId, p.Id)
-
-	cq, err = commitqueue.FindOneId(p.Id)
-	assert.NoError(err)
-	assert.NotNil(cq)
 
 	scope, err = rm.FindScopeForResources(evergreen.ProjectResourceType, p.Id)
 	assert.NoError(err)

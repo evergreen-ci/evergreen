@@ -1070,52 +1070,6 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 			require.NotZero(t, dbTask)
 			assert.False(t, dbTask.Aborted)
 		},
-		"AbortsNonMergingCommitQueueItemForGitHubPR": func(t *testing.T, p *patch.Patch, v *Version, tsk *task.Task) {
-			p.Alias = evergreen.CommitQueueAlias
-			require.NoError(t, p.Insert())
-			tsk.CommitQueueMerge = true
-			tsk.Status = evergreen.TaskUndispatched
-			require.NoError(t, tsk.Insert())
-			cq := commitqueue.CommitQueue{
-				ProjectID: p.Project,
-				Queue: []commitqueue.CommitQueueItem{{
-					Issue:   p.Id.Hex(),
-					PatchId: p.Id.Hex(),
-					Version: v.Id,
-				}},
-			}
-			require.NoError(t, commitqueue.InsertQueue(&cq))
-
-			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
-
-			dbCommitQueue, err := commitqueue.FindOneId(cq.ProjectID)
-			require.NoError(t, err)
-			require.NotZero(t, dbCommitQueue)
-			assert.Empty(t, dbCommitQueue.Queue)
-		},
-		"SkipMergingCommitQueueItemForGitHubPR": func(t *testing.T, p *patch.Patch, v *Version, tsk *task.Task) {
-			p.Alias = evergreen.CommitQueueAlias
-			require.NoError(t, p.Insert())
-			tsk.CommitQueueMerge = true
-			tsk.Status = evergreen.TaskStarted
-			require.NoError(t, tsk.Insert())
-			cq := commitqueue.CommitQueue{
-				ProjectID: p.Project,
-				Queue: []commitqueue.CommitQueueItem{{
-					Issue:   p.Id.Hex(),
-					PatchId: p.Id.Hex(),
-					Version: v.Id,
-				}},
-			}
-			require.NoError(t, commitqueue.InsertQueue(&cq))
-
-			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
-
-			dbCommitQueue, err := commitqueue.FindOneId(cq.ProjectID)
-			require.NoError(t, err)
-			require.NotZero(t, dbCommitQueue)
-			assert.Len(t, dbCommitQueue.Queue, 1)
-		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(commitqueue.Collection, patch.Collection, task.Collection, VersionCollection))
