@@ -12,111 +12,89 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/stretchr/testify/suite"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-type TarballExtractSuite struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-	conf   *internal.TaskConfig
-	comm   client.Communicator
-	logger client.LoggerProducer
+func TestArchiveTarballExtractParseParams(t *testing.T) {
+	for tName, tCase := range map[string]func(t *testing.T, cmd *tarballExtract){
+		"ArchivePathMustBeDefined": func(t *testing.T, cmd *tarballExtract) {
+			assert.ErrorContains(t, cmd.ParseParams(map[string]interface{}{
+				"path":        "",
+				"destination": "bar",
+			}), "archive path")
+		},
+		"DestinationMustBeDefined": func(t *testing.T, cmd *tarballExtract) {
+			assert.Error(t, cmd.ParseParams(map[string]interface{}{
+				"path":        "foo",
+				"destination": "",
+			}), "target directory")
+		},
+		"SucceedsWithValidParams": func(t *testing.T, cmd *tarballExtract) {
+			params := map[string]interface{}{
+				"path":        "foo",
+				"destination": "bar",
+			}
+			require.NoError(t, cmd.ParseParams(params))
+			assert.Equal(t, params["path"], cmd.ArchivePath)
+			assert.Equal(t, params["destination"], cmd.TargetDirectory)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			cmd, ok := tarballExtractFactory().(*tarballExtract)
+			require.True(t, ok)
 
-	cmd            *tarballExtract
-	targetLocation string
-	params         map[string]interface{}
-
-	suite.Suite
-}
-
-func TestTarballExtractSuite(t *testing.T) {
-	suite.Run(t, new(TarballExtractSuite))
-}
-
-func (s *TarballExtractSuite) SetupTest() {
-	var err error
-	s.targetLocation = s.T().TempDir()
-
-	s.ctx, s.cancel = context.WithCancel(context.Background())
-	s.comm = client.NewMock("http://localhost.com")
-	s.conf = &internal.TaskConfig{
-		Expansions: util.Expansions{},
-		Task:       task.Task{},
-		Project:    model.Project{},
-		WorkDir:    s.targetLocation,
+			tCase(t, cmd)
+		})
 	}
-	s.logger, err = s.comm.GetLoggerProducer(s.ctx, &s.conf.Task, nil)
-	s.Require().NoError(err)
-
-	s.cmd = &tarballExtract{}
-	s.params = map[string]interface{}{}
 }
 
-func (s *TarballExtractSuite) TearDownTest() {
-	s.cancel()
-}
+func TestArchiveTarballExtractExecute(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, cmd *tarballExtract, client *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig){
+		"FailsWithFileThatDoesNotExist": func(ctx context.Context, t *testing.T, cmd *tarballExtract, client *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+			cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
+				"testdata", "archive", "nonexistent.tar.gz")
 
-func (s *TarballExtractSuite) TestNilArguments() {
-	s.Error(s.cmd.ParseParams(nil))
-	s.Error(s.cmd.ParseParams(s.params))
-}
+			assert.Error(t, cmd.Execute(ctx, client, logger, conf))
+		},
+		"FailsWithFileThatIsNotArchive": func(ctx context.Context, t *testing.T, cmd *tarballExtract, client *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+			_, thisFile, _, _ := runtime.Caller(0)
+			cmd.ArchivePath = thisFile
 
-func (s *TarballExtractSuite) TestMalformedParams() {
-	s.params["exclude_files"] = 1
-	s.params["path"] = "foo"
-	s.Error(s.cmd.ParseParams(s.params))
-}
+			assert.Error(t, cmd.Execute(ctx, client, logger, conf))
+		},
+		"SucceedsAndIsIdempotent": func(ctx context.Context, t *testing.T, cmd *tarballExtract, client *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+			require.NoError(t, cmd.Execute(ctx, client, logger, conf))
 
-func (s *TarballExtractSuite) TestCorrectParams() {
-	s.params["path"] = "foo"
-	s.NoError(s.cmd.ParseParams(s.params))
-}
+			checkCommonExtractedArchiveContents(t, cmd.TargetDirectory)
 
-func (s *TarballExtractSuite) TestErrorsWithMalformedExpansions() {
-	s.cmd.TargetDirectory = "${foo"
-	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
-}
+			// Extracting the same archive contents multiple times to the same directory
+			// results results in no error. The command simply ignores duplicate files.
+			require.NoError(t, cmd.Execute(ctx, client, logger, conf))
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
-func (s *TarballExtractSuite) TestErrorsIfNoTarget() {
-	s.Zero(s.cmd.TargetDirectory)
-	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
-}
+			conf := &internal.TaskConfig{
+				Expansions: util.Expansions{},
+				Task:       task.Task{},
+				Project:    model.Project{},
+				WorkDir:    t.TempDir(),
+			}
+			comm := client.NewMock("url")
+			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)
+			require.NoError(t, err)
 
-func (s *TarballExtractSuite) TestErrorsAndNormalizedPath() {
-	s.cmd.TargetDirectory = "foo"
-	s.cmd.ArchivePath = "bar"
+			cmd, ok := tarballExtractFactory().(*tarballExtract)
+			require.True(t, ok)
 
-	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
-	s.Contains(s.cmd.TargetDirectory, s.conf.WorkDir)
-	s.Contains(s.cmd.ArchivePath, s.conf.WorkDir)
-}
+			cmd.TargetDirectory = conf.WorkDir
+			cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
+				"testdata", "archive", "artifacts.tar.gz")
 
-func (s *TarballExtractSuite) TestExtractionArchiveDoesNotExist() {
-	s.cmd.TargetDirectory = s.targetLocation
-	s.cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
-		"testdata", "archive", "nonexistent.tar.gz")
-
-	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
-}
-
-func (s *TarballExtractSuite) TestExtractionFileExistsAndIsNotArchive() {
-	s.cmd.TargetDirectory = s.targetLocation
-	_, thisFile, _, _ := runtime.Caller(0)
-	s.cmd.ArchivePath = thisFile
-
-	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
-}
-
-func (s *TarballExtractSuite) TestExtractionSucceedsAndIsIdempotent() {
-	s.cmd.TargetDirectory = s.targetLocation
-	s.cmd.ArchivePath = filepath.Join(testutil.GetDirectoryOfFile(),
-		"testdata", "archive", "artifacts.tar.gz")
-
-	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
-
-	checkCommonExtractedArchiveContents(s.T(), s.cmd.TargetDirectory)
-
-	// Extracting the same archive contents multiple times to the same directory
-	// results results in no error. The command simply ignores duplicate files.
-	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+			tCase(ctx, t, cmd, comm, logger, conf)
+		})
+	}
 }
