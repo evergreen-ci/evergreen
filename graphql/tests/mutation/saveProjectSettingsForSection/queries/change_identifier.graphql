@@ -1,17 +1,14 @@
 mutation {
-    saveProjectSettingsForSection(
-        projectSettings: {
-            projectId: "second_project_id"
-            projectRef: {
-                id: "second_project_id"
-                identifier: "sandbox"
-            }
-        },
-        section: GENERAL
-    ) {
-        projectRef {
-            id
-            identifier
-        }
+  saveProjectSettingsForSection(
+    projectSettings: {
+      projectId: "spruce"
+      projectRef: { id: "spruce", identifier: "sandbox" }
     }
+    section: GENERAL
+  ) {
+    projectRef {
+      id
+      identifier
+    }
+  }
 }

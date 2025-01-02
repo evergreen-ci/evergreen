@@ -965,6 +965,10 @@ Admin Settings
 											Cache templates
 										</md-checkbox>
 									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Staging Environment</label>
+										<input type="text" ng-model="Settings.ui.staging_environment">
+									</md-input-container>
 								</md-card-content>
 								<md-card>
 									<md-card-title>
@@ -1738,9 +1742,15 @@ Admin Settings
 										<input type="number" ng-disabled="!Settings.logger_config.buffer.use_async" ng-model="Settings.logger_config.buffer.incoming_buffer_factor">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
+										<label>Redact Keys</label>
+										<textarea ng-model="Settings.logger_config.redact_keys" ng-list="&#10;"
+												  ng-trim="false" rows="3" md-select-on-focus></textarea>
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Logkeeper URL</label>
 										<input type="text" ng-model="Settings.logger_config.logkeeper_url">
 									</md-input-container>
+
 								</md-card-content>
 							</md-card>
 						</section>
@@ -2703,7 +2713,6 @@ Admin Settings
 						Submit</md-button>
 				</md-card-footer>
 			</md-card>
-
 		</md-content>
 
 	</section>
