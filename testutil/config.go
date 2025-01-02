@@ -199,11 +199,6 @@ func MockConfig() *evergreen.Settings {
 			User:    "cedar-user",
 			APIKey:  "cedar-key",
 		},
-		CommitQueue: evergreen.CommitQueueConfig{
-			MergeTaskDistro: "distro",
-			CommitterName:   "Evergreen Commit Queue",
-			CommitterEmail:  "evergreen@mongodb.com",
-		},
 		ConfigDir: "cfg_dir",
 		ContainerPools: evergreen.ContainerPoolsConfig{
 			Pools: []evergreen.ContainerPool{
