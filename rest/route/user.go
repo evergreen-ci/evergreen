@@ -348,8 +348,7 @@ type UsersPermissionsInput struct {
 // UserPermissionsResult is a map from userId to their highest permission for the resource
 type UsersPermissionsResult map[string]gimlet.Permissions
 
-// Swagger-only type, included because this API route returns an external type
-// nolint:all
+//lint:ignore U1000 Swagger-only type, included because this API route returns an external type
 type swaggerUsersPermissionsResult map[string]swaggerPermissions
 
 type allUsersPermissionsGetHandler struct {
@@ -476,8 +475,7 @@ func (h *userPermissionsGetHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-// Swagger-only type, included because this API route returns an external type
-// nolint:all
+//lint:ignore U1000 Swagger-only type, included because this API route returns an external type
 type swaggerPermissionSummary struct {
 	//   type - the type of resources for which the listed permissions apply.
 	//   Will be "project", "distro", or "superuser"
@@ -491,12 +489,10 @@ type swaggerPermissionSummary struct {
 	Permissions swaggerPermissionsForResources `json:"permissions"`
 }
 
-// Swagger-only type, included because this API route returns an external type
-// nolint:all
+//lint:ignore U1000 Swagger-only type, included because this API route returns an external type
 type swaggerPermissionsForResources map[string]swaggerPermissions
 
-// Swagger-only type, included because this API route returns an external type
-// nolint:all
+//lint:ignore U1000 Swagger-only type, included because this API route returns an external type
 type swaggerPermissions map[string]int
 
 func (h *userPermissionsGetHandler) Parse(ctx context.Context, r *http.Request) error {

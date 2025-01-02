@@ -19,7 +19,7 @@
     {
       "branch": "spruce",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e4" },
-      "author": "testuser",
+      "author": "regular_user",
       "create_time": { "$date": "2020-01-01T00:00:01Z" },
       "desc": "1",
       "status": "created",
@@ -28,7 +28,7 @@
     {
       "branch": "spruce",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e5" },
-      "author": "testuser",
+      "author": "regular_user",
       "create_time": { "$date": "2020-01-01T00:00:02Z" },
       "desc": "222",
       "status": "created",
@@ -37,7 +37,7 @@
     {
       "branch": "spruce",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e6" },
-      "author": "testuser",
+      "author": "regular_user",
       "create_time": { "$date": "2020-01-01T00:00:03Z" },
       "desc": "1",
       "status": "created",
@@ -46,7 +46,7 @@
     {
       "branch": "spruce",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e7" },
-      "author": "testuser",
+      "author": "regular_user",
       "create_time": { "$date": "2020-01-01T00:00:04Z" },
       "desc": "222",
       "status": "failed",
@@ -55,7 +55,7 @@
     {
       "branch": "spruce",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e8" },
-      "author": "testuser",
+      "author": "regular_user",
       "create_time": { "$date": "2020-01-01T00:00:05Z" },
       "desc": "1",
       "status": "created",
@@ -64,7 +64,7 @@
     {
       "branch": "spruce",
       "_id": { "$oid": "5e4ff3abe3c3317e352062e9" },
-      "author": "testuser",
+      "author": "regular_user",
       "create_time": { "$date": "2019-01-01T00:00:06Z" },
       "desc": "222",
       "status": "failed",

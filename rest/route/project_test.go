@@ -1076,7 +1076,6 @@ func TestDeleteProject(t *testing.T) {
 	}
 
 	numAliases := 2
-	var aliases []serviceModel.ProjectAlias
 	for i := 0; i < numAliases; i++ {
 		projAlias := serviceModel.ProjectAlias{
 			ProjectID: projects[0].Id,
@@ -1085,7 +1084,6 @@ func TestDeleteProject(t *testing.T) {
 			Task:      fmt.Sprintf("task_%d", i),
 		}
 
-		aliases = append(aliases, projAlias)
 		require.NoError(t, projAlias.Upsert())
 	}
 

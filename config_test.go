@@ -489,13 +489,14 @@ func (s *AdminSuite) TestUiConfig() {
 	defer cancel()
 
 	config := UIConfig{
-		Url:            "url",
-		HelpUrl:        "helpurl",
-		HttpListenAddr: "addr",
-		Secret:         "secret",
-		DefaultProject: "mci",
-		CacheTemplates: true,
-		CsrfKey:        "csrf",
+		Url:                "url",
+		HelpUrl:            "helpurl",
+		HttpListenAddr:     "addr",
+		Secret:             "secret",
+		DefaultProject:     "mci",
+		CacheTemplates:     true,
+		CsrfKey:            "csrf",
+		StagingEnvironment: "mine",
 	}
 
 	err := config.Set(ctx)
@@ -594,6 +595,24 @@ func (s *AdminSuite) TestNotifyConfig() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Notify)
+}
+
+func (s *AdminSuite) TestLoggerConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config := LoggerConfig{
+		RedactKeys: []string{
+			"secret",
+			"github token",
+		},
+	}
+	err := config.Set(ctx)
+	s.NoError(err)
+	settings, err := GetConfig(ctx)
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.LoggerConfig)
 }
 
 func (s *AdminSuite) TestContainerPoolsConfig() {

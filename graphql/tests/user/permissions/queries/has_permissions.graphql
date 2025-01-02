@@ -15,7 +15,7 @@ query {
         edit
         view
       }
-      repoPermissions(options: { repoId: "repo_id" }) {
+      repoPermissions(options: { repoId: "sandbox_repo_id" }) {
         edit
         view
       }
