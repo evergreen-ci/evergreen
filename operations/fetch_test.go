@@ -1,11 +1,13 @@
 package operations
 
 import (
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestClone(t *testing.T) {
@@ -119,4 +121,28 @@ func TestFileNameWithIndex(t *testing.T) {
 	t.Run("DirectoryWithPeriodsAndFilenameWithExtension", func(t *testing.T) {
 		assert.Equal(t, filepath.Join("path.with.dots", "to", "file_(4).tar.gz"), fileNameWithIndex(filepath.Join("path.with.dots", "to", "file.tar.gz"), 5))
 	})
+}
+
+func TestResetGitRemoteToSSH(t *testing.T) {
+
+	opts := cloneOptions{
+		owner:      "evergreen-ci",
+		repository: "sample",
+		revision:   "cf46076567e4949f9fc68e0634139d4ac495c89b",
+		branch:     "main",
+		rootDir:    t.TempDir(),
+		token:      "abcdefg1234",
+		isAppToken: true,
+	}
+
+	assert.NoError(t, clone(opts))
+
+	// check that the remote is reset to SSH
+	cmd := exec.Command("git", "-C", opts.rootDir, "remote", "-v")
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err)
+	assert.Contains(t, string(output), "git@github.com:")
+	assert.NotContains(t, string(output), "https:")
+	assert.NoError(t, err)
+
 }
