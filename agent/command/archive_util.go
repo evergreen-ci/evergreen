@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
-	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -16,6 +15,31 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
+
+// validateRelativePath checks if the filePath is relative to the rootpath.
+func validateRelativePath(filePath, rootPath string) error {
+	if filepath.IsAbs(filePath) {
+		return errors.New("filepath is absolute")
+	}
+	realPath := filepath.Join(rootPath, filePath)
+	resolvedPath, err := filepath.EvalSymlinks(realPath)
+	// If the error is a non-existence error, we can ignore it.
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return errors.Wrap(err, "evaluating symlinks")
+	}
+	// If the path was resolved, use the resolved path.
+	if err == nil {
+		realPath = resolvedPath
+	}
+	relpath, err := filepath.Rel(rootPath, realPath)
+	if err != nil {
+		return errors.Wrap(err, "getting relative path")
+	}
+	if strings.Contains(relpath, "..") {
+		return errors.New("relative path starts with '..'")
+	}
+	return nil
+}
 
 // buildArchive reads the rootPath directory into the tar.Writer,
 // taking included and excluded strings into account.
@@ -124,7 +148,7 @@ func extractTarball(ctx context.Context, reader io.Reader, rootPath string, excl
 	}
 
 	tarReader := tar.NewReader(gzipReader)
-	err = extractTarArchive(ctx, tarReader, rootPath, excludes)
+	err = extractTarballArchive(ctx, tarReader, rootPath, excludes)
 	if err != nil {
 		return errors.Wrapf(err, "extracting path '%s'", rootPath)
 	}
@@ -132,77 +156,98 @@ func extractTarball(ctx context.Context, reader io.Reader, rootPath string, excl
 	return nil
 }
 
-// extractTarArchive unpacks the tar.Reader into rootPath.
-func extractTarArchive(ctx context.Context, tarReader *tar.Reader, rootPath string, excludes []string) error {
+// extractTarballArchive unpacks the tar.Reader into rootPath.
+func extractTarballArchive(ctx context.Context, tarReader *tar.Reader, rootPath string, excludes []string) error {
+	// Link files and symlink files are extracted after all other files are extracted.
+	linkFiles := []func() error{}
+tarReaderLoop:
 	for {
 		hdr, err := tarReader.Next()
 		if err == io.EOF {
-			return nil //reached end of archive, we are done.
+			// This means we've reached the end of the archive file and
+			// we can do the link and symlink files.
+			for _, f := range linkFiles {
+				if err := f(); err != nil {
+					return errors.Wrap(err, "")
+				}
+			}
+			return nil
 		}
 		if err != nil {
-			return errors.WithStack(err)
+			// This is an unexpected error.
+			return errors.Wrap(errors.WithStack(err), "getting next tar entry")
 		}
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(err, "extraction operation canceled")
 		}
 
-		if hdr.Typeflag == tar.TypeDir {
-			// this tar entry is a directory - need to mkdir it
-			localDir := fmt.Sprintf("%v/%v", rootPath, hdr.Name)
-			if err = os.MkdirAll(localDir, 0755); err != nil {
+		name := hdr.Name
+		linkname := hdr.Linkname
+		if err := validateRelativePath(name, rootPath); err != nil {
+			return errors.Wrapf(err, "artifact path name '%s' should be relative to the root path", name)
+		}
+		if linkname != "" {
+			if err := validateRelativePath(linkname, rootPath); err != nil {
+				return errors.Wrapf(err, "artifact path link name '%s' should be relative to the root path", name)
+			}
+		}
+
+		namePath := filepath.Join(rootPath, name)
+		linkNamePath := filepath.Join(rootPath, linkname)
+
+		for _, ignore := range excludes {
+			if match, _ := filepath.Match(ignore, name); match {
+				continue tarReaderLoop
+			}
+		}
+
+		switch hdr.Typeflag {
+		case tar.TypeDir:
+			// Tar entry for a directory.
+			if err = os.MkdirAll(namePath, 0755); err != nil {
 				return errors.WithStack(err)
 			}
-		} else if hdr.Typeflag == tar.TypeLink {
-			if err = os.Link(hdr.Name, hdr.Linkname); err != nil {
-				return errors.WithStack(err)
-			}
-		} else if hdr.Typeflag == tar.TypeSymlink {
-			if err = os.Symlink(hdr.Name, hdr.Linkname); err != nil {
-				return errors.WithStack(err)
-			}
-		} else if hdr.Typeflag == tar.TypeReg || hdr.Typeflag == tar.TypeRegA {
-			// this tar entry is a regular file (not a dir or link)
-			// first, ensure the file's parent directory exists
-			localFile := fmt.Sprintf("%v/%v", rootPath, hdr.Name)
-
-			for _, ignore := range excludes {
-				if match, _ := filepath.Match(ignore, localFile); match {
-					continue
-				}
-			}
-
-			dir := filepath.Dir(localFile)
-			if err = os.MkdirAll(dir, 0755); err != nil {
+		case tar.TypeLink:
+			// Tar entry for a hard link.
+			linkFiles = append(linkFiles, func() error {
+				return os.Link(linkNamePath, namePath)
+			})
+		case tar.TypeSymlink:
+			// Tar entry for a symbolic link.
+			linkFiles = append(linkFiles, func() error {
+				return os.Symlink(linkNamePath, namePath)
+			})
+		case tar.TypeReg, tar.TypeRegA:
+			// Tar entry for a regular file.
+			// First, ensure the file's parent directory exists.
+			if err = os.MkdirAll(filepath.Dir(namePath), 0755); err != nil {
 				return errors.WithStack(err)
 			}
 
-			// Now create the file itself, and write in the contents.
-
-			// Not using 'defer f.Close()' because this is in a loop,
-			// and we don't want to wait for the whole archive to finish to
-			// close the files - so each is closed explicitly.
-
-			f, err := os.Create(localFile)
+			err := writeFileWithContentsAndPermission(namePath, tarReader, os.FileMode(hdr.Mode))
 			if err != nil {
-				return errors.WithStack(err)
+				return err
 			}
-
-			if _, err = io.Copy(f, tarReader); err != nil {
-				grip.Error(errors.Wrapf(f.Close(), "closing file '%s'", localFile))
-				return errors.Wrap(err, "copying tar contents to local file '%s'")
-			}
-
-			// File's permissions should match what was in the archive
-			if err = os.Chmod(f.Name(), os.FileMode(int32(hdr.Mode))); err != nil {
-				grip.Error(errors.Wrapf(f.Close(), "closing file '%s'", localFile))
-				return errors.Wrapf(err, "changing file '%s' mode to %d", f.Name(), hdr.Mode)
-			}
-
-			grip.Error(errors.Wrapf(f.Close(), "closing file '%s'", localFile))
-		} else {
+		default:
 			return errors.Errorf("unknown file type '%c' in archive", hdr.Typeflag)
 		}
 	}
+}
+
+func writeFileWithContentsAndPermission(path string, contents io.Reader, mode fs.FileMode) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer func() {
+		grip.Error(errors.Wrapf(f.Close(), "closing file '%s'", path))
+	}()
+
+	if _, err = io.Copy(f, contents); err != nil {
+		return errors.Wrap(err, "copying tar contents to local file")
+	}
+
+	return errors.Wrapf(os.Chmod(f.Name(), mode), "changing file '%s' mode to %d", f.Name(), mode)
 }
 
 // tarGzReader returns a file, gzip reader, and tar reader for the given path.
