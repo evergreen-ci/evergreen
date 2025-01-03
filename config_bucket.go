@@ -29,7 +29,7 @@ func (b BucketType) validate() error {
 // BucketsConfig represents the admin config section for interally-owned
 // Evergreen data bucket storage.
 type BucketsConfig struct {
-	// LogBucket is the
+	// LogBucket is the bucket information for logs.
 	LogBucket BucketConfig `bson:"log_bucket" json:"log_bucket" yaml:"log_bucket"`
 	// Credentials for accessing the LogBucket.
 	Credentials S3Credentials `bson:"credentials" json:"credentials" yaml:"credentials"`
