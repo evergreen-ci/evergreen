@@ -3,8 +3,8 @@ package evergreen
 import (
 	"context"
 	"reflect"
+	"strings"
 
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -141,49 +141,116 @@ func byIDs(ids []string) bson.M {
 // the shared database when they're missing from the local database. This means that a
 // local documents will override the same document from the shared database.
 func getSectionsBSON(ctx context.Context, ids []string, includeOverrides bool) ([]bson.Raw, error) {
-	missingIDs := ids
-	docs := make([]bson.Raw, 0, len(ids))
-	if includeOverrides {
-		cur, err := GetEnvironment().DB().Collection(ConfigCollection).Find(ctx, byIDs(ids))
-		if err != nil {
-			return nil, errors.Wrap(err, "finding local configuration sections")
-		}
-
-		if err := cur.All(ctx, &docs); err != nil {
-			return nil, errors.Wrap(err, "iterating cursor for local configuration sections")
-		}
-
-		var docIDs []string
-		for _, doc := range docs {
-			id, err := doc.LookupErr("_id")
-			if err != nil {
-				continue
-			}
-			idString, ok := id.StringValueOK()
-			if !ok {
-				continue
-			}
-			docIDs = append(docIDs, idString)
-		}
-
-		missingIDs, _ = utility.StringSliceSymmetricDifference(ids, docIDs)
+	db := GetEnvironment().DB()
+	if sharedDB := GetEnvironment().SharedDB(); sharedDB != nil {
+		db = sharedDB
 	}
 
-	if GetEnvironment().SharedDB() == nil || len(missingIDs) == 0 {
-		return docs, nil
-	}
-
-	cur, err := GetEnvironment().SharedDB().Collection(ConfigCollection).Find(ctx, byIDs(missingIDs))
+	cur, err := db.Collection(ConfigCollection).Find(ctx, byIDs(ids))
 	if err != nil {
-		return nil, errors.Wrap(err, "finding shared configuration sections")
+		return nil, errors.Wrap(err, "finding local configuration sections")
+	}
+	docs := make([]bson.Raw, 0, len(ids))
+	if err := cur.All(ctx, &docs); err != nil {
+		return nil, errors.Wrap(err, "iterating cursor for local configuration sections")
 	}
 
-	missingDocs := make([]bson.Raw, 0, len(missingIDs))
-	if err := cur.All(ctx, &missingDocs); err != nil {
-		return nil, errors.Wrap(err, "iterating cursor for shared configuration sections")
+	if GetEnvironment().SharedDB() != nil && includeOverrides {
+		docs, err = overrideConfig(ctx, docs)
+		if err != nil {
+			return nil, errors.Wrap(err, "overriding config")
+		}
 	}
 
-	return append(docs, missingDocs...), nil
+	return docs, nil
+}
+
+func overrideConfig(ctx context.Context, docs []bson.Raw) ([]bson.Raw, error) {
+	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(overridesSectionID))
+	if err := res.Err(); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return docs, nil
+		}
+		return nil, errors.Wrap(err, "getting overrides document")
+	}
+	var overridesConfig bson.Raw
+	if err := res.Decode(&overridesConfig); err != nil {
+		return nil, errors.Wrap(err, "decoding overrides config")
+	}
+	overridesVal, err := overridesConfig.LookupErr("overrides")
+	if err != nil {
+		return nil, errors.Wrapf(err, "overrides document does not contain an overrides field")
+	}
+	overridesDoc, ok := overridesVal.DocumentOK()
+	if !ok {
+		return nil, errors.Errorf("overrides are malformed. Expected document, got '%s'", overridesVal.Type.String())
+	}
+	overrides, err := overridesDoc.Elements()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting overrides elements")
+	}
+
+	newDocs := make([]bson.Raw, 0, len(docs))
+	for _, doc := range docs {
+		idVal, err := doc.LookupErr("_id")
+		if err != nil {
+			continue
+		}
+		id, ok := idVal.StringValueOK()
+		if !ok {
+			continue
+		}
+
+		for _, elem := range overrides {
+			if id == elem.Key() {
+				newDoc, err := overrideValues(doc, elem.Value().Document())
+				if err != nil {
+					return nil, errors.Wrapf(err, "overriding values for config document '%s'", id)
+				}
+				doc = newDoc
+			}
+		}
+		newDocs = append(newDocs, doc)
+	}
+
+	return newDocs, nil
+}
+
+func overrideValues(original bson.Raw, overrides bson.Raw) (bson.Raw, error) {
+	var originalM bson.M
+	if err := bson.Unmarshal(original, &originalM); err != nil {
+		return nil, errors.Wrap(err, "unmarshalling original document")
+	}
+	overrideFields, err := overrides.Elements()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting overrides elements")
+	}
+
+	for _, field := range overrideFields {
+		if overrideField(originalM, field.Key(), field.Value()) != nil {
+			return nil, errors.Wrapf(err, "overriding field '%s'", field.Key())
+		}
+	}
+
+	return bson.Marshal(originalM)
+}
+
+func overrideField(original bson.M, overrideKey string, overrideValue bson.RawValue) error {
+	curr := original
+	keys := strings.Split(overrideKey, ".")
+	for i, key := range keys {
+		if i == len(keys)-1 {
+			curr[key] = overrideValue
+			return nil
+		}
+		subdoc, ok := curr[key].(bson.M)
+		if !ok {
+			return errors.Errorf("'%s' is not a subdocument", strings.Join(keys[0:i], "."))
+		}
+		curr = subdoc
+	}
+
+	return nil
 }
 
 // getConfigSection fetches a section from the database and deserializes it into the provided
@@ -191,35 +258,40 @@ func getSectionsBSON(ctx context.Context, ids []string, includeOverrides bool) (
 // the document is fetched from the shared database. If the document is missing the value
 // of section is reset to its zero value.
 func getConfigSection(ctx context.Context, section ConfigSection) error {
-	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(section.SectionId()))
-	if err := res.Err(); err != nil {
-		if err != mongo.ErrNoDocuments {
-			return errors.Wrapf(err, "getting local config section '%s'", section.SectionId())
-		}
-		// No document is present in the local database and the shared database is not configured.
-		if GetEnvironment().SharedDB() == nil {
-			// Reset the section to its zero value.
-			reflect.ValueOf(section).Elem().Set(reflect.New(reflect.ValueOf(section).Elem().Type()).Elem())
-			return nil
-		}
-	} else {
-		if err := res.Decode(section); err != nil {
-			return errors.Wrapf(err, "decoding local config section '%s'", section.SectionId())
-		}
-		return nil
+	db := GetEnvironment().DB()
+	if sharedDB := GetEnvironment().SharedDB(); sharedDB != nil {
+		db = sharedDB
 	}
-
-	res = GetEnvironment().SharedDB().Collection(ConfigCollection).FindOne(ctx, byId(section.SectionId()))
+	res := db.Collection(ConfigCollection).FindOne(ctx, byId(section.SectionId()))
 	if err := res.Err(); err != nil {
 		if err != mongo.ErrNoDocuments {
-			return errors.Wrapf(err, "getting shared config section '%s'", section.SectionId())
+			return errors.Wrapf(err, "getting config section '%s'", section.SectionId())
 		}
 		// Reset the section to its zero value.
 		reflect.ValueOf(section).Elem().Set(reflect.New(reflect.ValueOf(section).Elem().Type()).Elem())
 		return nil
 	}
 
-	return errors.Wrapf(res.Decode(section), "decoding shared config section '%s'", section.SectionId())
+	raw, err := res.Raw()
+	if err != nil {
+		return errors.Wrap(err, "getting raw result")
+	}
+	if GetEnvironment().SharedDB() != nil {
+		overriden, err := overrideConfig(ctx, []bson.Raw{raw})
+		if err != nil {
+			return errors.Wrap(err, "overriding configuration section")
+		}
+		if len(overriden) != 1 {
+			return errors.Errorf("overridden config had unexpected length %d", len(overriden))
+		}
+		raw = overriden[0]
+	}
+
+	if err := bson.Unmarshal(raw, section); err != nil {
+		return errors.Wrapf(err, "unmarshalling config section '%s'", section.SectionId())
+	}
+
+	return nil
 }
 
 func setConfigSection(ctx context.Context, sectionID string, update bson.M) error {

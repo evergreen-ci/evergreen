@@ -24,31 +24,33 @@ func TestGetSectionsBSON(t *testing.T) {
 		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
 		defer func() { require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx)) }()
 
-		config := NotifyConfig{BufferTargetPerInterval: 1}
-		_, err := GetEnvironment().DB().Collection(ConfigCollection).InsertOne(ctx, struct {
-			ID           string `bson:"_id"`
-			NotifyConfig `bson:",inline"`
-		}{ID: config.SectionId(), NotifyConfig: config})
-		require.NoError(t, err)
+		notifyConfig := NotifyConfig{BufferTargetPerInterval: 1}
+		require.NoError(t, notifyConfig.Set(ctx))
 
-		sections, err := getSectionsBSON(ctx, []string{config.SectionId()}, true)
+		overrides := OverridesConfig{Overrides: bson.M{notifyConfig.SectionId(): bson.M{"buffer_target_per_interval": 2}}}
+		require.NoError(t, overrides.Set(ctx))
+
+		sections, err := getSectionsBSON(ctx, []string{notifyConfig.SectionId()}, true)
 		assert.NoError(t, err)
-		assert.Len(t, sections, 1)
+		require.Len(t, sections, 1)
+		assert.NoError(t, bson.Unmarshal(sections[0], &notifyConfig))
+		assert.Equal(t, 2, notifyConfig.BufferTargetPerInterval)
 	})
-	t.Run("OnlyShared", func(t *testing.T) {
-		require.NoError(t, GetEnvironment().SharedDB().Collection(ConfigCollection).Drop(ctx))
-		defer func() { require.NoError(t, GetEnvironment().SharedDB().Collection(ConfigCollection).Drop(ctx)) }()
+	t.Run("NoOverrides", func(t *testing.T) {
+		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
+		defer func() { require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx)) }()
 
-		config := NotifyConfig{BufferTargetPerInterval: 1}
-		_, err := GetEnvironment().SharedDB().Collection(ConfigCollection).InsertOne(ctx, struct {
-			ID           string `bson:"_id"`
-			NotifyConfig `bson:",inline"`
-		}{ID: config.SectionId(), NotifyConfig: config})
-		require.NoError(t, err)
+		notifyConfig := NotifyConfig{BufferTargetPerInterval: 1}
+		require.NoError(t, notifyConfig.Set(ctx))
 
-		sections, err := getSectionsBSON(ctx, []string{config.SectionId()}, false)
+		overrides := OverridesConfig{Overrides: bson.M{notifyConfig.SectionId(): bson.M{"buffer_target_per_interval": 2}}}
+		require.NoError(t, overrides.Set(ctx))
+
+		sections, err := getSectionsBSON(ctx, []string{notifyConfig.SectionId()}, false)
 		assert.NoError(t, err)
-		assert.Len(t, sections, 1)
+		require.Len(t, sections, 1)
+		assert.NoError(t, bson.Unmarshal(sections[0], &notifyConfig))
+		assert.Equal(t, 1, notifyConfig.BufferTargetPerInterval)
 	})
 }
 
@@ -56,63 +58,47 @@ func TestGetConfigSection(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	t.Run("NilSharedDB", func(t *testing.T) {
-		t.Run("ConfigDocumentExists", func(t *testing.T) {
-			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
-			defer func() { require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx)) }()
+	defer func(client *mongo.Client) {
+		GetEnvironment().(*envState).sharedDBClient = client
+	}(GetEnvironment().(*envState).sharedDBClient)
+	GetEnvironment().(*envState).sharedDBClient = GetEnvironment().(*envState).client
 
-			config := NotifyConfig{BufferTargetPerInterval: 1}
-			_, err := GetEnvironment().DB().Collection(ConfigCollection).InsertOne(ctx, struct {
-				ID           string `bson:"_id"`
-				NotifyConfig `bson:",inline"`
-			}{ID: config.SectionId(), NotifyConfig: config})
-			require.NoError(t, err)
+	t.Run("NoOverrides", func(t *testing.T) {
+		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
+		defer func() { require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx)) }()
 
-			var fetchedConfig NotifyConfig
-			assert.NoError(t, getConfigSection(ctx, &fetchedConfig))
-			assert.Equal(t, config, fetchedConfig)
+		config := NotifyConfig{BufferTargetPerInterval: 1}
+		require.NoError(t, config.Set(ctx))
 
-		})
+		overrides := OverridesConfig{Overrides: bson.M{}}
+		require.NoError(t, overrides.Set(ctx))
 
-		t.Run("DocumentMissing", func(t *testing.T) {
-			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
-
-			fetchedConfig := NotifyConfig{BufferTargetPerInterval: 1}
-			assert.NoError(t, getConfigSection(ctx, &fetchedConfig))
-			assert.Zero(t, fetchedConfig)
-		})
+		var fetchedConfig NotifyConfig
+		assert.NoError(t, getConfigSection(ctx, &fetchedConfig))
+		assert.Equal(t, config, fetchedConfig)
 	})
 
-	t.Run("SharedDBSet", func(t *testing.T) {
-		defer func(client *mongo.Client) {
-			GetEnvironment().(*envState).sharedDBClient = client
-		}(GetEnvironment().(*envState).sharedDBClient)
-		GetEnvironment().(*envState).sharedDBClient = GetEnvironment().(*envState).client
+	t.Run("WithOverrides", func(t *testing.T) {
+		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
+		defer func() { require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx)) }()
 
-		t.Run("ConfigDocumentExists", func(t *testing.T) {
-			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
-			defer func() { require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx)) }()
+		config := NotifyConfig{BufferTargetPerInterval: 1}
+		require.NoError(t, config.Set(ctx))
 
-			config := NotifyConfig{BufferTargetPerInterval: 1}
-			_, err := GetEnvironment().DB().Collection(ConfigCollection).InsertOne(ctx, struct {
-				ID           string `bson:"_id"`
-				NotifyConfig `bson:",inline"`
-			}{ID: config.SectionId(), NotifyConfig: config})
-			require.NoError(t, err)
+		overrides := OverridesConfig{Overrides: bson.M{config.SectionId(): bson.M{"buffer_target_per_interval": 2}}}
+		require.NoError(t, overrides.Set(ctx))
 
-			var fetchedConfig NotifyConfig
-			assert.NoError(t, getConfigSection(ctx, &fetchedConfig))
-			assert.Equal(t, config, fetchedConfig)
+		var fetchedConfig NotifyConfig
+		assert.NoError(t, getConfigSection(ctx, &fetchedConfig))
+		assert.Equal(t, 2, fetchedConfig.BufferTargetPerInterval)
+	})
 
-		})
+	t.Run("DocumentMissing", func(t *testing.T) {
+		require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
 
-		t.Run("DocumentMissing", func(t *testing.T) {
-			require.NoError(t, GetEnvironment().SharedDB().Collection(ConfigCollection).Drop(ctx))
-
-			fetchedConfig := NotifyConfig{BufferTargetPerInterval: 1}
-			assert.NoError(t, getConfigSection(ctx, &fetchedConfig))
-			assert.Zero(t, fetchedConfig)
-		})
+		fetchedConfig := NotifyConfig{BufferTargetPerInterval: 1}
+		assert.NoError(t, getConfigSection(ctx, &fetchedConfig))
+		assert.Zero(t, fetchedConfig)
 	})
 }
 
@@ -150,4 +136,87 @@ func TestSetConfigSection(t *testing.T) {
 		assert.NoError(t, getConfigSection(ctx, &fetchedConfig))
 		assert.Equal(t, intervalSecs, fetchedConfig.BufferIntervalSeconds)
 	})
+}
+
+func TestOverrideConfig(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
+	defer func() { require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx)) }()
+
+	for testName, testCase := range map[string]struct {
+		inputDoc      bson.M
+		overrides     OverridesConfig
+		expected      bson.M
+		errorExpected bool
+	}{
+		"nested_levels": {
+			inputDoc: bson.M{
+				"_id": "testing",
+				"level0": bson.M{
+					"level1": "value",
+				},
+			},
+			overrides: OverridesConfig{
+				Overrides: bson.M{
+					"testing": bson.M{
+						"level0.level1": "new_value",
+					},
+				},
+			},
+			expected: bson.M{
+				"_id": "testing",
+				"level0": bson.M{
+					"level1": "new_value",
+				},
+			},
+		},
+		"multiple_fields": {
+			inputDoc: bson.M{
+				"_id":    "testing",
+				"field1": "original_value_1",
+				"field2": "original_value_2",
+			},
+			overrides: OverridesConfig{
+				Overrides: bson.M{
+					"testing": bson.M{
+						"field1": "new_value_1",
+						"field2": "new_value_2",
+					},
+				},
+			},
+			expected: bson.M{
+				"_id":    "testing",
+				"field1": "new_value_1",
+				"field2": "new_value_2",
+			},
+		},
+		"missing_overrides": {
+			inputDoc: bson.M{
+				"_id":   "testing",
+				"field": "value",
+			},
+			overrides:     OverridesConfig{},
+			errorExpected: true,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx))
+			require.NoError(t, testCase.overrides.Set(ctx))
+
+			docRaw, err := bson.Marshal(testCase.inputDoc)
+			require.NoError(t, err)
+
+			newDocs, err := overrideConfig(ctx, []bson.Raw{docRaw})
+			if testCase.errorExpected {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				require.Len(t, newDocs, 1)
+				var doc bson.M
+				require.NoError(t, bson.Unmarshal(newDocs[0], &doc))
+				assert.Equal(t, testCase.expected, doc)
+			}
+		})
+	}
 }
