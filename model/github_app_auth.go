@@ -26,7 +26,7 @@ func githubAppCheckAndRunParameterStoreOp(ctx context.Context, appAuth *githubap
 	if err != nil {
 		return errors.Wrapf(err, "checking project ref '%s' to verify if GitHub app should use Parameter Store", appAuth.Id)
 	}
-	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, ref)
+	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, ref, true)
 	if err != nil {
 		return errors.Wrapf(err, "checking if Parameter Store is enabled for project '%s'", appAuth.Id)
 	}
