@@ -77,8 +77,7 @@ var (
 	TriggerInfoDownstreamParametersKey = bsonutil.MustHaveTag(TriggerInfo{}, "DownstreamParameters")
 
 	// BSON fields for thirdparty.Github
-	githubPatchHeadOwnerKey       = bsonutil.MustHaveTag(thirdparty.GithubPatch{}, "HeadOwner")
-	githubPatchMergeCommitSHAHKey = bsonutil.MustHaveTag(thirdparty.GithubPatch{}, "MergeCommitSHA")
+	githubPatchHeadOwnerKey = bsonutil.MustHaveTag(thirdparty.GithubPatch{}, "HeadOwner")
 
 	// BSON fields for thirdparty.GithubMergeGroup
 	githubMergeGroupHeadSHAKey = bsonutil.MustHaveTag(thirdparty.GithubMergeGroup{}, "HeadSHA")

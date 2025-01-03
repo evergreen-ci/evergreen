@@ -136,8 +136,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.taskConfig4, err = agenttestutil.MakeTaskConfigFromModelData(s.ctx, s.settings, s.modelData4)
 	s.Require().NoError(err)
 	s.taskConfig4.GithubPatchData = thirdparty.GithubPatch{
-		PRNumber:       9001,
-		MergeCommitSHA: "abcdef",
+		PRNumber: 9001,
 	}
 	s.modelData5, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath3, modelutil.MergePatch)
 	s.Require().NoError(err)

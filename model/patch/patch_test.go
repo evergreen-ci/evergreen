@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -106,9 +105,8 @@ func (s *patchSuite) SetupTest() {
 		{
 			CreateTime: s.time,
 			GithubPatchData: thirdparty.GithubPatch{
-				PRNumber:       9002,
-				Author:         "octodog",
-				MergeCommitSHA: "abcdef",
+				PRNumber: 9002,
+				Author:   "octodog",
 			},
 		},
 	}
@@ -144,27 +142,6 @@ func (s *patchSuite) TestByGithubPRAndCreatedBefore() {
 	patches, err = Find(ByGithubPRAndCreatedBefore(s.time, "evergreen-ci", "evergreen", 9001))
 	s.NoError(err)
 	s.Len(patches, 1)
-}
-
-func (s *patchSuite) TestMakeMergePatch() {
-	pr := &github.PullRequest{
-		Base: &github.PullRequestBranch{
-			SHA: github.String("abcdef"),
-		},
-		User: &github.User{
-			ID: github.Int64(1),
-		},
-		Number:         github.Int(1),
-		MergeCommitSHA: github.String("abcdef"),
-	}
-
-	p, err := MakeNewMergePatch(pr, "mci", evergreen.CommitQueueAlias, "title", "message")
-	s.NoError(err)
-	s.Equal("mci", p.Project)
-	s.Equal(evergreen.VersionCreated, p.Status)
-	s.Equal(*pr.MergeCommitSHA, p.GithubPatchData.MergeCommitSHA)
-	s.Equal("title", p.GithubPatchData.CommitTitle)
-	s.Equal("message", p.GithubPatchData.CommitMessage)
 }
 
 func (s *patchSuite) TestUpdateGithashProjectAndTasks() {

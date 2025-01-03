@@ -14,10 +14,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -1154,49 +1152,6 @@ Subject: {{.Subject}}
 
 func IsMailboxDiff(patchDiff string) bool {
 	return strings.HasPrefix(patchDiff, "From ")
-}
-
-func MakeNewMergePatch(pr *github.PullRequest, projectID, alias, commitTitle, commitMessage string) (*Patch, error) {
-	if pr.User == nil {
-		return nil, errors.New("PR contains no user")
-	}
-	u, err := user.GetPatchUser(int(pr.User.GetID()))
-	if err != nil {
-		return nil, errors.Wrap(err, "getting user for patch")
-	}
-	patchNumber, err := u.IncPatchNumber()
-	if err != nil {
-		return nil, errors.Wrap(err, "computing patch num")
-	}
-
-	id := mgobson.NewObjectId()
-
-	if pr.Base == nil {
-		return nil, errors.New("PR contains no base branch data")
-	}
-
-	patchDoc := &Patch{
-		Id:          id,
-		Project:     projectID,
-		Author:      u.Id,
-		Githash:     pr.Base.GetSHA(),
-		Description: fmt.Sprintf("'%s' commit queue merge (PR #%d) by %s: %s (%s)", pr.Base.Repo.GetFullName(), pr.GetNumber(), u.Username(), pr.GetTitle(), pr.GetHTMLURL()),
-		CreateTime:  time.Now(),
-		Status:      evergreen.VersionCreated,
-		Alias:       alias,
-		PatchNumber: patchNumber,
-		GithubPatchData: thirdparty.GithubPatch{
-			PRNumber:      pr.GetNumber(),
-			BaseOwner:     pr.Base.User.GetLogin(),
-			BaseRepo:      pr.Base.Repo.GetName(),
-			BaseBranch:    pr.Base.GetRef(),
-			HeadHash:      pr.Head.GetSHA(),
-			CommitTitle:   commitTitle,
-			CommitMessage: commitMessage,
-		},
-	}
-
-	return patchDoc, nil
 }
 
 type PatchesByCreateTime []Patch
