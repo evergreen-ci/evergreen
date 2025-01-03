@@ -300,9 +300,7 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 			if options.block == command.PostBlock {
 				tc.setPostErrored(true)
 			}
-			if options.canFailTask ||
-				(cmd.Name() == "git.get_project" && tc.taskConfig.Task.Requester == evergreen.MergeTestRequester) {
-				// any git.get_project in the commit queue should fail
+			if options.canFailTask {
 				return errors.Wrap(err, "command failed")
 			}
 		}

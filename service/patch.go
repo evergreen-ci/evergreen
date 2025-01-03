@@ -59,7 +59,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	commitQueuePosition := 0
-	if projCtx.Patch.IsCommitQueuePatch() {
+	if projCtx.Patch.IsMergeQueuePatch() {
 		cq, err := commitqueue.FindOneId(projCtx.ProjectRef.Id)
 		// still display patch page if problem finding commit queue
 		if err != nil {

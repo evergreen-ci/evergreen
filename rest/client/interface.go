@@ -97,14 +97,6 @@ type Communicator interface {
 	// in the local evergreen yaml
 	GetSubscriptions(context.Context) ([]event.Subscription, error)
 
-	// Commit Queue
-	GetCommitQueue(ctx context.Context, projectID string) (*restmodel.APICommitQueue, error)
-	DeleteCommitQueueItem(ctx context.Context, item string) error
-	// if enqueueNext is true then allow item to be processed next
-	EnqueueItem(ctx context.Context, patchID string, enqueueNext bool) (int, error)
-	CreatePatchForMerge(ctx context.Context, patchID, commitMessage string) (*restmodel.APIPatch, error)
-	GetMessageForPatch(ctx context.Context, patchID string) (string, error)
-
 	// Notifications
 	SendNotification(ctx context.Context, notificationType string, data interface{}) error
 

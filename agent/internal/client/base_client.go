@@ -429,31 +429,6 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, confi
 	return send.NewConfiguredMultiSender(senders...), nil
 }
 
-func (c *baseCommunicator) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum int, owner, repo string, lastAttempt bool) (*apimodels.PullRequestInfo, error) {
-	info := requestInfo{
-		method:   http.MethodGet,
-		taskData: &taskData,
-	}
-	info.setTaskPathSuffix("pull_request")
-
-	body := apimodels.CheckMergeRequest{
-		PRNum: prNum,
-		Owner: owner,
-		Repo:  repo,
-	}
-	resp, err := c.retryRequest(ctx, info, &body)
-	if err != nil {
-		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting the pull request").Error())
-	}
-
-	res := &apimodels.PullRequestInfo{}
-	if err := utility.ReadJSON(resp.Body, res); err != nil {
-		return nil, errors.Wrap(err, "reading pull request from response")
-	}
-
-	return res, nil
-}
-
 // GetTaskPatch tries to get the patch data from the server in json format,
 // and unmarhals it into a patch struct. The GET request is attempted
 // multiple times upon failure. If patchId is not specified, the task's

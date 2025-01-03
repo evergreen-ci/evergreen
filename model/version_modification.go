@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
@@ -27,8 +26,8 @@ func ModifyVersion(ctx context.Context, version Version, user user.DBUser, modif
 			return http.StatusInternalServerError, errors.Wrap(err, "restarting patch")
 		}
 	case evergreen.SetActiveAction:
-		if version.Requester == evergreen.MergeTestRequester && modifications.Active {
-			return http.StatusBadRequest, errors.New("commit queue merges cannot be manually scheduled")
+		if version.Requester == evergreen.GithubMergeRequester && modifications.Active {
+			return http.StatusBadRequest, errors.New("merge queue patches cannot be manually scheduled")
 		}
 		if err := SetVersionActivation(ctx, version.Id, modifications.Active, user.Id); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "activating patch")
@@ -39,18 +38,6 @@ func ModifyVersion(ctx context.Context, version Version, user user.DBUser, modif
 		if modifications.Abort {
 			if err := task.AbortVersionTasks(version.Id, task.AbortInfo{User: user.DisplayName()}); err != nil {
 				return http.StatusInternalServerError, errors.Wrap(err, "aborting patch")
-			}
-		}
-		if !modifications.Active && version.Requester == evergreen.MergeTestRequester {
-			cq, err := commitqueue.FindOneId(version.Identifier)
-			if err != nil {
-				return http.StatusInternalServerError, errors.Wrapf(err, "finding commit queue '%s'", version.Identifier)
-			}
-			if cq == nil {
-				return http.StatusNotFound, errors.Errorf("commit queue '%s' for version '%s' not found", version.Identifier, version.Id)
-			}
-			if _, err := DequeueAndRestartForVersion(ctx, cq, version.Identifier, version.Id, user.Id, "merge task is being deactivated"); err != nil {
-				return http.StatusInternalServerError, err
 			}
 		}
 	case evergreen.SetPriorityAction:

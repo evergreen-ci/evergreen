@@ -399,7 +399,7 @@ func getRequesterFromAlias(alias string) string {
 		return evergreen.GitTagRequester
 	}
 	if alias == evergreen.CommitQueueAlias {
-		return evergreen.MergeTestRequester
+		return evergreen.GithubMergeRequester
 	}
 	return evergreen.PatchVersionRequester
 }

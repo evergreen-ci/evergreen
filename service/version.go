@@ -223,7 +223,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	canEdit := (currentUser != nil) && (projCtx.Version.Requester != evergreen.MergeTestRequester)
+	canEdit := (currentUser != nil) && (projCtx.Version.Requester != evergreen.GithubMergeRequester)
 	pluginContext := projCtx.ToPluginContext(uis.Settings, currentUser)
 	pluginContext.Request = r
 	pluginContent := getPluginDataAndHTML(uis, plugin.VersionPage, pluginContext)

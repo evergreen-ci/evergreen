@@ -1228,12 +1228,6 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
-	if evergreen.IsCommitQueueRequester(t.Requester) {
-		if err = model.HandleEndTaskForCommitQueueTask(ctx, t, h.details.Status); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(err)
-		}
-	}
-
 	// the task was aborted if it is still in undispatched.
 	// the active state should be inactive.
 	if h.details.Status == evergreen.TaskUndispatched {

@@ -50,7 +50,6 @@ const (
 var requesters = []string{
 	evergreen.PatchVersionRequester,
 	evergreen.GithubPRRequester,
-	evergreen.MergeTestRequester,
 }
 
 var task1Item1 = taskstats.DBTaskStats{
@@ -497,7 +496,6 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 	requesters := []string{
 		evergreen.PatchVersionRequester,
 		evergreen.GithubPRRequester,
-		evergreen.MergeTestRequester,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

@@ -424,11 +424,6 @@ func TestValidatePR(t *testing.T) {
 
 	assert.NoError(ValidatePR(pr))
 
-	mergeCommitSha := pr.MergeCommitSHA
-	pr.MergeCommitSHA = nil
-	assert.Error(ValidatePR(pr))
-	pr.MergeCommitSHA = mergeCommitSha
-
 	pr.Base = nil
 	assert.Error(ValidatePR(pr))
 }

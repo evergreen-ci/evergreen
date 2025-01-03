@@ -21,7 +21,7 @@ func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId strin
 		return http.StatusBadRequest, errors.Errorf("patch '%s' not found", patchId)
 	}
 
-	if p.IsCommitQueuePatch() {
+	if p.IsMergeQueuePatch() {
 		return http.StatusBadRequest, errors.New("can't schedule commit queue patch")
 	}
 	projectRef, err := model.FindMergedProjectRef(p.Project, p.Version, true)

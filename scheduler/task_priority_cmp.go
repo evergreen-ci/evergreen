@@ -181,15 +181,15 @@ func (c *byGenerateTasks) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) (
 // byCommitQueue schedules commit queue merges first
 type byCommitQueue struct{}
 
-func (c *byCommitQueue) name() string { return "commit queue merge" }
+func (c *byCommitQueue) name() string { return "merge queue" }
 func (c *byCommitQueue) compare(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int, string, error) {
-	reason := "task that is part of the CQ is higher"
-	if comparator.versions[t1.Version].Requester == evergreen.MergeTestRequester &&
-		comparator.versions[t2.Version].Requester != evergreen.MergeTestRequester {
+	reason := "task that is part of the merge queue is higher"
+	if comparator.versions[t1.Version].Requester == evergreen.GithubMergeRequester &&
+		comparator.versions[t2.Version].Requester != evergreen.GithubMergeRequester {
 		return 1, reason, nil
 	}
-	if comparator.versions[t1.Version].Requester != evergreen.MergeTestRequester &&
-		comparator.versions[t2.Version].Requester == evergreen.MergeTestRequester {
+	if comparator.versions[t1.Version].Requester != evergreen.GithubMergeRequester &&
+		comparator.versions[t2.Version].Requester == evergreen.GithubMergeRequester {
 		return -1, reason, nil
 	}
 

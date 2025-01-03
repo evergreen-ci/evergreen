@@ -120,13 +120,5 @@ func (t *commitQueueTriggers) makeData(sub *event.Subscription) (*commonTemplate
 		Color:     slackColor,
 	})
 
-	if t.patch.IsPRMergePatch() {
-		data.slack = append(data.slack, message.SlackAttachment{
-			Title:     "GitHub Pull Request",
-			TitleLink: fmt.Sprintf("https://github.com/%s/%s/pull/%d#partial-pull-merging", t.patch.GithubPatchData.BaseOwner, t.patch.GithubPatchData.BaseRepo, t.patch.GithubPatchData.PRNumber),
-			Color:     slackColor,
-		})
-	}
-
 	return &data, nil
 }

@@ -39,7 +39,6 @@ func TestPipeline(t *testing.T) {
 	requesters := []string{
 		evergreen.PatchVersionRequester,
 		evergreen.GithubPRRequester,
-		evergreen.MergeTestRequester,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

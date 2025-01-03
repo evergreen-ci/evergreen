@@ -388,15 +388,15 @@ func TestFinalizePatch(t *testing.T) {
 			p.VariantsTasks = []patch.VariantTasks{}
 			require.NoError(t, p.Insert())
 
-			_, err := FinalizePatch(ctx, p, evergreen.MergeTestRequester)
+			_, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "cannot finalize patch with no tasks")
 
 			// commit queue patch should fail with different error
 			p.Alias = evergreen.CommitQueueAlias
-			_, err = FinalizePatch(ctx, p, evergreen.MergeTestRequester)
+			_, err = FinalizePatch(ctx, p, evergreen.GithubMergeRequester)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "no builds or tasks for commit queue version")
+			assert.Contains(t, err.Error(), "no builds or tasks for merge queue version")
 		},
 		"GitHubPRPatchCreatesAllEssentialTasks": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
 			patchConfig.PatchedParserProject.Id = p.Id.Hex()
@@ -1016,122 +1016,6 @@ func TestMakeCommitQueueDescription(t *testing.T) {
 	assert.Equal(t, "Commit Queue Merge: 'Module Commit 1 <- Module Commit 2' into 'evergreen-ci/module_repo:feature'", MakeCommitQueueDescription(patches, projectRef, project, false, thirdparty.GithubMergeGroup{}))
 }
 
-func TestRetryCommitQueueItems(t *testing.T) {
-	projectRef := &ProjectRef{
-		Id:         patchedProject,
-		RemotePath: remotePath,
-		Owner:      patchOwner,
-		Repo:       patchRepo,
-		Branch:     patchBranch,
-	}
-
-	startTime := time.Date(2019, 7, 15, 12, 0, 0, 0, time.Local)
-	endTime := startTime.Add(2 * time.Hour)
-
-	opts := RestartOptions{
-		StartTime: startTime,
-		EndTime:   endTime,
-	}
-
-	for name, test := range map[string]func(*testing.T){
-		"StartedInRange": func(*testing.T) {
-			assert.NoError(t, projectRef.Insert())
-
-			u := user.DBUser{Id: "me", PatchNumber: 12}
-			assert.NoError(t, u.Insert())
-
-			// this should just restart the patch with patch #=1
-			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Id, opts)
-			assert.NoError(t, err)
-			assert.Len(t, restarted, 1)
-			assert.Len(t, notRestarted, 0)
-
-			cq, err := commitqueue.FindOneId(projectRef.Id)
-			assert.NoError(t, err)
-			require.NotNil(t, cq)
-			require.Len(t, cq.Queue, 1)
-			assert.Equal(t, "123", cq.Queue[0].Issue)
-		},
-		"FinishedPatch": func(*testing.T) {
-			assert.NoError(t, projectRef.Insert())
-
-			p := patch.Patch{
-				Id:         mgobson.NewObjectId(),
-				Project:    projectRef.Id,
-				Githash:    patchedRevision,
-				StartTime:  startTime.Add(-30 * time.Minute), // started out of range
-				FinishTime: startTime.Add(30 * time.Minute),
-				Status:     evergreen.VersionFailed,
-				Alias:      evergreen.CommitQueueAlias,
-				GithubPatchData: thirdparty.GithubPatch{
-					PRNumber: 456,
-				},
-			}
-			assert.NoError(t, p.Insert())
-			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Id, opts)
-			assert.NoError(t, err)
-			assert.Len(t, restarted, 2)
-			assert.Len(t, notRestarted, 0)
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			assert.NoError(t, db.ClearCollections(ProjectRefCollection, commitqueue.Collection, patch.Collection, user.Collection))
-			cq := &commitqueue.CommitQueue{ProjectID: projectRef.Id}
-			assert.NoError(t, commitqueue.InsertQueue(cq))
-
-			patches := []patch.Patch{
-				{ // patch: within time frame, failed
-					Id:          mgobson.NewObjectId(),
-					PatchNumber: 1,
-					Project:     projectRef.Id,
-					Githash:     patchedRevision,
-					StartTime:   startTime.Add(30 * time.Minute),
-					FinishTime:  endTime.Add(30 * time.Minute),
-					Status:      evergreen.VersionFailed,
-					Alias:       evergreen.CommitQueueAlias,
-					Author:      "me",
-					GithubPatchData: thirdparty.GithubPatch{
-						PRNumber: 123,
-					},
-				},
-				{ // within time frame, not failed
-					Id:          mgobson.NewObjectId(),
-					PatchNumber: 2,
-					Project:     projectRef.Id,
-					Githash:     patchedRevision,
-					StartTime:   startTime.Add(30 * time.Minute),
-					FinishTime:  endTime.Add(30 * time.Minute),
-					Status:      evergreen.VersionSucceeded,
-					Alias:       evergreen.CommitQueueAlias,
-				},
-				{ // within time frame, not commit queue
-					Id:          mgobson.NewObjectId(),
-					PatchNumber: 3,
-					Project:     projectRef.Id,
-					Githash:     patchedRevision,
-					StartTime:   startTime.Add(30 * time.Minute),
-					FinishTime:  endTime.Add(30 * time.Minute),
-					Status:      evergreen.VersionFailed,
-				},
-				{ // not within time frame
-					Id:          mgobson.NewObjectId(),
-					PatchNumber: 4,
-					Project:     projectRef.Id,
-					Githash:     patchedRevision,
-					StartTime:   time.Date(2019, 6, 15, 12, 0, 0, 0, time.Local),
-					FinishTime:  time.Date(2019, 6, 15, 12, 20, 0, 0, time.Local),
-					Status:      evergreen.VersionFailed,
-					Alias:       evergreen.CommitQueueAlias,
-				},
-			}
-			for _, p := range patches {
-				assert.NoError(t, p.Insert())
-			}
-			test(t)
-		})
-	}
-}
-
 func TestAddDisplayTasksToPatchReq(t *testing.T) {
 	testutil.Setup()
 	p := Project{
@@ -1185,52 +1069,6 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.False(t, dbTask.Aborted)
-		},
-		"AbortsNonMergingCommitQueueItemForGitHubPR": func(t *testing.T, p *patch.Patch, v *Version, tsk *task.Task) {
-			p.Alias = evergreen.CommitQueueAlias
-			require.NoError(t, p.Insert())
-			tsk.CommitQueueMerge = true
-			tsk.Status = evergreen.TaskUndispatched
-			require.NoError(t, tsk.Insert())
-			cq := commitqueue.CommitQueue{
-				ProjectID: p.Project,
-				Queue: []commitqueue.CommitQueueItem{{
-					Issue:   p.Id.Hex(),
-					PatchId: p.Id.Hex(),
-					Version: v.Id,
-				}},
-			}
-			require.NoError(t, commitqueue.InsertQueue(&cq))
-
-			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
-
-			dbCommitQueue, err := commitqueue.FindOneId(cq.ProjectID)
-			require.NoError(t, err)
-			require.NotZero(t, dbCommitQueue)
-			assert.Empty(t, dbCommitQueue.Queue)
-		},
-		"SkipMergingCommitQueueItemForGitHubPR": func(t *testing.T, p *patch.Patch, v *Version, tsk *task.Task) {
-			p.Alias = evergreen.CommitQueueAlias
-			require.NoError(t, p.Insert())
-			tsk.CommitQueueMerge = true
-			tsk.Status = evergreen.TaskStarted
-			require.NoError(t, tsk.Insert())
-			cq := commitqueue.CommitQueue{
-				ProjectID: p.Project,
-				Queue: []commitqueue.CommitQueueItem{{
-					Issue:   p.Id.Hex(),
-					PatchId: p.Id.Hex(),
-					Version: v.Id,
-				}},
-			}
-			require.NoError(t, commitqueue.InsertQueue(&cq))
-
-			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
-
-			dbCommitQueue, err := commitqueue.FindOneId(cq.ProjectID)
-			require.NoError(t, err)
-			require.NotZero(t, dbCommitQueue)
-			assert.Len(t, dbCommitQueue.Queue, 1)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

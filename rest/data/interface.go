@@ -3,10 +3,7 @@ package data
 import (
 	"context"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/patch"
-	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/google/go-github/v52/github"
 )
 
@@ -21,7 +18,5 @@ type Connector interface {
 	GetProjectFromFile(context.Context, model.ProjectRef, string) (model.ProjectInfo, error)
 	CreateVersionFromConfig(context.Context, *model.ProjectInfo, model.VersionMetadata) (*model.Version, error)
 	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
-	AddPatchForPR(context.Context, model.ProjectRef, int, []restModel.APIModule, string) (*patch.Patch, error)
 	AddCommentToPR(context.Context, string, string, int, string) error
-	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
 }

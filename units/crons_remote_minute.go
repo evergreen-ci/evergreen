@@ -78,7 +78,6 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 	catcher.Add(enqueueHostSetupJobs(ctx, j.env, j.env.RemoteQueue(), ts))
 
 	catcher.Add(populateQueueGroup(ctx, j.env, createHostQueueGroup, hostCreationJobs, ts))
-	catcher.Add(populateQueueGroup(ctx, j.env, commitQueueQueueGroup, commitQueueJobs, ts))
 	catcher.Add(populateQueueGroup(ctx, j.env, eventNotifierQueueGroup, eventNotifierJobs, ts))
 	catcher.Add(populateQueueGroup(ctx, j.env, spawnHostModificationQueueGroup, sleepSchedulerJobs, ts))
 	catcher.Add(populateQueueGroup(ctx, j.env, terminateHostQueueGroup, hostTerminationJobs, ts))

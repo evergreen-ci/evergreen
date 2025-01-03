@@ -48,7 +48,7 @@ func TestCompareTasks(t *testing.T) {
 		DistroId:  distroId,
 		Priority:  0,
 		Version:   "cqv1",
-		Requester: evergreen.MergeTestRequester,
+		Requester: evergreen.GithubMergeRequester,
 	}
 	assert.NoError(t, cqTask.Insert())
 	v1 := model.Version{
@@ -63,7 +63,7 @@ func TestCompareTasks(t *testing.T) {
 	assert.NoError(t, v2.Insert())
 	cqVersion := model.Version{
 		Id:        "cqv1",
-		Requester: evergreen.MergeTestRequester,
+		Requester: evergreen.GithubMergeRequester,
 	}
 	assert.NoError(t, cqVersion.Insert())
 

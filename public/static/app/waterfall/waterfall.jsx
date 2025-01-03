@@ -398,7 +398,7 @@ class GearMenu extends React.PureComponent {
         "gitter_request":"Commit",
         "patch_request":"Patch",
         "github_pull_request":"Pull Request",
-        "merge_test":"Commit Queue",
+        "github_merge_request":"Merge Queue",
         "ad_hoc":"Periodic Build"
       }, default: "gitter_request"}
     this.triggers = [

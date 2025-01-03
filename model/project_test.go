@@ -467,35 +467,6 @@ func TestPopulateExpansions(t *testing.T) {
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
-		"$set": bson.M{VersionRequesterKey: evergreen.MergeTestRequester},
-	}))
-	p = patch.Patch{
-		Version:     v.Id,
-		Description: "commit queue message",
-		GithubPatchData: thirdparty.GithubPatch{
-			PRNumber:       12,
-			BaseOwner:      "potato",
-			BaseRepo:       "tomato",
-			Author:         "hemingway",
-			HeadHash:       "7d2fe4649f50f87cb60c2f80ac2ceda1e5b88522",
-			MergeCommitSHA: "21",
-		},
-	}
-	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
-	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 29)
-	assert.Equal("true", expansions.Get("is_patch"))
-	assert.Equal("true", expansions.Get("is_commit_queue"))
-	assert.Equal("12", expansions.Get("github_pr_number"))
-	assert.Equal("potato", expansions.Get("github_org"))
-	assert.Equal(p.GithubPatchData.BaseRepo, expansions.Get("github_repo"))
-	assert.Equal(p.GithubPatchData.Author, expansions.Get("github_author"))
-	assert.Equal(p.GithubPatchData.HeadHash, expansions.Get("github_commit"))
-	assert.Equal("commit queue message", expansions.Get("commit_message"))
-	require.NoError(t, db.ClearCollections(patch.Collection))
-
-	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.GithubMergeRequester},
 	}))
 	p = patch.Patch{

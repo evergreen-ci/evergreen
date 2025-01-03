@@ -79,9 +79,6 @@ type SharedCommunicator interface {
 	// SetResultsInfo sets the test results information in the task.
 	SetResultsInfo(context.Context, TaskData, string, bool) error
 
-	// GetPullRequestInfo takes in a PR number, owner, and repo and returns information from the corresponding pull request.
-	GetPullRequestInfo(context.Context, TaskData, int, string, string, bool) (*apimodels.PullRequestInfo, error)
-
 	// DisableHost signals to the app server that the host should be disabled.
 	DisableHost(context.Context, string, apimodels.DisableInfo) error
 

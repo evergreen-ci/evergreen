@@ -187,21 +187,6 @@ func (q *CommitQueue) FindItem(issue string) int {
 	return -1
 }
 
-// EnsureCommitQueueExistsForProject inserts a skeleton commit queue if project doesn't have one
-func EnsureCommitQueueExistsForProject(id string) error {
-	cq, err := FindOneId(id)
-	if err != nil {
-		return errors.Wrap(err, "finding commit queue")
-	}
-	if cq == nil {
-		cq = &CommitQueue{ProjectID: id}
-		if err = InsertQueue(cq); err != nil {
-			return errors.Wrap(err, "inserting new commit queue")
-		}
-	}
-	return nil
-}
-
 func ClearAllCommitQueues() (int, error) {
 	clearedCount, err := clearAll()
 	if err != nil {

@@ -14,10 +14,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -281,10 +279,6 @@ func (p *Patch) SetMergePatch(newPatchID string) error {
 	)
 }
 
-func (p *Patch) GetCommitQueueURL(uiHost string) string {
-	return uiHost + "/commit-queue/" + p.Project
-}
-
 func (p *Patch) GetURL(uiHost string) string {
 	var url string
 	if p.Activated {
@@ -540,22 +534,6 @@ func (p *Patch) AddSyncVariantsTasks(vts []VariantTasks) error {
 	return nil
 }
 
-// UpdateMergeCommitSHA updates the merge commit SHA for the patch.
-func (p *Patch) UpdateMergeCommitSHA(sha string) error {
-	if p.GithubPatchData.MergeCommitSHA == sha {
-		return nil
-	}
-	shaKey := bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchMergeCommitSHAKey)
-	return UpdateOne(
-		bson.M{IdKey: p.Id},
-		bson.M{
-			"$set": bson.M{
-				shaKey: sha,
-			},
-		},
-	)
-}
-
 // UpdateRepeatPatchId updates the repeat patch Id value to be used for subsequent pr patches
 func (p *Patch) UpdateRepeatPatchId(patchId string) error {
 	repeatKey := bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.RepeatPatchIdNextPatchKey)
@@ -806,14 +784,10 @@ func (p *Patch) IsGithubPRPatch() bool {
 	return p.GithubPatchData.HeadOwner != ""
 }
 
-func (p *Patch) IsPRMergePatch() bool {
-	return p.GithubPatchData.MergeCommitSHA != ""
-}
-
-// IsCommitQueuePatch returns true if the the patch is part of any commit queue:
+// IsMergeQueuePatch returns true if the the patch is part of any commit queue:
 // either Evergreen's commit queue or GitHub's merge queue.
-func (p *Patch) IsCommitQueuePatch() bool {
-	return p.Alias == evergreen.CommitQueueAlias || p.IsPRMergePatch() || p.IsGithubMergePatch()
+func (p *Patch) IsMergeQueuePatch() bool {
+	return p.Alias == evergreen.CommitQueueAlias || p.IsGithubMergePatch()
 }
 
 // IsGithubMergePatch returns true if the patch is from the GitHub merge queue.
@@ -864,9 +838,9 @@ func (p *Patch) IsParent() bool {
 }
 
 // ShouldPatchFileWithDiff returns true if the patch should read with diff
-// (i.e. is not a PR or CQ patch) and the config has changed.
+// (i.e. is not a PR patch) and the config has changed.
 func (p *Patch) ShouldPatchFileWithDiff(path string) bool {
-	return !(p.IsGithubPRPatch() || p.IsPRMergePatch()) && p.ConfigChanged(path)
+	return !p.IsGithubPRPatch() && p.ConfigChanged(path)
 }
 
 func (p *Patch) GetPatchIndex(parentPatch *Patch) (int, error) {
@@ -999,13 +973,8 @@ func (p *Patch) GetRequester() string {
 	if p.IsGithubPRPatch() {
 		return evergreen.GithubPRRequester
 	}
-	// GitHub merge patches are technically considered commit queue patches since they use the
-	// commit queue alias, but they use a separate requester.
 	if p.IsGithubMergePatch() {
 		return evergreen.GithubMergeRequester
-	}
-	if p.IsCommitQueuePatch() {
-		return evergreen.MergeTestRequester
 	}
 	return evergreen.PatchVersionRequester
 }
@@ -1183,50 +1152,6 @@ Subject: {{.Subject}}
 
 func IsMailboxDiff(patchDiff string) bool {
 	return strings.HasPrefix(patchDiff, "From ")
-}
-
-func MakeNewMergePatch(pr *github.PullRequest, projectID, alias, commitTitle, commitMessage string) (*Patch, error) {
-	if pr.User == nil {
-		return nil, errors.New("PR contains no user")
-	}
-	u, err := user.GetPatchUser(int(pr.User.GetID()))
-	if err != nil {
-		return nil, errors.Wrap(err, "getting user for patch")
-	}
-	patchNumber, err := u.IncPatchNumber()
-	if err != nil {
-		return nil, errors.Wrap(err, "computing patch num")
-	}
-
-	id := mgobson.NewObjectId()
-
-	if pr.Base == nil {
-		return nil, errors.New("PR contains no base branch data")
-	}
-
-	patchDoc := &Patch{
-		Id:          id,
-		Project:     projectID,
-		Author:      u.Id,
-		Githash:     pr.Base.GetSHA(),
-		Description: fmt.Sprintf("'%s' commit queue merge (PR #%d) by %s: %s (%s)", pr.Base.Repo.GetFullName(), pr.GetNumber(), u.Username(), pr.GetTitle(), pr.GetHTMLURL()),
-		CreateTime:  time.Now(),
-		Status:      evergreen.VersionCreated,
-		Alias:       alias,
-		PatchNumber: patchNumber,
-		GithubPatchData: thirdparty.GithubPatch{
-			PRNumber:       pr.GetNumber(),
-			MergeCommitSHA: pr.GetMergeCommitSHA(),
-			BaseOwner:      pr.Base.User.GetLogin(),
-			BaseRepo:       pr.Base.Repo.GetName(),
-			BaseBranch:     pr.Base.GetRef(),
-			HeadHash:       pr.Head.GetSHA(),
-			CommitTitle:    commitTitle,
-			CommitMessage:  commitMessage,
-		},
-	}
-
-	return patchDoc, nil
 }
 
 type PatchesByCreateTime []Patch

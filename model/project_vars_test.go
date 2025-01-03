@@ -1013,11 +1013,6 @@ func TestShouldGetAdminOnlyVars(t *testing.T) {
 			usrId:              usrId,
 			shouldGetAdminVars: false,
 		},
-		"mergeTestShouldFail": {
-			requester:          evergreen.MergeTestRequester,
-			usrId:              usrId,
-			shouldGetAdminVars: false,
-		},
 		"mergeRequestShouldFail": {
 			requester:          evergreen.GithubMergeRequester,
 			usrId:              usrId,
