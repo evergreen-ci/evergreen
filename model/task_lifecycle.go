@@ -2599,13 +2599,15 @@ func tryUpdateDisplayTaskAtomically(dt task.Task) (updated *task.Task, err error
 	dt.Details = statusTask.Details
 	dt.Details.TraceID = "" // Unset TraceID because display tasks don't have corresponding traces.
 	dt.TimeTaken = timeTaken
+	dt.DisplayStatusCache = statusTask.FindDisplayStatus()
 
 	update := bson.M{
-		task.StatusKey:        dt.Status,
-		task.ActivatedKey:     dt.Activated,
-		task.ActivatedTimeKey: dt.ActivatedTime,
-		task.TimeTakenKey:     dt.TimeTaken,
-		task.DetailsKey:       dt.Details,
+		task.StatusKey:             dt.Status,
+		task.ActivatedKey:          dt.Activated,
+		task.ActivatedTimeKey:      dt.ActivatedTime,
+		task.TimeTakenKey:          dt.TimeTaken,
+		task.DetailsKey:            dt.Details,
+		task.DisplayStatusCacheKey: dt.DisplayStatusCache,
 	}
 
 	if startTime != time.Unix(1<<62, 0) {
