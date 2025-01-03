@@ -536,22 +536,6 @@ func (p *Patch) AddSyncVariantsTasks(vts []VariantTasks) error {
 	return nil
 }
 
-// UpdateMergeCommitSHA updates the merge commit SHA for the patch.
-func (p *Patch) UpdateMergeCommitSHA(sha string) error {
-	if p.GithubPatchData.MergeCommitSHA == sha {
-		return nil
-	}
-	shaKey := bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchMergeCommitSHAKey)
-	return UpdateOne(
-		bson.M{IdKey: p.Id},
-		bson.M{
-			"$set": bson.M{
-				shaKey: sha,
-			},
-		},
-	)
-}
-
 // UpdateRepeatPatchId updates the repeat patch Id value to be used for subsequent pr patches
 func (p *Patch) UpdateRepeatPatchId(patchId string) error {
 	repeatKey := bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.RepeatPatchIdNextPatchKey)
@@ -1202,14 +1186,13 @@ func MakeNewMergePatch(pr *github.PullRequest, projectID, alias, commitTitle, co
 		Alias:       alias,
 		PatchNumber: patchNumber,
 		GithubPatchData: thirdparty.GithubPatch{
-			PRNumber:       pr.GetNumber(),
-			MergeCommitSHA: pr.GetMergeCommitSHA(),
-			BaseOwner:      pr.Base.User.GetLogin(),
-			BaseRepo:       pr.Base.Repo.GetName(),
-			BaseBranch:     pr.Base.GetRef(),
-			HeadHash:       pr.Head.GetSHA(),
-			CommitTitle:    commitTitle,
-			CommitMessage:  commitMessage,
+			PRNumber:      pr.GetNumber(),
+			BaseOwner:     pr.Base.User.GetLogin(),
+			BaseRepo:      pr.Base.Repo.GetName(),
+			BaseBranch:    pr.Base.GetRef(),
+			HeadHash:      pr.Head.GetSHA(),
+			CommitTitle:   commitTitle,
+			CommitMessage: commitMessage,
 		},
 	}
 

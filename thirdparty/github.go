@@ -1485,9 +1485,6 @@ func ValidatePR(pr *github.PullRequest) error {
 	}
 
 	catcher := grip.NewSimpleCatcher()
-	if pr.GetMergeCommitSHA() == "" {
-		catcher.Add(errors.New("no merge commit SHA"))
-	}
 	if missingUserLogin(pr) {
 		catcher.Add(errors.New("no valid user"))
 	}
