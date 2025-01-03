@@ -386,6 +386,10 @@ const (
 	RedactedValue       = "{REDACTED}"
 	RedactedAfterValue  = "{REDACTED_AFTER}"
 	RedactedBeforeValue = "{REDACTED_BEFORE}"
+
+	// PresignMinimumValidTime is the minimum amount of time that a presigned URL
+	// should be valid for.
+	PresignMinimumValidTime = 15 * time.Minute
 )
 
 var TaskStatuses = []string{

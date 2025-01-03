@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -66,6 +67,21 @@ type File struct {
 	ContentType string `json:"content_type" bson:"content_type"`
 }
 
+func (f *File) validate() error {
+	catcher := grip.NewBasicCatcher()
+
+	catcher.ErrorfWhen(f.Bucket == "", "bucket is required")
+	catcher.ErrorfWhen(f.FileKey == "", "file key is required")
+
+	// Buckets that are not devprod owned require AWS credentials.
+	if !isInternalBucket(f.Bucket) {
+		catcher.ErrorfWhen(f.AwsKey == "", "AWS key is required")
+		catcher.ErrorfWhen(f.AwsSecret == "", "AWS secret is required")
+	}
+
+	return catcher.Resolve()
+}
+
 // StripHiddenFiles is a helper for only showing users the files they are
 // allowed to see. It also pre-signs file URLs.
 func StripHiddenFiles(ctx context.Context, files []File, hasUser bool) ([]File, error) {
@@ -91,23 +107,24 @@ func StripHiddenFiles(ctx context.Context, files []File, hasUser bool) ([]File, 
 }
 
 func presignFile(ctx context.Context, file File) (string, error) {
-	if file.AwsSecret == "" || file.AwsKey == "" || file.Bucket == "" || file.FileKey == "" {
-		return "", errors.New("AWS secret, AWS key, S3 bucket, or file key missing")
+	if err := file.validate(); err != nil {
+		return "", errors.Wrap(err, "file validation failed")
 	}
 
-	// TODO (DEVPROD-6193): remove this special casing once artifacts from the old
-	// AWS key have expired (after 5/20/2025).
-	// EC2Keys[0] contains static credentials that only has permissions to access the mciuploads bucket.
-	if file.Bucket == "mciuploads" {
-		file.AwsKey = evergreen.GetEnvironment().Settings().Providers.AWS.EC2Keys[0].Key
-		file.AwsSecret = evergreen.GetEnvironment().Settings().Providers.AWS.EC2Keys[0].Secret
+	// If this bucket is a devprod owned one, we sign the URL
+	// with the app's server IRSA credentials (which is used
+	// when no credentials are provided).
+	if isInternalBucket(file.Bucket) {
+		file.AwsKey = ""
+		file.AwsSecret = ""
 	}
 
 	requestParams := pail.PreSignRequestParams{
-		Bucket:    file.Bucket,
-		FileKey:   file.FileKey,
-		AwsKey:    file.AwsKey,
-		AwsSecret: file.AwsSecret,
+		Bucket:                file.Bucket,
+		FileKey:               file.FileKey,
+		AwsKey:                file.AwsKey,
+		AwsSecret:             file.AwsSecret,
+		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
 	}
 	return pail.PreSign(ctx, requestParams)
 }
@@ -162,7 +179,7 @@ func RotateSecrets(toReplace, replacement string, dryRun bool) (map[TaskIDAndExe
 
 // EscapeFiles escapes the base of the file link to avoid issues opening links
 // with special characters in the UI.
-// For example, "url.com/something/file#1.tar.gz" will be escaped to "url.com/something/file%231.tar.gz
+// For example, "url.com/something/file#1.tar.gz" will be escaped to "url.com/something/file%231.tar.gz".
 func EscapeFiles(files []File) []File {
 	var escapedFiles []File
 	for _, file := range files {
@@ -179,4 +196,10 @@ func escapeFile(path string) string {
 		return path
 	}
 	return path[:i] + strings.Replace(path[i:], base, url.QueryEscape(base), 1)
+}
+
+// isInternalBucket returns true if the bucket can be accessed by the app server's
+// IRSA role.
+func isInternalBucket(bucketName string) bool {
+	return utility.StringSliceContains(evergreen.GetEnvironment().Settings().Buckets.InternalBuckets, bucketName)
 }
