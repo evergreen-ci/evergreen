@@ -73,6 +73,9 @@ type Task {
   details: TaskEndDetail
   dispatchTime: Time
   displayName: String!
+  """
+  This is a task's display status and is what is commonly used on the UI.
+  """
   displayStatus: String!
   displayOnly: Boolean
   displayTask: Task
@@ -111,10 +114,9 @@ type Task {
   spawnHostLink: String
   startTime: Time
   """
-  This is a task's display status and is what is commonly used on the UI.
-  In future releases this will be migrated to represent the original status of the task
+  This is a tasks original status before the displayStatus was added
   """
-  status: String! @deprecated(reason: "use displayStatus instead. Status will be migrated to reflect the original status")
+  status: String! 
   tags: [String!]!
   taskGroup: String
   taskGroupMaxHosts: Int
