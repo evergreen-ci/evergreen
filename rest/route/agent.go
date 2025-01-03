@@ -91,9 +91,11 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		SplunkClientToken:  h.settings.Splunk.SplunkConnectionInfo.Token,
 		SplunkChannel:      h.settings.Splunk.SplunkConnectionInfo.Channel,
 		TaskOutput:         h.settings.Buckets.Credentials,
+		InternalBuckets:    h.settings.Buckets.InternalBuckets,
 		TaskSync:           h.settings.Providers.AWS.TaskSync,
 		MaxExecTimeoutSecs: h.settings.TaskLimits.MaxExecTimeoutSecs,
 	}
+
 	if h.settings.Tracer.Enabled {
 		data.TraceCollectorEndpoint = h.settings.Tracer.CollectorEndpoint
 	}

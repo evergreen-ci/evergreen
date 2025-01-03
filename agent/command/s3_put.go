@@ -125,7 +125,8 @@ type s3put struct {
 	isPatchable      bool
 	isPatchOnly      bool
 
-	bucket pail.Bucket
+	bucket          pail.Bucket
+	internalBuckets []string
 
 	taskdata client.TaskData
 	base
@@ -311,6 +312,8 @@ func (s3pc *s3put) Execute(ctx context.Context,
 		attribute.String(s3PutPermissionsAttribute, s3pc.Permissions),
 		attribute.String(s3PutRemotePathAttribute, s3pc.remoteFile),
 	)
+
+	s3pc.internalBuckets = conf.InternalBuckets
 
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()
@@ -543,10 +546,11 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 		}
 		var key, secret, bucket, fileKey string
 		if s3pc.Visibility == artifact.Signed {
-			key = s3pc.AwsKey
-			secret = s3pc.AwsSecret
 			bucket = s3pc.Bucket
 			fileKey = remoteFileName
+			// TODO (DEVPROD-13658): Check if the bucket is internal and use the app's server IRSA credentials.
+			key = s3pc.AwsKey
+			secret = s3pc.AwsSecret
 		}
 
 		files = append(files, &artifact.File{
