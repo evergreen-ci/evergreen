@@ -166,28 +166,16 @@ func getSectionsBSON(ctx context.Context, ids []string, includeOverrides bool) (
 }
 
 func overrideConfig(ctx context.Context, docs []bson.Raw) ([]bson.Raw, error) {
-	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(overridesSectionID))
+	var overrides OverridesConfig
+	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(overrides.SectionId()))
 	if err := res.Err(); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return docs, nil
 		}
 		return nil, errors.Wrap(err, "getting overrides document")
 	}
-	var overridesConfig bson.Raw
-	if err := res.Decode(&overridesConfig); err != nil {
+	if err := res.Decode(&overrides); err != nil {
 		return nil, errors.Wrap(err, "decoding overrides config")
-	}
-	overridesVal, err := overridesConfig.LookupErr("overrides")
-	if err != nil {
-		return nil, errors.Wrapf(err, "overrides document does not contain an overrides field")
-	}
-	overridesDoc, ok := overridesVal.DocumentOK()
-	if !ok {
-		return nil, errors.Errorf("overrides are malformed. Expected document, got '%s'", overridesVal.Type.String())
-	}
-	overrides, err := overridesDoc.Elements()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting overrides elements")
 	}
 
 	newDocs := make([]bson.Raw, 0, len(docs))
@@ -201,14 +189,12 @@ func overrideConfig(ctx context.Context, docs []bson.Raw) ([]bson.Raw, error) {
 			continue
 		}
 
-		for _, elem := range overrides {
-			if id == elem.Key() {
-				newDoc, err := overrideValues(doc, elem.Value().Document())
-				if err != nil {
-					return nil, errors.Wrapf(err, "overriding values for config document '%s'", id)
-				}
-				doc = newDoc
+		if sectionOverrides := overrides.sectionOverrides(id); len(sectionOverrides) > 0 {
+			newDoc, err := overrideValues(doc, sectionOverrides)
+			if err != nil {
+				return nil, errors.Wrapf(err, "overriding values for config document '%s'", id)
 			}
+			doc = newDoc
 		}
 		newDocs = append(newDocs, doc)
 	}
@@ -216,31 +202,27 @@ func overrideConfig(ctx context.Context, docs []bson.Raw) ([]bson.Raw, error) {
 	return newDocs, nil
 }
 
-func overrideValues(original bson.Raw, overrides bson.Raw) (bson.Raw, error) {
+func overrideValues(original bson.Raw, overrides []Override) (bson.Raw, error) {
 	var originalM bson.M
 	if err := bson.Unmarshal(original, &originalM); err != nil {
 		return nil, errors.Wrap(err, "unmarshalling original document")
 	}
-	overrideFields, err := overrides.Elements()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting overrides elements")
-	}
 
-	for _, field := range overrideFields {
-		if overrideField(originalM, field.Key(), field.Value()) != nil {
-			return nil, errors.Wrapf(err, "overriding field '%s'", field.Key())
+	for _, override := range overrides {
+		if err := overrideField(originalM, override); err != nil {
+			return nil, errors.Wrapf(err, "overriding field '%s'", override.Field)
 		}
 	}
 
 	return bson.Marshal(originalM)
 }
 
-func overrideField(original bson.M, overrideKey string, overrideValue bson.RawValue) error {
+func overrideField(original bson.M, override Override) error {
 	curr := original
-	keys := strings.Split(overrideKey, ".")
+	keys := strings.Split(override.Field, ".")
 	for i, key := range keys {
 		if i == len(keys)-1 {
-			curr[key] = overrideValue
+			curr[key] = override.Value
 			return nil
 		}
 		subdoc, ok := curr[key].(bson.M)

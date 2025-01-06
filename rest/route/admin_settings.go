@@ -86,7 +86,10 @@ func (h *adminPostHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *adminPostHandler) Parse(ctx context.Context, r *http.Request) error {
-	return errors.Wrap(gimlet.GetJSON(r.Body, &h.model), "parsing request body")
+	if err := errors.Wrap(gimlet.GetJSON(r.Body, &h.model), "parsing request body"); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {

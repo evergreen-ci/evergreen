@@ -773,6 +773,32 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     return owner_repo && owner_repo.owner && owner_repo.repo;
   }
 
+  $scope.addOverride = function () {
+    if ($scope.Settings.overrides == null) {
+      $scope.Settings.overrides = {};
+    }
+    if ($scope.Settings.overrides.overrides == null) {
+      $scope.Settings.overrides.overrides = [];
+    }
+
+    if (!$scope.validOverride($scope.new_override)) {
+      $scope.invalidOverride = "section id, field, and value are required.";
+      return
+    }
+
+    $scope.Settings.overrides.overrides.push($scope.new_override);
+    $scope.new_override = {};
+    $scope.invalidOverride = "";
+  }
+
+  $scope.deleteOverride = function (index) {
+    $scope.Settings.overrides.overrides.splice(index, 1);
+  }
+
+  $scope.validOverride = function (override) {
+    return override && override.section_id && override.field && override.value;
+  }
+
   $scope.deleteJIRAProject = function (key) {
     if (!key) {
       return;

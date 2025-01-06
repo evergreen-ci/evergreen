@@ -12,7 +12,13 @@ const overridesSectionID = "overrides"
 
 // AmboyDBConfig configures Amboy's database connection.
 type OverridesConfig struct {
-	Overrides bson.M `bson:"overrides" json:"overrides" yaml:"overrides"`
+	Overrides []Override `bson:"overrides" json:"overrides" yaml:"overrides"`
+}
+
+type Override struct {
+	SectionID string      `bson:"section_id" json:"section_id" yaml:"section_id"`
+	Field     string      `bson:"field" json:"field" yaml:"field"`
+	Value     interface{} `bson:"value" json:"value" yaml:"value"`
 }
 
 func (c *OverridesConfig) SectionId() string { return overridesSectionID }
@@ -35,4 +41,14 @@ func (c *OverridesConfig) Set(ctx context.Context) error {
 
 func (c *OverridesConfig) ValidateAndDefault() error {
 	return nil
+}
+
+func (c *OverridesConfig) sectionOverrides(sectionID string) []Override {
+	var overrides []Override
+	for _, override := range c.Overrides {
+		if override.SectionID == sectionID {
+			overrides = append(overrides, override)
+		}
+	}
+	return overrides
 }

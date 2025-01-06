@@ -27,7 +27,13 @@ func TestGetSectionsBSON(t *testing.T) {
 		notifyConfig := NotifyConfig{BufferTargetPerInterval: 1}
 		require.NoError(t, notifyConfig.Set(ctx))
 
-		overrides := OverridesConfig{Overrides: bson.M{notifyConfig.SectionId(): bson.M{"buffer_target_per_interval": 2}}}
+		overrides := OverridesConfig{Overrides: []Override{
+			{
+				SectionID: notifyConfig.SectionId(),
+				Field:     "buffer_target_per_interval",
+				Value:     2,
+			},
+		}}
 		require.NoError(t, overrides.Set(ctx))
 
 		sections, err := getSectionsBSON(ctx, []string{notifyConfig.SectionId()}, true)
@@ -43,7 +49,13 @@ func TestGetSectionsBSON(t *testing.T) {
 		notifyConfig := NotifyConfig{BufferTargetPerInterval: 1}
 		require.NoError(t, notifyConfig.Set(ctx))
 
-		overrides := OverridesConfig{Overrides: bson.M{notifyConfig.SectionId(): bson.M{"buffer_target_per_interval": 2}}}
+		overrides := OverridesConfig{Overrides: []Override{
+			{
+				SectionID: notifyConfig.SectionId(),
+				Field:     "buffer_target_per_interval",
+				Value:     2,
+			},
+		}}
 		require.NoError(t, overrides.Set(ctx))
 
 		sections, err := getSectionsBSON(ctx, []string{notifyConfig.SectionId()}, false)
@@ -70,7 +82,7 @@ func TestGetConfigSection(t *testing.T) {
 		config := NotifyConfig{BufferTargetPerInterval: 1}
 		require.NoError(t, config.Set(ctx))
 
-		overrides := OverridesConfig{Overrides: bson.M{}}
+		overrides := OverridesConfig{Overrides: nil}
 		require.NoError(t, overrides.Set(ctx))
 
 		var fetchedConfig NotifyConfig
@@ -85,7 +97,13 @@ func TestGetConfigSection(t *testing.T) {
 		config := NotifyConfig{BufferTargetPerInterval: 1}
 		require.NoError(t, config.Set(ctx))
 
-		overrides := OverridesConfig{Overrides: bson.M{config.SectionId(): bson.M{"buffer_target_per_interval": 2}}}
+		overrides := OverridesConfig{Overrides: []Override{
+			{
+				SectionID: config.SectionId(),
+				Field:     "buffer_target_per_interval",
+				Value:     2,
+			},
+		}}
 		require.NoError(t, overrides.Set(ctx))
 
 		var fetchedConfig NotifyConfig
@@ -145,10 +163,9 @@ func TestOverrideConfig(t *testing.T) {
 	defer func() { require.NoError(t, GetEnvironment().DB().Collection(ConfigCollection).Drop(ctx)) }()
 
 	for testName, testCase := range map[string]struct {
-		inputDoc      bson.M
-		overrides     OverridesConfig
-		expected      bson.M
-		errorExpected bool
+		inputDoc  bson.M
+		overrides OverridesConfig
+		expected  bson.M
 	}{
 		"nested_levels": {
 			inputDoc: bson.M{
@@ -158,9 +175,11 @@ func TestOverrideConfig(t *testing.T) {
 				},
 			},
 			overrides: OverridesConfig{
-				Overrides: bson.M{
-					"testing": bson.M{
-						"level0.level1": "new_value",
+				Overrides: []Override{
+					{
+						SectionID: "testing",
+						Field:     "level0.level1",
+						Value:     "new_value",
 					},
 				},
 			},
@@ -178,10 +197,16 @@ func TestOverrideConfig(t *testing.T) {
 				"field2": "original_value_2",
 			},
 			overrides: OverridesConfig{
-				Overrides: bson.M{
-					"testing": bson.M{
-						"field1": "new_value_1",
-						"field2": "new_value_2",
+				Overrides: []Override{
+					{
+						SectionID: "testing",
+						Field:     "field1",
+						Value:     "new_value_1",
+					},
+					{
+						SectionID: "testing",
+						Field:     "field2",
+						Value:     "new_value_2",
 					},
 				},
 			},
@@ -191,13 +216,16 @@ func TestOverrideConfig(t *testing.T) {
 				"field2": "new_value_2",
 			},
 		},
-		"missing_overrides": {
+		"empty_overrides": {
 			inputDoc: bson.M{
 				"_id":   "testing",
 				"field": "value",
 			},
-			overrides:     OverridesConfig{},
-			errorExpected: true,
+			overrides: OverridesConfig{},
+			expected: bson.M{
+				"_id":   "testing",
+				"field": "value",
+			},
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -208,15 +236,11 @@ func TestOverrideConfig(t *testing.T) {
 			require.NoError(t, err)
 
 			newDocs, err := overrideConfig(ctx, []bson.Raw{docRaw})
-			if testCase.errorExpected {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				require.Len(t, newDocs, 1)
-				var doc bson.M
-				require.NoError(t, bson.Unmarshal(newDocs[0], &doc))
-				assert.Equal(t, testCase.expected, doc)
-			}
+			assert.NoError(t, err)
+			require.Len(t, newDocs, 1)
+			var doc bson.M
+			require.NoError(t, bson.Unmarshal(newDocs[0], &doc))
+			assert.Equal(t, testCase.expected, doc)
 		})
 	}
 }
