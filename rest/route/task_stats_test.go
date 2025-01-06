@@ -57,7 +57,6 @@ func (s *TaskStatsSuite) TestParseStatsFilter() {
 		evergreen.RepotrackerVersionRequester,
 		evergreen.PatchVersionRequester,
 		evergreen.GithubPRRequester,
-		evergreen.MergeTestRequester,
 		evergreen.GithubMergeRequester,
 	}, handler.filter.Requesters)
 	s.Equal(time.Date(1998, 7, 12, 0, 0, 0, 0, time.UTC), handler.filter.AfterDate)

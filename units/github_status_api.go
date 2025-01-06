@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -25,12 +24,10 @@ import (
 const (
 	githubStatusUpdateJobName = "github-status-update"
 
-	githubUpdateTypeNewPatch              = "new-patch"
-	githubUpdateTypeSuccessMessage        = "success-message"
-	githubUpdateTypeRequestAuth           = "request-auth"
-	githubUpdateTypePushToCommitQueue     = "commit-queue-push"
-	githubUpdateTypeDeleteFromCommitQueue = "commit-queue-delete"
-	githubUpdateTypeProcessingError       = "processing-error"
+	githubUpdateTypeNewPatch        = "new-patch"
+	githubUpdateTypeSuccessMessage  = "success-message"
+	githubUpdateTypeRequestAuth     = "request-auth"
+	githubUpdateTypeProcessingError = "processing-error"
 )
 
 const (
@@ -120,29 +117,6 @@ func NewGithubStatusUpdateJobForExternalPatch(patchID string) amboy.Job {
 	return job
 }
 
-func NewGithubStatusUpdateJobForPushToCommitQueue(owner, repo, ref string, prNumber int, patchId string) amboy.Job {
-	job := makeGithubStatusUpdateJob()
-	job.UpdateType = githubUpdateTypePushToCommitQueue
-	job.Owner = owner
-	job.Repo = repo
-	job.Ref = ref
-	job.FetchID = patchId
-
-	job.SetID(fmt.Sprintf("%s:%s-%s-%s-%d-%s", githubStatusUpdateJobName, job.UpdateType, owner, repo, prNumber, time.Now().String()))
-	return job
-}
-
-func NewGithubStatusUpdateJobForDeleteFromCommitQueue(owner, repo, ref string, prNumber int) amboy.Job {
-	job := makeGithubStatusUpdateJob()
-	job.UpdateType = githubUpdateTypeDeleteFromCommitQueue
-	job.Owner = owner
-	job.Repo = repo
-	job.Ref = ref
-
-	job.SetID(fmt.Sprintf("%s:%s-%s-%s-%d-%s", githubStatusUpdateJobName, job.UpdateType, owner, repo, prNumber, time.Now().String()))
-	return job
-}
-
 // NewGithubStatusUpdateJobForProcessingError marks a ref as failed because the
 // evergreen encountered an error creating a patch
 func NewGithubStatusUpdateJobForProcessingError(githubContext, owner, repo, ref, description string) amboy.Job {
@@ -214,18 +188,6 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 		status.Context = thirdparty.GithubStatusDefaultContext
 		status.Description = "patch must be manually authorized"
 		status.State = message.GithubStateFailure
-
-	} else if j.UpdateType == githubUpdateTypePushToCommitQueue {
-		status.Context = commitqueue.GithubContext
-		status.Description = "added to queue"
-		status.State = message.GithubStatePending
-		if j.FetchID != "" {
-			status.URL = fmt.Sprintf("%s/patch/%s?redirect_spruce_users=true", j.urlBase, j.FetchID)
-		}
-	} else if j.UpdateType == githubUpdateTypeDeleteFromCommitQueue {
-		status.Context = commitqueue.GithubContext
-		status.Description = "removed from queue"
-		status.State = message.GithubStateSuccess
 	}
 
 	if j.UpdateType == githubUpdateTypeRequestAuth || j.UpdateType == githubUpdateTypeNewPatch {

@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	dbModel "github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -637,7 +636,7 @@ func canEnableCommitQueue(projectRef *dbModel.ProjectRef) error {
 		return errors.Errorf("cannot enable commit queue in this repo, must disable in other projects first")
 	}
 
-	return commitqueue.EnsureCommitQueueExistsForProject(projectRef.Id)
+	return nil
 }
 
 // canEnablePRTesting determines if PR testing can be enabled for the given project.
@@ -899,7 +898,7 @@ func makeGetProjectVersionsHandler(url string) gimlet.RouteHandler {
 //	@Param			limit				query	int		false	"The number of versions to be returned per page of pagination. Defaults to 20."
 //	@Param			start				query	int		false	"The version order number to start at, for pagination. Will return the versions that are less than (and therefore older) the revision number specified."
 //	@Param			revision_end		query	int		false	"Will return the versions that are greater than (and therefore more recent) or equal to revision number specified."
-//	@Param			requester			query	string	false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , merge_test (commit queue patches), and ad_hoc (periodic builds)."
+//	@Param			requester			query	string	false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , github_merge_request (GitHub merge queue),, and ad_hoc (periodic builds)."
 //	@Param			include_builds		query	bool	false	"If set, will return some information for each build in the version."
 //	@Param			by_build_variant	query	string	false	"If set, will only include information for this build, and only return versions with this build activated. Must have include_builds set."
 //	@Param			include_tasks		query	bool	false	"If set, will return some information for each task in the included builds. This is only allowed if include_builds is set."
@@ -1026,7 +1025,7 @@ func makeModifyProjectVersionsHandler(url string) gimlet.RouteHandler {
 //	@Param			revision_start		query	int		false	"The version order number to start at."
 //	@Param			revision_end		query	int		false	"The version order number to end at."
 //	@Param			priority			query	int		true	"Priority to set for all tasks within applicable versions."
-//	@Param			requester			query	string	false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , merge_test (commit queue patches), and ad_hoc (periodic builds)."
+//	@Param			requester			query	string	false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , github_merge_request (GitHub merge queue), and ad_hoc (periodic builds)."
 //	@Param			by_build_variant	query	string	false	"If set, will only include information for this build, and only return versions with this build activated. Must have include_builds set."
 //	@Param			by_task				query	string	false	"If set, will only include information for this task, and will only return versions with this task activated. Must have include_tasks set."
 //	@Success		200
@@ -1206,7 +1205,7 @@ func makeGetProjectTaskExecutionsHandler() gimlet.RouteHandler {
 //	@Param			build_variant	query		string							true	"The build variant to return task execution info for."
 //	@Param			start_time		query		string							true	"Will only return execution info after this time. Format should be 2022-12-01T12:30:00.000Z"
 //	@Param			end_time		query		string							false	"If not provided, will default to the current time."
-//	@Param			requesters		query		[]string						false	"If not provided, will default to gitter_request (versions created by git commit). Can also be github_pull_request, trigger_request (Project Trigger versions) , merge_test (commit queue patches), or ad_hoc (periodic builds)"
+//	@Param			requesters		query		[]string						false	"If not provided, will default to gitter_request (versions created by git commit). Can also be github_pull_request, trigger_request (Project Trigger versions) , github_merge_request (GitHub merge queue), or ad_hoc (periodic builds)"
 //	@Success		200				{object}	model.ProjectTaskExecutionResp	"number completed"
 func (h *getProjectTaskExecutionsHandler) Factory() gimlet.RouteHandler {
 	return &getProjectTaskExecutionsHandler{}

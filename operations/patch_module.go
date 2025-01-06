@@ -19,7 +19,7 @@ func PatchSetModule() cli.Command {
 		Aliases: []string{"set-module"},
 		Usage:   "update or add module to an existing patch",
 		Flags: mergeFlagSlices(addModuleFlag(), addSkipConfirmFlag(), addRefFlag(), addUncommittedChangesFlag(),
-			addPatchFinalizeFlag(), addPreserveCommitsFlag(
+			addPatchFinalizeFlag(
 				cli.BoolFlag{
 					Name:  largeFlagName,
 					Usage: "enable submitting larger patches (>16MB)",
@@ -84,9 +84,7 @@ func PatchSetModule() cli.Command {
 			if err != nil {
 				return errors.Wrapf(err, "getting patch '%s'", patchID)
 			}
-			if existingPatch.IsCommitQueuePatch() {
-				return errors.New("Use `commit-queue set-module` instead of `set-module` for commit queue patches")
-			}
+
 			module, err := conf.getModule(patchID, moduleName)
 			if err != nil {
 				return err

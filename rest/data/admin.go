@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -153,34 +152,6 @@ func RestartFailedTasks(ctx context.Context, queue amboy.Queue, opts model.Resta
 	return &restModel.RestartResponse{
 		ItemsRestarted: results.ItemsRestarted,
 		ItemsErrored:   results.ItemsErrored,
-	}, nil
-}
-
-// RestartFailedCommitQueueVersions takes in a time range
-func RestartFailedCommitQueueVersions(opts model.RestartOptions) (*restModel.RestartResponse, error) {
-	totalRestarted := []string{}
-	totalNotRestarted := []string{}
-	projectIds, err := model.FindProjectRefIdsWithCommitQueueEnabled()
-	if err != nil {
-		return nil, errors.Wrap(err, "finding project refs with commit queue enabled")
-	}
-	for _, id := range projectIds {
-		restarted, notRestarted, err := model.RetryCommitQueueItems(id, opts)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"project":    id,
-				"start_time": opts.StartTime,
-				"end_time":   opts.EndTime,
-				"message":    "unable to restart failed commit queue versions for project",
-			}))
-			continue
-		}
-		totalRestarted = append(totalRestarted, restarted...)
-		totalNotRestarted = append(totalNotRestarted, notRestarted...)
-	}
-	return &restModel.RestartResponse{
-		ItemsRestarted: totalRestarted,
-		ItemsErrored:   totalNotRestarted,
 	}, nil
 }
 

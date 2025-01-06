@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -101,72 +100,6 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(data)
-}
-
-// GET /task/{task_id}/pull_request
-type agentCheckGetPullRequestHandler struct {
-	taskID   string
-	settings *evergreen.Settings
-
-	req apimodels.CheckMergeRequest
-}
-
-func makeAgentGetPullRequest(settings *evergreen.Settings) gimlet.RouteHandler {
-	return &agentCheckGetPullRequestHandler{
-		settings: settings,
-	}
-}
-
-func (h *agentCheckGetPullRequestHandler) Factory() gimlet.RouteHandler {
-	return &agentCheckGetPullRequestHandler{
-		settings: h.settings,
-	}
-}
-
-func (h *agentCheckGetPullRequestHandler) Parse(ctx context.Context, r *http.Request) error {
-	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
-		return errors.New("missing task ID")
-	}
-	if err := utility.ReadJSON(r.Body, &h.req); err != nil {
-		return errors.Wrap(err, "reading from JSON request body")
-	}
-	return nil
-}
-
-func (h *agentCheckGetPullRequestHandler) Run(ctx context.Context) gimlet.Responder {
-	pr, err := thirdparty.GetGithubPullRequest(ctx, h.req.Owner, h.req.Repo, h.req.PRNum)
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(err)
-	}
-	resp := apimodels.PullRequestInfo{
-		Mergeable:      pr.Mergeable,
-		MergeCommitSHA: pr.GetMergeCommitSHA(),
-	}
-	t, err := task.FindOneId(h.taskID)
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting task '%s'", h.taskID))
-	}
-	if t == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
-		})
-	}
-	p, err := patch.FindOne(patch.ByVersion(t.Version))
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting patch for task '%s'", h.taskID))
-	}
-	if p == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("patch for task '%s' not found", h.taskID),
-		})
-	}
-	if err = p.UpdateMergeCommitSHA(pr.GetMergeCommitSHA()); err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "updating merge commit SHA for patch '%s'", p.Id.Hex()))
-	}
-
-	return gimlet.NewJSONResponse(resp)
 }
 
 // POST /task/{task_id}/update_push_status
@@ -1147,37 +1080,6 @@ func (h *servePatchHandler) Run(ctx context.Context) gimlet.Responder {
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("patch with ID '%s' not found", h.patchID),
 		})
-	}
-
-	// add on the merge status for the patch, if applicable
-	if p.GetRequester() == evergreen.MergeTestRequester {
-		builds, err := build.Find(build.ByVersion(p.Version))
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "retrieving builds for task"))
-		}
-		tasks, err := task.FindWithFields(task.ByVersion(p.Version), task.BuildIdKey, task.StatusKey, task.ActivatedKey, task.DependsOnKey)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding tasks for version"))
-		}
-
-		p.MergeStatus = evergreen.VersionSucceeded
-		for _, b := range builds {
-			if b.BuildVariant == evergreen.MergeTaskVariant {
-				continue
-			}
-			complete, buildStatus, err := b.AllUnblockedTasksFinished(tasks)
-			if err != nil {
-				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "checking build tasks"))
-			}
-			if !complete {
-				p.MergeStatus = evergreen.VersionStarted
-				break
-			}
-			if buildStatus == evergreen.BuildFailed {
-				p.MergeStatus = evergreen.VersionFailed
-				break
-			}
-		}
 	}
 
 	return gimlet.NewJSONResponse(p)
