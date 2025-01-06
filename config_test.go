@@ -974,6 +974,30 @@ func (s *AdminSuite) TestTracerConfig() {
 	s.Equal(config, settings.Tracer)
 }
 
+func (s *AdminSuite) TestOverridesConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config := OverridesConfig{
+		Overrides: []Override{
+			{
+				SectionID: "test-section",
+				Field:     "test-field",
+				Value:     "test-value",
+			},
+		},
+	}
+
+	s.NoError(config.ValidateAndDefault())
+	s.NoError(config.Set(ctx))
+
+	settings, err := GetConfig(ctx)
+	s.NoError(err)
+	s.Require().NotNil(settings)
+
+	s.Equal(config, settings.Overrides)
+}
+
 func (s *AdminSuite) TestBucketsConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

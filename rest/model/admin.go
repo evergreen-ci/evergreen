@@ -1227,9 +1227,9 @@ func (a *APIOverridesConfig) ToService() (interface{}, error) {
 }
 
 type APIOverride struct {
-	SectionID *string     `json:"section_id"`
-	Field     *string     `json:"field"`
-	Value     interface{} `json:"value"`
+	SectionID *string     `bson:"section_id" json:"section_id"`
+	Field     *string     `bson:"field" json:"field"`
+	Value     interface{} `bson:"value" json:"value"`
 }
 
 func (a APIOverride) MarshalJSON() ([]byte, error) {
