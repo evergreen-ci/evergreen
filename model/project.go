@@ -1120,16 +1120,11 @@ func PopulateExpansions(t *task.Task, h *host.Host, appToken, knownHosts string)
 		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
 		expansions.Put("alias", p.Alias)
 
-		if v.Requester == evergreen.MergeTestRequester {
-			expansions.Put("is_commit_queue", strconv.FormatBool(true))
-			expansions.Put("commit_message", p.Description)
-		}
-
 		if v.Requester == evergreen.GithubMergeRequester {
 			expansions.Put("is_commit_queue", strconv.FormatBool(true))
 		}
 
-		if p.IsPRMergePatch() || v.Requester == evergreen.GithubPRRequester {
+		if v.Requester == evergreen.GithubPRRequester {
 			expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
 			expansions.Put("github_org", p.GithubPatchData.BaseOwner)
 			expansions.Put("github_repo", p.GithubPatchData.BaseRepo)

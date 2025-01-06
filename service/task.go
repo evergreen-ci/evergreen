@@ -768,7 +768,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		return
 	case evergreen.SetActiveAction:
 		active := putParams.Active
-		if active && projCtx.Task.Requester == evergreen.MergeTestRequester {
+		if active && projCtx.Task.Requester == evergreen.GithubMergeRequester {
 			http.Error(w, "commit queue tasks cannot be manually scheduled", http.StatusBadRequest)
 			return
 		}

@@ -44,11 +44,6 @@ type CheckMergeRequest struct {
 	Repo  string `json:"repo"`
 }
 
-type PullRequestInfo struct {
-	Mergeable      *bool  `json:"mergeable"`
-	MergeCommitSHA string `json:"merge_commit_sha"`
-}
-
 // TaskTestResultsInfo contains metadata related to test results persisted for
 // a given task.
 type TaskTestResultsInfo struct {

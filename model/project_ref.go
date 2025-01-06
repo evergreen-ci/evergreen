@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/parsley"
@@ -358,8 +357,7 @@ type ExternalLink struct {
 type MergeQueue string
 
 const (
-	MergeQueueEvergreen MergeQueue = "EVERGREEN"
-	MergeQueueGitHub    MergeQueue = "GITHUB"
+	MergeQueueGitHub MergeQueue = "GITHUB"
 )
 
 type CommitQueueParams struct {
@@ -543,7 +541,6 @@ var (
 	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
-	commitQueueMergeQueueKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "MergeQueue")
 	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
 	containerSecretExternalNameKey = bsonutil.MustHaveTag(ContainerSecret{}, "ExternalName")
 	containerSecretExternalIDKey   = bsonutil.MustHaveTag(ContainerSecret{}, "ExternalID")
@@ -730,13 +727,6 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 	err := db.Insert(ProjectRefCollection, p)
 	if err != nil {
 		return errors.Wrap(err, "inserting project ref")
-	}
-	if err = commitqueue.EnsureCommitQueueExistsForProject(p.Id); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":            "error ensuring commit queue exists",
-			"project_id":         p.Id,
-			"project_identifier": p.Identifier,
-		}))
 	}
 
 	newProjectVars := ProjectVars{
@@ -2164,26 +2154,6 @@ func UpdateOwnerAndRepoForBranchProjects(repoId, owner, repo string) error {
 		})
 }
 
-// FindProjectRefIdsWithCommitQueueEnabled returns a list of project IDs that have the commit queue enabled.
-// We don't return the full projects since they aren't actually merged with the repo documents, so they
-// aren't necessarily accurate.
-func FindProjectRefIdsWithCommitQueueEnabled() ([]string, error) {
-	projectRefs := []ProjectRef{}
-	res := []string{}
-	err := db.Aggregate(
-		ProjectRefCollection,
-		projectRefPipelineForCommitQueueEnabled(),
-		&projectRefs)
-	if err != nil {
-		return nil, err
-	}
-	for _, p := range projectRefs {
-		res = append(res, p.Id)
-	}
-
-	return res, nil
-}
-
 // FindPeriodicProjects returns a list of merged projects that have periodic builds defined.
 func FindPeriodicProjects() ([]ProjectRef, error) {
 	res := []ProjectRef{}
@@ -3258,25 +3228,6 @@ func (t *TriggerDefinition) Validate(downstreamProject string) error {
 	return nil
 }
 
-func GetMessageForPatch(patchID string) (string, error) {
-	requestedPatch, err := patch.FindOneId(patchID)
-	if err != nil {
-		return "", errors.Wrap(err, "finding patch")
-	}
-	if requestedPatch == nil {
-		return "", errors.New("no patch found")
-	}
-	project, err := FindMergedProjectRef(requestedPatch.Project, requestedPatch.Version, true)
-	if err != nil {
-		return "", errors.Wrap(err, "finding project for patch")
-	}
-	if project == nil {
-		return "", errors.New("patch has nonexistent project")
-	}
-
-	return project.CommitQueue.Message, nil
-}
-
 // ValidateContainers inspects the list of containers defined in the project YAML and checks that each
 // are properly configured, and that their definitions can coexist with what is defined for container sizes
 // on the project admin page.
@@ -3516,36 +3467,6 @@ func projectRefPipelineForMatchingTrigger(project string) []bson.M {
 				}},
 			}},
 		},
-	}
-}
-
-// projectRefPipelineForCommitQueue is an aggregation pipeline to find projects that are
-// 1) explicitly enabled, or that default to the repo which is enabled, and
-// 2) the commit queue is explicitly enabled, or defaults to the repo which has the commit queue enabled
-func projectRefPipelineForCommitQueueEnabled() []bson.M {
-	return []bson.M{
-		lookupRepoStep,
-		{"$match": bson.M{
-			"$and": []bson.M{
-				{"$or": []bson.M{
-					{ProjectRefEnabledKey: true},
-				}},
-				{"$or": []bson.M{
-					{
-						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueEnabledKey):    true,
-						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueMergeQueueKey): bson.M{"$ne": MergeQueueGitHub},
-					},
-					{
-						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueEnabledKey):             nil,
-						bsonutil.GetDottedKeyName("repo_ref", RepoRefCommitQueueKey, commitQueueEnabledKey):    true,
-						bsonutil.GetDottedKeyName("repo_ref", RepoRefCommitQueueKey, commitQueueMergeQueueKey): bson.M{"$ne": MergeQueueGitHub},
-					},
-				}},
-			}},
-		},
-		{"$project": bson.M{
-			ProjectRefIdKey: 1,
-		}},
 	}
 }
 

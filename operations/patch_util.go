@@ -201,9 +201,6 @@ func (p *patchParams) displayPatch(ac *legacyClient, params outputPatchParams) e
 			return nil
 		}
 		url := params.patches[0].GetURL(params.uiHost)
-		if params.patches[0].IsCommitQueuePatch() {
-			url = params.patches[0].GetCommitQueueURL(params.uiHost)
-		}
 		browserCmd = append(browserCmd, url)
 		cmd := exec.Command(browserCmd[0], browserCmd[1:]...)
 		return cmd.Run()
@@ -561,13 +558,6 @@ func getPatchDisplay(ac *legacyClient, params outputPatchParams) (string, error)
 func getGenericPatchDisplay(ac *legacyClient, params outputPatchParams) (string, error) {
 	var out bytes.Buffer
 	for _, p := range params.patches {
-		var link string
-		if p.IsCommitQueuePatch() {
-			link = p.GetCommitQueueURL(params.uiHost)
-		} else {
-			link = p.GetURL(params.uiHost)
-		}
-
 		proj, err := ac.GetProjectRef(p.Project)
 		if err != nil {
 			return "", errors.Wrapf(err, "getting project ref for '%s'", p.Project)
@@ -585,8 +575,8 @@ func getGenericPatchDisplay(ac *legacyClient, params outputPatchParams) (string,
 		}{
 			Patch:             &p,
 			ShowSummary:       params.summarize,
-			ShowFinalized:     p.IsCommitQueuePatch(),
-			Link:              link,
+			ShowFinalized:     p.IsMergeQueuePatch(),
+			Link:              p.GetURL(params.uiHost),
 			ProjectIdentifier: proj.Identifier,
 		})
 

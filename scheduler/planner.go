@@ -297,7 +297,7 @@ func (unit *Unit) info() unitInfo {
 	}
 
 	for _, t := range unit.tasks {
-		if evergreen.IsCommitQueueRequester(t.Requester) || evergreen.IsGithubMergeQueueRequester(t.Requester) {
+		if evergreen.IsGithubMergeQueueRequester(t.Requester) {
 			info.ContainsInCommitQueue = true
 		} else if evergreen.IsPatchRequester(t.Requester) {
 			info.ContainsInPatch = true

@@ -157,19 +157,18 @@ func IsUnblockedGithubStatus(status string) bool {
 
 // GithubPatch stores patch data for patches create from GitHub pull requests
 type GithubPatch struct {
-	PRNumber       int    `bson:"pr_number"`
-	BaseOwner      string `bson:"base_owner"`
-	BaseRepo       string `bson:"base_repo"`
-	BaseBranch     string `bson:"base_branch"`
-	HeadOwner      string `bson:"head_owner"`
-	HeadRepo       string `bson:"head_repo"`
-	HeadHash       string `bson:"head_hash"`
-	Author         string `bson:"author"`
-	AuthorUID      int    `bson:"author_uid"`
-	MergeCommitSHA string `bson:"merge_commit_sha"`
-	CommitTitle    string `bson:"commit_title"`
-	CommitMessage  string `bson:"commit_message"`
-	MergeBase      string `bson:"merge_base"`
+	PRNumber      int    `bson:"pr_number"`
+	BaseOwner     string `bson:"base_owner"`
+	BaseRepo      string `bson:"base_repo"`
+	BaseBranch    string `bson:"base_branch"`
+	HeadOwner     string `bson:"head_owner"`
+	HeadRepo      string `bson:"head_repo"`
+	HeadHash      string `bson:"head_hash"`
+	Author        string `bson:"author"`
+	AuthorUID     int    `bson:"author_uid"`
+	CommitTitle   string `bson:"commit_title"`
+	CommitMessage string `bson:"commit_message"`
+	MergeBase     string `bson:"merge_base"`
 	// the patchId to copy the definitions for for the next patch the pr creates
 	RepeatPatchIdNextPatch string `bson:"repeat_patch_id_next_patch"`
 }
@@ -207,11 +206,10 @@ type SendGithubStatusInput struct {
 
 var (
 	// BSON fields for GithubPatch
-	GithubPatchPRNumberKey       = bsonutil.MustHaveTag(GithubPatch{}, "PRNumber")
-	GithubPatchBaseOwnerKey      = bsonutil.MustHaveTag(GithubPatch{}, "BaseOwner")
-	GithubPatchBaseRepoKey       = bsonutil.MustHaveTag(GithubPatch{}, "BaseRepo")
-	GithubPatchMergeCommitSHAKey = bsonutil.MustHaveTag(GithubPatch{}, "MergeCommitSHA")
-	RepeatPatchIdNextPatchKey    = bsonutil.MustHaveTag(GithubPatch{}, "RepeatPatchIdNextPatch")
+	GithubPatchPRNumberKey    = bsonutil.MustHaveTag(GithubPatch{}, "PRNumber")
+	GithubPatchBaseOwnerKey   = bsonutil.MustHaveTag(GithubPatch{}, "BaseOwner")
+	GithubPatchBaseRepoKey    = bsonutil.MustHaveTag(GithubPatch{}, "BaseRepo")
+	RepeatPatchIdNextPatchKey = bsonutil.MustHaveTag(GithubPatch{}, "RepeatPatchIdNextPatch")
 )
 
 type retryConfig struct {
@@ -1487,9 +1485,6 @@ func ValidatePR(pr *github.PullRequest) error {
 	}
 
 	catcher := grip.NewSimpleCatcher()
-	if pr.GetMergeCommitSHA() == "" {
-		catcher.Add(errors.New("no merge commit SHA"))
-	}
 	if missingUserLogin(pr) {
 		catcher.Add(errors.New("no valid user"))
 	}
@@ -1589,53 +1584,6 @@ func SendCommitQueueGithubStatus(ctx context.Context, env evergreen.Environment,
 		"message": "called github status send",
 		"caller":  "commit queue github status",
 	})
-	return nil
-}
-
-// GetMergeablePullRequest gets the pull request and returns if the PR is valid and mergeable.
-func GetMergeablePullRequest(ctx context.Context, issue int, owner, repo string) (*github.PullRequest, error) {
-	pr, err := GetGithubPullRequest(ctx, owner, repo, issue)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't get PR from GitHub")
-	}
-
-	if err = ValidatePR(pr); err != nil {
-		return nil, errors.Wrap(err, "GitHub returned an incomplete PR")
-	}
-
-	if !utility.FromBoolTPtr(pr.Mergeable) {
-		return pr, errors.New("PR is not mergeable")
-	}
-
-	return pr, nil
-}
-
-// MergePullRequest attempts to merge the given pull request. If commits are merged one after another, Github may
-// not have updated that this can be merged, so we allow retries.
-func MergePullRequest(ctx context.Context, appToken, owner, repo, commitMessage string, prNum int, mergeOpts *github.PullRequestOptions) error {
-	caller := "MergePullRequest"
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
-		attribute.String(githubEndpointAttribute, caller),
-		attribute.String(githubOwnerAttribute, owner),
-		attribute.String(githubRepoAttribute, repo),
-	))
-	defer span.End()
-
-	githubClient := getGithubClient(appToken, caller, retryConfig{})
-	defer githubClient.Close()
-	res, resp, err := githubClient.PullRequests.Merge(ctx, owner, repo,
-		prNum, commitMessage, mergeOpts)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-	}
-	if err != nil {
-		return errors.Wrap(err, "accessing GitHub merge API")
-	}
-
-	if !res.GetMerged() {
-		return errors.Errorf("GitHub refused to merge PR '%s/%s:%d': '%s'", owner, repo, prNum, res.GetMessage())
-	}
 	return nil
 }
 

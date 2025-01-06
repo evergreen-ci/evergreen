@@ -665,7 +665,6 @@ const (
 	GitTagRequester             = "git_tag_request"
 	RepotrackerVersionRequester = "gitter_request"
 	TriggerRequester            = "trigger_request"
-	MergeTestRequester          = "merge_test"           // Evergreen commit queue
 	AdHocRequester              = "ad_hoc"               // periodic build
 	GithubMergeRequester        = "github_merge_request" // GitHub merge queue
 )
@@ -686,7 +685,6 @@ var (
 		GitTagRequester,
 		RepotrackerVersionRequester,
 		TriggerRequester,
-		MergeTestRequester,
 		AdHocRequester,
 		GithubMergeRequester,
 	}
@@ -714,7 +712,6 @@ const (
 	GitTagUserRequester             UserRequester = "github_tag"
 	RepotrackerVersionUserRequester UserRequester = "commit"
 	TriggerUserRequester            UserRequester = "trigger"
-	MergeTestUserRequester          UserRequester = "commit_queue"
 	AdHocUserRequester              UserRequester = "ad_hoc"
 	GithubMergeUserRequester        UserRequester = "github_merge_queue"
 )
@@ -725,7 +722,6 @@ var AllUserRequesterTypes = []UserRequester{
 	GitTagUserRequester,
 	RepotrackerVersionUserRequester,
 	TriggerUserRequester,
-	MergeTestUserRequester,
 	AdHocUserRequester,
 	GithubMergeUserRequester,
 }
@@ -744,8 +740,6 @@ func InternalRequesterToUserRequester(requester string) UserRequester {
 		return RepotrackerVersionUserRequester
 	case TriggerRequester:
 		return TriggerUserRequester
-	case MergeTestRequester:
-		return MergeTestUserRequester
 	case AdHocRequester:
 		return AdHocUserRequester
 	case GithubMergeRequester:
@@ -769,8 +763,6 @@ func UserRequesterToInternalRequester(requester UserRequester) string {
 		return RepotrackerVersionRequester
 	case TriggerUserRequester:
 		return TriggerRequester
-	case MergeTestUserRequester:
-		return MergeTestRequester
 	case AdHocUserRequester:
 		return AdHocRequester
 	case GithubMergeUserRequester:
@@ -876,7 +868,6 @@ var (
 	PatchRequesters = []string{
 		PatchVersionRequester,
 		GithubPRRequester,
-		MergeTestRequester,
 		GithubMergeRequester,
 	}
 
@@ -1110,7 +1101,7 @@ func IsPatchRequester(requester string) bool {
 }
 
 func IsGitHubPatchRequester(requester string) bool {
-	return requester == GithubPRRequester || requester == MergeTestRequester || requester == GithubMergeRequester
+	return requester == GithubPRRequester || requester == GithubMergeRequester
 }
 
 func IsGithubPRRequester(requester string) bool {
@@ -1119,10 +1110,6 @@ func IsGithubPRRequester(requester string) bool {
 
 func IsGitTagRequester(requester string) bool {
 	return requester == GitTagRequester
-}
-
-func IsCommitQueueRequester(requester string) bool {
-	return requester == MergeTestRequester
 }
 
 func IsGithubMergeQueueRequester(requester string) bool {
