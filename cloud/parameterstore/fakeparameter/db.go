@@ -22,6 +22,8 @@ var (
 
 // FindOneID finds a single fake parameter by its name.
 func FindOneID(ctx context.Context, id string) (*FakeParameter, error) {
+	checkTestingEnvironment()
+
 	var p FakeParameter
 	err := evergreen.GetEnvironment().DB().Collection(Collection).FindOne(ctx, bson.M{NameKey: id}).Decode(&p)
 	if adb.ResultsNotFound(err) {
@@ -35,6 +37,8 @@ func FindOneID(ctx context.Context, id string) (*FakeParameter, error) {
 
 // FindByIDs finds one or more fake parameters by their names.
 func FindByIDs(ctx context.Context, ids ...string) ([]FakeParameter, error) {
+	checkTestingEnvironment()
+
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -52,6 +56,8 @@ func FindByIDs(ctx context.Context, ids ...string) ([]FakeParameter, error) {
 // DeleteOneID deletes a fake parameter with the given ID. Returns whether any
 // matching parameter was deleted.
 func DeleteOneID(ctx context.Context, id string) (bool, error) {
+	checkTestingEnvironment()
+
 	res, err := evergreen.GetEnvironment().DB().Collection(Collection).DeleteOne(ctx, bson.M{NameKey: id})
 	if err != nil {
 		return false, errors.Wrap(err, "deleting fake parameter by ID")

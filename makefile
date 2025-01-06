@@ -98,6 +98,8 @@ srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -n
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 currentHash := $(shell git rev-parse HEAD)
 agentVersion := $(shell grep "AgentVersion" config.go | tr -d '\tAgentVersion = ' | tr -d '"')
+# kim: TODO: remove since special make flag is likely not needed
+# ldFlags := $(if $(DEBUG_ENABLED),,-w -s )$(if $(IS_TESTING_ENV),-X=github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter.ExecutionEnvironmentType=test ,)-X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)
 ldFlags := $(if $(DEBUG_ENABLED),,-w -s )-X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)
 gcFlags := $(if $(STAGING_ONLY),-N -l,)
 karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
@@ -171,6 +173,9 @@ $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 $(buildDir)/.load-local-data:$(buildDir)/load-smoke-data
 	./$< -path testdata/local -dbName $(if $(DB_NAME),$(DB_NAME),evergreen_local) -amboyDBName amboy_local
 	@touch $@
+# Set a variable indicating that the Evergreen binary is being compiled for local Evergreen.
+# kim: TODO: remove since start-local-evergreen can invoke with special arguments
+# local-evergreen: export IS_TESTING_ENV=1
 local-evergreen:$(localClientBinary) load-local-data
 	./$< service deploy start-local-evergreen
 # end smoke test rules

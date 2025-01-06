@@ -11,6 +11,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
+	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -72,6 +74,27 @@ func startWebService() cli.Command {
 			db := parseDB(c)
 			env, err := evergreen.NewEnvironment(ctx, confPath, versionID, clientS3Bucket, db, tp)
 			grip.EmergencyFatal(errors.Wrap(err, "configuring application environment"))
+
+			if c.Bool(testingEnvFlagName) {
+				grip.Info("kim: running Evergreen web service with testing env")
+				fakeparameter.ExecutionEnvironmentType = "test"
+				// If running in a testing environment (e.g. local Evergreen),
+				// use a fake implementation of Parameter Store since testing
+				// environments won't have access to a real Parameter Store
+				// instance.
+				opts := parameterstore.ParameterManagerOptions{
+					PathPrefix:     env.Settings().ParameterStore.Prefix,
+					CachingEnabled: true,
+					SSMClient:      fakeparameter.NewFakeSSMClient(),
+					DB:             env.DB(),
+				}
+				pm, err := parameterstore.NewParameterManager(ctx, opts)
+				if err != nil {
+					return errors.Wrap(err, "creating parameter manager")
+				}
+				env.SetParameterManager(pm)
+			}
+
 			evergreen.SetEnvironment(env)
 			if c.Bool(overwriteConfFlagName) {
 				grip.EmergencyFatal(errors.Wrap(env.SaveConfig(ctx), "saving config"))
