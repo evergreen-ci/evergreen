@@ -1232,10 +1232,14 @@ type APIOverride struct {
 	Value     interface{} `bson:"value" json:"value"`
 }
 
+// MarshalJSON is a custom JSON marshaler function to satisfy the [json.Marshaler] interface.
+// This is necessary because the regular JSON marshaler doesn't account for all the bson data types.
 func (a APIOverride) MarshalJSON() ([]byte, error) {
 	return bson.MarshalExtJSON(a, false, false)
 }
 
+// UnmarshalJSON is a custom JSON unmarshaler function to satisfy the [json.Unmarshaler] interface.
+// This is necessary because the regular JSON unmarshaler doesn't account for all the bson data types.
 func (a *APIOverride) UnmarshalJSON(data []byte) error {
 	return bson.UnmarshalExtJSON(data, false, a)
 }
