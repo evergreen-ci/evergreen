@@ -922,13 +922,6 @@ func (e *envState) initParameterManager(ctx context.Context, tracer trace.Tracer
 	ctx, span := tracer.Start(ctx, "InitParameterManager")
 	defer span.End()
 
-	// kim: TODO: remove since this is done in "service web" command now for
-	// local Evergreen.
-	// if fakeparameter.ExecutionEnvironmentType == "test" {
-	//     // If running in a testing environment, use a fake implementation of
-	//     // Parameter Store.
-	//     opts.SSMClient = fakeparameter.NewFakeSSMClient()
-	// }
 	pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
 		PathPrefix:     e.settings.ParameterStore.Prefix,
 		CachingEnabled: true,

@@ -76,12 +76,12 @@ func startWebService() cli.Command {
 			grip.EmergencyFatal(errors.Wrap(err, "configuring application environment"))
 
 			if c.Bool(testingEnvFlagName) {
-				grip.Info("kim: running Evergreen web service with testing env")
-				fakeparameter.ExecutionEnvironmentType = "test"
 				// If running in a testing environment (e.g. local Evergreen),
 				// use a fake implementation of Parameter Store since testing
 				// environments won't have access to a real Parameter Store
 				// instance.
+				fakeparameter.ExecutionEnvironmentType = "test"
+
 				opts := parameterstore.ParameterManagerOptions{
 					PathPrefix:     env.Settings().ParameterStore.Prefix,
 					CachingEnabled: true,
