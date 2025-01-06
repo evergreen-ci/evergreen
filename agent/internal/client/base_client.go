@@ -993,13 +993,7 @@ func (c *baseCommunicator) CreateGitHubDynamicAccessToken(ctx context.Context, t
 	if resp.StatusCode != http.StatusOK {
 		return "", nil, util.RespErrorf(resp, "creating github dynamic access token for '%s/%s'", owner, repo)
 	}
-
-	type Response struct {
-		Token       string                          `json:"token"`
-		Permissions *github.InstallationPermissions `json:"permissions"`
-	}
-
-	r := Response{}
+	r := apimodels.Token{}
 	if err := utility.ReadJSON(resp.Body, &r); err != nil {
 		return "", nil, errors.Wrap(err, "reading github dynamic access token from response")
 	}

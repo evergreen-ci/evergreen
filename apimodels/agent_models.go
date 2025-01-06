@@ -200,7 +200,7 @@ type RegistrySettings struct {
 	Password string `mapstructure:"registry_password" json:"registry_password" yaml:"registry_password"`
 }
 
-// Token is a struct which wraps a GitHub generated token.
+// Token is a struct which wraps a GitHub generated token and associated permissions
 type Token struct {
 	Token       string                          `json:"token"`
 	Permissions *github.InstallationPermissions `json:"permissions"`

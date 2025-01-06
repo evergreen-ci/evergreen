@@ -137,6 +137,7 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 	return nil
 }
 
+// permissionsToString converts the permissions struct to a string in the format [key:value, key:value].
 func permissionsToString(permissions *github.InstallationPermissions) string {
 	if permissions == nil {
 		return "[]"
