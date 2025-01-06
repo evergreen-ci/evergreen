@@ -45,8 +45,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		addSkipConfirmFlag(),
 		addRefFlag(),
 		addUncommittedChangesFlag(),
-		addReuseFlags(),
-		addPreserveCommitsFlag(
+		addReuseFlags(
 			cli.BoolFlag{
 				Name:  joinFlagNames(jsonFlagName, "j"),
 				Usage: "outputs the patch as a JSON object; suppresses warnings and confirmations",

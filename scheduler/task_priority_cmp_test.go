@@ -452,7 +452,7 @@ func TestByCommitQueue(t *testing.T) {
 		{Id: "t3", Version: "v1"},
 	}
 	comparator := &CmpBasedTaskComparator{versions: map[string]model.Version{
-		"v0": model.Version{Requester: evergreen.MergeTestRequester},
+		"v0": model.Version{Requester: evergreen.GithubMergeRequester},
 		"v1": model.Version{Requester: evergreen.PatchVersionRequester},
 	}}
 

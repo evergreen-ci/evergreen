@@ -23,7 +23,7 @@ require (
 	github.com/evergreen-ci/cocoa v0.0.0-20240523192623-2e730fcd1784
 	github.com/evergreen-ci/gimlet v0.0.0-20241003144629-4e8f8a178646
 	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa
-	github.com/evergreen-ci/pail v0.0.0-20240812165850-4ccf32c50e99
+	github.com/evergreen-ci/pail v0.0.0-20241203190230-cd4f3226065f
 	github.com/evergreen-ci/poplar v0.0.0-20241121172741-9545e54b1b67
 	github.com/evergreen-ci/shrub v0.0.0-20231121224157-600e066f9de6
 	github.com/evergreen-ci/timber v0.0.0-20240509150854-9d66df03b40e
@@ -67,7 +67,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.21.0
 	go.opentelemetry.io/otel/trace v1.24.0
 	go.opentelemetry.io/proto/otlp v1.3.1
-	golang.org/x/crypto v0.30.0
+	golang.org/x/crypto v0.31.0
 	golang.org/x/oauth2 v0.23.0 // indirect
 	golang.org/x/text v0.21.0
 	golang.org/x/tools v0.22.0 // indirect

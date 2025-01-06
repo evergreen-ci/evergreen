@@ -99,7 +99,7 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 		return nil, err
 	}
 	for _, t := range tasks {
-		if evergreen.IsCommitQueueRequester(t.Requester) && isActive {
+		if evergreen.IsGithubMergeQueueRequester(t.Requester) && isActive {
 			return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
 		}
 	}

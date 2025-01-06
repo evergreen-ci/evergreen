@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -78,10 +77,6 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 			// If the task was not activated by step back, and either the caller is not evergreen
 			// or the task was originally activated by evergreen, deactivate the task
 		} else if !evergreen.IsSystemActivator(caller) || evergreen.IsSystemActivator(t.ActivatedBy) {
-			// deactivate later tasks in the group as well, since they won't succeed without this one
-			if evergreen.IsCommitQueueRequester(t.Requester) {
-				catcher.Wrapf(DequeueAndRestartForTask(ctx, nil, &t, message.GithubStateError, caller, fmt.Sprintf("deactivated by '%s'", caller)), "dequeueing and restarting task '%s'", t.Id)
-			}
 			tasksToActivate = append(tasksToActivate, originalTasks...)
 		} else {
 			continue
@@ -1119,297 +1114,6 @@ func UpdateUnblockedDependencies(ctx context.Context, dependencies []task.Task) 
 
 	if err := UpdateVersionAndPatchStatusForBuilds(ctx, buildIDs); err != nil {
 		return errors.Wrapf(err, "updating build, version, and patch statuses")
-	}
-
-	return nil
-}
-
-func RestartItemsAfterVersion(ctx context.Context, cq *commitqueue.CommitQueue, project, version, caller string) error {
-	if cq == nil {
-		var err error
-		cq, err = commitqueue.FindOneId(project)
-		if err != nil {
-			return errors.Wrapf(err, "getting commit queue for project '%s'", project)
-		}
-		if cq == nil {
-			return errors.Errorf("commit queue for project '%s' not found", project)
-		}
-	}
-
-	foundItem := false
-	catcher := grip.NewBasicCatcher()
-	for _, item := range cq.Queue {
-		if item.Version == "" {
-			return nil
-		}
-		if item.Version == version {
-			foundItem = true
-		} else if foundItem && item.Version != "" {
-			grip.Info(message.Fields{
-				"message":            "restarting items due to commit queue failure",
-				"failing_version":    version,
-				"restarting_version": item.Version,
-				"project":            project,
-				"caller":             caller,
-			})
-			// This block executes on all items after the given task.
-			catcher.Add(RestartVersion(ctx, item.Version, nil, true, caller))
-		}
-	}
-
-	return catcher.Resolve()
-}
-
-// DequeueAndRestartForTask restarts all items after the given task's version,
-// aborts/dequeues the current version, and sends an updated status to GitHub.
-func DequeueAndRestartForTask(ctx context.Context, cq *commitqueue.CommitQueue, t *task.Task, githubState message.GithubState, caller, reason string) error {
-	mergeErrMsg := fmt.Sprintf("commit queue item '%s' is being dequeued: %s", t.Version, reason)
-	if t.Details.Type == evergreen.CommandTypeSetup {
-		// If the commit queue merge task failed on setup, there is likely a merge conflict.
-		mergeErrMsg = "Merge task failed on setup, which likely means a merge conflict was introduced. Please try merging with the base branch."
-	}
-
-	_, err := dequeueAndRestartItem(ctx, dequeueAndRestartOptions{
-		cq:            cq,
-		projectID:     t.Project,
-		itemVersionID: t.Version,
-		taskID:        t.Id,
-		caller:        caller,
-		reason:        reason,
-		mergeErrMsg:   mergeErrMsg,
-		githubStatus:  githubState,
-	})
-	return err
-}
-
-// DequeueAndRestartForVersion restarts all items after the commit queue
-// item, aborts/dequeues this version, and sends an updated status to GitHub. If
-// it succeeds, it returns the removed item.
-func DequeueAndRestartForVersion(ctx context.Context, cq *commitqueue.CommitQueue, project, version, user, reason string) (*commitqueue.CommitQueueItem, error) {
-	return dequeueAndRestartItem(ctx, dequeueAndRestartOptions{
-		cq:            cq,
-		projectID:     project,
-		itemVersionID: version,
-		caller:        user,
-		reason:        reason,
-		mergeErrMsg:   fmt.Sprintf("commit queue item '%s' is being dequeued: %s", version, reason),
-		githubStatus:  message.GithubStateFailure,
-	})
-}
-
-type dequeueAndRestartOptions struct {
-	cq            *commitqueue.CommitQueue
-	projectID     string
-	itemVersionID string
-	taskID        string
-	caller        string
-	reason        string
-	mergeErrMsg   string
-	githubStatus  message.GithubState
-}
-
-func dequeueAndRestartItem(ctx context.Context, opts dequeueAndRestartOptions) (*commitqueue.CommitQueueItem, error) {
-	if opts.cq == nil {
-		cq, err := commitqueue.FindOneId(opts.projectID)
-		if err != nil {
-			return nil, errors.Wrapf(err, "getting commit queue for project '%s'", opts.projectID)
-		}
-		if cq == nil {
-			return nil, errors.Errorf("commit queue for project '%s' not found", opts.projectID)
-		}
-		opts.cq = cq
-	}
-
-	// Restart later items before dequeueing this item so that we know which
-	// entries to restart.
-	if err := RestartItemsAfterVersion(ctx, opts.cq, opts.projectID, opts.itemVersionID, opts.caller); err != nil {
-		return nil, errors.Wrap(err, "restarting later commit queue items")
-	}
-
-	p, err := patch.FindOneId(opts.itemVersionID)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding patch '%s'", opts.itemVersionID)
-	}
-	if p == nil {
-		return nil, errors.Errorf("patch '%s' not found", opts.itemVersionID)
-	}
-
-	removed, err := tryDequeueAndAbortCommitQueueItem(ctx, p, *opts.cq, opts.taskID, opts.mergeErrMsg, opts.caller)
-	if err != nil {
-		return nil, errors.Wrapf(err, "dequeueing and aborting commit queue item '%s'", opts.itemVersionID)
-	}
-
-	grip.Info(message.Fields{
-		"message":      "commit queue item was dequeued and later items were restarted",
-		"source":       "commit queue",
-		"reason":       opts.reason,
-		"caller":       opts.caller,
-		"project":      opts.projectID,
-		"issue":        removed.Issue,
-		"patch":        removed.PatchId,
-		"version":      opts.itemVersionID,
-		"task":         opts.taskID,
-		"queue_length": len(opts.cq.Queue),
-	})
-
-	if err := SendCommitQueueResult(ctx, p, opts.githubStatus, opts.reason); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "unable to send GitHub status",
-			"patch":   p.Id.Hex(),
-		}))
-	}
-
-	return removed, nil
-}
-
-// HandleEndTaskForCommitQueueTask handles necessary dequeues and stepback restarts for
-// ending tasks that run on a commit queue.
-func HandleEndTaskForCommitQueueTask(ctx context.Context, t *task.Task, status string) error {
-	cq, err := commitqueue.FindOneId(t.Project)
-	if err != nil {
-		return errors.Wrapf(err, "can't get commit queue for id '%s'", t.Project)
-	}
-	if cq == nil {
-		return errors.Errorf("no commit queue found for '%s'", t.Project)
-	}
-
-	if status != evergreen.TaskSucceeded && !t.Aborted {
-		return dequeueAndRestartWithStepback(ctx, cq, t, evergreen.MergeTestRequester, fmt.Sprintf("task '%s' failed", t.DisplayName))
-	} else if status == evergreen.TaskSucceeded {
-		// Query for all cq version tasks after this one; they may have been waiting to see if this
-		// one was the cause of the failure, in which case we should dequeue and restart.
-		foundVersion := false
-		for _, item := range cq.Queue {
-			if item.Version == "" {
-				return nil // no longer looking at scheduled versions
-			}
-			if item.Version == t.Version {
-				foundVersion = true
-				continue
-			}
-			if foundVersion {
-				laterTask, err := task.FindTaskForVersion(item.Version, t.DisplayName, t.BuildVariant)
-				if err != nil {
-					return errors.Wrapf(err, "error finding task for version '%s'", item.Version)
-				}
-				if laterTask == nil {
-					return errors.Errorf("couldn't find task for version '%s'", item.Version)
-				}
-				if evergreen.IsFailedTaskStatus(laterTask.Status) {
-					// Because our task is successful, this task should have failed so we dequeue.
-					return dequeueAndRestartWithStepback(ctx, cq, laterTask, evergreen.APIServerTaskActivator,
-						fmt.Sprintf("task '%s' failed and was not impacted by previous task", t.DisplayName))
-				}
-				if !evergreen.IsFinishedTaskStatus(laterTask.Status) {
-					// When this task finishes, it will handle stepping back any later commit queue item, so we're done.
-					return nil
-				}
-			}
-		}
-	}
-	return nil
-}
-
-// dequeueAndRestartWithStepback dequeues the current task and restarts later tasks, if earlier tasks have all run.
-// Otherwise, the failure may be a result of those untested commits so we will wait for the earlier tasks to run
-// and handle dequeuing (merge still won't run for failed task versions because of dependencies).
-func dequeueAndRestartWithStepback(ctx context.Context, cq *commitqueue.CommitQueue, t *task.Task, caller, reason string) error {
-	if i := cq.FindItem(t.Version); i > 0 {
-		prevVersions := []string{}
-		for j := 0; j < i; j++ {
-			prevVersions = append(prevVersions, cq.Queue[j].Version)
-		}
-		// if any of the commit queue tasks higher on the queue haven't finished, then they will handle dequeuing.
-		previousTaskNeedsToRun, err := task.HasUnfinishedTaskForVersions(prevVersions, t.DisplayName, t.BuildVariant)
-		if err != nil {
-			return errors.Wrap(err, "error checking early commit queue tasks")
-		}
-		if previousTaskNeedsToRun {
-			return nil
-		}
-		// Otherwise, continue on and dequeue.
-	}
-	return DequeueAndRestartForTask(ctx, cq, t, message.GithubStateFailure, caller, reason)
-}
-
-func tryDequeueAndAbortCommitQueueItem(ctx context.Context, p *patch.Patch, cq commitqueue.CommitQueue, taskID, mergeErrMsg string, caller string) (*commitqueue.CommitQueueItem, error) {
-	issue := p.Id.Hex()
-	err := removeNextMergeTaskDependency(ctx, cq, issue)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message": "error removing dependency",
-		"patch":   issue,
-	}))
-
-	removed, err := RemoveItemAndPreventMerge(&cq, issue, caller)
-	grip.Debug(message.Fields{
-		"message": "removing commit queue item",
-		"issue":   issue,
-		"err":     err,
-		"removed": removed,
-		"caller":  caller,
-	})
-	if err != nil {
-		return nil, errors.Wrapf(err, "removing and preventing merge for item '%s' from queue '%s'", issue, p.Project)
-	}
-	if removed == nil {
-		return nil, errors.Errorf("no commit queue entry removed for issue '%s'", issue)
-	}
-
-	event.LogCommitQueueConcludeWithErrorMessage(p.Id.Hex(), evergreen.MergeTestFailed, mergeErrMsg)
-	if err := CancelPatch(ctx, p, task.AbortInfo{TaskID: taskID, User: caller}); err != nil {
-		return nil, errors.Wrap(err, "aborting failed commit queue patch")
-	}
-
-	return removed, nil
-}
-
-// removeNextMergeTaskDependency basically removes the given merge task from a linked list of
-// merge task dependencies. It makes the next merge not depend on the current one and also makes
-// the next merge depend on the previous one, if there is one
-func removeNextMergeTaskDependency(ctx context.Context, cq commitqueue.CommitQueue, currentIssue string) error {
-	currentIndex := cq.FindItem(currentIssue)
-	if currentIndex < 0 {
-		return errors.New("commit queue item not found")
-	}
-	if currentIndex+1 >= len(cq.Queue) {
-		return nil
-	}
-
-	nextItem := cq.Queue[currentIndex+1]
-	if nextItem.Version == "" {
-		return nil
-	}
-	nextMerge, err := task.FindMergeTaskForVersion(nextItem.Version)
-	if err != nil {
-		return errors.Wrap(err, "finding next merge task")
-	}
-	if nextMerge == nil {
-		return errors.New("no merge task found")
-	}
-	currentMerge, err := task.FindMergeTaskForVersion(cq.Queue[currentIndex].Version)
-	if err != nil {
-		return errors.Wrap(err, "finding current merge task")
-	}
-	if err = nextMerge.RemoveDependency(currentMerge.Id); err != nil {
-		return errors.Wrap(err, "removing dependency")
-	}
-
-	if currentIndex > 0 {
-		prevItem := cq.Queue[currentIndex-1]
-		prevMerge, err := task.FindMergeTaskForVersion(prevItem.Version)
-		if err != nil {
-			return errors.Wrap(err, "finding previous merge task")
-		}
-		if prevMerge == nil {
-			return errors.New("no merge task found")
-		}
-		d := task.Dependency{
-			TaskId: prevMerge.Id,
-			Status: AllStatuses,
-		}
-		if err = nextMerge.AddDependency(ctx, d); err != nil {
-			return errors.Wrap(err, "adding dependency")
-		}
 	}
 
 	return nil
@@ -2599,13 +2303,15 @@ func tryUpdateDisplayTaskAtomically(dt task.Task) (updated *task.Task, err error
 	dt.Details = statusTask.Details
 	dt.Details.TraceID = "" // Unset TraceID because display tasks don't have corresponding traces.
 	dt.TimeTaken = timeTaken
+	dt.DisplayStatusCache = statusTask.FindDisplayStatus()
 
 	update := bson.M{
-		task.StatusKey:        dt.Status,
-		task.ActivatedKey:     dt.Activated,
-		task.ActivatedTimeKey: dt.ActivatedTime,
-		task.TimeTakenKey:     dt.TimeTaken,
-		task.DetailsKey:       dt.Details,
+		task.StatusKey:             dt.Status,
+		task.ActivatedKey:          dt.Activated,
+		task.ActivatedTimeKey:      dt.ActivatedTime,
+		task.TimeTakenKey:          dt.TimeTaken,
+		task.DetailsKey:            dt.Details,
+		task.DisplayStatusCacheKey: dt.DisplayStatusCache,
 	}
 
 	if startTime != time.Unix(1<<62, 0) {
