@@ -338,7 +338,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 	if utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks) {
 		baseVersion, err := model.FindBaseVersionForVersion(versionId)
 		if err != nil {
-			return nil, errors.Wrapf(err, fmt.Sprintf("Error getting base version for version `%s`", versionId))
+			return nil, errors.Wrapf(err, "error getting base version for version `%s`", versionId)
 		}
 		if baseVersion != nil {
 			baseVersionID = baseVersion.Id
@@ -356,7 +356,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 
 	tasks, _, err := task.GetTasksByVersion(ctx, versionId, opts)
 	if err != nil {
-		return nil, errors.Wrapf(err, fmt.Sprintf("Error getting tasks for patch `%s`", versionId))
+		return nil, errors.Wrapf(err, "error getting tasks for patch `%s`", versionId)
 	}
 
 	for _, t := range tasks {
@@ -365,7 +365,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 			LogURL: logURL,
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, fmt.Sprintf("Error building apiTask from task : %s", t.Id))
+			return nil, errors.Wrapf(err, "error building apiTask from task : %s", t.Id)
 		}
 		variantDisplayName[t.BuildVariant] = t.BuildVariantDisplayName
 		tasksByVariant[t.BuildVariant] = append(tasksByVariant[t.BuildVariant], &apiTask)
@@ -397,7 +397,7 @@ func modifyVersionHandler(ctx context.Context, versionID string, modification mo
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", versionID, err.Error()))
 	}
 	if v == nil {
-		return ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", versionID))
+		return ResourceNotFound.Send(ctx, fmt.Sprintf("unable to find version with id: `%s`", versionID))
 	}
 	user := mustHaveUser(ctx)
 	httpStatus, err := model.ModifyVersion(ctx, *v, *user, modification)

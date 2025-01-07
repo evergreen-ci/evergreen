@@ -1367,12 +1367,12 @@ func (h *setDownstreamParamsHandler) Parse(ctx context.Context, r *http.Request)
 	}
 	err := utility.ReadJSON(r.Body, &h.downstreamParams)
 	if err != nil {
-		errorMessage := fmt.Sprintf("reading downstream expansions for task %s", h.taskID)
+		errorMessage := fmt.Sprintf("reading downstream expansions for task '%s'", h.taskID)
 		grip.Error(message.Fields{
 			"message": errorMessage,
 			"task_id": h.taskID,
 		})
-		return errors.Wrapf(err, errorMessage)
+		return errors.Wrap(err, errorMessage)
 	}
 	return nil
 }
@@ -1389,7 +1389,7 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	grip.Infoln("Setting downstream expansions for task:", t.Id)
+	grip.Infoln("Setting downstream expansions for task: ", t.Id)
 
 	p, err := patch.FindOne(patch.ByVersion(t.Version))
 
@@ -1507,7 +1507,7 @@ func (h *checkRunHandler) Parse(ctx context.Context, r *http.Request) error {
 			"message": errorMessage,
 			"task_id": h.taskID,
 		})
-		return errors.Wrapf(err, errorMessage)
+		return errors.Wrap(err, errorMessage)
 	}
 
 	// output is empty if it does not specify the three fields Evergreen processes.
@@ -1524,7 +1524,7 @@ func (h *checkRunHandler) Parse(ctx context.Context, r *http.Request) error {
 			"task_id": h.taskID,
 			"error":   err.Error(),
 		})
-		return errors.Wrapf(err, errorMessage)
+		return errors.Wrap(err, errorMessage)
 	}
 
 	return nil
@@ -1665,7 +1665,7 @@ func (h *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Requ
 		"task_id": h.taskID,
 	}))
 
-	return errors.Wrapf(err, errorMessage)
+	return errors.Wrap(err, errorMessage)
 }
 
 func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Responder {

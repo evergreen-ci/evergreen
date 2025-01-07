@@ -40,6 +40,7 @@ func (err GqlError) Send(ctx context.Context, message string) *gqlerror.Error {
 	case PartialError:
 		return formError(ctx, message, PartialError)
 	default:
+		//nolint:all
 		return gqlerror.ErrorPathf(graphql.GetFieldContext(ctx).Path(), message)
 	}
 }

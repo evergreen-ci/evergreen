@@ -448,7 +448,7 @@ func TestActivateVersion(t *testing.T) {
 					ActivateAt: time.Now().Add(-20 * time.Minute),
 				},
 				BuildId: "some-build-id"},
-			}, // nolint
+			},
 			RevisionOrderNumber: rand.Intn(10),
 			Owner:               "some-owner",
 			Repo:                "some-repo",

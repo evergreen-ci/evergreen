@@ -1061,7 +1061,6 @@ func (d *decodeState) keyed() (interface{}, bool) {
 	d.off--
 	out, err := decode(d.next())
 	if err != nil {
-		//nolint:all
 		d.error(err)
 	}
 	return out, true

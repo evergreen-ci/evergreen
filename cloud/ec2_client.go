@@ -1053,7 +1053,7 @@ func (c *awsClientImpl) AssumeRole(ctx context.Context, input *sts.AssumeRoleInp
 }
 
 // awsClientMock mocks ec2.EC2.
-type awsClientMock struct { //nolint
+type awsClientMock struct {
 	*ec2.RunInstancesInput
 	*ec2.DescribeInstancesInput
 	*ec2.DescribeInstanceTypeOfferingsInput

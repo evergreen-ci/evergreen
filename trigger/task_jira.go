@@ -289,9 +289,11 @@ func (j *jiraBuilder) getSummary() (string, error) {
 
 	catcher := grip.NewSimpleCatcher()
 	if j.data.Task.DisplayTask != nil {
+		//nolint:all
 		_, err := fmt.Fprintf(subj, j.data.Task.DisplayTask.DisplayName)
 		catcher.Add(err)
 	} else {
+		//nolint:all
 		_, err := fmt.Fprintf(subj, j.data.Task.DisplayName)
 		catcher.Add(err)
 	}
