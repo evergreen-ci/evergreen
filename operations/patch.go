@@ -127,7 +127,7 @@ func Patch() cli.Command {
 				// still appear so users can diagnose issues.
 				l := grip.GetSender().Level()
 				l.Threshold = level.Error
-				grip.SetLevel(l)
+				grip.Error(errors.Wrap(grip.SetLevel(l), "increasing log level to suppress non-errors for JSON output"))
 			}
 			args := c.Args()
 			params := &patchParams{
