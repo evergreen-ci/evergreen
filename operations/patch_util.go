@@ -192,8 +192,9 @@ func (p *patchParams) displayPatch(ac *legacyClient, params outputPatchParams) e
 
 	grip.Info("Patch successfully created.")
 	// This is intentionally using fmt.Println instead of grip because if the
-	// output is JSON, grip logs that are lower level than error will not
-	// display.
+	// output is JSON, informational grip logs are suppressed. Using fmt.Println
+	// ensures the patch output is displayed regardless of logging
+	// configuration.
 	fmt.Println(patchDisp)
 
 	if len(params.patches) == 1 && p.Browse {

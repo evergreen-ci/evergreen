@@ -125,8 +125,6 @@ func Patch() cli.Command {
 				// If outputting the patch data as JSON, suppress any non-error
 				// logs since the logs won't be in JSON format. Errors should
 				// still appear so users can diagnose issues.
-				// kim: TODO: verify manually that this suppresses the
-				// auto-defaulting logging but not the JSON output.
 				l := grip.GetSender().Level()
 				l.Threshold = level.Error
 				grip.SetLevel(l)
