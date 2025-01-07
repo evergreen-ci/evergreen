@@ -1,3 +1,18 @@
 ---
 linters:
-  enable-all: true
+  disable-all: true
+  enable:
+    - asciicheck
+    - errcheck
+    - ineffassign
+    - goimports
+    - gosimple
+    - govet
+    - misspell
+    - unconvert
+    - unused
+
+# linters-settings:
+#   goconst:
+#     ignore-tests: true
+#     numbers: true
