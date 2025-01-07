@@ -1,6 +1,6 @@
 mutation {
   restartTask(taskId: "no_permissions", failedOnly: false) {
-    status
+    displayStatus
     id
   }
 }

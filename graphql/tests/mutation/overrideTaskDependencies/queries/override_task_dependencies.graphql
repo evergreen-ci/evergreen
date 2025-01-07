@@ -2,7 +2,7 @@ mutation{
     overrideTaskDependencies(taskId: "t1"){
         id
         execution
-        status
+        displayStatus
         dependsOn {
             name
             metStatus
