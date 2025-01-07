@@ -259,14 +259,14 @@ func getConfigSection(ctx context.Context, section ConfigSection) error {
 		return errors.Wrap(err, "getting raw result")
 	}
 	if GetEnvironment().SharedDB() != nil {
-		overriden, err := overrideConfig(ctx, []bson.Raw{raw})
+		overridden, err := overrideConfig(ctx, []bson.Raw{raw})
 		if err != nil {
 			return errors.Wrap(err, "overriding configuration section")
 		}
-		if len(overriden) != 1 {
-			return errors.Errorf("overridden config had unexpected length %d", len(overriden))
+		if len(overridden) != 1 {
+			return errors.Errorf("overridden config had unexpected length %d", len(overridden))
 		}
-		raw = overriden[0]
+		raw = overridden[0]
 	}
 
 	if err := bson.Unmarshal(raw, section); err != nil {
