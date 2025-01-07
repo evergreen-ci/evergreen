@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -459,14 +460,14 @@ func ByTaskSpec(group, buildVariant, project, version string) bson.M {
 		StatusKey: bson.M{"$in": []string{evergreen.HostStarting, evergreen.HostRunning}},
 		"$or": []bson.M{
 			{
-				RunningTaskKey:             bson.M{"$exists": "true"},
+				RunningTaskKey:             bson.M{"$exists": strconv.FormatBool(true)},
 				RunningTaskGroupKey:        group,
 				RunningTaskBuildVariantKey: buildVariant,
 				RunningTaskProjectKey:      project,
 				RunningTaskVersionKey:      version,
 			},
 			{
-				LTCTaskKey:    bson.M{"$exists": "true"},
+				LTCTaskKey:    bson.M{"$exists": strconv.FormatBool(true)},
 				LTCGroupKey:   group,
 				LTCBVKey:      buildVariant,
 				LTCProjectKey: project,

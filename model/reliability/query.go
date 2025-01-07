@@ -91,9 +91,7 @@ type TaskReliability struct {
 func (s *TaskReliability) calculateSuccessRate() {
 	total := float64(s.NumTotal)
 	success := float64(s.NumSuccess)
-	low := 0.0
-	high := 0.0
-	p := 0.0
+	var low, high, p float64
 
 	if total != 0 {
 		p = success / total

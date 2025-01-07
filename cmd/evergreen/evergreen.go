@@ -74,7 +74,7 @@ func buildApp() *cli.App {
 	userHome, err := homedir.Dir()
 	if err != nil {
 		// workaround for cygwin if we're on windows but couldn't get a homedir
-		if runtime.GOOS == "windows" && len(os.Getenv("HOME")) > 0 {
+		if runtime.GOOS == evergreen.ECSOSWindows && len(os.Getenv("HOME")) > 0 {
 			userHome = os.Getenv("HOME")
 		}
 	}

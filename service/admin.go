@@ -12,9 +12,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	notAdminPage = "not_admin.html"
+)
+
 func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	template := "not_admin.html"
+	template := notAdminPage
 	DBUser := gimlet.GetUser(ctx)
 	permissions := gimlet.PermissionOpts{
 		Resource:      evergreen.SuperUserPermissionsID,
@@ -42,7 +46,7 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) adminEvents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	DBUser := gimlet.GetUser(ctx)
-	template := "not_admin.html"
+	template := notAdminPage
 	permissions := gimlet.PermissionOpts{
 		Resource:      evergreen.SuperUserPermissionsID,
 		ResourceType:  evergreen.SuperUserResourceType,

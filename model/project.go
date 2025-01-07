@@ -1040,7 +1040,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, appToken, knownHosts string)
 		expansions.Put("distro_id", h.Distro.Id)
 	}
 	if t.ActivatedBy == evergreen.StepbackTaskActivator {
-		expansions.Put("is_stepback", "true")
+		expansions.Put("is_stepback", strconv.FormatBool(true))
 	}
 	if t.TriggerID != "" {
 		expansions.Put("trigger_event_identifier", t.TriggerID)
@@ -1116,17 +1116,17 @@ func PopulateExpansions(t *task.Task, h *host.Host, appToken, knownHosts string)
 			return nil, errors.Errorf("no patch found for version '%s'", t.Version)
 		}
 
-		expansions.Put("is_patch", "true")
+		expansions.Put("is_patch", strconv.FormatBool(true))
 		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
 		expansions.Put("alias", p.Alias)
 
 		if v.Requester == evergreen.MergeTestRequester {
-			expansions.Put("is_commit_queue", "true")
+			expansions.Put("is_commit_queue", strconv.FormatBool(true))
 			expansions.Put("commit_message", p.Description)
 		}
 
 		if v.Requester == evergreen.GithubMergeRequester {
-			expansions.Put("is_commit_queue", "true")
+			expansions.Put("is_commit_queue", strconv.FormatBool(true))
 		}
 
 		if p.IsPRMergePatch() || v.Requester == evergreen.GithubPRRequester {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -386,7 +387,7 @@ func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "cannot read value n"))
 		return
 	}
-	filterCommitQueue := r.FormValue("filter_commit_queue") == "true"
+	filterCommitQueue := r.FormValue("filter_commit_queue") == strconv.FormatBool(true)
 	query := patch.ByUserAndCommitQueue(dbUser.Id, filterCommitQueue).Sort([]string{"-" + patch.CreateTimeKey})
 	if n > 0 {
 		query = query.Limit(n)

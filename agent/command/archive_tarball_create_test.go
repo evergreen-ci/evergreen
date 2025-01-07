@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/model"
@@ -124,7 +125,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				So(exists, ShouldBeTrue)
 
 				var targetPath string
-				if runtime.GOOS == "windows" {
+				if runtime.GOOS == evergreen.ECSOSWindows {
 					// On Windows, the tar command is provided by Cygwin, which
 					// requires that you pass Unix-style Cygwin paths to it.
 					cygpath, err := exec.LookPath("cygpath")

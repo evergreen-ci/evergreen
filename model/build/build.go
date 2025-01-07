@@ -395,7 +395,7 @@ func (b *Build) GetPRNotificationDescription(tasks []task.Task) string {
 		return "no tasks were run"
 	}
 
-	desc := fmt.Sprintf("%s, %s", taskStatusSubformat(success, "succeeded"),
+	desc := fmt.Sprintf("%s, %s", taskStatusSubformat(success, evergreen.SucceedStatusPastTense),
 		taskStatusSubformat(failed, "failed"))
 	if unscheduledEssential > 0 {
 		desc = fmt.Sprintf("%s, %s", desc, unscheduledEssentialTaskStatusSubformat(unscheduledEssential))

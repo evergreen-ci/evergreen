@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -35,7 +36,7 @@ func (a *aliasGetHandler) Factory() gimlet.RouteHandler {
 
 func (a *aliasGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	a.projectID = gimlet.GetVars(r)["project_id"]
-	a.includeProjectConfig = r.URL.Query().Get("includeProjectConfig") == "true"
+	a.includeProjectConfig = r.URL.Query().Get("includeProjectConfig") == strconv.FormatBool(true)
 	return nil
 }
 

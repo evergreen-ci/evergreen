@@ -117,7 +117,7 @@ func checkAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall 
 
 		winTempFileBase := strings.TrimSuffix(filepath.Base(binaryDest), ".exe")
 		winTempDest := filepath.Join(filepath.Dir(binaryDest), winTempFileBase+"-old.exe")
-		if runtime.GOOS == "windows" {
+		if runtime.GOOS == evergreen.ECSOSWindows {
 			grip.Infoln("Moving existing binary", binaryDest, "to", winTempDest)
 			if err = os.Rename(binaryDest, winTempDest); err != nil {
 				return err
@@ -142,7 +142,7 @@ func checkAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall 
 		}
 		grip.Info("Upgrade complete!")
 
-		if runtime.GOOS == "windows" {
+		if runtime.GOOS == evergreen.ECSOSWindows {
 			grip.Infoln("Deleting old binary", winTempDest)
 			// Source: https://stackoverflow.com/a/19748576
 			// Since Windows does not allow a binary that's currently in
@@ -166,7 +166,7 @@ func checkAndUpdateVersion(conf *ClientSettings, ctx context.Context, doInstall 
 		return nil
 	}
 	installCommand := fmt.Sprintf("\tmv %s %s", updatedBin, binaryDest)
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == evergreen.ECSOSWindows {
 		installCommand = fmt.Sprintf("\tmove %s %s", updatedBin, binaryDest)
 	}
 	grip.Infoln("To complete the install, run the following command:", installCommand)
@@ -259,7 +259,7 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	}
 
 	// Executables on windows must end in .exe
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == evergreen.ECSOSWindows {
 		winTempPath := tempPath + ".exe"
 		if err = os.Rename(tempPath, winTempPath); err != nil {
 			return "", errors.Wrapf(err, "renaming file '%s' to '%s'", tempPath, winTempPath)

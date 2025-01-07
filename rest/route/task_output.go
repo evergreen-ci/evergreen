@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -91,10 +90,10 @@ func (h *getTaskOutputLogsBaseHandler) parse(ctx context.Context, r *http.Reques
 		}
 	}
 
-	h.printTime = strings.ToLower(vals.Get("print_time")) == "true"
-	h.printPriority = strings.ToLower(vals.Get("print_priority")) == "true"
-	h.paginate = strings.ToLower(vals.Get("paginate")) == "true"
-	h.timeZone = getUserTimeZone(MustHaveUser(ctx))
+	h.printTime = strings.ToLower(vals.Get("print_time")) == strconv.FormatBool(true)
+	h.printPriority = strings.ToLower(vals.Get("print_priority")) == strconv.FormatBool(true)
+	h.paginate = strings.ToLower(vals.Get("paginate")) == strconv.FormatBool(true)
+	h.timeZone = MustHaveUser(ctx).GetTimeZone()
 	h.softSizeLimit = 10 * 1024 * 1024
 
 	var count int
@@ -287,20 +286,4 @@ func (h *getTestLogsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return h.createResponse(it)
-}
-
-// getUserTimeZone returns the time zone specified by the user settings.
-// Defaults to `America/New_York`.
-func getUserTimeZone(u *user.DBUser) *time.Location {
-	tz := u.Settings.Timezone
-	if tz == "" {
-		tz = "America/New_York"
-	}
-
-	loc, err := time.LoadLocation(tz)
-	if err != nil {
-		return time.UTC
-	}
-
-	return loc
 }

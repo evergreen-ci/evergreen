@@ -24,6 +24,7 @@ func (c *podCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEnd
 	if err != nil {
 		return nil, util.RespError(resp, errors.Wrap(err, "ending task").Error())
 	}
+	defer resp.Body.Close()
 	var taskEndResp apimodels.EndTaskResponse
 	if err = utility.ReadJSON(resp.Body, &taskEndResp); err != nil {
 		return nil, errors.Wrap(err, "reading end task response")
@@ -46,6 +47,7 @@ func (c *podCommunicator) GetNextTask(ctx context.Context, details *apimodels.Ge
 	if err != nil {
 		return nil, util.RespError(resp, errors.Wrap(err, "getting next task").Error())
 	}
+	defer resp.Body.Close()
 
 	var nextTask apimodels.NextTaskResponse
 	if err := utility.ReadJSON(resp.Body, &nextTask); err != nil {

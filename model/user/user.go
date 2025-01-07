@@ -309,6 +309,22 @@ func (u *DBUser) UpdatePublicKey(targetKeyName, newKeyName, newKeyValue string) 
 	return nil
 }
 
+// getUserTimeZone returns the time zone specified by the user settings.
+// Defaults to `America/New_York`.
+func (u *DBUser) GetTimeZone() *time.Location {
+	tz := u.Settings.Timezone
+	if tz == "" {
+		tz = "America/New_York"
+	}
+
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		return time.UTC
+	}
+
+	return loc
+}
+
 func (u *DBUser) Insert() error {
 	u.CreatedAt = time.Now()
 	return db.Insert(Collection, u)

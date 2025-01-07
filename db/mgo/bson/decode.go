@@ -287,7 +287,7 @@ func (d *decoder) readDocTo(out reflect.Value) {
 	d.docType = docType
 
 	if outt == typeRaw {
-		out.Set(reflect.ValueOf(Raw{0x03, d.in[start:d.i]}))
+		out.Set(reflect.ValueOf(Raw{uuidCode, d.in[start:d.i]}))
 	}
 }
 
@@ -444,7 +444,7 @@ func (d *decoder) dropElem(kind byte) {
 			corrupted()
 		}
 		d.i += l
-	case 0x03, 0x04: // doc, array
+	case uuidCode, 0x04: // doc, array
 		d.skipDoc()
 	case 0x05: // binary
 		l := int(d.readInt32())
@@ -500,7 +500,7 @@ func (d *decoder) readElemTo(out reflect.Value, kind byte) (good bool) {
 
 	start := d.i
 
-	if kind == 0x03 {
+	if kind == uuidCode {
 		// Delegate unmarshaling of documents.
 		outt := out.Type()
 		outk := out.Kind()
@@ -535,7 +535,7 @@ func (d *decoder) readElemTo(out reflect.Value, kind byte) (good bool) {
 		in = d.readFloat64()
 	case 0x02: // UTF-8 string
 		in = d.readStr()
-	case 0x03: // Document
+	case uuidCode: // Document
 		panic("Can't happen. Handled above.")
 	case 0x04: // Array
 		outt := out.Type()

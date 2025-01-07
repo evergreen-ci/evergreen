@@ -105,6 +105,7 @@ func (c *baseCommunicator) doRequest(ctx context.Context, r *http.Request) (*htt
 	func() {
 		c.mutex.RLock()
 		defer c.mutex.RUnlock()
+		//nolint:bodyclose // The caller is responsible for closing the response body.
 		response, err = c.httpClient.Do(r)
 	}()
 

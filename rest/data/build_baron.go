@@ -43,6 +43,9 @@ func BbFileTicket(ctx context.Context, taskId string, execution int) (int, error
 	if ok && webHook.Endpoint != "" {
 		var resp *http.Response
 		resp, err = fileTicketCustomHook(ctx, taskId, execution, webHook)
+		if err == nil {
+			defer resp.Body.Close()
+		}
 		return resp.StatusCode, err
 	}
 

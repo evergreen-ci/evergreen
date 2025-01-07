@@ -833,8 +833,8 @@ func (h *projectIDGetHandler) Factory() gimlet.RouteHandler {
 
 func (h *projectIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectName = gimlet.GetVars(r)["project_id"]
-	h.includeRepo = r.URL.Query().Get("includeRepo") == "true"
-	h.includeProjectConfig = r.URL.Query().Get("includeProjectConfig") == "true"
+	h.includeRepo = r.URL.Query().Get("includeRepo") == strconv.FormatBool(true)
+	h.includeProjectConfig = r.URL.Query().Get("includeProjectConfig") == strconv.FormatBool(true)
 	return nil
 }
 
@@ -1308,7 +1308,7 @@ func (p *GetProjectAliasResultsHandler) Parse(ctx context.Context, r *http.Reque
 	if p.alias == "" {
 		return errors.New("alias parameter must be specified")
 	}
-	p.includeDependencies = params.Get("include_deps") == "true"
+	p.includeDependencies = params.Get("include_deps") == strconv.FormatBool(true)
 
 	return nil
 }

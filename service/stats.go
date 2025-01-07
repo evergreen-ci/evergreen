@@ -3,6 +3,7 @@ package service
 import (
 	"net/http"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -154,7 +155,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	var versionIds []string
 	data := UIStats{}
 	var statuses []string
-	if onlySuccessful == "true" {
+	if onlySuccessful == strconv.FormatBool(true) {
 		statuses = []string{evergreen.TaskSucceeded}
 	} else {
 		statuses = evergreen.TaskCompletedStatuses

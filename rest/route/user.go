@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -501,7 +502,7 @@ func (h *userPermissionsGetHandler) Parse(ctx context.Context, r *http.Request) 
 	if h.userID == "" {
 		return errors.New("no user found")
 	}
-	h.includeAll = r.URL.Query().Get("all") == "true"
+	h.includeAll = r.URL.Query().Get("all") == strconv.FormatBool(true)
 
 	return nil
 }
@@ -1031,7 +1032,7 @@ func (ch *offboardUserHandler) Parse(ctx context.Context, r *http.Request) error
 	}
 
 	vals := r.URL.Query()
-	ch.dryRun = vals.Get("dry_run") == "true"
+	ch.dryRun = vals.Get("dry_run") == strconv.FormatBool(true)
 
 	return nil
 }

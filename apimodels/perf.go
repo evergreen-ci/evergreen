@@ -41,6 +41,7 @@ func PerfResultsCount(ctx context.Context, opts GetPerfCountOptions) (*PerfCount
 		if err != nil {
 			return nil, errors.Wrap(err, "sending request to get perf results count")
 		}
+		defer response.Body.Close()
 		if response.StatusCode != http.StatusOK {
 			body, err := io.ReadAll(response.Body)
 			if err == nil {

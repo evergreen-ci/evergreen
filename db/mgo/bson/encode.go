@@ -100,7 +100,7 @@ func (e *encoder) addDoc(v reflect.Value) {
 
 	if v.Type() == typeRaw {
 		raw := v.Interface().(Raw)
-		if raw.Kind != 0x03 && raw.Kind != 0x00 {
+		if raw.Kind != uuidCode && raw.Kind != 0x00 {
 			panic("Attempted to marshal Raw kind " + strconv.Itoa(int(raw.Kind)) + " as a document")
 		}
 		if len(raw.Data) == 0 {
@@ -347,7 +347,7 @@ func (e *encoder) addElem(name string, v reflect.Value, minSize bool) {
 		}
 
 	case reflect.Map:
-		e.addElemName(0x03, name)
+		e.addElemName(uuidCode, name)
 		e.addDoc(v)
 
 	case reflect.Slice:
@@ -357,7 +357,7 @@ func (e *encoder) addElem(name string, v reflect.Value, minSize bool) {
 			e.addElemName(0x05, name)
 			e.addBinary(0x00, v.Bytes())
 		} else if et == typeDocElem || et == typeRawDocElem {
-			e.addElemName(0x03, name)
+			e.addElemName(uuidCode, name)
 			e.addDoc(v)
 		} else {
 			e.addElemName(0x04, name)
@@ -390,7 +390,7 @@ func (e *encoder) addElem(name string, v reflect.Value, minSize bool) {
 		case Raw:
 			kind := s.Kind
 			if kind == 0x00 {
-				kind = 0x03
+				kind = uuidCode
 			}
 			if len(s.Data) == 0 && kind != 0x06 && kind != 0x0A && kind != 0xFF && kind != 0x7F {
 				panic("Attempted to marshal empty Raw document")
@@ -448,7 +448,7 @@ func (e *encoder) addElem(name string, v reflect.Value, minSize bool) {
 			e.addElemName(0x06, name)
 
 		default:
-			e.addElemName(0x03, name)
+			e.addElemName(uuidCode, name)
 			e.addDoc(v)
 		}
 

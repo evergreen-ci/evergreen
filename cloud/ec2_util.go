@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/user"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -43,6 +44,8 @@ const (
 	stsErrorAccessDenied = "AccessDenied"
 	// This means the role to be assumed does not exist or does not have a trust relationship with the role doing the assuming.
 	stsErrorAssumeRoleAccessDenied = "AssumeRoleAccessDenied"
+
+	unknownValue = "unknown"
 )
 
 var (
@@ -51,7 +54,7 @@ var (
 
 	// Linux and Windows are billed by the second.
 	// See https://aws.amazon.com/ec2/pricing/on-demand/
-	byTheSecondBillingOS = []string{"linux", "windows"}
+	byTheSecondBillingOS = []string{evergreen.ECSOSLinux, evergreen.ECSOSWindows}
 
 	// Commercial Linux distributions are billed by the hour
 	// See https://aws.amazon.com/linux/commercial-linux/faqs/#Pricing_and_Billing
@@ -129,14 +132,14 @@ func makeTags(intentHost *host.Host) []host.Tag {
 	// get requester host name
 	hostname, err := os.Hostname()
 	if err != nil {
-		hostname = "unknown"
+		hostname = unknownValue
 	}
 
 	// get requester user name
 	var username string
 	user, err := user.Current()
 	if err != nil {
-		username = "unknown"
+		username = unknownValue
 	} else {
 		username = user.Name
 	}
@@ -161,7 +164,7 @@ func makeTags(intentHost *host.Host) []host.Tag {
 		{Key: evergreen.TagMode, Value: "production", CanBeModified: false},
 		{Key: evergreen.TagStartTime, Value: intentHost.CreationTime.Format(evergreen.NameTimeFormat), CanBeModified: false},
 		{Key: evergreen.TagExpireOn, Value: expireOn, CanBeModified: false},
-		{Key: evergreen.TagAllowRemoteAccess, Value: "true", CanBeModified: false},
+		{Key: evergreen.TagAllowRemoteAccess, Value: strconv.FormatBool(true), CanBeModified: false},
 	}
 
 	if intentHost.UserHost {

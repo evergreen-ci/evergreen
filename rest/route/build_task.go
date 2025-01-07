@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -69,8 +70,8 @@ func (tbh *tasksByBuildHandler) Parse(ctx context.Context, r *http.Request) erro
 		return errors.Wrap(err, "getting limit")
 	}
 
-	tbh.fetchAllExecutions = vals.Get("fetch_all_executions") == "true"
-	tbh.fetchParentIds = vals.Get("fetch_parent_ids") == "true"
+	tbh.fetchAllExecutions = vals.Get("fetch_all_executions") == strconv.FormatBool(true)
+	tbh.fetchParentIds = vals.Get("fetch_parent_ids") == strconv.FormatBool(true)
 
 	return nil
 }

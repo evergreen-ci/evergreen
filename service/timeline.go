@@ -84,7 +84,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 		pageNum = 0
 	}
 	skip := pageNum * DefaultLimit
-	filterCommitQueue := r.FormValue("filter_commit_queue") == "true"
+	filterCommitQueue := r.FormValue("filter_commit_queue") == strconv.FormatBool(true)
 	user := gimlet.GetVars(r)["user_id"]
 	var patches []patch.Patch
 	if len(user) > 0 {

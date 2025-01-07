@@ -39,7 +39,7 @@ func (c *ClientConfig) populateClientBinaries(ctx context.Context, s3URLPrefix s
 			continue
 		}
 		binary := "evergreen"
-		if strings.Contains(platform, "windows") {
+		if strings.Contains(platform, ECSOSWindows) {
 			binary += ".exe"
 		}
 

@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -49,22 +50,22 @@ func (h *recentTasksGetHandler) Parse(ctx context.Context, r *http.Request) erro
 	h.minutes = minutesInt
 
 	tasksStr := r.URL.Query().Get("verbose")
-	if tasksStr == "true" {
+	if tasksStr == strconv.FormatBool(true) {
 		h.verbose = true
 	}
 
 	byDistroStr := r.URL.Query().Get("by_distro")
-	if byDistroStr == "true" || byDistroStr == "1" {
+	if byDistroStr == strconv.FormatBool(true) || byDistroStr == "1" {
 		h.byDistro = true
 	}
 
 	byProjectStr := r.URL.Query().Get("by_project")
-	if byProjectStr == "true" || byProjectStr == "1" {
+	if byProjectStr == strconv.FormatBool(true) || byProjectStr == "1" {
 		h.byProject = true
 	}
 
 	byAgentVersionStr := r.URL.Query().Get("by_agent_version")
-	if byAgentVersionStr == "true" || byAgentVersionStr == "1" {
+	if byAgentVersionStr == strconv.FormatBool(true) || byAgentVersionStr == "1" {
 		h.byAgentVersion = true
 	}
 

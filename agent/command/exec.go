@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
@@ -199,7 +200,7 @@ func defaultAndApplyExpansionsToEnv(env map[string]string, opts modifyEnvOptions
 		env["GOCACHE"] = filepath.Join(opts.workingDir, ".gocache")
 	}
 	if _, ok := env["CI"]; !ok {
-		env["CI"] = "true"
+		env["CI"] = strconv.FormatBool(true)
 	}
 
 	return env
@@ -296,7 +297,7 @@ func (c *subprocessExec) getExecutablePath(logger client.LoggerProducer) (absPat
 	// for Windows, Go accepts both '\' and '/' as valid file path separators,
 	// even though the native filepath.Separator for Windows is really '\'. This
 	// detects both '\' and '/' as valid Windows file path separators.
-	binaryIsFilePath := strings.Contains(c.Binary, string(filepath.Separator)) || runtime.GOOS == "windows" && strings.Contains(c.Binary, "/")
+	binaryIsFilePath := strings.Contains(c.Binary, string(filepath.Separator)) || runtime.GOOS == evergreen.ECSOSWindows && strings.Contains(c.Binary, "/")
 
 	if len(cmdPath) == 0 || binaryIsFilePath {
 		return c.Binary, nil

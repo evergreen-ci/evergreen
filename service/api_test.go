@@ -50,6 +50,7 @@ func TestLimitedProjectEndPoint(t *testing.T) {
 	request, err := http.NewRequest("GET", fmt.Sprintf(url, ref), bytes.NewBuffer([]byte{}))
 	request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
 	assert.NoError(err)
+	//nolint:bodyclose
 	resp, err := http.DefaultClient.Do(request)
 	require.NoError(t, err, "problem making request")
 	assert.Equal(200, resp.StatusCode)

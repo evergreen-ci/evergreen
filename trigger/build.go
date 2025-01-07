@@ -223,7 +223,7 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 	}
 	if data.PastTenseStatus == evergreen.BuildSucceeded {
 		data.githubState = message.GithubStateSuccess
-		data.PastTenseStatus = "succeeded"
+		data.PastTenseStatus = evergreen.SucceedStatusPastTense
 	}
 	if pastTenseOverride != "" {
 		data.PastTenseStatus = pastTenseOverride

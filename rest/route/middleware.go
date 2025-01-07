@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -907,7 +908,7 @@ func AddCORSHeaders(allowedOrigins []string, next http.HandlerFunc) http.Handler
 			gqlHeader := r.Header.Get("Access-Control-Request-Headers")
 			if utility.StringMatchesAnyRegex(requester, allowedOrigins) {
 				w.Header().Add("Access-Control-Allow-Origin", requester)
-				w.Header().Add("Access-Control-Allow-Credentials", "true")
+				w.Header().Add("Access-Control-Allow-Credentials", strconv.FormatBool(true))
 				w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PATCH, PUT")
 				w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader, gqlHeader))
 				w.Header().Add("Access-Control-Max-Age", "600")

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/metric"
@@ -184,7 +185,7 @@ func TestMetrics(t *testing.T) {
 		}
 	}
 
-	if runtime.GOOS != "windows" {
+	if runtime.GOOS != evergreen.ECSOSWindows {
 		testCases["ProcessMetrics"] = func(t *testing.T, meter metric.Meter, reader sdk.Reader) {
 			assert.NoError(t, addProcessMetrics(meter))
 			var metrics metricdata.ResourceMetrics

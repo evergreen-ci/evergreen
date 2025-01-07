@@ -15,6 +15,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -220,7 +221,7 @@ func findBrowserCommand() ([]string, error) {
 	switch runtime.GOOS {
 	case "darwin":
 		return []string{"open"}, nil
-	case "windows":
+	case evergreen.ECSOSWindows:
 		return []string{"cmd", "/c", "start"}, nil
 	default:
 		candidates := []string{"xdg-open", "gnome-open", "x-www-browser", "firefox",

@@ -170,6 +170,10 @@ const (
 	// VersionAborted is a display status only and not stored in the DB
 	VersionAborted = "aborted"
 
+	// SucceedStatusPastTense is the past tense of BuildSucceded and VersionSucceeded.
+	// It is only used for display purposes.
+	SucceedStatusPastTense = "succeeded"
+
 	PushLogPushing = "pushing"
 	PushLogSuccess = "success"
 

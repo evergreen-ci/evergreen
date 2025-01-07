@@ -445,6 +445,7 @@ func (c *baseCommunicator) GetPullRequestInfo(ctx context.Context, taskData Task
 	if err != nil {
 		return nil, util.RespError(resp, errors.Wrap(err, "getting the pull request").Error())
 	}
+	defer resp.Body.Close()
 
 	res := &apimodels.PullRequestInfo{}
 	if err := utility.ReadJSON(resp.Body, res); err != nil {
@@ -517,6 +518,7 @@ func (c *baseCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.Cedar
 	if err != nil {
 		return nil, util.RespError(resp, errors.Wrap(err, "getting the Cedar config").Error())
 	}
+	defer resp.Body.Close()
 
 	config := &apimodels.CedarConfig{}
 	if err := utility.ReadJSON(resp.Body, config); err != nil {
@@ -536,6 +538,7 @@ func (c *baseCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.Ag
 	if err != nil {
 		return nil, util.RespError(resp, errors.Wrap(err, "getting agent setup data").Error())
 	}
+	defer resp.Body.Close()
 
 	var data apimodels.AgentSetupData
 	if err := utility.ReadJSON(resp.Body, &data); err != nil {
@@ -740,6 +743,8 @@ func (c *baseCommunicator) GenerateTasks(ctx context.Context, td TaskData, jsonB
 	if err != nil {
 		return util.RespError(resp, errors.Wrap(err, "sending generate.tasks request").Error())
 	}
+	defer resp.Body.Close()
+
 	return nil
 }
 

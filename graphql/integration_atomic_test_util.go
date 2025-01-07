@@ -100,6 +100,7 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 				r.Header.Add(evergreen.APIKeyHeader, state.ApiKey)
 				r.Header.Add(evergreen.APIUserHeader, state.ApiUser)
 				r.Header.Add("content-type", "application/json")
+				//nolint:bodyclose
 				resp, err := client.Do(r)
 				require.NoError(t, err)
 				b, err := io.ReadAll(resp.Body)

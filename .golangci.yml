@@ -3,8 +3,10 @@ linters:
   disable-all: true
   enable:
     - asciicheck
+    - bodyclose
     - errcheck
     - ineffassign
+    - goconst
     - goimports
     - gosimple
     - govet
@@ -12,7 +14,7 @@ linters:
     - unconvert
     - unused
 
-# linters-settings:
-#   goconst:
-#     ignore-tests: true
-#     numbers: true
+linters-settings:
+  goconst:
+    ignore-tests: true
+    numbers: true

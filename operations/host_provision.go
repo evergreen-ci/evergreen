@@ -165,7 +165,7 @@ func makeHostProvisioningScriptFile(workingDir string, content string) (string, 
 
 func runHostProvisioningScript(ctx context.Context, shellPath, scriptPath, workingDir string) error {
 	cmd := jasper.NewCommand().AppendArgs(shellPath, "-l", scriptPath).Directory(workingDir)
-	if runtime.GOOS != "windows" {
+	if runtime.GOOS != evergreen.ECSOSWindows {
 		// For non-Windows distros, it is beneficial to have output from the
 		// script. However, on Windows, we have to suppress it because it can
 		// cause the PowerShell environment that it's executing in to hang if it

@@ -79,7 +79,7 @@ func (s *AgentSuite) SetupSuite() {
 }
 
 func (s *AgentSuite) TearDownSuite() {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == evergreen.ECSOSWindows {
 		// This is a hack to give extra time for processes in Windows to finish
 		// using the temporary working directory before the Go testing framework
 		// cna attempt to clean it up. When using (testing.T).TempDir, the Go

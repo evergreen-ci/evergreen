@@ -78,12 +78,14 @@ func (s *StatusSuite) TestAgentStartsStatusServer() {
 	time.Sleep(100 * time.Millisecond)
 	resp, err := http.Get("http://127.0.0.1:2286/status")
 	s.Require().NoError(err)
+	defer resp.Body.Close()
 	s.Equal(200, resp.StatusCode)
 }
 
 func (s *StatusSuite) TestAgentFailsToStartTwice() {
+	//nolint:bodyclose
 	_, err := http.Get("http://127.0.0.1:2287/status")
-	s.Error(err)
+	s.Require().Error(err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	s.cancel = cancel
@@ -100,6 +102,7 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 		c <- agt.Start(ctx)
 	}(first)
 
+	//nolint:bodyclose
 	resp, err := http.Get("http://127.0.0.1:2287/status")
 	if err != nil {
 		// the service hasn't started.
@@ -112,6 +115,7 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 			case <-ctx.Done():
 				break retryLoop
 			case <-timer.C:
+				//nolint:bodyclose
 				resp, err = http.Get("http://127.0.0.1:2287/status")
 				if err == nil {
 					break retryLoop
@@ -164,6 +168,7 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 		_ = agt.Start(ctx)
 	}()
 
+	//nolint:bodyclose
 	resp, err := http.Get("http://127.0.0.1:2286/jasper/v1/list/oom")
 	if err != nil {
 		// the service hasn't started.
@@ -176,6 +181,7 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 			case <-ctx.Done():
 				break retryLoop
 			case <-timer.C:
+				//nolint:bodyclose
 				resp, err = http.Get("http://127.0.0.1:2286/jasper/v1/list/oom")
 				if err == nil {
 					break retryLoop

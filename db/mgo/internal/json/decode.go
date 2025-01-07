@@ -1076,8 +1076,8 @@ func (d *decodeState) storeKeyed(v reflect.Value) bool {
 }
 
 var (
-	trueBytes  = []byte("true")
-	falseBytes = []byte("false")
+	trueBytes  = []byte(strconv.FormatBool(true))
+	falseBytes = []byte(strconv.FormatBool(false))
 	nullBytes  = []byte("null")
 )
 

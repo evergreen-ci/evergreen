@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -71,7 +72,7 @@ func MustHaveUser(r *http.Request) *user.DBUser {
 }
 
 func RedirectSpruceUsers(w http.ResponseWriter, r *http.Request, redirect string) bool {
-	if r.FormValue("redirect_spruce_users") != "true" {
+	if r.FormValue("redirect_spruce_users") != strconv.FormatBool(true) {
 		return false
 	}
 

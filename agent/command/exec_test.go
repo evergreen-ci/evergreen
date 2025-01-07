@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
@@ -323,7 +324,7 @@ func (s *execCmdSuite) TestCommandFallsBackToSearchingPathFromEnvForBinaryExecut
 		s.FailNow("test cannot run without EVGHOME set")
 	}
 	executableName := "evergreen"
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == evergreen.ECSOSWindows {
 		executableName = executableName + ".exe"
 	}
 	cmd := &subprocessExec{
@@ -344,7 +345,7 @@ func (s *execCmdSuite) TestCommandUsesFilePathExecutable() {
 		s.FailNow("test cannot run without EVGHOME set")
 	}
 	executableName := "evergreen"
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == evergreen.ECSOSWindows {
 		executableName = executableName + ".exe"
 	}
 	executablePath := filepath.Join(workingDir, "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH), executableName)
@@ -368,7 +369,7 @@ func (s *execCmdSuite) TestCommandDoesNotFallBackToSearchingPathFromEnvWhenBinar
 		s.FailNow("test cannot run without EVGHOME set")
 	}
 	executableName := "./evergreen"
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == evergreen.ECSOSWindows {
 		executableName = executableName + ".exe"
 	}
 	cmd := &subprocessExec{

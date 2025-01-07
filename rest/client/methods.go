@@ -1685,6 +1685,7 @@ func (c *communicatorImpl) GetTaskLogs(ctx context.Context, opts GetTaskLogsOpti
 	if err != nil {
 		return nil, errors.Wrapf(err, "sending request to get task logs")
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)
@@ -1737,6 +1738,7 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 	if err != nil {
 		return nil, errors.Wrapf(err, "sending request to get test logs")
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, util.RespError(resp, AuthError)

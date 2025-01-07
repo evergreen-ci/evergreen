@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -373,7 +374,7 @@ func (s *GitGetProjectSuite) TestTokenIsRedactedWhenGenerated() {
 }
 
 func (s *GitGetProjectSuite) TestStdErrLogged() {
-	if os.Getenv("IS_DOCKER") == "true" {
+	if os.Getenv("IS_DOCKER") == strconv.FormatBool(true) {
 		s.T().Skip("TestStdErrLogged will not run on docker since it requires a SSH key")
 	}
 	conf := s.taskConfig5

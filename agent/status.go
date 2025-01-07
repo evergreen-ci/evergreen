@@ -22,8 +22,9 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 	// another agent is running, it's possible for `startStatusServer` to return before
 	// `grip.EmergencyFatal` runs, which means that later code, e.g., code that deletes files
 	// that a running task depends on, could run.
-	_, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/status", port))
+	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/status", port))
 	if err == nil {
+		resp.Body.Close()
 		return errors.Errorf("another process is running on localhost port %d", port)
 	}
 	app := gimlet.NewApp()

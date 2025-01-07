@@ -75,7 +75,7 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	vals := r.URL.Query()
 	executionStr := vals.Get("execution")
-	tgh.latest = vals.Get("latest") == "true"
+	tgh.latest = vals.Get("latest") == strconv.FormatBool(true)
 
 	if tgh.latest && executionStr != "" {
 		return gimlet.ErrorResponse{

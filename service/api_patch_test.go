@@ -40,6 +40,7 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 			request, err := http.NewRequest("GET", fmt.Sprintf(url, "patchOne", "test"), bytes.NewBuffer([]byte{}))
 			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
 			So(err, ShouldBeNil)
+			//nolint:bodyclose
 			resp, err := http.DefaultClient.Do(request)
 			require.NoError(t, err, "problem making request")
 			So(resp.StatusCode, ShouldEqual, 404)
@@ -61,6 +62,7 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 			request, err := http.NewRequest("GET", fmt.Sprintf(url, modelUtil.PatchId, testData.Build.Id), nil)
 			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
 			So(err, ShouldBeNil)
+			//nolint:bodyclose
 			resp, err := http.DefaultClient.Do(request)
 			require.NoError(t, err, "problem making request")
 			data := struct {
@@ -86,9 +88,11 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 				})
 			require.NoError(t, err, "problem setting up patch")
 
+			//nolint:bodyclose
 			request, err := http.NewRequest("GET", fmt.Sprintf(url, modelUtil.PatchId, testData.Build.Id), nil)
 			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
 			So(err, ShouldBeNil)
+			//nolint:bodyclose
 			resp, err := http.DefaultClient.Do(request)
 			require.NoError(t, err, "problem making request")
 			data := struct {

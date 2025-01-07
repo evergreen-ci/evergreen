@@ -844,11 +844,13 @@ func tryGithubPost(ctx context.Context, url string, oauthToken string, data inte
 			"ticket":  GithubInvestigation,
 			"url":     url,
 		})
+		//nolint:bodyclose // The caller is responsible for closing the response body.
 		resp, err = githubRequest(ctx, http.MethodPost, url, oauthToken, data)
 		if err != nil {
 			grip.Errorf("failed trying to call github POST on %s: %+v", url, err)
 			return true, err
 		}
+
 		if resp.StatusCode == http.StatusUnauthorized {
 			err = errors.Errorf("Calling github POST on %v failed: got 'unauthorized' response", url)
 			defer resp.Body.Close()

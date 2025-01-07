@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
@@ -138,7 +139,7 @@ func (s *shellExecuteCommandSuite) TestTerribleQuotingIsHandledProperly() {
 
 func (s *shellExecuteCommandSuite) TestShellIsNotChangedDuringExecution() {
 	shells := []string{"bash", "python", "sh"}
-	if runtime.GOOS != "windows" {
+	if runtime.GOOS != evergreen.ECSOSWindows {
 		shells = append(shells, "/bin/sh", "/bin/bash", "/usr/bin/python")
 	}
 	for _, sh := range shells {

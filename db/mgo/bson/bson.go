@@ -402,6 +402,15 @@ type Binary struct {
 	Data []byte
 }
 
+const (
+	genericCode     byte = 0x00
+	functionCode    byte = 0x01
+	obsoleteGeneric byte = 0x02
+	uuidCode        byte = 0x03
+	md5Code         byte = 0x05
+	userDefinedCode byte = 0x80
+)
+
 // RegEx represents a regular expression.  The Options field may contain
 // individual characters defining the way in which the pattern should be
 // applied, and must be sorted. Valid options as of this writing are 'i' for

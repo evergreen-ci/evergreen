@@ -53,7 +53,7 @@ func (h *annotationsByBuildHandler) Parse(ctx context.Context, r *http.Request) 
 		}
 	}
 
-	h.fetchAllExecutions = r.URL.Query().Get("fetch_all_executions") == "true"
+	h.fetchAllExecutions = r.URL.Query().Get("fetch_all_executions") == strconv.FormatBool(true)
 	return nil
 }
 
@@ -102,7 +102,7 @@ func (h *annotationsByVersionHandler) Parse(ctx context.Context, r *http.Request
 		}
 	}
 
-	h.fetchAllExecutions = r.URL.Query().Get("fetch_all_executions") == "true"
+	h.fetchAllExecutions = r.URL.Query().Get("fetch_all_executions") == strconv.FormatBool(true)
 	return nil
 }
 
@@ -170,7 +170,7 @@ func (h *annotationByTaskGetHandler) Parse(ctx context.Context, r *http.Request)
 	}
 
 	vals := r.URL.Query()
-	h.fetchAllExecutions = vals.Get("fetch_all_executions") == "true"
+	h.fetchAllExecutions = vals.Get("fetch_all_executions") == strconv.FormatBool(true)
 	execution := vals.Get("execution")
 
 	if execution != "" && h.fetchAllExecutions {
@@ -390,7 +390,7 @@ func (h *annotationByTaskPatchHandler) Parse(ctx context.Context, r *http.Reques
 	}
 	h.taskId = taskId
 	h.annotation = annotation
-	h.upsert = r.URL.Query().Get("upsert") == "true"
+	h.upsert = r.URL.Query().Get("upsert") == strconv.FormatBool(true)
 
 	u := MustHaveUser(ctx)
 	h.user = u

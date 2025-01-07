@@ -114,7 +114,7 @@ const spawnHostEmailTemplate string = `<html>
 func (t *spawnHostProvisioningTriggers) email() *message.Email {
 	status := "failed to spawn"
 	url := spawnHostURL(t.uiConfig.Url)
-	cmd := "N/A"
+	cmd := nothingAvailablePlaceholder
 	if t.host.Provisioned && t.host.Status == evergreen.HostRunning {
 		status = "spawned"
 		cmd = sshCommand(t.host)
@@ -220,9 +220,9 @@ func (t *spawnHostStateChangeTriggers) makePayload(sub *event.Subscription) (int
 
 	var result string
 	if t.data.Successful {
-		result = "succeeded"
+		result = evergreen.SucceedStatusPastTense
 	} else {
-		result = "failed"
+		result = evergreen.VersionFailed
 	}
 
 	switch sub.Subscriber.Type {
@@ -304,9 +304,9 @@ func (t *spawnHostSetupScriptTriggers) makePayload(sub *event.Subscription) (int
 	var result string
 	switch t.event.EventType {
 	case event.EventHostScriptExecuted:
-		result = "succeeded"
+		result = evergreen.VersionSucceeded
 	case event.EventHostScriptExecuteFailed:
-		result = "failed"
+		result = evergreen.VersionFailed
 		if strings.Contains(t.data.Logs, evergreen.FetchingTaskDataUnfinishedError) {
 			result = "failed to start"
 		}

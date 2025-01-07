@@ -82,7 +82,7 @@ func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	DBUser := MustHaveUser(r)
-	template := "not_admin.html"
+	template := notAdminPage
 	if isAdmin(DBUser, projectRef.Id) {
 		template = "project_events.html"
 	}

@@ -161,6 +161,7 @@ func TestGetDockerfile(t *testing.T) {
 	w := httptest.NewRecorder()
 	getDockerfile(w, req)
 
+	//nolint:bodyclose
 	resp := w.Result()
 	body, err := io.ReadAll(resp.Body)
 	assert.NoError(err)

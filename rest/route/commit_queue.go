@@ -180,7 +180,7 @@ func (cq *commitQueueEnqueueItemHandler) Parse(ctx context.Context, r *http.Requ
 	cq.project = *patch.ProjectId
 
 	force := r.URL.Query().Get("force")
-	if strings.ToLower(force) == "true" {
+	if strings.ToLower(force) == strconv.FormatBool(true) {
 		cq.force = true
 	}
 	return nil

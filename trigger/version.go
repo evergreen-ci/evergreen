@@ -164,7 +164,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 	}
 	slackColor := evergreenFailColor
 	if data.PastTenseStatus == evergreen.VersionSucceeded {
-		data.PastTenseStatus = "succeeded"
+		data.PastTenseStatus = evergreen.SucceedStatusPastTense
 		slackColor = evergreenSuccessColor
 		data.githubState = message.GithubStateSuccess
 		data.githubDescription = fmt.Sprintf("version finished in %s", finishTime.Sub(t.version.StartTime).String())

@@ -450,9 +450,9 @@ func boolEncoder(e *encodeState, v reflect.Value, opts encOpts) {
 		e.WriteByte('"')
 	}
 	if v.Bool() {
-		e.WriteString("true")
+		e.WriteString(strconv.FormatBool(true))
 	} else {
-		e.WriteString("false")
+		e.WriteString(strconv.FormatBool(false))
 	}
 	if opts.quoted {
 		e.WriteByte('"')

@@ -1836,7 +1836,7 @@ func buildRsyncCommand(opts rsyncOpts) (*jasper.Command, error) {
 	}
 	if opts.makeRemoteParentDirs {
 		var parentDir string
-		if runtime.GOOS == "windows" {
+		if runtime.GOOS == evergreen.ECSOSWindows {
 			// If we're using cygwin rsync, we have to use the POSIX path and
 			// not the native one.
 			baseIndex := strings.LastIndex(opts.remote, "/")

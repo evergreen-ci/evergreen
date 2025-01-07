@@ -682,7 +682,7 @@ func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) 
 
 	variantQuery := strings.TrimSpace(query.Get(waterfallBVFilterParam))
 
-	showUpstream := (query.Get(showUpstreamParam) == "true")
+	showUpstream := (query.Get(showUpstreamParam) == strconv.FormatBool(true))
 
 	vvData, err := getVersionsAndVariants(skip, limit, project, variantQuery, showUpstream)
 	if err != nil {

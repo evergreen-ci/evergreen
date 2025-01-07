@@ -40,7 +40,7 @@ func findConfigFilePath(fn string) (string, error) {
 	userHome, err := homedir.Dir()
 	if err != nil {
 		// workaround for cygwin if we're on windows but couldn't get a homedir
-		if runtime.GOOS == "windows" && len(os.Getenv("HOME")) > 0 {
+		if runtime.GOOS == evergreen.ECSOSWindows && len(os.Getenv("HOME")) > 0 {
 			userHome = os.Getenv("HOME")
 		}
 	}
@@ -180,7 +180,7 @@ func printUserMessages(ctx context.Context, c client.Communicator, checkForUpdat
 			grip.Debug(err)
 		}
 		if update.needsUpdate {
-			if runtime.GOOS == "windows" {
+			if runtime.GOOS == evergreen.ECSOSWindows {
 				fmt.Fprintf(os.Stderr, "A new version is available. Run '%s get-update' to fetch it.\n", os.Args[0])
 			} else {
 				fmt.Fprintf(os.Stderr, "A new version is available. Run '%s get-update --install' to download and install it.\n", os.Args[0])

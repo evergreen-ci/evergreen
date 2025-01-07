@@ -262,7 +262,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 	}
 
 	if collectiveStatus == evergreen.VersionSucceeded {
-		data.PastTenseStatus = "succeeded"
+		data.PastTenseStatus = evergreen.SucceedStatusPastTense
 		slackColor = evergreenSuccessColor
 		data.githubState = message.GithubStateSuccess
 		data.githubDescription = fmt.Sprintf("patch finished in %s", finishTime.Sub(t.patch.StartTime).String())

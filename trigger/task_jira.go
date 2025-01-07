@@ -39,6 +39,8 @@ const (
 	jiraMaxTitleLength = 254
 
 	failedTestNamesTmpl = "%%FailedTestNames%%"
+
+	nothingAvailablePlaceholder = "N/A"
 )
 
 // descriptionTemplate is filled to create a JIRA alert ticket. Panics at start if invalid.
@@ -58,7 +60,7 @@ func formatAsTimestamp(t time.Time) string {
 
 func getHostMetadata(data *jiraTemplateData) string {
 	if data.Host == nil {
-		return "N/A"
+		return nothingAvailablePlaceholder
 	}
 
 	return fmt.Sprintf("[%s|%s/host/%s?redirect_spruce_users=true]", data.Host.Host, data.UIRoot, url.PathEscape(data.Host.Id))
@@ -66,7 +68,7 @@ func getHostMetadata(data *jiraTemplateData) string {
 
 func getPodMetadata(data *jiraTemplateData) string {
 	if data.Pod == nil {
-		return "N/A"
+		return nothingAvailablePlaceholder
 	}
 
 	return fmt.Sprintf("[%s|%s/pod/%s?redirect_spruce_users=true]", data.Pod.ID, data.UIRoot, url.PathEscape(data.Pod.ID))
