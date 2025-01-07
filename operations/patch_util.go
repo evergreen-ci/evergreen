@@ -190,8 +190,11 @@ func (p *patchParams) displayPatch(ac *legacyClient, params outputPatchParams) e
 		return err
 	}
 
-	grip.InfoWhen(!params.outputJSON, "Patch successfully created.")
-	grip.Info(patchDisp)
+	grip.Info("Patch successfully created.")
+	// This is intentionally using fmt.Println instead of grip because if the
+	// output is JSON, grip logs that are lower level than error will not
+	// display.
+	fmt.Println(patchDisp)
 
 	if len(params.patches) == 1 && p.Browse {
 		browserCmd, err := findBrowserCommand()
@@ -236,7 +239,7 @@ func findBrowserCommand() ([]string, error) {
 // Performs validation for patch or patch-file
 func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSettings, ac *legacyClient, comm client.Communicator) (*model.ProjectRef, error) {
 	if err := p.loadProject(conf); err != nil {
-		grip.Warningf("warning - failed to set default project: %v\n", err)
+		grip.Errorf("failed to resolve project: %s\n", err)
 	}
 
 	// If reusing a previous definition, ignore defaults.
@@ -245,7 +248,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 	}
 
 	if err := p.loadParameters(conf); err != nil {
-		grip.Warningf("warning - failed to set default parameters: %v\n", err)
+		grip.Warningf("warning - failed to set default parameters: %s\n", err)
 	}
 
 	if p.Uncommitted || conf.UncommittedChanges {
