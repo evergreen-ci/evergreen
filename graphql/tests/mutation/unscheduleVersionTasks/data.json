@@ -7,7 +7,7 @@
     },
     {
       "_id": "5dd2e89cd1fe07048e43bb9c",
-      "r": "merge_test",
+      "r": "github_merge_request",
       "identifier": "sandbox_project_id"
     },
     {
@@ -28,7 +28,7 @@
       "branch": "sandbox_project_id",
       "status": "started",
       "build_id": "7",
-      "r": "merge_test",
+      "r": "github_merge_request",
       "commit_queue_merge": true,
       "version": "5dd2e89cd1fe07048e43bb9c"
     }

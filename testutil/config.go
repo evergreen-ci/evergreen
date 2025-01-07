@@ -188,6 +188,7 @@ func MockConfig() *evergreen.Settings {
 				Name: "logs",
 				Type: evergreen.BucketTypeS3,
 			},
+			InternalBuckets: []string{"bucket1", "bucket2"},
 			Credentials: evergreen.S3Credentials{
 				Key:    "aws_key",
 				Secret: "aws_secret",
@@ -198,11 +199,6 @@ func MockConfig() *evergreen.Settings {
 			RPCPort: "7070",
 			User:    "cedar-user",
 			APIKey:  "cedar-key",
-		},
-		CommitQueue: evergreen.CommitQueueConfig{
-			MergeTaskDistro: "distro",
-			CommitterName:   "Evergreen Commit Queue",
-			CommitterEmail:  "evergreen@mongodb.com",
 		},
 		ConfigDir: "cfg_dir",
 		ContainerPools: evergreen.ContainerPoolsConfig{

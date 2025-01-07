@@ -21,26 +21,20 @@ import (
 // githubAppCheckAndRunParameterStoreOp checks if the project corresponding to
 // the GitHub app private key has Parameter Store enabled, and if so, runs the
 // given Parameter Store operation.
-func githubAppCheckAndRunParameterStoreOp(ctx context.Context, appAuth *githubapp.GithubAppAuth, op func(ref *ProjectRef, isRepoRef bool), opName string) {
+func githubAppCheckAndRunParameterStoreOp(ctx context.Context, appAuth *githubapp.GithubAppAuth, op func(ref *ProjectRef, isRepoRef bool) error) error {
 	ref, isRepoRef, err := findProjectRef(appAuth.Id)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and will not use Parameter Store",
-		"op":         opName,
-		"project_id": appAuth.Id,
-		"epic":       "DEVPROD-5552",
-	}))
+	if err != nil {
+		return errors.Wrapf(err, "checking project ref '%s' to verify if GitHub app should use Parameter Store", appAuth.Id)
+	}
 	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, ref)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and will not use Parameter Store",
-		"op":         opName,
-		"project_id": appAuth.Id,
-		"epic":       "DEVPROD-5552",
-	}))
+	if err != nil {
+		return errors.Wrapf(err, "checking if Parameter Store is enabled for project '%s'", appAuth.Id)
+	}
 	if !isPSEnabled {
-		return
+		return nil
 	}
 
-	op(ref, isRepoRef)
+	return op(ref, isRepoRef)
 }
 
 // GitHubAppAuthFindOne finds the GitHub app auth and retrieves the private key
@@ -57,18 +51,20 @@ func GitHubAppAuthFindOne(id string) (*githubapp.GithubAppAuth, error) {
 		return nil, nil
 	}
 
-	githubAppCheckAndRunParameterStoreOp(ctx, appAuth, func(ref *ProjectRef, isRepoRef bool) {
+	if err := githubAppCheckAndRunParameterStoreOp(ctx, appAuth, func(ref *ProjectRef, isRepoRef bool) error {
 		if ref.ParameterStoreGitHubAppSynced {
-			if err := githubAppAuthFindParameterStore(ctx, appAuth); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message":    "could not find GitHub app private key in Parameter Store",
-					"op":         "FindOne",
-					"project_id": appAuth.Id,
-					"epic":       "DEVPROD-5552",
-				}))
-			}
+			return githubAppAuthFindParameterStore(ctx, appAuth)
 		}
-	}, "FindOne")
+		return nil
+	}); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":    "could not find GitHub app private key in Parameter Store",
+			"op":         "FindOne",
+			"project_id": appAuth.Id,
+			"epic":       "DEVPROD-5552",
+		}))
+		return nil, err
+	}
 
 	return appAuth, nil
 }
@@ -98,14 +94,10 @@ func githubAppAuthFindParameterStore(ctx context.Context, appAuth *githubapp.Git
 	// complete and everything is prepared to remove the GitHub app private keys
 	// from the DB.
 	if !bytes.Equal(privKey, appAuth.PrivateKey) {
-		grip.Error(message.Fields{
-			"message": "private key in Parameter Store does not match private key in the DB",
-			"project": appAuth.Id,
-			"epic":    "DEVPROD-5552",
-		})
-	} else {
-		appAuth.PrivateKey = privKey
+		return errors.Errorf("private key in Parameter Store does not match private key in the DB")
 	}
+
+	appAuth.PrivateKey = privKey
 
 	return nil
 }
@@ -116,18 +108,24 @@ func GitHubAppAuthUpsert(appAuth *githubapp.GithubAppAuth) error {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
-	githubAppCheckAndRunParameterStoreOp(ctx, appAuth, func(ref *ProjectRef, isRepoRef bool) {
+	if err := githubAppCheckAndRunParameterStoreOp(ctx, appAuth, func(ref *ProjectRef, isRepoRef bool) error {
 		paramName, err := githubAppAuthUpsertParameterStore(ctx, appAuth, ref, isRepoRef)
+		if err != nil {
+			return errors.Wrap(err, "upserting GitHub app private key into Parameter Store")
+		}
+
+		appAuth.PrivateKeyParameter = paramName
+
+		return nil
+	}); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "could not upsert GitHub app private key into Parameter Store",
 			"op":         "Upsert",
 			"project_id": appAuth.Id,
 			"epic":       "DEVPROD-5552",
 		}))
-		if paramName != "" {
-			appAuth.PrivateKeyParameter = paramName
-		}
-	}, "Upsert")
+		return err
+	}
 
 	return githubapp.UpsertGithubAppAuth(appAuth)
 }
@@ -167,16 +165,17 @@ func GitHubAppAuthRemove(appAuth *githubapp.GithubAppAuth) error {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
-	githubAppCheckAndRunParameterStoreOp(ctx, appAuth, func(ref *ProjectRef, isRepoRef bool) {
-		if err := githubAppAuthRemoveParameterStore(ctx, appAuth); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":    "could not delete GitHub app private key from Parameter Store",
-				"op":         "Remove",
-				"project_id": appAuth.Id,
-				"epic":       "DEVPROD-5552",
-			}))
-		}
-	}, "Remove")
+	if err := githubAppCheckAndRunParameterStoreOp(ctx, appAuth, func(ref *ProjectRef, isRepoRef bool) error {
+		return githubAppAuthRemoveParameterStore(ctx, appAuth)
+	}); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":    "could not delete GitHub app private key from Parameter Store",
+			"op":         "Remove",
+			"project_id": appAuth.Id,
+			"epic":       "DEVPROD-5552",
+		}))
+		return err
+	}
 	return githubapp.RemoveGithubAppAuth(appAuth.Id)
 }
 

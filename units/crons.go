@@ -307,32 +307,6 @@ func oldestImageRemovalJobs(ctx context.Context, _ evergreen.Environment, ts tim
 	return jobs, nil
 }
 
-func commitQueueJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	if flags.CommitQueueDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"message": "commit queue is disabled",
-			"impact":  "commit queue items are not processed",
-			"mode":    "degraded",
-		})
-		return nil, nil
-	}
-
-	projectIds, err := model.FindProjectRefIdsWithCommitQueueEnabled()
-	if err != nil {
-		return nil, errors.Wrap(err, "finding project refs with commit queue enabled")
-	}
-	var jobs []amboy.Job
-	for _, id := range projectIds {
-		jobs = append(jobs, NewCommitQueueJob(env, id, ts.Format(TSFormat)))
-	}
-	return jobs, nil
-}
-
 func hostAllocatorJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {

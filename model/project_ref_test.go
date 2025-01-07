@@ -2618,79 +2618,6 @@ func TestCanEnableCommitQueue(t *testing.T) {
 	assert.False(ok)
 }
 
-func TestFindProjectRefIdsWithCommitQueueEnabled(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	require.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
-	res, err := FindProjectRefIdsWithCommitQueueEnabled()
-	assert.NoError(err)
-	assert.Empty(res)
-
-	repoRef := RepoRef{ProjectRef{
-		Id: "my_repo",
-		CommitQueue: CommitQueueParams{
-			Enabled:    utility.TruePtr(),
-			MergeQueue: MergeQueueEvergreen,
-		},
-	}}
-	assert.NoError(repoRef.Upsert())
-	doc := &ProjectRef{
-		Enabled:    true,
-		Owner:      "mongodb",
-		Repo:       "mci",
-		Branch:     "main",
-		Identifier: "mci",
-		Id:         "mci1",
-		RepoRefId:  repoRef.Id,
-		CommitQueue: CommitQueueParams{
-			Enabled:    utility.TruePtr(),
-			MergeQueue: MergeQueueEvergreen,
-		},
-	}
-	require.NoError(doc.Insert())
-
-	doc.Branch = "fix"
-	doc.Id = "mci2"
-	doc.CommitQueue.MergeQueue = "" // legacy behavior is unpopulated
-	require.NoError(doc.Insert())
-
-	doc.Identifier = "grip"
-	doc.Repo = "grip"
-	doc.Id = "mci3"
-	doc.CommitQueue.Enabled = utility.FalsePtr()
-	require.NoError(doc.Insert())
-
-	doc.Identifier = "merge"
-	doc.Repo = "merge"
-	doc.Id = "mci4"
-	doc.CommitQueue.Enabled = utility.TruePtr()
-	doc.CommitQueue.MergeQueue = MergeQueueGitHub
-	require.NoError(doc.Insert())
-
-	// Should find two projects, both enabled at the branch level.
-	res, err = FindProjectRefIdsWithCommitQueueEnabled()
-	assert.NoError(err)
-	require.Len(res, 2)
-	assert.Equal("mci1", res[0])
-	assert.Equal("mci2", res[1])
-
-	// Should find three projects, because this new project defaults to repo.
-	doc.Id = "commit_queue_setting_from_repo"
-	doc.CommitQueue.Enabled = nil
-	assert.NoError(doc.Insert())
-	res, err = FindProjectRefIdsWithCommitQueueEnabled()
-	assert.NoError(err)
-	assert.Len(res, 3)
-
-	// Should find two projects again now that the repo isn't enabled.
-	repoRef.CommitQueue.Enabled = utility.FalsePtr()
-	assert.NoError(repoRef.Upsert())
-	res, err = FindProjectRefIdsWithCommitQueueEnabled()
-	assert.NoError(err)
-	assert.Len(res, 2)
-}
-
 func TestValidatePeriodicBuildDefinition(t *testing.T) {
 	assert := assert.New(t)
 	testCases := map[PeriodicBuildDefinition]bool{
@@ -3252,10 +3179,6 @@ func TestAddEmptyBranch(t *testing.T) {
 	assert.NoError(t, p.Add(&u))
 	assert.NotEmpty(t, p.Id)
 	assert.Empty(t, p.Branch)
-
-	cq, err := commitqueue.FindOneId(p.Id)
-	assert.NoError(t, err)
-	assert.NotNil(t, cq)
 }
 
 func TestAddPermissions(t *testing.T) {
@@ -3280,10 +3203,6 @@ func TestAddPermissions(t *testing.T) {
 	assert.NoError(p.Add(&u))
 	assert.NotEmpty(p.Id)
 	assert.True(mgobson.IsObjectIdHex(p.Id))
-
-	cq, err := commitqueue.FindOneId(p.Id)
-	assert.NoError(err)
-	assert.NotNil(cq)
 
 	rm := env.RoleManager()
 	scope, err := rm.FindScopeForResources(evergreen.ProjectResourceType, p.Id)
@@ -3311,10 +3230,6 @@ func TestAddPermissions(t *testing.T) {
 	assert.NotEmpty(p.Id)
 	assert.True(mgobson.IsObjectIdHex(p.Id))
 	assert.Equal(projectId, p.Id)
-
-	cq, err = commitqueue.FindOneId(p.Id)
-	assert.NoError(err)
-	assert.NotNil(cq)
 
 	scope, err = rm.FindScopeForResources(evergreen.ProjectResourceType, p.Id)
 	assert.NoError(err)

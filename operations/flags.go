@@ -287,13 +287,6 @@ func addReuseFlags(flags ...cli.Flag) []cli.Flag {
 	return res
 }
 
-func addPreserveCommitsFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.BoolFlag{
-		Name:  preserveCommitsFlag,
-		Usage: "preserve separate commits when enqueueing to the commit queue",
-	})
-}
-
 func mergeFlagSlices(in ...[]cli.Flag) []cli.Flag {
 	out := []cli.Flag{}
 

@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/utility"
-	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -33,30 +32,6 @@ func checkStatuses(t *testing.T, expected string, toCheck Task) {
 	assert.NoError(t, err)
 	assert.Equal(t, expected, dbTasks[0].DisplayStatus)
 	assert.Equal(t, expected, toCheck.GetDisplayStatus())
-}
-
-func TestFindMergeTaskForVersion(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(Collection))
-	t1 := &Task{
-		Id:               "t1",
-		Version:          "abcdef123456",
-		CommitQueueMerge: false,
-	}
-	assert.NoError(t, t1.Insert())
-
-	_, err := FindMergeTaskForVersion("abcdef123456")
-	assert.Error(t, err)
-	assert.True(t, adb.ResultsNotFound(err))
-
-	t2 := &Task{
-		Id:               "t2",
-		Version:          "abcdef123456",
-		CommitQueueMerge: true,
-	}
-	assert.NoError(t, t2.Insert())
-	t2Db, err := FindMergeTaskForVersion("abcdef123456")
-	assert.NoError(t, err)
-	assert.Equal(t, "t2", t2Db.Id)
 }
 
 func TestFindTasksByIds(t *testing.T) {

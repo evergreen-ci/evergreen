@@ -207,12 +207,6 @@ func TestPlanner(t *testing.T) {
 					assert.EqualValues(t, 181, unit.sortingValueBreakdown().TotalValue)
 					verifyRankBreakdown(t, unit.sortingValueBreakdown())
 				})
-				t.Run("CommitQueue", func(t *testing.T) {
-					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.MergeTestRequester})
-					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 2413, unit.sortingValueBreakdown().TotalValue)
-					verifyRankBreakdown(t, unit.sortingValueBreakdown())
-				})
 				t.Run("MergeQueue", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.GithubMergeRequester})
 					unit.SetDistro(&distro.Distro{})
@@ -315,12 +309,6 @@ func TestPlanner(t *testing.T) {
 				verifyRankBreakdown(t, unit.sortingValueBreakdown())
 				unit.Add(task.Task{Id: "bar"})
 				assert.EqualValues(t, 18080, unit.sortingValueBreakdown().TotalValue)
-				verifyRankBreakdown(t, unit.sortingValueBreakdown())
-			})
-			t.Run("RankForCommitQueue", func(t *testing.T) {
-				unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.MergeTestRequester})
-				unit.SetDistro(&distro.Distro{})
-				assert.EqualValues(t, 2413, unit.sortingValueBreakdown().TotalValue)
 				verifyRankBreakdown(t, unit.sortingValueBreakdown())
 			})
 		})

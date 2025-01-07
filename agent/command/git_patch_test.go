@@ -166,7 +166,8 @@ func TestGetPatchCommands(t *testing.T) {
 	assert.Len(cmds, 5)
 	assert.Equal("git apply --stat '/tmp/bestest.patch' || true", cmds[4])
 
-	cmds = getPatchCommands(modulePatch, &internal.TaskConfig{Task: task.Task{Requester: evergreen.MergeTestRequester}}, "/teapot", "/tmp/bestest.patch")
-	assert.Len(cmds, 4)
-	assert.Equal("git apply --stat '/tmp/bestest.patch' || true", cmds[3])
+	cmds = getPatchCommands(modulePatch, &internal.TaskConfig{Task: task.Task{Requester: evergreen.GithubMergeRequester}}, "/teapot", "/tmp/bestest.patch")
+	assert.Len(cmds, 5)
+	assert.Equal("git reset --hard 'a4aa03d0472d8503380479b76aef96c044182822'", cmds[3])
+	assert.Equal("git apply --stat '/tmp/bestest.patch' || true", cmds[4])
 }

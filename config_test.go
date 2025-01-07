@@ -734,26 +734,6 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 	s.EqualError(c.ValidateAndDefault(), "template: this-is:1: bad character U+007D '}'")
 }
 
-func (s *AdminSuite) TestCommitQueueConfig() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	config := CommitQueueConfig{
-		MergeTaskDistro: "distro",
-		CommitterName:   "Evergreen",
-		CommitterEmail:  "evergreen@mongodb.com",
-	}
-
-	s.NoError(config.ValidateAndDefault())
-	s.NoError(config.Set(ctx))
-
-	settings, err := GetConfig(ctx)
-	s.NoError(err)
-	s.Require().NotNil(settings)
-
-	s.Equal(config, settings.CommitQueue)
-}
-
 func (s *AdminSuite) TestHostJasperConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -983,6 +963,10 @@ func (s *AdminSuite) TestBucketsConfig() {
 			Name: "logs",
 			Type: "s3",
 		},
+		InternalBuckets: []string{
+			"test-bucket",
+			"test2-bucket",
+		},
 	}
 
 	err := config.Set(ctx)
@@ -993,6 +977,7 @@ func (s *AdminSuite) TestBucketsConfig() {
 	s.Equal(config, settings.Buckets)
 
 	config.LogBucket.Name = "logs-2"
+	config.InternalBuckets = []string{"new-bucket"}
 	s.NoError(config.Set(ctx))
 
 	settings, err = GetConfig(ctx)

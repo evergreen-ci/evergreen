@@ -18,7 +18,6 @@ func NewConfigModel() *APIAdminSettings {
 		AuthConfig:          &APIAuthConfig{},
 		Buckets:             &APIBucketsConfig{},
 		Cedar:               &APICedarConfig{},
-		CommitQueue:         &APICommitQueueConfig{},
 		ContainerPools:      &APIContainerPoolsConfig{},
 		Expansions:          map[string]string{},
 		HostInit:            &APIHostInitConfig{},
@@ -62,7 +61,6 @@ type APIAdminSettings struct {
 	BannerTheme         *string                           `json:"banner_theme,omitempty"`
 	Buckets             *APIBucketsConfig                 `json:"buckets,omitempty"`
 	Cedar               *APICedarConfig                   `json:"cedar,omitempty"`
-	CommitQueue         *APICommitQueueConfig             `json:"commit_queue,omitempty"`
 	ConfigDir           *string                           `json:"configdir,omitempty"`
 	ContainerPools      *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
 	DomainName          *string                           `json:"domain_name,omitempty"`
@@ -625,8 +623,9 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 }
 
 type APIBucketsConfig struct {
-	LogBucket   APIBucketConfig  `json:"log_bucket"`
-	Credentials APIS3Credentials `json:"credentials"`
+	LogBucket       APIBucketConfig  `json:"log_bucket"`
+	InternalBuckets []string         `json:"internal_buckets"`
+	Credentials     APIS3Credentials `json:"credentials"`
 }
 
 type APIBucketConfig struct {
@@ -641,6 +640,8 @@ func (a *APIBucketsConfig) BuildFromService(h interface{}) error {
 		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
 		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
 		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
+
+		a.InternalBuckets = v.InternalBuckets
 
 		creds := APIS3Credentials{}
 		if err := creds.BuildFromService(v.Credentials); err != nil {
@@ -669,7 +670,8 @@ func (a *APIBucketsConfig) ToService() (interface{}, error) {
 			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
 			DBName: utility.FromStringPtr(a.LogBucket.DBName),
 		},
-		Credentials: creds,
+		InternalBuckets: a.InternalBuckets,
+		Credentials:     creds,
 	}, nil
 }
 
@@ -1313,35 +1315,6 @@ func (a *APICloudProviders) ToService() (interface{}, error) {
 	return evergreen.CloudProviders{
 		AWS:    aws.(evergreen.AWSConfig),
 		Docker: docker.(evergreen.DockerConfig),
-	}, nil
-}
-
-type APICommitQueueConfig struct {
-	MergeTaskDistro *string `json:"merge_task_distro"`
-	CommitterName   *string `json:"committer_name"`
-	CommitterEmail  *string `json:"committer_email"`
-	BatchSize       int     `json:"batch_size"`
-}
-
-func (a *APICommitQueueConfig) BuildFromService(h interface{}) error {
-	if v, ok := h.(evergreen.CommitQueueConfig); ok {
-		a.MergeTaskDistro = utility.ToStringPtr(v.MergeTaskDistro)
-		a.CommitterName = utility.ToStringPtr(v.CommitterName)
-		a.CommitterEmail = utility.ToStringPtr(v.CommitterEmail)
-		a.BatchSize = v.BatchSize
-
-		return nil
-	}
-
-	return errors.Errorf("programmatic error: expected commit queue config but got type %T", h)
-}
-
-func (a *APICommitQueueConfig) ToService() (interface{}, error) {
-	return evergreen.CommitQueueConfig{
-		MergeTaskDistro: utility.FromStringPtr(a.MergeTaskDistro),
-		CommitterName:   utility.FromStringPtr(a.CommitterName),
-		CommitterEmail:  utility.FromStringPtr(a.CommitterEmail),
-		BatchSize:       a.BatchSize,
 	}, nil
 }
 

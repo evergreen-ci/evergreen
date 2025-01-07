@@ -509,46 +509,6 @@ func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(foundPatch)
 }
 
-// //////////////////////////////////////////////////////////////////////
-//
-// Handler for creating a new merge patch from an existing patch
-//
-//	/patches/{patch_id}/merge_patch
-type mergePatchHandler struct {
-	CommitMessage string `json:"commit_message"`
-
-	patchId string
-	env     evergreen.Environment
-}
-
-func makeMergePatch(env evergreen.Environment) gimlet.RouteHandler {
-	return &mergePatchHandler{env: env}
-}
-
-func (p *mergePatchHandler) Factory() gimlet.RouteHandler {
-	return &mergePatchHandler{env: p.env}
-}
-
-func (p *mergePatchHandler) Parse(ctx context.Context, r *http.Request) error {
-	p.patchId = gimlet.GetVars(r)["patch_id"]
-
-	body := utility.NewRequestReader(r)
-	defer body.Close()
-	if err := utility.ReadJSON(body, p); err != nil {
-		return errors.Wrap(err, "reading commit message from JSON request body")
-	}
-
-	return nil
-}
-
-func (p *mergePatchHandler) Run(ctx context.Context) gimlet.Responder {
-	apiPatch, err := data.CreatePatchForMerge(ctx, p.env.Settings(), p.patchId, p.CommitMessage)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating merge patch '%s'", p.patchId))
-	}
-	return gimlet.NewJSONResponse(apiPatch)
-}
-
 // /patches/{patch_id}/estimated_generated_tasks
 type countEstimatedGeneratedTasksHandler struct {
 	patchId string
