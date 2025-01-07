@@ -114,7 +114,7 @@ type Task {
   spawnHostLink: String
   startTime: Time
   """
-  This is a tasks original status before the displayStatus was added
+  This is a task's original status. It is the status stored in the database, and is distinct from the displayStatus.
   """
   status: String! 
   tags: [String!]!
