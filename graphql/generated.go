@@ -82,6 +82,7 @@ type ResolverRoot interface {
 	User() UserResolver
 	Version() VersionResolver
 	Volume() VolumeResolver
+	WaterfallTask() WaterfallTaskResolver
 	BootstrapSettingsInput() BootstrapSettingsInputResolver
 	DispatcherSettingsInput() DispatcherSettingsInputResolver
 	DistroInput() DistroInputResolver
@@ -1703,11 +1704,12 @@ type ComplexityRoot struct {
 	}
 
 	WaterfallTask struct {
-		DisplayName   func(childComplexity int) int
-		DisplayStatus func(childComplexity int) int
-		Execution     func(childComplexity int) int
-		Id            func(childComplexity int) int
-		Status        func(childComplexity int) int
+		DisplayName        func(childComplexity int) int
+		DisplayStatus      func(childComplexity int) int
+		DisplayStatusCache func(childComplexity int) int
+		Execution          func(childComplexity int) int
+		Id                 func(childComplexity int) int
+		Status             func(childComplexity int) int
 	}
 
 	WaterfallVersion struct {
@@ -2106,6 +2108,9 @@ type VersionResolver interface {
 }
 type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
+}
+type WaterfallTaskResolver interface {
+	DisplayStatus(ctx context.Context, obj *model1.WaterfallTask) (string, error)
 }
 
 type BootstrapSettingsInputResolver interface {
@@ -10263,6 +10268,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.WaterfallTask.DisplayStatus(childComplexity), true
+
+	case "WaterfallTask.displayStatusCache":
+		if e.complexity.WaterfallTask.DisplayStatusCache == nil {
+			break
+		}
+
+		return e.complexity.WaterfallTask.DisplayStatusCache(childComplexity), true
 
 	case "WaterfallTask.execution":
 		if e.complexity.WaterfallTask.Execution == nil {
@@ -69778,6 +69790,8 @@ func (ec *executionContext) fieldContext_WaterfallBuild_tasks(_ context.Context,
 				return ec.fieldContext_WaterfallTask_displayName(ctx, field)
 			case "displayStatus":
 				return ec.fieldContext_WaterfallTask_displayStatus(ctx, field)
+			case "displayStatusCache":
+				return ec.fieldContext_WaterfallTask_displayStatusCache(ctx, field)
 			case "execution":
 				return ec.fieldContext_WaterfallTask_execution(ctx, field)
 			case "status":
@@ -70255,7 +70269,7 @@ func (ec *executionContext) _WaterfallTask_displayStatus(ctx context.Context, fi
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.DisplayStatus, nil
+		return ec.resolvers.WaterfallTask().DisplayStatus(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -70273,6 +70287,50 @@ func (ec *executionContext) _WaterfallTask_displayStatus(ctx context.Context, fi
 }
 
 func (ec *executionContext) fieldContext_WaterfallTask_displayStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WaterfallTask",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WaterfallTask_displayStatusCache(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallTask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WaterfallTask_displayStatusCache(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayStatusCache, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WaterfallTask_displayStatusCache(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "WaterfallTask",
 		Field:      field,
@@ -94197,27 +94255,63 @@ func (ec *executionContext) _WaterfallTask(ctx context.Context, sel ast.Selectio
 		case "id":
 			out.Values[i] = ec._WaterfallTask_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "displayName":
 			out.Values[i] = ec._WaterfallTask_displayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "displayStatus":
-			out.Values[i] = ec._WaterfallTask_displayStatus(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._WaterfallTask_displayStatus(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "displayStatusCache":
+			out.Values[i] = ec._WaterfallTask_displayStatusCache(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "execution":
 			out.Values[i] = ec._WaterfallTask_execution(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "status":
 			out.Values[i] = ec._WaterfallTask_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
