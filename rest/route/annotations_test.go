@@ -300,6 +300,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 	assert.Equal(t, "task-1", utility.FromStringPtr(apiAnnotations[0].TaskId))
 	assert.Equal(t, "task-1-note_1", utility.FromStringPtr(apiAnnotations[0].Note.Message))
 	require.Len(t, apiAnnotations[0].Issues, 1)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(t, float64(12.34), utility.FromFloat64Ptr(apiAnnotations[0].Issues[0].ConfidenceScore))
 
 	// get the latest execution : 0
@@ -681,8 +682,10 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, "test_annotation_user", annotation.Note.Source.Author)
 	assert.Equal(t, "api", annotation.Note.Source.Requester)
 	assert.Equal(t, "api", annotation.Issues[0].Source.Requester)
-	assert.Equal(t, 2, len(annotation.Issues))
+	assert.Len(t, annotation.Issues, 2)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(t, float64(12.34), annotation.Issues[0].ConfidenceScore)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(t, float64(56.78), annotation.Issues[1].ConfidenceScore)
 
 	//test update
@@ -714,8 +717,10 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	// suspected issues and issues don't get updated when not defined
 	require.Nil(t, annotation.SuspectedIssues)
 	assert.Equal(t, "some key 0", annotation.Issues[0].IssueKey)
-	assert.Equal(t, 2, len(annotation.Issues))
+	assert.Len(t, annotation.Issues, 2)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(t, float64(87.65), annotation.Issues[0].ConfidenceScore)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(t, float64(43.21), annotation.Issues[1].ConfidenceScore)
 
 	//test that it can update old executions

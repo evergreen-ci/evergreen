@@ -387,7 +387,8 @@ func TestReliabilityParse(t *testing.T) {
 					err = handler.parseTaskReliabilityFilter(values)
 					require.NoError(t, err)
 					require.Equal(t, values["tasks"], handler.filter.Tasks)
-					require.Equal(t, handler.filter.Sort, taskstats.SortLatestFirst)
+					require.Equal(t, taskstats.SortLatestFirst, handler.filter.Sort)
+					//nolint:testifylint // We expect the float to be exactly equal.
 					require.Equal(t, handler.filter.Significance, reliability.DefaultSignificance)
 
 					require.Equal(t, handler.filter.Requesters, []string{"gitter_request"})
@@ -430,6 +431,7 @@ func TestReliabilityParse(t *testing.T) {
 					require.Equal(t, reliability.GroupByDistro, handler.filter.GroupBy) // default value
 					require.Equal(t, reliability.SortLatestFirst, handler.filter.Sort)  // default value
 					require.Equal(t, reliability.MaxQueryLimit, handler.filter.Limit)   // default value
+					//nolint:testifylint // We expect the float to be exactly 0.1.
 					require.Equal(t, 0.1, handler.filter.Significance)
 				},
 				"Some Values": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {

@@ -138,6 +138,7 @@ func (s *statsSuite) TestGenerateStats() {
 	s.Equal(2, doc.NumSystemFailed)
 	s.Equal(3, doc.NumSetupFailed)
 	s.Equal(2, doc.NumTimeout)
+	//nolint:testifylint // We expect it to be exactly 150.0.
 	s.Equal(float64(150), doc.AvgDurationSuccess)
 	s.WithinDuration(time.Now(), doc.LastUpdate, time.Minute)
 

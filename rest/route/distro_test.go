@@ -708,8 +708,9 @@ func (s *DistroPatchByIDSuite) TestRunProviderSettingsList() {
 	doc = apiDistro.ProviderSettingsList[0]
 	mappedDoc, ok := doc.Lookup("mount_points").MutableArray().Lookup(0).MutableDocumentOK()
 	s.True(ok)
-	s.Equal(mappedDoc.Lookup("device_name").StringValue(), "/dev/xvdb")
-	s.Equal(mappedDoc.Lookup("virtual_name").StringValue(), "ephemeral0")
+	s.Equal("/dev/xvdb", mappedDoc.Lookup("device_name").StringValue())
+	s.Equal("ephemeral0", mappedDoc.Lookup("virtual_name").StringValue())
+	//nolint:testifylint // We expect it to be exactly 0.15.
 	s.Equal(doc.Lookup("bid_price").Double(), 0.15)
 	s.Equal(doc.Lookup("instance_type").StringValue(), "m3.large")
 	s.Equal(doc.Lookup("key_name").StringValue(), "mci")
@@ -1229,9 +1230,10 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	doc := apiDistro.ProviderSettingsList[0]
 
 	mountPoint := doc.Lookup("mount_points").MutableArray().Lookup(0).MutableDocument()
-	s.Equal(mountPoint.Lookup("device_name").StringValue(), "~/dev/xvdb")
-	s.Equal(mountPoint.Lookup("virtual_name").StringValue(), "~ephemeral0")
-	s.Equal(doc.Lookup("ami").StringValue(), "~ami-2814683f")
+	s.Equal("~/dev/xvdb", mountPoint.Lookup("device_name").StringValue())
+	s.Equal("~ephemeral0", mountPoint.Lookup("virtual_name").StringValue())
+	s.Equal("~ami-2814683f", doc.Lookup("ami").StringValue())
+	//nolint:testifylint // We expect it to be exactly 0.10.
 	s.Equal(doc.Lookup("bid_price").Double(), 0.10)
 	s.Equal(doc.Lookup("instance_type").StringValue(), "~m3.large")
 
