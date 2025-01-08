@@ -557,11 +557,6 @@ func (r *taskResolver) SpawnHostLink(ctx context.Context, obj *restModel.APITask
 	return nil, nil
 }
 
-// Status is the resolver for the status field.
-func (r *taskResolver) Status(ctx context.Context, obj *restModel.APITask) (string, error) {
-	return *obj.DisplayStatus, nil
-}
-
 // TaskLogs is the resolver for the taskLogs field.
 func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*TaskLogs, error) {
 	canView := hasLogViewPermission(ctx, obj)
