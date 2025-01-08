@@ -9,5 +9,6 @@ linters:
     - gosimple
     - govet
     - misspell
+    - spancheck
     - unconvert
     - unused
