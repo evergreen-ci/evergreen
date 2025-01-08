@@ -12,3 +12,8 @@ linters:
     - testifylint
     - unconvert
     - unused
+
+linters-settings:
+  testifylint:
+    disable:
+      - require-error
