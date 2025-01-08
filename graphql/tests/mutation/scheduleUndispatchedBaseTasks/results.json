@@ -8,7 +8,7 @@
             {
               "id": "base-task-2",
               "execution": 0,
-              "status": "will-run"
+              "displayStatus": "will-run"
             }
           ]
         }
@@ -22,12 +22,12 @@
             {
               "id": "base_generated_task",
               "execution": 0,
-              "status": "will-run"
+              "displayStatus": "will-run"
             },
             {
               "id": "base_generator_task",
               "execution": 0,
-              "status": "will-run"
+              "displayStatus": "will-run"
             }
           ]
         }
