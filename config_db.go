@@ -167,7 +167,7 @@ func getSectionsBSON(ctx context.Context, ids []string, includeOverrides bool) (
 
 // overrideConfig overrides the content of the overrides document with the contents of the overrides
 // document from the local database. If [applyOverrides] is true then overrides are applied to
-// each of the supplied docs.
+// all the supplied docs.
 func overrideConfig(ctx context.Context, docs []bson.Raw, applyOverrides bool) ([]bson.Raw, error) {
 	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(overridesSectionID))
 	if err := res.Err(); err != nil {
@@ -187,32 +187,37 @@ func overrideConfig(ctx context.Context, docs []bson.Raw, applyOverrides bool) (
 
 	newDocs := make([]bson.Raw, 0, len(docs))
 	for _, doc := range docs {
-		idVal, err := doc.LookupErr("_id")
+		newDoc, err := overrideDoc(doc, rawOverrides, overrides, applyOverrides)
 		if err != nil {
-			continue
+			return nil, errors.Wrap(err, "overriding config section")
 		}
-		id, ok := idVal.StringValueOK()
-		if !ok {
-			continue
-		}
-		if id == overridesSectionID {
-			newDocs = append(newDocs, rawOverrides)
-			continue
-		}
-
-		if applyOverrides {
-			if sectionOverrides := overrides.sectionOverrides(id); applyOverrides && len(sectionOverrides) > 0 {
-				newDoc, err := overrideValues(doc, sectionOverrides)
-				if err != nil {
-					return nil, errors.Wrapf(err, "overriding values for config document '%s'", id)
-				}
-				doc = newDoc
-			}
-		}
-		newDocs = append(newDocs, doc)
+		newDocs = append(newDocs, newDoc)
 	}
 
 	return newDocs, nil
+}
+
+func overrideDoc(doc, rawOverrides bson.Raw, overrides OverridesConfig, applyOverrides bool) (bson.Raw, error) {
+	idVal, err := doc.LookupErr("_id")
+	if err != nil {
+		return nil, errors.Wrap(err, "getting document id")
+	}
+	id, ok := idVal.StringValueOK()
+	if !ok {
+		return nil, errors.New("config document id isn't a string")
+	}
+	if id == overridesSectionID {
+		return rawOverrides, nil
+	}
+
+	if sectionOverrides := overrides.sectionOverrides(id); applyOverrides && len(sectionOverrides) > 0 {
+		newDoc, err := overrideValues(doc, sectionOverrides)
+		if err != nil {
+			return nil, errors.Wrapf(err, "overriding values for config document '%s'", id)
+		}
+		return newDoc, nil
+	}
+	return doc, nil
 }
 
 func overrideValues(original bson.Raw, overrides []Override) (bson.Raw, error) {
