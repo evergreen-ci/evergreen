@@ -95,7 +95,7 @@ func WaitForEvergreen(t *testing.T, appServerURL string, client *http.Client) {
 			time.Sleep(time.Second)
 			continue
 		}
-		defer resp.Body.Close()
+		resp.Body.Close()
 
 		grip.Info("Evergreen is up.")
 
