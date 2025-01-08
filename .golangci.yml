@@ -11,3 +11,8 @@ linters:
     - misspell
     - unconvert
     - unused
+
+linters-settings:
+  testifylint:
+    disable:
+      - require-error
