@@ -973,15 +973,7 @@ func (s *taskDAGDispatchServiceSuite) TestIsRefreshFindNextTaskThreadSafe() {
 	}
 	s.Require().NoError(d.Insert(s.ctx))
 
-	items := []TaskQueueItem{}
 	for i := 0; i < 50; i++ {
-		items = append(items, TaskQueueItem{
-			Id:            fmt.Sprintf("%d", i),
-			BuildVariant:  "variant_1",
-			Version:       "version_1",
-			Project:       "project_1",
-			GroupMaxHosts: 0,
-		})
 		t := task.Task{
 			Id:                fmt.Sprintf("%d", i),
 			BuildVariant:      "variant_1",
@@ -1029,15 +1021,7 @@ func (s *taskDAGDispatchServiceSuite) TestIsRefreshFindNextTaskThreadSafe() {
 
 func (s *taskDAGDispatchServiceSuite) TestFindNextTaskThreadSafe() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
-	items := []TaskQueueItem{}
 	for i := 0; i < 100; i++ {
-		items = append(items, TaskQueueItem{
-			Id:            fmt.Sprintf("%d", i),
-			BuildVariant:  "variant_1",
-			Version:       "version_1",
-			Project:       "project_1",
-			GroupMaxHosts: 0,
-		})
 		t := task.Task{
 			Id:                fmt.Sprintf("%d", i),
 			BuildVariant:      "variant_1",
@@ -1095,18 +1079,9 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskThreadSafe() {
 
 func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
-	items := []TaskQueueItem{}
 	for i := 0; i < 20; i++ {
 		groupNum := i / 5
 		id := fmt.Sprintf("%d", i)
-		items = append(items, TaskQueueItem{
-			Id:            id,
-			Group:         fmt.Sprintf("group_%d", groupNum),
-			BuildVariant:  "variant_1",
-			Version:       "version_1",
-			Project:       "project_1",
-			GroupMaxHosts: 1,
-		})
 		t := task.Task{
 			Id:                id,
 			TaskGroup:         fmt.Sprintf("group_%d", groupNum),
@@ -1168,18 +1143,9 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
 	s.Equal(dispatchedCount, numGoroutines)
 
 	s.Require().NoError(db.ClearCollections(task.Collection))
-	items = []TaskQueueItem{}
 	for i := 0; i < 20; i++ {
 		groupNum := i / 5
 		id := fmt.Sprintf("%d", i)
-		items = append(items, TaskQueueItem{
-			Id:            id,
-			Group:         fmt.Sprintf("group_%d", groupNum),
-			BuildVariant:  "variant_1",
-			Version:       "version_1",
-			Project:       "project_1",
-			GroupMaxHosts: 1,
-		})
 		t := task.Task{
 			Id:                id,
 			TaskGroup:         fmt.Sprintf("group_%d", groupNum),
