@@ -235,7 +235,7 @@ func TestOverrideConfig(t *testing.T) {
 			docRaw, err := bson.Marshal(testCase.inputDoc)
 			require.NoError(t, err)
 
-			newDocs, err := overrideConfig(ctx, []bson.Raw{docRaw})
+			newDocs, err := overrideConfig(ctx, []bson.Raw{docRaw}, true)
 			assert.NoError(t, err)
 			require.Len(t, newDocs, 1)
 			var doc bson.M
