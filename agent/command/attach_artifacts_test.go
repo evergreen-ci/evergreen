@@ -92,12 +92,12 @@ func (s *ArtifactsSuite) TestParseErrorsIfTypesDoNotMatch() {
 }
 
 func (s *ArtifactsSuite) TestParseErrorIfNothingIsSet() {
-	s.Len(s.cmd.Files, 0)
+	s.Empty(s.cmd.Files)
 	s.Error(s.cmd.ParseParams(map[string]interface{}{}))
 }
 
 func (s *ArtifactsSuite) TestArtifactErrorsWithInvalidExpansions() {
-	s.Len(s.cmd.Files, 0)
+	s.Empty(s.cmd.Files)
 	s.NoError(s.cmd.ParseParams(map[string]interface{}{
 		"files": []string{
 			"fo${bar",
@@ -112,9 +112,9 @@ func (s *ArtifactsSuite) TestArtifactErrorsWithInvalidExpansions() {
 func (s *ArtifactsSuite) TestArtifactErrorsIfDoesNotExist() {
 	s.cmd.Files = []string{"foo"}
 	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
-	s.Len(s.cmd.Files, 0)
-	s.Len(s.mock.AttachedFiles, 0)
-	s.Len(s.mock.AttachedFiles[s.conf.Task.Id], 0)
+	s.Empty(s.cmd.Files)
+	s.Empty(s.mock.AttachedFiles)
+	s.Empty(s.mock.AttachedFiles[s.conf.Task.Id])
 }
 
 func (s *ArtifactsSuite) TestArtifactNoErrorIfDoesNotExistWithExactNames() {
@@ -122,15 +122,15 @@ func (s *ArtifactsSuite) TestArtifactNoErrorIfDoesNotExistWithExactNames() {
 	s.cmd.ExactFileNames = true
 	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Len(s.cmd.Files, 1)
-	s.Len(s.mock.AttachedFiles, 0)
-	s.Len(s.mock.AttachedFiles[s.conf.Task.Id], 0)
+	s.Empty(s.mock.AttachedFiles)
+	s.Empty(s.mock.AttachedFiles[s.conf.Task.Id])
 }
 
 func (s *ArtifactsSuite) TestArtifactSkipsErrorWithOptionalArgument() {
 	s.cmd.Files = []string{"foo"}
 	s.cmd.Optional = true
 	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
-	s.Len(s.cmd.Files, 0)
+	s.Empty(s.cmd.Files)
 }
 
 func (s *ArtifactsSuite) TestReadFileFailsIfTasksDoesNotExist() {
@@ -150,7 +150,7 @@ func (s *ArtifactsSuite) TestReadFileSucceeds() {
 }
 
 func (s *ArtifactsSuite) TestCommandParsesFile() {
-	s.Len(s.mock.AttachedFiles, 0)
+	s.Empty(s.mock.AttachedFiles)
 	s.cmd.Files = []string{"example*"}
 	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Len(s.mock.AttachedFiles, 1)
@@ -159,7 +159,7 @@ func (s *ArtifactsSuite) TestCommandParsesFile() {
 
 func (s *ArtifactsSuite) TestCommandParsesExactFileNames() {
 	s.cmd.ExactFileNames = true
-	s.Len(s.mock.AttachedFiles, 0)
+	s.Empty(s.mock.AttachedFiles)
 	s.cmd.Files = []string{"exactmatch.json", "example.json"}
 	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Len(s.mock.AttachedFiles, 1)

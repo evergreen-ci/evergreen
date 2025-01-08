@@ -137,13 +137,13 @@ func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 	s.Equal(http.StatusOK, resp.Status())
 	count, err := db.CountQ(patch.IntentCollection, db.Query(bson.M{}))
 	s.NoError(err)
-	s.Equal(count, 1)
+	s.Equal(1, count)
 
 	resp = s.h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
 	count, err = db.CountQ(patch.IntentCollection, db.Query(bson.M{}))
 	s.NoError(err)
-	s.Equal(count, 1)
+	s.Equal(1, count)
 }
 
 func (s *GithubWebhookRouteSuite) TestParseAndValidateFailsWithoutSignature() {

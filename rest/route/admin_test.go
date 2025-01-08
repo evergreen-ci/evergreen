@@ -260,7 +260,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	s.NoError(err)
 	dbEvents, err := event.FindAdmin(event.RecentAdminEvents(1))
 	s.NoError(err)
-	s.True(len(dbEvents) >= 1)
+	s.GreaterOrEqual(len(dbEvents), 1)
 	eventData := dbEvents[0].Data.(*event.AdminEventData)
 	guid := eventData.GUID
 	s.NotEmpty(guid)
@@ -331,7 +331,7 @@ func (s *AdminRouteSuite) TestRestartTasksRoute() {
 	s.NotNil(resp)
 	model, ok := resp.Data().(*restModel.RestartResponse)
 	s.True(ok)
-	s.True(len(model.ItemsRestarted) > 0)
+	s.Positive(model.ItemsRestarted)
 	s.Nil(model.ItemsErrored)
 }
 
@@ -420,5 +420,5 @@ func (s *AdminRouteSuite) TestClearTaskQueueRoute() {
 
 	queueFromDb, err := model.LoadTaskQueue(distro)
 	s.NoError(err)
-	s.Len(queueFromDb.Queue, 0)
+	s.Empty(queueFromDb.Queue)
 }

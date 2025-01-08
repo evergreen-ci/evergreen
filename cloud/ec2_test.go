@@ -176,7 +176,7 @@ func (s *EC2Suite) TestMakeDeviceMappings() {
 	m := []MountPoint{}
 	b, err := makeBlockDeviceMappings(m)
 	s.NoError(err)
-	s.Len(b, 0)
+	s.Empty(b)
 
 	noDeviceName := validMount
 	noDeviceName.DeviceName = ""
@@ -231,7 +231,7 @@ func (s *EC2Suite) TestMakeDeviceMappingsTemplate() {
 	m := []MountPoint{}
 	b, err := makeBlockDeviceMappingsTemplate(m)
 	s.NoError(err)
-	s.Len(b, 0)
+	s.Empty(b)
 
 	noDeviceName := validMount
 	noDeviceName.DeviceName = ""
@@ -1264,8 +1264,8 @@ func (s *EC2Suite) TestGetInstanceStatusesForNonexistentInstances() {
 	statuses, err := batchManager.GetInstanceStatuses(context.Background(), hosts)
 	s.NoError(err)
 	s.Len(statuses, len(hosts), "should have one status for the existing host and one for the nonexistent host")
-	s.Equal(statuses[hosts[0].Id], StatusRunning)
-	s.Equal(statuses[hosts[1].Id], StatusNonExistent)
+	s.Equal(StatusRunning, statuses[hosts[0].Id])
+	s.Equal(StatusNonExistent, statuses[hosts[1].Id])
 }
 
 func (s *EC2Suite) TestGetRegion() {
@@ -1392,9 +1392,9 @@ func (s *EC2Suite) TestFromDistroSettings() {
 	d.ProviderSettingsList = []*birch.Document{doc1, doc2}
 
 	s.NoError(ec2Settings.FromDistroSettings(d, "us-east-2"))
-	s.Equal(ec2Settings.Region, "us-east-2")
-	s.Equal(ec2Settings.InstanceType, "other_instance")
-	s.Equal(ec2Settings.IAMInstanceProfileARN, "a_beautiful_profile")
+	s.Equal("us-east-2", ec2Settings.Region)
+	s.Equal("other_instance", ec2Settings.InstanceType)
+	s.Equal("a_beautiful_profile", ec2Settings.IAMInstanceProfileARN)
 }
 
 func (s *EC2Suite) TestGetEC2ManagerOptions() {
@@ -1591,7 +1591,7 @@ func (s *EC2Suite) TestModifyVolumeNoExpiration() {
 
 	vol, err := host.FindVolumeByID(s.volume.ID)
 	s.NoError(err)
-	s.True(time.Now().Add(evergreen.SpawnHostNoExpirationDuration).Sub(vol.Expiration) < time.Minute)
+	s.Less(time.Now().Add(evergreen.SpawnHostNoExpirationDuration).Sub(vol.Expiration), time.Minute)
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
 	s.Require().True(ok)
@@ -1609,7 +1609,7 @@ func (s *EC2Suite) TestModifyVolumeSize() {
 
 	vol, err := host.FindVolumeByID(s.volume.ID)
 	s.NoError(err)
-	s.EqualValues(vol.Size, 100)
+	s.EqualValues(100, vol.Size)
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
 	s.Require().True(ok)
@@ -1617,7 +1617,7 @@ func (s *EC2Suite) TestModifyVolumeSize() {
 	s.Require().True(ok)
 
 	input := *mock.ModifyVolumeInput
-	s.EqualValues(*input.Size, 100)
+	s.EqualValues(100, *input.Size)
 }
 
 func (s *EC2Suite) TestModifyVolumeName() {
@@ -1626,5 +1626,5 @@ func (s *EC2Suite) TestModifyVolumeName() {
 
 	vol, err := host.FindVolumeByID(s.volume.ID)
 	s.NoError(err)
-	s.Equal(vol.DisplayName, "Some new thang")
+	s.Equal("Some new thang", vol.DisplayName)
 }

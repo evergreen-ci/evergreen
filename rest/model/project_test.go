@@ -142,8 +142,8 @@ func TestGitHubDynamicTokenPermissionGroupBuildFromService(t *testing.T) {
 		pg := APIGitHubDynamicTokenPermissionGroup{}
 		err := pg.BuildFromService(model.GitHubDynamicTokenPermissionGroup{})
 		require.NoError(err)
-		assert.Equal(utility.FromStringPtr(pg.Name), "")
-		assert.Equal(len(pg.Permissions), 0)
+		assert.Equal("", utility.FromStringPtr(pg.Name))
+		assert.Empty(pg.Permissions)
 	})
 
 	t.Run("Valid permissions should be converted", func(t *testing.T) {
@@ -157,14 +157,14 @@ func TestGitHubDynamicTokenPermissionGroupBuildFromService(t *testing.T) {
 			},
 		})
 		require.NoError(err)
-		require.Equal(len(pg.Permissions), 3)
-		assert.Equal(utility.FromStringPtr(pg.Name), "some-group")
+		require.Len(pg.Permissions, 3)
+		assert.Equal("some-group", utility.FromStringPtr(pg.Name))
 		assert.Contains(pg.Permissions, "administration")
-		assert.Equal(pg.Permissions["administration"], "write")
+		assert.Equal("write", pg.Permissions["administration"])
 		assert.Contains(pg.Permissions, "actions")
-		assert.Equal(pg.Permissions["actions"], "write")
+		assert.Equal("write", pg.Permissions["actions"])
 		assert.Contains(pg.Permissions, "checks")
-		assert.Equal(pg.Permissions["checks"], "read")
+		assert.Equal("read", pg.Permissions["checks"])
 	})
 
 	t.Run("All permissions set (default permission group) should be kept", func(t *testing.T) {
@@ -174,7 +174,7 @@ func TestGitHubDynamicTokenPermissionGroupBuildFromService(t *testing.T) {
 			AllPermissions: true,
 		})
 		require.NoError(err)
-		assert.Equal(utility.FromStringPtr(pg.Name), "some-group")
+		assert.Equal("some-group", utility.FromStringPtr(pg.Name))
 		assert.True(utility.FromBoolPtr(pg.AllPermissions))
 	})
 }

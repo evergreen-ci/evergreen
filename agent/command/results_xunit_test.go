@@ -216,7 +216,7 @@ func TestXUnitParseAndUpload(t *testing.T) {
 			assert.NoError(t, xr.parseAndUploadResults(ctx, conf, logger, comm))
 			assert.NoError(t, logger.Close())
 
-			assert.Len(t, cedarSrv.TestResults.Results, 0)
+			assert.Empty(t, cedarSrv.TestResults.Results)
 		},
 		"EmptyTestsForInvalidPathErrors": func(ctx context.Context, t *testing.T, cedarSrv *timberutil.MockCedarServer, conf *internal.TaskConfig, logger client.LoggerProducer) {
 			xr := xunitResults{

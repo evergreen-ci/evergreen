@@ -57,7 +57,7 @@ func (s *StatusSuite) TestPopulateSystemInfo() {
 }
 
 func (s *StatusSuite) TestProcessTreeInfo() {
-	s.True(len(s.resp.ProcessTree) >= 1)
+	s.GreaterOrEqual(len(s.resp.ProcessTree), 1)
 	for _, ps := range s.resp.ProcessTree {
 		s.NotNil(ps)
 	}
@@ -195,8 +195,8 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 	tracker := jasper.NewOOMTracker()
 	s.NoError(utility.ReadJSON(resp.Body, tracker))
 	lines, pids := tracker.Report()
-	s.Len(lines, 0)
-	s.Len(pids, 0)
+	s.Empty(lines)
+	s.Empty(pids)
 }
 
 func TestUnmarshalTriggerEndTaskResp(t *testing.T) {
@@ -204,8 +204,8 @@ func TestUnmarshalTriggerEndTaskResp(t *testing.T) {
 	resp := triggerEndTaskResp{}
 
 	assert.NoError(t, json.Unmarshal([]byte(body), &resp))
-	assert.Equal(t, resp.Status, "failed")
-	assert.Equal(t, resp.Type, "setup")
-	assert.Equal(t, resp.Description, "this should be set")
-	assert.Equal(t, resp.ShouldContinue, true)
+	assert.Equal(t, "failed", resp.Status)
+	assert.Equal(t, "setup", resp.Type)
+	assert.Equal(t, "this should be set", resp.Description)
+	assert.True(t, resp.ShouldContinue)
 }
