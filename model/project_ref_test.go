@@ -42,18 +42,18 @@ func TestFindOneProjectRef(t *testing.T) {
 		BatchTime: 10,
 		Id:        "ident",
 	}
-	assert.Nil(projectRef.Insert())
+	assert.NoError(projectRef.Insert())
 
 	projectRefFromDB, err := FindBranchProjectRef("ident")
 	assert.NoError(err)
 	assert.NotNil(projectRefFromDB)
 
-	assert.Equal(projectRefFromDB.Owner, "mongodb")
-	assert.Equal(projectRefFromDB.Repo, "mci")
-	assert.Equal(projectRefFromDB.Branch, "main")
+	assert.Equal("mongodb", projectRefFromDB.Owner)
+	assert.Equal("mci", projectRefFromDB.Repo)
+	assert.Equal("main", projectRefFromDB.Branch)
 	assert.True(projectRefFromDB.Enabled)
-	assert.Equal(projectRefFromDB.BatchTime, 10)
-	assert.Equal(projectRefFromDB.Id, "ident")
+	assert.Equal(10, projectRefFromDB.BatchTime)
+	assert.Equal("ident", projectRefFromDB.Id)
 }
 
 func TestFindMergedProjectRef(t *testing.T) {
@@ -145,7 +145,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.Equal(t, "my-path", mergedProject.SpawnHostScriptPath)
 	assert.False(t, utility.FromBoolPtr(mergedProject.TaskSync.ConfigEnabled))
 	assert.True(t, utility.FromBoolPtr(mergedProject.TaskSync.PatchEnabled))
-	assert.Len(t, mergedProject.GitTagAuthorizedTeams, 0) // empty lists take precedent
+	assert.Empty(t, mergedProject.GitTagAuthorizedTeams) // empty lists take precedent
 	assert.Len(t, mergedProject.GitTagAuthorizedUsers, 1)
 	require.Len(t, mergedProject.PatchTriggerAliases, 1)
 	assert.Empty(t, mergedProject.PatchTriggerAliases[0].Alias)
@@ -471,17 +471,17 @@ func TestGetBatchTimeDoesNotExceedMaxBatchTime(t *testing.T) {
 	emptyVariant := &BuildVariant{}
 	emptyTask := &BuildVariantTaskUnit{}
 
-	assert.Equal(projectRef.getBatchTimeForVariant(emptyVariant), maxBatchTime,
+	assert.Equal(maxBatchTime, projectRef.getBatchTimeForVariant(emptyVariant),
 		"ProjectRef.getBatchTimeForVariant() is not capping BatchTime to MaxInt32")
 
-	assert.Equal(projectRef.getBatchTimeForTask(emptyTask), maxBatchTime,
+	assert.Equal(maxBatchTime, projectRef.getBatchTimeForTask(emptyTask),
 		"ProjectRef.getBatchTimeForTask() is not capping BatchTime to MaxInt32")
 
 	projectRef.BatchTime = 55
-	assert.Equal(projectRef.getBatchTimeForVariant(emptyVariant), 55,
+	assert.Equal(55, projectRef.getBatchTimeForVariant(emptyVariant),
 		"ProjectRef.getBatchTimeForVariant() is not returning the correct BatchTime")
 
-	assert.Equal(projectRef.getBatchTimeForTask(emptyTask), 55,
+	assert.Equal(55, projectRef.getBatchTimeForTask(emptyTask),
 		"ProjectRef.getBatchTimeForVariant() is not returning the correct BatchTime")
 
 }
@@ -862,9 +862,9 @@ func TestAttachToNewRepo(t *testing.T) {
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, pRefFromDB)
-	assert.NotEqual(t, pRefFromDB.RepoRefId, "myRepo")
-	assert.Equal(t, pRefFromDB.Owner, "newOwner")
-	assert.Equal(t, pRefFromDB.Repo, "newRepo")
+	assert.NotEqual(t, "myRepo", pRefFromDB.RepoRefId)
+	assert.Equal(t, "newOwner", pRefFromDB.Owner)
+	assert.Equal(t, "newRepo", pRefFromDB.Repo)
 	assert.Nil(t, pRefFromDB.TracksPushEvents)
 
 	newRepoRef, err := FindOneRepoRef(pRef.RepoRefId)
@@ -1101,7 +1101,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NotNil(t, pRefFromDB.GitTagVersionsEnabled)
 			assert.True(t, pRefFromDB.IsGitTagVersionsEnabled())
 			assert.True(t, pRefFromDB.IsGithubChecksEnabled())
-			assert.Equal(t, pRefFromDB.GithubTriggerAliases, []string{"my_trigger"})
+			assert.Equal(t, []string{"my_trigger"}, pRefFromDB.GithubTriggerAliases)
 			assert.True(t, pRefFromDB.DoesTrackPushEvents())
 
 			dbUser, err = user.FindOneById("me")
@@ -1117,9 +1117,9 @@ func TestDetachFromRepo(t *testing.T) {
 			vars, err := FindOneProjectVars(pRef.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, vars)
-			assert.Equal(t, vars.Vars["project"], "only")
-			assert.Equal(t, vars.Vars["in"], "both")    // not modified
-			assert.Equal(t, vars.Vars["repo"], "only!") // added from repo
+			assert.Equal(t, "only", vars.Vars["project"])
+			assert.Equal(t, "both", vars.Vars["in"])    // not modified
+			assert.Equal(t, "only!", vars.Vars["repo"]) // added from repo
 			assert.False(t, vars.PrivateVars["project"])
 			assert.True(t, vars.PrivateVars["in"])
 			assert.True(t, vars.PrivateVars["repo"]) // added from repo
@@ -1196,9 +1196,9 @@ func TestDetachFromRepo(t *testing.T) {
 					cqCount += 1
 				}
 			}
-			assert.Equal(t, gitTagCount, 1)
-			assert.Equal(t, prCount, 1)
-			assert.Equal(t, cqCount, 1)
+			assert.Equal(t, 1, gitTagCount)
+			assert.Equal(t, 1, prCount)
+			assert.Equal(t, 1, cqCount)
 		},
 		"Subscriptions": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			projectSubscription := event.Subscription{
@@ -1236,7 +1236,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, err)
 			require.Len(t, subs, 1)
 			assert.Equal(t, subs[0].Owner, pRef.Id)
-			assert.Equal(t, subs[0].Trigger, event.TriggerOutcome)
+			assert.Equal(t, event.TriggerOutcome, subs[0].Trigger)
 
 			// reattach to repo to test without subscription
 			assert.NoError(t, pRef.AttachToRepo(ctx, dbUser))
@@ -1247,7 +1247,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, subs, 1)
 			assert.Equal(t, subs[0].Owner, pRef.Id)
-			assert.Equal(t, subs[0].Trigger, event.TriggerFailure)
+			assert.Equal(t, event.TriggerFailure, subs[0].Trigger)
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -1349,8 +1349,8 @@ func TestDefaultRepoBySection(t *testing.T) {
 			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
-			assert.NotEqual(t, pRefFromDb.Identifier, "")
-			assert.Equal(t, pRefFromDb.BatchTime, 0)
+			assert.NotEqual(t, "", pRefFromDb.Identifier)
+			assert.Equal(t, 0, pRefFromDb.BatchTime)
 			assert.Nil(t, pRefFromDb.RepotrackerDisabled)
 			assert.Nil(t, pRefFromDb.DeactivatePrevious)
 			assert.Empty(t, pRefFromDb.RemotePath)
@@ -1441,8 +1441,8 @@ func TestDefaultRepoBySection(t *testing.T) {
 			pRefFromDb, err := FindBranchProjectRef(id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
-			assert.Equal(t, pRefFromDb.TaskAnnotationSettings.FileTicketWebhook.Endpoint, "")
-			assert.Equal(t, pRefFromDb.BuildBaronSettings.TicketCreateProject, "")
+			assert.Equal(t, "", pRefFromDb.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
+			assert.Equal(t, "", pRefFromDb.BuildBaronSettings.TicketCreateProject)
 			assert.Nil(t, pRefFromDb.PerfEnabled)
 		},
 		ProjectPagePeriodicBuildsSection: func(t *testing.T, id string) {
@@ -1623,9 +1623,9 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 	require.NoError(p2.Insert())
 	conflicts, err := p1.GetGithubProjectConflicts()
 	require.NoError(err)
-	assert.Len(conflicts.PRTestingIdentifiers, 0)
-	assert.Len(conflicts.CommitQueueIdentifiers, 0)
-	assert.Len(conflicts.CommitCheckIdentifiers, 0)
+	assert.Empty(conflicts.PRTestingIdentifiers)
+	assert.Empty(conflicts.CommitQueueIdentifiers)
+	assert.Empty(conflicts.CommitCheckIdentifiers)
 
 	// Two project refs that are from the same repo but do not have potential conflicting settings.
 	p3 := &ProjectRef{
@@ -1646,9 +1646,9 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 	require.NoError(p4.Insert())
 	conflicts, err = p3.GetGithubProjectConflicts()
 	require.NoError(err)
-	assert.Len(conflicts.PRTestingIdentifiers, 0)
-	assert.Len(conflicts.CommitQueueIdentifiers, 0)
-	assert.Len(conflicts.CommitCheckIdentifiers, 0)
+	assert.Empty(conflicts.PRTestingIdentifiers)
+	assert.Empty(conflicts.CommitQueueIdentifiers)
+	assert.Empty(conflicts.CommitCheckIdentifiers)
 
 	// Three project refs that do have potential conflicting settings.
 	p5 := &ProjectRef{
@@ -1689,21 +1689,21 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 	// p5 should have conflicting with commit queue and commit check.
 	conflicts, err = p5.GetGithubProjectConflicts()
 	require.NoError(err)
-	assert.Len(conflicts.PRTestingIdentifiers, 0)
+	assert.Empty(conflicts.PRTestingIdentifiers)
 	assert.Len(conflicts.CommitQueueIdentifiers, 1)
 	assert.Len(conflicts.CommitCheckIdentifiers, 1)
 	// p6 should have conflicting with pr testing and commit check.
 	conflicts, err = p6.GetGithubProjectConflicts()
 	require.NoError(err)
 	assert.Len(conflicts.PRTestingIdentifiers, 1)
-	assert.Len(conflicts.CommitQueueIdentifiers, 0)
+	assert.Empty(conflicts.CommitQueueIdentifiers)
 	assert.Len(conflicts.CommitCheckIdentifiers, 1)
 	// p7 should have conflicting with pr testing and commit queue.
 	conflicts, err = p7.GetGithubProjectConflicts()
 	require.NoError(err)
 	assert.Len(conflicts.PRTestingIdentifiers, 1)
 	assert.Len(conflicts.CommitQueueIdentifiers, 1)
-	assert.Len(conflicts.CommitCheckIdentifiers, 0)
+	assert.Empty(conflicts.CommitCheckIdentifiers)
 	// p8 should have conflicting with all
 	conflicts, err = p8.GetGithubProjectConflicts()
 	require.NoError(err)
@@ -1739,15 +1739,15 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 	// p9 should not have any potential conflicts.
 	conflicts, err = p9.GetGithubProjectConflicts()
 	require.NoError(err)
-	assert.Len(conflicts.PRTestingIdentifiers, 0)
-	assert.Len(conflicts.CommitQueueIdentifiers, 0)
-	assert.Len(conflicts.CommitCheckIdentifiers, 0)
+	assert.Empty(conflicts.PRTestingIdentifiers)
+	assert.Empty(conflicts.CommitQueueIdentifiers)
+	assert.Empty(conflicts.CommitCheckIdentifiers)
 	// p10 should have a potential conflict because p9 has something enabled.
 	conflicts, err = p10.GetGithubProjectConflicts()
 	require.NoError(err)
 	assert.Len(conflicts.PRTestingIdentifiers, 1)
-	assert.Len(conflicts.CommitQueueIdentifiers, 0)
-	assert.Len(conflicts.CommitCheckIdentifiers, 0)
+	assert.Empty(conflicts.CommitQueueIdentifiers)
+	assert.Empty(conflicts.CommitCheckIdentifiers)
 }
 
 func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
@@ -3285,7 +3285,7 @@ func TestUpdateAdminRoles(t *testing.T) {
 	assert.True(t, modified)
 	oldAdminFromDB, err := user.FindOneById(oldAdmin.Id)
 	assert.NoError(t, err)
-	assert.Len(t, oldAdminFromDB.Roles(), 0)
+	assert.Empty(t, oldAdminFromDB.Roles())
 	newAdminFromDB, err := user.FindOneById(newAdmin.Id)
 	assert.NoError(t, err)
 	assert.Len(t, newAdminFromDB.Roles(), 1)
@@ -3316,7 +3316,7 @@ func TestUpdateAdminRolesError(t *testing.T) {
 	modified, err := p.UpdateAdminRoles([]string{"nonexistent-user", newAdmin.Id}, []string{"nonexistent-user", oldAdmin.Id})
 	assert.Error(t, err)
 	assert.False(t, modified)
-	assert.Equal(t, p.Admins, []string{oldAdmin.Id})
+	assert.Equal(t, []string{oldAdmin.Id}, p.Admins)
 
 	rm := env.RoleManager()
 	adminScope := gimlet.Scope{
@@ -3338,7 +3338,7 @@ func TestUpdateAdminRolesError(t *testing.T) {
 	assert.True(t, modified)
 	oldAdminFromDB, err := user.FindOneById(oldAdmin.Id)
 	assert.NoError(t, err)
-	assert.Len(t, oldAdminFromDB.Roles(), 0)
+	assert.Empty(t, oldAdminFromDB.Roles())
 	newAdminFromDB, err := user.FindOneById(newAdmin.Id)
 	assert.NoError(t, err)
 	assert.Len(t, newAdminFromDB.Roles(), 1)
@@ -3389,30 +3389,30 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 2)
-	assert.Equal(t, tasks[0].RevisionOrderNumber, 99)
-	assert.Equal(t, tasks[1].RevisionOrderNumber, 96)
+	assert.Equal(t, 99, tasks[0].RevisionOrderNumber)
+	assert.Equal(t, 96, tasks[1].RevisionOrderNumber)
 
 	opts.Limit = 10
 	opts.StartAt = 80
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 3)
-	assert.Equal(t, tasks[0].RevisionOrderNumber, 78)
-	assert.Equal(t, tasks[2].RevisionOrderNumber, 72)
+	assert.Equal(t, 78, tasks[0].RevisionOrderNumber)
+	assert.Equal(t, 72, tasks[2].RevisionOrderNumber)
 
 	opts.Requesters = []string{evergreen.PatchVersionRequester}
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 7)
-	assert.Equal(t, tasks[0].RevisionOrderNumber, 80)
-	assert.Equal(t, tasks[6].RevisionOrderNumber, 71)
+	assert.Equal(t, 80, tasks[0].RevisionOrderNumber)
+	assert.Equal(t, 71, tasks[6].RevisionOrderNumber)
 
 	opts.Requesters = []string{evergreen.RepotrackerVersionRequester}
 	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 3)
-	assert.Equal(t, tasks[0].RevisionOrderNumber, 78)
-	assert.Equal(t, tasks[2].RevisionOrderNumber, 72)
+	assert.Equal(t, 78, tasks[0].RevisionOrderNumber)
+	assert.Equal(t, 72, tasks[2].RevisionOrderNumber)
 
 	opts.Requesters = []string{}
 	opts.Limit = defaultVersionLimit
@@ -3423,8 +3423,8 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 	// but only 1/6 matches the bv and is not undispatched
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 7)
-	assert.Equal(t, tasks[0].RevisionOrderNumber, 90)
-	assert.Equal(t, tasks[6].RevisionOrderNumber, 72)
+	assert.Equal(t, 90, tasks[0].RevisionOrderNumber)
+	assert.Equal(t, 72, tasks[6].RevisionOrderNumber)
 }
 
 func TestUpdateNextPeriodicBuild(t *testing.T) {
@@ -3631,7 +3631,7 @@ func TestFindPeriodicProjects(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, projects, 2)
 	for _, p := range projects {
-		assert.Len(t, p.PeriodicBuilds, 1, fmt.Sprintf("project '%s' missing definition", p.Id))
+		assert.Len(t, p.PeriodicBuilds, 1, "project '%s' missing definition", p.Id)
 	}
 }
 
@@ -3870,7 +3870,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(t, projectRef)
 	assert.Len(projectRef.ParsleyFilters, 1)
-	assert.Equal(projectRef.ProjectHealthView, ProjectHealthViewAll)
+	assert.Equal(ProjectHealthViewAll, projectRef.ProjectHealthView)
 
 	// Verify that private field does not get updated when updating restricted field.
 	update = &ProjectRef{
@@ -3918,8 +3918,8 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, projectRef)
 	require.NotNil(t, projectRef.GitHubPermissionGroupByRequester)
-	assert.Equal(len(projectRef.GitHubPermissionGroupByRequester), 1)
-	assert.Equal(projectRef.GitHubPermissionGroupByRequester[evergreen.PatchVersionRequester], "some-group")
+	assert.Len(projectRef.GitHubPermissionGroupByRequester, 1)
+	assert.Equal("some-group", projectRef.GitHubPermissionGroupByRequester[evergreen.PatchVersionRequester])
 }
 
 func TestValidateOwnerAndRepo(t *testing.T) {
@@ -4132,7 +4132,7 @@ func TestGetActivationTimeForVariant(t *testing.T) {
 		Id:         "ident",
 		Identifier: "identifier",
 	}
-	assert.Nil(projectRef.Insert())
+	assert.NoError(projectRef.Insert())
 
 	// Set based on last activation time when no version is found
 	versionCreatedAt := time.Now().Add(-1 * time.Minute)
@@ -4156,7 +4156,7 @@ func TestGetActivationTimeForVariant(t *testing.T) {
 			},
 		},
 	}
-	assert.Nil(version.Insert())
+	assert.NoError(version.Insert())
 
 	activationTime, err = projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"}, versionCreatedAt, time.Now())
 	assert.NoError(err)

@@ -17,14 +17,14 @@ func TestCommandRegistry(t *testing.T) {
 	assert.NotNil(r.mu)
 	assert.NotNil(evgRegistry)
 
-	assert.Len(r.cmds, 0)
+	assert.Empty(r.cmds)
 
 	factory := CommandFactory(func() Command { return nil })
 	assert.NotNil(factory)
 	assert.Error(r.registerCommand("", factory))
-	assert.Len(r.cmds, 0)
+	assert.Empty(r.cmds)
 	assert.Error(r.registerCommand("foo", nil))
-	assert.Len(r.cmds, 0)
+	assert.Empty(r.cmds)
 
 	assert.NoError(r.registerCommand("cmd.factory", factory))
 	assert.Len(r.cmds, 1)

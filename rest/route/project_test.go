@@ -162,7 +162,7 @@ func (s *ProjectPatchByIDSuite) TestRunProjectCreateValidationFail() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/project2", bytes.NewBuffer(json))
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "project2"})
 	err = s.rm.Parse(ctx, req)
@@ -171,7 +171,7 @@ func (s *ProjectPatchByIDSuite) TestRunProjectCreateValidationFail() {
 	resp = s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusBadRequest)
+	s.Equal(http.StatusBadRequest, resp.Status())
 }
 
 func (s *ProjectPatchByIDSuite) TestRunValid() {
@@ -187,7 +187,7 @@ func (s *ProjectPatchByIDSuite) TestRunValid() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 	vars, err := data.FindProjectVarsById("dimoxinil", "", false)
 	s.NoError(err)
 	_, ok := vars.Vars["apple"]
@@ -310,9 +310,9 @@ func (s *ProjectPatchByIDSuite) TestUpdateParsleyFilters() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Require().Equal(resp.Status(), http.StatusBadRequest)
+	s.Require().Equal(http.StatusBadRequest, resp.Status())
 	errResp := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(errResp.Message, "filter expression must be non-empty")
+	s.Equal("filter expression must be non-empty", errResp.Message)
 
 	// fail - invalid regular expression
 	jsonBody = []byte(`{"parsley_filters": [{"expression": "*", "case_sensitive": true, "exact_match": false}]}`)
@@ -325,7 +325,7 @@ func (s *ProjectPatchByIDSuite) TestUpdateParsleyFilters() {
 	resp = s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Require().Equal(resp.Status(), http.StatusBadRequest)
+	s.Require().Equal(http.StatusBadRequest, resp.Status())
 	errResp = (resp.Data()).(gimlet.ErrorResponse)
 	s.Contains(errResp.Message, "filter expression '*' is invalid regexp")
 
@@ -345,7 +345,7 @@ func (s *ProjectPatchByIDSuite) TestUpdateParsleyFilters() {
 	resp = s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Require().Equal(resp.Status(), http.StatusBadRequest)
+	s.Require().Equal(http.StatusBadRequest, resp.Status())
 	errResp = (resp.Data()).(gimlet.ErrorResponse)
 	s.Contains(errResp.Message, "duplicate filter with expression 'dupe'")
 	s.Contains(errResp.Message, "duplicate filter with expression 'also_a_dupe'")
@@ -361,7 +361,7 @@ func (s *ProjectPatchByIDSuite) TestUpdateParsleyFilters() {
 	resp = s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK, resp.Data())
+	s.Equal(http.StatusOK, resp.Status(), resp.Data())
 
 	p, err := data.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
@@ -385,7 +385,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusBadRequest) // child project doesn't exist yet
+	s.Equal(http.StatusBadRequest, resp.Status()) // child project doesn't exist yet
 
 	childProject := serviceModel.ProjectRef{
 		Id:         "firstborn",
@@ -395,13 +395,13 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	resp = s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	p, err := data.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
-	s.False(p.PatchTriggerAliases == nil)
+	s.NotNil(p.PatchTriggerAliases)
 	s.Len(p.PatchTriggerAliases, 1)
-	s.Equal(p.PatchTriggerAliases[0].ChildProject, "firstborn") // saves ID
+	s.Equal("firstborn", p.PatchTriggerAliases[0].ChildProject) // saves ID
 
 	jsonBody = []byte(`{"patch_trigger_aliases": []}`) // empty list isn't nil
 	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
@@ -412,12 +412,12 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	resp = s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	p, err = data.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
 	s.NotNil(p.PatchTriggerAliases)
-	s.Len(p.PatchTriggerAliases, 0)
+	s.Empty(p.PatchTriggerAliases)
 
 	jsonBody = []byte(`{"patch_trigger_aliases": null}`)
 	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
@@ -427,7 +427,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	resp = s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	p, err = data.FindProjectById("dimoxinil", true, false)
 	s.NoError(err)
@@ -638,7 +638,7 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusCreated)
+	s.Equal(http.StatusCreated, resp.Status())
 
 	p, err := data.FindProjectById("nutsandgum", false, false)
 	s.NoError(err)
@@ -662,7 +662,7 @@ func (s *ProjectPutSuite) TestRunExistingFails() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusBadRequest)
+	s.Equal(http.StatusBadRequest, resp.Status())
 
 }
 
@@ -696,7 +696,7 @@ func (s *ProjectGetByIDSuite) TestRunNonExistingId() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusNotFound)
+	s.Equal(http.StatusNotFound, resp.Status())
 }
 
 func (s *ProjectGetByIDSuite) TestRunExistingId() {
@@ -708,11 +708,11 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 
 	resp := s.rm.Run(ctx)
 	s.Require().NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	projectRef, ok := resp.Data().(*model.APIProjectRef)
 	s.Require().True(ok)
-	s.Equal(utility.FromStringPtr(projectRef.Aliases[0].Alias), evergreen.CommitQueueAlias)
+	s.Equal(evergreen.CommitQueueAlias, utility.FromStringPtr(projectRef.Aliases[0].Alias))
 	cachedProject, err := data.FindProjectById(h.projectName, false, false)
 	s.NoError(err)
 	s.Equal(cachedProject.Repo, utility.FromStringPtr(projectRef.Repo))
@@ -1121,7 +1121,7 @@ func TestDeleteProject(t *testing.T) {
 
 		projAliases, err := serviceModel.FindAliasesForProjectFromDb(projects[i].Id)
 		assert.NoError(t, err)
-		assert.Equal(t, 0, len(projAliases))
+		assert.Empty(t, projAliases)
 
 		skeletonProjVars := serviceModel.ProjectVars{
 			Id:   projects[i].Id,
@@ -1201,7 +1201,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Data())
-	assert.Equal(t, resp.Status(), http.StatusOK)
+	assert.Equal(t, http.StatusOK, resp.Status())
 
 	p, err := serviceModel.FindMergedProjectRef("projectIdent", "", false)
 	assert.NoError(t, err)
@@ -1275,7 +1275,7 @@ func TestDetachProjectFromRepo(t *testing.T) {
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Data())
-	assert.Equal(t, resp.Status(), http.StatusOK)
+	assert.Equal(t, http.StatusOK, resp.Status())
 
 	p, err := serviceModel.FindMergedProjectRef("projectIdent", "", false)
 	assert.NoError(t, err)
@@ -1397,12 +1397,12 @@ func TestGetProjectTaskExecutions(t *testing.T) {
 			err := rm.Parse(context.Background(), req)
 
 			assert.NoError(t, err)
-			assert.Equal(t, rm.projectId, "123")
-			assert.Equal(t, rm.opts.TaskName, "t1")
-			assert.Equal(t, rm.opts.BuildVariant, "bv1")
-			assert.Equal(t, rm.opts.Requesters, []string{"gitter_request"})
-			assert.Equal(t, rm.startTime, time.Date(2022, 11, 02, 0, 0, 0, 0, time.UTC))
-			assert.Equal(t, rm.endTime, time.Date(2022, 11, 03, 0, 0, 0, 0, time.UTC))
+			assert.Equal(t, "123", rm.projectId)
+			assert.Equal(t, "t1", rm.opts.TaskName)
+			assert.Equal(t, "bv1", rm.opts.BuildVariant)
+			assert.Equal(t, []string{"gitter_request"}, rm.opts.Requesters)
+			assert.Equal(t, time.Date(2022, 11, 02, 0, 0, 0, 0, time.UTC), rm.startTime)
+			assert.Equal(t, time.Date(2022, 11, 03, 0, 0, 0, 0, time.UTC), rm.endTime)
 		},
 		"parseNoStartErrors": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {
 			body := []byte(
@@ -1431,11 +1431,11 @@ func TestGetProjectTaskExecutions(t *testing.T) {
 
 			err := rm.Parse(context.Background(), req)
 			assert.NoError(t, err)
-			assert.Equal(t, rm.projectId, "123")
-			assert.Equal(t, rm.opts.TaskName, "t1")
-			assert.Equal(t, rm.opts.BuildVariant, "bv1")
-			assert.Equal(t, rm.opts.Requesters, []string{"gitter_request"})
-			assert.Equal(t, rm.startTime, time.Date(2022, 11, 02, 0, 0, 0, 0, time.UTC))
+			assert.Equal(t, "123", rm.projectId)
+			assert.Equal(t, "t1", rm.opts.TaskName)
+			assert.Equal(t, "bv1", rm.opts.BuildVariant)
+			assert.Equal(t, []string{"gitter_request"}, rm.opts.Requesters)
+			assert.Equal(t, time.Date(2022, 11, 02, 0, 0, 0, 0, time.UTC), rm.startTime)
 			assert.True(t, utility.IsZeroTime(rm.endTime))
 		},
 		"parseNoRequesterSuccess": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {
@@ -1567,9 +1567,9 @@ func TestModifyProjectVersions(t *testing.T) {
 			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
 			err := rm.Parse(ctx, req)
 			assert.NoError(err)
-			assert.Equal(utility.FromInt64Ptr(rm.opts.Priority), evergreen.DisabledTaskPriority)
-			assert.Equal(rm.opts.RevisionStart, 4)
-			assert.Equal(rm.opts.RevisionEnd, 1)
+			assert.Equal(evergreen.DisabledTaskPriority, utility.FromInt64Ptr(rm.opts.Priority))
+			assert.Equal(4, rm.opts.RevisionStart)
+			assert.Equal(1, rm.opts.RevisionEnd)
 		},
 		"parseSuccessTimestamp": func(t *testing.T, rm *modifyProjectVersionsHandler) {
 			body := []byte(`
@@ -1583,9 +1583,9 @@ func TestModifyProjectVersions(t *testing.T) {
 			req = gimlet.SetURLVars(req, map[string]string{"project_id": projectId})
 			err := rm.Parse(ctx, req)
 			assert.NoError(err)
-			assert.Equal(utility.FromInt64Ptr(rm.opts.Priority), evergreen.DisabledTaskPriority)
-			assert.Equal(rm.startTime, time.Date(2022, 11, 2, 0, 0, 0, 0, time.UTC))
-			assert.Equal(rm.endTime, time.Date(2022, 11, 3, 0, 0, 0, 0, time.UTC))
+			assert.Equal(evergreen.DisabledTaskPriority, utility.FromInt64Ptr(rm.opts.Priority))
+			assert.Equal(time.Date(2022, 11, 2, 0, 0, 0, 0, time.UTC), rm.startTime)
+			assert.Equal(time.Date(2022, 11, 3, 0, 0, 0, 0, time.UTC), rm.endTime)
 		},
 		"parseFaiWithNoPriority": func(t *testing.T, rm *modifyProjectVersionsHandler) {
 			body := []byte(`

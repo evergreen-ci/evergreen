@@ -529,7 +529,7 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchTooFew() {
 func (s *PatchConnectorFetchByUserSuite) TestFetchNonexistentFail() {
 	patches, err := FindPatchesByUser("zzz", s.time, 1)
 	s.NoError(err)
-	s.Len(patches, 0)
+	s.Empty(patches)
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchKeyWithinBound() {
@@ -543,7 +543,7 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchKeyWithinBound() {
 func (s *PatchConnectorFetchByUserSuite) TestFetchKeyOutOfBound() {
 	patches, err := FindPatchesByUser("user1", s.time.Add(-time.Hour), 1)
 	s.NoError(err)
-	s.Len(patches, 0)
+	s.Empty(patches)
 }
 
 func TestGetRawPatches(t *testing.T) {

@@ -2666,7 +2666,7 @@ func (s *AgentSuite) TestUpsertCheckRun() {
 	s.NotNil(checkRunOutput)
 	s.Equal("This is my report checkRun_value", checkRunOutput.Title)
 	s.Equal("We found 6 failures and 2 warnings", checkRunOutput.Summary)
-	s.Equal(checkRunOutput.Text, "It looks like there are some errors on lines 2 and 4.")
+	s.Equal("It looks like there are some errors on lines 2 and 4.", checkRunOutput.Text)
 	s.Len(checkRunOutput.Annotations, 1)
 	s.Equal("README.md", checkRunOutput.Annotations[0].Path)
 	s.Equal("warning", checkRunOutput.Annotations[0].AnnotationLevel)

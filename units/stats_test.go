@@ -38,7 +38,7 @@ func (s *StatUnitsSuite) TestAmboyStatsCollector() {
 	s.NoError(err)
 	s.NotNil(factory)
 	s.NotNil(factory())
-	s.Equal(factory().Type().Name, amboyStatsCollectorJobName)
+	s.Equal(amboyStatsCollectorJobName, factory().Type().Name)
 
 	// if the env is set, but the queues aren't logged it should
 	// run and complete but report an error.
@@ -66,20 +66,20 @@ func (s *StatUnitsSuite) TestAmboyStatsCollector() {
 	orig := s.sender.Len()
 
 	j.Run(context.Background())
-	s.True(orig < s.sender.Len())
+	s.Less(orig, s.sender.Len())
 	s.True(j.Status().Completed)
 	s.False(j.HasErrors())
 
 	m1, ok1 := s.sender.GetMessageSafe()
 	if s.True(ok1) {
 		s.True(m1.Logged)
-		s.True(strings.Contains(m1.Message.String(), "local queue stats"), m1.Message.String())
+		s.Contains(m1.Message.String(), "local queue stats", m1.Message.String())
 	}
 
 	m2, ok2 := s.sender.GetMessageSafe()
 	if s.True(ok2) {
 		s.True(m2.Logged)
-		s.True(strings.Contains(m2.Message.String(), "remote queue stats"), m2.Message.String())
+		s.Contains(m2.Message.String(), "remote queue stats", m2.Message.String())
 	}
 }
 
@@ -88,7 +88,7 @@ func (s *StatUnitsSuite) TestHostStatsCollector() {
 	s.NoError(err)
 	s.NotNil(factory)
 	s.NotNil(factory())
-	s.Equal(factory().Type().Name, hostStatsCollectorJobName)
+	s.Equal(hostStatsCollectorJobName, factory().Type().Name)
 
 	j, ok := NewHostStatsCollector("id").(*hostStatsCollector)
 	j.logger = logging.MakeGrip(s.sender)
@@ -101,7 +101,7 @@ func (s *StatUnitsSuite) TestHostStatsCollector() {
 	m1, ok1 := s.sender.GetMessageSafe()
 	if s.True(ok1) {
 		s.True(m1.Logged)
-		s.True(strings.Contains(m1.Message.String(), "host stats by distro"), m1.Message)
+		s.Contains(m1.Message.String(), "host stats by distro", m1.Message)
 	}
 
 	// NOTE: you can't trigger the error case given that the db
@@ -113,7 +113,7 @@ func (s *StatUnitsSuite) TestTaskStatsCollector() {
 	s.NoError(err)
 	s.NotNil(factory)
 	s.NotNil(factory())
-	s.Equal(factory().Type().Name, taskStatsCollectorJobName)
+	s.Equal(taskStatsCollectorJobName, factory().Type().Name)
 
 	j, ok := NewTaskStatsCollector("id").(*taskStatsCollector)
 	j.logger = logging.MakeGrip(s.sender)
@@ -140,7 +140,7 @@ func (s *StatUnitsSuite) TestSysInfoCollector() {
 	s.NoError(err)
 	s.NotNil(factory)
 	s.NotNil(factory())
-	s.Equal(factory().Type().Name, sysInfoStatsCollectorJobName)
+	s.Equal(sysInfoStatsCollectorJobName, factory().Type().Name)
 
 	j, ok := NewSysInfoStatsCollector("id").(*sysInfoStatsCollector)
 	s.True(ok)
@@ -156,6 +156,6 @@ func (s *StatUnitsSuite) TestSysInfoCollector() {
 	m, ok := s.sender.GetMessageSafe()
 	if s.True(ok) {
 		s.True(m.Logged)
-		s.True(strings.Contains(m.Message.String(), "cgo.calls"), m.Message.String())
+		s.Contains(m.Message.String(), "cgo.calls", m.Message.String())
 	}
 }

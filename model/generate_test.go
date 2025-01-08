@@ -887,27 +887,27 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.Require().Len(newPP.Tasks, 6)
 	s.Require().Len(newPP.BuildVariants, 3)
 	s.Require().Len(newPP.Functions, 2)
-	s.Equal(newPP.Tasks[0].Name, "say-hi")
-	s.Equal(newPP.Tasks[1].Name, "say-bye")
-	s.Equal(newPP.Tasks[2].Name, "a-depended-on-task")
-	s.Equal(newPP.Tasks[3].Name, "task_that_has_dependencies")
-	s.Equal(newPP.Tasks[4].Name, "new_task")
-	s.Equal(newPP.Tasks[5].Name, "another_task")
+	s.Equal("say-hi", newPP.Tasks[0].Name)
+	s.Equal("say-bye", newPP.Tasks[1].Name)
+	s.Equal("a-depended-on-task", newPP.Tasks[2].Name)
+	s.Equal("task_that_has_dependencies", newPP.Tasks[3].Name)
+	s.Equal("new_task", newPP.Tasks[4].Name)
+	s.Equal("another_task", newPP.Tasks[5].Name)
 
 	newPP2, err := g.addGeneratedProjectToConfig(&ParserProject{Functions: map[string]*YAMLCommandSet{}}, cachedProject)
 	s.NoError(err)
 	s.NotEmpty(newPP2)
 
-	s.Equal(newPP.BuildVariants[0].Name, "a_variant")
+	s.Equal("a_variant", newPP.BuildVariants[0].Name)
 	s.Require().Len(newPP.BuildVariants[0].DisplayTasks, 1)
-	s.Equal(newPP.BuildVariants[0].DisplayTasks[0].Name, "my_display_task_old_variant")
+	s.Equal("my_display_task_old_variant", newPP.BuildVariants[0].DisplayTasks[0].Name)
 
-	s.Equal(newPP.BuildVariants[1].Name, "new_buildvariant")
-	s.Len(newPP.BuildVariants[1].DisplayTasks, 0)
+	s.Equal("new_buildvariant", newPP.BuildVariants[1].Name)
+	s.Empty(newPP.BuildVariants[1].DisplayTasks)
 
-	s.Equal(newPP.BuildVariants[2].Name, "another_variant")
+	s.Equal("another_variant", newPP.BuildVariants[2].Name)
 	s.Require().Len(newPP.BuildVariants[2].DisplayTasks, 1)
-	s.Equal(newPP.BuildVariants[2].DisplayTasks[0].Name, "my_display_task_new_variant")
+	s.Equal("my_display_task_new_variant", newPP.BuildVariants[2].DisplayTasks[0].Name)
 
 	_, ok := newPP.Functions["a_function"]
 	s.True(ok)
@@ -922,9 +922,9 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.Require().Len(newPP.Tasks, 5)
 	s.Require().Len(newPP.BuildVariants, 3)
 	s.Len(newPP.Functions, 1)
-	s.Equal(newPP.Tasks[0].Name, "say-hi")
-	s.Equal(newPP.Tasks[1].Name, "say-bye")
-	s.Equal(newPP.Tasks[3].Name, "new_task")
+	s.Equal("say-hi", newPP.Tasks[0].Name)
+	s.Equal("say-bye", newPP.Tasks[1].Name)
+	s.Equal("new_task", newPP.Tasks[3].Name)
 
 	newPP2, err = g.addGeneratedProjectToConfig(&ParserProject{Functions: map[string]*YAMLCommandSet{}}, cachedProject)
 	s.NoError(err)
@@ -1074,7 +1074,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 			s.EqualValues(0, task.Priority)
 		} else {
 			s.EqualValues(10, task.Priority,
-				fmt.Sprintf("task '%s' for '%s' failed", task.DisplayName, task.BuildVariant))
+				"task '%s' for '%s' failed", task.DisplayName, task.BuildVariant)
 		}
 	}
 }
@@ -1145,16 +1145,16 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	s.NoError(err)
 	s.Require().Len(tasks, 3)
 	// New task is added both to previously generated variant, and new variant.
-	s.Equal(tasks[0].DisplayName, "another_new_task")
-	s.Equal(tasks[1].DisplayName, "another_new_task")
-	s.Equal(tasks[2].DisplayName, "new_task")
+	s.Equal("another_new_task", tasks[0].DisplayName)
+	s.Equal("another_new_task", tasks[1].DisplayName)
+	s.Equal("new_task", tasks[2].DisplayName)
 
 	// New build is added.
 	builds, err := build.FindBuildsByVersions([]string{v.Id})
 	s.NoError(err)
 	s.Require().Len(builds, 2)
-	s.Equal(builds[0].BuildVariant, "new_variant")
-	s.Equal(builds[1].BuildVariant, "another_new_variant")
+	s.Equal("new_variant", builds[0].BuildVariant)
+	s.Equal("another_new_variant", builds[1].BuildVariant)
 
 }
 
@@ -1241,7 +1241,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 		expected[dependency.TaskId] = true
 	}
 	for taskID, expect := range expected {
-		s.True(expect, fmt.Sprintf("%s should be a dependency but wasn't", taskID))
+		s.True(expect, "%s should be a dependency but wasn't", taskID)
 	}
 
 	generatorTask, err := task.FindOneId(tasksThatExist[0].Id)
@@ -1290,7 +1290,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependenciesInNewBuilds() {
 	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{task.VersionKey: v.Id}), &tasks))
 	s.Require().Len(tasks, 4)
 	for _, t := range tasks {
-		s.Equal(true, t.Activated)
+		s.True(t.Activated)
 	}
 }
 func (s *GenerateSuite) TestSaveNewTasksInNewVariantWithCrossVariantDependencyOnExistingUnscheduledTaskInExistingVariant() {

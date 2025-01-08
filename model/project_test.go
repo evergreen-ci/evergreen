@@ -1439,7 +1439,7 @@ func (s *projectSuite) TestNewPatchTaskIdTable() {
 
 	config, err := NewTaskIdConfig(p, v, pairs, "project_identifier")
 	s.Require().NoError(err)
-	s.Len(config.DisplayTasks, 0)
+	s.Empty(config.DisplayTasks)
 	s.Len(config.ExecutionTasks, 2)
 	s.Equal("project_identifier_test_task1_revision_01_01_01_00_00_00",
 		config.ExecutionTasks[TVPair{
@@ -1783,13 +1783,13 @@ func (s *FindProjectsSuite) TestFetchKeyWithinBoundDesc() {
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundAsc() {
 	projects, err := FindNonHiddenProjects("zzz", 1, 1)
 	s.NoError(err)
-	s.Len(projects, 0)
+	s.Empty(projects)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundDesc() {
 	projects, err := FindNonHiddenProjects("aaa", 1, -1)
 	s.NoError(err)
-	s.Len(projects, 0)
+	s.Empty(projects)
 }
 
 func (s *FindProjectsSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBranch() {
@@ -2287,7 +2287,7 @@ func TestVariantTasksForSelectors(t *testing.T) {
 			assert.NoError(t, err)
 			require.Len(t, vts, 1)
 			require.Len(t, vts[0].Tasks, 1)
-			assert.Equal(t, vts[0].Tasks[0], "t0")
+			assert.Equal(t, "t0", vts[0].Tasks[0])
 		},
 		"selector with dependency": func(t *testing.T) {
 			definitions := []patch.PatchTriggerDefinition{{TaskSpecifiers: []patch.TaskSpecifier{{VariantRegex: "bv0", TaskRegex: "t1"}}}}
@@ -2306,7 +2306,7 @@ func TestVariantTasksForSelectors(t *testing.T) {
 			require.Len(t, vts[0].Tasks, 1)
 			assert.Contains(t, vts[0].Tasks, "t0")
 			require.Len(t, vts[0].DisplayTasks, 1)
-			assert.Equal(t, vts[0].DisplayTasks[0].Name, "dt0")
+			assert.Equal(t, "dt0", vts[0].DisplayTasks[0].Name)
 		},
 	} {
 		t.Run(testName, test)

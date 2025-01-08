@@ -204,8 +204,8 @@ func TestUnmarshalTriggerEndTaskResp(t *testing.T) {
 	resp := triggerEndTaskResp{}
 
 	assert.NoError(t, json.Unmarshal([]byte(body), &resp))
-	assert.Equal(t, resp.Status, "failed")
-	assert.Equal(t, resp.Type, "setup")
-	assert.Equal(t, resp.Description, "this should be set")
+	assert.Equal(t, "failed", resp.Status)
+	assert.Equal(t, "setup", resp.Type)
+	assert.Equal(t, "this should be set", resp.Description)
 	assert.True(t, resp.ShouldContinue)
 }

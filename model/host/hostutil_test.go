@@ -112,8 +112,8 @@ func TestGetSSHOptions(t *testing.T) {
 
 	checkContainsOptionsAndValues := func(t *testing.T, expected []string, actual []string) {
 		exists := map[string]bool{}
-		require.True(t, len(expected)%2 == 0, `expected options must be in pairs (e.g. ("-o", "LogLevel=DEBUG"))`)
-		require.True(t, len(actual)%2 == 0, `actual options must be in pairs (e.g. ("-o", "LogLevel=DEBUG"))`)
+		require.Equal(t, 0, len(expected)%2, `expected options must be in pairs (e.g. ("-o", "LogLevel=DEBUG"))`)
+		require.Equal(t, 0, len(actual)%2, `actual options must be in pairs (e.g. ("-o", "LogLevel=DEBUG"))`)
 		for i := 0; i < len(actual); i += 2 {
 			exists[actual[i]+actual[i+1]] = true
 		}
@@ -1404,9 +1404,9 @@ func TestGenerateFetchProvisioningScriptUserData(t *testing.T) {
 func assertStringContainsOrderedSubstrings(t *testing.T, s string, subs []string) {
 	var currPos int
 	for _, sub := range subs {
-		require.True(t, currPos < len(s), "substring '%s' not found", sub)
+		require.Less(t, currPos, len(s), "substring '%s' not found", sub)
 		offset := strings.Index(s[currPos:], sub)
-		require.NotEqual(t, -1, "missing '%s'", sub)
+		require.NotEqual(t, "missing '%s'", -1, sub)
 		currPos += offset + len(sub)
 	}
 }

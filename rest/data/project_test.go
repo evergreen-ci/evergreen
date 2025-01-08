@@ -220,7 +220,7 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 		s.Nil(eventLog.Before.ProjectRef.PeriodicBuilds)
 		s.Nil(eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
 		s.NotNil(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands)
-		s.Len(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands, 0)
+		s.Empty(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands)
 		s.Equal(evergreen.RedactedBeforeValue, eventLog.Before.Vars.Vars["hello"])
 		s.Equal(evergreen.RedactedAfterValue, eventLog.After.Vars.Vars["hello"])
 		s.Equal(evergreen.RedactedBeforeValue, eventLog.Before.Vars.Vars["world"])
@@ -232,7 +232,7 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 	// No error for empty events
 	events, err = GetProjectEventLog("projectA", time.Now(), 0)
 	s.NoError(err)
-	s.Equal(0, len(events))
+	s.Empty(events)
 }
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
@@ -608,7 +608,7 @@ func TestRequestS3Creds(t *testing.T) {
 	assert.NoError(t, RequestS3Creds(ctx, "identifier", "user@email.com"))
 	n, err := notification.FindUnprocessed()
 	assert.NoError(t, err)
-	assert.Len(t, n, 0)
+	assert.Empty(t, n)
 	projectCreationConfig := evergreen.ProjectCreationConfig{
 		JiraProject: "BUILD",
 	}
@@ -691,7 +691,7 @@ func TestHideBranch(t *testing.T) {
 
 	projAliases, err := model.FindAliasesForProjectFromDb(project.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(projAliases))
+	assert.Empty(t, projAliases)
 
 	skeletonProjVars := model.ProjectVars{
 		Id:   project.Id,

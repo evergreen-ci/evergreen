@@ -180,38 +180,38 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 	for _, foundTask := range taskResults {
 		switch foundTask.Id {
 		case t1.Id:
-			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskKnownIssue)
-			assert.Equal(t, t1.GetDisplayStatus(), evergreen.TaskKnownIssue)
+			assert.Equal(t, evergreen.TaskKnownIssue, foundTask.DisplayStatus)
+			assert.Equal(t, evergreen.TaskKnownIssue, t1.GetDisplayStatus())
 		case t2.Id:
-			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskAborted)
-			assert.Equal(t, t2.GetDisplayStatus(), evergreen.TaskAborted)
+			assert.Equal(t, evergreen.TaskAborted, foundTask.DisplayStatus)
+			assert.Equal(t, evergreen.TaskAborted, t2.GetDisplayStatus())
 		case t3.Id:
-			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskSucceeded)
-			assert.Equal(t, t3.GetDisplayStatus(), evergreen.TaskSucceeded)
+			assert.Equal(t, evergreen.TaskSucceeded, foundTask.DisplayStatus)
+			assert.Equal(t, evergreen.TaskSucceeded, t3.GetDisplayStatus())
 		case t4.Id:
-			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskSetupFailed)
-			assert.Equal(t, t4.GetDisplayStatus(), evergreen.TaskSetupFailed)
+			assert.Equal(t, evergreen.TaskSetupFailed, foundTask.DisplayStatus)
+			assert.Equal(t, evergreen.TaskSetupFailed, t4.GetDisplayStatus())
 		case t5.Id:
-			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskSystemUnresponse)
-			assert.Equal(t, t5.GetDisplayStatus(), evergreen.TaskSystemUnresponse)
+			assert.Equal(t, evergreen.TaskSystemUnresponse, foundTask.DisplayStatus)
+			assert.Equal(t, evergreen.TaskSystemUnresponse, t5.GetDisplayStatus())
 		case t6.Id:
-			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskSystemTimedOut)
-			assert.Equal(t, t6.GetDisplayStatus(), evergreen.TaskSystemTimedOut)
+			assert.Equal(t, evergreen.TaskSystemTimedOut, foundTask.DisplayStatus)
+			assert.Equal(t, evergreen.TaskSystemTimedOut, t6.GetDisplayStatus())
 		case t7.Id:
-			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskSystemFailed)
-			assert.Equal(t, t7.GetDisplayStatus(), evergreen.TaskSystemFailed)
+			assert.Equal(t, evergreen.TaskSystemFailed, foundTask.DisplayStatus)
+			assert.Equal(t, evergreen.TaskSystemFailed, t7.GetDisplayStatus())
 		case t8.Id:
-			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskTimedOut)
-			assert.Equal(t, t8.GetDisplayStatus(), evergreen.TaskTimedOut)
+			assert.Equal(t, evergreen.TaskTimedOut, foundTask.DisplayStatus)
+			assert.Equal(t, evergreen.TaskTimedOut, t8.GetDisplayStatus())
 		case t9.Id:
-			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskUnscheduled)
-			assert.Equal(t, t9.GetDisplayStatus(), evergreen.TaskUnscheduled)
+			assert.Equal(t, evergreen.TaskUnscheduled, foundTask.DisplayStatus)
+			assert.Equal(t, evergreen.TaskUnscheduled, t9.GetDisplayStatus())
 		case t10.Id:
-			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskWillRun)
-			assert.Equal(t, t10.GetDisplayStatus(), evergreen.TaskWillRun)
+			assert.Equal(t, evergreen.TaskWillRun, foundTask.DisplayStatus)
+			assert.Equal(t, evergreen.TaskWillRun, t10.GetDisplayStatus())
 		case t11.Id:
-			assert.Equal(t, foundTask.DisplayStatus, evergreen.TaskStatusBlocked)
-			assert.Equal(t, t11.GetDisplayStatus(), evergreen.TaskStatusBlocked)
+			assert.Equal(t, evergreen.TaskStatusBlocked, foundTask.DisplayStatus)
+			assert.Equal(t, evergreen.TaskStatusBlocked, t11.GetDisplayStatus())
 		}
 	}
 	// check correctness of addStatusColorSort
@@ -219,17 +219,17 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 }
 
 func checkPriority(t *testing.T, taskResults []Task) {
-	assert.Equal(t, taskResults[0].DisplayStatus, evergreen.TaskTimedOut)
-	assert.Equal(t, taskResults[1].DisplayStatus, evergreen.TaskKnownIssue)
-	assert.Equal(t, taskResults[2].DisplayStatus, evergreen.TaskSetupFailed)
-	assert.Equal(t, taskResults[3].DisplayStatus, evergreen.TaskSystemUnresponse)
-	assert.Equal(t, taskResults[4].DisplayStatus, evergreen.TaskSystemTimedOut)
-	assert.Equal(t, taskResults[5].DisplayStatus, evergreen.TaskSystemFailed)
-	assert.Equal(t, taskResults[6].DisplayStatus, evergreen.TaskWillRun)
-	assert.Equal(t, taskResults[7].DisplayStatus, evergreen.TaskStatusBlocked)
-	assert.Equal(t, taskResults[8].DisplayStatus, evergreen.TaskAborted)
-	assert.Equal(t, taskResults[9].DisplayStatus, evergreen.TaskUnscheduled)
-	assert.Equal(t, taskResults[10].DisplayStatus, evergreen.TaskSucceeded)
+	assert.Equal(t, evergreen.TaskTimedOut, taskResults[0].DisplayStatus)
+	assert.Equal(t, evergreen.TaskKnownIssue, taskResults[1].DisplayStatus)
+	assert.Equal(t, evergreen.TaskSetupFailed, taskResults[2].DisplayStatus)
+	assert.Equal(t, evergreen.TaskSystemUnresponse, taskResults[3].DisplayStatus)
+	assert.Equal(t, evergreen.TaskSystemTimedOut, taskResults[4].DisplayStatus)
+	assert.Equal(t, evergreen.TaskSystemFailed, taskResults[5].DisplayStatus)
+	assert.Equal(t, evergreen.TaskWillRun, taskResults[6].DisplayStatus)
+	assert.Equal(t, evergreen.TaskStatusBlocked, taskResults[7].DisplayStatus)
+	assert.Equal(t, evergreen.TaskAborted, taskResults[8].DisplayStatus)
+	assert.Equal(t, evergreen.TaskUnscheduled, taskResults[9].DisplayStatus)
+	assert.Equal(t, evergreen.TaskSucceeded, taskResults[10].DisplayStatus)
 }
 
 func TestDependenciesMet(t *testing.T) {
@@ -492,7 +492,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 			tasks, err := taskDoc.GetFinishedBlockingDependencies(map[string]Task{})
 			assert.NoError(t, err)
 			// already marked blocked
-			assert.Len(t, tasks, 0)
+			assert.Empty(t, tasks)
 		},
 		"BlockedLater": func(t *testing.T) {
 			taskDoc.DependsOn = []Dependency{
@@ -2078,14 +2078,14 @@ func TestMarkGeneratedTasks(t *testing.T) {
 	require.NoError(t, MarkGeneratedTasks(t1.Id))
 	found, err := FindOneId(t1.Id)
 	require.NoError(t, err)
-	require.Equal(t, true, found.GeneratedTasks)
+	require.True(t, found.GeneratedTasks)
 	require.Equal(t, "", found.GenerateTasksError)
 
 	require.NoError(t, MarkGeneratedTasks(t1.Id))
 	require.NoError(t, MarkGeneratedTasksErr(t1.Id, mockError))
 	found, err = FindOneId(t1.Id)
 	require.NoError(t, err)
-	require.Equal(t, true, found.GeneratedTasks)
+	require.True(t, found.GeneratedTasks)
 	require.Equal(t, "", found.GenerateTasksError, "calling after GeneratedTasks is set should not set an error")
 
 	t3 := &Task{
@@ -2095,7 +2095,7 @@ func TestMarkGeneratedTasks(t *testing.T) {
 	require.NoError(t, MarkGeneratedTasksErr(t3.Id, mongo.ErrNoDocuments))
 	found, err = FindOneId(t3.Id)
 	require.NoError(t, err)
-	require.Equal(t, false, found.GeneratedTasks, "document not found should not set generated tasks, since this was a race and did not generate.tasks")
+	require.False(t, found.GeneratedTasks, "document not found should not set generated tasks, since this was a race and did not generate.tasks")
 	require.Equal(t, "", found.GenerateTasksError)
 
 	t4 := &Task{
@@ -2106,7 +2106,7 @@ func TestMarkGeneratedTasks(t *testing.T) {
 	require.NoError(t, MarkGeneratedTasksErr(t4.Id, dupError))
 	found, err = FindOneId(t4.Id)
 	require.NoError(t, err)
-	require.Equal(t, false, found.GeneratedTasks, "duplicate key error should not set generated tasks, since this was a race and did not generate.tasks")
+	require.False(t, found.GeneratedTasks, "duplicate key error should not set generated tasks, since this was a race and did not generate.tasks")
 	require.Equal(t, "", found.GenerateTasksError)
 }
 
@@ -2302,11 +2302,11 @@ func TestTopologicalSort(t *testing.T) {
 		indexMap[task.Id] = i
 	}
 
-	assert.True(t, indexMap["t0"] < indexMap["t1"])
-	assert.True(t, indexMap["t0"] < indexMap["t2"])
-	assert.True(t, indexMap["t0"] < indexMap["t3"])
-	assert.True(t, indexMap["t2"] < indexMap["t1"])
-	assert.True(t, indexMap["t1"] < indexMap["t3"])
+	assert.Less(t, indexMap["t0"], indexMap["t1"])
+	assert.Less(t, indexMap["t0"], indexMap["t2"])
+	assert.Less(t, indexMap["t0"], indexMap["t3"])
+	assert.Less(t, indexMap["t2"], indexMap["t1"])
+	assert.Less(t, indexMap["t1"], indexMap["t3"])
 }
 
 func TestActivateTasks(t *testing.T) {
@@ -2339,7 +2339,7 @@ func TestActivateTasks(t *testing.T) {
 		u, err = user.FindOne(user.ById(u.Id))
 		require.NoError(t, err)
 		require.NotNil(t, u)
-		assert.Equal(t, u.NumScheduledPatchTasks, len(updatedIDs))
+		assert.Len(t, updatedIDs, u.NumScheduledPatchTasks)
 
 		dbTasks, err := FindAll(All)
 		assert.NoError(t, err)
@@ -2355,7 +2355,7 @@ func TestActivateTasks(t *testing.T) {
 			} else {
 				for _, origTask := range tasks {
 					if origTask.Id == task.Id {
-						assert.Equal(t, origTask.Activated, task.Activated, fmt.Sprintf("task '%s' mismatch", task.Id))
+						assert.Equal(t, origTask.Activated, task.Activated, "task '%s' mismatch", task.Id)
 					}
 				}
 				events, err := event.FindAllByResourceID(task.Id)
@@ -3391,29 +3391,29 @@ func TestSetGeneratedTasksToActivate(t *testing.T) {
 	taskFromDb, err := FindOneId("t1")
 	assert.NoError(t, err)
 	assert.NotNil(t, taskFromDb)
-	assert.Equal(t, taskFromDb.GeneratedTasksToActivate["bv2"], []string{"t2"})
+	assert.Equal(t, []string{"t2"}, taskFromDb.GeneratedTasksToActivate["bv2"])
 
 	// add different stepback task to variant
 	assert.NoError(t, task.SetGeneratedTasksToActivate("bv2", "t2.0"))
 	taskFromDb, err = FindOneId("t1")
 	assert.NoError(t, err)
 	assert.NotNil(t, taskFromDb)
-	assert.Equal(t, taskFromDb.GeneratedTasksToActivate["bv2"], []string{"t2", "t2.0"})
+	assert.Equal(t, []string{"t2", "t2.0"}, taskFromDb.GeneratedTasksToActivate["bv2"])
 
 	// verify duplicate doesn't overwrite
 	assert.NoError(t, task.SetGeneratedTasksToActivate("bv2", "t2.0"))
 	taskFromDb, err = FindOneId("t1")
 	assert.NoError(t, err)
 	assert.NotNil(t, taskFromDb)
-	assert.Equal(t, taskFromDb.GeneratedTasksToActivate["bv2"], []string{"t2", "t2.0"})
+	assert.Equal(t, []string{"t2", "t2.0"}, taskFromDb.GeneratedTasksToActivate["bv2"])
 
 	// adding second variant doesn't affect previous
 	assert.NoError(t, task.SetGeneratedTasksToActivate("bv3", "t3"))
 	taskFromDb, err = FindOneId("t1")
 	assert.NoError(t, err)
 	assert.NotNil(t, taskFromDb)
-	assert.Equal(t, taskFromDb.GeneratedTasksToActivate["bv2"], []string{"t2", "t2.0"})
-	assert.Equal(t, taskFromDb.GeneratedTasksToActivate["bv3"], []string{"t3"})
+	assert.Equal(t, []string{"t2", "t2.0"}, taskFromDb.GeneratedTasksToActivate["bv2"])
+	assert.Equal(t, []string{"t3"}, taskFromDb.GeneratedTasksToActivate["bv3"])
 }
 
 func TestSetNextStepbackId(t *testing.T) {
@@ -3622,13 +3622,13 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 		id := task.Id
 		// All execution tasks in the display task we archived
 		if id == et3.Id || id == et4.Id || id == et5.Id {
-			assert.Equal(t, task.LatestParentExecution, 1)
+			assert.Equal(t, 1, task.LatestParentExecution)
 
 			// Restarted tasks
 			if id == et3.Id || id == et5.Id {
-				assert.Equal(t, task.Execution, 1)
+				assert.Equal(t, 1, task.Execution)
 			} else {
-				assert.Equal(t, task.Execution, 0)
+				assert.Equal(t, 0, task.Execution)
 			}
 		}
 	}
@@ -3782,15 +3782,15 @@ func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
 	var err error
 	t1, err = FindOneId(t1.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, utility.FromStringPtr(t1.DisplayTaskId), "dt")
+	assert.Equal(t, "dt", utility.FromStringPtr(t1.DisplayTaskId))
 
 	t2, err = FindOneId(t2.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, utility.FromStringPtr(t2.DisplayTaskId), "dt")
+	assert.Equal(t, "dt", utility.FromStringPtr(t2.DisplayTaskId))
 
 	t3, err = FindOneId(t3.Id)
 	assert.NoError(t, err)
-	assert.NotEqual(t, utility.FromStringPtr(t3.DisplayTaskId), "dt")
+	assert.NotEqual(t, "dt", utility.FromStringPtr(t3.DisplayTaskId))
 }
 
 func TestAddExecTasksToDisplayTask(t *testing.T) {
@@ -4064,7 +4064,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 		t2, err := FindOneId(dt.ExecutionTasks[1])
 		require.NoError(t, err)
 		require.Equal(t, 0, t2.Execution)
-		require.Equal(t, t2.LatestParentExecution, 1)
+		require.Equal(t, 1, t2.LatestParentExecution)
 
 		// Cross checks the collections to ensure that each task was or was not archived
 		checkTaskIsArchived(t, archivedT1)
@@ -4158,7 +4158,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		tasks, err := FindByExecutionTasksAndMaxExecution(tasksToFetch, 1)
 		tasks = convertOldTasksIntoTasks(tasks)
 		assert.NoError(t, err)
-		assert.Equal(t, 2, len(tasks))
+		assert.Len(t, tasks, 2)
 		assertTasksAreEqual(t, t1, tasks[0], 1)
 		assertTasksAreEqual(t, t2, tasks[1], 1)
 	})
@@ -4196,7 +4196,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		tasks, err := FindByExecutionTasksAndMaxExecution(tasksToFetch, 2)
 		tasks = convertOldTasksIntoTasks(tasks)
 		assert.NoError(t, err)
-		assert.Equal(t, 2, len(tasks))
+		assert.Len(t, tasks, 2)
 		assertTasksAreEqual(t, t1, tasks[0], 2)
 		assertTasksAreEqual(t, t2, tasks[1], 1)
 	})
@@ -4243,9 +4243,9 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		tasks, err := FindByExecutionTasksAndMaxExecution(tasksToFetch, 1)
 		tasks = convertOldTasksIntoTasks(tasks)
 		assert.NoError(t, err)
-		assert.Equal(t, 2, len(tasks))
-		assert.Equal(t, tasks[0].Execution, 1)
-		assert.Equal(t, tasks[1].Execution, 1)
+		assert.Len(t, tasks, 2)
+		assert.Equal(t, 1, tasks[0].Execution)
+		assert.Equal(t, 1, tasks[1].Execution)
 	})
 }
 
@@ -5016,7 +5016,7 @@ func TestReset(t *testing.T) {
 		dbTask, err := FindOneId(t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
-		assert.Equal(t, dbTask.ActivatedBy, "user")
+		assert.Equal(t, "user", dbTask.ActivatedBy)
 	})
 
 	t.Run("UnattainableDependency", func(t *testing.T) {
@@ -5127,7 +5127,7 @@ func TestResetTasks(t *testing.T) {
 		dbTask, err := FindOneId(t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
-		assert.Equal(t, dbTask.ActivatedBy, "user")
+		assert.Equal(t, "user", dbTask.ActivatedBy)
 	})
 
 	t.Run("UnattainableDependency", func(t *testing.T) {

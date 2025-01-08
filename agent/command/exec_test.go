@@ -390,7 +390,7 @@ func (s *execCmdSuite) TestExpansionsForEnv() {
 	}
 
 	s.NoError(cmd.doExpansions(util.NewExpansions(map[string]string{})))
-	s.Len(cmd.Env, 0)
+	s.Empty(cmd.Env)
 	cmd.Env["one"] = "one"
 	s.NoError(cmd.doExpansions(util.NewExpansions(map[string]string{"two": "two"})))
 	s.Len(cmd.Env, 1)

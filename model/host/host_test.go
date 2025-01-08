@@ -763,11 +763,11 @@ func TestHostSetAgentStartTime(t *testing.T) {
 
 	now := time.Now()
 	require.NoError(t, h.SetAgentStartTime(ctx))
-	assert.True(t, now.Sub(h.AgentStartTime) < time.Second)
+	assert.Less(t, now.Sub(h.AgentStartTime), time.Second)
 
 	dbHost, err := FindOneId(ctx, h.Id)
 	require.NoError(t, err)
-	assert.True(t, now.Sub(dbHost.AgentStartTime) < time.Second)
+	assert.Less(t, now.Sub(dbHost.AgentStartTime), time.Second)
 }
 
 func TestSetTaskGroupTeardownStartTime(t *testing.T) {
@@ -791,7 +791,7 @@ func TestSetTaskGroupTeardownStartTime(t *testing.T) {
 
 	dbHost, err := FindOneId(ctx, h.Id)
 	require.NoError(t, err)
-	assert.True(t, now.Sub(dbHost.TaskGroupTeardownStartTime) < time.Second)
+	assert.Less(t, now.Sub(dbHost.TaskGroupTeardownStartTime), time.Second)
 }
 
 func TestHostSetExpirationTime(t *testing.T) {
@@ -1415,7 +1415,7 @@ func TestNeedsAgentMonitorDeploy(t *testing.T) {
 			hosts, err := Find(ctx, NeedsAgentMonitorDeploy(time.Now()))
 			require.NoError(t, err)
 
-			assert.Len(t, hosts, 0)
+			assert.Empty(t, hosts)
 		},
 		"FindsHostsReprovisioning": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostProvisioning
@@ -1990,7 +1990,7 @@ func TestHostFindingWithTask(t *testing.T) {
 	hosts, err := FindRunningHosts(ctx, true)
 	assert.NoError(err)
 
-	assert.Equal(3, len(hosts))
+	assert.Len(hosts, 3)
 	assert.Equal(task1.Id, hosts[0].RunningTaskFull.Id)
 	assert.Equal(task2.Id, hosts[1].RunningTaskFull.Id)
 	assert.Nil(hosts[2].RunningTaskFull)
@@ -2302,7 +2302,7 @@ func TestFindAllRunningContainers(t *testing.T) {
 
 	containers, err := FindAllRunningContainers(ctx)
 	assert.NoError(err)
-	assert.Equal(2, len(containers))
+	assert.Len(containers, 2)
 }
 
 func TestFindAllRunningContainersEmpty(t *testing.T) {
@@ -2438,7 +2438,7 @@ func TestFindAllRunningParents(t *testing.T) {
 
 	hosts, err := FindAllRunningParents(ctx)
 	assert.NoError(err)
-	assert.Equal(3, len(hosts))
+	assert.Len(hosts, 3)
 
 }
 
@@ -2613,7 +2613,7 @@ func TestGetContainers(t *testing.T) {
 
 	containers, err := host1.GetContainers(ctx)
 	assert.NoError(err)
-	assert.Equal(5, len(containers))
+	assert.Len(containers, 5)
 }
 
 func TestGetContainersNotParent(t *testing.T) {
@@ -3096,26 +3096,26 @@ func TestFindHostsSpawnedByTasks(t *testing.T) {
 	found, err := FindAllHostsSpawnedByTasks(ctx)
 	assert.NoError(err)
 	assert.Len(found, 3)
-	assert.Equal(found[0].Id, "1")
-	assert.Equal(found[1].Id, "4")
-	assert.Equal(found[2].Id, "7")
+	assert.Equal("1", found[0].Id)
+	assert.Equal("4", found[1].Id)
+	assert.Equal("7", found[2].Id)
 
 	found, err = FindHostsSpawnedByTask(ctx, "task_1", 0, []string{evergreen.HostRunning})
 	assert.NoError(err)
 	assert.Len(found, 1)
-	assert.Equal(found[0].Id, "1")
+	assert.Equal("1", found[0].Id)
 
 	found, err = FindHostsSpawnedByTask(ctx, "task_1", 1, []string{evergreen.HostRunning})
 	assert.NoError(err)
 	assert.Len(found, 1)
-	assert.Equal(found[0].Id, "7")
+	assert.Equal("7", found[0].Id)
 
 	found, err = FindHostsSpawnedByBuild(ctx, "build_1")
 	assert.NoError(err)
 	assert.Len(found, 3)
-	assert.Equal(found[0].Id, "1")
-	assert.Equal(found[1].Id, "4")
-	assert.Equal(found[2].Id, "7")
+	assert.Equal("1", found[0].Id)
+	assert.Equal("4", found[1].Id)
+	assert.Equal("7", found[2].Id)
 }
 
 func TestCountContainersOnParents(t *testing.T) {
@@ -3164,30 +3164,30 @@ func TestCountContainersOnParents(t *testing.T) {
 
 	c1, err := HostGroup{h1, h2}.CountContainersOnParents(ctx)
 	assert.NoError(err)
-	assert.Equal(c1, 3)
+	assert.Equal(3, c1)
 
 	c2, err := HostGroup{h1, h3}.CountContainersOnParents(ctx)
 	assert.NoError(err)
-	assert.Equal(c2, 2)
+	assert.Equal(2, c2)
 
 	c3, err := HostGroup{h2, h3}.CountContainersOnParents(ctx)
 	assert.NoError(err)
-	assert.Equal(c3, 1)
+	assert.Equal(1, c3)
 
 	// Parents have no containers
 	c4, err := HostGroup{h3}.CountContainersOnParents(ctx)
 	assert.NoError(err)
-	assert.Equal(c4, 0)
+	assert.Equal(0, c4)
 
 	// Parents are actually containers
 	c5, err := HostGroup{h4, h5, h6}.CountContainersOnParents(ctx)
 	assert.NoError(err)
-	assert.Equal(c5, 0)
+	assert.Equal(0, c5)
 
 	// Parents list is empty
 	c6, err := HostGroup{}.CountContainersOnParents(ctx)
 	assert.NoError(err)
-	assert.Equal(c6, 0)
+	assert.Equal(0, c6)
 }
 
 func TestFindUphostContainersOnParents(t *testing.T) {
@@ -3333,7 +3333,7 @@ func TestFindAllRunningParentsByDistroID(t *testing.T) {
 
 	parents, err := FindAllRunningParentsByDistroID(ctx, d1)
 	assert.NoError(err)
-	assert.Equal(2, len(parents))
+	assert.Len(parents, 2)
 }
 
 func TestFindUphostParentsByContainerPool(t *testing.T) {
@@ -3659,7 +3659,7 @@ func TestFindTerminatedHostsRunningTasksQuery(t *testing.T) {
 	t.Run("QueryExecutesProperly", func(t *testing.T) {
 		hosts, err := FindTerminatedHostsRunningTasks(ctx)
 		assert.NoError(t, err)
-		assert.Len(t, hosts, 0)
+		assert.Empty(t, hosts)
 	})
 	t.Run("QueryFindsResults", func(t *testing.T) {
 		h := Host{
@@ -3728,7 +3728,7 @@ func TestFindUphostParents(t *testing.T) {
 
 	uphostParents, err := findUphostParentsByContainerPool(ctx, "test-pool")
 	assert.NoError(err)
-	assert.Equal(2, len(uphostParents))
+	assert.Len(uphostParents, 2)
 }
 
 func TestRemoveStaleInitializing(t *testing.T) {
@@ -3963,7 +3963,7 @@ func TestMarkStaleBuildingAsFailed(t *testing.T) {
 		dbHost, err := FindOne(ctx, ById(h.Id))
 		require.NoError(t, err)
 		require.NotZero(t, dbHost)
-		assert.Equal(t, dbHost.Status, expectedStatus)
+		assert.Equal(t, expectedStatus, dbHost.Status)
 	}
 
 	for _, h := range append([]Host{hosts[0]}, hosts[2:]...) {
@@ -4179,7 +4179,7 @@ func TestFindAvailableParent(t *testing.T) {
 	availableParent, err := GetContainersOnParents(ctx, d)
 	assert.NoError(err)
 
-	assert.Equal(2, len(availableParent))
+	assert.Len(availableParent, 2)
 }
 
 func TestFindNoAvailableParent(t *testing.T) {
@@ -4254,7 +4254,7 @@ func TestFindNoAvailableParent(t *testing.T) {
 
 	availableParent, err := GetContainersOnParents(ctx, d)
 	assert.NoError(err)
-	assert.Equal(0, len(availableParent))
+	assert.Empty(availableParent)
 }
 
 func TestGetNumNewParentsAndHostsToSpawn(t *testing.T) {
@@ -4574,10 +4574,10 @@ func TestAggregateSpawnhostData(t *testing.T) {
 	assert.Equal(t, 3, res.TotalVolumes)
 	assert.NotNil(t, res.InstanceTypes)
 	assert.Len(t, res.InstanceTypes, 3)
-	assert.Equal(t, res.InstanceTypes["small"], 2)
-	assert.Equal(t, res.InstanceTypes["medium"], 1)
-	assert.Equal(t, res.InstanceTypes["large"], 1)
-	assert.Equal(t, res.InstanceTypes["tiny"], 0)
+	assert.Equal(t, 2, res.InstanceTypes["small"])
+	assert.Equal(t, 1, res.InstanceTypes["medium"])
+	assert.Equal(t, 1, res.InstanceTypes["large"])
+	assert.Equal(t, 0, res.InstanceTypes["tiny"])
 }
 
 func TestCountSpawnhostsWithNoExpirationByUser(t *testing.T) {
@@ -5098,8 +5098,8 @@ func TestPartitionParents(t *testing.T) {
 		{ParentHost: Host{Id: "1"}, Containers: []Host{{Distro: distro.Distro{Id: "1"}}, {Distro: distro.Distro{Id: "2"}}, {Distro: distro.Distro{Id: "3"}}}},
 	}
 	matched, notMatched = partitionParents(parents, distroId, defaultMaxImagesPerParent)
-	assert.Len(matched, 0)
-	assert.Len(notMatched, 0)
+	assert.Empty(matched)
+	assert.Empty(notMatched)
 }
 
 func TestCountVirtualWorkstationsByDistro(t *testing.T) {
@@ -5157,8 +5157,8 @@ func TestGetAMI(t *testing.T) {
 		Id:       "myOtherHost",
 		Provider: evergreen.ProviderNameMock,
 	}
-	assert.Equal(t, h.GetAMI(), "ami")
-	assert.Equal(t, h2.GetAMI(), "")
+	assert.Equal(t, "ami", h.GetAMI())
+	assert.Equal(t, "", h2.GetAMI())
 }
 
 func TestGetSubnetID(t *testing.T) {
@@ -5176,8 +5176,8 @@ func TestGetSubnetID(t *testing.T) {
 		Id:       "myOtherHost",
 		Provider: evergreen.ProviderNameMock,
 	}
-	assert.Equal(t, h.GetSubnetID(), "swish")
-	assert.Equal(t, h2.GetSubnetID(), "")
+	assert.Equal(t, "swish", h.GetSubnetID())
+	assert.Equal(t, "", h2.GetSubnetID())
 }
 
 func TestUnsafeReplace(t *testing.T) {
@@ -5743,9 +5743,9 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, hosts, 2)
 			require.NotNil(t, hosts[0])
-			require.NotEqual(t, hosts[0].Status, evergreen.HostTerminated)
+			require.NotEqual(t, evergreen.HostTerminated, hosts[0].Status)
 			require.NotNil(t, hosts[1])
-			require.NotEqual(t, hosts[1].Status, evergreen.HostTerminated)
+			require.NotEqual(t, evergreen.HostTerminated, hosts[1].Status)
 		},
 		"FilterByID": func(ctx context.Context, t *testing.T) {
 			hosts, _, _, err := GetPaginatedRunningHosts(ctx,
@@ -5763,7 +5763,7 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			require.NotNil(t, hosts[0])
-			require.Equal(t, hosts[0].Id, "h2")
+			require.Equal(t, "h2", hosts[0].Id)
 		},
 		"FilterByDNSName": func(ctx context.Context, t *testing.T) {
 			hosts, _, _, err := GetPaginatedRunningHosts(ctx,
@@ -5781,7 +5781,7 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			require.NotNil(t, hosts[0])
-			require.Equal(t, hosts[0].Id, "h2")
+			require.Equal(t, "h2", hosts[0].Id)
 		},
 		"FilterByDistroID": func(ctx context.Context, t *testing.T) {
 			hosts, _, _, err := GetPaginatedRunningHosts(ctx,
@@ -5799,7 +5799,7 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			require.NotNil(t, hosts[0])
-			require.Equal(t, hosts[0].Id, "h3")
+			require.Equal(t, "h3", hosts[0].Id)
 		},
 		"FilterByCurrentTaskID": func(ctx context.Context, t *testing.T) {
 			hosts, _, _, err := GetPaginatedRunningHosts(ctx,
@@ -5817,7 +5817,7 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			require.NotNil(t, hosts[0])
-			require.Equal(t, hosts[0].Id, "h3")
+			require.Equal(t, "h3", hosts[0].Id)
 		},
 		"FilterByStatuses": func(ctx context.Context, t *testing.T) {
 			hosts, _, _, err := GetPaginatedRunningHosts(ctx,
@@ -5835,7 +5835,7 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			require.NotNil(t, hosts[0])
-			require.Equal(t, hosts[0].Id, "h2")
+			require.Equal(t, "h2", hosts[0].Id)
 		},
 		"FilterByStartedBy": func(ctx context.Context, t *testing.T) {
 			hosts, _, _, err := GetPaginatedRunningHosts(ctx,
@@ -5853,7 +5853,7 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			require.NotNil(t, hosts[0])
-			require.Equal(t, hosts[0].Id, "h2")
+			require.Equal(t, "h2", hosts[0].Id)
 		},
 		"SortBy": func(ctx context.Context, t *testing.T) {
 			hosts, _, _, err := GetPaginatedRunningHosts(ctx,
@@ -5871,9 +5871,9 @@ func TestGetPaginatedRunningHosts(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, hosts, 2)
 			require.NotNil(t, hosts[0])
-			require.Equal(t, hosts[0].Id, "h3")
+			require.Equal(t, "h3", hosts[0].Id)
 			require.NotNil(t, hosts[1])
-			require.Equal(t, hosts[1].Id, "h2")
+			require.Equal(t, "h2", hosts[1].Id)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

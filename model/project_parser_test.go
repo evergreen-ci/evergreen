@@ -956,7 +956,7 @@ tasks:
 	assert.Equal("execTask3", p.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
 
 	// check that bv2 did not parse any display tasks
-	assert.Len(p.BuildVariants[1].DisplayTasks, 0)
+	assert.Empty(p.BuildVariants[1].DisplayTasks)
 
 	// check that bv1 has the correct execution tasks
 	assert.Len(p.BuildVariants[0].Tasks, 3)
@@ -1061,7 +1061,7 @@ tasks:
 	assert.NoError(err)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
 	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecTasks, 2)
-	assert.Len(proj.BuildVariants[1].DisplayTasks, 0)
+	assert.Empty(proj.BuildVariants[1].DisplayTasks)
 
 	// test that a display task listing a nonexistent task errors
 	nonexistentTaskYml := `
@@ -1094,7 +1094,7 @@ tasks:
 	assert.Contains(err.Error(), "contains unmatched criteria: 'notHere'")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
 	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecTasks, 2)
-	assert.Len(proj.BuildVariants[1].DisplayTasks, 0)
+	assert.Empty(proj.BuildVariants[1].DisplayTasks)
 
 	// test that a display task with duplicate task errors
 	duplicateTaskYml := `
@@ -1123,9 +1123,9 @@ tasks:
 	proj = &Project{}
 	_, err = LoadProjectInto(ctx, []byte(duplicateTaskYml), nil, "id", proj)
 	assert.NotNil(proj)
-	assert.NotNil(err)
+	assert.Error(err)
 	assert.Contains(err.Error(), "execution task 'execTask3' is listed in more than 1 display task")
-	assert.Len(proj.BuildVariants[0].DisplayTasks, 0)
+	assert.Empty(proj.BuildVariants[0].DisplayTasks)
 
 	// test that a display task can't share a name with an execution task
 	conflictYml := `
@@ -1149,9 +1149,9 @@ tasks:
 	proj = &Project{}
 	_, err = LoadProjectInto(ctx, []byte(conflictYml), nil, "id", proj)
 	assert.NotNil(proj)
-	assert.NotNil(err)
+	assert.Error(err)
 	assert.Contains(err.Error(), "display task 'execTask1' cannot have the same name as an execution task")
-	assert.Len(proj.BuildVariants[0].DisplayTasks, 0)
+	assert.Empty(proj.BuildVariants[0].DisplayTasks)
 
 	// test that wildcard selectors are resolved correctly
 	wildcardYml := `
@@ -1417,7 +1417,7 @@ buildvariants:
 		assert.Equal(t, 2, tg.MaxHosts)
 
 		assert.Len(t, tg.SetupGroup.List(), 1)
-		assert.Equal(t, true, tg.SetupGroupCanFailTask)
+		assert.True(t, tg.SetupGroupCanFailTask)
 		assert.Equal(t, 10, tg.SetupGroupTimeoutSecs)
 
 		assert.Len(t, tg.SetupTask.List(), 1)
@@ -1580,7 +1580,7 @@ buildvariants:
 		assert.NoError(t, err)
 		require.Len(t, proj.TaskGroups, 1)
 		assert.Equal(t, "example_task_group", proj.TaskGroups[0].Name)
-		assert.Equal(t, proj.TaskGroups[0].MaxHosts, len(proj.TaskGroups[0].Tasks))
+		assert.Len(t, proj.TaskGroups[0].Tasks, proj.TaskGroups[0].MaxHosts)
 	})
 }
 
@@ -1778,7 +1778,7 @@ buildvariants:
 	assert.Equal("bv_2", proj.BuildVariants[1].Name)
 	assert.Len(proj.BuildVariants[1].Tasks, 1)
 	assert.Equal("task_3", proj.BuildVariants[1].Tasks[0].Name)
-	assert.Len(proj.BuildVariants[1].Tasks[0].DependsOn, 0)
+	assert.Empty(proj.BuildVariants[1].Tasks[0].DependsOn)
 
 	assert.Equal("bv_3", proj.BuildVariants[2].Name)
 	assert.Len(proj.BuildVariants[2].Tasks, 2)
@@ -1960,8 +1960,8 @@ func TestAddBuildVariant(t *testing.T) {
 
 	pp.AddBuildVariant("name", "my-name", "", nil, []string{"task"})
 	require.Len(t, pp.BuildVariants, 1)
-	assert.Equal(t, pp.BuildVariants[0].Name, "name")
-	assert.Equal(t, pp.BuildVariants[0].DisplayName, "my-name")
+	assert.Equal(t, "name", pp.BuildVariants[0].Name)
+	assert.Equal(t, "my-name", pp.BuildVariants[0].DisplayName)
 	assert.Nil(t, pp.BuildVariants[0].RunOn)
 	assert.Len(t, pp.BuildVariants[0].Tasks, 1)
 }
@@ -2282,12 +2282,12 @@ func TestMergeUnorderedUnique(t *testing.T) {
 
 	err := main.mergeUnorderedUnique(toMerge)
 	assert.NoError(t, err)
-	assert.Equal(t, len(main.Tasks), 4)
-	assert.Equal(t, len(main.TaskGroups), 2)
-	assert.Equal(t, len(main.Parameters), 2)
-	assert.Equal(t, len(main.Modules), 2)
-	assert.Equal(t, len(main.Functions), 4)
-	assert.Equal(t, len(main.Containers), 2)
+	assert.Len(t, main.Tasks, 4)
+	assert.Len(t, main.TaskGroups, 2)
+	assert.Len(t, main.Parameters, 2)
+	assert.Len(t, main.Modules, 2)
+	assert.Len(t, main.Functions, 4)
+	assert.Len(t, main.Containers, 2)
 }
 
 func TestMergeUnorderedUniqueFail(t *testing.T) {
@@ -2407,7 +2407,7 @@ func TestMergeUnordered(t *testing.T) {
 		},
 	}
 	main.mergeUnordered(add)
-	assert.Equal(t, len(main.Ignore), 2)
+	assert.Len(t, main.Ignore, 2)
 }
 
 func TestMergeOrderedUnique(t *testing.T) {
@@ -2620,11 +2620,11 @@ func TestMergeBuildVariant(t *testing.T) {
 
 	err := main.mergeBuildVariant(add)
 	assert.NoError(t, err)
-	require.Equal(t, len(main.BuildVariants), 3)
+	require.Len(t, main.BuildVariants, 3)
 	bvNames := []string{}
 	for _, bv := range main.BuildVariants {
 		if bv.Name == bvNew1 {
-			assert.Equal(t, len(bv.Tasks), 2)
+			assert.Len(t, bv.Tasks, 2)
 		}
 		bvNames = append(bvNames, bv.Name)
 	}
@@ -2671,8 +2671,8 @@ func TestMergeExistingBuildVariant(t *testing.T) {
 
 	err := main.mergeBuildVariant(add)
 	assert.NoError(t, err)
-	require.Equal(t, len(main.BuildVariants), 1)
-	require.Equal(t, len(main.BuildVariants[0].Tasks), 2)
+	require.Len(t, main.BuildVariants, 1)
+	require.Len(t, main.BuildVariants[0].Tasks, 2)
 }
 
 func TestMergeBuildVariantFail(t *testing.T) {
@@ -2735,7 +2735,7 @@ func TestMergeMatrix(t *testing.T) {
 
 	err := main.mergeMatrix(add)
 	assert.NoError(t, err)
-	assert.Equal(t, len(main.Axes), 1)
+	assert.Len(t, main.Axes, 1)
 }
 
 func TestMergeMatrixFail(t *testing.T) {
@@ -2818,11 +2818,11 @@ ignore:
 	err = p1.mergeMultipleParserProjects(p2)
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
-	assert.Equal(t, len(p1.Functions), 2)
-	assert.Equal(t, len(p1.Tasks), 2)
-	assert.Equal(t, len(p1.Ignore), 3)
+	assert.Len(t, p1.Functions, 2)
+	assert.Len(t, p1.Tasks, 2)
+	assert.Len(t, p1.Ignore, 3)
 	assert.Equal(t, p1.Stepback, utility.TruePtr())
-	assert.NotEqual(t, p1.Post, nil)
+	assert.NotNil(t, p1.Post)
 }
 
 func TestMergeMultipleProjectConfigsBuildVariant(t *testing.T) {
@@ -2870,13 +2870,13 @@ buildvariants:
 	err = p1.mergeMultipleParserProjects(p2)
 	assert.NoError(t, err)
 	assert.NotNil(t, p1)
-	assert.Equal(t, len(p1.BuildVariants), 2)
+	assert.Len(t, p1.BuildVariants, 2)
 	if p1.BuildVariants[0].name() == "bv1" {
-		assert.Equal(t, len(p1.BuildVariants[0].Tasks), 2)
-		assert.Equal(t, len(p1.BuildVariants[1].Tasks), 1)
+		assert.Len(t, p1.BuildVariants[0].Tasks, 2)
+		assert.Len(t, p1.BuildVariants[1].Tasks, 1)
 	} else {
-		assert.Equal(t, len(p1.BuildVariants[0].Tasks), 1)
-		assert.Equal(t, len(p1.BuildVariants[1].Tasks), 2)
+		assert.Len(t, p1.BuildVariants[0].Tasks, 1)
+		assert.Len(t, p1.BuildVariants[1].Tasks, 2)
 	}
 	err = p1.mergeMultipleParserProjects(p3)
 	assert.Error(t, err)
@@ -2905,12 +2905,12 @@ func TestUpdateReadFileFrom(t *testing.T) {
 		},
 	}
 	opts.UpdateReadFileFrom("small.yml")
-	assert.Equal(t, opts.ReadFileFrom, ReadFromPatchDiff) // should be changed to patch diff bc it's not a github patch
+	assert.Equal(t, ReadFromPatchDiff, opts.ReadFileFrom) // should be changed to patch diff bc it's not a github patch
 	p.GithubPatchData = thirdparty.GithubPatch{
 		HeadOwner: "me", // indicates this is a github PR patch
 	}
 	opts.UpdateReadFileFrom("small.yml")
-	assert.Equal(t, opts.ReadFileFrom, ReadFromPatch) // should be changed to patch bc it is a github patch
+	assert.Equal(t, ReadFromPatch, opts.ReadFileFrom) // should be changed to patch bc it is a github patch
 
 	opts.UpdateReadFileFrom("nonexistent.yml")
 	// should be changed to patch diff because it's not a modified file

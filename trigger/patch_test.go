@@ -159,7 +159,7 @@ func (s *patchSuite) TestFetch() {
 func (s *patchSuite) TestAllTriggers() {
 	n, err := NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
-	s.Len(n, 0)
+	s.Empty(n)
 
 	s.patch.Status = evergreen.VersionSucceeded
 	s.data.Status = evergreen.VersionSucceeded

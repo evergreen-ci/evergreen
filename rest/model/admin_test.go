@@ -345,8 +345,8 @@ func TestRestart(t *testing.T) {
 
 	apiResp := RestartResponse{}
 	assert.NoError(apiResp.BuildFromService(restartResp))
-	assert.Equal(3, len(apiResp.ItemsRestarted))
-	assert.Equal(2, len(apiResp.ItemsErrored))
+	assert.Len(apiResp.ItemsRestarted, 3)
+	assert.Len(apiResp.ItemsErrored, 2)
 }
 
 func TestEventConversion(t *testing.T) {
