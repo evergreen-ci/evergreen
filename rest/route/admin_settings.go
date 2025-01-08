@@ -91,7 +91,7 @@ func (h *adminPostHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	oldSettings, err := evergreen.GetConfig(ctx)
+	oldSettings, err := evergreen.GetSharedConfig(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting existing admin settings"))
 	}

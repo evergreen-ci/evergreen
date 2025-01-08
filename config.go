@@ -266,7 +266,8 @@ func GetConfig(ctx context.Context) (*Settings, error) {
 
 // GetSharedConfig returns only the Evergreen configuration which is shared among all instances
 // reading from a single shared database. Use [GetConfig] to get a complete configuration that
-// includes overrides from the local database.
+// includes overrides from the local database. If there is no shared database [GetConfig] and
+// [GetSharedConfig] are functionally equivalent.
 func GetSharedConfig(ctx context.Context) (*Settings, error) {
 	return getSettings(ctx, false)
 }

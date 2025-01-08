@@ -136,10 +136,10 @@ func byIDs(ids []string) bson.M {
 }
 
 // getSectionsBSON returns the config documents from the database as a slice of [bson.Raw].
-// Configuration is always fetched from the shared database. If includeOverrides is true
-// the config documents are first fetched from the local database and only fetched from
-// the shared database when they're missing from the local database. This means that a
-// local documents will override the same document from the shared database.
+// If no shared database exists all configuration is fetched from the local database.
+// If a shared database exists, configuration is fetched from the shared database, save for
+// the overrides config document which is fetched from the local database and if includeOverrides
+// is true the overrides in the overrides config document are applied to the rest of the configuration.
 func getSectionsBSON(ctx context.Context, ids []string, includeOverrides bool) ([]bson.Raw, error) {
 	db := GetEnvironment().DB()
 	if sharedDB := GetEnvironment().SharedDB(); sharedDB != nil {
@@ -155,8 +155,8 @@ func getSectionsBSON(ctx context.Context, ids []string, includeOverrides bool) (
 		return nil, errors.Wrap(err, "iterating cursor for local configuration sections")
 	}
 
-	if GetEnvironment().SharedDB() != nil && includeOverrides {
-		docs, err = overrideConfig(ctx, docs)
+	if GetEnvironment().SharedDB() != nil {
+		docs, err = overrideConfig(ctx, docs, includeOverrides)
 		if err != nil {
 			return nil, errors.Wrap(err, "overriding config")
 		}
@@ -165,17 +165,24 @@ func getSectionsBSON(ctx context.Context, ids []string, includeOverrides bool) (
 	return docs, nil
 }
 
-func overrideConfig(ctx context.Context, docs []bson.Raw) ([]bson.Raw, error) {
-	var overrides OverridesConfig
-	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(overrides.SectionId()))
+// overrideConfig overrides the content of the overrides document with the contents of the overrides
+// document from the local database. If [applyOverrides] is true then overrides are applied to
+// each of the supplied docs.
+func overrideConfig(ctx context.Context, docs []bson.Raw, applyOverrides bool) ([]bson.Raw, error) {
+	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(overridesSectionID))
 	if err := res.Err(); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return docs, nil
 		}
 		return nil, errors.Wrap(err, "getting overrides document")
 	}
-	if err := res.Decode(&overrides); err != nil {
-		return nil, errors.Wrap(err, "decoding overrides config")
+	rawOverrides, err := res.Raw()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting raw overrides config")
+	}
+	var overrides OverridesConfig
+	if err := bson.Unmarshal(rawOverrides, &overrides); err != nil {
+		return nil, errors.Wrap(err, "unmarshalling overrides config")
 	}
 
 	newDocs := make([]bson.Raw, 0, len(docs))
@@ -188,13 +195,19 @@ func overrideConfig(ctx context.Context, docs []bson.Raw) ([]bson.Raw, error) {
 		if !ok {
 			continue
 		}
+		if id == overridesSectionID {
+			newDocs = append(newDocs, rawOverrides)
+			continue
+		}
 
-		if sectionOverrides := overrides.sectionOverrides(id); len(sectionOverrides) > 0 {
-			newDoc, err := overrideValues(doc, sectionOverrides)
-			if err != nil {
-				return nil, errors.Wrapf(err, "overriding values for config document '%s'", id)
+		if applyOverrides {
+			if sectionOverrides := overrides.sectionOverrides(id); applyOverrides && len(sectionOverrides) > 0 {
+				newDoc, err := overrideValues(doc, sectionOverrides)
+				if err != nil {
+					return nil, errors.Wrapf(err, "overriding values for config document '%s'", id)
+				}
+				doc = newDoc
 			}
-			doc = newDoc
 		}
 		newDocs = append(newDocs, doc)
 	}
@@ -259,7 +272,7 @@ func getConfigSection(ctx context.Context, section ConfigSection) error {
 		return errors.Wrap(err, "getting raw result")
 	}
 	if GetEnvironment().SharedDB() != nil {
-		overridden, err := overrideConfig(ctx, []bson.Raw{raw})
+		overridden, err := overrideConfig(ctx, []bson.Raw{raw}, true)
 		if err != nil {
 			return errors.Wrap(err, "overriding configuration section")
 		}
@@ -278,7 +291,7 @@ func getConfigSection(ctx context.Context, section ConfigSection) error {
 
 func setConfigSection(ctx context.Context, sectionID string, update bson.M) error {
 	db := GetEnvironment().SharedDB()
-	if db == nil {
+	if db == nil || sectionID == overridesSectionID {
 		db = GetEnvironment().DB()
 	}
 	_, err := db.Collection(ConfigCollection).UpdateOne(
