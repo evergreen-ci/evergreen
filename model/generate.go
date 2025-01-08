@@ -352,6 +352,10 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 		return errors.Wrap(err, "adding new builds")
 	}
 
+	// kim: NOTE: I didn't verify, but it may be sufficient to call
+	// UpdateVersionAndPatchStatusForBuilds here to ensure the build statuses
+	// are updated for new tasks.
+
 	numActivatedGenerateTasks := len(activatedTasksInExistingBuilds) + len(activatedTasksInNewBuilds)
 	span.SetAttributes(attribute.Int(numActivatedGenerateTasksAttribute, numActivatedGenerateTasks))
 	if err = g.Task.SetNumActivatedGeneratedTasks(numActivatedGenerateTasks); err != nil {
