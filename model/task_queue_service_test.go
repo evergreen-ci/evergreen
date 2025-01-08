@@ -1068,7 +1068,13 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskThreadSafe() {
 			defer wg.Done()
 			<-wait
 			item := service.FindNextTask(s.ctx, spec, utility.ZeroTime)
-			s.Require().NotNil(item)
+			s.NotNil(item)
+			if item == nil {
+				// We cannot require item to not be nil because the check would happen in
+				// a goroutine. This could cause the test to behave nondeterministically.
+				// See https://github.com/Antonboom/testifylint?tab=readme-ov-file#go-require.
+				return
+			}
 			mu.Lock()
 			dispatchedTasks[item.Id] = true
 			mu.Unlock()
@@ -1137,7 +1143,13 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
 			defer wg.Done()
 			<-wait
 			item := service.FindNextTask(s.ctx, spec, utility.ZeroTime)
-			s.Require().NotNil(item)
+			s.NotNil(item)
+			if item == nil {
+				// We cannot require item to not be nil because the check would happen in
+				// a goroutine. This could cause the test to behave nondeterministically.
+				// See https://github.com/Antonboom/testifylint?tab=readme-ov-file#go-require.
+				return
+			}
 			mu.Lock()
 			dispatchedTasks[item.Id] = true
 			mu.Unlock()
@@ -1199,7 +1211,13 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
 			defer wg.Done()
 			<-wait
 			item := service.FindNextTask(s.ctx, spec, utility.ZeroTime)
-			s.Require().NotNil(item)
+			s.NotNil(item)
+			if item == nil {
+				// We cannot require item to not be nil because the check would happen in
+				// a goroutine. This could cause the test to behave nondeterministically.
+				// See https://github.com/Antonboom/testifylint?tab=readme-ov-file#go-require.
+				return
+			}
 			mu.Lock()
 			dispatchedTasks[item.Id] = true
 			mu.Unlock()
