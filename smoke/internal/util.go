@@ -89,11 +89,13 @@ func WaitForEvergreen(t *testing.T, appServerURL string, client *http.Client) {
 	const attempts = 10
 	for i := 0; i < attempts; i++ {
 		grip.Infof("Checking if Evergreen is up. (%d/%d)", i, attempts)
-		if _, err := client.Get(appServerURL); err != nil {
+		resp, err := client.Get(appServerURL)
+		if err != nil {
 			grip.Error(errors.Wrap(err, "connecting to Evergreen"))
 			time.Sleep(time.Second)
 			continue
 		}
+		defer resp.Body.Close()
 
 		grip.Info("Evergreen is up.")
 

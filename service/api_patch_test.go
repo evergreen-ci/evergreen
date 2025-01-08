@@ -42,6 +42,7 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 			So(err, ShouldBeNil)
 			resp, err := http.DefaultClient.Do(request)
 			require.NoError(t, err, "problem making request")
+			defer resp.Body.Close()
 			So(resp.StatusCode, ShouldEqual, 404)
 		})
 
@@ -63,6 +64,7 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 			So(err, ShouldBeNil)
 			resp, err := http.DefaultClient.Do(request)
 			require.NoError(t, err, "problem making request")
+			defer resp.Body.Close()
 			data := struct {
 				Project string   `json:"project"`
 				Modules []string `json:"modules"`
@@ -91,6 +93,7 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 			So(err, ShouldBeNil)
 			resp, err := http.DefaultClient.Do(request)
 			require.NoError(t, err, "problem making request")
+			defer resp.Body.Close()
 			data := struct {
 				Project string   `json:"project"`
 				Modules []string `json:"modules"`
