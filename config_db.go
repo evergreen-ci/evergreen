@@ -52,8 +52,6 @@ var (
 	githubOrgsKey          = bsonutil.MustHaveTag(Settings{}, "GithubOrgs")
 	githubWebhookSecretKey = bsonutil.MustHaveTag(Settings{}, "GithubWebhookSecret")
 	disabledGQLQueriesKey  = bsonutil.MustHaveTag(Settings{}, "DisabledGQLQueries")
-	containerPoolsKey      = bsonutil.MustHaveTag(Settings{}, "ContainerPools")
-	commitQueueKey         = bsonutil.MustHaveTag(Settings{}, "CommitQueue")
 	sshKeyDirectoryKey     = bsonutil.MustHaveTag(Settings{}, "SSHKeyDirectory")
 	sshKeyPairsKey         = bsonutil.MustHaveTag(Settings{}, "SSHKeyPairs")
 	spawnhostKey           = bsonutil.MustHaveTag(Settings{}, "Spawnhost")
