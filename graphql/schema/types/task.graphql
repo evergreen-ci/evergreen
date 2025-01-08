@@ -52,6 +52,9 @@ type Task {
   activatedTime: Time
   ami: String
   annotation: Annotation
+  """
+  This is a base task's display status.
+  """
   baseStatus: String
   baseTask: Task
   blocked: Boolean!
