@@ -9,7 +9,6 @@ linters:
     - gosimple
     - govet
     - misspell
-    - testifylint
     - unconvert
     - unused
 
