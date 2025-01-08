@@ -353,7 +353,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	}
 	builds, err := build.Find(build.ByVersion(downstreamVersions[0].Id))
 	assert.NoError(err)
-	assert.Positive(builds)
+	assert.NotEmpty(builds)
 	for _, b := range builds {
 		assert.False(b.Activated)
 		assert.Equal(downstreamProjectRef.Id, b.Project)
@@ -366,7 +366,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	}
 	tasks, err := task.Find(task.ByVersion(downstreamVersions[0].Id))
 	assert.NoError(err)
-	assert.Positive(tasks)
+	assert.NotEmpty(tasks)
 	for _, t := range tasks {
 		assert.False(t.Activated)
 		assert.Equal(downstreamProjectRef.Id, t.Project)
@@ -486,7 +486,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	}
 	builds, err := build.Find(build.ByVersion(downstreamVersions[0].Id))
 	assert.NoError(err)
-	assert.Positive(builds)
+	assert.NotEmpty(builds)
 	for _, b := range builds {
 		assert.True(b.Activated)
 		assert.Equal(downstreamProjectRef.Id, b.Project)
@@ -499,7 +499,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	}
 	tasks, err := task.Find(task.ByVersion(downstreamVersions[0].Id))
 	assert.NoError(err)
-	assert.Positive(tasks)
+	assert.NotEmpty(tasks)
 	for _, t := range tasks {
 		assert.True(t.Activated)
 		assert.Equal(downstreamProjectRef.Id, t.Project)
@@ -601,7 +601,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 
 	builds, err := build.Find(build.ByVersion(dbVersions[0].Id))
 	assert.NoError(err)
-	assert.Positive(builds)
+	assert.NotEmpty(builds)
 	for _, b := range builds {
 		assert.True(b.Activated)
 		assert.Equal(downstreamProjectRef.Id, b.Project)
@@ -612,7 +612,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	}
 	tasks, err := task.Find(task.ByVersion(dbVersions[0].Id))
 	assert.NoError(err)
-	assert.Positive(tasks)
+	assert.NotEmpty(tasks)
 	for _, t := range tasks {
 		assert.True(t.Activated)
 		assert.Equal(downstreamProjectRef.Id, t.Project)

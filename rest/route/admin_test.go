@@ -331,7 +331,7 @@ func (s *AdminRouteSuite) TestRestartTasksRoute() {
 	s.NotNil(resp)
 	model, ok := resp.Data().(*restModel.RestartResponse)
 	s.True(ok)
-	s.Positive(model.ItemsRestarted)
+	s.NotEmpty(model.ItemsRestarted)
 	s.Nil(model.ItemsErrored)
 }
 

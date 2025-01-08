@@ -60,7 +60,7 @@ func TestCleanup(t *testing.T) {
 			require.NoError(t, err)
 			volumes, err := dockerClient.VolumeList(ctx, volume.ListOptions{})
 			require.NoError(t, err)
-			require.Positive(t, volumes.Volumes)
+			require.NotEmpty(t, volumes.Volumes)
 
 			assert.NoError(t, cleanVolumes(context.Background(), dockerClient, grip.NewJournaler("")))
 

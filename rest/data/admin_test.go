@@ -200,7 +200,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 			s.Equal(testSettings.ServiceFlags.RepotrackerDisabled, v.RepotrackerDisabled)
 		case *evergreen.CloudProviders:
 			foundProvidersEvent = true
-			s.Require().Positive(v.AWS.EC2Keys)
+			s.Require().NotEmpty(v.AWS.EC2Keys)
 			s.Equal(testSettings.Providers.AWS.EC2Keys[0].Key, v.AWS.EC2Keys[0].Key)
 		case *evergreen.UIConfig:
 			foundUiEvent = true
