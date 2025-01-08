@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -28,12 +29,20 @@ func GetIntValue(r *http.Request, valueKey string, defaultValue int) (int, error
 // HTTP status code and the formatted error message. Otherwise, it returns an
 // error message with the HTTP status and raw response body.
 func RespErrorf(resp *http.Response, format string, args ...interface{}) error {
+	return RespError(resp, fmt.Sprintf(format, args...))
+}
+
+// RespError attempts to read a gimlet.ErrorResponse from the response body
+// JSON. If successful, it returns the gimlet.ErrorResponse wrapped with the
+// HTTP status code and the formatted error message. Otherwise, it returns an
+// error message with the HTTP status and raw response body.
+func RespError(resp *http.Response, msg string) error {
 	if resp == nil {
-		return errors.Errorf(format, args...)
+		return errors.New(msg)
 	}
 	wrapError := func(err error) error {
 		err = errors.Wrapf(err, "HTTP status code %d", resp.StatusCode)
-		return errors.Wrapf(err, format, args...)
+		return errors.Wrap(err, msg)
 	}
 
 	defer resp.Body.Close()
