@@ -44,8 +44,11 @@ func TestAPITaskReliabilityBuildFromService(t *testing.T) {
 	assert.Equal(apiDoc.NumTestFailed, serviceDoc.NumTestFailed)
 	assert.Equal(apiDoc.NumSystemFailed, serviceDoc.NumSystemFailed)
 	assert.Equal(apiDoc.NumSetupFailed, serviceDoc.NumSetupFailed)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(apiDoc.SuccessRate, serviceDoc.SuccessRate)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(apiDoc.AvgDurationSuccess, serviceDoc.AvgDurationSuccess)
+	//nolint:testifylint // We expect it to be exactly 0.0.
 	assert.Equal(8.0, serviceDoc.SuccessRate)
 }
 

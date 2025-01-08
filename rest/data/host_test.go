@@ -242,7 +242,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 			s.Contains(err.Error(), "not been allowed by admins")
 		},
 	} {
-		s.T().Run(tName, func(t *testing.T) {
+		s.Run(tName, func() {
 			s.Require().NoError(db.ClearCollections(host.Collection))
 
 			options := &restmodel.HostRequestOptions{
@@ -253,7 +253,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 				InstanceTags: nil,
 			}
 
-			tCase(t, options)
+			tCase(s.T(), options)
 		})
 	}
 }

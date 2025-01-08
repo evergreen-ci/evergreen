@@ -710,6 +710,7 @@ func (s *DistroPatchByIDSuite) TestRunProviderSettingsList() {
 	s.True(ok)
 	s.Equal("/dev/xvdb", mappedDoc.Lookup("device_name").StringValue())
 	s.Equal("ephemeral0", mappedDoc.Lookup("virtual_name").StringValue())
+	//nolint:testifylint // We expect it to be exactly 0.15.
 	s.Equal(doc.Lookup("bid_price").Double(), 0.15)
 	s.Equal("m3.large", doc.Lookup("instance_type").StringValue())
 	s.Equal("mci", doc.Lookup("key_name").StringValue())
@@ -1232,6 +1233,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal("~/dev/xvdb", mountPoint.Lookup("device_name").StringValue())
 	s.Equal("~ephemeral0", mountPoint.Lookup("virtual_name").StringValue())
 	s.Equal("~ami-2814683f", doc.Lookup("ami").StringValue())
+	//nolint:testifylint // We expect it to be exactly 0.10.
 	s.Equal(doc.Lookup("bid_price").Double(), 0.10)
 	s.Equal("~m3.large", doc.Lookup("instance_type").StringValue())
 

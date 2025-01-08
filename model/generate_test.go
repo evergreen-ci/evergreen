@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
