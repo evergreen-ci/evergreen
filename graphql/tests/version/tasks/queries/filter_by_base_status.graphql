@@ -6,7 +6,7 @@
         baseStatus
         baseTask {
           id
-          status
+          displayStatus
         }
         displayName
       }

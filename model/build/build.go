@@ -94,37 +94,6 @@ func (b *Build) IsFinished() bool {
 	return evergreen.IsFinishedBuildStatus(b.Status)
 }
 
-// AllUnblockedTasksOrCompileFinished returns true when all activated tasks in the build have
-// one of the statuses in IsFinishedTaskStatus or the task is considered blocked
-//
-// returns boolean to indicate if tasks are complete, string with either BuildFailed or
-// BuildSucceeded. The string is only valid when the boolean is true
-func (b *Build) AllUnblockedTasksFinished(tasks []task.Task) (bool, string, error) {
-	if !b.Activated {
-		return false, b.Status, nil
-	}
-	allFinished := true
-	status := evergreen.BuildSucceeded
-	for _, t := range tasks {
-		if t.BuildId != b.Id {
-			continue
-		}
-		if evergreen.IsFailedTaskStatus(t.Status) {
-			status = evergreen.BuildFailed
-		}
-		if !evergreen.IsFinishedTaskStatus(t.Status) {
-			if !t.Activated {
-				continue
-			}
-			if !t.Blocked() {
-				allFinished = false
-			}
-		}
-	}
-
-	return allFinished, status, nil
-}
-
 // FindBuildOnBaseCommit returns the build that a patch build is based on.
 func (b *Build) FindBuildOnBaseCommit() (*Build, error) {
 	return FindOne(ByRevisionAndVariant(b.Revision, b.BuildVariant))

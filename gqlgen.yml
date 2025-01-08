@@ -460,8 +460,6 @@ models:
         resolver: true
       spawnHostLink:
         resolver: true
-      status:
-        resolver: true
       isPerfPluginEnabled:
         resolver: true
       project:

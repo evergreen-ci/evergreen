@@ -546,12 +546,6 @@ func (c *Mock) GetAdditionalPatches(ctx context.Context, patchId string, td Task
 	return []string{"555555555555555555555555"}, nil
 }
 
-func (c *Mock) GetPullRequestInfo(ctx context.Context, taskData TaskData, prNum int, owner, repo string, lastAttempt bool) (*apimodels.PullRequestInfo, error) {
-	return &apimodels.PullRequestInfo{
-		Mergeable: utility.TruePtr(),
-	}, nil
-}
-
 func (c *Mock) CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error) {
 	if c.CreateInstallationTokenFail {
 		return "", errors.New("failed to create token")

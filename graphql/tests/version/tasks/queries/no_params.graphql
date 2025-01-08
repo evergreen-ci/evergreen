@@ -6,7 +6,7 @@
         baseStatus
         buildVariant
         displayName
-        status
+        displayStatus
       }
       count
     }

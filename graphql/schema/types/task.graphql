@@ -52,6 +52,9 @@ type Task {
   activatedTime: Time
   ami: String
   annotation: Annotation
+  """
+  This is a base task's display status.
+  """
   baseStatus: String
   baseTask: Task
   blocked: Boolean!
@@ -73,6 +76,9 @@ type Task {
   details: TaskEndDetail
   dispatchTime: Time
   displayName: String!
+  """
+  This is a task's display status and is what is commonly used on the UI.
+  """
   displayStatus: String!
   displayOnly: Boolean
   displayTask: Task
@@ -111,10 +117,9 @@ type Task {
   spawnHostLink: String
   startTime: Time
   """
-  This is a task's display status and is what is commonly used on the UI.
-  In future releases this will be migrated to represent the original status of the task
+  This is a task's original status. It is the status stored in the database, and is distinct from the displayStatus.
   """
-  status: String! @deprecated(reason: "use displayStatus instead. Status will be migrated to reflect the original status")
+  status: String! 
   tags: [String!]!
   taskGroup: String
   taskGroupMaxHosts: Int

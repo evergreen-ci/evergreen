@@ -371,6 +371,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	taskConfig.TaskOutput = a.opts.SetupData.TaskOutput
 	taskConfig.TaskSync = a.opts.SetupData.TaskSync
 	taskConfig.MaxExecTimeoutSecs = a.opts.SetupData.MaxExecTimeoutSecs
+	taskConfig.InternalBuckets = a.opts.SetupData.InternalBuckets
 
 	// Set AWS credentials for task output buckets.
 	awsCreds := pail.CreateAWSCredentials(taskConfig.TaskOutput.Key, taskConfig.TaskOutput.Secret, "")

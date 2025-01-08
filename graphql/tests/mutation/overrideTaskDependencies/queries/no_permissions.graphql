@@ -2,7 +2,7 @@ mutation{
   overrideTaskDependencies(taskId: "no_permissions"){
     id
     execution
-    status
+    displayStatus
     dependsOn {
       name
       metStatus
