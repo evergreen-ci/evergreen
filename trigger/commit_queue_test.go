@@ -2,7 +2,6 @@ package trigger
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
