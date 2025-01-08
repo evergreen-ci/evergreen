@@ -32,12 +32,12 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	}
 	require.NoError(t, project.Insert())
 	projectId, statusCode, err := GetProjectIdFromParams(ctx, map[string]string{"projectId": project.Id})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, statusCode, http.StatusOK)
 	require.Equal(t, projectId, project.Id)
 
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"projectIdentifier": project.Identifier})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, statusCode, http.StatusOK)
 	require.Equal(t, projectId, project.Id)
 
@@ -48,12 +48,12 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	}
 	require.NoError(t, task.Insert())
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"taskId": task.Id})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, statusCode, http.StatusOK)
 	require.Equal(t, projectId, project.Id)
 
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"taskId": "does-not-exist"})
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Equal(t, statusCode, http.StatusNotFound)
 	require.Equal(t, projectId, "")
 
@@ -64,12 +64,12 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	}
 	require.NoError(t, version.Insert())
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"versionId": version.Id})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, statusCode, http.StatusOK)
 	require.Equal(t, projectId, project.Id)
 
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"versionId": "does-not-exist"})
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Equal(t, statusCode, http.StatusNotFound)
 	require.Equal(t, projectId, "")
 
@@ -81,17 +81,17 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	}
 	require.NoError(t, patch.Insert())
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"patchId": patchId.Hex()})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, statusCode, http.StatusOK)
 	require.Equal(t, projectId, project.Id)
 
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"patchId": "invalid-patch-id"})
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Equal(t, statusCode, http.StatusBadRequest)
 	require.Equal(t, projectId, "")
 
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"patchId": bson.NewObjectId().Hex()})
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Equal(t, statusCode, http.StatusNotFound)
 	require.Equal(t, projectId, "")
 
@@ -102,12 +102,12 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	}
 	require.NoError(t, build.Insert())
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"buildId": build.Id})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, statusCode, http.StatusOK)
 	require.Equal(t, projectId, project.Id)
 
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"buildId": "does-not-exist"})
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Equal(t, statusCode, http.StatusNotFound)
 	require.Equal(t, projectId, "")
 
@@ -119,12 +119,12 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	}
 	require.NoError(t, testLog.Insert())
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"logId": testLog.Id})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, statusCode, http.StatusOK)
 	require.Equal(t, projectId, project.Id)
 
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"logId": "does-not-exist"})
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Equal(t, statusCode, http.StatusNotFound)
 	require.Equal(t, projectId, "")
 
@@ -136,18 +136,18 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	}
 	require.NoError(t, repo.Upsert())
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"repoId": repo.ProjectRef.Id})
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, statusCode, http.StatusOK)
 	require.Equal(t, projectId, repo.ProjectRef.Id)
 
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"repoId": "does-not-exist"})
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Equal(t, statusCode, http.StatusNotFound)
 	require.Equal(t, projectId, "")
 
 	// Parameters are empty.
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{})
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Equal(t, statusCode, http.StatusNotFound)
 	require.Equal(t, projectId, "")
 }

@@ -213,11 +213,11 @@ func TestGeneratePollRun(t *testing.T) {
 	resp = h.Run(ctx)
 	require.NotNil(t, resp)
 	require.Equal(t, http.StatusOK, resp.Status())
-	require.Equal(t, true, resp.Data().(*apimodels.GeneratePollResponse).Finished)
+	require.True(t, resp.Data().(*apimodels.GeneratePollResponse).Finished)
 
 	impl.taskID = "2"
 	resp = h.Run(ctx)
 	require.NotNil(t, resp)
 	require.Equal(t, http.StatusOK, resp.Status())
-	require.Equal(t, false, resp.Data().(*apimodels.GeneratePollResponse).Finished)
+	require.False(t, resp.Data().(*apimodels.GeneratePollResponse).Finished)
 }

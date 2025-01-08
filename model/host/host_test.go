@@ -785,9 +785,9 @@ func TestSetTaskGroupTeardownStartTime(t *testing.T) {
 	require.NoError(t, h.Insert(ctx))
 
 	now := time.Now()
-	assert.False(t, now.Sub(h.TaskGroupTeardownStartTime) < time.Second)
+	assert.Less(t, now.Sub(h.TaskGroupTeardownStartTime), time.Second)
 	require.NoError(t, h.SetTaskGroupTeardownStartTime(ctx))
-	assert.True(t, now.Sub(h.TaskGroupTeardownStartTime) < time.Second)
+	assert.Less(t, now.Sub(h.TaskGroupTeardownStartTime), time.Second)
 
 	dbHost, err := FindOneId(ctx, h.Id)
 	require.NoError(t, err)
@@ -1490,7 +1490,7 @@ func TestShouldDeployAgentMonitor(t *testing.T) {
 
 			hosts, err := Find(ctx, ShouldDeployAgentMonitor())
 			require.NoError(t, err)
-			require.Len(t, hosts, 0)
+			require.Empty(t, hosts)
 		},
 		"DoesNotNeedNewAgentMonitor": func(t *testing.T, h *Host) {
 			h.NeedsNewAgentMonitor = false
@@ -1498,7 +1498,7 @@ func TestShouldDeployAgentMonitor(t *testing.T) {
 
 			hosts, err := Find(ctx, ShouldDeployAgentMonitor())
 			require.NoError(t, err)
-			require.Len(t, hosts, 0)
+			require.Empty(t, hosts)
 		},
 		"BootstrapLegacySSH": func(t *testing.T, h *Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
@@ -1506,7 +1506,7 @@ func TestShouldDeployAgentMonitor(t *testing.T) {
 
 			hosts, err := Find(ctx, ShouldDeployAgentMonitor())
 			require.NoError(t, err)
-			require.Len(t, hosts, 0)
+			require.Empty(t, hosts)
 		},
 		"BootstrapSSH": func(t *testing.T, h *Host) {
 			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
@@ -3519,7 +3519,7 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 		should[f.Id] = true
 	}
 	for k, v := range should {
-		assert.True(v, fmt.Sprintf("failed to find host %s", k))
+		assert.True(v, "failed to find host '%s'", k)
 	}
 
 	found, err = allHostsSpawnedByFinishedBuilds(ctx)
@@ -3533,7 +3533,7 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 		should[f.Id] = true
 	}
 	for k, v := range should {
-		assert.True(v, fmt.Sprintf("failed to find host %s", k))
+		assert.True(v, "failed to find host '%s'", k)
 	}
 
 	found, err = AllHostsSpawnedByTasksToTerminate(ctx)
@@ -3551,7 +3551,7 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 		should[f.Id] = true
 	}
 	for k, v := range should {
-		assert.True(v, fmt.Sprintf("failed to find host %s", k))
+		assert.True(v, "failed to find host '%s'", k)
 	}
 }
 
@@ -5473,14 +5473,14 @@ func (s *FindHostsSuite) TestLimit() {
 	hosts, err := GetHostsByFromIDWithStatus(ctx, "", evergreen.HostTerminated, "", 2)
 	s.NoError(err)
 	s.NotNil(hosts)
-	s.Equal(2, len(hosts))
+	s.Len(hosts, 2)
 	s.Equal("host2", hosts[0].Id)
 	s.Equal("host3", hosts[1].Id)
 
 	hosts, err = GetHostsByFromIDWithStatus(ctx, "", evergreen.HostTerminated, "", 3)
 	s.NoError(err)
 	s.NotNil(hosts)
-	s.Equal(3, len(hosts))
+	s.Len(hosts, 3)
 }
 
 func (s *FindHostsSuite) TestSetHostStatus() {
@@ -6581,7 +6581,7 @@ func TestGetNextScheduledStopTime(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.True(t, nextStop.After(now), "next stop time should be in the future")
-			assert.True(t, nextStop.Compare(now.AddDate(0, 0, 7)) <= 0, "next stop time should within the next week")
+			assert.LessOrEqual(t, nextStop.Compare(now.AddDate(0, 0, 7)), 0, "next stop time should within the next week")
 			assert.Equal(t, time.Sunday, nextStop.Weekday(), "next stop time should be on a Sunday")
 			assert.Zero(t, nextStop.Hour(), "next stop time should be at midnight")
 			assert.Zero(t, nextStop.Minute(), "next stop time should be at midnight")
@@ -6853,7 +6853,7 @@ func TestGetNextScheduledStartTime(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.True(t, nextStart.After(now), "next start time should be in the future")
-			assert.True(t, nextStart.Compare(now.AddDate(0, 0, 7)) <= 0, "next start time should within the next week")
+			assert.LessOrEqual(t, nextStart.Compare(now.AddDate(0, 0, 7)), 0, "next start time should within the next week")
 			assert.Equal(t, time.Monday, nextStart.Weekday(), "next start time should be on Monday")
 			assert.Zero(t, nextStart.Hour(), "next start time should be at midnight")
 			assert.Zero(t, nextStart.Minute(), "next start time should be at midnight")

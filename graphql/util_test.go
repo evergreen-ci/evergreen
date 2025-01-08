@@ -71,7 +71,7 @@ func TestCanRestartTask(t *testing.T) {
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
 	canRestart := canRestartTask(blockedTask)
-	assert.Equal(t, canRestart, false)
+	assert.False(t, canRestart)
 
 	blockedDisplayTask := &task.Task{
 		Id:             "t4",
@@ -82,7 +82,7 @@ func TestCanRestartTask(t *testing.T) {
 		ExecutionTasks: []string{"exec1", "exec2"},
 	}
 	canRestart = canRestartTask(blockedDisplayTask)
-	assert.Equal(t, canRestart, true)
+	assert.True(t, canRestart)
 
 	executionTask := &task.Task{
 		Id:            "t2",
@@ -318,7 +318,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 	}
 
 	versionsMatchingTasksMap, err := concurrentlyBuildVersionsMatchingTasksMap(ctx, versions, opts)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, versionsMatchingTasksMap)
 	assert.Equal(t, versionsMatchingTasksMap["v1"], true)
 	assert.Equal(t, versionsMatchingTasksMap["v2"], false)
@@ -332,7 +332,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 	}
 
 	versionsMatchingTasksMap, err = concurrentlyBuildVersionsMatchingTasksMap(ctx, versions, opts)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, versionsMatchingTasksMap)
 	assert.Equal(t, versionsMatchingTasksMap["v1"], true)
 	assert.Equal(t, versionsMatchingTasksMap["v2"], true)
@@ -346,7 +346,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 	}
 
 	versionsMatchingTasksMap, err = concurrentlyBuildVersionsMatchingTasksMap(ctx, versions, opts)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, versionsMatchingTasksMap)
 	assert.Equal(t, versionsMatchingTasksMap["v1"], false)
 	assert.Equal(t, versionsMatchingTasksMap["v2"], false)

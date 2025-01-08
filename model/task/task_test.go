@@ -4338,7 +4338,7 @@ func (s *TaskConnectorFetchByIdSuite) SetupTest() {
 func (s *TaskConnectorFetchByIdSuite) TestFindById() {
 	for i := 0; i < 10; i++ {
 		found, err := FindOneId(fmt.Sprintf("task_%d", i))
-		s.Nil(err)
+		s.NoError(err)
 		s.Equal(found.BuildId, fmt.Sprintf("build_%d", i))
 	}
 }

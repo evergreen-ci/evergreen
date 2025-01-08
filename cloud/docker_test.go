@@ -265,7 +265,7 @@ func (s *DockerSuite) TestGetContainers() {
 
 	containers, err := s.manager.GetContainers(ctx, parent)
 	s.NoError(err)
-	s.Equal(1, len(containers))
+	s.Len(len(containers), 1)
 	s.Equal("container-1", containers[0])
 }
 

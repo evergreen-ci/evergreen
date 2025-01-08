@@ -1823,7 +1823,7 @@ func (s *FindProjectsSuite) TestGetProjectSettingsNoRepo() {
 		Admins:  []string{},
 	}
 	projectSettingsEvent, err := GetProjectSettings(projRef)
-	s.Nil(err)
+	s.NoError(err)
 	s.NotNil(projectSettingsEvent)
 	s.False(projectSettingsEvent.GithubHooksEnabled)
 }

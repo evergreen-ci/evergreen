@@ -157,10 +157,10 @@ func (s *VersionSuite) TestPatchVersionVersion() {
 	s.Equal(http.StatusOK, res.Status())
 
 	v, err := serviceModel.VersionFindOneId(versionId)
-	s.Nil(err)
+	s.NoError(err)
 	for _, b := range v.BuildIds {
 		build, err := build.FindOneId(b)
-		s.Nil(err)
+		s.NoError(err)
 		s.Equal(true, build.Activated)
 	}
 	s.Equal(versionId, v.Id)

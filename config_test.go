@@ -435,9 +435,9 @@ func (s *AdminSuite) TestSchedulerConfig() {
 	}
 
 	err := config.Set(ctx)
-	s.NoError(err)
+	s.Require().NoError(err)
 	settings, err := GetConfig(ctx)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Scheduler)
 }
@@ -739,7 +739,7 @@ func (s *AdminSuite) TestHostJasperConfig() {
 	defer cancel()
 
 	emptyConfig := HostJasperConfig{}
-	s.NoError(emptyConfig.ValidateAndDefault())
+	s.Require().NoError(emptyConfig.ValidateAndDefault())
 	s.Equal(DefaultJasperPort, emptyConfig.Port)
 
 	config := HostJasperConfig{

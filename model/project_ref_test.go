@@ -45,7 +45,7 @@ func TestFindOneProjectRef(t *testing.T) {
 	assert.Nil(projectRef.Insert())
 
 	projectRefFromDB, err := FindBranchProjectRef("ident")
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.NotNil(projectRefFromDB)
 
 	assert.Equal(projectRefFromDB.Owner, "mongodb")
@@ -3942,7 +3942,7 @@ func TestValidateOwnerAndRepo(t *testing.T) {
 	require.NoError(t, project.Insert())
 
 	err := project.ValidateOwnerAndRepo([]string{"evergreen-ci"})
-	assert.NotNil(t, err)
+	require.Error(t, err)
 
 	// a project with an owner and repo should not error
 	project.Owner = "evergreen-ci"

@@ -148,7 +148,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestProjectNonexistentFail() {
 func (s *PatchConnectorFetchByProjectSuite) TestEmptyPatchesOkay() {
 	patches, err := FindPatchesByProject("project4", s.time, 1)
 	s.NoError(err)
-	s.Len(patches, 0)
+	s.Empty(patches)
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyWithinBound() {
@@ -162,7 +162,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyWithinBound() {
 func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyOutOfBound() {
 	patches, err := FindPatchesByProject("project1", s.time.Add(-time.Hour), 1)
 	s.NoError(err)
-	s.Len(patches, 0)
+	s.Empty(patches, 0)
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFindPatchesByIdentifier() {

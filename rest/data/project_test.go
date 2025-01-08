@@ -211,7 +211,7 @@ func (s *ProjectConnectorGetSuite) TearDownSuite() {
 func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 	events, err := GetProjectEventLog(projectId, time.Now(), 0)
 	s.NoError(err)
-	s.Equal(projEventCount, len(events))
+	s.Len(events, projEventCount)
 	for _, eventLog := range events {
 		s.Len(eventLog.Before.Aliases, 1)
 		s.Len(eventLog.After.Aliases, 1)
@@ -338,8 +338,8 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	_, ok := newVars.Vars["a"]
 	s.False(ok)
 
-	s.Equal(newVars.PrivateVars["b"], true)
-	s.Equal(newVars.PrivateVars["c"], true)
+	s.True(newVars.PrivateVars["b"])
+	s.True(newVars.PrivateVars["c"])
 	_, ok = newVars.PrivateVars["a"]
 	s.False(ok)
 
@@ -594,9 +594,9 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 
 	// Because this document does not use <Fieldname>Default flags, it returns empty arrays instead of nil
 	require.NotNil(t, eventLog.Before.ProjectRef.PeriodicBuilds)
-	require.Len(t, eventLog.Before.ProjectRef.PeriodicBuilds, 0)
+	require.Empty(t, eventLog.Before.ProjectRef.PeriodicBuilds)
 	require.NotNil(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
-	require.Len(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands, 0)
+	require.Empty(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
 }
 
 func TestRequestS3Creds(t *testing.T) {

@@ -569,7 +569,7 @@ func (s *GenerateSuite) TearDownTest() {
 func (s *GenerateSuite) TestParseProjectFromJSON() {
 	g, err := ParseProjectFromJSONString(sampleGenerateTasksYml)
 	s.NotNil(g)
-	s.Nil(err)
+	s.NoError(err)
 
 	s.Len(g.Functions, 2)
 	s.Contains(g.Functions, "echo-hi")

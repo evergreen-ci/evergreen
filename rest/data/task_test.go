@@ -73,8 +73,8 @@ func (s *TaskConnectorFetchByBuildSuite) TestFindByBuild() {
 	for bix := 0; bix < s.numBuilds; bix++ {
 		foundTasks, err := FindTasksByBuildId(fmt.Sprintf("build_%d", bix),
 			"", "", 0, 1)
-		s.Nil(err)
-		s.Equal(s.numTasks, len(foundTasks))
+		s.NoError(err)
+		s.Len(foundTasks, s.numTasks)
 		for tix, t := range foundTasks {
 			s.Equal(s.taskIds[bix][tix], t.Id)
 		}
@@ -86,8 +86,8 @@ func (s *TaskConnectorFetchByBuildSuite) TestFindByBuildFail() {
 		for bix := 0; bix < s.numBuilds; bix++ {
 			foundTasks, err := FindTasksByBuildId(fmt.Sprintf("build_%d", bix),
 				"", status, 0, 1)
-			s.Nil(err)
-			s.Equal(s.numTasks/2, len(foundTasks))
+			s.NoError(err)
+			s.Len(foundTasks, s.numTasks/2)
 			for _, t := range foundTasks {
 				s.Equal(status, t.Status)
 			}
@@ -102,7 +102,7 @@ func (s *TaskConnectorFetchByBuildSuite) TestFindByBuildAndStatus() {
 		for i := 0; i < s.numTasks; i++ {
 			foundTasks, err := FindTasksByBuildId(buildId, tids[i],
 				"", 0, sort)
-			s.Nil(err)
+			s.NoError(err)
 
 			startAt := 0
 			if sort < 0 {
@@ -132,7 +132,7 @@ func (s *TaskConnectorFetchByBuildSuite) TestFindFromMiddle() {
 		taskName := tids[index]
 		foundTasks, err := FindTasksByBuildId(buildId, taskName,
 			"", limit, 1)
-		s.Nil(err)
+		s.NoError(err)
 		s.Equal(limit, len(foundTasks))
 		for ix, t := range foundTasks {
 			s.Equal(tids[ix+index], t.Id)
@@ -142,7 +142,7 @@ func (s *TaskConnectorFetchByBuildSuite) TestFindFromMiddle() {
 
 func (s *TaskConnectorFetchByBuildSuite) TestFindFromMiddleTaskFail() {
 	foundTests, err := FindTasksByBuildId("build_0", "fake_task", "", 0, 1)
-	s.NotNil(err)
+	s.Error(err)
 	s.Equal(0, len(foundTests))
 
 	s.IsType(gimlet.ErrorResponse{}, err)
@@ -159,7 +159,7 @@ func (s *TaskConnectorFetchByBuildSuite) TestFindFromMiddleBuildFail() {
 func (s *TaskConnectorFetchByBuildSuite) TestFindEmptyTaskId() {
 	buildId := "build_0"
 	foundTasks, err := FindTasksByBuildId(buildId, "", "", 1, 1)
-	s.Nil(err)
+	s.NoError(err)
 	s.Equal(1, len(foundTasks))
 	task1 := foundTasks[0]
 	s.Equal(s.taskIds[0][0], task1.Id)
@@ -332,7 +332,7 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommitAn
 					Limit:          0,
 				}
 				foundTasks, err := FindTasksByProjectAndCommit(opts)
-				s.Nil(err)
+				s.NoError(err)
 				s.Equal(s.numTasks/2, len(foundTasks))
 				for _, t := range foundTasks {
 					s.Equal(status, t.Status)
@@ -356,7 +356,7 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommitAn
 					Limit:          0,
 				}
 				foundTasks, err := FindTasksByProjectAndCommit(opts)
-				s.Nil(err)
+				s.NoError(err)
 				s.Equal(s.numTasks/2, len(foundTasks))
 				for _, t := range foundTasks {
 					s.Equal(variant, t.BuildVariant)
@@ -380,7 +380,7 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommitAn
 					Limit:          0,
 				}
 				foundTasks, err := FindTasksByProjectAndCommit(opts)
-				s.Nil(err)
+				s.NoError(err)
 				s.Equal(1, len(foundTasks))
 				for _, t := range foundTasks {
 					s.Equal(fmt.Sprintf("task_%d", tix), t.DisplayName)

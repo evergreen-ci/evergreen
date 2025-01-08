@@ -114,7 +114,7 @@ func TestMainlineCommits(t *testing.T) {
 
 	require.Equal(t, 10, utility.FromIntPtr(res.NextPageOrderNumber))
 	assert.Nil(t, res.PrevPageOrderNumber)
-	require.Equal(t, 3, len(res.Versions))
+	require.Len(t, res.Versions, 3)
 
 	buildVariantOptions = BuildVariantOptions{
 		Statuses: []string{evergreen.TaskFailed},
@@ -128,13 +128,13 @@ func TestMainlineCommits(t *testing.T) {
 
 	require.Equal(t, 6, utility.FromIntPtr(res.NextPageOrderNumber))
 	assert.Nil(t, res.PrevPageOrderNumber)
-	require.Equal(t, 3, len(res.Versions))
+	require.Len(t, res.Versions, 3)
 
 	assert.Nil(t, res.Versions[0].RolledUpVersions)
 	assert.NotNil(t, res.Versions[0].Version)
 
 	assert.NotNil(t, res.Versions[1].RolledUpVersions)
-	require.Equal(t, 5, len(res.Versions[1].RolledUpVersions))
+	require.Len(t, res.Versions[1].RolledUpVersions, 5)
 
 	assert.NotNil(t, res.Versions[2].Version)
 

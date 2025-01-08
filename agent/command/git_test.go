@@ -263,7 +263,7 @@ func (s *GitGetProjectSuite) TestGitPlugin() {
 	s.comm.CreateInstallationTokenResult = "token"
 	s.comm.CreateGitHubDynamicAccessTokenResult = "token"
 	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
+		s.NotEmpty(task.Commands)
 		for _, command := range task.Commands {
 			pluginCmds, err := Render(command, &conf.Project, BlockInfo{})
 			s.NoError(err)
@@ -303,7 +303,7 @@ func (s *GitGetProjectSuite) TestTokenIsRedactedWhenGenerated() {
 
 	runCommands := func(logger client.LoggerProducer) {
 		for _, task := range conf.Project.Tasks {
-			s.NotEqual(len(task.Commands), 0)
+			s.NotEmpty(task.Commands)
 			for _, command := range task.Commands {
 				pluginCmds, err := Render(command, &conf.Project, BlockInfo{})
 				s.NoError(err)
@@ -380,7 +380,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 	defer cancel()
 
 	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
+		s.NotEmpty(task.Commands)
 		for _, command := range task.Commands {
 			pluginCmds, err := Render(command, &conf.Project, BlockInfo{})
 			s.NoError(err)

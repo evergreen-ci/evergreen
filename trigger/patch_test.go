@@ -294,11 +294,11 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 
 func (s *patchSuite) TestPatchStarted() {
 	n, err := s.t.patchStarted(s.ctx, &s.subs[0])
-	s.Nil(err)
+	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionStarted
 	n, err = s.t.patchStarted(s.ctx, &s.subs[0])
-	s.Nil(err)
+	s.NoError(err)
 	s.NotNil(n)
 }

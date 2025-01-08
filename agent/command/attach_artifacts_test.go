@@ -92,12 +92,12 @@ func (s *ArtifactsSuite) TestParseErrorsIfTypesDoNotMatch() {
 }
 
 func (s *ArtifactsSuite) TestParseErrorIfNothingIsSet() {
-	s.Len(s.cmd.Files, 0)
+	s.Empty(s.cmd.Files)
 	s.Error(s.cmd.ParseParams(map[string]interface{}{}))
 }
 
 func (s *ArtifactsSuite) TestArtifactErrorsWithInvalidExpansions() {
-	s.Len(s.cmd.Files, 0)
+	s.Empty(s.cmd.Files)
 	s.NoError(s.cmd.ParseParams(map[string]interface{}{
 		"files": []string{
 			"fo${bar",

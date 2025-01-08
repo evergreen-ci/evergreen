@@ -312,7 +312,7 @@ func (s *AgentSuite) TestFinishTaskWithAbnormallyCompletedTask() {
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "task that failed due to non-task-related reasons should record the final status")
 	s.Equal(evergreen.CommandTypeSystem, s.mockCommunicator.EndTaskResult.Detail.Type)
 	s.NotEmpty(s.mockCommunicator.EndTaskResult.Detail.Description)
-	s.Equal(s.mockCommunicator.EndTaskResult.Detail.FailingCommand, "initial task setup")
+	s.Equal("initial task setup", s.mockCommunicator.EndTaskResult.Detail.FailingCommand)
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Task encountered unexpected task lifecycle system failure",
@@ -400,8 +400,8 @@ pre:
 	s.Error(err)
 	s.True(utility.IsContextError(errors.Cause(err)), "command should have stopped due to context cancellation")
 
-	s.True(cmdDuration > waitUntilAbort, "command should have only stopped when it received cancel")
-	s.True(cmdDuration < cmdSleepSecs*time.Second, "command should not block if it's taking too long to stop")
+	s.Greater(cmdDuration, waitUntilAbort, "command should have only stopped when it received cancel")
+	s.Less(cmdDuration, cmdSleepSecs*time.Second, "command should not block if it's taking too long to stop")
 }
 
 func (s *AgentSuite) TestCancelledRunCommandsIsNonBlocking() {
@@ -1214,23 +1214,23 @@ func (s *AgentSuite) TestEndTaskResponse() {
 	s.tc.setCurrentCommand(factory())
 
 	const systemFailureDescription = "failure message"
-	s.T().Run("TaskFailingWithCurrentCommandDoesNotOverrideDescription", func(t *testing.T) {
+	s.Run("TaskFailingWithCurrentCommandDoesNotOverrideDescription", func() {
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, "")
 		s.Equal(evergreen.TaskFailed, detail.Status)
 		s.Empty(detail.Description, "the description should be empty if it's not defined by the user and there is no system failure")
 	})
-	s.T().Run("TaskFailingWithCurrentCommandIsOverriddenBySystemFailureDescription", func(t *testing.T) {
+	s.Run("TaskFailingWithCurrentCommandIsOverriddenBySystemFailureDescription", func() {
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, systemFailureDescription)
 		s.Equal(evergreen.TaskFailed, detail.Status)
 		s.Equal(systemFailureDescription, detail.Description)
 	})
-	s.T().Run("TaskSucceedsWithEmptyDescription", func(t *testing.T) {
+	s.Run("TaskSucceedsWithEmptyDescription", func() {
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, "")
 		s.False(detail.TimedOut)
 		s.Equal(evergreen.TaskSucceeded, detail.Status)
 		s.Empty(detail.Description)
 	})
-	s.T().Run("TaskSucceedsWithSystemFailureDescription", func(t *testing.T) {
+	s.Run("TaskSucceedsWithSystemFailureDescription", func() {
 		s.tc.setTimedOut(true, globals.IdleTimeout)
 		defer s.tc.setTimedOut(false, "")
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskSucceeded, systemFailureDescription)
@@ -1239,7 +1239,7 @@ func (s *AgentSuite) TestEndTaskResponse() {
 		s.Equal(systemFailureDescription, detail.Description)
 		s.Empty(detail.FailingCommand, "failing command should be empty if the task succeeded")
 	})
-	s.T().Run("TaskWithUserDefinedTaskStatusAndDescriptionOverridesDescriptionAndFailingCommand", func(t *testing.T) {
+	s.Run("TaskWithUserDefinedTaskStatusAndDescriptionOverridesDescriptionAndFailingCommand", func() {
 		s.tc.userEndTaskResp = &triggerEndTaskResp{
 			Description: "user description of what failed",
 			Status:      evergreen.TaskFailed,
@@ -1257,14 +1257,14 @@ func (s *AgentSuite) TestEndTaskResponse() {
 		s.Equal(s.tc.userEndTaskResp.Description, detail.Description)
 		s.Equal(detail.FailingCommand, cmd.FullDisplayName())
 	})
-	s.T().Run("TaskHitsIdleTimeoutAndFailsResultsInFailureWithTimeout", func(t *testing.T) {
+	s.Run("TaskHitsIdleTimeoutAndFailsResultsInFailureWithTimeout", func() {
 		s.tc.setTimedOut(true, globals.IdleTimeout)
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, systemFailureDescription)
 		s.True(detail.TimedOut)
 		s.Equal(evergreen.TaskFailed, detail.Status)
 		s.Equal(systemFailureDescription, detail.Description)
 	})
-	s.T().Run("TaskClearsIdleTimeoutAndFailsResultsInFailureWithoutTimeout", func(t *testing.T) {
+	s.Run("TaskClearsIdleTimeoutAndFailsResultsInFailureWithoutTimeout", func() {
 		s.tc.setTimedOut(false, globals.IdleTimeout)
 		defer s.tc.setTimedOut(false, "")
 		detail := s.a.endTaskResponse(s.ctx, s.tc, evergreen.TaskFailed, systemFailureDescription)
@@ -1272,7 +1272,7 @@ func (s *AgentSuite) TestEndTaskResponse() {
 		s.Equal(evergreen.TaskFailed, detail.Status)
 		s.Equal(systemFailureDescription, detail.Description)
 	})
-	s.T().Run("TaskClearsIdleTimeoutAndTheTaskAlreadyFinishedRunningResultsInSuccessWithoutTimeout", func(t *testing.T) {
+	s.Run("TaskClearsIdleTimeoutAndTheTaskAlreadyFinishedRunningResultsInSuccessWithoutTimeout", func() {
 		// Simulate a (rare) scenario where the idle timeout is reached, but the
 		// last command in the main block already finished. It does record that
 		// the timeout occurred, but the task commands nonetheless still
@@ -2664,17 +2664,17 @@ func (s *AgentSuite) TestUpsertCheckRun() {
 	checkRunOutput, err := buildCheckRun(s.ctx, s.tc)
 	s.NoError(err)
 	s.NotNil(checkRunOutput)
-	s.Equal(checkRunOutput.Title, "This is my report checkRun_value")
-	s.Equal(checkRunOutput.Summary, "We found 6 failures and 2 warnings")
+	s.Equal("This is my report checkRun_value", checkRunOutput.Title)
+	s.Equal("We found 6 failures and 2 warnings", checkRunOutput.Summary)
 	s.Equal(checkRunOutput.Text, "It looks like there are some errors on lines 2 and 4.")
-	s.Assert().Len(checkRunOutput.Annotations, 1)
-	s.Equal(checkRunOutput.Annotations[0].Path, "README.md")
-	s.Equal(checkRunOutput.Annotations[0].AnnotationLevel, "warning")
-	s.Equal(checkRunOutput.Annotations[0].Title, "Error Detector")
-	s.Equal(checkRunOutput.Annotations[0].Message, "message")
-	s.Equal(checkRunOutput.Annotations[0].RawDetails, "Do you mean this other thing?")
-	s.Equal(checkRunOutput.Annotations[0].StartLine, utility.ToIntPtr(2))
-	s.Equal(checkRunOutput.Annotations[0].EndLine, utility.ToIntPtr(4))
+	s.Len(checkRunOutput.Annotations, 1)
+	s.Equal("README.md", checkRunOutput.Annotations[0].Path)
+	s.Equal("warning", checkRunOutput.Annotations[0].AnnotationLevel)
+	s.Equal("Error Detector", checkRunOutput.Annotations[0].Title)
+	s.Equal("message", checkRunOutput.Annotations[0].Message)
+	s.Equal("Do you mean this other thing?", checkRunOutput.Annotations[0].RawDetails)
+	s.Equal(utility.ToIntPtr(2), checkRunOutput.Annotations[0].StartLine)
+	s.Equal(utility.ToIntPtr(4), checkRunOutput.Annotations[0].EndLine)
 }
 
 func (s *AgentSuite) TestUpsertEmptyCheckRun() {
@@ -2762,8 +2762,8 @@ func (s *AgentSuite) TestClearsGitConfig() {
 		"Running task commands failed",
 	})
 
-	s.Assert().NoFileExists(gitConfigPath)
-	s.Assert().NoFileExists(gitCredentialsPath)
+	s.NoFileExists(gitConfigPath)
+	s.NoFileExists(gitCredentialsPath)
 }
 
 func (s *AgentSuite) TestShouldRunSetupGroup() {
@@ -2785,39 +2785,39 @@ func (s *AgentSuite) TestShouldRunSetupGroup() {
 	}
 
 	shouldRun := shouldRunSetupGroup(nextTask, tc)
-	s.Equal(true, shouldRun)
+	s.True(shouldRun)
 
 	tc.ranSetupGroup = true
 
 	shouldRun = shouldRunSetupGroup(nextTask, &taskContext{})
-	s.Equal(true, shouldRun)
+	s.True(shouldRun)
 
 	shouldRun = shouldRunSetupGroup(nextTask, tc)
-	s.Equal(true, shouldRun)
+	s.True(shouldRun)
 
 	nextTask.TaskGroup = "not same"
 	shouldRun = shouldRunSetupGroup(nextTask, tc)
-	s.Equal(true, shouldRun)
+	s.True(shouldRun)
 
 	nextTask.Build = "build1"
 	shouldRun = shouldRunSetupGroup(nextTask, tc)
-	s.Equal(true, shouldRun)
+	s.True(shouldRun)
 
 	nextTask.TaskGroup = "group1"
 	shouldRun = shouldRunSetupGroup(nextTask, tc)
-	s.Equal(false, shouldRun)
+	s.False(shouldRun)
 
 	nextTask.TaskExecution = 1
 	shouldRun = shouldRunSetupGroup(nextTask, tc)
-	s.Equal(true, shouldRun)
+	s.True(shouldRun)
 
 	tc.taskConfig.Task.Execution = 1
 	shouldRun = shouldRunSetupGroup(nextTask, tc)
-	s.Equal(false, shouldRun)
+	s.False(shouldRun)
 
 	tc.taskConfig.Task.Execution = 2
 	shouldRun = shouldRunSetupGroup(nextTask, tc)
-	s.Equal(false, shouldRun)
+	s.False(shouldRun)
 }
 
 // checkMockLogs checks the mock communicator's received task logs. Note that

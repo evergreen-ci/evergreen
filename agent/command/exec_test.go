@@ -192,7 +192,7 @@ func (s *execCmdSuite) TestRunCommandPropagatesError() {
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	exec := cmd.getProc(s.ctx, cmd.Binary, &internal.TaskConfig{Task: task.Task{Id: "foo"}, Distro: &apimodels.DistroView{}}, s.logger)
 	err := cmd.runCommand(s.ctx, exec, s.logger)
-	s.Require().NotNil(err)
+	s.Require().Error(err)
 	s.Contains(err.Error(), "process encountered problem: exit code 1")
 	s.NotContains(err.Error(), "error waiting on process")
 }
@@ -487,7 +487,7 @@ func TestAddTemp(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			env := make(map[string]string)
-			require.Len(t, env, 0)
+			require.Empty(t, env)
 			test(t, env)
 		})
 	}
