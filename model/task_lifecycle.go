@@ -1600,19 +1600,6 @@ func UpdatePatchStatus(ctx context.Context, p *patch.Patch, status string) error
 // UpdateBuildAndVersionStatusForTask updates the status of the task's build based on all the tasks in the build
 // and the task's version based on all the builds in the version.
 // Also update build and version Github statuses based on the subset of tasks and builds included in github checks
-// kim: NOTE: this runs at the end of a task to update its build, then update
-// the version assuming just this task's build changed.
-// kim: NOTE: it uses the cached build statuses to compute the overall version
-// status. It does not re-evaluate every single build. If generate.tasks creates
-// new tasks in a build, I'm pretty sure it doesn't update the build/version
-// status to reflect that. That means this could happen:
-// * generate_resmoke_build_variants runs and creates new builds/tasks, build is
-// "created"
-// * all the tasks in the new build finish, build is "success"
-// * another generator runs and adds new tasks to existing builds, build is
-// "success" (because it wasn't updated by the generator)
-// * generate.tasks finishes and reports the version status as success because
-// all the version's builds are finished.
 func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error {
 	ctx, span := tracer.Start(ctx, "save-builds-and-tasks")
 	defer span.End()

@@ -277,7 +277,6 @@ func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 
 // FindByVersionAndVariants finds all builds that are in the given version and
 // match one of the build variant names.
-// kim: TODO: add small unit test
 func FindByVersionAndVariants(ctx context.Context, version string, variants []string) ([]Build, error) {
 	if len(variants) == 0 {
 		return nil, nil

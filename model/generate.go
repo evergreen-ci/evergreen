@@ -374,12 +374,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 // that have added generated tasks to run. For example, if a build was already
 // finished and just had new tasks generated, the status should be updated to
 // running.
-// kim: TODO: add Save tests for build status updates.
 func updateBuildStatusesForGeneratedTasks(ctx context.Context, versionID string, newTVPairsForExistingVariants TaskVariantPairs) error {
-	// kim: NOTE: first need to get build IDs of existing builds that had tasks
-	// added to determine which builds may need their status updated. The
-	// task/build creation functions don't return the created tasks/builds, so
-	// we have to query them.
 	bvs := getBuildVariantsFromPairs(newTVPairsForExistingVariants)
 
 	builds, err := build.FindByVersionAndVariants(ctx, versionID, bvs)
@@ -392,10 +387,6 @@ func updateBuildStatusesForGeneratedTasks(ctx context.Context, versionID string,
 		buildIDs = append(buildIDs, b.Id)
 	}
 
-	// kim: NOTE: I didn't verify, but it may be sufficient to call
-	// UpdateVersionAndPatchStatusForBuilds here to ensure the build statuses
-	// are updated for new tasks. Should write unit test and verify that it
-	// fails before change and succeeds after change.
 	return UpdateVersionAndPatchStatusForBuilds(ctx, buildIDs)
 }
 
