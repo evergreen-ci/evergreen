@@ -1,5 +1,5 @@
 {
-  waterfall(options: { projectIdentifier: "project_sandbox" }) {
+  waterfall(options: { projectIdentifier: "evergreen" }) {
     versions {
       version {
         activated
