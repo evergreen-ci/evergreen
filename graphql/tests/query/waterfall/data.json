@@ -140,6 +140,39 @@
       "author": "sophie.stadler",
       "status": "inactive",
       "order": 3
+    },
+    {
+      "_id": "sandbox_active",
+      "gitspec": "abc",
+      "identifier": "sandbox_project_id",
+      "r": "gitter_request",
+      "activated": true,
+      "author": "sophie.stadler",
+      "status": "created",
+      "order": 3,
+      "create_time": {
+        "$date": "2020-01-05T12:00:00Z"
+      }
+    },
+    {
+      "_id": "sandbox_inactive1",
+      "gitspec": "abc",
+      "identifier": "sandbox_project_id",
+      "r": "gitter_request",
+      "activated": false,
+      "author": "sophie.stadler",
+      "status": "inactive",
+      "order": 2
+    },
+    {
+      "_id": "sandbox_inactive2",
+      "gitspec": "abc",
+      "identifier": "sandbox_project_id",
+      "r": "gitter_request",
+      "activated": false,
+      "author": "sophie.stadler",
+      "status": "inactive",
+      "order": 1
     }
   ],
   "tasks": [
@@ -238,7 +271,7 @@
     },
     {
       "_id": "sandbox_project_id",
-      "identifier": "project_sandbox"
+      "identifier": "sandbox"
     }
   ],
   "builds": [
