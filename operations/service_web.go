@@ -67,6 +67,8 @@ func startWebService() cli.Command {
 
 			tracer := tp.Tracer("github.com/evergreen-ci/evergreen/operations")
 			ctx, startServiceSpan := tracer.Start(ctx, "StartService")
+			// This is only in case of an error.
+			defer startServiceSpan.End()
 
 			confPath := c.String(confFlagName)
 			versionID := c.String(versionIDFlagName)
@@ -176,6 +178,7 @@ func startWebService() cli.Command {
 				close(adminWait)
 			}()
 
+			// This end span is the correct time to end the span for the service startup.
 			startServiceSpan.End()
 			if sdkTracerProvider != nil {
 				catcher.Add(sdkTracerProvider.Shutdown(ctx))

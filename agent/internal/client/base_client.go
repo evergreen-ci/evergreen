@@ -953,7 +953,7 @@ func (c *baseCommunicator) CreateInstallationToken(ctx context.Context, td TaskD
 	return token.Token, nil
 }
 
-func (c *baseCommunicator) CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner, repo string, permissions *github.InstallationPermissions) (string, error) {
+func (c *baseCommunicator) CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner, repo string, permissions *github.InstallationPermissions) (string, *github.InstallationPermissions, error) {
 	info := requestInfo{
 		method:   http.MethodPost,
 		path:     fmt.Sprintf("task/%s/github_dynamic_access_token/%s/%s", td.ID, owner, repo),
@@ -961,19 +961,19 @@ func (c *baseCommunicator) CreateGitHubDynamicAccessToken(ctx context.Context, t
 	}
 	resp, err := c.request(ctx, info, permissions)
 	if err != nil {
-		return "", errors.Wrapf(err, "creating github dynamic access token for '%s/%s'", owner, repo)
+		return "", nil, errors.Wrapf(err, "creating github dynamic access token for '%s/%s'", owner, repo)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", util.RespErrorf(resp, "creating github dynamic access token for '%s/%s'", owner, repo)
+		return "", nil, util.RespErrorf(resp, "creating github dynamic access token for '%s/%s'", owner, repo)
 	}
-	token := apimodels.Token{}
-	if err := utility.ReadJSON(resp.Body, &token); err != nil {
-		return "", errors.Wrap(err, "reading github dynamic access token from response")
+	r := apimodels.Token{}
+	if err := utility.ReadJSON(resp.Body, &r); err != nil {
+		return "", nil, errors.Wrap(err, "reading github dynamic access token from response")
 	}
 
-	return token.Token, nil
+	return r.Token, r.Permissions, nil
 }
 
 func (c *baseCommunicator) RevokeGitHubDynamicAccessToken(ctx context.Context, td TaskData, token string) error {

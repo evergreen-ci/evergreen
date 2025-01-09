@@ -1,6 +1,6 @@
 mutation {
   restartTask(taskId: "task1", failedOnly: false) {
-    status
+    displayStatus
     id
   }
 }

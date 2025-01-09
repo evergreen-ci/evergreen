@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -120,6 +121,14 @@ func Patch() cli.Command {
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			outputJSON := c.Bool(jsonFlagName)
+			if outputJSON {
+				// If outputting the patch data as JSON, suppress any non-error
+				// logs since the logs won't be in JSON format. Errors should
+				// still appear so users can diagnose issues.
+				l := grip.GetSender().Level()
+				l.Threshold = level.Error
+				grip.Error(errors.Wrap(grip.SetLevel(l), "increasing log level to suppress non-errors for JSON output"))
+			}
 			args := c.Args()
 			params := &patchParams{
 				Project:           c.String(projectFlagName),
@@ -257,7 +266,7 @@ func Patch() cli.Command {
 						continue
 					}
 					if err = addModuleToPatch(params, args, conf, newPatch, &module, modulePath); err != nil {
-						grip.ErrorWhen(!outputJSON, fmt.Sprintf("Error adding module '%s' to patch: %s", module.Name, err))
+						grip.Errorf("Error adding module '%s' to patch: %s", module.Name, err)
 					}
 				}
 			}
@@ -357,6 +366,7 @@ func PatchFile() cli.Command {
 		baseFlagName        = "base"
 		diffPathFlagName    = "diff-file"
 		diffPatchIdFlagName = "diff-patchId"
+		allowEmptyFlagName  = "allow-empty"
 	)
 
 	return cli.Command{
@@ -375,6 +385,10 @@ func PatchFile() cli.Command {
 				Name:  diffPatchIdFlagName,
 				Usage: "patch id to fetch the full diff (including modules) from",
 			},
+			cli.BoolFlag{
+				Name:  allowEmptyFlagName,
+				Usage: "create an empty patch with no diff",
+			},
 			cli.StringFlag{
 				Name: patchAuthorFlag,
 				Usage: "optionally define the patch author by providing an Evergreen username; " +
@@ -385,11 +399,14 @@ func PatchFile() cli.Command {
 			autoUpdateCLI,
 			mutuallyExclusiveArgs(false, patchDescriptionFlagName, autoDescriptionFlag),
 			mutuallyExclusiveArgs(false, diffPathFlagName, diffPatchIdFlagName),
+			mutuallyExclusiveArgs(false, allowEmptyFlagName, diffPatchIdFlagName),
+			mutuallyExclusiveArgs(false, allowEmptyFlagName, diffPathFlagName),
 			mutuallyExclusiveArgs(false, baseFlagName, diffPatchIdFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			diffPatchId := c.String(diffPatchIdFlagName)
 			diffFilePath := c.String(diffPathFlagName)
+			allowEmpty := c.Bool(allowEmptyFlagName)
 			if diffPatchId == "" && diffFilePath != "" {
 				if _, err := os.Stat(diffFilePath); os.IsNotExist(err) {
 					return errors.Errorf("file '%s' does not exist", diffFilePath)
@@ -448,7 +465,9 @@ func PatchFile() cli.Command {
 			params.Description = params.getDescription()
 			var diffData localDiff
 			var rp *restmodel.APIRawPatch
-			if diffPatchId == "" {
+			if allowEmpty {
+				diffData.base = base
+			} else if diffPatchId == "" {
 				fullPatch, err := os.ReadFile(diffPath)
 				if err != nil {
 					return errors.Wrapf(err, "reading diff file '%s'", diffPath)

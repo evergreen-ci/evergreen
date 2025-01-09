@@ -3,7 +3,7 @@
     tasks(options: { sorts: [{ Key: STATUS, Direction: ASC }] }) {
       data {
         id
-        status
+        displayStatus
       }
       count
     }
