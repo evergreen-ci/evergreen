@@ -610,16 +610,21 @@ func getUpdatedParamMappings(original ParameterMappings, upserted, deleted map[s
 }
 
 // isParameterStoreEnabledForProject checks if Parameter Store is enabled for a
-// project.
+// project. If ignoreProjectFeatureFlag is enabled, the project will use
+// Parameter Store regardless of the project-level feature flag.
 // TODO (DEVPROD-11882): remove feature flag checks once all project vars are
 // using Parameter Store and the rollout is stable.
-func isParameterStoreEnabledForProject(ctx context.Context, ref *ProjectRef) (bool, error) {
+func isParameterStoreEnabledForProject(ctx context.Context, ref *ProjectRef, ignoreProjectFeatureFlag bool) (bool, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "getting service flags")
 	}
 	if flags.ParameterStoreDisabled {
 		return false, nil
+	}
+
+	if ignoreProjectFeatureFlag {
+		return true, nil
 	}
 
 	if ref == nil {
@@ -901,7 +906,7 @@ func (projectVars *ProjectVars) checkAndRunParameterStoreOp(ctx context.Context,
 		"project_id": projectVars.Id,
 		"epic":       "DEVPROD-5552",
 	}))
-	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, ref)
+	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, ref, false)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and will not use Parameter Store",
 		"op":         opName,
