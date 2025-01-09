@@ -191,11 +191,16 @@ func (p *patchParams) displayPatch(ac *legacyClient, params outputPatchParams) e
 	}
 
 	grip.Info("Patch successfully created.")
-	// This is intentionally using fmt.Println instead of grip because if the
-	// output is JSON, informational grip logs are suppressed. Using fmt.Println
-	// ensures the patch output is displayed regardless of logging
-	// configuration.
-	fmt.Println(patchDisp)
+	// Logging to stderr using fmt.Fprintf is a hack to work around two
+	// problems:
+	// 1. The patch display log has historically been written to stderr instead
+	//    of stdout.
+	// 2. Only grip.Error or higher priority messages are logged if running a
+	//    patch with JSON output.
+	// To maintain both behaviors, fmt.Fprintf ensures the patch output is
+	// displayed regardless of grip logging configuration and ensures it
+	// continues going to stderr.
+	fmt.Fprintln(os.Stderr, patchDisp)
 
 	if len(params.patches) == 1 && p.Browse {
 		browserCmd, err := findBrowserCommand()
