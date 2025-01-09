@@ -191,16 +191,17 @@ func (p *patchParams) displayPatch(ac *legacyClient, params outputPatchParams) e
 	}
 
 	grip.Info("Patch successfully created.")
-	// Logging to stderr using fmt.Fprintf is a hack to work around two
-	// problems:
-	// 1. The patch display log has historically been written to stderr instead
-	//    of stdout.
+	// Logging using grip.Error instead of grip.Info for two reasons related to
+	// patch vs patch-file and how grip is set up:
+	// 1. The patch display log has historically been written to stdout for
+	//    `evergreen patch` (which is correct) and stderr for `evergreen
+	//    patch-file` (which is a bug).
 	// 2. Only grip.Error or higher priority messages are logged if running a
-	//    patch with JSON output.
-	// To maintain both behaviors, fmt.Fprintf ensures the patch output is
-	// displayed regardless of grip logging configuration and ensures it
-	// continues going to stderr.
-	fmt.Fprintln(os.Stderr, patchDisp)
+	//    patch with JSON output (i.e. `evergreen patch --json`).
+	// To maintain the inconsistent behavior of how this logs for the patch and
+	// patch-file commands, using grip.Error ensures it will log to the intended
+	// location and will not be suppressed in a patch with JSON output.
+	grip.Error(patchDisp)
 
 	if len(params.patches) == 1 && p.Browse {
 		browserCmd, err := findBrowserCommand()
