@@ -3681,32 +3681,7 @@ var psEnabledButNotSyncedQuery = bson.M{
 	"$or": []bson.M{
 		{projectRefParameterStoreVarsSyncedKey: false},
 		{projectRefParameterStoreVarsSyncedKey: bson.M{"$exists": false}},
-		{projectRefParameterStoreGitHubAppSyncedKey: false},
-		{projectRefParameterStoreGitHubAppSyncedKey: bson.M{"$exists": false}},
 	},
-}
-
-// setParameterStoreGitHubAppAuthSynced marks the project or repo ref to indicate whether
-// its GitHub app auth is synced to Parameter Store.
-func (p *ProjectRef) setParameterStoreGitHubAppAuthSynced(isSynced bool, isRepoRef bool) error {
-	if p.ParameterStoreGitHubAppSynced == isSynced {
-		return nil
-	}
-
-	coll := ProjectRefCollection
-	if isRepoRef {
-		coll = RepoRefCollection
-	}
-
-	if err := db.UpdateId(coll, p.Id, bson.M{
-		"$set": bson.M{
-			projectRefParameterStoreGitHubAppSyncedKey: isSynced,
-		},
-	}); err != nil {
-		return errors.Wrapf(err, "updating project/repo ref GitHub app auth sync state to %t", isSynced)
-	}
-
-	return nil
 }
 
 // FindProjectRefsToSync finds all project refs that have Parameter Sore enabled

@@ -52,9 +52,7 @@ func GitHubAppAuthFindOne(id string) (*githubapp.GithubAppAuth, error) {
 	}
 
 	if err := githubAppCheckAndRunParameterStoreOp(ctx, appAuth, func(ref *ProjectRef, isRepoRef bool) error {
-		if ref.ParameterStoreGitHubAppSynced {
-			return githubAppAuthFindParameterStore(ctx, appAuth)
-		}
+		return githubAppAuthFindParameterStore(ctx, appAuth)
 		return nil
 	}); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -150,10 +148,6 @@ func githubAppAuthUpsertParameterStore(ctx context.Context, appAuth *githubapp.G
 		if err := paramMgr.Delete(ctx, existingParamName); err != nil {
 			return "", errors.Wrapf(err, "deleting old GitHub app private key parameter '%s' from Parameter Store after it was renamed to '%s'", existingParamName, paramName)
 		}
-	}
-
-	if err := pRef.setParameterStoreGitHubAppAuthSynced(true, isRepoRef); err != nil {
-		return "", errors.Wrapf(err, "marking project/repo ref '%s' as having its GitHub app private key synced to Parameter Store", pRef.Id)
 	}
 
 	return paramName, nil
