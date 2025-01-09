@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -120,6 +121,14 @@ func Patch() cli.Command {
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			outputJSON := c.Bool(jsonFlagName)
+			if outputJSON {
+				// If outputting the patch data as JSON, suppress any non-error
+				// logs since the logs won't be in JSON format. Errors should
+				// still appear so users can diagnose issues.
+				l := grip.GetSender().Level()
+				l.Threshold = level.Error
+				grip.Error(errors.Wrap(grip.SetLevel(l), "increasing log level to suppress non-errors for JSON output"))
+			}
 			args := c.Args()
 			params := &patchParams{
 				Project:           c.String(projectFlagName),
@@ -257,7 +266,7 @@ func Patch() cli.Command {
 						continue
 					}
 					if err = addModuleToPatch(params, args, conf, newPatch, &module, modulePath); err != nil {
-						grip.ErrorWhen(!outputJSON, fmt.Sprintf("Error adding module '%s' to patch: %s", module.Name, err))
+						grip.Errorf("Error adding module '%s' to patch: %s", module.Name, err)
 					}
 				}
 			}
