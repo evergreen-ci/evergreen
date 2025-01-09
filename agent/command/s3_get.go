@@ -29,6 +29,7 @@ var (
 	s3GetBucketAttribute               = fmt.Sprintf("%s.bucket", s3GetAttribute)
 	s3GetTemporaryCredentialsAttribute = fmt.Sprintf("%s.temporary_credentials", s3GetAttribute)
 	s3GetRemoteFileAttribute           = fmt.Sprintf("%s.remote_file", s3GetAttribute)
+	s3GetExpandedRemoteFileAttribute   = fmt.Sprintf("%s.expanded_remote_file", s3GetAttribute)
 )
 
 // s3get is a command to fetch a resource from an S3 bucket and download it to
@@ -181,6 +182,7 @@ func (c *s3get) Execute(ctx context.Context,
 		attribute.String(s3GetBucketAttribute, c.Bucket),
 		attribute.Bool(s3GetTemporaryCredentialsAttribute, c.AwsSessionToken != ""),
 		attribute.String(s3GetRemoteFileAttribute, c.remoteFile),
+		attribute.String(s3GetExpandedRemoteFileAttribute, c.RemoteFile),
 	)
 
 	// create pail bucket

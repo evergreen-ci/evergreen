@@ -14,7 +14,7 @@
         blocked
         buildVariant
         displayName
-        status
+        displayStatus
       }
       count
     }

@@ -33,11 +33,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-01-07"
+	ClientVersion = "2025-01-09a"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-01-02"
+	AgentVersion = "2025-01-08"
 )
 
 const (
@@ -71,7 +71,6 @@ type Settings struct {
 	BannerTheme         BannerTheme               `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
 	Buckets             BucketsConfig             `bson:"buckets" json:"buckets" yaml:"buckets" id:"buckets"`
 	Cedar               CedarConfig               `bson:"cedar" json:"cedar" yaml:"cedar" id:"cedar"`
-	CommitQueue         CommitQueueConfig         `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
 	ConfigDir           string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
 	ContainerPools      ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
 	Database            DBSettings                `yaml:"database" json:"database" bson:"database"`
@@ -132,7 +131,6 @@ func (c *Settings) Set(ctx context.Context) error {
 			awsInstanceRoleKey:     c.AWSInstanceRole,
 			bannerKey:              c.Banner,
 			bannerThemeKey:         c.BannerTheme,
-			commitQueueKey:         c.CommitQueue,
 			configDirKey:           c.ConfigDir,
 			domainNameKey:          c.DomainName,
 			expansionsKey:          c.Expansions,

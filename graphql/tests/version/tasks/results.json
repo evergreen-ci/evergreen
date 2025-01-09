@@ -13,7 +13,7 @@
                   "buildVariant": "ubuntu1604",
                   "blocked": true,
                   "displayName": "test-thirdparty-docker",
-                  "status": "success"
+                  "displayStatus": "success"
                 }
               ],
               "count": 1
@@ -50,7 +50,7 @@
                   "executionTasksFull": [
                     {
                       "id": "execution_task",
-                      "status": "failed"
+                      "displayStatus": "failed"
                     }
                   ]
                 },
@@ -130,7 +130,7 @@
                   "baseStatus": "failed",
                   "baseTask": {
                     "id": "base-task-3",
-                    "status": "failed"
+                    "displayStatus": "failed"
                   },
                   "displayName": "test-cloud"
                 },
@@ -139,7 +139,7 @@
                   "baseStatus": "failed",
                   "baseTask": {
                     "id": "base-task-4",
-                    "status": "failed"
+                    "displayStatus": "failed"
                   },
                   "displayName": "lint"
                 }
@@ -175,15 +175,15 @@
               "data": [
                 {
                   "id": "1",
-                  "status": "success"
+                  "displayStatus": "success"
                 },
                 {
                   "id": "3",
-                  "status": "failed"
+                  "displayStatus": "failed"
                 },
                 {
                   "id": "4",
-                  "status": "success"
+                  "displayStatus": "success"
                 }
               ],
               "count": 3
@@ -202,7 +202,7 @@
                 {
                   "id": "3",
                   "displayName": "test-cloud",
-                  "status": "failed"
+                  "displayStatus": "failed"
                 }
               ],
               "count": 1
@@ -375,49 +375,49 @@
                   "baseStatus": "success",
                   "buildVariant": "ubuntu1604",
                   "displayName": "test-thirdparty-docker",
-                  "status": "success"
+                  "displayStatus": "success"
                 },
                 {
                   "id": "2",
                   "baseStatus": "success",
                   "buildVariant": "windows",
                   "displayName": "compile",
-                  "status": "system-failed"
+                  "displayStatus": "system-failed"
                 },
                 {
                   "id": "3",
                   "baseStatus": "failed",
                   "buildVariant": "ubuntu1604",
                   "displayName": "test-cloud",
-                  "status": "failed"
+                  "displayStatus": "failed"
                 },
                 {
                   "id": "4",
                   "baseStatus": "failed",
                   "buildVariant": "windows",
                   "displayName": "lint",
-                  "status": "success"
+                  "displayStatus": "success"
                 },
                 {
                   "id": "5",
                   "baseStatus": "success",
                   "buildVariant": "windows",
                   "displayName": "dist",
-                  "status": "task-timed-out"
+                  "displayStatus": "task-timed-out"
                 },
                 {
                   "id": "6",
                   "baseStatus": "success",
                   "buildVariant": "windows",
                   "displayName": "js-test",
-                  "status": "system-failed"
+                  "displayStatus": "system-failed"
                 },
                 {
                   "id": "7",
                   "baseStatus": "aborted",
                   "buildVariant": "ubuntu1604",
                   "displayName": "test-agent",
-                  "status": "aborted"
+                  "displayStatus": "aborted"
                 }
               ],
               "count": 7
@@ -561,31 +561,31 @@
               "data": [
                 {
                   "id": "3",
-                  "status": "failed"
+                  "displayStatus": "failed"
                 },
                 {
                   "id": "5",
-                  "status": "task-timed-out"
+                  "displayStatus": "task-timed-out"
                 },
                 {
                   "id": "2",
-                  "status": "system-failed"
+                  "displayStatus": "system-failed"
                 },
                 {
                   "id": "6",
-                  "status": "system-failed"
+                  "displayStatus": "system-failed"
                 },
                 {
                   "id": "7",
-                  "status": "aborted"
+                  "displayStatus": "aborted"
                 },
                 {
                   "id": "1",
-                  "status": "success"
+                  "displayStatus": "success"
                 },
                 {
                   "id": "4",
-                  "status": "success"
+                  "displayStatus": "success"
                 }
               ],
               "count": 7
@@ -687,31 +687,31 @@
               "data": [
                 {
                   "id": "1",
-                  "status": "success"
+                  "displayStatus": "success"
                 },
                 {
                   "id": "4",
-                  "status": "success"
+                  "displayStatus": "success"
                 },
                 {
                   "id": "7",
-                  "status": "aborted"
+                  "displayStatus": "aborted"
                 },
                 {
                   "id": "2",
-                  "status": "system-failed"
+                  "displayStatus": "system-failed"
                 },
                 {
                   "id": "6",
-                  "status": "system-failed"
+                  "displayStatus": "system-failed"
                 },
                 {
                   "id": "3",
-                  "status": "failed"
+                  "displayStatus": "failed"
                 },
                 {
                   "id": "5",
-                  "status": "task-timed-out"
+                  "displayStatus": "task-timed-out"
                 }
               ],
               "count": 7
@@ -730,72 +730,72 @@
                 {
                   "id": "5",
                   "baseTask": {
-                    "status": "success"
+                    "displayStatus": "success"
                   },
                   "blocked": false,
                   "buildVariant": "windows",
                   "displayName": "dist",
-                  "status": "task-timed-out"
+                  "displayStatus": "task-timed-out"
                 },
                 {
                   "id": "3",
                   "baseTask": {
-                    "status": "failed"
+                    "displayStatus": "failed"
                   },
                   "blocked": false,
                   "buildVariant": "ubuntu1604",
                   "displayName": "test-cloud",
-                  "status": "failed"
+                  "displayStatus": "failed"
                 },
                 {
                   "id": "2",
                   "baseTask": {
-                    "status": "success"
+                    "displayStatus": "success"
                   },
                   "blocked": false,
                   "buildVariant": "windows",
                   "displayName": "compile",
-                  "status": "system-failed"
+                  "displayStatus": "system-failed"
                 },
                 {
                   "id": "6",
                   "baseTask": {
-                    "status": "success"
+                    "displayStatus": "success"
                   },
                   "blocked": false,
                   "buildVariant": "windows",
                   "displayName": "js-test",
-                  "status": "system-failed"
+                  "displayStatus": "system-failed"
                 },
                 {
                   "id": "7",
                   "baseTask": {
-                    "status": "aborted"
+                    "displayStatus": "aborted"
                   },
                   "blocked": false,
                   "buildVariant": "ubuntu1604",
                   "displayName": "test-agent",
-                  "status": "aborted"
+                  "displayStatus": "aborted"
                 },
                 {
                   "id": "1",
                   "baseTask": {
-                    "status": "success"
+                    "displayStatus": "success"
                   },
                   "blocked": true,
                   "buildVariant": "ubuntu1604",
                   "displayName": "test-thirdparty-docker",
-                  "status": "success"
+                  "displayStatus": "success"
                 },
                 {
                   "id": "4",
                   "baseTask": {
-                    "status": "failed"
+                    "displayStatus": "failed"
                   },
                   "blocked": false,
                   "buildVariant": "windows",
                   "displayName": "lint",
-                  "status": "success"
+                  "displayStatus": "success"
                 }
               ],
               "count": 7

@@ -366,6 +366,7 @@ func PatchFile() cli.Command {
 		baseFlagName        = "base"
 		diffPathFlagName    = "diff-file"
 		diffPatchIdFlagName = "diff-patchId"
+		allowEmptyFlagName  = "allow-empty"
 	)
 
 	return cli.Command{
@@ -384,6 +385,10 @@ func PatchFile() cli.Command {
 				Name:  diffPatchIdFlagName,
 				Usage: "patch id to fetch the full diff (including modules) from",
 			},
+			cli.BoolFlag{
+				Name:  allowEmptyFlagName,
+				Usage: "create an empty patch with no diff",
+			},
 			cli.StringFlag{
 				Name: patchAuthorFlag,
 				Usage: "optionally define the patch author by providing an Evergreen username; " +
@@ -394,11 +399,14 @@ func PatchFile() cli.Command {
 			autoUpdateCLI,
 			mutuallyExclusiveArgs(false, patchDescriptionFlagName, autoDescriptionFlag),
 			mutuallyExclusiveArgs(false, diffPathFlagName, diffPatchIdFlagName),
+			mutuallyExclusiveArgs(false, allowEmptyFlagName, diffPatchIdFlagName),
+			mutuallyExclusiveArgs(false, allowEmptyFlagName, diffPathFlagName),
 			mutuallyExclusiveArgs(false, baseFlagName, diffPatchIdFlagName),
 		),
 		Action: func(c *cli.Context) error {
 			diffPatchId := c.String(diffPatchIdFlagName)
 			diffFilePath := c.String(diffPathFlagName)
+			allowEmpty := c.Bool(allowEmptyFlagName)
 			if diffPatchId == "" && diffFilePath != "" {
 				if _, err := os.Stat(diffFilePath); os.IsNotExist(err) {
 					return errors.Errorf("file '%s' does not exist", diffFilePath)
@@ -457,7 +465,9 @@ func PatchFile() cli.Command {
 			params.Description = params.getDescription()
 			var diffData localDiff
 			var rp *restmodel.APIRawPatch
-			if diffPatchId == "" {
+			if allowEmpty {
+				diffData.base = base
+			} else if diffPatchId == "" {
 				fullPatch, err := os.ReadFile(diffPath)
 				if err != nil {
 					return errors.Wrapf(err, "reading diff file '%s'", diffPath)

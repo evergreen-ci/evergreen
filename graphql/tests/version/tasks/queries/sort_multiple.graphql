@@ -12,12 +12,12 @@
       data {
         id
         baseTask {
-          status
+          displayStatus
         }
         blocked
         buildVariant
         displayName
-        status
+        displayStatus
       }
       count
     }
