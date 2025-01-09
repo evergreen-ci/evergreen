@@ -1,6 +1,7 @@
 package build
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -272,4 +273,27 @@ func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 		bson.M{"$set": update},
 	)
 	return errors.Wrap(err, "setting builds to started")
+}
+
+// FindByVersionAndVariants finds all builds that are in the given version and
+// match one of the build variant names.
+// kim: TODO: add small unit test
+func FindByVersionAndVariants(ctx context.Context, version string, variants []string) ([]Build, error) {
+	if len(variants) == 0 {
+		return nil, nil
+	}
+
+	cur, err := evergreen.GetEnvironment().DB().Collection(Collection).Find(ctx, bson.M{
+		VersionKey:      version,
+		BuildVariantKey: bson.M{"$in": variants},
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding builds with version '%s' and variants %s", version, variants)
+	}
+
+	var builds []Build
+	if err := cur.All(ctx, &builds); err != nil {
+		return nil, errors.Wrap(err, "decoding builds")
+	}
+	return builds, nil
 }
