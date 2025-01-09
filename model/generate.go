@@ -374,7 +374,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 // that have added generated tasks to run. For example, if a build was already
 // finished and just had new tasks generated, the status should be updated to
 // running.
-// kim: TODO: add tests for build status updates.
+// kim: TODO: add Save tests for build status updates.
 func updateBuildStatusesForGeneratedTasks(ctx context.Context, versionID string, newTVPairsForExistingVariants TaskVariantPairs) error {
 	// kim: NOTE: first need to get build IDs of existing builds that had tasks
 	// added to determine which builds may need their status updated. The
