@@ -790,11 +790,20 @@ func TestGetNextRecentActiveWaterfallVersion(t *testing.T) {
 	assert.NoError(t, p.Insert())
 
 	v := Version{
+		Id:                  "v_0",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 11,
+		CreateTime:          start,
+		Activated:           utility.TruePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
 		Id:                  "v_1",
 		Identifier:          "a_project",
 		Requester:           evergreen.RepotrackerVersionRequester,
 		RevisionOrderNumber: 10,
-		CreateTime:          start,
+		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.TruePtr(),
 	}
 	assert.NoError(t, v.Insert())
@@ -830,4 +839,68 @@ func TestGetNextRecentActiveWaterfallVersion(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, version)
 	assert.Equal(t, "v_1", version.Id)
+}
+
+func TestGetNextOlderActiveWaterfallVersion(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert.NoError(t, db.ClearCollections(VersionCollection, ProjectRefCollection))
+	start := time.Now()
+	p := ProjectRef{
+		Id:         "a_project",
+		Identifier: "a_project_identifier",
+	}
+	assert.NoError(t, p.Insert())
+
+	v := Version{
+		Id:                  "v_1",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 10,
+		CreateTime:          start,
+		Activated:           utility.TruePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "v_2",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 9,
+		CreateTime:          start.Add(-2 * time.Minute),
+		Activated:           utility.FalsePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "v_3",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 8,
+		CreateTime:          start.Add(-2 * time.Minute),
+		Activated:           utility.FalsePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "v_4",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 7,
+		CreateTime:          start.Add(-2 * time.Minute),
+		Activated:           utility.TruePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "v_5",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 6,
+		CreateTime:          start.Add(-2 * time.Minute),
+		Activated:           utility.TruePtr(),
+	}
+	assert.NoError(t, v.Insert())
+
+	version, err := GetNextOlderActiveWaterfallVersion(ctx, p.Id, 10)
+	assert.NoError(t, err)
+	require.NotNil(t, version)
+	assert.Equal(t, "v_4", version.Id)
 }
