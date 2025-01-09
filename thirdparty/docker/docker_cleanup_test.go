@@ -45,7 +45,7 @@ func TestCleanup(t *testing.T) {
 
 			info, err = dockerClient.Info(ctx)
 			assert.NoError(t, err)
-			assert.Equal(t, 0, info.Containers)
+			assert.Zero(t, info.Containers)
 		},
 		"cleanImages": func(*testing.T) {
 			assert.NoError(t, cleanImages(context.Background(), dockerClient))
@@ -53,7 +53,7 @@ func TestCleanup(t *testing.T) {
 			var info types.Info
 			info, err = dockerClient.Info(ctx)
 			assert.NoError(t, err)
-			assert.Equal(t, 0, info.Images)
+			assert.Zero(t, info.Images)
 		},
 		"cleanVolumes": func(*testing.T) {
 			_, err = dockerClient.VolumeCreate(ctx, volume.CreateOptions{})
@@ -83,14 +83,14 @@ func TestCleanup(t *testing.T) {
 			require.NoError(t, err)
 			volumes, err := dockerClient.VolumeList(ctx, volume.ListOptions{})
 			require.NoError(t, err)
-			require.Positive(t, volumes.Volumes)
+			require.NotEmpty(t, volumes.Volumes)
 
 			assert.NoError(t, Cleanup(context.Background(), grip.NewJournaler("")))
 
 			info, err = dockerClient.Info(ctx)
 			assert.NoError(t, err)
-			assert.Equal(t, 0, info.Containers)
-			assert.Equal(t, 0, info.Images)
+			assert.Zero(t, info.Containers)
+			assert.Zero(t, info.Images)
 
 			volumes, err = dockerClient.VolumeList(ctx, volume.ListOptions{})
 			assert.NoError(t, err)
