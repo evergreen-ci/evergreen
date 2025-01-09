@@ -305,7 +305,7 @@
               }
             ],
             "pagination": {
-              "nextPageOrder": 1,
+              "nextPageOrder": 0,
               "prevPageOrder": 0
             }
           }
