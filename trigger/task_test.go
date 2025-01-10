@@ -466,7 +466,7 @@ func (s *taskSuite) TestExecutionTask() {
 	s.NoError(t.Insert())
 	n, err := NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
-	s.Len(n, 0)
+	s.Empty(n)
 }
 
 func (s *taskSuite) TestSuccess() {
@@ -1108,7 +1108,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 	}
 	n, err = NotificationsFromEvent(s.ctx, &wontNotify)
 	s.NoError(err)
-	s.Len(n, 0)
+	s.Empty(n)
 }
 
 func (s *taskSuite) makeTaskTriggers(id string, execution int) *taskTriggers {

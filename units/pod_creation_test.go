@@ -101,7 +101,7 @@ func TestPodCreationJob(t *testing.T) {
 			require.Error(t, j.Error())
 			require.Zero(t, j.ecsPod)
 			require.Zero(t, j.pod.Resources)
-			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterName], 0)
+			assert.Empty(t, cocoaMock.GlobalECSService.Clusters[clusterName])
 
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)
@@ -117,7 +117,7 @@ func TestPodCreationJob(t *testing.T) {
 			require.Error(t, j.Error())
 			assert.Zero(t, j.ecsPod)
 			assert.Zero(t, j.pod.Resources)
-			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterName], 0)
+			assert.Empty(t, cocoaMock.GlobalECSService.Clusters[clusterName])
 
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)
@@ -132,7 +132,7 @@ func TestPodCreationJob(t *testing.T) {
 			require.Error(t, j.Error())
 			assert.Zero(t, j.ecsPod)
 			assert.Zero(t, j.pod.Resources)
-			assert.Len(t, cocoaMock.GlobalECSService.Clusters[clusterName], 0)
+			assert.Empty(t, cocoaMock.GlobalECSService.Clusters[clusterName])
 
 			dbPod, err := pod.FindOneByID(j.PodID)
 			require.NoError(t, err)

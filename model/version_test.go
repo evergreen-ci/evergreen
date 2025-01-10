@@ -183,9 +183,9 @@ func TestBuildVariantsStatusUnmarshal(t *testing.T) {
 	assert.False(t, utility.IsZeroTime(bv.ActivateAt))
 
 	require.Len(t, bv.BatchTimeTasks, 1)
-	assert.Equal(t, bv.BatchTimeTasks[0].TaskId, "t1")
-	assert.Equal(t, bv.BatchTimeTasks[0].TaskName, "t1_name")
-	assert.Equal(t, bv.BatchTimeTasks[0].Activated, false)
+	assert.Equal(t, "t1", bv.BatchTimeTasks[0].TaskId)
+	assert.Equal(t, "t1_name", bv.BatchTimeTasks[0].TaskName)
+	assert.False(t, bv.BatchTimeTasks[0].Activated)
 	assert.True(t, utility.IsZeroTime(bv.BatchTimeTasks[0].ActivateAt))
 }
 
@@ -382,7 +382,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 	assert.NoError(t, err)
 	require.Len(t, versions, 4)
 	assert.Equal(t, "my_version", versions[0].Id)
-	require.Len(t, versions[0].Builds, 0)
+	require.Empty(t, versions[0].Builds)
 
 	// filter out versions with no builds/tasks
 	opts = GetVersionsOptions{IncludeBuilds: true, IncludeTasks: true, Requester: evergreen.RepotrackerVersionRequester}
@@ -397,53 +397,53 @@ func TestGetVersionsWithOptions(t *testing.T) {
 	assert.NoError(t, err)
 	require.Len(t, versions, 1)
 	require.Len(t, versions[0].Builds, 1)
-	assert.Equal(t, versions[0].Builds[0].Id, "bv1")
-	assert.Equal(t, versions[0].Builds[0].Status, evergreen.BuildFailed)
-	assert.Equal(t, versions[0].Builds[0].Activated, true)
-	require.Len(t, versions[0].Builds[0].Tasks, 0) // not including tasks
+	assert.Equal(t, "bv1", versions[0].Builds[0].Id)
+	assert.Equal(t, evergreen.BuildFailed, versions[0].Builds[0].Status)
+	assert.True(t, versions[0].Builds[0].Activated)
+	require.Empty(t, versions[0].Builds[0].Tasks) // not including tasks
 
 	opts = GetVersionsOptions{Limit: 1, Requester: evergreen.RepotrackerVersionRequester}
 	versions, err = GetVersionsWithOptions("my_ident", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 1)
-	assert.Equal(t, versions[0].Id, "my_version")
-	assert.Len(t, versions[0].Builds, 0)
+	assert.Equal(t, "my_version", versions[0].Id)
+	assert.Empty(t, versions[0].Builds)
 	assert.Len(t, versions[0].BuildVariants, 2)
 
 	opts = GetVersionsOptions{Skip: 1, Requester: evergreen.RepotrackerVersionRequester}
 	versions, err = GetVersionsWithOptions("my_project", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 3)
-	assert.Equal(t, versions[0].Id, "your_version")
-	assert.Equal(t, versions[1].Id, "another_version")
-	assert.Equal(t, versions[2].Id, "seven_version")
+	assert.Equal(t, "your_version", versions[0].Id)
+	assert.Equal(t, "another_version", versions[1].Id)
+	assert.Equal(t, "seven_version", versions[2].Id)
 
 	opts = GetVersionsOptions{Start: 9, Requester: evergreen.RepotrackerVersionRequester}
 	versions, err = GetVersionsWithOptions("my_project", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 2)
-	assert.Equal(t, versions[0].Id, "another_version")
-	assert.Equal(t, versions[1].Id, "seven_version")
+	assert.Equal(t, "another_version", versions[0].Id)
+	assert.Equal(t, "seven_version", versions[1].Id)
 
 	opts = GetVersionsOptions{Start: 9, Requester: evergreen.RepotrackerVersionRequester}
 	versions, err = GetVersionsWithOptions("my_project", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 2)
-	assert.Equal(t, versions[0].Id, "another_version")
-	assert.Equal(t, versions[1].Id, "seven_version")
+	assert.Equal(t, "another_version", versions[0].Id)
+	assert.Equal(t, "seven_version", versions[1].Id)
 
 	opts = GetVersionsOptions{RevisionEnd: 9, Requester: evergreen.RepotrackerVersionRequester}
 	versions, err = GetVersionsWithOptions("my_project", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 2)
-	assert.Equal(t, versions[0].Id, "my_version")
-	assert.Equal(t, versions[1].Id, "your_version")
+	assert.Equal(t, "my_version", versions[0].Id)
+	assert.Equal(t, "your_version", versions[1].Id)
 
 	opts = GetVersionsOptions{Start: 9, RevisionEnd: 8, Requester: evergreen.RepotrackerVersionRequester}
 	versions, err = GetVersionsWithOptions("my_project", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 1)
-	assert.Equal(t, versions[0].Id, "another_version")
+	assert.Equal(t, "another_version", versions[0].Id)
 }
 
 func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {

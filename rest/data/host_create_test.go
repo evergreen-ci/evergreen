@@ -205,7 +205,7 @@ buildvariants:
 			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
 			assert.Equal(t, "sg-provided", ec2Settings.SecurityGroupIDs[0])
 			assert.Equal(t, distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
-			assert.Equal(t, h.Distro.Id, "distro")
+			assert.Equal(t, "distro", h.Distro.Id)
 		}
 	})
 
@@ -274,7 +274,7 @@ buildvariants:
 			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
 			assert.Equal(t, "sg-provided", ec2Settings.SecurityGroupIDs[0])
 			assert.Equal(t, distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
-			assert.Equal(t, h.Distro.Id, "distro")
+			assert.Equal(t, "distro", h.Distro.Id)
 		}
 	})
 
@@ -345,7 +345,7 @@ buildvariants:
 			require.Len(t, ec2Settings.SecurityGroupIDs, 1)
 			assert.Equal(t, "sg-provided", ec2Settings.SecurityGroupIDs[0])
 			assert.Equal(t, distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
-			assert.Equal(t, h.Distro.Id, "distro")
+			assert.Equal(t, "distro", h.Distro.Id)
 		}
 	})
 
@@ -411,7 +411,7 @@ buildvariants:
 			require.Len(t, ec2Settings.SecurityGroupIDs, 2)
 			assert.Equal(t, "sg-distro", ec2Settings.SecurityGroupIDs[0]) // if not overridden, stick with ec2 security group
 			assert.Equal(t, distro.BootstrapMethodNone, h.Distro.BootstrapSettings.Method, "host provisioning should be set to none by default")
-			assert.Equal(t, h.Distro.Id, "distro")
+			assert.Equal(t, "distro", h.Distro.Id)
 		}
 	})
 }

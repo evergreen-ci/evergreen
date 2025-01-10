@@ -192,7 +192,7 @@ func (s *eventNotificationSuite) TestEvergreenWebhook() {
 	s.NoError(job.Error())
 
 	s.NotZero(s.notificationHasError(s.webhook.ID, ""))
-	s.Nil(job.Error())
+	s.NoError(job.Error())
 
 	msg, recv := s.env.InternalSender.GetMessageSafe()
 	s.True(recv)

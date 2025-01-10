@@ -155,12 +155,12 @@ func (a *AliasSuite) TestFindProjectAliasesMergedWithProjectConfig() {
 	sort.Slice(found, func(i, j int) bool {
 		return utility.FromStringPtr(found[i].Alias) < utility.FromStringPtr(found[j].Alias)
 	})
-	a.Equal(utility.FromStringPtr(found[0].Alias), evergreen.CommitQueueAlias)
-	a.Equal(utility.FromStringPtr(found[1].Alias), evergreen.GithubPRAlias)
-	a.Equal(utility.FromStringPtr(found[2].Alias), evergreen.GithubChecksAlias)
-	a.Equal(utility.FromStringPtr(found[3].Alias), "bar")
-	a.Equal(utility.FromStringPtr(found[4].Alias), "foo")
-	a.Equal(utility.FromStringPtr(found[5].Alias), "foo")
+	a.Equal(evergreen.CommitQueueAlias, utility.FromStringPtr(found[0].Alias))
+	a.Equal(evergreen.GithubPRAlias, utility.FromStringPtr(found[1].Alias))
+	a.Equal(evergreen.GithubChecksAlias, utility.FromStringPtr(found[2].Alias))
+	a.Equal("bar", utility.FromStringPtr(found[3].Alias))
+	a.Equal("foo", utility.FromStringPtr(found[4].Alias))
+	a.Equal("foo", utility.FromStringPtr(found[5].Alias))
 }
 
 func (a *AliasSuite) TestFindMergedProjectAliases() {
@@ -177,7 +177,7 @@ func (a *AliasSuite) TestFindMergedProjectAliases() {
 	// all non-existent
 	found, err = FindMergedProjectAliases("non-existent", "non-existent", nil, false)
 	a.NoError(err)
-	a.Len(found, 0)
+	a.Empty(found)
 
 	// repo only
 	found, err = FindMergedProjectAliases("non-existent", "repo_id", nil, false)
@@ -194,15 +194,15 @@ func (a *AliasSuite) TestFindMergedProjectAliases() {
 	for _, alias := range found {
 		switch utility.FromStringPtr(alias.Alias) {
 		case evergreen.CommitQueueAlias:
-			a.Equal(utility.FromStringPtr(alias.Task), "project_ref_task")
+			a.Equal("project_ref_task", utility.FromStringPtr(alias.Task))
 		case evergreen.GithubPRAlias:
-			a.Equal(utility.FromStringPtr(alias.Task), "repo_task")
+			a.Equal("repo_task", utility.FromStringPtr(alias.Task))
 		case evergreen.GithubChecksAlias:
-			a.Equal(utility.FromStringPtr(alias.Task), "project_config_task")
+			a.Equal("project_config_task", utility.FromStringPtr(alias.Task))
 		case evergreen.GitTagAlias:
-			a.Equal(utility.FromStringPtr(alias.Task), "added_task")
+			a.Equal("added_task", utility.FromStringPtr(alias.Task))
 		default:
-			a.Equal(utility.FromStringPtr(alias.Task), "project_ref_task")
+			a.Equal("project_ref_task", utility.FromStringPtr(alias.Task))
 		}
 	}
 }
@@ -210,7 +210,7 @@ func (a *AliasSuite) TestFindMergedProjectAliases() {
 func (a *AliasSuite) TestCopyProjectAliases() {
 	res, err := FindMergedProjectAliases("new_project_id", "", nil, false)
 	a.NoError(err)
-	a.Len(res, 0)
+	a.Empty(res)
 
 	a.NoError(model.CopyProjectAliases("project_id", "new_project_id"))
 
@@ -292,9 +292,9 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	a.Len(aliasesFromDb, 4)
 	for _, alias := range aliasesFromDb {
 		a.NotEqual(alias.ID, originalAliases[2].ID)          // removed the alias that we didn't add to the new alias list
-		a.NotEqual(alias.Alias, evergreen.GithubChecksAlias) // didn't add the internal alias on the patch alias section
+		a.NotEqual(evergreen.GithubChecksAlias, alias.Alias) // didn't add the internal alias on the patch alias section
 		if alias.ID == originalAliases[1].ID {               // verify we modified the second alias
-			a.Equal(alias.Alias, "this is a new alias")
+			a.Equal("this is a new alias", alias.Alias)
 		}
 	}
 

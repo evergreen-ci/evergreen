@@ -147,7 +147,7 @@ func (s *generateSuite) TestExecuteSuccessWithValidGlobbing() {
 }
 
 func (s *generateSuite) TestErrorWithInvalidExpansions() {
-	s.Len(s.g.Files, 0)
+	s.Empty(s.g.Files)
 	s.NoError(s.g.ParseParams(map[string]interface{}{
 		"files": []string{
 			"fo${bar",
@@ -173,7 +173,7 @@ func (s *generateSuite) TestNoErrorWithValidExpansions() {
 	s.Equal(len(s.json), n)
 	s.NoError(f.Close())
 
-	s.Len(s.g.Files, 0)
+	s.Empty(s.g.Files)
 	s.NoError(s.g.ParseParams(map[string]interface{}{
 		"files": []string{
 			"${bar}",

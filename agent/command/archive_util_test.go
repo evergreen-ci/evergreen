@@ -38,7 +38,7 @@ func TestFindContentsToArchive(t *testing.T) {
 				expectedFileSize += int(info.Size())
 			}
 		}
-		assert.NotZero(t, len(expectedFiles))
+		assert.NotEmpty(t, expectedFiles)
 
 		foundFiles, totalSize, err := findContentsToArchive(ctx, thisDir, []string{"*.go"}, nil)
 		require.NoError(t, err)
@@ -72,7 +72,7 @@ func TestFindContentsToArchive(t *testing.T) {
 				expectedFileSize += int(info.Size())
 			}
 		}
-		assert.NotZero(t, len(expectedFiles))
+		assert.NotEmpty(t, expectedFiles)
 
 		foundFiles, totalSize, err := findContentsToArchive(ctx, thisDir, []string{"*.go", "*.go"}, nil)
 		require.NoError(t, err)

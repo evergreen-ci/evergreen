@@ -73,7 +73,7 @@ func TestFindByNeedsTermination(t *testing.T) {
 
 			pods, err := FindByNeedsTermination()
 			require.NoError(t, err)
-			require.Len(t, pods, 0)
+			require.Empty(t, pods)
 		},
 		"ReturnsMatchingStaleInitializingPod": func(t *testing.T) {
 			stalePod := Pod{

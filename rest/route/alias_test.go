@@ -21,12 +21,12 @@ func TestGetAliasesHandler(t *testing.T) {
 			assert.NoError(t, h.Parse(ctx, r))
 
 			resp := h.Run(ctx)
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 
 			payload := resp.Data().([]interface{})
 			require.Len(t, payload, 1)
 			foundAlias := payload[0].(model.APIProjectAlias)
-			assert.Equal(t, utility.FromStringPtr(foundAlias.Alias), "project_alias")
+			assert.Equal(t, "project_alias", utility.FromStringPtr(foundAlias.Alias))
 		},
 		"ReturnsRepoLevelAliases": func(ctx context.Context, t *testing.T, h *aliasGetHandler) {
 			projectAliases, err := dbModel.FindAliasesForProjectFromDb("project_ref")
@@ -39,12 +39,12 @@ func TestGetAliasesHandler(t *testing.T) {
 			assert.NoError(t, h.Parse(ctx, r))
 
 			resp := h.Run(ctx)
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 
 			payload := resp.Data().([]interface{})
 			require.Len(t, payload, 1)
 			foundAlias := payload[0].(model.APIProjectAlias)
-			assert.Equal(t, utility.FromStringPtr(foundAlias.Alias), "repo_alias")
+			assert.Equal(t, "repo_alias", utility.FromStringPtr(foundAlias.Alias))
 		},
 		"ReturnsNoAliasesWithoutProjectConfigURLParam": func(ctx context.Context, t *testing.T, h *aliasGetHandler) {
 			require.NoError(t, db.Clear(dbModel.ProjectAliasCollection))
@@ -54,10 +54,10 @@ func TestGetAliasesHandler(t *testing.T) {
 			assert.NoError(t, h.Parse(ctx, r))
 
 			resp := h.Run(ctx)
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 
 			payload := resp.Data().([]interface{})
-			require.Len(t, payload, 0)
+			require.Empty(t, payload)
 		},
 		"ReturnsConfigLevelAliases": func(ctx context.Context, t *testing.T, h *aliasGetHandler) {
 			require.NoError(t, db.Clear(dbModel.ProjectAliasCollection))
@@ -67,12 +67,12 @@ func TestGetAliasesHandler(t *testing.T) {
 			assert.NoError(t, h.Parse(ctx, r))
 
 			resp := h.Run(ctx)
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 
 			payload := resp.Data().([]interface{})
 			require.Len(t, payload, 1)
 			foundAlias := payload[0].(model.APIProjectAlias)
-			assert.Equal(t, utility.FromStringPtr(foundAlias.Alias), "project_config_alias")
+			assert.Equal(t, "project_config_alias", utility.FromStringPtr(foundAlias.Alias))
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

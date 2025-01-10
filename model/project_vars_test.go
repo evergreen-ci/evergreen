@@ -165,7 +165,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 	require.NoError(t, err)
 	require.NotZero(t, dbProject0Vars)
 	assert.Equal(dbProject0Vars.Parameters, mergedVars.Parameters, "merged parameters for branch project vars should exactly match the branch project vars from the DB when there's no repo vars")
-	assert.Equal(0, len(mergedVars.PrivateVars))
+	assert.Empty(mergedVars.PrivateVars)
 
 	// Testing ProjectRef.RepoRefId == ""
 	project0.RepoRefId = ""
@@ -464,7 +464,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			info, err := newVars.FindAndModify(varsToDelete)
 			assert.NoError(t, err)
 			require.NotNil(t, info)
-			assert.Equal(t, info.Updated, 1)
+			assert.Equal(t, 1, info.Updated)
 
 			dbVars, err = FindOneProjectVars(vars.Id)
 			require.NoError(t, err)
@@ -658,8 +658,8 @@ func TestAWSVars(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("foo", found.Vars["a"])
 	assert.Equal("bar", found.Vars["b"])
-	assert.Equal(true, found.PrivateVars["a"])
-	assert.Equal(false, found.PrivateVars["b"])
+	assert.True(found.PrivateVars["a"])
+	assert.False(found.PrivateVars["b"])
 
 	// empty aws values
 	k, err = GetAWSKeyForProject(project.Id)
@@ -686,12 +686,12 @@ func TestAWSVars(t *testing.T) {
 	require.NotZero(found)
 	assert.Equal("foo", found.Vars["a"])
 	assert.Equal("bar", found.Vars["b"])
-	assert.Equal(true, found.PrivateVars["a"])
-	assert.Equal(false, found.PrivateVars["b"])
+	assert.True(found.PrivateVars["a"])
+	assert.False(found.PrivateVars["b"])
 
 	// hidden aws values
-	assert.Equal(false, found.PrivateVars[ProjectAWSSSHKeyName])
-	assert.Equal(true, found.PrivateVars[ProjectAWSSSHKeyValue])
+	assert.False(found.PrivateVars[ProjectAWSSSHKeyName])
+	assert.True(found.PrivateVars[ProjectAWSSSHKeyValue])
 }
 
 func TestConvertVarToParam(t *testing.T) {
@@ -1080,7 +1080,7 @@ func TestShouldGetAdminOnlyVars(t *testing.T) {
 				break
 			}
 		}
-		assert.True(t, tested, fmt.Sprintf("requester '%s' not tested with non-admin", requester))
+		assert.True(t, tested, "requester '%s' not tested with non-admin", requester)
 	}
 }
 

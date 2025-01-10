@@ -30,7 +30,7 @@ func TestUpsertAtomically(t *testing.T) {
 		"InsertsNewPodDispatcher": func(t *testing.T, pd PodDispatcher) {
 			change, err := pd.UpsertAtomically()
 			require.NoError(t, err)
-			require.Equal(t, change.Updated, 1)
+			require.Equal(t, 1, change.Updated)
 
 			dbDispatcher, err := FindOneByID(pd.ID)
 			require.NoError(t, err)
@@ -42,7 +42,7 @@ func TestUpsertAtomically(t *testing.T) {
 
 			change, err := pd.UpsertAtomically()
 			require.NoError(t, err)
-			require.Equal(t, change.Updated, 1)
+			require.Equal(t, 1, change.Updated)
 
 			dbDispatcher, err := FindOneByID(pd.ID)
 			require.NoError(t, err)
@@ -571,8 +571,8 @@ func TestRemovePod(t *testing.T) {
 			dbDisp, err := FindOneByID(pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
-			assert.Equal(t, pd.TaskIDs, []string{"task_id"})
-			assert.Equal(t, pd.PodIDs, []string{"pod_id"})
+			assert.Equal(t, []string{"task_id"}, pd.TaskIDs)
+			assert.Equal(t, []string{"pod_id"}, pd.PodIDs)
 		},
 		"FailsWhenDBDispatcherIsModified": func(ctx context.Context, env evergreen.Environment, t *testing.T) {
 			const modCount = 10
@@ -597,8 +597,8 @@ func TestRemovePod(t *testing.T) {
 			dbDisp, err := FindOneByID(pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
-			assert.Equal(t, pd.TaskIDs, []string{tsk.Id})
-			assert.Equal(t, pd.PodIDs, []string{podID})
+			assert.Equal(t, []string{tsk.Id}, pd.TaskIDs)
+			assert.Equal(t, []string{podID}, pd.PodIDs)
 			assert.Equal(t, modCount, dbDisp.ModificationCount)
 		},
 	} {

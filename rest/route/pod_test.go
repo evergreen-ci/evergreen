@@ -75,7 +75,7 @@ func TestPostPod(t *testing.T) {
 			require.NoError(t, ph.Parse(ctx, req))
 			resp := ph.Run(ctx)
 			require.NotNil(t, resp.Data())
-			assert.True(t, resp.Status() >= 400, "input should be rejected")
+			assert.GreaterOrEqual(t, resp.Status(), 400, "input should be rejected")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

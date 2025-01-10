@@ -50,7 +50,7 @@ func TestGroupByTaskGroup(t *testing.T) {
 	taskGroupDatas := groupByTaskGroup(hosts, distroQueueInfo)
 	assert.Len(taskGroupDatas, 1)
 	assert.Len(taskGroupDatas[""].Hosts, 2)
-	assert.Equal(taskGroupDatas[""].Info.Count, 2)
+	assert.Equal(2, taskGroupDatas[""].Info.Count)
 
 	// Some running task groups
 
@@ -87,13 +87,13 @@ func TestGroupByTaskGroup(t *testing.T) {
 	taskGroupDatas = groupByTaskGroup(hosts, distroQueueInfo)
 	assert.Len(taskGroupDatas, 3)
 	assert.Len(taskGroupDatas[fmt.Sprintf("%s_%s_%s_%s", "g1", "", "", "")].Hosts, 2)
-	assert.Equal(taskGroupDatas[fmt.Sprintf("%s_%s_%s_%s", "g1", "", "", "")].Info.Count, 0)
-	assert.Len(taskGroupDatas[fmt.Sprintf("%s_%s_%s_%s", "g2", "", "", "")].Hosts, 0)
-	assert.Equal(taskGroupDatas[fmt.Sprintf("%s_%s_%s_%s", "g2", "", "", "")].Info.Count, 1)
+	assert.Equal(0, taskGroupDatas[fmt.Sprintf("%s_%s_%s_%s", "g1", "", "", "")].Info.Count)
+	assert.Empty(taskGroupDatas[fmt.Sprintf("%s_%s_%s_%s", "g2", "", "", "")].Hosts)
+	assert.Equal(1, taskGroupDatas[fmt.Sprintf("%s_%s_%s_%s", "g2", "", "", "")].Info.Count)
 	assert.Equal("h1", taskGroupDatas[fmt.Sprintf("%s_%s_%s_%s", "g1", "", "", "")].Hosts[0].Id)
 	assert.Equal("h2", taskGroupDatas[fmt.Sprintf("%s_%s_%s_%s", "g1", "", "", "")].Hosts[1].Id)
-	assert.Len(taskGroupDatas[""].Hosts, 0)
-	assert.Equal(taskGroupDatas[""].Info.Count, 1)
+	assert.Empty(taskGroupDatas[""].Hosts)
+	assert.Equal(1, taskGroupDatas[""].Info.Count)
 
 	// Some finished task groups
 
@@ -119,9 +119,9 @@ func TestGroupByTaskGroup(t *testing.T) {
 	taskGroupDatas = groupByTaskGroup(hosts, distroQueueInfo)
 	assert.Len(taskGroupDatas, 2)
 	assert.Len(taskGroupDatas[fmt.Sprintf("%s_%s_%s_%s", "g2", "", "", "")].Hosts, 2)
-	assert.Equal(taskGroupDatas[fmt.Sprintf("%s_%s_%s_%s", "g2", "", "", "")].Info.Count, 1)
+	assert.Equal(1, taskGroupDatas[fmt.Sprintf("%s_%s_%s_%s", "g2", "", "", "")].Info.Count)
 	assert.Len(taskGroupDatas[""].Hosts, 2)
-	assert.Equal(taskGroupDatas[""].Info.Count, 1)
+	assert.Equal(1, taskGroupDatas[""].Info.Count)
 }
 
 type UtilizationAllocatorSuite struct {

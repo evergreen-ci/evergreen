@@ -123,8 +123,8 @@ func TestLogIteratorReader(t *testing.T) {
 				n, err := r.Read(p)
 				nTotal += n
 				readData = append(readData, p[:n]...)
-				require.True(t, n >= 0)
-				require.True(t, n <= len(p))
+				require.GreaterOrEqual(t, n, 0)
+				require.LessOrEqual(t, n, len(p))
 				if err == io.EOF {
 					break
 				}

@@ -257,7 +257,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 
 	roles, err := roleManager.GetAllRoles()
 	require.NoError(t, err)
-	require.Len(t, roles, 0)
+	require.Empty(t, roles)
 
 	// Set up scopes and roles for projects.
 	allProjectScope := gimlet.Scope{

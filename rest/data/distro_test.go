@@ -33,7 +33,7 @@ func TestDeleteDistroById(t *testing.T) {
 
 			dbHost, err := host.FindOneId(ctx, "host")
 			assert.NoError(t, err)
-			assert.Equal(t, dbHost.Status, evergreen.HostTerminated)
+			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 
 			dbQueue, err := model.LoadTaskQueue("distro")
 			assert.NoError(t, err)
@@ -41,7 +41,7 @@ func TestDeleteDistroById(t *testing.T) {
 
 			events, err := event.FindLatestPrimaryDistroEvents("distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
-			assert.Equal(t, len(events), 1)
+			assert.Len(t, events, 1)
 		},
 		"Succeeds even if task queue for distro does not exist": func(t *testing.T, ctx context.Context, u user.DBUser) {
 			err := DeleteDistroById(ctx, &u, "distro-no-task-queue")
@@ -49,16 +49,16 @@ func TestDeleteDistroById(t *testing.T) {
 
 			events, err := event.FindLatestPrimaryDistroEvents("distro-no-task-queue", 10, utility.ZeroTime)
 			assert.NoError(t, err)
-			assert.Equal(t, len(events), 1)
+			assert.Len(t, events, 1)
 		},
 		"Fails when distro does not exist": func(t *testing.T, ctx context.Context, u user.DBUser) {
 			err := DeleteDistroById(ctx, &u, "nonexistent")
 			assert.Error(t, err)
-			assert.Equal(t, err.Error(), "400 (Bad Request): distro 'nonexistent' not found")
+			assert.Equal(t, "400 (Bad Request): distro 'nonexistent' not found", err.Error())
 
 			events, err := event.FindLatestPrimaryDistroEvents("nonexistent", 10, utility.ZeroTime)
 			assert.NoError(t, err)
-			assert.Equal(t, len(events), 0)
+			assert.Empty(t, events)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -119,7 +119,7 @@ func TestCopyDistro(t *testing.T) {
 
 			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
-			assert.Equal(t, len(events), 1)
+			assert.Len(t, events, 1)
 		},
 		"Fails when the validator encounters an error": func(t *testing.T, ctx context.Context, u user.DBUser) {
 			opts := CopyDistroOpts{
@@ -129,11 +129,11 @@ func TestCopyDistro(t *testing.T) {
 
 			err := CopyDistro(ctx, &u, opts)
 			assert.Error(t, err)
-			assert.Equal(t, err.Error(), "validator encountered errors: 'ERROR: distro 'distro2' uses an existing identifier'")
+			assert.Equal(t, "validator encountered errors: 'ERROR: distro 'distro2' uses an existing identifier'", err.Error())
 
 			events, err := event.FindLatestPrimaryDistroEvents("distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
-			assert.Equal(t, len(events), 0)
+			assert.Empty(t, events)
 		},
 		"Fails with 400 when providing the same ID for original and output": func(t *testing.T, ctx context.Context, u user.DBUser) {
 			opts := CopyDistroOpts{
@@ -142,11 +142,11 @@ func TestCopyDistro(t *testing.T) {
 			}
 			err := CopyDistro(ctx, &u, opts)
 			assert.Error(t, err)
-			assert.Equal(t, err.Error(), "400 (Bad Request): new and existing distro IDs are identical")
+			assert.Equal(t, "400 (Bad Request): new and existing distro IDs are identical", err.Error())
 
 			events, err := event.FindLatestPrimaryDistroEvents("distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
-			assert.Equal(t, len(events), 0)
+			assert.Empty(t, events)
 		},
 		"Fails when distro to copy does not exist": func(t *testing.T, ctx context.Context, u user.DBUser) {
 			opts := CopyDistroOpts{
@@ -155,11 +155,11 @@ func TestCopyDistro(t *testing.T) {
 			}
 			err := CopyDistro(ctx, &u, opts)
 			assert.Error(t, err)
-			assert.Equal(t, err.Error(), "404 (Not Found): distro 'my-distro' not found")
+			assert.Equal(t, "404 (Not Found): distro 'my-distro' not found", err.Error())
 
 			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
-			assert.Equal(t, len(events), 0)
+			assert.Empty(t, events)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -289,16 +289,16 @@ func TestCreateDistro(t *testing.T) {
 
 			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
-			assert.Equal(t, len(events), 1)
+			assert.Len(t, events, 1)
 		},
 		"Fails when the validator encounters an error": func(t *testing.T, ctx context.Context, u user.DBUser) {
 			err := CreateDistro(ctx, &u, "distro")
 			assert.Error(t, err)
-			assert.Equal(t, err.Error(), "validator encountered errors: 'ERROR: distro 'distro' uses an existing identifier'")
+			assert.Equal(t, "validator encountered errors: 'ERROR: distro 'distro' uses an existing identifier'", err.Error())
 
 			events, err := event.FindLatestPrimaryDistroEvents("distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
-			assert.Equal(t, len(events), 0)
+			assert.Empty(t, events)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

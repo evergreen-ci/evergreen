@@ -285,7 +285,7 @@ func (s *spawnHostTriggersSuite) TestSpawnHostSetupScriptCompletion() {
 	emailResponse, ok := n.Payload.(*message.Email)
 	s.Require().True(ok)
 	s.Require().NotNil(emailResponse)
-	s.Equal(emailResponse.Subject, "The setup script for spawn host has succeeded")
+	s.Equal("The setup script for spawn host has succeeded", emailResponse.Subject)
 
 	// Host script failed
 	s.e.EventType = event.EventHostScriptExecuteFailed
@@ -314,7 +314,7 @@ func (s *spawnHostTriggersSuite) TestSpawnHostSetupScriptCompletion() {
 	emailResponse, ok = n.Payload.(*message.Email)
 	s.Require().True(ok)
 	s.Require().NotNil(emailResponse)
-	s.Equal(emailResponse.Subject, "The setup script for spawn host has failed")
+	s.Equal("The setup script for spawn host has failed", emailResponse.Subject)
 
 	// Host script failed to start
 	s.e.Data = &event.HostEventData{
@@ -345,7 +345,7 @@ func (s *spawnHostTriggersSuite) TestSpawnHostSetupScriptCompletion() {
 	emailResponse, ok = n.Payload.(*message.Email)
 	s.Require().True(ok)
 	s.Require().NotNil(emailResponse)
-	s.Equal(emailResponse.Subject, "The setup script for spawn host has failed to start")
+	s.Equal("The setup script for spawn host has failed to start", emailResponse.Subject)
 }
 
 func (s *spawnHostTriggersSuite) TestSpawnHostCreationErrorCreatesNotification() {

@@ -87,6 +87,6 @@ func TestFindVolumesWithTerminatedHost(t *testing.T) {
 	volumes, err := FindVolumesWithTerminatedHost()
 	assert.NoError(t, err)
 	require.Len(t, volumes, 1)
-	assert.Equal(t, volumes[0].ID, "v1")
+	assert.Equal(t, "v1", volumes[0].ID)
 
 }

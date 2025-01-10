@@ -676,8 +676,8 @@ func TestAttachVolumeHandler(t *testing.T) {
 	assert.NoError(t, h.Parse(ctx, r))
 
 	require.NotNil(t, h.attachment)
-	assert.Equal(t, h.attachment.VolumeID, "my-volume")
-	assert.Equal(t, h.attachment.DeviceName, "my-device")
+	assert.Equal(t, "my-volume", h.attachment.VolumeID)
+	assert.Equal(t, "my-device", h.attachment.DeviceName)
 
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)
@@ -854,11 +854,11 @@ func TestGetVolumesHandler(t *testing.T) {
 		if utility.FromStringPtr(v.ID) == "volume1" {
 			assert.Equal(t, h1.Id, utility.FromStringPtr(v.HostID))
 			assert.Equal(t, h1.Volumes[0].DeviceName, utility.FromStringPtr(v.DeviceName))
-			assert.Equal(t, v.Size, 64)
+			assert.Equal(t, 64, v.Size)
 		} else {
 			assert.Empty(t, utility.FromStringPtr(v.HostID))
 			assert.Empty(t, utility.FromStringPtr(v.DeviceName))
-			assert.Equal(t, v.Size, 36)
+			assert.Equal(t, 36, v.Size)
 		}
 	}
 }
@@ -905,7 +905,7 @@ func TestGetVolumeByIDHandler(t *testing.T) {
 	assert.Equal(t, evergreen.DefaultEBSAvailabilityZone, utility.FromStringPtr(v.AvailabilityZone))
 	assert.Equal(t, h1.Id, utility.FromStringPtr(v.HostID))
 	assert.Equal(t, h1.Volumes[0].DeviceName, utility.FromStringPtr(v.DeviceName))
-	assert.Equal(t, v.Size, 64)
+	assert.Equal(t, 64, v.Size)
 }
 
 func TestMakeSpawnHostSubscription(t *testing.T) {

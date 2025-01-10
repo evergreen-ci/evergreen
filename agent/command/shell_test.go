@@ -181,7 +181,7 @@ func (s *shellExecuteCommandSuite) TestCancellingContextShouldCancelCommand() {
 	time.Sleep(100 * time.Millisecond)
 
 	err := cmd.Execute(ctx, s.comm, s.logger, s.conf)
-	s.Require().NotNil(err)
+	s.Require().Error(err)
 	s.True(utility.IsContextError(errors.Cause(err)))
 }
 
@@ -254,6 +254,6 @@ func (s *shellExecuteCommandSuite) TestFailingShellCommandErrors() {
 	}
 	cmd.SetJasperManager(s.jasper)
 	err := cmd.Execute(s.ctx, s.comm, s.logger, s.conf)
-	s.Require().NotNil(err)
+	s.Require().Error(err)
 	s.Contains(err.Error(), "shell script encountered problem: exit code 1")
 }

@@ -312,7 +312,7 @@ func (s *AgentSuite) TestFinishTaskWithAbnormallyCompletedTask() {
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status, "task that failed due to non-task-related reasons should record the final status")
 	s.Equal(evergreen.CommandTypeSystem, s.mockCommunicator.EndTaskResult.Detail.Type)
 	s.NotEmpty(s.mockCommunicator.EndTaskResult.Detail.Description)
-	s.Equal(s.mockCommunicator.EndTaskResult.Detail.FailingCommand, "initial task setup")
+	s.Equal("initial task setup", s.mockCommunicator.EndTaskResult.Detail.FailingCommand)
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Task encountered unexpected task lifecycle system failure",
@@ -400,8 +400,8 @@ pre:
 	s.Error(err)
 	s.True(utility.IsContextError(errors.Cause(err)), "command should have stopped due to context cancellation")
 
-	s.True(cmdDuration > waitUntilAbort, "command should have only stopped when it received cancel")
-	s.True(cmdDuration < cmdSleepSecs*time.Second, "command should not block if it's taking too long to stop")
+	s.Greater(cmdDuration, waitUntilAbort, "command should have only stopped when it received cancel")
+	s.Less(cmdDuration, cmdSleepSecs*time.Second, "command should not block if it's taking too long to stop")
 }
 
 func (s *AgentSuite) TestCancelledRunCommandsIsNonBlocking() {
@@ -2664,15 +2664,15 @@ func (s *AgentSuite) TestUpsertCheckRun() {
 	checkRunOutput, err := buildCheckRun(s.ctx, s.tc)
 	s.NoError(err)
 	s.NotNil(checkRunOutput)
-	s.Equal(checkRunOutput.Title, "This is my report checkRun_value")
-	s.Equal(checkRunOutput.Summary, "We found 6 failures and 2 warnings")
-	s.Equal(checkRunOutput.Text, "It looks like there are some errors on lines 2 and 4.")
-	s.Assert().Len(checkRunOutput.Annotations, 1)
-	s.Equal(checkRunOutput.Annotations[0].Path, "README.md")
-	s.Equal(checkRunOutput.Annotations[0].AnnotationLevel, "warning")
-	s.Equal(checkRunOutput.Annotations[0].Title, "Error Detector")
-	s.Equal(checkRunOutput.Annotations[0].Message, "message")
-	s.Equal(checkRunOutput.Annotations[0].RawDetails, "Do you mean this other thing?")
+	s.Equal("This is my report checkRun_value", checkRunOutput.Title)
+	s.Equal("We found 6 failures and 2 warnings", checkRunOutput.Summary)
+	s.Equal("It looks like there are some errors on lines 2 and 4.", checkRunOutput.Text)
+	s.Len(checkRunOutput.Annotations, 1)
+	s.Equal("README.md", checkRunOutput.Annotations[0].Path)
+	s.Equal("warning", checkRunOutput.Annotations[0].AnnotationLevel)
+	s.Equal("Error Detector", checkRunOutput.Annotations[0].Title)
+	s.Equal("message", checkRunOutput.Annotations[0].Message)
+	s.Equal("Do you mean this other thing?", checkRunOutput.Annotations[0].RawDetails)
 	s.Equal(checkRunOutput.Annotations[0].StartLine, utility.ToIntPtr(2))
 	s.Equal(checkRunOutput.Annotations[0].EndLine, utility.ToIntPtr(4))
 }
@@ -2762,8 +2762,8 @@ func (s *AgentSuite) TestClearsGitConfig() {
 		"Running task commands failed",
 	})
 
-	s.Assert().NoFileExists(gitConfigPath)
-	s.Assert().NoFileExists(gitCredentialsPath)
+	s.NoFileExists(gitConfigPath)
+	s.NoFileExists(gitCredentialsPath)
 }
 
 func (s *AgentSuite) TestShouldRunSetupGroup() {
@@ -2785,39 +2785,39 @@ func (s *AgentSuite) TestShouldRunSetupGroup() {
 	}
 
 	shouldRun := shouldRunSetupGroup(nextTask, tc)
-	s.Equal(true, shouldRun)
+	s.True(shouldRun)
 
 	tc.ranSetupGroup = true
 
 	shouldRun = shouldRunSetupGroup(nextTask, &taskContext{})
-	s.Equal(true, shouldRun)
+	s.True(shouldRun)
 
 	shouldRun = shouldRunSetupGroup(nextTask, tc)
-	s.Equal(true, shouldRun)
+	s.True(shouldRun)
 
 	nextTask.TaskGroup = "not same"
 	shouldRun = shouldRunSetupGroup(nextTask, tc)
-	s.Equal(true, shouldRun)
+	s.True(shouldRun)
 
 	nextTask.Build = "build1"
 	shouldRun = shouldRunSetupGroup(nextTask, tc)
-	s.Equal(true, shouldRun)
+	s.True(shouldRun)
 
 	nextTask.TaskGroup = "group1"
 	shouldRun = shouldRunSetupGroup(nextTask, tc)
-	s.Equal(false, shouldRun)
+	s.False(shouldRun)
 
 	nextTask.TaskExecution = 1
 	shouldRun = shouldRunSetupGroup(nextTask, tc)
-	s.Equal(true, shouldRun)
+	s.True(shouldRun)
 
 	tc.taskConfig.Task.Execution = 1
 	shouldRun = shouldRunSetupGroup(nextTask, tc)
-	s.Equal(false, shouldRun)
+	s.False(shouldRun)
 
 	tc.taskConfig.Task.Execution = 2
 	shouldRun = shouldRunSetupGroup(nextTask, tc)
-	s.Equal(false, shouldRun)
+	s.False(shouldRun)
 }
 
 // checkMockLogs checks the mock communicator's received task logs. Note that

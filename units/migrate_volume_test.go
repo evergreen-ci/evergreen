@@ -61,8 +61,8 @@ func TestVolumeMigrateJob(t *testing.T) {
 
 			initialHost, err := host.FindOneId(ctx, h.Id)
 			assert.NoError(t, err)
-			assert.Equal(t, initialHost.Status, evergreen.HostStopped)
-			assert.Equal(t, initialHost.HomeVolumeID, "")
+			assert.Equal(t, evergreen.HostStopped, initialHost.Status)
+			assert.Equal(t, "", initialHost.HomeVolumeID)
 			assert.Empty(t, initialHost.Volumes)
 			assert.False(t, initialHost.NoExpiration)
 			assert.WithinDuration(t, initialHost.ExpirationTime, time.Now(), (time.Hour*24)+time.Second)
@@ -131,13 +131,13 @@ func TestVolumeMigrateJob(t *testing.T) {
 			// And that host is still running
 			initialHost, err := host.FindOneId(ctx, h.Id)
 			assert.NoError(t, err)
-			assert.Equal(t, initialHost.Status, evergreen.HostRunning)
+			assert.Equal(t, evergreen.HostRunning, initialHost.Status)
 			assert.Equal(t, initialHost.HomeVolumeID, volume.ID)
 
 			events, err := event.FindAllByResourceID(h.Id)
 			assert.NoError(t, err)
 			require.Len(t, events, 1)
-			assert.Equal(t, events[0].EventType, event.EventVolumeMigrationFailed)
+			assert.Equal(t, event.EventVolumeMigrationFailed, events[0].EventType)
 		},
 		"NewHostFailsToStart": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
 			// Invalid public key will prevent new host from spinning up
@@ -169,13 +169,13 @@ func TestVolumeMigrateJob(t *testing.T) {
 			volume, err := host.FindVolumeByID(v.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, volume)
-			assert.Equal(t, volume.Host, "")
+			assert.Equal(t, "", volume.Host)
 			assert.False(t, volume.Migrating)
 
 			initialHost, err := host.FindOneId(ctx, h.Id)
 			assert.NoError(t, err)
-			assert.Equal(t, initialHost.Status, evergreen.HostStopped)
-			assert.Equal(t, initialHost.HomeVolumeID, "")
+			assert.Equal(t, evergreen.HostStopped, initialHost.Status)
+			assert.Equal(t, "", initialHost.HomeVolumeID)
 
 			events, err := event.FindAllByResourceID(h.Id)
 			assert.NoError(t, err)
@@ -206,8 +206,8 @@ func TestVolumeMigrateJob(t *testing.T) {
 
 			initialHost, err := host.FindOneId(ctx, h.Id)
 			assert.NoError(t, err)
-			assert.Equal(t, initialHost.Status, evergreen.HostTerminated)
-			assert.Equal(t, initialHost.HomeVolumeID, "v0")
+			assert.Equal(t, evergreen.HostTerminated, initialHost.Status)
+			assert.Equal(t, "v0", initialHost.HomeVolumeID)
 
 			foundHosts, err := host.Find(ctx, host.IsUninitialized)
 			assert.NoError(t, err)
@@ -231,14 +231,14 @@ func TestVolumeMigrateJob(t *testing.T) {
 			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 1000*time.Millisecond))
 			assert.Error(t, j.Error())
 			assert.Contains(t, j.Error().Error(), "volume 'foo' not found")
-			assert.Equal(t, j.RetryInfo().GetRemainingAttempts(), 1)
+			assert.Equal(t, 1, j.RetryInfo().GetRemainingAttempts())
 
 			// Second retry fails identically
 			j, ok := env.RemoteQueue().Get(ctx, j.ID())
 			assert.True(t, ok)
 			assert.Error(t, j.Error())
 			assert.Contains(t, j.Error().Error(), "volume 'foo' not found")
-			assert.Equal(t, j.RetryInfo().GetRemainingAttempts(), 0)
+			assert.Equal(t, 0, j.RetryInfo().GetRemainingAttempts())
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {

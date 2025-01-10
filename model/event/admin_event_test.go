@@ -47,9 +47,9 @@ func (s *AdminEventSuite) TestEventLogging() {
 	beforeVal := eventData.Changes.Before.(*evergreen.ServiceFlags)
 	afterVal := eventData.Changes.After.(*evergreen.ServiceFlags)
 	s.Equal(before, *beforeVal)
-	s.Equal(false, afterVal.AlertsDisabled)
-	s.Equal(true, afterVal.MonitorDisabled)
-	s.Equal(true, afterVal.RepotrackerDisabled)
+	s.False(afterVal.AlertsDisabled)
+	s.True(afterVal.MonitorDisabled)
+	s.True(afterVal.RepotrackerDisabled)
 }
 
 func (s *AdminEventSuite) TestEventLogging2() {
@@ -108,7 +108,7 @@ func (s *AdminEventSuite) TestNoSpuriousLogging() {
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
 	dbEvents, err := FindAdmin(RecentAdminEvents(5))
 	s.NoError(err)
-	s.Len(dbEvents, 0)
+	s.Empty(dbEvents)
 }
 
 func (s *AdminEventSuite) TestNoChanges() {
@@ -121,7 +121,7 @@ func (s *AdminEventSuite) TestNoChanges() {
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
-	s.Len(dbEvents, 0)
+	s.Empty(dbEvents)
 }
 
 func (s *AdminEventSuite) TestReverting() {

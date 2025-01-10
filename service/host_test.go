@@ -45,7 +45,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(http.StatusOK, httpStatus)
 		assert.Equal(result, fmt.Sprintf(api.HostStatusUpdateSuccess, evergreen.HostRunning, evergreen.HostQuarantined))
-		assert.Equal(h.Status, evergreen.HostQuarantined)
+		assert.Equal(evergreen.HostQuarantined, h.Status)
 		hostEventOpts := event.HostEventsOpts{
 			ID:      "h1",
 			Tag:     "",
@@ -79,7 +79,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		_, httpStatus, err := api.ModifyHostStatus(ctx, env, &h, evergreen.HostRunning, "", &user)
 		require.NoError(err)
 		assert.Equal(http.StatusOK, httpStatus)
-		assert.Equal(h.Status, evergreen.HostProvisioning)
+		assert.Equal(evergreen.HostProvisioning, h.Status)
 		assert.Equal(host.ReprovisionToNew, h.NeedsReprovision)
 
 		// Verify that host monitoring job does not immediately re-quarantine host

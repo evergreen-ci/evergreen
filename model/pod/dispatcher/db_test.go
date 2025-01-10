@@ -208,7 +208,7 @@ func TestAllocate(t *testing.T) {
 			assert.Equal(t, GetGroupID(tsk), newDispatcher.GroupID)
 			assert.Equal(t, []string{p.ID}, newDispatcher.PodIDs)
 			assert.Equal(t, []string{tsk.Id}, newDispatcher.TaskIDs)
-			assert.True(t, newDispatcher.ModificationCount > 0)
+			assert.Positive(t, newDispatcher.ModificationCount)
 
 			checkAllocated(t, tsk, p, newDispatcher)
 		},
@@ -229,7 +229,7 @@ func TestAllocate(t *testing.T) {
 			assert.Empty(t, left)
 			assert.Empty(t, right)
 			assert.Equal(t, pd.TaskIDs, updatedDispatcher.TaskIDs)
-			assert.True(t, updatedDispatcher.ModificationCount > pd.ModificationCount)
+			assert.Greater(t, updatedDispatcher.ModificationCount, pd.ModificationCount)
 			assert.False(t, utility.IsZeroTime(updatedDispatcher.LastModified))
 
 			checkAllocated(t, tsk, p, updatedDispatcher)
@@ -250,7 +250,7 @@ func TestAllocate(t *testing.T) {
 			assert.Equal(t, pd.GroupID, updatedDispatcher.GroupID)
 			assert.Equal(t, pd.PodIDs, updatedDispatcher.PodIDs)
 			assert.Equal(t, pd.TaskIDs, updatedDispatcher.TaskIDs)
-			assert.True(t, updatedDispatcher.ModificationCount > pd.ModificationCount)
+			assert.Greater(t, updatedDispatcher.ModificationCount, pd.ModificationCount)
 			assert.False(t, utility.IsZeroTime(updatedDispatcher.LastModified))
 
 			checkTaskAllocated(t, tsk)

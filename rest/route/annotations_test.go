@@ -59,7 +59,7 @@ func TestAnnotationsByBuildHandlerRun(t *testing.T) {
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 	apiAnnotations := resp.Data().([]restModel.APITaskAnnotation)
-	assert.Len(t, apiAnnotations, 0)
+	assert.Empty(t, apiAnnotations)
 
 	annotations := []annotations.TaskAnnotation{
 		{
@@ -150,7 +150,7 @@ func TestAnnotationsByVersionHandlerRun(t *testing.T) {
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 	apiAnnotations := resp.Data().([]restModel.APITaskAnnotation)
-	assert.Len(t, apiAnnotations, 0)
+	assert.Empty(t, apiAnnotations)
 
 	annotations := []annotations.TaskAnnotation{
 		{
@@ -259,7 +259,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 	apiAnnotations := resp.Data().([]restModel.APITaskAnnotation)
-	assert.Len(t, apiAnnotations, 0)
+	assert.Empty(t, apiAnnotations)
 
 	annotations := []annotations.TaskAnnotation{
 		{
@@ -676,12 +676,12 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	annotation, err := annotations.FindOneByTaskIdAndExecution("t1", 0)
 	require.NoError(t, err)
-	assert.NotEqual(t, annotation.Id, "")
+	assert.NotEqual(t, "", annotation.Id)
 	assert.Equal(t, "task-1-note_0", annotation.Note.Message)
 	assert.Equal(t, "test_annotation_user", annotation.Note.Source.Author)
 	assert.Equal(t, "api", annotation.Note.Source.Requester)
 	assert.Equal(t, "api", annotation.Issues[0].Source.Requester)
-	assert.Equal(t, 2, len(annotation.Issues))
+	assert.Len(t, annotation.Issues, 2)
 	assert.Equal(t, float64(12.34), annotation.Issues[0].ConfidenceScore)
 	assert.Equal(t, float64(56.78), annotation.Issues[1].ConfidenceScore)
 
@@ -709,12 +709,12 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	annotation, err = annotations.FindOneByTaskIdAndExecution("t1", 0)
 	require.NoError(t, err)
-	assert.NotEqual(t, annotation.Id, "")
+	assert.NotEqual(t, "", annotation.Id)
 	assert.Equal(t, "task-1-note_0_updated", annotation.Note.Message)
 	// suspected issues and issues don't get updated when not defined
 	require.Nil(t, annotation.SuspectedIssues)
 	assert.Equal(t, "some key 0", annotation.Issues[0].IssueKey)
-	assert.Equal(t, 2, len(annotation.Issues))
+	assert.Len(t, annotation.Issues, 2)
 	assert.Equal(t, float64(87.65), annotation.Issues[0].ConfidenceScore)
 	assert.Equal(t, float64(43.21), annotation.Issues[1].ConfidenceScore)
 
@@ -821,7 +821,7 @@ func TestCreatedTicketByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	annotation, err := annotations.FindOneByTaskIdAndExecution("t1", 0)
 	require.NoError(t, err)
-	assert.NotEqual(t, annotation.Id, "")
+	assert.NotEqual(t, "", annotation.Id)
 	assert.Equal(t, "https://issuelink1.com", annotation.CreatedIssues[0].URL)
 	assert.Equal(t, "Issue_key_1", annotation.CreatedIssues[0].IssueKey)
 
@@ -836,7 +836,7 @@ func TestCreatedTicketByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	annotation, err = annotations.FindOneByTaskIdAndExecution("t1", 0)
 	require.NoError(t, err)
-	assert.NotEqual(t, annotation.Id, "")
+	assert.NotEqual(t, "", annotation.Id)
 	assert.Equal(t, "https://issuelink1.com", annotation.CreatedIssues[0].URL)
 	assert.Equal(t, "Issue_key_1", annotation.CreatedIssues[0].IssueKey)
 	assert.Equal(t, "https://issuelink2.com", annotation.CreatedIssues[1].URL)

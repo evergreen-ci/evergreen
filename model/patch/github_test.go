@@ -187,7 +187,7 @@ func (s *GithubSuite) TestSetProcessed() {
 
 	found, err := FindUnprocessedGithubIntents()
 	s.NoError(err)
-	s.Len(found, 0)
+	s.Empty(found)
 
 	var intents []githubIntent
 	s.NoError(db.FindAllQ(IntentCollection, db.Query(bson.M{processedKey: true}), &intents))

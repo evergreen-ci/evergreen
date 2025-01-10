@@ -386,8 +386,8 @@ func TestSignedUrlVisibility(t *testing.T) {
 					assert.Equal(t, file.AwsSecret, s.AwsSecret)
 
 				} else {
-					assert.Equal(t, file.AwsKey, "")
-					assert.Equal(t, file.AwsSecret, "")
+					assert.Equal(t, "", file.AwsKey)
+					assert.Equal(t, "", file.AwsSecret)
 				}
 			}
 		}

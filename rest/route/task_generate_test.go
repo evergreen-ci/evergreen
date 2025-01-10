@@ -79,8 +79,8 @@ func TestGenerateExecuteWithSmallFileInDB(t *testing.T) {
 	}
 	r := h.Run(ctx)
 
-	assert.Equal(t, r.Data(), struct{}{})
-	assert.Equal(t, r.Status(), http.StatusOK)
+	assert.Equal(t, struct{}{}, r.Data())
+	assert.Equal(t, http.StatusOK, r.Status())
 
 	dbTask, err := task.FindOneId(tsk.Id)
 	require.NoError(t, err)
@@ -90,7 +90,7 @@ func TestGenerateExecuteWithSmallFileInDB(t *testing.T) {
 	genJSONInDB, err := task.GeneratedJSONFind(ctx, env.Settings(), dbTask)
 	require.NoError(t, err)
 	require.Len(t, genJSONInDB, len(h.files), "generated JSON in DB should be non-empty")
-	assert.EqualValues(t, genJSON, genJSONInDB[0])
+	assert.JSONEq(t, genJSON, genJSONInDB[0])
 
 	queue, err := env.RemoteQueueGroup().Get(ctx, fmt.Sprintf("service.generate.tasks.version.%s", tsk.Version))
 	require.NoError(t, err)
@@ -152,8 +152,8 @@ func TestGenerateExecuteWithLargeFileInS3(t *testing.T) {
 	}
 	r := h.Run(ctx)
 
-	assert.Equal(t, r.Data(), struct{}{})
-	assert.Equal(t, r.Status(), http.StatusOK)
+	assert.Equal(t, struct{}{}, r.Data())
+	assert.Equal(t, http.StatusOK, r.Status())
 
 	dbTask, err := task.FindOneId(tsk.Id)
 	require.NoError(t, err)
@@ -213,11 +213,11 @@ func TestGeneratePollRun(t *testing.T) {
 	resp = h.Run(ctx)
 	require.NotNil(t, resp)
 	require.Equal(t, http.StatusOK, resp.Status())
-	require.Equal(t, true, resp.Data().(*apimodels.GeneratePollResponse).Finished)
+	require.True(t, resp.Data().(*apimodels.GeneratePollResponse).Finished)
 
 	impl.taskID = "2"
 	resp = h.Run(ctx)
 	require.NotNil(t, resp)
 	require.Equal(t, http.StatusOK, resp.Status())
-	require.Equal(t, false, resp.Data().(*apimodels.GeneratePollResponse).Finished)
+	require.False(t, resp.Data().(*apimodels.GeneratePollResponse).Finished)
 }

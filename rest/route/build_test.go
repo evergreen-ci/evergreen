@@ -106,7 +106,7 @@ func (s *BuildByIdSuite) TearDownTest() {
 func (s *BuildByIdSuite) TestFindBuildById() {
 	s.rm.(*buildGetHandler).buildId = "build1"
 	resp := s.rm.Run(s.ctx)
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 	s.Require().NotNil(resp.Data())
 
 	b, ok := resp.Data().(*model.APIBuild)
@@ -123,7 +123,7 @@ func (s *BuildByIdSuite) TestFindBuildById() {
 
 	s.rm.(*buildGetHandler).buildId = "build2"
 	resp = s.rm.Run(s.ctx)
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp.Data())
 
 	b, ok = resp.Data().(*model.APIBuild)
@@ -141,7 +141,7 @@ func (s *BuildByIdSuite) TestFindBuildById() {
 func (s *BuildByIdSuite) TestFindBuildByIdFail() {
 	s.rm.(*buildGetHandler).buildId = "build3"
 	resp := s.rm.Run(s.ctx)
-	s.NotEqual(resp.Status(), http.StatusOK)
+	s.NotEqual(http.StatusOK, resp.Status())
 }
 
 ////////////////////////////////////////////////////////////////////////

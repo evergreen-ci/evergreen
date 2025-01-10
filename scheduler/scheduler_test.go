@@ -199,10 +199,10 @@ func TestUnderwaterUnschedule(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(t, foundT3)
 
-	assert.Equal(foundVersion.Status, evergreen.VersionStarted)
-	assert.Equal(foundT1.Priority, evergreen.DisabledTaskPriority)
-	assert.Equal(foundT2.Priority, evergreen.DisabledTaskPriority)
-	assert.Equal(foundT3.Priority, int64(0))
+	assert.Equal(evergreen.VersionStarted, foundVersion.Status)
+	assert.Equal(evergreen.DisabledTaskPriority, foundT1.Priority)
+	assert.Equal(evergreen.DisabledTaskPriority, foundT2.Priority)
+	assert.Equal(int64(0), foundT3.Priority)
 	assert.False(foundT1.Activated)
 	assert.False(foundT2.Activated)
 	assert.True(foundT3.Activated)
@@ -210,7 +210,7 @@ func TestUnderwaterUnschedule(t *testing.T) {
 	foundDisplayTask, err := task.FindOneId(dt.Id)
 	assert.NoError(err)
 	require.NotNil(t, foundDisplayTask)
-	assert.Equal(foundDisplayTask.Status, evergreen.TaskSucceeded)
+	assert.Equal(evergreen.TaskSucceeded, foundDisplayTask.Status)
 }
 
 func (s *SchedulerSuite) TestSpawnHostsParents() {
@@ -318,7 +318,7 @@ func (s *SchedulerSuite) TestSpawnHostsContainers() {
 	newHostsSpawned, err := SpawnHosts(ctx, d, 1, pool)
 	s.NoError(err)
 
-	s.Require().Equal(1, len(newHostsSpawned))
+	s.Require().Len(newHostsSpawned, 1)
 	s.NotEmpty(newHostsSpawned[0].ParentID)
 	s.False(newHostsSpawned[0].HasContainers)
 }
@@ -369,7 +369,7 @@ func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
 	newHostsSpawned, err := SpawnHosts(ctx, d, 5, pool)
 	s.NoError(err)
 	// 1 parent, 3 children on new parent, 1 child on old parent
-	s.Equal(5, len(newHostsSpawned))
+	s.Len(newHostsSpawned, 5)
 
 	parents := 0
 	children := 0
@@ -409,7 +409,7 @@ func (s *SchedulerSuite) TestSpawnHostsOneNewParent() {
 	newHostsSpawned, err := SpawnHosts(ctx, d, 1, pool)
 	s.NoError(err)
 	// 1 parent, 1 child
-	s.Equal(2, len(newHostsSpawned))
+	s.Len(newHostsSpawned, 2)
 
 	parentHost := host.Host{}
 	childHost := host.Host{}

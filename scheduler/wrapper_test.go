@@ -266,7 +266,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 
 			dbHost, err := host.FindOneId(ctx, name)
 			require.NoError(t, err)
-			assert.Equal(t, dbHost.Status, evergreen.HostRunning)
+			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionNone, dbHost.NeedsReprovision)
 			assert.True(t, dbHost.Provisioned)
 		},
@@ -289,7 +289,7 @@ func TestDoStaticHostUpdate(t *testing.T) {
 
 			dbHost, err := host.FindOneId(ctx, name)
 			require.NoError(t, err)
-			assert.Equal(t, dbHost.Status, evergreen.HostProvisioning)
+			assert.Equal(t, evergreen.HostProvisioning, dbHost.Status)
 			assert.Equal(t, host.ReprovisionToNew, dbHost.NeedsReprovision)
 			assert.False(t, dbHost.Provisioned)
 		},

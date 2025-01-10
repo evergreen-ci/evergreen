@@ -23,7 +23,7 @@ func TestCreateEnclosingDirectory(t *testing.T) {
 	assert.NoError(os.WriteFile(fileName, []byte("hello world"), 0744))
 	assert.False(dirExists(fileName))
 	_, err := os.Stat(fileName)
-	assert.True(!os.IsNotExist(err))
+	assert.False(os.IsNotExist(err))
 	assert.NoError(os.Remove(fileName))
 	_, err = os.Stat(fileName)
 	assert.True(os.IsNotExist(err))

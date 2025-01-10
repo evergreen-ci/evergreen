@@ -39,13 +39,13 @@ func TestCleanup(t *testing.T) {
 			var info types.Info
 			info, err = dockerClient.Info(ctx)
 			require.NoError(t, err)
-			require.True(t, info.ContainersRunning > 0)
+			require.Positive(t, info.ContainersRunning)
 
 			assert.NoError(t, cleanContainers(context.Background(), dockerClient))
 
 			info, err = dockerClient.Info(ctx)
 			assert.NoError(t, err)
-			assert.Equal(t, 0, info.Containers)
+			assert.Zero(t, info.Containers)
 		},
 		"cleanImages": func(*testing.T) {
 			assert.NoError(t, cleanImages(context.Background(), dockerClient))
@@ -53,20 +53,20 @@ func TestCleanup(t *testing.T) {
 			var info types.Info
 			info, err = dockerClient.Info(ctx)
 			assert.NoError(t, err)
-			assert.Equal(t, 0, info.Images)
+			assert.Zero(t, info.Images)
 		},
 		"cleanVolumes": func(*testing.T) {
 			_, err = dockerClient.VolumeCreate(ctx, volume.CreateOptions{})
 			require.NoError(t, err)
 			volumes, err := dockerClient.VolumeList(ctx, volume.ListOptions{})
 			require.NoError(t, err)
-			require.True(t, len(volumes.Volumes) > 0)
+			require.NotEmpty(t, volumes.Volumes)
 
 			assert.NoError(t, cleanVolumes(context.Background(), dockerClient, grip.NewJournaler("")))
 
 			volumes, err = dockerClient.VolumeList(ctx, volume.ListOptions{})
 			assert.NoError(t, err)
-			assert.Len(t, volumes.Volumes, 0)
+			assert.Empty(t, volumes.Volumes)
 		},
 		"Cleanup": func(*testing.T) {
 			resp, err := dockerClient.ContainerCreate(ctx, &container.Config{
@@ -76,25 +76,25 @@ func TestCleanup(t *testing.T) {
 			require.NoError(t, dockerClient.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}))
 			info, err := dockerClient.Info(ctx)
 			require.NoError(t, err)
-			require.True(t, info.ContainersRunning > 0)
-			require.True(t, info.Images > 0)
+			require.Positive(t, info.ContainersRunning)
+			require.Positive(t, info.Images)
 
 			_, err = dockerClient.VolumeCreate(ctx, volume.CreateOptions{})
 			require.NoError(t, err)
 			volumes, err := dockerClient.VolumeList(ctx, volume.ListOptions{})
 			require.NoError(t, err)
-			require.True(t, len(volumes.Volumes) > 0)
+			require.NotEmpty(t, volumes.Volumes)
 
 			assert.NoError(t, Cleanup(context.Background(), grip.NewJournaler("")))
 
 			info, err = dockerClient.Info(ctx)
 			assert.NoError(t, err)
-			assert.Equal(t, 0, info.Containers)
-			assert.Equal(t, 0, info.Images)
+			assert.Zero(t, info.Containers)
+			assert.Zero(t, info.Images)
 
 			volumes, err = dockerClient.VolumeList(ctx, volume.ListOptions{})
 			assert.NoError(t, err)
-			assert.Len(t, volumes.Volumes, 0)
+			assert.Empty(t, volumes.Volumes)
 		},
 	} {
 		out, err := dockerClient.ImagePull(ctx, imageName, types.ImagePullOptions{})

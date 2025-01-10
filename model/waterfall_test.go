@@ -182,7 +182,7 @@ func TestGetAllWaterfallVersions(t *testing.T) {
 
 	versions, err = GetAllWaterfallVersions(ctx, p.Id, 2, 3)
 	assert.NoError(t, err)
-	assert.Len(t, versions, 0)
+	assert.Empty(t, versions)
 
 	versions, err = GetAllWaterfallVersions(ctx, p.Id, 9, 8)
 	assert.Error(t, err)

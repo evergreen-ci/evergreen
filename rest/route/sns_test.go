@@ -99,7 +99,7 @@ func TestHandleEC2SNSNotification(t *testing.T) {
 
 	// unknown host
 	assert.NoError(t, rh.handleNotification(ctx))
-	assert.Equal(t, rh.queue.Stats(ctx).Total, 0)
+	assert.Equal(t, 0, rh.queue.Stats(ctx).Total)
 
 	// known host
 	hostToAdd := host.Host{Id: "i-0123456789"}

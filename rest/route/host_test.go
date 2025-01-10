@@ -1157,7 +1157,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			resp := rh.Run(ctx)
 
 			require.NotZero(t, resp)
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			apiHost, ok := resp.Data().(*restmodel.APIHost)
 			require.True(t, ok, resp.Data())
 			require.NotZero(t, apiHost)
@@ -1171,7 +1171,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			realHost, err := host.FindOneId(ctx, instanceID)
 			require.NoError(t, err)
 			require.NotZero(t, realHost)
-			assert.Equal(t, realHost.Status, evergreen.HostStarting, "intent host should be converted to real host when it's up")
+			assert.Equal(t, evergreen.HostStarting, realHost.Status, "intent host should be converted to real host when it's up")
 			assert.False(t, realHost.NeedsNewAgentMonitor)
 		},
 		"ConvertsFailedIntentHostToDecommissionedRealHost": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host) {
@@ -1219,7 +1219,7 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			resp := rh.Run(ctx)
 
 			require.NotZero(t, resp)
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			apiHost, ok := resp.Data().(*restmodel.APIHost)
 			require.True(t, ok, resp.Data())
 			require.NotZero(t, apiHost)

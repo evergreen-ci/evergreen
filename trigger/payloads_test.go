@@ -67,7 +67,7 @@ func (s *payloadSuite) TestEmailWithNilContent() {
 	s.NoError(err)
 	s.Require().NotNil(m)
 
-	s.Equal(m.Subject, "Evergreen: patch display-1234 in 'test' has failed!")
+	s.Equal("Evergreen: patch display-1234 in 'test' has failed!", m.Subject)
 	s.Contains(m.Body, "Your Evergreen patch in 'test' <")
 	s.Contains(m.Body, "> has failed.")
 	s.Contains(m.Body, `href="`+s.url+`"`)
@@ -226,11 +226,11 @@ func TestTruncateString(t *testing.T) {
 
 	head, tail = truncateString(sample, 0)
 	assert.Empty(head)
-	assert.Len(head, 0)
+	assert.Empty(head)
 	assert.Equal("12345", tail)
 
 	head, tail = truncateString(sample, -1)
 	assert.Empty(head)
-	assert.Len(head, 0)
+	assert.Empty(head)
 	assert.Equal("12345", tail)
 }

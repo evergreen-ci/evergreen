@@ -263,7 +263,7 @@ func (s *GitGetProjectSuite) TestGitPlugin() {
 	s.comm.CreateInstallationTokenResult = "token"
 	s.comm.CreateGitHubDynamicAccessTokenResult = "token"
 	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
+		s.NotEmpty(task.Commands)
 		for _, command := range task.Commands {
 			pluginCmds, err := Render(command, &conf.Project, BlockInfo{})
 			s.NoError(err)
@@ -303,7 +303,7 @@ func (s *GitGetProjectSuite) TestTokenIsRedactedWhenGenerated() {
 
 	runCommands := func(logger client.LoggerProducer) {
 		for _, task := range conf.Project.Tasks {
-			s.NotEqual(len(task.Commands), 0)
+			s.NotEmpty(task.Commands)
 			for _, command := range task.Commands {
 				pluginCmds, err := Render(command, &conf.Project, BlockInfo{})
 				s.NoError(err)
@@ -380,7 +380,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 	defer cancel()
 
 	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
+		s.NotEmpty(task.Commands)
 		for _, command := range task.Commands {
 			pluginCmds, err := Render(command, &conf.Project, BlockInfo{})
 			s.NoError(err)
@@ -710,7 +710,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 	defer cancel()
 
 	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
+		s.NotEmpty(task.Commands)
 		for _, command := range task.Commands {
 			var pluginCmds []Command
 			pluginCmds, err = Render(command, &conf.Project, BlockInfo{})
@@ -759,7 +759,7 @@ func (s *GitGetProjectSuite) TestMultipleModules() {
 	s.comm.CreateGitHubDynamicAccessTokenResult = mockedGitHubAppToken
 
 	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
+		s.NotEmpty(task.Commands)
 		for _, command := range task.Commands {
 			pluginCmds, err = Render(command, &conf.Project, BlockInfo{})
 			s.NoError(err)
@@ -819,7 +819,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
 	conf.Expansions.Put(moduleRevExpansionName("sample"), correctHash)
 
 	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
+		s.NotEmpty(task.Commands)
 		for _, command := range task.Commands {
 			var pluginCmds []Command
 			pluginCmds, err = Render(command, &conf.Project, BlockInfo{})
@@ -861,7 +861,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifestWithExpansion() {
 	conf.Expansions.Put("sample_expansion_name", "sample")
 
 	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
+		s.NotEmpty(task.Commands)
 		for _, command := range task.Commands {
 			var pluginCmds []Command
 			pluginCmds, err = Render(command, &conf.Project, BlockInfo{})

@@ -41,7 +41,7 @@ func TestMockGetTaskReliability(t *testing.T) {
 	}
 	scores, err := GetTaskReliabilityScores(filter)
 	assert.NoError(err)
-	assert.Len(scores, 0)
+	assert.Empty(scores)
 
 	// Add stats
 	day := time.Now()

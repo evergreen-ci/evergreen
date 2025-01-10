@@ -47,7 +47,7 @@ func TestVersionByMostRecentNonIgnored(t *testing.T) {
 
 	v, err := VersionFindOne(VersionByMostRecentNonIgnored("proj", ts))
 	assert.NoError(t, err)
-	assert.Equal(t, v.Id, "v1")
+	assert.Equal(t, "v1", v.Id)
 }
 
 func TestRestartVersion(t *testing.T) {
@@ -368,23 +368,23 @@ func TestVersionByProjectIdAndRevisionPrefix(t *testing.T) {
 
 	v, err := VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts))
 	assert.NoError(t, err)
-	assert.Equal(t, v.Id, "v1")
+	assert.Equal(t, "v1", v.Id)
 
 	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-3*utility.Day)))
 	assert.NoError(t, err)
-	assert.Equal(t, v.Id, "v4")
+	assert.Equal(t, "v4", v.Id)
 
 	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-2*utility.Day).Add(-30*time.Minute)))
 	assert.NoError(t, err)
-	assert.Equal(t, v.Id, "v3")
+	assert.Equal(t, "v3", v.Id)
 
 	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-2*utility.Day)))
 	assert.NoError(t, err)
-	assert.Equal(t, v.Id, "v3")
+	assert.Equal(t, "v3", v.Id)
 
 	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj_2", ts.Add(-2*utility.Day)))
 	assert.NoError(t, err)
-	assert.Equal(t, v.Id, "v2")
+	assert.Equal(t, "v2", v.Id)
 
 	// Does not match on patch requester
 	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-5*utility.Day)))

@@ -19,7 +19,7 @@ task_groups:
 create_time: 2022-12-15T17:18:32Z
 `
 	pc, err := CreateProjectConfig([]byte(projYml), "")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Nil(t, pc)
 
 	projYml = `
@@ -40,7 +40,7 @@ github_pr_aliases:
 
 `
 	pc, err = CreateProjectConfig([]byte(projYml), "")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, pc)
 	assert.Equal(t, []string{"BF"}, pc.BuildBaronSettings.TicketSearchProjects)
 	assert.Equal(t, "BF", pc.BuildBaronSettings.TicketCreateProject)

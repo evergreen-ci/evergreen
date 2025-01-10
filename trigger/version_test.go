@@ -147,7 +147,7 @@ func (s *VersionSuite) TearDownSuite() {
 func (s *VersionSuite) TestAllTriggers() {
 	n, err := NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
-	s.Len(n, 0)
+	s.Empty(n)
 
 	s.version.Status = evergreen.VersionSucceeded
 	s.data.Status = evergreen.VersionSucceeded
@@ -171,7 +171,7 @@ func (s *VersionSuite) TestAllTriggers() {
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
-	s.Len(n, 0)
+	s.Empty(n)
 }
 
 func (s *VersionSuite) TestVersionSuccess() {
@@ -374,5 +374,5 @@ func (s *VersionSuite) TestMakeDataForPatchVersion() {
 	s.Equal(sub.ID, data.SubscriptionID)
 	s.Equal(s.version.Id, data.DisplayName)
 	s.Equal(event.ObjectVersion, data.Object)
-	s.Equal(data.PastTenseStatus, "succeeded")
+	s.Equal("succeeded", data.PastTenseStatus)
 }

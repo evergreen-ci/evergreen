@@ -127,7 +127,7 @@ func TestFetchArtifacts(t *testing.T) {
 	taskGet := taskGetHandler{taskID: task1.Id}
 	resp := taskGet.Run(context.Background())
 	require.NotNil(resp)
-	assert.Equal(resp.Status(), http.StatusOK)
+	assert.Equal(http.StatusOK, resp.Status())
 	apiTask := resp.Data().(*model.APITask)
 	assert.Len(apiTask.Artifacts, 2)
 	assert.Empty(apiTask.PreviousExecutions)
@@ -136,7 +136,7 @@ func TestFetchArtifacts(t *testing.T) {
 	taskGet.fetchAllExecutions = true
 	resp = taskGet.Run(context.Background())
 	require.NotNil(resp)
-	assert.Equal(resp.Status(), http.StatusOK)
+	assert.Equal(http.StatusOK, resp.Status())
 	apiTask = resp.Data().(*model.APITask)
 	require.Len(apiTask.PreviousExecutions, 1)
 	assert.NotZero(apiTask.PreviousExecutions[0])
@@ -147,7 +147,7 @@ func TestFetchArtifacts(t *testing.T) {
 	taskGet.fetchAllExecutions = false
 	resp = taskGet.Run(context.Background())
 	require.NotNil(resp)
-	assert.Equal(resp.Status(), http.StatusOK)
+	assert.Equal(http.StatusOK, resp.Status())
 	apiTask = resp.Data().(*model.APITask)
 	assert.Empty(apiTask.PreviousExecutions)
 
@@ -155,7 +155,7 @@ func TestFetchArtifacts(t *testing.T) {
 	taskGet.fetchAllExecutions = true
 	resp = taskGet.Run(context.Background())
 	require.NotNil(resp)
-	assert.Equal(resp.Status(), http.StatusOK)
+	assert.Equal(http.StatusOK, resp.Status())
 	apiTask = resp.Data().(*model.APITask)
 	require.Len(apiTask.PreviousExecutions, 1)
 	assert.NotZero(apiTask.PreviousExecutions[0])

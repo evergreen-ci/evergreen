@@ -41,7 +41,7 @@ func numIdleHostsFound(ctx context.Context, env evergreen.Environment, t *testin
 		}
 	}
 
-	assert.Equal(t, num, len(out))
+	assert.Len(t, out, num)
 
 	return num, out
 }
@@ -417,7 +417,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		require.Equal(t, 1, num)
-		assert.Equal(t, hosts[0], "h1")
+		assert.Equal(t, "h1", hosts[0])
 	})
 	t.Run("HostsThatRecentlyRanTaskShouldBeFlaggedIfTheyHaveBeenIdleLongerThanIdleThreshold", func(t *testing.T) {
 		tctx := testutil.TestSpan(ctx, t)
@@ -460,7 +460,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		require.Equal(t, 1, num)
-		assert.Equal(t, hosts[0], "h1")
+		assert.Equal(t, "h1", hosts[0])
 	})
 
 	t.Run("LegacyHostsThatNeedNewAgentsShouldNotBeMarkedIdle", func(t *testing.T) {
@@ -566,7 +566,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		// finding idle hosts should not return the host
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		require.Equal(t, 1, num)
-		assert.Equal(t, hosts[0], "host1")
+		assert.Equal(t, "host1", hosts[0])
 	})
 }
 
@@ -941,7 +941,7 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 
 	distroHosts, err := host.IdleEphemeralGroupedByDistroID(ctx, &env)
 	assert.NoError(err)
-	assert.Equal(2, len(distroHosts))
+	assert.Len(distroHosts, 2)
 
 	distroIDsToFind := make([]string, 0, len(distroHosts))
 	for _, info := range distroHosts {
@@ -954,7 +954,7 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 		d := distrosFound[i]
 		distrosMap[d.Id] = d
 	}
-	assert.Equal(2, len(distrosMap))
+	assert.Len(distrosMap, 2)
 
 	// The order of distroHosts is not guaranteed
 	info1 := distroHosts[0] // "distro1"
@@ -1051,12 +1051,12 @@ func TestGetNumHostsToEvaluate(t *testing.T) {
 	}
 	// If minimum hosts is 0, then we attempt to terminate all idle hosts.
 	numHosts := getMinNumHostsToEvaluate(info, 0)
-	assert.Equal(t, numHosts, 3)
+	assert.Equal(t, 3, numHosts)
 	// If minimum hosts is 4, then we attempt to terminate just one.
 	numHosts = getMinNumHostsToEvaluate(info, 4)
-	assert.Equal(t, numHosts, 1)
+	assert.Equal(t, 1, numHosts)
 	// If minimum hosts is 5, then we don't attempt to terminate.
 	numHosts = getMinNumHostsToEvaluate(info, 5)
-	assert.Equal(t, numHosts, 0)
+	assert.Equal(t, 0, numHosts)
 
 }
