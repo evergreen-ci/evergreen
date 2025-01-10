@@ -2602,7 +2602,7 @@ func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
 
 func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
 	service := evergreen.JIRANotificationsConfig{}
-	if j.CustomFields == nil || len(j.CustomFields) == 0 {
+	if len(j.CustomFields) == 0 {
 		return service, nil
 	}
 

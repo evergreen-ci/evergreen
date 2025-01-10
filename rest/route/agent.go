@@ -1276,7 +1276,7 @@ func (h *setDownstreamParamsHandler) Parse(ctx context.Context, r *http.Request)
 			"message": errorMessage,
 			"task_id": h.taskID,
 		})
-		return errors.Wrapf(err, errorMessage)
+		return errors.Wrap(err, errorMessage)
 	}
 	return nil
 }
@@ -1411,7 +1411,7 @@ func (h *checkRunHandler) Parse(ctx context.Context, r *http.Request) error {
 			"message": errorMessage,
 			"task_id": h.taskID,
 		})
-		return errors.Wrapf(err, errorMessage)
+		return errors.Wrap(err, errorMessage)
 	}
 
 	// output is empty if it does not specify the three fields Evergreen processes.
@@ -1428,7 +1428,7 @@ func (h *checkRunHandler) Parse(ctx context.Context, r *http.Request) error {
 			"task_id": h.taskID,
 			"error":   err.Error(),
 		})
-		return errors.Wrapf(err, errorMessage)
+		return errors.Wrap(err, errorMessage)
 	}
 
 	return nil
@@ -1569,7 +1569,7 @@ func (h *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Requ
 		"task_id": h.taskID,
 	}))
 
-	return errors.Wrapf(err, errorMessage)
+	return errors.Wrap(err, errorMessage)
 }
 
 func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Responder {

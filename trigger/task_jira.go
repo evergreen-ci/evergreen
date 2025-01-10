@@ -289,10 +289,10 @@ func (j *jiraBuilder) getSummary() (string, error) {
 
 	catcher := grip.NewSimpleCatcher()
 	if j.data.Task.DisplayTask != nil {
-		_, err := fmt.Fprintf(subj, j.data.Task.DisplayTask.DisplayName)
+		_, err := fmt.Fprint(subj, j.data.Task.DisplayTask.DisplayName)
 		catcher.Add(err)
 	} else {
-		_, err := fmt.Fprintf(subj, j.data.Task.DisplayName)
+		_, err := fmt.Fprint(subj, j.data.Task.DisplayName)
 		catcher.Add(err)
 	}
 	_, err := fmt.Fprintf(subj, " on %s ", j.data.Build.DisplayName)

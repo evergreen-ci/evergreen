@@ -815,7 +815,7 @@ func (p *Patch) CollectiveStatus() (string, error) {
 			return "", errors.Wrap(err, "getting parent patch")
 		}
 		if parentPatch == nil {
-			return "", errors.Errorf(fmt.Sprintf("parent patch '%s' does not exist", p.Triggers.ParentPatch))
+			return "", errors.Errorf("parent patch '%s' does not exist", p.Triggers.ParentPatch)
 		}
 	}
 	allStatuses := []string{parentPatch.Status}
@@ -942,7 +942,7 @@ func (p *Patch) GetPatchFamily() ([]string, *Patch, error) {
 			return nil, nil, errors.Wrap(err, "getting parent patch")
 		}
 		if parentPatch == nil {
-			return nil, nil, errors.Errorf(fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
+			return nil, nil, errors.Errorf("parent patch '%s' does not exist", parentPatchId)
 		}
 		childrenOrSiblings = parentPatch.Triggers.ChildPatches
 	}
@@ -957,7 +957,7 @@ func (p *Patch) SetParametersFromParent() (*Patch, error) {
 		return nil, errors.Wrap(err, "getting parent patch")
 	}
 	if parentPatch == nil {
-		return nil, errors.Errorf(fmt.Sprintf("parent patch '%s' does not exist", parentPatchId))
+		return nil, errors.Errorf("parent patch '%s' does not exist", parentPatchId)
 	}
 
 	if downstreamParams := parentPatch.Triggers.DownstreamParameters; len(downstreamParams) > 0 {

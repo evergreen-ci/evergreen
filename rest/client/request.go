@@ -133,7 +133,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		},
 	})
 	if resp != nil && resp.StatusCode == http.StatusUnauthorized {
-		return resp, util.RespErrorf(resp, AuthError)
+		return resp, util.RespError(resp, AuthError)
 	} else if err != nil {
 		return resp, err
 	}
