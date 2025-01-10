@@ -162,6 +162,7 @@ func TestGetDockerfile(t *testing.T) {
 	getDockerfile(w, req)
 
 	resp := w.Result()
+	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	assert.NoError(err)
 

@@ -24,6 +24,8 @@ func (c *podCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEnd
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "ending task").Error())
 	}
+	defer resp.Body.Close()
+
 	var taskEndResp apimodels.EndTaskResponse
 	if err = utility.ReadJSON(resp.Body, &taskEndResp); err != nil {
 		return nil, errors.Wrap(err, "reading end task response")
@@ -42,6 +44,7 @@ func (c *podCommunicator) GetNextTask(ctx context.Context, details *apimodels.Ge
 		method: http.MethodGet,
 		path:   fmt.Sprintf("pods/%s/agent/next_task", c.podID),
 	}
+	//nolint:bodyclose // Caller is responsible for closing the response body.
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting next task").Error())

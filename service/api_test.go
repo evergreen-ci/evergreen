@@ -52,6 +52,7 @@ func TestLimitedProjectEndPoint(t *testing.T) {
 	assert.NoError(err)
 	resp, err := http.DefaultClient.Do(request)
 	require.NoError(t, err, "problem making request")
+	defer resp.Body.Close()
 	assert.Equal(200, resp.StatusCode)
 
 	limitedRef := restModel.APIProjectRef{}
