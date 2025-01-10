@@ -329,6 +329,7 @@ func TestGetTaskStatsOneDocument(t *testing.T) {
 	docs, err := GetTaskReliabilityScores(filter)
 	require.NoError(err)
 	require.Len(docs, 1)
+	//nolint:testifylint // We expect it to be exactly 0.42.
 	assert.Equal(docs[0].SuccessRate, float64(.42))
 }
 
@@ -344,7 +345,9 @@ func TestGetTaskStatsTwoDocuments(t *testing.T) {
 	docs, err := GetTaskReliabilityScores(filter)
 	require.NoError(err)
 	require.Len(docs, 2)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(docs[0].SuccessRate, float64(.56))
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(docs[1].SuccessRate, float64(.42))
 }
 

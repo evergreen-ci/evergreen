@@ -425,6 +425,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	// Fallback to the SchedulerConfig.ExpectedRuntimeFactor as PlannerSettings.ExpectedRunTimeFactor is equal to 0.
 	assert.EqualValues(t, 7, resolved0.ExpectedRuntimeFactor)
 	assert.EqualValues(t, 20, resolved0.GenerateTaskFactor)
+	//nolint:testifylint // We expect it to be exactly 10.
 	assert.EqualValues(t, 10, resolved0.NumDependentsFactor)
 	assert.EqualValues(t, 40, resolved0.StepbackTaskFactor)
 
@@ -475,6 +476,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.EqualValues(t, 0, resolved1.MainlineTimeInQueueFactor)
 	assert.EqualValues(t, 0, resolved1.ExpectedRuntimeFactor)
 	assert.EqualValues(t, 0, resolved1.GenerateTaskFactor)
+	//nolint:testifylint // We expect it to be exactly 0.
 	assert.EqualValues(t, 0, resolved1.NumDependentsFactor)
 
 	ps := &PlannerSettings{

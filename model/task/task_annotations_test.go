@@ -30,6 +30,7 @@ func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NotNil(t, annotation.Issues[0].Source)
 	assert.Equal(t, annotations.UIRequester, annotation.Issues[0].Source.Requester)
 	assert.Equal(t, "annie.black", annotation.Issues[0].Source.Author)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
 
 	assert.NoError(t, AddIssueToAnnotation(ctx, "t1", 0, issue, "not.annie.black"))
@@ -38,6 +39,7 @@ func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NotNil(t, annotation)
 	assert.Len(t, annotation.Issues, 2)
 	assert.NotNil(t, annotation.Issues[1].Source)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
 	assert.Equal(t, "not.annie.black", annotation.Issues[1].Source.Author)
 	dbTask, err := FindOneId("t1")
@@ -181,6 +183,7 @@ func TestPatchIssue(t *testing.T) {
 	assert.Equal(t, annotations.UIRequester, annotation.Issues[0].Source.Requester)
 	assert.Equal(t, "bynn.lee", annotation.Issues[0].Source.Author)
 	assert.Equal(t, "EVG-1234", annotation.Issues[0].IssueKey)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
 	assert.Len(t, annotation.SuspectedIssues, 1)
 	assert.NotNil(t, annotation.SuspectedIssues[0].Source)
