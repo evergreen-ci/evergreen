@@ -91,6 +91,7 @@ type Settings struct {
 	LogPath             string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
 	NewRelic            NewRelicConfig            `yaml:"newrelic" bson:"newrelic" json:"newrelic" id:"newrelic"`
 	Notify              NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
+	Overrides           OverridesConfig           `yaml:"overrides" bson:"overrides" json:"overrides" id:"overrides"`
 	ParameterStore      ParameterStoreConfig      `yaml:"parameter_store" bson:"parameter_store" json:"parameter_store" id:"parameter_store"`
 	Plugins             PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
 	PluginsNew          util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
@@ -263,7 +264,8 @@ func GetConfig(ctx context.Context) (*Settings, error) {
 
 // GetSharedConfig returns only the Evergreen configuration which is shared among all instances
 // reading from a single shared database. Use [GetConfig] to get a complete configuration that
-// includes overrides from the local database.
+// includes overrides from the local database. If there is no shared database [GetConfig] and
+// [GetSharedConfig] are functionally equivalent.
 func GetSharedConfig(ctx context.Context) (*Settings, error) {
 	return getSettings(ctx, false)
 }
