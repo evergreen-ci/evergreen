@@ -16,7 +16,6 @@
                     "tasks": [
                       {
                         "displayName": "Some Task",
-                        "displayStatus": "success",
                         "displayStatusCache": "success",
                         "execution": 0,
                         "id": "task_1",
@@ -24,7 +23,6 @@
                       },
                       {
                         "displayName": "Some Other Task",
-                        "displayStatus": "success",
                         "displayStatusCache": "success",
                         "execution": 1,
                         "id": "task_2",
@@ -39,7 +37,6 @@
                     "tasks": [
                       {
                         "displayName": "Some Task",
-                        "displayStatus": "setup-failed",
                         "displayStatusCache": "setup-failed",
                         "execution": 0,
                         "id": "task_3",
@@ -47,7 +44,6 @@
                       },
                       {
                         "displayName": "Some Other Task",
-                        "displayStatus": "success",
                         "displayStatusCache": "success",
                         "execution": 0,
                         "id": "task_4",
@@ -66,7 +62,6 @@
                     "tasks": [
                       {
                         "displayName": "Task Number 5",
-                        "displayStatus": "success",
                         "displayStatusCache": "success",
                         "execution": 0,
                         "id": "task_5",

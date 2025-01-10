@@ -7,7 +7,6 @@
         tasks {
           id
           displayName
-          displayStatus
           displayStatusCache
           execution
           status
