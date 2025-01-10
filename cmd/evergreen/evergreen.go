@@ -103,6 +103,10 @@ func buildApp() *cli.App {
 }
 
 func loggingSetup(name, l string) error {
+	// Warning: this logging setup means all grip-logged output goes to stderr
+	// instead of stdout. This is unintuitive in a lot of scenarios (e.g. a
+	// grip.Info will log to stderr), but it's difficult to change at this point
+	// due to user reliance on CLI logs for scripting.
 	if err := grip.SetSender(send.MakeErrorLogger()); err != nil {
 		return err
 	}

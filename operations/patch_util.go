@@ -190,8 +190,17 @@ func (p *patchParams) displayPatch(ac *legacyClient, params outputPatchParams) e
 		return err
 	}
 
-	grip.InfoWhen(!params.outputJSON, "Patch successfully created.")
-	grip.Info(patchDisp)
+	grip.Info("Patch successfully created.")
+	// Logging to stderr using fmt.Fprintf is a hack to work around two
+	// problems:
+	// 1. The patch display log has historically been written to stderr instead
+	//    of stdout.
+	// 2. Only grip.Error or higher priority messages are logged if running a
+	//    patch with JSON output.
+	// To maintain both behaviors, fmt.Fprintf ensures the patch output is
+	// displayed regardless of grip logging configuration and ensures it
+	// continues going to stderr.
+	fmt.Fprintln(os.Stderr, patchDisp)
 
 	if len(params.patches) == 1 && p.Browse {
 		browserCmd, err := findBrowserCommand()
@@ -236,7 +245,7 @@ func findBrowserCommand() ([]string, error) {
 // Performs validation for patch or patch-file
 func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSettings, ac *legacyClient, comm client.Communicator) (*model.ProjectRef, error) {
 	if err := p.loadProject(conf); err != nil {
-		grip.Warningf("warning - failed to set default project: %v\n", err)
+		grip.Errorf("failed to resolve project: %s\n", err)
 	}
 
 	// If reusing a previous definition, ignore defaults.
@@ -245,7 +254,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 	}
 
 	if err := p.loadParameters(conf); err != nil {
-		grip.Warningf("warning - failed to set default parameters: %v\n", err)
+		grip.Warningf("warning - failed to set default parameters: %s\n", err)
 	}
 
 	if p.Uncommitted || conf.UncommittedChanges {
