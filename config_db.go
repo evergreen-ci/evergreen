@@ -136,10 +136,10 @@ func byIDs(ids []string) bson.M {
 }
 
 // getSectionsBSON returns the config documents from the database as a slice of [bson.Raw].
-// If no shared database exists all configuration is fetched from the local database.
-// If a shared database exists, configuration is fetched from the shared database, save for
-// the overrides config document which is fetched from the local database and if includeOverrides
-// is true the overrides in the overrides config document are applied to the rest of the configuration.
+// If no shared database exists all configuration is fetched from the local database. If a
+// shared database exists, configuration is fetched from the shared database, save for the
+// overrides config document which is fetched from the local database and, if [includeOverrides],
+// the overrides in the overrides config document are applied to the rest of the configuration.
 func getSectionsBSON(ctx context.Context, ids []string, includeOverrides bool) ([]bson.Raw, error) {
 	db := GetEnvironment().DB()
 	if sharedDB := GetEnvironment().SharedDB(); sharedDB != nil {
@@ -254,9 +254,9 @@ func overrideField(original bson.M, override Override) error {
 }
 
 // getConfigSection fetches a section from the database and deserializes it into the provided
-// section. If the document is present in the local database its value is used. Otherwise,
-// the document is fetched from the shared database. If the document is missing the value
-// of section is reset to its zero value.
+// section. If there's a shared database the configuration will come from the shared database
+// and overrides from the overrides configuration in the local database will be applied.
+// If a document is missing the value of its section is reset to its zero value.
 func getConfigSection(ctx context.Context, section ConfigSection) error {
 	db := GetEnvironment().DB()
 	if sharedDB := GetEnvironment().SharedDB(); sharedDB != nil {
@@ -294,6 +294,8 @@ func getConfigSection(ctx context.Context, section ConfigSection) error {
 	return nil
 }
 
+// setConfigSection applies [update] to the specified configuration section. If there's a shared
+// database the update is applied there.
 func setConfigSection(ctx context.Context, sectionID string, update bson.M) error {
 	db := GetEnvironment().SharedDB()
 	if db == nil || sectionID == overridesSectionID {
