@@ -161,7 +161,6 @@ func (c *baseCommunicator) GetProjectRef(ctx context.Context, taskData TaskData)
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting project ref").Error())
 	}
-	defer resp.Body.Close()
 	if err = utility.ReadJSON(resp.Body, projectRef); err != nil {
 		return nil, errors.Wrap(err, "reading project ref from response")
 	}
@@ -195,7 +194,6 @@ func (c *baseCommunicator) GetTask(ctx context.Context, taskData TaskData) (*tas
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting task info").Error())
 	}
-	defer resp.Body.Close()
 	if err = utility.ReadJSON(resp.Body, task); err != nil {
 		return nil, errors.Wrap(err, "reading task info from response")
 	}
@@ -214,7 +212,6 @@ func (c *baseCommunicator) GetDisplayTaskInfoFromExecution(ctx context.Context, 
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting parent display task info").Error())
 	}
-	defer resp.Body.Close()
 
 	displayTaskInfo := &apimodels.DisplayTaskInfo{}
 	err = utility.ReadJSON(resp.Body, &displayTaskInfo)
@@ -235,7 +232,6 @@ func (c *baseCommunicator) GetDistroView(ctx context.Context, taskData TaskData)
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting distro view").Error())
 	}
-	defer resp.Body.Close()
 	var dv apimodels.DistroView
 	if err = utility.ReadJSON(resp.Body, &dv); err != nil {
 		return nil, errors.Wrap(err, "reading distro view from response")
@@ -297,7 +293,6 @@ func (c *baseCommunicator) GetExpansions(ctx context.Context, taskData TaskData)
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting expansions").Error())
 	}
-	defer resp.Body.Close()
 
 	err = utility.ReadJSON(resp.Body, &e)
 	if err != nil {
@@ -316,7 +311,6 @@ func (c *baseCommunicator) GetExpansionsAndVars(ctx context.Context, taskData Ta
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting expansions and vars").Error())
 	}
-	defer resp.Body.Close()
 
 	var expAndVars apimodels.ExpansionsAndVars
 	if err = utility.ReadJSON(resp.Body, &expAndVars); err != nil {
@@ -448,7 +442,6 @@ func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, 
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrapf(err, "getting patch '%s' for task", patchId).Error())
 	}
-	defer resp.Body.Close()
 
 	if err = utility.ReadJSON(resp.Body, &patch); err != nil {
 		return nil, errors.Wrap(err, "reading patch for task from response")
@@ -471,7 +464,6 @@ func (c *baseCommunicator) GetTaskVersion(ctx context.Context, taskData TaskData
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting version for task").Error())
 	}
-	defer resp.Body.Close()
 
 	version := model.Version{}
 	if err = utility.ReadJSON(resp.Body, &version); err != nil {
@@ -492,7 +484,6 @@ func (c *baseCommunicator) GetCedarConfig(ctx context.Context) (*apimodels.Cedar
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting the Cedar config").Error())
 	}
-	defer resp.Body.Close()
 
 	config := &apimodels.CedarConfig{}
 	if err := utility.ReadJSON(resp.Body, config); err != nil {
@@ -512,7 +503,6 @@ func (c *baseCommunicator) GetAgentSetupData(ctx context.Context) (*apimodels.Ag
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting agent setup data").Error())
 	}
-	defer resp.Body.Close()
 
 	var data apimodels.AgentSetupData
 	if err := utility.ReadJSON(resp.Body, &data); err != nil {
@@ -561,7 +551,6 @@ func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, l
 	if err != nil {
 		return "", util.RespErrorf(resp, errors.Wrap(err, "sending test log").Error())
 	}
-	defer resp.Body.Close()
 
 	logReply := struct {
 		ID string `json:"_id"`
@@ -601,7 +590,6 @@ func (c *baseCommunicator) NewPush(ctx context.Context, taskData TaskData, req *
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "adding push log").Error())
 	}
-	defer resp.Body.Close()
 
 	if err = utility.ReadJSON(resp.Body, &newPushLog); err != nil {
 		return nil, errors.Wrap(err, "reading push log reply from response")
@@ -622,7 +610,6 @@ func (c *baseCommunicator) UpdatePushStatus(ctx context.Context, taskData TaskDa
 	if err != nil {
 		return util.RespErrorf(resp, errors.Wrap(err, "updating push log status").Error())
 	}
-	defer resp.Body.Close()
 
 	if err = utility.ReadJSON(resp.Body, &newPushLog); err != nil {
 		return errors.Wrap(err, "reading push log reply from response")
@@ -677,7 +664,6 @@ func (c *baseCommunicator) GetManifest(ctx context.Context, taskData TaskData) (
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "loading manifest").Error())
 	}
-	defer resp.Body.Close()
 
 	mfest := manifest.Manifest{}
 	if err = utility.ReadJSON(resp.Body, &mfest); err != nil {
@@ -697,7 +683,6 @@ func (c *baseCommunicator) KeyValInc(ctx context.Context, taskData TaskData, kv 
 	if err != nil {
 		return util.RespErrorf(resp, errors.Wrap(err, "incrementing key").Error())
 	}
-	defer resp.Body.Close()
 
 	if err = utility.ReadJSON(resp.Body, kv); err != nil {
 		return errors.Wrap(err, "reading key-value reply from response")
@@ -733,7 +718,6 @@ func (c *baseCommunicator) GenerateTasksPoll(ctx context.Context, td TaskData) (
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "sending generate.tasks poll request").Error())
 	}
-	defer resp.Body.Close()
 	generated := &apimodels.GeneratePollResponse{}
 	if err := utility.ReadJSON(resp.Body, generated); err != nil {
 		return nil, errors.Wrap(err, "reading generate.tasks poll reply from response")
@@ -752,7 +736,6 @@ func (c *baseCommunicator) CreateHost(ctx context.Context, td TaskData, options 
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "sending host.create request").Error())
 	}
-	defer resp.Body.Close()
 
 	ids := []string{}
 	if err = utility.ReadJSON(resp.Body, &ids); err != nil {
@@ -773,7 +756,6 @@ func (c *baseCommunicator) ListHosts(ctx context.Context, td TaskData) (restmode
 	if err != nil {
 		return result, util.RespErrorf(resp, errors.Wrap(err, "listing hosts").Error())
 	}
-	defer resp.Body.Close()
 
 	if err := utility.ReadJSON(resp.Body, &result); err != nil {
 		return result, errors.Wrap(err, "reading hosts from response")
@@ -791,7 +773,6 @@ func (c *baseCommunicator) GetDistroByName(ctx context.Context, id string) (*res
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrapf(err, "getting distro '%s'", id).Error())
 	}
-	defer resp.Body.Close()
 
 	d := &restmodel.APIDistro{}
 	if err = utility.ReadJSON(resp.Body, &d); err != nil {
@@ -837,7 +818,6 @@ func (c *baseCommunicator) GetDockerStatus(ctx context.Context, hostID string) (
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting status for container '%s'", hostID)
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespErrorf(resp, "getting status for container '%s'", hostID)
@@ -921,7 +901,6 @@ func (c *baseCommunicator) GetAdditionalPatches(ctx context.Context, patchId str
 	if err != nil {
 		return nil, errors.Wrap(err, "getting additional patches")
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespErrorf(resp, "getting additional patches")
@@ -944,7 +923,6 @@ func (c *baseCommunicator) CreateInstallationToken(ctx context.Context, td TaskD
 	if err != nil {
 		return "", errors.Wrapf(err, "creating installation token for '%s/%s'", owner, repo)
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", util.RespErrorf(resp, "creating installation token for '%s/%s'", owner, repo)
@@ -967,7 +945,6 @@ func (c *baseCommunicator) CreateGitHubDynamicAccessToken(ctx context.Context, t
 	if err != nil {
 		return "", errors.Wrapf(err, "creating github dynamic access token for '%s/%s'", owner, repo)
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", util.RespErrorf(resp, "creating github dynamic access token for '%s/%s'", owner, repo)
@@ -1039,7 +1016,6 @@ func (c *baseCommunicator) AssumeRole(ctx context.Context, td TaskData, request 
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "assuming role").Error())
 	}
-	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespErrorf(resp, "trouble assuming role")
 	}
