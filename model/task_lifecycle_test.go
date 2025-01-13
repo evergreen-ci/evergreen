@@ -7061,14 +7061,14 @@ func TestHandleEndTaskForGithubMergeQueueTask(t *testing.T) {
 		Id:        "version1",
 		Requester: evergreen.GithubMergeRequester,
 	}
-	v1.Insert()
+	require.NoError(t, v1.Insert())
 	t1 := &task.Task{
 		Id:        "task1",
 		Version:   "version1",
 		Requester: evergreen.GithubMergeRequester,
 		Status:    evergreen.TaskSucceeded,
 	}
-	t1.Insert()
+	require.NoError(t, t1.Insert())
 	t2 := &task.Task{
 		Id:        "task2",
 		Version:   "version1",
@@ -7076,28 +7076,28 @@ func TestHandleEndTaskForGithubMergeQueueTask(t *testing.T) {
 		Status:    evergreen.TaskStarted,
 		Aborted:   true,
 	}
-	t2.Insert()
+	require.NoError(t, t2.Insert())
 	t3 := &task.Task{
 		Id:        "task3",
 		Version:   "version1",
 		Requester: evergreen.GithubMergeRequester,
 		Status:    evergreen.TaskStarted,
 	}
-	t3.Insert()
+	require.NoError(t, t3.Insert())
 	t4 := &task.Task{
 		Id:        "task4",
 		Version:   "version1",
 		Requester: evergreen.GithubMergeRequester,
 		Status:    evergreen.TaskStarted,
 	}
-	t4.Insert()
+	require.NoError(t, t4.Insert())
 	t5 := &task.Task{
 		Id:        "task5",
 		Version:   "version1",
 		Requester: evergreen.GithubMergeRequester,
 		Status:    evergreen.TaskStarted,
 	}
-	t5.Insert()
+	require.NoError(t, t5.Insert())
 
 	// Neither of these should abort any tasks.
 	assert.NoError(t, HandleEndTaskForGithubMergeQueueTask(ctx, t1, evergreen.TaskSucceeded))
