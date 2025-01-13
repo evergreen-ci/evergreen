@@ -1,7 +1,6 @@
 package model
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
@@ -53,7 +52,6 @@ func GitHubAppAuthFindOne(id string) (*githubapp.GithubAppAuth, error) {
 
 	if err := githubAppCheckAndRunParameterStoreOp(ctx, appAuth, func(ref *ProjectRef, isRepoRef bool) error {
 		return githubAppAuthFindParameterStore(ctx, appAuth)
-		return nil
 	}); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "could not find GitHub app private key in Parameter Store",
@@ -79,22 +77,6 @@ func githubAppAuthFindParameterStore(ctx context.Context, appAuth *githubapp.Git
 	}
 
 	privKey := []byte(params[0].Value)
-
-	// Check that the private key retrieved from Parameter Store is identical to
-	// the private key stored in the DB. This is a data consistency check and
-	// doubles as a fallback. By checking the private key retrieved from
-	// Parameter Store, Evergreen can automatically detect if the Parameter
-	// Store integration is returning incorrect information and if so, fall back
-	// to using the private key stored in the DB rather than Parameter Store,
-	// which avoids using potentially the wrong private key while the rollout is
-	// ongoing.
-	// TODO (DEVPROD-9441): remove this consistency check once the rollout is
-	// complete and everything is prepared to remove the GitHub app private keys
-	// from the DB.
-	if !bytes.Equal(privKey, appAuth.PrivateKey) {
-		return errors.Errorf("private key in Parameter Store does not match private key in the DB")
-	}
-
 	appAuth.PrivateKey = privKey
 
 	return nil
