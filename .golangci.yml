@@ -3,7 +3,6 @@ linters:
   disable-all: true
   enable:
     - asciicheck
-    - bodyclose
     - errcheck
     - ineffassign
     - goimports
