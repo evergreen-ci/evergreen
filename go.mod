@@ -52,7 +52,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli v1.22.16
 	github.com/vektah/gqlparser/v2 v2.5.16
-	go.mongodb.org/mongo-driver v1.17.1
+	go.mongodb.org/mongo-driver v1.17.2
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.21.1
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.21.1
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.46.1
@@ -138,7 +138,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
-	github.com/klauspost/compress v1.13.6 // indirect
+	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/klauspost/pgzip v1.2.6
 	github.com/lestrrat-go/backoff/v2 v2.0.8 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.0 // indirect
