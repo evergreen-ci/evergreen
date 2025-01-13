@@ -123,6 +123,7 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 				r.Header.Add("content-type", "application/json")
 				resp, err := client.Do(r)
 				require.NoError(t, err)
+				defer resp.Body.Close()
 				b, err := io.ReadAll(resp.Body)
 				require.NoError(t, err)
 
