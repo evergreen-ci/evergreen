@@ -34,7 +34,7 @@ func TestMostRecentPaginatedPodEvents(t *testing.T) {
 	events, count, err = MostRecentPaginatedPodEvents("pod1", 10, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 10, count)
-	assert.Len(t, events, 0)
+	assert.Empty(t, events)
 
 	// Query for pod1 events, limit 5, page 1
 	events, count, err = MostRecentPaginatedPodEvents("pod1", 5, 1)
@@ -161,5 +161,5 @@ func TestGetEventTypesForHost(t *testing.T) {
 	eventTypes, err = GetEventTypesForHost("host-with-no-events", "")
 	require.NoError(t, err)
 	require.NotNil(t, eventTypes)
-	require.Len(t, eventTypes, 0)
+	require.Empty(t, eventTypes)
 }

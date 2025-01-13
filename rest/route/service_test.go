@@ -1278,7 +1278,7 @@ func TestParentTaskInfo(t *testing.T) {
 	resp := tbh.Run(ctx)
 	data, ok := resp.Data().([]interface{})
 	assert.True(t, ok)
-	assert.Equal(t, 3, len(data))
+	assert.Len(t, data, 3)
 
 	expectedParentIDs := []string{dtID, dtID, ""}
 	for i := range data {
@@ -1300,8 +1300,8 @@ func TestOptionsRequest(t *testing.T) {
 	tbh := &optionsHandler{}
 	resp := tbh.Run(ctx)
 	data := resp.Data()
-	assert.Equal(t, data, struct{}{})
-	assert.Equal(t, resp.Status(), http.StatusOK)
+	assert.Equal(t, struct{}{}, data)
+	assert.Equal(t, http.StatusOK, resp.Status())
 
 }
 

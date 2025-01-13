@@ -52,7 +52,7 @@ func (s *DistroSetupByIDSuite) TestRunValidId() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	script := resp.Data()
 	s.Equal(script, utility.ToStringPtr("Set-up script"))
@@ -65,7 +65,7 @@ func (s *DistroSetupByIDSuite) TestRunInvalidId() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusNotFound)
+	s.Equal(http.StatusNotFound, resp.Status())
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -115,7 +115,7 @@ func (s *DistroPatchSetupByIDSuite) TestRunValidId() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
@@ -130,7 +130,7 @@ func (s *DistroPatchSetupByIDSuite) TestRunInvalidId() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusNotFound)
+	s.Equal(http.StatusNotFound, resp.Status())
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -196,7 +196,7 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 
 	resp := s.rm.Run(context.TODO())
 	s.NotNil(resp)
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp.Data())
 
 	d, ok := (resp.Data()).(*restModel.APIDistro)
@@ -209,7 +209,7 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.Equal(restModel.NewAPIDuration(10000000000), d.HostAllocatorSettings.AcceptableHostIdleTime)
 	s.Equal(utility.ToStringPtr(evergreen.PlannerVersionTunable), d.PlannerSettings.Version)
 	s.Equal(restModel.NewAPIDuration(80000000000), d.PlannerSettings.TargetTime)
-	s.Equal(true, d.PlannerSettings.GroupVersions)
+	s.True(d.PlannerSettings.GroupVersions)
 	s.EqualValues(7, d.PlannerSettings.PatchFactor)
 	s.Equal(utility.ToStringPtr(distro.BootstrapMethodLegacySSH), d.BootstrapSettings.Method)
 	s.Equal(utility.ToStringPtr(distro.CommunicationMethodLegacySSH), d.BootstrapSettings.Communication)
@@ -222,7 +222,7 @@ func (s *DistroByIDSuite) TestFindByIdFail() {
 
 	resp := s.rm.Run(context.TODO())
 	s.NotNil(resp)
-	s.NotEqual(resp.Status(), http.StatusOK)
+	s.NotEqual(http.StatusOK, resp.Status())
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -397,7 +397,7 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusBadRequest)
+	s.Equal(http.StatusBadRequest, resp.Status())
 	err := (resp.Data()).(gimlet.ErrorResponse)
 	s.Contains(err.Message, "'foo' is not a valid bootstrap method")
 	s.Contains(err.Message, "'bar' is not a valid communication method")
@@ -414,7 +414,7 @@ func (s *DistroPutSuite) TestRunNewConflictingName() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusForbidden)
+	s.Equal(http.StatusForbidden, resp.Status())
 	err := resp.Data().(gimlet.ErrorResponse)
 	s.Equal(fmt.Sprintf("distro name 'distro5' is immutable so it cannot be renamed to '%s'", h.distroID), err.Message)
 }
@@ -442,7 +442,7 @@ func (s *DistroPutSuite) TestRunExistingWithInvalidEntity() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusBadRequest)
+	s.Equal(http.StatusBadRequest, resp.Status())
 	err := (resp.Data()).(gimlet.ErrorResponse)
 	s.Contains(err.Message, "ERROR: distro 'arch' cannot be blank")
 	s.Contains(err.Message, "ERROR: distro 'user' cannot be blank")
@@ -459,7 +459,7 @@ func (s *DistroPutSuite) TestRunExistingConflictingName() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusForbidden)
+	s.Equal(http.StatusForbidden, resp.Status())
 	err := (resp.Data()).(gimlet.ErrorResponse)
 	s.Equal(fmt.Sprintf("distro name 'distro5' is immutable so it cannot be renamed to '%s'", h.distroID), err.Message)
 }
@@ -525,7 +525,7 @@ func (s *DistroDeleteByIDSuite) TestRunValidDistroId() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 }
 
 func (s *DistroDeleteByIDSuite) TestRunInvalidDistroId() {
@@ -537,7 +537,7 @@ func (s *DistroDeleteByIDSuite) TestRunInvalidDistroId() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusNotFound)
+	s.Equal(http.StatusNotFound, resp.Status())
 	err := (resp.Data()).(gimlet.ErrorResponse)
 	s.Equal(fmt.Sprintf("distro '%s' not found", h.distroID), err.Message)
 }
@@ -641,7 +641,7 @@ func (s *DistroPatchByIDSuite) TestParse() {
 
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
-	s.Equal(json, s.rm.(*distroIDPatchHandler).body)
+	s.JSONEq(string(json), string(s.rm.(*distroIDPatchHandler).body))
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidSpawnAllowed() {
@@ -654,11 +654,11 @@ func (s *DistroPatchByIDSuite) TestRunValidSpawnAllowed() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
-	s.Equal(apiDistro.UserSpawnAllowed, true)
+	s.True(apiDistro.UserSpawnAllowed)
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidProvider() {
@@ -671,7 +671,7 @@ func (s *DistroPatchByIDSuite) TestRunValidProvider() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
@@ -699,7 +699,7 @@ func (s *DistroPatchByIDSuite) TestRunProviderSettingsList() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
@@ -708,13 +708,13 @@ func (s *DistroPatchByIDSuite) TestRunProviderSettingsList() {
 	doc = apiDistro.ProviderSettingsList[0]
 	mappedDoc, ok := doc.Lookup("mount_points").MutableArray().Lookup(0).MutableDocumentOK()
 	s.True(ok)
-	s.Equal(mappedDoc.Lookup("device_name").StringValue(), "/dev/xvdb")
-	s.Equal(mappedDoc.Lookup("virtual_name").StringValue(), "ephemeral0")
+	s.Equal("/dev/xvdb", mappedDoc.Lookup("device_name").StringValue())
+	s.Equal("ephemeral0", mappedDoc.Lookup("virtual_name").StringValue())
 	s.Equal(doc.Lookup("bid_price").Double(), 0.15)
-	s.Equal(doc.Lookup("instance_type").StringValue(), "m3.large")
-	s.Equal(doc.Lookup("key_name").StringValue(), "mci")
-	s.Equal(doc.Lookup("security_group").StringValue(), "password123")
-	s.Equal(doc.Lookup("ami").StringValue(), "ami-2814683f")
+	s.Equal("m3.large", doc.Lookup("instance_type").StringValue())
+	s.Equal("mci", doc.Lookup("key_name").StringValue())
+	s.Equal("password123", doc.Lookup("security_group").StringValue())
+	s.Equal("ami-2814683f", doc.Lookup("ami").StringValue())
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidArch() {
@@ -727,7 +727,7 @@ func (s *DistroPatchByIDSuite) TestRunValidArch() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
@@ -744,7 +744,7 @@ func (s *DistroPatchByIDSuite) TestRunValidWorkDir() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
@@ -761,11 +761,11 @@ func (s *DistroPatchByIDSuite) TestRunValidHostAllocatorSettingsMaximumHosts() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
-	s.Equal(apiDistro.HostAllocatorSettings.MaximumHosts, 50)
+	s.Equal(50, apiDistro.HostAllocatorSettings.MaximumHosts)
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidSetupAsSudo() {
@@ -778,11 +778,11 @@ func (s *DistroPatchByIDSuite) TestRunValidSetupAsSudo() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
-	s.Equal(apiDistro.SetupAsSudo, false)
+	s.False(apiDistro.SetupAsSudo)
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidSetup() {
@@ -795,7 +795,7 @@ func (s *DistroPatchByIDSuite) TestRunValidSetup() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
@@ -812,7 +812,7 @@ func (s *DistroPatchByIDSuite) TestRunValidUser() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
@@ -829,11 +829,11 @@ func (s *DistroPatchByIDSuite) TestRunValidSSHOptions() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
-	s.Equal(apiDistro.SSHOptions, []string{"BatchMode=no"})
+	s.Equal([]string{"BatchMode=no"}, apiDistro.SSHOptions)
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidExpansions() {
@@ -846,12 +846,12 @@ func (s *DistroPatchByIDSuite) TestRunValidExpansions() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	expansion := restModel.APIExpansion{Key: utility.ToStringPtr("key1"), Value: utility.ToStringPtr("value1")}
-	s.Equal(apiDistro.Expansions, []restModel.APIExpansion{expansion})
+	s.Equal([]restModel.APIExpansion{expansion}, apiDistro.Expansions)
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidDisabled() {
@@ -864,11 +864,11 @@ func (s *DistroPatchByIDSuite) TestRunValidDisabled() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
-	s.Equal(apiDistro.Disabled, true)
+	s.True(apiDistro.Disabled)
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidContainer() {
@@ -881,7 +881,7 @@ func (s *DistroPatchByIDSuite) TestRunValidContainer() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
@@ -899,7 +899,7 @@ func (s *DistroPatchByIDSuite) TestRunInvalidEmptyStringValues() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusBadRequest)
+	s.Equal(http.StatusBadRequest, resp.Status())
 	s.NotNil(resp.Data())
 
 	errors := []string{
@@ -924,7 +924,7 @@ func (s *DistroPatchByIDSuite) TestRunValidPlannerSettingsVersion() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(utility.ToStringPtr("tunable"), apiDistro.PlannerSettings.Version)
@@ -966,7 +966,7 @@ func (s *DistroPatchByIDSuite) TestRunValidFinderSettingsVersion() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(utility.ToStringPtr("legacy"), apiDistro.PlannerSettings.Version)
@@ -982,7 +982,7 @@ func (s *DistroPatchByIDSuite) TestRunValidBootstrapMethod() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
@@ -1215,27 +1215,27 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	h.body = docToWrite
 
 	resp := s.rm.Run(ctx)
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp.Data())
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
-	s.Equal(apiDistro.Disabled, false)
+	s.False(apiDistro.Disabled)
 	s.Equal(apiDistro.Name, utility.ToStringPtr("fedora8"))
 	s.Equal(apiDistro.WorkDir, utility.ToStringPtr("~/data/mci"))
-	s.Equal(apiDistro.HostAllocatorSettings.MaximumHosts, 20)
+	s.Equal(20, apiDistro.HostAllocatorSettings.MaximumHosts)
 	s.Equal(apiDistro.Provider, utility.ToStringPtr("mock"))
 
 	s.Require().Len(apiDistro.ProviderSettingsList, 2)
 	doc := apiDistro.ProviderSettingsList[0]
 
 	mountPoint := doc.Lookup("mount_points").MutableArray().Lookup(0).MutableDocument()
-	s.Equal(mountPoint.Lookup("device_name").StringValue(), "~/dev/xvdb")
-	s.Equal(mountPoint.Lookup("virtual_name").StringValue(), "~ephemeral0")
-	s.Equal(doc.Lookup("ami").StringValue(), "~ami-2814683f")
+	s.Equal("~/dev/xvdb", mountPoint.Lookup("device_name").StringValue())
+	s.Equal("~ephemeral0", mountPoint.Lookup("virtual_name").StringValue())
+	s.Equal("~ami-2814683f", doc.Lookup("ami").StringValue())
 	s.Equal(doc.Lookup("bid_price").Double(), 0.10)
-	s.Equal(doc.Lookup("instance_type").StringValue(), "~m3.large")
+	s.Equal("~m3.large", doc.Lookup("instance_type").StringValue())
 
-	s.Equal(apiDistro.SetupAsSudo, false)
+	s.False(apiDistro.SetupAsSudo)
 	s.Equal(apiDistro.Setup, utility.ToStringPtr("~Set-up script"))
 	s.Equal(utility.ToStringPtr(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapSettings.Method)
 	s.Equal(utility.ToStringPtr(distro.CommunicationMethodLegacySSH), apiDistro.BootstrapSettings.Communication)
@@ -1258,12 +1258,12 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal([]string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"}, apiDistro.SSHOptions)
 	s.False(apiDistro.UserSpawnAllowed)
 
-	s.Equal(apiDistro.Expansions, []restModel.APIExpansion{
+	s.Equal([]restModel.APIExpansion{
 		{Key: utility.ToStringPtr("~decompress"), Value: utility.ToStringPtr("~tar zxvf")},
 		{Key: utility.ToStringPtr("~ps"), Value: utility.ToStringPtr("~ps aux")},
 		{Key: utility.ToStringPtr("~kill_pid"), Value: utility.ToStringPtr("~kill -- -$(ps opgid= %v)")},
 		{Key: utility.ToStringPtr("~scons_prune_ratio"), Value: utility.ToStringPtr("~0.8")},
-	})
+	}, apiDistro.Expansions)
 
 	// no problem turning into settings object
 	settings := &cloud.EC2ProviderSettings{}
@@ -1271,10 +1271,10 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.NoError(err)
 	s.NoError(bson.Unmarshal(bytes, settings))
 	s.NotEmpty(settings)
-	s.NotEqual(settings.Region, "")
+	s.NotEqual("", settings.Region)
 	s.Require().Len(settings.MountPoints, 1)
-	s.Equal(settings.MountPoints[0].DeviceName, "~/dev/xvdb")
-	s.Equal(settings.MountPoints[0].VirtualName, "~ephemeral0")
+	s.Equal("~/dev/xvdb", settings.MountPoints[0].DeviceName)
+	s.Equal("~ephemeral0", settings.MountPoints[0].VirtualName)
 }
 
 func (s *DistroPatchByIDSuite) TestRunInvalidNameChange() {
@@ -1288,7 +1288,7 @@ func (s *DistroPatchByIDSuite) TestRunInvalidNameChange() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusForbidden)
+	s.Equal(http.StatusForbidden, resp.Status())
 
 	err := resp.Data().(gimlet.ErrorResponse)
 	s.Equal(fmt.Sprintf("distro name 'Updated distro name' is immutable so it cannot be renamed to '%s'", h.distroID), err.Message)

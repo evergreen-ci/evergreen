@@ -186,5 +186,5 @@ func (s *spawnHostExpirationSuite) TestCanceledJob() {
 	s.j.Run(ctx)
 	events, err := event.FindUnprocessedEvents(-1)
 	s.NoError(err)
-	s.Len(events, 0)
+	s.Empty(events)
 }

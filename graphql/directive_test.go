@@ -31,7 +31,7 @@ func setupPermissions(t *testing.T) {
 
 	roles, err := roleManager.GetAllRoles()
 	require.NoError(t, err)
-	require.Len(t, roles, 0)
+	require.Empty(t, roles)
 
 	superUserRole := gimlet.Role{
 		ID:    "superuser",

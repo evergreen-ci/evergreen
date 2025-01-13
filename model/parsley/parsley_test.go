@@ -17,7 +17,7 @@ func TestMergeExistingParsleySettings(t *testing.T) {
 	require.NotNil(t, changes)
 	assert.Nil(t, changes.SectionsEnabled)
 	require.NotNil(t, changes.JumpToFailingLineEnabled)
-	assert.Equal(t, utility.FromBoolPtr(changes.JumpToFailingLineEnabled), false)
+	assert.False(t, utility.FromBoolPtr(changes.JumpToFailingLineEnabled))
 
 	oldSettings = Settings{
 		SectionsEnabled:          utility.FalsePtr(),
@@ -29,9 +29,9 @@ func TestMergeExistingParsleySettings(t *testing.T) {
 	changes = MergeExistingParsleySettings(oldSettings, newSettings)
 	require.NotNil(t, changes)
 	require.NotNil(t, changes.SectionsEnabled)
-	assert.Equal(t, utility.FromBoolPtr(changes.SectionsEnabled), false)
+	assert.False(t, utility.FromBoolPtr(changes.SectionsEnabled))
 	require.NotNil(t, changes.JumpToFailingLineEnabled)
-	assert.Equal(t, utility.FromBoolPtr(changes.JumpToFailingLineEnabled), false)
+	assert.False(t, utility.FromBoolPtr(changes.JumpToFailingLineEnabled))
 
 	oldSettings = Settings{
 		SectionsEnabled:          utility.TruePtr(),
@@ -43,9 +43,9 @@ func TestMergeExistingParsleySettings(t *testing.T) {
 	changes = MergeExistingParsleySettings(oldSettings, newSettings)
 	require.NotNil(t, changes)
 	require.NotNil(t, changes.SectionsEnabled)
-	assert.Equal(t, utility.FromBoolPtr(changes.SectionsEnabled), true)
+	assert.True(t, utility.FromBoolPtr(changes.SectionsEnabled))
 	require.NotNil(t, changes.JumpToFailingLineEnabled)
-	assert.Equal(t, utility.FromBoolPtr(changes.JumpToFailingLineEnabled), false)
+	assert.False(t, utility.FromBoolPtr(changes.JumpToFailingLineEnabled))
 }
 
 func TestValidateFilters(t *testing.T) {

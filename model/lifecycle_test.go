@@ -2233,7 +2233,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	for _, dbTask := range tasks {
 		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		assert.True(dbTask.Activated, dbTask.Id)
-		assert.Equal(dbTask.ActivatedBy, "test")
+		assert.Equal("test", dbTask.ActivatedBy)
 	}
 
 	// test restarting a build
@@ -2245,7 +2245,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	for _, dbTask := range tasks {
 		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		assert.True(dbTask.Activated, dbTask.Id)
-		assert.Equal(dbTask.ActivatedBy, "test")
+		assert.Equal("test", dbTask.ActivatedBy)
 	}
 
 	// test that restarting a task correctly resets the task and archives it
@@ -2267,7 +2267,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	for _, dbTask := range tasks {
 		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		assert.True(dbTask.Activated, dbTask.Id)
-		assert.Equal(dbTask.ActivatedBy, "caller")
+		assert.Equal("caller", dbTask.ActivatedBy)
 	}
 
 	// Test that restarting a display task with restartFailed correctly resets failed tasks.
@@ -2280,7 +2280,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	dbUser, err := user.FindOneById("caller")
 	assert.NoError(err)
 	require.NotNil(t, dbUser)
-	assert.Equal(dbUser.NumScheduledPatchTasks, 2)
+	assert.Equal(2, dbUser.NumScheduledPatchTasks)
 
 	assert.NoError(resetTask(ctx, dt.Id, "caller"))
 	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
@@ -2297,7 +2297,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	dbUser, err = user.FindOneById("caller")
 	assert.NoError(err)
 	require.NotNil(t, dbUser)
-	assert.Equal(dbUser.NumScheduledPatchTasks, 2)
+	assert.Equal(2, dbUser.NumScheduledPatchTasks)
 
 	// test that execution tasks cannot be restarted
 	assert.NoError(resetTaskData())
@@ -2654,7 +2654,7 @@ func TestCreateTasksFromGroup(t *testing.T) {
 		},
 	}
 	bvts := CreateTasksFromGroup(in, p, evergreen.PatchVersionRequester)
-	require.Equal(t, 2, len(bvts))
+	require.Len(t, bvts, 2)
 	for _, bvtu := range bvts {
 		require.Len(t, bvtu.DependsOn, 1)
 		assert.Equal("new_dependency", bvtu.DependsOn[0].Name)
