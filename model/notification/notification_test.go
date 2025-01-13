@@ -234,7 +234,7 @@ func (s *notificationSuite) TestWebhookPayload() {
 	s.NoError(err)
 	s.NotNil(n)
 
-	s.Equal(jsonData, string(n.Payload.(*util.EvergreenWebhook).Body))
+	s.JSONEq(jsonData, string(n.Payload.(*util.EvergreenWebhook).Body))
 
 	c, err := n.Composer()
 	s.NoError(err)

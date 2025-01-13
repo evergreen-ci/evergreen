@@ -171,7 +171,7 @@ index 03362f816..a9ae2024e 100644
         if err != nil {
                 return nil, errors.New("Unable to create local patch file")
 `, str)
-	assert.True(t, len([]byte(str)) > 1000)
+	assert.Greater(t, len([]byte(str)), 1000)
 	summaries, commitMessages, err := GetPatchSummariesFromMboxPatch(msg)
 	assert.NoError(t, err)
 	assert.NotNil(t, summaries)

@@ -33,19 +33,19 @@ func TestGetDeviceNames(t *testing.T) {
 	t.Run("EmptyTaskConfig", func(t *testing.T) {
 		tc := taskContext{}
 		assert.NoError(t, tc.getDeviceNames(ctx))
-		assert.Len(t, tc.diskDevices, 0)
+		assert.Empty(t, tc.diskDevices)
 	})
 
 	t.Run("EmptyDistro", func(t *testing.T) {
 		tc := taskContext{taskConfig: &internal.TaskConfig{}}
 		assert.NoError(t, tc.getDeviceNames(ctx))
-		assert.Len(t, tc.diskDevices, 0)
+		assert.Empty(t, tc.diskDevices)
 	})
 
 	t.Run("EmptyMountpoints", func(t *testing.T) {
 		tc := taskContext{taskConfig: &internal.TaskConfig{Distro: &apimodels.DistroView{}}}
 		assert.NoError(t, tc.getDeviceNames(ctx))
-		assert.Len(t, tc.diskDevices, 0)
+		assert.Empty(t, tc.diskDevices)
 	})
 
 	t.Run("Mountpoint", func(t *testing.T) {

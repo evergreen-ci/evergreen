@@ -152,7 +152,7 @@ func (s *hostSuite) TestAllTriggers() {
 	}))
 	n, err = NotificationsFromEvent(s.ctx, s.t.event)
 	s.NoError(err)
-	s.Require().Len(n, 0)
+	s.Require().Empty(n)
 
 	// A stopped host with no stopped event should trigger a notification.
 	s.Require().NoError(host.UpdateOne(s.ctx, host.ById(s.t.host.Id), bson.M{
@@ -200,7 +200,7 @@ func (s *hostSuite) TestAllTriggers() {
 
 	n, err = NotificationsFromEvent(s.ctx, s.t.event)
 	s.NoError(err)
-	s.Require().Len(n, 0)
+	s.Require().Empty(n)
 }
 
 func (s *hostSuite) TestHostExpiration() {

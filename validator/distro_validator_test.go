@@ -344,7 +344,7 @@ func TestEnsureHasRequiredFieldsWithProviderList(t *testing.T) {
 			assert.Len(t, ensureHasRequiredFields(ctx, d2, nil), 1)
 		},
 		"ValidList": func(t *testing.T) {
-			assert.Len(t, ensureHasRequiredFields(ctx, d3, nil), 0)
+			assert.Empty(t, ensureHasRequiredFields(ctx, d3, nil))
 		},
 	} {
 		t.Run(name, test)
@@ -479,14 +479,14 @@ func TestEnsureValidContainerPool(t *testing.T) {
 	assert.NoError(d4.Insert(ctx))
 
 	err := ensureValidContainerPool(ctx, d1, conf)
-	assert.Equal(err, ValidationErrors{{Error,
-		"error in container pool settings: container pool 'test-pool-invalid' has invalid distro 'd1'"}})
+	assert.Equal(ValidationErrors{{Error,
+		"error in container pool settings: container pool 'test-pool-invalid' has invalid distro 'd1'"}}, err)
 	err = ensureValidContainerPool(ctx, d2, conf)
-	assert.Equal(err, ValidationErrors{{Error,
-		"error in container pool settings: container pool 'test-pool-invalid' has invalid distro 'd1'"}})
+	assert.Equal(ValidationErrors{{Error,
+		"error in container pool settings: container pool 'test-pool-invalid' has invalid distro 'd1'"}}, err)
 	err = ensureValidContainerPool(ctx, d3, conf)
-	assert.Equal(err, ValidationErrors{{Error,
-		"distro container pool does not exist"}})
+	assert.Equal(ValidationErrors{{Error,
+		"distro container pool does not exist"}}, err)
 	err = ensureValidContainerPool(ctx, d4, conf)
 	assert.Nil(err)
 }

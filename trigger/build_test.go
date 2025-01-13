@@ -135,7 +135,7 @@ func (s *buildSuite) TearDownTest() {
 func (s *buildSuite) TestAllTriggers() {
 	n, err := NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
-	s.Len(n, 0)
+	s.Empty(n)
 
 	s.build.Status = evergreen.BuildSucceeded
 	s.data.Status = evergreen.BuildSucceeded
@@ -159,7 +159,7 @@ func (s *buildSuite) TestAllTriggers() {
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
-	s.Len(n, 0)
+	s.Empty(n)
 
 	s.build.GithubCheckStatus = evergreen.BuildFailed
 	s.data.GithubCheckStatus = evergreen.BuildFailed

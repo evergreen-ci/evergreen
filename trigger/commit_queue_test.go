@@ -2,7 +2,6 @@ package trigger
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -94,5 +93,5 @@ func (s *commitQueueSuite) TestEmailUnescapesDescription() {
 	s.NotNil(n)
 	payload, ok := n.Payload.(*message.Email)
 	s.True(ok)
-	s.True(strings.Contains(payload.Body, "'quote'"))
+	s.Contains(payload.Body, "'quote'")
 }

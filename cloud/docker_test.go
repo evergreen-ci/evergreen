@@ -125,7 +125,7 @@ func (s *DockerSuite) TestTerminateInstanceDB() {
 	s.NoError(err)
 
 	dbHost, err := host.FindOne(ctx, host.ById(myHost.Id))
-	s.NotEqual(dbHost.Status, evergreen.HostTerminated)
+	s.NotEqual(evergreen.HostTerminated, dbHost.Status)
 	s.NoError(err)
 
 	// Terminate the instance - check the host is terminated in DB.
@@ -133,7 +133,7 @@ func (s *DockerSuite) TestTerminateInstanceDB() {
 	s.NoError(err)
 
 	dbHost, err = host.FindOne(ctx, host.ById(myHost.Id))
-	s.Equal(dbHost.Status, evergreen.HostTerminated)
+	s.Equal(evergreen.HostTerminated, dbHost.Status)
 	s.NoError(err)
 
 	// Terminate again - check we cannot remove twice.
@@ -265,7 +265,7 @@ func (s *DockerSuite) TestGetContainers() {
 
 	containers, err := s.manager.GetContainers(ctx, parent)
 	s.NoError(err)
-	s.Equal(1, len(containers))
+	s.Len(containers, 1)
 	s.Equal("container-1", containers[0])
 }
 

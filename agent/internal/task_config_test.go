@@ -81,5 +81,5 @@ func TestCreatesCheckRun(t *testing.T) {
 
 	tc, err := NewTaskConfig(testutil.GetDirectoryOfFile(), &apimodels.DistroView{}, p, task, &model.ProjectRef{}, &patch.Patch{}, nil, &apimodels.ExpansionsAndVars{})
 	assert.NoError(t, err)
-	assert.Equal(t, true, tc.createsCheckRun())
+	assert.True(t, tc.createsCheckRun())
 }
