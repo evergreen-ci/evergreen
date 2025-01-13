@@ -504,6 +504,12 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
+	if evergreen.IsGithubMergeQueueRequester(t.Requester) {
+		if err = model.HandleEndTaskForGithubMergeQueueTask(ctx, t, h.details.Status); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
+	}
+
 	// the task was aborted if it is still in undispatched.
 	// the active state should be inactive.
 	if h.details.Status == evergreen.TaskUndispatched {
