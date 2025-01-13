@@ -2475,3 +2475,17 @@ func MarkUnallocatableContainerTasksSystemFailed(ctx context.Context, settings *
 
 	return catcher.Resolve()
 }
+
+func HandleEndTaskForGithubMergeQueueTask(ctx context.Context, t *task.Task, status string) error {
+	// If the task has succeeded, we don't need to do anything.
+	// If the task is already aborted, we shouldn't do anything, because the version has already been aborted.
+	if status == evergreen.TaskSucceeded || t.Aborted {
+		return nil
+	}
+
+	reason := fmt.Sprintf("task '%s' failed", t.DisplayName)
+	if err := SetVersionActivation(ctx, t.Version, false, reason); err != nil {
+		return errors.WithStack(err)
+	}
+	return errors.WithStack(task.AbortVersionTasks(t.Version, task.AbortInfo{TaskID: t.Id, User: evergreen.GithubMergeRequester}))
+}

@@ -15,6 +15,14 @@ turn on the GitHub merge queue in GitHub.
 GitHub's merge queue requires that you have write access to the repository to
 merge, like you would have to without the queue.
 
+Evergreen will fail the entire version if any task in a merge queue version
+fails, so only include tasks that must pass for a merge queue version to pass.
+That is, in the GitHub section of your project settings in Evergreen, you can
+set Patch Definitions for GitHub Pull Request Testing that select tasks beyond
+those required by your GitHub branch protection rules. But in the Patch
+Definitions for the Merge Queue, the selected tasks must be exactly those
+required by your GitHub branch protection rules.
+
 ## Enable the merge queue
 
 ### Turn on Evergreen's merge queue integration
