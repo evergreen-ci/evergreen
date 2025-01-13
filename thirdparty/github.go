@@ -842,7 +842,6 @@ func tryGithubPost(ctx context.Context, url string, oauthToken string, data inte
 			"ticket":  GithubInvestigation,
 			"url":     url,
 		})
-		//nolint:bodyclose // Caller is responsible for closing the response body.
 		resp, err = githubRequest(ctx, http.MethodPost, url, oauthToken, data)
 		if err != nil {
 			grip.Errorf("failed trying to call github POST on %s: %+v", url, err)
