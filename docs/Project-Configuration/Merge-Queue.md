@@ -15,6 +15,12 @@ turn on the GitHub merge queue in GitHub.
 GitHub's merge queue requires that you have write access to the repository to
 merge, like you would have to without the queue.
 
+Evergreen will fail the entire version if any task in a merge queue version
+fails, so only include tasks that must pass for a merge queue version to pass.
+You can run more tasks than are required to fulfill branch protections in a PR,
+but only trigger the required tasks for a PR. You can configure this according
+to the instructions below, "Turn on Evergreen's merge queue integration."
+
 ## Enable the merge queue
 
 ### Turn on Evergreen's merge queue integration
