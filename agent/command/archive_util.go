@@ -22,15 +22,13 @@ func validateRelativePath(filePath, rootPath string) error {
 		return errors.New("filepath is absolute")
 	}
 	realPath := filepath.Join(rootPath, filePath)
-	resolvedPath, err := filepath.EvalSymlinks(realPath)
-	// If the error is a non-existence error, we can ignore it.
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return errors.Wrap(err, "evaluating symlinks")
-	}
-	// If the path was resolved, use the resolved path.
-	if err == nil {
-		realPath = resolvedPath
-	}
+	// Generally, paths are resolved before they are passed
+	// to filepath.Rel to prevent tarballs from containing
+	// symlinks to files outside the data directory.
+	// However, on our Window's hosts, the data directory
+	// is symlinked to another drive so we can't resolve
+	// the symlinks or it will falsely report that the
+	// path is outside the data directory.
 	relpath, err := filepath.Rel(rootPath, realPath)
 	if err != nil {
 		return errors.Wrap(err, "getting relative path")
