@@ -83,7 +83,6 @@ func (s *StatusSuite) TestAgentStartsStatusServer() {
 }
 
 func (s *StatusSuite) TestAgentFailsToStartTwice() {
-	//nolint:bodyclose // This request should error and the response should be nil.
 	_, err := http.Get("http://127.0.0.1:2287/status")
 	s.Require().Error(err)
 
@@ -102,7 +101,6 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 		c <- agt.Start(ctx)
 	}(first)
 
-	//nolint:bodyclose // The linter doesn't catch the close below when the err is nil.
 	resp, err := http.Get("http://127.0.0.1:2287/status")
 	if err != nil {
 		// the service hasn't started.
@@ -115,7 +113,6 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 			case <-ctx.Done():
 				break retryLoop
 			case <-timer.C:
-				//nolint:bodyclose // The linter doesn't catch the close below for this resp.
 				resp, err = http.Get("http://127.0.0.1:2287/status")
 				if err == nil {
 					break retryLoop
@@ -169,7 +166,6 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 		_ = agt.Start(ctx)
 	}()
 
-	//nolint:bodyclose // The linter doesn't catch the close below when the err is nil.
 	resp, err := http.Get("http://127.0.0.1:2286/jasper/v1/list/oom")
 	if err != nil {
 		// the service hasn't started.
@@ -182,7 +178,6 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 			case <-ctx.Done():
 				break retryLoop
 			case <-timer.C:
-				//nolint:bodyclose // The linter doesn't catch the close below for this resp.
 				resp, err = http.Get("http://127.0.0.1:2286/jasper/v1/list/oom")
 				if err == nil {
 					break retryLoop

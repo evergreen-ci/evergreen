@@ -1558,7 +1558,6 @@ func (c *communicatorImpl) GetTaskLogs(ctx context.Context, opts GetTaskLogsOpti
 		path:   fmt.Sprintf("tasks/%s/build/TaskLogs?%s", opts.TaskID, strings.Join(params, "&")),
 	}
 
-	//nolint:bodyclose // Caller is responsible for closing the response body.
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "sending request to get task logs")
@@ -1611,7 +1610,6 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 		path:   fmt.Sprintf("tasks/%s/build/TestLogs/%s?%s", opts.TaskID, url.PathEscape(opts.Path), strings.Join(params, "&")),
 	}
 
-	//nolint:bodyclose // Caller is responsible for closing the response body.
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "sending request to get test logs")
