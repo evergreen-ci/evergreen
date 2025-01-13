@@ -548,7 +548,7 @@ func (p *countEstimatedGeneratedTasksHandler) Run(ctx context.Context) gimlet.Re
 	}
 	numTasksToFinalize := 0
 	for _, vt := range p.files {
-		dbTask, err := task.FindOne(db.Query(bson.M{
+		dbTask, err := task.FindOne(ctx, db.Query(bson.M{
 			task.ProjectKey:      existingPatch.Project,
 			task.BuildVariantKey: vt.Variant,
 			task.DisplayNameKey:  vt.TaskName,

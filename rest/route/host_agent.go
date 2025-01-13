@@ -658,10 +658,10 @@ func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, 
 	event.LogHostTaskDispatched(t.Id, t.Execution, h.Id)
 	event.LogHostRunningTaskSet(h.Id, t.Id, t.Execution)
 
-	if t.IsPartOfDisplay() {
+	if t.IsPartOfDisplay(ctx) {
 		// The task is already dispatched at this point, so continue if this
 		// errors.
-		grip.Error(message.WrapError(model.UpdateDisplayTaskForTask(t), message.Fields{
+		grip.Error(message.WrapError(model.UpdateDisplayTaskForTask(ctx, t), message.Fields{
 			"message":      "could not update parent display task after dispatching task",
 			"task":         t.Id,
 			"display_task": t.DisplayTaskId,
@@ -712,10 +712,10 @@ func undoHostTaskDispatchAtomically(ctx context.Context, env evergreen.Environme
 		event.LogHostTaskUndispatched(clearedTask, clearedTaskExec, h.Id)
 	}
 
-	if t.IsPartOfDisplay() {
+	if t.IsPartOfDisplay(ctx) {
 		// The dispatch has already been undone at this point, so continue if
 		// this errors.
-		grip.Error(message.WrapError(model.UpdateDisplayTaskForTask(t), message.Fields{
+		grip.Error(message.WrapError(model.UpdateDisplayTaskForTask(ctx, t), message.Fields{
 			"message":      "could not update parent display task after undoing task dispatch",
 			"task":         t.Id,
 			"display_task": t.DisplayTaskId,
@@ -1032,7 +1032,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 
 	if t.IsHostDispatchable() {
 		grip.Notice(getMessage("marking task as dispatched because it is not currently dispatched"))
-		if err := model.MarkHostTaskDispatched(t, h); err != nil {
+		if err := model.MarkHostTaskDispatched(ctx, t, h); err != nil {
 			grip.Error(message.WrapError(err, getMessage("could not mark task as dispatched to host")))
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
@@ -1280,7 +1280,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		"path":        fmt.Sprintf("/rest/v2/hosts/%s/task/%s/end", currentHost.Id, t.Id),
 	}
 
-	if t.IsPartOfDisplay() {
+	if t.IsPartOfDisplay(ctx) {
 		msg["display_task_id"] = t.DisplayTaskId
 	}
 

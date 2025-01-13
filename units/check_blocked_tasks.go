@@ -162,8 +162,8 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 	}
 
 	// also update the display task status in case it is out of date
-	if t.IsPartOfDisplay() {
-		catcher.Add(model.UpdateDisplayTaskForTask(t))
+	if t.IsPartOfDisplay(ctx) {
+		catcher.Add(model.UpdateDisplayTaskForTask(ctx, t))
 	}
 
 	numModified := len(finishedBlockingTasks) + len(deactivatedBlockingTasks)
@@ -172,7 +172,7 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 		"blocking_finished_tasks_updated":    len(finishedBlockingTasks),
 		"blocking_deactivated_tasks_updated": len(deactivatedBlockingTasks),
 		"blocking_task_ids":                  blockingTaskIds,
-		"exec_task":                          t.IsPartOfDisplay(),
+		"exec_task":                          t.IsPartOfDisplay(ctx),
 		"source":                             checkBlockedTasks,
 	})
 	return catcher.Resolve()

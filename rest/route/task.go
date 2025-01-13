@@ -269,7 +269,7 @@ func (rh *displayTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	dt, err := t.GetDisplayTask()
+	dt, err := t.GetDisplayTask(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding display task for task '%s'", rh.taskID))
 	}
