@@ -1310,6 +1310,20 @@ func HandleEndTaskForCommitQueueTask(ctx context.Context, t *task.Task, status s
 	return nil
 }
 
+func HandleEndTaskForGithubMergeQueueTask(ctx context.Context, t *task.Task, status string) error {
+	// If the task has succeeded, we don't need to do anything.
+	// If the task is already aborted, we shouldn't do anything, because the version has already been aborted.
+	if status == evergreen.TaskSucceeded || t.Aborted {
+		return nil
+	}
+
+	reason := fmt.Sprintf("task '%s' failed", t.DisplayName)
+	if err := SetVersionActivation(ctx, t.Version, false, reason); err != nil {
+		return errors.WithStack(err)
+	}
+	return errors.WithStack(task.AbortVersionTasks(t.Version, task.AbortInfo{TaskID: t.Id, User: evergreen.MergeTestRequester}))
+}
+
 // dequeueAndRestartWithStepback dequeues the current task and restarts later tasks, if earlier tasks have all run.
 // Otherwise, the failure may be a result of those untested commits so we will wait for the earlier tasks to run
 // and handle dequeuing (merge still won't run for failed task versions because of dependencies).
