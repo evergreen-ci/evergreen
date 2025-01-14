@@ -141,7 +141,7 @@ func addModuleToPatch(params *patchParams, args cli.Args, conf *ClientSettings,
 	if !params.SkipConfirm {
 		grip.Infof("Using branch '%s' for module '%s'.", module.Branch, module.Name)
 		if diffData.patchSummary != "" {
-			grip.Info(diffData.patchSummary)
+			fmt.Println(diffData.patchSummary)
 		}
 		if len(diffData.fullPatch) > 0 {
 			if !confirm("This is a summary of the module patch to be submitted. Include this module's changes?", true) {
