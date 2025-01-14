@@ -39,7 +39,7 @@ func (r *podResolver) Status(ctx context.Context, obj *model.APIPod) (string, er
 
 // Task is the resolver for the task field.
 func (r *podResolver) Task(ctx context.Context, obj *model.APIPod) (*model.APITask, error) {
-	task, err := task.FindByIdExecution(utility.FromStringPtr(obj.TaskRuntimeInfo.RunningTaskID), obj.TaskRuntimeInfo.RunningTaskExecution)
+	task, err := task.FindByIdExecution(ctx, utility.FromStringPtr(obj.TaskRuntimeInfo.RunningTaskID), obj.TaskRuntimeInfo.RunningTaskExecution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", utility.FromStringPtr(obj.TaskRuntimeInfo.RunningTaskID), err.Error()))
 	}

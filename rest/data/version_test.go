@@ -336,7 +336,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	assert.True(b.Activated)
 	assert.Len(b.Tasks, 1)
 
-	dbTask, err := task.FindOneId(b.Tasks[0].Id)
+	dbTask, err := task.FindOneId(ctx, b.Tasks[0].Id)
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
 	assert.True(dbTask.Activated)
@@ -383,7 +383,7 @@ tasks:
 	assert.True(b.Activated)
 	assert.Len(b.Tasks, 1)
 
-	dbTask, err = task.FindOneId(b.Tasks[0].Id)
+	dbTask, err = task.FindOneId(ctx, b.Tasks[0].Id)
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
 	assert.True(dbTask.Activated)

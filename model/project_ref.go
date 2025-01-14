@@ -3149,8 +3149,8 @@ func (p *ProjectRef) CommitQueueIsOn() error {
 	return catcher.Resolve()
 }
 
-func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
-	t, err := task.FindOneId(taskId)
+func GetProjectRefForTask(ctx context.Context, taskId string) (*ProjectRef, error) {
+	t, err := task.FindOneId(ctx, taskId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task '%s'", taskId)
 	}
@@ -3168,7 +3168,7 @@ func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 }
 
 func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
-	pRef, err := GetProjectRefForTask(taskId)
+	pRef, err := GetProjectRefForTask(ctx, taskId)
 	if err != nil {
 		return "", errors.Wrap(err, "getting project")
 	}
@@ -3410,13 +3410,13 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 	}
 }
 
-func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
+func GetUpstreamProjectName(ctx context.Context, triggerID, triggerType string) (string, error) {
 	if triggerID == "" || triggerType == "" {
 		return "", nil
 	}
 	var projectID string
 	if triggerType == ProjectTriggerLevelTask {
-		upstreamTask, err := task.FindOneId(triggerID)
+		upstreamTask, err := task.FindOneId(ctx, triggerID)
 		if err != nil {
 			return "", errors.Wrap(err, "finding upstream task")
 		}

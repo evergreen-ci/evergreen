@@ -858,7 +858,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 	var t *task.Task
 	if spawnHostInput.TaskID != nil && *spawnHostInput.TaskID != "" {
 		options.TaskID = *spawnHostInput.TaskID
-		if t, err = task.FindOneId(*spawnHostInput.TaskID); err != nil {
+		if t, err = task.FindOneId(ctx, *spawnHostInput.TaskID); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task %s: %s", *spawnHostInput.TaskID, err.Error()))
 		}
 	}

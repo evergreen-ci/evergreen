@@ -111,7 +111,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 	// config has already been modified. We do this again in `handleError` to reduce the chances
 	// of this race as close to zero as possible.
 	taskId := t.Id
-	t, err = task.FindOneId(taskId)
+	t, err = task.FindOneId(ctx, taskId)
 	if err != nil {
 		return errors.Wrapf(err, "finding task '%s'", taskId)
 	}
@@ -147,19 +147,19 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 
 	p, pp, v, err := g.NewVersion(ctx, project, parserProject, v)
 	if err != nil {
-		return j.handleError(errors.WithStack(err))
+		return j.handleError(ctx, errors.WithStack(err))
 	}
 
 	pref, err := model.FindMergedProjectRef(t.Project, t.Version, true)
 	if err != nil {
-		return j.handleError(errors.WithStack(err))
+		return j.handleError(ctx, errors.WithStack(err))
 	}
 	if pref == nil {
-		return j.handleError(errors.Errorf("project '%s' not found", t.Project))
+		return j.handleError(ctx, errors.Errorf("project '%s' not found", t.Project))
 	}
 
 	if err = validator.CheckProjectConfigurationIsValid(ctx, j.env.Settings(), p, pref); err != nil {
-		return j.handleError(errors.WithStack(err))
+		return j.handleError(ctx, errors.WithStack(err))
 	}
 
 	if err := g.CheckForCycles(ctx, v, p, pref); err != nil {
@@ -186,12 +186,12 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 
 // handleError return mongo.ErrNoDocuments if generate.tasks has already run.
 // Otherwise, it returns the given error.
-func (j *generateTasksJob) handleError(handledError error) error {
+func (j *generateTasksJob) handleError(ctx context.Context, handledError error) error {
 	// Get task again, to exit nil if another generator finished, which caused us to error.
 	// Checking this again here makes it very unlikely that there is a race, because both
 	// `t.GeneratedTasks` checks must have been in between the racing generator's call to
 	// save the config and set the task's boolean.
-	t, err := task.FindOneId(j.TaskID)
+	t, err := task.FindOneId(ctx, j.TaskID)
 	if err != nil {
 		return errors.Wrapf(err, "finding task '%s'", j.TaskID)
 	}
@@ -217,7 +217,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 	start := time.Now()
 
-	t, err := task.FindOneId(j.TaskID)
+	t, err := task.FindOneId(ctx, j.TaskID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding task '%s'", j.TaskID))
 		return

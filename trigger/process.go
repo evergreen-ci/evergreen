@@ -110,7 +110,7 @@ type ProcessorArgs struct {
 func EvalProjectTriggers(ctx context.Context, e *event.EventLogEntry, processor projectProcessor) ([]model.Version, error) {
 	switch e.EventType {
 	case event.TaskFinished:
-		t, err := task.FindOneId(e.ResourceId)
+		t, err := task.FindOneId(ctx, e.ResourceId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding task '%s'", e.ResourceId)
 		}

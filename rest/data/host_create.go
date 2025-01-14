@@ -35,7 +35,7 @@ import (
 // ListHostsForTask lists running hosts scoped to the task or the task's build.
 func ListHostsForTask(ctx context.Context, taskID string) ([]host.Host, error) {
 	env := evergreen.GetEnvironment()
-	t, err := task.FindOneId(taskID)
+	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "finding task '%s'", taskID).Error()}
 	}
@@ -195,7 +195,7 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 	}
 
 	knownHosts := settings.Expansions[evergreen.GithubKnownHosts]
-	expansions, err := model.PopulateExpansions(t, h, appToken, knownHosts)
+	expansions, err := model.PopulateExpansions(ctx, t, h, appToken, knownHosts)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "populating expansions")
 	}
@@ -266,7 +266,7 @@ func MakeHost(ctx context.Context, env evergreen.Environment, taskID, userID, pu
 }
 
 func makeDockerIntentHost(ctx context.Context, env evergreen.Environment, taskID, userID string, createHost apimodels.CreateHost, d distro.Distro) (*host.Host, error) {
-	options, err := getHostCreationOptions(d, taskID, userID, createHost)
+	options, err := getHostCreationOptions(ctx, d, taskID, userID, createHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "making intent host options")
 	}
@@ -391,7 +391,7 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 	}
 	d.ProviderSettingsList = []*birch.Document{doc}
 
-	options, err := getHostCreationOptions(d, taskID, userID, createHost)
+	options, err := getHostCreationOptions(ctx, d, taskID, userID, createHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "making intent host options")
 	}
@@ -414,7 +414,7 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 	return intent, nil
 }
 
-func getHostCreationOptions(d distro.Distro, taskID, userID string, createHost apimodels.CreateHost) (*host.CreateOptions, error) {
+func getHostCreationOptions(ctx context.Context, d distro.Distro, taskID, userID string, createHost apimodels.CreateHost) (*host.CreateOptions, error) {
 	options := host.CreateOptions{
 		Distro: d,
 	}
@@ -429,7 +429,7 @@ func getHostCreationOptions(d distro.Distro, taskID, userID string, createHost a
 		}
 	} else {
 		options.UserName = taskID
-		t, err := task.FindOneId(taskID)
+		t, err := task.FindOneId(ctx, taskID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding task '%s'", taskID)
 		}

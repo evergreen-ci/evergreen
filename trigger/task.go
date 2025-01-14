@@ -170,7 +170,7 @@ func (t *taskTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error 
 		return errors.Wrap(err, "fetching UI config")
 	}
 
-	t.task, err = task.FindOneIdOldOrNew(e.ResourceId, t.data.Execution)
+	t.task, err = task.FindOneIdOldOrNew(ctx, e.ResourceId, t.data.Execution)
 	if err != nil {
 		return errors.Wrapf(err, "finding task '%s' execution %d", e.ResourceId, t.data.Execution)
 	}

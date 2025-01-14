@@ -134,7 +134,7 @@ func (j *podCreationJob) Run(ctx context.Context) {
 			j.AddError(errors.Wrap(err, "marking pod as starting"))
 		}
 
-		if err := j.logTaskTimingStats(); err != nil {
+		if err := j.logTaskTimingStats(ctx); err != nil {
 			j.AddError(errors.Wrap(err, "logging task timing stats"))
 		}
 	default:
@@ -206,7 +206,7 @@ func (j *podCreationJob) checkForPodDefinition(family string) (*definition.PodDe
 	return podDef, nil
 }
 
-func (j *podCreationJob) logTaskTimingStats() error {
+func (j *podCreationJob) logTaskTimingStats(ctx context.Context) error {
 	if j.pod.Type != pod.TypeAgent {
 		return nil
 	}
@@ -226,7 +226,7 @@ func (j *podCreationJob) logTaskTimingStats() error {
 		"dispatcher_group": disp.GroupID,
 	}
 
-	tsk, err := task.FindOneId(disp.GroupID)
+	tsk, err := task.FindOneId(ctx, disp.GroupID)
 	if err != nil {
 		return errors.Wrapf(err, "finding tasks associated with dispatcher group '%s'", disp.GroupID)
 	}

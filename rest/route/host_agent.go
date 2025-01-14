@@ -355,7 +355,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			return nil, false, nil
 		}
 
-		nextTask, err := task.FindOneId(queueItem.Id)
+		nextTask, err := task.FindOneId(ctx, queueItem.Id)
 		if err != nil {
 			grip.DebugWhen(queueItem.Group != "", message.Fields{
 				"message":            "retrieving next task",
@@ -1123,7 +1123,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 
 	finishTime := time.Now()
 
-	t, err := task.FindOneId(h.taskID)
+	t, err := task.FindOneId(ctx, h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
 	}

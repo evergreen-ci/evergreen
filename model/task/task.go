@@ -755,7 +755,7 @@ func (t *Task) RemoveDependency(dependencyId string) error {
 // If any of the dependencies exist in the map that is passed in, they are
 // used to check rather than fetching from the database. All queries
 // are cached back into the map for later use.
-func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
+func (t *Task) DependenciesMet(ctx context.Context, depCaches map[string]Task) (bool, error) {
 	if t.HasDependenciesMet() {
 		return true, nil
 	}
@@ -766,7 +766,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	}
 
 	for _, dependency := range t.DependsOn {
-		depTask, err := populateDependencyTaskCacheSingular(depCaches, dependency.TaskId)
+		depTask, err := populateDependencyTaskCacheSingular(ctx, depCaches, dependency.TaskId)
 		if err != nil {
 			return false, err
 		}
@@ -856,7 +856,7 @@ func (t *Task) GetFinishedBlockingDependencies(depCache map[string]Task) ([]Task
 
 // GetDeactivatedBlockingDependencies gets all blocking tasks that are not finished and are not activated.
 // These tasks are not going to run unless they are manually activated.
-func (t *Task) GetDeactivatedBlockingDependencies(depCache map[string]Task) ([]string, error) {
+func (t *Task) GetDeactivatedBlockingDependencies(ctx context.Context, depCache map[string]Task) ([]string, error) {
 	_, err := t.populateDependencyTaskCache(depCache)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -864,7 +864,7 @@ func (t *Task) GetDeactivatedBlockingDependencies(depCache map[string]Task) ([]s
 
 	blockingDeps := []string{}
 	for _, dep := range t.DependsOn {
-		depTask, err := populateDependencyTaskCacheSingular(depCache, dep.TaskId)
+		depTask, err := populateDependencyTaskCacheSingular(ctx, depCache, dep.TaskId)
 		if err != nil {
 			return nil, err
 		}
@@ -878,11 +878,11 @@ func (t *Task) GetDeactivatedBlockingDependencies(depCache map[string]Task) ([]s
 
 // populateDependencyTaskCacheSingular ensures that a single dependency for the task is in the cache.
 // And if it is not, it queries the database for it.
-func populateDependencyTaskCacheSingular(depCache map[string]Task, depId string) (*Task, error) {
+func populateDependencyTaskCacheSingular(ctx context.Context, depCache map[string]Task, depId string) (*Task, error) {
 	if depTask, ok := depCache[depId]; ok {
 		return &depTask, nil
 	}
-	foundTask, err := FindOneId(depId)
+	foundTask, err := FindOneId(ctx, depId)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding dependency")
 	}
@@ -899,7 +899,7 @@ func populateDependencyTaskCacheSingular(depCache map[string]Task, depId string)
 //
 // If the cached tasks do not include a dependency specified by one of
 // the tasks, the function returns an error.
-func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
+func (t *Task) AllDependenciesSatisfied(ctx context.Context, cache map[string]Task) (bool, error) {
 	if len(t.DependsOn) == 0 {
 		return true, nil
 	}
@@ -907,7 +907,7 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 	catcher := grip.NewBasicCatcher()
 	deps := []Task{}
 	for _, dep := range t.DependsOn {
-		cachedDep, err := populateDependencyTaskCacheSingular(cache, dep.TaskId)
+		cachedDep, err := populateDependencyTaskCacheSingular(ctx, cache, dep.TaskId)
 		if err != nil {
 			return false, err
 		}
@@ -1437,14 +1437,14 @@ func SetTasksScheduledTime(ctx context.Context, tasks []Task, scheduledTime time
 // It verifies that the tasks are from the same project, requester,
 // build variant, and display name.
 func ByBeforeMidwayTaskFromIds(ctx context.Context, t1Id, t2Id string) (*Task, error) {
-	t1, err := FindOneId(t1Id)
+	t1, err := FindOneId(ctx, t1Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task id '%s'", t1Id)
 	}
 	if t1 == nil {
 		return nil, errors.Errorf("could not find task id '%s'", t1Id)
 	}
-	t2, err := FindOneId(t2Id)
+	t2, err := FindOneId(ctx, t2Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task id '%s'", t2Id)
 	}
@@ -3514,7 +3514,7 @@ func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 		}
 	} else {
 		if dtId != "" {
-			dt, err = FindOneId(dtId)
+			dt, err = FindOneId(ctx, dtId)
 		} else {
 			dt, err = FindOne(ctx, db.Query(ByExecutionTask(t.Id)))
 			if dt != nil {
@@ -3819,10 +3819,10 @@ func TaskSliceToMap(tasks []Task) map[string]Task {
 	return taskMap
 }
 
-func GetLatestExecution(taskId string) (int, error) {
+func GetLatestExecution(ctx context.Context, taskId string) (int, error) {
 	var t *Task
 	var err error
-	t, err = FindOneId(taskId)
+	t, err = FindOneId(ctx, taskId)
 	if err != nil {
 		return -1, err
 	}
@@ -3830,7 +3830,7 @@ func GetLatestExecution(taskId string) (int, error) {
 		pieces := strings.Split(taskId, "_")
 		pieces = pieces[:len(pieces)-1]
 		taskId = strings.Join(pieces, "_")
-		t, err = FindOneId(taskId)
+		t, err = FindOneId(ctx, taskId)
 		if err != nil {
 			return -1, errors.Wrap(err, "getting task")
 		}
@@ -4032,7 +4032,7 @@ func AddDisplayTaskIdToExecTasks(displayTaskId string, execTasksToUpdate []strin
 	return err
 }
 
-func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string, displayTaskActivated bool) error {
+func AddExecTasksToDisplayTask(ctx context.Context, displayTaskId string, execTasks []string, displayTaskActivated bool) error {
 	if len(execTasks) == 0 {
 		return nil
 	}
@@ -4042,7 +4042,7 @@ func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string, display
 
 	if displayTaskActivated {
 		// verify that the display task isn't already activated
-		dt, err := FindOneId(displayTaskId)
+		dt, err := FindOneId(ctx, displayTaskId)
 		if err != nil {
 			return errors.Wrap(err, "getting display task")
 		}

@@ -84,7 +84,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostDecommissioned, container2.Status)
 
-			t1, err = task.FindOneId(t1.Id)
+			t1, err = task.FindOneId(ctx, t1.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.TaskFailed, t1.Status)
 		},
@@ -126,7 +126,7 @@ func TestHandlePoisonedHost(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostDecommissioned, hostRunningTask.Status)
 
-			t1, err = task.FindOneId(t1.Id)
+			t1, err = task.FindOneId(ctx, t1.Id)
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.TaskFailed, t1.Status)
 		},

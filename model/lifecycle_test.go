@@ -497,6 +497,9 @@ func TestBuildMarkAborted(t *testing.T) {
 }
 
 func TestSetVersionActivation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
 	vID := "abcdef"
@@ -527,11 +530,11 @@ func TestSetVersionActivation(t *testing.T) {
 		assert.False(t, b.Activated)
 	}
 
-	t0, err := task.FindOneId(tasks[0].Id)
+	t0, err := task.FindOneId(ctx, tasks[0].Id)
 	require.NoError(t, err)
 	assert.False(t, t0.Activated)
 
-	t1, err := task.FindOneId(tasks[1].Id)
+	t1, err := task.FindOneId(ctx, tasks[1].Id)
 	require.NoError(t, err)
 	assert.True(t, t1.Activated)
 }
@@ -2174,7 +2177,7 @@ func TestVersionRestart(t *testing.T) {
 	for _, b := range builds {
 		assert.False(b.StartTime.IsZero())
 	}
-	dbTask5, err := task.FindOneId("task5")
+	dbTask5, err := task.FindOneId(ctx, "task5")
 	require.NoError(err)
 	require.NotZero(dbTask5)
 	require.Len(dbTask5.DependsOn, 1)
@@ -2272,7 +2275,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 
 	// Test that restarting a display task with restartFailed correctly resets failed tasks.
 	assert.NoError(resetTaskData())
-	dt, err := task.FindOneId("displayTask1")
+	dt, err := task.FindOneId(ctx, "displayTask1")
 	assert.NoError(err)
 	assert.NoError(dt.SetResetFailedWhenFinished(ctx, "caller"))
 
@@ -2322,13 +2325,13 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, settings *evergreen.Settings){
 		"ResettingExecutionTaskResetsDisplayTask": func(ctx context.Context, t *testing.T, settings *evergreen.Settings) {
-			et, err := task.FindOneId("task5")
+			et, err := task.FindOneId(ctx, "task5")
 			assert.NoError(t, err)
 			require.NotNil(t, et)
 
 			// restarting execution tasks should restart display task
 			assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, et, "caller", evergreen.StepbackTaskActivator, false, nil))
-			dt, err := task.FindOneId("displayTask1")
+			dt, err := task.FindOneId(ctx, "displayTask1")
 			assert.NoError(t, err)
 			require.NotNil(t, dt)
 			assert.Equal(t, evergreen.TaskUndispatched, dt.Status)
@@ -2341,24 +2344,24 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 			assert.Equal(t, len(dt.ExecutionTasks), dbUser.NumScheduledPatchTasks)
 		},
 		"ResettingFailedTasksInFailedDisplayTaskResetsExecutionTasks": func(ctx context.Context, t *testing.T, settings *evergreen.Settings) {
-			dt, err := task.FindOneId("displayTask1")
+			dt, err := task.FindOneId(ctx, "displayTask1")
 			assert.NoError(t, err)
 			require.NotNil(t, dt)
 
 			assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, dt, "caller", evergreen.StepbackTaskActivator, true, nil))
-			dt, err = task.FindOneId("displayTask1")
+			dt, err = task.FindOneId(ctx, "displayTask1")
 			assert.NoError(t, err)
 			require.NotNil(t, dt)
 			assert.Equal(t, evergreen.TaskUndispatched, dt.Status)
 			assert.Equal(t, 1, dt.Execution)
 			assert.False(t, dt.ResetFailedWhenFinished, "should not mark to reset failed tasks when display task was already finished")
 
-			failedExecTask, err := task.FindOneId("task6")
+			failedExecTask, err := task.FindOneId(ctx, "task6")
 			assert.NoError(t, err)
 			require.NotNil(t, failedExecTask)
 			assert.Equal(t, evergreen.TaskUndispatched, failedExecTask.Status, "failed execution task should be reset")
 
-			successfulExecTask, err := task.FindOneId("task5")
+			successfulExecTask, err := task.FindOneId(ctx, "task5")
 			assert.NoError(t, err)
 			require.NotNil(t, successfulExecTask)
 			assert.Equal(t, evergreen.TaskSucceeded, successfulExecTask.Status, "successful execution task should not be reset")
@@ -2369,7 +2372,7 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 			assert.Equal(t, len(dt.ExecutionTasks), dbUser.NumScheduledPatchTasks)
 
 			assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, dt, "caller", evergreen.StepbackTaskActivator, true, nil))
-			dt, err = task.FindOneId("displayTask1")
+			dt, err = task.FindOneId(ctx, "displayTask1")
 			assert.NoError(t, err)
 			require.NotNil(t, dt)
 			assert.Equal(t, evergreen.TaskUndispatched, dt.Status)
@@ -2377,36 +2380,36 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 			assert.True(t, dt.ResetFailedWhenFinished, "should mark to reset failed tasks when display task is unfinished")
 		},
 		"ResettingTasksInSuccessfulDisplayTaskResetsExecutionTasks": func(ctx context.Context, t *testing.T, settings *evergreen.Settings) {
-			dt, err := task.FindOneId("displayTask2")
+			dt, err := task.FindOneId(ctx, "displayTask2")
 			assert.NoError(t, err)
 			require.NotNil(t, dt)
 
 			assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, dt, "caller", evergreen.StepbackTaskActivator, false, nil))
-			dt, err = task.FindOneId("displayTask2")
+			dt, err = task.FindOneId(ctx, "displayTask2")
 			assert.NoError(t, err)
 			require.NotNil(t, dt)
 			assert.Equal(t, evergreen.TaskUndispatched, dt.Status, "display task should reset")
 			assert.Equal(t, 1, dt.Execution, "should reset to new execution")
 
-			et, err := task.FindOneId("task7")
+			et, err := task.FindOneId(ctx, "task7")
 			assert.NoError(t, err)
 			require.NotNil(t, et)
 			assert.Equal(t, evergreen.TaskUndispatched, et.Status, "execution task should reset")
 			assert.Equal(t, 1, et.Execution, "should reset to new execution")
 		},
 		"ResettingOnlyFailedTasksInSuccessfulDisplayTaskShouldNotResetButShouldAllowLaterReset": func(ctx context.Context, t *testing.T, settings *evergreen.Settings) {
-			dt, err := task.FindOneId("displayTask2")
+			dt, err := task.FindOneId(ctx, "displayTask2")
 			assert.NoError(t, err)
 			require.NotNil(t, dt)
 
 			assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, dt, "caller", evergreen.StepbackTaskActivator, true, nil))
-			dt, err = task.FindOneId("displayTask2")
+			dt, err = task.FindOneId(ctx, "displayTask2")
 			assert.NoError(t, err)
 			require.NotNil(t, dt)
 			assert.Equal(t, evergreen.TaskSucceeded, dt.Status, "display task should not reset because all execution tasks succeeded")
 			assert.Equal(t, 0, dt.Execution, "should not reset to new execution because all execution tasks succeeded")
 
-			et, err := task.FindOneId("task7")
+			et, err := task.FindOneId(ctx, "task7")
 			assert.NoError(t, err)
 			require.NotNil(t, et)
 			assert.Equal(t, evergreen.TaskSucceeded, et.Status, "successful execution task should not be reset")
@@ -2415,13 +2418,13 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 			// try resetting the display task unconditionally. The display task
 			// and execution tasks should restart.
 			assert.NoError(t, ResetTaskOrDisplayTask(ctx, settings, dt, "caller", evergreen.StepbackTaskActivator, false, nil))
-			dt, err = task.FindOneId("displayTask2")
+			dt, err = task.FindOneId(ctx, "displayTask2")
 			assert.NoError(t, err)
 			require.NotNil(t, dt)
 			assert.Equal(t, evergreen.TaskUndispatched, dt.Status, "display task should reset")
 			assert.Equal(t, 1, dt.Execution, "should reset to new execution")
 
-			et, err = task.FindOneId("task7")
+			et, err = task.FindOneId(ctx, "task7")
 			assert.NoError(t, err)
 			require.NotNil(t, et)
 			assert.Equal(t, evergreen.TaskUndispatched, et.Status, "execution task should reset")

@@ -199,7 +199,7 @@ func TestPodAgentNextTask(t *testing.T) {
 			nextTaskResp, ok := resp.Data().(*apimodels.NextTaskResponse)
 			require.True(t, ok)
 			assert.Equal(t, nextTaskResp.TaskId, tsk.Id)
-			foundTask, err := task.FindOneId(tsk.Id)
+			foundTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.TaskDispatched, foundTask.Status)
 		},
@@ -443,7 +443,7 @@ func TestPodAgentEndTask(t *testing.T) {
 			endTaskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
 			require.True(t, ok)
 			assert.False(t, endTaskResp.ShouldExit)
-			foundTask, err := task.FindOneId(taskID)
+			foundTask, err := task.FindOneId(ctx, taskID)
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.TaskSucceeded, foundTask.Status)
 		},

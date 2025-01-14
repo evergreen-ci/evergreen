@@ -1939,7 +1939,7 @@ func (s *taskDAGDispatchServiceSuite) refreshTaskQueue(service *basicCachedDAGDi
 	s.Require().NoError(err)
 	taskQueue := make([]TaskQueueItem, 0, len(tasks))
 	for _, t := range tasks {
-		_, err = t.DependenciesMet(map[string]task.Task{})
+		_, err = t.DependenciesMet(s.ctx, map[string]task.Task{})
 		s.Require().NoError(err)
 		dependencies := make([]string, 0, len(t.DependsOn))
 		for _, d := range t.DependsOn {

@@ -164,7 +164,7 @@ func TestAllocate(t *testing.T) {
 	require.NoError(t, db.CreateCollections(Collection, task.Collection, pod.Collection))
 
 	checkTaskAllocated := func(t *testing.T, tsk *task.Task) {
-		dbTask, err := task.FindOneId(tsk.Id)
+		dbTask, err := task.FindOneId(ctx, tsk.Id)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 		assert.True(t, dbTask.ContainerAllocated)
@@ -266,7 +266,7 @@ func TestAllocate(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 
-			dbTask, err := task.FindOneId(tsk.Id)
+			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			assert.NoError(t, err)
 			assert.Zero(t, dbTask)
 
