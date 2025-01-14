@@ -207,21 +207,26 @@ func ValidationErrorsToString(ves ValidationErrors) string {
 
 // getDistros creates a slice of all distro IDs and aliases.
 func getDistros(ctx context.Context) (ids []string, aliases []string, distroWarnings map[string]string, err error) {
-	return getDistrosForProject(ctx, "")
+	ids, aliases, _, distroWarnings, err = getDistrosForProject(ctx, "")
+	return ids, aliases, distroWarnings, err
 }
 
 // getDistrosForProject creates a slice of all valid distro IDs and a slice of
 // all valid aliases for a project, as well as any distro warnings. If projectID is empty, it returns all distro
 // IDs and all aliases.
-func getDistrosForProject(ctx context.Context, projectID string) (ids []string, aliases []string, distroWarnings map[string]string, err error) {
+func getDistrosForProject(ctx context.Context, projectID string) (ids, aliases, singleTaskDistroIDs []string, distroWarnings map[string]string, err error) {
 	distroWarnings = map[string]string{}
+	singleTaskDistroIDs = []string{}
 	// create a slice of all known distros
 	distros, err := distro.AllDistros(ctx)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	for _, d := range distros {
 		if projectID == "" || len(d.ValidProjects) == 0 || utility.StringSliceContains(d.ValidProjects, projectID) {
+			if d.SingleTaskDistro {
+				singleTaskDistroIDs = append(singleTaskDistroIDs, d.Id)
+			}
 			ids = append(ids, d.Id)
 			for _, alias := range d.Aliases {
 				if !utility.StringSliceContains(aliases, alias) {
@@ -237,7 +242,7 @@ func getDistrosForProject(ctx context.Context, projectID string) (ids []string, 
 			}
 		}
 	}
-	return ids, utility.UniqueStrings(aliases), distroWarnings, nil
+	return ids, utility.UniqueStrings(aliases), singleTaskDistroIDs, distroWarnings, nil
 }
 
 func addDistroWarning(distroWarnings map[string]string, distroName, warningNote string) {
@@ -327,8 +332,21 @@ func CheckProjectErrors(ctx context.Context, project *model.Project, includeLong
 			longSyntaxValidator(project, includeLong)...)
 	}
 
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		// return []ValidationError{{Message: errors.Wrap(err, "getting evergreen settings").Error()}}
+		validationErrs = append(validationErrs, ValidationError{Message: errors.Wrap(err, "getting evergreen settings").Error()})
+	}
+
+	allowedSingleTaskDistroTasks := []string{}
+	for _, pairs := range settings.SingleTaskDistro.ProjectTasksPairs {
+		if pairs.ProjectID == project.Identifier {
+			allowedSingleTaskDistroTasks = pairs.AllowedTasks
+		}
+	}
+
 	// get distro IDs and aliases for ensureReferentialIntegrity validation
-	distroIDs, distroAliases, distroWarnings, err := getDistrosForProject(ctx, project.Identifier)
+	distroIDs, distroAliases, singleTaskDistroIDs, distroWarnings, err := getDistrosForProject(ctx, project.Identifier)
 	if err != nil {
 		validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
 	}
@@ -339,7 +357,7 @@ func CheckProjectErrors(ctx context.Context, project *model.Project, includeLong
 		}
 		containerNameMap[container.Name] = true
 	}
-	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, containerNameMap, distroIDs, distroAliases, distroWarnings)...)
+	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, containerNameMap, distroIDs, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, distroWarnings)...)
 	return validationErrs
 }
 
@@ -907,7 +925,7 @@ func validateBuildVariantTaskNames(task string, variant string, allTaskNames map
 // ensureReferentialIntegrity checks all fields that reference other entities defined in the YAML and ensure that they are referring to valid names,
 // and returns any relevant distro validation info.
 // distroWarnings are considered validation notices.
-func ensureReferentialIntegrity(project *model.Project, containerNameMap map[string]bool, distroIDs []string, distroAliases []string, distroWarnings map[string]string) ValidationErrors {
+func ensureReferentialIntegrity(project *model.Project, containerNameMap map[string]bool, distroIDs, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks []string, distroWarnings map[string]string) ValidationErrors {
 	errs := ValidationErrors{}
 	// create a set of all the task names
 	allTaskNames := map[string]bool{}
@@ -944,6 +962,14 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 							Message: fmt.Sprintf("task '%s' in buildvariant '%s' references a nonexistent distro or container named '%s'",
 								task.Name, buildVariant.Name, name),
 							Level: Warning,
+						},
+					)
+				} else if utility.StringSliceContains(singleTaskDistroIDs, name) && !utility.StringSliceContains(allowedSingleTaskDistroTasks, task.Name) {
+					errs = append(errs,
+						ValidationError{
+							Message: fmt.Sprintf("task '%s' in buildvariant '%s' references a single task distro '%s' that is not allowed for this task",
+								task.Name, buildVariant.Name, name),
+							Level: Error,
 						},
 					)
 				} else if utility.StringSliceContains(distroIDs, name) && containerNameMap[name] {
@@ -985,6 +1011,13 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 						Message: fmt.Sprintf("buildvariant '%s' references a nonexistent distro or container named '%s'",
 							buildVariant.Name, name),
 						Level: Warning,
+					},
+				)
+			} else if utility.StringSliceContains(singleTaskDistroIDs, name) {
+				errs = append(errs,
+					ValidationError{
+						Message: fmt.Sprintf("buildvariant '%s' references a single task distro '%s' which is not allowed for buildvariants"),
+						Level:   Error,
 					},
 				)
 			} else if utility.StringSliceContains(distroIDs, name) && containerNameMap[name] {
