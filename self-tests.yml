@@ -208,6 +208,38 @@ functions:
             make mod-tidy;
             [[ $? -eq 0 ]] && break;
           done
+  
+  generate-api-docs:
+    - command: subprocess.exec
+      params:
+        binary: make
+        args: ["swaggo-install"]
+        working_dir: evergreen
+        env:
+          GOPATH: ${workdir}/gopath
+        include_expansions_in_env:
+          - GOROOT
+    - command: shell.exec
+      params:
+        shell: bash
+        working_dir: evergreen
+        env:
+          GOPATH: ${workdir}/gopath
+        script: |
+          set -o verbose
+          set -o errexit
+          $GOPATH/bin/swag init -g service/service.go
+    - command: s3.put
+      params:
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
+        local_file: evergreen/docs/swagger.json
+        remote_file: evergreen/${task_id}/${execution}/swagger.json
+        bucket: mciuploads
+        content_type: application/json
+        permissions: public-read
+        display_name: swagger.json
 
   assume-role:
     command: ec2.assume_role
@@ -695,38 +727,33 @@ tasks:
       - func: get-project-and-modules
       - func: verify-merge-function-update
   - name: generate-api-docs
+    patch_only: true
     commands:
       - func: get-project-and-modules
-      - command: subprocess.exec
-        params:
-          binary: make
-          args: ["swaggo-install"]
-          working_dir: evergreen
-          env:
-            GOPATH: ${workdir}/gopath
-          include_expansions_in_env:
-            - GOROOT
-      - command: shell.exec
-        params:
-          shell: bash
-          working_dir: evergreen
-          env:
-            GOPATH: ${workdir}/gopath
-          script: |
-            set -o verbose
-            set -o errexit
-            $GOPATH/bin/swag init -g service/service.go
-      - command: s3.put
+      - func: generate-api-docs
+  - name: push-api-docs
+    commands:
+      - func: get-project-and-modules
+      - func: generate-api-docs
+      - command: s3.get
         params:
           aws_key: ${AWS_ACCESS_KEY_ID}
           aws_secret: ${AWS_SECRET_ACCESS_KEY}
           aws_session_token: ${AWS_SESSION_TOKEN}
-          local_file: evergreen/docs/swagger.json
-          remote_file: evergreen/${task_id}/${execution}/swagger.json
+          local_file: evergreen/docs/swagger.old.sum
+          remote_file: evergreen/latest/swagger.sum
           bucket: mciuploads
-          content_type: application/json
-          permissions: public-read
-          display_name: swagger.json
+          content_type: text/plain
+          optional: true
+      - command: subprocess.exec
+        params:
+          working_dir: evergreen
+          binary: bash
+          args: ["scripts/prepare-swagger-push.sh"]
+          env:
+            SWAGGER_JSON_FILE: docs/swagger.json
+            SWAGGER_OLD_SUM_FILE: docs/swagger.old.sum
+            OUTPUT_SUM_FILE: docs/swagger.sum
       - command: s3.put
         params:
           aws_key: ${AWS_ACCESS_KEY_ID}
@@ -738,6 +765,18 @@ tasks:
           content_type: application/json
           permissions: public-read
           display_name: swagger.json (latest)
+          patchable: false
+      - command: s3.put
+        params:
+          aws_key: ${AWS_ACCESS_KEY_ID}
+          aws_secret: ${AWS_SECRET_ACCESS_KEY}
+          aws_session_token: ${AWS_SESSION_TOKEN}
+          local_file: evergreen/docs/swagger.sum
+          remote_file: evergreen/latest/swagger.sum
+          bucket: mciuploads
+          content_type: text/plain
+          permissions: public-read
+          display_name: swagger.sum (latest)
           patchable: false
   - name: write-downstream-expansions-for-pine
     commands:
@@ -812,6 +851,7 @@ buildvariants:
       - name: test-cloud
       - name: "js-test"
       - name: generate-api-docs
+      - name: push-api-docs
       - name: write-downstream-expansions-for-pine
 
   - name: race-detector
