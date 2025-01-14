@@ -1292,6 +1292,108 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependenciesInNewBuilds() {
 		s.True(t.Activated)
 	}
 }
+
+func (s *GenerateSuite) TestSaveNewTasksInExistingVariantUpdatesBuildStatus() {
+	genTask := &task.Task{
+		Id:          "t1",
+		DisplayName: "generator_task",
+		BuildId:     "b1",
+		Version:     "v1",
+	}
+	s.NoError(genTask.Insert())
+
+	finishedTask := task.Task{
+		Id:           "t2",
+		DisplayName:  "finished_task",
+		BuildId:      "b2",
+		BuildVariant: "other_bv",
+		Version:      "v1",
+	}
+	s.NoError(finishedTask.Insert())
+
+	existingGenBuild := build.Build{
+		Id:           "b1",
+		BuildVariant: "generator_bv",
+		Version:      "v1",
+		Activated:    true,
+		Status:       evergreen.BuildStarted,
+	}
+	s.NoError(existingGenBuild.Insert())
+
+	existingFinishedBuild := build.Build{
+		Id:           "b2",
+		BuildVariant: "other_bv",
+		Version:      "v1",
+		Activated:    true,
+		Status:       evergreen.BuildSucceeded,
+	}
+	s.NoError(existingFinishedBuild.Insert())
+
+	v := &Version{
+		Id:       "v1",
+		BuildIds: []string{"b1", "b2"},
+	}
+	s.NoError(v.Insert())
+
+	parserProj := ParserProject{}
+	initialConfig := `
+tasks:
+- name: generator_task
+- name: finished_task
+
+buildvariants:
+- name: generator_bv
+  run_on:
+  - arch
+  tasks:
+  - name: generator_task
+- name: other_bv
+  run_on:
+  - arch
+  tasks:
+  - name: finished_task
+`
+	s.NoError(util.UnmarshalYAMLWithFallback([]byte(initialConfig), &parserProj))
+	parserProj.Id = "v1"
+	s.NoError(parserProj.Insert())
+
+	generateTasksJSON := `
+{
+	"tasks": [
+		{
+			"name": "new_task"
+		}
+	],
+	"buildvariants": [
+		{
+			"name": "other_bv",
+			"tasks": ["new_task"]
+		}
+	]
+}
+`
+
+	g, err := ParseProjectFromJSONString(generateTasksJSON)
+	s.Require().NoError(err)
+	g.Task = genTask
+
+	p, pp, err := FindAndTranslateProjectForVersion(s.ctx, s.env.Settings(), v, false)
+	s.Require().NoError(err)
+	p, pp, v, err = g.NewVersion(context.Background(), p, pp, v)
+	s.NoError(err)
+	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
+
+	dbExistingGenBuild, err := build.FindOneId(existingGenBuild.Id)
+	s.Require().NoError(err)
+	s.Require().NotZero(dbExistingGenBuild)
+	s.Equal(evergreen.BuildStarted, dbExistingGenBuild.Status, "status for build generating tasks should not change")
+
+	dbExistingOtherBuild, err := build.FindOneId(existingFinishedBuild.Id)
+	s.Require().NoError(err)
+	s.Require().NotZero(dbExistingOtherBuild)
+	s.Equal(evergreen.BuildStarted, dbExistingOtherBuild.Status, "status for build that previously had only finished tasks and now has new generated tasks to run should be running")
+}
+
 func (s *GenerateSuite) TestSaveNewTasksInNewVariantWithCrossVariantDependencyOnExistingUnscheduledTaskInExistingVariant() {
 	// This tests generating a task that depends on a task in a different BV
 	// that has already been defined but is not scheduled. It should scheduled
