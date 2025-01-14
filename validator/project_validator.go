@@ -1016,7 +1016,7 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 			} else if utility.StringSliceContains(singleTaskDistroIDs, name) {
 				errs = append(errs,
 					ValidationError{
-						Message: fmt.Sprintf("buildvariant '%s' references a single task distro '%s' which is not allowed for buildvariants"),
+						Message: fmt.Sprintf("buildvariant '%s' references a single task distro '%s' which is not allowed for buildvariants", buildVariant.Name, name),
 						Level:   Error,
 					},
 				)
