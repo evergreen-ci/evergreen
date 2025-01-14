@@ -504,34 +504,6 @@ func (d *Dependency) SetBSON(raw mgobson.Raw) error {
 	return mgobson.SetZero
 }
 
-type DisplayTaskCache struct {
-	execToDisplay map[string]*Task
-	displayTasks  []*Task
-}
-
-func (c *DisplayTaskCache) Get(t *Task) (*Task, error) {
-	if parent, exists := c.execToDisplay[t.Id]; exists {
-		return parent, nil
-	}
-	displayTask, err := t.GetDisplayTask()
-	if err != nil {
-		return nil, err
-	}
-	if displayTask == nil {
-		return nil, nil
-	}
-	for _, execTask := range displayTask.ExecutionTasks {
-		c.execToDisplay[execTask] = displayTask
-	}
-	c.displayTasks = append(c.displayTasks, displayTask)
-	return displayTask, nil
-}
-func (c *DisplayTaskCache) List() []*Task { return c.displayTasks }
-
-func NewDisplayTaskCache() DisplayTaskCache {
-	return DisplayTaskCache{execToDisplay: map[string]*Task{}, displayTasks: []*Task{}}
-}
-
 type AbortInfo struct {
 	User       string `bson:"user,omitempty" json:"user,omitempty"`
 	TaskID     string `bson:"task_id,omitempty" json:"task_id,omitempty"`
@@ -985,12 +957,12 @@ func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) erro
 }
 
 // FindTaskOnBaseCommit returns the task that is on the base commit.
-func (t *Task) FindTaskOnBaseCommit() (*Task, error) {
-	return FindOne(db.Query(ByCommit(t.Revision, t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester)))
+func (t *Task) FindTaskOnBaseCommit(ctx context.Context) (*Task, error) {
+	return FindOne(ctx, db.Query(ByCommit(t.Revision, t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester)))
 }
 
-func (t *Task) FindTaskOnPreviousCommit() (*Task, error) {
-	return FindOne(db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)).Sort([]string{"-" + RevisionOrderNumberKey}))
+func (t *Task) FindTaskOnPreviousCommit(ctx context.Context) (*Task, error) {
+	return FindOne(ctx, db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
 // CountSimilarFailingTasks returns a count of all tasks with the same project,
@@ -1003,13 +975,13 @@ func (t *Task) CountSimilarFailingTasks() (int, error) {
 
 // Find the previously completed task for the same project +
 // build variant + display name combination as the specified task
-func (t *Task) PreviousCompletedTask(project string, statuses []string) (*Task, error) {
+func (t *Task) PreviousCompletedTask(ctx context.Context, project string, statuses []string) (*Task, error) {
 	if len(statuses) == 0 {
 		statuses = evergreen.TaskCompletedStatuses
 	}
 	query := db.Query(ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
 		t.DisplayName, project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + RevisionOrderNumberKey})
-	return FindOne(query)
+	return FindOne(ctx, query)
 }
 
 func (t *Task) cacheExpectedDuration() error {
@@ -1075,8 +1047,7 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 // particular host. If the task is part of a display task, the display task is
 // also marked as dispatched to a host. Returns an error if any of the database
 // updates fail.
-func (t *Task) MarkAsHostDispatched(hostID, distroID, agentRevision string, dispatchTime time.Time) error {
-	ctx := context.Background()
+func (t *Task) MarkAsHostDispatched(ctx context.Context, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
 	doUpdate := func(update []bson.M) error {
 		return UpdateOneContext(ctx, bson.M{IdKey: t.Id}, update)
 	}
@@ -1085,8 +1056,8 @@ func (t *Task) MarkAsHostDispatched(hostID, distroID, agentRevision string, disp
 	}
 
 	// When dispatching an execution task, mark its parent as dispatched.
-	if dt, _ := t.GetDisplayTask(); dt != nil && dt.DispatchTime == utility.ZeroTime {
-		return dt.MarkAsHostDispatched("", "", "", dispatchTime)
+	if dt, _ := t.GetDisplayTask(ctx); dt != nil && dt.DispatchTime == utility.ZeroTime {
+		return dt.MarkAsHostDispatched(ctx, "", "", "", dispatchTime)
 	}
 	return nil
 }
@@ -1417,7 +1388,7 @@ func (t *Task) SetGeneratedTasksToActivate(buildVariantName, taskName string) er
 
 // SetTasksScheduledTime takes a list of tasks and a time, and then sets
 // the scheduled time in the database for the tasks if it is currently unset
-func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
+func SetTasksScheduledTime(ctx context.Context, tasks []Task, scheduledTime time.Time) error {
 	ids := []string{}
 	for i := range tasks {
 		// Skip tasks with scheduled time to prevent large updates
@@ -1427,7 +1398,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 		}
 
 		// Display tasks are considered scheduled when their first exec task is scheduled
-		if tasks[i].IsPartOfDisplay() {
+		if tasks[i].IsPartOfDisplay(ctx) {
 			ids = append(ids, utility.FromStringPtr(tasks[i].DisplayTaskId))
 		}
 	}
@@ -1465,7 +1436,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 //
 // It verifies that the tasks are from the same project, requester,
 // build variant, and display name.
-func ByBeforeMidwayTaskFromIds(t1Id, t2Id string) (*Task, error) {
+func ByBeforeMidwayTaskFromIds(ctx context.Context, t1Id, t2Id string) (*Task, error) {
 	t1, err := FindOneId(t1Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task id '%s'", t1Id)
@@ -1495,7 +1466,7 @@ func ByBeforeMidwayTaskFromIds(t1Id, t2Id string) (*Task, error) {
 	filter, sort := ByBeforeRevision(middleOrderNumber+1, t1.BuildVariant, t1.DisplayName, t1.Project, t1.Requester)
 	query := db.Query(filter).Sort(sort)
 
-	task, err := FindOne(query)
+	task, err := FindOne(ctx, query)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task between '%s' and '%s'", t1Id, t2Id)
 	}
@@ -1569,7 +1540,7 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) ([
 
 // DeactivateStepbackTask deactivates and aborts the matching stepback task.
 func DeactivateStepbackTask(ctx context.Context, projectId, buildVariantName, taskName, caller string) error {
-	t, err := FindActivatedStepbackTaskByName(projectId, buildVariantName, taskName)
+	t, err := FindActivatedStepbackTaskByName(ctx, projectId, buildVariantName, taskName)
 	if err != nil {
 		return err
 	}
@@ -3294,11 +3265,11 @@ func (t *Task) CreateTestResultsTaskOptions() ([]testresult.TaskOptions, error) 
 
 // SetResetWhenFinished requests that a display task or single-host task group
 // reset itself when finished. Will mark itself as system failed.
-func (t *Task) SetResetWhenFinished(caller string) error {
+func (t *Task) SetResetWhenFinished(ctx context.Context, caller string) error {
 	if t.ResetWhenFinished {
 		return nil
 	}
-	if err := updateSchedulingLimitForResetWhenFinished(t, caller); err != nil {
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetFailedWhenFinished = false
@@ -3353,11 +3324,11 @@ func (t *Task) SetResetWhenFinishedWithInc() error {
 
 // SetResetFailedWhenFinished requests that a display task
 // only restarts failed tasks.
-func (t *Task) SetResetFailedWhenFinished(caller string) error {
+func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller string) error {
 	if t.ResetFailedWhenFinished {
 		return nil
 	}
-	if err := updateSchedulingLimitForResetWhenFinished(t, caller); err != nil {
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetWhenFinished = false
@@ -3377,7 +3348,7 @@ func (t *Task) SetResetFailedWhenFinished(caller string) error {
 	)
 }
 
-func updateSchedulingLimitForResetWhenFinished(t *Task, caller string) error {
+func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, caller string) error {
 	if !(t.Requester == evergreen.PatchVersionRequester || t.Requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(caller) {
 		return nil
 	}
@@ -3397,14 +3368,14 @@ func updateSchedulingLimitForResetWhenFinished(t *Task, caller string) error {
 	if len(tasks) == 0 {
 		return nil
 	}
-	return errors.Wrap(CheckUsersPatchTaskLimit(t.Requester, caller, true, tasks...), "updating patch task limit for user")
+	return errors.Wrap(CheckUsersPatchTaskLimit(ctx, t.Requester, caller, true, tasks...), "updating patch task limit for user")
 }
 
 // CheckUsersPatchTaskLimit takes in an input list of tasks that is set to get activated, and checks if they're
 // non commit-queue patch tasks, and that the request has been submitted by a user. If so, the maximum hourly patch tasks counter
 // will be incremented accordingly. The includeDisplayAndTaskGroups parameter indicates that execution tasks and single host task
 // group tasks are to be counted as part of the limit update, otherwise they will be ignored.
-func CheckUsersPatchTaskLimit(requester, username string, includeDisplayAndTaskGroups bool, tasks ...Task) error {
+func CheckUsersPatchTaskLimit(ctx context.Context, requester, username string, includeDisplayAndTaskGroups bool, tasks ...Task) error {
 	// we only care about patch tasks that are to be activated by an actual user
 	if !(requester == evergreen.PatchVersionRequester || requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(username) {
 		return nil
@@ -3415,7 +3386,7 @@ func CheckUsersPatchTaskLimit(requester, username string, includeDisplayAndTaskG
 	}
 	numTasksToActivate := 0
 	for _, t := range tasks {
-		if !includeDisplayAndTaskGroups && (t.DisplayOnly || t.IsPartOfDisplay() || t.IsPartOfSingleHostTaskGroup()) {
+		if !includeDisplayAndTaskGroups && (t.DisplayOnly || t.IsPartOfDisplay(ctx) || t.IsPartOfSingleHostTaskGroup()) {
 			continue
 		}
 		if t.Activated {
@@ -3504,10 +3475,10 @@ func (t *Task) HasCheckRun() bool {
 	return t.CheckRunPath != nil
 }
 
-func (t *Task) IsPartOfDisplay() bool {
+func (t *Task) IsPartOfDisplay(ctx context.Context) bool {
 	// if display task ID is nil, we need to check manually if we have an execution task
 	if t.DisplayTaskId == nil {
-		dt, err := t.GetDisplayTask()
+		dt, err := t.GetDisplayTask(ctx)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":        "unable to get display task",
@@ -3521,7 +3492,7 @@ func (t *Task) IsPartOfDisplay() bool {
 	return utility.FromStringPtr(t.DisplayTaskId) != ""
 }
 
-func (t *Task) GetDisplayTask() (*Task, error) {
+func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 	if t.DisplayTask != nil {
 		return t.DisplayTask, nil
 	}
@@ -3545,7 +3516,7 @@ func (t *Task) GetDisplayTask() (*Task, error) {
 		if dtId != "" {
 			dt, err = FindOneId(dtId)
 		} else {
-			dt, err = FindOne(db.Query(ByExecutionTask(t.Id)))
+			dt, err = FindOne(ctx, db.Query(ByExecutionTask(t.Id)))
 			if dt != nil {
 				dtId = dt.Id
 			}

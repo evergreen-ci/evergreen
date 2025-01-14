@@ -2,6 +2,6 @@ mutation {
   scheduleUndispatchedBaseTasks(versionId: "5e4ff3abe3c3317e352062e5") {
     id
     execution
-    status
+    displayStatus
   }
 }

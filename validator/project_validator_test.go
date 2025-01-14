@@ -1196,7 +1196,7 @@ buildvariants:
 		errs := checkRequestersForTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
-		assert.Equal(t, errs[0].Level, Warning)
+		assert.Equal(t, Warning, errs[0].Level)
 		assert.Contains(t, errs[0].Message, "'task' depends on patch-only task 'dep'")
 	})
 	t.Run("WarnsWithVariantLevelConflict", func(t *testing.T) {
@@ -1237,7 +1237,7 @@ buildvariants:
 		errs := checkRequestersForTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
-		assert.Equal(t, errs[0].Level, Warning)
+		assert.Equal(t, Warning, errs[0].Level)
 		assert.Contains(t, errs[0].Message, "'task' depends on patch-only task 'dep'")
 	})
 	t.Run("WarnsWithBuildVariantTaskLevelConflict", func(t *testing.T) {
@@ -1278,7 +1278,7 @@ buildvariants:
 		errs := checkRequestersForTaskDependencies(&p)
 
 		require.Len(t, errs, 1)
-		assert.Equal(t, errs[0].Level, Warning)
+		assert.Equal(t, Warning, errs[0].Level)
 		assert.Contains(t, errs[0].Message, "'task' depends on patch-only task 'dep'")
 	})
 }
@@ -1936,7 +1936,7 @@ func TestCheckTasksUsed(t *testing.T) {
 			},
 		}
 		errs := checkTaskUsage(project)
-		assert.Len(t, errs, 0)
+		assert.Empty(t, errs)
 	})
 	t.Run("ExecTaskNotListedWithTasks", func(t *testing.T) {
 		project := &model.Project{
@@ -1977,7 +1977,7 @@ func TestCheckTasksUsed(t *testing.T) {
 			},
 		}
 		errs := checkTaskUsage(project)
-		require.Len(t, errs, 0)
+		require.Empty(t, errs)
 	})
 	t.Run("UnusedTaskInDisabledVariant", func(t *testing.T) {
 		project := &model.Project{
@@ -2335,14 +2335,14 @@ func TestValidateBVBatchTimes(t *testing.T) {
 		{Name: "t1", Variant: p.BuildVariants[0].Name, BatchTime: &batchtime},
 		{Name: "t2", Variant: p.BuildVariants[0].Name},
 	}
-	assert.Len(t, validateBVBatchTimes(p), 0)
+	assert.Empty(t, validateBVBatchTimes(p))
 
 	// can't set cron and batchtime for tasks
 	p.BuildVariants[0].Tasks[0].CronBatchTime = "@daily"
 	assert.Len(t, validateBVBatchTimes(p), 1)
 
 	p.BuildVariants[0].Tasks[0].BatchTime = nil
-	assert.Len(t, validateBVBatchTimes(p), 0)
+	assert.Empty(t, validateBVBatchTimes(p))
 
 	// warning if activated to true with batchtime
 	p.BuildVariants[0].Activate = utility.TruePtr()
@@ -2522,7 +2522,7 @@ func TestValidatePlugins(t *testing.T) {
 		Enabled: true,
 		Id:      "p1",
 	}
-	assert.Nil(projectRef.Insert())
+	assert.NoError(projectRef.Insert())
 	Convey("When validating a project", t, func() {
 		Convey("ensure bad plugin configs throw an error", func() {
 			So(validateProjectConfigPlugins(&model.ProjectConfig{}), ShouldResemble, ValidationErrors{})
@@ -2651,8 +2651,8 @@ func TestValidateAliasCoverage(t *testing.T) {
 			assert.Contains(t, errs[1].Message, "has no matching variants")
 			assert.NotContains(t, errs[0].Message, "tasks")
 			assert.NotContains(t, errs[1].Message, "tasks")
-			assert.Equal(t, errs[0].Level, Warning)
-			assert.Equal(t, errs[1].Level, Warning)
+			assert.Equal(t, Warning, errs[0].Level)
+			assert.Equal(t, Warning, errs[1].Level)
 		},
 		"MatchesAll": func(t *testing.T, p *model.Project) {
 			alias1 := model.ProjectAlias{
@@ -2682,7 +2682,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 				assert.False(t, matches)
 			}
 			errs := validateAliasCoverage(p, model.ProjectAliases{alias1, alias2})
-			assert.Len(t, errs, 0)
+			assert.Empty(t, errs)
 		},
 		"MatchesVariantTag": func(t *testing.T, p *model.Project) {
 			alias1 := model.ProjectAlias{
@@ -2722,8 +2722,8 @@ func TestValidateAliasCoverage(t *testing.T) {
 			assert.Contains(t, errs[1].Message, "has no matching tasks")
 			assert.Contains(t, errs[1].Message, "variant tags")
 			assert.Contains(t, errs[1].Message, "matching task regexp")
-			assert.Equal(t, errs[0].Level, Warning)
-			assert.Equal(t, errs[1].Level, Warning)
+			assert.Equal(t, Warning, errs[0].Level)
+			assert.Equal(t, Warning, errs[1].Level)
 		},
 		"NegatedTag": func(t *testing.T, p *model.Project) {
 			negatedAlias := model.ProjectAlias{
@@ -2780,7 +2780,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 				assert.False(t, noMatch)
 			}
 			errs := validateAliasCoverage(p, model.ProjectAliases{a})
-			assert.Len(t, errs, 0)
+			assert.Empty(t, errs)
 		},
 		"MatchesTaskInTaskGroupWithTaskTag": func(t *testing.T, p *model.Project) {
 			a := model.ProjectAlias{
@@ -2801,7 +2801,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 				assert.False(t, noMatch)
 			}
 			errs := validateAliasCoverage(p, model.ProjectAliases{a})
-			assert.Len(t, errs, 0)
+			assert.Empty(t, errs)
 		},
 		"MatchesTaskWithTaskTagHavingMultipleCriteria": func(t *testing.T, p *model.Project) {
 			a := model.ProjectAlias{
@@ -2822,7 +2822,7 @@ func TestValidateAliasCoverage(t *testing.T) {
 				assert.False(t, noMatch)
 			}
 			errs := validateAliasCoverage(p, model.ProjectAliases{a})
-			assert.Len(t, errs, 0)
+			assert.Empty(t, errs)
 		},
 		"DoesNotMatchTaskWithTaskTagHavingMultipleCriteria": func(t *testing.T, p *model.Project) {
 			a := model.ProjectAlias{
@@ -2922,7 +2922,7 @@ func TestValidateCheckRuns(t *testing.T) {
 			}
 
 			errs := validateCheckRuns(p, model.ProjectAliases{alias1, alias2})
-			require.Len(t, errs, 0)
+			require.Empty(t, errs)
 		},
 		"CheckRunsBelowLimit": func(t *testing.T, p *model.Project) {
 			alias1 := model.ProjectAlias{
@@ -2934,7 +2934,7 @@ func TestValidateCheckRuns(t *testing.T) {
 			}
 
 			errs := validateCheckRuns(p, model.ProjectAliases{alias1})
-			require.Len(t, errs, 0)
+			require.Empty(t, errs)
 		},
 		"CheckRunsAboveLimit": func(t *testing.T, p *model.Project) {
 			alias1 := model.ProjectAlias{
@@ -2947,7 +2947,7 @@ func TestValidateCheckRuns(t *testing.T) {
 
 			errs := validateCheckRuns(p, model.ProjectAliases{alias1})
 			require.Len(t, errs, 1)
-			assert.Equal(t, errs[0].Level, Warning)
+			assert.Equal(t, Warning, errs[0].Level)
 			assert.Contains(t, errs[0].Message, "total number of checkRuns (2) exceeds maximum limit (1)")
 		},
 	} {
@@ -4300,7 +4300,7 @@ buildvariants:
 	validationErrs = checkTaskGroups(&proj)
 	require.Len(t, validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "task group 'example_task_group' has max number of hosts 4 greater than the number of tasks 3")
-	assert.Equal(validationErrs[0].Level, Warning)
+	assert.Equal(Warning, validationErrs[0].Level)
 
 	overMaxTimeoutYml := `
 tasks:
@@ -4325,7 +4325,7 @@ buildvariants:
 	validationErrs = checkTaskGroups(&proj)
 	require.Len(t, validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "task group 'example_task_group' has a teardown task timeout of 1800 seconds, which exceeds the maximum of 180 seconds")
-	assert.Equal(validationErrs[0].Level, Warning)
+	assert.Equal(Warning, validationErrs[0].Level)
 }
 
 func TestTaskGroupTeardownValidation(t *testing.T) {
@@ -4428,9 +4428,9 @@ buildvariants:
 	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
 	assert.Equal("task_in_a_task_group_1", proj.Tasks[0].DependsOn[0].Name)
 	errors := CheckProjectErrors(ctx, &proj, false)
-	assert.Len(errors, 0)
+	assert.Empty(errors)
 	warnings := CheckProjectWarnings(&proj)
-	assert.Len(warnings, 0)
+	assert.Empty(warnings)
 }
 
 func TestDisplayTaskExecutionTasksNameValidation(t *testing.T) {
@@ -4488,11 +4488,11 @@ buildvariants:
 
 	errors := CheckProjectErrors(ctx, &proj, false)
 	require.Len(errors, 1)
-	assert.Equal(errors[0].Level, Error)
+	assert.Equal(Error, errors[0].Level)
 	assert.Equal("execution task 'display_three' has prefix 'display_' which is invalid",
 		errors[0].Message)
 	warnings := CheckProjectWarnings(&proj)
-	assert.Len(warnings, 0)
+	assert.Empty(warnings)
 }
 
 func TestValidateCreateHosts(t *testing.T) {
@@ -4517,7 +4517,7 @@ func TestValidateCreateHosts(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(pp)
 	errs := validateHostCreates(&p)
-	assert.Len(errs, 0)
+	assert.Empty(errs)
 
 	// error: times called per task
 	yml = `
@@ -4557,10 +4557,10 @@ func TestValidateParameters(t *testing.T) {
 	p.Parameters[0].Parameter.Key = ""
 	assert.Len(t, validateParameters(p), 1)
 	p.Parameters[0].Parameter.Key = "iter_count"
-	assert.Len(t, validateParameters(p), 0)
+	assert.Empty(t, validateParameters(p))
 	p.Parameters[0].Description = "not validated"
 	p.Parameters[0].Value = "also not"
-	assert.Len(t, validateParameters(p), 0)
+	assert.Empty(t, validateParameters(p))
 }
 
 func TestDuplicateTaskInBV(t *testing.T) {
@@ -4681,7 +4681,7 @@ buildvariants:
 	assert.NotEmpty(proj)
 	assert.NotNil(pp)
 	errs := CheckProjectErrors(ctx, &proj, false)
-	assert.Len(errs, 0, "no errors were found")
+	assert.Empty(errs, "no errors were found")
 	errs = CheckProjectWarnings(&proj)
 	assert.Len(errs, 2, "two warnings were found")
 	assert.NoError(CheckProjectConfigurationIsValid(ctx, &evergreen.Settings{}, &proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
@@ -4862,7 +4862,7 @@ func TestValidateContainers(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, p *model.Project, ref *model.ProjectRef){
 		"SucceedsWithValidProjectAndRef": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			verrs := validateContainers(ctx, s, p, ref, false)
-			assert.Len(t, verrs, 0)
+			assert.Empty(t, verrs)
 		},
 		"FailsWithoutContainerName": func(t *testing.T, p *model.Project, ref *model.ProjectRef) {
 			p.Containers[0].Name = ""
@@ -5272,9 +5272,9 @@ func TestTVToTaskUnit(t *testing.T) {
 				taskUnit := tvToTaskUnit[expectedTV]
 				expectedTaskUnit := testCase.expectedTVToTaskUnit[expectedTV]
 				assert.Equal(t, expectedTaskUnit.Name, taskUnit.Name)
-				assert.Equal(t, expectedTaskUnit.IsGroup, taskUnit.IsGroup, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
-				assert.Equal(t, expectedTaskUnit.IsPartOfGroup, taskUnit.IsPartOfGroup, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
-				assert.Equal(t, expectedTaskUnit.GroupName, taskUnit.GroupName, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
+				assert.Equal(t, expectedTaskUnit.IsGroup, taskUnit.IsGroup, "%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name)
+				assert.Equal(t, expectedTaskUnit.IsPartOfGroup, taskUnit.IsPartOfGroup, "%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name)
+				assert.Equal(t, expectedTaskUnit.GroupName, taskUnit.GroupName, "%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name)
 				assert.Equal(t, expectedTaskUnit.Patchable, taskUnit.Patchable, expectedTaskUnit.Name)
 				assert.Equal(t, expectedTaskUnit.PatchOnly, taskUnit.PatchOnly)
 				assert.Equal(t, expectedTaskUnit.Priority, taskUnit.Priority)
@@ -5286,7 +5286,7 @@ func TestTVToTaskUnit(t *testing.T) {
 					assert.Contains(t, taskUnit.DependsOn, dep)
 				}
 				assert.Equal(t, expectedTaskUnit.Stepback, taskUnit.Stepback)
-				assert.Equal(t, expectedTaskUnit.CommitQueueMerge, taskUnit.CommitQueueMerge, fmt.Sprintf("%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name))
+				assert.Equal(t, expectedTaskUnit.CommitQueueMerge, taskUnit.CommitQueueMerge, "%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name)
 				assert.Equal(t, expectedTaskUnit.Variant, taskUnit.Variant)
 			}
 		})
@@ -6211,9 +6211,9 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			errs := ensureReferentialIntegrity(&testCase.project, nil, []string{}, []string{}, nil)
 			if testCase.expectErr {
-				assert.Equal(t, errs[0].Message, testCase.expectedErrMsg)
+				assert.Equal(t, testCase.expectedErrMsg, errs[0].Message)
 			} else {
-				assert.Equal(t, len(errs), 0, "there was an error validating task group in build variant")
+				assert.Empty(t, errs, "there was an error validating task group in build variant")
 			}
 		})
 	}

@@ -394,17 +394,17 @@ func TestFindMergedAliasesFromProjectRepoOrProjectConfig(t *testing.T) {
 				if a.Alias == evergreen.CommitQueueAlias {
 					cqCount++
 					assert.Equal(t, a.ProjectID, pRef.Id)
-					assert.Equal(t, a.Source, AliasSourceProject)
+					assert.Equal(t, AliasSourceProject, a.Source)
 				} else if a.Alias == evergreen.GitTagAlias {
 					assert.Equal(t, a.ProjectID, pRef.RepoRefId)
-					assert.Equal(t, a.Source, AliasSourceRepo)
+					assert.Equal(t, AliasSourceRepo, a.Source)
 				} else if a.Alias == evergreen.GithubChecksAlias {
-					assert.Equal(t, a.Source, AliasSourceRepo)
+					assert.Equal(t, AliasSourceRepo, a.Source)
 				} else {
-					assert.Equal(t, a.Source, AliasSourceConfig)
+					assert.Equal(t, AliasSourceConfig, a.Source)
 				}
 			}
-			assert.Equal(t, cqCount, 2)
+			assert.Equal(t, 2, cqCount)
 		},
 		"project and repo only used": func(t *testing.T) {
 			assert.NoError(t, UpsertAliasesForProject(cqAliases, pRef.Id))
@@ -420,15 +420,15 @@ func TestFindMergedAliasesFromProjectRepoOrProjectConfig(t *testing.T) {
 				if a.Alias == evergreen.CommitQueueAlias {
 					cqCount++
 					assert.Equal(t, a.ProjectID, pRef.Id)
-					assert.Equal(t, a.Source, AliasSourceProject)
+					assert.Equal(t, AliasSourceProject, a.Source)
 				} else {
 					patchCount++
 					assert.Equal(t, a.ProjectID, pRef.RepoRefId)
-					assert.Equal(t, a.Source, AliasSourceRepo)
+					assert.Equal(t, AliasSourceRepo, a.Source)
 				}
 			}
-			assert.Equal(t, cqCount, 2)
-			assert.Equal(t, patchCount, 2)
+			assert.Equal(t, 2, cqCount)
+			assert.Equal(t, 2, patchCount)
 		},
 	} {
 		assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection,
@@ -522,28 +522,28 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 	// Test non-existent project
 	found, err = FindAliasInProjectRepoOrConfig("bad-project", "alias-1")
 	s.Error(err)
-	s.Len(found, 0)
+	s.Empty(found)
 
 	// Test no aliases found
 	found, err = FindAliasInProjectRepoOrConfig(pRef1.Id, "alias-5")
 	s.NoError(err)
-	s.Len(found, 0)
+	s.Empty(found)
 
 	// Test project config
 	found, err = FindAliasInProjectRepoOrConfig(pRef1.Id, "alias-6")
 	s.NoError(err)
 	s.Require().Len(found, 1)
-	s.Equal(found[0].Alias, "alias-6")
-	s.Equal(found[0].Task, "*")
-	s.Equal(found[0].Variant, "*")
+	s.Equal("alias-6", found[0].Alias)
+	s.Equal("*", found[0].Task)
+	s.Equal("*", found[0].Variant)
 
 	// Test non-patch aliases defined in config
 	found, err = FindAliasInProjectRepoOrConfig(pRef1.Id, evergreen.CommitQueueAlias)
 	s.NoError(err)
 	s.Require().Len(found, 1)
-	s.Equal(found[0].Alias, evergreen.CommitQueueAlias)
-	s.Equal(found[0].Task, "cq-.*")
-	s.Equal(found[0].Variant, "cq-.*")
+	s.Equal(evergreen.CommitQueueAlias, found[0].Alias)
+	s.Equal("cq-.*", found[0].Task)
+	s.Equal("cq-.*", found[0].Variant)
 }
 
 func (s *ProjectAliasSuite) TestUpsertAliasesForProject() {

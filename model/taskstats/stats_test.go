@@ -38,7 +38,7 @@ func (s *statsSuite) SetupTest() {
 	}
 
 	for _, coll := range collectionsToClear {
-		s.Nil(db.Clear(coll))
+		s.NoError(db.Clear(coll))
 	}
 }
 
@@ -138,6 +138,7 @@ func (s *statsSuite) TestGenerateStats() {
 	s.Equal(2, doc.NumSystemFailed)
 	s.Equal(3, doc.NumSetupFailed)
 	s.Equal(2, doc.NumTimeout)
+	//nolint:testifylint // We expect it to be exactly 150.0.
 	s.Equal(float64(150), doc.AvgDurationSuccess)
 	s.WithinDuration(time.Now(), doc.LastUpdate, time.Minute)
 
@@ -172,7 +173,7 @@ func (s *statsSuite) TestFindStatsToUpdate() {
 	end := baseHour.Add(time.Hour)
 	statsList, err := FindStatsToUpdate(FindStatsToUpdateOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
 	s.Require().NoError(err)
-	s.Len(statsList, 0)
+	s.Empty(statsList)
 
 	// Find stats for p5 for a period around finish1.
 	start = finish1.Add(-1 * time.Hour)

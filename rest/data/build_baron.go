@@ -41,8 +41,10 @@ func BbFileTicket(ctx context.Context, taskId string, execution int) (int, error
 		return http.StatusInternalServerError, errors.Wrapf(err, "retrieving webhook config for project '%s'", t.Project)
 	}
 	if ok && webHook.Endpoint != "" {
-		var resp *http.Response
-		resp, err = fileTicketCustomHook(ctx, taskId, execution, webHook)
+		resp, err := fileTicketCustomHook(ctx, taskId, execution, webHook)
+		if err == nil {
+			resp.Body.Close()
+		}
 		return resp.StatusCode, err
 	}
 

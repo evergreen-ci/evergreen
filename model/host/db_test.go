@@ -69,17 +69,17 @@ func TestConsolidateHostsForUser(t *testing.T) {
 
 	volumes, err := FindVolumesByUser("me")
 	assert.NoError(t, err)
-	assert.Len(t, volumes, 0)
+	assert.Empty(t, volumes)
 
 	volumes, err = FindVolumesByUser("new_me")
 	assert.NoError(t, err)
 	require.Len(t, volumes, 1)
-	assert.Equal(t, volumes[0].ID, "v1")
+	assert.Equal(t, "v1", volumes[0].ID)
 
 	volumes, err = FindVolumesByUser("NOT me")
 	assert.NoError(t, err)
 	require.Len(t, volumes, 1)
-	assert.Equal(t, volumes[0].ID, "v2")
+	assert.Equal(t, "v2", volumes[0].ID)
 }
 
 func TestFindUnexpirableRunning(t *testing.T) {

@@ -57,7 +57,7 @@ func (s *StatusSuite) TestPopulateSystemInfo() {
 }
 
 func (s *StatusSuite) TestProcessTreeInfo() {
-	s.True(len(s.resp.ProcessTree) >= 1)
+	s.GreaterOrEqual(len(s.resp.ProcessTree), 1)
 	for _, ps := range s.resp.ProcessTree {
 		s.NotNil(ps)
 	}
@@ -78,12 +78,13 @@ func (s *StatusSuite) TestAgentStartsStatusServer() {
 	time.Sleep(100 * time.Millisecond)
 	resp, err := http.Get("http://127.0.0.1:2286/status")
 	s.Require().NoError(err)
+	resp.Body.Close()
 	s.Equal(200, resp.StatusCode)
 }
 
 func (s *StatusSuite) TestAgentFailsToStartTwice() {
 	_, err := http.Get("http://127.0.0.1:2287/status")
-	s.Error(err)
+	s.Require().Error(err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	s.cancel = cancel
@@ -122,6 +123,7 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 	}
 
 	s.Require().NoError(err)
+	resp.Body.Close()
 	s.Equal(200, resp.StatusCode)
 
 	second := make(chan error, 1)
@@ -186,6 +188,7 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 	}
 
 	s.Require().NoError(err)
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		b, err := io.ReadAll(resp.Body)
 		grip.Error(err)
@@ -195,8 +198,8 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 	tracker := jasper.NewOOMTracker()
 	s.NoError(utility.ReadJSON(resp.Body, tracker))
 	lines, pids := tracker.Report()
-	s.Len(lines, 0)
-	s.Len(pids, 0)
+	s.Empty(lines)
+	s.Empty(pids)
 }
 
 func TestUnmarshalTriggerEndTaskResp(t *testing.T) {
@@ -204,8 +207,8 @@ func TestUnmarshalTriggerEndTaskResp(t *testing.T) {
 	resp := triggerEndTaskResp{}
 
 	assert.NoError(t, json.Unmarshal([]byte(body), &resp))
-	assert.Equal(t, resp.Status, "failed")
-	assert.Equal(t, resp.Type, "setup")
-	assert.Equal(t, resp.Description, "this should be set")
-	assert.Equal(t, resp.ShouldContinue, true)
+	assert.Equal(t, "failed", resp.Status)
+	assert.Equal(t, "setup", resp.Type)
+	assert.Equal(t, "this should be set", resp.Description)
+	assert.True(t, resp.ShouldContinue)
 }

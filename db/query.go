@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -83,6 +84,26 @@ func (q Q) Hint(hint interface{}) Q {
 // Only reads one document from the DB.
 func FindOneQ(collection string, q Q, out interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	return db.C(collection).
+		Find(q.filter).
+		Select(q.projection).
+		Sort(q.sort...).
+		Skip(q.skip).
+		Limit(1).
+		Hint(q.hint).
+		MaxTime(q.maxTime).
+		One(out)
+}
+
+// FindOneQContext runs a Q query against the given collection, applying the results to "out."
+// Only reads one document from the DB.
+func FindOneQContext(ctx context.Context, collection string, q Q, out interface{}) error {
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		return err
 	}
