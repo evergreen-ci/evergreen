@@ -1,4 +1,4 @@
-package model
+package githubapp
 
 import (
 	"context"
@@ -6,46 +6,35 @@ import (
 
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TODO (DEVPROD-11883): move all these tests into the githubapp package once
-// all project GitHub apps are using Parameter Store and the rollout is stable.
-// The tests are only here temporarily to avoid a dependency cycle between the
-// githubapp and model packages due to the project ref feature flag.
-
 func TestUpsertGitHubAppAuth(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	require.NoError(t, db.ClearCollections(githubapp.GitHubAppAuthCollection, ProjectRefCollection))
+	require.NoError(t, db.ClearCollections(GitHubAppAuthCollection))
 
 	const projectID = "mongodb"
-	pRef := ProjectRef{
-		Id:                    projectID,
-		ParameterStoreEnabled: true,
-	}
-	require.NoError(t, pRef.Insert())
 
 	key := []byte("private_key")
-	appAuth := &githubapp.GithubAppAuth{
+	appAuth := &GithubAppAuth{
 		Id:         projectID,
 		AppID:      1234,
 		PrivateKey: key,
 	}
-	require.NoError(t, GitHubAppAuthUpsert(appAuth))
+	require.NoError(t, UpsertGitHubAppAuth(appAuth))
 
-	dbAppAuth, err := GitHubAppAuthFindOne(projectID)
+	dbAppAuth, err := FindOneGitHubAppAuth(projectID)
 	require.NoError(t, err)
 	require.NotZero(t, dbAppAuth)
 	checkParameterMatchesPrivateKey(ctx, t, dbAppAuth)
 	paramName := appAuth.PrivateKeyParameter
 
 	appAuth.PrivateKey = []byte("new_private_key")
-	require.NoError(t, GitHubAppAuthUpsert(appAuth))
+	require.NoError(t, UpsertGitHubAppAuth(appAuth))
 
-	dbAppAuth, err = GitHubAppAuthFindOne(projectID)
+	dbAppAuth, err = FindOneGitHubAppAuth(projectID)
 	require.NoError(t, err)
 	require.NotZero(t, dbAppAuth)
 	checkParameterMatchesPrivateKey(ctx, t, dbAppAuth)
@@ -55,32 +44,26 @@ func TestUpsertGitHubAppAuth(t *testing.T) {
 func TestRemoveGitHubAppAuth(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	require.NoError(t, db.ClearCollections(ProjectRefCollection, githubapp.GitHubAppAuthCollection, fakeparameter.Collection))
+	require.NoError(t, db.ClearCollections(GitHubAppAuthCollection, fakeparameter.Collection))
 
 	const projectID = "mongodb"
-	pRef := ProjectRef{
-		Id:                    projectID,
-		ParameterStoreEnabled: true,
-	}
-	require.NoError(t, pRef.Insert())
-
 	key := []byte("private_key")
-	appAuth := &githubapp.GithubAppAuth{
+	appAuth := &GithubAppAuth{
 		Id:         projectID,
 		AppID:      1234,
 		PrivateKey: key,
 	}
-	require.NoError(t, GitHubAppAuthUpsert(appAuth))
+	require.NoError(t, UpsertGitHubAppAuth(appAuth))
 
-	dbAppAuth, err := GitHubAppAuthFindOne(projectID)
+	dbAppAuth, err := FindOneGitHubAppAuth(projectID)
 	require.NoError(t, err)
 	require.NotZero(t, dbAppAuth)
 	checkParameterMatchesPrivateKey(ctx, t, appAuth)
 	paramName := appAuth.PrivateKeyParameter
 
-	require.NoError(t, GitHubAppAuthRemove(dbAppAuth))
+	require.NoError(t, RemoveGitHubAppAuth(dbAppAuth))
 
-	dbAppAuth, err = GitHubAppAuthFindOne(projectID)
+	dbAppAuth, err = FindOneGitHubAppAuth(projectID)
 	assert.NoError(t, err)
 	assert.Zero(t, dbAppAuth)
 
@@ -89,7 +72,7 @@ func TestRemoveGitHubAppAuth(t *testing.T) {
 	assert.Empty(t, fakeParams, "private key parameter should be deleted")
 }
 
-func checkParameterMatchesPrivateKey(ctx context.Context, t *testing.T, appAuth *githubapp.GithubAppAuth) {
+func checkParameterMatchesPrivateKey(ctx context.Context, t *testing.T, appAuth *GithubAppAuth) {
 	fakeParams, err := fakeparameter.FindByIDs(ctx, appAuth.PrivateKeyParameter)
 	assert.NoError(t, err)
 	require.Len(t, fakeParams, 1)
