@@ -2476,6 +2476,8 @@ func MarkUnallocatableContainerTasksSystemFailed(ctx context.Context, settings *
 	return catcher.Resolve()
 }
 
+// HandleEndTaskForGithubMergeQueueTask stops running GitHub merge queue tasks as soon as one task is finished.
+// This is done to save resources and speed up the CI processing by preventing unnecessary tasks from running.
 func HandleEndTaskForGithubMergeQueueTask(ctx context.Context, t *task.Task, status string) error {
 	// If the task has succeeded, we don't need to do anything.
 	// If the task is already aborted, we shouldn't do anything, because the version has already been aborted.
@@ -2483,7 +2485,7 @@ func HandleEndTaskForGithubMergeQueueTask(ctx context.Context, t *task.Task, sta
 		return nil
 	}
 
-	reason := fmt.Sprintf("task '%s' failed", t.DisplayName)
+	reason := fmt.Sprintf("task '%s' on variant '%s' failed", t.DisplayName, t.BuildVariantDisplayName)
 	if err := SetVersionActivation(ctx, t.Version, false, reason); err != nil {
 		return errors.WithStack(err)
 	}
