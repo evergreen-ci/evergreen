@@ -20,20 +20,16 @@ import (
 // githubAppCheckAndRunParameterStoreOp checks if the project corresponding to
 // the GitHub app private key has Parameter Store enabled, and if so, runs the
 // given Parameter Store operation.
-func githubAppCheckAndRunParameterStoreOp(ctx context.Context, appAuth *githubapp.GithubAppAuth, op func(ref *ProjectRef, isRepoRef bool) error) error {
-	ref, isRepoRef, err := findProjectRef(appAuth.Id)
+func githubAppCheckAndRunParameterStoreOp(ctx context.Context, appAuth *githubapp.GithubAppAuth, op func() error) error {
+	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
-		return errors.Wrapf(err, "checking project ref '%s' to verify if GitHub app should use Parameter Store", appAuth.Id)
+		return errors.Wrap(err, "getting service flags")
 	}
-	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, ref, true)
-	if err != nil {
-		return errors.Wrapf(err, "checking if Parameter Store is enabled for project '%s'", appAuth.Id)
-	}
-	if !isPSEnabled {
+	if flags.ParameterStoreDisabled {
 		return nil
 	}
 
-	return op(ref, isRepoRef)
+	return op()
 }
 
 // GitHubAppAuthFindOne finds the GitHub app auth and retrieves the private key
@@ -50,7 +46,7 @@ func GitHubAppAuthFindOne(id string) (*githubapp.GithubAppAuth, error) {
 		return nil, nil
 	}
 
-	if err := githubAppCheckAndRunParameterStoreOp(ctx, appAuth, func(ref *ProjectRef, isRepoRef bool) error {
+	if err := githubAppCheckAndRunParameterStoreOp(ctx, appAuth, func() error {
 		return githubAppAuthFindParameterStore(ctx, appAuth)
 	}); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -88,8 +84,8 @@ func GitHubAppAuthUpsert(appAuth *githubapp.GithubAppAuth) error {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
-	if err := githubAppCheckAndRunParameterStoreOp(ctx, appAuth, func(ref *ProjectRef, isRepoRef bool) error {
-		paramName, err := githubAppAuthUpsertParameterStore(ctx, appAuth, ref, isRepoRef)
+	if err := githubAppCheckAndRunParameterStoreOp(ctx, appAuth, func() error {
+		paramName, err := githubAppAuthUpsertParameterStore(ctx, appAuth)
 		if err != nil {
 			return errors.Wrap(err, "upserting GitHub app private key into Parameter Store")
 		}
@@ -112,7 +108,7 @@ func GitHubAppAuthUpsert(appAuth *githubapp.GithubAppAuth) error {
 
 // githubAppAuthUpsertParameterStore upserts the GitHub app private key into
 // Parameter Store.
-func githubAppAuthUpsertParameterStore(ctx context.Context, appAuth *githubapp.GithubAppAuth, pRef *ProjectRef, isRepoRef bool) (string, error) {
+func githubAppAuthUpsertParameterStore(ctx context.Context, appAuth *githubapp.GithubAppAuth) (string, error) {
 	projectID := appAuth.Id
 	partialParamName := getPrivateKeyParamName(projectID)
 
@@ -141,7 +137,7 @@ func GitHubAppAuthRemove(appAuth *githubapp.GithubAppAuth) error {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
-	if err := githubAppCheckAndRunParameterStoreOp(ctx, appAuth, func(ref *ProjectRef, isRepoRef bool) error {
+	if err := githubAppCheckAndRunParameterStoreOp(ctx, appAuth, func() error {
 		return githubAppAuthRemoveParameterStore(ctx, appAuth)
 	}); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
