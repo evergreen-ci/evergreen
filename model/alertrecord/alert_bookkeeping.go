@@ -176,12 +176,14 @@ func FindByTaskRegressionTestAndOrderNumber(subscriptionID, testName, taskDispla
 	return FindOne(db.Query(q))
 }
 
-func FindBySpawnHostExpirationWithHours(hostID string, hours int) (*AlertRecord, error) {
+// FindByMostRecentSpawnHostExpirationWithHours finds the most recent alert
+// record for a spawn host that is about to expire.
+func FindByMostRecentSpawnHostExpirationWithHours(hostID string, hours int) (*AlertRecord, error) {
 	alertType := fmt.Sprintf(spawnHostWarningTemplate, hours)
 	q := subscriptionIDQuery(legacyAlertsSubscription)
 	q[TypeKey] = alertType
 	q[HostIdKey] = hostID
-	return FindOne(db.Query(q).Limit(1))
+	return FindOne(db.Query(q).Sort([]string{"-" + AlertTimeKey}).Limit(1))
 }
 
 // FindByMostRecentTemporaryExemptionExpirationWithHours finds the most recent

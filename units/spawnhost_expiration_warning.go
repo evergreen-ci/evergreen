@@ -117,7 +117,7 @@ func shouldNotifyForSpawnhostExpiration(h *host.Host, numHours int) (bool, error
 	if h == nil || h.ExpirationTime.IsZero() || time.Until(h.ExpirationTime) > (time.Duration(numHours)*time.Hour) {
 		return false, nil
 	}
-	rec, err := alertrecord.FindBySpawnHostExpirationWithHours(h.Id, numHours)
+	rec, err := alertrecord.FindByMostRecentSpawnHostExpirationWithHours(h.Id, numHours)
 	if err != nil {
 		return false, err
 	}
