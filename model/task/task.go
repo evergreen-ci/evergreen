@@ -664,7 +664,7 @@ func (t *Task) isSystemUnresponsive() bool {
 
 func (t *Task) SetOverrideDependencies(userID string) error {
 	t.OverrideDependencies = true
-	t.DisplayStatusCache = t.findDisplayStatus()
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	event.LogTaskDependenciesOverridden(t.Id, t.Execution, userID)
 	return UpdateOne(
 		bson.M{
@@ -703,7 +703,7 @@ func (t *Task) AddDependency(ctx context.Context, d Dependency) error {
 		}
 	}
 	t.DependsOn = append(t.DependsOn, d)
-	t.DisplayStatusCache = t.findDisplayStatus()
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -728,7 +728,7 @@ func (t *Task) RemoveDependency(dependencyId string) error {
 			dependsOn = append(dependsOn, t.DependsOn[:i]...)
 			dependsOn = append(dependsOn, t.DependsOn[i+1:]...)
 			t.DependsOn = dependsOn
-			t.DisplayStatusCache = t.findDisplayStatus()
+			t.DisplayStatusCache = t.DetermineDisplayStatus()
 			found = true
 			break
 		}
@@ -1038,7 +1038,7 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 	t.PodID = podID
 	t.AgentVersion = agentVersion
 	t.TaskOutputInfo = output
-	t.DisplayStatusCache = t.findDisplayStatus()
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 
 	return nil
 }
@@ -1113,7 +1113,7 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update []bson.M) error
 	t.Aborted = false
 	t.AbortInfo = AbortInfo{}
 	t.Details = apimodels.TaskEndDetail{}
-	t.DisplayStatusCache = t.findDisplayStatus()
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 
 	return nil
 }
@@ -1165,7 +1165,7 @@ func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update []bson.M) err
 	t.Aborted = false
 	t.AbortInfo = AbortInfo{}
 	t.Details = apimodels.TaskEndDetail{}
-	t.DisplayStatusCache = t.findDisplayStatus()
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 
 	return nil
 }
@@ -1563,7 +1563,7 @@ func DeactivateStepbackTask(ctx context.Context, projectId, buildVariantName, ta
 // MarkFailed changes the state of the task to failed.
 func (t *Task) MarkFailed() error {
 	t.Status = evergreen.TaskFailed
-	t.DisplayStatusCache = t.findDisplayStatus()
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -1621,7 +1621,7 @@ func GetSystemFailureDetails(description string) apimodels.TaskEndDetail {
 // and prevents the task from being reset when finished.
 func (t *Task) SetAborted(ctx context.Context, reason AbortInfo) error {
 	t.Aborted = true
-	t.DisplayStatus = t.findDisplayStatus()
+	t.DisplayStatus = t.DetermineDisplayStatus()
 	return UpdateOneContext(
 		ctx,
 		bson.M{
@@ -2311,7 +2311,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 	t.Details = *detail
 	t.ContainerAllocated = false
 	t.ContainerAllocatedTime = time.Time{}
-	t.DisplayStatusCache = t.findDisplayStatus()
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -2338,18 +2338,17 @@ func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
 	}
-	t.DisplayStatus = t.findDisplayStatus()
+	t.DisplayStatus = t.DetermineDisplayStatus()
 	return t.DisplayStatus
 }
 
-// FindDisplayStatus publicly exports findDisplayStatus
-// TODO DEVPROD-13826: replace all instances of findDisplayStatus with this function
-func (t *Task) FindDisplayStatus() string {
-	return t.findDisplayStatus()
+// DetermineDisplayStatus publicly exports findDisplayStatus
+func (t *Task) DetermineDisplayStatus() string {
+	return t.determineDisplayStatus()
 }
 
-// findDisplayStatus calculates the display status for a task based on its current state.
-func (t *Task) findDisplayStatus() string {
+// determineDisplayStatus calculates the display status for a task based on its current state.
+func (t *Task) determineDisplayStatus() string {
 	if t.HasAnnotations {
 		return evergreen.TaskKnownIssue
 	}
@@ -2488,7 +2487,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 		t.CanReset = false
 		t.IsAutomaticRestart = false
 		t.HasAnnotations = false
-		t.DisplayStatusCache = t.findDisplayStatus()
+		t.DisplayStatusCache = t.DetermineDisplayStatus()
 	}
 	update := []bson.M{
 		bson.M{
@@ -2677,7 +2676,7 @@ func (t *Task) MarkStart(startTime time.Time) error {
 	// record the start time in the in-memory task
 	t.StartTime = startTime
 	t.Status = evergreen.TaskStarted
-	t.DisplayStatusCache = t.findDisplayStatus()
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -2696,7 +2695,7 @@ func (t *Task) MarkStart(startTime time.Time) error {
 // MarkUnscheduled marks the task as undispatched and updates it in the database
 func (t *Task) MarkUnscheduled() error {
 	t.Status = evergreen.TaskUndispatched
-	t.DisplayStatusCache = t.findDisplayStatus()
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
