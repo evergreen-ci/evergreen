@@ -544,6 +544,7 @@ func (s *statsQuerySuite) checkTaskStats(stats TaskStats, task, variant, distro 
 	require.Equal(numTestFailed, stats.NumTestFailed)
 	require.Equal(numSystemFailed, stats.NumSystemFailed)
 	require.Equal(numSetupFailed, stats.NumSetupFailed)
+	//nolint:testifylint // We expect these to be exactly equal.
 	require.Equal(avgDuration, stats.AvgDurationSuccess)
 }
 
