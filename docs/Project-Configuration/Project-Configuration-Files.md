@@ -280,8 +280,7 @@ Fields:
     stepback/dependencies, set activate to false.
 -   `batchtime`: interval of time in minutes that Evergreen should wait
     before activating this variant. The default is set on the project
-    settings page. This can also be set for individual tasks. Only applies to
-    tasks from mainline commits.
+    settings page. This cannot be set for individual tasks. 
 -   `cron`: define with [cron syntax](https://crontab.guru/) (i.e. Min \| Hour \| DayOfMonth \|
     Month \| DayOfWeekOptional) when (in UTC) a task or variant in a mainline
     commit should be activated (cannot be combined with batchtime). This also
@@ -1790,7 +1789,7 @@ granular to most granular configuration level):
 
 1. Project settings (only applicable to `batchtime`)
 2. Build variant definition
-3. Task in the build variant list
+3. Task in the build variant list (does not apply to `batchtime`)
 
 The general rule is this: _The most granular configuration defined is the condition that Evergreen uses to decide when
 to activate a task. Any specific activation conditions defined at a less granular configuration level are overridden in
