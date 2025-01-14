@@ -372,7 +372,7 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 
 	job.env = s.env
 	job.Run(s.ctx)
-	s.Zero(job.Error())
+	s.NoError(job.Error())
 
 	// Patch status
 	status := s.getAndValidateStatus(s.env.InternalSender)

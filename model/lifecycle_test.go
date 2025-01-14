@@ -95,34 +95,34 @@ func TestTaskSetPriority(t *testing.T) {
 
 			So(SetTaskPriority(ctx, tasks[0], 1, "user"), ShouldBeNil)
 
-			t, err := task.FindOne(db.Query(task.ById("one")))
+			t, err := task.FindOne(ctx, db.Query(task.ById("one")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Priority, ShouldEqual, 1)
 
-			t, err = task.FindOne(db.Query(task.ById("two")))
+			t, err = task.FindOne(ctx, db.Query(task.ById("two")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Priority, ShouldEqual, 5)
 
-			t, err = task.FindOne(db.Query(task.ById("three")))
+			t, err = task.FindOne(ctx, db.Query(task.ById("three")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Priority, ShouldEqual, 1)
 
-			t, err = task.FindOne(db.Query(task.ById("four")))
+			t, err = task.FindOne(ctx, db.Query(task.ById("four")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "four")
 			So(t.Priority, ShouldEqual, 1)
 
-			t, err = task.FindOne(db.Query(task.ById("five")))
+			t, err = task.FindOne(ctx, db.Query(task.ById("five")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "five")
 			So(t.Priority, ShouldEqual, 1)
 
-			t, err = task.FindOne(db.Query(task.ById("six")))
+			t, err = task.FindOne(ctx, db.Query(task.ById("six")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "six")
@@ -135,39 +135,39 @@ func TestTaskSetPriority(t *testing.T) {
 			So(tasks[0].Activated, ShouldEqual, true)
 			So(SetTaskPriority(ctx, tasks[0], -1, "user"), ShouldBeNil)
 
-			t, err := task.FindOne(db.Query(task.ById("one")))
+			t, err := task.FindOne(ctx, db.Query(task.ById("one")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Priority, ShouldEqual, -1)
 			So(t.Activated, ShouldEqual, false)
 
-			t, err = task.FindOne(db.Query(task.ById("two")))
+			t, err = task.FindOne(ctx, db.Query(task.ById("two")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Priority, ShouldEqual, 5)
 			So(t.Activated, ShouldEqual, true)
 
-			t, err = task.FindOne(db.Query(task.ById("three")))
+			t, err = task.FindOne(ctx, db.Query(task.ById("three")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Priority, ShouldEqual, 1)
 			So(t.Activated, ShouldEqual, true)
 
-			t, err = task.FindOne(db.Query(task.ById("four")))
+			t, err = task.FindOne(ctx, db.Query(task.ById("four")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "four")
 			So(t.Priority, ShouldEqual, 1)
 			So(t.Activated, ShouldEqual, true)
 
-			t, err = task.FindOne(db.Query(task.ById("five")))
+			t, err = task.FindOne(ctx, db.Query(task.ById("five")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "five")
 			So(t.Priority, ShouldEqual, 1)
 			So(t.Activated, ShouldEqual, true)
 
-			t, err = task.FindOne(db.Query(task.ById("six")))
+			t, err = task.FindOne(ctx, db.Query(task.ById("six")))
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "six")
@@ -263,12 +263,12 @@ func TestBuildRestart(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
 			So(b.Activated, ShouldEqual, true)
-			taskOne, err = task.FindOne(db.Query(task.ById("task1")))
+			taskOne, err = task.FindOne(ctx, db.Query(task.ById("task1")))
 			So(err, ShouldBeNil)
 			So(taskOne.Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(taskOne.Activated, ShouldEqual, true)
 			So(taskOne.DisplayStatusCache, ShouldEqual, evergreen.TaskWillRun)
-			taskTwo, err = task.FindOne(db.Query(task.ById("task2")))
+			taskTwo, err = task.FindOne(ctx, db.Query(task.ById("task2")))
 			So(err, ShouldBeNil)
 			So(taskTwo.Aborted, ShouldEqual, true)
 			So(taskTwo.DisplayStatusCache, ShouldEqual, evergreen.TaskAborted)
@@ -304,11 +304,11 @@ func TestBuildRestart(t *testing.T) {
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
-			taskThree, err = task.FindOne(db.Query(task.ById("task3")))
+			taskThree, err = task.FindOne(ctx, db.Query(task.ById("task3")))
 			So(err, ShouldBeNil)
 			So(taskThree.Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(taskThree.DisplayStatusCache, ShouldEqual, evergreen.TaskWillRun)
-			taskFour, err = task.FindOne(db.Query(task.ById("task4")))
+			taskFour, err = task.FindOne(ctx, db.Query(task.ById("task4")))
 			So(err, ShouldBeNil)
 			So(taskFour.Aborted, ShouldEqual, false)
 			So(taskFour.Status, ShouldEqual, evergreen.TaskDispatched)
@@ -356,13 +356,13 @@ func TestBuildRestart(t *testing.T) {
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
-			taskFive, err = task.FindOne(db.Query(task.ById("task5")))
+			taskFive, err = task.FindOne(ctx, db.Query(task.ById("task5")))
 			So(err, ShouldBeNil)
 			So(taskFive.Status, ShouldEqual, evergreen.TaskSucceeded)
 			So(taskFive.ResetWhenFinished, ShouldBeTrue)
-			taskSix, err = task.FindOne(db.Query(task.ById("task6")))
+			taskSix, err = task.FindOne(ctx, db.Query(task.ById("task6")))
 			So(err, ShouldBeNil)
-			taskSeven, err = task.FindOne(db.Query(task.ById("task7")))
+			taskSeven, err = task.FindOne(ctx, db.Query(task.ById("task7")))
 			So(err, ShouldBeNil)
 			So(taskSeven.Status, ShouldEqual, evergreen.TaskUndispatched)
 		})
@@ -399,11 +399,11 @@ func TestBuildRestart(t *testing.T) {
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
-			taskEight, err = task.FindOne(db.Query(task.ById("task8")))
+			taskEight, err = task.FindOne(ctx, db.Query(task.ById("task8")))
 			So(err, ShouldBeNil)
 			So(taskEight.Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(taskEight.DisplayStatusCache, ShouldEqual, evergreen.TaskWillRun)
-			taskNine, err = task.FindOne(db.Query(task.ById("task9")))
+			taskNine, err = task.FindOne(ctx, db.Query(task.ById("task9")))
 			So(err, ShouldBeNil)
 			So(taskNine.Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(taskNine.DisplayStatusCache, ShouldEqual, evergreen.TaskWillRun)
@@ -642,7 +642,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(deactivatedTasks[0].Id, ShouldEqual, matching.Id)
 
 				// task with the different user activating should be activated with that user
-				differentUserTask, err := task.FindOne(db.Query(task.ById(differentUser.Id)))
+				differentUserTask, err := task.FindOne(ctx, db.Query(task.ById(differentUser.Id)))
 				So(err, ShouldBeNil)
 				So(differentUserTask.Activated, ShouldBeTrue)
 				So(differentUserTask.ActivatedBy, ShouldEqual, user)
@@ -699,13 +699,13 @@ func TestBuildSetActivated(t *testing.T) {
 				So(ActivateBuildsAndTasks(ctx, []string{b.Id}, true, user), ShouldBeNil)
 
 				// task with the different user activating should be activated with that user
-				task1, err := task.FindOne(db.Query(task.ById(matching.Id)))
+				task1, err := task.FindOne(ctx, db.Query(task.ById(matching.Id)))
 				So(err, ShouldBeNil)
 				So(task1.Activated, ShouldBeTrue)
 				So(task1.ActivatedBy, ShouldEqual, user)
 
 				// task with the different user activating should be activated with that user
-				task2, err := task.FindOne(db.Query(task.ById(matching2.Id)))
+				task2, err := task.FindOne(ctx, db.Query(task.ById(matching2.Id)))
 				So(err, ShouldBeNil)
 				So(task2.Activated, ShouldBeTrue)
 				So(task2.ActivatedBy, ShouldEqual, user)
@@ -726,13 +726,13 @@ func TestBuildSetActivated(t *testing.T) {
 				So(b.ActivatedBy, ShouldEqual, user)
 
 				// task with the different user activating should be activated with that user
-				task1, err = task.FindOne(db.Query(task.ById(matching.Id)))
+				task1, err = task.FindOne(ctx, db.Query(task.ById(matching.Id)))
 				So(err, ShouldBeNil)
 				So(task1.Activated, ShouldBeTrue)
 				So(task1.ActivatedBy, ShouldEqual, user)
 
 				// task with the different user activating should be activated with that user
-				task2, err = task.FindOne(db.Query(task.ById(matching2.Id)))
+				task2, err = task.FindOne(ctx, db.Query(task.ById(matching2.Id)))
 				So(err, ShouldBeNil)
 				So(task2.Activated, ShouldBeTrue)
 				So(task2.ActivatedBy, ShouldEqual, user)
@@ -2189,7 +2189,7 @@ func TestVersionRestart(t *testing.T) {
 	assert.NoError(resetTaskData())
 	taskIds = []string{"task2"}
 	assert.NoError(RestartVersion(ctx, "version", taskIds, true, "test"))
-	dbTask, err := task.FindOne(db.Query(task.ById("task2")))
+	dbTask, err := task.FindOne(ctx, db.Query(task.ById("task2")))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.True(dbTask.Aborted)
@@ -2205,7 +2205,7 @@ func TestVersionRestart(t *testing.T) {
 	assert.NoError(resetTaskData())
 	taskIds = []string{"task2"}
 	assert.NoError(RestartVersion(ctx, "version", taskIds, false, "test"))
-	dbTask, err = task.FindOne(db.Query(task.ById("task2")))
+	dbTask, err = task.FindOne(ctx, db.Query(task.ById("task2")))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.False(dbTask.Aborted)
@@ -2233,7 +2233,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	for _, dbTask := range tasks {
 		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		assert.True(dbTask.Activated, dbTask.Id)
-		assert.Equal(dbTask.ActivatedBy, "test")
+		assert.Equal("test", dbTask.ActivatedBy)
 	}
 
 	// test restarting a build
@@ -2245,7 +2245,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	for _, dbTask := range tasks {
 		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		assert.True(dbTask.Activated, dbTask.Id)
-		assert.Equal(dbTask.ActivatedBy, "test")
+		assert.Equal("test", dbTask.ActivatedBy)
 	}
 
 	// test that restarting a task correctly resets the task and archives it
@@ -2267,20 +2267,20 @@ func TestDisplayTaskRestart(t *testing.T) {
 	for _, dbTask := range tasks {
 		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		assert.True(dbTask.Activated, dbTask.Id)
-		assert.Equal(dbTask.ActivatedBy, "caller")
+		assert.Equal("caller", dbTask.ActivatedBy)
 	}
 
 	// Test that restarting a display task with restartFailed correctly resets failed tasks.
 	assert.NoError(resetTaskData())
 	dt, err := task.FindOneId("displayTask1")
 	assert.NoError(err)
-	assert.NoError(dt.SetResetFailedWhenFinished("caller"))
+	assert.NoError(dt.SetResetFailedWhenFinished(ctx, "caller"))
 
 	// Confirm that marking a display task to reset when finished increments the user's scheduling limit
 	dbUser, err := user.FindOneById("caller")
 	assert.NoError(err)
 	require.NotNil(t, dbUser)
-	assert.Equal(dbUser.NumScheduledPatchTasks, 2)
+	assert.Equal(2, dbUser.NumScheduledPatchTasks)
 
 	assert.NoError(resetTask(ctx, dt.Id, "caller"))
 	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
@@ -2297,7 +2297,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	dbUser, err = user.FindOneById("caller")
 	assert.NoError(err)
 	require.NotNil(t, dbUser)
-	assert.Equal(dbUser.NumScheduledPatchTasks, 2)
+	assert.Equal(2, dbUser.NumScheduledPatchTasks)
 
 	// test that execution tasks cannot be restarted
 	assert.NoError(resetTaskData())
@@ -2438,6 +2438,9 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 }
 
 func resetTaskData() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	if err := db.ClearCollections(build.Collection, task.Collection, VersionCollection, task.OldCollection, user.Collection); err != nil {
 		return err
 	}
@@ -2591,7 +2594,7 @@ func resetTaskData() error {
 	if err := displayTask1.Insert(); err != nil {
 		return err
 	}
-	if err := UpdateDisplayTaskForTask(task5); err != nil {
+	if err := UpdateDisplayTaskForTask(ctx, task5); err != nil {
 		return err
 	}
 	displayTask2 := &task.Task{
@@ -2654,7 +2657,7 @@ func TestCreateTasksFromGroup(t *testing.T) {
 		},
 	}
 	bvts := CreateTasksFromGroup(in, p, evergreen.PatchVersionRequester)
-	require.Equal(t, 2, len(bvts))
+	require.Len(t, bvts, 2)
 	for _, bvtu := range bvts {
 		require.Len(t, bvtu.DependsOn, 1)
 		assert.Equal("new_dependency", bvtu.DependsOn[0].Name)
@@ -2665,6 +2668,8 @@ func TestCreateTasksFromGroup(t *testing.T) {
 }
 
 func TestMarkAsHostDispatched(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	var (
 		taskId       string
@@ -2700,7 +2705,7 @@ func TestMarkAsHostDispatched(t *testing.T) {
 			" the task, the host it is on, and the build it is a part of"+
 			" should be set to reflect this", func() {
 
-			So(taskDoc.MarkAsHostDispatched(hostId, distroId, agentVersion, time.Now()), ShouldBeNil)
+			So(taskDoc.MarkAsHostDispatched(ctx, hostId, distroId, agentVersion, time.Now()), ShouldBeNil)
 
 			// make sure the task's fields were updated, both in ©memory and
 			// in the db
@@ -2709,7 +2714,7 @@ func TestMarkAsHostDispatched(t *testing.T) {
 			So(taskDoc.HostId, ShouldEqual, hostId)
 			So(taskDoc.AgentVersion, ShouldEqual, agentVersion)
 			So(taskDoc.LastHeartbeat, ShouldResemble, taskDoc.DispatchTime)
-			taskDoc, err := task.FindOne(db.Query(task.ById(taskId)))
+			taskDoc, err := task.FindOne(ctx, db.Query(task.ById(taskId)))
 			So(err, ShouldBeNil)
 			So(taskDoc.DispatchTime, ShouldNotResemble, time.Unix(0, 0))
 			So(taskDoc.Status, ShouldEqual, evergreen.TaskDispatched)

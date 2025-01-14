@@ -61,6 +61,9 @@ func TestFilterGeneralSubscriptions(t *testing.T) {
 }
 
 func TestCanRestartTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	blockedTask := &task.Task{
 		Id: "t1",
 		DependsOn: []task.Dependency{
@@ -70,8 +73,8 @@ func TestCanRestartTask(t *testing.T) {
 		Status:        evergreen.TaskUndispatched,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	canRestart := canRestartTask(blockedTask)
-	assert.Equal(t, canRestart, false)
+	canRestart := canRestartTask(ctx, blockedTask)
+	assert.False(t, canRestart)
 
 	blockedDisplayTask := &task.Task{
 		Id:             "t4",
@@ -81,32 +84,32 @@ func TestCanRestartTask(t *testing.T) {
 		DisplayOnly:    true,
 		ExecutionTasks: []string{"exec1", "exec2"},
 	}
-	canRestart = canRestartTask(blockedDisplayTask)
-	assert.Equal(t, canRestart, true)
+	canRestart = canRestartTask(ctx, blockedDisplayTask)
+	assert.True(t, canRestart)
 
 	executionTask := &task.Task{
 		Id:            "t2",
 		Status:        evergreen.TaskUndispatched,
 		DisplayTaskId: utility.ToStringPtr("display task"),
 	}
-	canRestart = canRestartTask(executionTask)
-	assert.Equal(t, canRestart, false)
+	canRestart = canRestartTask(ctx, executionTask)
+	assert.False(t, canRestart)
 
 	runningTask := &task.Task{
 		Id:            "t3",
 		Status:        evergreen.TaskStarted,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	canRestart = canRestartTask(runningTask)
-	assert.Equal(t, canRestart, false)
+	canRestart = canRestartTask(ctx, runningTask)
+	assert.False(t, canRestart)
 
 	finishedTask := &task.Task{
 		Id:            "t5",
 		Status:        evergreen.TaskSucceeded,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	canRestart = canRestartTask(finishedTask)
-	assert.Equal(t, canRestart, true)
+	canRestart = canRestartTask(ctx, finishedTask)
+	assert.True(t, canRestart)
 
 	abortedTask := &task.Task{
 		Id:            "t6",
@@ -114,19 +117,22 @@ func TestCanRestartTask(t *testing.T) {
 		DisplayTaskId: utility.ToStringPtr(""),
 		Aborted:       true,
 	}
-	canRestart = canRestartTask(abortedTask)
-	assert.Equal(t, canRestart, false)
+	canRestart = canRestartTask(ctx, abortedTask)
+	assert.False(t, canRestart)
 }
 
 func TestCanScheduleTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	abortedTask := &task.Task{
 		Id:            "t1",
 		Status:        evergreen.TaskUndispatched,
 		DisplayTaskId: utility.ToStringPtr(""),
 		Aborted:       true,
 	}
-	canSchedule := canScheduleTask(abortedTask)
-	assert.Equal(t, canSchedule, false)
+	canSchedule := canScheduleTask(ctx, abortedTask)
+	assert.False(t, canSchedule)
 
 	executionTask := &task.Task{
 		Id:            "t2",
@@ -134,8 +140,8 @@ func TestCanScheduleTask(t *testing.T) {
 		DisplayStatus: evergreen.TaskUnscheduled,
 		DisplayTaskId: utility.ToStringPtr("display task"),
 	}
-	canSchedule = canScheduleTask(executionTask)
-	assert.Equal(t, canSchedule, false)
+	canSchedule = canScheduleTask(ctx, executionTask)
+	assert.False(t, canSchedule)
 
 	finishedTask := &task.Task{
 		Id:            "t4",
@@ -143,8 +149,8 @@ func TestCanScheduleTask(t *testing.T) {
 		DisplayStatus: evergreen.TaskSucceeded,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	canSchedule = canScheduleTask(finishedTask)
-	assert.Equal(t, canSchedule, false)
+	canSchedule = canScheduleTask(ctx, finishedTask)
+	assert.False(t, canSchedule)
 
 	unscheduledTask := &task.Task{
 		Id:            "t3",
@@ -152,8 +158,8 @@ func TestCanScheduleTask(t *testing.T) {
 		DisplayStatus: evergreen.TaskUnscheduled,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	canSchedule = canScheduleTask(unscheduledTask)
-	assert.Equal(t, canSchedule, true)
+	canSchedule = canScheduleTask(ctx, unscheduledTask)
+	assert.True(t, canSchedule)
 }
 
 func TestGetDisplayStatus(t *testing.T) {
@@ -318,11 +324,11 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 	}
 
 	versionsMatchingTasksMap, err := concurrentlyBuildVersionsMatchingTasksMap(ctx, versions, opts)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, versionsMatchingTasksMap)
-	assert.Equal(t, versionsMatchingTasksMap["v1"], true)
-	assert.Equal(t, versionsMatchingTasksMap["v2"], false)
-	assert.Equal(t, versionsMatchingTasksMap["v3"], false)
+	assert.True(t, versionsMatchingTasksMap["v1"])
+	assert.False(t, versionsMatchingTasksMap["v2"])
+	assert.False(t, versionsMatchingTasksMap["v3"])
 
 	opts = task.HasMatchingTasksOptions{
 		TaskNames:                  []string{},
@@ -332,11 +338,11 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 	}
 
 	versionsMatchingTasksMap, err = concurrentlyBuildVersionsMatchingTasksMap(ctx, versions, opts)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, versionsMatchingTasksMap)
-	assert.Equal(t, versionsMatchingTasksMap["v1"], true)
-	assert.Equal(t, versionsMatchingTasksMap["v2"], true)
-	assert.Equal(t, versionsMatchingTasksMap["v3"], false)
+	assert.True(t, versionsMatchingTasksMap["v1"])
+	assert.True(t, versionsMatchingTasksMap["v2"])
+	assert.False(t, versionsMatchingTasksMap["v3"])
 
 	opts = task.HasMatchingTasksOptions{
 		TaskNames:                  []string{"model"},
@@ -346,11 +352,11 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 	}
 
 	versionsMatchingTasksMap, err = concurrentlyBuildVersionsMatchingTasksMap(ctx, versions, opts)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.NotNil(t, versionsMatchingTasksMap)
-	assert.Equal(t, versionsMatchingTasksMap["v1"], false)
-	assert.Equal(t, versionsMatchingTasksMap["v2"], false)
-	assert.Equal(t, versionsMatchingTasksMap["v3"], true)
+	assert.False(t, versionsMatchingTasksMap["v1"])
+	assert.False(t, versionsMatchingTasksMap["v2"])
+	assert.True(t, versionsMatchingTasksMap["v3"])
 
 }
 func TestIsPatchAuthorForTask(t *testing.T) {
@@ -562,21 +568,21 @@ func TestFlattenOtelVariables(t *testing.T) {
 
 	val, ok := unnestedVars["k1"]
 	assert.True(t, ok)
-	assert.Equal(t, val, "v1")
+	assert.Equal(t, "v1", val)
 
 	val, ok = unnestedVars["k5"]
 	assert.True(t, ok)
-	assert.Equal(t, val, "v5")
+	assert.Equal(t, "v5", val)
 
 	val, ok = unnestedVars["k2.nested_k3"]
 	assert.True(t, ok)
-	assert.Equal(t, val, "v3")
+	assert.Equal(t, "v3", val)
 
 	val, ok = unnestedVars["k2.nested_k4"]
 	assert.True(t, ok)
-	assert.Equal(t, val, "v4")
+	assert.Equal(t, "v4", val)
 
 	val, ok = unnestedVars["k6.nested_k7"]
 	assert.True(t, ok)
-	assert.Equal(t, val, "v7")
+	assert.Equal(t, "v7", val)
 }

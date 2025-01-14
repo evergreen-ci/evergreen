@@ -24,6 +24,7 @@ func (c *podCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEnd
 	if err != nil {
 		return nil, util.RespErrorf(resp, errors.Wrap(err, "ending task").Error())
 	}
+
 	var taskEndResp apimodels.EndTaskResponse
 	if err = utility.ReadJSON(resp.Body, &taskEndResp); err != nil {
 		return nil, errors.Wrap(err, "reading end task response")

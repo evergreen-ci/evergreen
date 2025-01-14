@@ -100,7 +100,7 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.
 	for _, buildVariant := range patchProjectVariantsAndTasks.Variants {
 		for _, taskUnit := range buildVariant.Tasks {
 			if _, ok := generatorTasks[taskUnit.Name]; ok {
-				dbTask, err := task.FindOne(db.Query(bson.M{
+				dbTask, err := task.FindOne(ctx, db.Query(bson.M{
 					task.ProjectKey:      proj.DisplayName,
 					task.BuildVariantKey: buildVariant.Name,
 					task.DisplayNameKey:  taskUnit.Name,

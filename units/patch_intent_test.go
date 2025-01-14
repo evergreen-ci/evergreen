@@ -242,7 +242,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.NoError(err)
 	s.NotNil(factory)
 	s.NotNil(factory())
-	s.Equal(factory().Type().Name, patchIntentJobName)
+	s.Equal(patchIntentJobName, factory().Type().Name)
 }
 
 func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
@@ -388,7 +388,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithDisabledCommitQueue() {
 	err = j.finishPatch(s.ctx, patchDoc)
 	s.Error(err)
 	s.NotEmpty(j.gitHubError)
-	s.Equal(j.gitHubError, commitQueueDisabled)
+	s.Equal(commitQueueDisabled, j.gitHubError)
 }
 
 func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
@@ -506,14 +506,14 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			s.NoError(err)
 
 			s.Equal(currentPatchDoc.BuildVariants, reusePatchDoc.BuildVariants)
-			s.Equal(currentPatchDoc.Tasks, []string{"diffTask1", "diffTask2"})
+			s.Equal([]string{"diffTask1", "diffTask2"}, currentPatchDoc.Tasks)
 
 		},
 		"specific patch/reuse failed": func(j *patchIntentProcessor, currentPatchDoc *patch.Patch) {
 			err := j.setToPreviousPatchDefinition(currentPatchDoc, &project, reusePatchId, true)
 			s.NoError(err)
 			s.Equal(currentPatchDoc.BuildVariants, reusePatchDoc.BuildVariants)
-			s.Equal(currentPatchDoc.Tasks, []string{"diffTask1"})
+			s.Equal([]string{"diffTask1"}, currentPatchDoc.Tasks)
 		},
 	} {
 		s.NoError(db.ClearCollections(task.Collection))
@@ -1227,7 +1227,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {
 	patchDoc = intent.NewPatch()
 	s.Error(j.finishPatch(s.ctx, patchDoc))
 	s.NotEmpty(j.gitHubError)
-	s.Equal(j.gitHubError, MergeBaseTooOld)
+	s.Equal(MergeBaseTooOld, j.gitHubError)
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
@@ -1666,7 +1666,7 @@ tasks:
 	s.Require().NotNil(projectRef)
 	s.NoError(err)
 
-	s.Len(p.Triggers.ChildPatches, 0)
+	s.Empty(p.Triggers.ChildPatches)
 	s.NoError(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
 
 	dbPatch, err := patch.FindOneId(p.Id.Hex())
@@ -1793,7 +1793,7 @@ tasks:
 	s.Require().NotNil(projectRef)
 	s.NoError(err)
 
-	s.Len(p.Triggers.ChildPatches, 0)
+	s.Empty(p.Triggers.ChildPatches)
 	s.Error(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}), "should error if no tasks/variants match")
 	s.Len(p.Triggers.ChildPatches, 1)
 

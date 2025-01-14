@@ -184,7 +184,7 @@ func TestCLIFetchSource(t *testing.T) {
 
 		patches, err := ac.GetPatches(0)
 		So(err, ShouldBeNil)
-		testTask, err := task.FindOne(db.Query(
+		testTask, err := task.FindOne(ctx, db.Query(
 			bson.M{
 				task.VersionKey:      patches[0].Version,
 				task.BuildVariantKey: "ubuntu",

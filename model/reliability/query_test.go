@@ -380,7 +380,7 @@ func TestGetTaskReliability(t *testing.T) {
 						filter.StatsFilter.Tasks = []string{"this won't match anything"}
 						docs, err := GetTaskReliabilityScores(filter)
 						require.NoError(err)
-						require.Equal(len(docs), 0)
+						require.Empty(docs)
 					})
 				},
 				"Non matching task1 combination": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
@@ -391,7 +391,7 @@ func TestGetTaskReliability(t *testing.T) {
 						filter.StatsFilter.Distros = []string{distro2}
 						docs, err := GetTaskReliabilityScores(filter)
 						require.NoError(err)
-						require.Len(docs, 0)
+						require.Empty(docs)
 					})
 				},
 				"Non matching task2 combination": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
@@ -402,7 +402,7 @@ func TestGetTaskReliability(t *testing.T) {
 						filter.StatsFilter.Distros = []string{distro1}
 						docs, err := GetTaskReliabilityScores(filter)
 						require.NoError(err)
-						require.Len(docs, 0)
+						require.Empty(docs)
 					})
 				},
 				"task1": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
@@ -415,9 +415,9 @@ func TestGetTaskReliability(t *testing.T) {
 						require.NoError(err)
 						require.Len(docs, 2)
 						for _, doc := range docs {
-							require.Equal(doc.TaskName, task1)
-							require.NotEqual(doc.BuildVariant, variant2)
-							require.NotEqual(doc.Distro, distro2)
+							require.Equal(task1, doc.TaskName)
+							require.NotEqual(variant2, doc.BuildVariant)
+							require.NotEqual(distro2, doc.Distro)
 						}
 					})
 				},
@@ -431,9 +431,9 @@ func TestGetTaskReliability(t *testing.T) {
 						require.NoError(err)
 						require.Len(docs, 2)
 						for _, doc := range docs {
-							require.Equal(doc.TaskName, task2)
-							require.NotEqual(doc.BuildVariant, variant1)
-							require.NotEqual(doc.Distro, distro1)
+							require.Equal(task2, doc.TaskName)
+							require.NotEqual(variant1, doc.BuildVariant)
+							require.NotEqual(distro1, doc.Distro)
 						}
 					})
 				},
@@ -443,7 +443,7 @@ func TestGetTaskReliability(t *testing.T) {
 						filter.StatsFilter.Tasks = []string{task1, task2}
 						docs, err := GetTaskReliabilityScores(filter)
 						require.NoError(err)
-						require.NotEqual(len(docs), 0)
+						require.NotEmpty(docs)
 					})
 				},
 				"MaxQueryLimit": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
@@ -619,8 +619,8 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 						require.Len(docs, 1)
 
 						require.Equal(docs[0].Date, day1)
-						require.Equal(docs[0].NumSuccess, numSuccess)
-						require.Equal(docs[0].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[0].NumSuccess)
+						require.Equal(numFailed, docs[0].NumFailed)
 					})
 				},
 				"2": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
@@ -688,13 +688,13 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 						require.Len(docs, duration)
 
 						require.Equal(docs[0].Date, filter.StatsFilter.BeforeDate)
-						require.Equal(docs[0].NumSuccess, numSuccess)
-						require.Equal(docs[0].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[0].NumSuccess)
+						require.Equal(numFailed, docs[0].NumFailed)
 
 						last := len(docs) - 1
 						require.Equal(docs[last].Date, day1)
-						require.Equal(docs[last].NumSuccess, numSuccess)
-						require.Equal(docs[last].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[last].NumSuccess)
+						require.Equal(numFailed, docs[last].NumFailed)
 
 					})
 				},
@@ -710,13 +710,13 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 						require.Len(docs, duration)
 
 						require.Equal(docs[0].Date, day1)
-						require.Equal(docs[0].NumSuccess, numSuccess)
-						require.Equal(docs[0].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[0].NumSuccess)
+						require.Equal(numFailed, docs[0].NumFailed)
 
 						last := len(docs) - 1
 						require.Equal(docs[last].Date, filter.StatsFilter.BeforeDate)
-						require.Equal(docs[last].NumSuccess, numSuccess)
-						require.Equal(docs[last].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[last].NumSuccess)
+						require.Equal(numFailed, docs[last].NumFailed)
 
 					})
 				},
@@ -739,8 +739,8 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 						require.Len(docs, 1)
 
 						require.Equal(docs[0].Date, day1)
-						require.Equal(docs[0].NumSuccess, numSuccess)
-						require.Equal(docs[0].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[0].NumSuccess)
+						require.Equal(numFailed, docs[0].NumFailed)
 					})
 				},
 				"2 Days": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
@@ -753,11 +753,11 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 						require.Len(docs, 2)
 
 						require.Equal(docs[0].Date, day1)
-						require.Equal(docs[0].NumSuccess, numSuccess)
-						require.Equal(docs[0].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[0].NumSuccess)
+						require.Equal(numFailed, docs[0].NumFailed)
 						require.Equal(docs[1].Date, day2)
-						require.Equal(docs[1].NumSuccess, numSuccess)
-						require.Equal(docs[1].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[1].NumSuccess)
+						require.Equal(numFailed, docs[1].NumFailed)
 					})
 				},
 				"7 Days": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
@@ -770,13 +770,13 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 						require.Len(docs, 7)
 
 						require.Equal(docs[0].Date, day1)
-						require.Equal(docs[0].NumSuccess, numSuccess)
-						require.Equal(docs[0].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[0].NumSuccess)
+						require.Equal(numFailed, docs[0].NumFailed)
 
 						last := len(docs) - 1
 						require.Equal(docs[last].Date, filter.StatsFilter.BeforeDate)
-						require.Equal(docs[last].NumSuccess, numSuccess)
-						require.Equal(docs[last].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[last].NumSuccess)
+						require.Equal(numFailed, docs[last].NumFailed)
 
 					})
 				},
@@ -790,13 +790,13 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 						require.Len(docs, 28)
 
 						require.Equal(docs[0].Date, day1)
-						require.Equal(docs[0].NumSuccess, numSuccess)
-						require.Equal(docs[0].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[0].NumSuccess)
+						require.Equal(numFailed, docs[0].NumFailed)
 
 						last := len(docs) - 1
 						require.Equal(docs[last].Date, filter.StatsFilter.BeforeDate)
-						require.Equal(docs[last].NumSuccess, numSuccess)
-						require.Equal(docs[last].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[last].NumSuccess)
+						require.Equal(numFailed, docs[last].NumFailed)
 
 					})
 				},
@@ -835,8 +835,8 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 						require.Len(docs, 1)
 
 						require.Equal(docs[0].Date, day1)
-						require.Equal(docs[0].NumSuccess, numSuccess)
-						require.Equal(docs[0].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[0].NumSuccess)
+						require.Equal(numFailed, docs[0].NumFailed)
 					})
 				},
 				// group by day for a week newest first.
@@ -852,13 +852,13 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 						require.Len(docs, duration)
 
 						require.Equal(docs[0].Date, filter.StatsFilter.BeforeDate)
-						require.Equal(docs[0].NumSuccess, numSuccess)
-						require.Equal(docs[0].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[0].NumSuccess)
+						require.Equal(numFailed, docs[0].NumFailed)
 
 						last := len(docs) - 1
 						require.Equal(docs[last].Date, day1)
-						require.Equal(docs[last].NumSuccess, numSuccess)
-						require.Equal(docs[last].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[last].NumSuccess)
+						require.Equal(numFailed, docs[last].NumFailed)
 
 					})
 				},
@@ -875,13 +875,13 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 						require.Len(docs, duration)
 
 						require.Equal(docs[0].Date, day1)
-						require.Equal(docs[0].NumSuccess, numSuccess)
-						require.Equal(docs[0].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[0].NumSuccess)
+						require.Equal(numFailed, docs[0].NumFailed)
 
 						last := len(docs) - 1
 						require.Equal(docs[last].Date, filter.StatsFilter.BeforeDate)
-						require.Equal(docs[last].NumSuccess, numSuccess)
-						require.Equal(docs[last].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[last].NumSuccess)
+						require.Equal(numFailed, docs[last].NumFailed)
 
 					})
 				},
@@ -897,13 +897,13 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 						require.Len(docs, duration)
 
 						require.Equal(docs[0].Date, day1)
-						require.Equal(docs[0].NumSuccess, numSuccess)
-						require.Equal(docs[0].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[0].NumSuccess)
+						require.Equal(numFailed, docs[0].NumFailed)
 
 						last := len(docs) - 1
 						require.Equal(docs[last].Date, filter.StatsFilter.BeforeDate)
-						require.Equal(docs[last].NumSuccess, numSuccess)
-						require.Equal(docs[last].NumFailed, numFailed)
+						require.Equal(numSuccess, docs[last].NumSuccess)
+						require.Equal(numFailed, docs[last].NumFailed)
 
 					})
 				},

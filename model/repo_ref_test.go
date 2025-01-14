@@ -46,7 +46,7 @@ func TestRepoRefUpdateAdminRoles(t *testing.T) {
 	assert.NoError(t, r.UpdateAdminRoles([]string{newAdmin.Id}, []string{oldAdmin.Id}))
 	oldAdminFromDB, err := user.FindOneById(oldAdmin.Id)
 	assert.NoError(t, err)
-	assert.Len(t, oldAdminFromDB.Roles(), 0)
+	assert.Empty(t, oldAdminFromDB.Roles())
 	newAdminFromDB, err := user.FindOneById(newAdmin.Id)
 	assert.NoError(t, err)
 	assert.Len(t, newAdminFromDB.Roles(), 1)

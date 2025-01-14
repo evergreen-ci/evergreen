@@ -1305,13 +1305,13 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, ve
 		// If a task is a generated task don't schedule it until we get all of the generated tasks we want to generate
 		if t.GeneratedBy == "" {
 			// We can ignore an error while fetching tasks because this could just mean the task didn't exist on the base commit.
-			baseTask, _ := t.FindTaskOnBaseCommit()
+			baseTask, _ := t.FindTaskOnBaseCommit(ctx)
 			if baseTask != nil && baseTask.Status == evergreen.TaskUndispatched {
 				tasksToSchedule[baseTask.Id] = true
 			}
 			// If a task is generated lets find its base task if it exists otherwise we need to generate it
 		} else if t.GeneratedBy != "" {
-			baseTask, _ := t.FindTaskOnBaseCommit()
+			baseTask, _ := t.FindTaskOnBaseCommit(ctx)
 			// If the task is undispatched or doesn't exist on the base commit then we want to schedule
 			if baseTask == nil {
 				generatorTask, err := task.FindByIdExecution(t.GeneratedBy, nil)
@@ -1319,7 +1319,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, ve
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Experienced an error trying to find the generator task: %s", err.Error()))
 				}
 				if generatorTask != nil {
-					baseGeneratorTask, _ := generatorTask.FindTaskOnBaseCommit()
+					baseGeneratorTask, _ := generatorTask.FindTaskOnBaseCommit(ctx)
 					// If baseGeneratorTask is nil then it didn't exist on the base task and we can't do anything
 					if baseGeneratorTask != nil && baseGeneratorTask.Status == evergreen.TaskUndispatched {
 						err = baseGeneratorTask.SetGeneratedTasksToActivate(t.BuildVariant, t.DisplayName)

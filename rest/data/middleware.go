@@ -74,7 +74,7 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 		if test == nil {
 			return "", http.StatusNotFound, errors.Errorf("test log '%s' not found", testLog)
 		}
-		projectID, err = task.FindProjectForTask(test.Task)
+		projectID, err = task.FindProjectForTask(ctx, test.Task)
 		if err != nil {
 			return "", http.StatusNotFound, errors.Wrapf(err, "finding project for task '%s' associated with test log '%s'", test.Task, test.Id)
 		}
@@ -82,7 +82,7 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 
 	taskID := paramsMap[taskIdKey]
 	if projectID == "" && taskID != "" {
-		projectID, err = task.FindProjectForTask(taskID)
+		projectID, err = task.FindProjectForTask(ctx, taskID)
 		if err != nil {
 			return "", http.StatusNotFound, errors.Wrapf(err, "finding project for task '%s'", taskID)
 		}

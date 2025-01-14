@@ -160,13 +160,13 @@ func (s *HostAllocatorFuzzerSuite) TestHeuristics() {
 		queueSize := distroQueueInfo.Length
 		queueDuration := distroQueueInfo.ExpectedDuration
 
-		s.True(newHosts >= 0)
-		s.True(newHosts <= queueSize)
+		s.GreaterOrEqual(newHosts, 0)
+		s.LessOrEqual(newHosts, queueSize)
 		futureHostFraction := s.futureHostFraction
 		numFree := float64(newHosts+s.freeHosts) + math.Ceil(s.soonToBeFree*futureHostFraction)
 		// the task duration per host will always be less than 2x the max duration per host (30min)
 		// because the longest task used in this test is 1 hr
-		s.True(queueDuration.Hours()/numFree < float64(2*evergreen.MaxDurationPerDistroHost),
+		s.Less(queueDuration.Hours()/numFree, float64(2*evergreen.MaxDurationPerDistroHost),
 			"queue: %v, new: %d, free: %d, soon: %f", queueDuration, newHosts, s.freeHosts, s.soonToBeFree)
 	}
 }

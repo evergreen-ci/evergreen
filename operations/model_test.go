@@ -43,7 +43,7 @@ func TestFindDefaultAlias(t *testing.T) {
 		ShowSummary: false,
 	}
 
-	assert.Equal(client1.FindDefaultAlias(p1.Project), "testAlias")
+	assert.Equal("testAlias", client1.FindDefaultAlias(p1.Project))
 
 	// Find an empty string when no project with the given alias exists
 	p2 := &patchParams{
@@ -96,7 +96,7 @@ func TestSetDefaultAlias(t *testing.T) {
 
 	client3.SetDefaultAlias(p3.Project, p3.Alias)
 	assert.Len(client3.Projects, 1)
-	assert.Equal(client3.Projects[0].Alias, "defaultAlias")
+	assert.Equal("defaultAlias", client3.Projects[0].Alias)
 
 	// If no project is present with the given name, add a new project with the requested alias
 	p4 := &patchParams{
@@ -113,8 +113,8 @@ func TestSetDefaultAlias(t *testing.T) {
 
 	client3.SetDefaultAlias(p4.Project, p4.Alias)
 	assert.Len(client3.Projects, 2)
-	assert.Equal(client3.Projects[0].Alias, "defaultAlias")
-	assert.Equal(client3.Projects[1].Alias, "newDefaultAlias")
+	assert.Equal("defaultAlias", client3.Projects[0].Alias)
+	assert.Equal("newDefaultAlias", client3.Projects[1].Alias)
 }
 
 func TestNewClientSettings(t *testing.T) {

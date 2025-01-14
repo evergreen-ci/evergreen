@@ -92,7 +92,7 @@ func (s *eventSuite) TestWithRealData() {
 		var bytes []byte
 		bytes, err = json.Marshal(entries[0])
 		s.NoError(err)
-		s.Equal(expectedJSON, string(bytes))
+		s.JSONEq(expectedJSON, string(bytes))
 	})
 
 	// unmarshaller works with both r_type fields set
@@ -128,7 +128,7 @@ func (s *eventSuite) TestWithRealData() {
 		var bytes []byte
 		bytes, err = json.Marshal(entries[0])
 		s.NoError(err)
-		s.Equal(expectedJSON, string(bytes))
+		s.JSONEq(expectedJSON, string(bytes))
 	})
 
 	// check that string IDs are preserved in the DB
@@ -506,12 +506,12 @@ func (s *eventSuite) TestLogManyEvents() {
 	events := []EventLogEntry{}
 	s.NoError(db.FindAllQ(EventCollection, db.Query(bson.M{}), &events))
 	s.Len(events, 2)
-	s.Equal(events[0].ResourceId, "resource_id_1")
-	s.Equal(events[0].EventType, "some_type")
+	s.Equal("resource_id_1", events[0].ResourceId)
+	s.Equal("some_type", events[0].EventType)
 	_, ok := events[0].Data.(*TaskEventData)
 	s.True(ok)
-	s.Equal(events[1].ResourceId, "resource_id_1")
-	s.Equal(events[1].EventType, "some_type")
+	s.Equal("resource_id_1", events[1].ResourceId)
+	s.Equal("some_type", events[1].EventType)
 	_, ok = events[1].Data.(*TaskEventData)
 	s.True(ok)
 }

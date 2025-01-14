@@ -1,7 +1,6 @@
 package model
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
@@ -26,7 +25,7 @@ func githubAppCheckAndRunParameterStoreOp(ctx context.Context, appAuth *githubap
 	if err != nil {
 		return errors.Wrapf(err, "checking project ref '%s' to verify if GitHub app should use Parameter Store", appAuth.Id)
 	}
-	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, ref)
+	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, ref, true)
 	if err != nil {
 		return errors.Wrapf(err, "checking if Parameter Store is enabled for project '%s'", appAuth.Id)
 	}
@@ -52,10 +51,7 @@ func GitHubAppAuthFindOne(id string) (*githubapp.GithubAppAuth, error) {
 	}
 
 	if err := githubAppCheckAndRunParameterStoreOp(ctx, appAuth, func(ref *ProjectRef, isRepoRef bool) error {
-		if ref.ParameterStoreGitHubAppSynced {
-			return githubAppAuthFindParameterStore(ctx, appAuth)
-		}
-		return nil
+		return githubAppAuthFindParameterStore(ctx, appAuth)
 	}); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "could not find GitHub app private key in Parameter Store",
@@ -81,22 +77,6 @@ func githubAppAuthFindParameterStore(ctx context.Context, appAuth *githubapp.Git
 	}
 
 	privKey := []byte(params[0].Value)
-
-	// Check that the private key retrieved from Parameter Store is identical to
-	// the private key stored in the DB. This is a data consistency check and
-	// doubles as a fallback. By checking the private key retrieved from
-	// Parameter Store, Evergreen can automatically detect if the Parameter
-	// Store integration is returning incorrect information and if so, fall back
-	// to using the private key stored in the DB rather than Parameter Store,
-	// which avoids using potentially the wrong private key while the rollout is
-	// ongoing.
-	// TODO (DEVPROD-9441): remove this consistency check once the rollout is
-	// complete and everything is prepared to remove the GitHub app private keys
-	// from the DB.
-	if !bytes.Equal(privKey, appAuth.PrivateKey) {
-		return errors.Errorf("private key in Parameter Store does not match private key in the DB")
-	}
-
 	appAuth.PrivateKey = privKey
 
 	return nil
@@ -150,10 +130,6 @@ func githubAppAuthUpsertParameterStore(ctx context.Context, appAuth *githubapp.G
 		if err := paramMgr.Delete(ctx, existingParamName); err != nil {
 			return "", errors.Wrapf(err, "deleting old GitHub app private key parameter '%s' from Parameter Store after it was renamed to '%s'", existingParamName, paramName)
 		}
-	}
-
-	if err := pRef.setParameterStoreGitHubAppAuthSynced(true, isRepoRef); err != nil {
-		return "", errors.Wrapf(err, "marking project/repo ref '%s' as having its GitHub app private key synced to Parameter Store", pRef.Id)
 	}
 
 	return paramName, nil

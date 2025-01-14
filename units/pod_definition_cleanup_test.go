@@ -124,7 +124,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 				}
 			}
 
-			assert.Equal(t, numDeleted, cleanupLimit)
+			assert.Equal(t, cleanupLimit, numDeleted)
 		},
 		"NoopsWithNoPodDefinitionsMatchingStrandedMarkerTag": func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob) {
 			def := createStrandedPodDef(ctx, t, j.ecsClient, nil)

@@ -542,10 +542,10 @@ func (s *taskDAGDispatchServiceSuite) TestConstructor() {
 	s.Contains(service.taskGroups, compositeGroupID("group_2", "variant_1", "project_1", "version_1"))
 	s.Contains(service.taskGroups, compositeGroupID("group_1", "variant_2", "project_1", "version_1"))
 	s.Contains(service.taskGroups, compositeGroupID("group_1", "variant_1", "project_1", "version_2"))
-	s.Equal(len(service.taskGroups[compositeGroupID("group_1", "variant_1", "project_1", "version_1")].tasks), 20)
-	s.Equal(len(service.taskGroups[compositeGroupID("group_2", "variant_1", "project_1", "version_1")].tasks), 20)
-	s.Equal(len(service.taskGroups[compositeGroupID("group_1", "variant_2", "project_1", "version_1")].tasks), 20)
-	s.Equal(len(service.taskGroups[compositeGroupID("group_1", "variant_1", "project_1", "version_2")].tasks), 20)
+	s.Len(service.taskGroups[compositeGroupID("group_1", "variant_1", "project_1", "version_1")].tasks, 20)
+	s.Len(service.taskGroups[compositeGroupID("group_2", "variant_1", "project_1", "version_1")].tasks, 20)
+	s.Len(service.taskGroups[compositeGroupID("group_1", "variant_2", "project_1", "version_1")].tasks, 20)
+	s.Len(service.taskGroups[compositeGroupID("group_1", "variant_1", "project_1", "version_2")].tasks, 20)
 
 	expectedOrder := []string{
 		"0",  // ''
@@ -1376,7 +1376,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
-		s.True(nextInt > currentID)
+		s.Greater(nextInt, currentID)
 		currentID = nextInt
 		s.Equal("group_1", next.Group)
 		s.Equal("variant_1", next.BuildVariant)
@@ -1394,7 +1394,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
-		s.True(nextInt > currentID)
+		s.Greater(nextInt, currentID)
 		currentID = nextInt
 		s.Equal("group_2", next.Group)
 		s.Equal("variant_1", next.BuildVariant)
@@ -1412,7 +1412,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
-		s.True(nextInt > currentID)
+		s.Greater(nextInt, currentID)
 		currentID = nextInt
 		s.Equal("group_1", next.Group)
 		s.Equal("variant_2", next.BuildVariant)
@@ -1430,7 +1430,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
-		s.True(nextInt > currentID)
+		s.Greater(nextInt, currentID)
 		currentID = nextInt
 		s.Equal("group_1", next.Group)
 		s.Equal("variant_1", next.BuildVariant)
@@ -1594,18 +1594,18 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
 	s.Require().NotNil(next)
 	s.Equal(expectedOrder[0], next.Id)
 	s.Equal("1", taskGroup.tasks[0].Id)
-	s.Equal(false, taskGroup.tasks[0].IsDispatched)
+	s.False(taskGroup.tasks[0].IsDispatched)
 	s.Equal("6", taskGroup.tasks[1].Id)
-	s.Equal(true, taskGroup.tasks[1].IsDispatched)
+	s.True(taskGroup.tasks[1].IsDispatched)
 	s.Equal("11", taskGroup.tasks[2].Id)
-	s.Equal(false, taskGroup.tasks[2].IsDispatched)
+	s.False(taskGroup.tasks[2].IsDispatched)
 
 	for i := 1; i < 5; i++ {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		s.Require().NotNil(next)
 		s.Equal(expectedOrder[i], next.Id)
 		s.Equal(expectedOrder[i], taskGroup.tasks[i+1].Id)
-		s.Equal(true, taskGroup.tasks[i+1].IsDispatched)
+		s.True(taskGroup.tasks[i+1].IsDispatched)
 	}
 
 	// Set task "95"'s status to evergreen.TaskSucceeded.
