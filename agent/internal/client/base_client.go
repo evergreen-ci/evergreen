@@ -345,7 +345,7 @@ func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (st
 		return evergreen.TaskFailed, nil
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", util.RespErrorf(resp, "sending heartbeat")
+		return "", util.RespError(resp, "sending heartbeat")
 	}
 
 	heartbeatResponse := &apimodels.HeartbeatResponse{}
@@ -920,7 +920,7 @@ func (c *baseCommunicator) GetAdditionalPatches(ctx context.Context, patchId str
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting additional patches")
+		return nil, util.RespError(resp, "getting additional patches")
 	}
 	patches := []string{}
 	if err := utility.ReadJSON(resp.Body, &patches); err != nil {
@@ -989,7 +989,7 @@ func (c *baseCommunicator) RevokeGitHubDynamicAccessToken(ctx context.Context, t
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return util.RespErrorf(resp, "revoking github dynamic access token")
+		return util.RespError(resp, "revoking github dynamic access token")
 	}
 	return nil
 }
@@ -1037,7 +1037,7 @@ func (c *baseCommunicator) AssumeRole(ctx context.Context, td TaskData, request 
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "trouble assuming role")
+		return nil, util.RespError(resp, "trouble assuming role")
 	}
 	var creds apimodels.AssumeRoleResponse
 	if err := utility.ReadJSON(resp.Body, &creds); err != nil {

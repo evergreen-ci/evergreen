@@ -40,7 +40,7 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, spawnRequest *mo
 		return nil, util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "creating spawn host")
+		return nil, util.RespError(resp, "creating spawn host")
 	}
 
 	spawnHostResp := model.APIHost{}
@@ -198,7 +198,7 @@ func (c *communicatorImpl) CreateVolume(ctx context.Context, volume *host.Volume
 		return nil, util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "creating volume")
+		return nil, util.RespError(resp, "creating volume")
 	}
 
 	createVolumeResp := model.APIVolume{}
@@ -363,7 +363,7 @@ func (c *communicatorImpl) waitForStatus(ctx context.Context, hostID, status str
 				return util.RespError(resp, AuthError)
 			}
 			if resp.StatusCode != http.StatusOK {
-				return util.RespErrorf(resp, "getting host status")
+				return util.RespError(resp, "getting host status")
 			}
 			hostResp := model.APIHost{}
 			if err = utility.ReadJSON(resp.Body, &hostResp); err != nil {
@@ -462,7 +462,7 @@ func (c *communicatorImpl) GetHosts(ctx context.Context, data model.APIHostParam
 		return nil, util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting hosts")
+		return nil, util.RespError(resp, "getting hosts")
 	}
 
 	hosts := []*model.APIHost{}
@@ -553,7 +553,7 @@ func (c *communicatorImpl) RevokeGitHubDynamicAccessTokens(ctx context.Context, 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return util.RespErrorf(resp, "revoking GitHub dynamic access token")
+		return util.RespError(resp, "revoking GitHub dynamic access token")
 	}
 
 	return nil
@@ -743,7 +743,7 @@ func (c *communicatorImpl) GetServiceUsers(ctx context.Context) ([]model.APIDBUs
 		return nil, util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting service users")
+		return nil, util.RespError(resp, "getting service users")
 	}
 	var result []model.APIDBUser
 	if err = utility.ReadJSON(resp.Body, &result); err != nil {
@@ -918,7 +918,7 @@ func (c *communicatorImpl) ListAliases(ctx context.Context, project string, incl
 		return nil, util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "listing project aliases")
+		return nil, util.RespError(resp, "listing project aliases")
 	}
 	patchAliases := []serviceModel.ProjectAlias{}
 
@@ -952,7 +952,7 @@ func (c *communicatorImpl) ListPatchTriggerAliases(ctx context.Context, project 
 		return nil, util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "listing patch trigger aliases")
+		return nil, util.RespError(resp, "listing patch trigger aliases")
 	}
 
 	triggerAliases := []string{}
@@ -978,7 +978,7 @@ func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.Clie
 		return nil, util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting latest CLI version information")
+		return nil, util.RespError(resp, "getting latest CLI version information")
 	}
 	update := &model.APICLIUpdate{}
 	if err = utility.ReadJSON(resp.Body, update); err != nil {
@@ -1078,7 +1078,7 @@ func (c *communicatorImpl) SendNotification(ctx context.Context, notificationTyp
 		return util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return util.RespErrorf(resp, "sending notification")
+		return util.RespError(resp, "sending notification")
 	}
 
 	return nil
@@ -1193,7 +1193,7 @@ func (c *communicatorImpl) StartHostProcesses(ctx context.Context, hostIDs []str
 				return nil, util.RespError(resp, AuthError)
 			}
 			if resp.StatusCode != http.StatusOK {
-				return nil, util.RespErrorf(resp, "running process on hosts")
+				return nil, util.RespError(resp, "running process on hosts")
 			}
 
 			output := []model.APIHostProcess{}
@@ -1237,7 +1237,7 @@ func (c *communicatorImpl) GetHostProcessOutput(ctx context.Context, hostProcess
 				return nil, util.RespError(resp, AuthError)
 			}
 			if resp.StatusCode != http.StatusOK {
-				return nil, util.RespErrorf(resp, "getting process output from hosts")
+				return nil, util.RespError(resp, "getting process output from hosts")
 			}
 
 			output := []model.APIHostProcess{}
@@ -1299,7 +1299,7 @@ func (c *communicatorImpl) GetTaskSyncReadCredentials(ctx context.Context) (*eve
 		return nil, util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting task sync read-only credentials")
+		return nil, util.RespError(resp, "getting task sync read-only credentials")
 	}
 	creds := &evergreen.S3Credentials{}
 	if err := utility.ReadJSON(resp.Body, creds); err != nil {
@@ -1324,7 +1324,7 @@ func (c *communicatorImpl) GetTaskSyncPath(ctx context.Context, taskID string) (
 		return "", util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", util.RespErrorf(resp, "getting task sync path")
+		return "", util.RespError(resp, "getting task sync path")
 	}
 	path, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -1366,7 +1366,7 @@ func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) (
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting client URLs")
+		return nil, util.RespError(resp, "getting client URLs")
 	}
 
 	var urls []string
@@ -1432,7 +1432,7 @@ func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context) (*res
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting host provisioning options")
+		return nil, util.RespError(resp, "getting host provisioning options")
 	}
 	var opts restmodel.APIHostProvisioningOptions
 	if err = utility.ReadJSON(resp.Body, &opts); err != nil {
@@ -1460,7 +1460,7 @@ func (c *communicatorImpl) CompareTasks(ctx context.Context, tasks []string, use
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, nil, util.RespErrorf(resp, "getting task comparison")
+		return nil, nil, util.RespError(resp, "getting task comparison")
 	}
 	var results restmodel.CompareTasksResponse
 	if err = utility.ReadJSON(resp.Body, &results); err != nil {
@@ -1486,7 +1486,7 @@ func (c *communicatorImpl) FindHostByIpAddress(ctx context.Context, ip string) (
 		return nil, util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting host by IP address")
+		return nil, util.RespError(resp, "getting host by IP address")
 	}
 
 	host := &model.APIHost{}
@@ -1513,7 +1513,7 @@ func (c *communicatorImpl) GetRawPatchWithModules(ctx context.Context, patchId s
 		return nil, util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting host by IP address")
+		return nil, util.RespError(resp, "getting host by IP address")
 	}
 
 	rp := restmodel.APIRawPatch{}
@@ -1567,7 +1567,7 @@ func (c *communicatorImpl) GetTaskLogs(ctx context.Context, opts GetTaskLogsOpti
 		return nil, util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting task logs")
+		return nil, util.RespError(resp, "getting task logs")
 	}
 
 	header := make(http.Header)
@@ -1619,7 +1619,7 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 		return nil, util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting test logs")
+		return nil, util.RespError(resp, "getting test logs")
 	}
 
 	header := make(http.Header)
