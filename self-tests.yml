@@ -229,6 +229,8 @@ functions:
           set -o verbose
           set -o errexit
           $GOPATH/bin/swag init -g service/service.go
+  
+  push-api-docs-task:
     - command: s3.put
       params:
         aws_key: ${AWS_ACCESS_KEY_ID}
@@ -731,6 +733,7 @@ tasks:
     commands:
       - func: get-project-and-modules
       - func: generate-api-docs
+      - func: push-api-docs-task
   - name: push-api-docs
     commands:
       - func: get-project-and-modules
@@ -754,6 +757,7 @@ tasks:
             SWAGGER_JSON_FILE: docs/swagger.json
             SWAGGER_OLD_SUM_FILE: docs/swagger.old.sum
             OUTPUT_SUM_FILE: docs/swagger.sum
+      - func: push-api-docs-task
       - command: s3.put
         params:
           aws_key: ${AWS_ACCESS_KEY_ID}
