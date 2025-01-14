@@ -452,6 +452,8 @@ type Dependency struct {
 	Unattainable bool   `bson:"unattainable" json:"unattainable"`
 	// Finished indicates if the task's dependency has finished running or not.
 	Finished bool `bson:"finished" json:"finished"`
+	// FinishedAt indicates the time the task's dependency was finished at.
+	FinishedAt time.Time `bson:"finished_at,omitempty" json:"finished_at,omitempty"`
 	// OmitGeneratedTasks causes tasks that depend on a generator task to not depend on
 	// the generated tasks if this is set
 	OmitGeneratedTasks bool `bson:"omit_generated_tasks,omitempty" json:"omit_generated_tasks,omitempty"`
@@ -802,8 +804,8 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 			return false, nil
 		}
 	}
-	// this is not exact, but depTask.FinishTime is not always set in time to use that
-	t.DependenciesMetTime = time.Now()
+
+	t.setDependenciesMetTime()
 	err = UpdateOne(
 		bson.M{IdKey: t.Id},
 		bson.M{
@@ -816,6 +818,16 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		"task_id": t.Id}))
 
 	return true, nil
+}
+
+func (t *Task) setDependenciesMetTime() {
+	dependenciesMetTime := time.Now()
+	for _, dependency := range t.DependsOn {
+		if !utility.IsZeroTime(dependency.FinishedAt) && dependency.FinishedAt.Before(dependenciesMetTime) {
+			dependenciesMetTime = dependency.FinishedAt
+		}
+	}
+	t.DependenciesMetTime = dependenciesMetTime
 }
 
 // populateDependencyTaskCache ensures that all the dependencies for the task are in the cache.
@@ -956,12 +968,17 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 }
 
 // MarkDependenciesFinished updates all direct dependencies on this task to
-// cache whether or not this task has finished running.
+// cache whether this task has finished running, and at what time it finished (if applicable).
 func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) error {
 	if t.DisplayOnly {
 		// This update can be skipped for display tasks since tasks are not
 		// allowed to have dependencies on display tasks.
 		return nil
+	}
+
+	finishedAt := t.FinishTime
+	if !finished {
+		finishedAt = utility.ZeroTime
 	}
 
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
@@ -971,7 +988,10 @@ func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) erro
 			}},
 		},
 		bson.M{
-			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedKey): finished},
+			"$set": bson.M{
+				bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedKey):   finished,
+				bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedAtKey): finishedAt,
+			},
 		},
 		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
 			bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},
