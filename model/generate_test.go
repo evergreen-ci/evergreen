@@ -1386,12 +1386,12 @@ buildvariants:
 
 	dbExistingGenBuild, err := build.FindOneId(existingGenBuild.Id)
 	s.Require().NoError(err)
-	s.NotZero(dbExistingGenBuild)
+	s.Require().NotZero(dbExistingGenBuild)
 	s.Equal(evergreen.BuildStarted, dbExistingGenBuild.Status, "status for build generating tasks should not change")
 
 	dbExistingOtherBuild, err := build.FindOneId(existingFinishedBuild.Id)
 	s.Require().NoError(err)
-	s.NotZero(dbExistingOtherBuild)
+	s.Require().NotZero(dbExistingOtherBuild)
 	s.Equal(evergreen.BuildStarted, dbExistingOtherBuild.Status, "status for build that previously had only finished tasks and now has new generated tasks to run should be running")
 }
 

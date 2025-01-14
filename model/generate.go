@@ -390,7 +390,7 @@ func updateBuildStatusesForGeneratedTasks(ctx context.Context, versionID string,
 	return UpdateVersionAndPatchStatusForBuilds(ctx, buildIDs)
 }
 
-// getBuildVariantsFromPair returns a slice of all unique build variant names
+// getBuildVariantsFromPairs returns a slice of all unique build variant names
 // from build variant task pairs.
 func getBuildVariantsFromPairs(pairs TaskVariantPairs) []string {
 	bvSet := make(map[string]any)
