@@ -1,5 +1,6 @@
 mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', 'mciAdminRestService', 'notificationService', '$mdpTimePicker', function ($scope, $window, $http, mciAdminRestService, notificationService) {
   $scope.can_clear_tokens = $window.can_clear_tokens;
+  $scope.show_overrides_section = $window.show_overrides_section;
   $scope.validDefaultHostAllocatorRoundingRules = $window.validDefaultHostAllocatorRoundingRules;
   $scope.validDefaultHostAllocatorFeedbackRules = $window.validDefaultHostAllocatorFeedbackRules;
   $scope.validDefaultHostsOverallocatedRules = $window.validDefaultHostsOverallocatedRules;

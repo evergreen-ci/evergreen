@@ -4,6 +4,7 @@
 	window.validDefaultHostAllocatorFeedbackRules = {{.ValidDefaultHostAllocatorFeedbackRules}};
 	window.validDefaultHostsOverallocatedRules = {{.ValidDefaultHostsOverallocatedRules}};
 	window.can_clear_tokens = {{.CanClearTokens }};
+	window.show_overrides_section = {{.ShowOverridesSection}};
 </script>
 <script src="{{Static "js" "admin.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="{{Static "thirdparty" "js-yaml.min.js"}}?hash={{ BuildRevision }}"></script>
@@ -97,7 +98,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('expansions')">Expansions</li>
 						<li class="link" ng-click="scrollTo('host_jasper')">Host Jasper</li>
 						<li class="link" ng-click="scrollTo('jira_notifications')">JIRA Custom Field Mappings</li>
-						<li class="link" ng-click="scrollTo('overrides')">Environment Overrides</li>
+						<li class="link" ng-click="scrollTo('overrides')" ng-show="show_overrides_section">Environment Overrides</li>
 						<li class="link" ng-click="scrollTo('spawnhosts')">Spawn Hosts</li>
 						<li class="link" ng-click="scrollTo('sleep_schedule')">Sleep Schedules</li>
 						<li class="link" ng-click="scrollTo('tracer')">Tracer Config</li>
@@ -2505,7 +2506,7 @@ Admin Settings
 								</md-card-content>
 							</md-card>
 						</section>
-						<section layout="row" flex>
+						<section layout="row" flex ng-show="show_overrides_section">
 							<md-card flex=100 id="overrides">
 								<md-card-title>
 									<md-card-title-text>

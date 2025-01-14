@@ -214,8 +214,9 @@ func replaceOverridesConfig(docs []bson.Raw, overridesDoc bson.Raw) ([]bson.Raw,
 		}
 		if id == overridesSectionID {
 			res = append(res, overridesDoc)
+		} else {
+			res = append(res, doc)
 		}
-		res = append(res, doc)
 	}
 
 	return res, nil
