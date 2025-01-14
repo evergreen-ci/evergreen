@@ -31,7 +31,7 @@ func PrioritizeTasks(ctx context.Context, d *distro.Distro, tasks []task.Task, o
 	case evergreen.PlannerVersionTunable:
 		return runTunablePlanner(ctx, d, tasks, opts)
 	default:
-		return runLegacyPlanner(d, tasks, opts)
+		return runLegacyPlanner(ctx, d, tasks, opts)
 	}
 }
 
@@ -47,7 +47,7 @@ func runTunablePlanner(ctx context.Context, d *distro.Distro, tasks []task.Task,
 	info := GetDistroQueueInfo(d.Id, plan, d.GetTargetTime(), opts)
 	info.SecondaryQueue = opts.IsSecondaryQueue
 	info.PlanCreatedAt = opts.StartedAt
-	if err = PersistTaskQueue(d.Id, plan, info); err != nil {
+	if err = PersistTaskQueue(ctx, d.Id, plan, info); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -58,7 +58,7 @@ func runTunablePlanner(ctx context.Context, d *distro.Distro, tasks []task.Task,
 //
 // UseLegacy Scheduler Implementation
 
-func runLegacyPlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
+func runLegacyPlanner(ctx context.Context, d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
 	runnableTasks, versions, err := FilterTasksWithVersionCache(tasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "filtering tasks against the versions' cache")
@@ -73,7 +73,7 @@ func runLegacyPlanner(d *distro.Distro, tasks []task.Task, opts TaskPlannerOptio
 		startedAt: opts.StartedAt,
 	}
 
-	prioritizedTasks, err := ds.scheduleDistro(d.Id, runnableTasks, versions, d.GetTargetTime(), opts.IsSecondaryQueue)
+	prioritizedTasks, err := ds.scheduleDistro(ctx, d.Id, runnableTasks, versions, d.GetTargetTime(), opts.IsSecondaryQueue)
 	if err != nil {
 		return nil, errors.Wrapf(err, "calculating distro plan for distro '%s'", d.Id)
 	}
@@ -100,7 +100,7 @@ type distroScheduler struct {
 	TaskPrioritizer
 }
 
-func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.Task, versions map[string]model.Version, maxThreshold time.Duration, isSecondaryQueue bool) ([]task.Task, error) {
+func (s *distroScheduler) scheduleDistro(ctx context.Context, distroID string, runnableTasks []task.Task, versions map[string]model.Version, maxThreshold time.Duration, isSecondaryQueue bool) ([]task.Task, error) {
 	prioritizedTasks, _, err := s.PrioritizeTasks(distroID, runnableTasks, versions)
 	if err != nil {
 		return nil, errors.Wrapf(err, "prioritizing tasks for distro '%s'", distroID)
@@ -112,7 +112,7 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.T
 	distroQueueInfo.PlanCreatedAt = s.startedAt
 
 	// persist the queue of tasks and its associated distroQueueInfo
-	err = PersistTaskQueue(distroID, prioritizedTasks, distroQueueInfo)
+	err = PersistTaskQueue(ctx, distroID, prioritizedTasks, distroQueueInfo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "saving the task queue for distro '%s'", distroID)
 	}
@@ -343,8 +343,8 @@ func underwaterUnschedule(ctx context.Context, distroID string) error {
 			if err = model.UpdateBuildAndVersionStatusForTask(ctx, &modifiedTask); err != nil {
 				return errors.Wrapf(err, "updating build and version status for task '%s'", modifiedTask.Id)
 			}
-			if modifiedTask.IsPartOfDisplay() {
-				if err = model.UpdateDisplayTaskForTask(&modifiedTask); err != nil {
+			if modifiedTask.IsPartOfDisplay(ctx) {
+				if err = model.UpdateDisplayTaskForTask(ctx, &modifiedTask); err != nil {
 					return errors.Wrap(err, "updating parent display task")
 				}
 			}

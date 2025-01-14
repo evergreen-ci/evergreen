@@ -1120,7 +1120,7 @@ func podAllocatorJobs(ctx context.Context, _ evergreen.Environment, ts time.Time
 
 	remaining := settings.PodLifecycle.MaxParallelPodRequests - numInitializing
 
-	ctq, err := model.NewContainerTaskQueue()
+	ctq, err := model.NewContainerTaskQueue(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting container task queue")
 	}

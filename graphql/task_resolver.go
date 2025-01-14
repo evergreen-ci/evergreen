@@ -118,12 +118,12 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 		}
 	} else {
 		if evergreen.IsPatchRequester(t.Requester) {
-			baseTask, err = t.FindTaskOnBaseCommit()
+			baseTask, err = t.FindTaskOnBaseCommit(ctx)
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s' on base commit: %s", utility.FromStringPtr(obj.Id), err.Error()))
 			}
 		} else {
-			baseTask, err = t.FindTaskOnPreviousCommit()
+			baseTask, err = t.FindTaskOnPreviousCommit(ctx)
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s' on previous commit: %s", utility.FromStringPtr(obj.Id), err.Error()))
 			}
@@ -209,7 +209,7 @@ func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *obj.Id))
 	}
-	return canRestartTask(t), nil
+	return canRestartTask(ctx, t), nil
 }
 
 // CanSchedule is the resolver for the canSchedule field.
@@ -218,7 +218,7 @@ func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) 
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", *obj.Id))
 	}
-	return canScheduleTask(t), nil
+	return canScheduleTask(ctx, t), nil
 }
 
 // CanSetPriority is the resolver for the canSetPriority field.
@@ -316,7 +316,7 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 	if err != nil || t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find task with id: %s", *obj.Id))
 	}
-	dt, err := t.GetDisplayTask()
+	dt, err := t.GetDisplayTask(ctx)
 	if dt == nil || err != nil {
 		return nil, nil
 	}

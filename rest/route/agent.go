@@ -259,8 +259,8 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 	taskToRestart := t
-	if t.IsPartOfDisplay() {
-		dt, err := t.GetDisplayTask()
+	if t.IsPartOfDisplay(ctx) {
+		dt, err := t.GetDisplayTask(ctx)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting display task for execution task '%s'", h.taskID))
 		}
@@ -882,7 +882,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	})
 
 	updates := model.StatusChanges{}
-	if err = model.MarkStart(t, &updates); err != nil {
+	if err = model.MarkStart(ctx, t, &updates); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "marking task '%s' started", t.Id))
 	}
 

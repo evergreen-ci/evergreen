@@ -131,7 +131,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		if tbh.fetchParentIds {
-			if tasks[i].IsPartOfDisplay() {
+			if tasks[i].IsPartOfDisplay(ctx) {
 				taskModel.ParentTaskId = utility.FromStringPtr(tasks[i].DisplayTaskId)
 			}
 		}

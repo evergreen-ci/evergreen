@@ -61,6 +61,9 @@ func TestFilterGeneralSubscriptions(t *testing.T) {
 }
 
 func TestCanRestartTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	blockedTask := &task.Task{
 		Id: "t1",
 		DependsOn: []task.Dependency{
@@ -70,7 +73,7 @@ func TestCanRestartTask(t *testing.T) {
 		Status:        evergreen.TaskUndispatched,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	canRestart := canRestartTask(blockedTask)
+	canRestart := canRestartTask(ctx, blockedTask)
 	assert.False(t, canRestart)
 
 	blockedDisplayTask := &task.Task{
@@ -81,7 +84,7 @@ func TestCanRestartTask(t *testing.T) {
 		DisplayOnly:    true,
 		ExecutionTasks: []string{"exec1", "exec2"},
 	}
-	canRestart = canRestartTask(blockedDisplayTask)
+	canRestart = canRestartTask(ctx, blockedDisplayTask)
 	assert.True(t, canRestart)
 
 	executionTask := &task.Task{
@@ -89,7 +92,7 @@ func TestCanRestartTask(t *testing.T) {
 		Status:        evergreen.TaskUndispatched,
 		DisplayTaskId: utility.ToStringPtr("display task"),
 	}
-	canRestart = canRestartTask(executionTask)
+	canRestart = canRestartTask(ctx, executionTask)
 	assert.False(t, canRestart)
 
 	runningTask := &task.Task{
@@ -97,7 +100,7 @@ func TestCanRestartTask(t *testing.T) {
 		Status:        evergreen.TaskStarted,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	canRestart = canRestartTask(runningTask)
+	canRestart = canRestartTask(ctx, runningTask)
 	assert.False(t, canRestart)
 
 	finishedTask := &task.Task{
@@ -105,7 +108,7 @@ func TestCanRestartTask(t *testing.T) {
 		Status:        evergreen.TaskSucceeded,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	canRestart = canRestartTask(finishedTask)
+	canRestart = canRestartTask(ctx, finishedTask)
 	assert.True(t, canRestart)
 
 	abortedTask := &task.Task{
@@ -114,18 +117,21 @@ func TestCanRestartTask(t *testing.T) {
 		DisplayTaskId: utility.ToStringPtr(""),
 		Aborted:       true,
 	}
-	canRestart = canRestartTask(abortedTask)
+	canRestart = canRestartTask(ctx, abortedTask)
 	assert.False(t, canRestart)
 }
 
 func TestCanScheduleTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	abortedTask := &task.Task{
 		Id:            "t1",
 		Status:        evergreen.TaskUndispatched,
 		DisplayTaskId: utility.ToStringPtr(""),
 		Aborted:       true,
 	}
-	canSchedule := canScheduleTask(abortedTask)
+	canSchedule := canScheduleTask(ctx, abortedTask)
 	assert.False(t, canSchedule)
 
 	executionTask := &task.Task{
@@ -134,7 +140,7 @@ func TestCanScheduleTask(t *testing.T) {
 		DisplayStatus: evergreen.TaskUnscheduled,
 		DisplayTaskId: utility.ToStringPtr("display task"),
 	}
-	canSchedule = canScheduleTask(executionTask)
+	canSchedule = canScheduleTask(ctx, executionTask)
 	assert.False(t, canSchedule)
 
 	finishedTask := &task.Task{
@@ -143,7 +149,7 @@ func TestCanScheduleTask(t *testing.T) {
 		DisplayStatus: evergreen.TaskSucceeded,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	canSchedule = canScheduleTask(finishedTask)
+	canSchedule = canScheduleTask(ctx, finishedTask)
 	assert.False(t, canSchedule)
 
 	unscheduledTask := &task.Task{
@@ -152,7 +158,7 @@ func TestCanScheduleTask(t *testing.T) {
 		DisplayStatus: evergreen.TaskUnscheduled,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	canSchedule = canScheduleTask(unscheduledTask)
+	canSchedule = canScheduleTask(ctx, unscheduledTask)
 	assert.True(t, canSchedule)
 }
 

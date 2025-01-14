@@ -348,7 +348,7 @@ func (t *versionTriggers) versionRegression(ctx context.Context, sub *event.Subs
 	}
 	for i := range versionTasks {
 		task := &versionTasks[i]
-		isRegression, _, err := isTaskRegression(sub, task)
+		isRegression, _, err := isTaskRegression(ctx, sub, task)
 		if err != nil {
 			return nil, errors.Wrap(err, "evaluating task regression")
 		}

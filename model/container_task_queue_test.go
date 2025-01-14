@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -38,8 +39,8 @@ func TestContainerTaskQueue(t *testing.T) {
 		require.False(t, ctq.HasNext())
 		require.Zero(t, ctq.Next())
 	}
-	for tName, tCase := range map[string]func(t *testing.T){
-		"ReturnsAllTasksThatNeedContainerAllocationInOrderOfActivation": func(t *testing.T) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
+		"ReturnsAllTasksThatNeedContainerAllocationInOrderOfActivation": func(ctx context.Context, t *testing.T) {
 			ref := getProjectRef()
 			require.NoError(t, ref.Insert())
 
@@ -56,7 +57,7 @@ func TestContainerTaskQueue(t *testing.T) {
 			needsAllocation1.ActivatedTime = time.Now().Add(-time.Hour)
 			require.NoError(t, needsAllocation1.Insert())
 
-			ctq, err := NewContainerTaskQueue()
+			ctq, err := NewContainerTaskQueue(ctx)
 			require.NoError(t, err)
 
 			assert.Equal(t, 2, ctq.Len())
@@ -75,7 +76,7 @@ func TestContainerTaskQueue(t *testing.T) {
 
 			checkEmpty(t, ctq)
 		},
-		"SetsFirstTaskScheduledTime": func(t *testing.T) {
+		"SetsFirstTaskScheduledTime": func(ctx context.Context, t *testing.T) {
 			ref := getProjectRef()
 			require.NoError(t, ref.Insert())
 
@@ -83,7 +84,7 @@ func TestContainerTaskQueue(t *testing.T) {
 			needsAllocation.Project = ref.Id
 			require.NoError(t, needsAllocation.Insert())
 
-			ctq, err := NewContainerTaskQueue()
+			ctq, err := NewContainerTaskQueue(ctx)
 			require.NoError(t, err)
 
 			assert.Equal(t, 1, ctq.Len())
@@ -100,33 +101,33 @@ func TestContainerTaskQueue(t *testing.T) {
 
 			checkEmpty(t, ctq)
 		},
-		"ReturnsNoTask": func(t *testing.T) {
-			ctq, err := NewContainerTaskQueue()
+		"ReturnsNoTask": func(ctx context.Context, t *testing.T) {
+			ctq, err := NewContainerTaskQueue(ctx)
 			require.NoError(t, err)
 			require.NotZero(t, ctq)
 
 			checkEmpty(t, ctq)
 		},
-		"DoesNotReturnTaskMissingProject": func(t *testing.T) {
+		"DoesNotReturnTaskMissingProject": func(ctx context.Context, t *testing.T) {
 			needsAllocation := getTaskThatNeedsContainerAllocation()
 			require.NoError(t, needsAllocation.Insert())
 
-			ctq, err := NewContainerTaskQueue()
+			ctq, err := NewContainerTaskQueue(ctx)
 			require.NoError(t, err)
 
 			checkEmpty(t, ctq)
 		},
-		"DoesNotReturnTaskWithInvalidProject": func(t *testing.T) {
+		"DoesNotReturnTaskWithInvalidProject": func(ctx context.Context, t *testing.T) {
 			needsAllocation := getTaskThatNeedsContainerAllocation()
 			needsAllocation.Project = "foo"
 			require.NoError(t, needsAllocation.Insert())
 
-			ctq, err := NewContainerTaskQueue()
+			ctq, err := NewContainerTaskQueue(ctx)
 			require.NoError(t, err)
 
 			checkEmpty(t, ctq)
 		},
-		"DoesNotReturnTaskWithProjectThatDisabledTaskDispatching": func(t *testing.T) {
+		"DoesNotReturnTaskWithProjectThatDisabledTaskDispatching": func(ctx context.Context, t *testing.T) {
 			ref := getProjectRef()
 			ref.DispatchingDisabled = utility.TruePtr()
 			require.NoError(t, ref.Insert())
@@ -135,12 +136,12 @@ func TestContainerTaskQueue(t *testing.T) {
 			needsAllocation.Project = ref.Id
 			require.NoError(t, needsAllocation.Insert())
 
-			ctq, err := NewContainerTaskQueue()
+			ctq, err := NewContainerTaskQueue(ctx)
 			require.NoError(t, err)
 
 			checkEmpty(t, ctq)
 		},
-		"ReturnsPatchTaskWithProjectThatEnabledPatching": func(t *testing.T) {
+		"ReturnsPatchTaskWithProjectThatEnabledPatching": func(ctx context.Context, t *testing.T) {
 			ref := getProjectRef()
 			ref.PatchingDisabled = utility.FalsePtr()
 			require.NoError(t, ref.Insert())
@@ -150,7 +151,7 @@ func TestContainerTaskQueue(t *testing.T) {
 			needsAllocation.Project = ref.Id
 			require.NoError(t, needsAllocation.Insert())
 
-			ctq, err := NewContainerTaskQueue()
+			ctq, err := NewContainerTaskQueue(ctx)
 			require.NoError(t, err)
 
 			assert.Equal(t, 1, ctq.Len())
@@ -162,7 +163,7 @@ func TestContainerTaskQueue(t *testing.T) {
 
 			checkEmpty(t, ctq)
 		},
-		"DoesNotReturnPatchTaskWithProjectThatDisabledPatching": func(t *testing.T) {
+		"DoesNotReturnPatchTaskWithProjectThatDisabledPatching": func(ctx context.Context, t *testing.T) {
 			ref := getProjectRef()
 			ref.PatchingDisabled = utility.TruePtr()
 			require.NoError(t, ref.Insert())
@@ -172,12 +173,12 @@ func TestContainerTaskQueue(t *testing.T) {
 			needsAllocation.Project = ref.Id
 			require.NoError(t, needsAllocation.Insert())
 
-			ctq, err := NewContainerTaskQueue()
+			ctq, err := NewContainerTaskQueue(ctx)
 			require.NoError(t, err)
 
 			checkEmpty(t, ctq)
 		},
-		"DoesNotReturnTaskWithDisabledProject": func(t *testing.T) {
+		"DoesNotReturnTaskWithDisabledProject": func(ctx context.Context, t *testing.T) {
 			ref := getProjectRef()
 			ref.Enabled = false
 			require.NoError(t, ref.Insert())
@@ -186,12 +187,12 @@ func TestContainerTaskQueue(t *testing.T) {
 			needsAllocation.Project = ref.Id
 			require.NoError(t, needsAllocation.Insert())
 
-			ctq, err := NewContainerTaskQueue()
+			ctq, err := NewContainerTaskQueue(ctx)
 			require.NoError(t, err)
 
 			checkEmpty(t, ctq)
 		},
-		"ReturnsGitHubTaskInDisabledAndHiddenProject": func(t *testing.T) {
+		"ReturnsGitHubTaskInDisabledAndHiddenProject": func(ctx context.Context, t *testing.T) {
 			ref := getProjectRef()
 			ref.Enabled = false
 			ref.Hidden = utility.TruePtr()
@@ -202,7 +203,7 @@ func TestContainerTaskQueue(t *testing.T) {
 			needsAllocation.Project = ref.Id
 			require.NoError(t, needsAllocation.Insert())
 
-			ctq, err := NewContainerTaskQueue()
+			ctq, err := NewContainerTaskQueue(ctx)
 			require.NoError(t, err)
 
 			assert.Equal(t, 1, ctq.Len())
@@ -214,7 +215,7 @@ func TestContainerTaskQueue(t *testing.T) {
 
 			checkEmpty(t, ctq)
 		},
-		"DoesNotReturnNonGitHubTaskInDisabledAndHiddenProject": func(t *testing.T) {
+		"DoesNotReturnNonGitHubTaskInDisabledAndHiddenProject": func(ctx context.Context, t *testing.T) {
 			ref := getProjectRef()
 			ref.Enabled = false
 			ref.Hidden = utility.TruePtr()
@@ -225,15 +226,18 @@ func TestContainerTaskQueue(t *testing.T) {
 			needsAllocation.Project = ref.Id
 			require.NoError(t, needsAllocation.Insert())
 
-			ctq, err := NewContainerTaskQueue()
+			ctq, err := NewContainerTaskQueue(ctx)
 			require.NoError(t, err)
 
 			checkEmpty(t, ctq)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			require.NoError(t, db.ClearCollections(task.Collection, ProjectRefCollection))
-			tCase(t)
+			tCase(ctx, t)
 		})
 	}
 }

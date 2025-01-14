@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -14,6 +15,8 @@ import (
 )
 
 func TestDBTaskQueuePersister(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	var distroIds []string
 	var displayNames []string
@@ -123,8 +126,8 @@ func TestDBTaskQueuePersister(t *testing.T) {
 		Convey("saving task queues should place them in the database with the "+
 			"correct ordering of tasks along with the relevant average task "+
 			"completion times", func() {
-			So(PersistTaskQueue(distroIds[0], []task.Task{tasks[0], tasks[1], tasks[2]}, distroQueueInfo1), ShouldBeNil)
-			So(PersistTaskQueue(distroIds[1], []task.Task{tasks[3], tasks[4]}, distroQueueInfo2), ShouldBeNil)
+			So(PersistTaskQueue(ctx, distroIds[0], []task.Task{tasks[0], tasks[1], tasks[2]}, distroQueueInfo1), ShouldBeNil)
+			So(PersistTaskQueue(ctx, distroIds[1], []task.Task{tasks[3], tasks[4]}, distroQueueInfo2), ShouldBeNil)
 
 			taskQueue, err := model.LoadTaskQueue(distroIds[0])
 			So(err, ShouldBeNil)
