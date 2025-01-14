@@ -25,7 +25,7 @@ func validateRelativePath(filePath, rootPath string) error {
 	// Generally, paths are resolved before they are passed
 	// to filepath.Rel to prevent tarballs from containing
 	// symlinks to files outside the data directory.
-	// However, on our Window's hosts, the data directory
+	// However, on our Windows hosts, the data directory
 	// is symlinked to another drive so we can't resolve
 	// the symlinks or it will falsely report that the
 	// path is outside the data directory.
