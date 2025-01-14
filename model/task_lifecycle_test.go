@@ -7067,3 +7067,82 @@ func (s *TaskConnectorAbortTaskSuite) TestAbortFail() {
 	err := AbortTask(ctx, "task1", "user1")
 	s.Error(err)
 }
+
+func TestHandleEndTaskForGithubMergeQueueTask(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, VersionCollection))
+	defer func() {
+		require.NoError(t, db.ClearCollections(task.Collection, VersionCollection))
+	}()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	v1 := Version{
+		Id:        "version1",
+		Requester: evergreen.GithubMergeRequester,
+	}
+	require.NoError(t, v1.Insert())
+	t1 := &task.Task{
+		Id:        "task1",
+		Version:   "version1",
+		Requester: evergreen.GithubMergeRequester,
+		Status:    evergreen.TaskSucceeded,
+	}
+	require.NoError(t, t1.Insert())
+	t2 := &task.Task{
+		Id:        "task2",
+		Version:   "version1",
+		Requester: evergreen.GithubMergeRequester,
+		Status:    evergreen.TaskStarted,
+		Aborted:   true,
+	}
+	require.NoError(t, t2.Insert())
+	t3 := &task.Task{
+		Id:        "task3",
+		Version:   "version1",
+		Requester: evergreen.GithubMergeRequester,
+		Status:    evergreen.TaskStarted,
+	}
+	require.NoError(t, t3.Insert())
+	t4 := &task.Task{
+		Id:        "task4",
+		Version:   "version1",
+		Requester: evergreen.GithubMergeRequester,
+		Status:    evergreen.TaskStarted,
+	}
+	require.NoError(t, t4.Insert())
+	t5 := &task.Task{
+		Id:        "task5",
+		Version:   "version1",
+		Requester: evergreen.GithubMergeRequester,
+		Status:    evergreen.TaskStarted,
+	}
+	require.NoError(t, t5.Insert())
+
+	// Neither of these should abort any tasks.
+	assert.NoError(t, HandleEndTaskForGithubMergeQueueTask(ctx, t1, evergreen.TaskSucceeded))
+	assert.NoError(t, HandleEndTaskForGithubMergeQueueTask(ctx, t2, evergreen.TaskFailed))
+	tasks, err := task.Find(task.ByVersion("version1"))
+	assert.NoError(t, err)
+	for _, task := range tasks {
+		// only t2 should be aborted, since it already was
+		if task.Id == "task2" {
+			assert.True(t, task.Aborted, task.Id)
+		} else {
+			assert.False(t, task.Aborted, task.Id)
+		}
+	}
+
+	// This should abort all tasks.
+	assert.NoError(t, HandleEndTaskForGithubMergeQueueTask(ctx, t3, evergreen.TaskFailed))
+	tasks, err = task.Find(task.ByVersion("version1"))
+	assert.NoError(t, err)
+	for _, task := range tasks {
+		// all but t1, which already succeeded, and t3, the caller, should be aborted
+		if task.Id == "task1" || task.Id == "task3" {
+			assert.False(t, task.Aborted, task.Id)
+		} else {
+			assert.True(t, task.Aborted, task.Id)
+		}
+	}
+}
