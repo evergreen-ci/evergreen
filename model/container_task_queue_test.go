@@ -39,8 +39,8 @@ func TestContainerTaskQueue(t *testing.T) {
 		require.False(t, ctq.HasNext())
 		require.Zero(t, ctq.Next())
 	}
-	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context){
-		"ReturnsAllTasksThatNeedContainerAllocationInOrderOfActivation": func(t *testing.T, ctx context.Context) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
+		"ReturnsAllTasksThatNeedContainerAllocationInOrderOfActivation": func(ctx context.Context, t *testing.T) {
 			ref := getProjectRef()
 			require.NoError(t, ref.Insert())
 
@@ -76,7 +76,7 @@ func TestContainerTaskQueue(t *testing.T) {
 
 			checkEmpty(t, ctq)
 		},
-		"SetsFirstTaskScheduledTime": func(t *testing.T, ctx context.Context) {
+		"SetsFirstTaskScheduledTime": func(ctx context.Context, t *testing.T) {
 			ref := getProjectRef()
 			require.NoError(t, ref.Insert())
 
@@ -101,14 +101,14 @@ func TestContainerTaskQueue(t *testing.T) {
 
 			checkEmpty(t, ctq)
 		},
-		"ReturnsNoTask": func(t *testing.T, ctx context.Context) {
+		"ReturnsNoTask": func(ctx context.Context, t *testing.T) {
 			ctq, err := NewContainerTaskQueue(ctx)
 			require.NoError(t, err)
 			require.NotZero(t, ctq)
 
 			checkEmpty(t, ctq)
 		},
-		"DoesNotReturnTaskMissingProject": func(t *testing.T, ctx context.Context) {
+		"DoesNotReturnTaskMissingProject": func(ctx context.Context, t *testing.T) {
 			needsAllocation := getTaskThatNeedsContainerAllocation()
 			require.NoError(t, needsAllocation.Insert())
 
@@ -117,7 +117,7 @@ func TestContainerTaskQueue(t *testing.T) {
 
 			checkEmpty(t, ctq)
 		},
-		"DoesNotReturnTaskWithInvalidProject": func(t *testing.T, ctx context.Context) {
+		"DoesNotReturnTaskWithInvalidProject": func(ctx context.Context, t *testing.T) {
 			needsAllocation := getTaskThatNeedsContainerAllocation()
 			needsAllocation.Project = "foo"
 			require.NoError(t, needsAllocation.Insert())
@@ -127,7 +127,7 @@ func TestContainerTaskQueue(t *testing.T) {
 
 			checkEmpty(t, ctq)
 		},
-		"DoesNotReturnTaskWithProjectThatDisabledTaskDispatching": func(t *testing.T, ctx context.Context) {
+		"DoesNotReturnTaskWithProjectThatDisabledTaskDispatching": func(ctx context.Context, t *testing.T) {
 			ref := getProjectRef()
 			ref.DispatchingDisabled = utility.TruePtr()
 			require.NoError(t, ref.Insert())
@@ -141,7 +141,7 @@ func TestContainerTaskQueue(t *testing.T) {
 
 			checkEmpty(t, ctq)
 		},
-		"ReturnsPatchTaskWithProjectThatEnabledPatching": func(t *testing.T, ctx context.Context) {
+		"ReturnsPatchTaskWithProjectThatEnabledPatching": func(ctx context.Context, t *testing.T) {
 			ref := getProjectRef()
 			ref.PatchingDisabled = utility.FalsePtr()
 			require.NoError(t, ref.Insert())
@@ -163,7 +163,7 @@ func TestContainerTaskQueue(t *testing.T) {
 
 			checkEmpty(t, ctq)
 		},
-		"DoesNotReturnPatchTaskWithProjectThatDisabledPatching": func(t *testing.T, ctx context.Context) {
+		"DoesNotReturnPatchTaskWithProjectThatDisabledPatching": func(ctx context.Context, t *testing.T) {
 			ref := getProjectRef()
 			ref.PatchingDisabled = utility.TruePtr()
 			require.NoError(t, ref.Insert())
@@ -178,7 +178,7 @@ func TestContainerTaskQueue(t *testing.T) {
 
 			checkEmpty(t, ctq)
 		},
-		"DoesNotReturnTaskWithDisabledProject": func(t *testing.T, ctx context.Context) {
+		"DoesNotReturnTaskWithDisabledProject": func(ctx context.Context, t *testing.T) {
 			ref := getProjectRef()
 			ref.Enabled = false
 			require.NoError(t, ref.Insert())
@@ -192,7 +192,7 @@ func TestContainerTaskQueue(t *testing.T) {
 
 			checkEmpty(t, ctq)
 		},
-		"ReturnsGitHubTaskInDisabledAndHiddenProject": func(t *testing.T, ctx context.Context) {
+		"ReturnsGitHubTaskInDisabledAndHiddenProject": func(ctx context.Context, t *testing.T) {
 			ref := getProjectRef()
 			ref.Enabled = false
 			ref.Hidden = utility.TruePtr()
@@ -215,7 +215,7 @@ func TestContainerTaskQueue(t *testing.T) {
 
 			checkEmpty(t, ctq)
 		},
-		"DoesNotReturnNonGitHubTaskInDisabledAndHiddenProject": func(t *testing.T, ctx context.Context) {
+		"DoesNotReturnNonGitHubTaskInDisabledAndHiddenProject": func(ctx context.Context, t *testing.T) {
 			ref := getProjectRef()
 			ref.Enabled = false
 			ref.Hidden = utility.TruePtr()
@@ -237,7 +237,7 @@ func TestContainerTaskQueue(t *testing.T) {
 			defer cancel()
 
 			require.NoError(t, db.ClearCollections(task.Collection, ProjectRefCollection))
-			tCase(t, ctx)
+			tCase(ctx, t)
 		})
 	}
 }
