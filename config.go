@@ -256,19 +256,18 @@ func NewSettings(filename string) (*Settings, error) {
 	return settings, nil
 }
 
-// GetConfig returns the complete Evergreen configuration which is comprised of the shared
-// configuration from the config database with overrides from the local [ConfigCollection]
-// collection. Use [GetSharedConfig] to get a configuration that reflects only the shared
-// configuration.
+// GetConfig returns the complete Evergreen configuration with overrides applied from
+// the [ConfigCollection] collection in the [DB] database. Use [GetRawConfig] to get
+// a configuration that doesn't reflect overrides.
 func GetConfig(ctx context.Context) (*Settings, error) {
 	return getSettings(ctx, true)
 }
 
-// GetSharedConfig returns only the Evergreen configuration which is shared among all instances
-// reading from a single shared database. Use [GetConfig] to get a complete configuration that
-// includes overrides from the local database. If there is no shared database [GetConfig] and
-// [GetSharedConfig] are functionally equivalent.
-func GetSharedConfig(ctx context.Context) (*Settings, error) {
+// GetRawConfig returns only the raw Evergreen configuration without applying overrides. Use
+// [GetConfig] to get a complete configuration that includes overrides from the [DB] database.
+// If there is no [SharedDB] there are no overrides and [GetConfig] and [GetRawConfig] are
+// functionally equivalent.
+func GetRawConfig(ctx context.Context) (*Settings, error) {
 	return getSettings(ctx, false)
 }
 

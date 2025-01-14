@@ -3,7 +3,6 @@ package evergreen
 import (
 	"context"
 	"reflect"
-	"strings"
 
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
@@ -136,9 +135,9 @@ func byIDs(ids []string) bson.M {
 }
 
 // getSectionsBSON returns the config documents from the database as a slice of [bson.Raw].
-// If no shared database exists all configuration is fetched from the local database. If a
-// shared database exists, configuration is fetched from the shared database, save for the
-// overrides config document which is fetched from the local database and, if [includeOverrides],
+// If no shared database exists all configuration is fetched from the [DB] database. If a
+// [SharedDB] database exists, configuration is fetched from the [SharedDB] database, save for the
+// overrides config document which is fetched from the [DB] database and, if [includeOverrides],
 // the overrides in the overrides config document are applied to the rest of the configuration.
 func getSectionsBSON(ctx context.Context, ids []string, includeOverrides bool) ([]bson.Raw, error) {
 	db := GetEnvironment().DB()
@@ -165,9 +164,9 @@ func getSectionsBSON(ctx context.Context, ids []string, includeOverrides bool) (
 	return docs, nil
 }
 
-// overrideConfig overrides the content of the overrides document with the contents of the overrides
-// document from the local database. If [applyOverrides] is true then overrides are applied to
-// all the supplied docs.
+// overrideConfig replaces the content of the [OverridesConfig] document with the contents
+// of the overrides document from the [DB] database. If [applyOverrides] is true overrides
+// from the [OverridesConfig] are applied to all the supplied docs.
 func overrideConfig(ctx context.Context, docs []bson.Raw, applyOverrides bool) ([]bson.Raw, error) {
 	res := GetEnvironment().DB().Collection(ConfigCollection).FindOne(ctx, byId(overridesSectionID))
 	if err := res.Err(); err != nil {
@@ -180,77 +179,46 @@ func overrideConfig(ctx context.Context, docs []bson.Raw, applyOverrides bool) (
 	if err != nil {
 		return nil, errors.Wrap(err, "getting raw overrides config")
 	}
-	var overrides OverridesConfig
-	if err := bson.Unmarshal(rawOverrides, &overrides); err != nil {
-		return nil, errors.Wrap(err, "unmarshalling overrides config")
-	}
 
-	newDocs := make([]bson.Raw, 0, len(docs))
-	for _, doc := range docs {
-		newDoc, err := overrideDoc(doc, rawOverrides, overrides, applyOverrides)
-		if err != nil {
-			return nil, errors.Wrap(err, "overriding config section")
-		}
-		newDocs = append(newDocs, newDoc)
-	}
-
-	return newDocs, nil
-}
-
-func overrideDoc(doc, rawOverrides bson.Raw, overrides OverridesConfig, applyOverrides bool) (bson.Raw, error) {
-	idVal, err := doc.LookupErr("_id")
+	docs, err = replaceOverridesConfig(docs, rawOverrides)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting document id")
-	}
-	id, ok := idVal.StringValueOK()
-	if !ok {
-		return nil, errors.New("config document id isn't a string")
-	}
-	if id == overridesSectionID {
-		return rawOverrides, nil
+		return nil, errors.Wrap(err, "overrideing overrides config")
 	}
 
-	if sectionOverrides := overrides.sectionOverrides(id); applyOverrides && len(sectionOverrides) > 0 {
-		newDoc, err := overrideValues(doc, sectionOverrides)
+	if applyOverrides {
+		var overrides OverridesConfig
+		if err := bson.Unmarshal(rawOverrides, &overrides); err != nil {
+			return nil, errors.Wrap(err, "unmarshalling overrides config")
+		}
+		docs, err = overrides.overrideRawConfiguration(docs)
 		if err != nil {
-			return nil, errors.Wrapf(err, "overriding values for config document '%s'", id)
+			return nil, errors.Wrap(err, "applying configuration overrides")
 		}
-		return newDoc, nil
 	}
-	return doc, nil
+
+	return docs, nil
 }
 
-func overrideValues(original bson.Raw, overrides []Override) (bson.Raw, error) {
-	var originalM bson.M
-	if err := bson.Unmarshal(original, &originalM); err != nil {
-		return nil, errors.Wrap(err, "unmarshalling original document")
-	}
-
-	for _, override := range overrides {
-		if err := overrideField(originalM, override); err != nil {
-			return nil, errors.Wrapf(err, "overriding field '%s'", override.Field)
+// replaceOverridesConfig replaces the [OverridesConfig] document in [docs] with
+// the provided [overridesDoc].
+func replaceOverridesConfig(docs []bson.Raw, overridesDoc bson.Raw) ([]bson.Raw, error) {
+	res := make([]bson.Raw, 0, len(docs))
+	for _, doc := range docs {
+		idVal, err := doc.LookupErr("_id")
+		if err != nil {
+			return nil, errors.Wrap(err, "getting document id")
 		}
-	}
-
-	return bson.Marshal(originalM)
-}
-
-func overrideField(original bson.M, override Override) error {
-	curr := original
-	keys := strings.Split(override.Field, ".")
-	for i, key := range keys {
-		if i == len(keys)-1 {
-			curr[key] = override.Value
-			return nil
-		}
-		subdoc, ok := curr[key].(bson.M)
+		id, ok := idVal.StringValueOK()
 		if !ok {
-			return errors.Errorf("'%s' is not a subdocument", strings.Join(keys[0:i], "."))
+			return nil, errors.New("config document id isn't a string")
 		}
-		curr = subdoc
+		if id == overridesSectionID {
+			res = append(res, overridesDoc)
+		}
+		res = append(res, doc)
 	}
 
-	return nil
+	return res, nil
 }
 
 // getConfigSection fetches a section from the database and deserializes it into the provided
