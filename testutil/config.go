@@ -300,16 +300,6 @@ func MockConfig() *evergreen.Settings {
 					HostedZoneID: "hosted_zone_id",
 					Domain:       "example.com",
 				},
-				TaskSync: evergreen.S3Credentials{
-					Key:    "task_sync_key",
-					Secret: "task_sync_secret",
-					Bucket: "task_sync_bucket",
-				},
-				TaskSyncRead: evergreen.S3Credentials{
-					Key:    "task_sync_read_key",
-					Secret: "task_sync_read_secret",
-					Bucket: "task_sync_bucket",
-				},
 				Pod: evergreen.AWSPodConfig{
 					Role:   "role",
 					Region: "region",

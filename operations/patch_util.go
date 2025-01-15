@@ -13,7 +13,6 @@ import (
 	"runtime"
 	"strings"
 	"text/template"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -69,10 +68,6 @@ type patchParams struct {
 	Tasks               []string
 	RegexVariants       []string
 	RegexTasks          []string
-	SyncBuildVariants   []string
-	SyncTasks           []string
-	SyncStatuses        []string
-	SyncTimeout         time.Duration
 	Description         string
 	SkipConfirm         bool
 	Finalize            bool
@@ -106,10 +101,6 @@ type patchSubmission struct {
 	tasks               []string
 	regexVariants       []string
 	regexTasks          []string
-	syncBuildVariants   []string
-	syncTasks           []string
-	syncStatuses        []string
-	syncTimeout         time.Duration
 	finalize            bool
 	parameters          []patch.Parameter
 	triggerAliases      []string
@@ -134,10 +125,6 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 		regexVariants:       p.RegexVariants,
 		regexTasks:          p.RegexTasks,
 		alias:               p.Alias,
-		syncBuildVariants:   p.SyncBuildVariants,
-		syncTasks:           p.SyncTasks,
-		syncStatuses:        p.SyncStatuses,
-		syncTimeout:         p.SyncTimeout,
 		finalize:            p.Finalize,
 		backportOf:          p.BackportOf,
 		parameters:          p.Parameters,

@@ -109,20 +109,6 @@ type Parameter struct {
 	Value string `yaml:"value" bson:"value"`
 }
 
-// SyncAtEndOptions describes when and how tasks perform sync at the end of a
-// task.
-type SyncAtEndOptions struct {
-	// BuildVariants filters which variants will sync.
-	BuildVariants []string `bson:"build_variants,omitempty"`
-	// Tasks filters which tasks will sync.
-	Tasks []string `bson:"tasks,omitempty"`
-	// VariantsTasks are the resolved pairs of build variants and tasks that
-	// this patch can actually run task sync for.
-	VariantsTasks []VariantTasks `bson:"variants_tasks,omitempty"`
-	Statuses      []string       `bson:"statuses,omitempty"`
-	Timeout       time.Duration  `bson:"timeout,omitempty"`
-}
-
 type BackportInfo struct {
 	PatchID string `bson:"patch_id,omitempty" json:"patch_id,omitempty"`
 	SHA     string `bson:"sha,omitempty" json:"sha,omitempty"`
@@ -162,7 +148,6 @@ type Patch struct {
 	Tasks              []string         `bson:"tasks"`
 	RegexTasks         []string         `bson:"regex_tasks"`
 	VariantsTasks      []VariantTasks   `bson:"variants_tasks"`
-	SyncAtEndOpts      SyncAtEndOptions `bson:"sync_at_end_opts,omitempty"`
 	Patches            []ModulePatch    `bson:"patches"`
 	Parameters         []Parameter      `bson:"parameters,omitempty"`
 	// Activated indicates whether or not the patch is finalized (i.e.
@@ -452,86 +437,6 @@ func (p *Patch) AddTasks(tasks []string) error {
 	}
 	_, err := db.FindAndModify(Collection, bson.M{IdKey: p.Id}, nil, change, p)
 	return err
-}
-
-// ResolveSyncVariantTasks filters the given tasks by variant to find only those
-// that match the build variant and task filters.
-func (p *Patch) ResolveSyncVariantTasks(vts []VariantTasks) []VariantTasks {
-	bvs := p.SyncAtEndOpts.BuildVariants
-	tasks := p.SyncAtEndOpts.Tasks
-
-	if len(bvs) == 1 && bvs[0] == "all" {
-		bvs = []string{}
-		for _, vt := range vts {
-			if !utility.StringSliceContains(bvs, vt.Variant) {
-				bvs = append(bvs, vt.Variant)
-			}
-		}
-	}
-	if len(tasks) == 1 && tasks[0] == "all" {
-		tasks = []string{}
-		for _, vt := range vts {
-			for _, t := range vt.Tasks {
-				if !utility.StringSliceContains(tasks, t) {
-					tasks = append(tasks, t)
-				}
-			}
-			for _, dt := range vt.DisplayTasks {
-				if !utility.StringSliceContains(tasks, dt.Name) {
-					tasks = append(tasks, dt.Name)
-				}
-			}
-		}
-	}
-
-	bvsToVTs := map[string]VariantTasks{}
-	for _, vt := range vts {
-		if !utility.StringSliceContains(bvs, vt.Variant) {
-			continue
-		}
-		for _, t := range vt.Tasks {
-			if utility.StringSliceContains(tasks, t) {
-				resolvedVT := bvsToVTs[vt.Variant]
-				resolvedVT.Variant = vt.Variant
-				resolvedVT.Tasks = append(resolvedVT.Tasks, t)
-				bvsToVTs[vt.Variant] = resolvedVT
-			}
-		}
-		for _, dt := range vt.DisplayTasks {
-			if utility.StringSliceContains(tasks, dt.Name) {
-				resolvedVT := bvsToVTs[vt.Variant]
-				resolvedVT.Variant = vt.Variant
-				resolvedVT.DisplayTasks = append(resolvedVT.DisplayTasks, dt)
-				bvsToVTs[vt.Variant] = resolvedVT
-			}
-		}
-	}
-
-	var resolvedVTs []VariantTasks
-	for _, vt := range bvsToVTs {
-		resolvedVTs = append(resolvedVTs, vt)
-	}
-
-	return resolvedVTs
-}
-
-// AddSyncVariantsTasks adds new tasks for variants filtered from the given
-// sequence of VariantsTasks to the existing synced VariantTasks.
-func (p *Patch) AddSyncVariantsTasks(vts []VariantTasks) error {
-	resolved := MergeVariantsTasks(p.SyncAtEndOpts.VariantsTasks, p.ResolveSyncVariantTasks(vts))
-	syncVariantsTasksKey := bsonutil.GetDottedKeyName(SyncAtEndOptionsKey, SyncAtEndOptionsVariantsTasksKey)
-	if err := UpdateOne(
-		bson.M{IdKey: p.Id},
-		bson.M{
-			"$set": bson.M{
-				syncVariantsTasksKey: resolved,
-			},
-		},
-	); err != nil {
-		return errors.WithStack(err)
-	}
-	p.SyncAtEndOpts.VariantsTasks = resolved
-	return nil
 }
 
 // UpdateRepeatPatchId updates the repeat patch Id value to be used for subsequent pr patches

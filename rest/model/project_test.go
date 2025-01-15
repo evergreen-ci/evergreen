@@ -26,19 +26,13 @@ func TestRepoBuildFromService(t *testing.T) {
 	assert.NoError(t, apiRef.BuildFromService(repoRef.ProjectRef))
 	// not defaulted yet
 	require.NotNil(t, apiRef)
-	assert.NotNil(t, apiRef.TaskSync)
 	assert.Nil(t, apiRef.GitTagVersionsEnabled)
-	assert.Nil(t, apiRef.TaskSync.ConfigEnabled)
 
 	apiRef.DefaultUnsetBooleans()
 	assert.True(t, *apiRef.GithubChecksEnabled)
 	assert.False(t, *apiRef.PRTestingEnabled)
 	require.NotNil(t, apiRef.GitTagVersionsEnabled) // should default
 	assert.False(t, *apiRef.GitTagVersionsEnabled)
-
-	assert.NotNil(t, apiRef.TaskSync)
-	require.NotNil(t, apiRef.TaskSync.ConfigEnabled) // should default
-	assert.False(t, *apiRef.TaskSync.ConfigEnabled)
 
 	require.NotNil(t, apiRef.CommitQueue.Enabled)
 	assert.False(t, *apiRef.CommitQueue.Enabled)

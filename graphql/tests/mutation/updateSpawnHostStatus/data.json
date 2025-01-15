@@ -123,7 +123,6 @@
       "provisioned": true,
       "provision_options": {
         "task_id": "",
-        "task_sync": false,
         "owner_id": "sophie.stadler",
         "setup_script": ""
       },

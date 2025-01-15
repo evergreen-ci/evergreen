@@ -48,7 +48,6 @@ type TaskConfig struct {
 	GithubMergeData    thirdparty.GithubMergeGroup
 	Timeout            Timeout
 	TaskOutput         evergreen.S3Credentials
-	TaskSync           evergreen.S3Credentials
 	ModulePaths        map[string]string
 	CedarTestResultsID string
 	TaskGroup          *model.TaskGroup

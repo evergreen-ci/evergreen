@@ -322,9 +322,6 @@ type Task struct {
 
 	CommitQueueMerge bool `bson:"commit_queue_merge,omitempty" json:"commit_queue_merge,omitempty"`
 
-	CanSync       bool             `bson:"can_sync" json:"can_sync"`
-	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty" json:"sync_at_end_opts,omitempty"`
-
 	// IsEssentialToSucceed indicates that this task must finish in order for
 	// its build and version to be considered successful. For example, tasks
 	// selected by the GitHub PR alias must succeed for the GitHub PR requester
@@ -436,12 +433,6 @@ func (t *Task) GetTaskGroupString() string {
 // S3Path returns the path to a task's directory dump in S3.
 func (t *Task) S3Path(bv, name string) string {
 	return strings.Join([]string{t.Project, t.Version, bv, name, "latest"}, "/")
-}
-
-type SyncAtEndOptions struct {
-	Enabled  bool          `bson:"enabled,omitempty" json:"enabled,omitempty"`
-	Statuses []string      `bson:"statuses,omitempty" json:"statuses,omitempty"`
-	Timeout  time.Duration `bson:"timeout,omitempty" json:"timeout,omitempty"`
 }
 
 // Dependency represents a task that must be completed before the owning

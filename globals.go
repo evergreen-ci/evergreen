@@ -346,10 +346,6 @@ const (
 
 	VSCodePort = 2021
 
-	// DefaultTaskSyncAtEndTimeout is the default timeout for task sync at the
-	// end of a patch.
-	DefaultTaskSyncAtEndTimeout = time.Hour
-
 	DefaultShutdownWaitSeconds = 10
 
 	// HeartbeatTimeoutThreshold is the timeout for how long a task can run without sending
@@ -772,8 +768,6 @@ func UserRequesterToInternalRequester(requester UserRequester) string {
 const (
 	GenerateTasksCommandName      = "generate.tasks"
 	HostCreateCommandName         = "host.create"
-	S3PushCommandName             = "s3.push"
-	S3PullCommandName             = "s3.pull"
 	ShellExecCommandName          = "shell.exec"
 	AttachResultsCommandName      = "attach.results"
 	AttachArtifactsCommandName    = "attach.artifacts"

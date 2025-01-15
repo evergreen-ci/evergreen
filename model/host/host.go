@@ -304,10 +304,6 @@ type ProvisionOptions struct {
 	// artifacts for the given task.
 	TaskId string `bson:"task_id" json:"task_id"`
 
-	// TaskSync, if set along with TaskId, will fetch the task's sync data on
-	// the spawn host instead of fetching the source and artifacts. This is
-	TaskSync bool `bson:"task_sync" json:"task_sync"`
-
 	// Owner is the user associated with the host used to populate any necessary metadata.
 	OwnerId string `bson:"owner_id" json:"owner_id"`
 

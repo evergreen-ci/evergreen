@@ -915,36 +915,6 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 }
 
-// runEndTaskSync runs task sync if it was requested for the end of this task.
-func (a *Agent) runEndTaskSync(ctx context.Context, tc *taskContext, detail *apimodels.TaskEndDetail) {
-	taskSyncCmds := endTaskSyncCommands(tc, detail)
-	if taskSyncCmds == nil {
-		return
-	}
-
-	var timeout time.Duration
-	if tc.taskConfig.Task.SyncAtEndOpts.Timeout != 0 {
-		timeout = tc.taskConfig.Task.SyncAtEndOpts.Timeout
-	} else {
-		timeout = evergreen.DefaultTaskSyncAtEndTimeout
-	}
-
-	taskSync := commandBlock{
-		block:       command.TaskSyncBlock,
-		commands:    taskSyncCmds,
-		timeoutKind: globals.TaskSyncTimeout,
-		getTimeout: func() time.Duration {
-			return timeout
-		},
-		canTimeOutHeartbeat: true,
-	}
-
-	// If the task sync commands error, ignore the error. runCommandsInBlock
-	// already logged the error and the task sync commands cannot cause the task
-	// to fail since they're optional.
-	_ = a.runCommandsInBlock(ctx, tc, taskSync)
-}
-
 func (a *Agent) handleTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) (bool, error) {
 	resp, err := a.finishTask(ctx, tc, status, systemFailureDescription)
 	if err != nil {
@@ -1001,7 +971,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		detail.PostErrored = tc.getPostErrored()
 		detail.OtherFailingCommands = tc.getOtherFailingCommands()
 
-		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskFailed:
 		a.handleTimeoutAndOOM(ctx, tc, detail, status)
 
@@ -1014,7 +983,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		detail.PostErrored = tc.getPostErrored()
 		detail.OtherFailingCommands = tc.getOtherFailingCommands()
 
-		a.runEndTaskSync(ctx, tc, detail)
 	case evergreen.TaskSystemFailed:
 		// This is a special status indicating that the agent failed for reasons
 		// outside of a task's control (e.g. due to a panic). Therefore, it

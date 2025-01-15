@@ -83,7 +83,6 @@ const (
 	SetupTaskTimeout     TimeoutType = "setup_task"
 	TeardownTaskTimeout  TimeoutType = "teardown_task"
 	TeardownGroupTimeout TimeoutType = "teardown_group"
-	TaskSyncTimeout      TimeoutType = "task_sync"
 )
 
 // LogOutput represents the output locations for the agent's logs.

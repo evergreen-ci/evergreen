@@ -256,14 +256,6 @@ func (c *Mock) GetRecentVersionsForProject(context.Context, string, string) ([]r
 	return nil, nil
 }
 
-func (c *Mock) GetTaskSyncReadCredentials(context.Context) (*evergreen.S3Credentials, error) {
-	return &evergreen.S3Credentials{}, nil
-}
-
-func (c *Mock) GetTaskSyncPath(context.Context, string) (string, error) {
-	return "", nil
-}
-
 func (c *Mock) GetDistroByName(context.Context, string) (*model.APIDistro, error) {
 	return nil, nil
 }

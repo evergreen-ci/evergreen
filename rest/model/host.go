@@ -64,7 +64,6 @@ func (apiOpts *APIProvisionOptions) BuildFromService(opts host.ProvisionOptions)
 type HostRequestOptions struct {
 	DistroID              string     `json:"distro" yaml:"distro"`
 	TaskID                string     `json:"task" yaml:"task"`
-	TaskSync              bool       `json:"task_sync" yaml:"task_sync"`
 	Region                string     `json:"region" yaml:"region"`
 	KeyName               string     `json:"keyname" yaml:"key"`
 	UserData              string     `json:"userdata" yaml:"userdata_file"`
