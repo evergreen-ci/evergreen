@@ -1914,7 +1914,7 @@ func addStatusColorSort(key string) bson.M {
 						},
 						{
 							"case": bson.M{
-								"$eq": []interface{}{"$" + key, []string{evergreen.TaskUnscheduled, evergreen.TaskInactive, evergreen.TaskStatusBlocked, evergreen.TaskAborted}},
+								"$in": []interface{}{"$" + key, []string{evergreen.TaskUnscheduled, evergreen.TaskInactive, evergreen.TaskStatusBlocked, evergreen.TaskAborted}},
 							},
 							"then": 11, // light grey
 						},
