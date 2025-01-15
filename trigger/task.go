@@ -97,7 +97,7 @@ func taskFinishedTwoOrMoreDaysAgo(ctx context.Context, taskID string, sub *event
 		return false, errors.Wrapf(err, "finding task '%s'", taskID)
 	}
 	if t == nil {
-		t, err = task.FindOneOldWithFields(task.ById(taskID), task.FinishTimeKey)
+		t, err = task.FindOneOldWithFields(ctx, task.ById(taskID), task.FinishTimeKey)
 		if err != nil {
 			return false, errors.Wrapf(err, "finding old task '%s'", taskID)
 		}

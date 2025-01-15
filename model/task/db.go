@@ -1419,10 +1419,10 @@ func FindOneOld(ctx context.Context, filter bson.M) (*Task, error) {
 	return task, err
 }
 
-func FindOneOldWithFields(filter bson.M, fields ...string) (*Task, error) {
+func FindOneOldWithFields(ctx context.Context, filter bson.M, fields ...string) (*Task, error) {
 	task := &Task{}
 	query := db.Query(filter).WithFields(fields...)
-	err := db.FindOneQ(OldCollection, query, task)
+	err := db.FindOneQContext(ctx, OldCollection, query, task)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
