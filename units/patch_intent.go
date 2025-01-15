@@ -361,7 +361,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.Wrap(err, BuildTasksAndVariantsError)
 	}
 
-	if (j.intent.ShouldFinalizePatch() || patchDoc.IsCommitQueuePatch()) &&
+	if (j.intent.ShouldFinalizePatch() || patchDoc.IsMergeQueuePatch()) &&
 		len(patchDoc.VariantsTasks) == 0 {
 		j.gitHubError = NoTasksOrVariants
 		return errors.New("patch has no build variants or tasks")
@@ -379,7 +379,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	if patchDoc.IsCommitQueuePatch() {
+	if patchDoc.IsMergeQueuePatch() {
 		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, pref, patchedProject, patchDoc.IsGithubMergePatch(), patchDoc.GithubMergeData)
 	}
 
@@ -510,7 +510,9 @@ func (j *patchIntentProcessor) setGitHubPatchingError(err error) error {
 	if strings.Contains(err.Error(), thirdparty.Github502Error) {
 		j.gitHubError = GitHubInternalError
 	}
-	if strings.Contains(err.Error(), model.LoadProjectError) {
+	if strings.Contains(err.Error(), model.LoadProjectError) ||
+		strings.Contains(err.Error(), model.TranslateProjectConfigError) {
+		// We use the same GitHub error in these cases, because the remedy is the same.
 		j.gitHubError = InvalidConfig
 	}
 	return err
@@ -918,7 +920,7 @@ func (j *patchIntentProcessor) buildBackportPatchDoc(ctx context.Context, projec
 		if existingMergePatch == nil {
 			return errors.Errorf("patch '%s' not found", patchDoc.BackportOf.PatchID)
 		}
-		if !existingMergePatch.IsCommitQueuePatch() {
+		if !existingMergePatch.IsMergeQueuePatch() {
 			return errors.Errorf("can only backport commit queue patches")
 		}
 

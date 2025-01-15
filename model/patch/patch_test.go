@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -106,9 +105,8 @@ func (s *patchSuite) SetupTest() {
 		{
 			CreateTime: s.time,
 			GithubPatchData: thirdparty.GithubPatch{
-				PRNumber:       9002,
-				Author:         "octodog",
-				MergeCommitSHA: "abcdef",
+				PRNumber: 9002,
+				Author:   "octodog",
 			},
 		},
 	}
@@ -118,14 +116,9 @@ func (s *patchSuite) SetupTest() {
 	}
 
 	s.True(s.patches[0].IsGithubPRPatch())
-	s.False(s.patches[0].IsPRMergePatch())
 	s.True(s.patches[1].IsGithubPRPatch())
-	s.False(s.patches[1].IsPRMergePatch())
 	s.True(s.patches[2].IsGithubPRPatch())
-	s.False(s.patches[2].IsPRMergePatch())
 	s.True(s.patches[3].IsGithubPRPatch())
-	s.False(s.patches[3].IsPRMergePatch())
-	s.True(s.patches[4].IsPRMergePatch())
 	s.False(s.patches[4].IsGithubPRPatch())
 }
 
@@ -149,27 +142,6 @@ func (s *patchSuite) TestByGithubPRAndCreatedBefore() {
 	patches, err = Find(ByGithubPRAndCreatedBefore(s.time, "evergreen-ci", "evergreen", 9001))
 	s.NoError(err)
 	s.Len(patches, 1)
-}
-
-func (s *patchSuite) TestMakeMergePatch() {
-	pr := &github.PullRequest{
-		Base: &github.PullRequestBranch{
-			SHA: github.String("abcdef"),
-		},
-		User: &github.User{
-			ID: github.Int64(1),
-		},
-		Number:         github.Int(1),
-		MergeCommitSHA: github.String("abcdef"),
-	}
-
-	p, err := MakeNewMergePatch(pr, "mci", evergreen.CommitQueueAlias, "title", "message")
-	s.NoError(err)
-	s.Equal("mci", p.Project)
-	s.Equal(evergreen.VersionCreated, p.Status)
-	s.Equal(*pr.MergeCommitSHA, p.GithubPatchData.MergeCommitSHA)
-	s.Equal("title", p.GithubPatchData.CommitTitle)
-	s.Equal("message", p.GithubPatchData.CommitMessage)
 }
 
 func (s *patchSuite) TestUpdateGithashProjectAndTasks() {
@@ -887,9 +859,9 @@ func TestSetDownstreamParameters(t *testing.T) {
 	}
 
 	assert.NoError(p.SetDownstreamParameters(paramsToAdd))
-	assert.Equal(p.Triggers.DownstreamParameters[0].Key, "key_0")
-	assert.Equal(p.Triggers.DownstreamParameters[1].Key, "key_1")
-	assert.Equal(p.Triggers.DownstreamParameters[2].Key, "key_2")
+	assert.Equal("key_0", p.Triggers.DownstreamParameters[0].Key)
+	assert.Equal("key_1", p.Triggers.DownstreamParameters[1].Key)
+	assert.Equal("key_2", p.Triggers.DownstreamParameters[2].Key)
 }
 
 func TestSetTriggerAliases(t *testing.T) {
@@ -913,9 +885,9 @@ func TestSetTriggerAliases(t *testing.T) {
 
 	dbPatch, err := FindOne(ById(p.Id))
 	assert.NoError(err)
-	assert.Equal(dbPatch.Triggers.Aliases[0], "alias_0")
-	assert.Equal(dbPatch.Triggers.Aliases[1], "alias_1")
-	assert.Equal(dbPatch.Triggers.Aliases[2], "alias_2")
+	assert.Equal("alias_0", dbPatch.Triggers.Aliases[0])
+	assert.Equal("alias_1", dbPatch.Triggers.Aliases[1])
+	assert.Equal("alias_2", dbPatch.Triggers.Aliases[2])
 }
 
 func TestSetChildPatches(t *testing.T) {
@@ -939,9 +911,9 @@ func TestSetChildPatches(t *testing.T) {
 
 	dbPatch, err := FindOne(ById(p.Id))
 	assert.NoError(err)
-	assert.Equal(dbPatch.Triggers.ChildPatches[0], "id_0")
-	assert.Equal(dbPatch.Triggers.ChildPatches[1], "id_1")
-	assert.Equal(dbPatch.Triggers.ChildPatches[2], "id_2")
+	assert.Equal("id_0", dbPatch.Triggers.ChildPatches[0])
+	assert.Equal("id_1", dbPatch.Triggers.ChildPatches[1])
+	assert.Equal("id_2", dbPatch.Triggers.ChildPatches[2])
 }
 
 func TestGetCollectiveStatusFromPatchStatuses(t *testing.T) {
@@ -970,36 +942,29 @@ func TestGetRequester(t *testing.T) {
 
 	p1 := Patch{
 		Id:    bson.NewObjectId(),
-		Alias: evergreen.CommitQueueAlias,
-	}
-	require.NoError(t, p1.Insert())
-
-	p2 := Patch{
-		Id:    bson.NewObjectId(),
 		Alias: "",
 		GithubPatchData: thirdparty.GithubPatch{
 			HeadOwner: "me",
 		},
 	}
-	require.NoError(t, p2.Insert())
+	require.NoError(t, p1.Insert())
 
-	p3 := Patch{
+	p2 := Patch{
 		Id:    bson.NewObjectId(),
 		Alias: evergreen.CommitQueueAlias,
 		GithubMergeData: thirdparty.GithubMergeGroup{
 			HeadSHA: "1234567",
 		},
 	}
-	require.NoError(t, p3.Insert())
+	require.NoError(t, p2.Insert())
 
-	p4 := Patch{
+	p3 := Patch{
 		Id:    bson.NewObjectId(),
 		Alias: "",
 	}
-	require.NoError(t, p4.Insert())
+	require.NoError(t, p3.Insert())
 
-	require.Equal(t, p1.GetRequester(), evergreen.MergeTestRequester)
-	require.Equal(t, p2.GetRequester(), evergreen.GithubPRRequester)
-	require.Equal(t, p3.GetRequester(), evergreen.GithubMergeRequester)
-	require.Equal(t, p4.GetRequester(), evergreen.PatchVersionRequester)
+	require.Equal(t, evergreen.GithubPRRequester, p1.GetRequester())
+	require.Equal(t, evergreen.GithubMergeRequester, p2.GetRequester())
+	require.Equal(t, evergreen.PatchVersionRequester, p3.GetRequester())
 }

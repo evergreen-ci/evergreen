@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"regexp"
@@ -295,86 +296,6 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 
 	projectVars.MergeWithRepoVars(repoVars)
 	return projectVars, nil
-}
-
-// UpdateProjectVarsByValue searches all projects who have a variable set to the toReplace input parameter, and replaces all
-// matching project variables with the replacement input parameter. If dryRun is set to true, the update is not performed.
-// We return a list of keys that were replaced (or, the list of keys that would be replaced in the case that dryRun is true).
-// If enabledOnly is set to true, we update only projects that are enabled, and repos.
-func UpdateProjectVarsByValue(toReplace, replacement, username string, dryRun, enabledOnly bool) (map[string][]string, error) {
-	catcher := grip.NewBasicCatcher()
-	matchingProjectVars, err := getVarsByValue(toReplace)
-	if err != nil {
-		catcher.Wrap(err, "fetching projects with matching value")
-	}
-	if matchingProjectVars == nil {
-		catcher.New("no projects with matching value found")
-	}
-	changes := map[string][]string{}
-	for _, projectVars := range matchingProjectVars {
-		for key, val := range projectVars.Vars {
-			if val == toReplace {
-				identifier := projectVars.Id
-				// Don't error if this doesn't work, since we can just use the ID instead, and this may be a repo project.
-				pRef, _ := FindBranchProjectRef(projectVars.Id)
-				if pRef != nil {
-					if enabledOnly && !pRef.Enabled {
-						continue
-					}
-					if pRef.Identifier != "" {
-						identifier = pRef.Identifier
-					}
-				}
-				if !dryRun {
-					var beforeVars ProjectVars
-					err = util.DeepCopy(*projectVars, &beforeVars)
-					if err != nil {
-						catcher.Wrap(err, "copying project variables")
-						continue
-					}
-					before := ProjectSettings{
-						Vars: beforeVars,
-					}
-
-					projectVars.Vars[key] = replacement
-					err = projectVars.updateSingleVar(key, replacement)
-					if err != nil {
-						catcher.Wrapf(err, "overwriting variable '%s' for project '%s'", key, projectVars.Id)
-						continue
-					}
-
-					after := ProjectSettings{
-						Vars: *projectVars,
-					}
-
-					if err = LogProjectModified(projectVars.Id, username, &before, &after); err != nil {
-						catcher.Wrapf(err, "logging project modification for project '%s'", projectVars.Id)
-					}
-				}
-				changes[identifier] = append(changes[identifier], key)
-			}
-		}
-	}
-	return changes, catcher.Resolve()
-}
-
-func (projectVars *ProjectVars) updateSingleVar(key, val string) error {
-	if len(projectVars.Vars) == 0 && len(projectVars.PrivateVars) == 0 &&
-		len(projectVars.AdminOnlyVars) == 0 {
-		return nil
-	}
-
-	return db.Update(
-		ProjectVarsCollection,
-		bson.M{
-			projectVarIdKey: projectVars.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				bsonutil.GetDottedKeyName(projectVarsMapKey, key): val,
-			},
-		},
-	)
 }
 
 // CopyProjectVars copies the variables for the first project to the second
@@ -689,10 +610,11 @@ func getUpdatedParamMappings(original ParameterMappings, upserted, deleted map[s
 }
 
 // isParameterStoreEnabledForProject checks if Parameter Store is enabled for a
-// project.
+// project. If ignoreProjectFeatureFlag is enabled, the project will use
+// Parameter Store regardless of the project-level feature flag.
 // TODO (DEVPROD-11882): remove feature flag checks once all project vars are
 // using Parameter Store and the rollout is stable.
-func isParameterStoreEnabledForProject(ctx context.Context, ref *ProjectRef) (bool, error) {
+func isParameterStoreEnabledForProject(ctx context.Context, ref *ProjectRef, ignoreProjectFeatureFlag bool) (bool, error) {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "getting service flags")
@@ -701,16 +623,19 @@ func isParameterStoreEnabledForProject(ctx context.Context, ref *ProjectRef) (bo
 		return false, nil
 	}
 
+	if ignoreProjectFeatureFlag {
+		return true, nil
+	}
+
 	if ref == nil {
 		return false, errors.Errorf("ref is nil")
 	}
 	return ref.ParameterStoreEnabled, nil
 }
 
-// findProjectRef finds the project ref associated with the project variables.
+// findProjectRef finds the project ref associated with the ID.
 // Returns a bool indicating if it's a branch project ref or a repo ref.
-func (projectVars *ProjectVars) findProjectRef() (ref *ProjectRef, isRepoRef bool, err error) {
-	projectID := projectVars.Id
+func findProjectRef(projectID string) (ref *ProjectRef, isRepoRef bool, err error) {
 	// This intentionally looks for a branch project ref without merging with
 	// its repo ref because project vars for a branch project are stored
 	// separately from project vars for a repo. Therefore, a branch project and
@@ -974,16 +899,16 @@ func (projectVars *ProjectVars) Clear() error {
 // has Parameter Store enabled and if so, runs the provided Parameter Store
 // operation.
 func (projectVars *ProjectVars) checkAndRunParameterStoreOp(ctx context.Context, op func(ref *ProjectRef, isRepoRef bool), opName string) {
-	ref, isRepoRef, err := projectVars.findProjectRef()
+	ref, isRepoRef, err := findProjectRef(projectVars.Id)
 	grip.Error(message.WrapError(err, message.Fields{
-		"message":    "could not get project ref to check if Parameter Store is enabled for project; assuming it's disabled and refusing to clear any project variables from Parameter Store",
+		"message":    "could not get project ref to check if Parameter Store is enabled for project; assuming it's disabled and will not use Parameter Store",
 		"op":         opName,
 		"project_id": projectVars.Id,
 		"epic":       "DEVPROD-5552",
 	}))
-	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, ref)
+	isPSEnabled, err := isParameterStoreEnabledForProject(ctx, ref, false)
 	grip.Error(message.WrapError(err, message.Fields{
-		"message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and refusing to clear any project variables from Parameter Store",
+		"message":    "could not check if Parameter Store is enabled for project; assuming it's disabled and will not use Parameter Store",
 		"op":         opName,
 		"project_id": projectVars.Id,
 		"epic":       "DEVPROD-5552",
@@ -1069,25 +994,6 @@ func (projectVars *ProjectVars) RedactPrivateVars() *ProjectVars {
 	}
 
 	return res
-}
-
-func getVarsByValue(val string) ([]*ProjectVars, error) {
-	matchingProjects := []*ProjectVars{}
-	pipeline := []bson.M{
-		{"$addFields": bson.M{projectVarsMapKey: bson.M{"$objectToArray": "$" + projectVarsMapKey}}},
-		{"$match": bson.M{bsonutil.GetDottedKeyName(projectVarsMapKey, "v"): val}},
-		{"$addFields": bson.M{projectVarsMapKey: bson.M{"$arrayToObject": "$" + projectVarsMapKey}}},
-	}
-
-	err := db.Aggregate(ProjectVarsCollection, pipeline, &matchingProjects)
-
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return matchingProjects, nil
 }
 
 // MergeWithRepoVars merges the project and repo variables
@@ -1258,8 +1164,8 @@ func getCompressedParamForVar(varName, varValue string) (paramName string, param
 		return varName, varValue, nil
 	}
 
-	compressedValue := bytes.NewBuffer(make([]byte, 0, len(varValue)))
-	gzw := gzip.NewWriter(compressedValue)
+	var compressedValue bytes.Buffer
+	gzw := gzip.NewWriter(&compressedValue)
 	if _, err := gzw.Write([]byte(varValue)); err != nil {
 		return "", "", errors.Wrap(err, "compressing long project variable value")
 	}
@@ -1267,18 +1173,27 @@ func getCompressedParamForVar(varName, varValue string) (paramName string, param
 		return "", "", errors.Wrap(err, "closing gzip writer after compressing long project variable value")
 	}
 
-	if compressedValue.Len() >= parameterstore.ParamValueMaxLength {
-		return "", "", errors.Errorf("project variable value exceeds maximum length, even after attempted compression (value is %d bytes, compressed value is %d bytes, maximum is %d bytes)", len(varValue), compressedValue.Len(), parameterstore.ParamValueMaxLength)
+	// gzip produces raw binary data, whereas Parameter Store can only handle
+	// strings. Encoding it as a base64 string makes it possible to store the
+	// gzip-compressed value in Parameter Store.
+	compressedBase64Value := base64.StdEncoding.EncodeToString(compressedValue.Bytes())
+
+	if len(compressedBase64Value) >= parameterstore.ParamValueMaxLength {
+		return "", "", errors.Errorf("project variable value exceeds maximum length, even after attempted compression (value is %d bytes, compressed value is %d bytes, maximum is %d bytes)", len(varValue), len(compressedBase64Value), parameterstore.ParamValueMaxLength)
 	}
 
-	return fmt.Sprintf("%s%s", varName, gzipCompressedParamExtension), compressedValue.String(), nil
+	return fmt.Sprintf("%s%s", varName, gzipCompressedParamExtension), compressedBase64Value, nil
 }
 
 // convertParamToVar converts a parameter back to its original project variable
 // name and value. This is the inverse operation of convertVarToParam.
 func convertParamToVar(pm ParameterMappings, paramName, paramValue string) (varName, varValue string, err error) {
 	if strings.HasSuffix(paramName, gzipCompressedParamExtension) {
-		gzr, err := gzip.NewReader(strings.NewReader(paramValue))
+		compressedValue, err := base64.StdEncoding.DecodeString(paramValue)
+		if err != nil {
+			return "", "", errors.Wrap(err, "decoding base64-encoded compressed parameter value")
+		}
+		gzr, err := gzip.NewReader(bytes.NewReader(compressedValue))
 		if err != nil {
 			return "", "", errors.Wrap(err, "creating gzip reader for compressed project variable")
 		}

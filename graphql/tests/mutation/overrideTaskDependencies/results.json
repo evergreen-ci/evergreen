@@ -7,7 +7,7 @@
           "overrideTaskDependencies": {
             "id": "t1",
             "execution": 0,
-            "status": "will-run",
+            "displayStatus": "will-run",
             "dependsOn": [
               {
                 "name": "a dep",
@@ -21,12 +21,16 @@
     },
     {
       "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": null,
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to 'edit tasks' for the project 'evergreen'",
-            "path": ["overrideTaskDependencies", "taskId"],
+            "message": "user 'regular_user' does not have permission to 'edit tasks' for the project 'evergreen'",
+            "path": [
+              "overrideTaskDependencies",
+              "taskId"
+            ],
             "extensions": {
               "code": "FORBIDDEN"
             }

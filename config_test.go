@@ -255,9 +255,8 @@ func (s *AdminSuite) TestApiConfig() {
 	defer cancel()
 
 	config := APIConfig{
-		HttpListenAddr:      "addr",
-		GithubWebhookSecret: "secret",
-		URL:                 "api",
+		HttpListenAddr: "addr",
+		URL:            "api",
 	}
 
 	err := config.Set(ctx)
@@ -367,6 +366,22 @@ func (s *AdminSuite) TestPodLifecycleConfig() {
 	s.Equal(config, settings.PodLifecycle)
 }
 
+func (s *AdminSuite) TestParameterStoreConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config := ParameterStoreConfig{
+		Prefix: "/evergreen",
+	}
+
+	err := config.Set(ctx)
+	s.NoError(err)
+	settings, err := GetConfig(ctx)
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.ParameterStore)
+}
+
 func (s *AdminSuite) TestProvidersConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -378,9 +393,6 @@ func (s *AdminSuite) TestProvidersConfig() {
 					Secret: "aws_secret",
 					Key:    "aws",
 				},
-			},
-			ParameterStore: ParameterStoreConfig{
-				Prefix: "/evergreen",
 			},
 		},
 		Docker: DockerConfig{
@@ -477,13 +489,14 @@ func (s *AdminSuite) TestUiConfig() {
 	defer cancel()
 
 	config := UIConfig{
-		Url:            "url",
-		HelpUrl:        "helpurl",
-		HttpListenAddr: "addr",
-		Secret:         "secret",
-		DefaultProject: "mci",
-		CacheTemplates: true,
-		CsrfKey:        "csrf",
+		Url:                "url",
+		HelpUrl:            "helpurl",
+		HttpListenAddr:     "addr",
+		Secret:             "secret",
+		DefaultProject:     "mci",
+		CacheTemplates:     true,
+		CsrfKey:            "csrf",
+		StagingEnvironment: "mine",
 	}
 
 	err := config.Set(ctx)
@@ -582,6 +595,24 @@ func (s *AdminSuite) TestNotifyConfig() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Notify)
+}
+
+func (s *AdminSuite) TestLoggerConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config := LoggerConfig{
+		RedactKeys: []string{
+			"secret",
+			"github token",
+		},
+	}
+	err := config.Set(ctx)
+	s.NoError(err)
+	settings, err := GetConfig(ctx)
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.LoggerConfig)
 }
 
 func (s *AdminSuite) TestContainerPoolsConfig() {
@@ -701,26 +732,6 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 		},
 	}
 	s.EqualError(c.ValidateAndDefault(), "template: this-is:1: bad character U+007D '}'")
-}
-
-func (s *AdminSuite) TestCommitQueueConfig() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	config := CommitQueueConfig{
-		MergeTaskDistro: "distro",
-		CommitterName:   "Evergreen",
-		CommitterEmail:  "evergreen@mongodb.com",
-	}
-
-	s.NoError(config.ValidateAndDefault())
-	s.NoError(config.Set(ctx))
-
-	settings, err := GetConfig(ctx)
-	s.NoError(err)
-	s.Require().NotNil(settings)
-
-	s.Equal(config, settings.CommitQueue)
 }
 
 func (s *AdminSuite) TestHostJasperConfig() {
@@ -952,6 +963,10 @@ func (s *AdminSuite) TestBucketsConfig() {
 			Name: "logs",
 			Type: "s3",
 		},
+		InternalBuckets: []string{
+			"test-bucket",
+			"test2-bucket",
+		},
 	}
 
 	err := config.Set(ctx)
@@ -962,6 +977,7 @@ func (s *AdminSuite) TestBucketsConfig() {
 	s.Equal(config, settings.Buckets)
 
 	config.LogBucket.Name = "logs-2"
+	config.InternalBuckets = []string{"new-bucket"}
 	s.NoError(config.Set(ctx))
 
 	settings, err = GetConfig(ctx)

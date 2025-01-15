@@ -177,6 +177,11 @@ func (s *spawnHostExpirationSuite) TestDuplicateEventsAreLoggedAfterRenotificati
 	eventsAfterRerun, err := event.FindUnprocessedEvents(-1)
 	s.NoError(err)
 	s.Len(eventsAfterRerun, len(events)+numHostsToRenotify, "should log new expiration warnings when renotification interval has passed")
+
+	s.j.Run(s.ctx)
+	eventsAfterSecondRerun, err := event.FindUnprocessedEvents(-1)
+	s.NoError(err)
+	s.Len(eventsAfterSecondRerun, len(events)+numHostsToRenotify, "should not log any more expiration warnings when the host was recently renotified")
 }
 
 func (s *spawnHostExpirationSuite) TestCanceledJob() {
@@ -186,5 +191,5 @@ func (s *spawnHostExpirationSuite) TestCanceledJob() {
 	s.j.Run(ctx)
 	events, err := event.FindUnprocessedEvents(-1)
 	s.NoError(err)
-	s.Len(events, 0)
+	s.Empty(events)
 }

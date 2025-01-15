@@ -54,7 +54,7 @@ func Setup() {
 		// For testing purposes, set up parameter manager so it's backed by the
 		// DB.
 		pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
-			PathPrefix:     env.Settings().Providers.AWS.ParameterStore.Prefix,
+			PathPrefix:     env.Settings().ParameterStore.Prefix,
 			CachingEnabled: true,
 			SSMClient:      fakeparameter.NewFakeSSMClient(),
 			DB:             env.DB(),
@@ -74,7 +74,7 @@ func NewEnvironment(ctx context.Context, t *testing.T) evergreen.Environment {
 	require.NoError(t, err)
 	// For testing purposes, set up parameter manager so it's backed by the DB.
 	pm, err := parameterstore.NewParameterManager(ctx, parameterstore.ParameterManagerOptions{
-		PathPrefix:     env.Settings().Providers.AWS.ParameterStore.Prefix,
+		PathPrefix:     env.Settings().ParameterStore.Prefix,
 		CachingEnabled: true,
 		SSMClient:      fakeparameter.NewFakeSSMClient(),
 		DB:             env.DB(),
@@ -148,9 +148,8 @@ func MockConfig() *evergreen.Settings {
 			URL:      "mongodb://localhost:27017",
 		},
 		Api: evergreen.APIConfig{
-			HttpListenAddr:      "addr",
-			GithubWebhookSecret: "secret",
-			URL:                 "api",
+			HttpListenAddr: "addr",
+			URL:            "api",
 		},
 		AuthConfig: evergreen.AuthConfig{
 			Okta: &evergreen.OktaConfig{
@@ -189,6 +188,7 @@ func MockConfig() *evergreen.Settings {
 				Name: "logs",
 				Type: evergreen.BucketTypeS3,
 			},
+			InternalBuckets: []string{"bucket1", "bucket2"},
 			Credentials: evergreen.S3Credentials{
 				Key:    "aws_key",
 				Secret: "aws_secret",
@@ -199,11 +199,6 @@ func MockConfig() *evergreen.Settings {
 			RPCPort: "7070",
 			User:    "cedar-user",
 			APIKey:  "cedar-key",
-		},
-		CommitQueue: evergreen.CommitQueueConfig{
-			MergeTaskDistro: "distro",
-			CommitterName:   "Evergreen Commit Queue",
-			CommitterEmail:  "evergreen@mongodb.com",
 		},
 		ConfigDir: "cfg_dir",
 		ContainerPools: evergreen.ContainerPoolsConfig{
@@ -216,9 +211,10 @@ func MockConfig() *evergreen.Settings {
 				},
 			},
 		},
-		DomainName:         "example.com",
-		Expansions:         map[string]string{"k2": "v2"},
-		GithubPRCreatorOrg: "org",
+		DomainName:          "example.com",
+		Expansions:          map[string]string{"k2": "v2"},
+		GithubPRCreatorOrg:  "org",
+		GithubWebhookSecret: "secret",
 		HostInit: evergreen.HostInitConfig{
 			HostThrottle:         64,
 			ProvisioningThrottle: 100,
@@ -261,6 +257,9 @@ func MockConfig() *evergreen.Settings {
 			SES: evergreen.SESConfig{
 				SenderAddress: "from",
 			},
+		},
+		ParameterStore: evergreen.ParameterStoreConfig{
+			Prefix: "/prefix",
 		},
 		Plugins: map[string]map[string]interface{}{"k4": {"k5": "v5"}},
 		PodLifecycle: evergreen.PodLifecycleConfig{
@@ -355,9 +354,6 @@ func MockConfig() *evergreen.Settings {
 						SecretPrefix: "secret_prefix",
 					},
 				},
-				ParameterStore: evergreen.ParameterStoreConfig{
-					Prefix: "/prefix",
-				},
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",
@@ -399,6 +395,14 @@ func MockConfig() *evergreen.Settings {
 			CPUDegradedModeDisabled:         true,
 			ParameterStoreDisabled:          true,
 		},
+		SingleTaskDistro: evergreen.SingleTaskDistroConfig{
+			ProjectTasksPairs: []evergreen.ProjectTasksPair{
+				{
+					ProjectID:    "project",
+					AllowedTasks: []string{"task0", "task1"},
+				},
+			},
+		},
 		SleepSchedule: evergreen.SleepScheduleConfig{
 			PermanentlyExemptHosts: []string{"host0", "host1"},
 		},
@@ -427,17 +431,21 @@ func MockConfig() *evergreen.Settings {
 				Channel:   "channel",
 			},
 		},
+		TestSelection: evergreen.TestSelectionConfig{
+			URL: "test_selection_url",
+		},
 		Triggers: evergreen.TriggerConfig{
 			GenerateTaskDistro: "distro",
 		},
 		Ui: evergreen.UIConfig{
-			Url:            "url",
-			HelpUrl:        "helpurl",
-			HttpListenAddr: "addr",
-			Secret:         "secret",
-			DefaultProject: "mci",
-			CacheTemplates: true,
-			CsrfKey:        "12345678901234567890123456789012",
+			Url:                "url",
+			HelpUrl:            "helpurl",
+			HttpListenAddr:     "addr",
+			Secret:             "secret",
+			DefaultProject:     "mci",
+			CacheTemplates:     true,
+			CsrfKey:            "12345678901234567890123456789012",
+			StagingEnvironment: "mine",
 		},
 		Spawnhost: evergreen.SpawnHostConfig{
 			SpawnHostsPerUser:         5,

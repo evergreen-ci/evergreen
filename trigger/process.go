@@ -64,7 +64,7 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 
 	catcher := grip.NewSimpleCatcher()
 	for i := range subscriptions {
-		n, err := h.Process(&subscriptions[i])
+		n, err := h.Process(ctx, &subscriptions[i])
 		msg := message.Fields{
 			"source":              "events-processing",
 			"message":             "processed subscription and created notifications",
@@ -110,7 +110,7 @@ type ProcessorArgs struct {
 func EvalProjectTriggers(ctx context.Context, e *event.EventLogEntry, processor projectProcessor) ([]model.Version, error) {
 	switch e.EventType {
 	case event.TaskFinished:
-		t, err := task.FindOneId(e.ResourceId)
+		t, err := task.FindOneId(ctx, e.ResourceId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding task '%s'", e.ResourceId)
 		}

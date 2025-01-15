@@ -163,7 +163,7 @@ func (s *TestArtifactFileSuite) TestFindByTaskIdAndExecution() {
 	s.Equal("task1", entries[0].TaskId)
 
 	entries, err = FindAll(ByTaskIdAndExecution("task2", 0))
-	s.Len(entries, 0)
+	s.Empty(entries)
 	s.NoError(err)
 	s.Empty(entries)
 
@@ -177,7 +177,7 @@ func (s *TestArtifactFileSuite) TestFindByTaskIdAndExecution() {
 
 func (s *TestArtifactFileSuite) TestFindByTaskIdWithoutExecution() {
 	entries, err := FindAll(ByTaskIdWithoutExecution("task1"))
-	s.Len(entries, 0)
+	s.Empty(entries)
 	s.NoError(err)
 
 	entries, err = FindAll(ByTaskIdWithoutExecution("task2"))
@@ -210,13 +210,13 @@ func (s *TestArtifactFileSuite) TestRotateSecret() {
 	s.Len(changes, 3)
 	entryFromDb, err := FindOne(ByTaskId("task1"))
 	s.NoError(err)
-	s.Equal(entryFromDb.Files[0].AwsSecret, "secret")
+	s.Equal("secret", entryFromDb.Files[0].AwsSecret)
 	changes, err = RotateSecrets("secret", "changedSecret", false)
 	s.NoError(err)
 	s.Len(changes, 3)
 	entryFromDb, err = FindOne(ByTaskId("task1"))
 	s.NoError(err)
-	s.Equal(entryFromDb.Files[0].AwsSecret, "changedSecret")
+	s.Equal("changedSecret", entryFromDb.Files[0].AwsSecret)
 }
 
 func (s *TestArtifactFileSuite) TestEscapeFiles() {

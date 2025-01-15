@@ -27,7 +27,7 @@ func (r *result) String() string {
 	if r.passed {
 		fmt.Fprintf(buf, "--- PASS: %s (%s)", r.name, r.duration)
 	} else {
-		fmt.Fprintf(buf, strings.Join(r.output, "\n"))
+		fmt.Fprint(buf, strings.Join(r.output, "\n"))
 		fmt.Fprintf(buf, "--- FAIL: %s (%s)", r.name, r.duration)
 	}
 

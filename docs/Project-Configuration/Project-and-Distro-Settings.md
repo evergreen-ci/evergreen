@@ -138,6 +138,18 @@ Options:
 -   Checking **admin only** ensures that the variable can only be used
     by admins and mainline commits.
 
+Project variables have some limitations:
+
+* Project variable names can consist of alphanumeric characters, dashes (`-`),
+  underscores (`_`), and periods (`.`). Other special characters are not
+  allowed.
+* Project variable names cannot contain the suffix `.gz`.
+* Project variable names must be unique.
+* Project variable names and values cannot be an empty string.
+* A project variable's value cannot exceed 8 KB in length. If you need to store
+  a value longer than 8 KB, you can store it in multiple variables and
+  concatenate them together in a script when your task runs.
+
 ### Aliases
 
 Aliases can be used for patch testing, merge queue testing, GitHub PRs,
@@ -675,7 +687,9 @@ patch_aliases:
     task: "^test.*$"
     parameters:
         - key: "myParam"
-        - value: "defaultValue"
+          value: "defaultValue"
+        - key: "myOtherParam"
+          value: "anotherOne"
 ```
 
 ### Merge Queue Aliases

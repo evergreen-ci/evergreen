@@ -202,7 +202,7 @@ func (s *UserTestSuite) TearDownTest() {
 func (s *UserTestSuite) TestGetPublicKey() {
 	key, err := s.users[1].GetPublicKey("key1")
 	s.NoError(err)
-	s.Equal(key, "ssh-mock 12345")
+	s.Equal("ssh-mock 12345", key)
 }
 
 func (s *UserTestSuite) TestGetPublicKeyThatDoesntExist() {
@@ -215,7 +215,7 @@ func (s *UserTestSuite) TestAddKey() {
 	s.Require().NoError(s.users[0].AddPublicKey("key1", "ssh-mock 67890"))
 	key, err := s.users[0].GetPublicKey("key1")
 	s.Require().NoError(err)
-	s.Equal(key, "ssh-mock 67890")
+	s.Equal("ssh-mock 67890", key)
 
 	u, err := FindOne(ById(s.users[0].Id))
 	s.Require().NoError(err)
@@ -223,8 +223,8 @@ func (s *UserTestSuite) TestAddKey() {
 
 	s.checkUserNotDestroyed(u, s.users[0])
 
-	s.Equal(u.PubKeys[0].Name, "key1")
-	s.Equal(u.PubKeys[0].Key, "ssh-mock 67890")
+	s.Equal("key1", u.PubKeys[0].Name)
+	s.Equal("ssh-mock 67890", u.PubKeys[0].Key)
 }
 
 func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
@@ -236,14 +236,14 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u, err := FindOne(ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
-	s.Equal(u.NumScheduledPatchTasks, 0)
+	s.Equal(0, u.NumScheduledPatchTasks)
 
 	// Confirm scheduling tasks less than the limit is allowed
 	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 99, true))
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
-	s.Equal(u.NumScheduledPatchTasks, 99)
+	s.Equal(99, u.NumScheduledPatchTasks)
 
 	// Confirm NumScheduledPatchTasks is unchanged and we receive an error after breaching the limit
 	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 1, true)
@@ -252,7 +252,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
-	s.Equal(u.NumScheduledPatchTasks, 99)
+	s.Equal(99, u.NumScheduledPatchTasks)
 
 	// Confirm unscheduling one task brings the count-down to 98
 	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 1, false)
@@ -260,7 +260,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
-	s.Equal(u.NumScheduledPatchTasks, 98)
+	s.Equal(98, u.NumScheduledPatchTasks)
 
 	// Confirm that scheduling one more task is now possible
 	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 1, true)
@@ -268,7 +268,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
-	s.Equal(u.NumScheduledPatchTasks, 99)
+	s.Equal(99, u.NumScheduledPatchTasks)
 
 	// When the last time the user has scheduled tasks falls out of the hour, we should reset the
 	// counter, and we should not be able to go negative
@@ -278,7 +278,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
-	s.Equal(u.NumScheduledPatchTasks, 5)
+	s.Equal(5, u.NumScheduledPatchTasks)
 
 	// When the last time the user has scheduled tasks falls out of the hour, we should reset the
 	// counter, and we should not be able to go negative
@@ -288,7 +288,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
-	s.Equal(u.NumScheduledPatchTasks, 0)
+	s.Equal(0, u.NumScheduledPatchTasks)
 
 	// Confirm you cannot schedule more tasks than the limit, even if your counter is zero
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
@@ -298,7 +298,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
-	s.Equal(u.NumScheduledPatchTasks, 0)
+	s.Equal(0, u.NumScheduledPatchTasks)
 
 	// Confirm you can deactivate tasks even if you're already past the limit
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Minute)
@@ -310,7 +310,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
-	s.Equal(u.NumScheduledPatchTasks, 110)
+	s.Equal(110, u.NumScheduledPatchTasks)
 }
 
 func (s *UserTestSuite) TestAddDuplicateKeyFails() {
@@ -325,8 +325,8 @@ func (s *UserTestSuite) TestAddDuplicateKeyFails() {
 }
 
 func (s *UserTestSuite) checkUserNotDestroyed(fromDB *DBUser, expected *DBUser) {
-	s.Equal(fromDB.Id, expected.Id)
-	s.Equal(fromDB.APIKey, expected.APIKey)
+	s.Equal(expected.Id, fromDB.Id)
+	s.Equal(expected.APIKey, fromDB.APIKey)
 }
 
 func (s *UserTestSuite) TestUpdatePublicKey() {
@@ -364,7 +364,7 @@ func (s *UserTestSuite) TestUpdatePublicKeyThatDoesntExist() {
 
 func (s *UserTestSuite) TestDeletePublicKey() {
 	s.NoError(s.users[1].DeletePublicKey("key1"))
-	s.Len(s.users[1].PubKeys, 0)
+	s.Empty(s.users[1].PubKeys)
 	s.Equal("67890", s.users[1].APIKey)
 
 	u, err := FindOne(ById(s.users[1].Id))
@@ -374,7 +374,7 @@ func (s *UserTestSuite) TestDeletePublicKey() {
 
 func (s *UserTestSuite) TestDeletePublicKeyThatDoesntExist() {
 	s.Error(s.users[0].DeletePublicKey("key1"))
-	s.Len(s.users[0].PubKeys, 0)
+	s.Empty(s.users[0].PubKeys)
 	s.Equal("12345", s.users[0].APIKey)
 
 	u, err := FindOne(ById(s.users[0].Id))
@@ -594,24 +594,24 @@ func (s *UserTestSuite) TestFavoriteProjects() {
 	// add a project
 	err := u.AddFavoritedProject(projID)
 	s.NoError(err)
-	s.EqualValues(u.FavoriteProjects, expected)
+	s.EqualValues(expected, u.FavoriteProjects)
 
 	// try to add the same project again
 	err = u.AddFavoritedProject(projID)
 	s.Require().Error(err)
-	s.EqualValues(u.FavoriteProjects, expected)
+	s.EqualValues(expected, u.FavoriteProjects)
 
 	// remove a project
 	expected = []string{}
 
 	err = u.RemoveFavoriteProject(projID)
 	s.NoError(err)
-	s.EqualValues(u.FavoriteProjects, expected)
+	s.EqualValues(expected, u.FavoriteProjects)
 
 	// try to remove a project that does not exist
 	err = u.RemoveFavoriteProject(projID)
 	s.Require().Error(err)
-	s.EqualValues(u.FavoriteProjects, expected)
+	s.EqualValues(expected, u.FavoriteProjects)
 }
 
 func (s *UserTestSuite) TestHasPermission() {
@@ -995,12 +995,12 @@ func TestUpdateParsleySettings(t *testing.T) {
 	}
 	err := usr.UpdateParsleySettings(newSettings)
 	require.NoError(t, err)
-	assert.Equal(t, utility.FromBoolPtr(usr.ParsleySettings.SectionsEnabled), false)
+	assert.False(t, utility.FromBoolPtr(usr.ParsleySettings.SectionsEnabled))
 
 	dbUser, err := FindOneById(usr.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbUser)
-	assert.Equal(t, utility.FromBoolPtr(dbUser.ParsleySettings.SectionsEnabled), false)
+	assert.False(t, utility.FromBoolPtr(dbUser.ParsleySettings.SectionsEnabled))
 }
 
 func TestUpdateBetaFeatures(t *testing.T) {
@@ -1014,19 +1014,19 @@ func TestUpdateBetaFeatures(t *testing.T) {
 	dbUser, err := FindOneById(usr.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbUser)
-	assert.Equal(t, false, dbUser.BetaFeatures.SpruceWaterfallEnabled)
+	assert.False(t, dbUser.BetaFeatures.SpruceWaterfallEnabled)
 
 	newBetaFeatureSettings := evergreen.BetaFeatures{
 		SpruceWaterfallEnabled: true,
 	}
 	err = usr.UpdateBetaFeatures(newBetaFeatureSettings)
 	require.NoError(t, err)
-	assert.Equal(t, true, usr.BetaFeatures.SpruceWaterfallEnabled)
+	assert.True(t, usr.BetaFeatures.SpruceWaterfallEnabled)
 
 	dbUser, err = FindOneById(usr.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbUser)
-	assert.Equal(t, true, dbUser.BetaFeatures.SpruceWaterfallEnabled)
+	assert.True(t, dbUser.BetaFeatures.SpruceWaterfallEnabled)
 }
 
 func (s *UserTestSuite) TestClearUser() {
@@ -1038,7 +1038,7 @@ func (s *UserTestSuite) TestClearUser() {
 	s.NotNil(u)
 	s.NotEmpty(u.Settings)
 	s.Equal("Test1", u.Id)
-	s.Equal(true, u.Settings.UseSpruceOptions.SpruceV1)
+	s.True(u.Settings.UseSpruceOptions.SpruceV1)
 	s.NoError(u.AddRole("r1p1"))
 	s.NotEmpty(u.SystemRoles)
 	s.NotEmpty(u.APIKey)

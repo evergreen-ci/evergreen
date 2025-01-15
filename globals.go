@@ -294,14 +294,15 @@ const (
 	DefaultSleepScheduleTimeZone     = "America/New_York"
 
 	// host resource tag names
-	TagName             = "name"
-	TagDistro           = "distro"
-	TagEvergreenService = "evergreen-service"
-	TagUsername         = "username"
-	TagOwner            = "owner"
-	TagMode             = "mode"
-	TagStartTime        = "start-time"
-	TagExpireOn         = "expire-on"
+	TagName              = "name"
+	TagDistro            = "distro"
+	TagEvergreenService  = "evergreen-service"
+	TagUsername          = "username"
+	TagOwner             = "owner"
+	TagMode              = "mode"
+	TagStartTime         = "start-time"
+	TagExpireOn          = "expire-on"
+	TagAllowRemoteAccess = "AllowRemoteAccess"
 
 	FinderVersionLegacy    = "legacy"
 	FinderVersionParallel  = "parallel"
@@ -359,10 +360,11 @@ const (
 	// to tear down a task group. This is set one minute longer than the agent's maxTeardownGroupTimeout.
 	MaxTeardownGroupThreshold = 4 * time.Minute
 
-	SaveGenerateTasksError     = "error saving config in `generate.tasks`"
-	TasksAlreadyGeneratedError = "generator already ran and generated tasks"
-	KeyTooLargeToIndexError    = "key too large to index"
-	InvalidDivideInputError    = "$divide only supports numeric types"
+	SaveGenerateTasksError          = "error saving config in `generate.tasks`"
+	TasksAlreadyGeneratedError      = "generator already ran and generated tasks"
+	KeyTooLargeToIndexError         = "key too large to index"
+	InvalidDivideInputError         = "$divide only supports numeric types"
+	FetchingTaskDataUnfinishedError = "fetching task data not finished"
 
 	// ContainerHealthDashboard is the name of the Splunk dashboard that displays
 	// charts relating to the health of container tasks.
@@ -380,6 +382,10 @@ const (
 	RedactedValue       = "{REDACTED}"
 	RedactedAfterValue  = "{REDACTED_AFTER}"
 	RedactedBeforeValue = "{REDACTED_BEFORE}"
+
+	// PresignMinimumValidTime is the minimum amount of time that a presigned URL
+	// should be valid for.
+	PresignMinimumValidTime = 15 * time.Minute
 )
 
 var TaskStatuses = []string{
@@ -546,6 +552,7 @@ var UserTriggeredOrigins = []string{
 
 const (
 	AuthTokenCookie     = "mci-token"
+	LoginCookieTTL      = 365 * 24 * time.Hour
 	TaskHeader          = "Task-Id"
 	TaskSecretHeader    = "Task-Secret"
 	HostHeader          = "Host-Id"
@@ -557,6 +564,7 @@ const (
 	ContentLengthHeader = "Content-Length"
 	APIUserHeader       = "Api-User"
 	APIKeyHeader        = "Api-Key"
+	EnvironmentHeader   = "X-Evergreen-Environment"
 )
 
 const (
@@ -653,7 +661,6 @@ const (
 	GitTagRequester             = "git_tag_request"
 	RepotrackerVersionRequester = "gitter_request"
 	TriggerRequester            = "trigger_request"
-	MergeTestRequester          = "merge_test"           // Evergreen commit queue
 	AdHocRequester              = "ad_hoc"               // periodic build
 	GithubMergeRequester        = "github_merge_request" // GitHub merge queue
 )
@@ -674,7 +681,6 @@ var (
 		GitTagRequester,
 		RepotrackerVersionRequester,
 		TriggerRequester,
-		MergeTestRequester,
 		AdHocRequester,
 		GithubMergeRequester,
 	}
@@ -702,7 +708,6 @@ const (
 	GitTagUserRequester             UserRequester = "github_tag"
 	RepotrackerVersionUserRequester UserRequester = "commit"
 	TriggerUserRequester            UserRequester = "trigger"
-	MergeTestUserRequester          UserRequester = "commit_queue"
 	AdHocUserRequester              UserRequester = "ad_hoc"
 	GithubMergeUserRequester        UserRequester = "github_merge_queue"
 )
@@ -713,7 +718,6 @@ var AllUserRequesterTypes = []UserRequester{
 	GitTagUserRequester,
 	RepotrackerVersionUserRequester,
 	TriggerUserRequester,
-	MergeTestUserRequester,
 	AdHocUserRequester,
 	GithubMergeUserRequester,
 }
@@ -732,8 +736,6 @@ func InternalRequesterToUserRequester(requester string) UserRequester {
 		return RepotrackerVersionUserRequester
 	case TriggerRequester:
 		return TriggerUserRequester
-	case MergeTestRequester:
-		return MergeTestUserRequester
 	case AdHocRequester:
 		return AdHocUserRequester
 	case GithubMergeRequester:
@@ -757,8 +759,6 @@ func UserRequesterToInternalRequester(requester UserRequester) string {
 		return RepotrackerVersionRequester
 	case TriggerUserRequester:
 		return TriggerRequester
-	case MergeTestUserRequester:
-		return MergeTestRequester
 	case AdHocUserRequester:
 		return AdHocRequester
 	case GithubMergeUserRequester:
@@ -864,7 +864,6 @@ var (
 	PatchRequesters = []string{
 		PatchVersionRequester,
 		GithubPRRequester,
-		MergeTestRequester,
 		GithubMergeRequester,
 	}
 
@@ -1098,7 +1097,7 @@ func IsPatchRequester(requester string) bool {
 }
 
 func IsGitHubPatchRequester(requester string) bool {
-	return requester == GithubPRRequester || requester == MergeTestRequester || requester == GithubMergeRequester
+	return requester == GithubPRRequester || requester == GithubMergeRequester
 }
 
 func IsGithubPRRequester(requester string) bool {
@@ -1107,10 +1106,6 @@ func IsGithubPRRequester(requester string) bool {
 
 func IsGitTagRequester(requester string) bool {
 	return requester == GitTagRequester
-}
-
-func IsCommitQueueRequester(requester string) bool {
-	return requester == MergeTestRequester
 }
 
 func IsGithubMergeQueueRequester(requester string) bool {

@@ -29,7 +29,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const defaultCloneDepth = 500
+const defaultCloneDepth = 1000
 const fileNameMaxLength = 250
 
 func Fetch() cli.Command {
@@ -248,6 +248,17 @@ type cloneOptions struct {
 }
 
 func clone(opts cloneOptions) error {
+	// Check repository existence if no token is provided
+	if opts.token == "" {
+		resp, err := http.Get(thirdparty.FormGitURLForApp("github.com", opts.owner, opts.repository, opts.token))
+		if err != nil {
+			return errors.Errorf("failed to check if %s/%s exists: %v", opts.owner, opts.repository, err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return errors.Errorf("%s/%s does not exist or is private an no token was provided: %d", opts.owner, opts.repository, resp.StatusCode)
+		}
+	}
 	var cloneArgs []string
 	// clone the repo first
 	if opts.isAppToken {
@@ -306,6 +317,15 @@ func clone(opts cloneOptions) error {
 		c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, opts.rootDir
 		return c.Run()
 	}
+	// Reset Git remote URL to SSH after source has been fetched
+	// because the token in the https URL will be revoked.
+	if opts.isAppToken {
+		err = resetGitRemoteToSSH(opts.owner, opts.repository, opts.rootDir)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -431,6 +451,14 @@ func revokeFetchTokens(ctx context.Context, comm client.Communicator, taskId, to
 		tokens = append(tokens, moduleToken)
 	}
 	return comm.RevokeGitHubDynamicAccessTokens(ctx, taskId, tokens)
+}
+
+func resetGitRemoteToSSH(owner, repository, rootDir string) error {
+	sshURL := fmt.Sprintf("git@github.com:%s/%s.git", owner, repository)
+
+	c := exec.Command("git", "remote", "set-url", "origin", sshURL)
+	c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, rootDir
+	return c.Run()
 }
 
 func fetchArtifacts(rc *legacyClient, taskId string, rootDir string, shallow bool) error {

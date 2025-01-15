@@ -79,9 +79,6 @@ type SharedCommunicator interface {
 	// SetResultsInfo sets the test results information in the task.
 	SetResultsInfo(context.Context, TaskData, string, bool) error
 
-	// GetPullRequestInfo takes in a PR number, owner, and repo and returns information from the corresponding pull request.
-	GetPullRequestInfo(context.Context, TaskData, int, string, string, bool) (*apimodels.PullRequestInfo, error)
-
 	// DisableHost signals to the app server that the host should be disabled.
 	DisableHost(context.Context, string, apimodels.DisableInfo) error
 
@@ -126,7 +123,7 @@ type SharedCommunicator interface {
 	// CreateGitHubDynamicAccessToken creates a dynamic access token using the task's project's GitHub app.
 	// It intersects the permissions requested with the permissions set in the project settings for the requester
 	// the task is running for.
-	CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner, repo string, permissions *github.InstallationPermissions) (string, error)
+	CreateGitHubDynamicAccessToken(ctx context.Context, td TaskData, owner, repo string, permissions *github.InstallationPermissions) (string, *github.InstallationPermissions, error)
 
 	// RevokeGitHubDynamicAccessToken revokes a dynamic access token.
 	RevokeGitHubDynamicAccessToken(ctx context.Context, td TaskData, token string) error

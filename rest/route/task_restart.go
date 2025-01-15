@@ -86,7 +86,7 @@ func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	refreshedTask, err := task.FindOneId(trh.taskId)
+	refreshedTask, err := task.FindOneId(ctx, trh.taskId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding updated task '%s'", trh.taskId))
 	}
@@ -108,7 +108,7 @@ func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 // resetTask sets the task to be in an unexecuted state and prepares it to be run again.
 // If given an execution task, marks the display task for reset.
 func resetTask(ctx context.Context, settings *evergreen.Settings, taskId, username string, failedOnly bool) error {
-	t, err := task.FindOneId(taskId)
+	t, err := task.FindOneId(ctx, taskId)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

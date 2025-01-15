@@ -189,6 +189,8 @@ models:
         value: github.com/evergreen-ci/evergreen/model/event.EventHostExpirationWarningSent
       HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT:
         value: github.com/evergreen-ci/evergreen/model/event.EventHostTemporaryExemptionExpirationWarningSent
+      SPAWN_HOST_CREATED_ERROR:
+        value: github.com/evergreen-ci/evergreen/model/event.EventSpawnHostCreatedError
       HOST_IDLE_NOTIFICATION:
         value: github.com/evergreen-ci/evergreen/model/event.EventSpawnHostIdleNotification
       HOST_SCRIPT_EXECUTED:
@@ -457,8 +459,6 @@ models:
       reliesOn:
         resolver: true
       spawnHostLink:
-        resolver: true
-      status:
         resolver: true
       isPerfPluginEnabled:
         resolver: true

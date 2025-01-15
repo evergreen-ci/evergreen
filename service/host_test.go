@@ -45,7 +45,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(http.StatusOK, httpStatus)
 		assert.Equal(result, fmt.Sprintf(api.HostStatusUpdateSuccess, evergreen.HostRunning, evergreen.HostQuarantined))
-		assert.Equal(h.Status, evergreen.HostQuarantined)
+		assert.Equal(evergreen.HostQuarantined, h.Status)
 		hostEventOpts := event.HostEventsOpts{
 			ID:      "h1",
 			Tag:     "",
@@ -79,7 +79,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		_, httpStatus, err := api.ModifyHostStatus(ctx, env, &h, evergreen.HostRunning, "", &user)
 		require.NoError(err)
 		assert.Equal(http.StatusOK, httpStatus)
-		assert.Equal(h.Status, evergreen.HostProvisioning)
+		assert.Equal(evergreen.HostProvisioning, h.Status)
 		assert.Equal(host.ReprovisionToNew, h.NeedsReprovision)
 
 		// Verify that host monitoring job does not immediately re-quarantine host
@@ -146,7 +146,7 @@ func TestGetHostDNS(t *testing.T) {
 	require.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"host_id": "i-1234"})
 
-	uis := UIServer{hostCache: map[string]hostCacheItem{"i-1234": hostCacheItem{dnsName: "www.example.com", inserted: time.Now()}}}
+	uis := UIServer{hostCache: map[string]hostCacheItem{"i-1234": {dnsName: "www.example.com", inserted: time.Now()}}}
 	path, err := uis.getHostDNS((r))
 	assert.NoError(t, err)
 	assert.Len(t, path, 1)
@@ -162,6 +162,7 @@ func TestGetDockerfile(t *testing.T) {
 	getDockerfile(w, req)
 
 	resp := w.Result()
+	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	assert.NoError(err)
 

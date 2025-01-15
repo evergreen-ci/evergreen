@@ -41,8 +41,10 @@ func BbFileTicket(ctx context.Context, taskId string, execution int) (int, error
 		return http.StatusInternalServerError, errors.Wrapf(err, "retrieving webhook config for project '%s'", t.Project)
 	}
 	if ok && webHook.Endpoint != "" {
-		var resp *http.Response
-		resp, err = fileTicketCustomHook(ctx, taskId, execution, webHook)
+		resp, err := fileTicketCustomHook(ctx, taskId, execution, webHook)
+		if err == nil {
+			resp.Body.Close()
+		}
 		return resp.StatusCode, err
 	}
 
@@ -136,7 +138,7 @@ func makeJiraNotification(ctx context.Context, settings *evergreen.Settings, t *
 	if err := mappings.Get(ctx); err != nil {
 		return nil, errors.Wrap(err, "getting Jira mappings")
 	}
-	payload, err := trigger.JIRATaskPayload(trigger.JiraIssueParameters{
+	payload, err := trigger.JIRATaskPayload(ctx, trigger.JiraIssueParameters{
 		Project:  jiraOpts.project,
 		UiURL:    settings.Ui.Url,
 		Mappings: mappings,

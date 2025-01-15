@@ -355,7 +355,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			return nil, false, nil
 		}
 
-		nextTask, err := task.FindOneId(queueItem.Id)
+		nextTask, err := task.FindOneId(ctx, queueItem.Id)
 		if err != nil {
 			grip.DebugWhen(queueItem.Group != "", message.Fields{
 				"message":            "retrieving next task",
@@ -484,7 +484,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}
 
 		lockErr := dispatchHostTaskAtomically(ctx, env, currentHost, nextTask)
-		if err != nil && !db.IsDuplicateKey(lockErr) {
+		if lockErr != nil && !db.IsDuplicateKey(lockErr) {
 			return nil, false, errors.Wrapf(err, "dispatching task '%s' to host '%s'", nextTask.Id, currentHost.Id)
 		}
 		dispatchedTask := lockErr == nil
@@ -658,10 +658,10 @@ func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, 
 	event.LogHostTaskDispatched(t.Id, t.Execution, h.Id)
 	event.LogHostRunningTaskSet(h.Id, t.Id, t.Execution)
 
-	if t.IsPartOfDisplay() {
+	if t.IsPartOfDisplay(ctx) {
 		// The task is already dispatched at this point, so continue if this
 		// errors.
-		grip.Error(message.WrapError(model.UpdateDisplayTaskForTask(t), message.Fields{
+		grip.Error(message.WrapError(model.UpdateDisplayTaskForTask(ctx, t), message.Fields{
 			"message":      "could not update parent display task after dispatching task",
 			"task":         t.Id,
 			"display_task": t.DisplayTaskId,
@@ -712,10 +712,10 @@ func undoHostTaskDispatchAtomically(ctx context.Context, env evergreen.Environme
 		event.LogHostTaskUndispatched(clearedTask, clearedTaskExec, h.Id)
 	}
 
-	if t.IsPartOfDisplay() {
+	if t.IsPartOfDisplay(ctx) {
 		// The dispatch has already been undone at this point, so continue if
 		// this errors.
-		grip.Error(message.WrapError(model.UpdateDisplayTaskForTask(t), message.Fields{
+		grip.Error(message.WrapError(model.UpdateDisplayTaskForTask(ctx, t), message.Fields{
 			"message":      "could not update parent display task after undoing task dispatch",
 			"task":         t.Id,
 			"display_task": t.DisplayTaskId,
@@ -1032,7 +1032,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 
 	if t.IsHostDispatchable() {
 		grip.Notice(getMessage("marking task as dispatched because it is not currently dispatched"))
-		if err := model.MarkHostTaskDispatched(t, h); err != nil {
+		if err := model.MarkHostTaskDispatched(ctx, t, h); err != nil {
 			grip.Error(message.WrapError(err, getMessage("could not mark task as dispatched to host")))
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
@@ -1123,7 +1123,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 
 	finishTime := time.Now()
 
-	t, err := task.FindOneId(h.taskID)
+	t, err := task.FindOneId(ctx, h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
 	}
@@ -1228,8 +1228,8 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
-	if evergreen.IsCommitQueueRequester(t.Requester) {
-		if err = model.HandleEndTaskForCommitQueueTask(ctx, t, h.details.Status); err != nil {
+	if evergreen.IsGithubMergeQueueRequester(t.Requester) {
+		if err = model.HandleEndTaskForGithubMergeQueueTask(ctx, t, h.details.Status); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
@@ -1286,7 +1286,7 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		"path":        fmt.Sprintf("/rest/v2/hosts/%s/task/%s/end", currentHost.Id, t.Id),
 	}
 
-	if t.IsPartOfDisplay() {
+	if t.IsPartOfDisplay(ctx) {
 		msg["display_task_id"] = t.DisplayTaskId
 	}
 

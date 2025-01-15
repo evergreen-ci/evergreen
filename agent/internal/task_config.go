@@ -49,7 +49,6 @@ type TaskConfig struct {
 	Timeout            Timeout
 	TaskOutput         evergreen.S3Credentials
 	TaskSync           evergreen.S3Credentials
-	EC2Keys            []evergreen.EC2Key
 	ModulePaths        map[string]string
 	CedarTestResultsID string
 	TaskGroup          *model.TaskGroup
@@ -59,6 +58,10 @@ type TaskConfig struct {
 	// PatchOrVersionDescription holds the description of a patch or
 	// message of a version to be used in the otel attributes.
 	PatchOrVersionDescription string
+
+	// InternalBuckets are the buckets that Evergreen's app servers have access to
+	// via their IRSA role.
+	InternalBuckets []string
 
 	mu sync.RWMutex
 }

@@ -18,7 +18,6 @@ func NewConfigModel() *APIAdminSettings {
 		AuthConfig:          &APIAuthConfig{},
 		Buckets:             &APIBucketsConfig{},
 		Cedar:               &APICedarConfig{},
-		CommitQueue:         &APICommitQueueConfig{},
 		ContainerPools:      &APIContainerPoolsConfig{},
 		Expansions:          map[string]string{},
 		HostInit:            &APIHostInitConfig{},
@@ -28,6 +27,7 @@ func NewConfigModel() *APIAdminSettings {
 		LoggerConfig:        &APILoggerConfig{},
 		NewRelic:            &APINewRelicConfig{},
 		Notify:              &APINotifyConfig{},
+		ParameterStore:      &APIParameterStoreConfig{},
 		Plugins:             map[string]map[string]interface{}{},
 		PodLifecycle:        &APIPodLifecycleConfig{},
 		ProjectCreation:     &APIProjectCreationConfig{},
@@ -36,10 +36,12 @@ func NewConfigModel() *APIAdminSettings {
 		RuntimeEnvironments: &APIRuntimeEnvironmentsConfig{},
 		Scheduler:           &APISchedulerConfig{},
 		ServiceFlags:        &APIServiceFlags{},
+		SingleTaskDistro:    &APISingleTaskDistroConfig{},
 		Slack:               &APISlackConfig{},
 		SleepSchedule:       &APISleepScheduleConfig{},
 		Splunk:              &APISplunkConfig{},
 		TaskLimits:          &APITaskLimitsConfig{},
+		TestSelection:       &APITestSelectionConfig{},
 		Triggers:            &APITriggerConfig{},
 		Ui:                  &APIUIConfig{},
 		Spawnhost:           &APISpawnHostConfig{},
@@ -59,13 +61,13 @@ type APIAdminSettings struct {
 	BannerTheme         *string                           `json:"banner_theme,omitempty"`
 	Buckets             *APIBucketsConfig                 `json:"buckets,omitempty"`
 	Cedar               *APICedarConfig                   `json:"cedar,omitempty"`
-	CommitQueue         *APICommitQueueConfig             `json:"commit_queue,omitempty"`
 	ConfigDir           *string                           `json:"configdir,omitempty"`
 	ContainerPools      *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
 	DomainName          *string                           `json:"domain_name,omitempty"`
 	Expansions          map[string]string                 `json:"expansions,omitempty"`
 	GithubPRCreatorOrg  *string                           `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs          []string                          `json:"github_orgs,omitempty"`
+	GithubWebhookSecret *string                           `json:"github_webhook_secret,omitempty"`
 	DisabledGQLQueries  []string                          `json:"disabled_gql_queries"`
 	HostInit            *APIHostInitConfig                `json:"hostinit,omitempty"`
 	HostJasper          *APIHostJasperConfig              `json:"host_jasper,omitempty"`
@@ -76,6 +78,7 @@ type APIAdminSettings struct {
 	LogPath             *string                           `json:"log_path,omitempty"`
 	NewRelic            *APINewRelicConfig                `json:"newrelic,omitempty"`
 	Notify              *APINotifyConfig                  `json:"notify,omitempty"`
+	ParameterStore      *APIParameterStoreConfig          `json:"parameter_store,omitempty"`
 	Plugins             map[string]map[string]interface{} `json:"plugins,omitempty"`
 	PodLifecycle        *APIPodLifecycleConfig            `json:"pod_lifecycle,omitempty"`
 	PprofPort           *string                           `json:"pprof_port,omitempty"`
@@ -85,12 +88,14 @@ type APIAdminSettings struct {
 	RuntimeEnvironments *APIRuntimeEnvironmentsConfig     `json:"runtime_environments,omitempty"`
 	Scheduler           *APISchedulerConfig               `json:"scheduler,omitempty"`
 	ServiceFlags        *APIServiceFlags                  `json:"service_flags,omitempty"`
+	SingleTaskDistro    *APISingleTaskDistroConfig        `json:"single_task_distro,omitempty"`
 	Slack               *APISlackConfig                   `json:"slack,omitempty"`
 	SleepSchedule       *APISleepScheduleConfig           `json:"sleep_schedule,omitempty"`
 	SSHKeyDirectory     *string                           `json:"ssh_key_directory,omitempty"`
 	SSHKeyPairs         []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
 	Splunk              *APISplunkConfig                  `json:"splunk,omitempty"`
 	TaskLimits          *APITaskLimitsConfig              `json:"task_limits,omitempty"`
+	TestSelection       *APITestSelectionConfig           `json:"test_selection,omitempty"`
 	Triggers            *APITriggerConfig                 `json:"triggers,omitempty"`
 	Ui                  *APIUIConfig                      `json:"ui,omitempty"`
 	Spawnhost           *APISpawnHostConfig               `json:"spawnhost,omitempty"`
@@ -141,6 +146,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.Expansions = v.Expansions
 		as.KanopySSHKeyPath = utility.ToStringPtr(v.KanopySSHKeyPath)
 		as.GithubOrgs = v.GithubOrgs
+		as.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
 		as.DisabledGQLQueries = v.DisabledGQLQueries
 		as.SSHKeyDirectory = utility.ToStringPtr(v.SSHKeyDirectory)
 		as.SSHKeyPairs = []APISSHKeyPair{}
@@ -224,6 +230,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if as.GithubPRCreatorOrg != nil {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
 	}
+	settings.GithubWebhookSecret = utility.FromStringPtr(as.GithubWebhookSecret)
 	if as.LogPath != nil {
 		settings.LogPath = *as.LogPath
 	}
@@ -465,16 +472,14 @@ func (a *APIAmboyNamedQueueConfig) ToService() evergreen.AmboyNamedQueueConfig {
 }
 
 type APIapiConfig struct {
-	HttpListenAddr      *string `json:"http_listen_addr"`
-	GithubWebhookSecret *string `json:"github_webhook_secret"`
-	URL                 *string `json:"url"`
+	HttpListenAddr *string `json:"http_listen_addr"`
+	URL            *string `json:"url"`
 }
 
 func (a *APIapiConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.APIConfig:
 		a.HttpListenAddr = utility.ToStringPtr(v.HttpListenAddr)
-		a.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
 		a.URL = utility.ToStringPtr(v.URL)
 	default:
 		return errors.Errorf("programmatic error: expected REST API config but got type %T", h)
@@ -484,9 +489,8 @@ func (a *APIapiConfig) BuildFromService(h interface{}) error {
 
 func (a *APIapiConfig) ToService() (interface{}, error) {
 	return evergreen.APIConfig{
-		HttpListenAddr:      utility.FromStringPtr(a.HttpListenAddr),
-		GithubWebhookSecret: utility.FromStringPtr(a.GithubWebhookSecret),
-		URL:                 utility.FromStringPtr(a.URL),
+		HttpListenAddr: utility.FromStringPtr(a.HttpListenAddr),
+		URL:            utility.FromStringPtr(a.URL),
 	}, nil
 }
 
@@ -619,8 +623,9 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 }
 
 type APIBucketsConfig struct {
-	LogBucket   APIBucketConfig  `json:"log_bucket"`
-	Credentials APIS3Credentials `json:"credentials"`
+	LogBucket       APIBucketConfig  `json:"log_bucket"`
+	InternalBuckets []string         `json:"internal_buckets"`
+	Credentials     APIS3Credentials `json:"credentials"`
 }
 
 type APIBucketConfig struct {
@@ -635,6 +640,8 @@ func (a *APIBucketsConfig) BuildFromService(h interface{}) error {
 		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
 		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
 		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
+
+		a.InternalBuckets = v.InternalBuckets
 
 		creds := APIS3Credentials{}
 		if err := creds.BuildFromService(v.Credentials); err != nil {
@@ -663,19 +670,19 @@ func (a *APIBucketsConfig) ToService() (interface{}, error) {
 			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
 			DBName: utility.FromStringPtr(a.LogBucket.DBName),
 		},
-		Credentials: creds,
+		InternalBuckets: a.InternalBuckets,
+		Credentials:     creds,
 	}, nil
 }
 
 type APICedarConfig struct {
-	BaseURL             *string `json:"base_url"`
-	GRPCBaseURL         *string `json:"grpc_base_url"`
-	RPCPort             *string `json:"rpc_port"`
-	User                *string `json:"user"`
-	APIKey              *string `json:"api_key"`
-	SendToCedarDisabled *bool   `json:"send_to_cedar_disabled"`
-	SPSURL              *string `json:"sps_url"`
-	SendRatioSPS        *int    `json:"send_ratio_sps"`
+	BaseURL      *string `json:"base_url"`
+	GRPCBaseURL  *string `json:"grpc_base_url"`
+	RPCPort      *string `json:"rpc_port"`
+	User         *string `json:"user"`
+	APIKey       *string `json:"api_key"`
+	SPSURL       *string `json:"sps_url"`
+	SPSKanopyURL *string `json:"sps_kanopy_url"`
 }
 
 func (a *APICedarConfig) BuildFromService(h interface{}) error {
@@ -686,9 +693,8 @@ func (a *APICedarConfig) BuildFromService(h interface{}) error {
 		a.RPCPort = utility.ToStringPtr(v.RPCPort)
 		a.User = utility.ToStringPtr(v.User)
 		a.APIKey = utility.ToStringPtr(v.APIKey)
-		a.SendToCedarDisabled = utility.ToBoolPtr(v.SendToCedarDisabled)
 		a.SPSURL = utility.ToStringPtr(v.SPSURL)
-		a.SendRatioSPS = utility.ToIntPtr(v.SendRatioSPS)
+		a.SPSKanopyURL = utility.ToStringPtr(v.SPSKanopyURL)
 	default:
 		return errors.Errorf("programmatic error: expected Cedar config but got type %T", h)
 	}
@@ -697,14 +703,13 @@ func (a *APICedarConfig) BuildFromService(h interface{}) error {
 
 func (a *APICedarConfig) ToService() (interface{}, error) {
 	return evergreen.CedarConfig{
-		BaseURL:             utility.FromStringPtr(a.BaseURL),
-		GRPCBaseURL:         utility.FromStringPtr(a.GRPCBaseURL),
-		RPCPort:             utility.FromStringPtr(a.RPCPort),
-		User:                utility.FromStringPtr(a.User),
-		APIKey:              utility.FromStringPtr(a.APIKey),
-		SendToCedarDisabled: utility.FromBoolPtr(a.SendToCedarDisabled),
-		SPSURL:              utility.FromStringPtr(a.SPSURL),
-		SendRatioSPS:        utility.FromIntPtr(a.SendRatioSPS),
+		BaseURL:      utility.FromStringPtr(a.BaseURL),
+		GRPCBaseURL:  utility.FromStringPtr(a.GRPCBaseURL),
+		RPCPort:      utility.FromStringPtr(a.RPCPort),
+		User:         utility.FromStringPtr(a.User),
+		APIKey:       utility.FromStringPtr(a.APIKey),
+		SPSURL:       utility.FromStringPtr(a.SPSURL),
+		SPSKanopyURL: utility.FromStringPtr(a.SPSKanopyURL),
 	}, nil
 }
 
@@ -1081,6 +1086,7 @@ type APILoggerConfig struct {
 	DefaultLevel   *string          `json:"default_level"`
 	ThresholdLevel *string          `json:"threshold_level"`
 	LogkeeperURL   *string          `json:"logkeeper_url"`
+	RedactKeys     []*string        `json:"redact_keys"`
 }
 
 func (a *APILoggerConfig) BuildFromService(h interface{}) error {
@@ -1089,6 +1095,7 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 		a.DefaultLevel = utility.ToStringPtr(v.DefaultLevel)
 		a.ThresholdLevel = utility.ToStringPtr(v.ThresholdLevel)
 		a.LogkeeperURL = utility.ToStringPtr(v.LogkeeperURL)
+		a.RedactKeys = utility.ToStringPtrSlice(v.RedactKeys)
 		a.Buffer = &APILogBuffering{}
 		if err := a.Buffer.BuildFromService(v.Buffer); err != nil {
 			return err
@@ -1104,6 +1111,7 @@ func (a *APILoggerConfig) ToService() (interface{}, error) {
 		DefaultLevel:   utility.FromStringPtr(a.DefaultLevel),
 		ThresholdLevel: utility.FromStringPtr(a.ThresholdLevel),
 		LogkeeperURL:   utility.FromStringPtr(a.LogkeeperURL),
+		RedactKeys:     utility.FromStringPtrSlice(a.RedactKeys),
 	}
 	i, err := a.Buffer.ToService()
 	if err != nil {
@@ -1174,6 +1182,26 @@ func (a *APINotifyConfig) ToService() (interface{}, error) {
 		BufferTargetPerInterval: a.BufferTargetPerInterval,
 		BufferIntervalSeconds:   a.BufferIntervalSeconds,
 		SES:                     ses.(evergreen.SESConfig),
+	}, nil
+}
+
+type APIParameterStoreConfig struct {
+	Prefix *string `json:"prefix"`
+}
+
+func (a *APIParameterStoreConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.ParameterStoreConfig:
+		a.Prefix = utility.ToStringPtr(v.Prefix)
+	default:
+		return errors.Errorf("programmatic error: expected Parameter Store config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIParameterStoreConfig) ToService() (interface{}, error) {
+	return evergreen.ParameterStoreConfig{
+		Prefix: utility.FromStringPtr(a.Prefix),
 	}, nil
 }
 
@@ -1287,35 +1315,6 @@ func (a *APICloudProviders) ToService() (interface{}, error) {
 	return evergreen.CloudProviders{
 		AWS:    aws.(evergreen.AWSConfig),
 		Docker: docker.(evergreen.DockerConfig),
-	}, nil
-}
-
-type APICommitQueueConfig struct {
-	MergeTaskDistro *string `json:"merge_task_distro"`
-	CommitterName   *string `json:"committer_name"`
-	CommitterEmail  *string `json:"committer_email"`
-	BatchSize       int     `json:"batch_size"`
-}
-
-func (a *APICommitQueueConfig) BuildFromService(h interface{}) error {
-	if v, ok := h.(evergreen.CommitQueueConfig); ok {
-		a.MergeTaskDistro = utility.ToStringPtr(v.MergeTaskDistro)
-		a.CommitterName = utility.ToStringPtr(v.CommitterName)
-		a.CommitterEmail = utility.ToStringPtr(v.CommitterEmail)
-		a.BatchSize = v.BatchSize
-
-		return nil
-	}
-
-	return errors.Errorf("programmatic error: expected commit queue config but got type %T", h)
-}
-
-func (a *APICommitQueueConfig) ToService() (interface{}, error) {
-	return evergreen.CommitQueueConfig{
-		MergeTaskDistro: utility.FromStringPtr(a.MergeTaskDistro),
-		CommitterName:   utility.FromStringPtr(a.CommitterName),
-		CommitterEmail:  utility.FromStringPtr(a.CommitterEmail),
-		BatchSize:       a.BatchSize,
 	}, nil
 }
 
@@ -1448,7 +1447,6 @@ type APIAWSConfig struct {
 	AllowedRegions       []*string                 `json:"allowed_regions"`
 	MaxVolumeSizePerUser *int                      `json:"max_volume_size"`
 	Pod                  *APIAWSPodConfig          `json:"pod"`
-	ParameterStore       *APIParameterStoreConfig  `json:"parameter_store"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h interface{}) error {
@@ -1502,10 +1500,6 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		var pod APIAWSPodConfig
 		pod.BuildFromService(v.Pod)
 		a.Pod = &pod
-
-		var ps APIParameterStoreConfig
-		ps.BuildFromService(v.ParameterStore)
-		a.ParameterStore = &ps
 	default:
 		return errors.Errorf("programmatic error: expected AWS config but got type %T", h)
 	}
@@ -1613,8 +1607,6 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		return nil, errors.Wrap(err, "converting ECS configuration to service model")
 	}
 	config.Pod = *pod
-
-	config.ParameterStore = a.ParameterStore.ToService()
 
 	return config, nil
 }
@@ -2096,6 +2088,65 @@ type APIServiceFlags struct {
 	GithubStatusAPIDisabled      bool `json:"github_status_api_disabled"`
 }
 
+type APIProjectTasksPair struct {
+	ProjectID    string   `json:"project_id"`
+	AllowedTasks []string `json:"allowed_tasks"`
+}
+
+func (a *APIProjectTasksPair) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.ProjectTasksPair:
+		a.ProjectID = v.ProjectID
+		a.AllowedTasks = v.AllowedTasks
+	default:
+		return errors.Errorf("programmatic error: expected project tasks pair but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIProjectTasksPair) ToService() (interface{}, error) {
+	return evergreen.ProjectTasksPair{
+		ProjectID:    a.ProjectID,
+		AllowedTasks: a.AllowedTasks,
+	}, nil
+}
+
+type APISingleTaskDistroConfig struct {
+	ProjectTasksPairs []APIProjectTasksPair `json:"project_tasks_pair"`
+}
+
+func (a *APISingleTaskDistroConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.SingleTaskDistroConfig:
+		apiPairs := []APIProjectTasksPair{}
+		for _, pair := range v.ProjectTasksPairs {
+			apiPair := APIProjectTasksPair{}
+			if err := apiPair.BuildFromService(pair); err != nil {
+				return errors.Wrap(err, "converting project tasks pair to API model")
+			}
+			apiPairs = append(apiPairs, apiPair)
+		}
+		a.ProjectTasksPairs = apiPairs
+	default:
+		return errors.Errorf("programmatic error: expected single task distro config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APISingleTaskDistroConfig) ToService() (interface{}, error) {
+	pairs := []evergreen.ProjectTasksPair{}
+	for _, pair := range a.ProjectTasksPairs {
+		p, err := pair.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "converting project tasks pair to service model")
+		}
+		pairs = append(pairs, p.(evergreen.ProjectTasksPair))
+	}
+	return evergreen.SingleTaskDistroConfig{
+		ProjectTasksPairs: pairs,
+	}, nil
+}
+
 type APISSHKeyPair struct {
 	Name    *string `json:"name"`
 	Public  *string `json:"public"`
@@ -2266,6 +2317,7 @@ type APIUIConfig struct {
 	LoginDomain               *string         `json:"login_domain"`
 	UserVoice                 *string         `json:"userVoice"`
 	BetaFeatures              APIBetaFeatures `json:"beta_features"`
+	StagingEnvironment        *string         `json:"staging_environment"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
@@ -2284,6 +2336,7 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.LoginDomain = utility.ToStringPtr(v.LoginDomain)
 		a.UserVoice = utility.ToStringPtr(v.UserVoice)
 		a.FileStreamingContentTypes = v.FileStreamingContentTypes
+		a.StagingEnvironment = utility.ToStringPtr(v.StagingEnvironment)
 
 		betaFeatures := APIBetaFeatures{}
 		betaFeatures.BuildFromService(v.BetaFeatures)
@@ -2310,6 +2363,7 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 		LoginDomain:               utility.FromStringPtr(a.LoginDomain),
 		UserVoice:                 utility.FromStringPtr(a.UserVoice),
 		BetaFeatures:              a.BetaFeatures.ToService(),
+		StagingEnvironment:        utility.FromStringPtr(a.StagingEnvironment),
 	}, nil
 }
 
@@ -2548,7 +2602,7 @@ func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
 
 func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
 	service := evergreen.JIRANotificationsConfig{}
-	if j.CustomFields == nil || len(j.CustomFields) == 0 {
+	if len(j.CustomFields) == 0 {
 		return service, nil
 	}
 
@@ -2804,6 +2858,26 @@ func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
+type APITestSelectionConfig struct {
+	URL *string `json:"url"`
+}
+
+func (c *APITestSelectionConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.TestSelectionConfig:
+		c.URL = utility.ToStringPtr(v.URL)
+		return nil
+	default:
+		return errors.Errorf("programmatic error: expected test selection config but got type %T", h)
+	}
+}
+
+func (c *APITestSelectionConfig) ToService() (interface{}, error) {
+	return evergreen.TestSelectionConfig{
+		URL: utility.FromStringPtr(c.URL),
+	}, nil
+}
+
 type APIRuntimeEnvironmentsConfig struct {
 	BaseURL *string `json:"base_url"`
 	APIKey  *string `json:"api_key"`
@@ -2825,21 +2899,4 @@ func (a *APIRuntimeEnvironmentsConfig) ToService() (interface{}, error) {
 		BaseURL: utility.FromStringPtr(a.BaseURL),
 		APIKey:  utility.FromStringPtr(a.APIKey),
 	}, nil
-}
-
-type APIParameterStoreConfig struct {
-	Prefix *string `json:"prefix"`
-}
-
-func (a *APIParameterStoreConfig) BuildFromService(ps evergreen.ParameterStoreConfig) {
-	a.Prefix = utility.ToStringPtr(ps.Prefix)
-}
-
-func (a *APIParameterStoreConfig) ToService() evergreen.ParameterStoreConfig {
-	if a == nil {
-		return evergreen.ParameterStoreConfig{}
-	}
-	return evergreen.ParameterStoreConfig{
-		Prefix: utility.FromStringPtr(a.Prefix),
-	}
 }

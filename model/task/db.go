@@ -63,7 +63,7 @@ var (
 	DependsOnKey                   = bsonutil.MustHaveTag(Task{}, "DependsOn")
 	UnattainableDependencyKey      = bsonutil.MustHaveTag(Task{}, "UnattainableDependency")
 	OverrideDependenciesKey        = bsonutil.MustHaveTag(Task{}, "OverrideDependencies")
-	NumDepsKey                     = bsonutil.MustHaveTag(Task{}, "NumDependents")
+	NumDependentsKey               = bsonutil.MustHaveTag(Task{}, "NumDependents")
 	DisplayNameKey                 = bsonutil.MustHaveTag(Task{}, "DisplayName")
 	ExecutionPlatformKey           = bsonutil.MustHaveTag(Task{}, "ExecutionPlatform")
 	HostIdKey                      = bsonutil.MustHaveTag(Task{}, "HostId")
@@ -119,6 +119,7 @@ var (
 	IsAutomaticRestartKey                  = bsonutil.MustHaveTag(Task{}, "IsAutomaticRestart")
 	CommitQueueMergeKey                    = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
 	DisplayStatusKey                       = bsonutil.MustHaveTag(Task{}, "DisplayStatus")
+	DisplayStatusCacheKey                  = bsonutil.MustHaveTag(Task{}, "DisplayStatusCache")
 	BaseTaskKey                            = bsonutil.MustHaveTag(Task{}, "BaseTask")
 	BuildVariantDisplayNameKey             = bsonutil.MustHaveTag(Task{}, "BuildVariantDisplayName")
 	IsEssentialToSucceedKey                = bsonutil.MustHaveTag(Task{}, "IsEssentialToSucceed")
@@ -188,17 +189,25 @@ var (
 		},
 	}
 
-	updateDisplayTasksAndTasksExpression = bson.M{
+	addDisplayStatusCache = bson.M{
+		"$addFields": bson.M{
+			DisplayStatusCacheKey: DisplayStatusExpression,
+		},
+	}
+
+	updateDisplayTasksAndTasksSet = bson.M{
 		"$set": bson.M{
 			CanResetKey: true,
-		},
-		"$unset": bson.M{
-			AbortedKey:              "",
-			AbortInfoKey:            "",
-			OverrideDependenciesKey: "",
-		},
-		"$inc": bson.M{ExecutionKey: 1},
-	}
+			ExecutionKey: bson.M{
+				"$add": bson.A{"$" + ExecutionKey, 1},
+			},
+		}}
+	updateDisplayTasksAndTasksUnset = bson.M{
+		"$unset": bson.A{
+			AbortedKey,
+			AbortInfoKey,
+			OverrideDependenciesKey,
+		}}
 
 	// This should reflect Task.GetDisplayStatus()
 	DisplayStatusExpression = bson.M{
@@ -1302,9 +1311,9 @@ func FindTaskNamesByBuildVariant(projectId string, buildVariant string, repoOrde
 // DB Boilerplate
 
 // FindOne returns a single task that satisfies the query.
-func FindOne(query db.Q) (*Task, error) {
+func FindOne(ctx context.Context, query db.Q) (*Task, error) {
 	task := &Task{}
-	err := db.FindOneQ(Collection, query, task)
+	err := db.FindOneQContext(ctx, Collection, query, task)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1312,26 +1321,17 @@ func FindOne(query db.Q) (*Task, error) {
 }
 
 // FindOneId returns a single task with the given ID.
-func FindOneId(id string) (*Task, error) {
-	task := &Task{}
-	query := db.Query(bson.M{IdKey: id})
-	err := db.FindOneQ(Collection, query, task)
+func FindOneId(ctx context.Context, id string) (*Task, error) {
+	task, err := FindOne(ctx, db.Query(bson.M{IdKey: id}))
 
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "finding task by ID")
-	}
-
-	return task, nil
+	return task, errors.Wrap(err, "finding task by ID")
 }
 
 // FindByIdExecution returns a single task with the given ID and execution. If
 // execution is nil, the latest execution is returned.
-func FindByIdExecution(id string, execution *int) (*Task, error) {
+func FindByIdExecution(ctx context.Context, id string, execution *int) (*Task, error) {
 	if execution == nil {
-		return FindOneId(id)
+		return FindOneId(ctx, id)
 	}
 	return FindOneIdAndExecution(id, *execution)
 }
@@ -1559,17 +1559,6 @@ func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {
 	return tasks, nil
 }
 
-func FindMergeTaskForVersion(versionId string) (*Task, error) {
-	task := &Task{}
-	query := db.Query(bson.M{
-		VersionKey:          versionId,
-		CommitQueueMergeKey: true,
-	})
-	err := db.FindOneQ(Collection, query, task)
-
-	return task, err
-}
-
 // FindOld returns all non-display tasks from the old tasks collection that
 // satisfy the given query.
 func FindOld(filter bson.M) ([]Task, error) {
@@ -1596,10 +1585,10 @@ func FindOldWithDisplayTasks(filter bson.M) ([]Task, error) {
 
 // FindOneIdOldOrNew returns a single task with the given ID and execution,
 // first looking in the old tasks collection, then the tasks collection.
-func FindOneIdOldOrNew(id string, execution int) (*Task, error) {
+func FindOneIdOldOrNew(ctx context.Context, id string, execution int) (*Task, error) {
 	task, err := FindOneOldId(MakeOldID(id, execution))
 	if task == nil || err != nil {
-		return FindOneId(id)
+		return FindOneId(ctx, id)
 	}
 
 	return task, err
@@ -1747,9 +1736,9 @@ func Count(query db.Q) (int, error) {
 	return db.CountQ(Collection, query)
 }
 
-func FindProjectForTask(taskID string) (string, error) {
+func FindProjectForTask(ctx context.Context, taskID string) (string, error) {
 	query := db.Query(ById(taskID)).WithFields(ProjectKey)
-	t, err := FindOne(query)
+	t, err := FindOne(ctx, query)
 	if err != nil {
 		return "", err
 	}
@@ -1826,6 +1815,7 @@ func updateAllTasksForAllMatchingDependencies(ctx context.Context, taskIDs []str
 					"else": false,
 				}}},
 			},
+			addDisplayStatusCache,
 		},
 	); err != nil {
 		return errors.Wrap(err, "updating matching dependencies")
@@ -1847,16 +1837,6 @@ func HasUnfinishedTaskForVersions(versionIds []string, taskName, variantName str
 	return count > 0, err
 }
 
-// FindTaskForVersion returns a task matching the given version and task info.
-func FindTaskForVersion(versionId, taskName, variantName string) (*Task, error) {
-	return FindOne(
-		db.Query(bson.M{
-			VersionKey:      versionId,
-			DisplayNameKey:  taskName,
-			BuildVariantKey: variantName,
-		}))
-}
-
 func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError error) error {
 	if hostCreateError == nil {
 		return nil
@@ -1871,8 +1851,8 @@ func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError 
 
 // FindActivatedStepbackTaskByName queries for running/scheduled stepback tasks with
 // matching build variant and task name.
-func FindActivatedStepbackTaskByName(projectId string, variantName string, taskName string) (*Task, error) {
-	t, err := FindOne(db.Query(bson.M{
+func FindActivatedStepbackTaskByName(ctx context.Context, projectId string, variantName string, taskName string) (*Task, error) {
+	t, err := FindOne(ctx, db.Query(bson.M{
 		ProjectKey:      projectId,
 		BuildVariantKey: variantName,
 		DisplayNameKey:  taskName,
@@ -2708,6 +2688,7 @@ func activateTasks(taskIDs []string, caller string, activationTime time.Time) er
 					ActivatedTimeKey: activationTime,
 				},
 			},
+			addDisplayStatusCache,
 		})
 	if err != nil {
 		return errors.Wrap(err, "setting tasks to active")
@@ -2732,18 +2713,6 @@ func enableDisabledTasks(taskIDs []string) error {
 	return err
 }
 
-// SetHasAnnotations sets a task's HasAnnotations flag, indicating
-// that there are annotations with populated IssuesKey for its
-// id / execution pair.
-func SetHasAnnotations(taskId string, execution int) error {
-	err := UpdateOne(
-		ByIdAndExecution(taskId, execution),
-		bson.M{"$set": bson.M{
-			HasAnnotationsKey: true,
-		}})
-	return errors.Wrapf(err, "marking task '%s' as having annotations", taskId)
-}
-
 // IncNumNextTaskDispatches sets the number of times a host has requested this
 // task and execution as its next task.
 func (t *Task) IncNumNextTaskDispatches() error {
@@ -2758,16 +2727,19 @@ func (t *Task) IncNumNextTaskDispatches() error {
 	return nil
 }
 
-// UnsetHasAnnotations unsets a task's HasAnnotations flag, indicating
-// that there are no longer any annotations with populated IssuesKey for its
-// id / execution pair.
-func UnsetHasAnnotations(taskId string, execution int) error {
-	err := UpdateOne(
+// UpdateHasAnnotations updates a task's HasAnnotations flag, indicating if there
+// are any annotations with populated IssuesKey for its id / execution pair.
+func UpdateHasAnnotations(ctx context.Context, taskId string, execution int, hasAnnotations bool) error {
+	err := UpdateOneContext(
+		ctx,
 		ByIdAndExecution(taskId, execution),
-		bson.M{"$set": bson.M{
-			HasAnnotationsKey: false,
-		}})
-	return errors.Wrapf(err, "marking task '%s' as having no annotations", taskId)
+		[]bson.M{
+			bson.M{"$set": bson.M{
+				HasAnnotationsKey: hasAnnotations,
+			}},
+			addDisplayStatusCache,
+		})
+	return errors.Wrapf(err, "updating HasAnnotations field for task '%s'", taskId)
 }
 
 type NumExecutionsForIntervalInput struct {
@@ -2838,15 +2810,20 @@ func abortAndMarkResetTasks(ctx context.Context, filter bson.M, taskIDs []string
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(
 		ctx,
 		filter,
-		bson.M{
-			"$set": bson.M{
-				AbortedKey:           true,
-				AbortInfoKey:         AbortInfo{User: caller},
-				ResetWhenFinishedKey: true,
+		[]bson.M{
+			bson.M{
+				"$set": bson.M{
+					AbortedKey:           true,
+					AbortInfoKey:         AbortInfo{User: caller},
+					ResetWhenFinishedKey: true,
+				},
 			},
-			"$unset": bson.M{
-				ResetFailedWhenFinishedKey: 1,
+			bson.M{
+				"$unset": []string{
+					ResetFailedWhenFinishedKey,
+				},
 			},
+			addDisplayStatusCache,
 		},
 	)
 

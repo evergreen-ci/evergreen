@@ -303,7 +303,7 @@ func TestHostTerminationJob(t *testing.T) {
 			require.NotZero(t, cloudHost)
 			assert.Equal(t, cloud.StatusTerminated, cloudHost.Status)
 
-			resetTask, err := task.FindOneId("task2")
+			resetTask, err := task.FindOneId(ctx, "task2")
 			require.NoError(t, err)
 			assert.Equal(t, evergreen.TaskSucceeded, resetTask.Status)
 
@@ -524,12 +524,12 @@ func TestHostTerminationJob(t *testing.T) {
 			assert.Equal(t, cloud.StatusTerminated, cloudHost.Status)
 
 			// Verify the task group has not been reset
-			resetTask, err := task.FindOneId("task2")
+			resetTask, err := task.FindOneId(ctx, "task2")
 			require.NoError(t, err)
 			require.NotNil(t, resetTask)
 			assert.Equal(t, evergreen.TaskSucceeded, resetTask.Status)
 
-			dbTask, err := task.FindOneId(nonTgTask.Id)
+			dbTask, err := task.FindOneId(ctx, nonTgTask.Id)
 			require.NoError(t, err)
 			require.NotNil(t, dbTask)
 			assert.False(t, dbTask.UnattainableDependency)

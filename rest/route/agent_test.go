@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v52/github"
@@ -50,8 +49,8 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			req = gimlet.SetURLVars(req, map[string]string{"task_id": "t1"})
 			req.Header.Add(evergreen.HostHeader, "host_id")
 			assert.NoError(t, rh.Parse(ctx, req))
-			assert.Equal(t, rh.taskID, "t1")
-			assert.Equal(t, rh.hostID, "host_id")
+			assert.Equal(t, "t1", rh.taskID)
+			assert.Equal(t, "host_id", rh.hostID)
 		},
 		"RunSucceeds": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			rh.taskID = "t2"
@@ -61,9 +60,9 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
 			require.True(t, ok)
 			assert.Equal(t, rh.taskID, data.Expansions.Get("task_id"))
-			assert.Equal(t, data.Vars, map[string]string{"a": "1", "b": "3"})
-			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
-			assert.Equal(t, data.RedactKeys, []string{"pass", "secret"})
+			assert.Equal(t, map[string]string{"a": "1", "b": "3"}, data.Vars)
+			assert.Equal(t, map[string]bool{"b": true}, data.PrivateVars)
+			assert.Equal(t, []string{"pass", "secret"}, data.RedactKeys)
 		},
 		"RunSucceedsWithParamsSetOnVersion": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			rh.taskID = "t1"
@@ -72,10 +71,10 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			assert.Equal(t, http.StatusOK, resp.Status())
 			data, ok := resp.Data().(apimodels.ExpansionsAndVars)
 			require.True(t, ok)
-			assert.Equal(t, data.Vars, map[string]string{"a": "1", "b": "3"})
-			assert.Equal(t, data.Parameters, map[string]string{"a": "4"})
-			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
-			assert.Equal(t, data.RedactKeys, []string{"pass", "secret"})
+			assert.Equal(t, map[string]string{"a": "1", "b": "3"}, data.Vars)
+			assert.Equal(t, map[string]string{"a": "4"}, data.Parameters)
+			assert.Equal(t, map[string]bool{"b": true}, data.PrivateVars)
+			assert.Equal(t, []string{"pass", "secret"}, data.RedactKeys)
 		},
 		"RunSucceedsWithHostDistroExpansions": func(ctx context.Context, t *testing.T, rh *getExpansionsAndVarsHandler) {
 			rh.taskID = "t1"
@@ -88,10 +87,10 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			assert.Equal(t, rh.taskID, data.Expansions.Get("task_id"))
 			assert.Equal(t, "distro_expansion_value", data.Expansions.Get("distro_expansion_key"))
 			assert.Equal(t, "password", data.Expansions.Get(evergreen.HostServicePasswordExpansion))
-			assert.Equal(t, data.Vars, map[string]string{"a": "1", "b": "3"})
-			assert.Equal(t, data.Parameters, map[string]string{"a": "4"})
-			assert.Equal(t, data.PrivateVars, map[string]bool{"b": true})
-			assert.Equal(t, data.RedactKeys, []string{"pass", "secret"})
+			assert.Equal(t, map[string]string{"a": "1", "b": "3"}, data.Vars)
+			assert.Equal(t, map[string]string{"a": "4"}, data.Parameters)
+			assert.Equal(t, map[string]bool{"b": true}, data.PrivateVars)
+			assert.Equal(t, []string{"pass", "secret"}, data.RedactKeys)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -201,7 +200,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NoError(t, err)
 			req = gimlet.SetURLVars(req, map[string]string{"task_id": "t1"})
 			assert.NoError(t, rh.Parse(ctx, req))
-			assert.Equal(t, rh.taskID, "t1")
+			assert.Equal(t, "t1", rh.taskID)
 		},
 		"RunSucceeds": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
 			rh.taskID = "t2"
@@ -209,7 +208,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			foundTask, err := task.FindOneId("t2")
+			foundTask, err := task.FindOneId(ctx, "t2")
 			require.NoError(t, err)
 			require.NotNil(t, foundTask)
 			assert.True(t, foundTask.ResetWhenFinished)
@@ -226,12 +225,12 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusBadRequest, resp.Status())
 
-			foundTask, err = task.FindOneId("t2")
+			foundTask, err = task.FindOneId(ctx, "t2")
 			require.NoError(t, err)
 			require.NotNil(t, foundTask)
 			assert.False(t, foundTask.ResetWhenFinished)
 			assert.False(t, foundTask.IsAutomaticRestart)
-			assert.Equal(t, foundTask.Status, evergreen.TaskUndispatched)
+			assert.Equal(t, evergreen.TaskUndispatched, foundTask.Status)
 			assert.Equal(t, 1, foundTask.NumAutomaticRestarts)
 		},
 		"RunSucceedsWithDisplayTask": func(ctx context.Context, t *testing.T, rh *markTaskForRestartHandler) {
@@ -240,7 +239,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			foundTask, err := task.FindOneId("dt")
+			foundTask, err := task.FindOneId(ctx, "dt")
 			require.NoError(t, err)
 			require.NotNil(t, foundTask)
 			assert.True(t, foundTask.ResetWhenFinished)
@@ -254,7 +253,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			foundTask, err = task.FindOneId("dt")
+			foundTask, err = task.FindOneId(ctx, "dt")
 			require.NoError(t, err)
 			require.NotNil(t, foundTask)
 			assert.True(t, foundTask.ResetWhenFinished)
@@ -268,7 +267,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			foundTask, err := task.FindOneId("t2")
+			foundTask, err := task.FindOneId(ctx, "t2")
 			require.NoError(t, err)
 			require.NotNil(t, foundTask)
 			assert.True(t, foundTask.ResetWhenFinished)
@@ -295,7 +294,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			foundTask, err = task.FindOneId("t4")
+			foundTask, err = task.FindOneId(ctx, "t4")
 			require.NoError(t, err)
 			require.NotNil(t, foundTask)
 			assert.True(t, foundTask.ResetWhenFinished)
@@ -442,7 +441,6 @@ func TestAgentSetup(t *testing.T) {
 			assert.Equal(t, data.SplunkClientToken, s.Splunk.SplunkConnectionInfo.Token)
 			assert.Equal(t, data.SplunkChannel, s.Splunk.SplunkConnectionInfo.Channel)
 			assert.Equal(t, data.TaskSync, s.Providers.AWS.TaskSync)
-			assert.Equal(t, data.EC2Keys, s.Providers.AWS.EC2Keys)
 			assert.Equal(t, data.MaxExecTimeoutSecs, s.TaskLimits.MaxExecTimeoutSecs)
 		},
 		"ReturnsEmpty": func(ctx context.Context, t *testing.T, rh *agentSetup, s *evergreen.Settings) {
@@ -494,58 +492,6 @@ func TestAgentSetup(t *testing.T) {
 			require.True(t, ok)
 
 			tCase(ctx, t, r, s)
-		})
-	}
-}
-
-func TestAgentCheckGetPullRequestHandler(t *testing.T) {
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *agentCheckGetPullRequestHandler, s *evergreen.Settings){
-		"FactorySucceeds": func(ctx context.Context, t *testing.T, rh *agentCheckGetPullRequestHandler, s *evergreen.Settings) {
-			copied := rh.Factory()
-			assert.NotZero(t, copied)
-			_, ok := copied.(*agentCheckGetPullRequestHandler)
-			assert.True(t, ok)
-		},
-		"ParseSucceeds": func(ctx context.Context, t *testing.T, rh *agentCheckGetPullRequestHandler, s *evergreen.Settings) {
-			json := []byte(`{
-                "owner": "evergreen",
-                "repo": "sandbox"
-            }`)
-			req, err := http.NewRequest(http.MethodGet, "https://example.com/rest/v2/task/t1/pull_request", bytes.NewBuffer(json))
-			req = gimlet.SetURLVars(req, map[string]string{"task_id": "t1"})
-			require.NoError(t, err)
-			assert.NoError(t, rh.Parse(ctx, req))
-			assert.Equal(t, "t1", rh.taskID)
-			assert.Equal(t, "evergreen", rh.req.Owner)
-			assert.Equal(t, "sandbox", rh.req.Repo)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(patch.Collection, task.Collection))
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			env := &mock.Environment{}
-			assert.NoError(t, env.Configure(ctx))
-
-			tsk := &task.Task{
-				Id:      "t1",
-				Version: "aaaaaaaaaaff001122334456",
-			}
-			patch := &patch.Patch{
-				Id:      patch.NewId("aaaaaaaaaaff001122334456"),
-				Version: "aaaaaaaaaaff001122334456",
-				GithubPatchData: thirdparty.GithubPatch{
-					MergeCommitSHA: "abc",
-				},
-			}
-			require.NoError(t, tsk.Insert())
-			require.NoError(t, patch.Insert())
-
-			r, ok := makeAgentGetPullRequest(env.Settings()).(*agentCheckGetPullRequestHandler)
-			require.True(t, ok)
-
-			tCase(ctx, t, r, env.Settings())
 		})
 	}
 }
@@ -608,7 +554,7 @@ func TestDownstreamParams(t *testing.T) {
 
 	resp := r.Run(ctx)
 	assert.NotNil(t, resp)
-	assert.Equal(t, resp.Status(), http.StatusOK)
+	assert.Equal(t, http.StatusOK, resp.Status())
 
 	p, err := patch.FindOneId(parentPatchId)
 	require.NoError(t, err)
@@ -791,10 +737,10 @@ func TestUpsertCheckRunParse(t *testing.T) {
 	request = gimlet.SetURLVars(request, map[string]string{"task_id": "task1"})
 
 	assert.NoError(t, r.Parse(ctx, request))
-	assert.Equal(t, r.taskID, "task1")
+	assert.Equal(t, "task1", r.taskID)
 
-	assert.Equal(t, utility.FromStringPtr(r.checkRunOutput.Title), "This is my report")
-	assert.Equal(t, len(r.checkRunOutput.Annotations), 1)
+	assert.Equal(t, "This is my report", utility.FromStringPtr(r.checkRunOutput.Title))
+	assert.Len(t, r.checkRunOutput.Annotations, 1)
 }
 
 func TestCreateGitHubDynamicAccessToken(t *testing.T) {
@@ -868,8 +814,8 @@ func TestCreateGitHubDynamicAccessToken(t *testing.T) {
 			require.NoError(t, handler.Parse(ctx, request))
 			require.NotNil(t, handler.permissions)
 			require.False(t, handler.allPermissions)
-			assert.Equal(t, utility.FromStringPtr(handler.permissions.Checks), "read")
-			assert.Equal(t, utility.FromStringPtr(handler.permissions.Actions), "write")
+			assert.Equal(t, "read", utility.FromStringPtr(handler.permissions.Checks))
+			assert.Equal(t, "write", utility.FromStringPtr(handler.permissions.Actions))
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

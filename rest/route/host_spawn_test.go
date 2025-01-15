@@ -254,11 +254,11 @@ func TestHostModifyHandlers(t *testing.T) {
 	}()
 
 	checkSubscriptions := func(t *testing.T, userID string, numSubs int) {
-		subscriptions, err := data.GetSubscriptions("user", event.OwnerTypePerson)
+		subscriptions, err := data.GetSubscriptions(userID, event.OwnerTypePerson)
 		assert.NoError(t, err)
 		assert.Len(t, subscriptions, numSubs)
 	}
-	checkSpawnHostModifyQueueGroup := func(ctx context.Context, t *testing.T, env *mock.Environment, numQueues int) {
+	checkSpawnHostModifyQueueGroup := func(t *testing.T, env *mock.Environment, numQueues int) {
 		qg := env.RemoteQueueGroup()
 		assert.Equal(t, numQueues, qg.Len())
 	}
@@ -277,7 +277,7 @@ func TestHostModifyHandlers(t *testing.T) {
 			assert.Equal(t, http.StatusOK, resp.Status())
 
 			checkSubscriptions(t, "user", 1)
-			checkSpawnHostModifyQueueGroup(ctx, t, env, 1)
+			checkSpawnHostModifyQueueGroup(t, env, 1)
 		},
 		"StopHandlerEnqueuesStopJobForStoppingHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
 			rh := &hostStopHandler{
@@ -292,7 +292,7 @@ func TestHostModifyHandlers(t *testing.T) {
 			assert.Equal(t, http.StatusOK, resp.Status())
 
 			checkSubscriptions(t, "user", 1)
-			checkSpawnHostModifyQueueGroup(ctx, t, env, 1)
+			checkSpawnHostModifyQueueGroup(t, env, 1)
 		},
 		"StopHandlerEnqueuesStopJobForAlreadyStoppedHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
 			rh := &hostStopHandler{
@@ -307,7 +307,7 @@ func TestHostModifyHandlers(t *testing.T) {
 			assert.Equal(t, http.StatusOK, resp.Status())
 
 			checkSubscriptions(t, "user", 1)
-			checkSpawnHostModifyQueueGroup(ctx, t, env, 1)
+			checkSpawnHostModifyQueueGroup(t, env, 1)
 		},
 		"StopHandlerErrorsForNonstoppableHostStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
 			rh := &hostStopHandler{
@@ -322,7 +322,7 @@ func TestHostModifyHandlers(t *testing.T) {
 			assert.Equal(t, http.StatusBadRequest, resp.Status())
 
 			checkSubscriptions(t, "user", 0)
-			checkSpawnHostModifyQueueGroup(ctx, t, env, 0)
+			checkSpawnHostModifyQueueGroup(t, env, 0)
 		},
 		"StartHandlerEnqueuesStartJobForStoppedHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
 			rh := &hostStartHandler{
@@ -337,7 +337,7 @@ func TestHostModifyHandlers(t *testing.T) {
 			assert.Equal(t, http.StatusOK, resp.Status())
 
 			checkSubscriptions(t, "user", 1)
-			checkSpawnHostModifyQueueGroup(ctx, t, env, 1)
+			checkSpawnHostModifyQueueGroup(t, env, 1)
 		},
 		"StartHandlerEnqueuesStartJobForStoppingHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
 			rh := &hostStartHandler{
@@ -352,7 +352,7 @@ func TestHostModifyHandlers(t *testing.T) {
 			assert.Equal(t, http.StatusOK, resp.Status())
 
 			checkSubscriptions(t, "user", 1)
-			checkSpawnHostModifyQueueGroup(ctx, t, env, 1)
+			checkSpawnHostModifyQueueGroup(t, env, 1)
 		},
 		"StartHandlerErrorsForNonstartableHostStatus": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
 			rh := &hostStartHandler{
@@ -367,7 +367,7 @@ func TestHostModifyHandlers(t *testing.T) {
 			assert.Equal(t, http.StatusBadRequest, resp.Status())
 
 			checkSubscriptions(t, "user", 0)
-			checkSpawnHostModifyQueueGroup(ctx, t, env, 0)
+			checkSpawnHostModifyQueueGroup(t, env, 0)
 		},
 		"StartHandlerEnqueuesJobForAlreadyRunningHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
 			rh := &hostStartHandler{
@@ -382,7 +382,7 @@ func TestHostModifyHandlers(t *testing.T) {
 			assert.Equal(t, http.StatusOK, resp.Status())
 
 			checkSubscriptions(t, "user", 1)
-			checkSpawnHostModifyQueueGroup(ctx, t, env, 1)
+			checkSpawnHostModifyQueueGroup(t, env, 1)
 		},
 		"ModifyHandlerModifiesHost": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
 			rh := &hostModifyHandler{
@@ -398,7 +398,7 @@ func TestHostModifyHandlers(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			checkSpawnHostModifyQueueGroup(ctx, t, env, 1)
+			checkSpawnHostModifyQueueGroup(t, env, 1)
 		},
 		"ModifyHandlerFailsWithVeryLongTemporaryExemption": func(ctx context.Context, t *testing.T, env *mock.Environment, hosts []host.Host) {
 			rh := &hostModifyHandler{
@@ -676,8 +676,8 @@ func TestAttachVolumeHandler(t *testing.T) {
 	assert.NoError(t, h.Parse(ctx, r))
 
 	require.NotNil(t, h.attachment)
-	assert.Equal(t, h.attachment.VolumeID, "my-volume")
-	assert.Equal(t, h.attachment.DeviceName, "my-device")
+	assert.Equal(t, "my-volume", h.attachment.VolumeID)
+	assert.Equal(t, "my-device", h.attachment.DeviceName)
 
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)
@@ -854,11 +854,11 @@ func TestGetVolumesHandler(t *testing.T) {
 		if utility.FromStringPtr(v.ID) == "volume1" {
 			assert.Equal(t, h1.Id, utility.FromStringPtr(v.HostID))
 			assert.Equal(t, h1.Volumes[0].DeviceName, utility.FromStringPtr(v.DeviceName))
-			assert.Equal(t, v.Size, 64)
+			assert.Equal(t, 64, v.Size)
 		} else {
 			assert.Empty(t, utility.FromStringPtr(v.HostID))
 			assert.Empty(t, utility.FromStringPtr(v.DeviceName))
-			assert.Equal(t, v.Size, 36)
+			assert.Equal(t, 36, v.Size)
 		}
 	}
 }
@@ -905,7 +905,7 @@ func TestGetVolumeByIDHandler(t *testing.T) {
 	assert.Equal(t, evergreen.DefaultEBSAvailabilityZone, utility.FromStringPtr(v.AvailabilityZone))
 	assert.Equal(t, h1.Id, utility.FromStringPtr(v.HostID))
 	assert.Equal(t, h1.Volumes[0].DeviceName, utility.FromStringPtr(v.DeviceName))
-	assert.Equal(t, v.Size, 64)
+	assert.Equal(t, 64, v.Size)
 }
 
 func TestMakeSpawnHostSubscription(t *testing.T) {

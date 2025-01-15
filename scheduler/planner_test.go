@@ -22,7 +22,7 @@ func TestPlanner(t *testing.T) {
 	t.Run("Caches", func(t *testing.T) {
 		t.Run("StringSet", func(t *testing.T) {
 			t.Run("ZeroValue", func(t *testing.T) {
-				assert.Len(t, StringSet{}, 0)
+				assert.Empty(t, StringSet{})
 				assert.NotNil(t, StringSet{})
 			})
 			t.Run("CheckNonExistent", func(t *testing.T) {
@@ -43,7 +43,7 @@ func TestPlanner(t *testing.T) {
 			})
 			t.Run("VistExistingKey", func(t *testing.T) {
 				set := StringSet{}
-				assert.Len(t, set, 0)
+				assert.Empty(t, set)
 				set.Add("foo")
 				assert.Len(t, set, 1)
 				assert.True(t, set.Visit("foo"))
@@ -53,12 +53,12 @@ func TestPlanner(t *testing.T) {
 		t.Run("UnitCache", func(t *testing.T) {
 			t.Run("Zero", func(t *testing.T) {
 				cache := UnitCache{}
-				assert.Len(t, cache, 0)
+				assert.Empty(t, cache)
 			})
 			t.Run("AddWhenNoops", func(t *testing.T) {
 				cache := UnitCache{}
 				cache.AddWhen(false, "foo", task.Task{})
-				assert.Len(t, cache, 0)
+				assert.Empty(t, cache)
 			})
 			t.Run("AddWhenAddsNew", func(t *testing.T) {
 				cache := UnitCache{}
@@ -67,7 +67,7 @@ func TestPlanner(t *testing.T) {
 			})
 			t.Run("AddWhenWithExisting", func(t *testing.T) {
 				cache := UnitCache{}
-				assert.Len(t, cache, 0)
+				assert.Empty(t, cache)
 				cache.AddWhen(true, "foo", task.Task{})
 				assert.Len(t, cache, 1)
 				cache.AddWhen(true, "foo", task.Task{})
@@ -89,7 +89,7 @@ func TestPlanner(t *testing.T) {
 			})
 			t.Run("AddNewWithExisting", func(t *testing.T) {
 				cache := UnitCache{}
-				assert.Len(t, cache, 0)
+				assert.Empty(t, cache)
 				cache.AddNew("foo", &Unit{})
 				assert.Len(t, cache, 1)
 				cache.AddNew("foo", &Unit{})
@@ -116,7 +116,7 @@ func TestPlanner(t *testing.T) {
 				cache := UnitCache{}
 				one := task.Task{Id: "one"}
 				cache.Create("one", one)
-				assert.Len(t, cache.Export(), 0)
+				assert.Empty(t, cache.Export())
 			})
 			t.Run("ExportPropogatesTasks", func(t *testing.T) {
 				cache := UnitCache{}
@@ -162,9 +162,9 @@ func TestPlanner(t *testing.T) {
 			})
 			t.Run("AddOverwrites", func(t *testing.T) {
 				unit := NewUnit(task.Task{Id: "foo", Priority: 100})
-				assert.EqualValues(t, unit.tasks["foo"].Priority, 100)
+				assert.EqualValues(t, 100, unit.tasks["foo"].Priority)
 				unit.Add(task.Task{Id: "foo", Priority: 200})
-				assert.EqualValues(t, unit.tasks["foo"].Priority, 200)
+				assert.EqualValues(t, 200, unit.tasks["foo"].Priority)
 			})
 			t.Run("HashCaches", func(t *testing.T) {
 				unit := NewUnit(task.Task{Id: "foo"})
@@ -205,12 +205,6 @@ func TestPlanner(t *testing.T) {
 					unit.SetDistro(&distro.Distro{})
 					unit.Add(task.Task{Id: "bar"})
 					assert.EqualValues(t, 181, unit.sortingValueBreakdown().TotalValue)
-					verifyRankBreakdown(t, unit.sortingValueBreakdown())
-				})
-				t.Run("CommitQueue", func(t *testing.T) {
-					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.MergeTestRequester})
-					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 2413, unit.sortingValueBreakdown().TotalValue)
 					verifyRankBreakdown(t, unit.sortingValueBreakdown())
 				})
 				t.Run("MergeQueue", func(t *testing.T) {
@@ -317,12 +311,6 @@ func TestPlanner(t *testing.T) {
 				assert.EqualValues(t, 18080, unit.sortingValueBreakdown().TotalValue)
 				verifyRankBreakdown(t, unit.sortingValueBreakdown())
 			})
-			t.Run("RankForCommitQueue", func(t *testing.T) {
-				unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.MergeTestRequester})
-				unit.SetDistro(&distro.Distro{})
-				assert.EqualValues(t, 2413, unit.sortingValueBreakdown().TotalValue)
-				verifyRankBreakdown(t, unit.sortingValueBreakdown())
-			})
 		})
 		t.Run("TaskPlan", func(t *testing.T) {
 			buildPlan := func(units ...*Unit) TaskPlan {
@@ -401,7 +389,7 @@ func TestPlanner(t *testing.T) {
 	})
 	t.Run("PrepareTaskPlan", func(t *testing.T) {
 		t.Run("Noop", func(t *testing.T) {
-			assert.Len(t, PrepareTasksForPlanning(&distro.Distro{}, []task.Task{}), 0)
+			assert.Empty(t, PrepareTasksForPlanning(&distro.Distro{}, []task.Task{}))
 		})
 		t.Run("TaskGroupsGrouped", func(t *testing.T) {
 			plan := PrepareTasksForPlanning(&distro.Distro{}, []task.Task{

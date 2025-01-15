@@ -355,8 +355,6 @@ func GetEventsById(id string, before time.Time, n int) ([]restModel.APIProjectEv
 	if err != nil {
 		return nil, err
 	}
-	events.RedactGitHubPrivateKey()
-	events.RedactSecrets()
 	events.ApplyDefaults()
 
 	out := []restModel.APIProjectEvent{}
@@ -401,7 +399,7 @@ func getRequesterFromAlias(alias string) string {
 		return evergreen.GitTagRequester
 	}
 	if alias == evergreen.CommitQueueAlias {
-		return evergreen.MergeTestRequester
+		return evergreen.GithubMergeRequester
 	}
 	return evergreen.PatchVersionRequester
 }

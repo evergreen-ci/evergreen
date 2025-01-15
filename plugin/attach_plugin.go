@@ -46,7 +46,7 @@ func (ap *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 					t := uiCtx.Task
 					if uiCtx.Task.OldTaskId != "" {
 						taskId = uiCtx.Task.OldTaskId
-						t, err = task.FindOneId(taskId)
+						t, err = task.FindOneId(uiCtx.Request.Context(), taskId)
 						if err != nil {
 							return nil, errors.Wrap(err, "error retrieving task")
 						}
@@ -68,7 +68,7 @@ func (ap *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 								return nil, errors.Wrap(err, "signing urls")
 							}
 							var execTask *task.Task
-							execTask, err = task.FindOneId(execTaskID)
+							execTask, err = task.FindOneId(uiCtx.Request.Context(), execTaskID)
 							if err != nil {
 								return nil, err
 							}

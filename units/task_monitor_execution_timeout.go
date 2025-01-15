@@ -94,7 +94,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	}
 
 	if j.task == nil {
-		t, err := task.FindOneId(j.Task)
+		t, err := task.FindOneId(ctx, j.Task)
 		if err != nil {
 			j.AddRetryableError(errors.Wrapf(err, "finding task '%s'", j.Task))
 			return

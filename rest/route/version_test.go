@@ -157,11 +157,11 @@ func (s *VersionSuite) TestPatchVersionVersion() {
 	s.Equal(http.StatusOK, res.Status())
 
 	v, err := serviceModel.VersionFindOneId(versionId)
-	s.Nil(err)
+	s.NoError(err)
 	for _, b := range v.BuildIds {
 		build, err := build.FindOneId(b)
-		s.Nil(err)
-		s.Equal(true, build.Activated)
+		s.NoError(err)
+		s.True(build.Activated)
 	}
 	s.Equal(versionId, v.Id)
 	s.Equal(revision, v.Revision)
@@ -263,10 +263,10 @@ func (s *VersionSuite) TestAbortVersion() {
 	tasks, err := task.FindAllTaskIDsFromVersion("versionId")
 	s.NoError(err)
 	for _, t := range tasks {
-		foundTask, err := task.FindOneId(t)
+		foundTask, err := task.FindOneId(s.ctx, t)
 		s.NoError(err)
 		if utility.StringSliceContains(evergreen.TaskInProgressStatuses, foundTask.Status) {
-			s.Equal(foundTask.Aborted, true)
+			s.True(foundTask.Aborted)
 		}
 	}
 }

@@ -42,6 +42,7 @@ func TestAPITaskStatsBuildFromService(t *testing.T) {
 	assert.Equal(serviceDoc.NumTestFailed, apiDoc.NumTestFailed)
 	assert.Equal(serviceDoc.NumSystemFailed, apiDoc.NumSystemFailed)
 	assert.Equal(serviceDoc.NumSetupFailed, apiDoc.NumSetupFailed)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(serviceDoc.AvgDurationSuccess, apiDoc.AvgDurationSuccess)
 }
 

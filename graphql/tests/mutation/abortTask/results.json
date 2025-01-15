@@ -23,21 +23,6 @@
       }
     },
     {
-      "query_file": "fail_commit_queue.graphql",
-      "result": {
-        "errors": [
-          {
-            "message": "aborting task fail_commit_queue: dequeueing and restarting task 'fail_commit_queue': commit queue for project 'spruce' not found",
-            "path": ["abortTask"],
-            "extensions": {
-              "code": "INTERNAL_SERVER_ERROR"
-            }
-          }
-        ],
-        "data": null
-      }
-    },
-    {
       "query_file": "fail.graphql",
       "result": {
         "errors": [
@@ -69,10 +54,11 @@
     },
     {
       "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "errors": [
           {
-            "message": "user 'testuser' does not have permission to 'edit tasks' for the project 'evergreen'",
+            "message": "user 'regular_user' does not have permission to 'edit tasks' for the project 'evergreen'",
             "path": ["abortTask", "taskId"],
             "extensions": {
               "code": "FORBIDDEN"

@@ -11,7 +11,7 @@ import (
 
 // WebhookConfigured is the resolver for the webhookConfigured field.
 func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restModel.APITaskAnnotation) (bool, error) {
-	t, err := task.FindOneId(*obj.TaskId)
+	t, err := task.FindOneId(ctx, *obj.TaskId)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("finding task: %s", err.Error()))
 	}

@@ -1,8 +1,10 @@
 package model
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"sort"
@@ -163,7 +165,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 	require.NoError(t, err)
 	require.NotZero(t, dbProject0Vars)
 	assert.Equal(dbProject0Vars.Parameters, mergedVars.Parameters, "merged parameters for branch project vars should exactly match the branch project vars from the DB when there's no repo vars")
-	assert.Equal(0, len(mergedVars.PrivateVars))
+	assert.Empty(mergedVars.PrivateVars)
 
 	// Testing ProjectRef.RepoRefId == ""
 	project0.RepoRefId = ""
@@ -462,7 +464,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			info, err := newVars.FindAndModify(varsToDelete)
 			assert.NoError(t, err)
 			require.NotNil(t, info)
-			assert.Equal(t, info.Updated, 1)
+			assert.Equal(t, 1, info.Updated)
 
 			dbVars, err = FindOneProjectVars(vars.Id)
 			require.NoError(t, err)
@@ -615,67 +617,6 @@ func TestRedactPrivateVars(t *testing.T) {
 	assert.NotEqual("", projectVars.Vars["a"], "original vars should not be modified")
 }
 
-func TestGetVarsByValue(t *testing.T) {
-	assert := assert.New(t)
-
-	require.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection, ProjectRefCollection))
-
-	pRef1 := ProjectRef{
-		Id:                    "mongodb1",
-		ParameterStoreEnabled: true,
-	}
-	require.NoError(t, pRef1.Insert())
-	pRef2 := ProjectRef{
-		Id:                    "mongodb2",
-		ParameterStoreEnabled: true,
-	}
-	require.NoError(t, pRef2.Insert())
-	pRef3 := ProjectRef{
-		Id:                    "mongodb3",
-		ParameterStoreEnabled: true,
-	}
-	require.NoError(t, pRef3.Insert())
-
-	projectVars1 := &ProjectVars{
-		Id:   pRef1.Id,
-		Vars: map[string]string{"a": "1", "b": "2"},
-	}
-
-	projectVars2 := &ProjectVars{
-		Id:   pRef2.Id,
-		Vars: map[string]string{"c": "1", "d": "2"},
-	}
-
-	projectVars3 := &ProjectVars{
-		Id:   pRef3.Id,
-		Vars: map[string]string{"e": "2", "f": "3"},
-	}
-
-	require.NoError(t, projectVars1.Insert())
-	require.NoError(t, projectVars2.Insert())
-	require.NoError(t, projectVars3.Insert())
-
-	newVars, err := getVarsByValue("1")
-	assert.NoError(err)
-	require.NotZero(t, newVars)
-	assert.Equal(2, len(newVars))
-
-	newVars, err = getVarsByValue("2")
-	assert.NoError(err)
-	require.NotZero(t, newVars)
-	assert.Equal(3, len(newVars))
-
-	newVars, err = getVarsByValue("3")
-	assert.NoError(err)
-	require.NotZero(t, newVars)
-	assert.Equal(1, len(newVars))
-
-	newVars, err = getVarsByValue("0")
-	assert.NoError(err)
-	require.NotZero(t, newVars)
-	assert.Equal(0, len(newVars))
-}
-
 func TestAWSVars(t *testing.T) {
 	require := require.New(t)
 	require.NoError(db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection, ProjectRefCollection))
@@ -717,8 +658,8 @@ func TestAWSVars(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("foo", found.Vars["a"])
 	assert.Equal("bar", found.Vars["b"])
-	assert.Equal(true, found.PrivateVars["a"])
-	assert.Equal(false, found.PrivateVars["b"])
+	assert.True(found.PrivateVars["a"])
+	assert.False(found.PrivateVars["b"])
 
 	// empty aws values
 	k, err = GetAWSKeyForProject(project.Id)
@@ -745,12 +686,12 @@ func TestAWSVars(t *testing.T) {
 	require.NotZero(found)
 	assert.Equal("foo", found.Vars["a"])
 	assert.Equal("bar", found.Vars["b"])
-	assert.Equal(true, found.PrivateVars["a"])
-	assert.Equal(false, found.PrivateVars["b"])
+	assert.True(found.PrivateVars["a"])
+	assert.False(found.PrivateVars["b"])
 
 	// hidden aws values
-	assert.Equal(false, found.PrivateVars[ProjectAWSSSHKeyName])
-	assert.Equal(true, found.PrivateVars[ProjectAWSSSHKeyValue])
+	assert.False(found.PrivateVars[ProjectAWSSSHKeyName])
+	assert.True(found.PrivateVars[ProjectAWSSSHKeyValue])
 }
 
 func TestConvertVarToParam(t *testing.T) {
@@ -819,7 +760,10 @@ func TestConvertVarToParam(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("%s/%s.gz", GetVarsParameterPath(projectID), varName), paramName, "should include project ID prefix and gzip extension to indicate the value was compressed")
 		assert.NotEqual(t, longVarValue, paramValue, "compressed value should not match original variable value")
 
-		gzr, err := gzip.NewReader(strings.NewReader(paramValue))
+		compressedValue, err := base64.StdEncoding.DecodeString(paramValue)
+		require.NoError(t, err)
+
+		gzr, err := gzip.NewReader(bytes.NewReader(compressedValue))
 		require.NoError(t, err)
 		decompressed, err := io.ReadAll(gzr)
 		require.NoError(t, err)
@@ -847,11 +791,14 @@ func TestConvertVarToParam(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("%s.gz", existingParamName), paramName, "project variable that was previously short but now is long enough to require compression should have its parameter name changed")
 		assert.NotEqual(t, longVarValue, paramValue)
 
-		gzr, err := gzip.NewReader(strings.NewReader(paramValue))
+		compressedValue, err := base64.StdEncoding.DecodeString(paramValue)
+		require.NoError(t, err)
+
+		gzr, err := gzip.NewReader(bytes.NewReader(compressedValue))
 		require.NoError(t, err)
 		decompressed, err := io.ReadAll(gzr)
 		require.NoError(t, err)
-		assert.Equal(t, longVarValue, string(decompressed))
+		assert.Equal(t, longVarValue, string(decompressed), "decompressed value should match original value")
 	})
 	t.Run("ReturnsErrorForEmptyVariableName", func(t *testing.T) {
 		const (
@@ -1066,11 +1013,6 @@ func TestShouldGetAdminOnlyVars(t *testing.T) {
 			usrId:              usrId,
 			shouldGetAdminVars: false,
 		},
-		"mergeTestShouldFail": {
-			requester:          evergreen.MergeTestRequester,
-			usrId:              usrId,
-			shouldGetAdminVars: false,
-		},
 		"mergeRequestShouldFail": {
 			requester:          evergreen.GithubMergeRequester,
 			usrId:              usrId,
@@ -1138,7 +1080,7 @@ func TestShouldGetAdminOnlyVars(t *testing.T) {
 				break
 			}
 		}
-		assert.True(t, tested, fmt.Sprintf("requester '%s' not tested with non-admin", requester))
+		assert.True(t, tested, "requester '%s' not tested with non-admin", requester)
 	}
 }
 

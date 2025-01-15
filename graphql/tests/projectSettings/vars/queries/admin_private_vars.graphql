@@ -1,9 +1,9 @@
 {
-    projectSettings(projectIdentifier: "varsTest") {
-        vars{
-            vars
-            privateVars
-            adminOnlyVars
-        }
+  projectSettings(projectIdentifier: "spruce") {
+    vars {
+      vars
+      privateVars
+      adminOnlyVars
     }
+  }
 }

@@ -233,6 +233,8 @@ type Task struct {
 	// DisplayStatus is not persisted to the db. It is the status to display in the UI.
 	// It may be added via aggregation
 	DisplayStatus string `bson:"display_status,omitempty" json:"display_status,omitempty"`
+	// DisplayStatusCache is semantically the same as DisplayStatus, but is persisted to the DB, unlike DisplayStatus.
+	DisplayStatusCache string `bson:"display_status_cache,omitempty" json:"display_status_cache,omitempty"`
 	// BaseTask is not persisted to the db. It is the data of the task on the base commit
 	// It may be added via aggregation
 	BaseTask BaseTaskInfo `bson:"base_task" json:"base_task"`
@@ -502,34 +504,6 @@ func (d *Dependency) SetBSON(raw mgobson.Raw) error {
 	return mgobson.SetZero
 }
 
-type DisplayTaskCache struct {
-	execToDisplay map[string]*Task
-	displayTasks  []*Task
-}
-
-func (c *DisplayTaskCache) Get(t *Task) (*Task, error) {
-	if parent, exists := c.execToDisplay[t.Id]; exists {
-		return parent, nil
-	}
-	displayTask, err := t.GetDisplayTask()
-	if err != nil {
-		return nil, err
-	}
-	if displayTask == nil {
-		return nil, nil
-	}
-	for _, execTask := range displayTask.ExecutionTasks {
-		c.execToDisplay[execTask] = displayTask
-	}
-	c.displayTasks = append(c.displayTasks, displayTask)
-	return displayTask, nil
-}
-func (c *DisplayTaskCache) List() []*Task { return c.displayTasks }
-
-func NewDisplayTaskCache() DisplayTaskCache {
-	return DisplayTaskCache{execToDisplay: map[string]*Task{}, displayTasks: []*Task{}}
-}
-
 type AbortInfo struct {
 	User       string `bson:"user,omitempty" json:"user,omitempty"`
 	TaskID     string `bson:"task_id,omitempty" json:"task_id,omitempty"`
@@ -690,6 +664,7 @@ func (t *Task) isSystemUnresponsive() bool {
 
 func (t *Task) SetOverrideDependencies(userID string) error {
 	t.OverrideDependencies = true
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	event.LogTaskDependenciesOverridden(t.Id, t.Execution, userID)
 	return UpdateOne(
 		bson.M{
@@ -698,6 +673,7 @@ func (t *Task) SetOverrideDependencies(userID string) error {
 		bson.M{
 			"$set": bson.M{
 				OverrideDependenciesKey: true,
+				DisplayStatusCacheKey:   t.DisplayStatusCache,
 			},
 		},
 	)
@@ -727,6 +703,7 @@ func (t *Task) AddDependency(ctx context.Context, d Dependency) error {
 		}
 	}
 	t.DependsOn = append(t.DependsOn, d)
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -734,6 +711,9 @@ func (t *Task) AddDependency(ctx context.Context, d Dependency) error {
 		bson.M{
 			"$push": bson.M{
 				DependsOnKey: d,
+			},
+			"$set": bson.M{
+				DisplayStatusCacheKey: t.DisplayStatusCache,
 			},
 		},
 	)
@@ -748,6 +728,7 @@ func (t *Task) RemoveDependency(dependencyId string) error {
 			dependsOn = append(dependsOn, t.DependsOn[:i]...)
 			dependsOn = append(dependsOn, t.DependsOn[i+1:]...)
 			t.DependsOn = dependsOn
+			t.DisplayStatusCache = t.DetermineDisplayStatus()
 			found = true
 			break
 		}
@@ -763,6 +744,9 @@ func (t *Task) RemoveDependency(dependencyId string) error {
 				DependencyTaskIdKey: dependencyId,
 			},
 		},
+		"$set": bson.M{
+			DisplayStatusCacheKey: t.DisplayStatusCache,
+		},
 	}
 	return db.Update(Collection, query, update)
 }
@@ -771,7 +755,7 @@ func (t *Task) RemoveDependency(dependencyId string) error {
 // If any of the dependencies exist in the map that is passed in, they are
 // used to check rather than fetching from the database. All queries
 // are cached back into the map for later use.
-func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
+func (t *Task) DependenciesMet(ctx context.Context, depCaches map[string]Task) (bool, error) {
 	if t.HasDependenciesMet() {
 		return true, nil
 	}
@@ -782,7 +766,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	}
 
 	for _, dependency := range t.DependsOn {
-		depTask, err := populateDependencyTaskCacheSingular(depCaches, dependency.TaskId)
+		depTask, err := populateDependencyTaskCacheSingular(ctx, depCaches, dependency.TaskId)
 		if err != nil {
 			return false, err
 		}
@@ -795,7 +779,9 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	err = UpdateOne(
 		bson.M{IdKey: t.Id},
 		bson.M{
-			"$set": bson.M{DependenciesMetTimeKey: t.DependenciesMetTime},
+			"$set": bson.M{
+				DependenciesMetTimeKey: t.DependenciesMetTime,
+			},
 		})
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": "task.DependenciesMet() failed to update task",
@@ -870,7 +856,7 @@ func (t *Task) GetFinishedBlockingDependencies(depCache map[string]Task) ([]Task
 
 // GetDeactivatedBlockingDependencies gets all blocking tasks that are not finished and are not activated.
 // These tasks are not going to run unless they are manually activated.
-func (t *Task) GetDeactivatedBlockingDependencies(depCache map[string]Task) ([]string, error) {
+func (t *Task) GetDeactivatedBlockingDependencies(ctx context.Context, depCache map[string]Task) ([]string, error) {
 	_, err := t.populateDependencyTaskCache(depCache)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -878,7 +864,7 @@ func (t *Task) GetDeactivatedBlockingDependencies(depCache map[string]Task) ([]s
 
 	blockingDeps := []string{}
 	for _, dep := range t.DependsOn {
-		depTask, err := populateDependencyTaskCacheSingular(depCache, dep.TaskId)
+		depTask, err := populateDependencyTaskCacheSingular(ctx, depCache, dep.TaskId)
 		if err != nil {
 			return nil, err
 		}
@@ -892,11 +878,11 @@ func (t *Task) GetDeactivatedBlockingDependencies(depCache map[string]Task) ([]s
 
 // populateDependencyTaskCacheSingular ensures that a single dependency for the task is in the cache.
 // And if it is not, it queries the database for it.
-func populateDependencyTaskCacheSingular(depCache map[string]Task, depId string) (*Task, error) {
+func populateDependencyTaskCacheSingular(ctx context.Context, depCache map[string]Task, depId string) (*Task, error) {
 	if depTask, ok := depCache[depId]; ok {
 		return &depTask, nil
 	}
-	foundTask, err := FindOneId(depId)
+	foundTask, err := FindOneId(ctx, depId)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding dependency")
 	}
@@ -913,7 +899,7 @@ func populateDependencyTaskCacheSingular(depCache map[string]Task, depId string)
 //
 // If the cached tasks do not include a dependency specified by one of
 // the tasks, the function returns an error.
-func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
+func (t *Task) AllDependenciesSatisfied(ctx context.Context, cache map[string]Task) (bool, error) {
 	if len(t.DependsOn) == 0 {
 		return true, nil
 	}
@@ -921,7 +907,7 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 	catcher := grip.NewBasicCatcher()
 	deps := []Task{}
 	for _, dep := range t.DependsOn {
-		cachedDep, err := populateDependencyTaskCacheSingular(cache, dep.TaskId)
+		cachedDep, err := populateDependencyTaskCacheSingular(ctx, cache, dep.TaskId)
 		if err != nil {
 			return false, err
 		}
@@ -971,12 +957,12 @@ func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) erro
 }
 
 // FindTaskOnBaseCommit returns the task that is on the base commit.
-func (t *Task) FindTaskOnBaseCommit() (*Task, error) {
-	return FindOne(db.Query(ByCommit(t.Revision, t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester)))
+func (t *Task) FindTaskOnBaseCommit(ctx context.Context) (*Task, error) {
+	return FindOne(ctx, db.Query(ByCommit(t.Revision, t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester)))
 }
 
-func (t *Task) FindTaskOnPreviousCommit() (*Task, error) {
-	return FindOne(db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)).Sort([]string{"-" + RevisionOrderNumberKey}))
+func (t *Task) FindTaskOnPreviousCommit(ctx context.Context) (*Task, error) {
+	return FindOne(ctx, db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
 // CountSimilarFailingTasks returns a count of all tasks with the same project,
@@ -989,13 +975,13 @@ func (t *Task) CountSimilarFailingTasks() (int, error) {
 
 // Find the previously completed task for the same project +
 // build variant + display name combination as the specified task
-func (t *Task) PreviousCompletedTask(project string, statuses []string) (*Task, error) {
+func (t *Task) PreviousCompletedTask(ctx context.Context, project string, statuses []string) (*Task, error) {
 	if len(statuses) == 0 {
 		statuses = evergreen.TaskCompletedStatuses
 	}
 	query := db.Query(ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
 		t.DisplayName, project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + RevisionOrderNumberKey})
-	return FindOne(query)
+	return FindOne(ctx, query)
 }
 
 func (t *Task) cacheExpectedDuration() error {
@@ -1033,7 +1019,12 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 	if ok {
 		set[TaskOutputInfoKey] = output
 	}
-	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, bson.M{"$set": set})
+	res, err := env.DB().Collection(Collection).UpdateOne(ctx, query, []bson.M{
+		bson.M{
+			"$set": set,
+		},
+		addDisplayStatusCache,
+	})
 	if err != nil {
 		return errors.Wrap(err, "updating task")
 	}
@@ -1047,6 +1038,7 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 	t.PodID = podID
 	t.AgentVersion = agentVersion
 	t.TaskOutputInfo = output
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 
 	return nil
 }
@@ -1055,17 +1047,17 @@ func (t *Task) MarkAsContainerDispatched(ctx context.Context, env evergreen.Envi
 // particular host. If the task is part of a display task, the display task is
 // also marked as dispatched to a host. Returns an error if any of the database
 // updates fail.
-func (t *Task) MarkAsHostDispatched(hostID, distroID, agentRevision string, dispatchTime time.Time) error {
-	doUpdate := func(update bson.M) error {
-		return UpdateOne(bson.M{IdKey: t.Id}, update)
+func (t *Task) MarkAsHostDispatched(ctx context.Context, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
+	doUpdate := func(update []bson.M) error {
+		return UpdateOneContext(ctx, bson.M{IdKey: t.Id}, update)
 	}
 	if err := t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime); err != nil {
 		return err
 	}
 
 	// When dispatching an execution task, mark its parent as dispatched.
-	if dt, _ := t.GetDisplayTask(); dt != nil && dt.DispatchTime == utility.ZeroTime {
-		return dt.MarkAsHostDispatched("", "", "", dispatchTime)
+	if dt, _ := t.GetDisplayTask(ctx); dt != nil && dt.DispatchTime == utility.ZeroTime {
+		return dt.MarkAsHostDispatched(ctx, "", "", "", dispatchTime)
 	}
 	return nil
 }
@@ -1074,14 +1066,14 @@ func (t *Task) MarkAsHostDispatched(hostID, distroID, agentRevision string, disp
 // a particular host. Unlike MarkAsHostDispatched, this does not update the
 // parent display task.
 func (t *Task) MarkAsHostDispatchedWithContext(ctx context.Context, env evergreen.Environment, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
-	doUpdate := func(update bson.M) error {
+	doUpdate := func(update []bson.M) error {
 		_, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, update)
 		return err
 	}
 	return t.markAsHostDispatchedWithFunc(doUpdate, hostID, distroID, agentRevision, dispatchTime)
 }
 
-func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
+func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update []bson.M) error, hostID, distroID, agentRevision string, dispatchTime time.Time) error {
 
 	set := bson.M{
 		DispatchTimeKey:  dispatchTime,
@@ -1095,13 +1087,18 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, 
 	if ok {
 		set[TaskOutputInfoKey] = output
 	}
-	if err := doUpdate(bson.M{
-		"$set": set,
-		"$unset": bson.M{
-			AbortedKey:   "",
-			AbortInfoKey: "",
-			DetailsKey:   "",
+	if err := doUpdate([]bson.M{
+		bson.M{
+			"$set": set,
 		},
+		bson.M{
+			"$unset": []string{
+				AbortedKey,
+				AbortInfoKey,
+				DetailsKey,
+			},
+		},
+		addDisplayStatusCache,
 	}); err != nil {
 		return err
 	}
@@ -1116,6 +1113,7 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, 
 	t.Aborted = false
 	t.AbortInfo = AbortInfo{}
 	t.Details = apimodels.TaskEndDetail{}
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 
 	return nil
 }
@@ -1125,28 +1123,33 @@ func (t *Task) markAsHostDispatchedWithFunc(doUpdate func(update bson.M) error, 
 // undoing the dispatch updates. This is the inverse operation of
 // MarkAsHostDispatchedWithContext.
 func (t *Task) MarkAsHostUndispatchedWithContext(ctx context.Context, env evergreen.Environment) error {
-	doUpdate := func(update bson.M) error {
+	doUpdate := func(update []bson.M) error {
 		_, err := env.DB().Collection(Collection).UpdateByID(ctx, t.Id, update)
 		return err
 	}
 	return t.markAsHostUndispatchedWithFunc(doUpdate)
 }
 
-func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update bson.M) error) error {
-	update := bson.M{
-		"$set": bson.M{
-			StatusKey:        evergreen.TaskUndispatched,
-			DispatchTimeKey:  utility.ZeroTime,
-			LastHeartbeatKey: utility.ZeroTime,
+func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update []bson.M) error) error {
+	update := []bson.M{
+		bson.M{
+			"$set": bson.M{
+				StatusKey:        evergreen.TaskUndispatched,
+				DispatchTimeKey:  utility.ZeroTime,
+				LastHeartbeatKey: utility.ZeroTime,
+			},
 		},
-		"$unset": bson.M{
-			HostIdKey:         "",
-			AgentVersionKey:   "",
-			TaskOutputInfoKey: "",
-			AbortedKey:        "",
-			AbortInfoKey:      "",
-			DetailsKey:        "",
+		bson.M{
+			"$unset": bson.A{
+				HostIdKey,
+				AgentVersionKey,
+				TaskOutputInfoKey,
+				AbortedKey,
+				AbortInfoKey,
+				DetailsKey,
+			},
 		},
+		addDisplayStatusCache,
 	}
 
 	if err := doUpdate(update); err != nil {
@@ -1162,6 +1165,7 @@ func (t *Task) markAsHostUndispatchedWithFunc(doUpdate func(update bson.M) error
 	t.Aborted = false
 	t.AbortInfo = AbortInfo{}
 	t.Details = apimodels.TaskEndDetail{}
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 
 	return nil
 }
@@ -1384,7 +1388,7 @@ func (t *Task) SetGeneratedTasksToActivate(buildVariantName, taskName string) er
 
 // SetTasksScheduledTime takes a list of tasks and a time, and then sets
 // the scheduled time in the database for the tasks if it is currently unset
-func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
+func SetTasksScheduledTime(ctx context.Context, tasks []Task, scheduledTime time.Time) error {
 	ids := []string{}
 	for i := range tasks {
 		// Skip tasks with scheduled time to prevent large updates
@@ -1394,7 +1398,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 		}
 
 		// Display tasks are considered scheduled when their first exec task is scheduled
-		if tasks[i].IsPartOfDisplay() {
+		if tasks[i].IsPartOfDisplay(ctx) {
 			ids = append(ids, utility.FromStringPtr(tasks[i].DisplayTaskId))
 		}
 	}
@@ -1432,15 +1436,15 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 //
 // It verifies that the tasks are from the same project, requester,
 // build variant, and display name.
-func ByBeforeMidwayTaskFromIds(t1Id, t2Id string) (*Task, error) {
-	t1, err := FindOneId(t1Id)
+func ByBeforeMidwayTaskFromIds(ctx context.Context, t1Id, t2Id string) (*Task, error) {
+	t1, err := FindOneId(ctx, t1Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task id '%s'", t1Id)
 	}
 	if t1 == nil {
 		return nil, errors.Errorf("could not find task id '%s'", t1Id)
 	}
-	t2, err := FindOneId(t2Id)
+	t2, err := FindOneId(ctx, t2Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task id '%s'", t2Id)
 	}
@@ -1462,7 +1466,7 @@ func ByBeforeMidwayTaskFromIds(t1Id, t2Id string) (*Task, error) {
 	filter, sort := ByBeforeRevision(middleOrderNumber+1, t1.BuildVariant, t1.DisplayName, t1.Project, t1.Requester)
 	query := db.Query(filter).Sort(sort)
 
-	task, err := FindOne(query)
+	task, err := FindOne(ctx, query)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task between '%s' and '%s'", t1Id, t2Id)
 	}
@@ -1512,11 +1516,14 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) ([
 	if err != nil {
 		return nil, errors.Wrap(err, "finding matching tasks")
 	}
-	update := bson.M{
-		"$set": bson.M{
-			PriorityKey:  evergreen.DisabledTaskPriority,
-			ActivatedKey: false,
+	update := []bson.M{
+		bson.M{
+			"$set": bson.M{
+				PriorityKey:  evergreen.DisabledTaskPriority,
+				ActivatedKey: false,
+			},
 		},
+		addDisplayStatusCache,
 	}
 
 	// Force the query to use 'distro_1_status_1_activated_1_priority_1_override_dependencies_1_unattainable_dependency_1'
@@ -1532,8 +1539,8 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) ([
 }
 
 // DeactivateStepbackTask deactivates and aborts the matching stepback task.
-func DeactivateStepbackTask(projectId, buildVariantName, taskName, caller string) error {
-	t, err := FindActivatedStepbackTaskByName(projectId, buildVariantName, taskName)
+func DeactivateStepbackTask(ctx context.Context, projectId, buildVariantName, taskName, caller string) error {
+	t, err := FindActivatedStepbackTaskByName(ctx, projectId, buildVariantName, taskName)
 	if err != nil {
 		return err
 	}
@@ -1546,7 +1553,7 @@ func DeactivateStepbackTask(projectId, buildVariantName, taskName, caller string
 	}
 	if t.IsAbortable() {
 		event.LogTaskAbortRequest(t.Id, t.Execution, caller)
-		if err = t.SetAborted(AbortInfo{User: caller}); err != nil {
+		if err = t.SetAborted(ctx, AbortInfo{User: caller}); err != nil {
 			return errors.Wrap(err, "setting task aborted")
 		}
 	}
@@ -1556,13 +1563,15 @@ func DeactivateStepbackTask(projectId, buildVariantName, taskName, caller string
 // MarkFailed changes the state of the task to failed.
 func (t *Task) MarkFailed() error {
 	t.Status = evergreen.TaskFailed
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey: evergreen.TaskFailed,
+				StatusKey:             evergreen.TaskFailed,
+				DisplayStatusCacheKey: t.DisplayStatusCache,
 			},
 		},
 	)
@@ -1610,14 +1619,17 @@ func GetSystemFailureDetails(description string) apimodels.TaskEndDetail {
 
 // SetAborted sets the abort field and abort info of task to aborted
 // and prevents the task from being reset when finished.
-func (t *Task) SetAborted(reason AbortInfo) error {
+func (t *Task) SetAborted(ctx context.Context, reason AbortInfo) error {
 	t.Aborted = true
-	return UpdateOne(
+	t.DisplayStatus = t.DetermineDisplayStatus()
+	return UpdateOneContext(
+		ctx,
 		bson.M{
 			IdKey: t.Id,
 		},
-		bson.M{
-			"$set": taskAbortUpdate(reason),
+		[]bson.M{
+			bson.M{"$set": taskAbortUpdate(reason)},
+			addDisplayStatusCache,
 		},
 	)
 }
@@ -2060,6 +2072,7 @@ func activateDeactivatedDependencies(tasksToActivate map[string]Task, taskIDsToA
 					ActivatedTimeKey:            time.Now(),
 				},
 			},
+			addDisplayStatusCache,
 		},
 	)
 	if err != nil {
@@ -2298,6 +2311,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 	t.Details = *detail
 	t.ContainerAllocated = false
 	t.ContainerAllocatedTime = time.Time{}
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -2310,6 +2324,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 				DetailsKey:            detail,
 				StartTimeKey:          t.StartTime,
 				ContainerAllocatedKey: false,
+				DisplayStatusCacheKey: t.DisplayStatusCache,
 			},
 			"$unset": bson.M{
 				ContainerAllocatedTimeKey: 1,
@@ -2323,11 +2338,20 @@ func (t *Task) GetDisplayStatus() string {
 	if t.DisplayStatus != "" {
 		return t.DisplayStatus
 	}
-	t.DisplayStatus = t.findDisplayStatus()
+	t.DisplayStatus = t.DetermineDisplayStatus()
 	return t.DisplayStatus
 }
 
-func (t *Task) findDisplayStatus() string {
+// DetermineDisplayStatus publicly exports findDisplayStatus
+func (t *Task) DetermineDisplayStatus() string {
+	return t.determineDisplayStatus()
+}
+
+// determineDisplayStatus calculates the display status for a task based on its current state.
+func (t *Task) determineDisplayStatus() string {
+	if t.HasAnnotations {
+		return evergreen.TaskKnownIssue
+	}
 	if t.Aborted {
 		return evergreen.TaskAborted
 	}
@@ -2463,9 +2487,10 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 		t.CanReset = false
 		t.IsAutomaticRestart = false
 		t.HasAnnotations = false
+		t.DisplayStatusCache = t.DetermineDisplayStatus()
 	}
 	update := []bson.M{
-		{
+		bson.M{
 			"$set": bson.M{
 				ActivatedKey:                   true,
 				ActivatedTimeKey:               now,
@@ -2483,7 +2508,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 				NumNextTaskDispatchesKey:       0,
 			},
 		},
-		{
+		bson.M{
 			"$unset": []string{
 				DetailsKey,
 				TaskOutputInfoKey,
@@ -2502,6 +2527,7 @@ func resetTaskUpdate(t *Task, caller string) []bson.M {
 				HasAnnotationsKey,
 			},
 		},
+		addDisplayStatusCache,
 	}
 	return update
 }
@@ -2650,15 +2676,17 @@ func (t *Task) MarkStart(startTime time.Time) error {
 	// record the start time in the in-memory task
 	t.StartTime = startTime
 	t.Status = evergreen.TaskStarted
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey:        evergreen.TaskStarted,
-				LastHeartbeatKey: startTime,
-				StartTimeKey:     startTime,
+				StatusKey:             evergreen.TaskStarted,
+				LastHeartbeatKey:      startTime,
+				StartTimeKey:          startTime,
+				DisplayStatusCacheKey: t.DisplayStatusCache,
 			},
 		},
 	)
@@ -2667,13 +2695,15 @@ func (t *Task) MarkStart(startTime time.Time) error {
 // MarkUnscheduled marks the task as undispatched and updates it in the database
 func (t *Task) MarkUnscheduled() error {
 	t.Status = evergreen.TaskUndispatched
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey: evergreen.TaskUndispatched,
+				StatusKey:             evergreen.TaskUndispatched,
+				DisplayStatusCacheKey: t.DisplayStatusCache,
 			},
 		},
 	)
@@ -2886,7 +2916,10 @@ func abortTasksByQuery(q bson.M, reason AbortInfo) error {
 	}
 	_, err = UpdateAll(
 		ByIds(ids),
-		bson.M{"$set": taskAbortUpdate(reason)},
+		[]bson.M{
+			bson.M{"$set": taskAbortUpdate(reason)},
+			addDisplayStatusCache,
+		},
 	)
 	if err != nil {
 		return errors.Wrap(err, "setting aborted statuses")
@@ -2899,6 +2932,7 @@ func abortTasksByQuery(q bson.M, reason AbortInfo) error {
 func (t *Task) String() (taskStruct string) {
 	taskStruct += fmt.Sprintf("Id: %v\n", t.Id)
 	taskStruct += fmt.Sprintf("Status: %v\n", t.Status)
+	taskStruct += fmt.Sprintf("Display Status: %v\n", t.DisplayStatusCache)
 	taskStruct += fmt.Sprintf("Host: %v\n", t.HostId)
 	taskStruct += fmt.Sprintf("ScheduledTime: %v\n", t.ScheduledTime)
 	taskStruct += fmt.Sprintf("ContainerAllocatedTime: %v\n", t.ContainerAllocatedTime)
@@ -2936,7 +2970,8 @@ func (t *Task) Archive(ctx context.Context) error {
 			return errors.Wrap(err, "inserting archived task into old tasks")
 		}
 		t.Aborted = false
-		err = UpdateOne(
+		err = UpdateOneContext(
+			ctx,
 			bson.M{
 				IdKey:     t.Id,
 				StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
@@ -2949,7 +2984,11 @@ func (t *Task) Archive(ctx context.Context) error {
 					},
 				},
 			},
-			updateDisplayTasksAndTasksExpression,
+			[]bson.M{
+				updateDisplayTasksAndTasksSet,
+				updateDisplayTasksAndTasksUnset,
+				addDisplayStatusCache,
+			},
 		)
 		// Return nil if the task has already been archived
 		if adb.ResultsNotFound(err) {
@@ -3044,7 +3083,11 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 						},
 					},
 				},
-				updateDisplayTasksAndTasksExpression,
+				[]bson.M{
+					updateDisplayTasksAndTasksSet,
+					updateDisplayTasksAndTasksUnset,
+					addDisplayStatusCache,
+				},
 			)
 			if err != nil {
 				return nil, errors.Wrap(err, "archiving tasks")
@@ -3059,6 +3102,7 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 							"$" + LatestParentExecutionKey, 1,
 						}},
 					}},
+					addDisplayStatusCache,
 				})
 
 			if err != nil {
@@ -3077,7 +3121,9 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 						AbortedKey,
 						AbortInfoKey,
 						OverrideDependenciesKey,
-					}}})
+					}},
+					addDisplayStatusCache,
+				})
 
 			return nil, errors.Wrap(err, "updating restarting exec tasks")
 		}
@@ -3108,16 +3154,12 @@ func (t *Task) makeArchivedTask() *Task {
 // PopulateTestResults populates the task's LocalTestResults field with any
 // test results the task may have. If the results are already populated, this
 // function no-ops.
-func (t *Task) PopulateTestResults() error {
+func (t *Task) PopulateTestResults(ctx context.Context) error {
 	if len(t.LocalTestResults) > 0 {
 		return nil
 	}
 
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-
-	taskTestResults, err := t.GetTestResults(ctx, env, nil)
+	taskTestResults, err := t.GetTestResults(ctx, evergreen.GetEnvironment(), nil)
 	if err != nil {
 		return errors.Wrap(err, "populating test results")
 	}
@@ -3222,11 +3264,11 @@ func (t *Task) CreateTestResultsTaskOptions() ([]testresult.TaskOptions, error) 
 
 // SetResetWhenFinished requests that a display task or single-host task group
 // reset itself when finished. Will mark itself as system failed.
-func (t *Task) SetResetWhenFinished(caller string) error {
+func (t *Task) SetResetWhenFinished(ctx context.Context, caller string) error {
 	if t.ResetWhenFinished {
 		return nil
 	}
-	if err := updateSchedulingLimitForResetWhenFinished(t, caller); err != nil {
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetFailedWhenFinished = false
@@ -3281,11 +3323,11 @@ func (t *Task) SetResetWhenFinishedWithInc() error {
 
 // SetResetFailedWhenFinished requests that a display task
 // only restarts failed tasks.
-func (t *Task) SetResetFailedWhenFinished(caller string) error {
+func (t *Task) SetResetFailedWhenFinished(ctx context.Context, caller string) error {
 	if t.ResetFailedWhenFinished {
 		return nil
 	}
-	if err := updateSchedulingLimitForResetWhenFinished(t, caller); err != nil {
+	if err := updateSchedulingLimitForResetWhenFinished(ctx, t, caller); err != nil {
 		return errors.Wrapf(err, "updating user '%s' patch task scheduling limit", caller)
 	}
 	t.ResetWhenFinished = false
@@ -3305,7 +3347,7 @@ func (t *Task) SetResetFailedWhenFinished(caller string) error {
 	)
 }
 
-func updateSchedulingLimitForResetWhenFinished(t *Task, caller string) error {
+func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, caller string) error {
 	if !(t.Requester == evergreen.PatchVersionRequester || t.Requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(caller) {
 		return nil
 	}
@@ -3325,14 +3367,14 @@ func updateSchedulingLimitForResetWhenFinished(t *Task, caller string) error {
 	if len(tasks) == 0 {
 		return nil
 	}
-	return errors.Wrap(CheckUsersPatchTaskLimit(t.Requester, caller, true, tasks...), "updating patch task limit for user")
+	return errors.Wrap(CheckUsersPatchTaskLimit(ctx, t.Requester, caller, true, tasks...), "updating patch task limit for user")
 }
 
 // CheckUsersPatchTaskLimit takes in an input list of tasks that is set to get activated, and checks if they're
 // non commit-queue patch tasks, and that the request has been submitted by a user. If so, the maximum hourly patch tasks counter
 // will be incremented accordingly. The includeDisplayAndTaskGroups parameter indicates that execution tasks and single host task
 // group tasks are to be counted as part of the limit update, otherwise they will be ignored.
-func CheckUsersPatchTaskLimit(requester, username string, includeDisplayAndTaskGroups bool, tasks ...Task) error {
+func CheckUsersPatchTaskLimit(ctx context.Context, requester, username string, includeDisplayAndTaskGroups bool, tasks ...Task) error {
 	// we only care about patch tasks that are to be activated by an actual user
 	if !(requester == evergreen.PatchVersionRequester || requester == evergreen.GithubPRRequester) || evergreen.IsSystemActivator(username) {
 		return nil
@@ -3343,7 +3385,7 @@ func CheckUsersPatchTaskLimit(requester, username string, includeDisplayAndTaskG
 	}
 	numTasksToActivate := 0
 	for _, t := range tasks {
-		if !includeDisplayAndTaskGroups && (t.DisplayOnly || t.IsPartOfDisplay() || t.IsPartOfSingleHostTaskGroup()) {
+		if !includeDisplayAndTaskGroups && (t.DisplayOnly || t.IsPartOfDisplay(ctx) || t.IsPartOfSingleHostTaskGroup()) {
 			continue
 		}
 		if t.Activated {
@@ -3432,10 +3474,10 @@ func (t *Task) HasCheckRun() bool {
 	return t.CheckRunPath != nil
 }
 
-func (t *Task) IsPartOfDisplay() bool {
+func (t *Task) IsPartOfDisplay(ctx context.Context) bool {
 	// if display task ID is nil, we need to check manually if we have an execution task
 	if t.DisplayTaskId == nil {
-		dt, err := t.GetDisplayTask()
+		dt, err := t.GetDisplayTask(ctx)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":        "unable to get display task",
@@ -3449,7 +3491,7 @@ func (t *Task) IsPartOfDisplay() bool {
 	return utility.FromStringPtr(t.DisplayTaskId) != ""
 }
 
-func (t *Task) GetDisplayTask() (*Task, error) {
+func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 	if t.DisplayTask != nil {
 		return t.DisplayTask, nil
 	}
@@ -3471,9 +3513,9 @@ func (t *Task) GetDisplayTask() (*Task, error) {
 		}
 	} else {
 		if dtId != "" {
-			dt, err = FindOneId(dtId)
+			dt, err = FindOneId(ctx, dtId)
 		} else {
-			dt, err = FindOne(db.Query(ByExecutionTask(t.Id)))
+			dt, err = FindOne(ctx, db.Query(ByExecutionTask(t.Id)))
 			if dt != nil {
 				dtId = dt.Id
 			}
@@ -3776,10 +3818,10 @@ func TaskSliceToMap(tasks []Task) map[string]Task {
 	return taskMap
 }
 
-func GetLatestExecution(taskId string) (int, error) {
+func GetLatestExecution(ctx context.Context, taskId string) (int, error) {
 	var t *Task
 	var err error
-	t, err = FindOneId(taskId)
+	t, err = FindOneId(ctx, taskId)
 	if err != nil {
 		return -1, err
 	}
@@ -3787,7 +3829,7 @@ func GetLatestExecution(taskId string) (int, error) {
 		pieces := strings.Split(taskId, "_")
 		pieces = pieces[:len(pieces)-1]
 		taskId = strings.Join(pieces, "_")
-		t, err = FindOneId(taskId)
+		t, err = FindOneId(ctx, taskId)
 		if err != nil {
 			return -1, errors.Wrap(err, "getting task")
 		}
@@ -3912,7 +3954,14 @@ func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 				DependencyOmitGeneratedTasksKey: bson.M{"$ne": true},
 			}},
 		},
-		bson.M{"$push": bson.M{DependsOnKey: bson.M{"$each": newDependencies}}},
+		[]bson.M{
+			bson.M{"$set": bson.M{
+				DependsOnKey: bson.M{
+					"$concatArrays": []interface{}{"$" + DependsOnKey, newDependencies},
+				},
+			}},
+			addDisplayStatusCache,
+		},
 	)
 
 	return errors.Wrap(err, "updating dependencies")
@@ -3955,12 +4004,12 @@ func (t *Task) SetCheckRunId(checkRunId int64) error {
 func (t *Task) SetNumDependents() error {
 	update := bson.M{
 		"$set": bson.M{
-			NumDepsKey: t.NumDependents,
+			NumDependentsKey: t.NumDependents,
 		},
 	}
 	if t.NumDependents == 0 {
 		update = bson.M{"$unset": bson.M{
-			NumDepsKey: "",
+			NumDependentsKey: "",
 		}}
 	}
 	return UpdateOne(bson.M{
@@ -3982,7 +4031,7 @@ func AddDisplayTaskIdToExecTasks(displayTaskId string, execTasksToUpdate []strin
 	return err
 }
 
-func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string, displayTaskActivated bool) error {
+func AddExecTasksToDisplayTask(ctx context.Context, displayTaskId string, execTasks []string, displayTaskActivated bool) error {
 	if len(execTasks) == 0 {
 		return nil
 	}
@@ -3992,7 +4041,7 @@ func AddExecTasksToDisplayTask(displayTaskId string, execTasks []string, display
 
 	if displayTaskActivated {
 		// verify that the display task isn't already activated
-		dt, err := FindOneId(displayTaskId)
+		dt, err := FindOneId(ctx, displayTaskId)
 		if err != nil {
 			return errors.Wrap(err, "getting display task")
 		}

@@ -40,11 +40,12 @@ func (err GqlError) Send(ctx context.Context, message string) *gqlerror.Error {
 	case PartialError:
 		return formError(ctx, message, PartialError)
 	default:
+		//nolint:govet // gqlerror does not have a non-format version.
 		return gqlerror.ErrorPathf(graphql.GetFieldContext(ctx).Path(), message)
 	}
 }
 
-func formError(ctx context.Context, msg string, code GqlError) *gqlerror.Error {
+func formError(_ context.Context, msg string, code GqlError) *gqlerror.Error {
 	return &gqlerror.Error{
 		Message: msg,
 		Extensions: map[string]interface{}{

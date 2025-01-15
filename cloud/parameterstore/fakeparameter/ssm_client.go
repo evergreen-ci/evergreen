@@ -20,11 +20,14 @@ type FakeSSMClient struct{}
 // NewFakeSSMClient returns a fake SSM client implementation backed by the DB.
 // This should only be used in testing.
 func NewFakeSSMClient() *FakeSSMClient {
+	checkTestingEnvironment()
 	return &FakeSSMClient{}
 }
 
 // PutParameter inserts a parameter into the fake parameter store.
 func (c *FakeSSMClient) PutParameter(ctx context.Context, input *ssm.PutParameterInput) (*ssm.PutParameterOutput, error) {
+	checkTestingEnvironment()
+
 	name := utility.FromStringPtr(input.Name)
 	value := utility.FromStringPtr(input.Value)
 	catcher := grip.NewBasicCatcher()
@@ -55,6 +58,8 @@ func (c *FakeSSMClient) PutParameter(ctx context.Context, input *ssm.PutParamete
 // DeleteParametersSimple is the same as DeleteParameters but only returns the
 // deleted parameter names.
 func (c *FakeSSMClient) DeleteParametersSimple(ctx context.Context, input *ssm.DeleteParametersInput) ([]string, error) {
+	checkTestingEnvironment()
+
 	output, err := c.DeleteParameters(ctx, input)
 	if err != nil {
 		return nil, err
@@ -70,6 +75,8 @@ func (c *FakeSSMClient) DeleteParametersSimple(ctx context.Context, input *ssm.D
 // DeleteParameters deletes the specified parameters from the fake parameter
 // store.
 func (c *FakeSSMClient) DeleteParameters(ctx context.Context, input *ssm.DeleteParametersInput) ([]*ssm.DeleteParametersOutput, error) {
+	checkTestingEnvironment()
+
 	names := input.Names
 	if len(names) == 0 {
 		return nil, nil
@@ -98,6 +105,8 @@ func (c *FakeSSMClient) DeleteParameters(ctx context.Context, input *ssm.DeleteP
 // GetParametersSimple is the same as GetParameters but only returns the
 // parameters.
 func (c *FakeSSMClient) GetParametersSimple(ctx context.Context, input *ssm.GetParametersInput) ([]ssmTypes.Parameter, error) {
+	checkTestingEnvironment()
+
 	outputs, err := c.GetParameters(ctx, input)
 	if err != nil {
 		return nil, err
@@ -113,6 +122,8 @@ func (c *FakeSSMClient) GetParametersSimple(ctx context.Context, input *ssm.GetP
 // GetParameters retrieves the specified parameters from the fake parameter
 // store.
 func (c *FakeSSMClient) GetParameters(ctx context.Context, input *ssm.GetParametersInput) ([]*ssm.GetParametersOutput, error) {
+	checkTestingEnvironment()
+
 	names := input.Names
 	if len(names) == 0 {
 		return nil, nil

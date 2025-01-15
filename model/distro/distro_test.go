@@ -39,7 +39,7 @@ func TestFindDistroById(t *testing.T) {
 	d := &Distro{
 		Id: id,
 	}
-	assert.Nil(d.Insert(ctx))
+	assert.NoError(d.Insert(ctx))
 	found, err := FindOneId(ctx, id)
 	assert.NoError(err)
 	assert.Equal(found.Id, id, "The _ids should match")
@@ -63,7 +63,7 @@ func TestFindAllDistros(t *testing.T) {
 		d := &Distro{
 			Id: fmt.Sprintf("distro_%d", rand.Int()),
 		}
-		assert.Nil(d.Insert(ctx))
+		assert.NoError(d.Insert(ctx))
 	}
 
 	found, err := AllDistros(ctx)
@@ -148,7 +148,7 @@ func TestGetDefaultAMI(t *testing.T) {
 		birch.EC.String("ami", "ami-5678"),
 		birch.EC.String("region", evergreen.DefaultEC2Region),
 	))
-	assert.Equal(t, d.GetDefaultAMI(), "ami-5678")
+	assert.Equal(t, "ami-5678", d.GetDefaultAMI())
 }
 
 func TestValidateContainerPoolDistros(t *testing.T) {
@@ -293,8 +293,8 @@ func TestGetImageID(t *testing.T) {
 			doc := birch.NewDocument(birch.EC.String(test.key, test.value))
 			d = Distro{Provider: test.provider, ProviderSettingsList: []*birch.Document{doc}}
 			output2, err2 := d.GetImageID()
-			assert.Equal(t, output1, test.expectedOutput)
-			assert.Equal(t, output2, test.expectedOutput)
+			assert.Equal(t, test.expectedOutput, output1)
+			assert.Equal(t, test.expectedOutput, output2)
 			if test.err {
 				assert.Error(t, err1)
 				if !test.legacyOnly {
@@ -413,7 +413,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.Equal(t, evergreen.PlannerVersionLegacy, resolved0.Version)
 	assert.Equal(t, time.Duration(112358)*time.Second, resolved0.TargetTime)
 	// Fallback to the SchedulerConfig.GroupVersions as PlannerSettings.GroupVersions is nil.
-	assert.Equal(t, false, *resolved0.GroupVersions)
+	assert.False(t, *resolved0.GroupVersions)
 	// Fallback to the SchedulerConfig.PatchFactor as PlannerSettings.PatchFactor is is equal to 0.
 	assert.EqualValues(t, 50, resolved0.PatchFactor)
 	// Fallback to the SchedulerConfig.PatchTimeInQueueFactor as PlannerSettings.PatchTimeInQueueFactor is equal to 0.
@@ -425,6 +425,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	// Fallback to the SchedulerConfig.ExpectedRuntimeFactor as PlannerSettings.ExpectedRunTimeFactor is equal to 0.
 	assert.EqualValues(t, 7, resolved0.ExpectedRuntimeFactor)
 	assert.EqualValues(t, 20, resolved0.GenerateTaskFactor)
+	//nolint:testifylint // We expect it to be exactly 10.
 	assert.EqualValues(t, 10, resolved0.NumDependentsFactor)
 	assert.EqualValues(t, 40, resolved0.StepbackTaskFactor)
 
@@ -468,13 +469,14 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.PlannerVersionTunable, resolved1.Version)
 	assert.Equal(t, time.Duration(98765)*time.Second, resolved1.TargetTime)
-	assert.Equal(t, true, *resolved1.GroupVersions)
+	assert.True(t, *resolved1.GroupVersions)
 	assert.EqualValues(t, 25, resolved1.PatchFactor)
 	assert.EqualValues(t, 0, resolved1.PatchTimeInQueueFactor)
 	assert.EqualValues(t, 0, resolved1.CommitQueueFactor)
 	assert.EqualValues(t, 0, resolved1.MainlineTimeInQueueFactor)
 	assert.EqualValues(t, 0, resolved1.ExpectedRuntimeFactor)
 	assert.EqualValues(t, 0, resolved1.GenerateTaskFactor)
+	//nolint:testifylint // We expect it to be exactly 0.
 	assert.EqualValues(t, 0, resolved1.NumDependentsFactor)
 
 	ps := &PlannerSettings{
@@ -520,7 +522,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	// d2.PlannerSetting.TargetTime is 0 -- fallback on the equivalent SchedulerConfig field value
 	assert.Equal(t, time.Duration(12345)*time.Second, resolved2.TargetTime)
 	// d2.PlannerSetting.GroupVersions is nil -- fallback on the SchedulerConfig.PlannerVersion.GroupVersions value
-	assert.Equal(t, false, *resolved2.GroupVersions)
+	assert.False(t, *resolved2.GroupVersions)
 	assert.EqualValues(t, 19, resolved2.PatchFactor)
 	assert.EqualValues(t, 0, resolved2.PatchTimeInQueueFactor)
 	assert.EqualValues(t, 0, resolved2.CommitQueueFactor)
@@ -657,22 +659,22 @@ func TestGetDistrosForImage(t *testing.T) {
 		Id:      "distro-1",
 		ImageID: imageID,
 	}
-	assert.Nil(t, d1.Insert(ctx))
+	assert.NoError(t, d1.Insert(ctx))
 	d2 := &Distro{
 		Id:      "distro-2",
 		ImageID: imageID,
 	}
-	assert.Nil(t, d2.Insert(ctx))
+	assert.NoError(t, d2.Insert(ctx))
 	d3 := &Distro{
 		Id:      "distro-3",
 		ImageID: imageID,
 	}
-	assert.Nil(t, d3.Insert(ctx))
+	assert.NoError(t, d3.Insert(ctx))
 	d4 := &Distro{
 		Id:      "distro-4",
 		ImageID: otherImageID,
 	}
-	assert.Nil(t, d4.Insert(ctx))
+	assert.NoError(t, d4.Insert(ctx))
 
 	found, err := GetDistrosForImage(ctx, imageID)
 	assert.NoError(t, err)
@@ -687,9 +689,9 @@ func TestGetImageIDFromDistro(t *testing.T) {
 		Id:      "ubuntu1804-large",
 		ImageID: "ubuntu1804",
 	}
-	require.Nil(t, d.Insert(ctx))
+	require.NoError(t, d.Insert(ctx))
 
 	found, err := GetImageIDFromDistro(ctx, "ubuntu1804-large")
 	require.NoError(t, err)
-	assert.Equal(t, found, "ubuntu1804")
+	assert.Equal(t, "ubuntu1804", found)
 }

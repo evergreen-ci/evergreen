@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -221,8 +222,8 @@ func makeSummaryPrefix(t *task.Task, failed int) string {
 	}
 }
 
-func (j *jiraBuilder) build() (*message.JiraIssue, error) {
-	if err := j.data.Task.PopulateTestResults(); err != nil {
+func (j *jiraBuilder) build(ctx context.Context) (*message.JiraIssue, error) {
+	if err := j.data.Task.PopulateTestResults(ctx); err != nil {
 		return nil, errors.Wrap(err, "populating test results")
 	}
 
@@ -288,10 +289,10 @@ func (j *jiraBuilder) getSummary() (string, error) {
 
 	catcher := grip.NewSimpleCatcher()
 	if j.data.Task.DisplayTask != nil {
-		_, err := fmt.Fprintf(subj, j.data.Task.DisplayTask.DisplayName)
+		_, err := fmt.Fprint(subj, j.data.Task.DisplayTask.DisplayName)
 		catcher.Add(err)
 	} else {
-		_, err := fmt.Fprintf(subj, j.data.Task.DisplayName)
+		_, err := fmt.Fprint(subj, j.data.Task.DisplayName)
 		catcher.Add(err)
 	}
 	_, err := fmt.Fprintf(subj, " on %s ", j.data.Build.DisplayName)

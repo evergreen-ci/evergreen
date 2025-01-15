@@ -43,7 +43,7 @@ func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) 
 func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error) {
 	execString := strconv.Itoa(execution)
 
-	searchReturnInfo, bbConfig, err := model.GetSearchReturnInfo(taskID, execString)
+	searchReturnInfo, bbConfig, err := model.GetSearchReturnInfo(ctx, taskID, execString)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -338,16 +338,14 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting hosts: %s", err.Error()))
 	}
 
-	usr := mustHaveUser(ctx)
 	apiHosts := []*restModel.APIHost{}
+
 	for _, h := range hosts {
-		if !userHasHostPermission(usr, h.Distro.Id, evergreen.HostsView.Value, h.StartedBy) {
-			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access one or more hosts", usr.Username()))
-		}
 		apiHost := restModel.APIHost{}
 		apiHost.BuildFromService(&h, h.RunningTaskFull)
 		apiHosts = append(apiHosts, &apiHost)
 	}
+
 	return &HostsResponse{
 		Hosts:              apiHosts,
 		FilteredHostsCount: filteredHostsCount,
@@ -615,7 +613,7 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 
 // TaskAllExecutions is the resolver for the taskAllExecutions field.
 func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([]*restModel.APITask, error) {
-	latestTask, err := task.FindOneId(taskID)
+	latestTask, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
@@ -625,7 +623,7 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 	allTasks := []*restModel.APITask{}
 	for i := 0; i < latestTask.Execution; i++ {
 		var dbTask *task.Task
-		dbTask, err = task.FindByIdExecution(taskID, &i)
+		dbTask, err = task.FindByIdExecution(ctx, taskID, &i)
 		if err != nil {
 			return nil, ResourceNotFound.Send(ctx, err.Error())
 		}

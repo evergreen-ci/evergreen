@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/parsley"
@@ -208,7 +207,7 @@ func (p *ProjectRef) GetGitHubPermissionGroup(requester string) (GitHubDynamicTo
 // GetGitHubAppAuth returns the App auth for the given project.
 // If the project defaults to the repo and the app is not defined on the project, it will return the app from the repo.
 func (p *ProjectRef) GetGitHubAppAuth() (*githubapp.GithubAppAuth, error) {
-	appAuth, err := githubapp.FindOneGithubAppAuth(p.Id)
+	appAuth, err := GitHubAppAuthFindOne(p.Id)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding GitHub app auth")
 	}
@@ -218,7 +217,7 @@ func (p *ProjectRef) GetGitHubAppAuth() (*githubapp.GithubAppAuth, error) {
 	if !p.UseRepoSettings() {
 		return nil, nil
 	}
-	appAuth, err = githubapp.FindOneGithubAppAuth(p.RepoRefId)
+	appAuth, err = GitHubAppAuthFindOne(p.RepoRefId)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding GitHub app auth")
 	}
@@ -358,8 +357,7 @@ type ExternalLink struct {
 type MergeQueue string
 
 const (
-	MergeQueueEvergreen MergeQueue = "EVERGREEN"
-	MergeQueueGitHub    MergeQueue = "GITHUB"
+	MergeQueueGitHub MergeQueue = "GITHUB"
 )
 
 type CommitQueueParams struct {
@@ -542,7 +540,6 @@ var (
 	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
 
 	commitQueueEnabledKey          = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
-	commitQueueMergeQueueKey       = bsonutil.MustHaveTag(CommitQueueParams{}, "MergeQueue")
 	triggerDefinitionProjectKey    = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
 	containerSecretExternalNameKey = bsonutil.MustHaveTag(ContainerSecret{}, "ExternalName")
 	containerSecretExternalIDKey   = bsonutil.MustHaveTag(ContainerSecret{}, "ExternalID")
@@ -730,13 +727,6 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 	if err != nil {
 		return errors.Wrap(err, "inserting project ref")
 	}
-	if err = commitqueue.EnsureCommitQueueExistsForProject(p.Id); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":            "error ensuring commit queue exists",
-			"project_id":         p.Id,
-			"project_identifier": p.Identifier,
-		}))
-	}
 
 	newProjectVars := ProjectVars{
 		Id: p.Id,
@@ -798,7 +788,13 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 // are empty, the entry is deleted.
 func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) error {
 	if appID == 0 && len(privateKey) == 0 {
-		return githubapp.RemoveGithubAppAuth(p.Id)
+		ghApp, err := GitHubAppAuthFindOne(p.Id)
+		if err != nil {
+			return errors.Wrap(err, "finding GitHub app auth")
+		}
+		if ghApp != nil {
+			return GitHubAppAuthRemove(ghApp)
+		}
 	}
 
 	if appID == 0 || len(privateKey) == 0 {
@@ -809,7 +805,7 @@ func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) err
 		AppID:      appID,
 		PrivateKey: privateKey,
 	}
-	return githubapp.UpsertGithubAppAuth(&auth)
+	return GitHubAppAuthUpsert(&auth)
 }
 
 // DefaultGithubAppCredentialsToRepo defaults the app credentials to the repo by
@@ -819,8 +815,15 @@ func DefaultGithubAppCredentialsToRepo(projectId string) error {
 	if err != nil {
 		return errors.Wrap(err, "finding project ref")
 	}
-	return githubapp.RemoveGithubAppAuth(p.Id)
 
+	ghApp, err := GitHubAppAuthFindOne(p.Id)
+	if err != nil {
+		return errors.Wrap(err, "finding GitHub app auth")
+	}
+	if ghApp != nil {
+		return GitHubAppAuthRemove(ghApp)
+	}
+	return nil
 }
 
 // AddToRepoScope validates that the branch can be attached to the matching repo,
@@ -2108,7 +2111,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 		return nil, errors.Wrapf(err, "finding subscription for project '%s'", p.Id)
 	}
 
-	githubApp, err := githubapp.FindOneGithubAppAuth(p.Id)
+	githubApp, err := GitHubAppAuthFindOne(p.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding GitHub app for project '%s'", p.Id)
 	}
@@ -2148,26 +2151,6 @@ func UpdateOwnerAndRepoForBranchProjects(repoId, owner, repo string) error {
 				ProjectRefRepoKey:  repo,
 			},
 		})
-}
-
-// FindProjectRefIdsWithCommitQueueEnabled returns a list of project IDs that have the commit queue enabled.
-// We don't return the full projects since they aren't actually merged with the repo documents, so they
-// aren't necessarily accurate.
-func FindProjectRefIdsWithCommitQueueEnabled() ([]string, error) {
-	projectRefs := []ProjectRef{}
-	res := []string{}
-	err := db.Aggregate(
-		ProjectRefCollection,
-		projectRefPipelineForCommitQueueEnabled(),
-		&projectRefs)
-	if err != nil {
-		return nil, err
-	}
-	for _, p := range projectRefs {
-		res = append(res, p.Id)
-	}
-
-	return res, nil
 }
 
 // FindPeriodicProjects returns a list of merged projects that have periodic builds defined.
@@ -3166,8 +3149,8 @@ func (p *ProjectRef) CommitQueueIsOn() error {
 	return catcher.Resolve()
 }
 
-func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
-	t, err := task.FindOneId(taskId)
+func GetProjectRefForTask(ctx context.Context, taskId string) (*ProjectRef, error) {
+	t, err := task.FindOneId(ctx, taskId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task '%s'", taskId)
 	}
@@ -3185,7 +3168,7 @@ func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 }
 
 func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
-	pRef, err := GetProjectRefForTask(taskId)
+	pRef, err := GetProjectRefForTask(ctx, taskId)
 	if err != nil {
 		return "", errors.Wrap(err, "getting project")
 	}
@@ -3242,25 +3225,6 @@ func (t *TriggerDefinition) Validate(downstreamProject string) error {
 		t.DefinitionID = utility.RandomString()
 	}
 	return nil
-}
-
-func GetMessageForPatch(patchID string) (string, error) {
-	requestedPatch, err := patch.FindOneId(patchID)
-	if err != nil {
-		return "", errors.Wrap(err, "finding patch")
-	}
-	if requestedPatch == nil {
-		return "", errors.New("no patch found")
-	}
-	project, err := FindMergedProjectRef(requestedPatch.Project, requestedPatch.Version, true)
-	if err != nil {
-		return "", errors.Wrap(err, "finding project for patch")
-	}
-	if project == nil {
-		return "", errors.New("patch has nonexistent project")
-	}
-
-	return project.CommitQueue.Message, nil
 }
 
 // ValidateContainers inspects the list of containers defined in the project YAML and checks that each
@@ -3446,13 +3410,13 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 	}
 }
 
-func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
+func GetUpstreamProjectName(ctx context.Context, triggerID, triggerType string) (string, error) {
 	if triggerID == "" || triggerType == "" {
 		return "", nil
 	}
 	var projectID string
 	if triggerType == ProjectTriggerLevelTask {
-		upstreamTask, err := task.FindOneId(triggerID)
+		upstreamTask, err := task.FindOneId(ctx, triggerID)
 		if err != nil {
 			return "", errors.Wrap(err, "finding upstream task")
 		}
@@ -3502,36 +3466,6 @@ func projectRefPipelineForMatchingTrigger(project string) []bson.M {
 				}},
 			}},
 		},
-	}
-}
-
-// projectRefPipelineForCommitQueue is an aggregation pipeline to find projects that are
-// 1) explicitly enabled, or that default to the repo which is enabled, and
-// 2) the commit queue is explicitly enabled, or defaults to the repo which has the commit queue enabled
-func projectRefPipelineForCommitQueueEnabled() []bson.M {
-	return []bson.M{
-		lookupRepoStep,
-		{"$match": bson.M{
-			"$and": []bson.M{
-				{"$or": []bson.M{
-					{ProjectRefEnabledKey: true},
-				}},
-				{"$or": []bson.M{
-					{
-						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueEnabledKey):    true,
-						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueMergeQueueKey): bson.M{"$ne": MergeQueueGitHub},
-					},
-					{
-						bsonutil.GetDottedKeyName(projectRefCommitQueueKey, commitQueueEnabledKey):             nil,
-						bsonutil.GetDottedKeyName("repo_ref", RepoRefCommitQueueKey, commitQueueEnabledKey):    true,
-						bsonutil.GetDottedKeyName("repo_ref", RepoRefCommitQueueKey, commitQueueMergeQueueKey): bson.M{"$ne": MergeQueueGitHub},
-					},
-				}},
-			}},
-		},
-		{"$project": bson.M{
-			ProjectRefIdKey: 1,
-		}},
 	}
 }
 

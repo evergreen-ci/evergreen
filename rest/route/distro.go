@@ -435,6 +435,7 @@ func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 ////////////////////////////////////////////////////////////////////////
 //
 // GET /rest/v2/distros/{distro_id}/ami
+// This is an agent route and should not be documented.
 
 type distroAMIHandler struct {
 	distroID string
@@ -445,15 +446,6 @@ func makeGetDistroAMI() gimlet.RouteHandler {
 	return &distroAMIHandler{}
 }
 
-// Factory creates an instance of the handler.
-//
-//	@Summary		Get a single distro's AMI
-//	@Description	Fetch a single distro's AMI by its distro ID.
-//	@Tags			distros
-//	@Router			/distros/{distro_id}/ami [get]
-//	@Security		Api-User || Api-Key
-//	@Param			distro_id	path		string	true	"distro ID"
-//	@Success		200			{string}	string	"The distro's AMI"
 func (h *distroAMIHandler) Factory() gimlet.RouteHandler {
 	return &distroAMIHandler{}
 }
@@ -473,7 +465,7 @@ func (h *distroAMIHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding distro '%s'", h.distroID))
 	}
-	if err != nil || d == nil {
+	if d == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("distro '%s' not found", h.distroID),
@@ -580,6 +572,7 @@ func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID 
 }
 
 // GET /rest/v2/distros/{distro_id}/client_urls
+// This is an agent route and should not be documented.
 
 type distroClientURLsGetHandler struct {
 	env      evergreen.Environment
@@ -592,14 +585,6 @@ func makeGetDistroClientURLs(env evergreen.Environment) gimlet.RouteHandler {
 	}
 }
 
-// Factory creates an instance of the handler.
-//
-//	@Summary		Get Evergreen client URLs for a distro
-//	@Description	Returns the URLs for downloading the Evergreen client for a distro.
-//	@Tags			distros
-//	@Router			/distros/{distro_id}/client_urls [get]
-//	@Param			distro_id	path	string	true	"distro ID"
-//	@Success		200			{array}	string	"The URLs for downloading the Evergreen client"
 func (rh *distroClientURLsGetHandler) Factory() gimlet.RouteHandler {
 	return &distroClientURLsGetHandler{
 		env: rh.env,

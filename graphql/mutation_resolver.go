@@ -63,7 +63,7 @@ func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string
 		return false, InputValidationError.Send(ctx, fmt.Sprintf("issue does not have valid URL: %s", err.Error()))
 	}
 	if isIssue {
-		if err := task.AddIssueToAnnotation(taskID, execution, *issue, usr.Username()); err != nil {
+		if err := task.AddIssueToAnnotation(ctx, taskID, execution, *issue, usr.Username()); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't add issue: %s", err.Error()))
 		}
 		return true, nil
@@ -97,12 +97,12 @@ func (r *mutationResolver) MoveAnnotationIssue(ctx context.Context, taskID strin
 	usr := mustHaveUser(ctx)
 	issue := restModel.APIIssueLinkToService(apiIssue)
 	if isIssue {
-		if err := task.MoveIssueToSuspectedIssue(taskID, execution, *issue, usr.Username()); err != nil {
+		if err := task.MoveIssueToSuspectedIssue(ctx, taskID, execution, *issue, usr.Username()); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't move issue to suspected issues: %s", err.Error()))
 		}
 		return true, nil
 	} else {
-		if err := task.MoveSuspectedIssueToIssue(taskID, execution, *issue, usr.Username()); err != nil {
+		if err := task.MoveSuspectedIssueToIssue(ctx, taskID, execution, *issue, usr.Username()); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't move issue to suspected issues: %s", err.Error()))
 		}
 		return true, nil
@@ -117,7 +117,7 @@ func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID str
 	}
 	issue := restModel.APIIssueLinkToService(apiIssue)
 	if isIssue {
-		if err := task.RemoveIssueFromAnnotation(taskID, execution, *issue); err != nil {
+		if err := task.RemoveIssueFromAnnotation(ctx, taskID, execution, *issue); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't delete issue: %s", err.Error()))
 		}
 		return true, nil
@@ -408,7 +408,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("looking in project collection: %s", err.Error()))
 	}
 	if projectRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding project: %s", err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding project: %s", utility.FromStringPtr(project.Id)))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	if err = apiProjectRef.BuildFromService(*projectRef); err != nil {
@@ -455,7 +455,7 @@ func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyPro
 // DeactivateStepbackTask is the resolver for the deactivateStepbackTask field.
 func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, opts DeactivateStepbackTaskInput) (bool, error) {
 	usr := mustHaveUser(ctx)
-	if err := task.DeactivateStepbackTask(opts.ProjectID, opts.BuildVariantName, opts.TaskName, usr.Username()); err != nil {
+	if err := task.DeactivateStepbackTask(ctx, opts.ProjectID, opts.BuildVariantName, opts.TaskName, usr.Username()); err != nil {
 		return false, InternalServerError.Send(ctx, err.Error())
 	}
 	return true, nil
@@ -473,14 +473,14 @@ func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, opts Defaul
 // DeleteGithubAppCredentials is the resolver for the deleteGithubAppCredentials field.
 func (r *mutationResolver) DeleteGithubAppCredentials(ctx context.Context, opts DeleteGithubAppCredentialsInput) (*DeleteGithubAppCredentialsPayload, error) {
 	usr := mustHaveUser(ctx)
-	app, err := githubapp.FindOneGithubAppAuth(opts.ProjectID)
+	app, err := model.GitHubAppAuthFindOne(opts.ProjectID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding GitHub app for project '%s': %s", opts.ProjectID, err.Error()))
 	}
 	if app == nil {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("project '%s' does not have a GitHub app defined", opts.ProjectID))
 	}
-	if err = githubapp.RemoveGithubAppAuth(opts.ProjectID); err != nil {
+	if err = model.GitHubAppAuthRemove(app); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("removing GitHub app auth for project '%s': %s", opts.ProjectID, err.Error()))
 	}
 	before := model.ProjectSettings{
@@ -911,7 +911,7 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 
 // AbortTask is the resolver for the abortTask field.
 func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restModel.APITask, error) {
-	t, err := task.FindOneId(taskID)
+	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task by id '%s': %s", taskID, err.Error()))
 	}
@@ -923,7 +923,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("aborting task %s: %s", taskID, err.Error()))
 	}
-	t, err = task.FindOneId(taskID)
+	t, err = task.FindOneId(ctx, taskID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task by id '%s': %s", taskID, err.Error()))
 	}
@@ -937,7 +937,7 @@ func (r *mutationResolver) AbortTask(ctx context.Context, taskID string) (*restM
 // OverrideTaskDependencies is the resolver for the overrideTaskDependencies field.
 func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID string) (*restModel.APITask, error) {
 	currentUser := mustHaveUser(ctx)
-	t, err := task.FindByIdExecution(taskID, nil)
+	t, err := task.FindByIdExecution(ctx, taskID, nil)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskID, err.Error()))
 	}
@@ -954,7 +954,7 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 func (r *mutationResolver) RestartTask(ctx context.Context, taskID string, failedOnly bool) (*restModel.APITask, error) {
 	usr := mustHaveUser(ctx)
 	username := usr.Username()
-	t, err := task.FindOneId(taskID)
+	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskID, err.Error()))
 	}
@@ -998,7 +998,7 @@ func (r *mutationResolver) ScheduleTasks(ctx context.Context, versionID string, 
 
 // SetTaskPriority is the resolver for the setTaskPriority field.
 func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, priority int) (*restModel.APITask, error) {
-	t, err := task.FindOneId(taskID)
+	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskID, err.Error()))
 	}
@@ -1022,7 +1022,7 @@ func (r *mutationResolver) SetTaskPriority(ctx context.Context, taskID string, p
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting task priority for '%s': %s", taskID, err.Error()))
 	}
 
-	t, err = task.FindOneId(taskID)
+	t, err = task.FindOneId(ctx, taskID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task by id '%s': %s", taskID, err.Error()))
 	}
@@ -1145,7 +1145,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	}
 	switch idType {
 	case "task":
-		t, taskErr := task.FindOneId(id)
+		t, taskErr := task.FindOneId(ctx, id)
 		if taskErr != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding task by id '%s': %s", id, taskErr.Error()))
 		}
@@ -1305,21 +1305,21 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, ve
 		// If a task is a generated task don't schedule it until we get all of the generated tasks we want to generate
 		if t.GeneratedBy == "" {
 			// We can ignore an error while fetching tasks because this could just mean the task didn't exist on the base commit.
-			baseTask, _ := t.FindTaskOnBaseCommit()
+			baseTask, _ := t.FindTaskOnBaseCommit(ctx)
 			if baseTask != nil && baseTask.Status == evergreen.TaskUndispatched {
 				tasksToSchedule[baseTask.Id] = true
 			}
 			// If a task is generated lets find its base task if it exists otherwise we need to generate it
 		} else if t.GeneratedBy != "" {
-			baseTask, _ := t.FindTaskOnBaseCommit()
+			baseTask, _ := t.FindTaskOnBaseCommit(ctx)
 			// If the task is undispatched or doesn't exist on the base commit then we want to schedule
 			if baseTask == nil {
-				generatorTask, err := task.FindByIdExecution(t.GeneratedBy, nil)
+				generatorTask, err := task.FindByIdExecution(ctx, t.GeneratedBy, nil)
 				if err != nil {
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Experienced an error trying to find the generator task: %s", err.Error()))
 				}
 				if generatorTask != nil {
-					baseGeneratorTask, _ := generatorTask.FindTaskOnBaseCommit()
+					baseGeneratorTask, _ := generatorTask.FindTaskOnBaseCommit(ctx)
 					// If baseGeneratorTask is nil then it didn't exist on the base task and we can't do anything
 					if baseGeneratorTask != nil && baseGeneratorTask.Status == evergreen.TaskUndispatched {
 						err = baseGeneratorTask.SetGeneratedTasksToActivate(t.BuildVariant, t.DisplayName)

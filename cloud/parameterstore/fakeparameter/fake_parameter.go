@@ -18,7 +18,10 @@ import (
 // to "test".
 var ExecutionEnvironmentType = "production"
 
-func init() {
+// checkTestingEnvironment performs a safety check to verify that logic in this
+// package is only called in a testing environment. If this is called in a
+// non-testing environment, the process will exit with a fatal error.
+func checkTestingEnvironment() {
 	if ExecutionEnvironmentType != "test" {
 		grip.EmergencyFatal(message.Fields{
 			"message":     "fake Parameter Store testing code called in a non-testing environment",
@@ -41,6 +44,8 @@ type FakeParameter struct {
 
 // Insert inserts a single parameter into the fake parameter store.
 func (p *FakeParameter) Insert(ctx context.Context) error {
+	checkTestingEnvironment()
+
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertOne(ctx, p)
 	return err
 }
@@ -48,6 +53,8 @@ func (p *FakeParameter) Insert(ctx context.Context) error {
 // Upsert inserts a single parameter into the fake parameter store or replaces
 // an one if one with the same ID already exists.
 func (p *FakeParameter) Upsert(ctx context.Context) error {
+	checkTestingEnvironment()
+
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).ReplaceOne(ctx, bson.M{NameKey: p.Name}, p, options.Replace().SetUpsert(true))
 	return err
 }

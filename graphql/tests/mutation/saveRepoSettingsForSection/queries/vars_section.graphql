@@ -1,20 +1,15 @@
 mutation {
-    saveRepoSettingsForSection(
-        repoSettings: {
-            repoId: "repo_id"
-            projectRef: {
-                id: "repo_id"
-            }
-            vars: {
-                vars: {goodbye: "now"},
-                privateVarsList: ["goodbye"]
-            }
-        }
-        section: VARIABLES,
-    ) {
-        vars {
-            vars
-            privateVars
-        }
+  saveRepoSettingsForSection(
+    repoSettings: {
+      repoId: "sandbox_repo_id"
+      projectRef: { id: "sandbox_repo_id" }
+      vars: { vars: { goodbye: "now" }, privateVarsList: ["goodbye"] }
     }
+    section: VARIABLES
+  ) {
+    vars {
+      vars
+      privateVars
+    }
+  }
 }

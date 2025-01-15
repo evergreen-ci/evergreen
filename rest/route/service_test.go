@@ -576,7 +576,6 @@ func TestTaskByBuildPaginator(t *testing.T) {
 	Convey("When paginating with a Connector", t, func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
 		Convey("and there are tasks to be found", func() {
-			cachedTasks := []task.Task{}
 			cachedOldTasks := []task.Task{}
 			for i := 0; i < numTasks; i++ {
 				prefix := int(math.Log10(float64(i)))
@@ -587,7 +586,6 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					Id: fmt.Sprintf("%dbuild%d", prefix, i),
 				}
 				So(db.Insert(task.Collection, nextTask), ShouldBeNil)
-				cachedTasks = append(cachedTasks, nextTask)
 			}
 			for i := 0; i < 5; i++ {
 				prefix := int(math.Log10(float64(i)))
@@ -1204,7 +1202,7 @@ func TestTaskResetExecute(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(resTask.Activated, ShouldBeTrue)
 			So(resTask.DispatchTime, ShouldBeNil)
-			dbTask, err := task.FindOneId("testTaskId")
+			dbTask, err := task.FindOneId(ctx, "testTaskId")
 			So(err, ShouldBeNil)
 			So(dbTask.Secret, ShouldNotResemble, "initialSecret")
 		})
@@ -1222,11 +1220,11 @@ func TestTaskResetExecute(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(resTask.Activated, ShouldBeTrue)
 			So(resTask.DispatchTime, ShouldBeNil)
-			dbTask2, err := task.FindOneId("testTaskId2")
+			dbTask2, err := task.FindOneId(ctx, "testTaskId2")
 			So(err, ShouldBeNil)
 			So(dbTask2.Secret, ShouldNotResemble, "initialSecret")
 			So(dbTask2.Status, ShouldEqual, evergreen.TaskUndispatched)
-			dbTask3, err := task.FindOneId("testTaskId3")
+			dbTask3, err := task.FindOneId(ctx, "testTaskId3")
 			So(err, ShouldBeNil)
 			So(dbTask3.Secret, ShouldResemble, "initialSecret")
 			So(dbTask3.Status, ShouldEqual, evergreen.TaskSucceeded)
@@ -1280,7 +1278,7 @@ func TestParentTaskInfo(t *testing.T) {
 	resp := tbh.Run(ctx)
 	data, ok := resp.Data().([]interface{})
 	assert.True(t, ok)
-	assert.Equal(t, 3, len(data))
+	assert.Len(t, data, 3)
 
 	expectedParentIDs := []string{dtID, dtID, ""}
 	for i := range data {
@@ -1302,8 +1300,8 @@ func TestOptionsRequest(t *testing.T) {
 	tbh := &optionsHandler{}
 	resp := tbh.Run(ctx)
 	data := resp.Data()
-	assert.Equal(t, data, struct{}{})
-	assert.Equal(t, resp.Status(), http.StatusOK)
+	assert.Equal(t, struct{}{}, data)
+	assert.Equal(t, http.StatusOK, resp.Status())
 
 }
 

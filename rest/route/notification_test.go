@@ -94,7 +94,7 @@ func (s *SlackNotificationSuite) TestParseValidJSON() {
 	s.Equal(utility.ToStringPtr("I'm the first attachment's text"), apiSlack.Attachments[0].Text)
 	s.Equal(utility.ToStringPtr("I'm the first attachment's first field title"), apiSlack.Attachments[0].Fields[0].Title)
 	s.Equal(utility.ToStringPtr("I'm the first attachment's first field value"), apiSlack.Attachments[0].Fields[0].Value)
-	s.Equal(true, apiSlack.Attachments[0].Fields[0].Short)
+	s.True(apiSlack.Attachments[0].Fields[0].Short)
 	s.Equal([]string{"m11", "m12"}, apiSlack.Attachments[0].MarkdownIn)
 	s.Equal(utility.ToStringPtr("I'm the first attachment's footer"), apiSlack.Attachments[0].Footer)
 
@@ -106,7 +106,7 @@ func (s *SlackNotificationSuite) TestParseValidJSON() {
 	s.Equal(utility.ToStringPtr("I'm the second attachment's text"), apiSlack.Attachments[1].Text)
 	s.Equal(utility.ToStringPtr("I'm the second attachment's first field title"), apiSlack.Attachments[1].Fields[0].Title)
 	s.Equal(utility.ToStringPtr("I'm the second attachment's first field value"), apiSlack.Attachments[1].Fields[0].Value)
-	s.Equal(false, apiSlack.Attachments[1].Fields[0].Short)
+	s.False(apiSlack.Attachments[1].Fields[0].Short)
 	s.Equal([]string{"m21", "m22"}, apiSlack.Attachments[1].MarkdownIn)
 	s.Equal(utility.ToStringPtr("I'm the second attachment's footer"), apiSlack.Attachments[1].Footer)
 }
@@ -151,6 +151,6 @@ func (s *EmailNotificationSuite) TestParseValidJSON() {
 	s.Equal([]string{"Tom", "Dick", "Harry"}, apiEmail.Recipients)
 	s.Equal(utility.ToStringPtr("This is the email's subject"), apiEmail.Subject)
 	s.Equal(utility.ToStringPtr("This is the email's body"), apiEmail.Body)
-	s.Equal(true, apiEmail.PlainTextContents)
-	s.Equal(map[string][]string{"h1": []string{"v11", "v12"}, "h2": []string{"v21", "v22"}}, apiEmail.Headers)
+	s.True(apiEmail.PlainTextContents)
+	s.Equal(map[string][]string{"h1": {"v11", "v12"}, "h2": {"v21", "v22"}}, apiEmail.Headers)
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
+	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -42,11 +43,6 @@ type CheckMergeRequest struct {
 	PRNum int    `json:"pr_num"`
 	Owner string `json:"owner"`
 	Repo  string `json:"repo"`
-}
-
-type PullRequestInfo struct {
-	Mergeable      *bool  `json:"mergeable"`
-	MergeCommitSHA string `json:"merge_commit_sha"`
 }
 
 // TaskTestResultsInfo contains metadata related to test results persisted for
@@ -119,9 +115,9 @@ type AgentSetupData struct {
 	SplunkChannel          string                  `json:"splunk_channel"`
 	TaskSync               evergreen.S3Credentials `json:"task_sync"`
 	TaskOutput             evergreen.S3Credentials `json:"task_output"`
-	EC2Keys                []evergreen.EC2Key      `json:"ec2_keys"`
 	TraceCollectorEndpoint string                  `json:"trace_collector_endpoint"`
 	MaxExecTimeoutSecs     int                     `json:"max_exec_timeout_secs"`
+	InternalBuckets        []string                `json:"internal_buckets"`
 }
 
 // NextTaskResponse represents the response sent back when an agent asks for a next task
@@ -200,9 +196,10 @@ type RegistrySettings struct {
 	Password string `mapstructure:"registry_password" json:"registry_password" yaml:"registry_password"`
 }
 
-// Token is a struct which wraps a GitHub generated token.
+// Token is a struct which wraps a GitHub generated token and associated permissions
 type Token struct {
-	Token string `json:"token"`
+	Token       string                          `json:"token"`
+	Permissions *github.InstallationPermissions `json:"permissions"`
 }
 
 // AssumeRoleRequest is the details of what role to assume.

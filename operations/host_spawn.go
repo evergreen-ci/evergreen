@@ -54,7 +54,7 @@ func hostCreate() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(keyFlagName, "k"),
-				Usage: "provide either the value of a public key to use, or the Evergreen-managed name of a key",
+				Usage: "provide either the value of a public key to use, or the Evergreen-managed name of a key (which can be viewed using 'evergreen keys list')",
 			},
 			cli.StringFlag{
 				Name:  joinFlagNames(scriptFlagName, "s"),

@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -201,9 +200,6 @@ func (p *patchParams) displayPatch(ac *legacyClient, params outputPatchParams) e
 			return nil
 		}
 		url := params.patches[0].GetURL(params.uiHost)
-		if params.patches[0].IsCommitQueuePatch() {
-			url = params.patches[0].GetCommitQueueURL(params.uiHost)
-		}
 		browserCmd = append(browserCmd, url)
 		cmd := exec.Command(browserCmd[0], browserCmd[1:]...)
 		return cmd.Run()
@@ -561,13 +557,6 @@ func getPatchDisplay(ac *legacyClient, params outputPatchParams) (string, error)
 func getGenericPatchDisplay(ac *legacyClient, params outputPatchParams) (string, error) {
 	var out bytes.Buffer
 	for _, p := range params.patches {
-		var link string
-		if p.IsCommitQueuePatch() {
-			link = p.GetCommitQueueURL(params.uiHost)
-		} else {
-			link = p.GetURL(params.uiHost)
-		}
-
 		proj, err := ac.GetProjectRef(p.Project)
 		if err != nil {
 			return "", errors.Wrapf(err, "getting project ref for '%s'", p.Project)
@@ -585,8 +574,8 @@ func getGenericPatchDisplay(ac *legacyClient, params outputPatchParams) (string,
 		}{
 			Patch:             &p,
 			ShowSummary:       params.summarize,
-			ShowFinalized:     p.IsCommitQueuePatch(),
-			Link:              link,
+			ShowFinalized:     p.IsMergeQueuePatch(),
+			Link:              p.GetURL(params.uiHost),
 			ProjectIdentifier: proj.Identifier,
 		})
 
@@ -648,25 +637,6 @@ func getFeatureBranch(ref, commits string) string {
 		return strings.Split(commits, "..")[0]
 	}
 	return "HEAD"
-}
-
-func isValidCommitsFormat(commits string) error {
-	errToReturn := errors.New("Invalid commit format: verify input is of the form `<hash1> OR `<hash1>..<hash2>` (where hash1 is an ancestor of hash2)")
-	if commits == "" || !isCommitRange(commits) {
-		return nil
-	}
-
-	commitsList := strings.Split(commits, "..")
-	if len(commitsList) != 2 { // extra check
-		return errToReturn
-	}
-
-	if _, err := gitIsAncestor(commitsList[0], strings.Trim(commitsList[1], ".")); err != nil {
-		// suppressing given error bc it's not helpful
-		return errToReturn
-	}
-
-	return nil
 }
 
 func confirmUncommittedChanges(dir string, preserveCommits, includeUncommitedChanges bool) (bool, error) {
@@ -791,11 +761,6 @@ func gitMergeBase(dir, branch1, ref, commits string) (string, error) {
 	return strings.TrimSpace(out), err
 }
 
-func gitIsAncestor(commit1, commit2 string) (string, error) {
-	args := []string{"--is-ancestor", commit1, commit2}
-	return gitCmd("merge-base", args...)
-}
-
 // gitDiff runs "git diff <base> <ref> <commits> <diffargs ...>" and returns the output of the command as a string,
 // where ref and commits are mutually exclusive (and not required). If dir is specified, runs the command
 // in the specified directory.
@@ -829,23 +794,6 @@ func gitLog(dir, base, ref, commits string) (string, error) {
 	return gitCmdWithDir("log", dir, revisionRange, "--oneline")
 }
 
-func gitCommitMessages(base, ref, commits string) (string, error) {
-	input := fmt.Sprintf("%s@{upstream}..%s", base, ref)
-	if commits != "" {
-		input = formatCommitRange(commits)
-	}
-	args := []string{"--no-show-signature", "--pretty=format:%s", "--reverse", input}
-	msg, err := gitCmd("log", args...)
-	if err != nil {
-		return "", errors.Wrap(err, "getting git log messages")
-	}
-	// separate multiple commits with <-
-	msg = strings.TrimSpace(msg)
-	msg = strings.Replace(msg, "\n", " <- ", -1)
-
-	return msg, nil
-}
-
 // assumes base includes @{upstream}
 func gitLastCommitMessage() (string, error) {
 	args := []string{"HEAD", "--no-show-signature", "--pretty=format:%s", "-n 1"}
@@ -872,24 +820,6 @@ func getDefaultDescription() (string, error) {
 		return desc, nil
 	}
 	return fmt.Sprintf("%s: %s", branch, desc), nil
-}
-
-func gitCommitCount(base, ref, commits string) (int, error) {
-	input := fmt.Sprintf("%s@{upstream}..%s", base, ref)
-	if commits != "" {
-		input = formatCommitRange(commits)
-	}
-	out, err := gitCmd("rev-list", input, "--count")
-	if err != nil {
-		return 0, errors.Wrap(err, "getting git commit count")
-	}
-
-	count, err := strconv.Atoi(strings.TrimSpace(out))
-	if err != nil {
-		return 0, errors.Wrapf(err, "parsing git commit count from git command output '%s'", out)
-	}
-
-	return count, nil
 }
 
 func gitUncommittedChanges(dir string) (bool, error) {

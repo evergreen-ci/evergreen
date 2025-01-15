@@ -97,7 +97,6 @@ type ResolverRoot interface {
 type DirectiveRoot struct {
 	RedactSecrets                func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireDistroAccess          func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (res interface{}, err error)
-	RequireHostAccess            func(ctx context.Context, obj interface{}, next graphql.Resolver, access HostAccessLevel) (res interface{}, err error)
 	RequireProjectAccess         func(ctx context.Context, obj interface{}, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res interface{}, err error)
 	RequireProjectAdmin          func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
@@ -275,6 +274,7 @@ type ComplexityRoot struct {
 		SSHOptions            func(childComplexity int) int
 		Setup                 func(childComplexity int) int
 		SetupAsSudo           func(childComplexity int) int
+		SingleTaskDistro      func(childComplexity int) int
 		User                  func(childComplexity int) int
 		UserSpawnAllowed      func(childComplexity int) int
 		ValidProjects         func(childComplexity int) int
@@ -1310,6 +1310,7 @@ type ComplexityRoot struct {
 		DispatchTime            func(childComplexity int) int
 		DisplayName             func(childComplexity int) int
 		DisplayOnly             func(childComplexity int) int
+		DisplayStatus           func(childComplexity int) int
 		DisplayTask             func(childComplexity int) int
 		DistroId                func(childComplexity int) int
 		EstimatedStart          func(childComplexity int) int
@@ -1702,11 +1703,11 @@ type ComplexityRoot struct {
 	}
 
 	WaterfallTask struct {
-		DisplayName   func(childComplexity int) int
-		DisplayStatus func(childComplexity int) int
-		Execution     func(childComplexity int) int
-		Id            func(childComplexity int) int
-		Status        func(childComplexity int) int
+		DisplayName        func(childComplexity int) int
+		DisplayStatusCache func(childComplexity int) int
+		Execution          func(childComplexity int) int
+		Id                 func(childComplexity int) int
+		Status             func(childComplexity int) int
 	}
 
 	WaterfallVersion struct {
@@ -2039,8 +2040,6 @@ type TaskResolver interface {
 	ProjectIdentifier(ctx context.Context, obj *model.APITask) (*string, error)
 
 	SpawnHostLink(ctx context.Context, obj *model.APITask) (*string, error)
-
-	Status(ctx context.Context, obj *model.APITask) (string, error)
 
 	TaskLogs(ctx context.Context, obj *model.APITask) (*TaskLogs, error)
 	Tests(ctx context.Context, obj *model.APITask, opts *TestFilterOptions) (*TaskTestResult, error)
@@ -2898,6 +2897,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Distro.SetupAsSudo(childComplexity), true
+
+	case "Distro.singleTaskDistro":
+		if e.complexity.Distro.SingleTaskDistro == nil {
+			break
+		}
+
+		return e.complexity.Distro.SingleTaskDistro(childComplexity), true
 
 	case "Distro.user":
 		if e.complexity.Distro.User == nil {
@@ -8282,6 +8288,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.DisplayOnly(childComplexity), true
 
+	case "Task.displayStatus":
+		if e.complexity.Task.DisplayStatus == nil {
+			break
+		}
+
+		return e.complexity.Task.DisplayStatus(childComplexity), true
+
 	case "Task.displayTask":
 		if e.complexity.Task.DisplayTask == nil {
 			break
@@ -10244,12 +10257,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.WaterfallTask.DisplayName(childComplexity), true
 
-	case "WaterfallTask.displayStatus":
-		if e.complexity.WaterfallTask.DisplayStatus == nil {
+	case "WaterfallTask.displayStatusCache":
+		if e.complexity.WaterfallTask.DisplayStatusCache == nil {
 			break
 		}
 
-		return e.complexity.WaterfallTask.DisplayStatus(childComplexity), true
+		return e.complexity.WaterfallTask.DisplayStatusCache(childComplexity), true
 
 	case "WaterfallTask.execution":
 		if e.complexity.WaterfallTask.Execution == nil {
@@ -10641,21 +10654,6 @@ func (ec *executionContext) dir_requireDistroAccess_args(ctx context.Context, ra
 	if tmp, ok := rawArgs["access"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("access"))
 		arg0, err = ec.unmarshalNDistroSettingsAccess2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDistroSettingsAccess(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["access"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) dir_requireHostAccess_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 HostAccessLevel
-	if tmp, ok := rawArgs["access"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("access"))
-		arg0, err = ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -11573,28 +11571,9 @@ func (ec *executionContext) field_Mutation_reprovisionToNew_args(ctx context.Con
 	var arg0 []string
 	if tmp, ok := rawArgs["hostIds"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIds"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireHostAccess == nil {
-				return nil, errors.New("directive requireHostAccess is not implemented")
-			}
-			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.([]string); ok {
-			arg0 = data
-		} else if tmp == nil {
-			arg0 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
+			return nil, err
 		}
 	}
 	args["hostIds"] = arg0
@@ -11607,28 +11586,9 @@ func (ec *executionContext) field_Mutation_restartJasper_args(ctx context.Contex
 	var arg0 []string
 	if tmp, ok := rawArgs["hostIds"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIds"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireHostAccess == nil {
-				return nil, errors.New("directive requireHostAccess is not implemented")
-			}
-			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.([]string); ok {
-			arg0 = data
-		} else if tmp == nil {
-			arg0 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
+			return nil, err
 		}
 	}
 	args["hostIds"] = arg0
@@ -12247,28 +12207,9 @@ func (ec *executionContext) field_Mutation_updateHostStatus_args(ctx context.Con
 	var arg0 []string
 	if tmp, ok := rawArgs["hostIds"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIds"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireHostAccess == nil {
-				return nil, errors.New("directive requireHostAccess is not implemented")
-			}
-			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.([]string); ok {
-			arg0 = data
-		} else if tmp == nil {
-			arg0 = nil
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
+			return nil, err
 		}
 	}
 	args["hostIds"] = arg0
@@ -12736,26 +12677,9 @@ func (ec *executionContext) field_Query_hostEvents_args(ctx context.Context, raw
 	var arg0 string
 	if tmp, ok := rawArgs["hostId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "VIEW")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireHostAccess == nil {
-				return nil, errors.New("directive requireHostAccess is not implemented")
-			}
-			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(string); ok {
-			arg0 = data
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+			return nil, err
 		}
 	}
 	args["hostId"] = arg0
@@ -12795,26 +12719,9 @@ func (ec *executionContext) field_Query_host_args(ctx context.Context, rawArgs m
 	var arg0 string
 	if tmp, ok := rawArgs["hostId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-		directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, tmp) }
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "VIEW")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.RequireHostAccess == nil {
-				return nil, errors.New("directive requireHostAccess is not implemented")
-			}
-			return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
-		}
-
-		tmp, err = directive1(ctx)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if data, ok := tmp.(string); ok {
-			arg0 = data
-		} else {
-			return nil, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+			return nil, err
 		}
 	}
 	args["hostId"] = arg0
@@ -18289,6 +18196,50 @@ func (ec *executionContext) fieldContext_Distro_setupAsSudo(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Distro_singleTaskDistro(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Distro_singleTaskDistro(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SingleTaskDistro, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Distro_singleTaskDistro(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Distro_sshOptions(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Distro_sshOptions(ctx, field)
 	if err != nil {
@@ -21600,6 +21551,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -25683,6 +25636,8 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 				return ec.fieldContext_Distro_setup(ctx, field)
 			case "setupAsSudo":
 				return ec.fieldContext_Distro_setupAsSudo(ctx, field)
+			case "singleTaskDistro":
+				return ec.fieldContext_Distro_singleTaskDistro(ctx, field)
 			case "sshOptions":
 				return ec.fieldContext_Distro_sshOptions(ctx, field)
 			case "user":
@@ -25901,6 +25856,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -28405,6 +28362,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -32870,6 +32829,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -33077,6 +33038,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -33284,6 +33247,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -33491,6 +33456,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -33698,6 +33665,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -33905,6 +33874,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -35063,6 +35034,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -40356,6 +40329,8 @@ func (ec *executionContext) fieldContext_Pod_task(_ context.Context, field graph
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -40897,6 +40872,8 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(_ context.Context,
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -46365,6 +46342,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_setup(ctx, field)
 			case "setupAsSudo":
 				return ec.fieldContext_Distro_setupAsSudo(ctx, field)
+			case "singleTaskDistro":
+				return ec.fieldContext_Distro_singleTaskDistro(ctx, field)
 			case "sshOptions":
 				return ec.fieldContext_Distro_sshOptions(ctx, field)
 			case "user":
@@ -46547,6 +46526,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_setup(ctx, field)
 			case "setupAsSudo":
 				return ec.fieldContext_Distro_setupAsSudo(ctx, field)
+			case "singleTaskDistro":
+				return ec.fieldContext_Distro_singleTaskDistro(ctx, field)
 			case "sshOptions":
 				return ec.fieldContext_Distro_sshOptions(ctx, field)
 			case "user":
@@ -48112,6 +48093,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -48319,6 +48302,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -52641,6 +52626,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 				return ec.fieldContext_Distro_setup(ctx, field)
 			case "setupAsSudo":
 				return ec.fieldContext_Distro_setupAsSudo(ctx, field)
+			case "singleTaskDistro":
+				return ec.fieldContext_Distro_singleTaskDistro(ctx, field)
 			case "sshOptions":
 				return ec.fieldContext_Distro_sshOptions(ctx, field)
 			case "user":
@@ -55353,6 +55340,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -56302,6 +56291,50 @@ func (ec *executionContext) fieldContext_Task_displayName(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Task_displayStatus(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_displayStatus(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayStatus, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_displayStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Task_displayOnly(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Task_displayOnly(ctx, field)
 	if err != nil {
@@ -56437,6 +56470,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -56800,6 +56835,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -58338,7 +58375,7 @@ func (ec *executionContext) _Task_status(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Task().Status(rctx, obj)
+		return obj.Status, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -58350,17 +58387,17 @@ func (ec *executionContext) _Task_status(ctx context.Context, field graphql.Coll
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Task_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Task",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
@@ -64405,6 +64442,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -68394,6 +68433,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
 			case "displayTask":
@@ -69735,8 +69776,8 @@ func (ec *executionContext) fieldContext_WaterfallBuild_tasks(_ context.Context,
 				return ec.fieldContext_WaterfallTask_id(ctx, field)
 			case "displayName":
 				return ec.fieldContext_WaterfallTask_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_WaterfallTask_displayStatus(ctx, field)
+			case "displayStatusCache":
+				return ec.fieldContext_WaterfallTask_displayStatusCache(ctx, field)
 			case "execution":
 				return ec.fieldContext_WaterfallTask_execution(ctx, field)
 			case "status":
@@ -70200,8 +70241,8 @@ func (ec *executionContext) fieldContext_WaterfallTask_displayName(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _WaterfallTask_displayStatus(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallTask) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_WaterfallTask_displayStatus(ctx, field)
+func (ec *executionContext) _WaterfallTask_displayStatusCache(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallTask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WaterfallTask_displayStatusCache(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -70214,7 +70255,7 @@ func (ec *executionContext) _WaterfallTask_displayStatus(ctx context.Context, fi
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.DisplayStatus, nil
+		return obj.DisplayStatusCache, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -70231,7 +70272,7 @@ func (ec *executionContext) _WaterfallTask_displayStatus(ctx context.Context, fi
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_WaterfallTask_displayStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_WaterfallTask_displayStatusCache(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "WaterfallTask",
 		Field:      field,
@@ -73831,7 +73872,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "imageId", "isCluster", "isVirtualWorkStation", "mountpoints", "name", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "sshOptions", "user", "userSpawnAllowed", "validProjects", "warningNote", "workDir"}
+	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "imageId", "isCluster", "isVirtualWorkStation", "mountpoints", "name", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "singleTaskDistro", "sshOptions", "user", "userSpawnAllowed", "validProjects", "warningNote", "workDir"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -74045,6 +74086,13 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj i
 				return it, err
 			}
 			it.SetupAsSudo = data
+		case "singleTaskDistro":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("singleTaskDistro"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SingleTaskDistro = data
 		case "sshOptions":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sshOptions"))
 			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
@@ -74164,28 +74212,11 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 			it.Expiration = data
 		case "hostId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
-			directive1 := func(ctx context.Context) (interface{}, error) {
-				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
-				if err != nil {
-					return nil, err
-				}
-				if ec.directives.RequireHostAccess == nil {
-					return nil, errors.New("directive requireHostAccess is not implemented")
-				}
-				return ec.directives.RequireHostAccess(ctx, obj, directive0, access)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(string); ok {
-				it.HostID = data
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.HostID = data
 		case "instanceType":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceType"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -78028,28 +78059,11 @@ func (ec *executionContext) unmarshalInputUpdateSpawnHostStatusInput(ctx context
 			it.Action = data
 		case "hostId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-			directive0 := func(ctx context.Context) (interface{}, error) { return ec.unmarshalNString2string(ctx, v) }
-			directive1 := func(ctx context.Context) (interface{}, error) {
-				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
-				if err != nil {
-					return nil, err
-				}
-				if ec.directives.RequireHostAccess == nil {
-					return nil, errors.New("directive requireHostAccess is not implemented")
-				}
-				return ec.directives.RequireHostAccess(ctx, obj, directive0, access)
-			}
-
-			tmp, err := directive1(ctx)
+			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
+				return it, err
 			}
-			if data, ok := tmp.(string); ok {
-				it.HostID = data
-			} else {
-				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
+			it.HostID = data
 		case "shouldKeepOff":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("shouldKeepOff"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -80134,6 +80148,11 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "setupAsSudo":
 			out.Values[i] = ec._Distro_setupAsSudo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "singleTaskDistro":
+			out.Values[i] = ec._Distro_singleTaskDistro(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -90106,6 +90125,11 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "displayStatus":
+			out.Values[i] = ec._Task_displayStatus(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "displayOnly":
 			out.Values[i] = ec._Task_displayOnly(ctx, field, obj)
 		case "displayTask":
@@ -90717,41 +90741,10 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 		case "startTime":
 			out.Values[i] = ec._Task_startTime(ctx, field, obj)
 		case "status":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Task_status(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._Task_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "tags":
 			out.Values[i] = ec._Task_tags(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -94211,8 +94204,8 @@ func (ec *executionContext) _WaterfallTask(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "displayStatus":
-			out.Values[i] = ec._WaterfallTask_displayStatus(ctx, field, obj)
+		case "displayStatusCache":
+			out.Values[i] = ec._WaterfallTask_displayStatusCache(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -96048,16 +96041,6 @@ func (ec *executionContext) marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 	return ec._Host(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx context.Context, v interface{}) (HostAccessLevel, error) {
-	var res HostAccessLevel
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx context.Context, sel ast.SelectionSet, v HostAccessLevel) graphql.Marshaler {
-	return v
-}
-
 func (ec *executionContext) marshalNHostAllocatorSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHostAllocatorSettings(ctx context.Context, sel ast.SelectionSet, v model.APIHostAllocatorSettings) graphql.Marshaler {
 	return ec._HostAllocatorSettings(ctx, sel, &v)
 }
@@ -96188,6 +96171,7 @@ var (
 		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
 		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
 		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"SPAWN_HOST_CREATED_ERROR":                         event.EventSpawnHostCreatedError,
 		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
 		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
 	}
@@ -96221,6 +96205,7 @@ var (
 		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
 		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
 		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventSpawnHostCreatedError:                       "SPAWN_HOST_CREATED_ERROR",
 		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
 		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
 	}
@@ -96318,6 +96303,7 @@ var (
 		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
 		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
 		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"SPAWN_HOST_CREATED_ERROR":                         event.EventSpawnHostCreatedError,
 		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
 		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
 	}
@@ -96351,6 +96337,7 @@ var (
 		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
 		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
 		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventSpawnHostCreatedError:                       "SPAWN_HOST_CREATED_ERROR",
 		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
 		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
 	}
@@ -101070,6 +101057,7 @@ var (
 		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
 		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
 		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"SPAWN_HOST_CREATED_ERROR":                         event.EventSpawnHostCreatedError,
 		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
 		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
 	}
@@ -101103,6 +101091,7 @@ var (
 		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
 		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
 		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventSpawnHostCreatedError:                       "SPAWN_HOST_CREATED_ERROR",
 		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
 		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
 	}
@@ -101156,6 +101145,7 @@ var (
 		"HOST_IDLE_NOTIFICATION":                           event.EventSpawnHostIdleNotification,
 		"HOST_SCRIPT_EXECUTED":                             event.EventHostScriptExecuted,
 		"HOST_SCRIPT_EXECUTE_FAILED":                       event.EventHostScriptExecuteFailed,
+		"SPAWN_HOST_CREATED_ERROR":                         event.EventSpawnHostCreatedError,
 		"VOLUME_EXPIRATION_WARNING_SENT":                   event.EventVolumeExpirationWarningSent,
 		"VOLUME_MIGRATION_FAILED":                          event.EventVolumeMigrationFailed,
 	}
@@ -101189,6 +101179,7 @@ var (
 		event.EventSpawnHostIdleNotification:                   "HOST_IDLE_NOTIFICATION",
 		event.EventHostScriptExecuted:                          "HOST_SCRIPT_EXECUTED",
 		event.EventHostScriptExecuteFailed:                     "HOST_SCRIPT_EXECUTE_FAILED",
+		event.EventSpawnHostCreatedError:                       "SPAWN_HOST_CREATED_ERROR",
 		event.EventVolumeExpirationWarningSent:                 "VOLUME_EXPIRATION_WARNING_SENT",
 		event.EventVolumeMigrationFailed:                       "VOLUME_MIGRATION_FAILED",
 	}

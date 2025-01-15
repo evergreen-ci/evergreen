@@ -143,5 +143,5 @@ func makeDownstreamProjectFromFile(ctx context.Context, ref model.ProjectRef, fi
 		RemotePath: file,
 		Revision:   ref.Branch,
 	}
-	return model.GetProjectFromFile(context.Background(), opts)
+	return model.GetProjectFromFile(ctx, opts)
 }

@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -47,7 +46,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			assert.NoError(t, apiProjectRef.BuildFromService(ref.ProjectRef))
 
 			// Appends ProjectHealthView field when building from service
-			assert.Equal(t, apiProjectRef.ProjectHealthView, model.ProjectHealthViewFailed)
+			assert.Equal(t, model.ProjectHealthViewFailed, apiProjectRef.ProjectHealthView)
 
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
@@ -69,7 +68,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, repoRefFromDB)
 			assert.NotEmpty(t, repoRefFromDB.SpawnHostScriptPath)
-			assert.NotEqual(t, repoRefFromDB, "something different") // we don't change this
+			assert.NotEqual(t, "something different", repoRefFromDB) // we don't change this
 		},
 		model.ProjectPageAccessSection: func(t *testing.T, ref model.RepoRef) {
 			newAdmin := user.DBUser{
@@ -168,9 +167,9 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			varsFromDb, err := model.FindOneProjectVars(updatedVars.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, varsFromDb)
-			assert.Equal(t, varsFromDb.Vars["it"], "me")
-			assert.Equal(t, varsFromDb.Vars["banana"], "phone")
-			assert.Equal(t, varsFromDb.Vars["hello"], "")
+			assert.Equal(t, "me", varsFromDb.Vars["it"])
+			assert.Equal(t, "phone", varsFromDb.Vars["banana"])
+			assert.Equal(t, "", varsFromDb.Vars["hello"])
 			assert.False(t, varsFromDb.PrivateVars["it"])
 			assert.False(t, varsFromDb.PrivateVars["hello"])
 			assert.True(t, varsFromDb.PrivateVars["banana"])
@@ -301,7 +300,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
 			assert.NotEmpty(t, pRefFromDB.SpawnHostScriptPath)
-			assert.NotEqual(t, pRefFromDB.Owner, "something different") // because use repo settings is true, we don't change this
+			assert.NotEqual(t, "something different", pRefFromDB.Owner) // because use repo settings is true, we don't change this
 		},
 		"github conflicts with enabling": func(t *testing.T, ref model.ProjectRef) {
 			conflictingRef := model.ProjectRef{
@@ -469,11 +468,11 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 
 			assert.Equal(t, "other-group", pRefFromDB.GitHubDynamicTokenPermissionGroups[1].Name)
 			require.NotNil(t, pRefFromDB.GitHubDynamicTokenPermissionGroups[1].Permissions)
-			assert.Equal(t, pRefFromDB.GitHubDynamicTokenPermissionGroups[1].AllPermissions, false)
+			assert.False(t, pRefFromDB.GitHubDynamicTokenPermissionGroups[1].AllPermissions)
 
 			assert.Equal(t, "all-group", pRefFromDB.GitHubDynamicTokenPermissionGroups[2].Name)
 			require.NotNil(t, pRefFromDB.GitHubDynamicTokenPermissionGroups[2].Permissions)
-			assert.Equal(t, pRefFromDB.GitHubDynamicTokenPermissionGroups[2].AllPermissions, true)
+			assert.True(t, pRefFromDB.GitHubDynamicTokenPermissionGroups[2].AllPermissions)
 		},
 		model.ProjectPageGithubAppSettingsSection: func(t *testing.T, ref model.ProjectRef) {
 			// Should be able to save GitHub app credentials.
@@ -487,10 +486,10 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 
-			githubAppFromDB, err := githubapp.FindOneGithubAppAuth(ref.Id)
+			githubAppFromDB, err := model.GitHubAppAuthFindOne(ref.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, githubAppFromDB)
-			assert.Equal(t, githubAppFromDB.AppID, int64(12345))
+			assert.Equal(t, int64(12345), githubAppFromDB.AppID)
 			assert.Equal(t, githubAppFromDB.PrivateKey, []byte("my_secret"))
 
 			// Should be able to update GitHub app credentials.
@@ -504,10 +503,10 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 
-			githubAppFromDB, err = githubapp.FindOneGithubAppAuth(ref.Id)
+			githubAppFromDB, err = model.GitHubAppAuthFindOne(ref.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, githubAppFromDB)
-			assert.Equal(t, githubAppFromDB.AppID, int64(12345))
+			assert.Equal(t, int64(12345), githubAppFromDB.AppID)
 			assert.Equal(t, githubAppFromDB.PrivateKey, []byte("my_new_secret"))
 
 			// Should not update if the private key string is {REDACTED}.
@@ -521,10 +520,10 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 
-			githubAppFromDB, err = githubapp.FindOneGithubAppAuth(ref.Id)
+			githubAppFromDB, err = model.GitHubAppAuthFindOne(ref.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, githubAppFromDB)
-			assert.Equal(t, githubAppFromDB.AppID, int64(12345))
+			assert.Equal(t, int64(12345), githubAppFromDB.AppID)
 			assert.Equal(t, githubAppFromDB.PrivateKey, []byte("my_new_secret"))
 
 			// Should be able to clear GitHub app credentials.
@@ -538,7 +537,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 
-			githubAppFromDB, err = githubapp.FindOneGithubAppAuth(ref.Id)
+			githubAppFromDB, err = model.GitHubAppAuthFindOne(ref.Id)
 			assert.NoError(t, err)
 			assert.Nil(t, githubAppFromDB)
 
@@ -582,8 +581,8 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			require.NotNil(t, pRefFromDB)
 			require.NotNil(t, pRefFromDB.GitHubPermissionGroupByRequester)
-			assert.Equal(t, len(pRefFromDB.GitHubPermissionGroupByRequester), 1)
-			assert.Equal(t, pRefFromDB.GitHubPermissionGroupByRequester[evergreen.GitTagRequester], "permission-group")
+			assert.Len(t, pRefFromDB.GitHubPermissionGroupByRequester, 1)
+			assert.Equal(t, "permission-group", pRefFromDB.GitHubPermissionGroupByRequester[evergreen.GitTagRequester])
 
 			// Should be able to save the field as nil.
 			apiChanges = &restModel.APIProjectSettings{
@@ -599,44 +598,6 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			require.NotNil(t, pRefFromDB)
 			assert.Nil(t, pRefFromDB.GitHubPermissionGroupByRequester)
-		},
-		"a commit queue document exists after the feature is turned on": func(t *testing.T, ref model.ProjectRef) {
-			oldRef := model.ProjectRef{
-				Owner:   ref.Owner,
-				Repo:    ref.Repo,
-				Branch:  ref.Branch,
-				Enabled: true,
-			}
-			assert.NoError(t, oldRef.Insert())
-
-			changes := model.ProjectRef{
-				Id: ref.Id,
-				CommitQueue: model.CommitQueueParams{
-					Enabled: utility.TruePtr(),
-				},
-			}
-			apiProjectRef := restModel.APIProjectRef{}
-			assert.NoError(t, apiProjectRef.BuildFromService(changes))
-			apiChanges := &restModel.APIProjectSettings{
-				ProjectRef: apiProjectRef,
-				Aliases: []restModel.APIProjectAlias{
-					{
-						Alias:   utility.ToStringPtr(evergreen.CommitQueueAlias),
-						Task:    utility.ToStringPtr("new_task"),
-						Variant: utility.ToStringPtr("new_variant"),
-					},
-					{
-						Alias:   utility.ToStringPtr(evergreen.GithubPRAlias),
-						Task:    utility.ToStringPtr("new_task"),
-						Variant: utility.ToStringPtr("new_variant"),
-					},
-				},
-			}
-			_, err := SaveProjectSettingsForSection(ctx, changes.Id, apiChanges, model.ProjectPageGithubAndCQSection, false, "me")
-			assert.NoError(t, err)
-			cq, err := commitqueue.FindOneId(ref.Id)
-			assert.NoError(t, err)
-			assert.NotNil(t, cq)
 		},
 		model.ProjectPageAccessSection: func(t *testing.T, ref model.ProjectRef) {
 			newAdmin := user.DBUser{
@@ -736,17 +697,17 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 			// Confirm that private variables are redacted.
-			assert.Equal(t, settings.Vars.Vars["banana"], "")
-			assert.Equal(t, settings.Vars.Vars["change"], "")
-			assert.Equal(t, settings.Vars.Vars["private"], "")
+			assert.Equal(t, "", settings.Vars.Vars["banana"])
+			assert.Equal(t, "", settings.Vars.Vars["change"])
+			assert.Equal(t, "", settings.Vars.Vars["private"])
 			varsFromDb, err := model.FindOneProjectVars(ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, varsFromDb)
-			assert.Equal(t, varsFromDb.Vars["it"], "me")
-			assert.Equal(t, varsFromDb.Vars["banana"], "phone")
-			assert.Equal(t, varsFromDb.Vars["hello"], "")
-			assert.Equal(t, varsFromDb.Vars["private"], "forever") // ensure un-edited private variables are unchanged
-			assert.Equal(t, varsFromDb.Vars["change"], "is good")  // ensure edited private variables are changed
+			assert.Equal(t, "me", varsFromDb.Vars["it"])
+			assert.Equal(t, "phone", varsFromDb.Vars["banana"])
+			assert.Equal(t, "", varsFromDb.Vars["hello"])
+			assert.Equal(t, "forever", varsFromDb.Vars["private"]) // ensure un-edited private variables are unchanged
+			assert.Equal(t, "is good", varsFromDb.Vars["change"])  // ensure edited private variables are changed
 			assert.False(t, varsFromDb.PrivateVars["it"])
 			assert.False(t, varsFromDb.PrivateVars["hello"])
 			assert.True(t, varsFromDb.PrivateVars["banana"])
@@ -818,7 +779,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				subsFromDb, err := event.FindSubscriptionsByOwner(ref.Id, event.OwnerTypeProject)
 				require.NoError(t, err)
 				require.Len(t, subsFromDb, 2)
-				assert.Equal(t, subsFromDb[0].Trigger, event.TriggerSuccess)
+				assert.Equal(t, event.TriggerSuccess, subsFromDb[0].Trigger)
 				// Check if webhooks Authorization header is kept as before.
 				webhookAPI, ok := subsFromDb[1].Subscriber.Target.(*event.WebhookSubscriber)
 				require.True(t, ok)
@@ -1160,18 +1121,18 @@ func TestPromoteVarsToRepo(t *testing.T) {
 
 			projectVarsFromDB, err := model.FindOneProjectVars(ref.Id)
 			assert.NoError(t, err)
-			assert.Len(t, projectVarsFromDB.Vars, 0)
-			assert.Len(t, projectVarsFromDB.PrivateVars, 0)
-			assert.Len(t, projectVarsFromDB.AdminOnlyVars, 0)
+			assert.Empty(t, projectVarsFromDB.Vars)
+			assert.Empty(t, projectVarsFromDB.PrivateVars)
+			assert.Empty(t, projectVarsFromDB.AdminOnlyVars)
 
 			repoVarsFromDB, err := model.FindOneProjectVars(ref.RepoRefId)
 			assert.NoError(t, err)
 			assert.Len(t, repoVarsFromDB.Vars, 4)
 			assert.Len(t, repoVarsFromDB.PrivateVars, 2)
 			assert.Len(t, repoVarsFromDB.AdminOnlyVars, 1)
-			assert.Equal(t, repoVarsFromDB.Vars["a"], "1")
-			assert.Equal(t, repoVarsFromDB.Vars["b"], "2")
-			assert.Equal(t, repoVarsFromDB.Vars["c"], "3")
+			assert.Equal(t, "1", repoVarsFromDB.Vars["a"])
+			assert.Equal(t, "2", repoVarsFromDB.Vars["b"])
+			assert.Equal(t, "3", repoVarsFromDB.Vars["c"])
 
 			projectEvents, err := model.MostRecentProjectEvents(ref.Id, 10)
 			assert.NoError(t, err)
@@ -1189,9 +1150,9 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			varsFromDB, err := model.FindOneProjectVars(ref.Id)
 			assert.NoError(t, err)
 			assert.Len(t, varsFromDB.Vars, 1)
-			assert.Equal(t, varsFromDB.Vars["c"], "3")
-			assert.Len(t, varsFromDB.PrivateVars, 0)
-			assert.Len(t, varsFromDB.AdminOnlyVars, 0)
+			assert.Equal(t, "3", varsFromDB.Vars["c"])
+			assert.Empty(t, varsFromDB.PrivateVars)
+			assert.Empty(t, varsFromDB.AdminOnlyVars)
 
 			repoVarsFromDB, err := model.FindOneProjectVars(ref.RepoRefId)
 			assert.NoError(t, err)
@@ -1199,8 +1160,8 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			assert.Len(t, repoVarsFromDB.PrivateVars, 2)
 			assert.Len(t, repoVarsFromDB.AdminOnlyVars, 1)
 			assert.NotContains(t, repoVarsFromDB.Vars, "c")
-			assert.Equal(t, repoVarsFromDB.Vars["a"], "1")
-			assert.Equal(t, repoVarsFromDB.Vars["b"], "2")
+			assert.Equal(t, "1", repoVarsFromDB.Vars["a"])
+			assert.Equal(t, "2", repoVarsFromDB.Vars["b"])
 
 			projectEvents, err := model.MostRecentProjectEvents(ref.Id, 10)
 			assert.NoError(t, err)
@@ -1218,12 +1179,12 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			varsFromDB, err := model.FindOneProjectVars(ref.Id)
 			assert.NoError(t, err)
 			assert.Len(t, varsFromDB.Vars, 3)
-			assert.Equal(t, varsFromDB.Vars["a"], "1")
-			assert.Equal(t, varsFromDB.Vars["b"], "2")
-			assert.Equal(t, varsFromDB.Vars["c"], "3")
+			assert.Equal(t, "1", varsFromDB.Vars["a"])
+			assert.Equal(t, "2", varsFromDB.Vars["b"])
+			assert.Equal(t, "3", varsFromDB.Vars["c"])
 			assert.Len(t, varsFromDB.PrivateVars, 1)
 			assert.True(t, varsFromDB.PrivateVars["a"])
-			assert.Len(t, varsFromDB.AdminOnlyVars, 0)
+			assert.Empty(t, varsFromDB.AdminOnlyVars)
 
 			repoVarsFromDB, err := model.FindOneProjectVars(ref.RepoRefId)
 			assert.NoError(t, err)
@@ -1234,11 +1195,11 @@ func TestPromoteVarsToRepo(t *testing.T) {
 
 			projectEvents, err := model.MostRecentProjectEvents(ref.Id, 10)
 			assert.NoError(t, err)
-			assert.Len(t, projectEvents, 0)
+			assert.Empty(t, projectEvents)
 
 			repoEvents, err := model.MostRecentProjectEvents(ref.RepoRefId, 10)
 			assert.NoError(t, err)
-			assert.Len(t, repoEvents, 0)
+			assert.Empty(t, repoEvents)
 		},
 		"FailsOnUnattachedRepo": func(t *testing.T, ref model.ProjectRef) {
 			varsToPromote := []string{"test"}
@@ -1253,12 +1214,12 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			varsFromDB, err := model.FindOneProjectVars(ref.Id)
 			assert.NoError(t, err)
 			assert.Len(t, varsFromDB.Vars, 3)
-			assert.Equal(t, varsFromDB.Vars["a"], "1")
-			assert.Equal(t, varsFromDB.Vars["b"], "2")
-			assert.Equal(t, varsFromDB.Vars["c"], "3")
+			assert.Equal(t, "1", varsFromDB.Vars["a"])
+			assert.Equal(t, "2", varsFromDB.Vars["b"])
+			assert.Equal(t, "3", varsFromDB.Vars["c"])
 			assert.Len(t, varsFromDB.PrivateVars, 1)
 			assert.True(t, varsFromDB.PrivateVars["a"])
-			assert.Len(t, varsFromDB.AdminOnlyVars, 0)
+			assert.Empty(t, varsFromDB.AdminOnlyVars)
 
 			repoVarsFromDB, err := model.FindOneProjectVars(ref.RepoRefId)
 			assert.NoError(t, err)
@@ -1269,11 +1230,11 @@ func TestPromoteVarsToRepo(t *testing.T) {
 
 			projectEvents, err := model.MostRecentProjectEvents(ref.Id, 10)
 			assert.NoError(t, err)
-			assert.Len(t, projectEvents, 0)
+			assert.Empty(t, projectEvents)
 
 			repoEvents, err := model.MostRecentProjectEvents(ref.RepoRefId, 10)
 			assert.NoError(t, err)
-			assert.Len(t, repoEvents, 0)
+			assert.Empty(t, repoEvents)
 		},
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection,

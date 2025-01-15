@@ -246,7 +246,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 		taskGroupID := compositeGroupID(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
 		taskGroupUnit, ok, _ := d.getTaskGroup(taskGroupID)
 		if ok {
-			if next := d.tryMarkNextTaskGroupTaskDispatched(taskGroupUnit); next != nil {
+			if next := d.tryMarkNextTaskGroupTaskDispatched(ctx, taskGroupUnit); next != nil {
 				return next
 			}
 		}
@@ -282,7 +282,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 			if itemNotDispatched := d.tryMarkItemDispatched(item); !itemNotDispatched {
 				continue
 			}
-			nextTaskFromDB, err := task.FindOneId(item.Id)
+			nextTaskFromDB, err := task.FindOneId(ctx, item.Id)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"dispatcher": DAGDispatcher,
@@ -346,7 +346,7 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 				continue
 			}
 
-			dependenciesMet, err := nextTaskFromDB.DependenciesMet(dependencyCaches)
+			dependenciesMet, err := nextTaskFromDB.DependenciesMet(ctx, dependencyCaches)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"dispatcher": DAGDispatcher,
@@ -408,8 +408,8 @@ func (d *basicCachedDAGDispatcherImpl) FindNextTask(ctx context.Context, spec Ta
 			// a foolproof operation and runs the potential risk of dispatching a task group task
 			// that exceeds the configured max hosts for the group.
 			if taskGroupUnit.runningHosts < taskGroupUnit.maxHosts {
-				if next := d.tryMarkNextTaskGroupTaskDispatched(taskGroupUnit); next != nil {
-					nextTaskFromDB, err := task.FindOneId(next.Id)
+				if next := d.tryMarkNextTaskGroupTaskDispatched(ctx, taskGroupUnit); next != nil {
+					nextTaskFromDB, err := task.FindOneId(ctx, next.Id)
 					if err != nil {
 						grip.Warning(message.WrapError(err, message.Fields{
 							"dispatcher": DAGDispatcher,
@@ -476,15 +476,21 @@ func (d *basicCachedDAGDispatcherImpl) tryMarkItemDispatched(item *TaskQueueItem
 	return true
 }
 
-func (d *basicCachedDAGDispatcherImpl) tryMarkNextTaskGroupTaskDispatched(taskGroupUnit schedulableUnit) *TaskQueueItem {
+func (d *basicCachedDAGDispatcherImpl) tryMarkNextTaskGroupTaskDispatched(ctx context.Context, taskGroupUnit schedulableUnit) *TaskQueueItem {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	next := d.nextTaskGroupTask(taskGroupUnit)
+	next := d.nextTaskGroupTask(ctx, taskGroupUnit)
 	if next != nil {
 		// next is a *TaskQueueItem, sourced for d.taskGroups (map[string]schedulableUnit) tasks' field, which in turn is a []TaskQueueItem.
 		// taskGroupTask is a *TaskQueueItem sourced from d.nodeItemMap, which is a map[node.ID()]*TaskQueueItem.
 		node := d.getNodeByItemID(next.Id)
+		if node == nil {
+			return nil
+		}
 		taskGroupTask := d.getItemByNodeID(node.ID())
+		if taskGroupTask == nil {
+			return nil
+		}
 		taskGroupTask.IsDispatched = true
 		return next
 	}
@@ -586,7 +592,10 @@ func getMaxConcurrentLargeParserProjTasks(settings *evergreen.Settings) int {
 	return maxConcurrentLargeParserProjTasks
 }
 
-func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {
+func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(ctx context.Context, unit schedulableUnit) *TaskQueueItem {
+	if len(d.taskGroups[unit.id].tasks) != len(unit.tasks) {
+		return nil
+	}
 	for i, nextTaskQueueItem := range unit.tasks {
 		// Dispatch this task if all of the following are true:
 		// (a) it's not marked as dispatched in the in-memory queue.
@@ -599,7 +608,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 			continue
 		}
 
-		nextTaskFromDB, err := task.FindOneId(nextTaskQueueItem.Id)
+		nextTaskFromDB, err := task.FindOneId(ctx, nextTaskQueueItem.Id)
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"dispatcher": DAGDispatcher,
@@ -631,7 +640,7 @@ func (d *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 		}
 
 		dependencyCaches := make(map[string]task.Task)
-		dependenciesMet, err := nextTaskFromDB.DependenciesMet(dependencyCaches)
+		dependenciesMet, err := nextTaskFromDB.DependenciesMet(ctx, dependencyCaches)
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"dispatcher": DAGDispatcher,

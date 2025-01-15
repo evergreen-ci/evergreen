@@ -54,7 +54,7 @@ func TestRecursivelySetUndefinedFields(t *testing.T) {
 	RecursivelySetUndefinedFields(reflectedB, reflectedA)
 	assert.Equal("b", bPtr.A)
 	assert.Equal(1, utility.FromIntPtr(bPtr.B))
-	assert.Equal(true, bPtr.C)
+	assert.True(bPtr.C)
 	assert.Equal("bar", bPtr.D.Inner.Foo)
 
 	c := shape{
@@ -65,7 +65,7 @@ func TestRecursivelySetUndefinedFields(t *testing.T) {
 	RecursivelySetUndefinedFields(reflectedC, reflectedA)
 	assert.Equal("c", cPtr.A)
 	assert.Equal(1, utility.FromIntPtr(cPtr.B))
-	assert.Equal(true, cPtr.C)
+	assert.True(cPtr.C)
 	assert.Equal("foo", cPtr.D.Inner.Foo)
 
 	// Test deep copy with zero and nil default values
@@ -88,6 +88,6 @@ func TestRecursivelySetUndefinedFields(t *testing.T) {
 	RecursivelySetUndefinedFields(reflectedE, reflectedD)
 	assert.Equal("e", ePtr.A)
 	assert.Nil(ePtr.B)
-	assert.Equal(false, ePtr.C)
+	assert.False(ePtr.C)
 	assert.Equal("foo", ePtr.D.Inner.Foo)
 }

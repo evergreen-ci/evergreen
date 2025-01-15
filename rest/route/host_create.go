@@ -72,7 +72,7 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	ids := []string{}
-	t, err := task.FindOneId(h.taskID)
+	t, err := task.FindOneId(ctx, h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
 	}
@@ -144,7 +144,7 @@ func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "listing hosts for task '%s'", h.taskID))
 	}
-	t, err := task.FindOneId(h.taskID)
+	t, err := task.FindOneId(ctx, h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
 	}

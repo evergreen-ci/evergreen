@@ -67,21 +67,13 @@ func (c *perfSend) Execute(ctx context.Context, comm client.Communicator, logger
 	}
 	c.addEvgData(report, conf)
 
-	// Send data to the Cedar performance results service.
-	conn, err := comm.GetCedarGRPCConn(ctx)
-	if err != nil {
-		return errors.Wrap(err, "connecting to Cedar")
-	}
 	cedarConfig, err := comm.GetCedarConfig(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting Cedar config for performance results")
 	}
 	opts := rpc.UploadReportOptions{
-		Report:          report,
-		CedarClientConn: conn,
-		SendToCedar:     !cedarConfig.SendToCedarDisabled,
-		SendRatioSPS:    cedarConfig.SendRatioSPS,
-		SPSURL:          cedarConfig.SPSURL,
+		Report: report,
+		SPSURL: cedarConfig.SPSURL,
 	}
 	return errors.Wrap(rpc.UploadReport(ctx, opts), "uploading report to Cedar")
 }

@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -79,12 +80,12 @@ func FindTasksByProjectAndCommit(opts task.GetTasksByProjectAndCommitOptions) ([
 }
 
 func CheckTaskSecret(taskID string, r *http.Request) (*task.Task, int, error) {
-	t, code, err := serviceModel.ValidateTask(taskID, true, r)
+	t, code, err := serviceModel.ValidateTask(r.Context(), taskID, true, r)
 	return t, code, errors.Wrapf(err, "invalid task '%s'", taskID)
 }
 
-func FindTask(taskID string) (*task.Task, error) {
-	foundTask, err := task.FindOneId(taskID)
+func FindTask(ctx context.Context, taskID string) (*task.Task, error) {
+	foundTask, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

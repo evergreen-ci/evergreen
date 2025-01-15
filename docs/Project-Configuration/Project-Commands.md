@@ -604,7 +604,7 @@ Parameters:
     expansion. For example, you could provide an expansion called
     "github_token" and then set this field to \${github_token}.
     Evergreen will populate the expansion when it parses the project
-    yaml.
+    yaml. This token is *only* used for the source repository, not modules.
 -   `is_oauth`: If a project token is provided and that token is an OAuth token and not a
     GitHub app token, `is_oauth` must be set to true so that the clone command is formatted properly.
 -   `clone_depth`: Clone with `git clone --depth <clone_depth>`. For
@@ -644,7 +644,7 @@ Parameters:
 -   `owner`: The account owner of the repository. This will be used to find the installation ID for the app that the token will be generated from. This is an optional field that will default to the project's owner. 
 -   `repo`: The name of the repository without the .git extension. This will be used to find the installation ID for the app that the token will be generated from. This is an optional field that will default to the project's repository. 
 -   `expansion_name`: The name for the expansion the token will be saved in.
--   `permissions`: By default, the token will have the full permissions of the GitHub app that it's generated from. If you want the token to have less permissions, specify which permissions it should be restricted to. Permissions can also be restricted in project settings. For more on how to set that up and how it interacts with the permissions defined here, please see [here](Github-Integrations#dynamic-github-access-tokens). For a list of available permission types and levels, please take a look at `properties of permissions` in [the github documentation](https://docs.github.com/en/rest/apps/apps?apiVersion=2022-11-28#create-an-installation-access-token-for-an-app).
+-   `permissions`: By default, the token will have the full permissions of the GitHub app that it's generated from. If you want the token to have less permissions, specify which permissions it should be restricted to. Permissions can also be restricted in project settings. For more on how to set that up and how it interacts with the permissions defined here, please see [here](Github-Integrations#dynamic-github-access-tokens). For a list of available permission types and levels, please take a look at `properties of permissions` in [the github documentation](https://docs.github.com/en/rest/apps/apps?apiVersion=2022-11-28#create-an-installation-access-token-for-an-app). Expansions cannot be used for this field. 
 
 For an example of how to generate a token and use that token to clone a repository, please see below. (Please check if [git.get_project](#gitget_project) or [modules](Project-Configuration-Files#modules) work for your use case before cloning manually).
 
@@ -1511,9 +1511,9 @@ Parameters:
 -   `max_retries`: Optional. The maximum number of times it will attempt
     to pull a file from S3.
 
-## s3Copy.copy
+## s3Copy.copy (Deprecated)
 
-`s3Copy.copy` copies files from one s3 location to another
+`s3Copy.copy` is deprecated. Please use `s3.put` instead.
 
 ``` yaml
 - command: s3Copy.copy

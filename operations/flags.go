@@ -9,53 +9,55 @@ import (
 )
 
 const (
-	confFlagName              = "conf"
-	versionIDFlagName         = "version_id"
 	clientS3BucketFlagName    = "client_s3_bucket"
-	traceEndpointFlagName     = "trace_endpoint"
-	overwriteConfFlagName     = "overwrite"
-	pathFlagName              = "path"
-	projectFlagName           = "project"
-	patchIDFlagName           = "patch"
-	moduleFlagName            = "module"
+	confFlagName              = "conf"
+	dirFlagName               = "dir"
+	displayNameFlagName       = "name"
+	errorOnWarningsFlagName   = "error-on-warnings"
+	forceFlagName             = "force"
+	hostFlagName              = "host"
+	largeFlagName             = "large"
+	limitFlagName             = "limit"
 	localModulesFlagName      = "local_modules"
-	skipConfirmFlagName       = "skip_confirm"
-	yesFlagName               = "yes"
-	variantsFlagName          = "variants"
-	regexVariantsFlagName     = "regex_variants"
-	tasksFlagName             = "tasks"
-	regexTasksFlagName        = "regex_tasks"
+	longFlagName              = "long"
+	moduleFlagName            = "module"
+	overwriteConfFlagName     = "overwrite"
 	parameterFlagName         = "param"
 	patchAliasFlagName        = "alias"
-	patchFinalizeFlagName     = "finalize"
+	patchAuthorFlag           = "author"
 	patchBrowseFlagName       = "browse"
+	patchFinalizeFlagName     = "finalize"
+	patchIDFlagName           = "patch"
+	pathFlagName              = "path"
+	preserveCommitsFlag       = "preserve-commits"
+	projectFlagName           = "project"
+	quietFlagName             = "quiet"
+	refFlagName               = "ref"
+	regexTasksFlagName        = "regex_tasks"
+	regexVariantsFlagName     = "regex_variants"
+	regionFlagName            = "region"
+	skipConfirmFlagName       = "skip_confirm"
+	startTimeFlagName         = "time"
+	subscriptionTypeFlag      = "subscription-type"
 	syncBuildVariantsFlagName = "sync_variants"
+	syncStatusesFlagName      = "sync_statuses"
 	syncTasksFlagName         = "sync_tasks"
 	syncTimeoutFlagName       = "sync_timeout"
-	syncStatusesFlagName      = "sync_statuses"
-	largeFlagName             = "large"
-	hostFlagName              = "host"
-	displayNameFlagName       = "name"
-	regionFlagName            = "region"
-	startTimeFlagName         = "time"
-	limitFlagName             = "limit"
-	forceFlagName             = "force"
-	refFlagName               = "ref"
-	quietFlagName             = "quiet"
-	longFlagName              = "long"
-	dirFlagName               = "dir"
+	tasksFlagName             = "tasks"
+	testingEnvFlagName        = "testing-env"
+	traceEndpointFlagName     = "trace_endpoint"
 	uncommittedChangesFlag    = "uncommitted"
-	preserveCommitsFlag       = "preserve-commits"
-	subscriptionTypeFlag      = "subscription-type"
-	errorOnWarningsFlagName   = "error-on-warnings"
+	variantsFlagName          = "variants"
+	versionIDFlagName         = "version_id"
+	yesFlagName               = "yes"
 
-	dbUrlFlagName       = "url"
-	sharedDBUrlFlagName = "shared-db-url"
 	dbAWSAuthFlagName   = "mongo-aws-auth"
 	dbNameFlagName      = "db"
-	dbWriteNumFlagName  = "w"
-	dbWmodeFlagName     = "wmode"
 	dbRmodeFlagName     = "rmode"
+	dbUrlFlagName       = "url"
+	dbWmodeFlagName     = "wmode"
+	dbWriteNumFlagName  = "w"
+	sharedDBUrlFlagName = "shared-db-url"
 
 	jsonFlagName = "json"
 )
@@ -88,7 +90,12 @@ func serviceConfigFlags(flags ...cli.Flag) []cli.Flag {
 		cli.BoolFlag{
 			Name:  overwriteConfFlagName,
 			Usage: "overwrite the configuration in the DB with the file",
-		})
+		},
+		cli.BoolFlag{
+			Name:  testingEnvFlagName,
+			Usage: "if true, run Evergreen service as a testing environment",
+		},
+	)
 }
 
 func addProjectFlag(flags ...cli.Flag) []cli.Flag {
@@ -262,13 +269,6 @@ func addRefFlag(flags ...cli.Flag) []cli.Flag {
 	})
 }
 
-func addCommitsFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.StringFlag{
-		Name:  joinFlagNames(commitsFlagName, "c"),
-		Usage: "specify commit hash <hash1> (can also be a range <hash1>..<hash2>, where hash1 is excluded)",
-	})
-}
-
 func addUncommittedChangesFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.BoolFlag{
 		Name:  joinFlagNames(uncommittedChangesFlag, "u"),
@@ -291,13 +291,6 @@ func addReuseFlags(flags ...cli.Flag) []cli.Flag {
 		Usage: fmt.Sprintf(message, "specific patch", "same", "given", ""),
 	})
 	return res
-}
-
-func addPreserveCommitsFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.BoolFlag{
-		Name:  preserveCommitsFlag,
-		Usage: "preserve separate commits when enqueueing to the commit queue",
-	})
 }
 
 func mergeFlagSlices(in ...[]cli.Flag) []cli.Flag {

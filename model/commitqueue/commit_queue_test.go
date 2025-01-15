@@ -86,7 +86,7 @@ func (s *CommitQueueSuite) TestEnqueueAtFront() {
 	// if queue is empty, puts as the first item
 	pos, err := s.q.EnqueueAtFront(sampleCommitQueueItem)
 	s.NoError(err)
-	s.Equal(pos, 0)
+	s.Equal(0, pos)
 
 	dbq, err := FindOneId("mci")
 	s.NoError(err)
@@ -219,7 +219,7 @@ func (s *CommitQueueSuite) TestRemoveOne() {
 	s.NotNil(found)
 	s.NoError(err)
 	s.NotNil(s.q.Queue[0])
-	s.Equal(s.q.Queue[0].Issue, "e345")
+	s.Equal("e345", s.q.Queue[0].Issue)
 }
 
 func (s *CommitQueueSuite) TestClearAll() {
@@ -287,16 +287,16 @@ func (s *CommitQueueSuite) TestNextUnprocessed() {
 	q := CommitQueue{
 		Queue: []CommitQueueItem{},
 	}
-	s.Len(q.NextUnprocessed(1), 0)
-	s.Len(q.NextUnprocessed(0), 0)
+	s.Empty(q.NextUnprocessed(1))
+	s.Empty(q.NextUnprocessed(0))
 	q.Queue = append(q.Queue, CommitQueueItem{Issue: "1"})
 	s.Len(q.NextUnprocessed(1), 1)
-	s.Len(q.NextUnprocessed(0), 0)
+	s.Empty(q.NextUnprocessed(0))
 	q.Queue = append(q.Queue, CommitQueueItem{Issue: "2"})
 	next2 := q.NextUnprocessed(2)
 	s.Equal("1", next2[0].Issue)
 	s.Equal("2", next2[1].Issue)
-	s.Len(q.NextUnprocessed(0), 0)
+	s.Empty(q.NextUnprocessed(0))
 	s.Len(q.NextUnprocessed(5), 2)
 	q.Queue = append(q.Queue, CommitQueueItem{Issue: "3"})
 	next2 = q.NextUnprocessed(2)

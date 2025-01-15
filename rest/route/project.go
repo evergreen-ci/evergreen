@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	dbModel "github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -170,7 +169,7 @@ func (h *legacyVersionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding latest version for project '%s'", projRefId))
 	}
 
-	versions, err := data.GetVersionsAndVariants(h.offset, h.limit, proj)
+	versions, err := data.GetVersionsAndVariants(ctx, h.offset, h.limit, proj)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting versions and variants"))
 	}
@@ -283,7 +282,7 @@ func makePatchProjectByID(settings *evergreen.Settings) gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Modify a project
-//	@Description	Modify an existing project (restricted to project admins). Will enable webhooks if an enabled project, and enable PR testing and the commit queue if specified.  For lists, if there is a complementary "delete" field, then the former field indicates items to be added, while the "delete" field indicates items to be deleted. Otherwise, the given list will overwrite the original list (the only exception is for project variables -- we will ignore any empty project variables to avoid accidentally overwriting private variables).
+//	@Description	Modify an existing project (restricted to project admins -- the fetch all projects route can be used for non-admins). Will enable webhooks if an enabled project, and enable PR testing and the commit queue if specified.  For lists, if there is a complementary "delete" field, then the former field indicates items to be added, while the "delete" field indicates items to be deleted. Otherwise, the given list will overwrite the original list (the only exception is for project variables -- we will ignore any empty project variables to avoid accidentally overwriting private variables).
 //	@Tags			projects
 //	@Router			/projects/{project_id} [patch]
 //	@Security		Api-User || Api-Key
@@ -637,7 +636,7 @@ func canEnableCommitQueue(projectRef *dbModel.ProjectRef) error {
 		return errors.Errorf("cannot enable commit queue in this repo, must disable in other projects first")
 	}
 
-	return commitqueue.EnsureCommitQueueExistsForProject(projectRef.Id)
+	return nil
 }
 
 // canEnablePRTesting determines if PR testing can be enabled for the given project.
@@ -899,7 +898,7 @@ func makeGetProjectVersionsHandler(url string) gimlet.RouteHandler {
 //	@Param			limit				query	int		false	"The number of versions to be returned per page of pagination. Defaults to 20."
 //	@Param			start				query	int		false	"The version order number to start at, for pagination. Will return the versions that are less than (and therefore older) the revision number specified."
 //	@Param			revision_end		query	int		false	"Will return the versions that are greater than (and therefore more recent) or equal to revision number specified."
-//	@Param			requester			query	string	false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , merge_test (commit queue patches), and ad_hoc (periodic builds)."
+//	@Param			requester			query	string	false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , github_merge_request (GitHub merge queue),, and ad_hoc (periodic builds)."
 //	@Param			include_builds		query	bool	false	"If set, will return some information for each build in the version."
 //	@Param			by_build_variant	query	string	false	"If set, will only include information for this build, and only return versions with this build activated. Must have include_builds set."
 //	@Param			include_tasks		query	bool	false	"If set, will return some information for each task in the included builds. This is only allowed if include_builds is set."
@@ -1026,7 +1025,7 @@ func makeModifyProjectVersionsHandler(url string) gimlet.RouteHandler {
 //	@Param			revision_start		query	int		false	"The version order number to start at."
 //	@Param			revision_end		query	int		false	"The version order number to end at."
 //	@Param			priority			query	int		true	"Priority to set for all tasks within applicable versions."
-//	@Param			requester			query	string	false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , merge_test (commit queue patches), and ad_hoc (periodic builds)."
+//	@Param			requester			query	string	false	"Returns versions for this requester only. Defaults to gitter_request (caused by git commit, aka the repotracker requester). Can also be set to patch_request, github_pull_request, trigger_request (Project Trigger versions) , github_merge_request (GitHub merge queue), and ad_hoc (periodic builds)."
 //	@Param			by_build_variant	query	string	false	"If set, will only include information for this build, and only return versions with this build activated. Must have include_builds set."
 //	@Param			by_task				query	string	false	"If set, will only include information for this task, and will only return versions with this task activated. Must have include_tasks set."
 //	@Success		200
@@ -1206,7 +1205,7 @@ func makeGetProjectTaskExecutionsHandler() gimlet.RouteHandler {
 //	@Param			build_variant	query		string							true	"The build variant to return task execution info for."
 //	@Param			start_time		query		string							true	"Will only return execution info after this time. Format should be 2022-12-01T12:30:00.000Z"
 //	@Param			end_time		query		string							false	"If not provided, will default to the current time."
-//	@Param			requesters		query		[]string						false	"If not provided, will default to gitter_request (versions created by git commit). Can also be github_pull_request, trigger_request (Project Trigger versions) , merge_test (commit queue patches), or ad_hoc (periodic builds)"
+//	@Param			requesters		query		[]string						false	"If not provided, will default to gitter_request (versions created by git commit). Can also be github_pull_request, trigger_request (Project Trigger versions) , github_merge_request (GitHub merge queue), or ad_hoc (periodic builds)"
 //	@Success		200				{object}	model.ProjectTaskExecutionResp	"number completed"
 func (h *getProjectTaskExecutionsHandler) Factory() gimlet.RouteHandler {
 	return &getProjectTaskExecutionsHandler{}
@@ -1425,67 +1424,5 @@ func (h *projectParametersGetHandler) Run(ctx context.Context) gimlet.Responder 
 		res[i] = apiParam
 	}
 
-	return gimlet.NewJSONResponse(res)
-}
-
-////////////////////////////////////////////////////////////////////////
-//
-// PUT /rest/v2/projects/variables/rotate
-
-type projectVarsPutInput struct {
-	ToReplace   string `json:"to_replace"`
-	Replacement string `json:"replacement"`
-	DryRun      bool   `json:"dry_run"`
-	EnabledOnly bool   `json:"enabled_only"`
-}
-
-type projectVarsPutHandler struct {
-	replaceVars *projectVarsPutInput
-	user        *user.DBUser
-}
-
-func makeProjectVarsPut() gimlet.RouteHandler {
-	return &projectVarsPutHandler{}
-}
-
-// Factory creates an instance of the handler.
-//
-//	@Summary		Rotate variables
-//	@Description	Restricted to superusers due to the fact it modifies ALL projects.
-//	@Tags			projects
-//	@Router			/projects/variables/rotate [put]
-//	@Security		Api-User || Api-Key
-//	@Param			to_replace		query		string				true	"Variable value to search and replace."
-//	@Param			replacement		query		string				true	"Value to replace the variables that match to_replace."
-//	@Param			dry_run			query		bool				false	"If set to true, we don't complete the update, but we return the projects we would've updated"
-//	@Param			enabled_only	query		bool				false	"If set to true, we only update variables for enabled projects and repos."
-//	@Success		200				{object}	map[string][]string	"A map of project identifiers to a list of keys that are replaced (or would have been, in the case of dry_run).
-func (h *projectVarsPutHandler) Factory() gimlet.RouteHandler {
-	return &projectVarsPutHandler{}
-}
-
-// Parse fetches the project's identifier from the http request.
-func (h *projectVarsPutHandler) Parse(ctx context.Context, r *http.Request) error {
-	h.user = MustHaveUser(ctx)
-	replacements := &projectVarsPutInput{}
-	if err := utility.ReadJSON(r.Body, replacements); err != nil {
-		return errors.Wrap(err, "reading project variable modifications from JSON request body")
-	}
-	if replacements.ToReplace == "" {
-		return errors.New("must specify project variable to replace")
-	}
-	if replacements.Replacement == "" {
-		return errors.New("must specify project variable replacement value")
-	}
-	h.replaceVars = replacements
-	return nil
-}
-
-func (h *projectVarsPutHandler) Run(ctx context.Context) gimlet.Responder {
-	res, err := dbModel.UpdateProjectVarsByValue(h.replaceVars.ToReplace, h.replaceVars.Replacement,
-		h.user.Username(), h.replaceVars.DryRun, h.replaceVars.EnabledOnly)
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "updating projects vars"))
-	}
 	return gimlet.NewJSONResponse(res)
 }

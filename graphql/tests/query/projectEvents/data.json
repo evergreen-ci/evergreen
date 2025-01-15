@@ -40,13 +40,13 @@
           },
           "github_app_auth": {
             "app_id": 12345,
-            "private_key": "secret_before"
+            "private_key": "{REDACTED_BEFORE}"
           },
           "github_hooks_enabled": false,
           "vars": {
             "_id": "sandbox_project_id",
             "vars": {
-              "hello": "world"
+              "hello": "{REDACTED_BEFORE}"
             }
           }
         },
@@ -60,13 +60,13 @@
           },
           "github_app_auth": {
             "app_id": 67890,
-            "private_key": "secret_after"
+            "private_key": "{REDACTED_AFTER}"
           },
           "github_hooks_enabled": true,
           "vars": {
             "_id": "sandbox_project_id",
             "vars": {
-              "hello": "universe"
+              "hello": "{REDACTED_AFTER}"
             }
           }
         }
@@ -95,7 +95,7 @@
           },
           "github_app_auth": {
             "app_id": 11111,
-            "private_key": "secret"
+            "private_key": ""
           },
           "github_hooks_enabled": false
         },
@@ -109,7 +109,7 @@
           },
           "github_app_auth": {
             "app_id": 11111,
-            "private_key": "secret"
+            "private_key": ""
           },
           "github_hooks_enabled": false
         }

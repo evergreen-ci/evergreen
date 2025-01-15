@@ -26,6 +26,7 @@ import (
 
 const LoadProjectError = "load project error(s)"
 const TranslateProjectError = "error translating project"
+const TranslateProjectConfigError = "unmarshalling project config from YAML"
 const EmptyConfigurationError = "received empty configuration file"
 
 // DefaultParserProjectAccessTimeout is the default timeout for accessing a

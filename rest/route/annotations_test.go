@@ -59,7 +59,7 @@ func TestAnnotationsByBuildHandlerRun(t *testing.T) {
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 	apiAnnotations := resp.Data().([]restModel.APITaskAnnotation)
-	assert.Len(t, apiAnnotations, 0)
+	assert.Empty(t, apiAnnotations)
 
 	annotations := []annotations.TaskAnnotation{
 		{
@@ -150,7 +150,7 @@ func TestAnnotationsByVersionHandlerRun(t *testing.T) {
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 	apiAnnotations := resp.Data().([]restModel.APITaskAnnotation)
-	assert.Len(t, apiAnnotations, 0)
+	assert.Empty(t, apiAnnotations)
 
 	annotations := []annotations.TaskAnnotation{
 		{
@@ -259,7 +259,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 	apiAnnotations := resp.Data().([]restModel.APITaskAnnotation)
-	assert.Len(t, apiAnnotations, 0)
+	assert.Empty(t, apiAnnotations)
 
 	annotations := []annotations.TaskAnnotation{
 		{
@@ -300,6 +300,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 	assert.Equal(t, "task-1", utility.FromStringPtr(apiAnnotations[0].TaskId))
 	assert.Equal(t, "task-1-note_1", utility.FromStringPtr(apiAnnotations[0].Note.Message))
 	require.Len(t, apiAnnotations[0].Issues, 1)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(t, float64(12.34), utility.FromFloat64Ptr(apiAnnotations[0].Issues[0].ConfidenceScore))
 
 	// get the latest execution : 0
@@ -414,7 +415,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 		},
 	}
 	jsonBody, err = json.Marshal(a)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 
 	r, err = http.NewRequest(http.MethodPut, "/task/TaskFailedId/annotations?execution=1", buffer)
@@ -435,6 +436,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 		TaskExecution: &execution1,
 	}
 	jsonBody, err = json.Marshal(a)
+	require.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 
 	r, err = http.NewRequest(http.MethodPut, "/task/TaskFailedId/annotations?execution=1", buffer)
@@ -451,6 +453,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 		TaskExecution: &execution1,
 	}
 	jsonBody, err = json.Marshal(a)
+	require.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 
 	r, err = http.NewRequest(http.MethodPut, "/task/TaskFailedId/annotations?execution=2", buffer)
@@ -466,6 +469,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 		TaskId: utility.ToStringPtr("TaskFailedId"),
 	}
 	jsonBody, err = json.Marshal(a)
+	require.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 
 	r, err = http.NewRequest(http.MethodPut, "/task/TaskFailedId/annotations", buffer)
@@ -482,7 +486,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 		TaskExecution: &execution1,
 	}
 	jsonBody, err = json.Marshal(a)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 	r, err = http.NewRequest(http.MethodPut, "/task/TaskSystemFailedId/annotations", buffer)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId"})
@@ -498,7 +502,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 		TaskId: utility.ToStringPtr("TaskFailedId"),
 	}
 	jsonBody, err = json.Marshal(a)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 	r, err = http.NewRequest(http.MethodPut, "/task/TaskFailedId/annotations?execution=1", buffer)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId"})
@@ -515,6 +519,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 		TaskExecution: &execution1,
 	}
 	jsonBody, err = json.Marshal(a)
+	assert.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 
 	r, err = http.NewRequest(http.MethodPut, "/task/TaskFailedId/annotations?execution=abc", buffer)
@@ -527,11 +532,12 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	h = &annotationByTaskPutHandler{}
 	a = &restModel.APITaskAnnotation{}
 	jsonBody, err = json.Marshal(a)
+	assert.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 	r, err = http.NewRequest(http.MethodPut, "/task/TaskFailedId/annotations?execution=1", buffer)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskFailedId"})
 	assert.NoError(t, err)
-	err = h.Parse(ctx, r)
+	require.NoError(t, h.Parse(ctx, r))
 	assert.Equal(t, "TaskFailedId", h.taskId)
 
 	//test with id not equal to annotation id
@@ -542,6 +548,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 		TaskExecution: &execution0,
 	}
 	jsonBody, err = json.Marshal(a)
+	assert.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 
 	r, err = http.NewRequest(http.MethodPut, "/task/TaskSystemUnresponseId/annotations?execution=0", buffer)
@@ -554,7 +561,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	h = &annotationByTaskPutHandler{}
 	a = &restModel.APITaskAnnotation{}
 	jsonBody, err = json.Marshal(a)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 	r, err = http.NewRequest(http.MethodPut, "/task/TaskSystemFailedId/annotations?execution=0", buffer)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskSystemFailedId"})
@@ -565,7 +572,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 
 	a = &restModel.APITaskAnnotation{}
 	jsonBody, err = json.Marshal(a)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 	r, err = http.NewRequest(http.MethodPut, "/task/TaskTimedOutId/annotations?execution=0", buffer)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskTimedOutId"})
@@ -576,7 +583,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 
 	a = &restModel.APITaskAnnotation{}
 	jsonBody, err = json.Marshal(a)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 	r, err = http.NewRequest(http.MethodPut, "/task/TaskSetupFailedId/annotations?execution=0", buffer)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "TaskSetupFailedId"})
@@ -593,7 +600,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 		TaskExecution: &execution0,
 	}
 	jsonBody, err = json.Marshal(a)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 
 	r, err = http.NewRequest(http.MethodPut, "/task/TaskSucceededId/annotations?execution=0", buffer)
@@ -608,7 +615,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 		TaskExecution: &execution0,
 	}
 	jsonBody, err = json.Marshal(a)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 
 	r, err = http.NewRequest(http.MethodPut, "/task/TaskWillRunId/annotations?execution=0", buffer)
@@ -623,7 +630,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 		TaskExecution: &execution0,
 	}
 	jsonBody, err = json.Marshal(a)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 
 	r, err = http.NewRequest(http.MethodPut, "/task/TaskDispatchedId/annotations?execution=0", buffer)
@@ -670,13 +677,15 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	annotation, err := annotations.FindOneByTaskIdAndExecution("t1", 0)
 	require.NoError(t, err)
-	assert.NotEqual(t, annotation.Id, "")
+	assert.NotEqual(t, "", annotation.Id)
 	assert.Equal(t, "task-1-note_0", annotation.Note.Message)
 	assert.Equal(t, "test_annotation_user", annotation.Note.Source.Author)
 	assert.Equal(t, "api", annotation.Note.Source.Requester)
 	assert.Equal(t, "api", annotation.Issues[0].Source.Requester)
-	assert.Equal(t, 2, len(annotation.Issues))
+	assert.Len(t, annotation.Issues, 2)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(t, float64(12.34), annotation.Issues[0].ConfidenceScore)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(t, float64(56.78), annotation.Issues[1].ConfidenceScore)
 
 	//test update
@@ -703,13 +712,15 @@ func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	annotation, err = annotations.FindOneByTaskIdAndExecution("t1", 0)
 	require.NoError(t, err)
-	assert.NotEqual(t, annotation.Id, "")
+	assert.NotEqual(t, "", annotation.Id)
 	assert.Equal(t, "task-1-note_0_updated", annotation.Note.Message)
 	// suspected issues and issues don't get updated when not defined
 	require.Nil(t, annotation.SuspectedIssues)
 	assert.Equal(t, "some key 0", annotation.Issues[0].IssueKey)
-	assert.Equal(t, 2, len(annotation.Issues))
+	assert.Len(t, annotation.Issues, 2)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(t, float64(87.65), annotation.Issues[0].ConfidenceScore)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(t, float64(43.21), annotation.Issues[1].ConfidenceScore)
 
 	//test that it can update old executions
@@ -773,7 +784,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 	h = &createdTicketByTaskPutHandler{}
 	ticket.URL = utility.ToStringPtr("issuelink.com")
 	jsonBody, err = json.Marshal(ticket)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	buffer = bytes.NewBuffer(jsonBody)
 
 	r, err = http.NewRequest(http.MethodPut, "/task/t1/annotations?execution=1", buffer)
@@ -815,7 +826,7 @@ func TestCreatedTicketByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	annotation, err := annotations.FindOneByTaskIdAndExecution("t1", 0)
 	require.NoError(t, err)
-	assert.NotEqual(t, annotation.Id, "")
+	assert.NotEqual(t, "", annotation.Id)
 	assert.Equal(t, "https://issuelink1.com", annotation.CreatedIssues[0].URL)
 	assert.Equal(t, "Issue_key_1", annotation.CreatedIssues[0].IssueKey)
 
@@ -830,7 +841,7 @@ func TestCreatedTicketByTaskPutHandlerRun(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	annotation, err = annotations.FindOneByTaskIdAndExecution("t1", 0)
 	require.NoError(t, err)
-	assert.NotEqual(t, annotation.Id, "")
+	assert.NotEqual(t, "", annotation.Id)
 	assert.Equal(t, "https://issuelink1.com", annotation.CreatedIssues[0].URL)
 	assert.Equal(t, "Issue_key_1", annotation.CreatedIssues[0].IssueKey)
 	assert.Equal(t, "https://issuelink2.com", annotation.CreatedIssues[1].URL)

@@ -95,7 +95,7 @@ func TestMakeHost(t *testing.T) {
 	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
 	assert.Equal("ami-123456", ec2Settings.AMI)
 	assert.Empty(ec2Settings.KeyName)
-	assert.Equal(true, ec2Settings.IsVpc)
+	assert.True(ec2Settings.IsVpc)
 
 	// test roundtripping
 	h, err = host.FindOneByIdOrTag(ctx, h.Id)
@@ -106,7 +106,7 @@ func TestMakeHost(t *testing.T) {
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, ""))
 	assert.Equal("ami-123456", ec2Settings2.AMI)
 	assert.Empty(ec2Settings2.KeyName)
-	assert.Equal(true, ec2Settings2.IsVpc)
+	assert.True(ec2Settings2.IsVpc)
 
 	// scope to build
 	require.NoError(db.ClearCollections(task.Collection))
@@ -134,7 +134,7 @@ func TestMakeHost(t *testing.T) {
 	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
 	assert.Equal("build-id", h.SpawnOptions.BuildID)
 	assert.Empty(ec2Settings.KeyName)
-	assert.Equal(true, ec2Settings.IsVpc)
+	assert.True(ec2Settings.IsVpc)
 
 	assert.Equal("archlinux-test", h.Distro.Id)
 	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
@@ -169,7 +169,7 @@ func TestMakeHost(t *testing.T) {
 	assert.NoError(ec2Settings.FromDistroSettings(h.Distro, ""))
 	assert.Equal("ami-123456", ec2Settings.AMI)
 	assert.Empty(ec2Settings.KeyName)
-	assert.Equal(true, ec2Settings.IsVpc)
+	assert.True(ec2Settings.IsVpc)
 
 	// override some evergreen distro settings
 	c = apimodels.CreateHost{
@@ -200,7 +200,7 @@ func TestMakeHost(t *testing.T) {
 	assert.Equal("ami-123456", ec2Settings.AMI)
 	assert.Equal(evergreen.EC2TenancyDedicated, ec2Settings.Tenancy)
 	assert.Equal("subnet-123456", ec2Settings.SubnetId)
-	assert.Equal(true, ec2Settings.IsVpc)
+	assert.True(ec2Settings.IsVpc)
 
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
 	require.Len(h.Distro.ProviderSettingsList, 1)
@@ -208,7 +208,7 @@ func TestMakeHost(t *testing.T) {
 	assert.Equal("ami-123456", ec2Settings2.AMI)
 	assert.Equal("subnet-123456", ec2Settings2.SubnetId)
 	assert.Equal(evergreen.EC2TenancyDedicated, ec2Settings2.Tenancy)
-	assert.Equal(true, ec2Settings2.IsVpc)
+	assert.True(ec2Settings2.IsVpc)
 
 	// bring your own ami
 	c = apimodels.CreateHost{
@@ -241,7 +241,7 @@ func TestMakeHost(t *testing.T) {
 	assert.Equal("ami-654321", ec2Settings2.AMI)
 	assert.Equal("subnet-123456", ec2Settings2.SubnetId)
 	assert.Equal(evergreen.EC2TenancyDedicated, ec2Settings.Tenancy)
-	assert.Equal(true, ec2Settings2.IsVpc)
+	assert.True(ec2Settings2.IsVpc)
 
 	// with multiple regions
 	require.Len(d.ProviderSettingsList, 1)
@@ -269,7 +269,7 @@ func TestMakeHost(t *testing.T) {
 
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-east-1"))
-	assert.Equal(ec2Settings2.AMI, "ami-123456")
+	assert.Equal("ami-123456", ec2Settings2.AMI)
 
 	handler.createHost.Region = "us-west-1"
 	foundDistro, err = distro.GetHostCreateDistro(ctx, c)
@@ -283,7 +283,7 @@ func TestMakeHost(t *testing.T) {
 	require.Len(h.Distro.ProviderSettingsList, 1)
 	ec2Settings2 = &cloud.EC2ProviderSettings{}
 	assert.NoError(ec2Settings2.FromDistroSettings(h.Distro, "us-west-1"))
-	assert.Equal(ec2Settings2.AMI, "ami-987654")
+	assert.Equal("ami-987654", ec2Settings2.AMI)
 }
 
 func TestHostCreateHandler(t *testing.T) {
@@ -339,7 +339,7 @@ func TestHostCreateHandler(t *testing.T) {
 
 	hosts, err := host.FindHostsSpawnedByTask(ctx, sampleTask.Id, sampleTask.Execution, append(evergreen.IsRunningOrWillRunStatuses, evergreen.HostUninitialized))
 	assert.NoError(err)
-	assert.Len(hosts, 0)
+	assert.Empty(hosts)
 
 	assert.Equal(http.StatusOK, handler.Run(ctx).Status())
 
@@ -554,7 +554,7 @@ func TestGetDockerLogs(t *testing.T) {
 
 	// valid Run
 	cloudClient := cloud.GetMockClient()
-	logs, err := cloudClient.GetDockerLogs(nil, "containerId", handler.host, types.ContainerLogsOptions{})
+	logs, err := cloudClient.GetDockerLogs(ctx, "containerId", handler.host, types.ContainerLogsOptions{})
 	assert.NoError(err)
 	buf := new(strings.Builder)
 	_, err = io.Copy(buf, logs)
@@ -636,7 +636,7 @@ func TestGetDockerStatus(t *testing.T) {
 
 	// valid Run
 	cloudClient := cloud.GetMockClient()
-	status, err := cloudClient.GetDockerStatus(nil, "containerId", handler.host)
+	status, err := cloudClient.GetDockerStatus(ctx, "containerId", handler.host)
 	assert.NoError(err)
 	require.NotNil(status)
 	require.True(status.HasStarted)

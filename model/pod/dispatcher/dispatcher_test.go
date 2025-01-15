@@ -30,7 +30,7 @@ func TestUpsertAtomically(t *testing.T) {
 		"InsertsNewPodDispatcher": func(t *testing.T, pd PodDispatcher) {
 			change, err := pd.UpsertAtomically()
 			require.NoError(t, err)
-			require.Equal(t, change.Updated, 1)
+			require.Equal(t, 1, change.Updated)
 
 			dbDispatcher, err := FindOneByID(pd.ID)
 			require.NoError(t, err)
@@ -42,7 +42,7 @@ func TestUpsertAtomically(t *testing.T) {
 
 			change, err := pd.UpsertAtomically()
 			require.NoError(t, err)
-			require.Equal(t, change.Updated, 1)
+			require.Equal(t, 1, change.Updated)
 
 			dbDispatcher, err := FindOneByID(pd.ID)
 			require.NoError(t, err)
@@ -163,7 +163,7 @@ func TestAssignNextTask(t *testing.T) {
 	}
 
 	checkTaskDispatchedToPod := func(t *testing.T, tsk task.Task, p pod.Pod) {
-		dbTask, err := task.FindOneId(tsk.Id)
+		dbTask, err := task.FindOneId(ctx, tsk.Id)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 		assert.Equal(t, evergreen.TaskDispatched, dbTask.Status)
@@ -200,7 +200,7 @@ func TestAssignNextTask(t *testing.T) {
 	}
 
 	checkTaskUnallocated := func(t *testing.T, tsk task.Task) {
-		dbTask, err := task.FindOneId(tsk.Id)
+		dbTask, err := task.FindOneId(ctx, tsk.Id)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 		assert.False(t, dbTask.ContainerAllocated)
@@ -254,7 +254,7 @@ func TestAssignNextTask(t *testing.T) {
 			checkTaskDispatchedToPod(t, params.task, params.pod)
 			checkDispatcherTasks(t, params.dispatcher, nil)
 
-			dbDisplayTask, err := task.FindOneId(dt.Id)
+			dbDisplayTask, err := task.FindOneId(ctx, dt.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisplayTask)
 
@@ -286,7 +286,7 @@ func TestAssignNextTask(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Zero(t, nextTask)
 
-			dbTask, err := task.FindOneId(params.task.Id)
+			dbTask, err := task.FindOneId(ctx, params.task.Id)
 			assert.NoError(t, err)
 			assert.Zero(t, dbTask)
 			checkDispatcherTasks(t, params.dispatcher, nil)
@@ -539,13 +539,13 @@ func TestRemovePod(t *testing.T) {
 			assert.Empty(t, dbDisp.TaskIDs)
 			assert.Empty(t, dbDisp.PodIDs)
 
-			dbTask0, err := task.FindOneId(t0.Id)
+			dbTask0, err := task.FindOneId(ctx, t0.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask0)
 			assert.False(t, dbTask0.ContainerAllocated)
 			assert.True(t, dbTask0.ShouldAllocateContainer(), "task should be able to allocate another container")
 
-			dbTask1, err := task.FindOneId(t1.Id)
+			dbTask1, err := task.FindOneId(ctx, t1.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			assert.False(t, dbTask1.ShouldAllocateContainer(), "task should not be able to allocate another container because it has no remaining attempts")
@@ -571,8 +571,8 @@ func TestRemovePod(t *testing.T) {
 			dbDisp, err := FindOneByID(pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
-			assert.Equal(t, pd.TaskIDs, []string{"task_id"})
-			assert.Equal(t, pd.PodIDs, []string{"pod_id"})
+			assert.Equal(t, []string{"task_id"}, pd.TaskIDs)
+			assert.Equal(t, []string{"pod_id"}, pd.PodIDs)
 		},
 		"FailsWhenDBDispatcherIsModified": func(ctx context.Context, env evergreen.Environment, t *testing.T) {
 			const modCount = 10
@@ -597,8 +597,8 @@ func TestRemovePod(t *testing.T) {
 			dbDisp, err := FindOneByID(pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
-			assert.Equal(t, pd.TaskIDs, []string{tsk.Id})
-			assert.Equal(t, pd.PodIDs, []string{podID})
+			assert.Equal(t, []string{tsk.Id}, pd.TaskIDs)
+			assert.Equal(t, []string{podID}, pd.PodIDs)
 			assert.Equal(t, modCount, dbDisp.ModificationCount)
 		},
 	} {

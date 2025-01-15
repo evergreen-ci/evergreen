@@ -52,7 +52,7 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	patchId := vars["patch_id"]
 	projectId := vars["project_id"]
 
-	opCtx, err := model.LoadContext(taskId, buildId, versionId, patchId, projectId)
+	opCtx, err := model.LoadContext(r.Context(), taskId, buildId, versionId, patchId, projectId)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "loading resources from context")))
 		return
@@ -285,7 +285,7 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Errorf("host '%s' is not started by any task", h.Id)))
 		return
 	}
-	t, err := task.FindOneId(h.StartedBy)
+	t, err := task.FindOneId(r.Context(), h.StartedBy)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s' started by host '%s'", h.StartedBy, h.Id)))
 		return
@@ -295,6 +295,7 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("task '%s' not found", h.StartedBy),
 		}))
+		return
 	}
 	if _, code, err := model.ValidateHost(t.HostId, r); err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -540,50 +541,6 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	next(rw, r)
 }
 
-func NewCommitQueueItemOwnerMiddleware() gimlet.Middleware {
-	return &CommitQueueItemOwnerMiddleware{
-		sc: &data.DBConnector{},
-	}
-}
-
-func NewMockCommitQueueItemOwnerMiddleware() gimlet.Middleware {
-	return &CommitQueueItemOwnerMiddleware{
-		sc: &data.MockGitHubConnector{},
-	}
-}
-
-type CommitQueueItemOwnerMiddleware struct {
-	sc data.Connector
-}
-
-func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	ctx := r.Context()
-	user := MustHaveUser(ctx)
-	opCtx := MustHaveProjectContext(ctx)
-	projRef, err := opCtx.GetProjectRef()
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting project ref")))
-		return
-	}
-
-	vars := gimlet.GetVars(r)
-	itemId, ok := vars["item"]
-	if !ok {
-		itemId, ok = vars["patch_id"]
-	}
-	if !ok || itemId == "" {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("no commit queue items provided")))
-		return
-	}
-
-	if err = data.CheckCanRemoveCommitQueueItem(ctx, m.sc, user, projRef, itemId); err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
-		return
-	}
-
-	next(rw, r)
-}
-
 // updateHostAccessTime updates the host access time and disables the host's flags to deploy new a new agent
 // or agent monitor if they are set.
 func updateHostAccessTime(ctx context.Context, h *host.Host) {
@@ -811,7 +768,7 @@ func NewGithubAuthMiddleware() gimlet.Middleware {
 type githubAuthMiddleware struct{}
 
 func (m *githubAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	githubSecret := []byte(evergreen.GetEnvironment().Settings().Api.GithubWebhookSecret)
+	githubSecret := []byte(evergreen.GetEnvironment().Settings().GithubWebhookSecret)
 
 	payload, err := github.ValidatePayload(r, githubSecret)
 	if err != nil {

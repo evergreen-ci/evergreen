@@ -158,7 +158,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		RequiredLevel: evergreen.PatchSubmit.Value,
 	})
 	if !hasPermission {
-		as.LoggedError(w, r, http.StatusUnauthorized, errors.Errorf("not authorized to patch for project '%s'", data.Project))
+		as.LoggedError(w, r, http.StatusUnauthorized, errors.Errorf("not authorized to patch for project '%s', please ensure you have 'Patches: Submit and Edit' permission in MANA", data.Project))
 		return
 	}
 
@@ -297,7 +297,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if p.Version != "" && p.IsCommitQueuePatch() {
+	if p.Version != "" && p.IsMergeQueuePatch() {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("can't update modules for in-flight commit queue tests"))
 		return
 	}
@@ -313,7 +313,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	patchContent := string(data.PatchBytes)
-	if p.IsCommitQueuePatch() && len(patchContent) != 0 && !patch.IsMailboxDiff(patchContent) {
+	if p.IsMergeQueuePatch() && len(patchContent) != 0 && !patch.IsMailboxDiff(patchContent) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("You may be using 'set-module' instead of 'commit-queue set-module', or your CLI may be out of date.\n"+
 			"Please update your CLI if it is not up to date, and use 'commit-queue set-module' instead of 'set-module' for commit queue patches."))
 		return
@@ -359,7 +359,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if p.IsCommitQueuePatch() {
+	if p.IsMergeQueuePatch() {
 		projectRef, err := model.FindBranchProjectRef(p.Project)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Error getting project ref with id %v", p.Project))
@@ -427,7 +427,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 		action, desc = data.Action, data.Description
 	}
 
-	if p.IsCommitQueuePatch() {
+	if p.IsMergeQueuePatch() {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("can't modify a commit queue patch"))
 		return
 	}

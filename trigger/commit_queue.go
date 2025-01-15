@@ -68,7 +68,7 @@ func (t *commitQueueTriggers) Attributes() event.Attributes {
 	}
 }
 
-func (t *commitQueueTriggers) commitQueueOutcome(sub *event.Subscription) (*notification.Notification, error) {
+func (t *commitQueueTriggers) commitQueueOutcome(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	data, err := t.makeData(sub)
 	if err != nil {
 		return nil, errors.Wrap(err, "collecting patch data")
@@ -119,14 +119,6 @@ func (t *commitQueueTriggers) makeData(sub *event.Subscription) (*commonTemplate
 		Text:      text,
 		Color:     slackColor,
 	})
-
-	if t.patch.IsPRMergePatch() {
-		data.slack = append(data.slack, message.SlackAttachment{
-			Title:     "GitHub Pull Request",
-			TitleLink: fmt.Sprintf("https://github.com/%s/%s/pull/%d#partial-pull-merging", t.patch.GithubPatchData.BaseOwner, t.patch.GithubPatchData.BaseRepo, t.patch.GithubPatchData.PRNumber),
-			Color:     slackColor,
-		})
-	}
 
 	return &data, nil
 }

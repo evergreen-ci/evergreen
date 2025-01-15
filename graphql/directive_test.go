@@ -8,8 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -33,7 +31,7 @@ func setupPermissions(t *testing.T) {
 
 	roles, err := roleManager.GetAllRoles()
 	require.NoError(t, err)
-	require.Len(t, roles, 0)
+	require.Empty(t, roles)
 
 	superUserRole := gimlet.Role{
 		ID:    "superuser",
@@ -162,20 +160,6 @@ func setupPermissions(t *testing.T) {
 	}
 	require.NoError(t, roleManager.UpdateRole(distroViewRole))
 
-	hostEditRole := gimlet.Role{
-		ID:          "edit_host-id",
-		Scope:       distroScope.ID,
-		Permissions: map[string]int{evergreen.PermissionHosts: evergreen.HostsEdit.Value},
-	}
-	require.NoError(t, roleManager.UpdateRole(hostEditRole))
-
-	hostViewRole := gimlet.Role{
-		ID:          "view_host-id",
-		Scope:       distroScope.ID,
-		Permissions: map[string]int{evergreen.PermissionHosts: evergreen.HostsView.Value},
-	}
-	require.NoError(t, roleManager.UpdateRole(hostViewRole))
-
 	taskAdminRole := gimlet.Role{
 		ID:          "admin_task",
 		Scope:       projectScope.ID,
@@ -232,124 +216,13 @@ func setupPermissions(t *testing.T) {
 	}
 	require.NoError(t, roleManager.UpdateRole(logViewRole))
 }
-func TestRequireHostAccess(t *testing.T) {
-	defer func() {
-		require.NoError(t, db.ClearCollections(host.Collection, user.Collection),
-			"unable to clear user or host collection")
-	}()
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser){
-		"FailsWhenHostIdIsNotSpecified": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			obj := interface{}(nil)
-			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
-			assert.EqualError(t, err, "input: host not specified")
-		},
-		"FailsWhenHostDoesNotExist": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			obj := interface{}(map[string]interface{}{"hostId": "a-non-existent-host-id"})
-			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
-			assert.EqualError(t, err, "input: No matching hosts found")
-		},
-		"ViewFailsWhenUserDoesNotHaveViewPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			obj := interface{}(map[string]interface{}{"hostId": "host1"})
-			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelView)
-			assert.EqualError(t, err, "input: user 'testuser' does not have permission to access host 'host1'")
-		},
-		"EditFailsWhenUserDoesNotHaveEditPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			obj := interface{}(map[string]interface{}{"hostId": "host1"})
-			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
-			assert.EqualError(t, err, "input: user 'testuser' does not have permission to access host 'host1'")
-		},
-		"ViewSucceedsWhenUserHasViewPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			assert.NoError(t, usr.AddRole("view_host-id"))
-			nextCalled := false
-			wrappedNext := func(rctx context.Context) (interface{}, error) {
-				nextCalled = true
-				return nil, nil
-			}
-			obj := interface{}(map[string]interface{}{"hostId": "host1"})
-			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelView)
-			assert.NoError(t, err)
-			assert.Nil(t, res)
-			assert.Equal(t, true, nextCalled)
-			assert.NoError(t, usr.RemoveRole("view_host-id"))
-		},
-		"EditSucceedsWhenUserHasEditPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			assert.NoError(t, usr.AddRole("edit_host-id"))
-			nextCalled := false
-			wrappedNext := func(rctx context.Context) (interface{}, error) {
-				nextCalled = true
-				return nil, nil
-			}
-			obj := interface{}(map[string]interface{}{"hostId": "host1"})
-			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelEdit)
-			assert.NoError(t, err)
-			assert.Nil(t, res)
-			assert.Equal(t, true, nextCalled)
-			assert.NoError(t, usr.RemoveRole("edit_host-id"))
-		},
-		"ViewSucceedsWhenHostIsStartedByUser": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			nextCalled := false
-			wrappedNext := func(rctx context.Context) (interface{}, error) {
-				nextCalled = true
-				return nil, nil
-			}
-			obj := interface{}(map[string]interface{}{"hostId": "host2"})
-			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelView)
-			assert.NoError(t, err)
-			assert.Nil(t, res)
-			assert.Equal(t, true, nextCalled)
-		},
-		"EditSucceedsWhenHostIsStartedByUser": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			nextCalled := false
-			wrappedNext := func(rctx context.Context) (interface{}, error) {
-				nextCalled = true
-				return nil, nil
-			}
-			obj := interface{}(map[string]interface{}{"hostId": "host2"})
-			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelEdit)
-			assert.NoError(t, err)
-			assert.Nil(t, res)
-			assert.Equal(t, true, nextCalled)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			setupPermissions(t)
-			usr, err := setupUser(t)
-			assert.NoError(t, err)
-			assert.NotNil(t, usr)
-			ctx = gimlet.AttachUser(ctx, usr)
-			assert.NotNil(t, ctx)
-			h1 := host.Host{
-				Id: "host1",
-				Distro: distro.Distro{
-					Id: "distro-id",
-				},
-			}
-			assert.NoError(t, h1.Insert(ctx))
-			h2 := host.Host{
-				Id:        "host2",
-				StartedBy: "testuser",
-				Distro: distro.Distro{
-					Id: "distro-id",
-				},
-			}
-			assert.NoError(t, h2.Insert(ctx))
-			config := New("/graphql")
-			assert.NotNil(t, config)
-			next := func(rctx context.Context) (interface{}, error) {
-				return nil, nil
-			}
-			tCase(ctx, t, next, config, usr)
-		})
-	}
-}
+
 func TestRequireDistroAccess(t *testing.T) {
 	setupPermissions(t)
 	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, user.Collection),
 		"unable to clear user or project ref collection")
 	dbUser := &user.DBUser{
-		Id: apiUser,
+		Id: testUser,
 		Settings: user.UserSettings{
 			SlackUsername: "testuser",
 			SlackMemberId: "testuser",
@@ -373,7 +246,7 @@ func TestRequireDistroAccess(t *testing.T) {
 		return nil, nil
 	}
 
-	usr, err := user.GetOrCreateUser(apiUser, "User Name", email, accessToken, refreshToken, []string{})
+	usr, err := user.GetOrCreateUser(testUser, "User Name", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
 	require.NotNil(t, usr)
 
@@ -385,7 +258,7 @@ func TestRequireDistroAccess(t *testing.T) {
 	assert.EqualError(t, err, "input: distro not specified")
 
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessCreate)
-	assert.EqualError(t, err, "input: user 'testuser' does not have create distro permissions")
+	assert.EqualError(t, err, "input: user 'test_user' does not have create distro permissions")
 
 	// superuser should be successful for create with no distro ID specified
 	require.NoError(t, usr.AddRole("superuser"))
@@ -443,7 +316,7 @@ func TestRequireDistroAccess(t *testing.T) {
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
 	assert.Nil(t, res)
-	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.EqualError(t, err, "input: user 'test_user' does not have permission to access settings for the distro 'distro-id'")
 	assert.Equal(t, 7, callCount)
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
@@ -463,11 +336,11 @@ func TestRequireDistroAccess(t *testing.T) {
 
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
 	assert.Equal(t, 9, callCount)
-	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.EqualError(t, err, "input: user 'test_user' does not have permission to access settings for the distro 'distro-id'")
 
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
 	assert.Equal(t, 9, callCount)
-	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.EqualError(t, err, "input: user 'test_user' does not have permission to access settings for the distro 'distro-id'")
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
 	assert.NoError(t, err)
@@ -479,15 +352,15 @@ func TestRequireDistroAccess(t *testing.T) {
 	// no access fails all query attempts
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
 	assert.Equal(t, 10, callCount)
-	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.EqualError(t, err, "input: user 'test_user' does not have permission to access settings for the distro 'distro-id'")
 
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessEdit)
 	assert.Equal(t, 10, callCount)
-	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.EqualError(t, err, "input: user 'test_user' does not have permission to access settings for the distro 'distro-id'")
 
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessView)
 	assert.Equal(t, 10, callCount)
-	assert.EqualError(t, err, "input: user 'testuser' does not have permission to access settings for the distro 'distro-id'")
+	assert.EqualError(t, err, "input: user 'test_user' does not have permission to access settings for the distro 'distro-id'")
 }
 
 func TestRequireProjectAdmin(t *testing.T) {
@@ -495,7 +368,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 	require.NoError(t, db.Clear(user.Collection),
 		"unable to clear user collection")
 	dbUser := &user.DBUser{
-		Id: apiUser,
+		Id: testUser,
 		Settings: user.UserSettings{
 			SlackUsername: "testuser",
 			SlackMemberId: "testuser",
@@ -519,7 +392,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 		return nil, nil
 	}
 
-	usr, err := user.GetOrCreateUser(apiUser, "Mohamed Khelif", email, accessToken, refreshToken, []string{})
+	usr, err := user.GetOrCreateUser(testUser, "Mohamed Khelif", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
 	require.NotNil(t, usr)
 
@@ -556,7 +429,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 		},
 	}
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	assert.EqualError(t, err, "input: user testuser does not have permission to access the CreateProject resolver")
+	assert.EqualError(t, err, "input: user test_user does not have permission to access the CreateProject resolver")
 	assert.Nil(t, res)
 	assert.Equal(t, 1, callCount)
 
@@ -579,7 +452,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 		},
 	}
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	assert.EqualError(t, err, "input: user testuser does not have permission to access the CopyProject resolver")
+	assert.EqualError(t, err, "input: user test_user does not have permission to access the CopyProject resolver")
 	assert.Nil(t, res)
 	assert.Equal(t, 2, callCount)
 
@@ -601,7 +474,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 	ctx = graphql.WithOperationContext(ctx, operationContext)
 	obj = map[string]interface{}{"projectId": "anything"}
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	assert.EqualError(t, err, "input: user testuser does not have permission to access the DeleteProject resolver")
+	assert.EqualError(t, err, "input: user test_user does not have permission to access the DeleteProject resolver")
 	assert.Nil(t, res)
 	assert.Equal(t, 3, callCount)
 
@@ -654,7 +527,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 	}
 	require.NoError(t, usr.RemoveRole("admin_project"))
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
-	assert.EqualError(t, err, "input: user testuser does not have permission to access the SetLastRevision resolver")
+	assert.EqualError(t, err, "input: user test_user does not have permission to access the SetLastRevision resolver")
 	assert.Nil(t, res)
 	assert.Equal(t, 5, callCount)
 
@@ -664,7 +537,7 @@ func setupUser(t *testing.T) (*user.DBUser, error) {
 	require.NoError(t, db.Clear(user.Collection),
 		"unable to clear user collection")
 	dbUser := &user.DBUser{
-		Id: apiUser,
+		Id: testUser,
 		Settings: user.UserSettings{
 			SlackUsername: "testuser",
 			SlackMemberId: "testuser",
@@ -674,7 +547,7 @@ func setupUser(t *testing.T) (*user.DBUser, error) {
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
-	return user.GetOrCreateUser(apiUser, "Evergreen User", email, accessToken, refreshToken, []string{})
+	return user.GetOrCreateUser(testUser, "Evergreen User", email, accessToken, refreshToken, []string{})
 }
 
 func TestRequireProjectSettingsAccess(t *testing.T) {

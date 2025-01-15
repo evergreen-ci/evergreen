@@ -349,7 +349,7 @@ Specify the optional `--auto` argument to enable automatic CLI upgrades before e
 
 #### Fetch
 
-The command `evergreen fetch` can automate downloading of the binaries associated with a particular task, or cloning the repo for the task and setting up patches/modules appropriately.
+The command `evergreen fetch` can automate downloading of the binaries associated with a particular task, or cloning the repo for the task and setting up patches/modules appropriately. The default cloning depth for fetch is 1000.
 
 Example that downloads the artifacts for the given task ID and cloning its source:
 ```
@@ -404,7 +404,7 @@ evergreen last-green -p mci -v ubuntu
 ```
 
 #### Tasks
-The command `evergeen task` contains subcommands for interacting with task run data, including task output (build) data.
+The command `evergreen task` contains subcommands for interacting with task run data, including task output (build) data.
 
 ```
 # Fetch task logs
@@ -413,9 +413,6 @@ evergreen task build TaskLogs --task_id <task_id> --execution <execution> --type
 # Fetch test logs
 evergreen task build TestLogs --task_id <task_id> --execution <execution> --log_path <test_log_path>
 ```
-
-#### Commit Queue
-The command `evergreen commit-queue` contains subcommands for interacting with the commit queue. See [Commit Queue](Project-Configuration/Commit-Queue).
 
 ### Server Side (for Evergreen admins)
 

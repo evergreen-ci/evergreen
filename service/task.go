@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -221,7 +222,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		tId = projCtx.Task.OldTaskId
 
 		// Get total number of executions for executions drop down
-		mostRecentExecution, err := task.FindOneId(tId)
+		mostRecentExecution, err := task.FindOneId(r.Context(), tId)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "Error finding most recent execution by id %s", tId))
@@ -269,7 +270,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Repo:                 projCtx.ProjectRef.Repo,
 		Archived:             archived,
 		TotalExecutions:      totalExecutions,
-		PartOfDisplay:        projCtx.Task.IsPartOfDisplay(),
+		PartOfDisplay:        projCtx.Task.IsPartOfDisplay(r.Context()),
 		CanSync:              projCtx.Task.CanSync,
 		GeneratedById:        projCtx.Task.GeneratedBy,
 	}
@@ -332,18 +333,18 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	testResults := uis.getTestResults(projCtx, &uiTask)
+	testResults := uis.getTestResults(r.Context(), projCtx, &uiTask)
 	if projCtx.Patch != nil {
 		var taskOnBaseCommit *task.Task
 		var testResultsOnBaseCommit []testresult.TestResult
-		taskOnBaseCommit, err = projCtx.Task.FindTaskOnBaseCommit()
+		taskOnBaseCommit, err = projCtx.Task.FindTaskOnBaseCommit(r.Context())
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
 		taskPatch := &uiPatch{Patch: *projCtx.Patch}
 		if taskOnBaseCommit != nil {
-			if err = taskOnBaseCommit.PopulateTestResults(); err != nil {
+			if err = taskOnBaseCommit.PopulateTestResults(r.Context()); err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
@@ -358,7 +359,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	if projCtx.Task.TriggerID != "" {
 		var projectName string
-		projectName, err = model.GetUpstreamProjectName(projCtx.Task.TriggerID, projCtx.Task.TriggerType)
+		projectName, err = model.GetUpstreamProjectName(r.Context(), projCtx.Task.TriggerID, projCtx.Task.TriggerType)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -389,7 +390,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if uiTask.AbortInfo.TaskID != "" {
-		abortedBy, err := getAbortedBy(projCtx.Task.AbortInfo.TaskID)
+		abortedBy, err := getAbortedBy(r.Context(), projCtx.Task.AbortInfo.TaskID)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -409,8 +410,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}{uis.Settings.Ui.Url, uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, permissions, newUILink, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
 }
 
-func getAbortedBy(abortedByTaskId string) (*abortedByDisplay, error) {
-	abortedTask, err := task.FindOneId(abortedByTaskId)
+func getAbortedBy(ctx context.Context, abortedByTaskId string) (*abortedByDisplay, error) {
+	abortedTask, err := task.FindOneId(ctx, abortedByTaskId)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting abortedBy task")
 	}
@@ -762,7 +763,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOneId(projCtx.Task.Id)
+		projCtx.Task, err = task.FindOneId(r.Context(), projCtx.Task.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
@@ -775,7 +776,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOneId(projCtx.Task.Id)
+		projCtx.Task, err = task.FindOneId(r.Context(), projCtx.Task.Id)
 
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -784,7 +785,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		return
 	case evergreen.SetActiveAction:
 		active := putParams.Active
-		if active && projCtx.Task.Requester == evergreen.MergeTestRequester {
+		if active && projCtx.Task.Requester == evergreen.GithubMergeRequester {
 			http.Error(w, "commit queue tasks cannot be manually scheduled", http.StatusBadRequest)
 			return
 		}
@@ -795,7 +796,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOneId(projCtx.Task.Id)
+		projCtx.Task, err = task.FindOneId(r.Context(), projCtx.Task.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
@@ -821,7 +822,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOneId(projCtx.Task.Id)
+		projCtx.Task, err = task.FindOneId(r.Context(), projCtx.Task.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
@@ -893,8 +894,8 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (uis *UIServer) getTestResults(projCtx projectContext, uiTask *uiTaskData) []testresult.TestResult {
-	if err := projCtx.Task.PopulateTestResults(); err != nil {
+func (uis *UIServer) getTestResults(ctx context.Context, projCtx projectContext, uiTask *uiTaskData) []testresult.TestResult {
+	if err := projCtx.Task.PopulateTestResults(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"task_id": projCtx.Task.Id,
 			"message": "fetching test results for task",
@@ -913,7 +914,7 @@ func (uis *UIServer) getTestResults(projCtx projectContext, uiTask *uiTaskData) 
 			if uiTask.Archived {
 				et, err = task.FindOneOldByIdAndExecution(t, projCtx.Task.Execution)
 			} else {
-				et, err = task.FindOneId(t)
+				et, err = task.FindOneId(ctx, t)
 			}
 			if err != nil {
 				grip.Error(message.Fields{

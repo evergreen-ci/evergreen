@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -16,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -24,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -226,16 +223,13 @@ func getPatchedProjectYAML(ctx context.Context, projectRef *ProjectRef, opts *Ge
 	if p.IsGithubPRPatch() {
 		hash = p.GithubPatchData.HeadHash
 	}
-	if p.IsPRMergePatch() {
-		hash = p.GithubPatchData.MergeCommitSHA
-	}
 	if p.IsGithubMergePatch() {
 		hash = p.GithubMergeData.HeadSHA
 	}
 	opts.Revision = hash
 
 	path := projectRef.RemotePath
-	if p.Path != "" && !p.IsGithubPRPatch() && !p.IsCommitQueuePatch() {
+	if p.Path != "" && !p.IsGithubPRPatch() && !p.IsMergeQueuePatch() {
 		path = p.Path
 	}
 	opts.RemotePath = path
@@ -298,25 +292,26 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 		return nil, nil, errors.Wrap(err, "getting patched project file as YAML")
 	}
 
-	var pc string
-	if projectRef.IsVersionControlEnabled() {
-		pc, err = getProjectConfigYAML(p, projectFileBytes)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "getting patched project config")
-		}
-	}
-
 	project := &Project{}
 	pp, err := LoadProjectInto(ctx, projectFileBytes, opts, p.Project, project)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
+
 	// LoadProjectInto does not set the parser project's identifier, so set it
 	// here.
 	pp.Identifier = utility.ToStringPtr(p.Project)
 	ppOut, err := yaml.Marshal(pp)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "marshalling parser project into YAML")
+	}
+
+	var pc string
+	if projectRef.IsVersionControlEnabled() {
+		pc, err = getProjectConfigYAML(p, projectFileBytes)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "getting patched project config")
+		}
 	}
 
 	patchConfig := &PatchConfig{
@@ -659,8 +654,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 
 	// if variant tasks is still empty, then the patch is empty and we shouldn't finalize
 	if len(p.VariantsTasks) == 0 {
-		if p.IsCommitQueuePatch() {
-			return nil, errors.Errorf("no builds or tasks for commit queue version in projects '%s', githash '%s'", p.Project, p.Githash)
+		if p.IsMergeQueuePatch() {
+			return nil, errors.Errorf("no builds or tasks for merge queue version in projects '%s', githash '%s'", p.Project, p.Githash)
 		}
 		return nil, errors.New("cannot finalize patch with no tasks")
 	}
@@ -738,6 +733,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			},
 		)
 	}
+	// We must set the NumDependents field for tasks prior to inserting them in the DB.
+	SetNumDependents(tasksToInsert)
 	numActivatedTasks := 0
 	for _, t := range tasksToInsert {
 		if t.Activated {
@@ -862,9 +859,6 @@ func getLoadProjectOptsForPatch(p *patch.Patch) (*ProjectRef, *GetProjectOpts, e
 	if p.IsGithubPRPatch() {
 		hash = p.GithubPatchData.HeadHash
 	}
-	if p.IsPRMergePatch() {
-		hash = p.GithubPatchData.MergeCommitSHA
-	}
 	if p.IsGithubMergePatch() {
 		hash = p.GithubMergeData.HeadSHA
 	}
@@ -964,12 +958,10 @@ func CancelPatch(ctx context.Context, p *patch.Patch, reason task.AbortInfo) err
 	return errors.WithStack(patch.Remove(patch.ById(p.Id)))
 }
 
-// AbortPatchesWithGithubPatchData aborts patches and commit queue items created
+// AbortPatchesWithGithubPatchData aborts patches created
 // before the given time, with the same PR number, and base repository. Tasks
 // which are abortable will be aborted, while completed tasks will not be
-// affected. This function makes one exception for commit queue items so that if
-// the item is currently running the merge task, then that patch is not aborted
-// and is allowed to finish.
+// affected.
 func AbortPatchesWithGithubPatchData(ctx context.Context, createdBefore time.Time, closed bool, newPatch, owner, repo string, prNumber int) error {
 	patches, err := patch.Find(patch.ByGithubPRAndCreatedBefore(createdBefore, owner, repo, prNumber))
 	if err != nil {
@@ -990,36 +982,20 @@ func AbortPatchesWithGithubPatchData(ctx context.Context, createdBefore time.Tim
 			continue
 		}
 
-		if p.IsCommitQueuePatch() {
-			mergeTask, err := task.FindMergeTaskForVersion(p.Version)
-			if err != nil {
-				return errors.Wrap(err, "finding merge task for version")
-			}
-			if mergeTask == nil {
-				return errors.New("no merge task found")
-			}
-			if mergeTask.Status == evergreen.TaskStarted || evergreen.IsFinishedTaskStatus(mergeTask.Status) {
-				// If the merge task already started, the PR merge is
-				// already ongoing, so it's better to just let it complete.
-				continue
-			}
-			catcher.Add(DequeueAndRestartForTask(ctx, nil, mergeTask, message.GithubStateFailure, evergreen.APIServerTaskActivator, "new push to pull request"))
-		} else {
-			err = CancelPatch(ctx, &p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed})
-			msg := message.Fields{
-				"source":         "github hook",
-				"created_before": createdBefore.String(),
-				"owner":          owner,
-				"repo":           repo,
-				"message":        "aborting patch's version",
-				"patch_id":       p.Id.Hex(),
-				"pr":             p.GithubPatchData.PRNumber,
-				"project":        p.Project,
-				"version":        p.Version,
-			}
-			grip.Error(message.WrapError(err, msg))
-			catcher.Add(err)
+		err = CancelPatch(ctx, &p, task.AbortInfo{User: evergreen.GithubPatchUser, NewVersion: newPatch, PRClosed: closed})
+		msg := message.Fields{
+			"source":         "github hook",
+			"created_before": createdBefore.String(),
+			"owner":          owner,
+			"repo":           repo,
+			"message":        "aborting patch's version",
+			"patch_id":       p.Id.Hex(),
+			"pr":             p.GithubPatchData.PRNumber,
+			"project":        p.Project,
+			"version":        p.Version,
 		}
+		grip.Error(message.WrapError(err, msg))
+		catcher.Add(err)
 	}
 
 	return errors.Wrap(catcher.Resolve(), "aborting patches")
@@ -1191,168 +1167,4 @@ func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Setting
 	}
 
 	return patchDoc, nil
-}
-
-func RetryCommitQueueItems(projectID string, opts RestartOptions) ([]string, []string, error) {
-	patches, err := patch.FindFailedCommitQueuePatchesInTimeRange(projectID, opts.StartTime, opts.EndTime)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "finding failed commit queue patches for project in time range")
-	}
-	cq, err := commitqueue.FindOneId(projectID)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "finding commit queue '%s'", projectID)
-	}
-	if cq == nil {
-		return nil, nil, errors.Errorf("commit queue '%s' not found", projectID)
-	}
-
-	// don't requeue items, just return what would be requeued
-	if opts.DryRun {
-		toBeRequeued := []string{}
-		for _, p := range patches {
-			toBeRequeued = append(toBeRequeued, p.Id.Hex())
-		}
-		return toBeRequeued, nil, nil
-	}
-	patchesRestarted := []string{}
-	patchesFailed := []string{}
-	for _, p := range patches {
-		// use the PR number to determine if this is a PR or diff patch. Currently there
-		// is not a reliable field that is set for diff patches
-		var err error
-		if p.GithubPatchData.PRNumber > 0 {
-			err = restartPRItem(p, cq)
-		} else {
-			err = restartDiffItem(p, cq)
-		}
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"patch":        p.Id,
-				"commit_queue": cq.ProjectID,
-				"message":      "error restarting commit queue item",
-				"pr_number":    p.GithubPatchData.PRNumber,
-			}))
-			patchesFailed = append(patchesFailed, p.Id.Hex())
-		} else {
-			patchesRestarted = append(patchesRestarted, p.Id.Hex())
-		}
-	}
-
-	return patchesRestarted, patchesFailed, nil
-}
-
-func restartPRItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
-	// reconstruct commit queue item from patch
-	modules := []commitqueue.Module{}
-	for _, modulePatch := range p.Patches {
-		if modulePatch.ModuleName != "" {
-			module := commitqueue.Module{
-				Module: modulePatch.ModuleName,
-				Issue:  modulePatch.PatchSet.Patch,
-			}
-			modules = append(modules, module)
-		}
-	}
-	item := commitqueue.CommitQueueItem{
-		Issue:   strconv.Itoa(p.GithubPatchData.PRNumber),
-		Modules: modules,
-		Source:  commitqueue.SourcePullRequest,
-	}
-	if _, err := cq.Enqueue(item); err != nil {
-		return errors.Wrap(err, "enqueuing item")
-	}
-
-	return nil
-}
-
-func restartDiffItem(p patch.Patch, cq *commitqueue.CommitQueue) error {
-	u, err := user.FindOne(user.ById(p.Author))
-	if err != nil {
-		return errors.Wrapf(err, "finding user '%s'", p.Author)
-	}
-	if u == nil {
-		return errors.Errorf("user '%s' not found", p.Author)
-	}
-	patchNumber, err := u.IncPatchNumber()
-	if err != nil {
-		return errors.Wrap(err, "incrementing patch number")
-	}
-	newPatch := patch.Patch{
-		Id:              mgobson.NewObjectId(),
-		Project:         p.Project,
-		Author:          p.Author,
-		Githash:         p.Githash,
-		CreateTime:      time.Now(),
-		Status:          evergreen.VersionCreated,
-		Description:     p.Description,
-		GithubPatchData: p.GithubPatchData,
-		Tasks:           p.Tasks,
-		VariantsTasks:   p.VariantsTasks,
-		BuildVariants:   p.BuildVariants,
-		Alias:           p.Alias,
-		Patches:         p.Patches,
-		PatchNumber:     patchNumber,
-	}
-
-	// The parser project is typically inserted at the same time as the patch.
-	// However, commit queue items made from CLI patches are a special exception
-	// that do not follow this behavior, because the existing patch may have be
-	// very outdated compared to the tracking branch's latest commit. The commit
-	// queue should ideally test against the most recent available project
-	// config, so it will resolve the parser project later on, when it's
-	// processed in the commit queue.
-
-	if err = newPatch.Insert(); err != nil {
-		return errors.Wrap(err, "inserting patch")
-	}
-	if _, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: newPatch.Id.Hex(), PatchId: newPatch.Id.Hex(), Source: commitqueue.SourceDiff}); err != nil {
-		return errors.Wrap(err, "enqueuing item")
-	}
-	return nil
-}
-
-// SendCommitQueueResult sends an updated GitHub PR status for a commit queue
-// result. If the patch is not part of a PR, this is a no-op.
-func SendCommitQueueResult(ctx context.Context, p *patch.Patch, status message.GithubState, description string) error {
-	if p.GithubPatchData.PRNumber == 0 {
-		return nil
-	}
-	projectRef, err := FindMergedProjectRef(p.Project, p.Version, true)
-	if err != nil {
-		return errors.Wrap(err, "finding project")
-	}
-	if projectRef == nil {
-		return errors.New("no project found for patch")
-	}
-	url := ""
-	if p.Version != "" {
-		settings, err := evergreen.GetConfig(ctx)
-		if err != nil {
-			return errors.Wrap(err, "unable to get settings")
-		}
-		url = fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", settings.Ui.Url, p.Version)
-	}
-	msg := message.GithubStatus{
-		Owner:       projectRef.Owner,
-		Repo:        projectRef.Repo,
-		Ref:         p.GithubPatchData.HeadHash,
-		Context:     commitqueue.GithubContext,
-		State:       status,
-		Description: description,
-		URL:         url,
-	}
-
-	env := evergreen.GetEnvironment()
-	sender, err := env.GetGitHubSender(projectRef.Owner, projectRef.Repo, githubapp.CreateGitHubAppAuth(env.Settings()).CreateGitHubSenderInstallationToken)
-	if err != nil {
-		return errors.Wrap(err, "getting GitHub sender")
-	}
-	sender.Send(message.NewGithubStatusMessageWithRepo(level.Notice, msg))
-	grip.Info(message.Fields{
-		"ticket":   thirdparty.GithubInvestigation,
-		"message":  "called github status send",
-		"caller":   "commit queue result",
-		"patch_id": p.Id,
-	})
-	return nil
 }

@@ -38,7 +38,7 @@ func TestFindContentsToArchive(t *testing.T) {
 				expectedFileSize += int(info.Size())
 			}
 		}
-		assert.NotZero(t, len(expectedFiles))
+		assert.NotEmpty(t, expectedFiles)
 
 		foundFiles, totalSize, err := findContentsToArchive(ctx, thisDir, []string{"*.go"}, nil)
 		require.NoError(t, err)
@@ -72,7 +72,7 @@ func TestFindContentsToArchive(t *testing.T) {
 				expectedFileSize += int(info.Size())
 			}
 		}
-		assert.NotZero(t, len(expectedFiles))
+		assert.NotEmpty(t, expectedFiles)
 
 		foundFiles, totalSize, err := findContentsToArchive(ctx, thisDir, []string{"*.go", "*.go"}, nil)
 		require.NoError(t, err)
@@ -103,6 +103,9 @@ func getDirectoryOfFile() string {
 
 func TestArchiveExtract(t *testing.T) {
 	Convey("After extracting a tarball", t, func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		testDir := getDirectoryOfFile()
 		outputDir := t.TempDir()
 
@@ -111,7 +114,7 @@ func TestArchiveExtract(t *testing.T) {
 		defer f.Close()
 		defer gz.Close()
 
-		err = extractTarArchive(context.Background(), tarReader, outputDir, []string{})
+		err = extractTarballArchive(ctx, tarReader, outputDir, []string{})
 		So(err, ShouldBeNil)
 
 		Convey("extracted data should match the archive contents", func() {
@@ -206,7 +209,7 @@ func TestBuildArchiveRoundTrip(t *testing.T) {
 				outputDir := t.TempDir()
 				f2, gz2, tarReader, err := tarGzReader(outputFile.Name())
 				require.NoError(t, err)
-				err = extractTarArchive(context.Background(), tarReader, outputDir, []string{})
+				err = extractTarballArchive(context.Background(), tarReader, outputDir, []string{})
 				defer f2.Close()
 				defer gz2.Close()
 				So(err, ShouldBeNil)

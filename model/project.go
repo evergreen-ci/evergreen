@@ -1013,7 +1013,7 @@ func generateId(name string, projectIdentifier string, projBV *BuildVariant, rev
 
 // PopulateExpansions returns expansions for a task, excluding build variant
 // expansions, project variables, and project/version parameters.
-func PopulateExpansions(t *task.Task, h *host.Host, appToken, knownHosts string) (util.Expansions, error) {
+func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToken, knownHosts string) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
@@ -1049,7 +1049,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, appToken, knownHosts string)
 		var upstreamProjectID string
 		if t.TriggerType == ProjectTriggerLevelTask {
 			var upstreamTask *task.Task
-			upstreamTask, err = task.FindOneId(t.TriggerID)
+			upstreamTask, err = task.FindOneId(ctx, t.TriggerID)
 			if err != nil {
 				return nil, errors.Wrap(err, "finding task")
 			}
@@ -1120,16 +1120,11 @@ func PopulateExpansions(t *task.Task, h *host.Host, appToken, knownHosts string)
 		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
 		expansions.Put("alias", p.Alias)
 
-		if v.Requester == evergreen.MergeTestRequester {
-			expansions.Put("is_commit_queue", "true")
-			expansions.Put("commit_message", p.Description)
-		}
-
 		if v.Requester == evergreen.GithubMergeRequester {
 			expansions.Put("is_commit_queue", "true")
 		}
 
-		if p.IsPRMergePatch() || v.Requester == evergreen.GithubPRRequester {
+		if v.Requester == evergreen.GithubPRRequester {
 			expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
 			expansions.Put("github_org", p.GithubPatchData.BaseOwner)
 			expansions.Put("github_repo", p.GithubPatchData.BaseRepo)
@@ -1683,6 +1678,28 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 // unmatched requester (e.g. a patch-only task for a mainline commit).
 func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(patchDoc, patchDoc.GetRequester(), alias, true)
+
+	// Connect the execution tasks to the display tasks.
+	displayTasksToExecTasks := map[string][]string{}
+	for _, bv := range p.BuildVariants {
+		for _, dt := range bv.DisplayTasks {
+			displayTasksToExecTasks[dt.Name] = dt.ExecTasks
+		}
+	}
+
+	vts := []patch.VariantTasks{}
+	for _, vt := range patchDoc.VariantsTasks {
+		dts := []patch.DisplayTask{}
+		for _, dt := range vt.DisplayTasks {
+			if ets, ok := displayTasksToExecTasks[dt.Name]; ok {
+				dt.ExecTasks = ets
+			}
+			dts = append(dts, dt)
+		}
+		vt.DisplayTasks = dts
+		vts = append(vts, vt)
+	}
+	patchDoc.VariantsTasks = vts
 }
 
 // ResolvePatchVTs resolves a list of build variants and tasks into a list of

@@ -1,7 +1,7 @@
 package trigger
 
 import (
-	"strings"
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -22,9 +22,11 @@ func TestCommitQueueTriggers(t *testing.T) {
 }
 
 type commitQueueSuite struct {
-	event event.EventLogEntry
-	data  *event.CommitQueueEventData
-	subs  []event.Subscription
+	event  event.EventLogEntry
+	data   *event.CommitQueueEventData
+	subs   []event.Subscription
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	t *commitQueueTriggers
 
@@ -36,6 +38,8 @@ func (s *commitQueueSuite) SetupSuite() {
 }
 
 func (s *commitQueueSuite) SetupTest() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+
 	s.NoError(db.ClearCollections(event.EventCollection, patch.Collection, event.SubscriptionsCollection, event.SubscriptionsCollection, model.ProjectRefCollection))
 
 	s.data = &event.CommitQueueEventData{
@@ -79,11 +83,15 @@ func (s *commitQueueSuite) SetupTest() {
 	s.t.patch = &p
 }
 
+func (s *commitQueueSuite) TearDownTest() {
+	s.cancel()
+}
+
 func (s *commitQueueSuite) TestEmailUnescapesDescription() {
-	n, err := s.t.commitQueueOutcome(&s.subs[0])
+	n, err := s.t.commitQueueOutcome(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 	payload, ok := n.Payload.(*message.Email)
 	s.True(ok)
-	s.True(strings.Contains(payload.Body, "'quote'"))
+	s.Contains(payload.Body, "'quote'")
 }

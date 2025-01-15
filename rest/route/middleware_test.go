@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -20,9 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
-	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -78,8 +75,6 @@ func TestPrefetchProject(t *testing.T) {
 				So(err, ShouldResemble, errToResemble)
 			})
 			Convey("should error if patch exists and no user is set", func() {
-				opCtx := model.Context{}
-				opCtx.Patch = &patch.Patch{}
 				ctx, err = PrefetchProjectContext(ctx, req, map[string]string{"patch_id": "aabbccddeeff112233445566"})
 				So(ctx.Value(RequestContext), ShouldBeNil)
 
@@ -181,244 +176,6 @@ func TestNewCanCreateMiddleware(t *testing.T) {
 	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 
 	rw = httptest.NewRecorder()
-	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
-	assert.Equal(http.StatusOK, rw.Code)
-}
-
-func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))
-
-	ctx := context.Background()
-	opCtx := model.Context{}
-	opCtx.ProjectRef = &model.ProjectRef{
-		Id:     "mci",
-		Owner:  "evergreen-ci",
-		Repo:   "evergreen",
-		Branch: "main",
-		CommitQueue: model.CommitQueueParams{
-			Enabled: utility.TruePtr(),
-		},
-	}
-
-	assert.NoError(opCtx.ProjectRef.Insert())
-	cq := commitqueue.CommitQueue{
-		ProjectID: opCtx.ProjectRef.Id,
-		Queue: []commitqueue.CommitQueueItem{
-			{Issue: "1234", Source: commitqueue.SourcePullRequest},
-		},
-	}
-	assert.NoError(commitqueue.InsertQueue(&cq))
-
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{
-		Settings: user.UserSettings{
-			GithubUser: user.GithubUser{
-				UID: 1234,
-			},
-		},
-	})
-
-	r, err := http.NewRequest(http.MethodDelete, "/", nil)
-	assert.NoError(err)
-	assert.NotNil(r)
-
-	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
-	r = gimlet.SetURLVars(r, map[string]string{
-		"project_id": "mci",
-		"item":       "1234",
-	})
-
-	mw := NewMockCommitQueueItemOwnerMiddleware()
-	rw := httptest.NewRecorder()
-
-	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
-	assert.Equal(http.StatusOK, rw.Code)
-}
-
-func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))
-
-	ctx := context.Background()
-	opCtx := model.Context{}
-	opCtx.ProjectRef = &model.ProjectRef{
-		Id:     "mci",
-		Owner:  "evergreen-ci",
-		Repo:   "evergreen",
-		Branch: "main",
-		CommitQueue: model.CommitQueueParams{
-			Enabled: utility.TruePtr(),
-		},
-	}
-	assert.NoError(opCtx.ProjectRef.Insert())
-	cq := commitqueue.CommitQueue{
-		ProjectID: opCtx.ProjectRef.Id,
-		Queue: []commitqueue.CommitQueueItem{
-			{Issue: "1234", Source: commitqueue.SourcePullRequest},
-		},
-	}
-	assert.NoError(commitqueue.InsertQueue(&cq))
-
-	r, err := http.NewRequest(http.MethodDelete, "/", nil)
-	assert.NoError(err)
-	assert.NotNil(r)
-
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{
-		Settings: user.UserSettings{
-			GithubUser: user.GithubUser{
-				UID: 4321,
-			},
-		},
-	})
-
-	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
-	r = gimlet.SetURLVars(r, map[string]string{
-		"project_id": "mci",
-		"item":       "1234",
-	})
-
-	mw := NewMockCommitQueueItemOwnerMiddleware()
-	rw := httptest.NewRecorder()
-
-	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
-	assert.Equal(http.StatusUnauthorized, rw.Code)
-}
-
-func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(patch.Collection, model.ProjectRefCollection, commitqueue.Collection, user.Collection))
-
-	ctx := context.Background()
-	opCtx := model.Context{}
-	opCtx.ProjectRef = &model.ProjectRef{
-		Id:     "mci",
-		Owner:  "evergreen-ci",
-		Repo:   "evergreen",
-		Branch: "main",
-		CommitQueue: model.CommitQueueParams{
-			Enabled: utility.TruePtr(),
-		},
-	}
-	assert.NoError(opCtx.ProjectRef.Insert())
-
-	r, err := http.NewRequest(http.MethodDelete, "/", nil)
-	assert.NoError(err)
-	assert.NotNil(r)
-
-	patchUsr := &user.DBUser{Id: "octocat", OnlyAPI: false}
-	require.NoError(t, patchUsr.Insert())
-
-	patchId := bson.NewObjectId()
-	p := &patch.Patch{
-		Id:     patchId,
-		Author: patchUsr.Id,
-	}
-	assert.NoError(p.Insert())
-
-	cq := commitqueue.CommitQueue{
-		ProjectID: opCtx.ProjectRef.Id,
-		Queue: []commitqueue.CommitQueueItem{
-			{Issue: patchId.Hex(), Source: commitqueue.SourceDiff},
-		},
-	}
-	assert.NoError(commitqueue.InsertQueue(&cq))
-
-	p, err = patch.FindOne(patch.ByUserAndCommitQueue("octocat", false))
-	assert.NoError(err)
-	assert.NotNil(p)
-
-	// not authorized
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
-	r = gimlet.SetURLVars(r, map[string]string{
-		"project_id": "mci",
-		"item":       p.Id.Hex(),
-	})
-
-	mw := NewCommitQueueItemOwnerMiddleware()
-
-	rw := httptest.NewRecorder()
-	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
-	assert.Equal(http.StatusUnauthorized, rw.Code)
-
-	// authorized
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "octocat"})
-	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
-	r = gimlet.SetURLVars(r, map[string]string{
-		"project_id": "mci",
-		"item":       p.Id.Hex(),
-	})
-	rw = httptest.NewRecorder()
-	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
-	assert.Equal(http.StatusOK, rw.Code)
-}
-
-func TestCommitQueueItemOwnerMiddlewarePatchAdmin(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(patch.Collection, model.ProjectRefCollection, commitqueue.Collection,
-		evergreen.ScopeCollection, evergreen.RoleCollection))
-
-	ctx := context.Background()
-	opCtx := model.Context{}
-	opCtx.ProjectRef = &model.ProjectRef{
-		Id:     "mci",
-		Owner:  "evergreen-ci",
-		Repo:   "evergreen",
-		Branch: "main",
-		CommitQueue: model.CommitQueueParams{
-			Enabled: utility.TruePtr(),
-		},
-	}
-	assert.NoError(opCtx.ProjectRef.Insert())
-
-	r, err := http.NewRequest(http.MethodDelete, "/", nil)
-	assert.NoError(err)
-	assert.NotNil(r)
-
-	patchId := bson.NewObjectId()
-	p := &patch.Patch{
-		Id:     patchId,
-		Author: "octocat",
-	}
-	assert.NoError(p.Insert())
-	cq := commitqueue.CommitQueue{
-		ProjectID: opCtx.ProjectRef.Id,
-		Queue: []commitqueue.CommitQueueItem{
-			{Issue: patchId.Hex(), Source: commitqueue.SourceDiff},
-		},
-	}
-	assert.NoError(commitqueue.InsertQueue(&cq))
-
-	p, err = patch.FindOne(patch.ByUserAndCommitQueue("octocat", false))
-	assert.NoError(err)
-	assert.NotNil(p)
-
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{
-		Id:          "me",
-		SystemRoles: []string{"patch_admin"},
-	})
-	rm := evergreen.GetEnvironment().RoleManager()
-	assert.NoError(rm.AddScope(gimlet.Scope{
-		ID:        "projects",
-		Resources: []string{"mci"},
-		Type:      evergreen.ProjectResourceType,
-	}))
-	assert.NoError(rm.UpdateRole(gimlet.Role{
-		ID:    "patch_admin",
-		Scope: "projects",
-		Permissions: gimlet.Permissions{
-			evergreen.PermissionPatches: evergreen.PatchSubmitAdmin.Value,
-		},
-	}))
-
-	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
-	r = gimlet.SetURLVars(r, map[string]string{
-		"project_id": "mci",
-		"item":       p.Id.Hex(),
-	})
-	rw := httptest.NewRecorder()
-
-	mw := NewCommitQueueItemOwnerMiddleware()
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 	assert.Equal(http.StatusOK, rw.Code)
 }

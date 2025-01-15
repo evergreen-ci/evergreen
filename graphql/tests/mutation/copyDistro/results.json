@@ -17,9 +17,7 @@
         "errors": [
           {
             "message": "copying distro: validator encountered errors: 'ERROR: distro 'windows-64-vs2015-small' uses an existing identifier'",
-            "path": [
-              "copyDistro"
-            ],
+            "path": ["copyDistro"],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"
             }
@@ -34,9 +32,7 @@
         "errors": [
           {
             "message": "400 (Bad Request): new and existing distro IDs are identical",
-            "path": [
-              "copyDistro"
-            ],
+            "path": ["copyDistro"],
             "extensions": {
               "code": "INPUT_VALIDATION_ERROR"
             }
@@ -51,11 +47,25 @@
         "errors": [
           {
             "message": "404 (Not Found): distro 'fake-distro' not found",
-            "path": [
-              "copyDistro"
-            ],
+            "path": ["copyDistro"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'regular_user' does not have create distro permissions",
+            "path": ["copyDistro", "opts"],
+            "extensions": {
+              "code": "FORBIDDEN"
             }
           }
         ]

@@ -1,7 +1,7 @@
 {
   "repo_ref": [
     {
-      "_id": "repo_id",
+      "_id": "sandbox_repo_id",
       "display_name": "Sandbox",
       "enabled": null,
       "owner_name": "evergreen-ci",
@@ -85,13 +85,13 @@
       "ts": {
         "$date": "2020-03-03T15:46:00.709Z"
       },
-      "r_id": "repo_id",
+      "r_id": "sandbox_repo_id",
       "e_type": "PROJECT_MODIFIED",
       "data": {
         "user": "Annie Black",
         "before": {
           "proj_ref": {
-            "_id": "repo_id",
+            "_id": "sandbox_repo_id",
             "identifier": "5678",
             "owner_name": "evergreen-ci",
             "repo_name": "evergreen",
@@ -99,25 +99,25 @@
           },
           "github_hooks_enabled": false,
           "vars": {
-            "_id": "repo_id",
+            "_id": "sandbox_repo_id",
             "vars": {
-              "hello": "world"
+              "hello": "{REDACTED_BEFORE}"
             }
           }
         },
         "after": {
           "proj_ref": {
-            "_id": "repo_id",
-            "identifier": "repo_id",
+            "_id": "sandbox_repo_id",
+            "identifier": "sandbox_repo_id",
             "owner_name": "evergreen-ci",
             "repo_name": "evergreen",
             "branch_name": "main"
           },
           "github_hooks_enabled": true,
           "vars": {
-            "_id": "repo_id",
+            "_id": "sandbox_repo_id",
             "vars": {
-              "hello": "universe"
+              "hello": "{REDACTED_AFTER}"
             }
           }
         }

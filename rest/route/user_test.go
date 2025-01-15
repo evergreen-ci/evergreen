@@ -365,7 +365,7 @@ func TestDeleteUserPermissions(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Status())
 	dbUser, err = user.FindOneById(u.Id)
 	require.NoError(t, err)
-	assert.Len(t, dbUser.SystemRoles, 0)
+	assert.Empty(t, dbUser.SystemRoles)
 }
 
 func TestGetUserPermissions(t *testing.T) {
@@ -545,13 +545,13 @@ func TestServiceUserOperations(t *testing.T) {
 	assert.NoError(t, handler.Parse(ctx, request))
 	_ = handler.Run(ctx)
 
-	request, err = http.NewRequest(http.MethodGet, "", nil)
+	_, err = http.NewRequest(http.MethodGet, "", nil)
 	require.NoError(t, err)
 	handler = makeGetServiceUsers()
 	resp = handler.Run(ctx)
 	users, valid = resp.Data().([]restModel.APIDBUser)
 	assert.True(t, valid)
-	assert.Len(t, users, 0)
+	assert.Empty(t, users)
 }
 
 func TestGetUsersForRole(t *testing.T) {
@@ -586,10 +586,10 @@ func TestGetUsersForRole(t *testing.T) {
 	req = gimlet.SetURLVars(req, map[string]string{"role_id": "basic_project_access"})
 	handler := makeGetUsersWithRole()
 	assert.NoError(t, handler.Parse(ctx, req))
-	assert.Equal(t, handler.(*usersWithRoleGetHandler).role, "basic_project_access")
+	assert.Equal(t, "basic_project_access", handler.(*usersWithRoleGetHandler).role)
 	resp := handler.Run(ctx)
 	assert.NotNil(t, resp)
-	assert.Equal(t, resp.Status(), http.StatusOK)
+	assert.Equal(t, http.StatusOK, resp.Status())
 	usersWithRole, ok := resp.Data().(*UsersWithRoleResponse)
 	assert.True(t, ok)
 	assert.NotNil(t, usersWithRole.Users)
@@ -756,17 +756,17 @@ func TestGetUsersForResourceId(t *testing.T) {
 			require.NoError(t, err)
 			handler := makeGetAllUsersPermissions(rm)
 			assert.NoError(t, handler.Parse(context.TODO(), req))
-			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceId, "p1")
-			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceType, evergreen.ProjectResourceType)
+			assert.Equal(t, "p1", handler.(*allUsersPermissionsGetHandler).input.ResourceId)
+			assert.Equal(t, evergreen.ProjectResourceType, handler.(*allUsersPermissionsGetHandler).input.ResourceType)
 			resp := handler.Run(context.TODO())
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			userPermissions, ok := resp.Data().(UsersPermissionsResult)
 			assert.True(t, ok)
 			assert.Len(t, userPermissions, 1) // only user1 should be included; user2 only has basic access
 			u1Permissions := userPermissions[u1.Username()]
 			assert.Equal(t, u1Permissions[evergreen.PermissionTasks], evergreen.TasksAdmin.Value)
 			assert.Equal(t, u1Permissions[evergreen.PermissionAnnotations], evergreen.AnnotationsModify.Value)
-			assert.Equal(t, u1Permissions[evergreen.PermissionLogs], 0) // only relevant to basic project access
+			assert.Equal(t, 0, u1Permissions[evergreen.PermissionLogs]) // only relevant to basic project access
 			assert.Equal(t, u1Permissions[evergreen.PermissionProjectSettings], evergreen.ProjectSettingsEdit.Value)
 		},
 		"p2": func(t *testing.T) {
@@ -775,22 +775,22 @@ func TestGetUsersForResourceId(t *testing.T) {
 			require.NoError(t, err)
 			handler := makeGetAllUsersPermissions(rm)
 			assert.NoError(t, handler.Parse(context.TODO(), req))
-			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceId, "p2")
-			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceType, evergreen.ProjectResourceType)
+			assert.Equal(t, "p2", handler.(*allUsersPermissionsGetHandler).input.ResourceId)
+			assert.Equal(t, evergreen.ProjectResourceType, handler.(*allUsersPermissionsGetHandler).input.ResourceType)
 			resp := handler.Run(context.TODO())
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			userPermissions, ok := resp.Data().(UsersPermissionsResult)
 			assert.True(t, ok)
 			assert.Len(t, userPermissions, 3)
 			u1Permissions := userPermissions[u1.Username()]
 			assert.Equal(t, u1Permissions[evergreen.PermissionTasks], evergreen.TasksAdmin.Value)
 			assert.Equal(t, u1Permissions[evergreen.PermissionAnnotations], evergreen.AnnotationsModify.Value)
-			assert.Equal(t, u1Permissions[evergreen.PermissionLogs], 0) // only relevant to basic project access
+			assert.Equal(t, 0, u1Permissions[evergreen.PermissionLogs]) // only relevant to basic project access
 			assert.Equal(t, u1Permissions[evergreen.PermissionProjectSettings], evergreen.ProjectSettingsEdit.Value)
 			u2Permissions := userPermissions[u2.Username()]
 			assert.Equal(t, u2Permissions[evergreen.PermissionTasks], evergreen.TasksView.Value)
-			assert.Equal(t, u2Permissions[evergreen.PermissionLogs], 0)            // only relevant to basic project access
-			assert.Equal(t, u2Permissions[evergreen.PermissionProjectSettings], 0) // wasn't given admin
+			assert.Equal(t, 0, u2Permissions[evergreen.PermissionLogs])            // only relevant to basic project access
+			assert.Equal(t, 0, u2Permissions[evergreen.PermissionProjectSettings]) // wasn't given admin
 			u3Permissions := userPermissions[u3.Username()]
 			assert.Len(t, u3Permissions, 1)
 			assert.Equal(t, u3Permissions[evergreen.PermissionTasks], evergreen.TasksView.Value)
@@ -801,10 +801,10 @@ func TestGetUsersForResourceId(t *testing.T) {
 			require.NoError(t, err)
 			handler := makeGetAllUsersPermissions(rm)
 			assert.NoError(t, handler.Parse(context.TODO(), req))
-			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceId, "p3")
-			assert.Equal(t, handler.(*allUsersPermissionsGetHandler).input.ResourceType, evergreen.ProjectResourceType)
+			assert.Equal(t, "p3", handler.(*allUsersPermissionsGetHandler).input.ResourceId)
+			assert.Equal(t, evergreen.ProjectResourceType, handler.(*allUsersPermissionsGetHandler).input.ResourceType)
 			resp := handler.Run(context.TODO())
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			userPermissions, ok := resp.Data().(UsersPermissionsResult)
 			assert.True(t, ok)
 			assert.Len(t, userPermissions, 1) // only user1 has permissions for p3
@@ -847,18 +847,18 @@ func TestRenameUser(t *testing.T) {
 			require.NoError(t, err)
 			handler := makeRenameUser(env)
 			assert.NoError(t, handler.Parse(ctx, req))
-			assert.Equal(t, handler.(*renameUserHandler).newEmail, "new_me@still_awesome.com")
+			assert.Equal(t, "new_me@still_awesome.com", handler.(*renameUserHandler).newEmail)
 			require.NotNil(t, handler.(*renameUserHandler).oldUsr)
-			assert.Equal(t, handler.(*renameUserHandler).oldUsr.Id, "me")
+			assert.Equal(t, "me", handler.(*renameUserHandler).oldUsr.Id)
 			resp := handler.Run(ctx)
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 
 			newUsrFromDb, err := user.FindOneById("new_me")
 			assert.NoError(t, err)
 			assert.NotNil(t, newUsrFromDb)
 			assert.NotEqual(t, newUsr.APIKey, newUsrFromDb.GetAPIKey())
 			assert.Equal(t, "new_me@still_awesome.com", newUsrFromDb.Email())
-			assert.Equal(t, newUsrFromDb.PatchNumber, 8)
+			assert.Equal(t, 8, newUsrFromDb.PatchNumber)
 			assert.Equal(t, 12, newUsrFromDb.Settings.GithubUser.UID)
 
 			hosts, err := host.Find(ctx, host.ByUserWithUnterminatedStatus("new_me"))
@@ -875,7 +875,7 @@ func TestRenameUser(t *testing.T) {
 			for _, p := range patches {
 				// Verify the newest patch had the number updated.
 				if p.Id == pNew.Id {
-					assert.Equal(t, p.PatchNumber, 8)
+					assert.Equal(t, 8, p.PatchNumber)
 				}
 			}
 		},
@@ -884,18 +884,18 @@ func TestRenameUser(t *testing.T) {
 			require.NoError(t, err)
 			handler := makeRenameUser(env)
 			assert.NoError(t, handler.Parse(ctx, req))
-			assert.Equal(t, handler.(*renameUserHandler).newEmail, "new_me@still_awesome.com")
+			assert.Equal(t, "new_me@still_awesome.com", handler.(*renameUserHandler).newEmail)
 			require.NotNil(t, handler.(*renameUserHandler).oldUsr)
-			assert.Equal(t, handler.(*renameUserHandler).oldUsr.Id, "me")
+			assert.Equal(t, "me", handler.(*renameUserHandler).oldUsr.Id)
 			resp := handler.Run(ctx)
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 
 			newUsrFromDb, err := user.FindOneById("new_me")
 			assert.NoError(t, err)
 			assert.NotNil(t, newUsrFromDb)
 			assert.NotEmpty(t, newUsrFromDb.GetAPIKey())
 			assert.Equal(t, "new_me@still_awesome.com", newUsrFromDb.Email())
-			assert.Equal(t, newUsrFromDb.PatchNumber, 7)
+			assert.Equal(t, 7, newUsrFromDb.PatchNumber)
 			assert.Equal(t, 12, newUsrFromDb.Settings.GithubUser.UID)
 
 			hosts, err := host.Find(ctx, host.ByUserWithUnterminatedStatus("new_me"))
@@ -1147,10 +1147,10 @@ func TestGetUserHandler(t *testing.T) {
 			assert.NoError(t, handler.Parse(ctx, req))
 			userHandler, ok := handler.(*getUserHandler)
 			require.True(t, ok)
-			assert.Equal(t, userHandler.userId, "no_one")
+			assert.Equal(t, "no_one", userHandler.userId)
 
 			resp := handler.Run(gimlet.AttachUser(ctx, &me))
-			assert.Equal(t, resp.Status(), http.StatusNotFound)
+			assert.Equal(t, http.StatusNotFound, resp.Status())
 		}, "UserFound": func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/users/beep.boop", nil)
 			req = gimlet.SetURLVars(req, map[string]string{"user_id": "beep.boop"})
@@ -1161,10 +1161,10 @@ func TestGetUserHandler(t *testing.T) {
 			assert.NoError(t, handler.Parse(ctx, req))
 			userHandler, ok := handler.(*getUserHandler)
 			require.True(t, ok)
-			assert.Equal(t, userHandler.userId, "beep.boop")
+			assert.Equal(t, "beep.boop", userHandler.userId)
 
 			resp := handler.Run(gimlet.AttachUser(ctx, &me))
-			assert.Equal(t, resp.Status(), http.StatusOK)
+			assert.Equal(t, http.StatusOK, resp.Status())
 			respUsr, ok := resp.Data().(*restModel.APIDBUser)
 			require.True(t, ok)
 			assert.NotEmpty(t, respUsr)

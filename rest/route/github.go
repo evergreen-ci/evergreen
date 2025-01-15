@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -42,7 +41,6 @@ const (
 	refreshStatusComment    = "evergreen refresh"
 	patchComment            = "evergreen patch"
 	aliasArgument           = "--alias"
-	commitQueueMergeComment = "evergreen merge"
 	evergreenHelpComment    = "evergreen help"
 	keepDefinitionsComment  = "evergreen keep-definitions"
 	resetDefinitionsComment = "evergreen reset-definitions"
@@ -131,7 +129,7 @@ func (gh *githubHookApi) shouldSkipWebhook(ctx context.Context, owner, repo stri
 	return (fromApp && !hasApp) || (!fromApp && hasApp)
 }
 
-func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
+func (gh *githubHookApi) Run(_ context.Context) gimlet.Responder {
 	// GitHub occasionally aborts requests early before we are able to complete the full operation
 	// (for example enqueueing a PR to the commit queue). We therefore want to use a custom context
 	// instead of using the request context.
@@ -294,7 +292,7 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 		})
 		return errors.New("check run GitHub event doesn't carry task")
 	}
-	taskToRestart, taskErr := data.FindTask(taskIDFromCheckrun)
+	taskToRestart, taskErr := data.FindTask(ctx, taskIDFromCheckrun)
 	if taskErr != nil {
 		grip.Error(message.Fields{
 			"source":  "GitHub hook",
@@ -346,7 +344,7 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 
 	// Get the task again to ensure we have the latest execution for link to task.
 	// Should still update check run even if task isn't refreshed.
-	latestExecutionForTask, taskErr := data.FindTask(taskIDFromCheckrun)
+	latestExecutionForTask, taskErr := data.FindTask(ctx, taskIDFromCheckrun)
 	if taskErr != nil {
 		grip.Error(message.Fields{
 			"source":  "GitHub hook",
@@ -510,17 +508,6 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 	if commentAction == "deleted" {
 		return nil
 	}
-	if triggersCommitQueue(event.Comment.GetBody()) {
-		grip.Info(gh.getCommentLogWithMessage(event, "commit queue triggered"))
-
-		_, err := data.EnqueuePRToCommitQueue(ctx, evergreen.GetEnvironment(), gh.sc, createEnqueuePRInfo(event))
-		if err != nil {
-			grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event, "can't enqueue on commit queue")))
-			return errors.Wrap(err, "enqueueing in commit queue")
-		}
-
-		return nil
-	}
 
 	if triggerPatch := triggersPatch(commentBody); triggerPatch {
 		callerType := parsePRCommentForCaller(commentBody)
@@ -617,8 +604,7 @@ func (gh *githubHookApi) displayHelpText(ctx context.Context, owner, repo string
 }
 
 func getHelpTextFromProjects(repoRef *model.RepoRef, projectRefs []model.ProjectRef) string {
-	var manualPRProjectEnabled, autoPRProjectEnabled, cqProjectEnabled bool
-	var cqProjectMessage string
+	var manualPRProjectEnabled, autoPRProjectEnabled bool
 
 	canInheritRepoPRSettings := true
 	for _, p := range projectRefs {
@@ -631,12 +617,6 @@ func getHelpTextFromProjects(repoRef *model.RepoRef, projectRefs []model.Project
 		// If the project is explicitly disabled, then we shouldn't consider if the repo allows for PR testing.
 		if !p.Enabled {
 			canInheritRepoPRSettings = false
-		}
-
-		if err := p.CommitQueueIsOn(); err == nil {
-			cqProjectEnabled = true
-		} else if cqMessage := p.CommitQueue.Message; cqMessage != "" {
-			cqProjectMessage += cqMessage
 		}
 	}
 
@@ -651,7 +631,6 @@ func getHelpTextFromProjects(repoRef *model.RepoRef, projectRefs []model.Project
 	}
 
 	formatStr := "- `%s`    - %s\n"
-	formatStrStrikethrough := "- ~`%s`~ \n    - %s\n"
 	res := fmt.Sprintf("### %s\n", "Available Evergreen Comment Commands")
 	if autoPRProjectEnabled {
 		res += fmt.Sprintf(formatStr, retryComment, "attempts to create a new PR patch; "+
@@ -666,14 +645,7 @@ func getHelpTextFromProjects(repoRef *model.RepoRef, projectRefs []model.Project
 		res += fmt.Sprintf(formatStr, resetDefinitionsComment, "reset the patch tasks to the original definition")
 		res += fmt.Sprintf(formatStr, refreshStatusComment, "resyncs PR GitHub checks")
 	}
-	if cqProjectEnabled {
-		res += fmt.Sprintf(formatStr, commitQueueMergeComment, "adds PR to the commit queue")
-	} else if cqProjectMessage != "" {
-		// Should only display this if the commit queue isn't enabled for a different branch.
-		text := fmt.Sprintf("the commit queue is NOT enabled for this branch: %s", cqProjectMessage)
-		res += fmt.Sprintf(formatStrStrikethrough, commitQueueMergeComment, text)
-	}
-	if !autoPRProjectEnabled && !manualPRProjectEnabled && !cqProjectEnabled && cqProjectMessage == "" {
+	if !autoPRProjectEnabled && !manualPRProjectEnabled {
 		res = "No commands available for this branch."
 	}
 	return res
@@ -1185,32 +1157,6 @@ func validatePushTagEvent(event *github.PushEvent) error {
 	return nil
 }
 
-func createEnqueuePRInfo(event *github.IssueCommentEvent) commitqueue.EnqueuePRInfo {
-	return commitqueue.EnqueuePRInfo{
-		Username:      *event.Comment.User.Login,
-		Owner:         *event.Repo.Owner.Login,
-		Repo:          *event.Repo.Name,
-		PR:            *event.Issue.Number,
-		CommitMessage: *event.Comment.Body,
-	}
-}
-
-func isItemOnCommitQueue(id, item string) (bool, error) {
-	cq, err := commitqueue.FindOneId(id)
-	if err != nil {
-		return false, errors.Wrapf(err, "finding commit queue '%s'", id)
-	}
-	if cq == nil {
-		return false, errors.Errorf("commit queue '%s' not found", id)
-	}
-
-	pos := cq.FindItem(item)
-	if pos >= 0 {
-		return true, nil
-	}
-	return false, nil
-}
-
 func trimComment(comment string) string {
 	// strings.Join(strings.Fields()) is to handle multiple spaces between words
 	return strings.Join(strings.Fields(strings.ToLower(comment)), " ")
@@ -1222,12 +1168,6 @@ func isRetryComment(comment string) bool {
 
 func isPatchComment(comment string) bool {
 	return strings.HasPrefix(trimComment(comment), patchComment)
-}
-
-// triggersCommitQueue checks if "evergreen merge" is present in the comment, as
-// it may be followed by a newline and a message.
-func triggersCommitQueue(comment string) bool {
-	return strings.HasPrefix(trimComment(comment), commitQueueMergeComment)
 }
 
 func isKeepDefinitionsComment(comment string) bool {

@@ -147,6 +147,7 @@
       "_id": "task_1",
       "version": "evergreen_version1",
       "status": "success",
+      "display_status_cache": "success",
       "display_name": "Some Task",
       "activated": true,
       "build_variant": "enterprise-ubuntu1604-64",
@@ -156,12 +157,14 @@
         "$date": "2020-01-01T00:00:05Z"
       },
       "execution": 0,
-      "display_task_id": ""
+      "display_task_id": "",
+      "r": "gitter_request"
     },
     {
       "_id": "task_2",
       "version": "evergreen_version1",
       "status": "success",
+      "display_status_cache": "success",
       "display_name": "Some Other Task",
       "activated": true,
       "build_variant": "enterprise-ubuntu1604-64",
@@ -171,12 +174,14 @@
         "$date": "2020-01-01T00:00:05Z"
       },
       "execution": 1,
-      "display_task_id": ""
+      "display_task_id": "",
+      "r": "gitter_request"
     },
     {
       "_id": "task_3",
       "version": "evergreen_version2",
       "status": "failed",
+      "display_status_cache": "setup-failed",
       "details": {
         "type": "setup"
       },
@@ -189,12 +194,14 @@
         "$date": "2020-01-01T00:00:05Z"
       },
       "execution": 0,
-      "display_task_id": ""
+      "display_task_id": "",
+      "r": "gitter_request"
     },
     {
       "_id": "task_4",
       "version": "evergreen_version2",
       "status": "success",
+      "display_status_cache": "success",
       "display_name": "Some Other Task",
       "activated": true,
       "build_variant": "enterprise-ubuntu1604-64",
@@ -204,12 +211,14 @@
         "$date": "2020-01-01T00:00:05Z"
       },
       "execution": 0,
-      "display_task_id": ""
+      "display_task_id": "",
+      "r": "gitter_request"
     },
     {
       "_id": "task_5",
       "version": "evergreen_version5",
       "status": "success",
+      "display_status_cache": "success",
       "display_name": "Task Number 5",
       "activated": true,
       "build_variant": "lint",
@@ -219,7 +228,8 @@
         "$date": "2020-01-01T00:00:05Z"
       },
       "execution": 0,
-      "display_task_id": ""
+      "display_task_id": "",
+      "r": "gitter_request"
     }
   ],
   "project_ref": [

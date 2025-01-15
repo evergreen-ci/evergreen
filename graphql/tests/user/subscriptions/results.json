@@ -2,11 +2,12 @@
   "tests": [
     {
       "query_file": "subscriptions.graphql",
+      "test_user_id": "regular_user",
       "result": {
         "data": {
           "user": {
-            "displayName": "testuser",
-            "userId": "testuser",
+            "displayName": "Regular User",
+            "userId": "regular_user",
             "subscriptions": [
               {
                 "id": "61326406a620e4737f57003e",

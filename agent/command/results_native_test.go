@@ -60,7 +60,7 @@ func TestAttachResults(t *testing.T) {
 					So(err, ShouldBeNil)
 					err = pluginCmds[0].Execute(ctx, comm, logger, conf)
 					So(err, ShouldBeNil)
-					testTask, err := task.FindOne(db.Query(task.ById(conf.Task.Id)))
+					testTask, err := task.FindOne(ctx, db.Query(task.ById(conf.Task.Id)))
 					require.NoError(t, err)
 					So(testTask, ShouldNotBeNil)
 
@@ -118,7 +118,7 @@ func TestAttachRawResults(t *testing.T) {
 					So(err, ShouldBeNil)
 					Convey("when retrieving task", func() {
 						// fetch the task
-						testTask, err := task.FindOne(db.Query(task.ById(conf.Task.Id)))
+						testTask, err := task.FindOne(ctx, db.Query(task.ById(conf.Task.Id)))
 						require.NoError(t, err)
 						So(testTask, ShouldNotBeNil)
 

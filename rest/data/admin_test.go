@@ -147,6 +147,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.LoggerConfig.Buffer.IncomingBufferFactor, settingsFromConnector.LoggerConfig.Buffer.IncomingBufferFactor)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, settingsFromConnector.LoggerConfig.Buffer.UseAsync)
 	s.EqualValues(testSettings.Notify.SES.SenderAddress, settingsFromConnector.Notify.SES.SenderAddress)
+	s.Equal(testSettings.ParameterStore.Prefix, settingsFromConnector.ParameterStore.Prefix)
 	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settingsFromConnector.Providers.AWS.EC2Keys))
 	s.Equal(testSettings.Providers.AWS.ParserProject.Key, settingsFromConnector.Providers.AWS.ParserProject.Key)
 	s.Equal(testSettings.Providers.AWS.ParserProject.Secret, settingsFromConnector.Providers.AWS.ParserProject.Secret)
@@ -155,7 +156,6 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(testSettings.Providers.AWS.ParserProject.GeneratedJSONPrefix, settingsFromConnector.Providers.AWS.ParserProject.GeneratedJSONPrefix)
 	s.Equal(testSettings.Providers.AWS.PersistentDNS.HostedZoneID, settingsFromConnector.Providers.AWS.PersistentDNS.HostedZoneID)
 	s.Equal(testSettings.Providers.AWS.PersistentDNS.Domain, settingsFromConnector.Providers.AWS.PersistentDNS.Domain)
-	s.Equal(testSettings.Providers.AWS.ParameterStore.Prefix, settingsFromConnector.Providers.AWS.ParameterStore.Prefix)
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settingsFromConnector.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
@@ -174,6 +174,8 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.ElementsMatch(testSettings.SleepSchedule.PermanentlyExemptHosts, settingsFromConnector.SleepSchedule.PermanentlyExemptHosts)
 	s.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, settingsFromConnector.Splunk.SplunkConnectionInfo.Channel)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settingsFromConnector.Ui.HttpListenAddr)
+	s.EqualValues(testSettings.Ui.StagingEnvironment, settingsFromConnector.Ui.StagingEnvironment)
+	s.EqualValues(testSettings.TestSelection.URL, settingsFromConnector.TestSelection.URL)
 	s.EqualValues(testSettings.Tracer.Enabled, settingsFromConnector.Tracer.Enabled)
 	s.EqualValues(testSettings.Tracer.CollectorEndpoint, settingsFromConnector.Tracer.CollectorEndpoint)
 	s.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, settingsFromConnector.Tracer.CollectorInternalEndpoint)
@@ -198,7 +200,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 			s.Equal(testSettings.ServiceFlags.RepotrackerDisabled, v.RepotrackerDisabled)
 		case *evergreen.CloudProviders:
 			foundProvidersEvent = true
-			s.Require().True(len(v.AWS.EC2Keys) > 0)
+			s.Require().NotEmpty(v.AWS.EC2Keys)
 			s.Equal(testSettings.Providers.AWS.EC2Keys[0].Key, v.AWS.EC2Keys[0].Key)
 		case *evergreen.UIConfig:
 			foundUiEvent = true
@@ -301,7 +303,9 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.ElementsMatch(testSettings.SleepSchedule.PermanentlyExemptHosts, settingsFromConnector.SleepSchedule.PermanentlyExemptHosts)
 	s.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, settingsFromConnector.Splunk.SplunkConnectionInfo.Channel)
 	s.EqualValues(testSettings.TaskLimits.MaxTasksPerVersion, settingsFromConnector.TaskLimits.MaxTasksPerVersion)
+	s.EqualValues(testSettings.TestSelection.URL, settingsFromConnector.TestSelection.URL)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settingsFromConnector.Ui.HttpListenAddr)
+	s.EqualValues(testSettings.Ui.StagingEnvironment, settingsFromConnector.Ui.StagingEnvironment)
 	s.EqualValues(testSettings.Tracer.Enabled, settingsFromConnector.Tracer.Enabled)
 	s.EqualValues(testSettings.Tracer.CollectorEndpoint, settingsFromConnector.Tracer.CollectorEndpoint)
 	s.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, settingsFromConnector.Tracer.CollectorInternalEndpoint)
@@ -324,7 +328,7 @@ func (s *AdminDataSuite) TestRestart() {
 	}
 	dryRunResp, err := RestartFailedTasks(ctx, s.env.LocalQueue(), opts)
 	s.NoError(err)
-	s.NotZero(len(dryRunResp.ItemsRestarted))
+	s.NotEmpty(dryRunResp.ItemsRestarted)
 	s.Nil(dryRunResp.ItemsErrored)
 
 	// test that restarting tasks successfully puts a job on the queue

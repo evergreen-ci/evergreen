@@ -152,7 +152,7 @@ func (s *hostSuite) TestAllTriggers() {
 	}))
 	n, err = NotificationsFromEvent(s.ctx, s.t.event)
 	s.NoError(err)
-	s.Require().Len(n, 0)
+	s.Require().Empty(n)
 
 	// A stopped host with no stopped event should trigger a notification.
 	s.Require().NoError(host.UpdateOne(s.ctx, host.ById(s.t.host.Id), bson.M{
@@ -200,11 +200,11 @@ func (s *hostSuite) TestAllTriggers() {
 
 	n, err = NotificationsFromEvent(s.ctx, s.t.event)
 	s.NoError(err)
-	s.Require().Len(n, 0)
+	s.Require().Empty(n)
 }
 
 func (s *hostSuite) TestHostExpiration() {
-	n, err := s.t.hostExpiration(&s.subs[0])
+	n, err := s.t.hostExpiration(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -220,7 +220,7 @@ func (s *hostSuite) TestHostTemporaryExemptionExpiration() {
 	s.t.host.ExpirationTime = time.Now().Add(evergreen.SpawnHostExpireDays * evergreen.SpawnHostNoExpirationDuration)
 	s.t.host.SleepSchedule.TemporarilyExemptUntil = time.Now().Add(time.Hour)
 
-	n, err := s.t.hostExpiration(&s.subs[0])
+	n, err := s.t.hostExpiration(s.ctx, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -228,7 +228,7 @@ func (s *hostSuite) TestHostTemporaryExemptionExpiration() {
 func (s *hostSuite) TestSpawnHostIdle() {
 	s.t.host.NoExpiration = true
 	s.t.host.Status = evergreen.HostStopped
-	n, err := s.t.spawnHostIdle(&s.subs[1])
+	n, err := s.t.spawnHostIdle(s.ctx, &s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
 }

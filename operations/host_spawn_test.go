@@ -265,7 +265,7 @@ func TestHostRsync(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, exported, 1)
 			baseIndex := strings.LastIndex(makeCompatiblePath(ctx, t, localDir), "/")
-			require.True(t, baseIndex > 0)
+			require.Positive(t, baseIndex)
 			assert.Contains(t, exported[0].Args, fmt.Sprintf(`--rsync-path=mkdir -p "%s" && rsync`, makeCompatiblePath(ctx, t, remoteDir)[:baseIndex]))
 		},
 		"AdditionalParametersAreAdded": func(ctx context.Context, t *testing.T, localFile, remoteFile, localDir, remoteDir string) {

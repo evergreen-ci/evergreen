@@ -11,7 +11,6 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -35,52 +34,6 @@ func New(apiURL string) Config {
 		Resolvers: &Resolver{
 			sc: dbConnector,
 		},
-	}
-	c.Directives.RequireHostAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access HostAccessLevel) (interface{}, error) {
-		args, isStringMap := obj.(map[string]interface{})
-		if !isStringMap {
-			return nil, ResourceNotFound.Send(ctx, "host not specified")
-		}
-		hostId, hasHostId := args["hostId"].(string)
-		hostIdsInterface, hasHostIds := args["hostIds"].([]interface{})
-		if !hasHostId && !hasHostIds {
-			return nil, ResourceNotFound.Send(ctx, "host not specified")
-		}
-
-		hostIdsToCheck := []string{hostId}
-		if hasHostIds {
-			for _, v := range hostIdsInterface {
-				hostIdsToCheck = append(hostIdsToCheck, v.(string))
-			}
-		}
-		var requiredLevel int
-		if access == HostAccessLevelEdit {
-			requiredLevel = evergreen.HostsEdit.Value
-		} else {
-			requiredLevel = evergreen.HostsView.Value
-		}
-		user := mustHaveUser(ctx)
-		hostsToCheck, err := host.Find(ctx, host.ByIds(hostIdsToCheck))
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting hosts: %s", err.Error()))
-		}
-		if len(hostsToCheck) == 0 {
-			return nil, ResourceNotFound.Send(ctx, "No matching hosts found")
-		}
-		forbiddenHosts := []string{}
-		for _, h := range hostsToCheck {
-			if !userHasHostPermission(user, h.Distro.Id, requiredLevel, h.StartedBy) {
-				forbiddenHosts = append(forbiddenHosts, h.Id)
-			}
-		}
-		if len(forbiddenHosts) == 1 {
-			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access host '%s'", user.Username(), forbiddenHosts[0]))
-		} else if len(forbiddenHosts) > 1 {
-			hostsString := strings.Join(forbiddenHosts, ", ")
-			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access hosts: '%s'", user.Username(), hostsString))
-		}
-
-		return next(ctx)
 	}
 	c.Directives.RequireDistroAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (interface{}, error) {
 		user := mustHaveUser(ctx)

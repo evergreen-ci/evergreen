@@ -23,7 +23,7 @@ const (
 
 	// maxSpawnHostSetupScriptCheckDuration is the total amount of time that the
 	// spawn host setup script job can poll to see if the task data is loaded.
-	maxSpawnHostSetupScriptCheckDuration = 10 * time.Minute
+	maxSpawnHostSetupScriptCheckDuration = 25 * time.Minute
 	// maxSpawnHostSetupScriptDuration is the total amount of time that the
 	// spawn host setup script can run after task data is loaded.
 	maxSpawnHostSetupScriptDuration = 30 * time.Minute
@@ -84,7 +84,7 @@ func (j *hostSetupScriptJob) Run(ctx context.Context) {
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
 			}))
-			event.LogHostScriptExecuteFailed(j.HostID, j.Error())
+			event.LogHostScriptExecuteFailed(j.HostID, "", j.Error())
 		}
 	}()
 

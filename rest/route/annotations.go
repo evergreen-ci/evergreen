@@ -265,7 +265,7 @@ func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (str
 	}
 
 	// check if the task exists
-	t, err := task.FindByIdExecution(taskId, annotation.TaskExecution)
+	t, err := task.FindByIdExecution(ctx, taskId, annotation.TaskExecution)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "finding task")
 	}
@@ -343,7 +343,7 @@ func (h *annotationByTaskPutHandler) Parse(ctx context.Context, r *http.Request)
 }
 
 func (h *annotationByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
-	err := task.UpsertAnnotation(restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName())
+	err := task.UpsertAnnotation(ctx, restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName())
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "updating annotation"))
 	}
@@ -398,7 +398,7 @@ func (h *annotationByTaskPatchHandler) Parse(ctx context.Context, r *http.Reques
 }
 
 func (h *annotationByTaskPatchHandler) Run(ctx context.Context) gimlet.Responder {
-	err := task.PatchAnnotation(restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName(), h.upsert)
+	err := task.PatchAnnotation(ctx, restModel.APITaskAnnotationToService(*h.annotation), h.user.DisplayName(), h.upsert)
 	if err != nil {
 		gimlet.NewJSONInternalErrorResponse(err)
 	}
@@ -456,7 +456,7 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 	}
 	h.execution = execution
 
-	t, err := task.FindOneId(h.taskId)
+	t, err := task.FindOneId(ctx, h.taskId)
 	if err != nil {
 		return errors.Wrapf(err, "finding task '%s'", h.taskId)
 	}

@@ -211,7 +211,7 @@ func (s *ProjectConnectorGetSuite) TearDownSuite() {
 func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 	events, err := GetProjectEventLog(projectId, time.Now(), 0)
 	s.NoError(err)
-	s.Equal(projEventCount, len(events))
+	s.Len(events, projEventCount)
 	for _, eventLog := range events {
 		s.Len(eventLog.Before.Aliases, 1)
 		s.Len(eventLog.After.Aliases, 1)
@@ -220,7 +220,7 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 		s.Nil(eventLog.Before.ProjectRef.PeriodicBuilds)
 		s.Nil(eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
 		s.NotNil(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands)
-		s.Len(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands, 0)
+		s.Empty(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands)
 		s.Equal(evergreen.RedactedBeforeValue, eventLog.Before.Vars.Vars["hello"])
 		s.Equal(evergreen.RedactedAfterValue, eventLog.After.Vars.Vars["hello"])
 		s.Equal(evergreen.RedactedBeforeValue, eventLog.Before.Vars.Vars["world"])
@@ -232,7 +232,7 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 	// No error for empty events
 	events, err = GetProjectEventLog("projectA", time.Now(), 0)
 	s.NoError(err)
-	s.Equal(0, len(events))
+	s.Empty(events)
 }
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
@@ -313,7 +313,7 @@ func checkAndSetProjectVarsSynced(t *testing.T, projRef *model.ProjectRef, isRep
 
 func checkParametersNamespacedByProject(t *testing.T, vars model.ProjectVars) {
 	projectID := vars.Id
-	commonAndProjectIDPrefix := fmt.Sprintf("/%s/%s/", strings.TrimSuffix(strings.TrimPrefix(evergreen.GetEnvironment().Settings().Providers.AWS.ParameterStore.Prefix, "/"), "/"), model.GetVarsParameterPath(projectID))
+	commonAndProjectIDPrefix := fmt.Sprintf("/%s/%s/", strings.TrimSuffix(strings.TrimPrefix(evergreen.GetEnvironment().Settings().ParameterStore.Prefix, "/"), "/"), model.GetVarsParameterPath(projectID))
 	for _, pm := range vars.Parameters {
 		assert.True(t, strings.HasPrefix(pm.ParameterName, commonAndProjectIDPrefix), "parameter name '%s' should have standard prefix '%s'", pm.ParameterName, commonAndProjectIDPrefix)
 	}
@@ -338,8 +338,8 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	_, ok := newVars.Vars["a"]
 	s.False(ok)
 
-	s.Equal(newVars.PrivateVars["b"], true)
-	s.Equal(newVars.PrivateVars["c"], true)
+	s.True(newVars.PrivateVars["b"])
+	s.True(newVars.PrivateVars["c"])
 	_, ok = newVars.PrivateVars["a"]
 	s.False(ok)
 
@@ -378,139 +378,6 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 
 	checkParametersMatchVars(ctx, s.T(), dbUpsertedVars.Parameters, dbUpsertedVars.Vars)
 	checkParametersNamespacedByProject(s.T(), *dbNewVars)
-}
-
-func TestUpdateProjectVarsByValue(t *testing.T) {
-	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, fakeparameter.Collection, event.EventCollection))
-
-	pRef := model.ProjectRef{
-		Id:                    projectId,
-		ParameterStoreEnabled: true,
-	}
-	require.NoError(t, pRef.Insert())
-
-	vars := &model.ProjectVars{
-		Id:          pRef.Id,
-		Vars:        map[string]string{"a": "1", "b": "3"},
-		PrivateVars: map[string]bool{"b": true},
-	}
-	require.NoError(t, vars.Insert())
-	checkAndSetProjectVarsSynced(t, &pRef, false)
-
-	resp, err := model.UpdateProjectVarsByValue("1", "11", "user", true, false)
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Equal(t, []string{"a"}, resp[projectId])
-
-	res, err := FindProjectVarsById(projectId, "", false)
-	assert.NoError(t, err)
-	assert.NotNil(t, res)
-	assert.Equal(t, "1", res.Vars["a"])
-
-	resp, err = model.UpdateProjectVarsByValue("1", "11", username, false, false)
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Equal(t, []string{"a"}, resp[projectId])
-
-	res, err = FindProjectVarsById(projectId, "", false)
-	assert.NoError(t, err)
-	assert.NotNil(t, res)
-	assert.Equal(t, "11", res.Vars["a"])
-
-	resp, err = model.UpdateProjectVarsByValue("3", "33", username, false, false)
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Equal(t, []string{"b"}, resp[projectId])
-
-	res, err = FindProjectVarsById(projectId, "", false)
-	assert.NoError(t, err)
-	assert.NotNil(t, res)
-	assert.Equal(t, "33", res.Vars["b"])
-
-	projectEvents, err := model.MostRecentProjectEvents(projectId, 5)
-	assert.NoError(t, err)
-	require.Len(t, projectEvents, 2)
-
-	assert.NotNil(t, projectEvents[0].Data)
-	eventData := projectEvents[0].Data.(*model.ProjectChangeEvent)
-
-	assert.Equal(t, username, eventData.User)
-	assert.Equal(t, evergreen.RedactedBeforeValue, eventData.Before.Vars.Vars["b"])
-	assert.True(t, eventData.Before.Vars.PrivateVars["b"])
-	assert.Equal(t, evergreen.RedactedAfterValue, eventData.After.Vars.Vars["b"])
-	assert.True(t, eventData.After.Vars.PrivateVars["b"])
-
-	require.NotNil(t, projectEvents[1].Data)
-	eventData = projectEvents[1].Data.(*model.ProjectChangeEvent)
-
-	assert.Equal(t, username, eventData.User)
-	assert.Equal(t, evergreen.RedactedBeforeValue, eventData.Before.Vars.Vars["a"])
-	assert.Equal(t, evergreen.RedactedAfterValue, eventData.After.Vars.Vars["a"])
-}
-
-func TestUpdateProjectVarsByValueWithEnabledOnly(t *testing.T) {
-	require.NoError(t, db.ClearCollections(model.ProjectVarsCollection, fakeparameter.Collection, event.EventCollection, model.ProjectRefCollection))
-
-	enabledRef := &model.ProjectRef{
-		Id:                    "enabledProject",
-		Identifier:            "enabledProjectIdent",
-		Enabled:               true,
-		ParameterStoreEnabled: true,
-	}
-	require.NoError(t, enabledRef.Insert())
-	disabledRef := &model.ProjectRef{
-		Id:                    "disabledProject",
-		Identifier:            "disabledProjectIdent",
-		Enabled:               false,
-		ParameterStoreEnabled: true,
-	}
-	require.NoError(t, disabledRef.Insert())
-	repoRef := &model.RepoRef{
-		ProjectRef: model.ProjectRef{
-			Id:                    "repoProject",
-			Identifier:            "repoProjectIdent",
-			Enabled:               true,
-			ParameterStoreEnabled: true,
-		},
-	}
-	require.NoError(t, repoRef.Upsert())
-
-	enabledVars := &model.ProjectVars{
-		Id:          enabledRef.Id,
-		Vars:        map[string]string{"a": "1", "b": "3"},
-		PrivateVars: map[string]bool{"b": true},
-	}
-	require.NoError(t, enabledVars.Insert())
-	checkAndSetProjectVarsSynced(t, enabledRef, false)
-	disabledVars := &model.ProjectVars{
-		Id:          disabledRef.Id,
-		Vars:        map[string]string{"a": "1", "b": "3"},
-		PrivateVars: map[string]bool{"b": true},
-	}
-	require.NoError(t, disabledVars.Insert())
-	checkAndSetProjectVarsSynced(t, disabledRef, false)
-	repoVars := &model.ProjectVars{
-		Id:          repoRef.Id,
-		Vars:        map[string]string{"a": "1", "b": "3"},
-		PrivateVars: map[string]bool{"b": true},
-	}
-	require.NoError(t, repoVars.Insert())
-	checkAndSetProjectVarsSynced(t, &repoRef.ProjectRef, true)
-
-	resp, err := model.UpdateProjectVarsByValue("1", "11", "user", true, false)
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Len(t, resp, 3) // All three projects considered
-	assert.Equal(t, []string{"a"}, resp["enabledProjectIdent"])
-	assert.Equal(t, []string{"a"}, resp["disabledProjectIdent"])
-	assert.Equal(t, []string{"a"}, resp["repoProject"])
-
-	resp, err = model.UpdateProjectVarsByValue("1", "11", "user", true, true)
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-	assert.Len(t, resp, 2) // Only two projects considered
-	assert.Equal(t, []string{"a"}, resp["enabledProjectIdent"])
-	assert.Equal(t, []string{"a"}, resp["repoProject"])
 }
 
 func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
@@ -727,9 +594,9 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 
 	// Because this document does not use <Fieldname>Default flags, it returns empty arrays instead of nil
 	require.NotNil(t, eventLog.Before.ProjectRef.PeriodicBuilds)
-	require.Len(t, eventLog.Before.ProjectRef.PeriodicBuilds, 0)
+	require.Empty(t, eventLog.Before.ProjectRef.PeriodicBuilds)
 	require.NotNil(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
-	require.Len(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands, 0)
+	require.Empty(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
 }
 
 func TestRequestS3Creds(t *testing.T) {
@@ -741,7 +608,7 @@ func TestRequestS3Creds(t *testing.T) {
 	assert.NoError(t, RequestS3Creds(ctx, "identifier", "user@email.com"))
 	n, err := notification.FindUnprocessed()
 	assert.NoError(t, err)
-	assert.Len(t, n, 0)
+	assert.Empty(t, n)
 	projectCreationConfig := evergreen.ProjectCreationConfig{
 		JiraProject: "BUILD",
 	}
@@ -824,7 +691,7 @@ func TestHideBranch(t *testing.T) {
 
 	projAliases, err := model.FindAliasesForProjectFromDb(project.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(projAliases))
+	assert.Empty(t, projAliases)
 
 	skeletonProjVars := model.ProjectVars{
 		Id:   project.Id,

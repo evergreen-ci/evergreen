@@ -3,6 +3,8 @@ package command
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -32,7 +34,7 @@ type githubGenerateToken struct {
 	Repo string `mapstructure:"repo" plugin:"expand"`
 
 	// ExpansionName is what the generated token will be saved as.
-	ExpansionName string `mapstructure:"expansion_name"`
+	ExpansionName string `mapstructure:"expansion_name" plugin:"expand"`
 
 	// Permissions to grant the token. If not provided, set to nil to grant all permissions.
 	// The command can never specify to restrict all permissions- as it would
@@ -106,10 +108,14 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 		attribute.String(githubGenerateTokenRepoAttribute, r.Repo),
 		attribute.Bool(githubGenerateTokenAllPermissionAttribute, r.Permissions == nil),
 	)
-	token, err := comm.CreateGitHubDynamicAccessToken(ctx, td, r.Owner, r.Repo, r.Permissions)
+
+	logger.Task().Infof("Requesting a GitHub dynamic access token with owner:%s, repository:%s, permissions:%s", r.Owner, r.Repo, permissionsToString(r.Permissions))
+	token, permissions, err := comm.CreateGitHubDynamicAccessToken(ctx, td, r.Owner, r.Repo, r.Permissions)
 	if err != nil {
 		return errors.Wrap(err, "creating github dynamic access token")
 	}
+
+	logger.Task().Infof("Created a GitHub dynamic access token. The token has the following permissions: %s", permissionsToString(permissions))
 
 	// We write or overwrite the expansion with the new token.
 	conf.NewExpansions.PutAndRedact(r.ExpansionName, token)
@@ -129,4 +135,25 @@ func (r *githubGenerateToken) Execute(ctx context.Context, comm client.Communica
 	})
 
 	return nil
+}
+
+// permissionsToString converts the permissions struct to a string in the format [key:value, key:value].
+func permissionsToString(permissions *github.InstallationPermissions) string {
+	if permissions == nil {
+		return "[]"
+	}
+	val := reflect.ValueOf(permissions).Elem()
+	var p []string
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+		if field.Kind() != reflect.Ptr || field.Elem().Kind() != reflect.String {
+			continue
+		}
+
+		if !field.IsNil() {
+			p = append(p, fmt.Sprintf("%s:%v", val.Type().Field(i).Name, *field.Interface().(*string)))
+		}
+	}
+
+	return "[" + strings.Join(p, ", ") + "]"
 }
