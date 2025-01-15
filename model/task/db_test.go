@@ -2047,6 +2047,7 @@ func TestHasActivatedDependentTasks(t *testing.T) {
 	hasDependentTasks, err = HasActivatedDependentTasks("secondTask")
 	assert.NoError(t, err)
 	assert.False(t, hasDependentTasks)
+	assert.False(t, t3.DependenciesMetTime.IsZero())
 
 	hasDependentTasks, err = HasActivatedDependentTasks("inactive")
 	assert.NoError(t, err)

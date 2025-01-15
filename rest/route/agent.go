@@ -876,9 +876,10 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 	grip.Debug(message.Fields{
-		"message": "marking task started",
-		"task_id": t.Id,
-		"details": t.Details,
+		"message":                        "marking task started",
+		"task_id":                        t.Id,
+		"details":                        t.Details,
+		"seconds_since_dependencies_met": time.Since(t.DependenciesMetTime).Seconds(),
 	})
 
 	updates := model.StatusChanges{}

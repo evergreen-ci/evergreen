@@ -274,6 +274,7 @@ func TestDependenciesMet(t *testing.T) {
 			met, err := taskDoc.DependenciesMet(map[string]Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
+			So(utility.IsZeroTime(taskDoc.DependenciesMetTime), ShouldBeTrue)
 			taskDoc.DependenciesMetTime = utility.ZeroTime
 		})
 
@@ -283,6 +284,7 @@ func TestDependenciesMet(t *testing.T) {
 			met, err := taskDoc.DependenciesMet(map[string]Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
+			So(utility.IsZeroTime(taskDoc.DependenciesMetTime), ShouldBeTrue)
 			taskDoc.DependenciesMetTime = utility.ZeroTime
 		})
 
@@ -301,6 +303,7 @@ func TestDependenciesMet(t *testing.T) {
 				met, err := taskDoc.DependenciesMet(map[string]Task{})
 				So(err, ShouldBeNil)
 				So(met, ShouldBeFalse)
+				So(utility.IsZeroTime(taskDoc.DependenciesMetTime), ShouldBeTrue)
 				taskDoc.DependenciesMetTime = utility.ZeroTime
 			})
 
@@ -322,6 +325,7 @@ func TestDependenciesMet(t *testing.T) {
 			met, err := taskDoc.DependenciesMet(dependencyCache)
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
+			So(utility.IsZeroTime(taskDoc.DependenciesMetTime), ShouldBeFalse)
 			taskDoc.DependenciesMetTime = utility.ZeroTime
 			for _, depTaskId := range depTaskIds[:4] {
 				So(dependencyCache[depTaskId.TaskId].Id, ShouldEqual, depTaskId.TaskId)
@@ -337,6 +341,7 @@ func TestDependenciesMet(t *testing.T) {
 			met, err := taskDoc.DependenciesMet(dependencyCache)
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
+			So(utility.IsZeroTime(taskDoc.DependenciesMetTime), ShouldBeFalse)
 			taskDoc.DependenciesMetTime = utility.ZeroTime
 
 			// alter the dependency cache so that it should seem as if the
@@ -385,6 +390,7 @@ func TestDependenciesMet(t *testing.T) {
 				met, err := taskDoc.DependenciesMet(dependencyCache)
 				So(err, ShouldBeNil)
 				So(met, ShouldBeFalse)
+				So(utility.IsZeroTime(taskDoc.DependenciesMetTime), ShouldBeTrue)
 				taskDoc.DependenciesMetTime = utility.ZeroTime
 
 				met, err = taskDoc.AllDependenciesSatisfied(dependencyCache)
@@ -397,6 +403,7 @@ func TestDependenciesMet(t *testing.T) {
 				met, err = taskDoc.DependenciesMet(dependencyCache)
 				So(err, ShouldBeNil)
 				So(met, ShouldBeTrue)
+				So(utility.IsZeroTime(taskDoc.DependenciesMetTime), ShouldBeFalse)
 				taskDoc.DependenciesMetTime = utility.ZeroTime
 
 				met, err = taskDoc.AllDependenciesSatisfied(dependencyCache)
@@ -614,6 +621,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NotZero(t, dbTask2)
 			require.Len(t, dbTask2.DependsOn, 1)
 			assert.False(t, dbTask2.DependsOn[0].Finished, "unconnected dependency edge should not be marked finished")
+			assert.True(t, utility.IsZeroTime(dbTask2.DependsOn[0].FinishedAt), "unconnected dependency edge should not be marked finished")
 		},
 		"UpdatesDependencyWithMatchingStatus": func(t *testing.T) {
 			t0 := Task{
@@ -632,6 +640,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
+			t0.FinishTime = time.Now()
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
 			dbTask1, err := FindOneId(t1.Id)
@@ -639,6 +648,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
 			assert.True(t, dbTask1.DependsOn[0].Finished)
+			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
 		},
 		"UpdatesDependencyWithUnmatchingStatus": func(t *testing.T) {
 			t0 := Task{
@@ -657,13 +667,103 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
+			t0.FinishTime = time.Now()
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
+			assert.NoError(t, t0.MarkEnd(t0.FinishTime, &apimodels.TaskEndDetail{Status: evergreen.TaskFailed}))
 
 			dbTask1, err := FindOneId(t1.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
 			assert.True(t, dbTask1.DependsOn[0].Finished)
+			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
+
+			met, err := dbTask1.DependenciesMet(map[string]Task{})
+			assert.NoError(t, err)
+			assert.False(t, met)
+			assert.Zero(t, dbTask1.DependenciesMetTime)
+		},
+		"UpdatesDependenciesMetTimeAccordingToFinishedAtWithSingleDependency": func(t *testing.T) {
+			t0 := Task{
+				Id:     "task0",
+				Status: evergreen.TaskSucceeded,
+			}
+			t1 := Task{
+				Id: "task1",
+				DependsOn: []Dependency{
+					{
+						TaskId: "task0",
+						Status: evergreen.TaskSucceeded,
+					},
+				},
+			}
+			require.NoError(t, t0.Insert())
+			require.NoError(t, t1.Insert())
+
+			t0.FinishTime = time.Now().Round(time.Millisecond)
+			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
+			assert.NoError(t, t0.MarkEnd(t0.FinishTime, &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}))
+
+			dbTask1, err := FindOneId(t1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask1)
+			require.Len(t, dbTask1.DependsOn, 1)
+			assert.True(t, dbTask1.DependsOn[0].Finished)
+			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
+
+			met, err := dbTask1.DependenciesMet(map[string]Task{})
+			assert.NoError(t, err)
+			assert.True(t, met)
+			assert.Equal(t, dbTask1.DependenciesMetTime, t0.FinishTime)
+		},
+		"UpdatesDependenciesMetTimeAccordingToFinishedAt": func(t *testing.T) {
+			t0 := Task{
+				Id:     "task0",
+				Status: evergreen.TaskSucceeded,
+			}
+			t1 := Task{
+				Id:     "task1",
+				Status: evergreen.TaskSucceeded,
+			}
+			t2 := Task{
+				Id: "task2",
+				DependsOn: []Dependency{
+					{
+						TaskId: "task0",
+						Status: evergreen.TaskSucceeded,
+					},
+					{
+						TaskId: "task1",
+						Status: evergreen.TaskSucceeded,
+					},
+				},
+			}
+			require.NoError(t, t0.Insert())
+			require.NoError(t, t1.Insert())
+			require.NoError(t, t2.Insert())
+
+			t0.FinishTime = time.Now()
+			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
+			assert.NoError(t, t0.MarkEnd(t0.FinishTime, &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}))
+
+			t1.FinishTime = time.Now().Round(time.Millisecond)
+			require.NoError(t, t1.MarkDependenciesFinished(ctx, true))
+			assert.NoError(t, t1.MarkEnd(t1.FinishTime, &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}))
+
+			dbTask2, err := FindOneId(t2.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask2)
+			require.Len(t, dbTask2.DependsOn, 2)
+			assert.True(t, dbTask2.DependsOn[0].Finished)
+			assert.False(t, utility.IsZeroTime(dbTask2.DependsOn[0].FinishedAt))
+			assert.True(t, dbTask2.DependsOn[1].Finished)
+			assert.False(t, utility.IsZeroTime(dbTask2.DependsOn[1].FinishedAt))
+
+			met, err := dbTask2.DependenciesMet(map[string]Task{})
+			assert.NoError(t, err)
+			assert.True(t, met)
+			assert.Equal(t, dbTask2.DependenciesMetTime, t1.FinishTime)
+			assert.True(t, dbTask2.DependenciesMetTime.After(t0.FinishTime))
 		},
 		"UpdatesSpecificDependency": func(t *testing.T) {
 			t0 := Task{
@@ -685,6 +785,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
+			t0.FinishTime = time.Now()
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
 			dbTask1, err := FindOneId(t1.Id)
@@ -692,9 +793,13 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 4)
 			assert.False(t, dbTask1.DependsOn[0].Finished)
+			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
 			assert.False(t, dbTask1.DependsOn[1].Finished)
+			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[1].FinishedAt))
 			assert.True(t, dbTask1.DependsOn[2].Finished)
+			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[2].FinishedAt))
 			assert.False(t, dbTask1.DependsOn[3].Finished)
+			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[3].FinishedAt))
 		},
 		"UpdatesDirectDependenciesOnly": func(t *testing.T) {
 			t0 := Task{
@@ -717,6 +822,7 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t1.Insert())
 			require.NoError(t, t2.Insert())
 
+			t0.FinishTime = time.Now()
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
 			dbTask1, err := FindOneId(t1.Id)
@@ -724,12 +830,14 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
 			assert.True(t, dbTask1.DependsOn[0].Finished, "direct dependency should be marked finished")
+			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt), "direct dependency should be marked finished")
 
 			dbTask2, err := FindOneId(t2.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask2)
 			require.Len(t, dbTask2.DependsOn, 1)
 			assert.False(t, dbTask2.DependsOn[0].Finished, "indirect dependency edge should not be marked finished")
+			assert.True(t, utility.IsZeroTime(dbTask2.DependsOn[0].FinishedAt), "indirect dependency edge should not be marked finished")
 		},
 		"UpdateDependencyToUnfinished": func(t *testing.T) {
 			t0 := Task{
@@ -754,7 +862,8 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
-			assert.False(t, dbTask1.DependsOn[0].Finished, "direct dependency should be marked finished")
+			assert.False(t, dbTask1.DependsOn[0].Finished, "direct dependency should not be marked finished")
+			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt), "direct dependency should not be marked finished")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -765,27 +874,34 @@ func TestMarkDependenciesFinished(t *testing.T) {
 }
 
 func TestSetTasksScheduledTime(t *testing.T) {
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("With some tasks", t, func() {
 
 		So(db.Clear(Collection), ShouldBeNil)
 
 		tasks := []Task{
-			{Id: "t0", ScheduledTime: utility.ZeroTime, ExecutionTasks: []string{"t1", "t2"}},
-			{Id: "t1", ScheduledTime: utility.ZeroTime},
-			{Id: "t2", ScheduledTime: utility.ZeroTime},
-			{Id: "t3", ScheduledTime: utility.ZeroTime},
+			{Id: "t0", ScheduledTime: utility.ZeroTime, DependenciesMetTime: utility.ZeroTime, ExecutionTasks: []string{"t1", "t2"}},
+			{Id: "t1", ScheduledTime: utility.ZeroTime, DependenciesMetTime: utility.ZeroTime},
+			{Id: "t2", ScheduledTime: utility.ZeroTime, DependenciesMetTime: utility.ZeroTime},
+			{Id: "t3", ScheduledTime: utility.ZeroTime, DependenciesMetTime: utility.ZeroTime, DependsOn: []Dependency{{TaskId: "t2"}}},
 		}
 		for _, task := range tasks {
 			So(task.Insert(), ShouldBeNil)
 		}
 		Convey("when updating ScheduledTime for some of the tasks", func() {
 			testTime := time.Unix(31337, 0)
-			So(SetTasksScheduledTime(tasks[2:], testTime), ShouldBeNil)
+			So(SetTasksScheduledAndDepsMetTime(tasks[2:], testTime), ShouldBeNil)
 
 			Convey("the tasks should be updated in memory", func() {
 				So(tasks[1].ScheduledTime, ShouldResemble, utility.ZeroTime)
 				So(tasks[2].ScheduledTime, ShouldResemble, testTime)
 				So(tasks[3].ScheduledTime, ShouldResemble, testTime)
+				So(tasks[1].DependenciesMetTime, ShouldResemble, utility.ZeroTime)
+				So(tasks[2].DependenciesMetTime, ShouldResemble, testTime)
+				So(tasks[3].DependenciesMetTime, ShouldResemble, utility.ZeroTime)
 
 				Convey("and in the db", func() {
 					// Need to use a margin of error on time tests
@@ -795,56 +911,77 @@ func TestSetTasksScheduledTime(t *testing.T) {
 					t0, err := FindOne(db.Query(ById("t0")))
 					So(err, ShouldBeNil)
 					So(t0.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+					So(t0.DependenciesMetTime.Round(oneMs), ShouldResemble, testTime)
 					t1, err := FindOne(db.Query(ById("t1")))
 					So(err, ShouldBeNil)
 					So(t1.ScheduledTime.Round(oneMs), ShouldResemble, utility.ZeroTime)
+					So(t1.DependenciesMetTime.Round(oneMs), ShouldResemble, utility.ZeroTime)
 					t2, err := FindOne(db.Query(ById("t2")))
 					So(err, ShouldBeNil)
 					So(t2.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+					So(t2.DependenciesMetTime.Round(oneMs), ShouldResemble, testTime)
 					t3, err := FindOne(db.Query(ById("t3")))
 					So(err, ShouldBeNil)
 					So(t3.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+					So(t3.DependenciesMetTime.Round(oneMs), ShouldResemble, utility.ZeroTime)
 				})
 
 				Convey("if we update a second time", func() {
 					newTime := time.Unix(99999999, 0)
 					So(newTime, ShouldHappenAfter, testTime)
-					So(SetTasksScheduledTime(tasks, newTime), ShouldBeNil)
+					So(SetTasksScheduledAndDepsMetTime(tasks, newTime), ShouldBeNil)
 
 					Convey("only unset scheduled times should be updated", func() {
 						t0, err := FindOne(db.Query(ById("t0")))
 						So(err, ShouldBeNil)
 						So(t0.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+						So(t0.DependenciesMetTime.Round(oneMs), ShouldResemble, testTime)
 						t1, err := FindOne(db.Query(ById("t1")))
 						So(err, ShouldBeNil)
 						So(t1.ScheduledTime.Round(oneMs), ShouldResemble, newTime)
+						So(t1.DependenciesMetTime.Round(oneMs), ShouldResemble, newTime)
 						t2, err := FindOne(db.Query(ById("t2")))
 						So(err, ShouldBeNil)
 						So(t2.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+						So(t2.DependenciesMetTime.Round(oneMs), ShouldResemble, testTime)
 						t3, err := FindOne(db.Query(ById("t3")))
 						So(err, ShouldBeNil)
 						So(t3.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+						So(t3.DependenciesMetTime.Round(oneMs), ShouldResemble, utility.ZeroTime)
 					})
 				})
 
 				Convey("if we update a third time", func() {
 					newTime := time.Unix(99999999, 0)
 					So(newTime, ShouldHappenAfter, testTime)
-					So(SetTasksScheduledTime(tasks, newTime), ShouldBeNil)
+
+					depsFinishedTime := time.Now()
+					So(tasks[2].MarkDependenciesFinished(ctx, true), ShouldBeNil)
+					So(tasks[2].MarkEnd(newTime, &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}), ShouldBeNil)
+					t3FromDb, err := FindOneId("t3")
+					So(err, ShouldBeNil)
+					depsMet, err := t3FromDb.DependenciesMet(map[string]Task{})
+					So(err, ShouldBeNil)
+					So(depsMet, ShouldBeTrue)
+					So(SetTasksScheduledAndDepsMetTime(tasks, newTime), ShouldBeNil)
 
 					Convey("nothing should have updated", func() {
 						t0, err := FindOne(db.Query(ById("t0")))
 						So(err, ShouldBeNil)
 						So(t0.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+						So(t0.DependenciesMetTime.Round(oneMs), ShouldResemble, testTime)
 						t1, err := FindOne(db.Query(ById("t1")))
 						So(err, ShouldBeNil)
 						So(t1.ScheduledTime.Round(oneMs), ShouldResemble, newTime)
+						So(t1.DependenciesMetTime.Round(oneMs), ShouldResemble, newTime)
 						t2, err := FindOne(db.Query(ById("t2")))
 						So(err, ShouldBeNil)
 						So(t2.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+						So(t2.DependenciesMetTime.Round(oneMs), ShouldResemble, testTime)
 						t3, err := FindOne(db.Query(ById("t3")))
 						So(err, ShouldBeNil)
 						So(t3.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+						So(t3.DependenciesMetTime.After(depsFinishedTime), ShouldBeTrue)
 					})
 				})
 

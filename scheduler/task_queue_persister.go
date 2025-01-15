@@ -47,7 +47,7 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 	}
 
 	// track scheduled time for prioritized tasks
-	if err := task.SetTasksScheduledTime(tasks, startAt); err != nil {
+	if err := task.SetTasksScheduledAndDepsMetTime(tasks, startAt); err != nil {
 		return errors.Wrapf(err, "setting scheduled time for prioritized tasks for distro '%s'", distro)
 	}
 	return nil
