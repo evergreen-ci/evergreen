@@ -26,8 +26,6 @@ import (
 
 const formMimeType = "application/x-www-form-urlencoded"
 
-var cliOutOfDateError = errors.New("CLI is out of date: use 'evergreen get-update --install'")
-
 // PatchAPIResponse is returned by all patch-related API calls
 type PatchAPIResponse struct {
 	Message string       `json:"message"`
