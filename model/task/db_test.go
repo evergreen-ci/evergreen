@@ -356,7 +356,9 @@ func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
 }
 
 func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
-	ctx := context.TODO()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
 	taskDoc := Task{
@@ -365,7 +367,7 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 		Activated: true,
 	}
 	assert.NoError(taskDoc.Insert())
-	task, err := FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, utility.ToIntPtr(0))
+	task, err := FindOneIdAndExecutionWithDisplayStatus(ctx, taskDoc.Id, utility.ToIntPtr(0))
 	assert.NoError(err)
 	assert.NotNil(task)
 	assert.Equal(evergreen.TaskSucceeded, task.DisplayStatus)
@@ -375,13 +377,13 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 	task, err = FindOneOldByIdAndExecution(taskDoc.Id, 0)
 	assert.NoError(err)
 	assert.NotNil(task)
-	task, err = FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, utility.ToIntPtr(0))
+	task, err = FindOneIdAndExecutionWithDisplayStatus(ctx, taskDoc.Id, utility.ToIntPtr(0))
 	assert.NoError(err)
 	assert.NotNil(task)
 	assert.Equal(task.OldTaskId, taskDoc.Id)
 
 	// Should fetch recent executions by default
-	task, err = FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, nil)
+	task, err = FindOneIdAndExecutionWithDisplayStatus(ctx, taskDoc.Id, nil)
 	assert.NoError(err)
 	assert.NotNil(task)
 	assert.Equal(1, task.Execution)
@@ -393,7 +395,7 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 		Activated: false,
 	}
 	assert.NoError(taskDoc.Insert())
-	task, err = FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, utility.ToIntPtr(0))
+	task, err = FindOneIdAndExecutionWithDisplayStatus(ctx, taskDoc.Id, utility.ToIntPtr(0))
 	assert.NoError(err)
 	assert.NotNil(task)
 	assert.Equal(evergreen.TaskUnscheduled, task.DisplayStatus)

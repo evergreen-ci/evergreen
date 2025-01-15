@@ -1357,7 +1357,7 @@ func FindOneIdAndExecution(ctx context.Context, id string, execution int) (*Task
 
 // FindOneIdAndExecutionWithDisplayStatus returns a single task with the given
 // ID and execution, with display statuses added.
-func FindOneIdAndExecutionWithDisplayStatus(id string, execution *int) (*Task, error) {
+func FindOneIdAndExecutionWithDisplayStatus(ctx context.Context, id string, execution *int) (*Task, error) {
 	tasks := []Task{}
 	match := bson.M{
 		IdKey: id,
@@ -1369,7 +1369,7 @@ func FindOneIdAndExecutionWithDisplayStatus(id string, execution *int) (*Task, e
 		{"$match": match},
 		addDisplayStatus,
 	}
-	if err := Aggregate(pipeline, &tasks); err != nil {
+	if err := AggregateContext(ctx, pipeline, &tasks); err != nil {
 		return nil, errors.Wrap(err, "finding task")
 	}
 	if len(tasks) != 0 {
@@ -1377,13 +1377,13 @@ func FindOneIdAndExecutionWithDisplayStatus(id string, execution *int) (*Task, e
 		return &t, nil
 	}
 
-	return FindOneOldByIdAndExecutionWithDisplayStatus(id, execution)
+	return findOneOldByIdAndExecutionWithDisplayStatus(ctx, id, execution)
 }
 
-// FindOneOldByIdAndExecutionWithDisplayStatus returns a single task with the
+// findOneOldByIdAndExecutionWithDisplayStatus returns a single task with the
 // given ID and execution from the old tasks collection, with display statuses
 // added.
-func FindOneOldByIdAndExecutionWithDisplayStatus(id string, execution *int) (*Task, error) {
+func findOneOldByIdAndExecutionWithDisplayStatus(ctx context.Context, id string, execution *int) (*Task, error) {
 	tasks := []Task{}
 	match := bson.M{
 		OldTaskIdKey: id,
@@ -1396,7 +1396,7 @@ func FindOneOldByIdAndExecutionWithDisplayStatus(id string, execution *int) (*Ta
 		addDisplayStatus,
 	}
 
-	if err := db.Aggregate(OldCollection, pipeline, &tasks); err != nil {
+	if err := db.AggregateContext(ctx, OldCollection, pipeline, &tasks); err != nil {
 		return nil, errors.Wrap(err, "finding task")
 	}
 	if len(tasks) != 0 {
@@ -1726,6 +1726,13 @@ func Remove(id string) error {
 
 func Aggregate(pipeline []bson.M, results interface{}) error {
 	return db.Aggregate(
+		Collection,
+		pipeline,
+		results)
+}
+
+func AggregateContext(ctx context.Context, pipeline []bson.M, results interface{}) error {
+	return db.AggregateContext(ctx,
 		Collection,
 		pipeline,
 		results)
