@@ -1561,60 +1561,6 @@ index ca20f6c..224168e 100644
 	s.NoError(err)
 }
 
-func (s *PatchIntentUnitsSuite) TestCliBackport() {
-	sourcePatch := &patch.Patch{
-		Id:      mgobson.NewObjectId(),
-		Project: s.project,
-		Githash: s.hash,
-		Alias:   evergreen.CommitQueueAlias,
-		GithubPatchData: thirdparty.GithubPatch{
-			BaseOwner: "evergreen-ci",
-			BaseRepo:  "evergreen",
-		},
-		Patches: []patch.ModulePatch{
-			{
-				Githash: "revision",
-				PatchSet: patch.PatchSet{
-					Patch: "something",
-					Summary: []thirdparty.Summary{
-						{Name: "asdf", Additions: 4, Deletions: 80},
-						{Name: "random.txt", Additions: 6, Deletions: 0},
-					},
-				},
-			},
-		},
-	}
-	s.NoError(sourcePatch.Insert())
-	params := patch.CLIIntentParams{
-		User:        s.user,
-		Project:     s.project,
-		BaseGitHash: s.hash,
-		BackportOf: patch.BackportInfo{
-			PatchID: sourcePatch.Id.Hex(),
-		},
-	}
-
-	intent, err := patch.NewCliIntent(params)
-	s.NoError(err)
-	s.NotNil(intent)
-	s.NoError(intent.Insert())
-
-	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
-	id := mgobson.NewObjectId()
-	j, ok := NewPatchIntentProcessor(s.env, id, intent).(*patchIntentProcessor)
-	j.env = s.env
-	s.True(ok)
-	s.NotNil(j)
-	j.Run(s.ctx)
-	s.NoError(j.Error())
-
-	backportPatch, err := patch.FindOneId(id.Hex())
-	s.NoError(err)
-	s.Equal(sourcePatch.Id.Hex(), backportPatch.BackportOf.PatchID)
-	s.Len(backportPatch.Patches, 1)
-	s.Equal(sourcePatch.Patches[0].PatchSet.Patch, backportPatch.Patches[0].PatchSet.Patch)
-}
-
 func (s *PatchIntentUnitsSuite) TestProcessTriggerAliases() {
 	latestVersion := model.Version{
 		Id:         "childProj-some-version",

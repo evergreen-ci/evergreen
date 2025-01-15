@@ -543,7 +543,6 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		SyncStatuses        []string                   `json:"sync_statuses"`
 		SyncTimeout         time.Duration              `json:"sync_timeout"`
 		Finalize            bool                       `json:"finalize"`
-		BackportInfo        patch.BackportInfo         `json:"backport_info"`
 		TriggerAliases      []string                   `json:"trigger_aliases"`
 		Parameters          []patch.Parameter          `json:"parameters"`
 		GitMetadata         patch.GitMetadata          `json:"git_metadata"`
@@ -569,7 +568,6 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		SyncStatuses:        incomingPatch.syncStatuses,
 		SyncTimeout:         incomingPatch.syncTimeout,
 		Finalize:            incomingPatch.finalize,
-		BackportInfo:        incomingPatch.backportOf,
 		TriggerAliases:      incomingPatch.triggerAliases,
 		Parameters:          incomingPatch.parameters,
 		GitMetadata:         incomingPatch.gitMetadata,
