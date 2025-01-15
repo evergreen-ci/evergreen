@@ -300,7 +300,7 @@
               }
             ],
             "pagination": {
-              "nextPageOrder": 1,
+              "nextPageOrder": 0,
               "prevPageOrder": 0
             }
           }
@@ -612,6 +612,44 @@
                 "order": 39
               }
             ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "trailing_inactive_versions.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "versions": [
+              {
+                "version": {
+                  "id": "sandbox_active",
+                  "order": 3,
+                  "revision": "abc"
+                },
+                "inactiveVersions": null
+              },
+              {
+                "version": null,
+                "inactiveVersions": [
+                  {
+                    "id": "sandbox_inactive1",
+                    "order": 2,
+                    "revision": "abc"
+                  },
+                  {
+                    "id": "sandbox_inactive2",
+                    "order": 1,
+                    "revision": "abc"
+                  }
+                ]
+              }
+            ],
+            "pagination": {
+              "nextPageOrder": 0,
+              "prevPageOrder": 0
+            }
           }
         }
       }
