@@ -419,7 +419,7 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 	if obj.GeneratedBy == "" {
 		return nil, nil
 	}
-	generator, err := task.FindOneIdWithFields(obj.GeneratedBy, task.DisplayNameKey)
+	generator, err := task.FindOneIdWithFields(ctx, obj.GeneratedBy, task.DisplayNameKey)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("unable to find generator: %s", err.Error()))
 	}

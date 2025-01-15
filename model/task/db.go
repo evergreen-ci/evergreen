@@ -1448,7 +1448,7 @@ func FindOneOldByIdAndExecution(ctx context.Context, id string, execution int) (
 
 // FindOneIdWithFields returns a single task with the given ID, projecting only
 // the given fields.
-func FindOneIdWithFields(id string, projected ...string) (*Task, error) {
+func FindOneIdWithFields(ctx context.Context, id string, projected ...string) (*Task, error) {
 	task := &Task{}
 	query := db.Query(bson.M{IdKey: id})
 
@@ -1456,7 +1456,7 @@ func FindOneIdWithFields(id string, projected ...string) (*Task, error) {
 		query = query.WithFields(projected...)
 	}
 
-	err := db.FindOneQ(Collection, query, task)
+	err := db.FindOneQContext(ctx, Collection, query, task)
 
 	if adb.ResultsNotFound(err) {
 		return nil, nil
