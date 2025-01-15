@@ -879,7 +879,7 @@ func GetRecentTaskStats(ctx context.Context, period time.Duration, nameKey strin
 	}
 
 	result := []StatusItem{}
-	if err := AggregateContext(ctx, pipeline, &result); err != nil {
+	if err := Aggregate(ctx, pipeline, &result); err != nil {
 		return nil, errors.Wrap(err, "aggregating recently-finished task stats")
 	}
 
@@ -1130,7 +1130,7 @@ func FindHostRunnable(ctx context.Context, distroID string, removeDeps bool) ([]
 	)
 
 	runnableTasks := []Task{}
-	if err := AggregateContext(ctx, pipeline, &runnableTasks); err != nil {
+	if err := Aggregate(ctx, pipeline, &runnableTasks); err != nil {
 		return nil, errors.Wrap(err, "fetching runnable host tasks")
 	}
 
@@ -1158,7 +1158,7 @@ func FindVariantsWithTask(ctx context.Context, taskName, project string, orderMi
 		},
 	}
 	docs := []map[string]string{}
-	err := AggregateContext(ctx, pipeline, &docs)
+	err := Aggregate(ctx, pipeline, &docs)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding variants with task named '%s'", taskName)
 	}
@@ -1240,7 +1240,7 @@ func FindUniqueBuildVariantNamesByTask(ctx context.Context, projectId string, ta
 	pipeline = append(pipeline, sortByVariantDisplayName)
 
 	result := []*BuildVariantTuple{}
-	if err := AggregateContext(ctx, pipeline, &result); err != nil {
+	if err := Aggregate(ctx, pipeline, &result); err != nil {
 		return nil, errors.Wrap(err, "getting build variant tasks")
 	}
 	if len(result) == 0 {
@@ -1299,7 +1299,7 @@ func FindTaskNamesByBuildVariant(ctx context.Context, projectId string, buildVar
 	}
 
 	result := []buildVariantTasks{}
-	if err := AggregateContext(ctx, pipeline, &result); err != nil {
+	if err := Aggregate(ctx, pipeline, &result); err != nil {
 		return nil, errors.Wrap(err, "getting build variant tasks")
 	}
 	if len(result) == 0 {
@@ -1369,7 +1369,7 @@ func FindOneIdAndExecutionWithDisplayStatus(ctx context.Context, id string, exec
 		{"$match": match},
 		addDisplayStatus,
 	}
-	if err := AggregateContext(ctx, pipeline, &tasks); err != nil {
+	if err := Aggregate(ctx, pipeline, &tasks); err != nil {
 		return nil, errors.Wrap(err, "finding task")
 	}
 	if len(tasks) != 0 {
@@ -1710,7 +1710,7 @@ func Remove(id string) error {
 	)
 }
 
-func AggregateContext(ctx context.Context, pipeline []bson.M, results interface{}) error {
+func Aggregate(ctx context.Context, pipeline []bson.M, results interface{}) error {
 	return db.AggregateContext(ctx,
 		Collection,
 		pipeline,

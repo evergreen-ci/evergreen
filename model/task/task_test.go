@@ -174,7 +174,7 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 	pipeline = append(pipeline, sortPipeline...)
 
 	taskResults := []Task{}
-	err = AggregateContext(ctx, pipeline, &taskResults)
+	err = Aggregate(ctx, pipeline, &taskResults)
 	require.NoError(t, err)
 
 	assert.Len(t, taskResults, 11)

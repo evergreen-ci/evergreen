@@ -19,7 +19,7 @@ func FindTasksByBuildId(ctx context.Context, buildId, taskId, status string, lim
 	pipeline := task.TasksByBuildIdPipeline(buildId, taskId, status, limit, sortDir)
 	res := []task.Task{}
 
-	err := task.AggregateContext(ctx, pipeline, &res)
+	err := task.Aggregate(ctx, pipeline, &res)
 	if err != nil {
 		return []task.Task{}, err
 	}
@@ -58,7 +58,7 @@ func FindTasksByProjectAndCommit(ctx context.Context, opts task.GetTasksByProjec
 	pipeline := task.TasksByProjectAndCommitPipeline(opts)
 
 	res := []task.Task{}
-	err = task.AggregateContext(ctx, pipeline, &res)
+	err = task.Aggregate(ctx, pipeline, &res)
 	if err != nil {
 		return []task.Task{}, err
 	}
