@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -216,7 +217,6 @@ func getDistros(ctx context.Context) (ids []string, aliases []string, distroWarn
 // IDs and all aliases.
 func getDistrosForProject(ctx context.Context, projectID string) (ids, aliases, singleTaskDistroIDs []string, distroWarnings map[string]string, err error) {
 	distroWarnings = map[string]string{}
-	singleTaskDistroIDs = []string{}
 	// create a slice of all known distros
 	distros, err := distro.AllDistros(ctx)
 	if err != nil {
@@ -332,17 +332,9 @@ func CheckProjectErrors(ctx context.Context, project *model.Project, includeLong
 			longSyntaxValidator(project, includeLong)...)
 	}
 
-	settings, err := evergreen.GetConfig(ctx)
+	allowedSingleTaskDistroTasks, err := getAllowedSingleTaskDistroTasksForProject(ctx, project.Identifier)
 	if err != nil {
-		// return []ValidationError{{Message: errors.Wrap(err, "getting evergreen settings").Error()}}
-		validationErrs = append(validationErrs, ValidationError{Message: errors.Wrap(err, "getting evergreen settings").Error()})
-	}
-
-	allowedSingleTaskDistroTasks := []string{}
-	for _, pairs := range settings.SingleTaskDistro.ProjectTasksPairs {
-		if pairs.ProjectID == project.Identifier {
-			allowedSingleTaskDistroTasks = pairs.AllowedTasks
-		}
+		return []ValidationError{{Message: errors.Wrap(err, "problem getting allowed tasks for single task distros").Error()}}
 	}
 
 	// get distro IDs and aliases for ensureReferentialIntegrity validation
@@ -922,6 +914,25 @@ func validateBuildVariantTaskNames(task string, variant string, allTaskNames map
 	return errs
 }
 
+func matchTaskToAllowedTasks(allowedSingleTaskDistroTasks []string, taskName string) (bool, []ValidationError) {
+	errs := []ValidationError{}
+	for _, allowedTask := range allowedSingleTaskDistroTasks {
+		matched, err := regexp.MatchString(allowedTask, taskName)
+		if err != nil {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("invalid task regex '%s'", allowedTask),
+					Level:   Warning,
+				},
+			)
+		}
+		if matched {
+			return true, errs
+		}
+	}
+	return false, errs
+}
+
 // ensureReferentialIntegrity checks all fields that reference other entities defined in the YAML and ensure that they are referring to valid names,
 // and returns any relevant distro validation info.
 // distroWarnings are considered validation notices.
@@ -964,14 +975,6 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 							Level: Warning,
 						},
 					)
-				} else if utility.StringSliceContains(singleTaskDistroIDs, name) && !utility.StringSliceContains(allowedSingleTaskDistroTasks, task.Name) {
-					errs = append(errs,
-						ValidationError{
-							Message: fmt.Sprintf("task '%s' in buildvariant '%s' references a single task distro '%s' that is not allowed for this task",
-								task.Name, buildVariant.Name, name),
-							Level: Error,
-						},
-					)
 				} else if utility.StringSliceContains(distroIDs, name) && containerNameMap[name] {
 					errs = append(errs,
 						ValidationError{
@@ -983,6 +986,21 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 						},
 					)
 				}
+
+				if utility.StringSliceContains(singleTaskDistroIDs, name) {
+					matched, warnings := matchTaskToAllowedTasks(allowedSingleTaskDistroTasks, task.Name)
+					errs = append(errs, warnings...)
+					if !matched {
+						errs = append(errs,
+							ValidationError{
+								Message: fmt.Sprintf("task '%s' in buildvariant '%s' references a single task distro '%s' that is not allowed for this task",
+									task.Name, buildVariant.Name, name),
+								Level: Error,
+							},
+						)
+					}
+				}
+
 				if warning, ok := distroWarnings[name]; ok {
 					errs = append(errs,
 						ValidationError{
@@ -1013,13 +1031,6 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 						Level: Warning,
 					},
 				)
-			} else if utility.StringSliceContains(singleTaskDistroIDs, name) {
-				errs = append(errs,
-					ValidationError{
-						Message: fmt.Sprintf("buildvariant '%s' references a single task distro '%s' which is not allowed for buildvariants", buildVariant.Name, name),
-						Level:   Error,
-					},
-				)
 			} else if utility.StringSliceContains(distroIDs, name) && containerNameMap[name] {
 				errs = append(errs,
 					ValidationError{
@@ -1031,6 +1042,16 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 					},
 				)
 			}
+
+			if utility.StringSliceContains(singleTaskDistroIDs, name) {
+				errs = append(errs,
+					ValidationError{
+						Message: fmt.Sprintf("buildvariant '%s' references a single task distro '%s' which is not allowed for entire buildvariants, only  individual tasks", buildVariant.Name, name),
+						Level:   Error,
+					},
+				)
+			}
+
 			if warning, ok := distroWarnings[name]; ok {
 				errs = append(errs,
 					ValidationError{
@@ -2492,4 +2513,27 @@ func checkBuildVariants(project *model.Project) ValidationErrors {
 	}
 
 	return errs
+}
+
+// getAllowedSingleTaskDistroTasksForProject returns a list of tasks that is
+// whitelisted for the given project and repo project. If both the project and
+// repo project have allowed tasks, the tasks are combined.
+func getAllowedSingleTaskDistroTasksForProject(ctx context.Context, identifier string) ([]string, error) {
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting evergreen settings")
+	}
+
+	allowedSingleTaskDistroTasks := []string{}
+	for _, pairs := range settings.SingleTaskDistro.ProjectTasksPairs {
+		pRef, err := model.FindBranchProjectRef(identifier)
+		if err != nil {
+			return nil, errors.Wrapf(err, "finding project ref '%s'", identifier)
+		}
+		if pairs.ProjectID == pRef.Id || pairs.ProjectID == pRef.Identifier || pairs.ProjectID == pRef.RepoRefId {
+			allowedSingleTaskDistroTasks = append(allowedSingleTaskDistroTasks, pairs.AllowedTasks...)
+		}
+	}
+
+	return allowedSingleTaskDistroTasks, nil
 }
