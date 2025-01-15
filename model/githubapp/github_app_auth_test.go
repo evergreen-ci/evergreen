@@ -21,10 +21,10 @@ func TestFindOneGithubAppAuth(t *testing.T) {
 		AppID:      1234,
 		PrivateKey: key,
 	}
-	err := UpsertGithubAppAuth(&githubAppAuth)
+	err := UpsertGitHubAppAuth(&githubAppAuth)
 	require.NoError(t, err)
 
-	githubAppAuthFromDB, err := FindOneGithubAppAuth("mongodb")
+	githubAppAuthFromDB, err := FindOneGitHubAppAuth("mongodb")
 	require.NoError(t, err)
 
 	assert.Equal("mongodb", githubAppAuthFromDB.Id)
@@ -44,7 +44,7 @@ func TestGetGitHubAppID(t *testing.T) {
 		AppID:      1234,
 		PrivateKey: key,
 	}
-	err := UpsertGithubAppAuth(&githubAppAuth)
+	err := UpsertGitHubAppAuth(&githubAppAuth)
 	require.NoError(t, err)
 
 	appIDFromDB, err := GetGitHubAppID("mongodb")
@@ -63,17 +63,17 @@ func TestRemoveGithubAppAuth(t *testing.T) {
 		AppID:      1234,
 		PrivateKey: key,
 	}
-	err := UpsertGithubAppAuth(&githubAppAuth)
+	err := UpsertGitHubAppAuth(&githubAppAuth)
 	require.NoError(t, err)
 
-	githubAppAuthFromDB, err := FindOneGithubAppAuth("mongodb")
+	githubAppAuthFromDB, err := FindOneGitHubAppAuth("mongodb")
 	require.NoError(t, err)
 	assert.NotNil(githubAppAuthFromDB)
 
-	err = RemoveGithubAppAuth(githubAppAuth.Id)
+	err = RemoveGitHubAppAuth(&githubAppAuth)
 	require.NoError(t, err)
 
-	githubAppAuthFromDB, err = FindOneGithubAppAuth("mongodb")
+	githubAppAuthFromDB, err = FindOneGitHubAppAuth("mongodb")
 	require.NoError(t, err)
 	assert.Nil(githubAppAuthFromDB)
 }
