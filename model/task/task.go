@@ -3504,9 +3504,9 @@ func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 	var err error
 	if t.Archived {
 		if dtId != "" {
-			dt, err = FindOneOldByIdAndExecution(dtId, t.Execution)
+			dt, err = FindOneOldByIdAndExecution(ctx, dtId, t.Execution)
 		} else {
-			dt, err = FindOneOld(ByExecutionTask(t.OldTaskId))
+			dt, err = FindOneOld(ctx, ByExecutionTask(t.OldTaskId))
 			if dt != nil {
 				dtId = dt.OldTaskId // save the original task ID to cache
 			}

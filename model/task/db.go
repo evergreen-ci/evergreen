@@ -1346,7 +1346,7 @@ func FindOneIdAndExecution(ctx context.Context, id string, execution int) (*Task
 	err := db.FindOneQContext(ctx, Collection, query, task)
 
 	if adb.ResultsNotFound(err) {
-		return FindOneOldByIdAndExecution(id, execution)
+		return FindOneOldByIdAndExecution(ctx, id, execution)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "finding task by ID and execution")
@@ -1409,10 +1409,10 @@ func findOneOldByIdAndExecutionWithDisplayStatus(ctx context.Context, id string,
 
 // FindOneOld returns a single task from the old tasks collection that
 // satifisfies the given query.
-func FindOneOld(filter bson.M) (*Task, error) {
+func FindOneOld(ctx context.Context, filter bson.M) (*Task, error) {
 	task := &Task{}
 	query := db.Query(filter)
-	err := db.FindOneQ(OldCollection, query, task)
+	err := db.FindOneQContext(ctx, OldCollection, query, task)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1429,21 +1429,21 @@ func FindOneOldWithFields(filter bson.M, fields ...string) (*Task, error) {
 	return task, err
 }
 
-func FindOneOldId(id string) (*Task, error) {
+func FindOneOldId(ctx context.Context, id string) (*Task, error) {
 	filter := bson.M{
 		IdKey: id,
 	}
-	return FindOneOld(filter)
+	return FindOneOld(ctx, filter)
 }
 
 // FindOneOldByIdAndExecution returns a single task from the old tasks
 // collection with the given ID and execution.
-func FindOneOldByIdAndExecution(id string, execution int) (*Task, error) {
+func FindOneOldByIdAndExecution(ctx context.Context, id string, execution int) (*Task, error) {
 	filter := bson.M{
 		OldTaskIdKey: id,
 		ExecutionKey: execution,
 	}
-	return FindOneOld(filter)
+	return FindOneOld(ctx, filter)
 }
 
 // FindOneIdWithFields returns a single task with the given ID, projecting only
@@ -1586,7 +1586,7 @@ func FindOldWithDisplayTasks(filter bson.M) ([]Task, error) {
 // FindOneIdOldOrNew returns a single task with the given ID and execution,
 // first looking in the old tasks collection, then the tasks collection.
 func FindOneIdOldOrNew(ctx context.Context, id string, execution int) (*Task, error) {
-	task, err := FindOneOldId(MakeOldID(id, execution))
+	task, err := FindOneOldId(ctx, MakeOldID(id, execution))
 	if task == nil || err != nil {
 		return FindOneId(ctx, id)
 	}

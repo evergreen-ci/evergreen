@@ -196,7 +196,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 		// Try to find the task in the old_tasks collection.
 		var taskFromDb *task.Task
-		taskFromDb, err = task.FindOneOld(task.ById(oldTaskId))
+		taskFromDb, err = task.FindOneOld(r.Context(), task.ById(oldTaskId))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -912,7 +912,7 @@ func (uis *UIServer) getTestResults(ctx context.Context, projCtx projectContext,
 				err error
 			)
 			if uiTask.Archived {
-				et, err = task.FindOneOldByIdAndExecution(t, projCtx.Task.Execution)
+				et, err = task.FindOneOldByIdAndExecution(ctx, t, projCtx.Task.Execution)
 			} else {
 				et, err = task.FindOneId(ctx, t)
 			}

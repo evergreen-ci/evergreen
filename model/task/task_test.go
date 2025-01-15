@@ -3890,7 +3890,7 @@ func TestArchive(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection))
 	}()
 	checkTaskIsArchived := func(t *testing.T, oldTaskID string) {
-		dbTask, err := FindOneOldId(oldTaskID)
+		dbTask, err := FindOneOldId(ctx, oldTaskID)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 		assert.NotZero(t, dbTask.OldTaskId)
@@ -3901,7 +3901,7 @@ func TestArchive(t *testing.T) {
 	}
 
 	checkEventLogHostTaskExecutions := func(t *testing.T, hostID, oldTaskID string, _ int) {
-		dbTask, err := FindOneOldId(oldTaskID)
+		dbTask, err := FindOneOldId(ctx, oldTaskID)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 
@@ -4009,7 +4009,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 	assert.NoError(t, dt.Insert())
 
 	checkTaskIsArchived := func(t *testing.T, oldTaskID string) {
-		dbTask, err := FindOneOldId(oldTaskID)
+		dbTask, err := FindOneOldId(ctx, oldTaskID)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 		assert.NotZero(t, dbTask.OldTaskId)
@@ -4024,7 +4024,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 		assert.NoError(t, err)
 		assert.False(t, task.Archived)
 
-		oldT, err := FindOneOldId(MakeOldID(taskID, execution))
+		oldT, err := FindOneOldId(ctx, MakeOldID(taskID, execution))
 		assert.NoError(t, err)
 		assert.Nil(t, oldT)
 
@@ -4034,7 +4034,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 	}
 
 	checkEventLogHostTaskExecutions := func(t *testing.T, hostID, oldTaskID string, _ int) {
-		dbTask, err := FindOneOldId(oldTaskID)
+		dbTask, err := FindOneOldId(ctx, oldTaskID)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 

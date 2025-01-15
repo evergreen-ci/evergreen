@@ -219,7 +219,7 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
 
-			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 0)
+			dbArchivedTask, err := task.FindOneOldByIdAndExecution(ctx, tsk.Id, 0)
 			require.NoError(t, err)
 			require.NotNil(t, dbArchivedTask)
 			assert.Equal(t, evergreen.TaskFailed, dbArchivedTask.Status, "stranded task should have failed")
