@@ -907,7 +907,7 @@ func getProjectMetadata(ctx context.Context, projectId *string, patchId *string)
 //////////////////////////////////
 
 func getTaskLogs(ctx context.Context, obj *TaskLogs, logType taskoutput.TaskLogType) ([]*apimodels.LogMessage, error) {
-	dbTask, err := task.FindOneIdAndExecution(obj.TaskID, obj.Execution)
+	dbTask, err := task.FindOneIdAndExecution(ctx, obj.TaskID, obj.Execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Finding task '%s': %s", obj.TaskID, err.Error()))
 	}

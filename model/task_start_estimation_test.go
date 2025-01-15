@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"strconv"
 	"sync"
 	"testing"
@@ -29,6 +30,9 @@ func (s *estimatorSuite) SetupTest() {
 }
 
 func (s *estimatorSuite) TestCreateModel() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	now := time.Now()
 	hosts := []host.Host{
 		{Status: evergreen.HostRunning, RunningTask: "t1"},
@@ -53,7 +57,7 @@ func (s *estimatorSuite) TestCreateModel() {
 		},
 	}
 
-	model := createSimulatorModel(queue, hosts)
+	model := createSimulatorModel(ctx, queue, hosts)
 	s.InDelta(1*time.Minute, model.hosts[0].timeToCompletion, float64(100*time.Millisecond))
 	s.InDelta(20*time.Minute, model.hosts[1].timeToCompletion, float64(100*time.Millisecond))
 	s.InDelta(hostStartingDelay, model.hosts[2].timeToCompletion, float64(100*time.Millisecond))

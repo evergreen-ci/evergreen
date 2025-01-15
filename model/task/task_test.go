@@ -4020,7 +4020,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 	}
 
 	checkTaskIsNotArchived := func(t *testing.T, taskID string, execution int) {
-		task, err := FindOneIdAndExecution(taskID, execution)
+		task, err := FindOneIdAndExecution(ctx, taskID, execution)
 		assert.NoError(t, err)
 		assert.False(t, task.Archived)
 
@@ -4028,7 +4028,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Nil(t, oldT)
 
-		nextExecution, err := FindOneIdAndExecution(taskID, execution+1)
+		nextExecution, err := FindOneIdAndExecution(ctx, taskID, execution+1)
 		assert.NoError(t, err)
 		assert.Nil(t, nextExecution)
 	}
@@ -4054,7 +4054,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 		dt.ResetFailedWhenFinished = true
 
 		// Gets the future archived tasks information.
-		t1, err := FindOneIdAndExecution(dt.ExecutionTasks[0], dt.Execution)
+		t1, err := FindOneIdAndExecution(ctx, dt.ExecutionTasks[0], dt.Execution)
 		require.NoError(t, err)
 		archivedT1 := MakeOldID(t1.Id, t1.Execution)
 		archivedExecution := t1.Execution
@@ -4385,7 +4385,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 		testTask1.Execution += 1
 	}
 	for i := 0; i < 10; i++ {
-		task, err := FindOneIdAndExecution("task_1", i)
+		task, err := FindOneIdAndExecution(ctx, "task_1", i)
 		s.NoError(err)
 		s.Equal(task.Id, fmt.Sprintf("task_1_%d", i))
 		s.Equal(task.Execution, i)

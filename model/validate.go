@@ -86,13 +86,13 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 			t = rvTask
 		}
 	}
-	if badHostTaskRelationship(h, t) {
+	if badHostTaskRelationship(r.Context(), h, t) {
 		return nil, http.StatusConflict, errors.Errorf("host '%s' should be running task '%s', not task '%s'", hostId, h.RunningTask, t.Id)
 	}
 	return h, http.StatusOK, nil
 }
 
-func badHostTaskRelationship(h *host.Host, t *task.Task) bool {
+func badHostTaskRelationship(ctx context.Context, h *host.Host, t *task.Task) bool {
 	if t == nil {
 		return false
 	}
@@ -103,7 +103,7 @@ func badHostTaskRelationship(h *host.Host, t *task.Task) bool {
 		if h.RunningTask == "" {
 			return false
 		}
-		nextTask, err := task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
+		nextTask, err := task.FindOneIdAndExecution(ctx, h.RunningTask, h.RunningTaskExecution)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":        "problem finding task",

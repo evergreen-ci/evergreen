@@ -509,7 +509,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if tsk.Execution != execution {
-			tsk, err = task.FindOneIdAndExecution(tsk.Id, execution)
+			tsk, err = task.FindOneIdAndExecution(r.Context(), tsk.Id, execution)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
@@ -569,7 +569,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if tsk.Execution != execution {
-			tsk, err = task.FindOneIdAndExecution(tsk.Id, execution)
+			tsk, err = task.FindOneIdAndExecution(r.Context(), tsk.Id, execution)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
@@ -859,7 +859,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid execution", http.StatusBadRequest)
 		return
 	}
-	tsk, err := task.FindOneIdAndExecution(taskID, execution)
+	tsk, err := task.FindOneIdAndExecution(r.Context(), taskID, execution)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

@@ -571,7 +571,7 @@ func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*T
 
 // Tests is the resolver for the tests field.
 func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *TestFilterOptions) (*TaskTestResult, error) {
-	dbTask, err := task.FindOneIdAndExecution(utility.FromStringPtr(obj.Id), obj.Execution)
+	dbTask, err := task.FindOneIdAndExecution(ctx, utility.FromStringPtr(obj.Id), obj.Execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting service model for APITask '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}

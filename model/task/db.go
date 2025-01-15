@@ -1333,17 +1333,17 @@ func FindByIdExecution(ctx context.Context, id string, execution *int) (*Task, e
 	if execution == nil {
 		return FindOneId(ctx, id)
 	}
-	return FindOneIdAndExecution(id, *execution)
+	return FindOneIdAndExecution(ctx, id, *execution)
 }
 
 // FindOneIdAndExecution returns a single task with the given ID and execution.
-func FindOneIdAndExecution(id string, execution int) (*Task, error) {
+func FindOneIdAndExecution(ctx context.Context, id string, execution int) (*Task, error) {
 	task := &Task{}
 	query := db.Query(bson.M{
 		IdKey:        id,
 		ExecutionKey: execution,
 	})
-	err := db.FindOneQ(Collection, query, task)
+	err := db.FindOneQContext(ctx, Collection, query, task)
 
 	if adb.ResultsNotFound(err) {
 		return FindOneOldByIdAndExecution(id, execution)

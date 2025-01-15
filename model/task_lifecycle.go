@@ -1978,7 +1978,7 @@ func ClearAndResetStrandedContainerTask(ctx context.Context, settings *evergreen
 		return errors.Wrapf(err, "clearing running task '%s' execution %d from pod '%s'", runningTaskID, runningTaskExecution, p.ID)
 	}
 
-	t, err := task.FindOneIdAndExecution(runningTaskID, runningTaskExecution)
+	t, err := task.FindOneIdAndExecution(ctx, runningTaskID, runningTaskExecution)
 	if err != nil {
 		return errors.Wrapf(err, "finding running task '%s' execution %d from pod '%s'", runningTaskID, runningTaskExecution, p.ID)
 	}
@@ -2019,7 +2019,7 @@ func ClearAndResetStrandedHostTask(ctx context.Context, settings *evergreen.Sett
 		return nil
 	}
 
-	t, err := task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
+	t, err := task.FindOneIdAndExecution(ctx, h.RunningTask, h.RunningTaskExecution)
 	if err != nil {
 		return errors.Wrapf(err, "finding running task '%s' execution '%d' from host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
 	} else if t == nil {
