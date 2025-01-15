@@ -1559,26 +1559,12 @@ func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {
 	return tasks, nil
 }
 
-// FindOld returns all non-display tasks from the old tasks collection that
-// satisfy the given query.
-func FindOld(filter bson.M) ([]Task, error) {
-	tasks := []Task{}
-	_, exists := filter[DisplayOnlyKey]
-	if !exists {
-		filter[DisplayOnlyKey] = bson.M{"$ne": true}
-	}
-	query := db.Query(filter)
-	err := db.FindAllQ(OldCollection, query, &tasks)
-
-	return tasks, err
-}
-
 // FindOldWithDisplayTasks returns all display and execution tasks from the old
 // collection that satisfy the given query.
-func FindOldWithDisplayTasks(filter bson.M) ([]Task, error) {
+func FindOldWithDisplayTasks(ctx context.Context, filter bson.M) ([]Task, error) {
 	tasks := []Task{}
 	query := db.Query(filter)
-	err := db.FindAllQ(OldCollection, query, &tasks)
+	err := db.FindAllQContext(ctx, OldCollection, query, &tasks)
 
 	return tasks, err
 }

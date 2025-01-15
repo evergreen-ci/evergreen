@@ -120,7 +120,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 		if tbh.fetchAllExecutions {
 			var oldTasks []task.Task
 
-			oldTasks, err = task.FindOldWithDisplayTasks(task.ByOldTaskID(tasks[i].Id))
+			oldTasks, err = task.FindOldWithDisplayTasks(ctx, task.ByOldTaskID(tasks[i].Id))
 			if err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding archived task '%s'", tasks[i].Id))
 			}

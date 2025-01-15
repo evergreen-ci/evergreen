@@ -4502,14 +4502,14 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 		s.NoError(testTask2.Archive(ctx))
 		testTask2.Execution += 1
 	}
-	tasks, err := FindOldWithDisplayTasks(ByOldTaskID("task_1"))
+	tasks, err := FindOldWithDisplayTasks(ctx, ByOldTaskID("task_1"))
 	s.NoError(err)
 	s.Len(tasks, 10)
 	for i := range tasks {
 		s.Equal(i, tasks[i].Execution)
 	}
 
-	tasks, err = FindOldWithDisplayTasks(ByOldTaskID("task_2"))
+	tasks, err = FindOldWithDisplayTasks(ctx, ByOldTaskID("task_2"))
 	s.NoError(err)
 	s.Len(tasks, 10)
 	for i := range tasks {

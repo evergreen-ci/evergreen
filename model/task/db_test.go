@@ -401,32 +401,6 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 	assert.Equal(evergreen.TaskUnscheduled, task.DisplayStatus)
 }
 
-func TestFindOldTasksByID(t *testing.T) {
-	ctx := context.TODO()
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection, OldCollection))
-
-	taskDoc := Task{
-		Id:     "task",
-		Status: evergreen.TaskSucceeded,
-	}
-	assert.NoError(taskDoc.Insert())
-	assert.NoError(taskDoc.Archive(ctx))
-	taskDoc.Execution += 1
-	assert.NoError(taskDoc.Archive(ctx))
-	taskDoc.Execution += 1
-
-	tasks, err := FindOld(ByOldTaskID("task"))
-	assert.NoError(err)
-	assert.Len(tasks, 2)
-	assert.Equal(0, tasks[0].Execution)
-	assert.Equal("task_0", tasks[0].Id)
-	assert.Equal("task", tasks[0].OldTaskId)
-	assert.Equal(1, tasks[1].Execution)
-	assert.Equal("task_1", tasks[1].Id)
-	assert.Equal("task", tasks[1].OldTaskId)
-}
-
 func TestFindAllFirstExecution(t *testing.T) {
 	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	tasks := []Task{
