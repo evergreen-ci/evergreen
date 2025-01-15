@@ -30,6 +30,7 @@ func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NotNil(t, annotation.Issues[0].Source)
 	assert.Equal(t, annotations.UIRequester, annotation.Issues[0].Source.Requester)
 	assert.Equal(t, "annie.black", annotation.Issues[0].Source.Author)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
 
 	assert.NoError(t, AddIssueToAnnotation(ctx, "t1", 0, issue, "not.annie.black"))
@@ -38,9 +39,10 @@ func TestAddIssueToAnnotation(t *testing.T) {
 	assert.NotNil(t, annotation)
 	assert.Len(t, annotation.Issues, 2)
 	assert.NotNil(t, annotation.Issues[1].Source)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
 	assert.Equal(t, "not.annie.black", annotation.Issues[1].Source.Author)
-	dbTask, err := FindOneId("t1")
+	dbTask, err := FindOneId(ctx, "t1")
 	require.NoError(t, err)
 	require.NotNil(t, dbTask)
 	assert.True(t, dbTask.HasAnnotations)
@@ -66,7 +68,7 @@ func TestRemoveIssueFromAnnotation(t *testing.T) {
 	assert.NotNil(t, annotationFromDB)
 	assert.Len(t, annotationFromDB.Issues, 1)
 	assert.Equal(t, "not.annie.black", annotationFromDB.Issues[0].Source.Author)
-	dbTask, err := FindOneId("t1")
+	dbTask, err := FindOneId(ctx, "t1")
 	require.NoError(t, err)
 	require.NotNil(t, dbTask)
 	assert.True(t, dbTask.HasAnnotations)
@@ -78,7 +80,7 @@ func TestRemoveIssueFromAnnotation(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, annotationFromDB)
 	assert.Empty(t, annotationFromDB.Issues)
-	dbTask, err = FindOneId("t1")
+	dbTask, err = FindOneId(ctx, "t1")
 	require.NoError(t, err)
 	require.NotNil(t, dbTask)
 	assert.False(t, dbTask.HasAnnotations)
@@ -108,7 +110,7 @@ func TestMoveIssueToSuspectedIssue(t *testing.T) {
 	require.Len(t, annotationFromDB.SuspectedIssues, 2)
 	assert.Equal(t, "different user", annotationFromDB.SuspectedIssues[0].Source.Author)
 	assert.Equal(t, "someone new", annotationFromDB.SuspectedIssues[1].Source.Author)
-	dbTask, err := FindOneId("t1")
+	dbTask, err := FindOneId(ctx, "t1")
 	require.NoError(t, err)
 	require.NotNil(t, dbTask)
 	assert.True(t, dbTask.HasAnnotations)
@@ -123,7 +125,7 @@ func TestMoveIssueToSuspectedIssue(t *testing.T) {
 	assert.Equal(t, "different user", annotationFromDB.SuspectedIssues[0].Source.Author)
 	assert.Equal(t, "someone new", annotationFromDB.SuspectedIssues[1].Source.Author)
 	assert.Equal(t, "someone else new", annotationFromDB.SuspectedIssues[2].Source.Author)
-	dbTask, err = FindOneId("t1")
+	dbTask, err = FindOneId(ctx, "t1")
 	require.NoError(t, err)
 	require.NotNil(t, dbTask)
 	assert.False(t, dbTask.HasAnnotations)
@@ -152,7 +154,7 @@ func TestMoveSuspectedIssueToIssue(t *testing.T) {
 	require.Len(t, annotationFromDB.Issues, 2)
 	assert.Equal(t, "different user", annotationFromDB.Issues[0].Source.Author)
 	assert.Equal(t, "someone new", annotationFromDB.Issues[1].Source.Author)
-	dbTask, err := FindOneId("t1")
+	dbTask, err := FindOneId(ctx, "t1")
 	require.NoError(t, err)
 	require.NotNil(t, dbTask)
 	assert.True(t, dbTask.HasAnnotations)
@@ -181,6 +183,7 @@ func TestPatchIssue(t *testing.T) {
 	assert.Equal(t, annotations.UIRequester, annotation.Issues[0].Source.Requester)
 	assert.Equal(t, "bynn.lee", annotation.Issues[0].Source.Author)
 	assert.Equal(t, "EVG-1234", annotation.Issues[0].IssueKey)
+	//nolint:testifylint // We expect it to be exactly equal.
 	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
 	assert.Len(t, annotation.SuspectedIssues, 1)
 	assert.NotNil(t, annotation.SuspectedIssues[0].Source)
@@ -228,7 +231,7 @@ func TestPatchIssue(t *testing.T) {
 	annotationUpdate := annotations.TaskAnnotation{TaskId: "t2", TaskExecution: 0, Issues: []annotations.IssueLink{issue3}}
 	assert.NoError(t, PatchAnnotation(ctx, &annotationUpdate, "jane.smith", true))
 
-	foundTask, err := FindOneId(t2.Id)
+	foundTask, err := FindOneId(ctx, t2.Id)
 	require.NoError(t, err)
 	require.NotNil(t, foundTask)
 	assert.True(t, foundTask.HasAnnotations)
@@ -236,7 +239,7 @@ func TestPatchIssue(t *testing.T) {
 	annotationUpdate = annotations.TaskAnnotation{TaskId: "t2", TaskExecution: 0, Issues: []annotations.IssueLink{}}
 	assert.NoError(t, PatchAnnotation(ctx, &annotationUpdate, "jane.smith", true))
 
-	foundTask, err = FindOneId(t2.Id)
+	foundTask, err = FindOneId(ctx, t2.Id)
 	require.NoError(t, err)
 	require.NotNil(t, foundTask)
 	assert.False(t, foundTask.HasAnnotations)

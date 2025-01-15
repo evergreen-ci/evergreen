@@ -26,8 +26,6 @@ import (
 
 const formMimeType = "application/x-www-form-urlencoded"
 
-var cliOutOfDateError = errors.New("CLI is out of date: use 'evergreen get-update --install'")
-
 // PatchAPIResponse is returned by all patch-related API calls
 type PatchAPIResponse struct {
 	Message string       `json:"message"`
@@ -102,7 +100,6 @@ type patchData struct {
 	Description         string                     `json:"desc"`
 	Path                string                     `json:"path"`
 	Project             string                     `json:"project"`
-	BackportInfo        patch.BackportInfo         `json:"backport_info"`
 	GitMetadata         *patch.GitMetadata         `json:"git_metadata"`
 	PatchBytes          []byte                     `json:"patch_bytes"`
 	Githash             string                     `json:"githash"`
@@ -168,11 +165,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if data.Alias == evergreen.CommitQueueAlias && len(patchString) != 0 && !patch.IsMailboxDiff(patchString) {
-		as.LoggedError(w, r, http.StatusBadRequest, cliOutOfDateError)
-		return
-	}
-
 	if pref.IsPatchingDisabled() || !pref.Enabled {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("patching is disabled"))
 		return
@@ -205,7 +197,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		RegexTasks:          data.RegexTasks,
 		Alias:               data.Alias,
 		TriggerAliases:      data.TriggerAliases,
-		BackportOf:          data.BackportInfo,
 		GitInfo:             data.GitMetadata,
 		RepeatDefinition:    data.RepeatDefinition,
 		RepeatFailed:        data.RepeatFailed,
@@ -289,16 +280,14 @@ func getPatchFromRequest(r *http.Request) (*patch.Patch, error) {
 }
 
 func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithCancel(r.Context())
-	defer cancel()
 	p, err := getPatchFromRequest(r)
 	if err != nil {
 		gimlet.WriteJSONError(w, err.Error())
 		return
 	}
 
-	if p.Version != "" && p.IsMergeQueuePatch() {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.New("can't update modules for in-flight commit queue tests"))
+	if p.IsMergeQueuePatch() {
+		as.LoggedError(w, r, http.StatusBadRequest, errors.New("can't update modules for commit queue tests"))
 		return
 	}
 
@@ -313,27 +302,14 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	patchContent := string(data.PatchBytes)
-	if p.IsMergeQueuePatch() && len(patchContent) != 0 && !patch.IsMailboxDiff(patchContent) {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.New("You may be using 'set-module' instead of 'commit-queue set-module', or your CLI may be out of date.\n"+
-			"Please update your CLI if it is not up to date, and use 'commit-queue set-module' instead of 'set-module' for commit queue patches."))
-		return
-	}
 
 	moduleName, githash := data.Module, data.Githash
-	var summaries []thirdparty.Summary
 	var commitMessages []string
-	if patch.IsMailboxDiff(patchContent) {
-		summaries, commitMessages, err = thirdparty.GetPatchSummariesFromMboxPatch(patchContent)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error getting summaries by commit"))
-			return
-		}
-	} else {
-		summaries, err = thirdparty.GetPatchSummaries(patchContent)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
+
+	summaries, err := thirdparty.GetPatchSummaries(patchContent)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
 	}
 
 	// write the patch content into a GridFS file under a new ObjectId.
@@ -347,7 +323,6 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	modulePatch := patch.ModulePatch{
 		ModuleName: moduleName,
 		Githash:    githash,
-		IsMbox:     len(patchContent) == 0 || patch.IsMailboxDiff(patchContent),
 		PatchSet: patch.PatchSet{
 			PatchFileId:    patchFileId,
 			Summary:        summaries,
@@ -357,22 +332,6 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	if err = p.UpdateModulePatch(modulePatch); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
-	}
-
-	if p.IsMergeQueuePatch() {
-		projectRef, err := model.FindBranchProjectRef(p.Project)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Error getting project ref with id %v", p.Project))
-			return
-		}
-		proj, _, err := model.FindAndTranslateProjectForPatch(ctx, &as.Settings, p)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("finding project for patch '%s'", p.Id))
-		}
-		if err = p.SetDescription(model.MakeCommitQueueDescription(p.Patches, projectRef, proj, p.IsGithubMergePatch(), p.GithubMergeData)); err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
 	}
 
 	gimlet.WriteJSON(w, "Patch module updated")

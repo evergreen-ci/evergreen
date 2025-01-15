@@ -85,9 +85,6 @@ type cliIntent struct {
 	// TriggerAliases alias sets of tasks to include in child patches.
 	TriggerAliases []string `bson:"trigger_aliases"`
 
-	// BackportOf specifies what to backport.
-	BackportOf BackportInfo `bson:"backport_of,omitempty"`
-
 	// GitInfo contains information about the author's git environment.
 	GitInfo *GitMetadata `bson:"git_info,omitempty"`
 
@@ -206,7 +203,6 @@ func (c *cliIntent) NewPatch() *Patch {
 		Tasks:               c.Tasks,
 		RegexTasks:          c.RegexTasks,
 		SyncAtEndOpts:       c.SyncAtEndOpts,
-		BackportOf:          c.BackportOf,
 		Patches:             []ModulePatch{},
 		GitInfo:             c.GitInfo,
 		LocalModuleIncludes: c.LocalModuleIncludes,
@@ -233,7 +229,6 @@ type CLIIntentParams struct {
 	PatchContent        string
 	Description         string
 	Finalize            bool
-	BackportOf          BackportInfo
 	GitInfo             *GitMetadata
 	Parameters          []Parameter
 	Variants            []string
@@ -305,7 +300,6 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		Module:              params.Module,
 		Alias:               params.Alias,
 		TriggerAliases:      params.TriggerAliases,
-		BackportOf:          params.BackportOf,
 		GitInfo:             params.GitInfo,
 		RepeatDefinition:    params.RepeatDefinition,
 		RepeatFailed:        params.RepeatFailed,

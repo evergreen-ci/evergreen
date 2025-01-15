@@ -613,7 +613,7 @@ func (r *queryResolver) Task(ctx context.Context, taskID string, execution *int)
 
 // TaskAllExecutions is the resolver for the taskAllExecutions field.
 func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([]*restModel.APITask, error) {
-	latestTask, err := task.FindOneId(taskID)
+	latestTask, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
@@ -623,7 +623,7 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 	allTasks := []*restModel.APITask{}
 	for i := 0; i < latestTask.Execution; i++ {
 		var dbTask *task.Task
-		dbTask, err = task.FindByIdExecution(taskID, &i)
+		dbTask, err = task.FindByIdExecution(ctx, taskID, &i)
 		if err != nil {
 			return nil, ResourceNotFound.Send(ctx, err.Error())
 		}

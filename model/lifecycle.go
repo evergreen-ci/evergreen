@@ -365,7 +365,7 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 			toArchive = append(toArchive, t)
 		}
 	}
-	if err := task.CheckUsersPatchTaskLimit(allFinishedTasks[0].Requester, caller, false, toArchive...); err != nil {
+	if err := task.CheckUsersPatchTaskLimit(ctx, allFinishedTasks[0].Requester, caller, false, toArchive...); err != nil {
 		return errors.Wrap(err, "updating patch task limit for user")
 	}
 	if err := task.ArchiveMany(ctx, toArchive); err != nil {
@@ -382,7 +382,7 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 	restartIds := []string{}
 	for _, t := range allFinishedTasks {
 		if t.IsPartOfSingleHostTaskGroup() {
-			if err := t.SetResetWhenFinished(caller); err != nil {
+			if err := t.SetResetWhenFinished(ctx, caller); err != nil {
 				return errors.Wrapf(err, "marking '%s' for restart when finished", t.Id)
 			}
 			taskGroupsToCheck[taskGroupAndBuild{
@@ -644,7 +644,7 @@ func CreateBuildFromVersionNoInsert(ctx context.Context, creationInfo TaskCreati
 		if taskP.IsEssentialToSucceed {
 			hasUnfinishedEssentialTask = true
 		}
-		if taskP.IsPartOfDisplay() {
+		if taskP.IsPartOfDisplay(ctx) {
 			continue // don't add execution parts of display tasks to the UI cache
 		}
 		tasks = append(tasks, *taskP)
@@ -722,7 +722,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 	}
 	generatorIsGithubCheck := false
 	if creationInfo.GeneratedBy != "" {
-		generateTask, err := task.FindOneId(creationInfo.GeneratedBy)
+		generateTask, err := task.FindOneId(ctx, creationInfo.GeneratedBy)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding generated task '%s'", creationInfo.GeneratedBy)
 		}
@@ -824,7 +824,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 
 		// existing display task may need to be updated
 		if displayTaskAlreadyExists {
-			grip.Error(message.WrapError(task.AddExecTasksToDisplayTask(id, execTaskIds, displayTaskActivated), message.Fields{
+			grip.Error(message.WrapError(task.AddExecTasksToDisplayTask(ctx, id, execTaskIds, displayTaskActivated), message.Fields{
 				"message":      "problem adding exec tasks to display tasks",
 				"exec_tasks":   execTaskIds,
 				"display_task": dt.Name,
@@ -1765,7 +1765,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 			return nil, errors.Wrapf(err, "updating task cache for '%s'", b.Id)
 		}
 	}
-	if err = task.CheckUsersPatchTaskLimit(creationInfo.Version.Requester, creationInfo.Version.Author, false, activatedTasks...); err != nil {
+	if err = task.CheckUsersPatchTaskLimit(ctx, creationInfo.Version.Requester, creationInfo.Version.Author, false, activatedTasks...); err != nil {
 		return nil, errors.Wrap(err, "updating patch task limit for user")
 	}
 	if len(buildIdsToActivate) > 0 {

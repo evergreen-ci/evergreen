@@ -78,12 +78,13 @@ func (s *StatusSuite) TestAgentStartsStatusServer() {
 	time.Sleep(100 * time.Millisecond)
 	resp, err := http.Get("http://127.0.0.1:2286/status")
 	s.Require().NoError(err)
+	resp.Body.Close()
 	s.Equal(200, resp.StatusCode)
 }
 
 func (s *StatusSuite) TestAgentFailsToStartTwice() {
 	_, err := http.Get("http://127.0.0.1:2287/status")
-	s.Error(err)
+	s.Require().Error(err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	s.cancel = cancel
@@ -122,6 +123,7 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 	}
 
 	s.Require().NoError(err)
+	resp.Body.Close()
 	s.Equal(200, resp.StatusCode)
 
 	second := make(chan error, 1)
@@ -186,6 +188,7 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 	}
 
 	s.Require().NoError(err)
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		b, err := io.ReadAll(resp.Body)
 		grip.Error(err)

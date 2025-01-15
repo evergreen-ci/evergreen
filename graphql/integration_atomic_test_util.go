@@ -123,6 +123,7 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 				r.Header.Add("content-type", "application/json")
 				resp, err := client.Do(r)
 				require.NoError(t, err)
+				defer resp.Body.Close()
 				b, err := io.ReadAll(resp.Body)
 				require.NoError(t, err)
 
@@ -550,7 +551,7 @@ func setupTaskLogData(ctx context.Context, data json.RawMessage) error {
 	}
 
 	for _, taskLog := range taskLogs {
-		tsk, err := task.FindByIdExecution(taskLog.TaskID, utility.ToIntPtr(taskLog.Execution))
+		tsk, err := task.FindByIdExecution(ctx, taskLog.TaskID, utility.ToIntPtr(taskLog.Execution))
 		if err != nil {
 			return errors.Wrap(err, "finding task for task log")
 		}

@@ -180,6 +180,13 @@ func GetWaterfallBuildVariants(ctx context.Context, versionIds []string) ([]Wate
 		"foreignField": task.IdKey,
 		"pipeline": []bson.M{
 			{
+				"$match": bson.M{
+					task.RequesterKey: bson.M{
+						"$in": evergreen.SystemVersionRequesterTypes,
+					},
+				},
+			},
+			{
 				"$sort": bson.M{task.IdKey: 1},
 			},
 			// The following projection should exactly match the index on the tasks collection in order to function as a covered query

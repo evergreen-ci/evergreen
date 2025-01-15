@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -15,6 +16,9 @@ import (
 )
 
 func TestGetVersionsAndVariants(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection, task.Collection))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection, task.Collection))
@@ -66,7 +70,7 @@ func TestGetVersionsAndVariants(t *testing.T) {
 	}
 
 	t.Run("NoFilter", func(t *testing.T) {
-		data, err := getVersionsAndVariants(0, 10, &model.Project{}, "", true)
+		data, err := getVersionsAndVariants(ctx, 0, 10, &model.Project{}, "", true)
 		assert.NoError(t, err)
 		assert.Len(t, data.Versions, 10)
 		for _, v := range data.Versions {
@@ -75,7 +79,7 @@ func TestGetVersionsAndVariants(t *testing.T) {
 	})
 
 	t.Run("RequestOverMax", func(t *testing.T) {
-		data, err := getVersionsAndVariants(0, model.MaxMainlineCommitVersionLimit+1, &model.Project{}, "", true)
+		data, err := getVersionsAndVariants(ctx, 0, model.MaxMainlineCommitVersionLimit+1, &model.Project{}, "", true)
 		assert.NoError(t, err)
 		assert.Len(t, data.Versions, model.MaxMainlineCommitVersionLimit)
 		for _, v := range data.Versions {
@@ -84,7 +88,7 @@ func TestGetVersionsAndVariants(t *testing.T) {
 	})
 
 	t.Run("BVNotWithinMax", func(t *testing.T) {
-		data, err := getVersionsAndVariants(0, 10, &model.Project{}, "old-bv", true)
+		data, err := getVersionsAndVariants(ctx, 0, 10, &model.Project{}, "old-bv", true)
 		assert.NoError(t, err)
 		require.Len(t, data.Versions, 1)
 		assert.NotContains(t, data.Versions[0].Ids, "firstVersionID")

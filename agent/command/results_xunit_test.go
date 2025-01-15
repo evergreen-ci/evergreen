@@ -60,7 +60,7 @@ func runTest(t *testing.T, configPath string, customTests func(string)) {
 
 					err = pluginCmds[0].Execute(ctx, comm, logger, conf)
 					So(err, ShouldBeNil)
-					testTask, err := task.FindOne(db.Query(task.ById(conf.Task.Id)))
+					testTask, err := task.FindOne(ctx, db.Query(task.ById(conf.Task.Id)))
 					require.NoError(t, err)
 					So(testTask, ShouldNotBeNil)
 				}
@@ -75,7 +75,7 @@ func runTest(t *testing.T, configPath string, customTests func(string)) {
 
 // dBTests are the database verification tests for standard one file execution
 func dBTests(taskId string) {
-	t, err := task.FindOne(db.Query(task.ById(taskId)))
+	t, err := task.FindOne(context.Background(), db.Query(task.ById(taskId)))
 	So(err, ShouldBeNil)
 	So(t, ShouldNotBeNil)
 	So(len(t.LocalTestResults), ShouldNotEqual, 0)
@@ -94,7 +94,7 @@ func dBTests(taskId string) {
 
 // dBTestsWildcard are the database verification tests for globbed file execution
 func dBTestsWildcard(taskId string) {
-	t, err := task.FindOne(db.Query(task.ById(taskId)))
+	t, err := task.FindOne(context.Background(), db.Query(task.ById(taskId)))
 	So(err, ShouldBeNil)
 	So(len(t.LocalTestResults), ShouldEqual, TotalResultCount)
 

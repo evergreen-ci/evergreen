@@ -190,7 +190,8 @@
         "$date": "2020-01-01T00:00:05Z"
       },
       "execution": 0,
-      "display_task_id": ""
+      "display_task_id": "",
+      "r": "gitter_request"
     },
     {
       "_id": "task_2",
@@ -206,7 +207,8 @@
         "$date": "2020-01-01T00:00:05Z"
       },
       "execution": 1,
-      "display_task_id": ""
+      "display_task_id": "",
+      "r": "gitter_request"
     },
     {
       "_id": "task_3",
@@ -225,7 +227,8 @@
         "$date": "2020-01-01T00:00:05Z"
       },
       "execution": 0,
-      "display_task_id": ""
+      "display_task_id": "",
+      "r": "gitter_request"
     },
     {
       "_id": "task_4",
@@ -241,7 +244,8 @@
         "$date": "2020-01-01T00:00:05Z"
       },
       "execution": 0,
-      "display_task_id": ""
+      "display_task_id": "",
+      "r": "gitter_request"
     },
     {
       "_id": "task_5",
@@ -257,7 +261,8 @@
         "$date": "2020-01-01T00:00:05Z"
       },
       "execution": 0,
-      "display_task_id": ""
+      "display_task_id": "",
+      "r": "gitter_request"
     }
   ],
   "project_ref": [

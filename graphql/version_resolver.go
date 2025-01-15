@@ -409,7 +409,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 	var projectID string
 	var upstreamProject *UpstreamProject
 	if v.TriggerType == model.ProjectTriggerLevelTask {
-		upstreamTask, err := task.FindOneId(v.TriggerID)
+		upstreamTask, err := task.FindOneId(ctx, v.TriggerID)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream task %s: '%s'", v.TriggerID, err.Error()))
 		}

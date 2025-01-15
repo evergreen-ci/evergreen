@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
@@ -83,8 +82,6 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType, event.GithubMergeSubscriberType:
 		return evergreen.SenderGithubStatus, nil
 
-	case event.EnqueuePatchSubscriberType:
-		return evergreen.SenderGeneric, nil
 	default:
 		return evergreen.SenderEmail, errors.Errorf("unknown type '%s'", n.Subscriber.Type)
 	}
@@ -214,14 +211,6 @@ func (n *Notification) Composer() (message.Composer, error) {
 		payload.Ref = sub.Ref
 		return message.NewGithubStatusMessageWithRepo(level.Notice, *payload), nil
 
-	case event.EnqueuePatchSubscriberType:
-		payload, ok := n.Payload.(*model.EnqueuePatch)
-		if !ok || payload == nil {
-			return nil, errors.New("enqueue-patch payload is invalid")
-		}
-
-		return message.NewGenericMessage(level.Notice, payload, payload.String()), nil
-
 	default:
 		return nil, errors.Errorf("unknown type '%s'", n.Subscriber.Type)
 	}
@@ -309,7 +298,6 @@ type NotificationStats struct {
 	Slack             int `json:"slack" bson:"slack" yaml:"slack"`
 	GithubCheck       int `json:"github_check" bson:"github_check" yaml:"github_check"`
 	GithubMerge       int `json:"github_merge" bson:"github_merge" yaml:"github_merge"`
-	EnqueuePatch      int `json:"enqueue_patch" bson:"enqueue_patch" yaml:"enqueue_patch"`
 }
 
 func CollectUnsentNotificationStats() (*NotificationStats, error) {
@@ -368,9 +356,6 @@ func CollectUnsentNotificationStats() (*NotificationStats, error) {
 
 		case event.SlackSubscriberType:
 			nStats.Slack = data.Count
-
-		case event.EnqueuePatchSubscriberType:
-			nStats.EnqueuePatch = data.Count
 
 		default:
 			grip.Error(message.Fields{

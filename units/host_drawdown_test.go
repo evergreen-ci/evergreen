@@ -195,7 +195,7 @@ func TestHostDrawdown(t *testing.T) {
 				NewCapTarget: 0,
 			}
 			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
-			assert.Zero(t, 0, num, "should not draw down host that was recently running task group")
+			assert.Zero(t, num, "should not draw down host that was recently running task group")
 			assert.Empty(t, hosts)
 		},
 		"DecommissionsIdleMultiHostTaskGroupHost": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {

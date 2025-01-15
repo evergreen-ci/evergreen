@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestConfigModelHasMatchingFieldNames(t *testing.T) {
@@ -137,6 +139,9 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, apiSettings.LoggerConfig.Buffer.UseAsync)
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.IncomingBufferFactor, apiSettings.LoggerConfig.Buffer.IncomingBufferFactor)
 	assert.EqualValues(testSettings.Notify.SES.SenderAddress, utility.FromStringPtr(apiSettings.Notify.SES.SenderAddress))
+	assert.EqualValues(testSettings.Overrides.Overrides[0].SectionID, utility.FromStringPtr(apiSettings.Overrides.Overrides[0].SectionID))
+	assert.EqualValues(testSettings.Overrides.Overrides[0].Field, utility.FromStringPtr(apiSettings.Overrides.Overrides[0].Field))
+	assert.EqualValues(testSettings.Overrides.Overrides[0].Value, apiSettings.Overrides.Overrides[0].Value)
 	assert.EqualValues(testSettings.ParameterStore.Prefix, utility.FromStringPtr(apiSettings.ParameterStore.Prefix))
 	assert.EqualValues(testSettings.PodLifecycle.MaxParallelPodRequests, apiSettings.PodLifecycle.MaxParallelPodRequests)
 	assert.EqualValues(testSettings.PodLifecycle.MaxPodDefinitionCleanupRate, apiSettings.PodLifecycle.MaxPodDefinitionCleanupRate)
@@ -271,6 +276,9 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, dbSettings.LoggerConfig.Buffer.UseAsync)
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.IncomingBufferFactor, dbSettings.LoggerConfig.Buffer.IncomingBufferFactor)
 	assert.EqualValues(testSettings.Notify.SES.SenderAddress, dbSettings.Notify.SES.SenderAddress)
+	assert.EqualValues(testSettings.Overrides.Overrides[0].SectionID, dbSettings.Overrides.Overrides[0].SectionID)
+	assert.EqualValues(testSettings.Overrides.Overrides[0].Field, dbSettings.Overrides.Overrides[0].Field)
+	assert.EqualValues(testSettings.Overrides.Overrides[0].Value, dbSettings.Overrides.Overrides[0].Value)
 	assert.EqualValues(testSettings.PodLifecycle.MaxParallelPodRequests, dbSettings.PodLifecycle.MaxParallelPodRequests)
 	assert.EqualValues(testSettings.PodLifecycle.MaxPodDefinitionCleanupRate, dbSettings.PodLifecycle.MaxPodDefinitionCleanupRate)
 	assert.EqualValues(testSettings.PodLifecycle.MaxSecretCleanupRate, dbSettings.PodLifecycle.MaxSecretCleanupRate)
@@ -484,4 +492,71 @@ func TestAPIJIRANotificationsConfig(t *testing.T) {
 	newAPI := APIJIRANotificationsConfig{}
 	assert.NoError(newAPI.BuildFromService(&dbModel))
 	assert.Equal(api, newAPI)
+}
+
+func TestAPIOverride(t *testing.T) {
+	t.Run("MarshalJSON", func(t *testing.T) {
+		for name, testCase := range map[string]struct {
+			input    APIOverride
+			expected string
+		}{
+			"StringValue": {
+				input: APIOverride{
+					Value: "I'm a string",
+				},
+				expected: `{"section_id":null,"field":null,"value":"I'm a string"}`,
+			},
+			"IntValue": {
+				input: APIOverride{
+					Value: 42,
+				},
+				expected: `{"section_id":null,"field":null,"value":42}`,
+			},
+			"DateValue": {
+				input: APIOverride{
+					Value: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+				},
+				expected: `{"section_id":null,"field":null,"value":{"$date":"2009-11-10T23:00:00Z"}}`,
+			},
+		} {
+			t.Run(name, func(t *testing.T) {
+				overrideJSON, err := json.Marshal(testCase.input)
+				assert.NoError(t, err)
+				assert.Equal(t, testCase.expected, string(overrideJSON))
+			})
+		}
+	})
+
+	t.Run("UnmarshalJSON", func(t *testing.T) {
+		for name, testCase := range map[string]struct {
+			input    string
+			expected APIOverride
+		}{
+			"StringValue": {
+				input: `{"section_id":null,"field":null,"value":"I'm a string"}`,
+				expected: APIOverride{
+					Value: "I'm a string",
+				},
+			},
+			"IntValue": {
+				input: `{"section_id":null,"field":null,"value":42}`,
+				expected: APIOverride{
+					Value: int32(42),
+				},
+			},
+			"DateValue": {
+				input: `{"section_id":null,"field":null,"value":{"$date":"2009-11-10T23:00:00Z"}}`,
+				expected: APIOverride{
+					Value: primitive.NewDateTimeFromTime(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
+				},
+			},
+		} {
+			t.Run(name, func(t *testing.T) {
+				var override APIOverride
+				assert.NoError(t, json.Unmarshal([]byte(testCase.input), &override))
+				assert.Equal(t, testCase.expected, override)
+			})
+		}
+	})
+
 }

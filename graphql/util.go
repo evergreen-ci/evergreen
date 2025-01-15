@@ -338,7 +338,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 	if utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks) {
 		baseVersion, err := model.FindBaseVersionForVersion(versionId)
 		if err != nil {
-			return nil, errors.Wrapf(err, fmt.Sprintf("Error getting base version for version `%s`", versionId))
+			return nil, errors.Wrapf(err, "Error getting base version for version '%s'", versionId)
 		}
 		if baseVersion != nil {
 			baseVersionID = baseVersion.Id
@@ -356,7 +356,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 
 	tasks, _, err := task.GetTasksByVersion(ctx, versionId, opts)
 	if err != nil {
-		return nil, errors.Wrapf(err, fmt.Sprintf("Error getting tasks for patch `%s`", versionId))
+		return nil, errors.Wrapf(err, "error getting tasks for patch '%s'", versionId)
 	}
 
 	for _, t := range tasks {
@@ -365,7 +365,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 			LogURL: logURL,
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, fmt.Sprintf("Error building apiTask from task : %s", t.Id))
+			return nil, errors.Wrapf(err, "error building apiTask from task: '%s'", t.Id)
 		}
 		variantDisplayName[t.BuildVariant] = t.BuildVariantDisplayName
 		tasksByVariant[t.BuildVariant] = append(tasksByVariant[t.BuildVariant], &apiTask)
@@ -422,9 +422,9 @@ func mapHTTPStatusToGqlError(ctx context.Context, httpStatus int, err error) *gq
 	}
 }
 
-func canRestartTask(t *task.Task) bool {
+func canRestartTask(ctx context.Context, t *task.Task) bool {
 	// Cannot restart execution tasks.
-	if t.IsPartOfDisplay() {
+	if t.IsPartOfDisplay(ctx) {
 		return false
 	}
 	// It is possible to restart blocked display tasks. Later tasks in a display task could be blocked on
@@ -433,9 +433,9 @@ func canRestartTask(t *task.Task) bool {
 		!utility.StringSliceContains(evergreen.TaskUncompletedStatuses, t.Status)
 }
 
-func canScheduleTask(t *task.Task) bool {
+func canScheduleTask(ctx context.Context, t *task.Task) bool {
 	// Cannot schedule execution tasks or aborted tasks.
-	if t.IsPartOfDisplay() || t.Aborted {
+	if t.IsPartOfDisplay(ctx) || t.Aborted {
 		return false
 	}
 	if t.DisplayStatus != evergreen.TaskUnscheduled {
@@ -858,7 +858,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 	var t *task.Task
 	if spawnHostInput.TaskID != nil && *spawnHostInput.TaskID != "" {
 		options.TaskID = *spawnHostInput.TaskID
-		if t, err = task.FindOneId(*spawnHostInput.TaskID); err != nil {
+		if t, err = task.FindOneId(ctx, *spawnHostInput.TaskID); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task %s: %s", *spawnHostInput.TaskID, err.Error()))
 		}
 	}
@@ -999,9 +999,9 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 	)
 
 	if dbTask.Requester == evergreen.RepotrackerVersionRequester {
-		baseTask, err = dbTask.FindTaskOnPreviousCommit()
+		baseTask, err = dbTask.FindTaskOnPreviousCommit(ctx)
 	} else {
-		baseTask, err = dbTask.FindTaskOnBaseCommit()
+		baseTask, err = dbTask.FindTaskOnBaseCommit(ctx)
 	}
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding base task for task '%s': %s", dbTask.Id, err))
