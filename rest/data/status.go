@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -9,8 +10,8 @@ import (
 )
 
 // FindRecentTasks finds tasks that have recently finished.
-func FindRecentTasks(minutes int) ([]task.Task, *task.ResultCounts, error) {
-	tasks, err := task.GetRecentTasks(time.Duration(minutes) * time.Minute)
+func FindRecentTasks(ctx context.Context, minutes int) ([]task.Task, *task.ResultCounts, error) {
+	tasks, err := task.GetRecentTasks(ctx, time.Duration(minutes)*time.Minute)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -22,23 +23,23 @@ func FindRecentTasks(minutes int) ([]task.Task, *task.ResultCounts, error) {
 	return tasks, stats, nil
 }
 
-func FindRecentTaskListDistro(minutes int) (*model.APIRecentTaskStatsList, error) {
-	apiList, err := FindRecentTaskList(minutes, task.DistroIdKey)
+func FindRecentTaskListDistro(ctx context.Context, minutes int) (*model.APIRecentTaskStatsList, error) {
+	apiList, err := FindRecentTaskList(ctx, minutes, task.DistroIdKey)
 	return apiList, errors.WithStack(err)
 }
 
-func FindRecentTaskListProject(minutes int) (*model.APIRecentTaskStatsList, error) {
-	apiList, err := FindRecentTaskList(minutes, task.ProjectKey)
+func FindRecentTaskListProject(ctx context.Context, minutes int) (*model.APIRecentTaskStatsList, error) {
+	apiList, err := FindRecentTaskList(ctx, minutes, task.ProjectKey)
 	return apiList, errors.WithStack(err)
 }
 
-func FindRecentTaskListAgentVersion(minutes int) (*model.APIRecentTaskStatsList, error) {
-	apiList, err := FindRecentTaskList(minutes, task.AgentVersionKey)
+func FindRecentTaskListAgentVersion(ctx context.Context, minutes int) (*model.APIRecentTaskStatsList, error) {
+	apiList, err := FindRecentTaskList(ctx, minutes, task.AgentVersionKey)
 	return apiList, errors.WithStack(err)
 }
 
-func FindRecentTaskList(minutes int, key string) (*model.APIRecentTaskStatsList, error) {
-	stats, err := task.GetRecentTaskStats(time.Duration(minutes)*time.Minute, key)
+func FindRecentTaskList(ctx context.Context, minutes int, key string) (*model.APIRecentTaskStatsList, error) {
+	stats, err := task.GetRecentTaskStats(ctx, time.Duration(minutes)*time.Minute, key)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting recent task stats from the last %d minutes", minutes)
 	}

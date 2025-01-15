@@ -823,7 +823,7 @@ func TasksByBuildIdPipeline(buildId, taskId, taskStatus string,
 }
 
 // GetRecentTasks returns the task results used by the recent_tasks endpoints.
-func GetRecentTasks(period time.Duration) ([]Task, error) {
+func GetRecentTasks(ctx context.Context, period time.Duration) ([]Task, error) {
 	query := db.Query(
 		bson.M{
 			StatusKey: bson.M{"$exists": true},
@@ -834,7 +834,7 @@ func GetRecentTasks(period time.Duration) ([]Task, error) {
 	)
 
 	tasks := []Task{}
-	err := db.FindAllQ(Collection, query, &tasks)
+	err := db.FindAllQContext(ctx, Collection, query, &tasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting recently-finished tasks")
 	}
@@ -852,7 +852,7 @@ type StatusItem struct {
 	Stats  []Stat `bson:"stats"`
 }
 
-func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, error) {
+func GetRecentTaskStats(ctx context.Context, period time.Duration, nameKey string) ([]StatusItem, error) {
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			StatusKey: bson.M{"$exists": true},
@@ -879,7 +879,7 @@ func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, err
 	}
 
 	result := []StatusItem{}
-	if err := Aggregate(pipeline, &result); err != nil {
+	if err := AggregateContext(ctx, pipeline, &result); err != nil {
 		return nil, errors.Wrap(err, "aggregating recently-finished task stats")
 	}
 
@@ -1130,7 +1130,7 @@ func FindHostRunnable(ctx context.Context, distroID string, removeDeps bool) ([]
 	)
 
 	runnableTasks := []Task{}
-	if err := Aggregate(pipeline, &runnableTasks); err != nil {
+	if err := AggregateContext(ctx, pipeline, &runnableTasks); err != nil {
 		return nil, errors.Wrap(err, "fetching runnable host tasks")
 	}
 

@@ -1706,6 +1706,9 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
 }
 
 func TestGetRecentTaskStats(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
 	tasks := []Task{
@@ -1721,7 +1724,7 @@ func TestGetRecentTaskStats(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	list, err := GetRecentTaskStats(time.Minute, DistroIdKey)
+	list, err := GetRecentTaskStats(ctx, time.Minute, DistroIdKey)
 	assert.NoError(err)
 
 	// Two statuses
