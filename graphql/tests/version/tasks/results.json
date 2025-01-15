@@ -442,10 +442,6 @@
                   "baseStatus": "failed"
                 },
                 {
-                  "id": "7",
-                  "baseStatus": "aborted"
-                },
-                {
                   "id": "1",
                   "baseStatus": "success"
                 },
@@ -460,6 +456,10 @@
                 {
                   "id": "6",
                   "baseStatus": "success"
+                },
+                {
+                  "id": "7",
+                  "baseStatus": "aborted"
                 }
               ],
               "count": 7
@@ -576,16 +576,16 @@
                   "displayStatus": "system-failed"
                 },
                 {
-                  "id": "7",
-                  "displayStatus": "aborted"
-                },
-                {
                   "id": "1",
                   "displayStatus": "success"
                 },
                 {
                   "id": "4",
                   "displayStatus": "success"
+                },
+                {
+                  "id": "7",
+                  "displayStatus": "aborted"
                 }
               ],
               "count": 7
@@ -644,6 +644,10 @@
             "tasks": {
               "data": [
                 {
+                  "id": "7",
+                  "baseStatus": "aborted"
+                },
+                {
                   "id": "1",
                   "baseStatus": "success"
                 },
@@ -658,10 +662,6 @@
                 {
                   "id": "6",
                   "baseStatus": "success"
-                },
-                {
-                  "id": "7",
-                  "baseStatus": "aborted"
                 },
                 {
                   "id": "3",
@@ -686,16 +686,16 @@
             "tasks": {
               "data": [
                 {
+                  "id": "7",
+                  "displayStatus": "aborted"
+                },
+                {
                   "id": "1",
                   "displayStatus": "success"
                 },
                 {
                   "id": "4",
                   "displayStatus": "success"
-                },
-                {
-                  "id": "7",
-                  "displayStatus": "aborted"
                 },
                 {
                   "id": "2",
@@ -768,16 +768,6 @@
                   "displayStatus": "system-failed"
                 },
                 {
-                  "id": "7",
-                  "baseTask": {
-                    "displayStatus": "aborted"
-                  },
-                  "blocked": false,
-                  "buildVariant": "ubuntu1604",
-                  "displayName": "test-agent",
-                  "displayStatus": "aborted"
-                },
-                {
                   "id": "1",
                   "baseTask": {
                     "displayStatus": "success"
@@ -796,6 +786,16 @@
                   "buildVariant": "windows",
                   "displayName": "lint",
                   "displayStatus": "success"
+                },
+                {
+                  "id": "7",
+                  "baseTask": {
+                    "displayStatus": "aborted"
+                  },
+                  "blocked": false,
+                  "buildVariant": "ubuntu1604",
+                  "displayName": "test-agent",
+                  "displayStatus": "aborted"
                 }
               ],
               "count": 7
