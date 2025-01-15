@@ -473,14 +473,14 @@ func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, opts Defaul
 // DeleteGithubAppCredentials is the resolver for the deleteGithubAppCredentials field.
 func (r *mutationResolver) DeleteGithubAppCredentials(ctx context.Context, opts DeleteGithubAppCredentialsInput) (*DeleteGithubAppCredentialsPayload, error) {
 	usr := mustHaveUser(ctx)
-	app, err := model.GitHubAppAuthFindOne(opts.ProjectID)
+	app, err := githubapp.FindOneGitHubAppAuth(opts.ProjectID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding GitHub app for project '%s': %s", opts.ProjectID, err.Error()))
 	}
 	if app == nil {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("project '%s' does not have a GitHub app defined", opts.ProjectID))
 	}
-	if err = model.GitHubAppAuthRemove(app); err != nil {
+	if err = githubapp.RemoveGitHubAppAuth(app); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("removing GitHub app auth for project '%s': %s", opts.ProjectID, err.Error()))
 	}
 	before := model.ProjectSettings{

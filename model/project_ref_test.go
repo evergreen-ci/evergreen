@@ -1461,7 +1461,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 				AppID:      9999,
 				PrivateKey: []byte("repo-secret"),
 			}
-			err = GitHubAppAuthUpsert(&auth)
+			err = githubapp.UpsertGitHubAppAuth(&auth)
 			assert.NoError(t, err)
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageGithubAppSettingsSection, "me"))
 			pRefFromDb, err = FindBranchProjectRef(id)
@@ -1795,13 +1795,13 @@ func TestSetGithubAppCredentials(t *testing.T) {
 	samplePrivateKey := []byte("private_key")
 	for name, test := range map[string]func(t *testing.T, p *ProjectRef){
 		"NoCredentialsWhenNoneExist": func(t *testing.T, p *ProjectRef) {
-			app, err := GitHubAppAuthFindOne(p.Id)
+			app, err := githubapp.FindOneGitHubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Nil(t, app)
 		},
 		"CredentialsCanBeSet": func(t *testing.T, p *ProjectRef) {
 			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
-			app, err := GitHubAppAuthFindOne(p.Id)
+			app, err := githubapp.FindOneGitHubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Equal(t, sampleAppId, app.AppID)
 			assert.Equal(t, samplePrivateKey, app.PrivateKey)
@@ -1809,28 +1809,28 @@ func TestSetGithubAppCredentials(t *testing.T) {
 		"CredentialsCanBeRemovedByEmptyAppIDAndEmptyPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
 			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
-			app, err := GitHubAppAuthFindOne(p.Id)
+			app, err := githubapp.FindOneGitHubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Equal(t, sampleAppId, app.AppID)
 			assert.Equal(t, samplePrivateKey, app.PrivateKey)
 
 			// Remove credentials.
 			require.NoError(t, p.SetGithubAppCredentials(0, []byte("")))
-			app, err = GitHubAppAuthFindOne(p.Id)
+			app, err = githubapp.FindOneGitHubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Nil(t, app)
 		},
 		"CredentialsCanBeRemovedByEmptyAppIDAndNilPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
 			require.NoError(t, p.SetGithubAppCredentials(sampleAppId, samplePrivateKey))
-			app, err := GitHubAppAuthFindOne(p.Id)
+			app, err := githubapp.FindOneGitHubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Equal(t, sampleAppId, app.AppID)
 			assert.Equal(t, samplePrivateKey, app.PrivateKey)
 
 			// Remove credentials.
 			require.NoError(t, p.SetGithubAppCredentials(0, nil))
-			app, err = GitHubAppAuthFindOne(p.Id)
+			app, err = githubapp.FindOneGitHubAppAuth(p.Id)
 			require.NoError(t, err)
 			assert.Nil(t, app)
 		},
