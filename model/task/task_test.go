@@ -1768,6 +1768,9 @@ func TestGetResultCountList(t *testing.T) {
 }
 
 func TestFindVariantsWithTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require.NoError(t, db.Clear(Collection))
 	tasks := Tasks{
@@ -1778,7 +1781,7 @@ func TestFindVariantsWithTask(t *testing.T) {
 	}
 	assert.NoError(tasks.Insert())
 
-	bvs, err := FindVariantsWithTask("match", "p", 10, 20)
+	bvs, err := FindVariantsWithTask(ctx, "match", "p", 10, 20)
 	assert.NoError(err)
 	require.Len(t, bvs, 2)
 	assert.Contains(bvs, "bv1")

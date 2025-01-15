@@ -1138,7 +1138,7 @@ func FindHostRunnable(ctx context.Context, distroID string, removeDeps bool) ([]
 }
 
 // FindVariantsWithTask returns a list of build variants between specified commits that contain a specific task name
-func FindVariantsWithTask(taskName, project string, orderMin, orderMax int) ([]string, error) {
+func FindVariantsWithTask(ctx context.Context, taskName, project string, orderMin, orderMax int) ([]string, error) {
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
@@ -1158,7 +1158,7 @@ func FindVariantsWithTask(taskName, project string, orderMin, orderMax int) ([]s
 		},
 	}
 	docs := []map[string]string{}
-	err := Aggregate(pipeline, &docs)
+	err := AggregateContext(ctx, pipeline, &docs)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding variants with task named '%s'", taskName)
 	}
