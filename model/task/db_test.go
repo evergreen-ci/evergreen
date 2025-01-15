@@ -652,6 +652,9 @@ func TestDisplayStatus(t *testing.T) {
 }
 
 func TestFindTaskNamesByBuildVariant(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("Should return unique task names for a given build variant", t, func() {
 		assert.NoError(t, db.ClearCollections(Collection))
 		t1 := Task{
@@ -694,7 +697,7 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 			RevisionOrderNumber: 1,
 		}
 		assert.NoError(t, t4.Insert())
-		buildVariantTask, err := FindTaskNamesByBuildVariant("evergreen", "ubuntu1604", 1)
+		buildVariantTask, err := FindTaskNamesByBuildVariant(ctx, "evergreen", "ubuntu1604", 1)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{"dist", "test-agent", "test-graphql"}, buildVariantTask)
 
@@ -741,7 +744,7 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 			RevisionOrderNumber: 1,
 		}
 		assert.NoError(t, t4.Insert())
-		buildVariantTasks, err := FindTaskNamesByBuildVariant("evergreen", "ubuntu1604", 1)
+		buildVariantTasks, err := FindTaskNamesByBuildVariant(ctx, "evergreen", "ubuntu1604", 1)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{"test-graphql", "test-something"}, buildVariantTasks)
 	})

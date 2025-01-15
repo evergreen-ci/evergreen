@@ -1184,7 +1184,7 @@ const VersionLimit = 50
 // FindUniqueBuildVariantNamesByTask returns a list of unique build variants names and their display names for a given task name.
 // It attempts to return the most recent display name for each build variant to avoid returning duplicates caused by display names changing.
 // It only checks the last 50 versions that ran for a given task name.
-func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOrderNumber int) ([]*BuildVariantTuple, error) {
+func FindUniqueBuildVariantNamesByTask(ctx context.Context, projectId string, taskName string, repoOrderNumber int) ([]*BuildVariantTuple, error) {
 	query := bson.M{
 		ProjectKey:     projectId,
 		DisplayNameKey: taskName,
@@ -1240,7 +1240,7 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 	pipeline = append(pipeline, sortByVariantDisplayName)
 
 	result := []*BuildVariantTuple{}
-	if err := Aggregate(pipeline, &result); err != nil {
+	if err := AggregateContext(ctx, pipeline, &result); err != nil {
 		return nil, errors.Wrap(err, "getting build variant tasks")
 	}
 	if len(result) == 0 {
@@ -1250,7 +1250,7 @@ func FindUniqueBuildVariantNamesByTask(projectId string, taskName string, repoOr
 }
 
 // FindTaskNamesByBuildVariant returns a list of unique task names for a given build variant
-func FindTaskNamesByBuildVariant(projectId string, buildVariant string, repoOrderNumber int) ([]string, error) {
+func FindTaskNamesByBuildVariant(ctx context.Context, projectId string, buildVariant string, repoOrderNumber int) ([]string, error) {
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			ProjectKey:      projectId,
@@ -1299,7 +1299,7 @@ func FindTaskNamesByBuildVariant(projectId string, buildVariant string, repoOrde
 	}
 
 	result := []buildVariantTasks{}
-	if err := Aggregate(pipeline, &result); err != nil {
+	if err := AggregateContext(ctx, pipeline, &result); err != nil {
 		return nil, errors.Wrap(err, "getting build variant tasks")
 	}
 	if len(result) == 0 {
