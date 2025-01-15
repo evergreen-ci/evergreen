@@ -1,9 +1,7 @@
 package patch
 
 import (
-	"path/filepath"
 	"sort"
-	"strings"
 	"testing"
 	"time"
 
@@ -197,36 +195,6 @@ func TestPatchSortByCreateTime(t *testing.T) {
 	assert.Equal(4, patches[2].PatchNumber)
 	assert.Equal(5, patches[3].PatchNumber)
 	assert.Equal(100, patches[4].PatchNumber)
-}
-
-func TestIsBackport(t *testing.T) {
-	p := Patch{}
-	assert.False(t, p.IsBackport())
-
-	p.BackportOf.PatchID = "abc"
-	assert.True(t, p.IsBackport())
-
-	p = Patch{}
-	p.BackportOf.SHA = "abc"
-	assert.True(t, p.IsBackport())
-}
-
-func TestIsMailbox(t *testing.T) {
-	isMBP, err := IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "..", "testdata", "filethatdoesntexist.txt"))
-	assert.Error(t, err)
-	assert.False(t, isMBP)
-
-	isMBP, err = IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "..", "testdata", "test.patch"))
-	assert.NoError(t, err)
-	assert.True(t, isMBP)
-
-	isMBP, err = IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "..", "testdata", "patch.diff"))
-	assert.NoError(t, err)
-	assert.False(t, isMBP)
-
-	isMBP, err = IsMailbox(filepath.Join(testutil.GetDirectoryOfFile(), "..", "testdata", "emptyfile.txt"))
-	assert.NoError(t, err)
-	assert.False(t, isMBP)
 }
 
 func TestResolveSyncVariantsTasks(t *testing.T) {
@@ -585,85 +553,6 @@ func TestAddSyncVariantsTasks(t *testing.T) {
 	}
 }
 
-func TestMakeMergePatchPatches(t *testing.T) {
-	require.NoError(t, db.ClearGridCollections(GridFSPrefix))
-	patchDiff := "Lorem Ipsum"
-	patchFileID := bson.NewObjectId()
-	require.NoError(t, db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(patchDiff)))
-
-	existingPatch := &Patch{
-		Patches: []ModulePatch{
-			{
-				ModuleName: "0",
-				PatchSet: PatchSet{
-					PatchFileId: patchFileID.Hex(),
-				},
-			},
-		},
-		GitInfo: &GitMetadata{
-			Email:    "octocat@github.com",
-			Username: "octocat",
-		},
-	}
-	newPatches, err := MakeMergePatchPatches(existingPatch, "new message")
-	assert.NoError(t, err)
-	assert.Len(t, newPatches, 1)
-	assert.NotEqual(t, patchFileID.Hex(), newPatches[0].PatchSet.PatchFileId)
-
-	patchContents, err := FetchPatchContents(newPatches[0].PatchSet.PatchFileId)
-	require.NoError(t, err)
-	assert.Contains(t, patchContents, "From: octocat <octocat@github.com>")
-	assert.Contains(t, patchContents, patchDiff)
-}
-
-func TestAddMetadataToDiff(t *testing.T) {
-	diff := "+ func diffToMbox(diffData *localDiff, subject string) (string, error) {"
-	commitTime := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
-
-	tests := map[string]func(*testing.T){
-		"without git version": func(t *testing.T) {
-			metadata := GitMetadata{
-				Username: "octocat",
-				Email:    "octocat@github.com",
-			}
-			mboxDiff, err := addMetadataToDiff(diff, "EVG-12345 diff to mbox", commitTime, metadata)
-			assert.NoError(t, err)
-			assert.Equal(t, `From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
-From: octocat <octocat@github.com>
-Date: Tue, 10 Nov 2009 23:00:00 +0000
-Subject: EVG-12345 diff to mbox
-
----
-+ func diffToMbox(diffData *localDiff, subject string) (string, error) {
-`, mboxDiff)
-		},
-		"with git version": func(t *testing.T) {
-			metadata := GitMetadata{
-				Username:   "octocat",
-				Email:      "octocat@github.com",
-				GitVersion: "2.19.1",
-			}
-			mboxDiff, err := addMetadataToDiff(diff, "EVG-12345 diff to mbox", commitTime, metadata)
-			assert.NoError(t, err)
-			assert.Equal(t, `From 72899681697bc4c45b1dae2c97c62e2e7e5d597b Mon Sep 17 00:00:00 2001
-From: octocat <octocat@github.com>
-Date: Tue, 10 Nov 2009 23:00:00 +0000
-Subject: EVG-12345 diff to mbox
-
----
-+ func diffToMbox(diffData *localDiff, subject string) (string, error) {
---
-2.19.1
-
-`, mboxDiff)
-		},
-	}
-
-	for name, test := range tests {
-		t.Run(name, test)
-	}
-}
-
 func TestMergeVariantsTasks(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		vt1      []VariantTasks
@@ -859,9 +748,9 @@ func TestSetDownstreamParameters(t *testing.T) {
 	}
 
 	assert.NoError(p.SetDownstreamParameters(paramsToAdd))
-	assert.Equal(p.Triggers.DownstreamParameters[0].Key, "key_0")
-	assert.Equal(p.Triggers.DownstreamParameters[1].Key, "key_1")
-	assert.Equal(p.Triggers.DownstreamParameters[2].Key, "key_2")
+	assert.Equal("key_0", p.Triggers.DownstreamParameters[0].Key)
+	assert.Equal("key_1", p.Triggers.DownstreamParameters[1].Key)
+	assert.Equal("key_2", p.Triggers.DownstreamParameters[2].Key)
 }
 
 func TestSetTriggerAliases(t *testing.T) {
@@ -885,9 +774,9 @@ func TestSetTriggerAliases(t *testing.T) {
 
 	dbPatch, err := FindOne(ById(p.Id))
 	assert.NoError(err)
-	assert.Equal(dbPatch.Triggers.Aliases[0], "alias_0")
-	assert.Equal(dbPatch.Triggers.Aliases[1], "alias_1")
-	assert.Equal(dbPatch.Triggers.Aliases[2], "alias_2")
+	assert.Equal("alias_0", dbPatch.Triggers.Aliases[0])
+	assert.Equal("alias_1", dbPatch.Triggers.Aliases[1])
+	assert.Equal("alias_2", dbPatch.Triggers.Aliases[2])
 }
 
 func TestSetChildPatches(t *testing.T) {
@@ -911,9 +800,9 @@ func TestSetChildPatches(t *testing.T) {
 
 	dbPatch, err := FindOne(ById(p.Id))
 	assert.NoError(err)
-	assert.Equal(dbPatch.Triggers.ChildPatches[0], "id_0")
-	assert.Equal(dbPatch.Triggers.ChildPatches[1], "id_1")
-	assert.Equal(dbPatch.Triggers.ChildPatches[2], "id_2")
+	assert.Equal("id_0", dbPatch.Triggers.ChildPatches[0])
+	assert.Equal("id_1", dbPatch.Triggers.ChildPatches[1])
+	assert.Equal("id_2", dbPatch.Triggers.ChildPatches[2])
 }
 
 func TestGetCollectiveStatusFromPatchStatuses(t *testing.T) {
@@ -964,7 +853,7 @@ func TestGetRequester(t *testing.T) {
 	}
 	require.NoError(t, p3.Insert())
 
-	require.Equal(t, p1.GetRequester(), evergreen.GithubPRRequester)
-	require.Equal(t, p2.GetRequester(), evergreen.GithubMergeRequester)
-	require.Equal(t, p3.GetRequester(), evergreen.PatchVersionRequester)
+	require.Equal(t, evergreen.GithubPRRequester, p1.GetRequester())
+	require.Equal(t, evergreen.GithubMergeRequester, p2.GetRequester())
+	require.Equal(t, evergreen.PatchVersionRequester, p3.GetRequester())
 }

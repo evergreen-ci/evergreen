@@ -1311,9 +1311,9 @@ func FindTaskNamesByBuildVariant(projectId string, buildVariant string, repoOrde
 // DB Boilerplate
 
 // FindOne returns a single task that satisfies the query.
-func FindOne(query db.Q) (*Task, error) {
+func FindOne(ctx context.Context, query db.Q) (*Task, error) {
 	task := &Task{}
-	err := db.FindOneQ(Collection, query, task)
+	err := db.FindOneQContext(ctx, Collection, query, task)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1321,26 +1321,17 @@ func FindOne(query db.Q) (*Task, error) {
 }
 
 // FindOneId returns a single task with the given ID.
-func FindOneId(id string) (*Task, error) {
-	task := &Task{}
-	query := db.Query(bson.M{IdKey: id})
-	err := db.FindOneQ(Collection, query, task)
+func FindOneId(ctx context.Context, id string) (*Task, error) {
+	task, err := FindOne(ctx, db.Query(bson.M{IdKey: id}))
 
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "finding task by ID")
-	}
-
-	return task, nil
+	return task, errors.Wrap(err, "finding task by ID")
 }
 
 // FindByIdExecution returns a single task with the given ID and execution. If
 // execution is nil, the latest execution is returned.
-func FindByIdExecution(id string, execution *int) (*Task, error) {
+func FindByIdExecution(ctx context.Context, id string, execution *int) (*Task, error) {
 	if execution == nil {
-		return FindOneId(id)
+		return FindOneId(ctx, id)
 	}
 	return FindOneIdAndExecution(id, *execution)
 }
@@ -1594,10 +1585,10 @@ func FindOldWithDisplayTasks(filter bson.M) ([]Task, error) {
 
 // FindOneIdOldOrNew returns a single task with the given ID and execution,
 // first looking in the old tasks collection, then the tasks collection.
-func FindOneIdOldOrNew(id string, execution int) (*Task, error) {
+func FindOneIdOldOrNew(ctx context.Context, id string, execution int) (*Task, error) {
 	task, err := FindOneOldId(MakeOldID(id, execution))
 	if task == nil || err != nil {
-		return FindOneId(id)
+		return FindOneId(ctx, id)
 	}
 
 	return task, err
@@ -1745,9 +1736,9 @@ func Count(query db.Q) (int, error) {
 	return db.CountQ(Collection, query)
 }
 
-func FindProjectForTask(taskID string) (string, error) {
+func FindProjectForTask(ctx context.Context, taskID string) (string, error) {
 	query := db.Query(ById(taskID)).WithFields(ProjectKey)
-	t, err := FindOne(query)
+	t, err := FindOne(ctx, query)
 	if err != nil {
 		return "", err
 	}
@@ -1846,16 +1837,6 @@ func HasUnfinishedTaskForVersions(versionIds []string, taskName, variantName str
 	return count > 0, err
 }
 
-// FindTaskForVersion returns a task matching the given version and task info.
-func FindTaskForVersion(versionId, taskName, variantName string) (*Task, error) {
-	return FindOne(
-		db.Query(bson.M{
-			VersionKey:      versionId,
-			DisplayNameKey:  taskName,
-			BuildVariantKey: variantName,
-		}))
-}
-
 func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError error) error {
 	if hostCreateError == nil {
 		return nil
@@ -1870,8 +1851,8 @@ func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError 
 
 // FindActivatedStepbackTaskByName queries for running/scheduled stepback tasks with
 // matching build variant and task name.
-func FindActivatedStepbackTaskByName(projectId string, variantName string, taskName string) (*Task, error) {
-	t, err := FindOne(db.Query(bson.M{
+func FindActivatedStepbackTaskByName(ctx context.Context, projectId string, variantName string, taskName string) (*Task, error) {
+	t, err := FindOne(ctx, db.Query(bson.M{
 		ProjectKey:      projectId,
 		BuildVariantKey: variantName,
 		DisplayNameKey:  taskName,

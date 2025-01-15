@@ -199,9 +199,9 @@ func TestPodAgentNextTask(t *testing.T) {
 			nextTaskResp, ok := resp.Data().(*apimodels.NextTaskResponse)
 			require.True(t, ok)
 			assert.Equal(t, nextTaskResp.TaskId, tsk.Id)
-			foundTask, err := task.FindOneId(tsk.Id)
+			foundTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
-			assert.Equal(t, foundTask.Status, evergreen.TaskDispatched)
+			assert.Equal(t, evergreen.TaskDispatched, foundTask.Status)
 		},
 		"RunPreparesToTerminatePodWhenThereAreNoTasksToDispatch": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			p := getPod()
@@ -282,7 +282,7 @@ func TestPodAgentNextTask(t *testing.T) {
 			resp := rh.Run(ctx)
 			nextTaskResp, ok := resp.Data().(*apimodels.NextTaskResponse)
 			require.True(t, ok)
-			assert.Equal(t, nextTaskResp, &apimodels.NextTaskResponse{})
+			assert.Equal(t, &apimodels.NextTaskResponse{}, nextTaskResp)
 
 			q := env.RemoteQueue()
 			require.NoError(t, q.Start(ctx))
@@ -391,12 +391,12 @@ func TestPodAgentEndTask(t *testing.T) {
 			resp := rh.Run(ctx)
 			endTaskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
 			require.True(t, ok)
-			assert.Equal(t, endTaskResp, &apimodels.EndTaskResponse{})
+			assert.Equal(t, &apimodels.EndTaskResponse{}, endTaskResp)
 			require.NoError(t, podToInsert.UpdateStatus(pod.StatusStarting, ""))
 			resp = rh.Run(ctx)
 			endTaskResp, ok = resp.Data().(*apimodels.EndTaskResponse)
 			require.True(t, ok)
-			assert.Equal(t, endTaskResp, &apimodels.EndTaskResponse{})
+			assert.Equal(t, &apimodels.EndTaskResponse{}, endTaskResp)
 		},
 		"RunSuccessfullyFinishesTask": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
 			podToInsert := &pod.Pod{
@@ -442,10 +442,10 @@ func TestPodAgentEndTask(t *testing.T) {
 			resp := rh.Run(ctx)
 			endTaskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
 			require.True(t, ok)
-			assert.Equal(t, endTaskResp.ShouldExit, false)
-			foundTask, err := task.FindOneId(taskID)
+			assert.False(t, endTaskResp.ShouldExit)
+			foundTask, err := task.FindOneId(ctx, taskID)
 			require.NoError(t, err)
-			assert.Equal(t, foundTask.Status, evergreen.TaskSucceeded)
+			assert.Equal(t, evergreen.TaskSucceeded, foundTask.Status)
 		},
 		"RunNoOpsOnAbortedTask": func(ctx context.Context, t *testing.T, rh *podAgentEndTask, env evergreen.Environment) {
 			podToInsert := &pod.Pod{
@@ -492,7 +492,7 @@ func TestPodAgentEndTask(t *testing.T) {
 			resp := rh.Run(ctx)
 			endTaskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
 			require.True(t, ok)
-			assert.Equal(t, endTaskResp, &apimodels.EndTaskResponse{})
+			assert.Equal(t, &apimodels.EndTaskResponse{}, endTaskResp)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

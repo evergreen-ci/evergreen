@@ -11,7 +11,7 @@ import (
 )
 
 func TestLoadContext(t *testing.T) {
-	backgroundCtx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, ProjectRefCollection))
@@ -29,15 +29,15 @@ func TestLoadContext(t *testing.T) {
 	}
 	assert.NoError(newTask.Insert())
 	assert.NoError(oldTask.Insert())
-	assert.NoError(oldTask.Archive(backgroundCtx))
+	assert.NoError(oldTask.Archive(ctx))
 
 	// test that current tasks are loaded correctly
-	ctx, err := LoadContext(newTask.Id, "", "", "", myProject.Id)
+	c, err := LoadContext(ctx, newTask.Id, "", "", "", myProject.Id)
 	assert.NoError(err)
-	assert.Equal(newTask.Id, ctx.Task.Id)
+	assert.Equal(newTask.Id, c.Task.Id)
 
 	// test that old tasks are loaded correctly
-	ctx, err = LoadContext(oldTask.Id, "", "", "", myProject.Id)
+	c, err = LoadContext(ctx, oldTask.Id, "", "", "", myProject.Id)
 	assert.NoError(err)
-	assert.Equal(oldTask.Id, ctx.Task.Id)
+	assert.Equal(oldTask.Id, c.Task.Id)
 }

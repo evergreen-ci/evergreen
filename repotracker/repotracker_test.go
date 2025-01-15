@@ -373,10 +373,10 @@ tasks:
 	}
 	assert.NoError(t, repoTracker.StoreRevisions(ctx, revisions))
 
-	bv1t1, err := task.FindOne(db.Query(bson.M{task.BuildVariantKey: "bv1", task.DisplayNameKey: "t1"}))
+	bv1t1, err := task.FindOne(ctx, db.Query(bson.M{task.BuildVariantKey: "bv1", task.DisplayNameKey: "t1"}))
 	require.NoError(t, err)
 	require.NotNil(t, bv1t1)
-	assert.Equal(t, bv1t1.NumDependents, 4)
+	assert.Equal(t, 4, bv1t1.NumDependents)
 }
 
 func TestBatchTimeForTasks(t *testing.T) {
@@ -527,7 +527,7 @@ tasks:
 	tasks, err = task.Find(task.ByBuildId(build3.Id))
 	assert.NoError(t, err)
 	require.Len(t, tasks, 1)
-	assert.Equal(t, tasks[0].Priority, evergreen.DisabledTaskPriority)
+	assert.Equal(t, evergreen.DisabledTaskPriority, tasks[0].Priority)
 	assert.False(t, tasks[0].Activated)
 
 	// now we should update just the task even though the build is activated already
@@ -864,7 +864,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 	}
 	assert.NoError(AddBuildBreakSubscriptions(&v1, &proj1))
 	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
-	assert.Len(subs, 0)
+	assert.Empty(subs)
 
 	// just a project
 	subs = []event.Subscription{}
@@ -1018,7 +1018,7 @@ tasks:
 	s.Len(dbParserProject.BuildVariants, 1)
 	s.Len(dbParserProject.Tasks, 2)
 
-	s.Equal(false, utility.FromBoolPtr(dbVersion.Activated))
+	s.False(utility.FromBoolPtr(dbVersion.Activated))
 	dbBuild, err := build.FindOneId(v.BuildIds[0])
 	s.NoError(err)
 	s.Equal(v.Id, dbBuild.Version)
@@ -1077,7 +1077,7 @@ tasks:
 
 	dbTasks, err := task.Find(task.ByVersion(v.Id))
 	s.NoError(err)
-	s.Len(dbTasks, 0)
+	s.Empty(dbTasks)
 }
 
 func (s *CreateVersionFromConfigSuite) TestInvalidAliasErrors() {
@@ -1124,7 +1124,7 @@ tasks:
 
 	dbTasks, err := task.Find(task.ByVersion(v.Id))
 	s.NoError(err)
-	s.Len(dbTasks, 0)
+	s.Empty(dbTasks)
 }
 
 func (s *CreateVersionFromConfigSuite) TestErrorsMerged() {
@@ -1212,7 +1212,7 @@ tasks:
 
 	tasks, err := task.Find(task.ByVersion(v.Id))
 	s.NoError(err)
-	s.Len(tasks, 0)
+	s.Empty(tasks)
 }
 
 func (s *CreateVersionFromConfigSuite) TestWithTaskBatchTime() {
@@ -1253,7 +1253,7 @@ tasks:
 	v, err := CreateVersionFromConfig(s.ctx, projectInfo, metadata, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
-	s.Len(v.Errors, 0)
+	s.Empty(v.Errors)
 
 	tasks, err := task.FindAllTaskIDsFromVersion(v.Id)
 	s.NoError(err)
@@ -1279,7 +1279,7 @@ tasks:
 		}
 		if bv.BuildVariant == "bv2" {
 			s.False(bv.Activated)
-			s.Len(bv.BatchTimeTasks, 0)
+			s.Empty(bv.BatchTimeTasks)
 		}
 	}
 }
@@ -1359,7 +1359,7 @@ tasks:
 		}
 		if bv.BuildVariant == "bv2" {
 			s.False(bv.Activated)
-			s.Len(bv.BatchTimeTasks, 0)
+			s.Empty(bv.BatchTimeTasks)
 		}
 	}
 }
@@ -1456,7 +1456,7 @@ tasks:
 	v, err := CreateVersionFromConfig(s.ctx, projectInfo, metadata, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
-	s.Len(v.Errors, 0)
+	s.Empty(v.Errors)
 
 	tasks, err := task.Find(task.ByVersion(v.Id))
 	s.NoError(err)
@@ -1510,7 +1510,7 @@ task_groups:
 	v, err := CreateVersionFromConfig(s.ctx, projectInfo, metadata, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
-	s.Len(v.Errors, 0)
+	s.Empty(v.Errors)
 
 	tasks, err := task.Find(task.ByVersion(v.Id))
 	s.NoError(err)
@@ -1575,7 +1575,7 @@ tasks:
 	v, err := CreateVersionFromConfig(s.ctx, projectInfo, metadata, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
-	s.Len(v.Errors, 0)
+	s.Empty(v.Errors)
 
 	tasks, err := task.Find(task.ByVersion(v.Id))
 	s.NoError(err)

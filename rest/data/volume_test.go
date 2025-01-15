@@ -32,7 +32,7 @@ func TestMigrateVolume(t *testing.T) {
 			jobStarted, err := MigrateVolume(ctx, v.ID, options, user, env)
 			assert.NoError(t, err)
 			assert.True(t, jobStarted)
-			assert.Equal(t, env.RemoteQueue().Stats(ctx).Running, 1)
+			assert.Equal(t, 1, env.RemoteQueue().Stats(ctx).Running)
 		},
 		"FailsWithoutKey": func(t *testing.T, ctx context.Context, env *mock.Environment, h *host.Host, v *host.Volume, options *restModel.HostRequestOptions, user *user.DBUser) {
 			require.NoError(t, h.Insert(ctx))

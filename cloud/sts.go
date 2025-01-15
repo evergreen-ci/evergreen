@@ -65,7 +65,7 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 	if err := s.client.Create(ctx, evergreen.DefaultEC2Region); err != nil {
 		return AssumeRoleCredentials{}, errors.Wrapf(err, "creating AWS client")
 	}
-	t, err := task.FindOneId(taskID)
+	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return AssumeRoleCredentials{}, errors.Wrapf(err, "finding task")
 	}

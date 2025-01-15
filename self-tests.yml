@@ -684,8 +684,13 @@ tasks:
         params:
           directory: evergreen
           token: ${github_token}
-      - func: run-make
-        vars: { target: "${task_name}" }
+      - command: subprocess.exec
+        params:
+          working_dir: evergreen
+          binary: make
+          args: ["verify-mod-tidy"]
+          env:
+            GOROOT: /opt/golang/go1.23 # We use a newer version of Go to catch toolchain updates. This should be reverted in DEVPROD-3611.
   - name: verify-merge-function-update
     tags: ["linter"]
     patch_only: true

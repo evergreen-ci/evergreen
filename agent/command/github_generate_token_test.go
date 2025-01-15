@@ -118,7 +118,7 @@ func TestGitHubGenerateTokenExecute(t *testing.T) {
 			require.Len(t, conf.CommandCleanups, 1)
 			cleanup := conf.CommandCleanups[0]
 			assert.Equal(t, "github.generate_token", cleanup.Command)
-			assert.Nil(t, cleanup.Run(ctx))
+			assert.NoError(t, cleanup.Run(ctx))
 		},
 		"SucceedsWithEmptyOwnerAndRepoAndCreatesToken": func(ctx context.Context, t *testing.T, cmd *githubGenerateToken, client *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			client.CreateGitHubDynamicAccessTokenResult = "token!"
@@ -133,7 +133,7 @@ func TestGitHubGenerateTokenExecute(t *testing.T) {
 			require.Len(t, conf.CommandCleanups, 1)
 			cleanup := conf.CommandCleanups[0]
 			assert.Equal(t, "github.generate_token", cleanup.Command)
-			assert.Nil(t, cleanup.Run(ctx))
+			assert.NoError(t, cleanup.Run(ctx))
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

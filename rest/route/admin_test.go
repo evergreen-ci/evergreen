@@ -172,6 +172,9 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, settings.LoggerConfig.Buffer.UseAsync)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.IncomingBufferFactor, settings.LoggerConfig.Buffer.IncomingBufferFactor)
 	s.EqualValues(testSettings.Notify.SES.SenderAddress, settings.Notify.SES.SenderAddress)
+	s.EqualValues(testSettings.Overrides.Overrides[0].SectionID, settings.Overrides.Overrides[0].SectionID)
+	s.EqualValues(testSettings.Overrides.Overrides[0].Field, settings.Overrides.Overrides[0].Field)
+	s.EqualValues(testSettings.Overrides.Overrides[0].Value, settings.Overrides.Overrides[0].Value)
 	s.EqualValues(testSettings.ParameterStore.Prefix, settings.ParameterStore.Prefix)
 	s.EqualValues(testSettings.PodLifecycle.MaxParallelPodRequests, settings.PodLifecycle.MaxParallelPodRequests)
 	s.EqualValues(testSettings.PodLifecycle.MaxPodDefinitionCleanupRate, settings.PodLifecycle.MaxPodDefinitionCleanupRate)
@@ -260,7 +263,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	s.NoError(err)
 	dbEvents, err := event.FindAdmin(event.RecentAdminEvents(1))
 	s.NoError(err)
-	s.True(len(dbEvents) >= 1)
+	s.GreaterOrEqual(len(dbEvents), 1)
 	eventData := dbEvents[0].Data.(*event.AdminEventData)
 	guid := eventData.GUID
 	s.NotEmpty(guid)
@@ -331,7 +334,7 @@ func (s *AdminRouteSuite) TestRestartTasksRoute() {
 	s.NotNil(resp)
 	model, ok := resp.Data().(*restModel.RestartResponse)
 	s.True(ok)
-	s.True(len(model.ItemsRestarted) > 0)
+	s.NotEmpty(model.ItemsRestarted)
 	s.Nil(model.ItemsErrored)
 }
 
@@ -420,5 +423,5 @@ func (s *AdminRouteSuite) TestClearTaskQueueRoute() {
 
 	queueFromDb, err := model.LoadTaskQueue(distro)
 	s.NoError(err)
-	s.Len(queueFromDb.Queue, 0)
+	s.Empty(queueFromDb.Queue)
 }

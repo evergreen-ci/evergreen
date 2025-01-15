@@ -47,7 +47,7 @@ func (h *getTaskOutputLogsBaseHandler) parse(ctx context.Context, r *http.Reques
 
 		execution = utility.ToIntPtr(exec)
 	}
-	h.tsk, err = task.FindByIdExecution(gimlet.GetVars(r)["task_id"], execution)
+	h.tsk, err = task.FindByIdExecution(ctx, gimlet.GetVars(r)["task_id"], execution)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

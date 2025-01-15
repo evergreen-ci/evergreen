@@ -122,7 +122,7 @@ func (j *hostDrawdownJob) checkAndDecommission(ctx context.Context, h *host.Host
 	}
 
 	// Don't drawdown hosts that are running single host task groups.
-	isRunningSingleHostTaskGroup, err := isAssignedSingleHostTaskGroup(h)
+	isRunningSingleHostTaskGroup, err := isAssignedSingleHostTaskGroup(ctx, h)
 	if err != nil {
 		return errors.Wrap(err, "checking if host is running single host task group")
 	}

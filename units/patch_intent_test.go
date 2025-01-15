@@ -242,7 +242,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.NoError(err)
 	s.NotNil(factory)
 	s.NotNil(factory())
-	s.Equal(factory().Type().Name, patchIntentJobName)
+	s.Equal(patchIntentJobName, factory().Type().Name)
 }
 
 func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
@@ -388,7 +388,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithDisabledCommitQueue() {
 	err = j.finishPatch(s.ctx, patchDoc)
 	s.Error(err)
 	s.NotEmpty(j.gitHubError)
-	s.Equal(j.gitHubError, commitQueueDisabled)
+	s.Equal(commitQueueDisabled, j.gitHubError)
 }
 
 func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
@@ -506,14 +506,14 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			s.NoError(err)
 
 			s.Equal(currentPatchDoc.BuildVariants, reusePatchDoc.BuildVariants)
-			s.Equal(currentPatchDoc.Tasks, []string{"diffTask1", "diffTask2"})
+			s.Equal([]string{"diffTask1", "diffTask2"}, currentPatchDoc.Tasks)
 
 		},
 		"specific patch/reuse failed": func(j *patchIntentProcessor, currentPatchDoc *patch.Patch) {
 			err := j.setToPreviousPatchDefinition(currentPatchDoc, &project, reusePatchId, true)
 			s.NoError(err)
 			s.Equal(currentPatchDoc.BuildVariants, reusePatchDoc.BuildVariants)
-			s.Equal(currentPatchDoc.Tasks, []string{"diffTask1"})
+			s.Equal([]string{"diffTask1"}, currentPatchDoc.Tasks)
 		},
 	} {
 		s.NoError(db.ClearCollections(task.Collection))
@@ -1227,7 +1227,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {
 	patchDoc = intent.NewPatch()
 	s.Error(j.finishPatch(s.ctx, patchDoc))
 	s.NotEmpty(j.gitHubError)
-	s.Equal(j.gitHubError, MergeBaseTooOld)
+	s.Equal(MergeBaseTooOld, j.gitHubError)
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
@@ -1561,60 +1561,6 @@ index ca20f6c..224168e 100644
 	s.NoError(err)
 }
 
-func (s *PatchIntentUnitsSuite) TestCliBackport() {
-	sourcePatch := &patch.Patch{
-		Id:      mgobson.NewObjectId(),
-		Project: s.project,
-		Githash: s.hash,
-		Alias:   evergreen.CommitQueueAlias,
-		GithubPatchData: thirdparty.GithubPatch{
-			BaseOwner: "evergreen-ci",
-			BaseRepo:  "evergreen",
-		},
-		Patches: []patch.ModulePatch{
-			{
-				Githash: "revision",
-				PatchSet: patch.PatchSet{
-					Patch: "something",
-					Summary: []thirdparty.Summary{
-						{Name: "asdf", Additions: 4, Deletions: 80},
-						{Name: "random.txt", Additions: 6, Deletions: 0},
-					},
-				},
-			},
-		},
-	}
-	s.NoError(sourcePatch.Insert())
-	params := patch.CLIIntentParams{
-		User:        s.user,
-		Project:     s.project,
-		BaseGitHash: s.hash,
-		BackportOf: patch.BackportInfo{
-			PatchID: sourcePatch.Id.Hex(),
-		},
-	}
-
-	intent, err := patch.NewCliIntent(params)
-	s.NoError(err)
-	s.NotNil(intent)
-	s.NoError(intent.Insert())
-
-	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
-	id := mgobson.NewObjectId()
-	j, ok := NewPatchIntentProcessor(s.env, id, intent).(*patchIntentProcessor)
-	j.env = s.env
-	s.True(ok)
-	s.NotNil(j)
-	j.Run(s.ctx)
-	s.NoError(j.Error())
-
-	backportPatch, err := patch.FindOneId(id.Hex())
-	s.NoError(err)
-	s.Equal(sourcePatch.Id.Hex(), backportPatch.BackportOf.PatchID)
-	s.Len(backportPatch.Patches, 1)
-	s.Equal(sourcePatch.Patches[0].PatchSet.Patch, backportPatch.Patches[0].PatchSet.Patch)
-}
-
 func (s *PatchIntentUnitsSuite) TestProcessTriggerAliases() {
 	latestVersion := model.Version{
 		Id:         "childProj-some-version",
@@ -1666,7 +1612,7 @@ tasks:
 	s.Require().NotNil(projectRef)
 	s.NoError(err)
 
-	s.Len(p.Triggers.ChildPatches, 0)
+	s.Empty(p.Triggers.ChildPatches)
 	s.NoError(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
 
 	dbPatch, err := patch.FindOneId(p.Id.Hex())
@@ -1793,7 +1739,7 @@ tasks:
 	s.Require().NotNil(projectRef)
 	s.NoError(err)
 
-	s.Len(p.Triggers.ChildPatches, 0)
+	s.Empty(p.Triggers.ChildPatches)
 	s.Error(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}), "should error if no tasks/variants match")
 	s.Len(p.Triggers.ChildPatches, 1)
 

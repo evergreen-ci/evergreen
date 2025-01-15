@@ -104,7 +104,13 @@ type Environment interface {
 	Session() db.Session
 	ContextSession(ctx context.Context) db.Session
 	Client() *mongo.Client
+
+	// DB returns a database that is dedicated to this instance of
+	// Evergreen.
 	DB() *mongo.Database
+	// SharedDB returns a database that is shared between multiple
+	// instances of Evergreen. Returns nil when no shared database
+	// is configured.
 	SharedDB() *mongo.Database
 
 	// The Environment provides access to several amboy queues for
@@ -436,6 +442,7 @@ func (e *envState) Client() *mongo.Client {
 	return e.client
 }
 
+// DB returns a database that is dedicated to this instance of Evergreen.
 func (e *envState) DB() *mongo.Database {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
@@ -443,6 +450,8 @@ func (e *envState) DB() *mongo.Database {
 	return e.client.Database(e.dbName)
 }
 
+// SharedDB returns a database that is shared between multiple instances
+// of Evergreen. Returns nil when no shared database is configured.
 func (e *envState) SharedDB() *mongo.Database {
 	e.mu.RLock()
 	defer e.mu.RUnlock()

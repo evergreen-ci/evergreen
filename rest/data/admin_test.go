@@ -147,6 +147,9 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.LoggerConfig.Buffer.IncomingBufferFactor, settingsFromConnector.LoggerConfig.Buffer.IncomingBufferFactor)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, settingsFromConnector.LoggerConfig.Buffer.UseAsync)
 	s.EqualValues(testSettings.Notify.SES.SenderAddress, settingsFromConnector.Notify.SES.SenderAddress)
+	s.EqualValues(testSettings.Overrides.Overrides[0].SectionID, settingsFromConnector.Overrides.Overrides[0].SectionID)
+	s.EqualValues(testSettings.Overrides.Overrides[0].Field, settingsFromConnector.Overrides.Overrides[0].Field)
+	s.EqualValues(testSettings.Overrides.Overrides[0].Value, settingsFromConnector.Overrides.Overrides[0].Value)
 	s.Equal(testSettings.ParameterStore.Prefix, settingsFromConnector.ParameterStore.Prefix)
 	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settingsFromConnector.Providers.AWS.EC2Keys))
 	s.Equal(testSettings.Providers.AWS.ParserProject.Key, settingsFromConnector.Providers.AWS.ParserProject.Key)
@@ -200,7 +203,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 			s.Equal(testSettings.ServiceFlags.RepotrackerDisabled, v.RepotrackerDisabled)
 		case *evergreen.CloudProviders:
 			foundProvidersEvent = true
-			s.Require().True(len(v.AWS.EC2Keys) > 0)
+			s.Require().NotEmpty(v.AWS.EC2Keys)
 			s.Equal(testSettings.Providers.AWS.EC2Keys[0].Key, v.AWS.EC2Keys[0].Key)
 		case *evergreen.UIConfig:
 			foundUiEvent = true
@@ -277,6 +280,9 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.LoggerConfig.Buffer.IncomingBufferFactor, settingsFromConnector.LoggerConfig.Buffer.IncomingBufferFactor)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, settingsFromConnector.LoggerConfig.Buffer.UseAsync)
 	s.EqualValues(testSettings.Notify.SES.SenderAddress, settingsFromConnector.Notify.SES.SenderAddress)
+	s.EqualValues(testSettings.Overrides.Overrides[0].SectionID, settingsFromConnector.Overrides.Overrides[0].SectionID)
+	s.EqualValues(testSettings.Overrides.Overrides[0].Field, settingsFromConnector.Overrides.Overrides[0].Field)
+	s.EqualValues(testSettings.Overrides.Overrides[0].Value, settingsFromConnector.Overrides.Overrides[0].Value)
 	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settingsFromConnector.Providers.AWS.EC2Keys))
 	s.Equal(testSettings.Providers.AWS.ParserProject.Key, settingsFromConnector.Providers.AWS.ParserProject.Key)
 	s.Equal(testSettings.Providers.AWS.ParserProject.Secret, settingsFromConnector.Providers.AWS.ParserProject.Secret)
@@ -328,7 +334,7 @@ func (s *AdminDataSuite) TestRestart() {
 	}
 	dryRunResp, err := RestartFailedTasks(ctx, s.env.LocalQueue(), opts)
 	s.NoError(err)
-	s.NotZero(len(dryRunResp.ItemsRestarted))
+	s.NotEmpty(dryRunResp.ItemsRestarted)
 	s.Nil(dryRunResp.ItemsErrored)
 
 	// test that restarting tasks successfully puts a job on the queue

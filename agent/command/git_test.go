@@ -263,7 +263,7 @@ func (s *GitGetProjectSuite) TestGitPlugin() {
 	s.comm.CreateInstallationTokenResult = "token"
 	s.comm.CreateGitHubDynamicAccessTokenResult = "token"
 	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
+		s.NotEmpty(task.Commands)
 		for _, command := range task.Commands {
 			pluginCmds, err := Render(command, &conf.Project, BlockInfo{})
 			s.NoError(err)
@@ -303,7 +303,7 @@ func (s *GitGetProjectSuite) TestTokenIsRedactedWhenGenerated() {
 
 	runCommands := func(logger client.LoggerProducer) {
 		for _, task := range conf.Project.Tasks {
-			s.NotEqual(len(task.Commands), 0)
+			s.NotEmpty(task.Commands)
 			for _, command := range task.Commands {
 				pluginCmds, err := Render(command, &conf.Project, BlockInfo{})
 				s.NoError(err)
@@ -380,7 +380,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 	defer cancel()
 
 	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
+		s.NotEmpty(task.Commands)
 		for _, command := range task.Commands {
 			pluginCmds, err := Render(command, &conf.Project, BlockInfo{})
 			s.NoError(err)
@@ -678,17 +678,6 @@ func (s *GitGetProjectSuite) TestGetApplyCommand() {
 	applyCommand, err := c.getApplyCommand(patchPath, tc)
 	s.NoError(err)
 	s.Equal(fmt.Sprintf("GIT_TRACE=1 git apply --binary --index < '%s'", patchPath), applyCommand)
-
-	// mbox patch
-	tc = &internal.TaskConfig{
-		Task: task.Task{
-			DisplayName: evergreen.MergeTaskName,
-		},
-	}
-	patchPath = filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_mbox.patch")
-	applyCommand, err = c.getApplyCommand(patchPath, tc)
-	s.NoError(err)
-	s.Equal(fmt.Sprintf(`GIT_COMMITTER_NAME="%s" GIT_COMMITTER_EMAIL="%s" git am --keep-cr --keep < "%s"`, c.CommitterName, c.CommitterEmail, patchPath), applyCommand)
 }
 
 func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
@@ -710,7 +699,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionSetModule() {
 	defer cancel()
 
 	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
+		s.NotEmpty(task.Commands)
 		for _, command := range task.Commands {
 			var pluginCmds []Command
 			pluginCmds, err = Render(command, &conf.Project, BlockInfo{})
@@ -759,7 +748,7 @@ func (s *GitGetProjectSuite) TestMultipleModules() {
 	s.comm.CreateGitHubDynamicAccessTokenResult = mockedGitHubAppToken
 
 	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
+		s.NotEmpty(task.Commands)
 		for _, command := range task.Commands {
 			pluginCmds, err = Render(command, &conf.Project, BlockInfo{})
 			s.NoError(err)
@@ -819,7 +808,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifest() {
 	conf.Expansions.Put(moduleRevExpansionName("sample"), correctHash)
 
 	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
+		s.NotEmpty(task.Commands)
 		for _, command := range task.Commands {
 			var pluginCmds []Command
 			pluginCmds, err = Render(command, &conf.Project, BlockInfo{})
@@ -861,7 +850,7 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevisionManifestWithExpansion() {
 	conf.Expansions.Put("sample_expansion_name", "sample")
 
 	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
+		s.NotEmpty(task.Commands)
 		for _, command := range task.Commands {
 			var pluginCmds []Command
 			pluginCmds, err = Render(command, &conf.Project, BlockInfo{})

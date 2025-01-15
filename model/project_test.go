@@ -365,6 +365,9 @@ func TestIgnoresAllFiles(t *testing.T) {
 }
 
 func TestPopulateExpansions(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection,
 		task.Collection, ParserProjectCollection))
@@ -418,7 +421,7 @@ func TestPopulateExpansions(t *testing.T) {
 		Project:      "mci",
 	}
 
-	expansions, err := PopulateExpansions(taskDoc, &h, "appToken", "")
+	expansions, err := PopulateExpansions(ctx, taskDoc, &h, "appToken", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 23)
 	assert.Equal("0", expansions.Get("execution"))
@@ -454,7 +457,7 @@ func TestPopulateExpansions(t *testing.T) {
 	}
 	require.NoError(t, p.Insert())
 
-	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
+	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 23)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -480,7 +483,7 @@ func TestPopulateExpansions(t *testing.T) {
 		},
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
+	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -498,7 +501,7 @@ func TestPopulateExpansions(t *testing.T) {
 		Version: v.Id,
 	}
 	require.NoError(t, p.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
+	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -523,7 +526,7 @@ func TestPopulateExpansions(t *testing.T) {
 	}
 	assert.NoError(patchDoc.Insert())
 
-	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
+	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("github_pr", expansions.Get("requester"))
@@ -549,7 +552,7 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.NoError(upstreamProject.Insert())
 	taskDoc.TriggerID = "upstreamTask"
 	taskDoc.TriggerType = ProjectTriggerLevelTask
-	expansions, err = PopulateExpansions(taskDoc, &h, "", "")
+	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 36)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))
@@ -1439,7 +1442,7 @@ func (s *projectSuite) TestNewPatchTaskIdTable() {
 
 	config, err := NewTaskIdConfig(p, v, pairs, "project_identifier")
 	s.Require().NoError(err)
-	s.Len(config.DisplayTasks, 0)
+	s.Empty(config.DisplayTasks)
 	s.Len(config.ExecutionTasks, 2)
 	s.Equal("project_identifier_test_task1_revision_01_01_01_00_00_00",
 		config.ExecutionTasks[TVPair{
@@ -1783,13 +1786,13 @@ func (s *FindProjectsSuite) TestFetchKeyWithinBoundDesc() {
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundAsc() {
 	projects, err := FindNonHiddenProjects("zzz", 1, 1)
 	s.NoError(err)
-	s.Len(projects, 0)
+	s.Empty(projects)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundDesc() {
 	projects, err := FindNonHiddenProjects("aaa", 1, -1)
 	s.NoError(err)
-	s.Len(projects, 0)
+	s.Empty(projects)
 }
 
 func (s *FindProjectsSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBranch() {
@@ -1823,7 +1826,7 @@ func (s *FindProjectsSuite) TestGetProjectSettingsNoRepo() {
 		Admins:  []string{},
 	}
 	projectSettingsEvent, err := GetProjectSettings(projRef)
-	s.Nil(err)
+	s.NoError(err)
 	s.NotNil(projectSettingsEvent)
 	s.False(projectSettingsEvent.GithubHooksEnabled)
 }
@@ -2287,7 +2290,7 @@ func TestVariantTasksForSelectors(t *testing.T) {
 			assert.NoError(t, err)
 			require.Len(t, vts, 1)
 			require.Len(t, vts[0].Tasks, 1)
-			assert.Equal(t, vts[0].Tasks[0], "t0")
+			assert.Equal(t, "t0", vts[0].Tasks[0])
 		},
 		"selector with dependency": func(t *testing.T) {
 			definitions := []patch.PatchTriggerDefinition{{TaskSpecifiers: []patch.TaskSpecifier{{VariantRegex: "bv0", TaskRegex: "t1"}}}}
@@ -2306,7 +2309,7 @@ func TestVariantTasksForSelectors(t *testing.T) {
 			require.Len(t, vts[0].Tasks, 1)
 			assert.Contains(t, vts[0].Tasks, "t0")
 			require.Len(t, vts[0].DisplayTasks, 1)
-			assert.Equal(t, vts[0].DisplayTasks[0].Name, "dt0")
+			assert.Equal(t, "dt0", vts[0].DisplayTasks[0].Name)
 		},
 	} {
 		t.Run(testName, test)

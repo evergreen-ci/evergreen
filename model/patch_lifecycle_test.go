@@ -183,11 +183,11 @@ func TestSetPriority(t *testing.T) {
 	}
 	err := SetVersionsPriority(ctx, []string{"aabbccddeeff001122334455"}, 7, "")
 	assert.NoError(t, err)
-	foundTask, err := task.FindOneId("t1")
+	foundTask, err := task.FindOneId(ctx, "t1")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(7), foundTask.Priority)
 
-	foundTask, err = task.FindOneId("t2")
+	foundTask, err = task.FindOneId(ctx, "t2")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(7), foundTask.Priority)
 }
@@ -373,8 +373,8 @@ func TestFinalizePatch(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotNil(t, mfst)
 			assert.Len(t, mfst.Modules, 2)
-			assert.NotEqual(t, mfst.Modules["sandbox"].Revision, "123")
-			assert.Equal(t, mfst.Modules["evergreen"].Revision, "abc")
+			assert.NotEqual(t, "123", mfst.Modules["sandbox"].Revision)
+			assert.Equal(t, "abc", mfst.Modules["evergreen"].Revision)
 		},
 		"EmptyCommitQueuePatchDoesntCreateVersion": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
 			patchConfig.PatchedParserProject.Id = p.Id.Hex()
@@ -485,7 +485,7 @@ func TestGetFullPatchParams(t *testing.T) {
 	require.Len(t, params, 3)
 	for _, param := range params {
 		if param.Key == "a" {
-			assert.Equal(t, param.Value, "3")
+			assert.Equal(t, "3", param.Value)
 		}
 	}
 }
@@ -581,7 +581,7 @@ func TestMakePatchedConfigEmptyBase(t *testing.T) {
 	assert.NotNil(t, project)
 
 	require.Len(t, project.Tasks, 1)
-	assert.Equal(t, project.Tasks[0].Name, "hello")
+	assert.Equal(t, "hello", project.Tasks[0].Name)
 }
 
 func TestMakePatchedConfigRenamed(t *testing.T) {
@@ -629,7 +629,7 @@ func TestMakePatchedConfigRenamed(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, intermediateProject)
 	require.Len(t, intermediateProject.BuildVariants, 1)
-	assert.Equal(t, intermediateProject.BuildVariants[0].DisplayName, "Included variant!!!")
+	assert.Equal(t, "Included variant!!!", intermediateProject.BuildVariants[0].DisplayName)
 }
 
 func TestParseRenamedOrCopiedFile(t *testing.T) {
@@ -658,10 +658,10 @@ rename from include2.yml
 rename to rename2.yml
 `
 	renamedFile := parseRenamedOrCopiedFile(patchContents, "rename2.yml")
-	assert.Equal(t, renamedFile, "include2.yml")
+	assert.Equal(t, "include2.yml", renamedFile)
 
 	renamedFile = parseRenamedOrCopiedFile(patchContents, "copiedInclude.yml")
-	assert.Equal(t, renamedFile, "include2.yml")
+	assert.Equal(t, "include2.yml", renamedFile)
 
 	patchContents = `
 diff --git a/include1.yml b/include1.yml
@@ -678,7 +678,7 @@ index 865a6ec..990824f 100644
      run_on:`
 
 	renamedFile = parseRenamedOrCopiedFile(patchContents, "include1.yml")
-	assert.Equal(t, renamedFile, "")
+	assert.Equal(t, "", renamedFile)
 
 	patchContents = `
 diff --git a/evergreen.yml b/evergreen.yml
@@ -711,7 +711,7 @@ index 748e345..7e70f15 100644
      run_on:`
 
 	renamedFile = parseRenamedOrCopiedFile(patchContents, "renamed.yml")
-	assert.Equal(t, renamedFile, "include1.yml")
+	assert.Equal(t, "include1.yml", renamedFile)
 }
 
 // shouldContainPair returns a blank string if its arguments resemble each other, and returns a
@@ -852,15 +852,15 @@ func TestAddNewPatch(t *testing.T) {
 	dbUser, err := user.FindOneById(u.Id)
 	assert.NoError(err)
 	require.NotNil(t, dbUser)
-	assert.Equal(dbUser.NumScheduledPatchTasks, 4)
+	assert.Equal(4, dbUser.NumScheduledPatchTasks)
 	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	require.Len(t, dbTasks, 4)
-	assert.Equal(dbTasks[0].DisplayName, "displaytask1")
-	assert.Equal(dbTasks[1].DisplayName, "task1")
-	assert.Equal(dbTasks[2].DisplayName, "task2")
-	assert.Equal(dbTasks[3].DisplayName, "task3")
+	assert.Equal("displaytask1", dbTasks[0].DisplayName)
+	assert.Equal("task1", dbTasks[1].DisplayName)
+	assert.Equal("task2", dbTasks[2].DisplayName)
+	assert.Equal("task3", dbTasks[3].DisplayName)
 	for _, t := range dbTasks {
 		if t.DisplayOnly {
 			assert.Zero(t.ExecutionPlatform)
@@ -946,10 +946,10 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbTasks, 4)
-	assert.Equal(dbTasks[0].DisplayName, "displaytask1")
-	assert.Equal(dbTasks[1].DisplayName, "task1")
-	assert.Equal(dbTasks[2].DisplayName, "task2")
-	assert.Equal(dbTasks[3].DisplayName, "task3")
+	assert.Equal("displaytask1", dbTasks[0].DisplayName)
+	assert.Equal("task1", dbTasks[1].DisplayName)
+	assert.Equal("task2", dbTasks[2].DisplayName)
+	assert.Equal("task3", dbTasks[3].DisplayName)
 	for _, task := range dbTasks {
 		// Dates stored in the DB only have millisecond precision.
 		assert.WithinDuration(task.CreateTime, v.CreateTime, time.Millisecond)
@@ -1053,7 +1053,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 
 			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
 
-			dbTask, err := task.FindOneId(tsk.Id)
+			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.True(t, dbTask.Aborted)
@@ -1065,7 +1065,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 
 			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now().Add(-time.Hour), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
 
-			dbTask, err := task.FindOneId(tsk.Id)
+			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.False(t, dbTask.Aborted)

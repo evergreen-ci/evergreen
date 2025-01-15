@@ -183,7 +183,7 @@ func BbGetTask(ctx context.Context, taskId string, executionString string) (*tas
 		return nil, errors.Wrap(err, "invalid execution number")
 	}
 
-	t, err := task.FindOneIdOldOrNew(taskId, execution)
+	t, err := task.FindOneIdOldOrNew(ctx, taskId, execution)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding task")
 	}

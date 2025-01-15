@@ -85,14 +85,14 @@ func newAlertRecord(subID string, t *task.Task, alertType string) *alertrecord.A
 	}
 }
 
-func taskFinishedTwoOrMoreDaysAgo(taskID string, sub *event.Subscription) (bool, error) {
+func taskFinishedTwoOrMoreDaysAgo(ctx context.Context, taskID string, sub *event.Subscription) (bool, error) {
 	renotify, found := sub.TriggerData[event.RenotifyIntervalKey]
 	renotifyInterval, err := strconv.Atoi(renotify)
 	if renotify == "" || err != nil || !found {
 		renotifyInterval = 48
 	}
 	query := db.Query(task.ById(taskID)).WithFields(task.FinishTimeKey)
-	t, err := task.FindOne(query)
+	t, err := task.FindOne(ctx, query)
 	if err != nil {
 		return false, errors.Wrapf(err, "finding task '%s'", taskID)
 	}
@@ -170,7 +170,7 @@ func (t *taskTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error 
 		return errors.Wrap(err, "fetching UI config")
 	}
 
-	t.task, err = task.FindOneIdOldOrNew(e.ResourceId, t.data.Execution)
+	t.task, err = task.FindOneIdOldOrNew(ctx, e.ResourceId, t.data.Execution)
 	if err != nil {
 		return errors.Wrapf(err, "finding task '%s' execution %d", e.ResourceId, t.data.Execution)
 	}
@@ -178,7 +178,7 @@ func (t *taskTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error 
 		return errors.Errorf("task '%s' execution %d not found", e.ResourceId, t.data.Execution)
 	}
 
-	_, err = t.task.GetDisplayTask()
+	_, err = t.task.GetDisplayTask(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "getting parent display task for task '%s'", t.task.Id)
 	}
@@ -414,7 +414,7 @@ func GetRecordByTriggerType(subID, triggerType string, t *task.Task) (*alertreco
 }
 
 func (t *taskTriggers) taskOutcome(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.IsPartOfDisplay() {
+	if t.task.IsPartOfDisplay(ctx) {
 		return nil, nil
 	}
 
@@ -426,7 +426,7 @@ func (t *taskTriggers) taskOutcome(ctx context.Context, sub *event.Subscription)
 }
 
 func (t *taskTriggers) taskFailure(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.IsPartOfDisplay() {
+	if t.task.IsPartOfDisplay(ctx) {
 		return nil, nil
 	}
 
@@ -451,7 +451,7 @@ func (t *taskTriggers) taskFailure(ctx context.Context, sub *event.Subscription)
 }
 
 func (t *taskTriggers) taskSuccess(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.IsPartOfDisplay() {
+	if t.task.IsPartOfDisplay(ctx) {
 		return nil, nil
 	}
 
@@ -463,7 +463,7 @@ func (t *taskTriggers) taskSuccess(ctx context.Context, sub *event.Subscription)
 }
 
 func (t *taskTriggers) taskStarted(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.IsPartOfDisplay() {
+	if t.task.IsPartOfDisplay(ctx) {
 		return nil, nil
 	}
 
@@ -475,7 +475,7 @@ func (t *taskTriggers) taskStarted(ctx context.Context, sub *event.Subscription)
 }
 
 func (t *taskTriggers) taskFailedOrBlocked(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.IsPartOfDisplay() {
+	if t.task.IsPartOfDisplay(ctx) {
 		return nil, nil
 	}
 
@@ -541,11 +541,11 @@ func (t *taskTriggers) taskFirstFailureInVersionWithName(ctx context.Context, su
 }
 
 func (t *taskTriggers) taskRegression(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.IsPartOfDisplay() {
+	if t.task.IsPartOfDisplay(ctx) {
 		return nil, nil
 	}
 
-	shouldNotify, alert, err := isTaskRegression(sub, t.task)
+	shouldNotify, alert, err := isTaskRegression(ctx, sub, t.task)
 	if err != nil {
 		return nil, err
 	}
@@ -559,7 +559,7 @@ func (t *taskTriggers) taskRegression(ctx context.Context, sub *event.Subscripti
 	return n, errors.Wrap(alert.Insert(), "processing regression trigger")
 }
 
-func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord.AlertRecord, error) {
+func isTaskRegression(ctx context.Context, sub *event.Subscription, t *task.Task) (bool, *alertrecord.AlertRecord, error) {
 	if t.Status != evergreen.TaskFailed || !utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) ||
 		t.IsUnfinishedSystemUnresponsive() {
 		return false, nil, nil
@@ -571,12 +571,12 @@ func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord
 
 	query := db.Query(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber,
 		evergreen.TaskCompletedStatuses, t.BuildVariant, t.DisplayName, t.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
-	previousTask, err := task.FindOne(query)
+	previousTask, err := task.FindOne(ctx, query)
 	if err != nil {
 		return false, nil, errors.Wrap(err, "fetching previous task")
 	}
 
-	shouldSend, err := shouldSendTaskRegression(sub, t, previousTask)
+	shouldSend, err := shouldSendTaskRegression(ctx, sub, t, previousTask)
 	if err != nil {
 		return false, nil, errors.Wrap(err, "determining if we should send notification")
 	}
@@ -593,7 +593,7 @@ func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord
 	return true, rec, nil
 }
 
-func shouldSendTaskRegression(sub *event.Subscription, t *task.Task, previousTask *task.Task) (bool, error) {
+func shouldSendTaskRegression(ctx context.Context, sub *event.Subscription, t *task.Task, previousTask *task.Task) (bool, error) {
 	if t.Status != evergreen.TaskFailed {
 		return false, nil
 	}
@@ -659,7 +659,7 @@ func shouldSendTaskRegression(sub *event.Subscription, t *task.Task, previousTas
 			return maybeSend, nil
 		}
 
-		return taskFinishedTwoOrMoreDaysAgo(lastAlerted.TaskId, sub)
+		return taskFinishedTwoOrMoreDaysAgo(ctx, lastAlerted.TaskId, sub)
 	}
 	return false, nil
 }
@@ -673,7 +673,7 @@ func (t *taskTriggers) taskSuccessfulExceedsDuration(ctx context.Context, sub *e
 }
 
 func (t *taskTriggers) taskExceedsDuration(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.IsPartOfDisplay() {
+	if t.task.IsPartOfDisplay(ctx) {
 		return nil, nil
 	}
 
@@ -694,7 +694,7 @@ func (t *taskTriggers) taskExceedsDuration(ctx context.Context, sub *event.Subsc
 }
 
 func (t *taskTriggers) taskRuntimeChange(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.IsPartOfDisplay() {
+	if t.task.IsPartOfDisplay(ctx) {
 		return nil, nil
 	}
 
@@ -711,7 +711,7 @@ func (t *taskTriggers) taskRuntimeChange(ctx context.Context, sub *event.Subscri
 		return nil, errors.Errorf("subscription '%s' has an invalid percentage", sub.ID)
 	}
 
-	lastGreen, err := t.task.PreviousCompletedTask(t.task.Project, []string{evergreen.TaskSucceeded})
+	lastGreen, err := t.task.PreviousCompletedTask(ctx, t.task.Project, []string{evergreen.TaskSucceeded})
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieving last green task")
 	}
@@ -754,7 +754,7 @@ func testMatchesRegex(testName string, sub *event.Subscription) (bool, error) {
 	return regexp.MatchString(regex, testName)
 }
 
-func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *task.Task, currentTask *task.Task, test *testresult.TestResult) (bool, error) {
+func (t *taskTriggers) shouldIncludeTest(ctx context.Context, sub *event.Subscription, previousTask *task.Task, currentTask *task.Task, test *testresult.TestResult) (bool, error) {
 	if test.Status != evergreen.TestFailedStatus {
 		return false, nil
 	}
@@ -797,7 +797,7 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 		if mostRecentAlert == nil {
 			return true, nil
 		}
-		isOld, err := taskFinishedTwoOrMoreDaysAgo(mostRecentAlert.TaskId, sub)
+		isOld, err := taskFinishedTwoOrMoreDaysAgo(ctx, mostRecentAlert.TaskId, sub)
 		if err != nil {
 			return false, errors.Wrap(err, "getting last alert age")
 		}
@@ -811,7 +811,7 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 }
 
 func (t *taskTriggers) taskRegressionByTest(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.IsPartOfDisplay() {
+	if t.task.IsPartOfDisplay(ctx) {
 		return nil, nil
 	}
 
@@ -833,7 +833,7 @@ func (t *taskTriggers) taskRegressionByTest(ctx context.Context, sub *event.Subs
 	catcher := grip.NewBasicCatcher()
 	query := db.Query(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
 		evergreen.TaskCompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
-	previousCompleteTask, err := task.FindOne(query)
+	previousCompleteTask, err := task.FindOne(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding previous task")
 	}
@@ -866,7 +866,7 @@ func (t *taskTriggers) taskRegressionByTest(ctx context.Context, sub *event.Subs
 			continue
 		}
 		var shouldInclude bool
-		shouldInclude, err = t.shouldIncludeTest(sub, previousCompleteTask, t.task, &test)
+		shouldInclude, err = t.shouldIncludeTest(ctx, sub, previousCompleteTask, t.task, &test)
 		if err != nil {
 			catcher.Add(err)
 			continue
@@ -983,8 +983,8 @@ func JIRATaskPayload(ctx context.Context, params JiraIssueParameters) (*message.
 		Pod:             podDoc,
 		TaskDisplayName: params.Task.DisplayName,
 	}
-	if params.Task.IsPartOfDisplay() {
-		dt, _ := params.Task.GetDisplayTask()
+	if params.Task.IsPartOfDisplay(ctx) {
+		dt, _ := params.Task.GetDisplayTask(ctx)
 		if dt != nil {
 			data.TaskDisplayName = dt.DisplayName
 		}
@@ -1039,7 +1039,7 @@ func detailStatusToHumanSpeak(status string) string {
 
 // this is very similar to taskRegression, but different enough
 func (t *taskTriggers) buildBreak(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.IsPartOfDisplay() {
+	if t.task.IsPartOfDisplay(ctx) {
 		return nil, nil
 	}
 
@@ -1057,7 +1057,7 @@ func (t *taskTriggers) buildBreak(ctx context.Context, sub *event.Subscription) 
 	}
 	query := db.Query(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
 		evergreen.TaskCompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes)).Sort([]string{"-" + task.RevisionOrderNumberKey})
-	previousTask, err := task.FindOne(query)
+	previousTask, err := task.FindOne(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding previous task")
 	}

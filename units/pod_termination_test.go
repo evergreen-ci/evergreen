@@ -147,7 +147,7 @@ func TestPodTerminationJob(t *testing.T) {
 			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
 			assert.Empty(t, dbPod.TaskRuntimeInfo)
 
-			dbTask, err := task.FindOneId(tsk.Id)
+			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
@@ -224,7 +224,7 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NotNil(t, dbArchivedTask)
 			assert.Equal(t, evergreen.TaskFailed, dbArchivedTask.Status, "stranded task should have failed")
 
-			dbTask, err := task.FindOneId(tsk.Id)
+			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.True(t, dbTask.ShouldAllocateContainer(), "stranded task should have been restarted to re-attempt allocation")
@@ -256,8 +256,8 @@ func TestPodTerminationJob(t *testing.T) {
 			dbDisp, err := dispatcher.FindOneByID(pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
-			assert.Equal(t, dbDisp.PodIDs, []string{"another_pod_id"}, "pod should have been removed from dispatcher's set of pods")
-			assert.Equal(t, dbDisp.TaskIDs, []string{"task_id"}, "tasks being dispatched should be unaffected")
+			assert.Equal(t, []string{"another_pod_id"}, dbDisp.PodIDs, "pod should have been removed from dispatcher's set of pods")
+			assert.Equal(t, []string{"task_id"}, dbDisp.TaskIDs, "tasks being dispatched should be unaffected")
 		},
 		"FixesDispatcherTasksWhenPodIsOnlyRemainingOne": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			t0 := task.Task{
@@ -323,12 +323,12 @@ func TestPodTerminationJob(t *testing.T) {
 			assert.Empty(t, dbDisp.PodIDs, "terminated pod should have been removed from dispatcher")
 			assert.Empty(t, dbDisp.TaskIDs, "tasks should have been cleared from the dispatcher since there are no remaining pods to run them")
 
-			dbTask0, err := task.FindOneId(t0.Id)
+			dbTask0, err := task.FindOneId(ctx, t0.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask0)
 			assert.True(t, dbTask0.ShouldAllocateContainer(), "task should be able to allocate a new container after being removed from the dispatcher")
 
-			dbTask1, err := task.FindOneId(t1.Id)
+			dbTask1, err := task.FindOneId(ctx, t1.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			assert.False(t, dbTask1.ShouldAllocateContainer(), "task that has used up all container allocation attempts should not be able to allocate a new container")

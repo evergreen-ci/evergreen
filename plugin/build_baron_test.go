@@ -60,7 +60,7 @@ func TestBbGetProject(t *testing.T) {
 	bbProj2, ok2 := model.GetBuildBaronSettings(testTask2.Project, testTask2.Version)
 	assert.True(t, ok1)
 	assert.True(t, ok2)
-	assert.Equal(t, bbProj.TicketCreateProject, "BFG")
-	assert.Equal(t, bbProj2.TicketCreateProject, "123")
-	assert.Equal(t, bbProj2.TicketSearchProjects, []string{"EVG"})
+	assert.Equal(t, "BFG", bbProj.TicketCreateProject)
+	assert.Equal(t, "123", bbProj2.TicketCreateProject)
+	assert.Equal(t, []string{"EVG"}, bbProj2.TicketSearchProjects)
 }

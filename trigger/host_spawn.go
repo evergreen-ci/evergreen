@@ -293,14 +293,14 @@ func (t *spawnHostSetupScriptTriggers) spawnHostSetupScriptOutcome(ctx context.C
 	if !t.host.UserHost {
 		return nil, nil
 	}
-	payload, err := t.makePayload(sub)
+	payload, err := t.makePayload(ctx, sub)
 	if err != nil {
 		return nil, errors.Wrap(err, "making payload")
 	}
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
-func (t *spawnHostSetupScriptTriggers) makePayload(sub *event.Subscription) (interface{}, error) {
+func (t *spawnHostSetupScriptTriggers) makePayload(ctx context.Context, sub *event.Subscription) (interface{}, error) {
 	var result string
 	switch t.event.EventType {
 	case event.EventHostScriptExecuted:
@@ -315,7 +315,7 @@ func (t *spawnHostSetupScriptTriggers) makePayload(sub *event.Subscription) (int
 	}
 	var spawnHostScriptPath string
 	if t.host.ProvisionOptions != nil && t.host.ProvisionOptions.TaskId != "" {
-		pRef, err := model.GetProjectRefForTask(t.host.ProvisionOptions.TaskId)
+		pRef, err := model.GetProjectRefForTask(ctx, t.host.ProvisionOptions.TaskId)
 		if err != nil {
 			return "", errors.Wrap(err, "getting project")
 		}

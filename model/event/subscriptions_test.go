@@ -610,7 +610,7 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 			assert.NoError(t, CopyProjectSubscriptions("not-a-project", "my-new-project"))
 			apiSubs, err := FindSubscriptionsByOwner("my-new-project", OwnerTypeProject)
 			assert.NoError(t, err)
-			require.Len(t, apiSubs, 0)
+			require.Empty(t, apiSubs)
 		},
 		"FromExistentProject": func(t *testing.T) {
 			newProjectId := "my-newest-project"

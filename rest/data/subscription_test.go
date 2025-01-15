@@ -69,11 +69,11 @@ func TestGetSubscriptions(t *testing.T) {
 
 	apiSubs, err = GetSubscriptions("who", event.OwnerTypePerson)
 	assert.NoError(err)
-	assert.Len(apiSubs, 0)
+	assert.Empty(apiSubs)
 
 	apiSubs, err = GetSubscriptions("", event.OwnerTypePerson)
 	assert.EqualError(err, "400 (Bad Request): no subscription owner provided")
-	assert.Len(apiSubs, 0)
+	assert.Empty(apiSubs)
 }
 
 func TestConvertVersionSubscription(t *testing.T) {
@@ -96,7 +96,7 @@ func TestConvertVersionSubscription(t *testing.T) {
 				},
 			}
 			assert.NoError(t, convertVersionSubscription(&subscription))
-			assert.Equal(t, subscription.Trigger, event.TriggerFamilyFailure)
+			assert.Equal(t, event.TriggerFamilyFailure, subscription.Trigger)
 		},
 		"PersonalSubscription": func(t *testing.T) {
 			subscription := event.Subscription{
@@ -120,7 +120,7 @@ func TestConvertVersionSubscription(t *testing.T) {
 				},
 			}
 			assert.NoError(t, convertVersionSubscription(&subscription))
-			assert.Equal(t, subscription.Trigger, event.TriggerFamilyFailure)
+			assert.Equal(t, event.TriggerFamilyFailure, subscription.Trigger)
 		},
 		"PersonalSubscriptionVersionNotFound": func(t *testing.T) {
 			subscription := event.Subscription{
@@ -206,7 +206,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 			dbSubs, err := GetSubscriptions(utility.FromStringPtr(subscription.Owner), event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, dbSubs, 1)
-			require.Equal(t, utility.FromStringPtr(dbSubs[0].Trigger), event.TriggerOutcome)
+			require.Equal(t, event.TriggerOutcome, utility.FromStringPtr(dbSubs[0].Trigger))
 		},
 		"PatchRequesterSubscription": func(t *testing.T) {
 			subscription := restModel.APISubscription{
@@ -233,7 +233,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 			dbSubs, err := GetSubscriptions(utility.FromStringPtr(subscription.Owner), event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, dbSubs, 1)
-			require.Equal(t, utility.FromStringPtr(dbSubs[0].Trigger), event.TriggerFamilyOutcome)
+			require.Equal(t, event.TriggerFamilyOutcome, utility.FromStringPtr(dbSubs[0].Trigger))
 		},
 		"ModifyExistingSubscription": func(t *testing.T) {
 			subscription := restModel.APISubscription{
@@ -371,7 +371,7 @@ func TestSaveVersionSubscriptions(t *testing.T) {
 			dbSubs, err := GetSubscriptions("me", event.OwnerTypePerson)
 			assert.NoError(t, err)
 			require.Len(t, dbSubs, 1)
-			require.Equal(t, utility.FromStringPtr(dbSubs[0].Trigger), event.TriggerOutcome)
+			require.Equal(t, event.TriggerOutcome, utility.FromStringPtr(dbSubs[0].Trigger))
 		},
 		"PatchRequester": func(t *testing.T) {
 			subscription := restModel.APISubscription{
@@ -399,7 +399,7 @@ func TestSaveVersionSubscriptions(t *testing.T) {
 			dbSubs, err := GetSubscriptions("me", event.OwnerTypePerson)
 			assert.NoError(t, err)
 			require.Len(t, dbSubs, 1)
-			require.Equal(t, utility.FromStringPtr(dbSubs[0].Trigger), event.TriggerFamilyOutcome)
+			require.Equal(t, event.TriggerFamilyOutcome, utility.FromStringPtr(dbSubs[0].Trigger))
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -431,7 +431,7 @@ func TestDeleteProjectSubscriptions(t *testing.T) {
 			assert.NoError(t, DeleteSubscriptions("my-project", []string{ids[0]}))
 			subs, err := event.FindSubscriptionsByOwner("my-project", event.OwnerTypeProject)
 			assert.NoError(t, err)
-			assert.Len(t, subs, 0)
+			assert.Empty(t, subs)
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

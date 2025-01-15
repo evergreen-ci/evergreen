@@ -14,7 +14,6 @@ input WaterfallOptions {
 type WaterfallTask {
   id: String!
   displayName: String!
-  displayStatus: String!
   displayStatusCache: String!
   execution: Int!
   status: String!

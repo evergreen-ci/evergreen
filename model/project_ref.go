@@ -536,7 +536,6 @@ var (
 	projectRefGithubPermissionGroupByRequesterKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitHubPermissionGroupByRequester")
 	projectRefParameterStoreEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreEnabled")
 	projectRefParameterStoreVarsSyncedKey           = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreVarsSynced")
-	projectRefParameterStoreGitHubAppSyncedKey      = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreGitHubAppSynced")
 	projectRefLastAutoRestartedTaskAtKey            = bsonutil.MustHaveTag(ProjectRef{}, "LastAutoRestartedTaskAt")
 	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
 
@@ -3150,8 +3149,8 @@ func (p *ProjectRef) CommitQueueIsOn() error {
 	return catcher.Resolve()
 }
 
-func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
-	t, err := task.FindOneId(taskId)
+func GetProjectRefForTask(ctx context.Context, taskId string) (*ProjectRef, error) {
+	t, err := task.FindOneId(ctx, taskId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task '%s'", taskId)
 	}
@@ -3169,7 +3168,7 @@ func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 }
 
 func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
-	pRef, err := GetProjectRefForTask(taskId)
+	pRef, err := GetProjectRefForTask(ctx, taskId)
 	if err != nil {
 		return "", errors.Wrap(err, "getting project")
 	}
@@ -3411,13 +3410,13 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 	}
 }
 
-func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
+func GetUpstreamProjectName(ctx context.Context, triggerID, triggerType string) (string, error) {
 	if triggerID == "" || triggerType == "" {
 		return "", nil
 	}
 	var projectID string
 	if triggerType == ProjectTriggerLevelTask {
-		upstreamTask, err := task.FindOneId(triggerID)
+		upstreamTask, err := task.FindOneId(ctx, triggerID)
 		if err != nil {
 			return "", errors.Wrap(err, "finding upstream task")
 		}
@@ -3681,32 +3680,7 @@ var psEnabledButNotSyncedQuery = bson.M{
 	"$or": []bson.M{
 		{projectRefParameterStoreVarsSyncedKey: false},
 		{projectRefParameterStoreVarsSyncedKey: bson.M{"$exists": false}},
-		{projectRefParameterStoreGitHubAppSyncedKey: false},
-		{projectRefParameterStoreGitHubAppSyncedKey: bson.M{"$exists": false}},
 	},
-}
-
-// setParameterStoreGitHubAppAuthSynced marks the project or repo ref to indicate whether
-// its GitHub app auth is synced to Parameter Store.
-func (p *ProjectRef) setParameterStoreGitHubAppAuthSynced(isSynced bool, isRepoRef bool) error {
-	if p.ParameterStoreGitHubAppSynced == isSynced {
-		return nil
-	}
-
-	coll := ProjectRefCollection
-	if isRepoRef {
-		coll = RepoRefCollection
-	}
-
-	if err := db.UpdateId(coll, p.Id, bson.M{
-		"$set": bson.M{
-			projectRefParameterStoreGitHubAppSyncedKey: isSynced,
-		},
-	}); err != nil {
-		return errors.Wrapf(err, "updating project/repo ref GitHub app auth sync state to %t", isSynced)
-	}
-
-	return nil
 }
 
 // FindProjectRefsToSync finds all project refs that have Parameter Sore enabled

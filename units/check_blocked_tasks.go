@@ -125,7 +125,7 @@ func (j *checkBlockedTasksJob) getContainerTasksToCheck() []task.Task {
 func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCaches map[string]task.Task) error {
 	catcher := grip.NewBasicCatcher()
 
-	dependenciesMet, err := t.DependenciesMet(dependencyCaches)
+	dependenciesMet, err := t.DependenciesMet(ctx, dependencyCaches)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message":      "could not check if dependencies met for task",
@@ -154,7 +154,7 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 		}
 	}
 
-	deactivatedBlockingTasks, err := t.GetDeactivatedBlockingDependencies(dependencyCaches)
+	deactivatedBlockingTasks, err := t.GetDeactivatedBlockingDependencies(ctx, dependencyCaches)
 	catcher.Wrap(err, "getting blocked status")
 	if err == nil && len(deactivatedBlockingTasks) > 0 {
 		err = task.DeactivateDependencies(deactivatedBlockingTasks, evergreen.CheckBlockedTasksActivator)
@@ -162,8 +162,8 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 	}
 
 	// also update the display task status in case it is out of date
-	if t.IsPartOfDisplay() {
-		catcher.Add(model.UpdateDisplayTaskForTask(t))
+	if t.IsPartOfDisplay(ctx) {
+		catcher.Add(model.UpdateDisplayTaskForTask(ctx, t))
 	}
 
 	numModified := len(finishedBlockingTasks) + len(deactivatedBlockingTasks)
@@ -172,7 +172,7 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 		"blocking_finished_tasks_updated":    len(finishedBlockingTasks),
 		"blocking_deactivated_tasks_updated": len(deactivatedBlockingTasks),
 		"blocking_task_ids":                  blockingTaskIds,
-		"exec_task":                          t.IsPartOfDisplay(),
+		"exec_task":                          t.IsPartOfDisplay(ctx),
 		"source":                             checkBlockedTasks,
 	})
 	return catcher.Resolve()

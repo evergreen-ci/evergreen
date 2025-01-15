@@ -47,7 +47,7 @@ func TestVersionByMostRecentNonIgnored(t *testing.T) {
 
 	v, err := VersionFindOne(VersionByMostRecentNonIgnored("proj", ts))
 	assert.NoError(t, err)
-	assert.Equal(t, v.Id, "v1")
+	assert.Equal(t, "v1", v.Id)
 }
 
 func TestRestartVersion(t *testing.T) {
@@ -92,7 +92,7 @@ func TestRestartVersion(t *testing.T) {
 
 	// Check that completed non-execution tasks are reset.
 	for _, taskID := range []string{"task0", "display1"} {
-		tsk, err := task.FindOneId(taskID)
+		tsk, err := task.FindOneId(ctx, taskID)
 		require.NoError(t, err)
 
 		assert.Equal(t, evergreen.TaskUndispatched, tsk.Status)
@@ -100,7 +100,7 @@ func TestRestartVersion(t *testing.T) {
 
 	// Check that completed execution tasks are neither aborted nor reset.
 	for _, taskID := range []string{"exec00", "exec01", "exec11"} {
-		tsk, err := task.FindOneId(taskID)
+		tsk, err := task.FindOneId(ctx, taskID)
 		require.NoError(t, err)
 
 		assert.Contains(t, evergreen.TaskCompletedStatuses, tsk.Status)
@@ -111,7 +111,7 @@ func TestRestartVersion(t *testing.T) {
 
 	// Check that in-progress tasks are aborted and marked for reset.
 	for _, taskID := range []string{"task1", "display0", "exec00", "exec10"} {
-		tsk, err := task.FindOneId(taskID)
+		tsk, err := task.FindOneId(ctx, taskID)
 		require.NoError(t, err)
 
 		if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, tsk.Status) {
@@ -368,23 +368,23 @@ func TestVersionByProjectIdAndRevisionPrefix(t *testing.T) {
 
 	v, err := VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts))
 	assert.NoError(t, err)
-	assert.Equal(t, v.Id, "v1")
+	assert.Equal(t, "v1", v.Id)
 
 	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-3*utility.Day)))
 	assert.NoError(t, err)
-	assert.Equal(t, v.Id, "v4")
+	assert.Equal(t, "v4", v.Id)
 
 	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-2*utility.Day).Add(-30*time.Minute)))
 	assert.NoError(t, err)
-	assert.Equal(t, v.Id, "v3")
+	assert.Equal(t, "v3", v.Id)
 
 	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-2*utility.Day)))
 	assert.NoError(t, err)
-	assert.Equal(t, v.Id, "v3")
+	assert.Equal(t, "v3", v.Id)
 
 	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj_2", ts.Add(-2*utility.Day)))
 	assert.NoError(t, err)
-	assert.Equal(t, v.Id, "v2")
+	assert.Equal(t, "v2", v.Id)
 
 	// Does not match on patch requester
 	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-5*utility.Day)))

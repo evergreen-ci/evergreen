@@ -211,7 +211,7 @@ func GetRawPatches(patchID string) (*restModel.APIRawPatch, error) {
 		}
 	}
 
-	if err = patchDoc.FetchPatchFiles(false); err != nil {
+	if err = patchDoc.FetchPatchFiles(); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "getting patch contents").Error(),

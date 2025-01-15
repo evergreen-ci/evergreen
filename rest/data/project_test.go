@@ -211,7 +211,7 @@ func (s *ProjectConnectorGetSuite) TearDownSuite() {
 func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 	events, err := GetProjectEventLog(projectId, time.Now(), 0)
 	s.NoError(err)
-	s.Equal(projEventCount, len(events))
+	s.Len(events, projEventCount)
 	for _, eventLog := range events {
 		s.Len(eventLog.Before.Aliases, 1)
 		s.Len(eventLog.After.Aliases, 1)
@@ -220,7 +220,7 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 		s.Nil(eventLog.Before.ProjectRef.PeriodicBuilds)
 		s.Nil(eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
 		s.NotNil(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands)
-		s.Len(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands, 0)
+		s.Empty(eventLog.After.ProjectRef.WorkstationConfig.SetupCommands)
 		s.Equal(evergreen.RedactedBeforeValue, eventLog.Before.Vars.Vars["hello"])
 		s.Equal(evergreen.RedactedAfterValue, eventLog.After.Vars.Vars["hello"])
 		s.Equal(evergreen.RedactedBeforeValue, eventLog.Before.Vars.Vars["world"])
@@ -232,7 +232,7 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 	// No error for empty events
 	events, err = GetProjectEventLog("projectA", time.Now(), 0)
 	s.NoError(err)
-	s.Equal(0, len(events))
+	s.Empty(events)
 }
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
@@ -338,8 +338,8 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	_, ok := newVars.Vars["a"]
 	s.False(ok)
 
-	s.Equal(newVars.PrivateVars["b"], true)
-	s.Equal(newVars.PrivateVars["c"], true)
+	s.True(newVars.PrivateVars["b"])
+	s.True(newVars.PrivateVars["c"])
 	_, ok = newVars.PrivateVars["a"]
 	s.False(ok)
 
@@ -594,9 +594,9 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 
 	// Because this document does not use <Fieldname>Default flags, it returns empty arrays instead of nil
 	require.NotNil(t, eventLog.Before.ProjectRef.PeriodicBuilds)
-	require.Len(t, eventLog.Before.ProjectRef.PeriodicBuilds, 0)
+	require.Empty(t, eventLog.Before.ProjectRef.PeriodicBuilds)
 	require.NotNil(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
-	require.Len(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands, 0)
+	require.Empty(t, eventLog.Before.ProjectRef.WorkstationConfig.SetupCommands)
 }
 
 func TestRequestS3Creds(t *testing.T) {
@@ -608,7 +608,7 @@ func TestRequestS3Creds(t *testing.T) {
 	assert.NoError(t, RequestS3Creds(ctx, "identifier", "user@email.com"))
 	n, err := notification.FindUnprocessed()
 	assert.NoError(t, err)
-	assert.Len(t, n, 0)
+	assert.Empty(t, n)
 	projectCreationConfig := evergreen.ProjectCreationConfig{
 		JiraProject: "BUILD",
 	}
@@ -691,7 +691,7 @@ func TestHideBranch(t *testing.T) {
 
 	projAliases, err := model.FindAliasesForProjectFromDb(project.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(projAliases))
+	assert.Empty(t, projAliases)
 
 	skeletonProjVars := model.ProjectVars{
 		Id:   project.Id,

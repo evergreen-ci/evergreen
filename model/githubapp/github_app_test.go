@@ -123,7 +123,7 @@ func (s *installationSuite) TestCreateCachedInstallationToken() {
 	}
 	token, err := authFields.CreateCachedInstallationToken(s.ctx, installation.Owner, installation.Repo, lifetime, nil)
 	s.Require().NoError(err)
-	s.Equal(token, installationToken, "should return cached token since it is still valid for at least %s", lifetime)
+	s.Equal(installationToken, token, "should return cached token since it is still valid for at least %s", lifetime)
 }
 
 func TestCreateGitHubAppAuth(t *testing.T) {

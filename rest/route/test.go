@@ -262,7 +262,7 @@ func (h *testCountGetHandler) Run(ctx context.Context) gimlet.Responder {
 	t := projCtx.Task
 	originalTask := t
 	if t.Execution != h.execution {
-		t, err := task.FindOneIdOldOrNew(t.Id, h.execution)
+		t, err := task.FindOneIdOldOrNew(ctx, t.Id, h.execution)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,

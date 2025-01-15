@@ -110,7 +110,7 @@ func (pd *PodDispatcher) AssignNextTask(ctx context.Context, env evergreen.Envir
 
 	for len(pd.TaskIDs) > 0 {
 		taskID := pd.TaskIDs[0]
-		t, err := task.FindOneId(taskID)
+		t, err := task.FindOneId(ctx, taskID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding task '%s'", taskID)
 		}
@@ -146,8 +146,8 @@ func (pd *PodDispatcher) AssignNextTask(ctx context.Context, env evergreen.Envir
 		event.LogPodAssignedTask(p.ID, t.Id, t.Execution)
 		event.LogContainerTaskDispatched(t.Id, t.Execution, p.ID)
 
-		if t.IsPartOfDisplay() {
-			if err := model.UpdateDisplayTaskForTask(t); err != nil {
+		if t.IsPartOfDisplay(ctx) {
+			if err := model.UpdateDisplayTaskForTask(ctx, t); err != nil {
 				return nil, errors.Wrap(err, "updating parent display task")
 			}
 		}

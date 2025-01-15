@@ -9,16 +9,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/thirdparty"
+
 	"github.com/evergreen-ci/evergreen"
-	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -1038,133 +1037,4 @@ func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *Project
 	} else {
 		return "Commit Queue Merge: " + strings.Join(description, " || ")
 	}
-}
-
-type EnqueuePatch struct {
-	PatchID string
-}
-
-func (e *EnqueuePatch) String() string {
-	return fmt.Sprintf("enqueue patch '%s'", e.PatchID)
-}
-
-func (e *EnqueuePatch) Send() error {
-	existingPatch, err := patch.FindOneId(e.PatchID)
-	if err != nil {
-		return errors.Wrap(err, "getting existing patch")
-	}
-	if existingPatch == nil {
-		return errors.Errorf("no patch '%s' found", e.PatchID)
-	}
-
-	// only enqueue once
-	if len(existingPatch.MergePatch) != 0 {
-		return nil
-	}
-
-	cq, err := commitqueue.FindOneId(existingPatch.Project)
-	if err != nil {
-		return errors.Wrap(err, "getting commit queue")
-	}
-	if cq == nil {
-		return errors.Errorf("no commit queue for project '%s'", existingPatch.Project)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultParserProjectAccessTimeout)
-	defer cancel()
-	mergePatch, err := MakeMergePatchFromExisting(ctx, evergreen.GetEnvironment().Settings(), existingPatch, "")
-	if err != nil {
-		return errors.Wrap(err, "making merge patch")
-	}
-
-	_, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: mergePatch.Id.Hex(), PatchId: mergePatch.Id.Hex(), Source: commitqueue.SourceDiff})
-
-	return errors.Wrap(err, "enqueueing item")
-}
-
-func (e *EnqueuePatch) Valid() bool {
-	return patch.IsValidId(e.PatchID)
-}
-
-// MakeMergePatchFromExisting creates a merge patch from an existing one to be
-// put in the commit queue. Is also creates the parser project associated with
-// the patch.
-func MakeMergePatchFromExisting(ctx context.Context, settings *evergreen.Settings, existingPatch *patch.Patch, commitMessage string) (*patch.Patch, error) {
-	if !existingPatch.HasValidGitInfo() {
-		return nil, errors.Errorf("enqueueing patch '%s' without metadata", existingPatch.Id.Hex())
-	}
-
-	projectRef, err := FindMergedProjectRef(existingPatch.Project, existingPatch.Version, true)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting project ref '%s'", existingPatch.Project)
-	}
-	if projectRef == nil {
-		return nil, errors.Errorf("project ref '%s' doesn't exist", existingPatch.Project)
-	}
-	if err = projectRef.CommitQueueIsOn(); err != nil {
-		return nil, errors.WithStack(err)
-	}
-	project, _, err := FindAndTranslateProjectForPatch(ctx, settings, existingPatch)
-	if err != nil {
-		return nil, errors.Wrap(err, "loading existing project")
-	}
-
-	patchDoc := &patch.Patch{
-		Id:                   mgobson.NewObjectId(),
-		Author:               existingPatch.Author,
-		Project:              existingPatch.Project,
-		Githash:              existingPatch.Githash,
-		Status:               evergreen.VersionCreated,
-		Alias:                evergreen.CommitQueueAlias,
-		PatchedProjectConfig: existingPatch.PatchedProjectConfig,
-		CreateTime:           time.Now(),
-		MergedFrom:           existingPatch.Id.Hex(),
-	}
-
-	if patchDoc.Patches, err = patch.MakeMergePatchPatches(existingPatch, commitMessage); err != nil {
-		return nil, errors.Wrap(err, "making merge patches from existing patch")
-	}
-	patchDoc.Description = MakeCommitQueueDescription(patchDoc.Patches, projectRef, project,
-		patchDoc.IsGithubMergePatch(), patchDoc.GithubMergeData)
-
-	// verify the commit queue has tasks/variants enabled that match the project
-	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
-	if len(patchDoc.Tasks) == 0 && len(patchDoc.BuildVariants) == 0 {
-		return nil, errors.New("commit queue has no build variants or tasks configured")
-	}
-
-	u, err := user.FindOneById(patchDoc.Author)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding user for patch author '%s'", patchDoc.Author)
-	}
-	if u == nil {
-		return nil, errors.Errorf("patch author '%s' not found", patchDoc.Author)
-	}
-	// get the next patch number for the user
-	patchDoc.PatchNumber, err = u.IncPatchNumber()
-	if err != nil {
-		return nil, errors.Wrap(err, "computing patch num")
-	}
-
-	// The parser project is typically inserted at the same time as the patch.
-	// However, commit queue items made from CLI patches are a special exception
-	// that do not follow this behavior, because the existing patch may have be
-	// very outdated compared to the tracking branch's latest commit. The commit
-	// queue should ideally test against the most recent available project
-	// config, so it will resolve the parser project later on, when it's
-	// processed in the commit queue.
-
-	if err = patchDoc.Insert(); err != nil {
-		return nil, errors.Wrap(err, "inserting patch")
-	}
-
-	if err = existingPatch.SetMergePatch(patchDoc.Id.Hex()); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":        "can't mark patch enqueued",
-			"existing_patch": existingPatch.Id.Hex(),
-			"merge_patch":    patchDoc.Id.Hex(),
-		}))
-	}
-
-	return patchDoc, nil
 }

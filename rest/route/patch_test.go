@@ -295,10 +295,10 @@ func (s *PatchAbortSuite) TestAbort() {
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 
-	task1, err := task.FindOneId("task1")
+	task1, err := task.FindOneId(ctx, "task1")
 	s.NoError(err)
 	s.True(task1.Aborted)
-	task2, err := task.FindOneId("task2")
+	task2, err := task.FindOneId(ctx, "task2")
 	s.NoError(err)
 	s.False(task2.Aborted)
 	p, ok := (res.Data()).(*restModel.APIPatch)
@@ -310,10 +310,10 @@ func (s *PatchAbortSuite) TestAbort() {
 	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
 
-	task1, err = task.FindOneId("task1")
+	task1, err = task.FindOneId(ctx, "task1")
 	s.NoError(err)
 	s.True(task1.Aborted)
-	task2, err = task.FindOneId("task2")
+	task2, err = task.FindOneId(ctx, "task2")
 	s.NoError(err)
 	s.True(task2.Aborted)
 	p, ok = (res.Data()).(*restModel.APIPatch)
@@ -653,10 +653,10 @@ func (s *CountEstimatedGeneratedTasksSuite) TestFindById() {
 	s.Require().NoError(err)
 	s.NoError(s.route.Parse(context.Background(), req))
 	s.Require().Len(s.route.files, 4)
-	s.Equal(s.route.files[0].TaskName, "t1")
-	s.Equal(s.route.files[0].Variant, "v1")
-	s.Equal(s.route.files[1].TaskName, "t2")
-	s.Equal(s.route.files[1].Variant, "v1")
+	s.Equal("t1", s.route.files[0].TaskName)
+	s.Equal("v1", s.route.files[0].Variant)
+	s.Equal("t2", s.route.files[1].TaskName)
+	s.Equal("v1", s.route.files[1].Variant)
 
 	s.route.patchId = "aabbccddeeff001122334455"
 	res := s.route.Run(context.TODO())
@@ -717,14 +717,14 @@ func TestPatchRawModulesHandler(t *testing.T) {
 
 	rp := rawModulesResponse.Patch
 	modules := rawModulesResponse.RawModules
-	assert.Equal(t, rp.Diff, "main diff")
-	assert.Equal(t, len(modules), 2)
+	assert.Equal(t, "main diff", rp.Diff)
+	assert.Len(t, modules, 2)
 
-	assert.Equal(t, modules[0].Name, "module1")
-	assert.Equal(t, modules[0].Diff, "module1 diff")
+	assert.Equal(t, "module1", modules[0].Name)
+	assert.Equal(t, "module1 diff", modules[0].Diff)
 
-	assert.Equal(t, modules[1].Name, "module2")
-	assert.Equal(t, modules[1].Diff, "module2 diff")
+	assert.Equal(t, "module2", modules[1].Name)
+	assert.Equal(t, "module2 diff", modules[1].Diff)
 }
 
 func TestPatchRawHandler(t *testing.T) {

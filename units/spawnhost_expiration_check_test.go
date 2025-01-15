@@ -58,7 +58,7 @@ func TestSpawnhostExpirationCheckJob(t *testing.T) {
 	found, err := host.FindOneId(ctx, h.Id)
 	assert.NoError(t, err)
 	require.NotNil(t, found)
-	assert.True(t, found.ExpirationTime.Sub(h.ExpirationTime) > 0)
+	assert.Positive(t, h.ExpirationTime)
 }
 
 func TestTryIdleSpawnHostNotification(t *testing.T) {

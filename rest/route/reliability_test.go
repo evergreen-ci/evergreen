@@ -91,7 +91,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 					values := url.Values{}
 
 					err = handler.parseTaskReliabilityFilter(values)
-					require.NotNil(t, err)
+					require.Error(t, err)
 
 					resp := err.(gimlet.ErrorResponse)
 					assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
@@ -106,7 +106,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 					}
 
 					err = handler.parseTaskReliabilityFilter(values)
-					require.NotNil(t, err)
+					require.Error(t, err)
 
 					resp := err.(gimlet.ErrorResponse)
 					assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
@@ -121,7 +121,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 					}
 
 					err = handler.parseTaskReliabilityFilter(values)
-					require.Nil(t, err)
+					require.NoError(t, err)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
@@ -142,7 +142,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 					}
 
 					err := handler.parseTaskReliabilityFilter(values)
-					require.NotNil(t, err)
+					require.Error(t, err)
 
 					resp := err.(gimlet.ErrorResponse)
 					assert.Equal(http.StatusBadRequest, resp.StatusCode)
@@ -156,7 +156,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 					}
 
 					err := handler.parseTaskReliabilityFilter(values)
-					require.NotNil(t, err)
+					require.Error(t, err)
 
 					resp := err.(gimlet.ErrorResponse)
 					assert.Equal(http.StatusBadRequest, resp.StatusCode)
@@ -170,7 +170,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 					}
 
 					err := handler.parseTaskReliabilityFilter(values)
-					require.Nil(t, err)
+					require.NoError(t, err)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
@@ -191,7 +191,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 					}
 
 					err := handler.parseTaskReliabilityFilter(values)
-					require.NotNil(t, err)
+					require.Error(t, err)
 
 					resp := err.(gimlet.ErrorResponse)
 					assert.Equal(http.StatusBadRequest, resp.StatusCode)
@@ -204,7 +204,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 					}
 
 					err := handler.parseTaskReliabilityFilter(values)
-					require.Nil(t, err)
+					require.NoError(t, err)
 				},
 				"valid: latest": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
 					values := url.Values{
@@ -213,7 +213,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 					}
 
 					err := handler.parseTaskReliabilityFilter(values)
-					require.Nil(t, err)
+					require.NoError(t, err)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
@@ -236,7 +236,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 					}
 
 					err = handler.parseTaskReliabilityFilter(values)
-					require.NotNil(t, err)
+					require.Error(t, err)
 
 					resp := err.(gimlet.ErrorResponse)
 					assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
@@ -252,7 +252,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 					}
 
 					err = handler.parseTaskReliabilityFilter(values)
-					require.NotNil(t, err)
+					require.Error(t, err)
 
 					resp := err.(gimlet.ErrorResponse)
 					assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
@@ -268,7 +268,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 					}
 
 					err = handler.parseTaskReliabilityFilter(values)
-					require.Nil(t, err)
+					require.NoError(t, err)
 				},
 				"valid: 0": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
 					err := setupTest(t)
@@ -280,7 +280,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 					}
 
 					err = handler.parseTaskReliabilityFilter(values)
-					require.Nil(t, err)
+					require.NoError(t, err)
 				},
 				"valid: 1": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
 					err := setupTest(t)
@@ -292,7 +292,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 					}
 
 					err = handler.parseTaskReliabilityFilter(values)
-					require.Nil(t, err)
+					require.NoError(t, err)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
@@ -315,7 +315,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 					}
 
 					err = handler.parseTaskReliabilityFilter(values)
-					require.NotNil(t, err)
+					require.Error(t, err)
 
 					resp := err.(gimlet.ErrorResponse)
 					require.Equal(t, http.StatusBadRequest, resp.StatusCode)
@@ -331,7 +331,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 					}
 
 					err = handler.parseTaskReliabilityFilter(values)
-					require.Nil(t, err)
+					require.NoError(t, err)
 				},
 				"valid": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
 					err := setupTest(t)
@@ -343,7 +343,7 @@ func TestReliabilityParseParameters(t *testing.T) {
 					}
 
 					err = handler.parseTaskReliabilityFilter(values)
-					require.Nil(t, err)
+					require.NoError(t, err)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
@@ -387,12 +387,13 @@ func TestReliabilityParse(t *testing.T) {
 					err = handler.parseTaskReliabilityFilter(values)
 					require.NoError(t, err)
 					require.Equal(t, values["tasks"], handler.filter.Tasks)
-					require.Equal(t, handler.filter.Sort, taskstats.SortLatestFirst)
+					require.Equal(t, taskstats.SortLatestFirst, handler.filter.Sort)
+					//nolint:testifylint // We expect the float to be exactly equal.
 					require.Equal(t, handler.filter.Significance, reliability.DefaultSignificance)
 
-					require.Equal(t, handler.filter.Requesters, []string{"gitter_request"})
-					require.Equal(t, handler.filter.GroupNumDays, 1)
-					require.Equal(t, handler.filter.GroupBy, reliability.GroupByTask)
+					require.Equal(t, []string{"gitter_request"}, handler.filter.Requesters)
+					require.Equal(t, 1, handler.filter.GroupNumDays)
+					require.Equal(t, reliability.GroupByTask, handler.filter.GroupBy)
 					require.Equal(t, handler.filter.BeforeDate, truncatedTime(0))
 					require.Equal(t, handler.filter.AfterDate, truncatedTime(0))
 				},
@@ -430,6 +431,7 @@ func TestReliabilityParse(t *testing.T) {
 					require.Equal(t, reliability.GroupByDistro, handler.filter.GroupBy) // default value
 					require.Equal(t, reliability.SortLatestFirst, handler.filter.Sort)  // default value
 					require.Equal(t, reliability.MaxQueryLimit, handler.filter.Limit)   // default value
+					//nolint:testifylint // We expect the float to be exactly 0.1.
 					require.Equal(t, 0.1, handler.filter.Significance)
 				},
 				"Some Values": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
@@ -520,7 +522,7 @@ func TestReliabilityRun(t *testing.T) {
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
 					data := resp.Data().([]interface{})
-					require.Equal(t, 0, len(data))
+					require.Empty(t, data)
 					require.Nil(t, resp.Pages())
 				},
 				"Limit 1": func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler) {
@@ -564,7 +566,7 @@ func TestReliabilityRun(t *testing.T) {
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
 					data := resp.Data().([]interface{})
-					require.Equal(t, 1, len(data))
+					require.Len(t, data, 1)
 					require.NotNil(t, resp.Pages())
 				},
 				"Limit 1000": func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler) {
@@ -608,7 +610,7 @@ func TestReliabilityRun(t *testing.T) {
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
 					data := resp.Data().([]interface{})
-					require.Equal(t, handler.filter.StatsFilter.Limit, len(data))
+					require.Len(t, data, handler.filter.StatsFilter.Limit)
 					require.NotNil(t, resp.Pages())
 				},
 				"StartAt Not Set": func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler) {
@@ -657,7 +659,7 @@ func TestReliabilityRun(t *testing.T) {
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
 					data := resp.Data().([]interface{})
-					require.Equal(t, handler.filter.StatsFilter.Limit-1, len(data))
+					require.Len(t, data, handler.filter.StatsFilter.Limit-1)
 					require.Nil(t, resp.Pages())
 				},
 				"StartAt Set": func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler) {
@@ -706,7 +708,7 @@ func TestReliabilityRun(t *testing.T) {
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
 					respData := resp.Data().([]interface{})
-					require.Equal(t, handler.filter.StatsFilter.Limit, len(respData))
+					require.Len(t, respData, handler.filter.StatsFilter.Limit)
 					require.NotNil(t, resp.Pages())
 					docs, err := data.GetTaskReliabilityScores(handler.filter)
 					require.NoError(t, err)
@@ -931,7 +933,7 @@ func TestReliability(t *testing.T) {
 					}
 
 					err := handler.parseTaskReliabilityFilter(values)
-					require.NotNil(t, err)
+					require.Error(t, err)
 
 					resp := err.(gimlet.ErrorResponse)
 					require.Equal(t, http.StatusBadRequest, resp.StatusCode)

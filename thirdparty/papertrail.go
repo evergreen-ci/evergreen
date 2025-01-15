@@ -120,7 +120,7 @@ func (c *PapertrailClient) Trace(ctx context.Context, args TraceArgs) error {
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return util.RespErrorf(res, "running papertrail trace")
+		return util.RespError(res, "running papertrail trace")
 	}
 
 	return nil
@@ -156,7 +156,7 @@ func (c *PapertrailClient) GetProductVersion(ctx context.Context, product, versi
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(res, "getting papertrail product version")
+		return nil, util.RespError(res, "getting papertrail product version")
 	}
 
 	var v PapertrailProductVersion

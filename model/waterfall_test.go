@@ -182,7 +182,7 @@ func TestGetAllWaterfallVersions(t *testing.T) {
 
 	versions, err = GetAllWaterfallVersions(ctx, p.Id, 2, 3)
 	assert.NoError(t, err)
-	assert.Len(t, versions, 0)
+	assert.Empty(t, versions)
 
 	versions, err = GetAllWaterfallVersions(ctx, p.Id, 9, 8)
 	assert.Error(t, err)
@@ -658,14 +658,14 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_12", DisplayName: "Task 12", Status: evergreen.TaskWillRun}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_66", DisplayName: "Task 66", Status: evergreen.TaskWillRun}
+	tsk = task.Task{Id: "t_66", DisplayName: "Task 66", Status: evergreen.TaskWillRun, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_89", DisplayName: "Task 89", Status: evergreen.TaskWillRun}
+	tsk = task.Task{Id: "t_89", DisplayName: "Task 89", Status: evergreen.TaskWillRun, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_32", DisplayName: "Task 32", DisplayStatusCache: evergreen.TaskSystemTimedOut, Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{
 		Type:     evergreen.CommandTypeSystem,
 		TimedOut: true,
-	}}
+	}, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_54", DisplayName: "Task 54", Status: evergreen.TaskDispatched}
 	assert.NoError(t, tsk.Insert())
@@ -675,9 +675,9 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_235", DisplayName: "Task 235", Status: evergreen.TaskSucceeded}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_995", DisplayName: "Task 995", Status: evergreen.TaskUnscheduled}
+	tsk = task.Task{Id: "t_995", DisplayName: "Task 995", Status: evergreen.TaskUnscheduled, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_473", DisplayName: "Task 473", Status: evergreen.TaskUnscheduled}
+	tsk = task.Task{Id: "t_473", DisplayName: "Task 473", Status: evergreen.TaskUnscheduled, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_347", DisplayName: "Task 347", Status: evergreen.TaskUnscheduled}
 	assert.NoError(t, tsk.Insert())
@@ -685,13 +685,13 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_3632", DisplayName: "Task 3632", Status: evergreen.TaskUnscheduled}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_537", DisplayName: "Task 537", Status: evergreen.TaskUnscheduled}
+	tsk = task.Task{Id: "t_537", DisplayName: "Task 537", Status: evergreen.TaskUnscheduled, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_737", DisplayName: "Task 737", Status: evergreen.TaskUnscheduled}
+	tsk = task.Task{Id: "t_737", DisplayName: "Task 737", Status: evergreen.TaskUnscheduled, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_135", DisplayName: "Task 135", Status: evergreen.TaskUnscheduled}
+	tsk = task.Task{Id: "t_135", DisplayName: "Task 135", Status: evergreen.TaskUnscheduled, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_1", DisplayName: "Task 1", Status: evergreen.TaskUnscheduled}
+	tsk = task.Task{Id: "t_1", DisplayName: "Task 1", Status: evergreen.TaskUnscheduled, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_92", DisplayName: "Task 92", Status: evergreen.TaskSucceeded}
 	assert.NoError(t, tsk.Insert())
@@ -711,9 +711,9 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_8423", DisplayName: "Task 8423", Status: evergreen.TaskSucceeded}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_8648", DisplayName: "Task 8648", Status: evergreen.TaskSucceeded}
+	tsk = task.Task{Id: "t_8648", DisplayName: "Task 8648", Status: evergreen.TaskSucceeded, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_845", DisplayName: "Task 845", Status: evergreen.TaskSucceeded}
+	tsk = task.Task{Id: "t_845", DisplayName: "Task 845", Status: evergreen.TaskSucceeded, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_4834", DisplayName: "Task 4834", Status: evergreen.TaskSucceeded}
 	assert.NoError(t, tsk.Insert())

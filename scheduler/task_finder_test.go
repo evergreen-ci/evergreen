@@ -207,7 +207,7 @@ func (s *TaskFinderSuite) TestTasksWithDisabledProjectNeverReturned() {
 	s.Require().NoError(ref.Upsert())
 	runnableTasks, err := s.FindRunnableTasks(s.ctx, s.distro)
 	s.NoError(err)
-	s.Len(runnableTasks, 0)
+	s.Empty(runnableTasks)
 }
 
 func (s *TaskFinderSuite) TestTasksWithProjectDispatchingDisabledNeverReturned() {
@@ -218,7 +218,7 @@ func (s *TaskFinderSuite) TestTasksWithProjectDispatchingDisabledNeverReturned()
 	s.Require().NoError(ref.Upsert())
 	runnableTasks, err := s.FindRunnableTasks(s.ctx, s.distro)
 	s.NoError(err)
-	s.Len(runnableTasks, 0)
+	s.Empty(runnableTasks)
 }
 
 type TaskFinderComparisonSuite struct {
@@ -349,20 +349,20 @@ func (s *TaskFinderComparisonSuite) TestFindRunnableHostsIsIdentical() {
 
 func (s *TaskFinderComparisonSuite) TestCheckThatTaskIsPopulated() {
 	for _, task := range s.oldRunnableTasks {
-		s.Equal(task.BuildVariant, "aBuildVariant")
-		s.Equal(task.Tags, []string{"tag1", "tag2"})
+		s.Equal("aBuildVariant", task.BuildVariant)
+		s.Equal([]string{"tag1", "tag2"}, task.Tags)
 	}
 	for _, task := range s.newRunnableTasks {
-		s.Equal(task.BuildVariant, "aBuildVariant")
-		s.Equal(task.Tags, []string{"tag1", "tag2"})
+		s.Equal("aBuildVariant", task.BuildVariant)
+		s.Equal([]string{"tag1", "tag2"}, task.Tags)
 	}
 	for _, task := range s.altRunnableTasks {
-		s.Equal(task.BuildVariant, "aBuildVariant")
-		s.Equal(task.Tags, []string{"tag1", "tag2"})
+		s.Equal("aBuildVariant", task.BuildVariant)
+		s.Equal([]string{"tag1", "tag2"}, task.Tags)
 	}
 	for _, task := range s.pllRunnableTasks {
-		s.Equal(task.BuildVariant, "aBuildVariant")
-		s.Equal(task.Tags, []string{"tag1", "tag2"})
+		s.Equal("aBuildVariant", task.BuildVariant)
+		s.Equal([]string{"tag1", "tag2"}, task.Tags)
 	}
 }
 

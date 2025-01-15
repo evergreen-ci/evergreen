@@ -180,7 +180,7 @@ func (s *ProjectEventSuite) TestModifyProjectNonEvent() {
 
 	projectEvents, err := MostRecentProjectEvents(projectId, 5)
 	s.NoError(err)
-	s.Require().Len(projectEvents, 0)
+	s.Require().Empty(projectEvents)
 }
 
 func (s *ProjectEventSuite) TestAddProject() {

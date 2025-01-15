@@ -104,7 +104,7 @@ func LegacyFindRunnableTasks(ctx context.Context, d distro.Distro) ([]task.Task,
 		}
 
 		if d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies {
-			depsMet, err := t.DependenciesMet(dependencyCaches)
+			depsMet, err := t.DependenciesMet(ctx, dependencyCaches)
 			if err != nil {
 				grip.Warning(message.Fields{
 					"runner":  RunnerName,
@@ -219,7 +219,7 @@ func AlternateTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, err
 		}
 
 		if d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies {
-			depsMet, err := t.AllDependenciesSatisfied(cache)
+			depsMet, err := t.AllDependenciesSatisfied(ctx, cache)
 			catcher.Add(err)
 			if !depsMet {
 				continue
@@ -341,7 +341,7 @@ func ParallelTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, erro
 		}
 
 		if d.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies {
-			depsMet, err := t.AllDependenciesSatisfied(cache)
+			depsMet, err := t.AllDependenciesSatisfied(ctx, cache)
 			if err != nil {
 				catcher.Add(err)
 				continue
