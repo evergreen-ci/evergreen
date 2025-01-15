@@ -480,7 +480,6 @@ func TestHandleGitHubMergeGroup(t *testing.T) {
 	}
 	for testCase, test := range map[string]func(*testing.T){
 		"githubMergeQueueSelected": func(t *testing.T) {
-			p.CommitQueue.MergeQueue = model.MergeQueueGitHub
 			require.NoError(t, p.Insert())
 			response := gh.handleMergeGroupChecksRequested(event)
 			// check for error returned by GitHub merge queue handler
